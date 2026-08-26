@@ -24,6 +24,13 @@
 --   `DCon` and `IDesc` carry no context, so there is no Agda type to read a
 --   depth off; they are inhabited at EVERY depth and the caller says which.
 --
+-- ★★ MEASURED, NOT ASSERTED.  Set `natrec`'s step field to `sucD 1`
+--   instead of `sucD 2` — one wrong index in the table — and:
+--     `Knot/Wf`     still passes (rc 0): a wrong index is WELL-FORMED;
+--     `Knot/Ctors`  still passes (rc 0): its constructors still derive;
+--     `Knot/Map`    FAILS: `nsuc (num (len Γ)) != num (num (len Γ))`.
+--   So the map catches exactly what nothing before it could.
+--
 -- ⚠ THE `Var` CLAUSES MATCH ON THE CONTEXT.  `vz : Var (Γ ∙)` exists only
 --   at a successor depth, so its clause splits the implicit `Γ` — which is
 --   exactly the depth-Fording of `cVar-vz`, on the Agda side.
