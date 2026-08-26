@@ -11,10 +11,11 @@
 
 -- ⚠⚠ THIS MODULE NEEDS THE **COMPACTING COLLECTOR**.
 --
---   53 `IConWf`s in one module, measured cold on a 7.7 GB box:
---     -A64m       1m50s, and it is KILLED (143) when checked as a
---                 DEPENDENCY rather than as the target;
---     -A64m -c    1m30s, comfortably.
+--   53 `IConWf`s in one module, measured cold on a 7.7 GB box,
+--   and RE-MEASURED 2026-08-26 after `Knot/Sz`'s marker turned out
+--   to be stale — this one is not:
+--     -A64m       OOM (143) at 76s;
+--     -A64m -c    104s, comfortably.
 --
 --   `tools/sweep.sh` greps this header for the phrase above and
 --   switches collectors on its own (`needs_c`), which is why the
