@@ -58,10 +58,11 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶_; βfst; βsnd; ξ-pairʳ; ξ-nsuc
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ
         ; El-⌜Id⌝; ξ-El; ξ-IMu; ξ-⌜Id⌝ˡ )
-open import normalizer.Syntax.Types using ( _≡_; sym; trans; cong; subst )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTm; ⊢sTm; toI; fromI; ⊢ixP )
+  using ( IPair; sTm; ⊢sTm; toI; fromI; ⊢ixP; num; ⊢num; num-ren; num-sub )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Tags
   using ( tagTm-lam; memTm-lam; tagTm-app; memTm-app; tagTm-ordtr; memTm-ordtr )
@@ -97,64 +98,55 @@ kLam b = icon tagTm-lam (pair b (pair (idrefl ⌜Nat⌝ sTm) unit))
 --   an arbitrary `ρ`/`σ` rather than one binder at a time.
 ------------------------------------------------------------------------
 
+-- ⚠ A NAMED CAST, not `subst` with an underscored motive.  Writing
+--   `subst (λ A → _ ⊢ty A)` makes the CONTEXT a meta INSIDE the lambda,
+--   so Agda generalises it over `A` and it never solves.  As a top-level
+--   lemma the context is an ordinary implicit and the expected type
+--   pins it.
+tyCast : {Γ : Ctx} {A B : RTy ⌊ Γ ⌋} → A ≡ B → Γ ⊢ty A → Γ ⊢ty B
+tyCast refl d = d
+
+-- ★ THE TWO WORKHORSES the generated rows are built from.  Both exist
+--   ONLY to keep the context an ordinary implicit: written inline as
+--   `subst (λ z → _ ⊢ z ∷ Nat) …` the `_` sits inside a lambda, becomes
+--   a FUNCTION-typed meta, and never solves.
+--
+-- `⊢numAt n eq` — the depth, at whatever mangled form the payload's
+--   substitutions left it in.  `⊢num` is context-polymorphic, so there
+--   is nothing to weaken: the equation does all the work.
+⊢numAt : {Γ : Ctx} (n : ℕ) {t : RTm ⌊ Γ ⌋} → t ≡ num n → Γ ⊢ t ∷ Nat
+⊢numAt n eq = subst (λ z → _ ⊢ z ∷ Nat) (sym eq) (⊢num n)
+
+-- `kCast` — a child, whose index the payload mangled the same way.
+kCast : {Γ : Ctx} {s t d e : RTm ⌊ Γ ⌋} →
+        d ≡ e → Γ ⊢ t ∷ K (pair s d) → Γ ⊢ t ∷ K (pair s e)
+kCast refl dt = dt
+
 kApp : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 kApp f a = icon tagTm-app (pair f (pair a (pair (idrefl ⌜Nat⌝ sTm) unit)))
 
--- ★★★ THE DEPTH IS A CONTEXT VARIABLE, AND THAT IS THE WHOLE FIX.
---   `subTm (single f) (w (var vz))` COMPUTES to `var vz`; the same
---   round trip on an opaque `d` is `wk-single`, propositional, and it
---   grows a rung per field position.  So the smart constructors are
---   proved ONCE at `Δ ▹ Nat` with the depth bound, and a caller
---   instantiates by substitution — `abstract-the-substituted-terms`.
-⊢kApp : {Δ : Ctx} {f a : RTm (⌊ Δ ⌋ ∙)} →
-        (Δ ▹ Nat) ⊢ f ∷ K (pair sTm (var vz)) →
-        (Δ ▹ Nat) ⊢ a ∷ K (pair sTm (var vz)) →
-        (Δ ▹ Nat) ⊢ kApp f a ∷ K (pair sTm (var vz))
-⊢kApp df da =
-  ⊢icon KnotWf memTm-app (⊢ixP ⊢sTm (⊢var here))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there here))))))
-                 (tyFordFst ⊢sTm (⊢var (there (there here)))))
-           (ixConv (ξ-pairʳ (βsnd sTm (var vz))) df)
-           (⊢pair (tyFordFst ⊢sTm (⊢var (there here)))
-                  (ixConv (ξ-pairʳ (βsnd sTm (var vz))) da)
+-- ★★ AT AN ABSTRACT DEPTH `num n`.  `⊢num` is CONTEXT-POLYMORPHIC, so
+--   every ⊢ty premise is the same `⊢num n` transported by a chain of
+--   `num-ren`/`num-sub` — one rung per action the payload applied.
+⊢kApp : {Δ : Ctx} (n : ℕ) {f a : RTm ⌊ Δ ⌋} →
+        Δ ⊢ f ∷ K (pair sTm (num n)) → Δ ⊢ a ∷ K (pair sTm (num n)) →
+        Δ ⊢ kApp f a ∷ K (pair sTm (num n))
+⊢kApp n {f = f} df da =
+  ⊢icon KnotWf memTm-app (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n r1)))))
+                 (tyFordFst ⊢sTm (⊢numAt n r2)))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) df)
+           (⊢pair (tyFordFst ⊢sTm (⊢numAt n s1r2))
+                  (ixConv (ξ-pairʳ (βsnd sTm _)) (kCast (sym s0r1) da))
                   (⊢pair ty-Unit (fordFst ⊢sTm) ⊢unit)))
-
-
-------------------------------------------------------------------------
--- RUNG 3: THE WORST ROW — `ordtr`, five recursive fields.
---
--- ★ THE POINT: the transports do NOT grow with position, because there
---   are none.  What grows is the ⊢ty premise nest, TRIANGULARLY — the
---   k-th `⊢pair` states the tail from k+1 on — and every entry in it is
---   a de Bruijn lookup.  Bookkeeping, and exactly a generator's job.
-------------------------------------------------------------------------
-
-kOrdtr : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-kOrdtr a t u p q =
-  icon tagTm-ordtr
-    (pair a (pair t (pair u (pair p (pair q (pair (idrefl ⌜Nat⌝ sTm) unit))))))
-
-⊢kOrdtr : {Δ : Ctx} {a t u p q : RTm (⌊ Δ ⌋ ∙)} →
-          (Δ ▹ Nat) ⊢ a ∷ K (pair sTm (var vz)) →
-          (Δ ▹ Nat) ⊢ t ∷ K (pair sTm (var vz)) →
-          (Δ ▹ Nat) ⊢ u ∷ K (pair sTm (var vz)) →
-          (Δ ▹ Nat) ⊢ p ∷ K (pair sTm (var vz)) →
-          (Δ ▹ Nat) ⊢ q ∷ K (pair sTm (var vz)) →
-          (Δ ▹ Nat) ⊢ kOrdtr a t u p q ∷ K (pair sTm (var vz))
-⊢kOrdtr da dt du dp dq =
-  ⊢icon KnotWf memTm-ordtr (⊢ixP ⊢sTm (⊢var here))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there here)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there (there here))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there (there (there here)))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there (there (there (there here))))))))) (tyFordFst ⊢sTm (⊢var (there (there (there (there (there here)))))))))))
-           (cv da)
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there here)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there (there here))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there (there (there here)))))))) (tyFordFst ⊢sTm (⊢var (there (there (there (there here)))))))))
-            (cv dt)
-      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there here)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there (there here))))))) (tyFordFst ⊢sTm (⊢var (there (there (there here)))))))
-             (cv du)
-       (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢var (there here)))))) (tyFordFst ⊢sTm (⊢var (there (there here)))))
-              (cv dp)
-        (⊢pair (tyFordFst ⊢sTm (⊢var (there here)))
-               (cv dq)
-         (⊢pair ty-Unit (fordFst ⊢sTm) ⊢unit))))))
   where
-    cv : {Δ' : Ctx} {x : RTm (⌊ Δ' ⌋ ∙)} →
-         (Δ' ▹ Nat) ⊢ x ∷ K (pair sTm (var vz)) → _
-    cv d = ixConv (ξ-pairʳ (βsnd sTm (var vz))) d
+    -- ★ ONE RUNG PER ACTION, outermost first.  `renTm`s come from the
+    --   payload's binders, `subTm`s from the components already given.
+    r1 : renTm vs (num n) ≡ num n
+    r1 = num-ren vs n
+    r2 : renTm vs (renTm vs (num n)) ≡ num n
+    r2 = trans (cong (renTm vs) r1) (num-ren vs n)
+    s0r1 : subTm (single f) (renTm vs (num n)) ≡ num n
+    s0r1 = trans (cong (subTm (single f)) r1) (num-sub (single f) n)
+    s1r2 : subTm (extS (single f)) (renTm vs (renTm vs (num n))) ≡ num n
+    s1r2 = trans (cong (subTm (extS (single f))) r2) (num-sub (extS (single f)) n)
