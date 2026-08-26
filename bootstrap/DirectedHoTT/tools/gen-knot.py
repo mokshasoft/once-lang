@@ -559,6 +559,54 @@ def emit_row(name, decl, fields):
     L.append("")
     return L
 
+
+CTORS_HDR = """""" + BANNER + """-- \u2605\u2605\u2605 THE KNOT'S CONSTRUCTORS AS DERIVED RULES.
+--
+--     \u22a2Tm-lamK : (n : \u2115) \u2192 \u0394 \u22a2 b \u2237 K (1 , num (suc n))
+--                        \u2192 \u0394 \u22a2 Tm-lamK b \u2237 K (1 , num n)
+--
+-- \u26a0 THE TWO `Var` ROWS ARE NOT HERE.  They Ford the DEPTH as well as the
+--   tag, so their ambient index is `num (suc n)` and their constraint names
+--   a BOUND FIELD.  Hand-written in `Knot/Build`.
+--
+-- Read `Knot/Build`'s header for why the depth is a NUMERAL and what the
+-- three cast helpers are for.
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.Ctors where
+open import normalizer.Syntax.Types using ( _\u2261_; refl; sym; trans; cong; subst )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to \u2115 )
+open import DirectedHoTT.Spec.Syntax
+  using ( Cx; \u03b5; _\u2219; vz; vs
+        ; RTy; RTm; El; Unit; Nat; \u03a3'; IMu
+        ; var; pair; fst; snd; unit; nzero; nsuc; \u231cNat\u231d; \u231cId\u231d; idrefl; icon
+        ; Ren; Sub; renTm; subTm; extS )
+open import DirectedHoTT.Spec.Typing
+  using ( Ctx; \u25c7; _\u25b9_; \u230a_\u230b; single
+        ; _\u22a2_\u2237_; _\u22a2ty_; \u22a2var; here; there; \u22a2conv
+        ; \u22a2pair; \u22a2fst; \u22a2snd; \u22a2unit; \u22a2nzero; \u22a2nsuc; \u22a2\u231cNat\u231d; \u22a2\u231cId\u231d; \u22a2idrefl; \u22a2icon
+        ; ty-El; ty-Unit; ty-Nat; ty-\u03a3; ty-IMu
+        ; _\u27f6_; \u03b2fst; \u03b2snd; \u03be-pair\u02b3; \u03be-nsuc
+        ; _\u2245\u1d40_; csym\u1d40; ctrn\u1d40; cred\u1d40; El-\u231cId\u231d; \u03be-El; \u03be-IMu; \u03be-\u231cId\u231d\u02e1 )
+open import DirectedHoTT.Examples.Knot.Sorts
+  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
+        ; \u22a2sTy; \u22a2sTm; \u22a2sDesc; \u22a2sDCon; \u22a2sIDesc; \u22a2sICon; \u22a2sVar
+        ; toI; fromI; \u22a2ixP; num; \u22a2num; num-ren; num-sub )
+open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
+open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
+open import DirectedHoTT.Examples.Knot.Tags
+open import DirectedHoTT.Examples.Knot.Terms using ( ixConv; fordFst; tyFordFst )
+open import DirectedHoTT.Examples.Knot.Build using ( tyCast; \u22a2numAt; kCast )
+
+"""
+
+def gen_ctors():
+    out = [CTORS_HDR]
+    for nm, d, f in KNOT:
+        if nm.startswith("cVar-"): continue
+        out += emit_row(nm, d, f)
+    return "\n".join(out) + "\n"
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out = os.path.join(root, "Examples", "Knot")
@@ -572,5 +620,6 @@ if __name__ == "__main__":
     open(os.path.join(out, "Desc.agda"), "w").write(gen_desc())
     open(os.path.join(out, "Wf.agda"),   "w").write(gen_wf())
     open(os.path.join(out, "Tags.agda"), "w").write(gen_tags())
+    open(os.path.join(out, "Ctors.agda"), "w").write(gen_ctors())
     print(f"53 constructors · {n_rho} recursive fields · {n_kap} κ fields "
           f"· {2 * (n_rho + n_kap) + 106} generated clauses")
