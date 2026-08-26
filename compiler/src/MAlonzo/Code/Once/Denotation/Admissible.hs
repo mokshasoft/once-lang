@@ -68,7 +68,7 @@ d_rawIntLits_6 v0
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.TypeCheck.Raw.C_RFloat_56 v1 v2 v3
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RFloat_56 v1 v2 v3 v4
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_58 v1
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16

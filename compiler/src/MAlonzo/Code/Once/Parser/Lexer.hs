@@ -1009,52 +1009,60 @@ d_headK_528 v0
                                                                               (coe
                                                                                  C_hkGen_526)))))))))))))))))))))))))
 -- Once.Parser.Lexer.tok-str
-d_tok'45'str_540 ::
+d_tok'45'str_542 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
    MAlonzo.Code.Induction.WellFounded.T_Acc_42) ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tok'45'str_540 ~v0 ~v1 v2 = du_tok'45'str_540 v2
-du_tok'45'str_540 ::
+d_tok'45'str_542 v0 v1 ~v2 v3 = du_tok'45'str_542 v0 v1 v3
+du_tok'45'str_542 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-du_tok'45'str_540 v0
-  = case coe v0 of
-      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
-        -> case coe v1 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
-               -> case coe v3 of
-                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
+du_tok'45'str_542 v0 v1 v2
+  = case coe v2 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
+        -> case coe v3 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
+               -> case coe v5 of
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                       -> coe
                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                            (coe
                               MAlonzo.Code.Once.Parser.Token.C_TString_14
-                              (coe MAlonzo.Code.Agda.Builtin.String.d_primStringFromList_14 v2))
-                           (coe du_tokenize'45'WF_606 (coe v4))
+                              (coe MAlonzo.Code.Agda.Builtin.String.d_primStringFromList_14 v4))
+                           (coe
+                              du_tokenize'45'WF_640 (coe v6)
+                              (coe d_adv_628 (coe v0) (coe v6) (coe v1)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Lexer.tok-gen
-d_tok'45'gen_548 ::
+d_tok'45'gen_552 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
    MAlonzo.Code.Induction.WellFounded.T_Acc_42) ->
   Bool -> Bool -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tok'45'gen_548 v0 v1 ~v2 v3 v4 = du_tok'45'gen_548 v0 v1 v3 v4
-du_tok'45'gen_548 ::
+d_tok'45'gen_552 v0 v1 v2 ~v3 v4 v5
+  = du_tok'45'gen_552 v0 v1 v2 v4 v5
+du_tok'45'gen_552 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   Bool -> Bool -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-du_tok'45'gen_548 v0 v1 v2 v3
-  = if coe v2
+du_tok'45'gen_552 v0 v1 v2 v3 v4
+  = if coe v3
       then coe
-             du_tok'45'num_564 (coe v0)
+             du_tok'45'num_570 (coe v0) (coe v1) (coe v2)
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                 (coe d_collectDigitsB_78 (coe v1)))
@@ -1070,7 +1078,7 @@ du_tok'45'gen_548 v0 v1 v2 v3
                    (coe
                       MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                       (coe d_collectDigitsB_78 (coe v1)))))
-      else (if coe v3
+      else (if coe v4
               then coe
                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                      (coe
@@ -1083,17 +1091,28 @@ du_tok'45'gen_548 v0 v1 v2 v3
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                  (coe d_collectIdentB_44 (coe v1))))))
                      (coe
-                        du_tokenize'45'WF_606
+                        du_tokenize'45'WF_640
                         (coe
                            MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                              (coe d_collectIdentB_44 (coe v1)))))
-              else coe du_tokenize'45'WF_606 (coe v1))
+                              (coe d_collectIdentB_44 (coe v1))))
+                        (coe
+                           d_adv_628 (coe v1)
+                           (coe
+                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                              (coe
+                                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                 (coe d_collectIdentB_44 (coe v1))))
+                           (coe v2)))
+              else coe
+                     du_tokenize'45'WF_640 (coe v1)
+                     (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
 -- Once.Parser.Lexer.tok-num
-d_tok'45'num_564 ::
+d_tok'45'num_570 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
    MAlonzo.Code.Induction.WellFounded.T_Acc_42) ->
@@ -1102,21 +1121,23 @@ d_tok'45'num_564 ::
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tok'45'num_564 v0 ~v1 ~v2 v3 v4 ~v5 v6
-  = du_tok'45'num_564 v0 v3 v4 v6
-du_tok'45'num_564 ::
+d_tok'45'num_570 v0 v1 v2 ~v3 v4 v5 ~v6 v7
+  = du_tok'45'num_570 v0 v1 v2 v4 v5 v7
+du_tok'45'num_570 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-du_tok'45'num_564 v0 v1 v2 v3
-  = case coe v3 of
-      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
-        -> case coe v4 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
-               -> case coe v6 of
-                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
+du_tok'45'num_570 v0 v1 v2 v3 v4 v5
+  = case coe v5 of
+      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
+        -> case coe v6 of
+             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
+               -> case coe v8 of
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
                       -> coe
                            MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                            (coe
@@ -1124,10 +1145,12 @@ du_tok'45'num_564 v0 v1 v2 v3
                               (coe
                                  d_digitsToNat_140
                                  (coe
-                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v0) (coe v1)))
-                              (coe d_digitsToNat_140 v5)
-                              (coe MAlonzo.Code.Data.List.Base.du_length_268 v5))
-                           (coe du_tokenize'45'WF_606 (coe v7))
+                                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v0) (coe v3)))
+                              (coe d_digitsToNat_140 v7)
+                              (coe MAlonzo.Code.Data.List.Base.du_length_268 v7) (coe v2))
+                           (coe
+                              du_tokenize'45'WF_640 (coe v9)
+                              (coe d_adv_628 (coe v1) (coe v9) (coe v2)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -1138,183 +1161,239 @@ du_tok'45'num_564 v0 v1 v2 v3
                 (coe
                    d_digitsToNat_140
                    (coe
-                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v0) (coe v1))))
-             (coe du_tokenize'45'WF_606 (coe v2))
+                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v0) (coe v3)))
+                (coe v2))
+             (coe
+                du_tokenize'45'WF_640 (coe v4)
+                (coe d_adv_628 (coe v1) (coe v4) (coe v2)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Lexer.tok-nl
-d_tok'45'nl_570 ::
+d_tok'45'nl_578 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
    MAlonzo.Code.Induction.WellFounded.T_Acc_42) ->
   Bool -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tok'45'nl_570 v0 ~v1 v2 = du_tok'45'nl_570 v0 v2
-du_tok'45'nl_570 ::
+d_tok'45'nl_578 v0 v1 ~v2 v3 = du_tok'45'nl_578 v0 v1 v3
+du_tok'45'nl_578 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
-  Bool -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-du_tok'45'nl_570 v0 v1
-  = if coe v1
-      then coe du_tokenize'45'WF_606 (coe v0)
+  Integer -> Bool -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
+du_tok'45'nl_578 v0 v1 v2
+  = if coe v2
+      then coe
+             du_tokenize'45'WF_640 (coe v0)
+             (coe d_adv_628 (coe v0) (coe v0) (coe v1))
       else coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TNewline_74)
-             (coe du_tokenize'45'WF_606 (coe v0))
+             (coe
+                du_tokenize'45'WF_640 (coe v0)
+                (coe d_adv_628 (coe v0) (coe v0) (coe v1)))
 -- Once.Parser.Lexer.tok-op2
-d_tok'45'op2_576 ::
+d_tok'45'op2_586 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
    MAlonzo.Code.Induction.WellFounded.T_Acc_42) ->
   MAlonzo.Code.Once.Parser.Token.T_Token_6 ->
   MAlonzo.Code.Once.Parser.Token.T_Token_6 ->
   Bool -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tok'45'op2_576 v0 ~v1 v2 v3 v4 = du_tok'45'op2_576 v0 v2 v3 v4
-du_tok'45'op2_576 ::
+d_tok'45'op2_586 v0 v1 ~v2 v3 v4 v5
+  = du_tok'45'op2_586 v0 v1 v3 v4 v5
+du_tok'45'op2_586 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   MAlonzo.Code.Once.Parser.Token.T_Token_6 ->
   MAlonzo.Code.Once.Parser.Token.T_Token_6 ->
   Bool -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-du_tok'45'op2_576 v0 v1 v2 v3
-  = if coe v3
+du_tok'45'op2_586 v0 v1 v2 v3 v4
+  = if coe v4
       then coe
-             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v1)
-             (coe du_tokenize'45'WF_606 (coe d_drop1_464 (coe v0)))
-      else coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v2)
-             (coe du_tokenize'45'WF_606 (coe v0))
+             (coe
+                du_tokenize'45'WF_640 (coe d_drop1_464 (coe v0))
+                (coe d_adv_628 (coe v0) (coe d_drop1_464 (coe v0)) (coe v1)))
+      else coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe v3)
+             (coe
+                du_tokenize'45'WF_640 (coe v0)
+                (coe d_adv_628 (coe v0) (coe v0) (coe v1)))
 -- Once.Parser.Lexer.tok-lbrace
-d_tok'45'lbrace_582 ::
+d_tok'45'lbrace_594 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
    MAlonzo.Code.Induction.WellFounded.T_Acc_42) ->
   Bool -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tok'45'lbrace_582 v0 ~v1 v2 = du_tok'45'lbrace_582 v0 v2
-du_tok'45'lbrace_582 ::
+d_tok'45'lbrace_594 v0 v1 ~v2 v3 = du_tok'45'lbrace_594 v0 v1 v3
+du_tok'45'lbrace_594 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
-  Bool -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-du_tok'45'lbrace_582 v0 v1
-  = if coe v1
+  Integer -> Bool -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
+du_tok'45'lbrace_594 v0 v1 v2
+  = if coe v2
       then coe
-             du_tokenize'45'WF_606
+             du_tokenize'45'WF_640
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                 (coe
                    d_skipBlockB_404 (coe (1 :: Integer)) (coe d_drop1_464 (coe v0))))
+             (coe
+                d_adv_628 (coe v0)
+                (coe
+                   MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                   (coe
+                      d_skipBlockB_404 (coe (1 :: Integer)) (coe d_drop1_464 (coe v0))))
+                (coe v1))
       else coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TLBrace_20)
-             (coe du_tokenize'45'WF_606 (coe v0))
+             (coe
+                du_tokenize'45'WF_640 (coe v0)
+                (coe d_adv_628 (coe v0) (coe v0) (coe v1)))
 -- Once.Parser.Lexer.tok-minus
-d_tok'45'minus_588 ::
+d_tok'45'minus_602 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
    MAlonzo.Code.Induction.WellFounded.T_Acc_42) ->
   T_Dash3_426 -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tok'45'minus_588 v0 ~v1 v2 = du_tok'45'minus_588 v0 v2
-du_tok'45'minus_588 ::
+d_tok'45'minus_602 v0 v1 ~v2 v3 = du_tok'45'minus_602 v0 v1 v3
+du_tok'45'minus_602 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   T_Dash3_426 -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-du_tok'45'minus_588 v0 v1
-  = case coe v1 of
+du_tok'45'minus_602 v0 v1 v2
+  = case coe v2 of
       C_d'45'comment_428
         -> coe
-             du_tokenize'45'WF_606
+             du_tokenize'45'WF_640
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                 (coe d_skipLineB_292 (coe d_drop1_464 (coe v0))))
+             (coe
+                d_adv_628 (coe v0)
+                (coe
+                   MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                   (coe d_skipLineB_292 (coe d_drop1_464 (coe v0))))
+                (coe v1))
       C_d'45'arrow_430
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TArrow_28)
-             (coe du_tokenize'45'WF_606 (coe d_drop1_464 (coe v0)))
+             (coe
+                du_tokenize'45'WF_640 (coe d_drop1_464 (coe v0))
+                (coe d_adv_628 (coe v0) (coe d_drop1_464 (coe v0)) (coe v1)))
       C_d'45'minus_432
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TMinus_50)
-             (coe du_tokenize'45'WF_606 (coe v0))
+             (coe
+                du_tokenize'45'WF_640 (coe v0)
+                (coe d_adv_628 (coe v0) (coe v0) (coe v1)))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Lexer.tok-caret
-d_tok'45'caret_594 ::
+d_tok'45'caret_610 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
    MAlonzo.Code.Induction.WellFounded.T_Acc_42) ->
   T_Caret4_434 -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tok'45'caret_594 v0 ~v1 v2 = du_tok'45'caret_594 v0 v2
-du_tok'45'caret_594 ::
+d_tok'45'caret_610 v0 v1 ~v2 v3 = du_tok'45'caret_610 v0 v1 v3
+du_tok'45'caret_610 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   T_Caret4_434 -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-du_tok'45'caret_594 v0 v1
-  = case coe v1 of
+du_tok'45'caret_610 v0 v1 v2
+  = case coe v2 of
       C_c'45'1_436
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TCaret1_30)
-             (coe du_tokenize'45'WF_606 (coe d_drop1_464 (coe v0)))
+             (coe
+                du_tokenize'45'WF_640 (coe d_drop1_464 (coe v0))
+                (coe d_adv_628 (coe v0) (coe d_drop1_464 (coe v0)) (coe v1)))
       C_c'45'0_438
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TCaret0_32)
-             (coe du_tokenize'45'WF_606 (coe d_drop1_464 (coe v0)))
+             (coe
+                du_tokenize'45'WF_640 (coe d_drop1_464 (coe v0))
+                (coe d_adv_628 (coe v0) (coe d_drop1_464 (coe v0)) (coe v1)))
       C_c'45'w_440
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TCaretW_34)
-             (coe du_tokenize'45'WF_606 (coe d_drop1_464 (coe v0)))
+             (coe
+                du_tokenize'45'WF_640 (coe d_drop1_464 (coe v0))
+                (coe d_adv_628 (coe v0) (coe d_drop1_464 (coe v0)) (coe v1)))
       C_c'45'gen_442
         -> coe
-             du_tok'45'gen_548 (coe '^') (coe v0)
+             du_tok'45'gen_552 (coe '^') (coe v0) (coe v1)
              (coe MAlonzo.Code.Agda.Builtin.Char.d_primIsDigit_10 '^')
              (coe d_isIdentStart_8 (coe '^'))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Lexer.tok-head
-d_tok'45'head_602 ::
+d_tok'45'head_620 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
    MAlonzo.Code.Induction.WellFounded.T_Acc_42) ->
   T_HeadK_474 -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tok'45'head_602 v0 v1 ~v2 v3 = du_tok'45'head_602 v0 v1 v3
-du_tok'45'head_602 ::
+d_tok'45'head_620 v0 v1 v2 ~v3 v4 = du_tok'45'head_620 v0 v1 v2 v4
+du_tok'45'head_620 ::
   MAlonzo.Code.Agda.Builtin.Char.T_Char_6 ->
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   T_HeadK_474 -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-du_tok'45'head_602 v0 v1 v2
-  = case coe v2 of
-      C_hkWS_476 -> coe du_tokenize'45'WF_606 (coe v1)
+du_tok'45'head_620 v0 v1 v2 v3
+  = case coe v3 of
+      C_hkWS_476
+        -> coe
+             du_tokenize'45'WF_640 (coe v1)
+             (coe d_adv_628 (coe v1) (coe v1) (coe v2))
       C_hkNL_478
-        -> coe du_tok'45'nl_570 (coe v1) (coe d_nlIndent_444 (coe v1))
+        -> coe
+             du_tok'45'nl_578 (coe v1) (coe v2) (coe d_nlIndent_444 (coe v1))
       C_hkCaret_480
-        -> coe du_tok'45'caret_594 (coe v1) (coe d_caretClass_460 (coe v1))
+        -> coe
+             du_tok'45'caret_610 (coe v1) (coe v2)
+             (coe d_caretClass_460 (coe v1))
       C_hkDash_482
-        -> coe du_tok'45'minus_588 (coe v1) (coe d_dashClass_456 (coe v1))
+        -> coe
+             du_tok'45'minus_602 (coe v1) (coe v2)
+             (coe d_dashClass_456 (coe v1))
       C_hkLBrace_484
         -> coe
-             du_tok'45'lbrace_582 (coe v1) (coe d_isDashHead_452 (coe v1))
+             du_tok'45'lbrace_594 (coe v1) (coe v2)
+             (coe d_isDashHead_452 (coe v1))
       C_hkLt_486
         -> coe
-             du_tok'45'op2_576 (coe v1)
+             du_tok'45'op2_586 (coe v1) (coe v2)
              (coe MAlonzo.Code.Once.Parser.Token.C_TLe_62)
              (coe MAlonzo.Code.Once.Parser.Token.C_TLt_60)
              (coe d_isEqHead_448 (coe v1))
       C_hkGt_488
         -> coe
-             du_tok'45'op2_576 (coe v1)
+             du_tok'45'op2_586 (coe v1) (coe v2)
              (coe MAlonzo.Code.Once.Parser.Token.C_TGe_66)
              (coe MAlonzo.Code.Once.Parser.Token.C_TGt_64)
              (coe d_isEqHead_448 (coe v1))
       C_hkEq_490
         -> coe
-             du_tok'45'op2_576 (coe v1)
+             du_tok'45'op2_586 (coe v1) (coe v2)
              (coe MAlonzo.Code.Once.Parser.Token.C_TEqEq_68)
              (coe MAlonzo.Code.Once.Parser.Token.C_TEquals_26)
              (coe d_isEqHead_448 (coe v1))
       C_hkBang_492
         -> coe
-             du_tok'45'op2_576 (coe v1)
+             du_tok'45'op2_586 (coe v1) (coe v2)
              (coe MAlonzo.Code.Once.Parser.Token.C_TNeq_70)
              (coe MAlonzo.Code.Once.Parser.Token.C_TBang_72)
              (coe d_isEqHead_448 (coe v1))
@@ -1322,114 +1401,163 @@ du_tok'45'head_602 v0 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkRParen_496
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TRParen_18)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkRBrace_498
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TRBrace_22)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkColon_500
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TColon_24)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkLambda_502
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TLambda_36)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkComma_504
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TComma_38)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkSemi_506
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TSemicolon_40)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkAt_508
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TAt_42)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkPipe_510
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TPipe_44)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkPlus_512
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TPlus_48)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkStar_514
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TStar_52)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkSlash_516
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TSlash_54)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkPct_518
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TPercent_56)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkAmp_520
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TAmpersand_58)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkDot_522
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TDot_46)
-             (coe du_tokenize'45'WF_606 (coe v1))
+             (coe
+                du_tokenize'45'WF_640 (coe v1)
+                (coe d_adv_628 (coe v1) (coe v1) (coe v2)))
       C_hkStr_524
-        -> coe du_tok'45'str_540 (coe d_collectStringB_166 (coe v1))
+        -> coe
+             du_tok'45'str_542 (coe v1) (coe v2)
+             (coe d_collectStringB_166 (coe v1))
       C_hkGen_526
         -> coe
-             du_tok'45'gen_548 (coe v0) (coe v1)
+             du_tok'45'gen_552 (coe v0) (coe v1) (coe v2)
              (coe MAlonzo.Code.Agda.Builtin.Char.d_primIsDigit_10 v0)
              (coe d_isIdentStart_8 (coe v0))
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Parser.Lexer.tokenize-WF
-d_tokenize'45'WF_606 ::
+-- Once.Parser.Lexer.adv
+d_adv_628 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] -> Integer -> Integer
+d_adv_628 v0 v1 v2
+  = coe
+      addInt
+      (coe
+         MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
+         (addInt
+            (coe (1 :: Integer))
+            (coe MAlonzo.Code.Data.List.Base.du_length_268 v0))
+         (coe MAlonzo.Code.Data.List.Base.du_length_268 v1))
+      (coe v2)
+-- Once.Parser.Lexer.tokenize-WF
+d_tokenize'45'WF_640 ::
+  [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
+  Integer ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tokenize'45'WF_606 v0 ~v1 = du_tokenize'45'WF_606 v0
-du_tokenize'45'WF_606 ::
+d_tokenize'45'WF_640 v0 v1 ~v2 = du_tokenize'45'WF_640 v0 v1
+du_tokenize'45'WF_640 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
-  [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-du_tokenize'45'WF_606 v0
+  Integer -> [MAlonzo.Code.Once.Parser.Token.T_Token_6]
+du_tokenize'45'WF_640 v0 v1
   = case coe v0 of
       []
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Parser.Token.C_TEOF_76) (coe v0)
-      (:) v1 v2
+      (:) v2 v3
         -> coe
-             du_tok'45'head_602 (coe v1) (coe v2) (coe d_headK_528 (coe v1))
+             du_tok'45'head_620 (coe v2) (coe v3) (coe v1)
+             (coe d_headK_528 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Lexer.tokenize
-d_tokenize_904 ::
+d_tokenize_1034 ::
   [MAlonzo.Code.Agda.Builtin.Char.T_Char_6] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tokenize_904 v0 = coe du_tokenize'45'WF_606 (coe v0)
+d_tokenize_1034 v0
+  = coe du_tokenize'45'WF_640 (coe v0) (coe (0 :: Integer))
 -- Once.Parser.Lexer.tokenizeString
-d_tokenizeString_908 ::
+d_tokenizeString_1038 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tokenizeString_908 v0
+d_tokenizeString_1038 v0
   = coe
-      d_tokenize_904
+      d_tokenize_1034
       (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0)

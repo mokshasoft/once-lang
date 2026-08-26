@@ -88,7 +88,7 @@ du_compileFunBody'45'ce_72 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Adequacy.AcceptSound.du_compileFunBody'45'aux'45'success_34
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1684
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1722
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))

@@ -27,6 +27,7 @@ import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax
 import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Target.RiscV64.PhysReg
@@ -740,7 +741,7 @@ d_compile'45'abstract_168 v0
                        MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.C_li_22
                        (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_a0_18)
                        (coe
-                          MAlonzo.Code.Once.Float.Dyadic.d_encode_140
+                          MAlonzo.Code.Once.Float.Decimal.d_round_174
                           (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42) (coe v3)))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
              _ -> MAlonzo.RTE.mazUnreachableError

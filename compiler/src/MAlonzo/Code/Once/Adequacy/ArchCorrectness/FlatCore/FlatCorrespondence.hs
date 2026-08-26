@@ -33,7 +33,7 @@ import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
-import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
@@ -6022,7 +6022,7 @@ d_sim'45'load'45'const'45'float_3634 ::
   (AgdaAny -> Integer -> Maybe Integer) ->
   (AgdaAny -> Bool) ->
   T_HeapView_362 ->
-  MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
+  MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   AgdaAny -> T_FlatCorr_982 -> T_SetsRole_1084 -> T_FlatCorr_982

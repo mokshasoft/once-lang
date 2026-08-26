@@ -21,7 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Arith.SigOp.Builders
 import qualified MAlonzo.Code.Once.CanonicalName
-import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
@@ -67,11 +67,11 @@ du_strLit_14 v0
       (coe MAlonzo.Code.Once.IR.C_terminal_74)
 -- Once.Surface.Elaborate.floatLit
 d_floatLit_20 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
+  MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 -> MAlonzo.Code.Once.IR.T_IR_16
 d_floatLit_20 v0 ~v1 = du_floatLit_20 v0
 du_floatLit_20 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
+  MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
   MAlonzo.Code.Once.IR.T_IR_16
 du_floatLit_20 v0
   = coe
@@ -592,7 +592,7 @@ du_elaborate_114 v0 v1 v2 v3
         -> coe du_intLit_8 (coe v6)
       MAlonzo.Code.Once.Surface.Syntax.C_str_190 v6
         -> coe du_strLit_14 (coe v6)
-      MAlonzo.Code.Once.Surface.Syntax.C_float_198 v6 v7
+      MAlonzo.Code.Once.Surface.Syntax.C_float_198 v6
         -> coe du_floatLit_20 (coe v6)
       MAlonzo.Code.Once.Surface.Syntax.C_add_208 v6 v7 v8 v9
         -> coe

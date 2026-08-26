@@ -80,7 +80,7 @@ d_result'45'extract_40 v0 v1 v2
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
                 ("Cannot infer type: " :: Data.Text.Text)
-                (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_92 (coe v3)))
+                (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_84 (coe v3)))
              (coe
                 MAlonzo.Code.Once.TypeCheck.Principal.d_principalGround_2106
                 (coe v0) (coe v1))
@@ -113,7 +113,7 @@ du_itv'45'inv_114 v0 v1 v2
         -> let v4
                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1852
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1890
                         (coe v0) (coe v1) (coe v3)) in
            coe
              (case coe v4 of
@@ -171,7 +171,7 @@ du_inferType'45'inv_274 v0 v1 v2
   = coe
       du_go_294 (coe v0) (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_1678
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_1716
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
             (coe v0) (coe v1))
@@ -538,7 +538,7 @@ du_body'45'transport_722 v0 v1 v2 v3 v4 v5 v6 v7
     coe
       (if coe v8
          then coe
-                MAlonzo.Code.Once.Adequacy.CanonPolyTransport.du_polys'45'transport'45''7580'_1452
+                MAlonzo.Code.Once.Adequacy.CanonPolyTransport.du_polys'45'transport'45''7580'_1504
                 (coe v0) (coe (0 :: Integer))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
@@ -561,7 +561,7 @@ du_body'45'transport_722 v0 v1 v2 v3 v4 v5 v6 v7
                       (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4))))
                 (coe v5) (coe v6) (coe v7)
          else coe
-                MAlonzo.Code.Once.Adequacy.CanonPolyTransport.du_polys'45'transport'45''7580'_1452
+                MAlonzo.Code.Once.Adequacy.CanonPolyTransport.du_polys'45'transport'45''7580'_1504
                 (coe v0) (coe (0 :: Integer))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)

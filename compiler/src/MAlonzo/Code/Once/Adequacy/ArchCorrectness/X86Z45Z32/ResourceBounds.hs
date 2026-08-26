@@ -28,6 +28,7 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics
 import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Float.Dyadic
 import qualified MAlonzo.Code.Once.Word
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
@@ -837,7 +838,7 @@ d_float'45'fits_354 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z32.Semantics.T_State_290 ->
-  MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
+  MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_288 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -845,9 +846,9 @@ d_float'45'fits_354 ::
 d_float'45'fits_354 ~v0 ~v1 ~v2 ~v3 ~v4 v5 ~v6 ~v7 ~v8
   = du_float'45'fits_354 v5
 du_float'45'fits_354 ::
-  MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
+  MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_float'45'fits_354 v0
   = coe
-      MAlonzo.Code.Once.Float.Dyadic.d_encode'45'fits_172
+      MAlonzo.Code.Once.Float.Decimal.d_round'45'fits_302
       (coe MAlonzo.Code.Once.Float.Dyadic.d_binary32_40) (coe v0)

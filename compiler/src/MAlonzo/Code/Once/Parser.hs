@@ -53,7 +53,7 @@ d_parse_4 v0
                  (coe
                     MAlonzo.Code.Once.Parser.Module.d_r_370
                     (coe
-                       MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_908 (coe v0)))) in
+                       MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1038 (coe v0)))) in
     coe (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v1))
 -- Once.Parser.allTrailing
 d_allTrailing_18 ::
@@ -87,9 +87,9 @@ d_showTokenPrefix_24 v0
                     (coe
                        MAlonzo.Code.Data.String.Base.d__'43''43'__20 v3
                        ("\"" :: Data.Text.Text))
-             MAlonzo.Code.Once.Parser.Token.C_TInt_10 v3
+             MAlonzo.Code.Once.Parser.Token.C_TInt_10 v3 v4
                -> coe ("TInt" :: Data.Text.Text)
-             MAlonzo.Code.Once.Parser.Token.C_TFloat_12 v3 v4 v5
+             MAlonzo.Code.Once.Parser.Token.C_TFloat_12 v3 v4 v5 v6
                -> coe ("TFloat" :: Data.Text.Text)
              MAlonzo.Code.Once.Parser.Token.C_TString_14 v3
                -> coe ("TString" :: Data.Text.Text)
@@ -284,7 +284,8 @@ d_parseStrict_72 v0
       d_parseStrict'45'pm_66
       (coe
          MAlonzo.Code.Once.Parser.Module.d_parseModule_380
-         (coe MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_908 (coe v0)))
+         (coe
+            MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1038 (coe v0)))
 -- Once.Parser.extractAliases
 d_extractAliases_76 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->

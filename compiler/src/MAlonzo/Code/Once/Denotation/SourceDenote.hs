@@ -31,7 +31,7 @@ import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Denotation.TraceDenote
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
-import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
@@ -437,13 +437,13 @@ du_'10214'_'10215''738'_114 v0 v1 v2 v3 v4
                      (MAlonzo.Code.Once.Arith.SigOp.Builders.d_str'45'lit'45'info_356
                         (coe v7))
                      v3 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)))
-      MAlonzo.Code.Once.Surface.Syntax.C_float_198 v7 v8
+      MAlonzo.Code.Once.Surface.Syntax.C_float_198 v7
         -> coe
-             (\ v9 ->
+             (\ v8 ->
                 coe
                   MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                   (coe
-                     MAlonzo.Code.Once.Float.Dyadic.d_encode_140
+                     MAlonzo.Code.Once.Float.Decimal.d_round_174
                      (coe MAlonzo.Code.Once.Target.Arch.d_float'45'format_24 (coe v3))
                      (coe v7)))
       MAlonzo.Code.Once.Surface.Syntax.C_add_208 v7 v8 v9 v10

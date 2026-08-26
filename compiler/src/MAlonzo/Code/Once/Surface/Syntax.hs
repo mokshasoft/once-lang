@@ -20,9 +20,8 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Fin.Base
-import qualified MAlonzo.Code.Data.List.Relation.Unary.All
 import qualified MAlonzo.Code.Once.CanonicalName
-import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Surface.Context
@@ -59,8 +58,7 @@ data T_Expr_8
                 MAlonzo.Code.Once.Type.T_Type_112 T_Expr_8 T_Expr_8 |
     C_int_184 Integer |
     C_str_190 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_float_198 MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6
-                MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 |
+    C_float_198 MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 |
     C_add_208 MAlonzo.Code.Once.Surface.Context.T_Usage_60
               MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
     C_sub_218 MAlonzo.Code.Once.Surface.Context.T_Usage_60

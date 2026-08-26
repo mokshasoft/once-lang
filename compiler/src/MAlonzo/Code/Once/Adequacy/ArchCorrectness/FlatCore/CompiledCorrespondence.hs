@@ -30,7 +30,7 @@ import qualified MAlonzo.Code.Once.CCC.Machine.Flat
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CanonicalName
-import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Memory.HeapAddress
 
@@ -1542,7 +1542,7 @@ data T_BlockSteps_870
                         [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
                         AgdaAny ->
-                        MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
+                        MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
                         T_CompiledCorr_656 ->
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -2326,7 +2326,7 @@ d_bs'45'load'45'const'45'float_1934 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
-  MAlonzo.Code.Once.Float.Dyadic.T_Dyadic_6 ->
+  MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
   T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->

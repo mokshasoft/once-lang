@@ -303,7 +303,6 @@ library
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.IR
       MAlonzo.Code.Once.IR.Size
-      MAlonzo.Code.Once.IRLits
       MAlonzo.Code.Once.IRTy
       MAlonzo.Code.Once.IRTy.WF
       MAlonzo.Code.Once.Semantics.ValueIR
@@ -350,7 +349,6 @@ library
       MAlonzo.Code.Once.Functor.Decide
       MAlonzo.Code.Once.Functor.Translate
       MAlonzo.Code.Once.Float.Dyadic
-      MAlonzo.Code.Once.Float.Representable
       MAlonzo.Code.Once.Grammar
       MAlonzo.Code.Once.Grammar.ConcreteDec
       MAlonzo.Code.Once.Grammar.Convert
@@ -538,6 +536,53 @@ library
       MAlonzo.Code.Once.Denotation.TraceDenote
       MAlonzo.Code.Once.Denotation.TraceMonad
       MAlonzo.Code.Once.Word
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimCore
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimPathLoad
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimPathLoadRegion
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimRiscV64
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimX86Z45Z32
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.ConcFlatSim
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.FlatComposition
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.FlatCorrespondence
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.FlatSimulation
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.ResourceBounds
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.RunContext
+      MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.StepLemmas
+      MAlonzo.Code.Once.Arith.Backend.Adequacy
+      MAlonzo.Code.Once.Arith.Backend.BlockValueSemM
+      MAlonzo.Code.Once.Arith.Backend.Correct
+      MAlonzo.Code.Once.Arith.Backend.ExecArithCore
+      MAlonzo.Code.Once.Arith.Backend.MemEffectCore
+      MAlonzo.Code.Once.Arith.Backend.MemPreserveCore
+      MAlonzo.Code.Once.Arith.Backend.PreserveCore
+      MAlonzo.Code.Once.Arith.Backend.RiscV64.Confine
+      MAlonzo.Code.Once.Arith.Backend.RiscV64.Dispatch
+      MAlonzo.Code.Once.Arith.Backend.RiscV64.ExecArith
+      MAlonzo.Code.Once.Arith.Backend.RiscV64.MemPreserve
+      MAlonzo.Code.Once.Arith.Backend.RiscV64.Preserve
+      MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace
+      MAlonzo.Code.Once.Arith.Backend.RiscV64.StatePreserve
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore
+      MAlonzo.Code.Once.Arith.Backend.StatePreserveCore
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Dispatch
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.ExecArith
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.RunTrace
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Confine
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Dispatch
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.ExecArith
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.MemPreserve
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Preserve
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.RunTrace
+      MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.StatePreserve
+      MAlonzo.Code.Once.Arith.Machine.CompileCorrect
+      MAlonzo.Code.Once.Arith.Machine.WordSem
+      MAlonzo.Code.Once.Arith.SigOp.BlockSemBridge
+      MAlonzo.Code.Once.CCC.Codegen.LabelRange
+      MAlonzo.Code.Once.CCC.Codegen.LabelScope
+      MAlonzo.Code.Once.CCC.Machine.FlatStoreWF
+      MAlonzo.Code.Once.CCC.Machine.ReadTypedAdequate
+      MAlonzo.Code.Once.Float.Decimal
+      MAlonzo.Code.Once.Warnings
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
       MAlonzo.Code.Relation.Binary.Bundles.Raw

@@ -200,7 +200,7 @@ resolveImports
   -> Either Text Module
 resolveImports modMap (Module userMod) =
   let agdaMap = map mapEntry modMap
-      agdaResult = MMR.d_resolveImports_702 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
+      agdaResult = MMR.d_resolveImports_704 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
   in case agdaResult of
        MSum.C_inj'8321'_38 err -> Left (agdaToText err)
        MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))

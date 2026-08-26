@@ -20,7 +20,7 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Float.Dyadic
+import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.IRTy.WF
@@ -251,7 +251,7 @@ d_eval_12 v0 v1 v2 v3 v4
                     (coe v7)
              MAlonzo.Code.Once.IRTy.C_fits'45'float_514
                -> coe
-                    MAlonzo.Code.Once.Float.Dyadic.d_encode_140
+                    MAlonzo.Code.Once.Float.Decimal.d_round_174
                     (coe MAlonzo.Code.Once.Target.Arch.d_float'45'format_24 (coe v2))
                     (coe v7)
              _ -> MAlonzo.RTE.mazUnreachableError

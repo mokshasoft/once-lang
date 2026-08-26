@@ -72,7 +72,9 @@ d_printGExpr_8 v0
       MAlonzo.Code.Once.Grammar.C_EInt_86 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Parser.Token.C_TInt_10 (coe v1))
+             (coe
+                MAlonzo.Code.Once.Parser.Token.C_TInt_10 (coe v1)
+                (coe (0 :: Integer)))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.Grammar.C_EString_88 v1
         -> coe

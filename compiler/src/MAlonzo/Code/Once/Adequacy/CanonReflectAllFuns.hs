@@ -273,7 +273,7 @@ du_body'45'reflect_356 v0 v1 v2 v3 v4 v5 v6 v7
     coe
       (if coe v8
          then coe
-                MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport.du_polys'45'reflect'45''7580'_216
+                MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport.du_polys'45'reflect'45''7580'_232
                 (coe v0) (coe (0 :: Integer))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
@@ -289,7 +289,7 @@ du_body'45'reflect_356 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4)) (coe v5)
                 (coe v6) (coe v7)
          else coe
-                MAlonzo.Code.Once.Adequacy.CanonReflectMutual.du_canon'45'reflects'45''7580'_1192
+                MAlonzo.Code.Once.Adequacy.CanonReflectMutual.du_canon'45'reflects'45''7580'_1376
                 (coe
                    MAlonzo.Code.Once.TypeCheck.Classify.C_mkCtx_368
                    (coe (0 :: Integer))
@@ -307,7 +307,7 @@ du_body'45'reflect_356 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe v5) (coe v6) (coe v0)
                 (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4))
                 (coe
-                   MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport.du_polys'45'reflect'45''7580'_216
+                   MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport.du_polys'45'reflect'45''7580'_232
                    (coe v0) (coe (0 :: Integer))
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                    (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)

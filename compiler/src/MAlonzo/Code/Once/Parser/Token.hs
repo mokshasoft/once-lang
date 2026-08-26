@@ -23,7 +23,8 @@ import qualified MAlonzo.Code.Agda.Builtin.String
 d_Token_6 = ()
 data T_Token_6
   = C_TWord_8 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_TInt_10 Integer | C_TFloat_12 Integer Integer Integer |
+    C_TInt_10 Integer Integer |
+    C_TFloat_12 Integer Integer Integer Integer |
     C_TString_14 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_TLParen_16 | C_TRParen_18 | C_TLBrace_20 | C_TRBrace_22 |
     C_TColon_24 | C_TEquals_26 | C_TArrow_28 | C_TCaret1_30 |

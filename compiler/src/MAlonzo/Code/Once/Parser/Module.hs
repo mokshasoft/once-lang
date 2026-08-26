@@ -296,11 +296,11 @@ du_skipNewlines'45''8804'_176 v0
                -> coe
                     MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
                     (coe MAlonzo.Code.Data.List.Base.du_length_268 v0)
-             MAlonzo.Code.Once.Parser.Token.C_TInt_10 v3
+             MAlonzo.Code.Once.Parser.Token.C_TInt_10 v3 v4
                -> coe
                     MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
                     (coe MAlonzo.Code.Data.List.Base.du_length_268 v0)
-             MAlonzo.Code.Once.Parser.Token.C_TFloat_12 v3 v4 v5
+             MAlonzo.Code.Once.Parser.Token.C_TFloat_12 v3 v4 v5 v6
                -> coe
                     MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900
                     (coe MAlonzo.Code.Data.List.Base.du_length_268 v0)

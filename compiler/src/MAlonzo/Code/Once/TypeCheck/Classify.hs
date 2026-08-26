@@ -1498,7 +1498,7 @@ d_classifyAppHeadView_1062 v0
                -> coe C_ahv'45'other_1058
              MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54 v3
                -> coe C_ahv'45'other_1058
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RFloat_56 v3 v4 v5
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RFloat_56 v3 v4 v5 v6
                -> coe C_ahv'45'other_1058
              MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_58 v3
                -> coe C_ahv'45'other_1058
@@ -1523,7 +1523,7 @@ d_classifyAppHeadView_1062 v0
         -> coe C_ahv'45'other_1058
       MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_54 v1
         -> coe C_ahv'45'other_1058
-      MAlonzo.Code.Once.TypeCheck.Raw.C_RFloat_56 v1 v2 v3
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RFloat_56 v1 v2 v3 v4
         -> coe C_ahv'45'other_1058
       MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_58 v1
         -> coe C_ahv'45'other_1058
