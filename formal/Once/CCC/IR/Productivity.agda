@@ -32,6 +32,7 @@ open import Once.Type using (Type; Functor; ν-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.IR
 open import Once.CCC.Eval using (eval)
+open import Once.Target.Arch using (TargetNum)   -- plan 0.74 (D119): `eval` is target-parameterised
 -- Plan 0.52 M2: IR objects are ungraded `IRTy`, so an IR morphism's argument
 -- lives in the IR domain `⟦_⟧ᴵ` — NOT the surface `⟦_⟧`, which wants a `Type`.
 open import Once.Semantics.Machine using (⟦_⟧ᴵ)
@@ -57,10 +58,10 @@ open import Once.CCC.IR.Totality using (eval-total; coalg-produces-layer)
 -- an `IRFunctor` with `WellFormedFI`, and IR objects are `IRTy` — so the functor
 -- application is `⟦ F ⟧TI`, not the surface `⟦ F ⟧T`. Stating it over surface
 -- types and erasing was the wrong repair: the morphism never mentions `Type`.
-observation-terminates : ∀ {F} (wf : WellFormedFI F) {A : IRTy}
+observation-terminates : ∀ {F} (fmt : TargetNum) (wf : WellFormedFI F) {A : IRTy}
                            (c : IR A (⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴵ)
-                       → ∃[ v ] (eval (Out wf ∘ Ana wf c) a ≡ v)
-observation-terminates wf c a = eval-total (Out wf ∘ Ana wf c) a
+                       → ∃[ v ] (eval fmt (Out wf ∘ Ana wf c) a ≡ v)
+observation-terminates fmt wf c a = eval-total fmt (Out wf ∘ Ana wf c) a
 
 ------------------------------------------------------------------------
 -- Guardedness is Automatic
@@ -75,9 +76,10 @@ observation-terminates wf c a = eval-total (Out wf ∘ Ana wf c) a
 -- Any coalgebra c : IR A (⟦ F ⟧T A) terminates and produces ⟦ F ⟧T A.
 -- This is "guardedness" — but it's automatic, not checked.
 --
-guardedness-automatic : ∀ {F} {A : IRTy} (c : IR A (⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴵ)
-                      → ∃[ layer ] (eval c a ≡ layer)
-guardedness-automatic {F} {A} c a = coalg-produces-layer {F} {A} c a
+guardedness-automatic : ∀ {F} {A : IRTy} (fmt : TargetNum)
+                          (c : IR A (⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴵ)
+                      → ∃[ layer ] (eval fmt c a ≡ layer)
+guardedness-automatic {F} {A} fmt c a = coalg-produces-layer {F} {A} fmt c a
 
 ------------------------------------------------------------------------
 -- Consequence: GuardedT is Unnecessary

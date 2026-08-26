@@ -33,6 +33,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Once.Type
 open import Once.IR
 open import Once.CCC.Eval using (eval)
+-- Plan 0.74 (D119): `eval` takes the target's numeric parameters. This island
+-- kept the pre-D119 signature and rotted; the statements below thread `fmt`
+-- exactly as the apex does. Totality is a fact about the MORPHISM, so nothing
+-- here depends on which target it is — but the statement has to name one.
+open import Once.Target.Arch using (TargetNum)
 -- Plan 0.52 M2: IR objects are ungraded `IRTy`, so an IR morphism's argument
 -- lives in the IR domain `⟦_⟧ᴵ` — NOT the surface `⟦_⟧`, which wants a `Type`.
 open import Once.Semantics.Machine using (⟦_⟧ᴵ)
@@ -62,8 +67,8 @@ open import Once.IRTy using (IRTy; ⟦_⟧TI)
 -- The bootstrap normalizer postulates this for the same reason [4].
 --
 postulate
-  eval-total : ∀ {A B} (f : IR A B) (a : ⟦ A ⟧ᴵ)
-             → ∃[ b ] (eval f a ≡ b)
+  eval-total : ∀ {A B} (fmt : TargetNum) (f : IR A B) (a : ⟦ A ⟧ᴵ)
+             → ∃[ b ] (eval fmt f a ≡ b)
 
 ------------------------------------------------------------------------
 -- Coalgebra Termination
@@ -82,9 +87,10 @@ postulate
 -- Plan 0.52 M2: an IR coalgebra is an IR-LEVEL object throughout — `Ana` takes
 -- an `IRFunctor` with `WellFormedFI` and IR objects are `IRTy`, so the layer is
 -- `⟦ F ⟧TI A` and no surface `Type` appears anywhere in the statement.
-coalg-produces-layer : ∀ {F} {A : IRTy} (c : IR A (⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴵ)
-                     → ∃[ v ] (eval c a ≡ v)
-coalg-produces-layer c a = eval-total c a
+coalg-produces-layer : ∀ {F} {A : IRTy} (fmt : TargetNum)
+                         (c : IR A (⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴵ)
+                     → ∃[ v ] (eval fmt c a ≡ v)
+coalg-produces-layer fmt c a = eval-total fmt c a
 
 ------------------------------------------------------------------------
 -- Immediate Consequences
@@ -101,9 +107,9 @@ coalg-produces-layer c a = eval-total c a
 --
 -- If f and g both terminate, then (g ∘ f) terminates.
 --
-comp-total : ∀ {A B C} (f : IR A B) (g : IR B C) (a : ⟦ A ⟧ᴵ)
-           → ∃[ c ] (eval (g ∘ f) a ≡ c)
-comp-total f g a = eval-total (g ∘ f) a
+comp-total : ∀ {A B C} (fmt : TargetNum) (f : IR A B) (g : IR B C) (a : ⟦ A ⟧ᴵ)
+           → ∃[ c ] (eval fmt (g ∘ f) a ≡ c)
+comp-total fmt f g a = eval-total fmt (g ∘ f) a
 
 ------------------------------------------------------------------------
 -- Summary

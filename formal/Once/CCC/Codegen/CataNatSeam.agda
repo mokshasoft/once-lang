@@ -37,7 +37,7 @@ open import Once.IR using (IRTy; IRFunctor; _⊕_; Id; μ-type; ⟦_⟧TI; _+_; 
 open import Once.Semantics.Machine using (sem-inl; sem-inr) renaming (⟦_⟧ᴵ to ⟦_⟧)
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
-open import Once.IR using (out-μ; Heap)
+open import Once.IR using (IR; out-μ; Heap)   -- `IR` itself: island rot, the `using` list omitted the datatype the seam is stated over
 open import Once.IR using (WellFormedFI; WellFormedFI-irrelevant)
 open import Once.CCC.Machine.Allocation using (AllocState)
 open import Once.CCC.Machine.SMCore
