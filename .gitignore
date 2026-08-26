@@ -20,3 +20,4 @@ formal/_build/
 
 # Instructions
 .do-not-commit/
+__pycache__/
