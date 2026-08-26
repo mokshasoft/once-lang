@@ -166,13 +166,13 @@ reflS1 : {Γ : Ctx} →
 reflS1 = ⊢conv (⊢idrefl ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero)))
                (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝ (nsuc nzero) (nsuc nzero))))
 
-tyFz : (◇ ▹ El ⌜Nat⌝) ⊢ty
+tyFz : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ty
        Σ' (El (⌜Id⌝ ⌜Nat⌝ (nsuc nzero) (nsuc (var vz)))) Unit
 tyFz = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero))
                            (toI (⊢nsuc (fromI (⊢var here))))))
             ty-Unit
 
-⊢fz : ◇ ⊢ fz ∷ Fin (nsuc nzero)
+⊢fz : {Γ : Ctx} → Γ ⊢ fz ∷ Fin (nsuc nzero)
 ⊢fz = ⊢icon FinWf hereID (toI (⊢nsuc ⊢nzero))
         (⊢pair tyFz (toI ⊢nzero) (⊢pair ty-Unit reflS1 ⊢unit))
 
@@ -253,25 +253,29 @@ tlam b = icon (suc zero) (pair b unit)
 tapp : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 tapp f a = icon (suc (suc zero)) (pair f (pair a unit))
 
-⊢tvar : {n k : RTm ε} →
-        ◇ ⊢ n ∷ El ⌜Nat⌝ → ◇ ⊢ k ∷ Fin n → ◇ ⊢ tvar k ∷ Tm n
+⊢tvar : {Γ : Ctx} {n k : RTm ⌊ Γ ⌋} →
+        Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ k ∷ Fin n → Γ ⊢ tvar k ∷ Tm n
 ⊢tvar dn dk = ⊢icon TmWf hereID dn (⊢pair ty-Unit (toFin dk) ⊢unit)
 
 -- ★★★ THE BINDING CONSTRUCTOR.  Its recursive field is at `suc n`.
-⊢tlam : {n b : RTm ε} →
-        ◇ ⊢ n ∷ El ⌜Nat⌝ → ◇ ⊢ b ∷ Tm (nsuc n) → ◇ ⊢ tlam b ∷ Tm n
+-- ⚠ CONTEXT-GENERIC, for the same reason `⊢size` is: a use site that
+--   builds a term inside a DESCRIPTION's telescope is never at `◇`.
+--   `Examples/DepIx` is that use site.  The components are already
+--   `{Γ : Ctx}`-generic; this is a signature change, not a proof.
+⊢tlam : {Γ : Ctx} {n b : RTm ⌊ Γ ⌋} →
+        Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ b ∷ Tm (nsuc n) → Γ ⊢ tlam b ∷ Tm n
 ⊢tlam dn db = ⊢icon TmWf (thereID hereID) dn (⊢pair ty-Unit db ⊢unit)
 
-⊢tapp : {n f a : RTm ε} →
-        ◇ ⊢ n ∷ El ⌜Nat⌝ → ◇ ⊢ f ∷ Tm n → ◇ ⊢ a ∷ Tm n →
-        ◇ ⊢ tapp f a ∷ Tm n
+⊢tapp : {Γ : Ctx} {n f a : RTm ⌊ Γ ⌋} →
+        Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ f ∷ Tm n → Γ ⊢ a ∷ Tm n →
+        Γ ⊢ tapp f a ∷ Tm n
 ⊢tapp {n = n} dn df da =
   ⊢icon TmWf (thereID (thereID hereID)) dn
     (⊢pair (ty-Σ (ty-IMu TmWf (⊢wk dn)) ty-Unit) df
       (⊢pair ty-Unit
         -- ⚠ the second field's index is `renTm vs n` SUBSTITUTED at the
         --   first field — `wk-single` is the one cast this costs.
-        (subst (λ z → ◇ ⊢ _ ∷ IMu TmD INat z) (sym (wk-single n)) da)
+        (subst (λ z → _ ⊢ _ ∷ IMu TmD INat z) (sym (wk-single n)) da)
         ⊢unit))
 
 -- `λ x. x` at depth 0 — the smallest term that USES the shift.
@@ -281,7 +285,12 @@ idTm = tlam (tvar fz)
 -- ⚠ THE SCOPE CHECK IS NOW IN THE TYPE.  The bound occurrence sits at
 --   depth `suc zero`, so its `Fin` must be `Fin 1` — `⊢fz` is, and no
 --   `Fin 0` inhabitant could be supplied in its place.
-⊢idTm : ◇ ⊢ idTm ∷ Tm nzero
+-- ⚠ ALL OF THESE ARE CONTEXT-GENERIC for one reason: a use site that
+--   builds a term INSIDE a description's telescope is never at `◇`.
+--   `Examples/DepIx` is that use site.  Every component was already
+--   `{Γ : Ctx}`-generic, so these are signature changes, not proofs —
+--   the same edit `⊢size` needed in step 1a.
+⊢idTm : {Γ : Ctx} → Γ ⊢ idTm ∷ Tm nzero
 ⊢idTm = ⊢tlam (toI ⊢nzero) (⊢tvar (toI (⊢nsuc ⊢nzero)) ⊢fz)
 
 ------------------------------------------------------------------------
