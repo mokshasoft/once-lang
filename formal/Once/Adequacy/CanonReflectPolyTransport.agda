@@ -125,6 +125,8 @@ mutual
   polys-reflect-ᵢ b p pib ac (t-case ds dL dR) =
     t-case (polys-reflect-ᵢ b p pib ac ds) (polys-reflect-ᵢ b p pib ac dL) (polys-reflect-ᵢ b p pib ac dR)
   polys-reflect-ᵢ b p pib ac (t-binop-arith pr d₁ d₂) = t-binop-arith pr (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
+  -- PLAN 0.75 F4: structural, exactly as its integer twin above.
+  polys-reflect-ᵢ b p pib ac (t-binop-arith-float pr d₁ d₂) = t-binop-arith-float pr (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
   polys-reflect-ᵢ b p pib ac (t-binop-cmp pr d₁ d₂) = t-binop-cmp pr (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
   polys-reflect-ᵢ b p pib ac (t-id-app d) = t-id-app (polys-reflect-ᵢ b p pib ac d)
   polys-reflect-ᵢ b p pib ac (t-fst-app d) = t-fst-app (polys-reflect-ᵢ b p pib ac d)

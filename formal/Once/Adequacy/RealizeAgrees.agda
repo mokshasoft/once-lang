@@ -392,7 +392,6 @@ agree-RBinOp : ∀ {ctx : NamedCtx} (op : Raw.BinOp) {e₁ e₂ : RawExpr} {A Ψ
 agree-RBinOp op (failure _ , _) _ () s₁ s₂
 agree-RBinOp op (success Unit          _ _ _ _ , _) _ () s₁ s₂
 agree-RBinOp op (success Void          _ _ _ _ , _) _ () s₁ s₂
-agree-RBinOp op (success Float         _ _ _ _ , _) _ () s₁ s₂
 agree-RBinOp op (success Str           _ _ _ _ , _) _ () s₁ s₂
 agree-RBinOp op (success Buffer        _ _ _ _ , _) _ () s₁ s₂
 agree-RBinOp op (success (_ * _)       _ _ _ _ , _) _ () s₁ s₂
@@ -435,6 +434,36 @@ agree-RBinOp Raw.OpEq (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s
   rewrite s₁ refl dγ k | s₂ refl dγ k = refl
 agree-RBinOp Raw.OpNe (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
   rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+-- PLAN 0.75 F4: `Float` on the left is no longer absurd — it selects the float
+-- family. Same shape as the integer block above: a mismatched right operand
+-- still makes the aux a `failure`, and the three real ops rewrite both operand
+-- IHs. `/`, `%` and the comparisons stay absurd at `Float`, which is what
+-- `isFloatArithmeticOp` buys.
+agree-RBinOp op (success Float _ _ _ _ , _) (failure _ , _) () s₁ s₂
+agree-RBinOp op (success Float _ _ _ _ , _) (success Unit       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Float _ _ _ _ , _) (success Void       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Float _ _ _ _ , _) (success Int       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Float _ _ _ _ , _) (success Str       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Float _ _ _ _ , _) (success Buffer       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Float _ _ _ _ , _) (success (_ * _)       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Float _ _ _ _ , _) (success (_ + _)       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Float _ _ _ _ , _) (success (_ ⇒[ _ ] _)       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Float _ _ _ _ , _) (success (μ-type _)       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp op (success Float _ _ _ _ , _) (success (ν-type _)       _ _ _ _ , _) () s₁ s₂
+agree-RBinOp Raw.OpAdd (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpSub (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpMul (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpDiv (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
+agree-RBinOp Raw.OpMod (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
+agree-RBinOp Raw.OpLt (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
+agree-RBinOp Raw.OpLe (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
+agree-RBinOp Raw.OpGt (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
+agree-RBinOp Raw.OpGe (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
+agree-RBinOp Raw.OpEq (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
+agree-RBinOp Raw.OpNe (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
 
 -- RLet folded with-free via two levels (e₂'s context depends on e₁'s type A):
 -- `agree-RLet` matches the e₁ result, `agree-RLet2` the e₂ result; the let'

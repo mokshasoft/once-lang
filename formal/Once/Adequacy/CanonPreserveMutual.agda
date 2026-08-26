@@ -121,6 +121,9 @@ mutual
            (canon-pres-ᵢ (xR ∷ bound) (⊆ᵇ-cons xR sub) (poly-ext xR B pib) dR)
   canon-pres-ᵢ bound sub pib (t-binop-arith p d₁ d₂) =
     t-binop-arith p (canon-pres-ᵢ bound sub pib d₁) (canon-pres-ᵢ bound sub pib d₂)
+  -- PLAN 0.75 F4: structural, exactly as its integer twin above.
+  canon-pres-ᵢ bound sub pib (t-binop-arith-float p d₁ d₂) =
+    t-binop-arith-float p (canon-pres-ᵢ bound sub pib d₁) (canon-pres-ᵢ bound sub pib d₂)
   canon-pres-ᵢ bound sub pib (t-binop-cmp p d₁ d₂) =
     t-binop-cmp p (canon-pres-ᵢ bound sub pib d₁) (canon-pres-ᵢ bound sub pib d₂)
   canon-pres-ᵢ bound sub pib (t-id-app d)

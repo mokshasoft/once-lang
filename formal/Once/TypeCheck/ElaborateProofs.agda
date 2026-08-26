@@ -13,6 +13,8 @@
 module Once.TypeCheck.ElaborateProofs where
 
 open import Once.TypeCheck.Elaborate public
+open import Once.TypeCheck.Classify using (emptyCtx)
+open import Data.Integer using (+_)
 
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using (_≟_)
@@ -694,6 +696,13 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.sub a b) =
   Surface.sub (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
 resolveExprWF polys pAcc imps userFns fresh (Surface.mul a b) =
   Surface.mul (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
+-- PLAN 0.75 F4: the float family, structurally identical to the integer one.
+resolveExprWF polys pAcc imps userFns fresh (Surface.fadd a b) =
+  Surface.fadd (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
+resolveExprWF polys pAcc imps userFns fresh (Surface.fsub a b) =
+  Surface.fsub (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
+resolveExprWF polys pAcc imps userFns fresh (Surface.fmul a b) =
+  Surface.fmul (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
 resolveExprWF polys pAcc imps userFns fresh (Surface.div a b) =
   Surface.div (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
 resolveExprWF polys pAcc imps userFns fresh (Surface.mod' a b) =
@@ -1525,3 +1534,56 @@ inferElabProj ctx e = proj₁ (inferElabV ctx e)
 checkElabProj : (ctx : NamedCtx) (e : RawExpr) (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
 checkElabProj ctx e T = proj₁ (checkElabV ctx e T)
   where open import Data.Product using (proj₁)
+
+------------------------------------------------------------------------
+-- PLAN 0.75 F4: WHAT THE FRONT END ACTUALLY ANSWERS
+--
+-- `1.5 - 2.1` was `binop left: Type mismatch: expected Int but got Float`.
+-- These pin the new answers in the REAL path — `inferElab` itself, at the
+-- empty context — rather than asserting them in a comment. `refl` decides
+-- each, so a dispatch that stopped reducing would fail here first.
+------------------------------------------------------------------------
+
+-- Both operands `Float`, and the result is `Float` — the whole point.
+_ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      inferElab emptyCtx (Raw.RBinOp Raw.OpSub (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 1 1 6))
+        ≡ success Float Ψ eE d f))))
+_ = _ , _ , _ , _ , refl
+
+_ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 5 1 6))
+        ≡ success Float Ψ eE d f))))
+_ = _ , _ , _ , _ , refl
+
+_ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      inferElab emptyCtx (Raw.RBinOp Raw.OpMul (Raw.RFloat 3 14 2 0) (Raw.RFloat 2 0 1 7))
+        ≡ success Float Ψ eE d f))))
+_ = _ , _ , _ , _ , refl
+
+-- NO IMPLICIT WIDENING, in both directions. This is the decision, not a gap:
+-- a coercion the programmer did not write is a value substitution.
+_ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RInt (+ 1)) (Raw.RFloat 1 5 1 4))
+      ≡ failure (BinOpRightError (TypeMismatch Int Float))
+_ = refl
+
+_ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RFloat 1 5 1 0) (Raw.RInt (+ 1)))
+      ≡ failure (BinOpRightError (TypeMismatch Float Int))
+_ = refl
+
+-- `/` and `%` on floats have no lowering, so they REPORT. `Once.Float.Arith`
+-- records why each is absent; this is where the user-visible consequence is
+-- pinned, so removing the restriction cannot happen silently.
+_ : inferElab emptyCtx (Raw.RBinOp Raw.OpDiv (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 0 1 6))
+      ≡ failure (BinOpLeftError (TypeMismatch Int Float))
+_ = refl
+
+_ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 0 1 6))
+      ≡ failure (BinOpLeftError (TypeMismatch Int Float))
+_ = refl
+
+-- …and the INTEGER family is untouched, which is the other half of "the
+-- operand types decide".
+_ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RInt (+ 1)) (Raw.RInt (+ 2)))
+        ≡ success Int Ψ eE d f))))
+_ = _ , _ , _ , _ , refl

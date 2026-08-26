@@ -169,6 +169,34 @@ isComparisonOp OpDiv = false
 isComparisonOp OpMod = false
 
 -- | Is this an arithmetic operator?
+-- | The FLOAT arithmetic operators (plan 0.75 F4).
+--
+-- NOT `isArithmeticOp`. `/` and `%` are missing on purpose and for different
+-- reasons, both recorded in `Once.Float.Arith`:
+--
+--   * `/` — a quotient is not a binary rational, so one rounding at the end is
+--     not correct rounding; doing it right needs a sticky bit through the
+--     division and doing it wrong means silently differing from the hardware.
+--     `Int`'s own `div-semM` is still a postulate, so a float `/` built the
+--     easy way would be WORSE than its integer twin, not equal to it.
+--   * `%` — IEEE's `fmod` is a different function from integer remainder, and
+--     inventing one silently is not something this compiler does.
+--
+-- Both stay TYPE ERRORS, which is the honest state: a rule with no lowering is
+-- a promise the backend has to break (D124).
+isFloatArithmeticOp : BinOp → Bool
+isFloatArithmeticOp OpAdd = true
+isFloatArithmeticOp OpSub = true
+isFloatArithmeticOp OpMul = true
+isFloatArithmeticOp OpDiv = false
+isFloatArithmeticOp OpMod = false
+isFloatArithmeticOp OpLt  = false
+isFloatArithmeticOp OpLe  = false
+isFloatArithmeticOp OpGt  = false
+isFloatArithmeticOp OpGe  = false
+isFloatArithmeticOp OpEq  = false
+isFloatArithmeticOp OpNe  = false
+
 isArithmeticOp : BinOp → Bool
 isArithmeticOp OpAdd = true
 isArithmeticOp OpSub = true

@@ -409,11 +409,15 @@ record VerifiedTypeChecker : Set₁ where
 
     -- Previously-blocked: BinOp's operand sub-error is wrapped in
     -- BinOpLeftError or BinOpRightError.
+    -- PLAN 0.75 F4: the hypothesis is `notNumeric`, not `asInt`'s failure.
+    -- `Float` is a good binop operand now, so "the left operand is not `Int`"
+    -- no longer implies a LEFT error — `1.5 + "x"` is a RIGHT error. The
+    -- claim is unchanged for every type it still covers; only the type it
+    -- covers changed, and it changed because the language did.
     tc-err-binop-left-wraps :
       ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
         {sub-err outer-err}
-      → Once.TypeCheck.Elaborate.asInt (tcInfer ctx e₁)
-          ≡ Once.TypeCheck.Elaborate.notInt sub-err
+      → Once.TypeCheck.Elaborate.notNumeric (tcInfer ctx e₁) ≡ just sub-err
       → tcInfer ctx (RBinOp op e₁ e₂) ≡ failure outer-err
       → outer-err ≡ BinOpLeftError sub-err
 

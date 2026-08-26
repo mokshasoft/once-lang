@@ -35,7 +35,7 @@ open import Once.Type using (Type; Unit; Int; Str; _*_; _+_;
 open import Relation.Nullary using (Dec; yes; no)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; pureV; emitsV; EffectShape; Pure; Halts; Linkage; ffi-concrete; internal-ref)
 open import Once.Functor.Translate using (IsBaseType; IsConcrete; con-base;
-  base-Unit; base-Int; base-Str; base-Prod; base-Sum)
+  base-Unit; base-Int; base-Float; base-Str; base-Prod; base-Sum)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -44,11 +44,12 @@ import Once.Word as OnceWord
 -- PLAN 0.74 J5: `module W = OnceWord.Word64` USED TO BE HERE, and it was the
 -- bug. These descriptors serve all three targets and one of them is 32-bit;
 -- the width now arrives as the `TargetNum` every `semM` takes.
-open import Once.Target.Arch using (TargetNum; int-bits)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format; nan-sign)
 
 -- | This target's modular arithmetic. The ONLY place the width is read.
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 open import Once.Float.Dyadic using (Dyadic)
+import Once.Float.Arith as FA
 import Once.Semantics.Value Carrier Carrier as M
 -- (Core ℤ `as I` removed: semI deleted — `semM` (ℕ/Word) is the meaning.)
 
@@ -107,6 +108,29 @@ neg-semM : TargetNum → M.⟦ Int ⟧ → M.⟦ Int ⟧
 neg-semM tn x = W.⊝_ tn x
 
 ------------------------------------------------------------------------
+-- FLOAT arithmetic (plan 0.75 F4)
+--
+-- The same shape as the integer family above and for the same reason. `⊕` is
+-- `norm tn (x + y)` — the exact operation in a scaffolding domain, then the
+-- target's normalisation — and `Once.Float.Arith.fadd` is that sentence with
+-- "rounding at the format" in place of "reduction mod 2^w". Neither is a
+-- postulate; both read the target out of the `TargetNum` they are handed.
+--
+-- Two facts come off `tn`, not one: the FORMAT and the canonical NaN's SIGN.
+-- The second is a target fact the targets disagree about (x86 sets it, RISC-V
+-- does not) and only an INVALID operation can observe it.
+------------------------------------------------------------------------
+
+fadd-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
+fadd-semM tn (a , b) = FA.fadd (float-format tn) (nan-sign tn) a b
+
+fsub-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
+fsub-semM tn (a , b) = FA.fsub (float-format tn) (nan-sign tn) a b
+
+fmul-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
+fmul-semM tn (a , b) = FA.fmul (float-format tn) (nan-sign tn) a b
+
+------------------------------------------------------------------------
 -- Postulated semantics (still placeholders — div/mod need a div-by-
 -- zero policy, comparisons need a Bool encoding decision, generic-sem
 -- is the unresolved-SigOp fallback).
@@ -161,6 +185,23 @@ mod-info = mk-info (bare "arith.mod.int") mod-semM Pure base-I×I con-Int
 -- Unary arithmetic
 neg-info : SigOpInfo Int Int
 neg-info = mk-info (bare "arith.neg.int") neg-semM Pure base-Int con-Int
+
+-- Float arithmetic (plan 0.75 F4). Distinct NAMES, not overloads: the SigOp
+-- name is the identity the backend dispatches on, and `arith.add.int` and
+-- `arith.add.float` are different instructions on every target.
+base-F×F : IsBaseType (Once.Type.Float * Once.Type.Float)
+base-F×F = base-Prod base-Float base-Float
+con-Float : IsConcrete Once.Type.Float
+con-Float = con-base base-Float
+
+fadd-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
+fadd-info = mk-info (bare "arith.add.float") fadd-semM Pure base-F×F con-Float
+
+fsub-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
+fsub-info = mk-info (bare "arith.sub.float") fsub-semM Pure base-F×F con-Float
+
+fmul-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
+fmul-info = mk-info (bare "arith.mul.float") fmul-semM Pure base-F×F con-Float
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)

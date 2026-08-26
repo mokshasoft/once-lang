@@ -53,6 +53,7 @@ open import Once.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
 open import Once.CanonicalName using (bare)
   using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
+         fadd-info; fsub-info; fmul-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info; value-info; arrow-info; str-lit-info)
 
 open Once.Surface.Syntax.Expr
@@ -177,6 +178,10 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 ⟦ add a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM add-info fmt (va , vb))
 ⟦ sub a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM sub-info fmt (va , vb))
 ⟦ mul a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM mul-info fmt (va , vb))
+-- PLAN 0.75 F4: the float family, structurally identical to the integer one.
+⟦ fadd a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM fadd-info fmt (va , vb))
+⟦ fsub a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM fsub-info fmt (va , vb))
+⟦ fmul a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM fmul-info fmt (va , vb))
 ⟦ div a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM div-info fmt (va , vb))
 ⟦ mod' a b ⟧ˢ fmt     dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM mod-info fmt (va , vb))
 ⟦ neg e ⟧ˢ fmt        dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (semM neg-info fmt v)

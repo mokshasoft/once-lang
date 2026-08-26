@@ -55,6 +55,7 @@ open import Once.SigOp.Info using (SigOpInfo; semM)
 open import Once.Arith.SigOp.Builders
   using (value-info; arrow-info; str-lit-info;
          add-info; sub-info; mul-info; div-info; mod-info; neg-info;
+         fadd-info; fsub-info; fmul-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.TypeCheck.Judgment
   using (_⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; _⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
@@ -67,7 +68,7 @@ open import Once.TypeCheck.Judgment
          t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer;
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
-         t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
+         t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-app; t-effApp)
 
@@ -255,6 +256,22 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-binop-arith {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM add-info fmt (a , b))
 ⟦ t-binop-arith {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM sub-info fmt (a , b))
 ⟦ t-binop-arith {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM mul-info fmt (a , b))
+-- PLAN 0.75 F4: the same three at `Float`, reading the same `semM` accessor —
+-- so the float family is not a second story about what arithmetic means, it is
+-- the same story with `Once.Float.Arith`'s operations behind it.
+⟦ t-binop-arith-float {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fadd-info fmt (a , b))
+⟦ t-binop-arith-float {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fsub-info fmt (a , b))
+⟦ t-binop-arith-float {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fmul-info fmt (a , b))
+-- `/` and `%` are NOT float arithmetic ops (see `isFloatArithmeticOp`), so the
+-- witness refutes them here exactly as it refutes the comparisons.
+⟦ t-binop-arith-float {op = OpDiv} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float {op = OpMod} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float {op = OpLt}  () _ _ ⟧ᵢ
+⟦ t-binop-arith-float {op = OpLe}  () _ _ ⟧ᵢ
+⟦ t-binop-arith-float {op = OpGt}  () _ _ ⟧ᵢ
+⟦ t-binop-arith-float {op = OpGe}  () _ _ ⟧ᵢ
+⟦ t-binop-arith-float {op = OpEq}  () _ _ ⟧ᵢ
+⟦ t-binop-arith-float {op = OpNe}  () _ _ ⟧ᵢ
 ⟦ t-binop-arith {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM div-info fmt (a , b))
 ⟦ t-binop-arith {op = OpMod} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM mod-info fmt (a , b))
 ⟦_⟧ᵢ (t-binop-arith {op = OpLt} () _ _) fmt

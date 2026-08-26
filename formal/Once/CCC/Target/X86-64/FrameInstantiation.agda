@@ -239,6 +239,8 @@ x86-64-frame-semantics = record
   ; shift-base = λ f n → refl
   -- Plan 0.73 (D113): x86-64 has SSE2 in its baseline ABI; a `double` is what a C `double` is.
   ; float-format = binary64
+  ; nan-sign = 1        -- x86 SSE's default QNaN has the sign bit SET
+                        -- (`inf + (-inf)` is `0xfff8000000000000`); plan 0.75 F4
   ; slot-zero-at-base = x86-slot-zero-at-base
   ; slot-injective = x86-slot-injective
   ; _≺_ = _x86-≺_

@@ -384,61 +384,76 @@ lam-usage-violation-is-UsageViolation ctx x body A q B q' eqInner eqLeq eqOuter
 -- When the left operand of a binop infers to a non-Int and produces
 -- `asInt-sub-err : TypeError`, the outer err equals
 -- `BinOpLeftError asInt-sub-err`.
+-- When the left operand of a binop is NOT NUMERIC, the outer err equals
+-- `BinOpLeftError sub-err`.
+--
+-- PLAN 0.75 F4 CHANGED THE HYPOTHESIS, and the old one is now FALSE rather
+-- than merely weaker. This was stated over `asInt`'s failure, and `asInt`
+-- fails on `Float` — but a `Float` left operand is now a good operand, so
+-- `1.5 + "x"` reports `BinOpRightError (TypeMismatch Float Str)` while the
+-- lemma claimed `BinOpLeftError (TypeMismatch Int Float)`. The right
+-- hypothesis is the one it always meant: the left operand is not a number at
+-- all. `notNumeric` says exactly that, with `asInt`'s own error messages, so
+-- nothing a user sees changes.
+--
+-- `binop-right-err-wraps` below needs no such repair: it requires the LEFT to
+-- be `Int`, and an `Int` left with a `Float` right IS still an error.
 binop-left-err-wraps :
   ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
     {sub-err outer-err}
-  → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₁)
-      ≡ Once.TypeCheck.Elaborate.notInt sub-err
+  → Once.TypeCheck.Elaborate.notNumeric (inferElab ctx e₁) ≡ just sub-err
   → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
   → outer-err ≡ Once.TypeCheck.Error.BinOpLeftError sub-err
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
   with inferElabV ctx e₁
-... | failure _ , _                       with eqAsInt
+... | failure _ , _                       with eqNN
 ...   | refl with eqOuter
 ...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success Unit _ _ _ _ , _            with eqAsInt
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success Unit _ _ _ _ , _         with eqNN
 ...   | refl with eqOuter
 ...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success Void _ _ _ _ , _            with eqAsInt
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success Void _ _ _ _ , _         with eqNN
 ...   | refl with eqOuter
 ...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success Int _ _ _ _ , _             with eqAsInt
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success Str _ _ _ _ , _         with eqNN
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success T.Buffer _ _ _ _ , _         with eqNN
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success (_ T.* _) _ _ _ _ , _         with eqNN
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success (_ T.+ _) _ _ _ _ , _         with eqNN
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success (_ T.⇒[ _ ] _) _ _ _ _ , _         with eqNN
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success (T.μ-type _) _ _ _ _ , _         with eqNN
+...   | refl with eqOuter
+...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success (T.ν-type _) _ _ _ _ , _         with eqNN
+...   | refl with eqOuter
+...     | refl = refl
+-- Both NUMERIC left types are absurd here: `notNumeric` answers `nothing` for
+-- each, and `Float` is the one the old statement got wrong.
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success Int _ _ _ _ , _             with eqNN
 ...   | ()
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success T.Float _ _ _ _ , _         with eqAsInt
-...   | refl with eqOuter
-...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success Str _ _ _ _ , _             with eqAsInt
-...   | refl with eqOuter
-...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success T.Buffer _ _ _ _ , _        with eqAsInt
-...   | refl with eqOuter
-...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success (_ T.* _) _ _ _ _ , _       with eqAsInt
-...   | refl with eqOuter
-...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success (_ T.+ _) _ _ _ _ , _       with eqAsInt
-...   | refl with eqOuter
-...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success (_ T.⇒[ _ ] _) _ _ _ _ , _  with eqAsInt
-...   | refl with eqOuter
-...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success (T.μ-type _) _ _ _ _ , _    with eqAsInt
-...   | refl with eqOuter
-...     | refl = refl
-binop-left-err-wraps ctx op e₁ e₂ eqAsInt eqOuter
-    | success (T.ν-type _) _ _ _ _ , _    with eqAsInt
-...   | refl with eqOuter
-...     | refl = refl
+binop-left-err-wraps ctx op e₁ e₂ eqNN eqOuter
+    | success T.Float _ _ _ _ , _         with eqNN
+...   | ()
+
 
 binop-right-err-wraps :
   ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)

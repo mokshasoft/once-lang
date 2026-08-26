@@ -310,6 +310,10 @@ faithful (inr' {A = A} {B = B} e) dγ n =
 faithful (add a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
 faithful (sub a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
 faithful (mul a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
+-- PLAN 0.75 F4: the float family, structurally identical to the integer one.
+faithful (fadd a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
+faithful (fsub a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
+faithful (fmul a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
 faithful (div a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
 faithful (mod' a b) dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
 faithful (lt a b)   dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) (inj-uu _)

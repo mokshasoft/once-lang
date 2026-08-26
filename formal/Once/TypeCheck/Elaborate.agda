@@ -894,6 +894,32 @@ asInt (success (A ⇒[ k ] B) _ _ _ _)                     = notInt (TypeMismatc
 asInt (success (μ-type F) _ _ _ _)                       = notInt (TypeMismatch Int (μ-type F))
 asInt (success (ν-type F) _ _ _ _)                       = notInt (TypeMismatch Int (ν-type F))
 
+-- | NOT NUMERIC — neither `Int` nor `Float` — with the error the elaborator
+-- wraps in that case (plan 0.75 F4).
+--
+-- `asInt` can no longer stand in for this. It answers `notInt` on a `Float`,
+-- and a `Float` operand is now a perfectly good binop operand: `1.5 + "x"`
+-- reports `BinOpRightError (TypeMismatch Float Str)`, NOT
+-- `BinOpLeftError (TypeMismatch Int Float)`. The error-shape lemmas were
+-- stated over `asInt`'s failure and became FALSE at exactly that type, so they
+-- move to this projection, which is the hypothesis they always meant: the left
+-- operand is not a number at all.
+--
+-- The errors are `asInt`'s verbatim, so no message changes.
+notNumeric : ∀ {n} {Δ : SCtx n} → InferElabResult Δ → Maybe TypeError
+notNumeric (failure err)                                 = just err
+notNumeric (success Int _ _ _ _)                         = nothing
+notNumeric (success Once.Type.Float _ _ _ _)             = nothing
+notNumeric (success Unit _ _ _ _)                        = just (TypeMismatch Int Unit)
+notNumeric (success Void _ _ _ _)                        = just (TypeMismatch Int Void)
+notNumeric (success Str _ _ _ _)                         = just (TypeMismatch Int Str)
+notNumeric (success Buffer _ _ _ _)                      = just (TypeMismatch Int Buffer)
+notNumeric (success (A Once.Type.* B) _ _ _ _)           = just (TypeMismatch Int (A Once.Type.* B))
+notNumeric (success (A Once.Type.+ B) _ _ _ _)           = just (TypeMismatch Int (A Once.Type.+ B))
+notNumeric (success (A ⇒[ k ] B) _ _ _ _)                = just (TypeMismatch Int (A ⇒[ k ] B))
+notNumeric (success (μ-type F) _ _ _ _)                  = just (TypeMismatch Int (μ-type F))
+notNumeric (success (ν-type F) _ _ _ _)                  = just (TypeMismatch Int (ν-type F))
+
 ------------------------------------------------------------------------
 -- Decide-with-proof helpers
 ------------------------------------------------------------------------
@@ -2187,7 +2213,6 @@ mutual
   inferElabV-RBinOp-aux ctx op e₁ e₂ (failure err , _) _ = failure (BinOpLeftError err) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Unit   _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Unit)) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Void   _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Void)) , tt
-  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float  _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Str    _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Str)) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success Buffer _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int Buffer)) , tt
   inferElabV-RBinOp-aux ctx op e₁ e₂ (success (A Once.Type.* B)      _ _ _ _ , _) _ = failure (BinOpLeftError (TypeMismatch Int (A Once.Type.* B))) , tt
@@ -2219,6 +2244,48 @@ mutual
   inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.ge e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
   inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.eq e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
   inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Int Ψ₁ e₁E d₁ f₁ , w₁) (success Int Ψ₂ e₂E d₂ f₂ , w₂) = success (Unit Once.Type.+ Unit) _ (Surface.ne e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-cmp refl w₁ w₂
+
+  ----------------------------------------------------------------------
+  -- PLAN 0.75 F4: `Float` ON THE LEFT SELECTS THE FLOAT FAMILY.
+  --
+  -- It used to be `BinOpLeftError (TypeMismatch Int Float)` with a catch-all
+  -- for the right operand — "arithmetic means Int" — which is what made
+  -- `1.5 - 2.1` report `expected Int but got Float`. The OPERAND TYPES decide
+  -- which arithmetic runs; `+` is the same operator either way.
+  --
+  -- A MIXED PAIR IS STILL AN ERROR, and that is the decision, not a gap:
+  -- there is no implicit widening, so `1 + 1.5` reports rather than silently
+  -- promoting. A coercion the programmer did not write is a value
+  -- substitution, which is D115's objection to a wrapped literal one type
+  -- over.
+  ----------------------------------------------------------------------
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (failure err , _) = failure (BinOpRightError err) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success Unit _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Unit)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success Void _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Void)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Int)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success Str _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Str)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success Buffer _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float Buffer)) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A Once.Type.* B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (A Once.Type.* B))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A Once.Type.+ B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (A Once.Type.+ B))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (A Once.Type.⇒[ k ] B) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (A Once.Type.⇒[ k ] B))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (Once.Type.μ-type F) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (Once.Type.μ-type F))) , tt
+  inferElabV-RBinOp-aux ctx op e₁ e₂ (success Float _ _ _ _ , _) (success (Once.Type.ν-type F) _ _ _ _ , _) = failure (BinOpRightError (TypeMismatch Float (Once.Type.ν-type F))) , tt
+  -- both Float → op dispatch. Only `+`, `−` and `×` exist here
+  -- (`isFloatArithmeticOp`), and `Once.Float.Arith` records why.
+  inferElabV-RBinOp-aux ctx Raw.OpAdd e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fadd e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpSub e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fsub e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
+  inferElabV-RBinOp-aux ctx Raw.OpMul e₁ e₂ (success Float Ψ₁ e₁E d₁ f₁ , w₁) (success Float Ψ₂ e₂E d₂ f₂ , w₂) = success Float _ (Surface.fmul e₁E e₂E) (d₁ ⊔ d₂) f₂ , t-binop-arith-float refl w₁ w₂
+  -- `/` and `%` have no float lowering, and a float comparison needs the Bool
+  -- encoding `Int`'s own comparisons are STILL postulated over — so all seven
+  -- keep exactly the error they gave before this clause family existed.
+  inferElabV-RBinOp-aux ctx Raw.OpDiv e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
+  inferElabV-RBinOp-aux ctx Raw.OpMod e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
+  inferElabV-RBinOp-aux ctx Raw.OpLt e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
+  inferElabV-RBinOp-aux ctx Raw.OpLe e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
+  inferElabV-RBinOp-aux ctx Raw.OpGt e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
+  inferElabV-RBinOp-aux ctx Raw.OpGe e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
+  inferElabV-RBinOp-aux ctx Raw.OpEq e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
+  inferElabV-RBinOp-aux ctx Raw.OpNe e₁ e₂ (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) = failure (BinOpLeftError (TypeMismatch Int Float)) , tt
 
   inferElabV-RLet-aux ctx x e₁ e₂ (failure err , _) = failure err , tt
   inferElabV-RLet-aux ctx x e₁ e₂ (success A Ψ₁ e₁E d₁ f₁ , w₁) =

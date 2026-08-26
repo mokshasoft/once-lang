@@ -220,6 +220,8 @@ x86-32-frame-semantics = record
   -- Plan 0.73 (D113): x86-32 keeps floats in a 32-bit GPR: a `binary64` immediate would not fit
 -- a word, so this target lays a `Float` out as single precision.
   ; float-format = binary32
+  ; nan-sign = 1        -- x86 SSE's default QNaN has the sign bit SET
+                        -- (`inf + (-inf)` is `0xfff8000000000000`); plan 0.75 F4
   ; slot-zero-at-base = x86-32-slot-zero-at-base
   ; slot-injective = x86-32-slot-injective
   ; _≺_ = _x86-32-≺_

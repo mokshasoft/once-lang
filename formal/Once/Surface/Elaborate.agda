@@ -42,6 +42,7 @@ open import Once.Arith.SigOp.IntLit using (lit-int-info)
 open import Once.Arith.SigOp.Builders
 open import Once.CanonicalName using (bare)
   using (str-lit-info; add-info; sub-info; mul-info; div-info; mod-info;
+         fadd-info; fsub-info; fmul-info;
          neg-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info;
          generic-info; value-info; arrow-info)
 open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit)
@@ -98,6 +99,19 @@ divIR = SigOp div-info
 
 modIR : IR (Int * Int) Int
 modIR = SigOp mod-info
+
+-- Float arithmetic (Float * Float → Float), plan 0.75 F4. Same shape, distinct
+-- SigOps — `arith.add.float` is a different instruction from `arith.add.int`
+-- on every target, so the IR says which one it is rather than leaving the
+-- backend to infer it from a type it would have to re-derive.
+faddIR : IR (Float * Float) Float
+faddIR = SigOp fadd-info
+
+fsubIR : IR (Float * Float) Float
+fsubIR = SigOp fsub-info
+
+fmulIR : IR (Float * Float) Float
+fmulIR = SigOp fmul-info
 
 -- Unary negation (Int → Int)
 negIR : IR Int Int
@@ -249,6 +263,9 @@ elaborate m (float d) = floatLit d
 elaborate m (add e₁ e₂) = addIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 elaborate m (sub e₁ e₂) = subIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 elaborate m (mul e₁ e₂) = mulIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (fadd e₁ e₂) = faddIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (fsub e₁ e₂) = fsubIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (fmul e₁ e₂) = fmulIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 elaborate m (div e₁ e₂) = divIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 elaborate m (mod' e₁ e₂) = modIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 

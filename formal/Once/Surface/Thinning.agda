@@ -216,6 +216,13 @@ rename {Δ = Δ} θ (Surface.sub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.sub (rename θ a) (rename θ b))
 rename {Δ = Δ} θ (Surface.mul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.mul (rename θ a) (rename θ b))
+-- PLAN 0.75 F4: the float family, structurally identical to the integer one.
+rename {Δ = Δ} θ (Surface.fadd {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.fadd (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.fsub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.fsub (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.fmul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.fmul (rename θ a) (rename θ b))
 rename {Δ = Δ} θ (Surface.div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.div (rename θ a) (rename θ b))
 rename {Δ = Δ} θ (Surface.mod' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =

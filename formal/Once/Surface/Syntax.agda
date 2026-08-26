@@ -140,6 +140,15 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   add   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
   sub   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
   mul   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
+  -- PLAN 0.75 F4: the same three at the second numeric type. SEPARATE
+  -- constructors rather than a `NumType`-indexed one: `add` and `fadd` lower
+  -- to different SigOps and different instructions, and the type is what
+  -- decides which — so making the distinction structural is what stops a
+  -- float ever reaching the integer `⊕`. There is no mixed form, because
+  -- there is no implicit widening.
+  fadd  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
+  fsub  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
+  fmul  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   div   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
   mod'  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
 

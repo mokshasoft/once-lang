@@ -54,7 +54,7 @@ open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RFloat;
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
-         BinOp; isArithmeticOp; isComparisonOp)
+         BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; lookupPolyPrefix;
@@ -279,6 +279,33 @@ mutual
                   → ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁
                   → ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂
                   → ctx ⊢ᵢ RBinOp op e₁ e₂ ∶ Int ⨾ (Ψ₁ +ᵘ Ψ₂)
+
+    -- PLAN 0.75 F4: the same rule at the second numeric type.
+    --
+    -- `1.5 - 2.1` was `binop left: Type mismatch: expected Int but got Float`
+    -- — Once had a `Float` you could write, negate and pass to a SigOp, and no
+    -- arithmetic on it at all.
+    --
+    -- WHAT IT MEANS is `Once.Float.Arith.fadd`/`fsub`/`fmul`, and those are
+    -- DEFINITIONS, not postulates, for D054's reason applied to the second
+    -- type (D113): `Int`'s `⊕` is `norm tn (x + y)` — the exact operation in a
+    -- scaffolding domain, then the target's normalisation — and rounding is
+    -- what normalisation is for floats. `+`, `−` and `×` are closed on binary
+    -- rationals, so one rounding at the end IS correct rounding, which is what
+    -- IEEE-754 asks of them. No new trust point.
+    --
+    -- The operand types are the DIFFERENCE, not the operator: the same `+`
+    -- serves both, dispatched on what it is applied to. Mixing them is NOT
+    -- admitted — there is no implicit widening, and `1 + 1.5` stays an error —
+    -- because a silent coercion is a value substitution the programmer did not
+    -- write, which is D115's objection to a wrapped literal one type over.
+    t-binop-arith-float :
+      ∀ {ctx : NamedCtx} {op : BinOp} {e₁ e₂ : RawExpr}
+        {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      → isFloatArithmeticOp op ≡ true
+      → ctx ⊢ᵢ e₁ ∶ Float ⨾ Ψ₁
+      → ctx ⊢ᵢ e₂ ∶ Float ⨾ Ψ₂
+      → ctx ⊢ᵢ RBinOp op e₁ e₂ ∶ Float ⨾ (Ψ₁ +ᵘ Ψ₂)
 
     t-binop-cmp : ∀ {ctx : NamedCtx} {op : BinOp} {e₁ e₂ : RawExpr}
                   {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}

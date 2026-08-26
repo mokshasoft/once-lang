@@ -156,6 +156,15 @@ record FrameSemantics : Set₁ where
     -- | How this target lays out a float: `binary32`, `binary64`, …
     float-format : FloatFormat
 
+    -- | …and the SIGN BIT of its canonical quiet NaN (plan 0.75 F4).
+    --
+    -- The machine side of the same fact `TargetNum.nan-sign` carries, and it
+    -- is a field here for exactly the reason `float-format` is: the machine
+    -- materialises the result of an invalid float operation, and it cannot ask
+    -- the apex. That the two channels AGREE is a premise the correspondence
+    -- takes (`fmt-agree`'s twin), not something either side may assume.
+    nan-sign : ℕ
+
     --------------------------------------------------------------------
     -- Frame Ordering
     --
@@ -259,7 +268,7 @@ open FrameSemantics public
 open import Once.Target.Arch using (TargetNum; mkTargetNum)
 
 fs-numerics : FrameSemantics → TargetNum
-fs-numerics FS = mkTargetNum (8 * frame-word FS) (float-format FS) bits-pos
+fs-numerics FS = mkTargetNum (8 * frame-word FS) (float-format FS) (nan-sign FS) bits-pos
   where
     -- `0 < 8 * frame-word FS` from `0 < frame-word FS`: eight copies of a
     -- positive number is positive.
