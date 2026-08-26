@@ -190,10 +190,32 @@ KnotT0 = cTy-base ◂ KnotT1
 --     `ren-ty … there`                      OOM      WORSE
 --   ⇒ the naturality lemma is NOT a fix: at a CONCRETE tail it
 --     unfolds into a chain as long as that tail, so it is the same
---     O(n²) with bigger constants.  ★ THE REAL FIX IS NOT A
---     BETTER RUNG — it is to stop ENUMERATING rungs: a generic
---     `imethsTyFrom-wf` induction over the description is O(n)
---     once, at an ABSTRACT tail.  Not yet built; see the handoff.
+--     ⇒ the naturality lemma is NOT a fix: at a CONCRETE tail it
+--       unfolds into a chain as long as that tail, so it is the same
+--       O(n²) with bigger constants.
+--
+--   ⚠⚠ AND "STOP ENUMERATING, USE A GENERIC INDUCTION" WAS TRIED
+--     AND IS WORSE.  `Lib/IPay.imethsTyFromNat-wf` is proved and
+--     does the tuple's ⊢ty in ONE induction.  Back-to-back on a
+--     quiet box, chain warm, nothing else invalidated:
+--       enumerated (this)      SzM 12s + Sz 135s = 147s   ✓
+--       generic lemma          SzM  9s + Sz  OOM          ✗
+--     and the generic arm OOMs with `-c` too (447s).
+--
+--   ★★ WHY, AND IT IS THE RULE WORTH KEEPING: A GENERIC LEMMA IS
+--     ONLY GENERIC IF ITS ARGUMENT STAYS ABSTRACT AT THE USE SITE.
+--     `ipayTy-wf` pays (OOM → 3.7s at `ordtr`) because its consumer
+--     needs the payload ⊢ty ONCE per method and the lemma's result
+--     type IS the goal.  `imethsTyFromNat-wf` does not, because its
+--     consumer is ITSELF a 53-rung enumeration: every rung
+--     instantiates it at a CONCRETE tail, Agda unfolds the induction
+--     up to 53 deep, and now it is building ⊢ty DERIVATIONS rather
+--     than normalising a type — the same O(n²), much bigger terms.
+--
+--   ⇒ the enumeration cannot be removed by making the RUNG generic;
+--     it would have to be removed by making the TUPLE generic —
+--     the 53 methods packaged as data indexed by the description, so
+--     no rung is ever named.  Larger change, not attempted.
 szMs53 : {Γ : Ctx} → Γ ⊢ty imethsTyFrom KnotD IPair Nat 53 KnotT53
 szMs53 = ty-Unit
 szMs52 : {Γ : Ctx} → Γ ⊢ty imethsTyFrom KnotD IPair Nat 52 KnotT52
