@@ -239,8 +239,6 @@ rv64-frame-semantics = record
   ; shift-base = λ f n → refl
   -- Plan 0.73 (D113): riscv64 with the `D` extension; a `double` fits a 64-bit register.
   ; float-format = binary64
-  ; nan-sign = 0        -- RISC-V's canonical NaN is `0x7ff8000000000000`,
-                        -- sign CLEAR — the opposite of x86; plan 0.75 F4
   ; slot-zero-at-base = rv64-slot-zero-at-base
   ; slot-injective = rv64-slot-injective
   ; _≺_ = _rv64-≺_

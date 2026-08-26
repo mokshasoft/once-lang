@@ -136,16 +136,43 @@ normExp F se = (+ se) ℤ.- (+ (bias F + sig-bits F))
 subExp : FloatFormat → ℤ
 subExp F = (+ 1) ℤ.- (+ (bias F + sig-bits F))
 
--- | The canonical quiet NaN at a given SIGN. The sign is a parameter because
--- it is a TARGET fact and the targets disagree: x86's SSE default QNaN has the
--- sign bit SET (`0xfff8000000000000`), RISC-V's canonical NaN does not
--- (`0x7ff8000000000000`). Baking either one would be D109/D112's mistake — a
--- format fact baked where all targets must be served — so it rides on
--- `TargetNum` beside the float format.
-nan : FloatFormat → ℕ → ℕ
-nan F ns =
-  ns * (2 ^ (exp-bits F + sig-bits F))
-    + (((2 ^ exp-bits F) ∸ 1) * (2 ^ sig-bits F) + 2 ^ (sig-bits F ∸ 1))
+-- | THE canonical quiet NaN: exponent all ones, quiet bit set, sign CLEAR and
+-- payload zero. One value, at every target — and that is D055's rule, not a
+-- convenience.
+--
+-- THE TARGETS GENUINELY DISAGREE, and by more than a sign bit. Measured:
+--
+--                     ∞ + (−∞)              0xfff8000000000456 + 1
+--     x86-64     0xfff8000000000000      0xfff8000000000456   (payload kept)
+--     riscv64    0x7ff8000000000000      0x7ff8000000000000   (canonicalised)
+--
+-- x86 sets the sign on an invalid operation AND propagates an operand's NaN
+-- payload; RISC-V produces one canonical NaN for every NaN-producing case and
+-- never propagates. So this is exactly D055's situation — "the one arithmetic
+-- op where the target silicon disagrees" — and D055 already decided what to do
+-- about it:
+--
+--     Once's `/` and `%` are total functions over `Word`, following RISC-V's
+--     defined results. … One uniform semantics across every target, instead of
+--     "traps on x86, returns a value on RISC-V". The meaning of `a / 0` does
+--     not depend on which backend you compiled with.
+--
+-- PARAMETERISING THE SIGN WAS THE WRONG FIX, and it is the one this module
+-- shipped with first. It made the MEANING of `∞ + (−∞)` depend on the backend,
+-- which is precisely what D055 forbids — and it captured only a fraction of
+-- the divergence, so it would not even have been sound.
+--
+-- BACKEND OBLIGATION, in D055's own shape. RISC-V is native: emit the bare
+-- instruction, the hardware already produces this value. x86 must CANONICALISE
+-- — replace a NaN result with this pattern — and the check is elidable
+-- wherever the compiler can prove the result is not a NaN, exactly as the
+-- div-by-zero guard is elidable where the divisor is provably nonzero. Cost
+-- lands only where the hardware forces it; everyone gets the same answer.
+--
+-- It is OBSERVABLE, so this is not academic: `emitF` writes the whole machine
+-- word, so a program can print the difference.
+nan : FloatFormat → ℕ
+nan F = ((2 ^ exp-bits F) ∸ 1) * (2 ^ sig-bits F) + 2 ^ (sig-bits F ∸ 1)
 
 -- Each decision is a separate aux taking its scrutinee as an ARGUMENT, the
 -- `packHi`/`packSE` convention: a proof that cases on the decision reduces.
@@ -221,34 +248,35 @@ negV (fv-fin x) = fv-fin (negB x)
 negV (fv-inf s) = fv-inf (xorS s 1)
 negV fv-nan     = fv-nan
 
-addV : FloatFormat → ℕ → FloatVal → FloatVal → ℕ
-addV F ns fv-nan     _          = nan F ns
-addV F ns (fv-inf _) fv-nan     = nan F ns
-addV F ns (fv-fin _) fv-nan     = nan F ns
+addV : FloatFormat → FloatVal → FloatVal → ℕ
+addV F fv-nan     _          = nan F
+addV F (fv-inf _) fv-nan     = nan F
+addV F (fv-fin _) fv-nan     = nan F
 -- The one invalid case for addition: ∞ + (−∞).
-addV F ns (fv-inf s) (fv-inf t) = if s ℕ.≡ᵇ t then infinity F s else nan F ns
-addV F ns (fv-inf s) (fv-fin _) = infinity F s
-addV F ns (fv-fin _) (fv-inf t) = infinity F t
-addV F ns (fv-fin x) (fv-fin y) = roundB F (x +B y)
+addV F (fv-inf s) (fv-inf t) = if s ℕ.≡ᵇ t then infinity F s else nan F
+addV F (fv-inf s) (fv-fin _) = infinity F s
+addV F (fv-fin _) (fv-inf t) = infinity F t
+addV F (fv-fin x) (fv-fin y) = roundB F (x +B y)
 
-mulV : FloatFormat → ℕ → FloatVal → FloatVal → ℕ
-mulV F ns fv-nan     _          = nan F ns
-mulV F ns (fv-inf _) fv-nan     = nan F ns
-mulV F ns (fv-fin _) fv-nan     = nan F ns
-mulV F ns (fv-inf s) (fv-inf t) = infinity F (xorS s t)
+mulV : FloatFormat → FloatVal → FloatVal → ℕ
+mulV F fv-nan     _          = nan F
+mulV F (fv-inf _) fv-nan     = nan F
+mulV F (fv-fin _) fv-nan     = nan F
+mulV F (fv-inf s) (fv-inf t) = infinity F (xorS s t)
 -- …and the invalid case for multiplication: 0 × ∞.
-mulV F ns (fv-inf s) (fv-fin y) =
-  if isZeroB y then nan F ns else infinity F (xorS s (signB y))
-mulV F ns (fv-fin x) (fv-inf t) =
-  if isZeroB x then nan F ns else infinity F (xorS (signB x) t)
-mulV F ns (fv-fin x) (fv-fin y) = roundB F (x *B y)
+mulV F (fv-inf s) (fv-fin y) =
+  if isZeroB y then nan F else infinity F (xorS s (signB y))
+mulV F (fv-fin x) (fv-inf t) =
+  if isZeroB x then nan F else infinity F (xorS (signB x) t)
+mulV F (fv-fin x) (fv-fin y) = roundB F (x *B y)
 
--- | The three operations, on BIT PATTERNS at a format. `ns` is the target's
--- canonical NaN sign.
-fadd fsub fmul : FloatFormat → ℕ → ℕ → ℕ → ℕ
-fadd F ns a b = addV F ns (decode F a) (decode F b)
-fsub F ns a b = addV F ns (decode F a) (negV (decode F b))
-fmul F ns a b = mulV F ns (decode F a) (decode F b)
+-- | The three operations, on BIT PATTERNS at a format. No target parameter
+-- beyond the format: the answer is the same on every target BY DECISION
+-- (D055), and the backends conform to it rather than the other way round.
+fadd fsub fmul : FloatFormat → ℕ → ℕ → ℕ
+fadd F a b = addV F (decode F a) (decode F b)
+fsub F a b = addV F (decode F a) (negV (decode F b))
+fmul F a b = mulV F (decode F a) (decode F b)
 
 -- | Negation is a SIGN-BIT FLIP, not a decode/round round-trip. IEEE says so —
 -- negation is exact and defined on every pattern including NaN — and a
@@ -285,53 +313,55 @@ fneg F w = fnegAt F w (2 ^ (exp-bits F + sig-bits F) ℕ.≤ᵇ w)
 -- wrong one: adding the two exact DECIMALS and rounding once gives
 -- `0x3fd3333333333333`, one ulp below. Each operand is rounded first, then
 -- added — which is what the machine does and what D113 requires.
-_ : fadd binary64 1 0x3fb999999999999a 0x3fc999999999999a ≡ 0x3fd3333333333334
+_ : fadd binary64 0x3fb999999999999a 0x3fc999999999999a ≡ 0x3fd3333333333334
 _ = refl
 
 -- …and `0.1 + 0.7`, where exact-then-round errs the other way
 -- (`0x3fe999999999999a`), so the pin is not accidentally one-sided.
-_ : fadd binary64 1 0x3fb999999999999a 0x3fe6666666666666 ≡ 0x3fe9999999999999
+_ : fadd binary64 0x3fb999999999999a 0x3fe6666666666666 ≡ 0x3fe9999999999999
 _ = refl
 
 -- Exact cases: nothing to round, so these check the ALIGNMENT and the field
 -- packing rather than the rounding.
-_ : fadd binary64 1 0x3ff8000000000000 0x4004000000000000 ≡ 0x4010000000000000
+_ : fadd binary64 0x3ff8000000000000 0x4004000000000000 ≡ 0x4010000000000000
 _ = refl
 
-_ : fsub binary64 1 0x4010000000000000 0x3ff8000000000000 ≡ 0x4004000000000000
+_ : fsub binary64 0x4010000000000000 0x3ff8000000000000 ≡ 0x4004000000000000
 _ = refl
 
-_ : fmul binary64 1 0x3ff8000000000000 0x4004000000000000 ≡ 0x400e000000000000
+_ : fmul binary64 0x3ff8000000000000 0x4004000000000000 ≡ 0x400e000000000000
 _ = refl
 
 -- `3.14 * 2.0` — an inexact operand times an exact one, so the product is
 -- exactly representable and the answer must be the operand's fraction with the
 -- exponent bumped. A rounding bug that happened to be a no-op on ties would
 -- survive the cases above and die here.
-_ : fmul binary64 1 0x40091eb851eb851f 0x4000000000000000 ≡ 0x40191eb851eb851f
+_ : fmul binary64 0x40091eb851eb851f 0x4000000000000000 ≡ 0x40191eb851eb851f
 _ = refl
 
 -- Cancellation to zero. The sign is `+0` — Once collapses the two zeros
 -- (`Once.Float.Dyadic`'s carrier note, D124), and IEEE agrees here anyway.
-_ : fadd binary64 1 0x3ff0000000000000 0xbff0000000000000 ≡ 0
+_ : fadd binary64 0x3ff0000000000000 0xbff0000000000000 ≡ 0
 _ = refl
 
 -- OVERFLOW from arithmetic reaches ±∞ through the SAME `packAt` a literal
 -- does, which is what D118 buys: one story, not two.
-_ : fmul binary64 1 0x7e37e43c8800759c 0x7e37e43c8800759c ≡ 0x7ff0000000000000
+_ : fmul binary64 0x7e37e43c8800759c 0x7e37e43c8800759c ≡ 0x7ff0000000000000
 _ = refl
 
 -- The special-case table, against the machine's own answers.
-_ : fadd binary64 1 0x7ff0000000000000 0x3ff0000000000000 ≡ 0x7ff0000000000000
+_ : fadd binary64 0x7ff0000000000000 0x3ff0000000000000 ≡ 0x7ff0000000000000
 _ = refl
 
--- ∞ + (−∞) is INVALID, and x86 answers with the QNaN whose SIGN BIT IS SET.
--- That is the target fact `nan`'s sign parameter exists for: RISC-V's
--- canonical NaN is `0x7ff8000000000000`, the same pattern with sign 0.
-_ : fadd binary64 1 0x7ff0000000000000 0xfff0000000000000 ≡ 0xfff8000000000000
+-- ∞ + (−∞) and 0 × ∞ are INVALID, and Once answers with THE canonical NaN on
+-- every target (D055). These two pins are therefore the RISC-V patterns and
+-- deliberately NOT x86's — x86 answers `0xfff8000000000000` in hardware and
+-- the backend must canonicalise. That divergence is the whole point of the
+-- decision, so the pin records the DECIDED value, not the measured one.
+_ : fadd binary64 0x7ff0000000000000 0xfff0000000000000 ≡ 0x7ff8000000000000
 _ = refl
 
-_ : fmul binary64 1 0 0x7ff0000000000000 ≡ 0xfff8000000000000
+_ : fmul binary64 0 0x7ff0000000000000 ≡ 0x7ff8000000000000
 _ = refl
 
 -- Negation is a bit flip and is exact on every pattern.
@@ -346,22 +376,22 @@ _ = refl
 -- is where that gets checked rather than asserted.
 ------------------------------------------------------------------------
 
-_ : fadd binary32 1 0x3fc00000 0x40200000 ≡ 0x40800000
+_ : fadd binary32 0x3fc00000 0x40200000 ≡ 0x40800000
 _ = refl
 
-_ : fadd binary32 1 0x3dcccccd 0x3e4ccccd ≡ 0x3e99999a
+_ : fadd binary32 0x3dcccccd 0x3e4ccccd ≡ 0x3e99999a
 _ = refl
 
 -- `16777216 + 1` at binary32 is an exact TIE, and round-half-to-even keeps the
 -- even one — so the answer is `16777216`, not `16777218`. The literal
 -- `16777217` is the value K3's own pins use, one type over.
-_ : fadd binary32 1 0x4b800000 0x3f800000 ≡ 0x4b800000
+_ : fadd binary32 0x4b800000 0x3f800000 ≡ 0x4b800000
 _ = refl
 
-_ : fmul binary32 1 0x4048f5c3 0x40000000 ≡ 0x40c8f5c3
+_ : fmul binary32 0x4048f5c3 0x40000000 ≡ 0x40c8f5c3
 _ = refl
 
 -- Overflow at the NARROWER format, from operands that are finite at binary64 —
 -- the asymmetry D113 exists to make expressible.
-_ : fmul binary32 1 0x7e967699 0x41200000 ≡ 0x7f800000
+_ : fmul binary32 0x7e967699 0x41200000 ≡ 0x7f800000
 _ = refl

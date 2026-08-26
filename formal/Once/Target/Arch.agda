@@ -62,18 +62,6 @@ record TargetNum : Set where
     int-bits     : ℕ
     float-format : FloatFormat
 
-    -- | The SIGN BIT of this target's canonical quiet NaN (plan 0.75 F4).
-    --
-    -- A target fact, and the targets disagree: x86's SSE default QNaN is
-    -- `0xfff8000000000000` — sign bit SET — while RISC-V's canonical NaN is
-    -- `0x7ff8000000000000` with sign 0. Verified against the hardware:
-    -- `inf + (-inf)` on x86-64 gives `0xfff8000000000000`.
-    --
-    -- It rides HERE, beside the format, for D109/D112's reason: a numeric fact
-    -- baked where all targets must be served is the mistake those two
-    -- decisions exist to forbid. Only invalid operations can observe it
-    -- (`∞ + (−∞)`, `0 × ∞`), which is why it is one bit rather than a pattern.
-    nan-sign     : ℕ
 
     -- | THE TARGET HAS AT LEAST ONE BIT (plan 0.74 J6, D115).
     --
@@ -131,9 +119,9 @@ tn-exact tn z p with pos⇒suc (int-bits-pos tn)
 ... | (b , eqb) = OnceWord.Width.toℤ∘fromℤ (int-bits tn) b eqb z p
 
 arch-numerics : Arch → TargetNum
-arch-numerics x86-64  = mkTargetNum 64 binary64 1 (s≤s z≤n)
-arch-numerics x86-32  = mkTargetNum 32 binary32 1 (s≤s z≤n)
-arch-numerics riscv64 = mkTargetNum 64 binary64 0 (s≤s z≤n)
+arch-numerics x86-64  = mkTargetNum 64 binary64 (s≤s z≤n)
+arch-numerics x86-32  = mkTargetNum 32 binary32 (s≤s z≤n)
+arch-numerics riscv64 = mkTargetNum 64 binary64 (s≤s z≤n)
 
 -- | Derived, so existing callers are unchanged.
 arch-int-bits : Arch → ℕ

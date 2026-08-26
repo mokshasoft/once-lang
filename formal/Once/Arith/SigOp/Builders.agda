@@ -44,7 +44,7 @@ import Once.Word as OnceWord
 -- PLAN 0.74 J5: `module W = OnceWord.Word64` USED TO BE HERE, and it was the
 -- bug. These descriptors serve all three targets and one of them is 32-bit;
 -- the width now arrives as the `TargetNum` every `semM` takes.
-open import Once.Target.Arch using (TargetNum; int-bits; float-format; nan-sign)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 
 -- | This target's modular arithmetic. The ONLY place the width is read.
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
@@ -116,19 +116,21 @@ neg-semM tn x = W.⊝_ tn x
 -- "rounding at the format" in place of "reduction mod 2^w". Neither is a
 -- postulate; both read the target out of the `TargetNum` they are handed.
 --
--- Two facts come off `tn`, not one: the FORMAT and the canonical NaN's SIGN.
--- The second is a target fact the targets disagree about (x86 sets it, RISC-V
--- does not) and only an INVALID operation can observe it.
+-- ONE fact comes off `tn`: the format. An invalid operation gives THE
+-- canonical NaN at every target, by D055's rule — the targets genuinely
+-- disagree in hardware (x86 sets the sign and propagates payloads, RISC-V
+-- canonicalises), and D055 says the answer is to pick one and make the
+-- backends conform, not to let the meaning vary by backend.
 ------------------------------------------------------------------------
 
 fadd-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
-fadd-semM tn (a , b) = FA.fadd (float-format tn) (nan-sign tn) a b
+fadd-semM tn (a , b) = FA.fadd (float-format tn) a b
 
 fsub-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
-fsub-semM tn (a , b) = FA.fsub (float-format tn) (nan-sign tn) a b
+fsub-semM tn (a , b) = FA.fsub (float-format tn) a b
 
 fmul-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
-fmul-semM tn (a , b) = FA.fmul (float-format tn) (nan-sign tn) a b
+fmul-semM tn (a , b) = FA.fmul (float-format tn) a b
 
 ------------------------------------------------------------------------
 -- Postulated semantics (still placeholders — div/mod need a div-by-
