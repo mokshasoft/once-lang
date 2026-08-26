@@ -59,11 +59,31 @@ encodeAt :: Format -> Double -> Integer
 encodeAt Binary64 v = fromIntegral (castDoubleToWord64 v)
 encodeAt Binary32 v = fromIntegral (castFloatToWord32 (realToFrac v))
 
--- | The literals under test: exact dyadic rationals, so the frontend accepts
--- them at every supported format (`Once.Float.Representable.accept?`) and the
--- only thing that varies is the ENCODING.
+-- | The literals under test.
+--
+-- The first three are exact dyadic rationals, so the only thing that varies is
+-- the ENCODING. `accept?` is gone (D116) and a literal no longer has to be
+-- exact, so the rest are the cases that could not be written before.
+--
+-- THE NEGATIVE ONES ARE THE REAL CHECK ON `round` (plan 0.73 F3, D117).
+-- `-3.14` elaborates to ONE literal whose payload is `negate (decimalOf 3 14
+-- 2)`, and both the compiler and its spec then call the SAME `round` — so the
+-- correspondence proof is `refl`-shaped and cannot falsify it. Here the
+-- expectation comes from GHC's IEEE conversion instead, which is a genuinely
+-- independent implementation. `-3.14` is not exact at either format, so this
+-- exercises round-to-nearest-even on a negative significand, not just the
+-- sign bit.
+--
+-- `-0.0` is deliberately ABSENT and is a stated limitation: `Decimal.negate`
+-- is `ℤ.-` on the significand and `ℤ.- (+ 0) = + 0`, so Once compiles `-0.0`
+-- to POSITIVE zero. IEEE distinguishes them; Once does not, in the same way
+-- and for the same reason it has no subnormals (D118). Pinned in
+-- `Once.Float.Decimal` so it is read rather than discovered.
 literals :: [(String, Double)]
-literals = [ ("0.5", 0.5), ("0.125", 0.125), ("2.75", 2.75) ]
+literals =
+  [ ("0.5", 0.5), ("0.125", 0.125), ("2.75", 2.75)
+  , ("-0.5", -0.5), ("-2.75", -2.75), ("-3.14", -3.14)
+  ]
 
 ------------------------------------------------------------------------
 -- The program: `emitF <lit>` sequenced before `exit 7`.
@@ -89,7 +109,7 @@ program lit = T.unlines
   , "import I.Test.Emit as E"
   , ""
   , "emitLit : IO Unit"
-  , T.pack ("emitLit = compose emitF@E " ++ lit)
+  , T.pack ("emitLit = compose emitF@E " ++ paren lit)
   , ""
   , "main : IO Unit"
   , "main = compose exit@S (compose 7 emitLit)"
@@ -132,6 +152,23 @@ checkOne arch lit v = do
     others = filter (/= archFloatFormat arch)
                     (nub (map archFloatFormat backendArches))
 
--- | A filesystem-safe per-test build directory name.
+-- | A NEGATIVE literal needs parentheses, and the reason is the grammar, not
+-- the type checker. `-` is both a prefix and an infix operator, and the
+-- application `compose emitF@E` ends at the first token that cannot start an
+-- atom — which `-` cannot. So `compose emitF@E -3.14` parses as the
+-- SUBTRACTION `(compose emitF@E) - 3.14`. Parenthesising puts the minus back
+-- in prefix position, where `parseUnaryWF` reads it.
+paren :: String -> String
+paren lit@('-' : _) = "(" ++ lit ++ ")"
+paren lit           = lit
+
+-- | A filesystem-safe per-test build directory name. The leading `-` of a
+-- negative literal becomes `neg` rather than `_`: a directory whose name
+-- starts with a dash is read as an option by every tool the build shells out
+-- to.
 slug :: String -> String
-slug = ("floatemit_" ++) . map (\ch -> if ch == '.' then '_' else ch)
+slug ('-' : rest) = "floatemit_neg" ++ map dot rest
+slug lit          = "floatemit_" ++ map dot lit
+
+dot :: Char -> Char
+dot ch = if ch == '.' then '_' else ch

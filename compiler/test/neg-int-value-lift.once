@@ -1,0 +1,33 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- NEGATIVE Int literal in a VALUE-LIFT position. Expected exit code 17
+--
+-- This is D120's other half (plan 0.73 F3, D124). D120 folded `-5` into one
+-- literal in the INFER realm only, so `- <literal>` had no rule in `⊢ᵍ` — the
+-- closed-value family a literal is checked against when it sits at a
+-- pure-arrow target. The result was that
+--
+--     emitLit = compose emit@E (-5)
+--
+-- failed with `Type mismatch: expected (Unit ω→ Int) but got Int`, while the
+-- identical program with `5` compiled. `g-neg-int` closes it, and the float
+-- twin `g-neg-float` lands with it so the two types cannot drift apart again.
+--
+-- THE COMPOSE SHAPE IS THE POINT, and it is why this is not another
+-- `let _ = … in`: a `let`-bound effect compiles to a thunk that is never
+-- entered, so it would exercise the elaborator but not the lowering. Here the
+-- SigOp is genuinely invoked with a negative constant.
+--
+-- The parentheses are load-bearing: `-` is both prefix and infix, and an
+-- application ends at the first token that cannot start an atom, so
+-- `compose emit@E -5` would parse as the SUBTRACTION `(compose emit@E) - 5`.
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as E
+
+emitLit : IO Unit
+emitLit = compose emit@E (-5)
+
+main : IO Unit
+main = compose exit@S (compose 17 emitLit)

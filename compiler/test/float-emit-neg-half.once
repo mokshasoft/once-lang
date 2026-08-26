@@ -1,0 +1,33 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- NEGATIVE float literal regression (plan 0.73 F3). Expected exit code 13
+--
+-- `-0.5` was a TYPE ERROR until F3 — `inferElabV-RUnaryOp-aux` answered
+-- `TypeMismatch Int Float`, because `t-neg`'s premise is at `Int` and `RFloat`
+-- infers only at `Float`. It is now ONE literal whose payload is
+-- `negate (decimalOf 0 5 1)`, folded by the elaborator exactly as `-5` is
+-- (D120): no `arith.neg` is emitted, because there is no float negation to
+-- emit — `MArithIR` is Int-only (F4).
+--
+-- THE PARENTHESES ARE LOAD-BEARING and are a grammar fact, not a typing one.
+-- `-` is both prefix and infix, and an application ends at the first token
+-- that cannot start an atom — which `-` cannot. So `emitF@T -0.5` would parse
+-- as the SUBTRACTION `(emitF@T) - 0.5`.
+--
+-- Like its positive twin `float-emit-half.once`, the `let _ = … in` shape
+-- means the SigOp is never entered at runtime: what this shows is that the
+-- literal builds and the process reaches its exit code on all three targets,
+-- not what word was passed. The trace-level check on the same literal lives in
+-- `FloatEmitSpec` ("Float format in the effect trace"), which sequences with
+-- `compose` and reads the emitted word back.
+--
+-- 0.5 is exact at every supported width, so only the sign bit distinguishes
+-- this from the positive twin — which is the narrowest possible statement of
+-- what F3 added.
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as T
+
+main : IO Unit
+main = let _ = emitF@T (-0.5) in exit@S 13

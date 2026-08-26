@@ -8851,3 +8851,103 @@ literal well-typed, and is deleted. `FloatRounded` carries its three fields plus
 the figures and the position: what used to abort the compile now reports.
 
 **Relates**: D114, D116, D117, D118, D122
+
+## D124: `-3.14` Is One Literal, and the Fold Is the ONLY Lowering It Has
+
+**Date**: 2026-08-25 · **Status**: Implemented (plan 0.73 F3)
+
+### The decision
+
+`-3.14` was a TYPE ERROR — `inferElabV-RUnaryOp-aux` answered
+`TypeMismatch Int Float`, because `t-neg`'s premise is at `Int` and `RFloat`
+infers only at `Float`, so no derivation existed at all. It is now ONE literal
+whose payload is `negate (decimalOf i f l)`, by a new rule
+
+    t-neg-float : (i f l p : ℕ)
+                → ctx ⊢ᵢ RUnaryOp OpNeg (RFloat i f l p) ∶ Float ⨾ zeroUsage
+
+and D120's dispatch, widened from a `Maybe` to a three-way view.
+
+### Why this is D120's route and not D120's argument
+
+D120 folded `- <numeral>` because the alternative — "load 5, then call
+`arith.neg.int`" — is a runtime negation of a compile-time constant, and
+because a folded literal is what the spec's `negLits` already said `-5` means.
+Both readings were available and one was better.
+
+Here there is no second reading. `MArithIR` is `alit : ℤ → MArithIR sh`,
+Int-only and monomorphic (F4), and `Surface.neg` is
+`Expr Γ Ψ Int → Expr Γ Ψ Int`. A float negation is not expressible in the
+surface syntax, let alone emittable. **The fold is not the better of two
+lowerings; it is the only one.** That is also why `realize-infer` folds here
+while it keeps `neg (int n)` for the `Int` case: it has nothing to keep.
+
+### The rule is deliberately NOT general at `Float`
+
+    ⊢ᵢ e ∶ Float ⨾ Ψ → ⊢ᵢ RUnaryOp OpNeg e ∶ Float ⨾ Ψ    -- REJECTED
+
+would type `- x` for a float variable and `- someFloatRef` for a SigOp — F4's
+arithmetic, which has no lowering. Narrowing the premise to `zeroUsage` does
+not save it: a SigOp reference is `zeroUsage` too. A rule with no lowering is a
+promise the backend then has to break, so the operand is pinned to the literal
+in the rule's own index.
+
+### The mechanism was already built, in D116
+
+`Decimal.sig` is SIGNED — D116 chose that precisely so `-0.5` is `-5 /10^ 1`
+and the sign survives a `(ℤ , ℕ)` split that would lose it. `round` reads the
+sign through `signBit (sig d)` and the magnitude through `∣ sig d ∣`, so a
+negated decimal takes the SAME rounding path with one bit different.
+`Once.Float.Decimal.negate` existed with zero callers, and F3 is its first.
+
+### What actually checks it — not the correspondence
+
+Both the elaborator and `⟦ t-neg-float ⟧ᵢ` name the same `negate ∘ decimalOf`
+and the same `round`, so `RealizeAgrees`' branch is `refl` and the
+correspondence **cannot falsify `round`** — D117's trust point, and the third
+time this shape has appeared on this branch. The checks that mean something are
+elsewhere and are external:
+
+  * Ten pins in `Once.Float.Decimal` against glibc/GHC patterns, including
+    `-3.14` (inexact at both formats, so round-to-nearest-even runs on a
+    negative significand) and `-16777217.0` at binary32 (a TIE, so the
+    half-even rule has to break the same way on both signs).
+  * `FloatEmitSpec` now runs `-0.5`, `-2.75` and `-3.14` on all three arches
+    and reads the emitted machine word back out of the trace, comparing
+    against GHC's own IEEE conversion.
+
+### Two limitations, both stated rather than found
+
+  * **`-0.0` compiles to `+0.0`.** `negate` is `ℤ.-` on the significand and
+    `ℤ.- (+ 0) ≡ + 0`, so `signBit` reads `0`. Bounded exactly as D118's
+    missing subnormals are: only `1/x`, `copysign` and the sign of a zero
+    result can observe it, and Once has none of them because it has no float
+    arithmetic at all. **If F4 lands, this is the first thing that must
+    change**, which is why it is pinned in `Once.Float.Decimal`.
+  * **A negative literal needs parentheses.** `emitF@T -0.5` parses as the
+    SUBTRACTION `(emitF@T) - 0.5`: `-` is both prefix and infix, and an
+    application ends at the first token that cannot start an atom. A grammar
+    fact, unchanged by F3, and `-5` has always had it too.
+
+### What it cost downstream, and the one thing that was not mechanical
+
+The rule's index is `RUnaryOp OpNeg (RFloat i f l p)` — a COMPOUND index where
+`t-neg`'s is a variable — so `CanonReflectMutual`, which inducts on the RAW
+expression while the derivation is over `canonExpr … e`, could no longer split:
+`canonExpr … e₀ ≟ RFloat i f l p` is stuck for an abstract operand.
+
+The module's own header already said what to do — expose the head until the
+index is in constructor form. Fourteen of the sixteen operand heads are
+head-preserved by `canonExpr`, so the general clause still covers them and
+`t-neg-float` dies on a constructor clash. `RFloat` is its own clause. `RVar`
+is the one that stays stuck, and it gets `reflect-neg-var-ᵢ` — the boolean as
+an explicit pattern argument, the same remedy `reflect-var-ᵢ` uses, with the
+recursion passed IN so the descent stays visible to the termination checker.
+
+`neg-non-Int-Float` in `ErrorProofs` is the lemma worth reading twice: it still
+holds, but for a float LITERAL operand it is now vacuous — the failure premise
+is what cannot hold, where before the operand's inference was. Read the other
+way, it is a live check that the fold and the rule landed together: had the
+elaborator folded without a rule in `_⊢ᵢ_∶_⨾_`, that `()` would not typecheck.
+
+**Relates**: D054, D113, D116, D117, D118, D120, D122
