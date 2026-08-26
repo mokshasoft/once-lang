@@ -192,6 +192,12 @@ rawFloatLits (RPair a b)         = rawFloatLits a ++ rawFloatLits b
 rawFloatLits (RDestruct s _ l _ r) = rawFloatLits s ++ rawFloatLits l ++ rawFloatLits r
 rawFloatLits (RAnnot e _)        = rawFloatLits e
 rawFloatLits (RBinOp _ a b)      = rawFloatLits a ++ rawFloatLits b
+-- PLAN 0.73 F3: `-3.14` is ONE literal to the elaborator, but the warning
+-- channel still sees the TOKEN `3.14` and reports its offset — which is the
+-- right offset, since `-` is a token of its own. Every figure the warning
+-- carries is unaffected by the sign: `round` splits into `signBit (sig d)` and
+-- `∣ sig d ∣`, so a negated literal rounds with the same absolute error and
+-- the same ulp count as its positive twin.
 rawFloatLits (RUnaryOp _ e)      = rawFloatLits e
 rawFloatLits (RAna _ e)          = rawFloatLits e
 rawFloatLits (RVar _)            = []

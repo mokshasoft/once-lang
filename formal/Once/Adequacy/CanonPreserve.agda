@@ -28,7 +28,7 @@ open import Once.Parser.Module.Resolve
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupLocal-go; extendNamedCtx; classifyAppHead)
 open import Once.TypeCheck.Judgment
-  using (_⊢ᵍ_∶_; g-int; g-float; g-terminal; g-pair; g-inl; g-inr; g-In)
+  using (_⊢ᵍ_∶_; g-int; g-float; g-neg-int; g-neg-float; g-terminal; g-pair; g-inl; g-inr; g-In)
 open import Once.TypeCheck.Context using (Ctx; names; name)
 open import Once.Surface.Syntax
   using () renaming (Ctx to SCtx; ∅ to S∅; _,_^_ to _S,_^_)
@@ -179,6 +179,10 @@ elemStr-tail {y} {x} bound ¬p with y ≟s x
 pres-ᵍ : ∀ {ctx e T} (bound : List String) →
   ctx ⊢ᵍ e ∶ T → ctx ⊢ᵍ canonExpr bound [] [] e ∶ T
 pres-ᵍ bound (g-int n) = g-int n
+-- PLAN 0.73 F3 / D120's other half: leaves, like `g-int`/`g-float` — the
+-- resolver rewrites NAMES and `- 5` / `- 3.14` contain none.
+pres-ᵍ bound (g-neg-int n) = g-neg-int n
+pres-ᵍ bound (g-neg-float i f l p) = g-neg-float i f l p
 -- Canonicalisation is the identity on a float literal, and the acceptance
 -- witness is about the VALUE, so it transports unchanged.
 pres-ᵍ bound (g-float i f l p) = g-float i f l p

@@ -22,9 +22,10 @@
 module Once.Denotation.Meaning where
 
 open import Data.Integer using (ℤ)
+import Data.Integer as ℤ
 import Once.Word as OnceWord
 open import Once.Float.Dyadic using (encode)
-open import Once.Float.Decimal using (Decimal; decimalOf; round)
+open import Once.Float.Decimal using (Decimal; decimalOf; round; negate)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -57,7 +58,7 @@ open import Once.Arith.SigOp.Builders
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.TypeCheck.Judgment
   using (_⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; _⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
-         g-int; g-float; g-terminal; g-pair; g-inl; g-inr; g-In;
+         g-int; g-float; g-neg-int; g-neg-float; g-terminal; g-pair; g-inl; g-inr; g-In;
          m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
          m-compose; m-case; m-pair; m-curry; m-cata; m-const;
          m-named; m-named-resolved;
@@ -66,7 +67,7 @@ open import Once.TypeCheck.Judgment
          t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer;
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
-         t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-let; t-case;
+         t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-app; t-effApp)
 
@@ -121,6 +122,11 @@ named-sem {A} {B} fmt cn bA cB a =
 -- `2^w - 5` and is width-relative exactly as a float literal is
 -- format-relative. This is the same clause as `⟦ float … ⟧`, one type over.
 ⟦ g-int n      ⟧ᵍ fmt = OnceWord.Width.fromℤ (int-bits fmt) n
+-- PLAN 0.73 F3 / D120's other half. Same payloads as `⟦ t-neg (t-int n) ⟧ᵢ`
+-- and `⟦ t-neg-float … ⟧ᵢ` respectively, which is what makes the two realms
+-- agree on `-5` and `-3.14` rather than merely both compile.
+⟦ g-neg-int n  ⟧ᵍ fmt = OnceWord.Width.fromℤ (int-bits fmt) (ℤ.- n)
+⟦ g-neg-float i f l p ⟧ᵍ fmt = round (float-format fmt) (negate (decimalOf i f l))
 -- …and a float literal means ITS ENCODING AT THE TARGET'S FORMAT (D113).
 -- `⟦ Float ⟧` is the target's representation, not an exact value, and `1.5`
 -- has no target-free one — so the reference meaning takes the format. This
@@ -232,6 +238,17 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-annot d ⟧ᵢ fmt              dγ = (⟦ d ⟧ᶜ fmt) dγ
 ⟦ t-pair da db ⟧ᵢ fmt           dγ = (⟦ da ⟧ᵢ fmt) dγ >>=T λ a → (⟦ db ⟧ᵢ fmt) dγ >>=T λ b → returnT (a , b)
 ⟦ t-neg d ⟧ᵢ fmt                dγ = (⟦ d ⟧ᵢ fmt) dγ >>=T λ v → returnT (semM neg-info fmt v)
+-- PLAN 0.73 F3. `-3.14` MEANS the target's representation of the decimal
+-- −3.14 — `round` applied to the NEGATED payload, not the word-level negation
+-- of `round 3.14`. That reading is the honest one: the literal names a
+-- decimal, and rounding is what the target does to a decimal (D116).
+--
+-- It is also the only reading available: a word-level float negation would be
+-- `semM` at a float `neg-info`, and `MArithIR` is Int-only (F4). The two
+-- readings agree — `round` splits sign from magnitude at `signBit (sig d)` /
+-- `∣ sig d ∣`, so negating `sig` moves the sign bit and nothing else — but
+-- that is a fact to PIN, not a coincidence to lean on.
+⟦ t-neg-float i f l p ⟧ᵢ fmt      dγ = returnT (round (float-format fmt) (negate (decimalOf i f l)))
 ⟦ t-let d₁ d₂ ⟧ᵢ fmt            dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ v → (⟦ d₂ ⟧ᵢ fmt) (dγ , v)
 ⟦ t-case ds dl dr ⟧ᵢ fmt        dγ = (⟦ ds ⟧ᵢ fmt) dγ >>=T λ v →
                                    [ (λ a → (⟦ dl ⟧ᵢ fmt) (dγ , a)) , (λ b → (⟦ dr ⟧ᵢ fmt) (dγ , b)) ]′ v

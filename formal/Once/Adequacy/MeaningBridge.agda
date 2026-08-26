@@ -58,9 +58,9 @@ open import Once.SigOp.Info using (semM)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_;
   m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr; m-compose; m-case;
   m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
-  g-int; g-float; g-terminal; g-pair; g-inl; g-inr; g-In;
+  g-int; g-float; g-neg-int; g-neg-float; g-terminal; g-pair; g-inl; g-inr; g-In;
   t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
-  t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-let; t-case;
+  t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-app; t-effApp;
   t-morph-lift; t-value-lift; t-embed; t-lam; t-pair-lit-check;
@@ -254,6 +254,12 @@ bridge-g {ctx = ctx} {X = X} (g-int n) y = int-bridge {ctx = ctx} {X = X} n y
 -- IS `d`, and `realize-global (g-float … d …) fits-float d ∘ terminal`,
 -- whose `evalᴰ` is `d` — so both sides are `([] , d)` definitionally.
 bridge-g (g-float i f l p) y k = refl , refl
+-- PLAN 0.73 F3 / D120's other half. Both leaves reduce exactly as their
+-- unnegated twins do — `⟦_⟧ᵍ` and `realize-global` name the SAME folded
+-- payload (`- n`, `negate (decimalOf i f l)`), so neither side has anything
+-- the other lacks and both are `([] , v)` definitionally.
+bridge-g (g-neg-int n) y k = refl , refl
+bridge-g (g-neg-float i f l p) y k = refl , refl
 -- `liftFn (realize-global d) y` is APPLIED to `y`, so `liftFn` unfolds and a
 -- `rewrite` of the (funext) reduction can't fire; convert with `subst (RelT …)`
 -- over the reduction applied at `y` (`cong (λ h → h y)`).
@@ -384,6 +390,12 @@ bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
 -- Literals — pure `returnT`, identical values.
 bridge-i (t-int _)   re k = refl , refl
 bridge-i (t-float _ _ _ _) re k = refl , refl
+-- PLAN 0.73 F3. A LEAF, like `t-float` above and unlike `t-neg` below: both
+-- sides are the literal `round fmt (negate (decimalOf i f l))`, because
+-- `realize-infer` had no float `neg` to keep (`Surface.neg` is Int-typed).
+-- The `Int` fold could keep one and pays `⊝-fromℤ` for it in `RealizeAgrees`;
+-- here there is nothing to reconcile.
+bridge-i (t-neg-float _ _ _ _) re k = refl , refl
 bridge-i (t-str _)   re k = refl , refl
 bridge-i t-unit      re k = refl , tt
 bridge-i t-unit-var  re k = refl , tt

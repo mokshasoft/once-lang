@@ -31,6 +31,7 @@
 
 module Once.Denotation.Realize where
 
+open import Data.Integer using (-_)   -- the folded payload of `g-neg-int` (plan 0.73 F3)
 open import Data.String using (_++_)
 open import Once.Type using (Type; Many; _*_; _+_; μ-type; ⟦_⟧T)
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩)
@@ -40,18 +41,18 @@ open import Once.TypeCheck.Raw using (RawExpr;
   OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
-  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; g-int; g-float; g-terminal; g-pair; g-inl; g-inr; g-In;
+  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; g-int; g-float; g-neg-int; g-neg-float; g-terminal; g-pair; g-inl; g-inr; g-In;
          _⊢ᵐ_∶_⇨[_]_; m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
          m-compose; m-case; m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-import;
-         t-annot; t-pair; t-neg; t-let; t-case; t-binop-arith; t-binop-cmp;
+         t-annot; t-pair; t-neg; t-neg-float; t-let; t-case; t-binop-arith; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-apply-app-infer;
          t-app; t-effApp;
          t-embed; t-lam; t-value-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
          t-apply-check; t-inl-app-check; t-inr-app-check; t-initial-app-check;
          t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer)
-open import Once.Float.Decimal using (Decimal; decimalOf)
+open import Once.Float.Decimal using (Decimal; decimalOf; negate)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
   add; sub; mul; div; mod'; lt; le; gt; ge; eq; ne; sigOp; poly;
@@ -97,6 +98,10 @@ realize-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
 realize-global : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type}
                → ctx ⊢ᵍ e ∶ A → IR ⌊ X ⌋ ⌊ A ⌋
 realize-global (g-int n)        = intLit n
+-- PLAN 0.73 F3 / D120's other half: the FOLDED payload, so the value realm
+-- and the infer realm produce the same IR object for the same source text.
+realize-global (g-neg-int n)    = intLit (- n)
+realize-global (g-neg-float i f l p) = floatLit (negate (decimalOf i f l))
 -- The reference elaboration reads the DYADIC off the acceptance witness — the
 -- same value the elaborator uses — so the two cannot disagree about what the
 -- literal denotes.
@@ -196,6 +201,13 @@ realize-infer {ctx = ctx} {A = A} (t-var-poly-instantiate-infer _ _ _ _ _ _ _ bo
 realize-infer (t-annot d)       = realize d
 realize-infer (t-pair da db)    = pair (realize-infer da) (realize-infer db)
 realize-infer (t-neg d)         = neg (realize-infer d)
+-- PLAN 0.73 F3. Unlike the `Int` fold — where `realize-infer` keeps
+-- `neg (int n)` and `RealizeAgrees` spends `⊝-fromℤ` to reconcile it with the
+-- elaborator's folded literal — there is nothing here to keep: `Surface.neg`
+-- is `Expr Γ Ψ Int → Expr Γ Ψ Int`, so a float negation is not expressible in
+-- the surface syntax at all. The reference elaboration folds because it has
+-- no choice, and agreement with the elaborator is `refl`.
+realize-infer (t-neg-float i f l p) = float (negate (decimalOf i f l))
 realize-infer (t-let d₁ d₂)     = let' (realize-infer d₁) (realize-infer d₂)
 realize-infer (t-case ds dl dr) = case' (realize-infer ds) (realize-infer dl) (realize-infer dr)
 -- arithmetic binops: pick the SExpr ctor by `op`; comparison ops make the

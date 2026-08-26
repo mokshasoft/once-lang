@@ -63,7 +63,7 @@ open import Data.Maybe.Properties using (just-injective)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Postulates using (extensionality)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; t-int; t-str; t-unit; t-pair; t-neg; t-let; t-binop-arith; t-binop-cmp; g-int; g-terminal; g-pair; g-inl; g-inr; g-In; extractMorphWitness)
+open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; t-int; t-str; t-unit; t-pair; t-neg; t-neg-float; t-let; t-binop-arith; t-binop-cmp; g-int; g-neg-int; g-neg-float; g-terminal; g-pair; g-inl; g-inr; g-In; extractMorphWitness)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-global; realize-morph)
 open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism)
@@ -1095,6 +1095,33 @@ agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ ⇒[ mk-kind Zero _ 
 -- `t-embed`, so the agreement IS the infer IH; subsume (no): `agree-embedOrSubsume-no`
 -- (identity via `arr'`); failure: success-eq absurd. One lemma → every catch-all
 -- check-agree clause is a one-liner, with NO proof-side `with T ≟T T'` alignment.
+-- PLAN 0.73 F3: the infer result is a PARAMETER, `rInf`, not fixed to
+-- `E.inferElabV ctx e`.
+--
+-- The neg dispatch is why. A proof that has with-abstracted `negOperandView e`
+-- can no longer reduce `inferElabV ctx (RUnaryOp OpNeg e)` — that unfolds back
+-- into the view, which is stuck under the abstraction — but it CAN name the
+-- form the view already reduced to. `agree-RUnaryOp` was stated this way from
+-- the start, over `inferElabV-RUnaryOp-aux ctx e rE`; this brings the
+-- check-mode lemma into line so both can be used in the same branch.
+--
+-- Matching `rInf` directly rather than `with`-ing it is what keeps the two
+-- ends definitionally connected at the call site.
+agree-embedOrSubsume-at : ∀ {ctx : NamedCtx} {e : RawExpr} (T : Type)
+    (rInf : VerifiedInferResult ctx e)
+    {Ψ se d f} {w : ctx ⊢ᶜ e ∶ T ⨾ Ψ}
+  → E.embedOrSubsume ctx e T rInf ≡ (success Ψ se d f , w)
+  → (inferIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᵢ e ∶ T' ⨾ Ψ'}
+       → rInf ≡ (success T' Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ fmt dγ k)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+agree-embedOrSubsume-at T (failure _ , _) () inferIH
+agree-embedOrSubsume-at T (success T' Ψ' eE' d' fr' , wᵢ) eq inferIH dγ k
+  with T E.≟T T' | eq
+... | yes refl | refl = inferIH refl dγ k
+... | no _     | eq₂ =
+      agree-embedOrSubsume-no T' T eE' d' fr' wᵢ eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
+
 agree-embedOrSubsume : ∀ {ctx : NamedCtx} {e : RawExpr} (T : Type)
     {Ψ se d f} {w : ctx ⊢ᶜ e ∶ T ⨾ Ψ}
   → E.embedOrSubsume ctx e T (E.inferElabV ctx e) ≡ (success Ψ se d f , w)
@@ -1102,13 +1129,8 @@ agree-embedOrSubsume : ∀ {ctx : NamedCtx} {e : RawExpr} (T : Type)
        → E.inferElabV ctx e ≡ (success T' Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ fmt dγ k)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
-agree-embedOrSubsume {ctx = ctx} {e = e} T eq inferIH dγ k
-  with E.inferElabV ctx e | eq
-... | failure _ , _ | ()
-... | success T' Ψ' eE' d' fr' , wᵢ | eq' with T E.≟T T' | eq'
-...   | yes refl | refl = inferIH refl dγ k
-...   | no _     | eq₂ =
-        agree-embedOrSubsume-no T' T eE' d' fr' wᵢ eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
+agree-embedOrSubsume {ctx = ctx} {e = e} T eq inferIH dγ k =
+  agree-embedOrSubsume-at T (E.inferElabV ctx e) eq inferIH dγ k
 
 -- Plan 0.55 D#2: the SINGLE genuinely-hard leaf of the "recurse on OUTPUT"
 -- redesign — the cata denotational bridge. `⟦ Surface.cata wfF algE ⟧ˢ` folds via
@@ -1545,13 +1567,21 @@ mutual
   -- affordable. A syntactic `se ≡ realize w` would have forced `realize` to
   -- fold too, and with it every proof that reads the derivation.
   infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) (acc rec) eq dγ k
-    with E.isRIntView e | eq
-  ... | just (n , refl) | refl =
+    with E.negOperandView e | eq
+  ... | E.nov-int n | refl =
           cong (λ v → (DL.List.[] , v)) (sym (OnceWord.Width.⊝-fromℤ (int-bits fmt) n))
+  -- PLAN 0.73 F3. `refl`, and the contrast with the `Int` branch above is the
+  -- whole content: there `realize-infer` keeps `neg (int n)` and the two sides
+  -- are reconciled by `⊝-fromℤ`; here `Surface.neg` is Int-typed, so the
+  -- reference elaboration had no float negation to keep and folded to the same
+  -- literal the elaborator produces. Nothing to reconcile — which is also why
+  -- this branch checks NOTHING about `round`, and why the pins in
+  -- `Once.Float.Decimal` are where that is checked (D117).
+  ... | E.nov-float i f l p | refl = refl
   -- NAME the abstracted equation: in this branch its type has already reduced
   -- through `inferElabV-neg-aux … nothing` to the plain aux, which is what
   -- `agree-RUnaryOp` is stated over. The un-refined `eq` has not.
-  ... | nothing         | eq′ =
+  ... | E.nov-other .e  | eq′ =
           agree-RUnaryOp (E.inferElabV ctx e) eq′
             (λ p → infer-agreeV ctx e (rec (dbl-< ≤-refl)) p) dγ k
   infer-agreeV ctx (Raw.RLet x e₁ e₂) (acc rec) eq dγ k =
@@ -1640,8 +1670,38 @@ mutual
   -- Infer-then-check (generic catch-all = `embedOrSubsume`): ONE bridge lemma.
   check-agreeV ctx (Raw.RBinOp op a b) T (acc rec) eq dγ k =
     agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RBinOp op a b) (rec (infer<check (Raw.RBinOp op a b))) p) dγ k
-  check-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) T (acc rec) eq dγ k =
-    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) (rec (infer<check (Raw.RUnaryOp Raw.OpNeg e))) p) dγ k
+  -- PLAN 0.73 F3: the neg node has a specialised check clause now, so this
+  -- mirrors `checkElabV-neg-dispatch`'s three-way split — the `RInt`/`RFloat`
+  -- branches like `check-agreeV`'s own literal clauses above, the rest like
+  -- the generic fallback it used to be in full.
+  check-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) T (acc rec) eq dγ k
+    with E.negOperandView e | eq
+  ... | E.nov-int n | eq₁ with E.isRIntVliftTarget? T | eq₁
+  ...   | just (X , π , refl) | refl = refl
+  ...   | nothing | eq₂ with T E.≟T Int | eq₂
+  -- The SAME `⊝-fromℤ` step the infer branch spends: the elaborator folded to
+  -- the literal `-n` while `realize (t-embed (t-neg (t-int n)))` still reads
+  -- `neg (int n)` off the derivation.
+  ...     | yes refl | refl =
+            cong (λ v → (DL.List.[] , v)) (sym (OnceWord.Width.⊝-fromℤ (int-bits fmt) n))
+  ...     | no _     | ()
+  check-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) T (acc rec) eq dγ k
+    | E.nov-float i f l p | eq₁ with E.isRFloatVliftTarget? T | eq₁
+  ...   | just (X , π , refl) | refl = refl
+  ...   | nothing | eq₂ with T E.≟T Float | eq₂
+  -- Nothing to spend here: `realize-infer (t-neg-float …)` folded too, because
+  -- `Surface.neg` is Int-typed and there was no float negation to keep.
+  ...     | yes refl | refl = refl
+  ...     | no _     | ()
+  -- NOT a literal: the generic fallback, but named at the form the abstracted
+  -- view has already reduced to — `inferElabV ctx (RUnaryOp OpNeg e)` would
+  -- unfold back into the stuck view.
+  check-agreeV ctx (Raw.RUnaryOp Raw.OpNeg e) T (acc rec) eq dγ k
+    | E.nov-other .e | eq₁ =
+      agree-embedOrSubsume-at T (E.inferElabV-RUnaryOp-aux ctx e (E.inferElabV ctx e)) eq₁
+        (λ p → agree-RUnaryOp (E.inferElabV ctx e) p
+                 (λ q → infer-agreeV ctx e (rec (mIC-sub ≤-refl)) q))
+        dγ k
   check-agreeV ctx (Raw.RLet x e₁ e₂) T (acc rec) eq dγ k =
     agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RLet x e₁ e₂) (rec (infer<check (Raw.RLet x e₁ e₂))) p) dγ k
   check-agreeV ctx (Raw.RDestruct scrut xL eL xR eR) T (acc rec) eq dγ k =

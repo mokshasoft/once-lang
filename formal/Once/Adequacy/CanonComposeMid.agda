@@ -56,6 +56,9 @@ domainOfHead-canon bound (m-pair _ _)     rewrite canon-builtin bound "pair" ref
 domainOfHead-canon bound (m-curry _)      rewrite canon-builtin bound "curry" refl = refl
 domainOfHead-canon bound (m-cata _ _)     rewrite canon-builtin bound "cata" refl = refl
 domainOfHead-canon bound (m-const (g-int n))      = refl
+-- PLAN 0.73 F3 / D120's other half: negated literals are closed values too.
+domainOfHead-canon bound (m-const (g-neg-int n))  = refl
+domainOfHead-canon bound (m-const (g-neg-float i f l p)) = refl
 domainOfHead-canon bound (m-const (g-float i f l p)) = refl
 domainOfHead-canon bound (m-const (g-terminal _ _)) rewrite canon-builtin bound "terminal" refl = refl
 domainOfHead-canon bound (m-const (g-pair _ _))   = refl
@@ -113,6 +116,8 @@ composeArgB-canon {ctx} bound A (m-compose {f = f} {g = g} _ df dg)
 ... | nothing = refl
 ... | just B′ rewrite composeArgB-canon bound B′ df = refl
 composeArgB-canon bound A (m-const (g-int n))       = refl
+composeArgB-canon bound A (m-const (g-neg-int n))   = refl
+composeArgB-canon bound A (m-const (g-neg-float i f l p)) = refl
 composeArgB-canon bound A (m-const (g-float i f l p)) = refl
 composeArgB-canon bound A (m-const (g-terminal _ _)) rewrite canon-builtin bound "terminal" refl = refl
 composeArgB-canon bound A (m-const (g-pair _ _))    = refl

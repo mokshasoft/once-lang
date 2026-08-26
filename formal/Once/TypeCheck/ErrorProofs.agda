@@ -36,11 +36,15 @@ open import Once.Type using (Type; Unit; Void; Int; Str)
 import Once.Type as T
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RLam; RQualified)
--- plan 0.74 J6 step 3: the negation dispatch's numeral view
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
          inferElabV; checkElabV; _≟T_; isRIntVliftTarget?;
+         -- the negation dispatch's literal view (plan 0.74 J6 step 3 for
+         -- `RInt`, plan 0.73 F3 for `RFloat`) — the CONSTRUCTORS have to be
+         -- listed, the qualified name alone does not bring them into pattern
+         -- position.
+         NegOperandView; nov-int; nov-float; nov-other; negOperandView;
          -- Plan 0.58 / D071: the infer-mode poly-fallback stages (for the
          -- unbound-error normalization proof below).
          lookupPoly; classifyBareBuiltin; BareBuiltinClass;
@@ -162,10 +166,14 @@ neg-non-Int-Unit : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                    → err ≡ TypeMismatch Int Unit
 neg-non-Int-Unit ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+-- PLAN 0.73 F3: and a FLOAT literal operand infers at `Float`, so the premise
+-- is absurd there too. (`neg-non-Int-Float` is the one lemma where it is not —
+-- see its own note.)
+... | nov-float i f l p | ()
+... | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success Unit _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 
@@ -175,10 +183,14 @@ neg-non-Int-Str : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int Str
 neg-non-Int-Str ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+-- PLAN 0.73 F3: and a FLOAT literal operand infers at `Float`, so the premise
+-- is absurd there too. (`neg-non-Int-Float` is the one lemma where it is not —
+-- see its own note.)
+... | nov-float i f l p | ()
+... | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success Str _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 case-scrut-Unit : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
@@ -561,10 +573,14 @@ neg-non-Int-Void : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int Void
 neg-non-Int-Void ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+-- PLAN 0.73 F3: and a FLOAT literal operand infers at `Float`, so the premise
+-- is absurd there too. (`neg-non-Int-Float` is the one lemma where it is not —
+-- see its own note.)
+... | nov-float i f l p | ()
+... | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success Void _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 case-scrut-Void : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
@@ -630,11 +646,24 @@ neg-non-Int-Float : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                    → inferElab ctx e ≡ success T.Float Ψ' eE' d' f'
                    → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                    → err ≡ TypeMismatch Int T.Float
+-- PLAN 0.73 F3 CHANGES WHICH PREMISE DOES THE WORK HERE, and this is the one
+-- lemma where it matters. The claim is unchanged and still TRUE, but for a
+-- `RFloat` operand it is now true VACUOUSLY: `-3.14` no longer fails, so the
+-- premise `inferElab ctx (RUnaryOp OpNeg e) ≡ failure err` is what cannot
+-- hold. Before F3 the same case was discharged by the operand's own inference.
+--
+-- Read the other direction, that is the statement earning its keep: had the
+-- fold been wired without a matching rule in `_⊢ᵢ_∶_⨾_`, this `()` would not
+-- typecheck, because `- 3.14` would still be a failure whose error is now
+-- something else. The lemma is a live check on the pair, not a formality.
 neg-non-Int-Float ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+... | nov-float i f l p | _ with eqOuter
+...   | ()
+neg-non-Int-Float ctx e eqInner eqOuter
+  | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success T.Float _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 
@@ -644,10 +673,14 @@ neg-non-Int-Buffer : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
                     → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                     → err ≡ TypeMismatch Int T.Buffer
 neg-non-Int-Buffer ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+-- PLAN 0.73 F3: and a FLOAT literal operand infers at `Float`, so the premise
+-- is absurd there too. (`neg-non-Int-Float` is the one lemma where it is not —
+-- see its own note.)
+... | nov-float i f l p | ()
+... | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success T.Buffer _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 
@@ -657,10 +690,14 @@ neg-non-Int-Product : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
                      → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                      → err ≡ TypeMismatch Int (A T.* B)
 neg-non-Int-Product ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+-- PLAN 0.73 F3: and a FLOAT literal operand infers at `Float`, so the premise
+-- is absurd there too. (`neg-non-Int-Float` is the one lemma where it is not —
+-- see its own note.)
+... | nov-float i f l p | ()
+... | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success (_ T.* _) _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 
@@ -670,10 +707,14 @@ neg-non-Int-Sum : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                  → err ≡ TypeMismatch Int (A T.+ B)
 neg-non-Int-Sum ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+-- PLAN 0.73 F3: and a FLOAT literal operand infers at `Float`, so the premise
+-- is absurd there too. (`neg-non-Int-Float` is the one lemma where it is not —
+-- see its own note.)
+... | nov-float i f l p | ()
+... | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success (_ T.+ _) _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 snd-non-pair-Float : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
@@ -816,10 +857,14 @@ neg-non-Int-Eff : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind T.Many T.eff ] B)
 neg-non-Int-Eff ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+-- PLAN 0.73 F3: and a FLOAT literal operand infers at `Float`, so the premise
+-- is absurd there too. (`neg-non-Int-Float` is the one lemma where it is not —
+-- see its own note.)
+... | nov-float i f l p | ()
+... | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success (_ T.⇒[ T.mk-kind T.Many T.eff ] _) _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 
@@ -829,10 +874,14 @@ neg-non-Int-μ : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
                → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                → err ≡ TypeMismatch Int (T.μ-type F)
 neg-non-Int-μ ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+-- PLAN 0.73 F3: and a FLOAT literal operand infers at `Float`, so the premise
+-- is absurd there too. (`neg-non-Int-Float` is the one lemma where it is not —
+-- see its own note.)
+... | nov-float i f l p | ()
+... | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success (T.μ-type _) _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 
@@ -842,10 +891,14 @@ neg-non-Int-ν : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {F}
                → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                → err ≡ TypeMismatch Int (T.ν-type F)
 neg-non-Int-ν ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+-- PLAN 0.73 F3: and a FLOAT literal operand infers at `Float`, so the premise
+-- is absurd there too. (`neg-non-Int-Float` is the one lemma where it is not —
+-- see its own note.)
+... | nov-float i f l p | ()
+... | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success (T.ν-type _) _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 
@@ -855,10 +908,14 @@ neg-non-Int-Fun : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type} {q : _}
                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
                   → err ≡ TypeMismatch Int (A T.⇒[ T.mk-kind q T.pure ] B)
 neg-non-Int-Fun ctx e eqInner eqOuter
-  with Once.TypeCheck.Elaborate.isRIntView e | eqInner
+  with Once.TypeCheck.Elaborate.negOperandView e | eqInner
 -- A NUMERAL operand infers to `Int`, so the premise is absurd here.
-... | just (n , refl) | ()
-... | nothing | eqI with inferElabV ctx e | eqI
+... | nov-int n | ()
+-- PLAN 0.73 F3: and a FLOAT literal operand infers at `Float`, so the premise
+-- is absurd there too. (`neg-non-Int-Float` is the one lemma where it is not —
+-- see its own note.)
+... | nov-float i f l p | ()
+... | nov-other .e | eqI with inferElabV ctx e | eqI
 ...   | success (_ T.⇒[ T.mk-kind _ T.pure ] _) _ _ _ _ , _ | refl with eqOuter
 ...     | refl = refl
 case-scrut-Eff : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)

@@ -108,6 +108,10 @@ mutual
   canon-pres-ᵢ bound sub pib (t-pair d₁ d₂) =
     t-pair (canon-pres-ᵢ bound sub pib d₁) (canon-pres-ᵢ bound sub pib d₂)
   canon-pres-ᵢ bound sub pib (t-neg d) = t-neg (canon-pres-ᵢ bound sub pib d)
+  -- PLAN 0.73 F3. A LEAF here, like `t-float`: the resolver rewrites NAMES,
+  -- and `- 3.14` contains none, so `canonExpr` is the identity on it and the
+  -- derivation transports unchanged.
+  canon-pres-ᵢ bound sub pib (t-neg-float i f l p) = t-neg-float i f l p
   canon-pres-ᵢ bound sub pib (t-let {x = x} {A = A} d₁ d₂) =
     t-let (canon-pres-ᵢ bound sub pib d₁)
           (canon-pres-ᵢ (x ∷ bound) (⊆ᵇ-cons x sub) (poly-ext x A pib) d₂)

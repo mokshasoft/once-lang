@@ -86,8 +86,9 @@ open import Once.TypeCheck.ElaborateProofs using (extract-morph-eff; extractMorp
   checkG; inspectWellFormedF; wfv-no; wfv-yes;
   checkCataGo; cata-go-canonical; checkCataGoV-pure-J; checkCataGo-just-success;
   checkCata-eff-strong-hlp; extract-morph-eff-cata;
-  -- plan 0.74 J6 step 3: the numeral view the negation dispatch takes
-  isRIntView)
+  -- the literal view the negation dispatch takes (plan 0.74 J6 step 3 for
+  -- `RInt`, plan 0.73 F3 for `RFloat`)
+  NegOperandView; nov-int; nov-float; nov-other; negOperandView)
 
 ------------------------------------------------------------------------
 -- Leaf-case completeness
@@ -299,11 +300,17 @@ infer-complete-RUnaryOp-neg :
 -- an abstract operand and this proof splits two ways rather than sixteen.
 -- `eqE` is abstracted with the view so that the folded branch's `Ψ` is pinned
 -- to `zeroUsage` by the literal's own inference.
-infer-complete-RUnaryOp-neg {ctx} e eqE with isRIntView e | eqE
+infer-complete-RUnaryOp-neg {ctx} e eqE with negOperandView e | eqE
 -- FOLDED: `- 5` is the literal `-5`; the operand's own inference is not
 -- consulted, so the result is immediate.
-... | just (n , refl) | refl = _ , _ , _ , refl
-... | nothing        | _    with inferElabV ctx e | eqE
+... | nov-int n | refl = _ , _ , _ , refl
+-- PLAN 0.73 F3. A FLOAT operand cannot reach this lemma: its premise says the
+-- operand infers at `Int`, and `RFloat` infers at `Float`. The clash is in the
+-- `success` head's type index, so the equation is absurd outright. `-3.14`'s
+-- completeness is `t-neg-float`'s own clause in `infer-complete` — it never
+-- consults the operand, exactly as the `RInt` fold does not.
+... | nov-float i f l p | ()
+... | nov-other .e | _    with inferElabV ctx e | eqE
 ...   | success Int _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 infer-complete-RAnnot :
@@ -1135,6 +1142,11 @@ checkG-realize : ∀ {ctx : NamedCtx} {X : Type} {e : RawExpr} {A : Type} {m : I
   (gd : ctx ⊢ᵍ e ∶ A)
   → checkG ctx X e A ≡ just (m , gd) → m ≡ realize-global gd
 checkG-realize (g-int n) refl = refl
+-- PLAN 0.73 F3 / D120's other half: `checkG` hands back `intLit (- n)` /
+-- `floatLit (negate …)` and `realize-global` reads the SAME folded payload off
+-- the same witness, so the two are one term.
+checkG-realize (g-neg-int n) refl = refl
+checkG-realize (g-neg-float i f l p) refl = refl
 -- `checkG`'s float clause hands back `floatLit d` and `realize-global` reads
 -- the same `d` off the same witness, so the two are the same term.
 -- Matching on `eq` after the rewrite gets stuck (the index mentions the
@@ -1532,6 +1544,14 @@ mutual
   iFromInfer (t-neg {e = e} d) =
     let (_ , _ , _ , eqI) = infer-complete (t-neg d)
     in checkElab-fallback-RUnaryOp Raw.OpNeg e T.Int eqI
+  -- PLAN 0.73 F3: the switch for `-3.14` is the generic infer→check fallback,
+  -- at `Float` instead of `Int`. Nothing recurses — the rule has no premise,
+  -- and the infer-side equation is `refl` outright: `negOperandView (RFloat …)`
+  -- reduces, so `inferElab ctx (RUnaryOp OpNeg (RFloat i f l p))` is already
+  -- the folded literal. Routing through `infer-complete` instead would leave
+  -- its three existential witnesses as metas with nothing to solve them.
+  iFromInfer {ctx} (t-neg-float i f l p) =
+    checkElab-fallback-RUnaryOp {ctx} Raw.OpNeg (Raw.RFloat i f l p) T.Float refl
   iFromInfer (t-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} d₁ d₂) =
     let (_ , _ , _ , eqI) = infer-complete (t-let d₁ d₂)
     in checkElab-fallback-RLet x e₁ e₂ B eqI
@@ -1660,6 +1680,11 @@ mutual
   infer-complete (t-neg {e = e} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RUnaryOp-neg e eqSub
+  -- PLAN 0.73 F3. Immediate, exactly as the `RInt` fold's branch is:
+  -- `negOperandView (RFloat i f l p)` reduces to `nov-float …`, so the
+  -- dispatch reduces straight to the folded literal without consulting the
+  -- operand's inference. There is no sub-derivation to recurse on.
+  infer-complete (t-neg-float i f l p) = _ , _ , _ , refl
   infer-complete (t-let {x = x} {e₁ = e₁} {e₂ = e₂} d₁ d₂) =
     let (_ , _ , _ , eq₁) = infer-complete d₁
         (_ , _ , _ , eq₂) = infer-complete d₂
@@ -1738,6 +1763,8 @@ mutual
               → ∃[ m ] ∃[ gd' ] checkG ctx X e A ≡ just (m , gd')
   checkG-just X (g-int n) = _ , _ , refl
   checkG-just X (g-float i f l p) = _ , _ , refl
+  checkG-just X (g-neg-int n) = _ , _ , refl
+  checkG-just X (g-neg-float i f l p) = _ , _ , refl
   checkG-just {ctx = ctx} X (g-terminal eqL eqI)
     with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
   ... | llv-not-found _ | liv-not-found _ = _ , _ , refl
@@ -1775,6 +1802,10 @@ mutual
                        ≡ (success Surface.zeroUsage eE d f' , w)
   gd-completeV X (g-int n) = _ , _ , _ , _ , refl
   gd-completeV X (g-float i f l p) = _ , _ , _ , _ , refl
+  -- The value-lift path: `checkElabV-neg-{int,float}-aux` on the `just` branch,
+  -- reached because the target IS the pure arrow the ∃ pins.
+  gd-completeV X (g-neg-int n) = _ , _ , _ , _ , refl
+  gd-completeV X (g-neg-float i f l p) = _ , _ , _ , _ , refl
   gd-completeV {ctx = ctx} X (g-terminal eqL eqI) = checkElab-fallback-RVar-terminalV {ctx} X eqL eqI
   gd-completeV {ctx = ctx} X (g-pair {a = a} {b = b} {A = A} {B = B} ga gb)
     with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | checkG-just X (g-pair ga gb)
@@ -1813,6 +1844,12 @@ mutual
     _ , m-const (g-int n) , _ , _ , _ , t-value-lift (g-int n) , refl , refl , refl , refl
   const-morph-strong (g-float i f l p) =
     _ , m-const (g-float i f l p) , _ , _ , _ , t-value-lift (g-float i f l p)
+    , refl , refl , refl , refl
+  const-morph-strong (g-neg-int n) =
+    _ , m-const (g-neg-int n) , _ , _ , _ , t-value-lift (g-neg-int n)
+    , refl , refl , refl , refl
+  const-morph-strong (g-neg-float i f l p) =
+    _ , m-const (g-neg-float i f l p) , _ , _ , _ , t-value-lift (g-neg-float i f l p)
     , refl , refl , refl , refl
   -- g-terminal elaborates as the terminal MORPHISM (t-morph-lift (m-terminal …)),
   -- not a value-lift — mirror the RVar-terminal elaborator path directly.

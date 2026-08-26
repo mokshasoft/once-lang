@@ -216,6 +216,33 @@ mutual
           → ctx ⊢ᵢ e ∶ Int ⨾ Ψ
           → ctx ⊢ᵢ RUnaryOp OpNeg e ∶ Int ⨾ Ψ
 
+    -- PLAN 0.73 F3: `-3.14` IS A LITERAL, for D120's reason and by D120's
+    -- route. `t-neg` cannot cover it — its premise is at `Int`, and `RFloat`
+    -- infers only at `Float`, so before this rule `-3.14` had NO derivation
+    -- and the elaborator answered `TypeMismatch Int Float`.
+    --
+    -- A RUNTIME negation is not the alternative it is for `Int`: `MArithIR`
+    -- is Int-only (F4), so there is no float `neg` to fall back to, and
+    -- `Surface.neg` is `Expr Γ Ψ Int → Expr Γ Ψ Int`. Folding is not the
+    -- cheaper of two lowerings here; it is the only one.
+    --
+    -- The payload mechanism is already there: `Decimal.sig` is SIGNED
+    -- precisely so `-0.5` is `-5 /10^ 1` and the sign survives (D116), and
+    -- `round` reads the sign through `signBit (sig d)` and the magnitude
+    -- through `∣ sig d ∣` — so a negated decimal rounds by the SAME path,
+    -- with only the sign bit different. `Once.Float.Decimal.negate` is that
+    -- one function, and it exists already.
+    --
+    -- Deliberately NOT the general `⊢ᵢ e ∶ Float → ⊢ᵢ RUnaryOp OpNeg e`: that
+    -- rule would type `- x` for a float VARIABLE, which is F4's arithmetic
+    -- and has no lowering. A rule with no lowering is a false promise the
+    -- backend would then have to break.
+    --
+    -- No premise, exactly as `t-float` has none: the literal is total, and
+    -- the offset `p` rides along unread for the diagnostic's sake.
+    t-neg-float : ∀ {ctx : NamedCtx} (i f l p : ℕ)
+                → ctx ⊢ᵢ RUnaryOp OpNeg (RFloat i f l p) ∶ Float ⨾ zeroUsage
+
     ----------------------------------------------------------------
     -- Let binding
     ----------------------------------------------------------------
@@ -356,6 +383,27 @@ mutual
     -- …and the value realm, witness-free for the same reason.
     g-float : ∀ {ctx : NamedCtx} (i f l p : ℕ)
             → ctx ⊢ᵍ RFloat i f l p ∶ Float
+
+    -- A NEGATED literal is a CLOSED VALUE too, and leaving it out was a real
+    -- hole rather than an omission of convenience. `⊢ᵍ` is what a literal is
+    -- checked against in a pure-arrow position — a SigOp argument, the shape
+    -- `compose emit@E (-5)` — and without these rules that program was
+    -- `Type mismatch: expected (Unit ω→ Int) but got Int`, for `Int` since
+    -- D120 and for `Float` from the moment F3 made `-3.14` well-typed at all.
+    --
+    -- Both realms now answer the same question the same way, which is the
+    -- point: D120 folded in `⊢ᵢ` only, so `-5` was one literal when inferred
+    -- and no literal at all when checked. That split is exactly the shape
+    -- D113's lesson says to look for.
+    --
+    -- The payloads are the folded ones — `- n` and `negate (decimalOf i f l)`
+    -- — so `realize-global` and `⟦_⟧ᵍ` agree with their `⊢ᵢ` twins by
+    -- construction, and `moduleIntLits` already scans `RUnaryOp OpNeg (RInt n)`
+    -- as `- n` (`negLits`), so the range gate sees the value that is stored.
+    g-neg-int : ∀ {ctx : NamedCtx} (n : ℤ)
+              → ctx ⊢ᵍ RUnaryOp OpNeg (RInt n) ∶ Int
+    g-neg-float : ∀ {ctx : NamedCtx} (i f l p : ℕ)
+                → ctx ⊢ᵍ RUnaryOp OpNeg (RFloat i f l p) ∶ Float
     -- The Unit leaf is the bare `terminal` morphism (avoids a special `RVar`
     -- elaborator clause that would block the general `RVar` reduction); its
     -- top-level bridge routes through the existing `t-terminal-check`. The

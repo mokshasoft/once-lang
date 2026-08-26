@@ -413,3 +413,72 @@ _ = refl
 -- The same literal is NORMAL at binary64, so it is exact there.
 _ : round binary64 ((+ 1) /10^ 40) ≡ 0x37a16c262777579c
 _ = refl
+
+------------------------------------------------------------------------
+-- F3: THE NEGATED LITERAL, pinned (plan 0.73 F3)
+--
+-- `-3.14` is ONE literal whose payload is `negate (decimalOf 3 14 2)` — the
+-- elaborator folds the minus (`Once.TypeCheck.Elaborate`'s
+-- `inferElabV-neg-aux … (nov-float …)`) and `Once.Denotation.Meaning`'s
+-- `⟦ t-neg-float ⟧ᵢ` reads the same payload. THAT IS EXACTLY WHY THESE PINS
+-- EXIST: the two sides name the same `negate` and the same `round`, so the
+-- correspondence between them is `refl`-shaped and cannot falsify either
+-- (D117). The patterns below were computed by glibc/GHC, not by this file.
+--
+-- The MAGNITUDE path is shared with the positive literal — `round` splits into
+-- `signBit (sig d)` and `∣ sig d ∣` — so what is really being checked is that
+-- the sign is the ONLY difference, including where rounding is not exact.
+------------------------------------------------------------------------
+
+-- `-0.5` and `-2.75`: exact at both formats, so only the sign bit moves.
+_ : round binary64 (negate (decimalOf 0 5 1)) ≡ 0xbfe0000000000000
+_ = refl
+
+_ : round binary32 (negate (decimalOf 0 5 1)) ≡ 0xbf000000
+_ = refl
+
+_ : round binary64 (negate (decimalOf 2 75 2)) ≡ 0xc006000000000000
+_ = refl
+
+_ : round binary32 (negate (decimalOf 2 75 2)) ≡ 0xc0300000
+_ = refl
+
+-- `-3.14` is NOT exact at either format, so this is the one that exercises
+-- round-to-nearest-even on a negative significand rather than the sign bit
+-- alone. Compare the positive twin pinned above at `0x40091eb851eb851f`:
+-- identical below the sign, which is the claim.
+_ : round binary64 (negate (decimalOf 3 14 2)) ≡ 0xc0091eb851eb851f
+_ = refl
+
+_ : round binary32 (negate (decimalOf 3 14 2)) ≡ 0xc048f5c3
+_ = refl
+
+-- `-16777217.0` at binary32 — a TIE, resolved by round-half-to-even. The tie
+-- must break the same way on both signs; had `roundHalfEven` been reached with
+-- the sign folded into the significand instead of beside it, this is where it
+-- would show.
+_ : round binary32 (negate (decimalOf 16777217 0 1)) ≡ 0xcb800000
+_ = refl
+
+-- `-0.1`, negative and inexact at both formats, one ulp apart in the two.
+_ : round binary64 (negate (decimalOf 0 1 1)) ≡ 0xbfb999999999999a
+_ = refl
+
+_ : round binary32 (negate (decimalOf 0 1 1)) ≡ 0xbdcccccd
+_ = refl
+
+-- NEGATIVE ZERO IS A STATED LIMITATION, alongside the subnormals of D118.
+-- `negate` is `ℤ.-` on the significand and `ℤ.- (+ 0) ≡ + 0`, so `signBit`
+-- reads `0` and `-0.0` compiles to POSITIVE zero. IEEE keeps the two apart
+-- (glibc stores `0x8000000000000000`); Once does not.
+--
+-- It is bounded in the same way the missing subnormals are: the value is zero
+-- either way, and only `1/x`, `copysign` and the sign of a zero result can
+-- tell the difference — none of which Once has, since it has no float
+-- ARITHMETIC at all (F4). If F4 lands, this pin is the one that has to change
+-- first, and that is why it is written down rather than left to be found.
+_ : round binary64 (negate (decimalOf 0 0 1)) ≡ 0
+_ = refl
+
+_ : round binary32 (negate (decimalOf 0 0 1)) ≡ 0
+_ = refl

@@ -215,6 +215,17 @@ reflect-gvar : ∀ {ctx T} (b : Bool) (bound : List String) (x : String)
 reflect-gvar true  bound x D = D
 reflect-gvar false bound x ()
 
+-- The VALUE-realm twin (plan 0.73 F3 / D120's other half). Both branches are
+-- absurd, and that is the content: `g-neg-int`/`g-neg-float` pin the operand
+-- to a LITERAL, while `canonVar` returns `RVar x` or `RResolved …`. No IH is
+-- needed — neither rule has a premise.
+reflect-neg-var-ᵍ : ∀ {ctx T} (b : Bool) (bound : List String) (x : String)
+  → (elemStr x bound ∨ isBuiltinName x) ≡ b
+  → ctx ⊢ᵍ Raw.RUnaryOp Raw.OpNeg (canonVar b nothing x) ∶ T
+  → ctx ⊢ᵍ Raw.RUnaryOp Raw.OpNeg (Raw.RVar x) ∶ T
+reflect-neg-var-ᵍ true  bound x eb ()
+reflect-neg-var-ᵍ false bound x eb ()
+
 mutual
   canon-reflects-ᵍ : ∀ {ctx T} (bound : List String) (e : RawExpr)
     → ctx ⊢ᵍ canonExpr bound [] [] e ∶ T → ctx ⊢ᵍ e ∶ T
@@ -250,7 +261,34 @@ mutual
   canon-reflects-ᵍ bound (Raw.RStringLit s) ()
   canon-reflects-ᵍ bound (Raw.RAnnot e t) ()
   canon-reflects-ᵍ bound (Raw.RBinOp op a b) ()
-  canon-reflects-ᵍ bound (Raw.RUnaryOp op e) ()
+  -- PLAN 0.73 F3 / D120's other half: `- <literal>` IS a closed value, so this
+  -- is no longer absurd for two of the sixteen operand heads. `RVar` needs the
+  -- boolean-pattern helper for the reason `canon-reflects-ᵢ` does; the other
+  -- thirteen stay absurd on a constructor clash, via the clause below.
+  canon-reflects-ᵍ bound (Raw.RUnaryOp Raw.OpNeg (Raw.RInt n)) (g-neg-int .n) =
+    g-neg-int n
+  canon-reflects-ᵍ bound (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l p))
+                   (g-neg-float .i .f .l .p) = g-neg-float i f l p
+  canon-reflects-ᵍ bound (Raw.RUnaryOp Raw.OpNeg (Raw.RVar x)) D =
+    reflect-neg-var-ᵍ (elemStr x bound ∨ isBuiltinName x) bound x refl D
+  -- …and the remaining thirteen operand heads, ENUMERATED. A catch-all `(RUnaryOp
+  -- op e) ()` no longer typechecks: with `e` abstract, `canonExpr … e` does not
+  -- reduce, so `g-neg-int`'s premise `canonExpr … e ≡ RInt n` is stuck rather
+  -- than refuted, and Agda will not split a variable the clause already binds.
+  -- Naming each head makes `canonExpr` reduce and the clash visible.
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RApp f x)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RLam y b)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RLet y e₁ e₂)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RPair a b)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RDestruct s xl el xr er)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op Raw.RUnit) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RStringLit str)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RQualified n al)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RResolved cn)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RAnnot e₀ t)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RBinOp op₂ a b)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RUnaryOp op₂ e₀)) ()
+  canon-reflects-ᵍ bound (Raw.RUnaryOp op (Raw.RAna F c)) ()
   canon-reflects-ᵍ bound (Raw.RAna F c) ()
 
   reflect-gapp : ∀ {ctx T} (b : Bool) (bound : List String) (y : String) (arg : RawExpr)
@@ -298,6 +336,39 @@ reflect-var-ᶜ false bound x sub eb (t-subsume d)    = t-subsume (reflect-var-�
 reflect-var-ᶜ false bound x sub eb (t-value-lift ())
 
 ------------------------------------------------------------------------
+-- PLAN 0.73 F3: a unary minus on a BARE VARIABLE.
+--
+-- Why this one operand needs a helper when the other fifteen do not. This
+-- function inducts on `e` precisely because `canonExpr e` reduces only once
+-- `e`'s head is exposed — and now the DERIVATION has a rule, `t-neg-float`,
+-- whose index pins the operand to `RFloat i f l p`. So the operand's head has
+-- to be exposed too. For fourteen of the sixteen heads `canonExpr` is
+-- head-preserving, so exposing it is enough and the general clause covers
+-- them; `RFloat` is its own clause. `RVar` is the one that stays stuck, since
+-- `canonExpr … (RVar x)` is `canonVar b nothing x` and does not reduce until
+-- `b` does.
+--
+-- Same remedy as `reflect-var-ᵢ`, and the same one the module header states:
+-- make the boolean an EXPLICIT PATTERN argument. Both branches then have a
+-- concrete operand — `RVar x` or `RResolved …` — and `t-neg-float` is ruled
+-- out by a constructor clash rather than by an argument.
+--
+-- The recursion is passed IN rather than taken by mutual recursion: the call
+-- `canon-reflects-ᵢ bound (RVar x) sub` sits at the call site, where `RVar x`
+-- is visibly a subterm of `RUnaryOp OpNeg (RVar x)`. Inside a mutual block
+-- this helper would instead CONSTRUCT `RVar x` from a `String`, and the
+-- termination checker would have no descent to see.
+reflect-neg-var-ᵢ : ∀ {ctx A Ψ} (b : Bool) (bound : List String) (x : String)
+  → (elemStr x bound ∨ isBuiltinName x) ≡ b
+  → (ih : ∀ {A' Ψ'} → ctx ⊢ᵢ canonVar b nothing x ∶ A' ⨾ Ψ'
+                    → ctx ⊢ᵢ Raw.RVar x ∶ A' ⨾ Ψ')
+  → ctx ⊢ᵢ Raw.RUnaryOp Raw.OpNeg (canonVar b nothing x) ∶ A ⨾ Ψ
+  → ctx ⊢ᵢ Raw.RUnaryOp Raw.OpNeg (Raw.RVar x) ∶ A ⨾ Ψ
+reflect-neg-var-ᵢ true  bound x eb ih (t-neg d) = t-neg (ih d)
+reflect-neg-var-ᵢ false bound x eb ih (t-neg d) = t-neg (ih d)
+
+
+------------------------------------------------------------------------
 -- The mutual reverse reflection for ⊢ᵢ / ⊢ᵐ / ⊢ᶜ. Induct on `e`; reduce the
 -- head dispatch via the boolean-pattern `reflect-app-*` helpers; recurse on
 -- strict sub-derivations.
@@ -320,6 +391,23 @@ mutual
     t-annot (canon-reflects-ᶜ bound e₀ sub d)
   canon-reflects-ᵢ bound (Raw.RPair a b) sub (t-pair d₁ d₂) =
     t-pair (canon-reflects-ᵢ bound a sub d₁) (canon-reflects-ᵢ bound b sub d₂)
+  -- PLAN 0.73 F3. `t-neg-float` pins its operand to `RFloat i f l p`, so the
+  -- operand's head has to be exposed before the derivation can be split. Two
+  -- of the sixteen need saying: `RFloat` itself, and `RVar` (see
+  -- `reflect-neg-var-ᵢ`). For the other fourteen `canonExpr` preserves the
+  -- head, so the general clause below still covers them and `t-neg-float` is
+  -- excluded by a constructor clash.
+  --
+  -- The `t-neg` case at an `RFloat` operand is absurd rather than merely
+  -- unreachable: it would need `⊢ᵢ RFloat i f l p ∶ Int`, and `t-float` is the
+  -- only rule with that expression as its index.
+  canon-reflects-ᵢ bound (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l p)) sub
+                   (t-neg ())
+  canon-reflects-ᵢ bound (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l p)) sub
+                   (t-neg-float .i .f .l .p) = t-neg-float i f l p
+  canon-reflects-ᵢ bound (Raw.RUnaryOp Raw.OpNeg (Raw.RVar x)) sub D =
+    reflect-neg-var-ᵢ (elemStr x bound ∨ isBuiltinName x) bound x refl
+                      (canon-reflects-ᵢ bound (Raw.RVar x) sub) D
   canon-reflects-ᵢ bound (Raw.RUnaryOp Raw.OpNeg e₀) sub (t-neg d) =
     t-neg (canon-reflects-ᵢ bound e₀ sub d)
   canon-reflects-ᵢ bound (Raw.RBinOp op a b) sub (t-binop-arith p d₁ d₂) =

@@ -228,6 +228,9 @@ composeArgB-polys-canon b ctx A (m-pair _ _)  = refl
 composeArgB-polys-canon b ctx A (m-curry _)   = refl
 composeArgB-polys-canon b ctx A (m-cata _ _)  = refl
 composeArgB-polys-canon b ctx A (m-const (g-int n))       = refl
+-- PLAN 0.73 F3 / D120's other half: negated literals are closed values too.
+composeArgB-polys-canon b ctx A (m-const (g-neg-int n))   = refl
+composeArgB-polys-canon b ctx A (m-const (g-neg-float i f l p)) = refl
 composeArgB-polys-canon b ctx A (m-const (g-float i f l p)) = refl
 composeArgB-polys-canon b ctx A (m-const (g-terminal _ _)) = composeArgB-rvar-polys-canon b ctx "terminal" A
 composeArgB-polys-canon b ctx A (m-const (g-pair _ _))    = refl
@@ -253,6 +256,8 @@ domainOfHead-polys-canon b ctx (m-pair _ _)      = refl
 domainOfHead-polys-canon b ctx (m-curry _)       = refl
 domainOfHead-polys-canon b ctx (m-cata _ _)      = refl
 domainOfHead-polys-canon b ctx (m-const (g-int n))        = refl
+domainOfHead-polys-canon b ctx (m-const (g-neg-int n))    = refl
+domainOfHead-polys-canon b ctx (m-const (g-neg-float i f l p)) = refl
 domainOfHead-polys-canon b ctx (m-const (g-float i f l p)) = refl
 domainOfHead-polys-canon b ctx (m-const (g-terminal _ _)) = refl
 domainOfHead-polys-canon b ctx (m-const (g-pair _ _))     = refl
@@ -276,6 +281,8 @@ polys-transport-ᵍ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) {e A}
   → mkCtx n Γ Δ f i p s ⊢ᵍ e ∶ A
   → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵍ e ∶ A
 polys-transport-ᵍ b p (g-int n)          = g-int n
+polys-transport-ᵍ b p (g-neg-int n)      = g-neg-int n
+polys-transport-ᵍ b p (g-neg-float i f l q) = g-neg-float i f l q
 polys-transport-ᵍ b p (g-float i f l pos) = g-float i f l pos
 polys-transport-ᵍ b p (g-terminal lL lI) = g-terminal lL lI
 polys-transport-ᵍ b p (g-pair d₁ d₂)     = g-pair (polys-transport-ᵍ b p d₁) (polys-transport-ᵍ b p d₂)
@@ -315,6 +322,8 @@ mutual
   polys-transport-ᵢ b p pib ac (t-annot d) = t-annot (polys-transport-ᶜ b p pib ac d)
   polys-transport-ᵢ b p pib ac (t-pair d₁ d₂) = t-pair (polys-transport-ᵢ b p pib ac d₁) (polys-transport-ᵢ b p pib ac d₂)
   polys-transport-ᵢ b p pib ac (t-neg d) = t-neg (polys-transport-ᵢ b p pib ac d)
+  -- PLAN 0.73 F3: a leaf, like `t-float` — no premise to transport.
+  polys-transport-ᵢ b p pib ac (t-neg-float i f l q) = t-neg-float i f l q
   polys-transport-ᵢ b p pib ac (t-let d₁ d₂) = t-let (polys-transport-ᵢ b p pib ac d₁) (polys-transport-ᵢ b p pib ac d₂)
   polys-transport-ᵢ b p pib ac (t-case ds dL dR) =
     t-case (polys-transport-ᵢ b p pib ac ds) (polys-transport-ᵢ b p pib ac dL) (polys-transport-ᵢ b p pib ac dR)

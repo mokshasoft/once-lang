@@ -232,7 +232,17 @@ checkElab-fallback-RDestruct {ctx} scrut xL eL xR eR T eqInf
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
 
--- RUnaryOp: no specialised check clause.
+-- RUnaryOp: a specialised check clause EXISTS NOW (plan 0.73 F3) — a negated
+-- literal at a pure-arrow target is its constant morphism — so this proof
+-- follows `checkElabV-neg-dispatch`'s three-way split instead of reducing
+-- straight to the generic fallback.
+--
+-- The two literal branches are not the value-lift ones. The PREMISE says the
+-- expression infers at `T`, and a negated literal infers at `Int`/`Float` —
+-- never at an arrow — so `T` is pinned to a non-arrow and
+-- `isRIntVliftTarget?`/`isRFloatVliftTarget?` answer `nothing`. Both fall to
+-- the same `embedOrSubsume` the old single clause used. What the split buys is
+-- that this is now SAID rather than assumed.
 checkElab-fallback-RUnaryOp :
   ∀ {ctx : NamedCtx} (op : Raw.UnaryOp) (e : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -241,15 +251,25 @@ checkElab-fallback-RUnaryOp :
   → inferElab ctx (Raw.RUnaryOp op e) ≡ success T Ψ eE d f
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RUnaryOp op e) T ≡ success Ψ eE' d' f')))
-checkElab-fallback-RUnaryOp {ctx} op e T eqInf
-  with inferElabV ctx (Raw.RUnaryOp op e)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-fallback-RUnaryOp {ctx} op e T eqInf
-  | success T' Ψ' eE' d' fr' , w with eqInf
-... | refl with T ≟T T
+checkElab-fallback-RUnaryOp {ctx} Raw.OpNeg e T eqInf
+  with negOperandView e | eqInf
+... | nov-int n | refl with Int ≟T Int
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RUnaryOp {ctx} Raw.OpNeg e T eqInf
+  | nov-float i f l p | refl with Float ≟T Float
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RUnaryOp {ctx} Raw.OpNeg e T eqInf
+  -- NAME THE REDUCED FORM. Under the abstracted view the goal and `eqI` both
+  -- mention `inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)`, not
+  -- `inferElabV ctx (RUnaryOp OpNeg e)` — that unfolds back into the view and
+  -- would be stuck. Same convention as `RealizeAgrees`' neg branch.
+  | nov-other .e | eqI with inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e) | eqI
+...   | failure _ , _ | ()
+...   | success T' Ψ' eE' d' fr' , w | refl with T ≟T T
+...     | yes refl = _ , _ , _ , refl
+...     | no ¬eq   = ⊥-elim (¬eq refl)
 
 -- RVar "unit": no specialised check clause for "unit".
 -- The elaborator falls through to the generic fallback.

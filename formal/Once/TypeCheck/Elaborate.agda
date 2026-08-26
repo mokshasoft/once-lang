@@ -81,6 +81,7 @@ open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
 open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
 open import Once.Float.Dyadic using (Dyadic)
 open import Once.Float.Decimal using (Decimal; decimalOf)
+import Once.Float.Decimal as Decimal
 open import Once.TypeCheck.Judgment
 
 ------------------------------------------------------------------------
@@ -414,14 +415,30 @@ open import Data.Unit using (⊤; tt) public
 -- Soundness witness type. `success` carries an infer-mode judgment;
 -- `failure` carries no obligation. The verified elaborator's `Σ`
 -- result couples each `inferElab` clause with this witness directly.
--- | Is this operand a NUMERAL? (plan 0.74 J6 step 3.)
+-- | WHICH literal, if any, is this unary minus applied to? (`RInt`: plan 0.74
+-- J6 step 3, D120. `RFloat`: plan 0.73 F3.)
 --
--- Returns the proof as well as the digit, so the negation dispatch can rewrite
--- `e` to `Raw.RInt n` and build `t-neg (t-int n)`. `RawExpr` is a plain
--- datatype, so a catch-all here is safe — the caller never matches on `e`.
-isRIntView : (e : RawExpr) → Maybe (Σ ℤ (λ n → e ≡ Raw.RInt n))
-isRIntView (Raw.RInt n) = just (n , refl)
-isRIntView _            = nothing
+-- Indexed by `e`, so matching `nov-int n` rewrites `e` to `Raw.RInt n` and the
+-- dispatch can build `t-neg (t-int n)` — the same refinement the earlier
+-- `Maybe (Σ ℤ (λ n → e ≡ Raw.RInt n))` carried by hand.
+--
+-- ONE view, not two `Maybe`s. Two would make every downstream proof split on a
+-- four-cell matrix whose fourth cell — `e` both an `RInt` and an `RFloat` —
+-- cannot occur, with nothing in the types saying so. Three constructors, three
+-- cases, no absurd cell.
+--
+-- `RawExpr` is a plain datatype, so the catch-all is safe: it reduces for every
+-- concrete head, and the caller never matches on `e`. (Non-exact under
+-- `--exact-split`, as its `isRIntView` predecessor was; see the census target.)
+data NegOperandView : RawExpr → Set where
+  nov-int   : (n : ℤ)       → NegOperandView (Raw.RInt n)
+  nov-float : (i f l p : ℕ) → NegOperandView (Raw.RFloat i f l p)
+  nov-other : (e : RawExpr) → NegOperandView e
+
+negOperandView : (e : RawExpr) → NegOperandView e
+negOperandView (Raw.RInt n)         = nov-int n
+negOperandView (Raw.RFloat i f l p) = nov-float i f l p
+negOperandView e                    = nov-other e
 
 soundOf : (ctx : NamedCtx) (e : RawExpr)
         → InferElabResult (NamedCtx.debruijn ctx) → Set
@@ -699,6 +716,14 @@ checkG ctx X (Raw.RInt n) Once.Type.Int = just (intLit n , g-int n)
 -- infer-mode does. With-free via an aux so completeness can rewrite by
 -- `accept?-complete` and see this reduce.
 checkG ctx X (Raw.RFloat i f l p) Once.Type.Float = checkG-RFloat-aux ctx X i f l p
+-- PLAN 0.73 F3 / D120's other half: a NEGATED literal is a closed value too.
+-- The payload is the folded one, so `intLit (- n)` and `floatLit (negate …)`
+-- are the same IR objects the `⊢ᵢ` fold produces — one literal, no runtime
+-- negation, in either realm.
+checkG ctx X (Raw.RUnaryOp Raw.OpNeg (Raw.RInt n)) Once.Type.Int =
+  just (intLit (- n) , g-neg-int n)
+checkG ctx X (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l p)) Once.Type.Float =
+  just (floatLit (Decimal.negate (decimalOf i f l)) , g-neg-float i f l p)
 checkG ctx X (Raw.RVar "terminal") Once.Type.Unit
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
 ... | llv-not-found eqL | liv-not-found eqI = just (IR.terminal , g-terminal eqL eqI)
@@ -1111,8 +1136,35 @@ mutual
   inferElabV-neg-dispatch : (ctx : NamedCtx) (e : RawExpr)
     → VerifiedInferResult ctx (Raw.RUnaryOp Raw.OpNeg e)
   inferElabV-neg-aux : (ctx : NamedCtx) (e : RawExpr)
-    → Maybe (Σ ℤ (λ n → e ≡ Raw.RInt n))
+    → NegOperandView e
     → VerifiedInferResult ctx (Raw.RUnaryOp Raw.OpNeg e)
+  -- CHECK-mode twin of the same dispatch. A negated literal at a pure-arrow
+  -- target is its constant morphism, exactly as a bare literal is; anything
+  -- else falls to the generic infer-and-match the `RUnaryOp` clause used
+  -- before. ONE scrutinee per aux, the `checkElabV-RInt-aux` convention.
+  --
+  -- EACH BRANCH IS SELF-CONTAINED — no shared `inferElabV ctx (RUnaryOp OpNeg
+  -- e)` threaded in, and that is forced twice over. Once by TERMINATION: the
+  -- dispatch receives the OPERAND, so rebuilding `RUnaryOp OpNeg e` inside it
+  -- is growth to foetus. Once by REDUCTION: a downstream proof that has
+  -- with-abstracted `negOperandView e` needs the branch body to mention only
+  -- terms that still reduce under that abstraction, and
+  -- `inferElabV ctx (RUnaryOp OpNeg e)` does not — it unfolds back into the
+  -- view. So the literal branches state their folded result outright (they
+  -- know it: the fold has no premise) and only the non-literal branch calls
+  -- into inference, at the OPERAND, which is what `inferElabV-RUnaryOp-aux`
+  -- takes anyway.
+  checkElabV-neg-dispatch : (ctx : NamedCtx) (e : RawExpr) (T : Type)
+    → NegOperandView e
+    → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg e) T
+  checkElabV-neg-int-aux : (ctx : NamedCtx) (n : ℤ) (T : Type)
+    → Maybe (∃-syntax (λ X → ∃-syntax (λ π →
+        T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int))))
+    → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RInt n)) T
+  checkElabV-neg-float-aux : (ctx : NamedCtx) (i f l p : ℕ) (T : Type)
+    → Maybe (∃-syntax (λ X → ∃-syntax (λ π →
+        T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.Float))))
+    → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l p)) T
   inferElabV-RBinOp-aux : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
     → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx e₂
     → VerifiedInferResult ctx (Raw.RBinOp op e₁ e₂)
@@ -1898,6 +1950,12 @@ mutual
   checkElabV-wf ctx ac (Raw.RInt n) T = checkElabV-RInt-aux ctx n T (isRIntVliftTarget? T)
   checkElabV-wf ctx ac (Raw.RFloat i f l p) T =
     checkElabV-RFloat-aux ctx i f l p T (isRFloatVliftTarget? T)
+  -- PLAN 0.73 F3: `- <literal>` gets the same value-lift the bare literal
+  -- does. Before this it fell through to the generic clause below, which
+  -- infers `Int`/`Float` and then mismatches against the ARROW the position
+  -- wants — which is why `compose emit@E (-5)` did not compile.
+  checkElabV-wf ctx ac (Raw.RUnaryOp Raw.OpNeg e) T =
+    checkElabV-neg-dispatch ctx e T (negOperandView e)
 
   -- Generic infer-and-match fallback — covers RInt, RStringLit, RUnit,
   -- RPair, RBinOp, RUnaryOp, RLet, RDestruct, RAnnot, RQualified, RResolved.
@@ -2053,13 +2111,64 @@ mutual
   -- That is the difference between this and the first attempt: matching `e`
   -- here would have forced every downstream proof to enumerate all sixteen
   -- `RawExpr` heads just to make the dispatch reduce. Downstream now does
-  -- `with isRIntView e` and handles two cases. Same convention as
+  -- `with negOperandView e` and handles three cases. Same convention as
   -- `cfm-build-gated` taking its `Dec`.
-  inferElabV-neg-dispatch ctx e = inferElabV-neg-aux ctx e (isRIntView e)
+  inferElabV-neg-dispatch ctx e = inferElabV-neg-aux ctx e (negOperandView e)
 
-  inferElabV-neg-aux ctx .(Raw.RInt n) (just (n , refl)) =
+  inferElabV-neg-aux ctx .(Raw.RInt n) (nov-int n) =
     success Int _ (Surface.int (- n)) 1 (NamedCtx.freshCounter ctx) , t-neg (t-int n)
-  inferElabV-neg-aux ctx e nothing = inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)
+  -- PLAN 0.73 F3: `-3.14` is the literal whose payload is `negate (decimalOf
+  -- i f l)`. Not a runtime negation of `3.14` — there is no float `neg` to
+  -- emit (`MArithIR` is Int-only, F4), which is why the fold is the only
+  -- lowering rather than the better of two. Both this and `Once.Denotation.
+  -- Meaning`'s `⟦ t-neg-float ⟧ᵢ` name the SAME `negate ∘ decimalOf`, so
+  -- agreement is `refl`-shaped and cannot falsify `round` — the pins in
+  -- `Once.Float.Decimal` against externally computed patterns are the check
+  -- that means something (D117).
+  --
+  -- Depth `1` and the untouched fresh counter mirror the `RInt` fold: one
+  -- constructor deeper than the bare literal, no name allocated.
+  inferElabV-neg-aux ctx .(Raw.RFloat i f l p) (nov-float i f l p) =
+    success Float _ (Surface.float (Decimal.negate (decimalOf i f l))) 1
+            (NamedCtx.freshCounter ctx)
+    , t-neg-float i f l p
+  inferElabV-neg-aux ctx e (nov-other .e) = inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)
+
+  checkElabV-neg-dispatch ctx .(Raw.RInt n) T (nov-int n) =
+    checkElabV-neg-int-aux ctx n T (isRIntVliftTarget? T)
+  checkElabV-neg-dispatch ctx .(Raw.RFloat i f l p) T (nov-float i f l p) =
+    checkElabV-neg-float-aux ctx i f l p T (isRFloatVliftTarget? T)
+  -- NOT a literal: the old generic clause verbatim, `embedOrSubsume` included,
+  -- so the pure→eff subsumption (`t-subsume`, plan 0.52 M1) is not lost.
+  checkElabV-neg-dispatch ctx e T (nov-other .e) =
+    embedOrSubsume ctx (Raw.RUnaryOp Raw.OpNeg e) T
+                   (inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e))
+
+  checkElabV-neg-int-aux ctx n T (just (X , π , refl)) =
+    success Surface.zeroUsage (Surface.lift-morphism (intLit (- n))) 0 (NamedCtx.freshCounter ctx)
+    , t-value-lift (g-neg-int n)
+  -- NOT an arrow target, so `embedOrSubsume` would degenerate to `t-embed`
+  -- anyway (`embedOrSubsume-no` only does work when the INFERRED type is a
+  -- pure arrow, and a negated literal infers at `Int`). Written out so the
+  -- FOLDED literal is what gets embedded — routing through
+  -- `inferElabV ctx (RUnaryOp OpNeg (RInt n))` would be the same term but
+  -- would stop reducing wherever the view has been abstracted.
+  checkElabV-neg-int-aux ctx n T nothing with T ≟T Int
+  ... | yes refl = success Surface.zeroUsage (Surface.int (- n)) 1 (NamedCtx.freshCounter ctx)
+                 , t-embed (t-neg (t-int n))
+  ... | no _     = failure (TypeMismatch T Int) , tt
+
+  checkElabV-neg-float-aux ctx i f l p T (just (X , π , refl)) =
+    success Surface.zeroUsage
+            (Surface.lift-morphism (floatLit (Decimal.negate (decimalOf i f l))))
+            0 (NamedCtx.freshCounter ctx)
+    , t-value-lift (g-neg-float i f l p)
+  checkElabV-neg-float-aux ctx i f l p T nothing with T ≟T Once.Type.Float
+  ... | yes refl = success Surface.zeroUsage
+                           (Surface.float (Decimal.negate (decimalOf i f l))) 1
+                           (NamedCtx.freshCounter ctx)
+                 , t-embed (t-neg-float i f l p)
+  ... | no _     = failure (TypeMismatch T Once.Type.Float) , tt
 
   inferElabV-RUnaryOp-aux ctx e (failure err , _)                = failure err , tt
   inferElabV-RUnaryOp-aux ctx e (success Unit   _ _ _ _ , _)     = failure (TypeMismatch Int Unit) , tt

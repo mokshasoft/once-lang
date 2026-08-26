@@ -66,6 +66,9 @@ polys-reflect-ᵍ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) {e A}
   → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵍ e ∶ A
   → mkCtx n Γ Δ f i p s ⊢ᵍ e ∶ A
 polys-reflect-ᵍ b p (g-int n)          = g-int n
+-- PLAN 0.73 F3 / D120's other half.
+polys-reflect-ᵍ b p (g-neg-int n)      = g-neg-int n
+polys-reflect-ᵍ b p (g-neg-float i f l q) = g-neg-float i f l q
 polys-reflect-ᵍ b p (g-float i f l pos) = g-float i f l pos
 polys-reflect-ᵍ b p (g-terminal lL lI) = g-terminal lL lI
 polys-reflect-ᵍ b p (g-pair d₁ d₂)     = g-pair (polys-reflect-ᵍ b p d₁) (polys-reflect-ᵍ b p d₂)
@@ -116,6 +119,8 @@ mutual
   polys-reflect-ᵢ b p pib ac (t-annot d) = t-annot (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᵢ b p pib ac (t-pair d₁ d₂) = t-pair (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
   polys-reflect-ᵢ b p pib ac (t-neg d) = t-neg (polys-reflect-ᵢ b p pib ac d)
+  -- PLAN 0.73 F3: a leaf, like `t-float` — no premise to reflect.
+  polys-reflect-ᵢ b p pib ac (t-neg-float i f l q) = t-neg-float i f l q
   polys-reflect-ᵢ b p pib ac (t-let d₁ d₂) = t-let (polys-reflect-ᵢ b p pib ac d₁) (polys-reflect-ᵢ b p pib ac d₂)
   polys-reflect-ᵢ b p pib ac (t-case ds dL dR) =
     t-case (polys-reflect-ᵢ b p pib ac ds) (polys-reflect-ᵢ b p pib ac dL) (polys-reflect-ᵢ b p pib ac dR)
