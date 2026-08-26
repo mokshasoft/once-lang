@@ -19,10 +19,13 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Sorts where
+open import normalizer.Syntax.Types using ( _≡_; refl; cong )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; RTm; Σ'; Nat; El; U
-        ; var; pair; fst; snd; nzero; nsuc; ⌜Nat⌝ )
+        ; var; pair; fst; snd; nzero; nsuc; ⌜Nat⌝
+        ; Ren; Sub; renTm; subTm )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; ⊢conv; ⊢nzero; ⊢nsuc; ⊢pair; ⊢fst; ⊢snd; ⊢var; here
@@ -107,3 +110,50 @@ fromI d = ⊢conv d (credᵀ El-⌜Nat⌝)
 
 ⊢sndIx : {Γ : Ctx} {i : RTm ⌊ Γ ⌋} → Γ ⊢ i ∷ Σ' Nat Nat → Γ ⊢ snd i ∷ Nat
 ⊢sndIx = ⊢snd
+
+------------------------------------------------------------------------
+-- 4. ★★★ THE DEPTH IS A NUMERAL, AND THAT IS WHAT MAKES THE MAP
+--    POSSIBLE.
+--
+-- ⚠ THE PROBLEM IT SOLVES.  `⌈_⌉ : RTm Γ → RTm ε` has `Γ` as a VARIABLE
+--   in every clause, so the object-level depth is an opaque term.  A
+--   payload's later fields see the ambient index WEAKENED and then
+--   SUBSTITUTED, and for an opaque `d` the round trip `subTm (single a)
+--   (w d) ≡ d` is `wk-single` — propositional, and needing a chain whose
+--   length is the field's POSITION (`Lib/Amrec.stp-cancel-s`'s shape).
+--
+-- ★ THE FIX: the depth is never opaque.  It is always `num n` for an
+--   Agda `n`, and `num` is CONTEXT-POLYMORPHIC — so `renTm ρ (num n)`
+--   and `num n` inhabit the same type and the two lemmas below can be
+--   STATED at all.  That is exactly why `εwkTm` exists in `Spec/Syntax`
+--   for the index TYPE, and this is its term-level twin.
+--
+-- ⚠ AND `n` MUST BE EXPLICIT WHEREVER IT APPEARS.  `num` is a defined
+--   function, hence not injective: Agda cannot solve `num _n = num n`
+--   (`pin-implicits-on-defined-set-types`).  Every generated smart
+--   constructor takes it explicitly for this reason.
+------------------------------------------------------------------------
+
+num : {Γ : Cx} → ℕ → RTm Γ
+num zero    = nzero
+num (suc n) = nsuc (num n)
+
+⊢num : {Δ : Ctx} (n : ℕ) → Δ ⊢ num n ∷ Nat
+⊢num zero    = ⊢nzero
+⊢num (suc n) = ⊢nsuc (⊢num n)
+
+-- ★ a numeral is FIXED by every renaming and every substitution.  Two
+--   inductions, two lines each, and they absorb an ARBITRARY action —
+--   which is what keeps the chains below from growing with position.
+num-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (n : ℕ) → renTm ρ (num n) ≡ num n
+num-ren ρ zero    = refl
+num-ren ρ (suc n) = cong nsuc (num-ren ρ n)
+
+num-sub : {Γ Δ : Cx} (σ : Sub Γ Δ) (n : ℕ) → subTm σ (num n) ≡ num n
+num-sub σ zero    = refl
+num-sub σ (suc n) = cong nsuc (num-sub σ n)
+
+-- the object-level depth of an Agda context
+len : Cx → ℕ
+len ε       = zero
+len (Γ ∙)   = suc (len Γ)
