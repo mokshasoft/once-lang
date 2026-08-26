@@ -8,9 +8,14 @@
 -- depth-Fording) are documented in the generator's header — read that,
 -- not this file, to understand the encoding.
 ------------------------------------------------------------------------
--- ⚠⚠ THIS MODULE NEEDS THE **COMPACTING COLLECTOR** (`Sz` only; `SzM`
---   is 15s and fine).  Measured cold: 3m40s with it.
---   `tools/sweep.sh` greps this header for the phrase above.
+-- ⚠ NO SPECIAL COLLECTOR — and the phrase `sweep.sh` greps for is
+--   deliberately not written here.  Measured cold, this shape: 140s at
+--   the default `-A64m`, 167s with `-c`, which is 19% SLOWER and buys
+--   nothing.  An earlier shape did need it; PINNING the
+--   tuple's types (the named `KnotTᵢ` tails below) removed the memory
+--   pressure, and the marker outlived the problem.  ⇒ a "needs -c" note
+--   is a claim about a SHAPE, not about a module: re-measure it when the
+--   shape changes.
 --
 -- ★★★ `sz` OVER THE KNOT, BY `ielim`.
 --
@@ -52,7 +57,7 @@ open import DirectedHoTT.Examples.Knot.Sorts
         ; toI; fromI; ⊢ixP )
 open import normalizer.Syntax.Types using ( _≡_; sym )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( isingle-Sub⊢; ⊢-cast; imethsTyFrom-ren )
+  using ( isingle-Sub⊢; ⊢-cast )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Examples.Knot.Build using ( tyCast )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
