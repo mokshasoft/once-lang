@@ -624,6 +624,13 @@ MAP_HDR = """""" + BANNER + """-- \u2605\u2605\u2605 THE ADEQUACY MAP.
 --   `DCon` and `IDesc` carry no context, so there is no Agda type to read a
 --   depth off; they are inhabited at EVERY depth and the caller says which.
 --
+-- \u2605\u2605 MEASURED, NOT ASSERTED.  Set `natrec`'s step field to `sucD 1`
+--   instead of `sucD 2` \u2014 one wrong index in the table \u2014 and:
+--     `Knot/Wf`     still passes (rc 0): a wrong index is WELL-FORMED;
+--     `Knot/Ctors`  still passes (rc 0): its constructors still derive;
+--     `Knot/Map`    FAILS: `nsuc (num (len \u0393)) != num (num (len \u0393))`.
+--   So the map catches exactly what nothing before it could.
+--
 -- \u26a0 THE `Var` CLAUSES MATCH ON THE CONTEXT.  `vz : Var (\u0393 \u2219)` exists only
 --   at a successor depth, so its clause splits the implicit `\u0393` \u2014 which is
 --   exactly the depth-Fording of `cVar-vz`, on the Agda side.
