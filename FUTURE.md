@@ -342,3 +342,96 @@ catch-all `false` from three classifiers at once (`stkC?`, `stkA?`,
 **progress was FALSE**, and it took a new reduction rule (`tr-J-IMu`)
 threaded through eleven modules to fix. A one-line row at the time the
 former landed would have prevented all of it.
+
+## Once: "ORDO TYPES" — carry a COST BOUND in the type, and compose it
+
+**The idea.** A function's type carries a complexity bound alongside its
+value type, and the bounds *compose* when you apply or pass functions —
+so `map`'s cost is a function of its argument's cost. Ask the compiler,
+or the language server, and you are told the complexity of what you just
+wrote instead of having to run it and time it.
+
+### What provoked it, measured 2026-08-26
+
+`DirectedHoTT/Examples/Knot/Sz.agda` assembles a 53-method tuple. Three
+versions were written, all correct, differing only in how one rung is
+discharged. Cold, on a 7.7 GB box:
+
+| rung discharged by | cold |
+|---|---|
+| plain (Agda normalises `renTy vs` through the tail) | 140s ✓ |
+| a cast along `imethsTyFrom-ren` | 350s ✓ |
+| `ren-ty … there` | OOM |
+
+Nothing in any type distinguished them. It took three ~4-minute runs to
+learn that all three are **O(n²)** — `ty-Σ`'s second argument sits at
+`Γ ▹ A`, so the whole remaining tail is traversed at every one of 53
+rungs — and that the fix is not a better rung but to stop *enumerating*
+rungs (a generic induction at an ABSTRACT tail is O(n) once). The same
+lesson had already been paid for once that week: `Lib/IPay.ipayTy-wf`
+took `cTm-ordtr` from OOM to 3.7s for exactly this reason.
+
+⚠ **And note what an Ordo type would NOT have caught.** Big-O quotients
+out constants, and 140 vs 350 vs OOM is a *constant-factor* difference
+among three O(n²) programs. What it *would* have caught is the real
+defect — "this rung is O(tail), so the chain is O(n²)" — at the
+definition site, which is the diagnosis those three runs bought. ⇒ Ordo
+types catch SHAPE errors early and cheaply; a profiler is still what
+tells you about constants. Complementary, not competing.
+
+### Prior art, so this is not invented from scratch
+
+- **Danielsson, POPL '08**, *Lightweight Semiformal Time Complexity
+  Analysis for Purely Functional Data Structures* — a tick/thunk monad
+  with the cost in the index. ⚠ Note this is **in Agda**, so "not
+  expressible in a dependent type theory" is not the obstacle.
+- **RAML** (Hoffmann et al.) — *infers* polynomial bounds automatically
+  for a first-order fragment by reduction to linear programming. The
+  evidence that inference is feasible if the fragment is restricted.
+- **Granule / Idris 2** — graded types over an arbitrary ordered
+  semiring; one framework serves usage, security *and* cost.
+
+### The structure it wants
+
+Costs form an **ordered semiring**: sequential composition ADDs, a call
+under a loop MULTIPLIES, and `≤` gives weakening (an O(n) function is
+usable where O(n²) was demanded). Then
+
+    f : A →[p] B     g : B →[q] C     ⇒   g ∘ f : A →[p + q] C
+
+★ **Higher-order is where a TYPE earns its place over an analysis.**
+
+    map : (A →[c] B) → List A →[n · c] List B
+
+is *cost-polymorphic* — the bound is a variable abstracted over the
+argument's cost. No profiler can give you that; it is a typing
+discipline or nothing.
+
+⚠ **The hard part is value-dependence.** `sort` is O(n log n) in the
+*length*, so the grade must be indexed by a MEASURE of the input, which
+drags the cost algebra into the dependent setting.
+
+### Why Once is unusually well placed
+
+1. `Hom Nat` **computes** here, so ordering facts are conversions rather
+   than proof obligations (`Eq 4: order premise + bridge`).
+2. The WF axis already puts a measure `μ : A → Nat` **in the type** of
+   `⊢amrec`. A function defined by measure recursion already carries its
+   own measure — the gap from "measure that justifies termination" to
+   "measure that bounds cost" is small, and the expensive half is paid.
+3. Once's surface is **already graded** (QTT `{0,1,ω}`). Generalising
+   that semiring from usage counts to a cost algebra is the natural
+   move, and Granule is the existence proof that one grade framework
+   covers both.
+
+### Risks, stated up front
+
+- ⚠ **Infection.** This is exactly why `no-sized-types` is a hard ban
+  here: an index that every signature must carry infects the whole
+  development. Granule's answer is that grades are INFERRED by default
+  and surface only where constrained. Decide this before module 200,
+  not after.
+- **Incompleteness is not optional** — bounds cannot be inferred in
+  general. The practical shape is therefore *gradual*: infer and show as
+  an inlay hint over the decidable fragment, CHECK where the programmer
+  writes the bound down. Same bargain as gradual typing.
