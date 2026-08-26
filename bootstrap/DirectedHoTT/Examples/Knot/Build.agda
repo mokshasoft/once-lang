@@ -58,17 +58,17 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶_; βfst; βsnd; ξ-pairʳ; ξ-nsuc
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ
         ; El-⌜Id⌝; ξ-El; ξ-IMu; ξ-⌜Id⌝ˡ )
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTm; ⊢sTm; toI; fromI; ⊢ixP; num; ⊢num; num-ren; num-sub )
+  using ( IPair; sTm; sVar; ⊢sTm; ⊢sVar; toI; fromI; ⊢ixP
+        ; num; ⊢num; num-ren; num-sub )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Tags
-  using ( tagTm-lam; memTm-lam; tagTm-app; memTm-app; tagTm-ordtr; memTm-ordtr )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Terms
-  using ( ixConv; fordFst; tyFordFst )
+  using ( ixConv; fordFst; fordSnd; tyFordFst )
 
 kLam : {Γ : Cx} → RTm Γ → RTm Γ
 kLam b = icon tagTm-lam (pair b (pair (idrefl ⌜Nat⌝ sTm) unit))
@@ -150,3 +150,133 @@ kApp f a = icon tagTm-app (pair f (pair a (pair (idrefl ⌜Nat⌝ sTm) unit)))
     s0r1 = trans (cong (subTm (single f)) r1) (num-sub (single f) n)
     s1r2 : subTm (extS (single f)) (renTm vs (renTm vs (num n))) ≡ num n
     s1r2 = trans (cong (subTm (extS (single f))) r2) (num-sub (extS (single f)) n)
+
+------------------------------------------------------------------------
+-- ★★ THE TWO `Var` ROWS — hand-written, because they Ford the DEPTH.
+--
+-- Their ambient index is `num (suc n)`, not `num n`, and their second
+-- constraint names a BOUND FIELD rather than a constant.  ⚠ But the
+-- bound field is itself the numeral `num n`, so every mangled form it
+-- takes comes back by the SAME two lemmas — which is why these rows are
+-- longer than the generated ones without being harder.
+------------------------------------------------------------------------
+
+Var-vzK : {Γ : Cx} → RTm Γ → RTm Γ
+Var-vzK m = icon tagVar-vz
+  (pair m (pair (idrefl ⌜Nat⌝ sVar) (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))
+
+⊢Var-vzK : {Δ : Ctx} (n : ℕ) →
+           Δ ⊢ Var-vzK (num n) ∷ K (pair sVar (num (suc n)))
+⊢Var-vzK n =
+  ⊢icon KnotWf memVar-vz (⊢ixP ⊢sVar (⊢num (suc n)))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                          (toI (⊢fst (⊢ixP ⊢sVar (⊢numAt (suc n) r1))))
+                          (toI ⊢sVar)))
+                 (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                                (toI (⊢snd (⊢ixP ⊢sVar (⊢numAt (suc n) r2))))
+                                (toI (⊢nsuc (fromI (⊢var (there here)))))))
+                       ty-Unit))
+           (toI (⊢num n))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                            (toI (⊢snd (⊢ixP ⊢sVar (⊢numAt (suc n) s1r2))))
+                            (toI (⊢nsuc (⊢numAt n q1)))))
+                   ty-Unit)
+             (fordFst ⊢sVar)
+        (⊢pair ty-Unit
+               -- ★ the DEPTH ford is the one component needing a cast:
+               --   `fordSnd` forces the pair's second component and the
+               --   right-hand side to be the SAME term, and here one is
+               --   the mangled ambient and the other is `suc` of the
+               --   bound field.  They agree — but only propositionally.
+               (⊢-cast (cong₂ (λ z w → El (⌜Id⌝ ⌜Nat⌝ (snd (pair sVar z))
+                                                      (nsuc w)))
+                              (sym s2) (sym q2))
+                       (fordSnd (⊢nsuc (⊢num n))))
+               ⊢unit)))
+  where
+    r1 : renTm vs (num (suc n)) ≡ num (suc n)
+    r1 = num-ren vs (suc n)
+    r2 : renTm vs (renTm vs (num (suc n))) ≡ num (suc n)
+    r2 = trans (cong (renTm vs) r1) (num-ren vs (suc n))
+    s1r2 : subTm (extS (single (num n))) (renTm vs (renTm vs (num (suc n))))
+         ≡ num (suc n)
+    s1r2 = trans (cong (subTm (extS (single (num n)))) r2)
+                 (num-sub (extS (single (num n))) (suc n))
+    -- ⚠ ONE action, not two: the field reference is a VARIABLE, and the
+    --   payload's own substitution turns it into  — it does
+    --   not then get hit by the component substitution as well.
+    q1 : renTm vs (num n) ≡ num n
+    q1 = num-ren vs n
+    q2 : subTm (single (idrefl ⌜Nat⌝ sVar)) (renTm vs (num n)) ≡ num n
+    q2 = trans (cong (subTm (single (idrefl ⌜Nat⌝ sVar))) (num-ren vs n))
+               (num-sub (single (idrefl ⌜Nat⌝ sVar)) n)
+    s2 : subTm (single (idrefl ⌜Nat⌝ sVar))
+           (subTm (extS (single (num n))) (renTm vs (renTm vs (num (suc n)))))
+       ≡ num (suc n)
+    s2 = trans (cong (subTm (single (idrefl ⌜Nat⌝ sVar))) s1r2)
+               (num-sub (single (idrefl ⌜Nat⌝ sVar)) (suc n))
+
+Var-vsK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Var-vsK m x = icon tagVar-vs
+  (pair m (pair x (pair (idrefl ⌜Nat⌝ sVar) (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))))
+
+⊢Var-vsK : {Δ : Ctx} (n : ℕ) {x : RTm ⌊ Δ ⌋} →
+           Δ ⊢ x ∷ K (pair sVar (num n)) →
+           Δ ⊢ Var-vsK (num n) x ∷ K (pair sVar (num (suc n)))
+⊢Var-vsK n {x = x} dx =
+  ⊢icon KnotWf memVar-vs (⊢ixP ⊢sVar (⊢num (suc n)))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var here))))
+             (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                            (toI (⊢fst (⊢ixP ⊢sVar (⊢numAt (suc n) r2))))
+                            (toI ⊢sVar)))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢snd (⊢ixP ⊢sVar (⊢numAt (suc n) r3))))
+                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                     ty-Unit)))
+           (toI (⊢num n))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                            (toI (⊢fst (⊢ixP ⊢sVar (⊢numAt (suc n) a1r2))))
+                            (toI ⊢sVar)))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢snd (⊢ixP ⊢sVar (⊢numAt (suc n) a2r3))))
+                              (toI (⊢nsuc (⊢numAt n w2)))))
+                     ty-Unit))
+             dx
+        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢snd (⊢ixP ⊢sVar (⊢numAt (suc n) b2r3))))
+                              (toI (⊢nsuc (⊢numAt n w2x)))))
+                     ty-Unit)
+               (fordFst ⊢sVar)
+          (⊢pair ty-Unit
+                 (⊢-cast (cong₂ (λ z w → El (⌜Id⌝ ⌜Nat⌝ (snd (pair sVar z))
+                                                        (nsuc w)))
+                                (sym c3) (sym c0))
+                         (fordSnd (⊢nsuc (⊢num n))))
+                 ⊢unit))))
+  where
+    -- ⚠ NO `renTm vs = renTm vs` ABBREVIATION.  A `where` binding with no type
+    --   signature is monomorphised by its first use, so the same name
+    --   cannot serve at two telescope depths.
+    r2 : renTm vs (renTm vs (num (suc n))) ≡ num (suc n)
+    r2 = trans (cong (renTm vs) (num-ren vs (suc n))) (num-ren vs (suc n))
+    r3 : renTm vs (renTm vs (renTm vs (num (suc n)))) ≡ num (suc n)
+    r3 = trans (cong (renTm vs) r2) (num-ren vs (suc n))
+    σ0 = extS (single (num n))
+    σ0² = extS (extS (single (num n)))
+    a1r2 : subTm σ0 (renTm vs (renTm vs (num (suc n)))) ≡ num (suc n)
+    a1r2 = trans (cong (subTm σ0) r2) (num-sub σ0 (suc n))
+    a2r3 : subTm σ0² (renTm vs (renTm vs (renTm vs (num (suc n))))) ≡ num (suc n)
+    a2r3 = trans (cong (subTm σ0²) r3) (num-sub σ0² (suc n))
+    w2 : renTm vs (renTm vs (num n)) ≡ num n
+    w2 = trans (cong (renTm vs) (num-ren vs n)) (num-ren vs n)
+    w2x : subTm (extS (single x)) (renTm vs (renTm vs (num n))) ≡ num n
+    w2x = trans (cong (subTm (extS (single x))) w2) (num-sub (extS (single x)) n)
+    σ1 = extS (single x)
+    b2r3 : subTm σ1 (subTm σ0² (renTm vs (renTm vs (renTm vs (num (suc n)))))) ≡ num (suc n)
+    b2r3 = trans (cong (subTm σ1) a2r3) (num-sub σ1 (suc n))
+    σ2 = single (idrefl ⌜Nat⌝ sVar)
+    c3 : subTm σ2 (subTm σ1 (subTm σ0² (renTm vs (renTm vs (renTm vs (num (suc n))))))) ≡ num (suc n)
+    c3 = trans (cong (subTm σ2) b2r3) (num-sub σ2 (suc n))
+    c0 : subTm σ2 (subTm (extS (single x)) (renTm vs (renTm vs (num n))))
+       ≡ num n
+    c0 = trans (cong (subTm σ2) w2x) (num-sub σ2 n)
