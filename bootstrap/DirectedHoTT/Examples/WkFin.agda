@@ -48,7 +48,7 @@ open import DirectedHoTT.Spec.Syntax
         ; RTy; U; El; Σ'; Unit; Nat; IMu
         ; RTm; var; lam; pair; fst; snd; unit; nzero; nsuc
         ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; idrefl; icon; ielim; isingle; jsub; iihs
-        ; ICon; IDesc; hereID; thereID; εwkTy )
+        ; ICon; IDesc; hereID; thereID; εwkTy; renTm )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; wk-single
         ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢pair; ⊢fst; ⊢snd; ⊢unit
@@ -56,11 +56,12 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢ty_; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
         ; imethTy; imethsTy; ⊢ielim; IDescWf
         ; _⟶*_; done; step; β; βfst; ξ-appˡ; ι-ielim
+        ; jsub-refl; ξ-jsubᵖ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ; El-⌜Id⌝; El-⌜IMu⌝; ⊢jsub )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; isingle-Sub⊢; iihTy-wf )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN )
+open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; reflN )
 open import DirectedHoTT.Examples.Scoped
   using ( INat; FinD; FinWf; Fin; fzeroC; fsucC; fzeroWf; fsucWf
         ; toI; fromI; toFin )
@@ -286,3 +287,24 @@ wk-fz =
   (step (ξ-appˡ (ξ-appˡ (β _ (nsuc nzero))))
   (step (ξ-appˡ (β _ fzPay))
   (step (β _ (iihs FinD wkMeths (isingle (nsuc nzero)) fzeroC fzPay)) done))))
+
+------------------------------------------------------------------------
+-- 6. ★★ AND THE TRANSPORT COMPUTES — the branch §5 does NOT reach.
+--
+-- §5 weakens `fz`, i.e. `fzero`, so it never enters the `⊢jsub` the
+-- `fsuc` method carries.  ⚠ A transport that TYPES need not COMPUTE:
+-- `jsub` fires only on an `idrefl`-headed proof, and here the proof is
+-- `symN` OF the ford witness, not the witness itself.
+--
+-- ★ It unwraps in two steps.  `symN a p = jsub … p (reflN a)`, so an
+--   `idrefl` proof makes the inner `jsub` fire and hands back `reflN a`
+--   — itself an `idrefl` — which fires the outer one.  In a concrete
+--   `fsuc` the ford witness IS an `idrefl`, so the whole transport
+--   evaporates and the IH passes through untouched.
+------------------------------------------------------------------------
+
+transport-fires : {Γ : Cx} (d : RTm (Γ ∙)) (a x e : RTm Γ) →
+                  jsub d (symN a (idrefl ⌜Nat⌝ x)) e ⟶* e
+transport-fires d a x e =
+  step (ξ-jsubᵖ (jsub-refl (⌜Id⌝ ⌜Nat⌝ (var vz) (renTm vs a)) ⌜Nat⌝ x (reflN a)))
+  (step (jsub-refl d ⌜Nat⌝ a e) done)
