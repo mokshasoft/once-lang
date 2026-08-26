@@ -39,3 +39,5 @@ HANDOFF.md
 # reachability dumps written by run-ast-dumps.sh (MERGE.md §4b)
 ast-*.json
 formal/EverythingFiltered.agda
+
+__pycache__/
