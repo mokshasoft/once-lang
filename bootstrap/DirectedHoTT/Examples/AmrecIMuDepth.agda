@@ -18,6 +18,13 @@
 --   `⊢amrec` — which is what "dogfooding" was supposed to mean, at the
 --   scale of one example.
 --
+-- ⚠ COST, ATTRIBUTED BY A/B (`Examples/AmrecIMuSzGen`): 44s here against
+--   3s for `AmrecIMu`, and the generic fold accounts for NONE of it — the
+--   same fold at the SUM algebra is also 3s.  All of it is `maxTm` being
+--   `plus a (monus b a)`, which inlines two nested `natrec`s wherever the
+--   measure occurs, and `aIHT`/`aStepT` mention it twice.  A cheaper
+--   `max` would be a four-line `Fold` instance; nothing needs one yet.
+--
 -- ⚠ THE STEP IS CONSTANT, as in `AmrecIMu`.  What is being tested is that
 --   a DERIVED measure is accepted where a hand-written one was, not that
 --   the recursion is interesting; `Examples/AmrecIMuRec` is where a
