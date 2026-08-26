@@ -8,9 +8,14 @@
 -- depth-Fording) are documented in the generator's header — read that,
 -- not this file, to understand the encoding.
 ------------------------------------------------------------------------
--- ⚠⚠ THIS MODULE NEEDS THE **COMPACTING COLLECTOR** (`Sz` only; `SzM`
---   is 15s and fine).  Measured cold: 3m40s with it.
---   `tools/sweep.sh` greps this header for the phrase above.
+-- ⚠ NO SPECIAL COLLECTOR — and the phrase `sweep.sh` greps for is
+--   deliberately not written here.  Measured cold, this shape: 140s at
+--   the default `-A64m`, 167s with `-c`, which is 19% SLOWER and buys
+--   nothing.  An earlier shape did need it; PINNING the
+--   tuple's types (the named `KnotTᵢ` tails below) removed the memory
+--   pressure, and the marker outlived the problem.  ⇒ a "needs -c" note
+--   is a claim about a SHAPE, not about a module: re-measure it when the
+--   shape changes.
 --
 -- ★★★ `sz` OVER THE KNOT, BY `ielim`.
 --
@@ -52,7 +57,7 @@ open import DirectedHoTT.Examples.Knot.Sorts
         ; toI; fromI; ⊢ixP )
 open import normalizer.Syntax.Types using ( _≡_; sym )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( isingle-Sub⊢; ⊢-cast; imethsTyFrom-ren )
+  using ( isingle-Sub⊢; ⊢-cast )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Examples.Knot.Build using ( tyCast )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
@@ -175,8 +180,20 @@ KnotT1 = cTy-U ◂ KnotT2
 KnotT0 : IDesc
 KnotT0 = cTy-base ◂ KnotT1
 
--- ★ the method tuple's ⊢ty, FROM THE TAIL BACK.  Linear: each row
---   names the next, so the 53-deep `⊢pair` needs no triangle.
+-- ★ the method tuple's ⊢ty, from the tail back.
+-- ⚠⚠ THIS CHAIN IS QUADRATIC AND THREE FIXES WERE MEASURED.
+--   `ty-Σ`'s second argument sits at `Γ ▹ A`, so Agda normalises
+--   `renTy vs` through the WHOLE remaining tail at every rung —
+--   O(n²) over a 53-deep Σ' of Π types.  Measured, cold, `-c`:
+--     plain (this)                          220s  ✓
+--     cast along `imethsTyFrom-ren`         350s  ✓  WORSE
+--     `ren-ty … there`                      OOM      WORSE
+--   ⇒ the naturality lemma is NOT a fix: at a CONCRETE tail it
+--     unfolds into a chain as long as that tail, so it is the same
+--     O(n²) with bigger constants.  ★ THE REAL FIX IS NOT A
+--     BETTER RUNG — it is to stop ENUMERATING rungs: a generic
+--     `imethsTyFrom-wf` induction over the description is O(n)
+--     once, at an ABSTRACT tail.  Not yet built; see the handoff.
 szMs53 : {Γ : Ctx} → Γ ⊢ty imethsTyFrom KnotD IPair Nat 53 KnotT53
 szMs53 = ty-Unit
 szMs52 : {Γ : Ctx} → Γ ⊢ty imethsTyFrom KnotD IPair Nat 52 KnotT52
@@ -405,424 +422,371 @@ szTup0 = pair szMTy-base szTup1
 ⊢szTup53 = ⊢unit
 ⊢szTup52 : {Γ : Ctx} → Γ ⊢ szTup52 ∷ imethsTyFrom KnotD IPair Nat 52 KnotT52
 ⊢szTup52 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 53 KnotT53))
-                szMs53)
+  ⊢pair szMs53
         ⊢szMVar-vs
         (⊢-cast (sym (wk-singleTy {v = szMVar-vs}
                       (imethsTyFrom KnotD IPair Nat 53 KnotT53)))
                 ⊢szTup53)
 ⊢szTup51 : {Γ : Ctx} → Γ ⊢ szTup51 ∷ imethsTyFrom KnotD IPair Nat 51 KnotT51
 ⊢szTup51 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 52 KnotT52))
-                szMs52)
+  ⊢pair szMs52
         ⊢szMVar-vz
         (⊢-cast (sym (wk-singleTy {v = szMVar-vz}
                       (imethsTyFrom KnotD IPair Nat 52 KnotT52)))
                 ⊢szTup52)
 ⊢szTup50 : {Γ : Ctx} → Γ ⊢ szTup50 ∷ imethsTyFrom KnotD IPair Nat 50 KnotT50
 ⊢szTup50 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 51 KnotT51))
-                szMs51)
+  ⊢pair szMs51
         ⊢szMICon-kap
         (⊢-cast (sym (wk-singleTy {v = szMICon-kap}
                       (imethsTyFrom KnotD IPair Nat 51 KnotT51)))
                 ⊢szTup51)
 ⊢szTup49 : {Γ : Ctx} → Γ ⊢ szTup49 ∷ imethsTyFrom KnotD IPair Nat 49 KnotT49
 ⊢szTup49 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 50 KnotT50))
-                szMs50)
+  ⊢pair szMs50
         ⊢szMICon-rho
         (⊢-cast (sym (wk-singleTy {v = szMICon-rho}
                       (imethsTyFrom KnotD IPair Nat 50 KnotT50)))
                 ⊢szTup50)
 ⊢szTup48 : {Γ : Ctx} → Γ ⊢ szTup48 ∷ imethsTyFrom KnotD IPair Nat 48 KnotT48
 ⊢szTup48 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 49 KnotT49))
-                szMs49)
+  ⊢pair szMs49
         ⊢szMICon-i
         (⊢-cast (sym (wk-singleTy {v = szMICon-i}
                       (imethsTyFrom KnotD IPair Nat 49 KnotT49)))
                 ⊢szTup49)
 ⊢szTup47 : {Γ : Ctx} → Γ ⊢ szTup47 ∷ imethsTyFrom KnotD IPair Nat 47 KnotT47
 ⊢szTup47 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 48 KnotT48))
-                szMs48)
+  ⊢pair szMs48
         ⊢szMIDesc-cons
         (⊢-cast (sym (wk-singleTy {v = szMIDesc-cons}
                       (imethsTyFrom KnotD IPair Nat 48 KnotT48)))
                 ⊢szTup48)
 ⊢szTup46 : {Γ : Ctx} → Γ ⊢ szTup46 ∷ imethsTyFrom KnotD IPair Nat 46 KnotT46
 ⊢szTup46 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 47 KnotT47))
-                szMs47)
+  ⊢pair szMs47
         ⊢szMIDesc-nil
         (⊢-cast (sym (wk-singleTy {v = szMIDesc-nil}
                       (imethsTyFrom KnotD IPair Nat 47 KnotT47)))
                 ⊢szTup47)
 ⊢szTup45 : {Γ : Ctx} → Γ ⊢ szTup45 ∷ imethsTyFrom KnotD IPair Nat 45 KnotT45
 ⊢szTup45 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 46 KnotT46))
-                szMs46)
+  ⊢pair szMs46
         ⊢szMDCon-kap
         (⊢-cast (sym (wk-singleTy {v = szMDCon-kap}
                       (imethsTyFrom KnotD IPair Nat 46 KnotT46)))
                 ⊢szTup46)
 ⊢szTup44 : {Γ : Ctx} → Γ ⊢ szTup44 ∷ imethsTyFrom KnotD IPair Nat 44 KnotT44
 ⊢szTup44 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 45 KnotT45))
-                szMs45)
+  ⊢pair szMs45
         ⊢szMDCon-rho
         (⊢-cast (sym (wk-singleTy {v = szMDCon-rho}
                       (imethsTyFrom KnotD IPair Nat 45 KnotT45)))
                 ⊢szTup45)
 ⊢szTup43 : {Γ : Ctx} → Γ ⊢ szTup43 ∷ imethsTyFrom KnotD IPair Nat 43 KnotT43
 ⊢szTup43 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 44 KnotT44))
-                szMs44)
+  ⊢pair szMs44
         ⊢szMDCon-i
         (⊢-cast (sym (wk-singleTy {v = szMDCon-i}
                       (imethsTyFrom KnotD IPair Nat 44 KnotT44)))
                 ⊢szTup44)
 ⊢szTup42 : {Γ : Ctx} → Γ ⊢ szTup42 ∷ imethsTyFrom KnotD IPair Nat 42 KnotT42
 ⊢szTup42 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 43 KnotT43))
-                szMs43)
+  ⊢pair szMs43
         ⊢szMDesc-cons
         (⊢-cast (sym (wk-singleTy {v = szMDesc-cons}
                       (imethsTyFrom KnotD IPair Nat 43 KnotT43)))
                 ⊢szTup43)
 ⊢szTup41 : {Γ : Ctx} → Γ ⊢ szTup41 ∷ imethsTyFrom KnotD IPair Nat 41 KnotT41
 ⊢szTup41 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 42 KnotT42))
-                szMs42)
+  ⊢pair szMs42
         ⊢szMDesc-nil
         (⊢-cast (sym (wk-singleTy {v = szMDesc-nil}
                       (imethsTyFrom KnotD IPair Nat 42 KnotT42)))
                 ⊢szTup42)
 ⊢szTup40 : {Γ : Ctx} → Γ ⊢ szTup40 ∷ imethsTyFrom KnotD IPair Nat 40 KnotT40
 ⊢szTup40 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 41 KnotT41))
-                szMs41)
+  ⊢pair szMs41
         ⊢szMTm-cUnit
         (⊢-cast (sym (wk-singleTy {v = szMTm-cUnit}
                       (imethsTyFrom KnotD IPair Nat 41 KnotT41)))
                 ⊢szTup41)
 ⊢szTup39 : {Γ : Ctx} → Γ ⊢ szTup39 ∷ imethsTyFrom KnotD IPair Nat 39 KnotT39
 ⊢szTup39 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 40 KnotT40))
-                szMs40)
+  ⊢pair szMs40
         ⊢szMTm-cIMu
         (⊢-cast (sym (wk-singleTy {v = szMTm-cIMu}
                       (imethsTyFrom KnotD IPair Nat 40 KnotT40)))
                 ⊢szTup40)
 ⊢szTup38 : {Γ : Ctx} → Γ ⊢ szTup38 ∷ imethsTyFrom KnotD IPair Nat 38 KnotT38
 ⊢szTup38 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 39 KnotT39))
-                szMs39)
+  ⊢pair szMs39
         ⊢szMTm-cMu
         (⊢-cast (sym (wk-singleTy {v = szMTm-cMu}
                       (imethsTyFrom KnotD IPair Nat 39 KnotT39)))
                 ⊢szTup39)
 ⊢szTup37 : {Γ : Ctx} → Γ ⊢ szTup37 ∷ imethsTyFrom KnotD IPair Nat 37 KnotT37
 ⊢szTup37 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 38 KnotT38))
-                szMs38)
+  ⊢pair szMs38
         ⊢szMTm-cNat
         (⊢-cast (sym (wk-singleTy {v = szMTm-cNat}
                       (imethsTyFrom KnotD IPair Nat 38 KnotT38)))
                 ⊢szTup38)
 ⊢szTup36 : {Γ : Ctx} → Γ ⊢ szTup36 ∷ imethsTyFrom KnotD IPair Nat 36 KnotT36
 ⊢szTup36 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 37 KnotT37))
-                szMs37)
+  ⊢pair szMs37
         ⊢szMTm-ielim
         (⊢-cast (sym (wk-singleTy {v = szMTm-ielim}
                       (imethsTyFrom KnotD IPair Nat 37 KnotT37)))
                 ⊢szTup37)
 ⊢szTup35 : {Γ : Ctx} → Γ ⊢ szTup35 ∷ imethsTyFrom KnotD IPair Nat 35 KnotT35
 ⊢szTup35 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 36 KnotT36))
-                szMs36)
+  ⊢pair szMs36
         ⊢szMTm-icon
         (⊢-cast (sym (wk-singleTy {v = szMTm-icon}
                       (imethsTyFrom KnotD IPair Nat 36 KnotT36)))
                 ⊢szTup36)
 ⊢szTup34 : {Γ : Ctx} → Γ ⊢ szTup34 ∷ imethsTyFrom KnotD IPair Nat 34 KnotT34
 ⊢szTup34 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 35 KnotT35))
-                szMs35)
+  ⊢pair szMs35
         ⊢szMTm-elim
         (⊢-cast (sym (wk-singleTy {v = szMTm-elim}
                       (imethsTyFrom KnotD IPair Nat 35 KnotT35)))
                 ⊢szTup35)
 ⊢szTup33 : {Γ : Ctx} → Γ ⊢ szTup33 ∷ imethsTyFrom KnotD IPair Nat 33 KnotT33
 ⊢szTup33 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 34 KnotT34))
-                szMs34)
+  ⊢pair szMs34
         ⊢szMTm-con
         (⊢-cast (sym (wk-singleTy {v = szMTm-con}
                       (imethsTyFrom KnotD IPair Nat 34 KnotT34)))
                 ⊢szTup34)
 ⊢szTup32 : {Γ : Ctx} → Γ ⊢ szTup32 ∷ imethsTyFrom KnotD IPair Nat 32 KnotT32
 ⊢szTup32 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 33 KnotT33))
-                szMs33)
+  ⊢pair szMs33
         ⊢szMTm-natrec
         (⊢-cast (sym (wk-singleTy {v = szMTm-natrec}
                       (imethsTyFrom KnotD IPair Nat 33 KnotT33)))
                 ⊢szTup33)
 ⊢szTup31 : {Γ : Ctx} → Γ ⊢ szTup31 ∷ imethsTyFrom KnotD IPair Nat 31 KnotT31
 ⊢szTup31 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 32 KnotT32))
-                szMs32)
+  ⊢pair szMs32
         ⊢szMTm-nsuc
         (⊢-cast (sym (wk-singleTy {v = szMTm-nsuc}
                       (imethsTyFrom KnotD IPair Nat 32 KnotT32)))
                 ⊢szTup32)
 ⊢szTup30 : {Γ : Ctx} → Γ ⊢ szTup30 ∷ imethsTyFrom KnotD IPair Nat 30 KnotT30
 ⊢szTup30 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 31 KnotT31))
-                szMs31)
+  ⊢pair szMs31
         ⊢szMTm-nzero
         (⊢-cast (sym (wk-singleTy {v = szMTm-nzero}
                       (imethsTyFrom KnotD IPair Nat 31 KnotT31)))
                 ⊢szTup31)
 ⊢szTup29 : {Γ : Ctx} → Γ ⊢ szTup29 ∷ imethsTyFrom KnotD IPair Nat 29 KnotT29
 ⊢szTup29 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 30 KnotT30))
-                szMs30)
+  ⊢pair szMs30
         ⊢szMTm-unit
         (⊢-cast (sym (wk-singleTy {v = szMTm-unit}
                       (imethsTyFrom KnotD IPair Nat 30 KnotT30)))
                 ⊢szTup30)
 ⊢szTup28 : {Γ : Ctx} → Γ ⊢ szTup28 ∷ imethsTyFrom KnotD IPair Nat 28 KnotT28
 ⊢szTup28 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 29 KnotT29))
-                szMs29)
+  ⊢pair szMs29
         ⊢szMTm-jsub
         (⊢-cast (sym (wk-singleTy {v = szMTm-jsub}
                       (imethsTyFrom KnotD IPair Nat 29 KnotT29)))
                 ⊢szTup29)
 ⊢szTup27 : {Γ : Ctx} → Γ ⊢ szTup27 ∷ imethsTyFrom KnotD IPair Nat 27 KnotT27
 ⊢szTup27 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 28 KnotT28))
-                szMs28)
+  ⊢pair szMs28
         ⊢szMTm-idrefl
         (⊢-cast (sym (wk-singleTy {v = szMTm-idrefl}
                       (imethsTyFrom KnotD IPair Nat 28 KnotT28)))
                 ⊢szTup28)
 ⊢szTup26 : {Γ : Ctx} → Γ ⊢ szTup26 ∷ imethsTyFrom KnotD IPair Nat 26 KnotT26
 ⊢szTup26 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 27 KnotT27))
-                szMs27)
+  ⊢pair szMs27
         ⊢szMTm-cId
         (⊢-cast (sym (wk-singleTy {v = szMTm-cId}
                       (imethsTyFrom KnotD IPair Nat 27 KnotT27)))
                 ⊢szTup27)
 ⊢szTup25 : {Γ : Ctx} → Γ ⊢ szTup25 ∷ imethsTyFrom KnotD IPair Nat 25 KnotT25
 ⊢szTup25 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 26 KnotT26))
-                szMs26)
+  ⊢pair szMs26
         ⊢szMTm-ap
         (⊢-cast (sym (wk-singleTy {v = szMTm-ap}
                       (imethsTyFrom KnotD IPair Nat 26 KnotT26)))
                 ⊢szTup26)
 ⊢szTup24 : {Γ : Ctx} → Γ ⊢ szTup24 ∷ imethsTyFrom KnotD IPair Nat 24 KnotT24
 ⊢szTup24 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 25 KnotT25))
-                szMs25)
+  ⊢pair szMs25
         ⊢szMTm-tr
         (⊢-cast (sym (wk-singleTy {v = szMTm-tr}
                       (imethsTyFrom KnotD IPair Nat 25 KnotT25)))
                 ⊢szTup25)
 ⊢szTup23 : {Γ : Ctx} → Γ ⊢ szTup23 ∷ imethsTyFrom KnotD IPair Nat 23 KnotT23
 ⊢szTup23 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 24 KnotT24))
-                szMs24)
+  ⊢pair szMs24
         ⊢szMTm-hrefl
         (⊢-cast (sym (wk-singleTy {v = szMTm-hrefl}
                       (imethsTyFrom KnotD IPair Nat 24 KnotT24)))
                 ⊢szTup24)
 ⊢szTup22 : {Γ : Ctx} → Γ ⊢ szTup22 ∷ imethsTyFrom KnotD IPair Nat 22 KnotT22
 ⊢szTup22 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 23 KnotT23))
-                szMs23)
+  ⊢pair szMs23
         ⊢szMTm-cHom
         (⊢-cast (sym (wk-singleTy {v = szMTm-cHom}
                       (imethsTyFrom KnotD IPair Nat 23 KnotT23)))
                 ⊢szTup23)
 ⊢szTup21 : {Γ : Ctx} → Γ ⊢ szTup21 ∷ imethsTyFrom KnotD IPair Nat 21 KnotT21
 ⊢szTup21 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 22 KnotT22))
-                szMs22)
+  ⊢pair szMs22
         ⊢szMTm-cSg
         (⊢-cast (sym (wk-singleTy {v = szMTm-cSg}
                       (imethsTyFrom KnotD IPair Nat 22 KnotT22)))
                 ⊢szTup22)
 ⊢szTup20 : {Γ : Ctx} → Γ ⊢ szTup20 ∷ imethsTyFrom KnotD IPair Nat 20 KnotT20
 ⊢szTup20 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 21 KnotT21))
-                szMs21)
+  ⊢pair szMs21
         ⊢szMTm-cPi
         (⊢-cast (sym (wk-singleTy {v = szMTm-cPi}
                       (imethsTyFrom KnotD IPair Nat 21 KnotT21)))
                 ⊢szTup21)
 ⊢szTup19 : {Γ : Ctx} → Γ ⊢ szTup19 ∷ imethsTyFrom KnotD IPair Nat 19 KnotT19
 ⊢szTup19 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 20 KnotT20))
-                szMs20)
+  ⊢pair szMs20
         ⊢szMTm-cbase
         (⊢-cast (sym (wk-singleTy {v = szMTm-cbase}
                       (imethsTyFrom KnotD IPair Nat 20 KnotT20)))
                 ⊢szTup20)
 ⊢szTup18 : {Γ : Ctx} → Γ ⊢ szTup18 ∷ imethsTyFrom KnotD IPair Nat 18 KnotT18
 ⊢szTup18 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 19 KnotT19))
-                szMs19)
+  ⊢pair szMs19
         ⊢szMTm-snd
         (⊢-cast (sym (wk-singleTy {v = szMTm-snd}
                       (imethsTyFrom KnotD IPair Nat 19 KnotT19)))
                 ⊢szTup19)
 ⊢szTup17 : {Γ : Ctx} → Γ ⊢ szTup17 ∷ imethsTyFrom KnotD IPair Nat 17 KnotT17
 ⊢szTup17 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 18 KnotT18))
-                szMs18)
+  ⊢pair szMs18
         ⊢szMTm-fst
         (⊢-cast (sym (wk-singleTy {v = szMTm-fst}
                       (imethsTyFrom KnotD IPair Nat 18 KnotT18)))
                 ⊢szTup18)
 ⊢szTup16 : {Γ : Ctx} → Γ ⊢ szTup16 ∷ imethsTyFrom KnotD IPair Nat 16 KnotT16
 ⊢szTup16 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 17 KnotT17))
-                szMs17)
+  ⊢pair szMs17
         ⊢szMTm-ordtr
         (⊢-cast (sym (wk-singleTy {v = szMTm-ordtr}
                       (imethsTyFrom KnotD IPair Nat 17 KnotT17)))
                 ⊢szTup17)
 ⊢szTup15 : {Γ : Ctx} → Γ ⊢ szTup15 ∷ imethsTyFrom KnotD IPair Nat 15 KnotT15
 ⊢szTup15 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 16 KnotT16))
-                szMs16)
+  ⊢pair szMs16
         ⊢szMTm-absurd
         (⊢-cast (sym (wk-singleTy {v = szMTm-absurd}
                       (imethsTyFrom KnotD IPair Nat 16 KnotT16)))
                 ⊢szTup16)
 ⊢szTup14 : {Γ : Ctx} → Γ ⊢ szTup14 ∷ imethsTyFrom KnotD IPair Nat 14 KnotT14
 ⊢szTup14 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 15 KnotT15))
-                szMs15)
+  ⊢pair szMs15
         ⊢szMTm-pair
         (⊢-cast (sym (wk-singleTy {v = szMTm-pair}
                       (imethsTyFrom KnotD IPair Nat 15 KnotT15)))
                 ⊢szTup15)
 ⊢szTup13 : {Γ : Ctx} → Γ ⊢ szTup13 ∷ imethsTyFrom KnotD IPair Nat 13 KnotT13
 ⊢szTup13 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 14 KnotT14))
-                szMs14)
+  ⊢pair szMs14
         ⊢szMTm-app
         (⊢-cast (sym (wk-singleTy {v = szMTm-app}
                       (imethsTyFrom KnotD IPair Nat 14 KnotT14)))
                 ⊢szTup14)
 ⊢szTup12 : {Γ : Ctx} → Γ ⊢ szTup12 ∷ imethsTyFrom KnotD IPair Nat 12 KnotT12
 ⊢szTup12 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 13 KnotT13))
-                szMs13)
+  ⊢pair szMs13
         ⊢szMTm-lam
         (⊢-cast (sym (wk-singleTy {v = szMTm-lam}
                       (imethsTyFrom KnotD IPair Nat 13 KnotT13)))
                 ⊢szTup13)
 ⊢szTup11 : {Γ : Ctx} → Γ ⊢ szTup11 ∷ imethsTyFrom KnotD IPair Nat 11 KnotT11
 ⊢szTup11 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 12 KnotT12))
-                szMs12)
+  ⊢pair szMs12
         ⊢szMTm-var
         (⊢-cast (sym (wk-singleTy {v = szMTm-var}
                       (imethsTyFrom KnotD IPair Nat 12 KnotT12)))
                 ⊢szTup12)
 ⊢szTup10 : {Γ : Ctx} → Γ ⊢ szTup10 ∷ imethsTyFrom KnotD IPair Nat 10 KnotT10
 ⊢szTup10 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 11 KnotT11))
-                szMs11)
+  ⊢pair szMs11
         ⊢szMTy-IMu
         (⊢-cast (sym (wk-singleTy {v = szMTy-IMu}
                       (imethsTyFrom KnotD IPair Nat 11 KnotT11)))
                 ⊢szTup11)
 ⊢szTup9 : {Γ : Ctx} → Γ ⊢ szTup9 ∷ imethsTyFrom KnotD IPair Nat 9 KnotT9
 ⊢szTup9 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 10 KnotT10))
-                szMs10)
+  ⊢pair szMs10
         ⊢szMTy-Mu
         (⊢-cast (sym (wk-singleTy {v = szMTy-Mu}
                       (imethsTyFrom KnotD IPair Nat 10 KnotT10)))
                 ⊢szTup10)
 ⊢szTup8 : {Γ : Ctx} → Γ ⊢ szTup8 ∷ imethsTyFrom KnotD IPair Nat 8 KnotT8
 ⊢szTup8 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 9 KnotT9))
-                szMs9)
+  ⊢pair szMs9
         ⊢szMTy-Id
         (⊢-cast (sym (wk-singleTy {v = szMTy-Id}
                       (imethsTyFrom KnotD IPair Nat 9 KnotT9)))
                 ⊢szTup9)
 ⊢szTup7 : {Γ : Ctx} → Γ ⊢ szTup7 ∷ imethsTyFrom KnotD IPair Nat 7 KnotT7
 ⊢szTup7 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 8 KnotT8))
-                szMs8)
+  ⊢pair szMs8
         ⊢szMTy-Nat
         (⊢-cast (sym (wk-singleTy {v = szMTy-Nat}
                       (imethsTyFrom KnotD IPair Nat 8 KnotT8)))
                 ⊢szTup8)
 ⊢szTup6 : {Γ : Ctx} → Γ ⊢ szTup6 ∷ imethsTyFrom KnotD IPair Nat 6 KnotT6
 ⊢szTup6 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 7 KnotT7))
-                szMs7)
+  ⊢pair szMs7
         ⊢szMTy-Unit
         (⊢-cast (sym (wk-singleTy {v = szMTy-Unit}
                       (imethsTyFrom KnotD IPair Nat 7 KnotT7)))
                 ⊢szTup7)
 ⊢szTup5 : {Γ : Ctx} → Γ ⊢ szTup5 ∷ imethsTyFrom KnotD IPair Nat 5 KnotT5
 ⊢szTup5 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 6 KnotT6))
-                szMs6)
+  ⊢pair szMs6
         ⊢szMTy-Hom
         (⊢-cast (sym (wk-singleTy {v = szMTy-Hom}
                       (imethsTyFrom KnotD IPair Nat 6 KnotT6)))
                 ⊢szTup6)
 ⊢szTup4 : {Γ : Ctx} → Γ ⊢ szTup4 ∷ imethsTyFrom KnotD IPair Nat 4 KnotT4
 ⊢szTup4 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 5 KnotT5))
-                szMs5)
+  ⊢pair szMs5
         ⊢szMTy-El
         (⊢-cast (sym (wk-singleTy {v = szMTy-El}
                       (imethsTyFrom KnotD IPair Nat 5 KnotT5)))
                 ⊢szTup5)
 ⊢szTup3 : {Γ : Ctx} → Γ ⊢ szTup3 ∷ imethsTyFrom KnotD IPair Nat 3 KnotT3
 ⊢szTup3 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 4 KnotT4))
-                szMs4)
+  ⊢pair szMs4
         ⊢szMTy-Sg
         (⊢-cast (sym (wk-singleTy {v = szMTy-Sg}
                       (imethsTyFrom KnotD IPair Nat 4 KnotT4)))
                 ⊢szTup4)
 ⊢szTup2 : {Γ : Ctx} → Γ ⊢ szTup2 ∷ imethsTyFrom KnotD IPair Nat 2 KnotT2
 ⊢szTup2 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 3 KnotT3))
-                szMs3)
+  ⊢pair szMs3
         ⊢szMTy-Pi
         (⊢-cast (sym (wk-singleTy {v = szMTy-Pi}
                       (imethsTyFrom KnotD IPair Nat 3 KnotT3)))
                 ⊢szTup3)
 ⊢szTup1 : {Γ : Ctx} → Γ ⊢ szTup1 ∷ imethsTyFrom KnotD IPair Nat 1 KnotT1
 ⊢szTup1 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 2 KnotT2))
-                szMs2)
+  ⊢pair szMs2
         ⊢szMTy-U
         (⊢-cast (sym (wk-singleTy {v = szMTy-U}
                       (imethsTyFrom KnotD IPair Nat 2 KnotT2)))
                 ⊢szTup2)
 ⊢szTup0 : {Γ : Ctx} → Γ ⊢ szTup0 ∷ imethsTyFrom KnotD IPair Nat 0 KnotT0
 ⊢szTup0 =
-  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat 1 KnotT1))
-                szMs1)
+  ⊢pair szMs1
         ⊢szMTy-base
         (⊢-cast (sym (wk-singleTy {v = szMTy-base}
                       (imethsTyFrom KnotD IPair Nat 1 KnotT1)))

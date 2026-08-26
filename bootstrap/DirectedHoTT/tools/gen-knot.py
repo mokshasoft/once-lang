@@ -742,9 +742,14 @@ def gen_map():
 #   index is `var vz` — §9.1's index binder — so every payload type is a de
 #   Bruijn lookup and NOTHING needs a transport.  That is the `Examples/
 #   PairIx` §4 pattern at 53 rows.
-SZ_HDR = """""" + BANNER + """-- ⚠⚠ THIS MODULE NEEDS THE **COMPACTING COLLECTOR** (`Sz` only; `SzM`
---   is 15s and fine).  Measured cold: 3m40s with it.
---   `tools/sweep.sh` greps this header for the phrase above.
+SZ_HDR = """""" + BANNER + """-- ⚠ NO SPECIAL COLLECTOR — and the phrase `sweep.sh` greps for is
+--   deliberately not written here.  Measured cold, this shape: 140s at
+--   the default `-A64m`, 167s with `-c`, which is 19% SLOWER and buys
+--   nothing.  An earlier shape did need it; PINNING the
+--   tuple\'s types (the named `KnotTᵢ` tails below) removed the memory
+--   pressure, and the marker outlived the problem.  ⇒ a "needs -c" note
+--   is a claim about a SHAPE, not about a module: re-measure it when the
+--   shape changes.
 --
 -- ★★★ `sz` OVER THE KNOT, BY `ielim`.
 --
@@ -784,7 +789,7 @@ open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
         ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar
         ; toI; fromI; ⊢ixP )
-open import normalizer.Syntax.Types using ( _≡_; sym )\nopen import DirectedHoTT.Metatheory.SubjectReduction\n  using ( isingle-Sub⊢; ⊢-cast; imethsTyFrom-ren )\nopen import DirectedHoTT.Lib.Wk using ( wk-singleTy )\nopen import DirectedHoTT.Examples.Knot.Build using ( tyCast )
+open import normalizer.Syntax.Types using ( _≡_; sym )\nopen import DirectedHoTT.Metatheory.SubjectReduction\n  using ( isingle-Sub⊢; ⊢-cast )\nopen import DirectedHoTT.Lib.Wk using ( wk-singleTy )\nopen import DirectedHoTT.Examples.Knot.Build using ( tyCast )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
 open import DirectedHoTT.Examples.Knot.Desc
 open import DirectedHoTT.Examples.Knot.Tags
@@ -878,8 +883,20 @@ def gen_sz():
         L.append(f"KnotT{i} : IDesc")
         L.append(f"KnotT{i} = c{names[i]} ◂ KnotT{i+1}")
     L.append("")
-    L.append("-- ★ the method tuple's ⊢ty, FROM THE TAIL BACK.  Linear: each row")
-    L.append("--   names the next, so the 53-deep `⊢pair` needs no triangle.")
+    L.append("-- ★ the method tuple's ⊢ty, from the tail back.")
+    L.append("-- ⚠⚠ THIS CHAIN IS QUADRATIC AND THREE FIXES WERE MEASURED.")
+    L.append("--   `ty-Σ`'s second argument sits at `Γ ▹ A`, so Agda normalises")
+    L.append("--   `renTy vs` through the WHOLE remaining tail at every rung —")
+    L.append("--   O(n²) over a 53-deep Σ' of Π types.  Measured, cold, `-c`:")
+    L.append("--     plain (this)                          220s  ✓")
+    L.append("--     cast along `imethsTyFrom-ren`         350s  ✓  WORSE")
+    L.append("--     `ren-ty … there`                      OOM      WORSE")
+    L.append("--   ⇒ the naturality lemma is NOT a fix: at a CONCRETE tail it")
+    L.append("--     unfolds into a chain as long as that tail, so it is the same")
+    L.append("--     O(n²) with bigger constants.  ★ THE REAL FIX IS NOT A")
+    L.append("--     BETTER RUNG — it is to stop ENUMERATING rungs: a generic")
+    L.append("--     `imethsTyFrom-wf` induction over the description is O(n)")
+    L.append("--     once, at an ABSTRACT tail.  Not yet built; see the handoff.")
     L.append(f"szMs{N} : {{Γ : Ctx}} → Γ ⊢ty imethsTyFrom KnotD IPair Nat {N} KnotT{N}")
     L.append(f"szMs{N} = ty-Unit")
     for i in reversed(range(N)):
@@ -903,8 +920,7 @@ def gen_sz():
     for i in reversed(range(N)):
         L.append(f"⊢szTup{i} : {{Γ : Ctx}} → Γ ⊢ szTup{i} ∷ imethsTyFrom KnotD IPair Nat {i} KnotT{i}")
         L.append(f"⊢szTup{i} =")
-        L.append(f"  ⊢pair (tyCast (sym (imethsTyFrom-ren vs KnotD IPair Nat {i+1} KnotT{i+1}))")
-        L.append(f"                szMs{i+1})")
+        L.append(f"  ⊢pair szMs{i+1}")
         L.append(f"        ⊢szM{names[i]}")
         L.append("        (⊢-cast (sym (wk-singleTy {v = szM" + names[i] + "}")
         L.append(f"                      (imethsTyFrom KnotD IPair Nat {i+1} KnotT{i+1})))")

@@ -475,12 +475,15 @@ data _⟶_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where
   --      unlike `atCon-inst`: the motive is TWO-SLOT, and the INDEX slot
   --      is weakened past the payload binder on one side and the
   --      scrutinee binder on the other.  `wk-single`, twice.
-  --   ⬜ (c) — the IH tuple at the recursive fields' own indices.  ⚠⚠ THIS
-  --      WAS FALSE under the old formulation, not merely open: methods
-  --      were typed at ONE index while `iihs` needs them at every
-  --      recursive field's index (PLAN-INDEXED §9.1).  With `imethTy` now
-  --      quantifying over the index it is PROVABLE; the proof is the
-  --      Metatheory/SubjectReduction obligation that remains.
+  --   ✅ (c) discharged by `Metatheory/SubjectReduction.iihs-ty`, which
+  --      the `sr` case for `ι-ielim` consumes.  ⚠⚠ IT WAS FALSE under the
+  --      old formulation, not merely open: methods were typed at ONE
+  --      index while `iihs` needs them at every recursive field's index
+  --      (PLAN-INDEXED §9.1); `imethTy` quantifying over the index is
+  --      what made it provable.
+  --      ⚠ This line read `⬜ … the obligation that remains` until
+  --      2026-08-26.  The proof had landed with §9.1 and the marker was
+  --      never updated — a stale ⬜ is how finished work gets redone.
   ι-ielim  : (D : IDesc) (i ms : RTm Γ) (k : ℕ) (p : RTm Γ) →
              ielim D i ms (icon k p)
                ⟶ ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p
