@@ -17,16 +17,23 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.IPay where
+open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTy; RTm; Unit; Σ'; El; IMu
+  using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Unit; Σ'; El; IMu; Nat; Π
+        ; renTy; isingle; ipayTy-ren; ipayTy-cong
         ; ICon; IDesc; iι; iρ; iκ; ipayTy; Sub; extS; subTm; subTy
-        ; εwkTy; εwk-sub )
+        ; εwkTy; εwk-sub; εwk-ren; _◂_; inil )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢ty_; ty-Unit; ty-Σ; ty-El; ty-IMu
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; IDescWf )
+        ; _⊢_∷_; ⊢var; here; there
+        ; _⊢ty_; ty-Unit; ty-Σ; ty-El; ty-IMu; ty-Π; ty-Nat
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ
+        ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
+        ; imethTy; imethsTyFrom )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( Sub⊢; Sub⊢-ext; sub-lemma; ⊢-cast )
+  using ( Sub⊢; Sub⊢-ext; sub-lemma; ⊢-cast; ren-ty
+        ; isingle-Sub⊢; iihTy-wf )
 
 ipayTy-wf : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε)
             (σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋) (C : ICon ⌊ Θ ⌋) →
@@ -39,3 +46,62 @@ ipayTy-wf D I σ (iρ j C) wD (iwf-ρ .j dj wC) hσ =
 ipayTy-wf D I σ (iκ κ C) wD (iwf-κ .κ _ dcode wC) hσ =
   ty-Σ (ty-El (sub-lemma dcode hσ))
        (ipayTy-wf D I (extS σ) C wD wC (Sub⊢-ext hσ))
+
+------------------------------------------------------------------------
+-- ★★★ …AND THE SAME FOR A METHOD, AND FOR A WHOLE METHOD TUPLE.
+--
+-- ⚠ WHY THESE EXIST, and it is the same cost result one level up.
+--   `Examples/Knot/Sz` builds the 53-method tuple's `⊢ty` by ENUMERATING
+--   its rungs — 53 definitions, each `ty-Σ` whose second argument sits
+--   at `Γ ▹ A`, so Agda normalises `renTy vs` through the WHOLE
+--   remaining tail at every rung.  That is O(n²), and measured it is
+--   most of the module's 140s.
+--
+--   ⚠ A BETTER RUNG DOES NOT FIX IT.  Discharging the rung by
+--   `imethsTyFrom-ren` measured 350s (WORSE — at a concrete tail that
+--   lemma unfolds into a chain as long as the tail), and by `ren-ty`
+--   it ran out of memory.  The fix is to stop enumerating: ONE
+--   induction, at an ABSTRACT tail, is O(n).
+--
+-- ⚠ SPECIALISED TO A CONSTANT `Nat` MOTIVE.  That is all `sz` needs, and
+--   it is what makes the codomain free: `iatCon k i Nat` IS `Nat`, so
+--   the third `Π`'s result needs no transport.  A motive-generic version
+--   would have to carry `⊢ty M` through `renTy`/`iatCon`; write it when
+--   a second customer wants one.
+------------------------------------------------------------------------
+
+imethTyNat-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙)) →
+                IDescWf I D → IConWf D I (◇ ▹ εwkTy I) C →
+                ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
+                Γ ⊢ty imethTy D I k C Nat
+-- ⚠ THE CONTEXTS ARE PINNED.  `ty-Π`'s second argument lives one binder
+--   deeper, and left implicit those contexts are metas that never solve.
+imethTyNat-wf {Γ = Γ} D I k C wD wC tI =
+  ty-Π tI
+    (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
+                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+      (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
+                      D I Nat (isingle (var (vs vz))) C (var vz) wC
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
+                                                   (εwk-ren vs I))
+                                            (⊢var (there here)))) ty-Nat
+                      -- ⚠ the payload variable, RETYPED.  `⊢var here`
+                      --   gives `renTy vs (ipayTy … (isingle (var vz)) C)`
+                      --   while the IH tuple is stated at
+                      --   `isingle (var (vs vz))`.  The two agree by
+                      --   `ipayTy-ren` then `ipayTy-cong`, NOT definitionally.
+                      (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
+                                     (ipayTy-cong D I C
+                                       (λ { vz → refl ; (vs ()) })))
+                              (⊢var here)))
+            ty-Nat))
+
+-- ★★★ ONE INDUCTION over the description, at an ABSTRACT tail.
+imethsTyFromNat-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc) →
+                     IDescWf I D → IDescWfFrom D I E →
+                     ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
+                     Γ ⊢ty imethsTyFrom D I Nat j E
+imethsTyFromNat-wf D I j inil    wD idwf-nil        tI = ty-Unit
+imethsTyFromNat-wf D I j (C ◂ E) wD (idwf-cons wC wE) tI =
+  ty-Σ (imethTyNat-wf D I j C wD wC tI)
+       (ren-ty (imethsTyFromNat-wf D I (suc j) E wD wE tI) there)
