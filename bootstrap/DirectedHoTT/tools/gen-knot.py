@@ -420,6 +420,145 @@ def verify(syntax_path):
             print(f"  ok {fam:6s} — {len(want)} constructor(s)")
     return bad
 
+
+# ============================ LAYER 1: SMART CONSTRUCTORS ==================
+# ★ For each row, the object-level term and a typing lemma at an ARBITRARY
+#   depth `num n`.  See `Examples/Knot/Build`'s header for why the depth is a
+#   NUMERAL and what the three cast helpers do.
+#
+# ⚠ THE TWO `Var` ROWS ARE NOT EMITTED HERE.  They Ford the DEPTH as well as
+#   the tag, so their ambient is `num (suc n)` and their second constraint
+#   names a BOUND FIELD — neither of which this emitter models.  Hand-written
+#   in `Knot/Build`.
+SORT = {"cTy":"sTy","cTm":"sTm","cDesc":"sDesc","cDCon":"sDCon",
+        "cIDesc":"sIDesc","cICon":"sICon","cVar":"sVar"}
+
+def dnsucs(t, inner): return ("⊢nsuc (" * t) + inner + (")" * t)
+
+def actions(level, j):
+    # ⚠ the extS exponent is keyed to the FIELD, not the level: a
+    #   substitution hitting a term at depth p needs extS^(p-1), and the
+    #   term starts at depth j and loses one per substitution.  Keying it
+    #   to the level type-checks for k=0/k=1 and then goes wrong.
+    return [("sub", i, j - 1 - i) for i in range(level - 1, -1, -1)] + [("ren",)] * j
+
+def sigma(i, e):
+    s = f"single a{i}"
+    for _ in range(e): s = f"extS ({s})"
+    return s
+
+def term_of(acts, NN="n"):
+    t = f"num {NN}"
+    for a in reversed(acts):
+        t = f"renTm vs ({t})" if a[0] == "ren" else f"subTm ({sigma(a[1],a[2])}) ({t})"
+    return t
+
+def eq_of(acts, NN="n"):
+    if not acts: return "refl"
+    a, rest = acts[0], acts[1:]
+    if a[0] == "ren":
+        return f"trans (cong (renTm vs) ({eq_of(rest, NN)})) (num-ren vs {NN})"
+    s = sigma(a[1], a[2])
+    return f"trans (cong (subTm ({s})) ({eq_of(rest, NN)})) (num-sub ({s}) {NN})"
+
+def depth_expr(E):
+    if E[0] == "D":    return "num n"
+    if E[0] == "sucD": return "num (" + "suc (" * E[1] + "n" + ")" * E[1] + ")"
+    if E[0] == "lit":  return f"num {E[1]}"
+    raise ValueError(E)
+
+def entry_ty(f, sX, en, NN="n", en0=None):
+    if f[0] == "nat":  return "ty-El ⊢⌜Nat⌝"
+    if f[0] == "ford":
+        if f[1] == "snd":            # the DEPTH ford — `Var` only
+            return (f"ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢ixP ⊢{sX} (⊢numAt {NN} {en}))))"
+                    f" (toI (⊢nsuc (⊢numAt n {en0}))))")
+        return (f"ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢{sX} (⊢numAt {NN} {en})))) (toI ⊢{sX}))")
+    s, E = f[1], f[2]
+    if E[0] == "lit": return f"ty-IMu KnotWf (⊢ixP ⊢{s} (⊢num {E[1]}))"
+    if E[0] == "fld": return f"ty-IMu KnotWf (⊢ixP ⊢{s} (⊢numAt n {en0}))"
+    inner = f"⊢snd (⊢ixP ⊢{sX} (⊢numAt {NN} {en}))"
+    if E[0] == "sucD": inner = dnsucs(E[1], inner)
+    return f"ty-IMu KnotWf (⊢ixP ⊢{s} ({inner}))"
+
+def component(f, j, sX, en, mangled, en0=None, eA=None):
+    if f[0] == "nat":  return f"toI d{j}"
+    if f[0] == "ford":
+        if f[1] == "snd":
+            return (f"⊢-cast (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ (snd (pair {sX} z))"
+                    f" (nsuc (num n)))) (sym {eA}))"
+                    f" (fordSnd (⊢num n))")
+        return f"fordFst ⊢{sX}"
+    E = f[2]
+    if E[0] == "lit":  return f"d{j}"
+    if E[0] == "fld":  return (f"d{j}" if en0 == "refl" else f"kCast (sym {en0}) d{j}")
+    red = f"βsnd {sX} ({mangled})"
+    t = E[1] if E[0] == "sucD" else 0
+    red = "ξ-nsuc (" * t + red + ")" * t
+    if en == "refl":
+        cast = f"d{j}"
+    else:
+        inner = en if t == 0 else "(" + "cong nsuc (" * t + en + ")" * t + ")"
+        cast = f"kCast (sym {inner}) d{j}"
+    return f"ixConv (ξ-pairʳ ({red})) ({cast})"
+
+def emit_row(name, decl, fields):
+    sX, m = SORT[name.split("-")[0]], len(fields)
+    nm = name[1:]
+    nargs = [j for j, f in enumerate(fields) if f[0] in ("rec", "nat")]
+    L = [f"-- {decl}"]
+    L.append(f"{nm}K : {{Γ : Cx}} → " + "RTm Γ → " * len(nargs) + "RTm Γ")
+    pay = "unit"
+    for j in reversed(range(m)):
+        c = f"a{j}" if fields[j][0] in ("rec","nat") else f"(idrefl ⌜Nat⌝ {sX})"
+        pay = f"pair {c} ({pay})" if pay != "unit" else f"pair {c} unit"
+    L.append(f"{nm}K " + " ".join(f"a{j}" for j in nargs) + f" = icon tag{nm} ({pay})")
+    L.append("")
+    eqs = {}
+    def en(acts):
+        if not acts: return "refl"
+        t = term_of(acts)
+        if t not in eqs: eqs[t] = (f"e{len(eqs)}", acts)
+        return eqs[t][0]
+    def needs_eq(f):
+        return f[0] == "ford" or (f[0] == "rec" and f[2][0] in ("D", "sucD"))
+    def B_of(k):
+        if k == m - 1: return "ty-Unit"
+        B = "ty-Unit"
+        for j in reversed(range(k + 1, m)):
+            e = en(actions(k, j)) if needs_eq(fields[j]) else "refl"
+            B = f"ty-Σ ({entry_ty(fields[j], sX, e)}) ({B})"
+        return B
+    Bs, cs = [], []
+    for k in range(m):
+        Bs.append(B_of(k))
+        a = actions(k, k)
+        e = en(a) if (fields[k][0] == "rec" and fields[k][2][0] in ("D", "sucD")) else "refl"
+        cs.append(component(fields[k], k, sX, e, term_of(a)))
+    prem = ["Δ ⊢ a{} ∷ Nat".format(j) if fields[j][0] == "nat"
+            else f"Δ ⊢ a{j} ∷ K (pair {fields[j][1]} ({depth_expr(fields[j][2])}))"
+            for j in nargs]
+    imp = " ".join(f"a{j}" for j in nargs)
+    L.append(f"⊢{nm}K : {{Δ : Ctx}} (n : ℕ)" + (f" {{{imp} : RTm ⌊ Δ ⌋}}" if nargs else "") + " →")
+    for p in prem: L.append(f"        {p} →")
+    L.append(f"        Δ ⊢ {nm}K " + " ".join(f"a{j}" for j in nargs) + f" ∷ K (pair {sX} (num n))")
+    L.append(f"⊢{nm}K n " + " ".join(f"{{a{j} = a{j}}}" for j in nargs) +
+             (" " if nargs else "") + " ".join(f"d{j}" for j in nargs) + " =")
+    L.append(f"  ⊢icon KnotWf mem{nm} (⊢ixP ⊢{sX} (⊢num n))")
+    ind = "    "
+    for k in range(m):
+        L.append(f"{ind}(⊢pair ({Bs[k]})")
+        L.append(f"{ind}       ({cs[k]})")
+        ind += " "
+    L.append(f"{ind}⊢unit" + ")" * m)
+    if eqs:
+        L.append("  where")
+        for t, (e, acts) in eqs.items():
+            L.append(f"    {e} : {t} ≡ num n")
+            L.append(f"    {e} = {eq_of(acts)}")
+    L.append("")
+    return L
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out = os.path.join(root, "Examples", "Knot")

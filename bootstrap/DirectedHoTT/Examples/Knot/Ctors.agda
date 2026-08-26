@@ -1,0 +1,1279 @@
+------------------------------------------------------------------------
+
+-- base : RTy Γ
+Ty-baseK : {Γ : Cx} → RTm Γ
+Ty-baseK  = icon tagTy-base (pair (idrefl ⌜Nat⌝ sTy) unit)
+
+⊢Ty-baseK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ Ty-baseK  ∷ K (pair sTy (num n))
+⊢Ty-baseK n  =
+  ⊢icon KnotWf memTy-base (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sTy)
+     ⊢unit)
+
+-- U : RTy Γ
+Ty-UK : {Γ : Cx} → RTm Γ
+Ty-UK  = icon tagTy-U (pair (idrefl ⌜Nat⌝ sTy) unit)
+
+⊢Ty-UK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ Ty-UK  ∷ K (pair sTy (num n))
+⊢Ty-UK n  =
+  ⊢icon KnotWf memTy-U (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sTy)
+     ⊢unit)
+
+-- Π : RTy Γ → RTy (Γ ∙) → RTy Γ
+Ty-PiK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Ty-PiK a0 a1 = icon tagTy-Pi (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTy) unit)))
+
+⊢Ty-PiK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTy (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTy (num (suc (n)))) →
+        Δ ⊢ Ty-PiK a0 a1 ∷ K (pair sTy (num n))
+⊢Ty-PiK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTy-Pi (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢ixP ⊢sTy (⊢numAt n e1)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e0)))) (toI ⊢sTy))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTy (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e2)))) (toI ⊢sTy))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTy (subTm (single a0) (renTm vs (num n)))))) (kCast (sym (cong nsuc (e3))) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTy)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- Σ' : RTy Γ → RTy (Γ ∙) → RTy Γ
+Ty-SgK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Ty-SgK a0 a1 = icon tagTy-Sg (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTy) unit)))
+
+⊢Ty-SgK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTy (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTy (num (suc (n)))) →
+        Δ ⊢ Ty-SgK a0 a1 ∷ K (pair sTy (num n))
+⊢Ty-SgK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTy-Sg (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢ixP ⊢sTy (⊢numAt n e1)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e0)))) (toI ⊢sTy))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTy (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e2)))) (toI ⊢sTy))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTy (subTm (single a0) (renTm vs (num n)))))) (kCast (sym (cong nsuc (e3))) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTy)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- El : RTm Γ → RTy Γ
+Ty-ElK : {Γ : Cx} → RTm Γ → RTm Γ
+Ty-ElK a0 = icon tagTy-El (pair a0 (pair (idrefl ⌜Nat⌝ sTy) unit))
+
+⊢Ty-ElK : {Δ : Ctx} (n : ℕ) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Ty-ElK a0 ∷ K (pair sTy (num n))
+⊢Ty-ElK n {a0 = a0} d0 =
+  ⊢icon KnotWf memTy-El (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e0)))) (toI ⊢sTy))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTy (num n))) (d0))
+     (⊢pair (ty-Unit)
+            (fordFst ⊢sTy)
+      ⊢unit))
+  where
+    e0 : renTm vs (num n) ≡ num n
+    e0 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+
+-- Hom : RTy Γ → RTm Γ → RTm Γ → RTy Γ
+Ty-HomK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Ty-HomK a0 a1 a2 = icon tagTy-Hom (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTy) unit))))
+
+⊢Ty-HomK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTy (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Ty-HomK a0 a1 a2 ∷ K (pair sTy (num n))
+⊢Ty-HomK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTy-Hom (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢numAt n e2))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e0)))) (toI ⊢sTy))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTy (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢numAt n e4))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e3)))) (toI ⊢sTy))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a0) (renTm vs (num n))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e6)))) (toI ⊢sTy))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e7) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTy)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (num n) ≡ num n
+    e2 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e3 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e7 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- Unit : RTy Γ
+Ty-UnitK : {Γ : Cx} → RTm Γ
+Ty-UnitK  = icon tagTy-Unit (pair (idrefl ⌜Nat⌝ sTy) unit)
+
+⊢Ty-UnitK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ Ty-UnitK  ∷ K (pair sTy (num n))
+⊢Ty-UnitK n  =
+  ⊢icon KnotWf memTy-Unit (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sTy)
+     ⊢unit)
+
+-- Nat : RTy Γ
+Ty-NatK : {Γ : Cx} → RTm Γ
+Ty-NatK  = icon tagTy-Nat (pair (idrefl ⌜Nat⌝ sTy) unit)
+
+⊢Ty-NatK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ Ty-NatK  ∷ K (pair sTy (num n))
+⊢Ty-NatK n  =
+  ⊢icon KnotWf memTy-Nat (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sTy)
+     ⊢unit)
+
+-- Id : RTy Γ → RTm Γ → RTm Γ → RTy Γ
+Ty-IdK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Ty-IdK a0 a1 a2 = icon tagTy-Id (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTy) unit))))
+
+⊢Ty-IdK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTy (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Ty-IdK a0 a1 a2 ∷ K (pair sTy (num n))
+⊢Ty-IdK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTy-Id (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢numAt n e2))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e0)))) (toI ⊢sTy))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTy (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢numAt n e4))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e3)))) (toI ⊢sTy))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a0) (renTm vs (num n))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e6)))) (toI ⊢sTy))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e7) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTy)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (num n) ≡ num n
+    e2 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e3 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e7 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- Mu : Desc → RTy Γ
+Ty-MuK : {Γ : Cx} → RTm Γ → RTm Γ
+Ty-MuK a0 = icon tagTy-Mu (pair a0 (pair (idrefl ⌜Nat⌝ sTy) unit))
+
+⊢Ty-MuK : {Δ : Ctx} (n : ℕ) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sDesc (num n)) →
+        Δ ⊢ Ty-MuK a0 ∷ K (pair sTy (num n))
+⊢Ty-MuK n {a0 = a0} d0 =
+  ⊢icon KnotWf memTy-Mu (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e0)))) (toI ⊢sTy))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTy (num n))) (d0))
+     (⊢pair (ty-Unit)
+            (fordFst ⊢sTy)
+      ⊢unit))
+  where
+    e0 : renTm vs (num n) ≡ num n
+    e0 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+
+-- IMu : IDesc → RTy ε → RTm Γ → RTy Γ
+Ty-IMuK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Ty-IMuK a0 a1 a2 = icon tagTy-IMu (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTy) unit))))
+
+⊢Ty-IMuK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sIDesc (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTy (num 0)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Ty-IMuK a0 a1 a2 ∷ K (pair sTy (num n))
+⊢Ty-IMuK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTy-IMu (⊢ixP ⊢sTy (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢num 0))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e0)))) (toI ⊢sTy))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTy (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢numAt n e3))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e2)))) (toI ⊢sTy))) (ty-Unit)))
+            (d1)
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢numAt n e4)))) (toI ⊢sTy))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e5) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTy)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e2 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e3 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e3 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e4 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e5 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e5 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- var : Var Γ → RTm Γ
+Tm-varK : {Γ : Cx} → RTm Γ → RTm Γ
+Tm-varK a0 = icon tagTm-var (pair a0 (pair (idrefl ⌜Nat⌝ sTm) unit))
+
+⊢Tm-varK : {Δ : Ctx} (n : ℕ) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sVar (num n)) →
+        Δ ⊢ Tm-varK a0 ∷ K (pair sTm (num n))
+⊢Tm-varK n {a0 = a0} d0 =
+  ⊢icon KnotWf memTm-var (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Unit)
+            (fordFst ⊢sTm)
+      ⊢unit))
+  where
+    e0 : renTm vs (num n) ≡ num n
+    e0 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+
+-- lam : RTm (Γ ∙) → RTm Γ
+Tm-lamK : {Γ : Cx} → RTm Γ → RTm Γ
+Tm-lamK a0 = icon tagTm-lam (pair a0 (pair (idrefl ⌜Nat⌝ sTm) unit))
+
+⊢Tm-lamK : {Δ : Ctx} (n : ℕ) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num (suc (n)))) →
+        Δ ⊢ Tm-lamK a0 ∷ K (pair sTm (num n))
+⊢Tm-lamK n {a0 = a0} d0 =
+  ⊢icon KnotWf memTm-lam (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (num n)))) (d0))
+     (⊢pair (ty-Unit)
+            (fordFst ⊢sTm)
+      ⊢unit))
+  where
+    e0 : renTm vs (num n) ≡ num n
+    e0 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+
+-- app : RTm Γ → RTm Γ → RTm Γ
+Tm-appK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Tm-appK a0 a1 = icon tagTm-app (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) unit)))
+
+⊢Tm-appK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-appK a0 a1 ∷ K (pair sTm (num n))
+⊢Tm-appK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTm-app (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e2)))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e3) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTm)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- pair : RTm Γ → RTm Γ → RTm Γ
+Tm-pairK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Tm-pairK a0 a1 = icon tagTm-pair (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) unit)))
+
+⊢Tm-pairK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-pairK a0 a1 ∷ K (pair sTm (num n))
+⊢Tm-pairK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTm-pair (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e2)))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e3) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTm)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- absurd : RTm Γ → RTm Γ → RTm Γ
+Tm-absurdK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Tm-absurdK a0 a1 = icon tagTm-absurd (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) unit)))
+
+⊢Tm-absurdK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-absurdK a0 a1 ∷ K (pair sTm (num n))
+⊢Tm-absurdK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTm-absurd (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e2)))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e3) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTm)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- ordtr : (5 × RTm Γ) → RTm Γ
+Tm-ordtrK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-ordtrK a0 a1 a2 a3 a4 = icon tagTm-ordtr (pair a0 (pair a1 (pair a2 (pair a3 (pair a4 (pair (idrefl ⌜Nat⌝ sTm) unit))))))
+
+⊢Tm-ordtrK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 a3 a4 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a3 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a4 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-ordtrK a0 a1 a2 a3 a4 ∷ K (pair sTm (num n))
+⊢Tm-ordtrK n {a0 = a0} {a1 = a1} {a2 = a2} {a3 = a3} {a4 = a4} d0 d1 d2 d3 d4 =
+  ⊢icon KnotWf memTm-ordtr (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e4))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e3))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e2))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))))))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e8))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e7))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e6))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e5)))) (toI ⊢sTm))) (ty-Unit)))))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e9) d1))
+      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e12))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e11))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e10)))) (toI ⊢sTm))) (ty-Unit))))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e13) d2))
+       (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e15))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e14)))) (toI ⊢sTm))) (ty-Unit)))
+              (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a2) (subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))))))) (kCast (sym e16) d3))
+        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e17)))) (toI ⊢sTm))) (ty-Unit))
+               (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a3) (subTm (extS (single a2)) (subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (num n))))))))))) (kCast (sym e18) d4))
+         (⊢pair (ty-Unit)
+                (fordFst ⊢sTm)
+          ⊢unit))))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e3 : renTm vs (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e4 : renTm vs (num n) ≡ num n
+    e4 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e5 : subTm (extS (extS (extS (extS (single a0))))) (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (num n)))))) ≡ num n
+    e5 = trans (cong (subTm (extS (extS (extS (extS (single a0)))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (extS (single a0))))) n)
+    e6 : subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e6 = trans (cong (subTm (extS (extS (extS (single a0))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (single a0)))) n)
+    e7 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e7 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e8 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e8 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e9 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e9 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e10 : subTm (extS (extS (extS (single a1)))) (subTm (extS (extS (extS (extS (single a0))))) (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (num n))))))) ≡ num n
+    e10 = trans (cong (subTm (extS (extS (extS (single a1))))) (trans (cong (subTm (extS (extS (extS (extS (single a0)))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (extS (single a0))))) n))) (num-sub (extS (extS (extS (single a1)))) n)
+    e11 : subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (num n)))))) ≡ num n
+    e11 = trans (cong (subTm (extS (extS (single a1)))) (trans (cong (subTm (extS (extS (extS (single a0))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (single a0)))) n))) (num-sub (extS (extS (single a1))) n)
+    e12 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e12 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e13 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e13 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+    e14 : subTm (extS (extS (single a2))) (subTm (extS (extS (extS (single a1)))) (subTm (extS (extS (extS (extS (single a0))))) (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (num n)))))))) ≡ num n
+    e14 = trans (cong (subTm (extS (extS (single a2)))) (trans (cong (subTm (extS (extS (extS (single a1))))) (trans (cong (subTm (extS (extS (extS (extS (single a0)))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (extS (single a0))))) n))) (num-sub (extS (extS (extS (single a1)))) n))) (num-sub (extS (extS (single a2))) n)
+    e15 : subTm (extS (single a2)) (subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (num n))))))) ≡ num n
+    e15 = trans (cong (subTm (extS (single a2))) (trans (cong (subTm (extS (extS (single a1)))) (trans (cong (subTm (extS (extS (extS (single a0))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (single a0)))) n))) (num-sub (extS (extS (single a1))) n))) (num-sub (extS (single a2)) n)
+    e16 : subTm (single a2) (subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))))) ≡ num n
+    e16 = trans (cong (subTm (single a2)) (trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n))) (num-sub (single a2) n)
+    e17 : subTm (extS (single a3)) (subTm (extS (extS (single a2))) (subTm (extS (extS (extS (single a1)))) (subTm (extS (extS (extS (extS (single a0))))) (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (num n))))))))) ≡ num n
+    e17 = trans (cong (subTm (extS (single a3))) (trans (cong (subTm (extS (extS (single a2)))) (trans (cong (subTm (extS (extS (extS (single a1))))) (trans (cong (subTm (extS (extS (extS (extS (single a0)))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (extS (single a0))))) n))) (num-sub (extS (extS (extS (single a1)))) n))) (num-sub (extS (extS (single a2))) n))) (num-sub (extS (single a3)) n)
+    e18 : subTm (single a3) (subTm (extS (single a2)) (subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (num n)))))))) ≡ num n
+    e18 = trans (cong (subTm (single a3)) (trans (cong (subTm (extS (single a2))) (trans (cong (subTm (extS (extS (single a1)))) (trans (cong (subTm (extS (extS (extS (single a0))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (single a0)))) n))) (num-sub (extS (extS (single a1))) n))) (num-sub (extS (single a2)) n))) (num-sub (single a3) n)
+
+-- fst : RTm Γ → RTm Γ
+Tm-fstK : {Γ : Cx} → RTm Γ → RTm Γ
+Tm-fstK a0 = icon tagTm-fst (pair a0 (pair (idrefl ⌜Nat⌝ sTm) unit))
+
+⊢Tm-fstK : {Δ : Ctx} (n : ℕ) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-fstK a0 ∷ K (pair sTm (num n))
+⊢Tm-fstK n {a0 = a0} d0 =
+  ⊢icon KnotWf memTm-fst (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Unit)
+            (fordFst ⊢sTm)
+      ⊢unit))
+  where
+    e0 : renTm vs (num n) ≡ num n
+    e0 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+
+-- snd : RTm Γ → RTm Γ
+Tm-sndK : {Γ : Cx} → RTm Γ → RTm Γ
+Tm-sndK a0 = icon tagTm-snd (pair a0 (pair (idrefl ⌜Nat⌝ sTm) unit))
+
+⊢Tm-sndK : {Δ : Ctx} (n : ℕ) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-sndK a0 ∷ K (pair sTm (num n))
+⊢Tm-sndK n {a0 = a0} d0 =
+  ⊢icon KnotWf memTm-snd (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Unit)
+            (fordFst ⊢sTm)
+      ⊢unit))
+  where
+    e0 : renTm vs (num n) ≡ num n
+    e0 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+
+-- ⌜base⌝ : RTm Γ
+Tm-cbaseK : {Γ : Cx} → RTm Γ
+Tm-cbaseK  = icon tagTm-cbase (pair (idrefl ⌜Nat⌝ sTm) unit)
+
+⊢Tm-cbaseK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ Tm-cbaseK  ∷ K (pair sTm (num n))
+⊢Tm-cbaseK n  =
+  ⊢icon KnotWf memTm-cbase (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sTm)
+     ⊢unit)
+
+-- ⌜Π⌝ : RTm Γ → RTm (Γ ∙) → RTm Γ
+Tm-cPiK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Tm-cPiK a0 a1 = icon tagTm-cPi (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) unit)))
+
+⊢Tm-cPiK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num (suc (n)))) →
+        Δ ⊢ Tm-cPiK a0 a1 ∷ K (pair sTm (num n))
+⊢Tm-cPiK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTm-cPi (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e2)))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (num n)))))) (kCast (sym (cong nsuc (e3))) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTm)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- ⌜Σ⌝ : RTm Γ → RTm (Γ ∙) → RTm Γ
+Tm-cSgK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Tm-cSgK a0 a1 = icon tagTm-cSg (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) unit)))
+
+⊢Tm-cSgK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num (suc (n)))) →
+        Δ ⊢ Tm-cSgK a0 a1 ∷ K (pair sTm (num n))
+⊢Tm-cSgK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTm-cSg (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e2)))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (num n)))))) (kCast (sym (cong nsuc (e3))) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTm)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- ⌜Hom⌝ : (3 × RTm Γ) → RTm Γ
+Tm-cHomK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-cHomK a0 a1 a2 = icon tagTm-cHom (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTm) unit))))
+
+⊢Tm-cHomK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-cHomK a0 a1 a2 ∷ K (pair sTm (num n))
+⊢Tm-cHomK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTm-cHom (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e2))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e4))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e3)))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e6)))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e7) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTm)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (num n) ≡ num n
+    e2 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e3 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e7 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- hrefl : RTm Γ → RTm Γ → RTm Γ
+Tm-hreflK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Tm-hreflK a0 a1 = icon tagTm-hrefl (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) unit)))
+
+⊢Tm-hreflK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-hreflK a0 a1 ∷ K (pair sTm (num n))
+⊢Tm-hreflK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTm-hrefl (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e2)))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e3) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTm)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- tr : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
+Tm-trK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-trK a0 a1 a2 = icon tagTm-tr (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTm) unit))))
+
+⊢Tm-trK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num (suc (n)))) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-trK a0 a1 a2 ∷ K (pair sTm (num n))
+⊢Tm-trK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTm-tr (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e2))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (num n)))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e4))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e3)))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e6)))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e7) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTm)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (num n) ≡ num n
+    e2 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e3 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e7 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- ap : RTm Γ → RTm (Γ ∙) → RTm Γ → RTm Γ
+Tm-apK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-apK a0 a1 a2 = icon tagTm-ap (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTm) unit))))
+
+⊢Tm-apK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num (suc (n)))) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-apK a0 a1 a2 ∷ K (pair sTm (num n))
+⊢Tm-apK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTm-ap (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢numAt n e2)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e4))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e3)))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (num n)))))) (kCast (sym (cong nsuc (e5))) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e6)))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e7) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTm)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (num n) ≡ num n
+    e2 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e3 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e7 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- ⌜Id⌝ : (3 × RTm Γ) → RTm Γ
+Tm-cIdK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-cIdK a0 a1 a2 = icon tagTm-cId (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTm) unit))))
+
+⊢Tm-cIdK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-cIdK a0 a1 a2 ∷ K (pair sTm (num n))
+⊢Tm-cIdK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTm-cId (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e2))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e4))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e3)))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e6)))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e7) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTm)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (num n) ≡ num n
+    e2 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e3 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e7 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- idrefl : RTm Γ → RTm Γ → RTm Γ
+Tm-idreflK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Tm-idreflK a0 a1 = icon tagTm-idrefl (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) unit)))
+
+⊢Tm-idreflK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-idreflK a0 a1 ∷ K (pair sTm (num n))
+⊢Tm-idreflK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTm-idrefl (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e2)))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e3) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTm)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- jsub : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
+Tm-jsubK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-jsubK a0 a1 a2 = icon tagTm-jsub (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTm) unit))))
+
+⊢Tm-jsubK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num (suc (n)))) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-jsubK a0 a1 a2 ∷ K (pair sTm (num n))
+⊢Tm-jsubK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTm-jsub (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e2))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (num n)))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e4))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e3)))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e6)))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e7) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTm)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (num n) ≡ num n
+    e2 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e3 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e7 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- unit : RTm Γ
+Tm-unitK : {Γ : Cx} → RTm Γ
+Tm-unitK  = icon tagTm-unit (pair (idrefl ⌜Nat⌝ sTm) unit)
+
+⊢Tm-unitK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ Tm-unitK  ∷ K (pair sTm (num n))
+⊢Tm-unitK n  =
+  ⊢icon KnotWf memTm-unit (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sTm)
+     ⊢unit)
+
+-- nzero : RTm Γ
+Tm-nzeroK : {Γ : Cx} → RTm Γ
+Tm-nzeroK  = icon tagTm-nzero (pair (idrefl ⌜Nat⌝ sTm) unit)
+
+⊢Tm-nzeroK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ Tm-nzeroK  ∷ K (pair sTm (num n))
+⊢Tm-nzeroK n  =
+  ⊢icon KnotWf memTm-nzero (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sTm)
+     ⊢unit)
+
+-- nsuc : RTm Γ → RTm Γ
+Tm-nsucK : {Γ : Cx} → RTm Γ → RTm Γ
+Tm-nsucK a0 = icon tagTm-nsuc (pair a0 (pair (idrefl ⌜Nat⌝ sTm) unit))
+
+⊢Tm-nsucK : {Δ : Ctx} (n : ℕ) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-nsucK a0 ∷ K (pair sTm (num n))
+⊢Tm-nsucK n {a0 = a0} d0 =
+  ⊢icon KnotWf memTm-nsuc (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Unit)
+            (fordFst ⊢sTm)
+      ⊢unit))
+  where
+    e0 : renTm vs (num n) ≡ num n
+    e0 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+
+-- natrec : RTm Γ → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
+Tm-natrecK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-natrecK a0 a1 a2 = icon tagTm-natrec (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTm) unit))))
+
+⊢Tm-natrecK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num (suc (suc (n))))) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-natrecK a0 a1 a2 ∷ K (pair sTm (num n))
+⊢Tm-natrecK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTm-natrec (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢numAt n e2))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e4))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e3)))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (ξ-nsuc (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (num n))))))) (kCast (sym (cong nsuc (cong nsuc (e5)))) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e6)))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e7) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTm)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (num n) ≡ num n
+    e2 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e3 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e7 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- con : ℕ → RTm Γ → RTm Γ
+Tm-conK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Tm-conK a0 a1 = icon tagTm-con (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) unit)))
+
+⊢Tm-conK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ Nat →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-conK a0 a1 ∷ K (pair sTm (num n))
+⊢Tm-conK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTm-con (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit)))
+           (toI d0)
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e2)))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e3) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTm)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- elim : Desc → RTm Γ → RTm Γ → RTm Γ
+Tm-elimK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-elimK a0 a1 a2 = icon tagTm-elim (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTm) unit))))
+
+⊢Tm-elimK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sDesc (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-elimK a0 a1 a2 ∷ K (pair sTm (num n))
+⊢Tm-elimK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTm-elim (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e2))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e4))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e3)))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e6)))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e7) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTm)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (num n) ≡ num n
+    e2 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e3 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e7 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- icon : ℕ → RTm Γ → RTm Γ
+Tm-iconK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Tm-iconK a0 a1 = icon tagTm-icon (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) unit)))
+
+⊢Tm-iconK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ Nat →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-iconK a0 a1 ∷ K (pair sTm (num n))
+⊢Tm-iconK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memTm-icon (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit)))
+           (toI d0)
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e2)))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e3) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sTm)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- ielim : IDesc → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-ielimK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-ielimK a0 a1 a2 a3 = icon tagTm-ielim (pair a0 (pair a1 (pair a2 (pair a3 (pair (idrefl ⌜Nat⌝ sTm) unit)))))
+
+⊢Tm-ielimK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 a3 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sIDesc (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a3 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-ielimK a0 a1 a2 a3 ∷ K (pair sTm (num n))
+⊢Tm-ielimK n {a0 = a0} {a1 = a1} {a2 = a2} {a3 = a3} d0 d1 d2 d3 =
+  ⊢icon KnotWf memTm-ielim (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e3))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e2))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit)))))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e6))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e5))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e4)))) (toI ⊢sTm))) (ty-Unit))))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (num n))))) (kCast (sym e7) d1))
+      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e9))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e8)))) (toI ⊢sTm))) (ty-Unit)))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e10) d2))
+       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e11)))) (toI ⊢sTm))) (ty-Unit))
+              (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a2) (subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))))))) (kCast (sym e12) d3))
+        (⊢pair (ty-Unit)
+               (fordFst ⊢sTm)
+         ⊢unit)))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e2 : renTm vs (renTm vs (num n)) ≡ num n
+    e2 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e3 : renTm vs (num n) ≡ num n
+    e3 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e4 : subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e4 = trans (cong (subTm (extS (extS (extS (single a0))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (single a0)))) n)
+    e5 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e5 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e6 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e6 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e7 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e7 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e8 : subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (num n)))))) ≡ num n
+    e8 = trans (cong (subTm (extS (extS (single a1)))) (trans (cong (subTm (extS (extS (extS (single a0))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (single a0)))) n))) (num-sub (extS (extS (single a1))) n)
+    e9 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e9 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e10 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e10 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+    e11 : subTm (extS (single a2)) (subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (num n))))))) ≡ num n
+    e11 = trans (cong (subTm (extS (single a2))) (trans (cong (subTm (extS (extS (single a1)))) (trans (cong (subTm (extS (extS (extS (single a0))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (single a0)))) n))) (num-sub (extS (extS (single a1))) n))) (num-sub (extS (single a2)) n)
+    e12 : subTm (single a2) (subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))))) ≡ num n
+    e12 = trans (cong (subTm (single a2)) (trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n))) (num-sub (single a2) n)
+
+-- ⌜Nat⌝ : RTm Γ
+Tm-cNatK : {Γ : Cx} → RTm Γ
+Tm-cNatK  = icon tagTm-cNat (pair (idrefl ⌜Nat⌝ sTm) unit)
+
+⊢Tm-cNatK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ Tm-cNatK  ∷ K (pair sTm (num n))
+⊢Tm-cNatK n  =
+  ⊢icon KnotWf memTm-cNat (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sTm)
+     ⊢unit)
+
+-- ⌜Mu⌝ : Desc → RTm Γ
+Tm-cMuK : {Γ : Cx} → RTm Γ → RTm Γ
+Tm-cMuK a0 = icon tagTm-cMu (pair a0 (pair (idrefl ⌜Nat⌝ sTm) unit))
+
+⊢Tm-cMuK : {Δ : Ctx} (n : ℕ) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sDesc (num n)) →
+        Δ ⊢ Tm-cMuK a0 ∷ K (pair sTm (num n))
+⊢Tm-cMuK n {a0 = a0} d0 =
+  ⊢icon KnotWf memTm-cMu (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Unit)
+            (fordFst ⊢sTm)
+      ⊢unit))
+  where
+    e0 : renTm vs (num n) ≡ num n
+    e0 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+
+-- ⌜IMu⌝ : IDesc → RTy ε → RTm Γ → RTm Γ
+Tm-cIMuK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Tm-cIMuK a0 a1 a2 = icon tagTm-cIMu (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat⌝ sTm) unit))))
+
+⊢Tm-cIMuK : {Δ : Ctx} (n : ℕ) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sIDesc (num n)) →
+        Δ ⊢ a1 ∷ K (pair sTy (num 0)) →
+        Δ ⊢ a2 ∷ K (pair sTm (num n)) →
+        Δ ⊢ Tm-cIMuK a0 a1 a2 ∷ K (pair sTm (num n))
+⊢Tm-cIMuK n {a0 = a0} {a1 = a1} {a2 = a2} d0 d1 d2 =
+  ⊢icon KnotWf memTm-cIMu (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢num 0))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e0)))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (num n))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢numAt n e3))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e2)))) (toI ⊢sTm))) (ty-Unit)))
+            (d1)
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢numAt n e4)))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n))))))) (kCast (sym e5) d2))
+       (⊢pair (ty-Unit)
+              (fordFst ⊢sTm)
+        ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (renTm vs (num n)) ≡ num n
+    e1 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e2 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    e2 = trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n)
+    e3 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e3 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e4 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    e4 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
+    e5 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
+    e5 = trans (cong (subTm (single a1)) (trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n))) (num-sub (single a1) n)
+
+-- ⌜Unit⌝ : RTm Γ
+Tm-cUnitK : {Γ : Cx} → RTm Γ
+Tm-cUnitK  = icon tagTm-cUnit (pair (idrefl ⌜Nat⌝ sTm) unit)
+
+⊢Tm-cUnitK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ Tm-cUnitK  ∷ K (pair sTm (num n))
+⊢Tm-cUnitK n  =
+  ⊢icon KnotWf memTm-cUnit (⊢ixP ⊢sTm (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sTm)
+     ⊢unit)
+
+-- dnil : Desc
+Desc-nilK : {Γ : Cx} → RTm Γ
+Desc-nilK  = icon tagDesc-nil (pair (idrefl ⌜Nat⌝ sDesc) unit)
+
+⊢Desc-nilK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ Desc-nilK  ∷ K (pair sDesc (num n))
+⊢Desc-nilK n  =
+  ⊢icon KnotWf memDesc-nil (⊢ixP ⊢sDesc (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sDesc)
+     ⊢unit)
+
+-- _◃_ : DCon → Desc → Desc
+Desc-consK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+Desc-consK a0 a1 = icon tagDesc-cons (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sDesc) unit)))
+
+⊢Desc-consK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sDCon (num n)) →
+        Δ ⊢ a1 ∷ K (pair sDesc (num n)) →
+        Δ ⊢ Desc-consK a0 a1 ∷ K (pair sDesc (num n))
+⊢Desc-consK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memDesc-cons (⊢ixP ⊢sDesc (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢ixP ⊢sDesc (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDesc (⊢numAt n e0)))) (toI ⊢sDesc))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sDesc (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDesc (⊢numAt n e2)))) (toI ⊢sDesc))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sDesc (subTm (single a0) (renTm vs (num n))))) (kCast (sym e3) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sDesc)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- dι : DCon
+DCon-iK : {Γ : Cx} → RTm Γ
+DCon-iK  = icon tagDCon-i (pair (idrefl ⌜Nat⌝ sDCon) unit)
+
+⊢DCon-iK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ DCon-iK  ∷ K (pair sDCon (num n))
+⊢DCon-iK n  =
+  ⊢icon KnotWf memDCon-i (⊢ixP ⊢sDCon (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sDCon)
+     ⊢unit)
+
+-- dρ : DCon → DCon
+DCon-rhoK : {Γ : Cx} → RTm Γ → RTm Γ
+DCon-rhoK a0 = icon tagDCon-rho (pair a0 (pair (idrefl ⌜Nat⌝ sDCon) unit))
+
+⊢DCon-rhoK : {Δ : Ctx} (n : ℕ) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sDCon (num n)) →
+        Δ ⊢ DCon-rhoK a0 ∷ K (pair sDCon (num n))
+⊢DCon-rhoK n {a0 = a0} d0 =
+  ⊢icon KnotWf memDCon-rho (⊢ixP ⊢sDCon (⊢num n))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDCon (⊢numAt n e0)))) (toI ⊢sDCon))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sDCon (num n))) (d0))
+     (⊢pair (ty-Unit)
+            (fordFst ⊢sDCon)
+      ⊢unit))
+  where
+    e0 : renTm vs (num n) ≡ num n
+    e0 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+
+-- dκ : RTy ε → DCon → DCon
+DCon-kapK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+DCon-kapK a0 a1 = icon tagDCon-kap (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sDCon) unit)))
+
+⊢DCon-kapK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTy (num 0)) →
+        Δ ⊢ a1 ∷ K (pair sDCon (num n)) →
+        Δ ⊢ DCon-kapK a0 a1 ∷ K (pair sDCon (num n))
+⊢DCon-kapK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memDCon-kap (⊢ixP ⊢sDCon (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sDCon (⊢snd (⊢ixP ⊢sDCon (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDCon (⊢numAt n e0)))) (toI ⊢sDCon))) (ty-Unit)))
+           (d0)
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDCon (⊢numAt n e2)))) (toI ⊢sDCon))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sDCon (subTm (single a0) (renTm vs (num n))))) (kCast (sym e3) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sDCon)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- inil : IDesc
+IDesc-nilK : {Γ : Cx} → RTm Γ
+IDesc-nilK  = icon tagIDesc-nil (pair (idrefl ⌜Nat⌝ sIDesc) unit)
+
+⊢IDesc-nilK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ IDesc-nilK  ∷ K (pair sIDesc (num n))
+⊢IDesc-nilK n  =
+  ⊢icon KnotWf memIDesc-nil (⊢ixP ⊢sIDesc (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sIDesc)
+     ⊢unit)
+
+-- _◂_ : ICon (ε ∙) → IDesc → IDesc
+IDesc-consK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+IDesc-consK a0 a1 = icon tagIDesc-cons (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sIDesc) unit)))
+
+⊢IDesc-consK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sICon (num 1)) →
+        Δ ⊢ a1 ∷ K (pair sIDesc (num n)) →
+        Δ ⊢ IDesc-consK a0 a1 ∷ K (pair sIDesc (num n))
+⊢IDesc-consK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memIDesc-cons (⊢ixP ⊢sIDesc (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢snd (⊢ixP ⊢sIDesc (⊢numAt n e1))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sIDesc (⊢numAt n e0)))) (toI ⊢sIDesc))) (ty-Unit)))
+           (d0)
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sIDesc (⊢numAt n e2)))) (toI ⊢sIDesc))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sIDesc (subTm (single a0) (renTm vs (num n))))) (kCast (sym e3) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sIDesc)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- iι : ICon Δ
+ICon-iK : {Γ : Cx} → RTm Γ
+ICon-iK  = icon tagICon-i (pair (idrefl ⌜Nat⌝ sICon) unit)
+
+⊢ICon-iK : {Δ : Ctx} (n : ℕ) →
+        Δ ⊢ ICon-iK  ∷ K (pair sICon (num n))
+⊢ICon-iK n  =
+  ⊢icon KnotWf memICon-i (⊢ixP ⊢sICon (⊢num n))
+    (⊢pair (ty-Unit)
+           (fordFst ⊢sICon)
+     ⊢unit)
+
+-- iρ : RTm Δ → ICon (Δ ∙) → ICon Δ
+ICon-rhoK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+ICon-rhoK a0 a1 = icon tagICon-rho (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sICon) unit)))
+
+⊢ICon-rhoK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sICon (num (suc (n)))) →
+        Δ ⊢ ICon-rhoK a0 a1 ∷ K (pair sICon (num n))
+⊢ICon-rhoK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memICon-rho (⊢ixP ⊢sICon (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sICon (⊢nsuc (⊢snd (⊢ixP ⊢sICon (⊢numAt n e1)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢numAt n e0)))) (toI ⊢sICon))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sICon (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢numAt n e2)))) (toI ⊢sICon))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sICon (subTm (single a0) (renTm vs (num n)))))) (kCast (sym (cong nsuc (e3))) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sICon)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
+-- iκ : RTm Δ → ICon (Δ ∙) → ICon Δ
+ICon-kapK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+ICon-kapK a0 a1 = icon tagICon-kap (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sICon) unit)))
+
+⊢ICon-kapK : {Δ : Ctx} (n : ℕ) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ a0 ∷ K (pair sTm (num n)) →
+        Δ ⊢ a1 ∷ K (pair sICon (num (suc (n)))) →
+        Δ ⊢ ICon-kapK a0 a1 ∷ K (pair sICon (num n))
+⊢ICon-kapK n {a0 = a0} {a1 = a1} d0 d1 =
+  ⊢icon KnotWf memICon-kap (⊢ixP ⊢sICon (⊢num n))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sICon (⊢nsuc (⊢snd (⊢ixP ⊢sICon (⊢numAt n e1)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢numAt n e0)))) (toI ⊢sICon))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sICon (num n))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢numAt n e2)))) (toI ⊢sICon))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sICon (subTm (single a0) (renTm vs (num n)))))) (kCast (sym (cong nsuc (e3))) d1))
+      (⊢pair (ty-Unit)
+             (fordFst ⊢sICon)
+       ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (num n)) ≡ num n
+    e0 = trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n)
+    e1 : renTm vs (num n) ≡ num n
+    e1 = trans (cong (renTm vs) (refl)) (num-ren vs n)
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
+    e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
+    e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
+    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+
