@@ -38,6 +38,8 @@ open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.Nat using (ℕ; suc; _*_; _∸_)
 open import Data.Nat.Show using () renaming (show to showℕ)
+open import Once.Float.Decimal using (round)
+open import Once.Float.Dyadic using (binary64)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String; _++_)
 
@@ -92,6 +94,9 @@ instr-text (Xmov-imm dst z)   = "    movq $" ++ showℤ z ++ ", " ++ reg-text ds
 instr-text (Xmov-rr dst src)  = "    movq " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-r-m s src)   = "    movq " ++ reg-text src ++ ", " ++ scratch-text s ++ "\n"
 instr-text (Xmov-m-r dst s)   = "    movq " ++ scratch-text s ++ ", " ++ reg-text dst ++ "\n"
+-- A float input leaf is an 8-byte load, exactly as an integer one is — the
+-- kinds differ in the OPERATIONS, not in how a leaf is fetched.
+instr-text (Xmov-farg dst path) = instr-text (Xmov-arg dst path)
 instr-text (Xmov-arg dst path) = path-load-text dst path
   where
     -- | Byte offset for one path step. `Fst` is offset 0, `Snd` is
@@ -209,6 +214,59 @@ instr-text (Xsdiv-pow2-rri dst src imm) =
      "    sarq $" ++ showℕ imm ++ ", %rax\n" ++                 -- rax = quotient
      "    movq %rax, " ++ reg-text dst ++ "\n"
 instr-text (Xneg-r dst)       = "    negq " ++ reg-text dst ++ "\n"
+
+------------------------------------------------------------------------
+-- PLAN 0.75 F4: the float instructions.
+--
+-- FLOAT VALUES LIVE IN GPRs BETWEEN OPERATIONS, and move to `%xmm` only for
+-- the operation itself. That is what lets spill/reload/mov stay the integer
+-- `movq` they already are — a bit pattern is 8 bytes either way — instead of
+-- the abstract register file needing a second half.
+--
+-- STILL OWED HERE (D055's rule, decided and not yet emitted): x86 sets the
+-- sign on an invalid result and PROPAGATES an operand NaN payload, where Once
+-- promises the canonical NaN. A canonicalising fixup belongs after each op
+-- that can produce one, elidable where the result is provably not a NaN.
+------------------------------------------------------------------------
+instr-text (Xfadd-rr dst src) =
+  "    movq " ++ reg-text dst ++ ", %xmm0\n" ++
+  "    movq " ++ reg-text src ++ ", %xmm1\n" ++
+  "    addsd %xmm1, %xmm0\n" ++
+  "    movq %xmm0, " ++ reg-text dst ++ "\n"
+instr-text (Xfsub-rr dst src) =
+  "    movq " ++ reg-text dst ++ ", %xmm0\n" ++
+  "    movq " ++ reg-text src ++ ", %xmm1\n" ++
+  "    subsd %xmm1, %xmm0\n" ++
+  "    movq %xmm0, " ++ reg-text dst ++ "\n"
+-- REVERSE subtract: `dst := src − dst`. The operand order is the whole
+-- difference, and it is why this instruction exists (see `XInstr.Syntax`).
+instr-text (Xfsubr-rr dst src) =
+  "    movq " ++ reg-text src ++ ", %xmm0\n" ++
+  "    movq " ++ reg-text dst ++ ", %xmm1\n" ++
+  "    subsd %xmm1, %xmm0\n" ++
+  "    movq %xmm0, " ++ reg-text dst ++ "\n"
+instr-text (Xfmul-rr dst src) =
+  "    movq " ++ reg-text dst ++ ", %xmm0\n" ++
+  "    movq " ++ reg-text src ++ ", %xmm1\n" ++
+  "    mulsd %xmm1, %xmm0\n" ++
+  "    movq %xmm0, " ++ reg-text dst ++ "\n"
+-- Negation is a SIGN-BIT FLIP done in the GPR — exact on every pattern,
+-- including NaN and −0, which `0 − x` would not be.
+--
+-- `btcq $63` and NOT a `movabsq` mask through `%rax`: the mask version
+-- CLOBBERS a second register, and the correspondence models this instruction
+-- as a SINGLE write. Complementing the bit in place keeps the model honest
+-- rather than needing the `rax` peel that `Xsdiv-pow2-rri` carries.
+instr-text (Xfneg-r dst) =
+  "    btcq $63, " ++ reg-text dst ++ "\n"
+instr-text (Xi2f-r dst src) =
+  "    cvtsi2sdq " ++ reg-text src ++ ", %xmm0\n" ++
+  "    movq %xmm0, " ++ reg-text dst ++ "\n"
+-- The literal is materialised as its ROUNDED PATTERN at THIS target's format
+-- — the one rounding, at the backend (D117). A narrower target rounds
+-- narrower because it passes its own format.
+instr-text (Xmov-fimm dst dc) =
+  "    movabsq $" ++ showℕ (round binary64 dc) ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    movq " ++ reg-text src ++ ", %rax\n"
 
 program-text : XProgram → String

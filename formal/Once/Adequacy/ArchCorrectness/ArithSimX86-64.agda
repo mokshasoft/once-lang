@@ -189,6 +189,15 @@ module _ (N : ℕ) where
   rf-other (XI.Xsdiv-pow2-rri d src imm) s x h =
     trans (readReg-wr-rax-arith (writeReg (regs s) (arith-reg d) (V (XI.Xsdiv-pow2-rri d src imm) s)) x (V (XI.Xsdiv-pow2-rri d src imm) s))
           (readReg-wr-arith-other (regs s) d x (V (XI.Xsdiv-pow2-rri d src imm) s) (¬d≡x d x h))
+  -- …and each writes exactly its destination.
+  rf-other (XI.Xfadd-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfadd-rr d src) s) (¬d≡x d x h)
+  rf-other (XI.Xfsub-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfsub-rr d src) s) (¬d≡x d x h)
+  rf-other (XI.Xfmul-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfmul-rr d src) s) (¬d≡x d x h)
+  rf-other (XI.Xfsubr-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfsubr-rr d src) s) (¬d≡x d x h)
+  rf-other (XI.Xfneg-r d) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfneg-r d) s) (¬d≡x d x h)
+  rf-other (XI.Xi2f-r d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xi2f-r d src) s) (¬d≡x d x h)
+  rf-other (XI.Xmov-fimm d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-fimm d src) s) (¬d≡x d x h)
+  rf-other (XI.Xmov-farg d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xmov-farg d src) s) (¬d≡x d x h)
   rf-other (XI.Xmov-r-m sc src) s x h = refl
   rf-other (XI.Xmov-out src) s x h = readReg-wr-rax-arith (regs s) x (V (XI.Xmov-out src) s)
 
@@ -213,6 +222,15 @@ module _ (N : ℕ) where
   mem-keep (XI.Xdiv-safe-rrr _ _ _)  s addr _ = refl
   mem-keep (XI.Xrem-safe-rrr _ _ _)  s addr _ = refl
   mem-keep (XI.Xsdiv-pow2-rri _ _ _) s addr _ = refl
+  -- PLAN 0.75 F4: no float instruction writes memory.
+  mem-keep (XI.Xfadd-rr _ _)           s addr _ = refl
+  mem-keep (XI.Xfsub-rr _ _)           s addr _ = refl
+  mem-keep (XI.Xfmul-rr _ _)           s addr _ = refl
+  mem-keep (XI.Xfsubr-rr _ _)          s addr _ = refl
+  mem-keep (XI.Xfneg-r _)              s addr _ = refl
+  mem-keep (XI.Xi2f-r _ _)             s addr _ = refl
+  mem-keep (XI.Xmov-fimm _ _)          s addr _ = refl
+  mem-keep (XI.Xmov-farg _ _)          s addr _ = refl
   mem-keep (XI.Xmov-out _)           s addr _ = refl
 
   mem-spill-hit : ∀ sc' src s
@@ -239,6 +257,14 @@ module _ (N : ℕ) where
   rdi-inv (XI.Xadd-rr d src) s = wr-arith-rdi (regs s) d (V (XI.Xadd-rr d src) s)
   rdi-inv (XI.Xsub-rr d src) s = wr-arith-rdi (regs s) d (V (XI.Xsub-rr d src) s)
   rdi-inv (XI.Ximul-rr d src) s = wr-arith-rdi (regs s) d (V (XI.Ximul-rr d src) s)
+  rdi-inv (XI.Xfadd-rr d src2) s = wr-arith-rdi (regs s) d (V (XI.Xfadd-rr d src2) s)
+  rdi-inv (XI.Xfsub-rr d src2) s = wr-arith-rdi (regs s) d (V (XI.Xfsub-rr d src2) s)
+  rdi-inv (XI.Xfmul-rr d src2) s = wr-arith-rdi (regs s) d (V (XI.Xfmul-rr d src2) s)
+  rdi-inv (XI.Xfsubr-rr d src2) s = wr-arith-rdi (regs s) d (V (XI.Xfsubr-rr d src2) s)
+  rdi-inv (XI.Xfneg-r d) s = wr-arith-rdi (regs s) d (V (XI.Xfneg-r d) s)
+  rdi-inv (XI.Xi2f-r d src2) s = wr-arith-rdi (regs s) d (V (XI.Xi2f-r d src2) s)
+  rdi-inv (XI.Xmov-fimm d src2) s = wr-arith-rdi (regs s) d (V (XI.Xmov-fimm d src2) s)
+  rdi-inv (XI.Xmov-farg d src2) s = wr-arith-rdi (regs s) d (V (XI.Xmov-farg d src2) s)
   rdi-inv (XI.Xneg-r d) s = wr-arith-rdi (regs s) d (V (XI.Xneg-r d) s)
   rdi-inv (XI.Xshl-rri d src imm) s = wr-arith-rdi (regs s) d (V (XI.Xshl-rri d src imm) s)
   rdi-inv (XI.Xdiv-rrr d a b) s =
@@ -283,6 +309,14 @@ module _ (N : ℕ) where
   mem-agree-heap (XI.Xadd-rr d src) s inStk a inH = mem-keep (XI.Xadd-rr d src) s a tt
   mem-agree-heap (XI.Xsub-rr d src) s inStk a inH = mem-keep (XI.Xsub-rr d src) s a tt
   mem-agree-heap (XI.Ximul-rr d src) s inStk a inH = mem-keep (XI.Ximul-rr d src) s a tt
+  mem-agree-heap (XI.Xfadd-rr d src2) s inStk a inH = mem-keep (XI.Xfadd-rr d src2) s a tt
+  mem-agree-heap (XI.Xfsub-rr d src2) s inStk a inH = mem-keep (XI.Xfsub-rr d src2) s a tt
+  mem-agree-heap (XI.Xfmul-rr d src2) s inStk a inH = mem-keep (XI.Xfmul-rr d src2) s a tt
+  mem-agree-heap (XI.Xfsubr-rr d src2) s inStk a inH = mem-keep (XI.Xfsubr-rr d src2) s a tt
+  mem-agree-heap (XI.Xfneg-r d) s inStk a inH = mem-keep (XI.Xfneg-r d) s a tt
+  mem-agree-heap (XI.Xi2f-r d src2) s inStk a inH = mem-keep (XI.Xi2f-r d src2) s a tt
+  mem-agree-heap (XI.Xmov-fimm d src2) s inStk a inH = mem-keep (XI.Xmov-fimm d src2) s a tt
+  mem-agree-heap (XI.Xmov-farg d src2) s inStk a inH = mem-keep (XI.Xmov-farg d src2) s a tt
   mem-agree-heap (XI.Xneg-r d) s inStk a inH = mem-keep (XI.Xneg-r d) s a tt
   mem-agree-heap (XI.Xshl-rri d src imm) s inStk a inH = mem-keep (XI.Xshl-rri d src imm) s a tt
   mem-agree-heap (XI.Xdiv-rrr d x y) s inStk a inH = mem-keep (XI.Xdiv-rrr d x y) s a tt
@@ -311,6 +345,14 @@ module _ (N : ℕ) where
   pl-inv (XI.Xadd-rr d src) s wf p = pl-inv-ns (XI.Xadd-rr d src) s p refl
   pl-inv (XI.Xsub-rr d src) s wf p = pl-inv-ns (XI.Xsub-rr d src) s p refl
   pl-inv (XI.Ximul-rr d src) s wf p = pl-inv-ns (XI.Ximul-rr d src) s p refl
+  pl-inv (XI.Xfadd-rr d src2) s wf p = pl-inv-ns (XI.Xfadd-rr d src2) s p refl
+  pl-inv (XI.Xfsub-rr d src2) s wf p = pl-inv-ns (XI.Xfsub-rr d src2) s p refl
+  pl-inv (XI.Xfmul-rr d src2) s wf p = pl-inv-ns (XI.Xfmul-rr d src2) s p refl
+  pl-inv (XI.Xfsubr-rr d src2) s wf p = pl-inv-ns (XI.Xfsubr-rr d src2) s p refl
+  pl-inv (XI.Xfneg-r d) s wf p = pl-inv-ns (XI.Xfneg-r d) s p refl
+  pl-inv (XI.Xi2f-r d src2) s wf p = pl-inv-ns (XI.Xi2f-r d src2) s p refl
+  pl-inv (XI.Xmov-fimm d src2) s wf p = pl-inv-ns (XI.Xmov-fimm d src2) s p refl
+  pl-inv (XI.Xmov-farg d src2) s wf p = pl-inv-ns (XI.Xmov-farg d src2) s p refl
   pl-inv (XI.Xneg-r d) s wf p = pl-inv-ns (XI.Xneg-r d) s p refl
   pl-inv (XI.Xshl-rri d src imm) s wf p = pl-inv-ns (XI.Xshl-rri d src imm) s p refl
   pl-inv (XI.Xdiv-rrr d a b) s wf p = pl-inv-ns (XI.Xdiv-rrr d a b) s p refl

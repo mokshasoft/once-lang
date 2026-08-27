@@ -33,7 +33,7 @@ open import Data.Nat.Properties using (≡ᵇ⇒≡)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
 open import Once.Arith.Machine.AbsInstr
-  using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
+  using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
          neg-rr; spill; reload; move-to-out)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
@@ -190,24 +190,47 @@ div-op b = div-choose (pow2? b) (safe-divisor? b)
 -- `CompileCorrect.compile-go-correct`): running the result leaves the
 -- value of `e` in reg 0; scratch slots `< d` are preserved; reg 1 may
 -- be clobbered.
-compile-go : ∀ {sh} → ℕ → MArithIR sh NInt → List AbstractInstr
+-- PLAN 0.75 F4: KIND-INDEXED. The register discipline is identical for both
+-- kinds — evaluate the left operand into reg 0, spill it, evaluate the right,
+-- reload and combine — because the abstract register file is untyped and a
+-- float value is a pattern in it like any other. Only the OPERATION differs,
+-- which is exactly the split `NumType` was introduced for.
+--
+-- No strength reduction on the float side: `mul-op`'s power-of-two shift is an
+-- INTEGER identity (`x ⊗ 2^j = shl x j`) and has no float analogue that is
+-- exact for every operand, so `amul` at `NFloat` emits the plain multiply.
+compile-go : ∀ {sh n} → ℕ → MArithIR sh n → List AbstractInstr
 compile-go d (alit z)     = load-imm z 0 ∷ []
-compile-go d (ainput p)   = load-input p 0 ∷ []
-compile-go d (aadd a b)   =
+compile-go d (aflit dc)   = load-fimm dc 0 ∷ []
+compile-go {n = NInt}   d (ainput p) = load-input p 0 ∷ []
+compile-go {n = NFloat} d (ainput p) = load-finput p 0 ∷ []
+compile-go {n = NInt} d (aadd a b) =
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++
   (reload d 1 ∷ add-rrr 0 1 0 ∷ [])
-compile-go d (asub a b)   =
+compile-go {n = NFloat} d (aadd a b) =
+  compile-go d a ++ (spill 0 d ∷ []) ++
+  compile-go (suc d) b ++
+  (reload d 1 ∷ fadd-rrr 0 1 0 ∷ [])
+compile-go {n = NInt} d (asub a b) =
   -- After: reg 0 = (reg 1) - (reg 0) = a - b
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++
   (reload d 1 ∷ sub-rrr 0 1 0 ∷ [])
-compile-go d (amul a b)   =
+compile-go {n = NFloat} d (asub a b) =
+  compile-go d a ++ (spill 0 d ∷ []) ++
+  compile-go (suc d) b ++
+  (reload d 1 ∷ fsub-rrr 0 1 0 ∷ [])
+compile-go {n = NInt} d (amul a b) =
   -- After: reg 0 = (reg 1) ⊗ (reg 0) = a * b.  `mul-op b` picks a left
   -- shift when `b` is a power-of-two literal (strength reduction).
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++
   (reload d 1 ∷ mul-op b ∷ [])
+compile-go {n = NFloat} d (amul a b) =
+  compile-go d a ++ (spill 0 d ∷ []) ++
+  compile-go (suc d) b ++
+  (reload d 1 ∷ fmul-rrr 0 1 0 ∷ [])
 compile-go d (adiv a b)   =
   -- After: reg 0 = (reg 1) /ˢ (reg 0) = a /ˢ b.  `div-op b` picks the
   -- guard-elided variant when `b` is a safe literal (Part B).
@@ -219,11 +242,12 @@ compile-go d (amod a b)   =
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++
   (reload d 1 ∷ rem-op b ∷ [])
-compile-go d (aneg a)     =
-  compile-go d a ++ (neg-rr 0 0 ∷ [])
+compile-go {n = NInt}   d (aneg a) = compile-go d a ++ (neg-rr 0 0 ∷ [])
+compile-go {n = NFloat} d (aneg a) = compile-go d a ++ (fneg-rr 0 0 ∷ [])
+compile-go d (ai2f a) = compile-go d a ++ (i2f-rr 0 0 ∷ [])
 
 -- | Top-level compile: walk the tree, then move reg 0 to the output.
-compile-abs : ∀ {sh} → MArithIR sh NInt → List AbstractInstr
+compile-abs : ∀ {sh n} → MArithIR sh n → List AbstractInstr
 compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 
 ------------------------------------------------------------------------

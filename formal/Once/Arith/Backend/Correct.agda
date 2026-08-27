@@ -54,8 +54,10 @@ import Once.Arith.Machine.CompileCorrect as CC
 open CC bits F using (abs-validity)
 open import Once.Word using (module Width)
 
-open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ; norm; modulus; modulus≢0)
-open Exec bits using (step; run-abstract)
+open Width bits using (toℤ; fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ; norm; modulus; modulus≢0)
+open Exec bits F using (step; run-abstract)
+import Once.Float.Arith as FA
+open import Once.Float.Decimal using (Decimal; round)
 
 ------------------------------------------------------------------------
 -- Abstract register ↔ concrete XReg index
@@ -99,6 +101,18 @@ exec-xinstr (Xrem-safe-rrr d a b) s = record s { regs = ArithAbsState.regs s [ x
 exec-xinstr (Xshl-rri d src imm)      s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op (λ x → shlᵂ x imm) (ArithAbsState.regs s [ xreg-idx src ]) ] }
 exec-xinstr (Xsdiv-pow2-rri d src imm) s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op (λ x → sdiv2ᵏ x imm) (ArithAbsState.regs s [ xreg-idx src ]) ] }
 exec-xinstr (Xneg-r d)        s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op ⊝_ (ArithAbsState.regs s [ xreg-idx d ]) ] }
+-- PLAN 0.75 F4: the float instructions, read at `F` through
+-- `Once.Float.Arith` — the SAME functions the abstract machine's `step` and
+-- the denotation's `block-semM` call, so `refine-program` has nothing to
+-- reconcile beyond the register bookkeeping it already does.
+exec-xinstr (Xfadd-rr d src)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op (FA.fadd F) (ArithAbsState.regs s [ xreg-idx d ]) (ArithAbsState.regs s [ xreg-idx src ]) ] }
+exec-xinstr (Xfsub-rr d src)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op (FA.fsub F) (ArithAbsState.regs s [ xreg-idx d ]) (ArithAbsState.regs s [ xreg-idx src ]) ] }
+exec-xinstr (Xfmul-rr d src)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op (FA.fmul F) (ArithAbsState.regs s [ xreg-idx d ]) (ArithAbsState.regs s [ xreg-idx src ]) ] }
+exec-xinstr (Xfsubr-rr d src) s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ bin-op (FA.fsub F) (ArithAbsState.regs s [ xreg-idx src ]) (ArithAbsState.regs s [ xreg-idx d ]) ] }
+exec-xinstr (Xfneg-r d)       s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op (FA.fneg F) (ArithAbsState.regs s [ xreg-idx d ]) ] }
+exec-xinstr (Xi2f-r d src)    s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ un-op (λ w → FA.i2f F (toℤ w)) (ArithAbsState.regs s [ xreg-idx src ]) ] }
+exec-xinstr (Xmov-fimm d dc)  s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ just (round F dc) ] }
+exec-xinstr (Xmov-farg d p)   s = record s { regs = ArithAbsState.regs s [ xreg-idx d ↦ just (maybe-zero-f (projectF _ p (ArithAbsState.input s))) ] }
 exec-xinstr (Xmov-out src)    s = record s { output = ArithAbsState.regs s [ xreg-idx src ] }
 
 exec-xprog : ∀ {sh} → XProgram → ArithAbsState sh → ArithAbsState sh
@@ -480,6 +494,16 @@ exec-xinstr-cong (Xrem-safe-rrr d a b) (rc , sc , oc , ic) = store-cong2 rc (xre
 exec-xinstr-cong (Xshl-rri d src imm)      (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (un-op (λ x → shlᵂ x imm)) (rc (xreg-idx src))) , sc , oc , ic
 exec-xinstr-cong (Xsdiv-pow2-rri d src imm) (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (un-op (λ x → sdiv2ᵏ x imm)) (rc (xreg-idx src))) , sc , oc , ic
 exec-xinstr-cong (Xneg-r d)        (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (un-op ⊝_) (rc (xreg-idx d))) , sc , oc , ic
+-- PLAN 0.75 F4: the float instructions. Same shape as their integer twins —
+-- the congruence never inspects the operation, only where the write lands.
+exec-xinstr-cong (Xfadd-rr d src)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op (FA.fadd F)) (rc (xreg-idx d)) (rc (xreg-idx src))) , sc , oc , ic
+exec-xinstr-cong (Xfsub-rr d src)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op (FA.fsub F)) (rc (xreg-idx d)) (rc (xreg-idx src))) , sc , oc , ic
+exec-xinstr-cong (Xfmul-rr d src)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op (FA.fmul F)) (rc (xreg-idx d)) (rc (xreg-idx src))) , sc , oc , ic
+exec-xinstr-cong (Xfsubr-rr d src) (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong₂ (bin-op (FA.fsub F)) (rc (xreg-idx src)) (rc (xreg-idx d))) , sc , oc , ic
+exec-xinstr-cong (Xfneg-r d)       (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (un-op (FA.fneg F)) (rc (xreg-idx d))) , sc , oc , ic
+exec-xinstr-cong (Xi2f-r d src)    (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (un-op (λ w → FA.i2f F (toℤ w))) (rc (xreg-idx src))) , sc , oc , ic
+exec-xinstr-cong (Xmov-fimm d dc)  (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) refl , sc , oc , ic
+exec-xinstr-cong (Xmov-farg d p)   (rc , sc , oc , ic) = store-cong2 rc (xreg-idx d) (cong (λ inp → just (maybe-zero-f (projectF _ p inp))) ic) , sc , oc , ic
 exec-xinstr-cong (Xmov-out src)    (rc , sc , oc , ic) = rc , sc , rc (xreg-idx src) , ic
 
 step-cong : ∀ {sh} (i : AbstractInstr) {s₁ s₂ : ArithAbsState sh} → s₁ ~ s₂ → step i s₁ ~ step i s₂
@@ -497,6 +521,13 @@ step-cong (sdiv-pow2-rri dst src imm)(rc , sc , oc , ic) = store-cong2 rc dst (c
 step-cong (neg-rr dst a)   (rc , sc , oc , ic) = store-cong2 rc dst (cong (un-op ⊝_) (rc a)) , sc , oc , ic
 step-cong (spill src slot) (rc , sc , oc , ic) = rc , store-cong2 sc slot (rc src) , oc , ic
 step-cong (reload slot dst)(rc , sc , oc , ic) = store-cong2 rc dst (sc slot) , sc , oc , ic
+step-cong (load-finput p r)(rc , sc , oc , ic) = store-cong2 rc r (cong (λ inp → just (maybe-zero-f (projectF _ p inp))) ic) , sc , oc , ic
+step-cong (load-fimm dc r) (rc , sc , oc , ic) = store-cong2 rc r refl , sc , oc , ic
+step-cong (fadd-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op (FA.fadd F)) (rc a) (rc b)) , sc , oc , ic
+step-cong (fsub-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op (FA.fsub F)) (rc a) (rc b)) , sc , oc , ic
+step-cong (fmul-rrr dst a b)(rc , sc , oc , ic) = store-cong2 rc dst (cong₂ (bin-op (FA.fmul F)) (rc a) (rc b)) , sc , oc , ic
+step-cong (fneg-rr dst a)  (rc , sc , oc , ic) = store-cong2 rc dst (cong (un-op (FA.fneg F)) (rc a)) , sc , oc , ic
+step-cong (i2f-rr dst a)   (rc , sc , oc , ic) = store-cong2 rc dst (cong (un-op (λ w → FA.i2f F (toℤ w))) (rc a)) , sc , oc , ic
 step-cong (move-to-out src)(rc , sc , oc , ic) = rc , sc , rc src , ic
 
 exec-xprog-cong : ∀ {sh} (P : XProgram) {s₁ s₂ : ArithAbsState sh} → s₁ ~ s₂ → exec-xprog P s₁ ~ exec-xprog P s₂
@@ -512,6 +543,132 @@ InBound : ℕ → Set
 InBound r = Σ[ xr ∈ XReg ] (abs-reg r ≡ just xr)
 
 reg-bound : AbstractInstr → Set
+-- PLAN 0.75 F4: the float refinements.
+refine-fadd : ∀ {sh} (dst a b : ℕ) (xd xa xb : XReg) →
+  abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
+  (s : ArithAbsState sh) → exec-xprog (emit (fadd-rrr dst a b)) s ~ step (fadd-rrr dst a b) s
+refine-fadd dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x xa
+... | yes p rewrite abs-reg-idx dst xd eqd | abs-reg-idx b xb eqb =
+      ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                (cong (λ r → bin-op (FA.fadd F) r (ArithAbsState.regs s [ b ]))
+                      (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqa p))))
+... | no ¬pa with xd ≟x xb
+...   | yes q rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa =
+        ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                  (trans (cong (λ r → bin-op (FA.fadd F) r (ArithAbsState.regs s [ a ]))
+                               (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqb q)))
+                         (bin-op-comm (FA.fadd F) (FA.fadd-comm F) (ArithAbsState.regs s [ b ]) (ArithAbsState.regs s [ a ]))))
+...   | no ¬pb rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa | abs-reg-idx b xb eqb =
+        (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
+                        (bin-op (FA.fadd F) ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ dst ])
+                                    ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ b ])) j)
+                     (cong (λ v → (ArithAbsState.regs s [ dst ↦ v ]) [ j ])
+                           (cong₂ (bin-op (FA.fadd F))
+                                  (store-write-same (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ]))
+                                  (store-write-other (ArithAbsState.regs s) dst b (ArithAbsState.regs s [ a ]) dst≢b))))
+        , (λ _ → refl) , refl , refl
+        where
+          dst≢b : ¬ (dst ≡ b)
+          dst≢b e = ¬pb (xreg-idx-inj xd xb (trans (abs-reg-idx dst xd eqd)
+                                                    (trans e (sym (abs-reg-idx b xb eqb)))))
+
+refine-fmul : ∀ {sh} (dst a b : ℕ) (xd xa xb : XReg) →
+  abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
+  (s : ArithAbsState sh) → exec-xprog (emit (fmul-rrr dst a b)) s ~ step (fmul-rrr dst a b) s
+refine-fmul dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x xa
+... | yes p rewrite abs-reg-idx dst xd eqd | abs-reg-idx b xb eqb =
+      ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                (cong (λ r → bin-op (FA.fmul F) r (ArithAbsState.regs s [ b ]))
+                      (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqa p))))
+... | no ¬pa with xd ≟x xb
+...   | yes q rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa =
+        ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                  (trans (cong (λ r → bin-op (FA.fmul F) r (ArithAbsState.regs s [ a ]))
+                               (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqb q)))
+                         (bin-op-comm (FA.fmul F) (FA.fmul-comm F) (ArithAbsState.regs s [ b ]) (ArithAbsState.regs s [ a ]))))
+...   | no ¬pb rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa | abs-reg-idx b xb eqb =
+        (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
+                        (bin-op (FA.fmul F) ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ dst ])
+                                    ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ b ])) j)
+                     (cong (λ v → (ArithAbsState.regs s [ dst ↦ v ]) [ j ])
+                           (cong₂ (bin-op (FA.fmul F))
+                                  (store-write-same (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ]))
+                                  (store-write-other (ArithAbsState.regs s) dst b (ArithAbsState.regs s [ a ]) dst≢b))))
+        , (λ _ → refl) , refl , refl
+        where
+          dst≢b : ¬ (dst ≡ b)
+          dst≢b e = ¬pb (xreg-idx-inj xd xb (trans (abs-reg-idx dst xd eqd)
+                                                    (trans e (sym (abs-reg-idx b xb eqb)))))
+
+refine-fneg : ∀ {sh} (dst a : ℕ) (xd xa : XReg) →
+  abs-reg dst ≡ just xd → abs-reg a ≡ just xa →
+  (s : ArithAbsState sh) → exec-xprog (emit (fneg-rr dst a)) s ~ step (fneg-rr dst a) s
+refine-fneg dst a xd xa eqd eqa s
+  rewrite eqd | eqa | abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa =
+    (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
+                    (un-op (FA.fneg F) ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ dst ])) j)
+                 (cong (λ v → (ArithAbsState.regs s [ dst ↦ un-op (FA.fneg F) v ]) [ j ])
+                       (store-write-same (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ]))))
+  , (λ _ → refl) , refl , refl
+
+refine-load-fimm : ∀ {sh} (dc : Decimal) (r : ℕ) (xr : XReg) → abs-reg r ≡ just xr →
+  (s : ArithAbsState sh) →
+  exec-xprog (emit (load-fimm dc r)) s ≡ step (load-fimm dc r) s
+refine-load-fimm dc r xr eq s rewrite eq =
+  cong (λ i → record s { regs = ArithAbsState.regs s [ i ↦ just (round F dc) ] })
+       (abs-reg-idx r xr eq)
+
+
+-- | The float subtract. Its `dst≡b` case is a SINGLE write, where the integer
+-- twin needs a double-write plus a sub-identity — because `Xfsubr-rr` is the
+-- operation the aliasing calls for rather than `neg` followed by `add`.
+refine-fsub : ∀ {sh} (dst a b : ℕ) (xd xa xb : XReg) →
+  abs-reg dst ≡ just xd → abs-reg a ≡ just xa → abs-reg b ≡ just xb →
+  (s : ArithAbsState sh) → exec-xprog (emit (fsub-rrr dst a b)) s ~ step (fsub-rrr dst a b) s
+refine-fsub dst a b xd xa xb eqd eqa eqb s rewrite eqd | eqa | eqb with xd ≟x xa
+... | yes p rewrite abs-reg-idx dst xd eqd | abs-reg-idx b xb eqb =
+      ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                (cong (λ r → bin-op (FA.fsub F) r (ArithAbsState.regs s [ b ]))
+                      (cong (ArithAbsState.regs s [_]) (idx-eq eqd eqa p))))
+... | no ¬pa with xd ≟x xb
+...   | yes q rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa =
+        -- `Xfsubr-rr xd xa` writes `dst := regs[a] − regs[dst]`, and `dst ≡ b`
+        -- here, so the only step is rewriting that index.
+        ≡→~ (cong (λ v → record s { regs = ArithAbsState.regs s [ dst ↦ v ] })
+                  (cong (λ r → bin-op (FA.fsub F) (ArithAbsState.regs s [ a ])
+                                                  (ArithAbsState.regs s [ r ]))
+                        (idx-eq eqd eqb q)))
+...   | no ¬pb rewrite abs-reg-idx dst xd eqd | abs-reg-idx a xa eqa | abs-reg-idx b xb eqb =
+        (λ j → trans (double-write (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ])
+                        (bin-op (FA.fsub F) ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ dst ])
+                                    ((ArithAbsState.regs s [ dst ↦ ArithAbsState.regs s [ a ] ]) [ b ])) j)
+                     (cong (λ v → (ArithAbsState.regs s [ dst ↦ v ]) [ j ])
+                           (cong₂ (bin-op (FA.fsub F))
+                                  (store-write-same (ArithAbsState.regs s) dst (ArithAbsState.regs s [ a ]))
+                                  (store-write-other (ArithAbsState.regs s) dst b (ArithAbsState.regs s [ a ]) dst≢b))))
+        , (λ _ → refl) , refl , refl
+        where
+          dst≢b : ¬ (dst ≡ b)
+          dst≢b e = ¬pb (xreg-idx-inj xd xb (trans (abs-reg-idx dst xd eqd)
+                                                    (trans e (sym (abs-reg-idx b xb eqb)))))
+
+-- | The widening and the float input leaf: single writes, no aliasing to
+-- resolve — `Xi2f-r` reads its source register directly.
+refine-i2f : ∀ {sh} (dst a : ℕ) (xd xa : XReg) →
+  abs-reg dst ≡ just xd → abs-reg a ≡ just xa →
+  (s : ArithAbsState sh) → exec-xprog (emit (i2f-rr dst a)) s ≡ step (i2f-rr dst a) s
+refine-i2f dst a xd xa eqd eqa s rewrite eqd | eqa =
+  cong₂ (λ i j → record s { regs = ArithAbsState.regs s [ i ↦ un-op (λ w → FA.i2f F (toℤ w)) (ArithAbsState.regs s [ j ]) ] })
+        (abs-reg-idx dst xd eqd) (abs-reg-idx a xa eqa)
+
+refine-load-finput : ∀ {sh} (p : InputPath) (r : ℕ) (xr : XReg) → abs-reg r ≡ just xr →
+  (s : ArithAbsState sh) →
+  exec-xprog (emit (load-finput p r)) s ≡ step (load-finput p r) s
+refine-load-finput p r xr eq s rewrite eq =
+  cong (λ i → record s { regs = ArithAbsState.regs s [ i ↦ just (maybe-zero-f (projectF _ p (ArithAbsState.input s))) ] })
+       (abs-reg-idx r xr eq)
+
+
 reg-bound (load-input p r)  = InBound r
 reg-bound (load-imm z r)    = InBound r
 reg-bound (add-rrr dst a b) = InBound dst × InBound a × InBound b
@@ -526,6 +683,13 @@ reg-bound (sdiv-pow2-rri dst src imm) = InBound dst × InBound src
 reg-bound (neg-rr dst a)    = InBound dst × InBound a
 reg-bound (spill src slot)  = InBound src
 reg-bound (reload slot dst) = InBound dst
+reg-bound (load-finput p r) = InBound r
+reg-bound (load-fimm dc r)  = InBound r
+reg-bound (fadd-rrr dst a b) = InBound dst × InBound a × InBound b
+reg-bound (fsub-rrr dst a b) = InBound dst × InBound a × InBound b
+reg-bound (fmul-rrr dst a b) = InBound dst × InBound a × InBound b
+reg-bound (fneg-rr dst a)   = InBound dst × InBound a
+reg-bound (i2f-rr dst a)    = InBound dst × InBound a
 reg-bound (move-to-out src) = InBound src
 
 refine : ∀ {sh} (i : AbstractInstr) → reg-bound i → (s : ArithAbsState sh) → exec-xprog (emit i) s ~ step i s
@@ -543,6 +707,13 @@ refine (sdiv-pow2-rri dst src imm) ((xd , ed) , (xs , es)) s = ≡→~ (refine-s
 refine (neg-rr dst a)    ((xd , ed) , (xa , ea))     s = refine-neg dst a xd xa ed ea s
 refine (spill src slot)  (xs , e)                    s = ≡→~ (refine-spill src slot xs e s)
 refine (reload slot dst) (xd , e)                    s = ≡→~ (refine-reload slot dst xd e s)
+refine (load-finput p r) (xr , e)                    s = ≡→~ (refine-load-finput p r xr e s)
+refine (load-fimm dc r)  (xr , e)                    s = ≡→~ (refine-load-fimm dc r xr e s)
+refine (fadd-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = refine-fadd dst a b xd xa xb ed ea eb s
+refine (fsub-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = refine-fsub dst a b xd xa xb ed ea eb s
+refine (fmul-rrr dst a b) ((xd , ed) , (xa , ea) , (xb , eb)) s = refine-fmul dst a b xd xa xb ed ea eb s
+refine (fneg-rr dst a)   ((xd , ed) , (xa , ea))     s = refine-fneg dst a xd xa ed ea s
+refine (i2f-rr dst a)    ((xd , ed) , (xa , ea))     s = ≡→~ (refine-i2f dst a xd xa ed ea s)
 refine (move-to-out src) (xs , e)                    s = ≡→~ (refine-move-to-out src xs e s)
 
 All-bound : List AbstractInstr → Set

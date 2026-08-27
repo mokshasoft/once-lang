@@ -28,6 +28,8 @@ open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.Nat using (ℕ; suc; _*_; _∸_)
 open import Data.Nat.Show using () renaming (show to showℕ)
+open import Once.Float.Decimal using (round)
+open import Once.Float.Dyadic using (binary64)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String; _++_)
 
@@ -77,8 +79,49 @@ scratch-text record { slot = s } =
 instr-text : XInstr → String
 instr-text (Xmov-imm dst z)   = "    li " ++ reg-text dst ++ ", " ++ showℤ z ++ "\n"
 instr-text (Xmov-rr dst src)  = "    mv " ++ reg-text dst ++ ", " ++ reg-text src ++ "\n"
+
+------------------------------------------------------------------------
+-- PLAN 0.75 F4: the float instructions.
+--
+-- Values live in GPRs between operations and move to `ft*` only for the
+-- operation, so spill/reload stay the `sd`/`ld` they already are. RISC-V is
+-- NATIVE for D055's NaN rule: `fadd.d` already produces the canonical NaN and
+-- never propagates a payload, so nothing has to be fixed up here — the cost
+-- lands on x86, exactly as the div guard does.
+------------------------------------------------------------------------
+instr-text (Xfadd-rr dst src) =
+  "    fmv.d.x ft0, " ++ reg-text dst ++ "\n" ++
+  "    fmv.d.x ft1, " ++ reg-text src ++ "\n" ++
+  "    fadd.d ft0, ft0, ft1\n" ++
+  "    fmv.x.d " ++ reg-text dst ++ ", ft0\n"
+instr-text (Xfsub-rr dst src) =
+  "    fmv.d.x ft0, " ++ reg-text dst ++ "\n" ++
+  "    fmv.d.x ft1, " ++ reg-text src ++ "\n" ++
+  "    fsub.d ft0, ft0, ft1\n" ++
+  "    fmv.x.d " ++ reg-text dst ++ ", ft0\n"
+instr-text (Xfsubr-rr dst src) =
+  "    fmv.d.x ft0, " ++ reg-text src ++ "\n" ++
+  "    fmv.d.x ft1, " ++ reg-text dst ++ "\n" ++
+  "    fsub.d ft0, ft0, ft1\n" ++
+  "    fmv.x.d " ++ reg-text dst ++ ", ft0\n"
+instr-text (Xfmul-rr dst src) =
+  "    fmv.d.x ft0, " ++ reg-text dst ++ "\n" ++
+  "    fmv.d.x ft1, " ++ reg-text src ++ "\n" ++
+  "    fmul.d ft0, ft0, ft1\n" ++
+  "    fmv.x.d " ++ reg-text dst ++ ", ft0\n"
+instr-text (Xfneg-r dst) =
+  "    fmv.d.x ft0, " ++ reg-text dst ++ "\n" ++
+  "    fneg.d ft0, ft0\n" ++
+  "    fmv.x.d " ++ reg-text dst ++ ", ft0\n"
+instr-text (Xi2f-r dst src) =
+  "    fcvt.d.l ft0, " ++ reg-text src ++ "\n" ++
+  "    fmv.x.d " ++ reg-text dst ++ ", ft0\n"
+instr-text (Xmov-fimm dst dc) =
+  "    li " ++ reg-text dst ++ ", " ++ showℕ (round binary64 dc) ++ "\n"
 instr-text (Xmov-r-m s src)   = "    sd " ++ reg-text src ++ ", " ++ scratch-text s ++ "\n"
 instr-text (Xmov-m-r dst s)   = "    ld " ++ reg-text dst ++ ", " ++ scratch-text s ++ "\n"
+-- A float leaf is loaded exactly as an integer one is.
+instr-text (Xmov-farg dst path) = instr-text (Xmov-arg dst path)
 instr-text (Xmov-arg dst path) = path-load-text dst path
   where
     -- Byte offset for one path step (matches CCC's pair layout).

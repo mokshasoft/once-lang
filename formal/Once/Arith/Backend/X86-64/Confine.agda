@@ -51,6 +51,23 @@ writes (Xdiv-safe-rrr dst _ _)  = arith-reg dst ∷ rax ∷ rdx ∷ []
 writes (Xrem-safe-rrr dst _ _)  = arith-reg dst ∷ rax ∷ rdx ∷ []
 writes (Xshl-rri dst _ _)       = arith-reg dst ∷ []
 writes (Xsdiv-pow2-rri dst _ _) = arith-reg dst ∷ rax ∷ []
+-- PLAN 0.75 F4: the float instructions write their destination GPR (the
+-- pattern lives in a GPR between operations). The sign flip is `btcq $63`,
+-- an in-place bit complement, so it needs no scratch register either.
+--
+-- THE `%xmm` / `ft*` CLOBBER IS OUTSIDE THIS MODEL, and that is part of the
+-- named `float-xinstr-sim` residual rather than a separate omission: the
+-- machine's `Reg` type has no float registers at all, so there is nothing here
+-- to declare them clobbered. Whoever gives the arches float registers must
+-- extend these two lists at the same time.
+writes (Xfadd-rr dst _)         = arith-reg dst ∷ []
+writes (Xfsub-rr dst _)         = arith-reg dst ∷ []
+writes (Xfmul-rr dst _)         = arith-reg dst ∷ []
+writes (Xfsubr-rr dst _)        = arith-reg dst ∷ []
+writes (Xfneg-r dst)            = arith-reg dst ∷ []
+writes (Xi2f-r dst _)           = arith-reg dst ∷ []
+writes (Xmov-fimm dst _)        = arith-reg dst ∷ []
+writes (Xmov-farg dst _)        = arith-reg dst ∷ []
 writes (Xmov-out _)             = rax ∷ []
 
 ------------------------------------------------------------------------
@@ -87,6 +104,14 @@ confined (Xdiv-safe-rrr dst _ _)  = arith-notccc dst ∷ rax-notccc ∷ rdx-notc
 confined (Xrem-safe-rrr dst _ _)  = arith-notccc dst ∷ rax-notccc ∷ rdx-notccc ∷ []
 confined (Xshl-rri dst _ _)       = arith-notccc dst ∷ []
 confined (Xsdiv-pow2-rri dst _ _) = arith-notccc dst ∷ rax-notccc ∷ []
+confined (Xfadd-rr dst _)         = arith-notccc dst ∷ []
+confined (Xfsub-rr dst _)         = arith-notccc dst ∷ []
+confined (Xfmul-rr dst _)         = arith-notccc dst ∷ []
+confined (Xfsubr-rr dst _)        = arith-notccc dst ∷ []
+confined (Xfneg-r dst)            = arith-notccc dst ∷ []
+confined (Xi2f-r dst _)           = arith-notccc dst ∷ []
+confined (Xmov-fimm dst _)        = arith-notccc dst ∷ []
+confined (Xmov-farg dst _)        = arith-notccc dst ∷ []
 confined (Xmov-out _)             = rax-notccc ∷ []
 
 ------------------------------------------------------------------------

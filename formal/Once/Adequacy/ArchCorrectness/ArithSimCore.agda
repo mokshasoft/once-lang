@@ -52,7 +52,7 @@ open XI using (XR0; XR1)
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project)
 open import Once.Arith.Machine.AbsState
   using (ArithAbsState; Store; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of)
-open import Once.Arith.Machine.AbsInstr using (bin-op; un-op; maybe-zero; move-to-out)
+open import Once.Arith.Machine.AbsInstr using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fneg-rr; i2f-rr; bin-op; un-op; maybe-zero; move-to-out)
 import Once.Arith.Backend.Correct as Correct
 -- PLAN 0.75 F4: pinned at `NInt`. The simulation core models two INTEGER
 -- scratch registers (`XR0`/`XR1`); a float block needs its own register file
@@ -106,6 +106,17 @@ module At (tn : TargetNum) where
   tgt (XI.Xdiv-safe-rrr d _ _)  = just d
   tgt (XI.Xrem-safe-rrr d _ _)  = just d
   tgt (XI.Xsdiv-pow2-rri d _ _) = just d
+  -- PLAN 0.75 F4: the float instructions. Each writes ONE register and
+  -- touches no scratch, so both of these are the integer clauses verbatim —
+  -- which is the register discipline being kind-independent, again.
+  tgt (XI.Xfadd-rr d _)           = just d
+  tgt (XI.Xfsub-rr d _)           = just d
+  tgt (XI.Xfmul-rr d _)           = just d
+  tgt (XI.Xfsubr-rr d _)          = just d
+  tgt (XI.Xfneg-r d)              = just d
+  tgt (XI.Xi2f-r d _)             = just d
+  tgt (XI.Xmov-fimm d _)          = just d
+  tgt (XI.Xmov-farg d _)          = just d
   tgt (XI.Xmov-r-m _ _)         = nothing
   tgt (XI.Xmov-out _)           = nothing
 
@@ -170,9 +181,31 @@ module At (tn : TargetNum) where
   scratch-unchanged (XI.Xdiv-safe-rrr _ _ _)  _ s = refl
   scratch-unchanged (XI.Xrem-safe-rrr _ _ _)  _ s = refl
   scratch-unchanged (XI.Xsdiv-pow2-rri _ _ _) _ s = refl
+  scratch-unchanged (XI.Xfadd-rr _ _)         _ s = refl
+  scratch-unchanged (XI.Xfsub-rr _ _)         _ s = refl
+  scratch-unchanged (XI.Xfmul-rr _ _)         _ s = refl
+  scratch-unchanged (XI.Xfsubr-rr _ _)        _ s = refl
+  scratch-unchanged (XI.Xfneg-r _)            _ s = refl
+  scratch-unchanged (XI.Xi2f-r _ _)           _ s = refl
+  scratch-unchanged (XI.Xmov-fimm _ _)        _ s = refl
+  scratch-unchanged (XI.Xmov-farg _ _)        _ s = refl
   scratch-unchanged (XI.Xmov-out _)           _ s = refl
 
   -- NO instruction changes the abstract input (all update regs/scratch/output).
+  -- | The float instructions, as a PREDICATE, so the residual below can be
+  -- stated over exactly them and no more. A postulate quantified over every
+  -- `XInstr` would subsume the integer cases and make their proofs vacuous —
+  -- the failure mode D114 is named for.
+  data IsFloatXI : XInstr → Set where
+    fx-xfadd-rr : ∀ x y → IsFloatXI (XI.Xfadd-rr x y)
+    fx-xfsub-rr : ∀ x y → IsFloatXI (XI.Xfsub-rr x y)
+    fx-xfmul-rr : ∀ x y → IsFloatXI (XI.Xfmul-rr x y)
+    fx-xfsubr-rr : ∀ x y → IsFloatXI (XI.Xfsubr-rr x y)
+    fx-xfneg-r : ∀ x → IsFloatXI (XI.Xfneg-r x)
+    fx-xi2f-r : ∀ x y → IsFloatXI (XI.Xi2f-r x y)
+    fx-xmov-fimm : ∀ x y → IsFloatXI (XI.Xmov-fimm x y)
+    fx-xmov-farg : ∀ x y → IsFloatXI (XI.Xmov-farg x y)
+
   input-unchanged : ∀ i {sh} (s : ArithAbsState sh)
                   → ArithAbsState.input (exec-xinstr i s) ≡ ArithAbsState.input s
   input-unchanged (XI.Xmov-imm _ _)         s = refl
@@ -190,6 +223,14 @@ module At (tn : TargetNum) where
   input-unchanged (XI.Xdiv-safe-rrr _ _ _)  s = refl
   input-unchanged (XI.Xrem-safe-rrr _ _ _)  s = refl
   input-unchanged (XI.Xsdiv-pow2-rri _ _ _) s = refl
+  input-unchanged (XI.Xfadd-rr _ _)         s = refl
+  input-unchanged (XI.Xfsub-rr _ _)         s = refl
+  input-unchanged (XI.Xfmul-rr _ _)         s = refl
+  input-unchanged (XI.Xfsubr-rr _ _)        s = refl
+  input-unchanged (XI.Xfneg-r _)            s = refl
+  input-unchanged (XI.Xi2f-r _ _)           s = refl
+  input-unchanged (XI.Xmov-fimm _ _)        s = refl
+  input-unchanged (XI.Xmov-farg _ _)        s = refl
   input-unchanged (XI.Xmov-out _)           s = refl
 
   module Core
@@ -380,8 +421,42 @@ module At (tn : TargetNum) where
     -- branch combines the abstract value inversion with `rt-<i>`; the `no` branch
     -- rides `r` through the abstract frame and `rf-other`. Reload/arg consume the
     -- R-scratch/R-input components; spill/out write no arith register (rf-other).
+    ----------------------------------------------------------------------
+    -- THE F4 RESIDUAL: the concrete machines have no float instructions yet.
+    --
+    -- Everything ABOVE this line is proven for floats — `Once.Float.Arith`'s
+    -- operations, `MArithIR`, `compile-abs`, `abs-validity`, and every
+    -- `Once.Arith.Backend.Correct` refinement. What is missing is one layer
+    -- down: neither `Once.CCC.Target.X86-64.Syntax` nor its RISC-V twin has an
+    -- `addsd` / `fadd.d` at all, so there is no concrete step to relate an
+    -- abstract float step TO.
+    --
+    -- Stated over `IsFloatXI` and NOT over every `XInstr`, so it cannot subsume
+    -- the integer cases and quietly make their proofs vacuous — which is the
+    -- shape of defect D114 is named for. `make postulates` sees exactly one
+    -- residual here, and discharging it is: give each arch its float
+    -- instructions, define `execInstr` for them as `Once.Float.Arith`'s
+    -- operations (the D117 pattern — the definition IS the spec, and the pins
+    -- against compiled C are what check it), then the step lemmas are `refl`.
+    --
+    -- CLASSIFICATION: deferred-proof / model-gap, not an axiom. Nothing about
+    -- it is unprovable; the model it needs has not been written.
+    ----------------------------------------------------------------------
+    postulate
+      float-xinstr-sim : ∀ {sh} (i : XInstr) → IsFloatXI i
+                       → (s-abs : ArithAbsState sh) (s-conc : St)
+                       → Rf s-abs s-conc → R (exec-xinstr i s-abs) (e1 i s-conc)
+
     R-step-full : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
                 → Rf s-abs s-conc → R (exec-xinstr i s-abs) (e1 i s-conc)
+    R-step-full (XI.Xfadd-rr a b) s-abs s-conc rf = float-xinstr-sim (XI.Xfadd-rr a b) (fx-xfadd-rr a b) s-abs s-conc rf
+    R-step-full (XI.Xfsub-rr a b) s-abs s-conc rf = float-xinstr-sim (XI.Xfsub-rr a b) (fx-xfsub-rr a b) s-abs s-conc rf
+    R-step-full (XI.Xfmul-rr a b) s-abs s-conc rf = float-xinstr-sim (XI.Xfmul-rr a b) (fx-xfmul-rr a b) s-abs s-conc rf
+    R-step-full (XI.Xfsubr-rr a b) s-abs s-conc rf = float-xinstr-sim (XI.Xfsubr-rr a b) (fx-xfsubr-rr a b) s-abs s-conc rf
+    R-step-full (XI.Xfneg-r a) s-abs s-conc rf = float-xinstr-sim (XI.Xfneg-r a) (fx-xfneg-r a) s-abs s-conc rf
+    R-step-full (XI.Xi2f-r a b) s-abs s-conc rf = float-xinstr-sim (XI.Xi2f-r a b) (fx-xi2f-r a b) s-abs s-conc rf
+    R-step-full (XI.Xmov-fimm a b) s-abs s-conc rf = float-xinstr-sim (XI.Xmov-fimm a b) (fx-xmov-fimm a b) s-abs s-conc rf
+    R-step-full (XI.Xmov-farg a b) s-abs s-conc rf = float-xinstr-sim (XI.Xmov-farg a b) (fx-xmov-farg a b) s-abs s-conc rf
     R-step-full (XI.Xmov-m-r d sc) s-abs s-conc (r , rsc , _ , _) = R-step-reload d sc s-abs s-conc r rsc
     R-step-full (XI.Xmov-arg d p)  s-abs s-conc (r , _ , rin , _) = R-step-arg d p s-abs s-conc r rin
     R-step-full (XI.Xmov-r-m sc src) s-abs s-conc (r , _ , _) x w eq =
@@ -493,6 +568,15 @@ module At (tn : TargetNum) where
     scratch-frame (XI.Xdiv-safe-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xdiv-safe-rrr d a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xrem-safe-rrr d a b) s-abs s-conc r rsc = nonspill-sf (XI.Xrem-safe-rrr d a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xsdiv-pow2-rri d src imm) s-abs s-conc r rsc = nonspill-sf (XI.Xsdiv-pow2-rri d src imm) tt s-abs s-conc rsc
+    -- The float instructions write no memory, so they are all `nonspill-sf`.
+    scratch-frame (XI.Xfadd-rr a b) s-abs s-conc r rsc = nonspill-sf (XI.Xfadd-rr a b) tt s-abs s-conc rsc
+    scratch-frame (XI.Xfsub-rr a b) s-abs s-conc r rsc = nonspill-sf (XI.Xfsub-rr a b) tt s-abs s-conc rsc
+    scratch-frame (XI.Xfmul-rr a b) s-abs s-conc r rsc = nonspill-sf (XI.Xfmul-rr a b) tt s-abs s-conc rsc
+    scratch-frame (XI.Xfsubr-rr a b) s-abs s-conc r rsc = nonspill-sf (XI.Xfsubr-rr a b) tt s-abs s-conc rsc
+    scratch-frame (XI.Xfneg-r a) s-abs s-conc r rsc = nonspill-sf (XI.Xfneg-r a) tt s-abs s-conc rsc
+    scratch-frame (XI.Xi2f-r a b) s-abs s-conc r rsc = nonspill-sf (XI.Xi2f-r a b) tt s-abs s-conc rsc
+    scratch-frame (XI.Xmov-fimm a b) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-fimm a b) tt s-abs s-conc rsc
+    scratch-frame (XI.Xmov-farg a b) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-farg a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xmov-out src) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-out src) tt s-abs s-conc rsc
 
     Rf-step : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)

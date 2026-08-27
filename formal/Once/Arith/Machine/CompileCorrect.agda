@@ -20,6 +20,7 @@ open import Data.Nat using (ℕ)
 -- be served, which is the D109/D112 mistake. Taking it as a parameter makes
 -- the dependency visible and costs the instantiating arch one word.
 open import Once.Float.Dyadic using (FloatFormat)
+import Once.Float.Arith as FA
 module Once.Arith.Machine.CompileCorrect (bits : ℕ) (F : FloatFormat) where
 
 open import Data.Nat using (zero; suc; _<_; s≤s; z≤n; _^_)
@@ -34,13 +35,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Nullary using (¬_)
 
 open import Once.Arith.Machine.AbsState
-  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath; project;
+  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath; project; projectF;
          Store; empty-store; _[_↦_]; _[_]; store-write-same; store-write-other)
 open import Once.Arith.Machine.AbsInstr
-  using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
+  using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; neg-rr; spill; reload;
-         move-to-out; maybe-zero; bin-op; un-op; module Exec)
-open Exec bits using (step; run-abstract)
+         move-to-out; maybe-zero; maybe-zero-f; bin-op; un-op; module Exec)
+open Exec bits F using (step; run-abstract)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
 -- that restriction is STATED rather than assumed. Its instruction set
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
@@ -52,7 +53,7 @@ open import Once.Arith.Machine.IR
          numtype-as-type; eval-arith)
 open import Once.Word using (module Width)
 open Width bits using
-  (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; modulus; modulus≢0; shlᵂ; sdiv2ᵏ; ⊗-pow2;
+  (toℤ; fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; modulus; modulus≢0; shlᵂ; sdiv2ᵏ; ⊗-pow2;
    /ˢ-zero; %ˢ-zero; fromℤ-0; fromℤ-in-range; fromℤ-neg1;
    /ˢ-negOne; %ˢ-negOne; /ˢ-in-range; %ˢ-in-range)
 open import Once.Arith.Machine.WordSem using (module Sem)
@@ -153,7 +154,11 @@ step-rem-op b s = step-rem-instr (safe-divisor? b) s
 -- Strong invariant on `compile-go`
 ------------------------------------------------------------------------
 
-record CompileGoInv {sh} (d : ℕ) (e : MArithIR sh NInt) (s : ArithAbsState sh) : Set where
+-- PLAN 0.75 F4: kind-indexed. The invariant is the same sentence for both
+-- kinds — reg 0 holds the tree's value, the scratch below `d` is untouched,
+-- input and output are unchanged — because the register discipline does not
+-- depend on which register file the values would live in on the metal.
+record CompileGoInv {sh n} (d : ℕ) (e : MArithIR sh n) (s : ArithAbsState sh) : Set where
   field
     reg0      : regs (run-abstract (compile-go d e) s) [ 0 ]
                   ≡ just (eval-arith-W e (input s))
@@ -177,8 +182,18 @@ eval-arith-W-ainput {sh} p inp with project sh p inp
 ... | just _  = refl
 ... | nothing = refl
 
+-- PLAN 0.75 F4: the float twin. Both branches are `refl` — there is no `fromℤ`
+-- on this side to make the default non-trivial, which is D113 showing through
+-- again: a float leaf is already a pattern.
+eval-arith-W-finput :
+  ∀ {sh} (p : InputPath) (inp : ⟦ sh ⟧S) →
+  eval-arith-W {sh} {NFloat} (ainput p) inp ≡ maybe-zero-f (projectF sh p inp)
+eval-arith-W-finput {sh} p inp with projectF sh p inp
+... | just _  = refl
+... | nothing = refl
+
 compile-go-correct-ainput : ∀ {sh} (d : ℕ) (p : InputPath) (s : ArithAbsState sh) →
-  CompileGoInv d (ainput p) s
+  CompileGoInv {n = NInt} d (ainput p) s
 compile-go-correct-ainput {sh} d p s = record
   { reg0      = cong just (sym (eval-arith-W-ainput p (input s)))
   ; scratch≤  = λ _ _ → refl
@@ -193,7 +208,7 @@ private
   <-suc : ∀ {i d : ℕ} → i < d → i < suc d
   <-suc lt = m≤n⇒m≤1+n lt
 
-compile-go-correct : ∀ {sh} (d : ℕ) (e : MArithIR sh NInt) (s : ArithAbsState sh) →
+compile-go-correct : ∀ {sh n} (d : ℕ) (e : MArithIR sh n) (s : ArithAbsState sh) →
   CompileGoInv d e s
 
 aneg-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh NInt) (s : ArithAbsState sh) →
@@ -434,17 +449,196 @@ amod-correct {sh} d a b s = record
     regs-s3-0 = trans (reg0 ih-b)
                       (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
+-- PLAN 0.75 F4: the float unary cases. Same proof as `aneg-correct` with the
+-- operation swapped — the bookkeeping fields never mention it, which is the
+-- evidence that the register discipline really is kind-independent.
+fneg-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh NFloat) (s : ArithAbsState sh) →
+  CompileGoInv d (aneg a) s
+fneg-correct {sh} d a s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong (un-op (FA.fneg F)) (reg0 ih))
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                               (scratch≤ ih i lt)
+  ; input-eq  = trans (cong input bridge) (input-eq ih)
+  ; output-eq = trans (cong output bridge) (output-eq ih)
+  }
+  where
+    ih : CompileGoInv d a s
+    ih = compile-go-correct d a s
+
+    bridge : run-abstract (compile-go d (aneg a)) s
+           ≡ step (fneg-rr 0 0) (run-abstract (compile-go d a) s)
+    bridge = run-abstract-app (compile-go d a) (fneg-rr 0 0 ∷ []) s
+
+-- …and D125's widening, the one node that crosses the kinds.
+i2f-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh NInt) (s : ArithAbsState sh) →
+  CompileGoInv d (ai2f a) s
+i2f-correct {sh} d a s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong (un-op (λ w → FA.i2f F (toℤ w))) (reg0 ih))
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                               (scratch≤ ih i lt)
+  ; input-eq  = trans (cong input bridge) (input-eq ih)
+  ; output-eq = trans (cong output bridge) (output-eq ih)
+  }
+  where
+    ih : CompileGoInv d a s
+    ih = compile-go-correct d a s
+
+    bridge : run-abstract (compile-go d (ai2f a)) s
+           ≡ step (i2f-rr 0 0) (run-abstract (compile-go d a) s)
+    bridge = run-abstract-app (compile-go d a) (i2f-rr 0 0 ∷ []) s
+
+-- The float binary cases. `amul`'s integer proof has to thread `mul-op`'s
+-- power-of-two strength reduction; the float multiply has no such identity
+-- that is exact for every operand, so `fmul-correct` mirrors `aadd` rather
+-- than `amul` — simpler, and the reason is in `compile-go`.
+fadd-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NFloat) (s : ArithAbsState sh) →
+  CompileGoInv d (aadd a b) s
+fadd-correct {sh} d a b s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong₂ (bin-op (FA.fadd F))
+                             (trans scratch-s3-d (reg0 ih-a))
+                             regs-s3-0)
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                          (trans (scratch≤ ih-b i (<-suc lt))
+                          (trans (store-write-other (scratch s1) d i
+                                   (regs s1 [ 0 ]) (d≢i lt))
+                                 (scratch≤ ih-a i lt)))
+  ; input-eq  = trans (cong input bridge)
+                      (trans (input-eq ih-b) (input-eq ih-a))
+  ; output-eq = trans (cong output bridge)
+                      (trans (output-eq ih-b) (output-eq ih-a))
+  }
+  where
+    ih-a = compile-go-correct d a s
+    s1   = run-abstract (compile-go d a) s
+    s2   = step (spill 0 d) s1
+    ih-b = compile-go-correct (suc d) b s2
+    s3   = run-abstract (compile-go (suc d) b) s2
+    s4   = step (reload d 1) s3
+    s5   = step (fadd-rrr 0 1 0) s4
+
+    bridge : run-abstract (compile-go d (aadd a b)) s ≡ s5
+    bridge = trans
+      (run-abstract-app (compile-go d a)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ fadd-rrr 0 1 0 ∷ [])) s)
+      (run-abstract-app (compile-go (suc d) b)
+        (reload d 1 ∷ fadd-rrr 0 1 0 ∷ []) s2)
+
+    scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
+    scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
+                         (store-write-same (scratch s1) d (regs s1 [ 0 ]))
+
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
+
+fsub-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NFloat) (s : ArithAbsState sh) →
+  CompileGoInv d (asub a b) s
+fsub-correct {sh} d a b s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong₂ (bin-op (FA.fsub F))
+                             (trans scratch-s3-d (reg0 ih-a))
+                             regs-s3-0)
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                          (trans (scratch≤ ih-b i (<-suc lt))
+                          (trans (store-write-other (scratch s1) d i
+                                   (regs s1 [ 0 ]) (d≢i lt))
+                                 (scratch≤ ih-a i lt)))
+  ; input-eq  = trans (cong input bridge)
+                      (trans (input-eq ih-b) (input-eq ih-a))
+  ; output-eq = trans (cong output bridge)
+                      (trans (output-eq ih-b) (output-eq ih-a))
+  }
+  where
+    ih-a = compile-go-correct d a s
+    s1   = run-abstract (compile-go d a) s
+    s2   = step (spill 0 d) s1
+    ih-b = compile-go-correct (suc d) b s2
+    s3   = run-abstract (compile-go (suc d) b) s2
+    s4   = step (reload d 1) s3
+    s5   = step (fsub-rrr 0 1 0) s4
+
+    bridge : run-abstract (compile-go d (asub a b)) s ≡ s5
+    bridge = trans
+      (run-abstract-app (compile-go d a)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ fsub-rrr 0 1 0 ∷ [])) s)
+      (run-abstract-app (compile-go (suc d) b)
+        (reload d 1 ∷ fsub-rrr 0 1 0 ∷ []) s2)
+
+    scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
+    scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
+                         (store-write-same (scratch s1) d (regs s1 [ 0 ]))
+
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
+
+fmul-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NFloat) (s : ArithAbsState sh) →
+  CompileGoInv d (amul a b) s
+fmul-correct {sh} d a b s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong₂ (bin-op (FA.fmul F))
+                             (trans scratch-s3-d (reg0 ih-a))
+                             regs-s3-0)
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                          (trans (scratch≤ ih-b i (<-suc lt))
+                          (trans (store-write-other (scratch s1) d i
+                                   (regs s1 [ 0 ]) (d≢i lt))
+                                 (scratch≤ ih-a i lt)))
+  ; input-eq  = trans (cong input bridge)
+                      (trans (input-eq ih-b) (input-eq ih-a))
+  ; output-eq = trans (cong output bridge)
+                      (trans (output-eq ih-b) (output-eq ih-a))
+  }
+  where
+    ih-a = compile-go-correct d a s
+    s1   = run-abstract (compile-go d a) s
+    s2   = step (spill 0 d) s1
+    ih-b = compile-go-correct (suc d) b s2
+    s3   = run-abstract (compile-go (suc d) b) s2
+    s4   = step (reload d 1) s3
+    s5   = step (fmul-rrr 0 1 0) s4
+
+    bridge : run-abstract (compile-go d (amul a b)) s ≡ s5
+    bridge = trans
+      (run-abstract-app (compile-go d a)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ fmul-rrr 0 1 0 ∷ [])) s)
+      (run-abstract-app (compile-go (suc d) b)
+        (reload d 1 ∷ fmul-rrr 0 1 0 ∷ []) s2)
+
+    scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
+    scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
+                         (store-write-same (scratch s1) d (regs s1 [ 0 ]))
+
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
+
+
+-- Kind dispatch: the same node name selects the integer or the float proof.
 compile-go-correct d (alit z) s = record
   { reg0      = refl
   ; scratch≤  = λ _ _ → refl
   ; input-eq  = refl
   ; output-eq = refl
   }
-compile-go-correct {sh} d (ainput p) s = compile-go-correct-ainput {sh} d p s
-compile-go-correct d (aneg a)   s = aneg-correct d a s
-compile-go-correct d (aadd a b) s = aadd-correct d a b s
-compile-go-correct d (asub a b) s = asub-correct d a b s
-compile-go-correct d (amul a b) s = amul-correct d a b s
+compile-go-correct {sh} {NInt} d (ainput p) s = compile-go-correct-ainput {sh} d p s
+compile-go-correct {n = NInt} d (aneg a) s = aneg-correct d a s
+compile-go-correct {n = NFloat} d (aflit dc) s = record
+  { reg0 = refl ; scratch≤ = λ _ _ → refl ; input-eq = refl ; output-eq = refl }
+compile-go-correct {n = NFloat} d (ainput p) s = record
+  { reg0 = cong just (sym (eval-arith-W-finput p (input s)))
+  ; scratch≤ = λ _ _ → refl ; input-eq = refl ; output-eq = refl }
+compile-go-correct {n = NFloat} d (aneg a) s = fneg-correct d a s
+compile-go-correct {n = NFloat} d (aadd a b) s = fadd-correct d a b s
+compile-go-correct {n = NFloat} d (asub a b) s = fsub-correct d a b s
+compile-go-correct {n = NFloat} d (amul a b) s = fmul-correct d a b s
+compile-go-correct d (ai2f a) s = i2f-correct d a s
+compile-go-correct {n = NInt} d (aadd a b) s = aadd-correct d a b s
+compile-go-correct {n = NInt} d (asub a b) s = asub-correct d a b s
+compile-go-correct {n = NInt} d (amul a b) s = amul-correct d a b s
 compile-go-correct d (adiv a b) s = adiv-correct d a b s
 compile-go-correct d (amod a b) s = amod-correct d a b s
 
@@ -452,7 +646,7 @@ compile-go-correct d (amod a b) s = amod-correct d a b s
 -- Block validity: `output-of (run-abstract (compile-abs e) (init env))`
 ------------------------------------------------------------------------
 
-abs-validity : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) →
+abs-validity : ∀ {sh n} (e : MArithIR sh n) (env : ⟦ sh ⟧S) →
   output-of (run-abstract (compile-abs e) (init env)) ≡ just (eval-arith-W e env)
 abs-validity {sh} e env =
   trans (cong output-of (run-abstract-app (compile-go 0 e) (move-to-out 0 ∷ []) (init env)))

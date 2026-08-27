@@ -28,6 +28,8 @@ open import Data.Integer using (ℤ; +_; -[1+_])
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.Nat using (ℕ; suc; _*_; _∸_)
 open import Data.Nat.Show using () renaming (show to showℕ)
+open import Once.Float.Decimal using (round)
+open import Once.Float.Dyadic using (binary32)
 open import Data.List using (List; []; _∷_)
 open import Data.String using (String; _++_)
 
@@ -79,6 +81,8 @@ instr-text (Xmov-imm dst z)   = "    movl $" ++ showℤ z ++ ", " ++ reg-text ds
 instr-text (Xmov-rr dst src)  = "    movl " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-r-m s src)   = "    movl " ++ reg-text src ++ ", " ++ scratch-text s ++ "\n"
 instr-text (Xmov-m-r dst s)   = "    movl " ++ scratch-text s ++ ", " ++ reg-text dst ++ "\n"
+-- A float leaf is loaded exactly as an integer one is.
+instr-text (Xmov-farg dst path) = instr-text (Xmov-arg dst path)
 instr-text (Xmov-arg dst path) = path-load-text dst path
   where
     side-offset : Side → String
@@ -184,6 +188,43 @@ instr-text (Xsdiv-pow2-rri dst src imm) =
      "    sarl $" ++ showℕ imm ++ ", %eax\n" ++                 -- eax = quotient
      "    movl %eax, " ++ reg-text dst ++ "\n"
 instr-text (Xneg-r dst)       = "    negl " ++ reg-text dst ++ "\n"
+
+------------------------------------------------------------------------
+-- PLAN 0.75 F4: the float instructions, at BINARY32.
+--
+-- The format is the target's, and here it is the narrow one — which is the
+-- whole point of D113's parameterisation: the same `Decimal` payload rounds
+-- to four bytes here and eight on x86-64, from one `round`.
+--
+-- STILL OWED (D055's rule): the NaN canonicalising fixup, as on x86-64.
+------------------------------------------------------------------------
+instr-text (Xfadd-rr dst src) =
+  "    movd " ++ reg-text dst ++ ", %xmm0\n" ++
+  "    movd " ++ reg-text src ++ ", %xmm1\n" ++
+  "    addss %xmm1, %xmm0\n" ++
+  "    movd %xmm0, " ++ reg-text dst ++ "\n"
+instr-text (Xfsub-rr dst src) =
+  "    movd " ++ reg-text dst ++ ", %xmm0\n" ++
+  "    movd " ++ reg-text src ++ ", %xmm1\n" ++
+  "    subss %xmm1, %xmm0\n" ++
+  "    movd %xmm0, " ++ reg-text dst ++ "\n"
+instr-text (Xfsubr-rr dst src) =
+  "    movd " ++ reg-text src ++ ", %xmm0\n" ++
+  "    movd " ++ reg-text dst ++ ", %xmm1\n" ++
+  "    subss %xmm1, %xmm0\n" ++
+  "    movd %xmm0, " ++ reg-text dst ++ "\n"
+instr-text (Xfmul-rr dst src) =
+  "    movd " ++ reg-text dst ++ ", %xmm0\n" ++
+  "    movd " ++ reg-text src ++ ", %xmm1\n" ++
+  "    mulss %xmm1, %xmm0\n" ++
+  "    movd %xmm0, " ++ reg-text dst ++ "\n"
+instr-text (Xfneg-r dst) =
+  "    xorl $-2147483648, " ++ reg-text dst ++ "\n"
+instr-text (Xi2f-r dst src) =
+  "    cvtsi2ssl " ++ reg-text src ++ ", %xmm0\n" ++
+  "    movd %xmm0, " ++ reg-text dst ++ "\n"
+instr-text (Xmov-fimm dst dc) =
+  "    movl $" ++ showℕ (round binary32 dc) ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-out src)     = "    movl " ++ reg-text src ++ ", %eax\n"
 
 program-text : XProgram → String

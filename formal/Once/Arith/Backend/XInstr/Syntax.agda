@@ -30,6 +30,7 @@ open import Data.Nat using (ℕ)
 open import Data.List using (List)
 
 open import Once.Arith.Machine.AbsState using (InputPath)
+open import Once.Float.Decimal using (Decimal)
 
 ------------------------------------------------------------------------
 -- Registers (GPR subset only — arith I64 path)
@@ -123,6 +124,47 @@ data XInstr : Set where
   --                                 power-of-two literal multiplier/divisor.
   Xshl-rri       : XReg → XReg → ℕ → XInstr
   Xsdiv-pow2-rri : XReg → XReg → ℕ → XInstr
+
+  ----------------------------------------------------------------------
+  -- PLAN 0.75 F4: the FLOAT instructions.
+  --
+  -- Same two-address in-place shape as the integer arithmetic above, and the
+  -- same `XReg` operands. `XReg` names an ABSTRACT scratch register; which
+  -- physical file it lands in is the per-arch emitter's business, and it
+  -- differs — `%xmm0` on x86, `ft0` on RISC-V. That is exactly the split the
+  -- abstract machine deliberately does NOT model (see `AbsInstr`): a value is
+  -- a bit pattern in either file, and only the OPERATION knows which.
+  ----------------------------------------------------------------------
+  Xfadd-rr  : XReg → XReg → XInstr           -- dst := dst `fadd` src
+  Xfsub-rr  : XReg → XReg → XInstr
+  Xfmul-rr  : XReg → XReg → XInstr
+
+  -- | REVERSE subtract: `dst := src − dst`. It exists to avoid a PROOF, and
+  -- that is worth stating. `compile-go` leaves the subtrahend in `dst`, so the
+  -- integer emitter handles that aliasing with `neg` then `add` — which for
+  -- floats would need `a − b ≡ a + (−b)` as a lemma about `decode`/`negV`,
+  -- true by IEEE but not cheap here. A reverse subtract is the operation the
+  -- aliasing actually calls for, needs no identity, and costs the per-arch
+  -- emitter one scratch XMM/F register it already has.
+  Xfsubr-rr : XReg → XReg → XInstr
+
+  -- | Sign-bit flip, NOT `0 − x` — the latter turns `−0` into `+0` and
+  -- canonicalises a NaN, neither of which negation may do.
+  Xfneg-r   : XReg → XInstr
+
+  -- | D125's widening, correctly rounded. The ONE instruction that moves a
+  -- value between the two physical register files.
+  Xi2f-r    : XReg → XReg → XInstr           -- dst := i2f src
+
+  -- | A float literal, as its `Decimal` payload — NOT as a pattern. The ONE
+  -- rounding stays at the target (D117); the emitter materialises
+  -- `round F d` itself, so a narrower target rounds narrower.
+  Xmov-fimm : XReg → Decimal → XInstr
+
+  -- | A FLOAT input leaf. Distinct from `Xmov-arg` because the projections
+  -- differ by kind (`projectF`, not `project`) — a kind-blind load is the
+  -- silent type confusion `projectM` already had to be fixed for.
+  Xmov-farg : XReg → InputPath → XInstr
 
   -- Boundary glue
   Xmov-out  : XReg → XInstr                 -- mov %src, %rax  (function

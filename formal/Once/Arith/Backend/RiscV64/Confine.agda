@@ -39,6 +39,23 @@ writes (Xdiv-safe-rrr dst _ _)  = arith-reg dst ∷ []
 writes (Xrem-safe-rrr dst _ _)  = arith-reg dst ∷ []
 writes (Xshl-rri dst _ _)       = arith-reg dst ∷ []
 writes (Xsdiv-pow2-rri dst _ _) = arith-reg dst ∷ a0 ∷ []
+-- PLAN 0.75 F4: the float instructions write their destination GPR (the
+-- pattern lives in a GPR between operations) and, on x86-64, `rax` for the
+-- sign-flip mask.
+--
+-- THE `%xmm` / `ft*` CLOBBER IS OUTSIDE THIS MODEL, and that is part of the
+-- named `float-xinstr-sim` residual rather than a separate omission: the
+-- machine's `Reg` type has no float registers at all, so there is nothing here
+-- to declare them clobbered. Whoever gives the arches float registers must
+-- extend these two lists at the same time.
+writes (Xfadd-rr dst _)         = arith-reg dst ∷ []
+writes (Xfsub-rr dst _)         = arith-reg dst ∷ []
+writes (Xfmul-rr dst _)         = arith-reg dst ∷ []
+writes (Xfsubr-rr dst _)        = arith-reg dst ∷ []
+writes (Xfneg-r dst)            = arith-reg dst ∷ []
+writes (Xi2f-r dst _)           = arith-reg dst ∷ []
+writes (Xmov-fimm dst _)        = arith-reg dst ∷ []
+writes (Xmov-farg dst _)        = arith-reg dst ∷ []
 writes (Xmov-out _)             = a0 ∷ []
 
 NotCCC : Reg → Set
@@ -66,6 +83,14 @@ confined (Xdiv-safe-rrr dst _ _)  = arith-notccc dst ∷ []
 confined (Xrem-safe-rrr dst _ _)  = arith-notccc dst ∷ []
 confined (Xshl-rri dst _ _)       = arith-notccc dst ∷ []
 confined (Xsdiv-pow2-rri dst _ _) = arith-notccc dst ∷ a0-notccc ∷ []
+confined (Xfadd-rr dst _)         = arith-notccc dst ∷ []
+confined (Xfsub-rr dst _)         = arith-notccc dst ∷ []
+confined (Xfmul-rr dst _)         = arith-notccc dst ∷ []
+confined (Xfsubr-rr dst _)        = arith-notccc dst ∷ []
+confined (Xfneg-r dst)            = arith-notccc dst ∷ []
+confined (Xi2f-r dst _)           = arith-notccc dst ∷ []
+confined (Xmov-fimm dst _)        = arith-notccc dst ∷ []
+confined (Xmov-farg dst _)        = arith-notccc dst ∷ []
 confined (Xmov-out _)             = a0-notccc ∷ []
 
 confined-instance : ArithEmitConfined convention

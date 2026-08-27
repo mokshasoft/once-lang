@@ -23,7 +23,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr
-  using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
+  using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
          neg-rr; spill; reload; move-to-out)
 open import Once.Arith.Backend.XInstr.Syntax
@@ -133,6 +133,49 @@ emit (sdiv-pow2-rri dst src imm) with abs-reg dst | abs-reg src
 ... | _       | _                          = []
 emit (neg-rr dst a) with abs-reg dst | abs-reg a
 ... | just xd | just xa = Xmov-rr xd xa ∷ Xneg-r xd ∷ []
+... | _       | _       = []
+
+----------------------------------------------------------------------
+-- PLAN 0.75 F4: the float instructions.
+--
+-- The ALIASING treatment is the integer one verbatim, and it has to be:
+-- `compile-go` emits `fadd-rrr 0 1 0`, i.e. `dst ≡ b`, for every binary float
+-- node. For the commutative ops that is the `add-rrr` case; for `fsub` it is
+-- `Xfsubr-rr`, the REVERSE subtract — which is the operation the aliasing
+-- actually calls for, and avoids needing `a − b ≡ a + (−b)` as a lemma.
+----------------------------------------------------------------------
+emit (load-fimm d r) with abs-reg r
+... | just xr = Xmov-fimm xr d ∷ []
+... | nothing = []
+emit (load-finput p r) with abs-reg r
+... | just xr = Xmov-farg xr p ∷ []
+... | nothing = []
+emit (fadd-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
+... | just xd | just xa | just xb        with xd ≟x xa
+...   | yes _                              = Xfadd-rr xd xb ∷ []
+...   | no _                               with xd ≟x xb
+...     | yes _                            = Xfadd-rr xd xa ∷ []
+...     | no _                             = Xmov-rr xd xa ∷ Xfadd-rr xd xb ∷ []
+emit (fadd-rrr _ _ _) | _ | _ | _          = []
+emit (fsub-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
+... | just xd | just xa | just xb        with xd ≟x xa
+...   | yes _                              = Xfsub-rr xd xb ∷ []
+...   | no _                               with xd ≟x xb
+...     | yes _                            = Xfsubr-rr xd xa ∷ []
+...     | no _                             = Xmov-rr xd xa ∷ Xfsub-rr xd xb ∷ []
+emit (fsub-rrr _ _ _) | _ | _ | _          = []
+emit (fmul-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
+... | just xd | just xa | just xb        with xd ≟x xa
+...   | yes _                              = Xfmul-rr xd xb ∷ []
+...   | no _                               with xd ≟x xb
+...     | yes _                            = Xfmul-rr xd xa ∷ []
+...     | no _                             = Xmov-rr xd xa ∷ Xfmul-rr xd xb ∷ []
+emit (fmul-rrr _ _ _) | _ | _ | _          = []
+emit (fneg-rr dst a) with abs-reg dst | abs-reg a
+... | just xd | just xa = Xmov-rr xd xa ∷ Xfneg-r xd ∷ []
+... | _       | _       = []
+emit (i2f-rr dst a) with abs-reg dst | abs-reg a
+... | just xd | just xa = Xi2f-r xd xa ∷ []
 ... | _       | _       = []
 emit (spill src slot) with abs-reg src
 ... | just xs = Xmov-r-m (mk-scratch slot) xs ∷ []

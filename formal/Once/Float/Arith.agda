@@ -59,9 +59,10 @@ open import Data.Nat.DivMod using (_/_; _%_)
 open import Data.Nat.Properties using (m^n≢0)
 open import Data.Integer using (ℤ; +_; -[1+_]; ∣_∣)
 import Data.Integer as ℤ
+import Data.Integer.Properties as ℤ
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; cong₂)
 
 open import Once.Float.Dyadic
   using (FloatFormat; sig-bits; exp-bits; bias; bitLen; signBit; modPow;
@@ -451,4 +452,99 @@ _ = refl
 
 -- A mixed expression end to end: `1 + 1.5` is `i2f 1` added to the literal.
 _ : fadd binary64 (i2f binary64 (+ 1)) 0x3ff8000000000000 ≡ 0x4004000000000000
+_ = refl
+
+------------------------------------------------------------------------
+-- COMMUTATIVITY of `fadd` and `fmul`
+--
+-- Needed by the backend, not by taste: `compile-go` leaves one operand in the
+-- destination register, so the emitter's aliasing case computes `b ⊙ a` where
+-- the tree says `a ⊙ b`. The integer path discharges that with `Once.Word`'s
+-- `⊕-comm`; this is the float twin.
+--
+-- IT IS TRUE HERE AND WOULD NOT BE ON THE HARDWARE. x86 PROPAGATES an operand's
+-- NaN payload, so `nan₁ + nan₂` and `nan₂ + nan₁` differ on the metal. Once
+-- canonicalises (D055's rule, applied to NaN), and the canonical NaN has no
+-- payload to propagate — so commutativity holds exactly. The decision to
+-- canonicalise bought this proof.
+------------------------------------------------------------------------
+
+private
+  -- `x ≡ᵇ y` is symmetric, which is the only fact the ±∞ cases need.
+  ≡ᵇ-sym : ∀ m n → (m ℕ.≡ᵇ n) ≡ (n ℕ.≡ᵇ m)
+  ≡ᵇ-sym zero    zero    = refl
+  ≡ᵇ-sym zero    (suc _) = refl
+  ≡ᵇ-sym (suc _) zero    = refl
+  ≡ᵇ-sym (suc m) (suc n) = ≡ᵇ-sym m n
+
+  ≡ᵇ⇒≡ : ∀ m n → (m ℕ.≡ᵇ n) ≡ true → m ≡ n
+  ≡ᵇ⇒≡ zero    zero    _  = refl
+  ≡ᵇ⇒≡ (suc m) (suc n) eq = cong suc (≡ᵇ⇒≡ m n eq)
+
+-- Exact addition on the scaffolding commutes: the alignment exponent is a
+-- `⊓` (commutative) and the significands are added in `ℤ`.
+-- The implicits of `+-comm` are spelled out: after the `⊓` is turned around
+-- both sides share the alignment exponent, but the two SUMMANDS are large
+-- terms Agda will not guess.
++B-comm : ∀ x y → x +B y ≡ y +B x
++B-comm (a ·2^ p) (b ·2^ q) rewrite ℤ.⊓-comm p q =
+  cong (_·2^ (q ℤ.⊓ p))
+       (ℤ.+-comm (a ℤ.* (+ (2 ^ ∣ p ℤ.- (q ℤ.⊓ p) ∣)))
+                 (b ℤ.* (+ (2 ^ ∣ q ℤ.- (q ℤ.⊓ p) ∣))))
+
+*B-comm : ∀ x y → x *B y ≡ y *B x
+*B-comm (a ·2^ p) (b ·2^ q) = cong₂ _·2^_ (ℤ.*-comm a b) (ℤ.+-comm p q)
+
+-- The ±∞ pair is the only case with a decision in it. `≡ᵇ-sym` turns the
+-- scrutinee around; the aux takes the decision as an ARGUMENT (the
+-- `cfm-build-gated` convention) so the `if` reduces on both sides at once.
+addV-inf-aux : ∀ F s t (b : Bool) → (t ℕ.≡ᵇ s) ≡ b
+             → (if b then infinity F s else nan F)
+             ≡ (if b then infinity F t else nan F)
+addV-inf-aux F s t true  eq = cong (infinity F) (sym (≡ᵇ⇒≡ t s eq))
+addV-inf-aux F s t false _  = refl
+
+addV-comm : ∀ F x y → addV F x y ≡ addV F y x
+addV-comm F fv-nan     fv-nan     = refl
+addV-comm F fv-nan     (fv-inf _) = refl
+addV-comm F fv-nan     (fv-fin _) = refl
+addV-comm F (fv-inf _) fv-nan     = refl
+addV-comm F (fv-fin _) fv-nan     = refl
+addV-comm F (fv-inf s) (fv-fin _) = refl
+addV-comm F (fv-fin _) (fv-inf t) = refl
+addV-comm F (fv-fin x) (fv-fin y) = cong (roundB F) (+B-comm x y)
+addV-comm F (fv-inf s) (fv-inf t) rewrite ≡ᵇ-sym s t =
+  addV-inf-aux F s t (t ℕ.≡ᵇ s) refl
+
+xorS-comm : ∀ m n → xorS m n ≡ xorS n m
+xorS-comm m n rewrite ≡ᵇ-sym m n = refl
+
+-- The `0 × ∞` decision, taken as an argument for the same reason.
+mulV-inf-fin-aux : ∀ F s w (b : Bool)
+                 → (if b then nan F else infinity F (xorS s w))
+                 ≡ (if b then nan F else infinity F (xorS w s))
+mulV-inf-fin-aux F s w true  = refl
+mulV-inf-fin-aux F s w false = cong (infinity F) (xorS-comm s w)
+
+mulV-comm : ∀ F x y → mulV F x y ≡ mulV F y x
+mulV-comm F fv-nan     fv-nan     = refl
+mulV-comm F fv-nan     (fv-inf _) = refl
+mulV-comm F fv-nan     (fv-fin _) = refl
+mulV-comm F (fv-inf _) fv-nan     = refl
+mulV-comm F (fv-fin _) fv-nan     = refl
+mulV-comm F (fv-fin x) (fv-fin y) = cong (roundB F) (*B-comm x y)
+mulV-comm F (fv-inf s) (fv-inf t) = cong (infinity F) (xorS-comm s t)
+mulV-comm F (fv-inf s) (fv-fin y) = mulV-inf-fin-aux F s (signB y) (isZeroB y)
+mulV-comm F (fv-fin x) (fv-inf t) = sym (mulV-inf-fin-aux F t (signB x) (isZeroB x))
+
+fadd-comm : ∀ F a b → fadd F a b ≡ fadd F b a
+fadd-comm F a b = addV-comm F (decode F a) (decode F b)
+
+fmul-comm : ∀ F a b → fmul F a b ≡ fmul F b a
+fmul-comm F a b = mulV-comm F (decode F a) (decode F b)
+
+-- Pinned against the hardware, because a commutativity proof that held of the
+-- wrong function would be no comfort.
+_ : fadd binary64 0x3fb999999999999a 0x3fc999999999999a
+  ≡ fadd binary64 0x3fc999999999999a 0x3fb999999999999a
 _ = refl
