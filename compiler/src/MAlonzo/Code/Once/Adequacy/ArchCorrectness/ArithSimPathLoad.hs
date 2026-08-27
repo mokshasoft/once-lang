@@ -25,19 +25,19 @@ d_path'45'load'45'go_16 ::
   () ->
   (AgdaAny -> Integer -> Maybe Integer) ->
   (Maybe Integer -> Integer) ->
-  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22 -> Integer) ->
+  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24 -> Integer) ->
   AgdaAny ->
   Integer ->
-  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] -> Integer
+  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] -> Integer
 d_path'45'load'45'go_16 ~v0 v1 v2 v3 v4 v5 v6
   = du_path'45'load'45'go_16 v1 v2 v3 v4 v5 v6
 du_path'45'load'45'go_16 ::
   (AgdaAny -> Integer -> Maybe Integer) ->
   (Maybe Integer -> Integer) ->
-  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22 -> Integer) ->
+  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24 -> Integer) ->
   AgdaAny ->
   Integer ->
-  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] -> Integer
+  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] -> Integer
 du_path'45'load'45'go_16 v0 v1 v2 v3 v4 v5
   = case coe v5 of
       [] -> coe v1 (coe v0 v3 v4)
@@ -51,11 +51,11 @@ d_plg'45'mem'45'cong_38 ::
   () ->
   (AgdaAny -> Integer -> Maybe Integer) ->
   (Maybe Integer -> Integer) ->
-  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22 -> Integer) ->
+  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24 -> Integer) ->
   AgdaAny ->
   AgdaAny ->
   Integer ->
-  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] ->
+  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_plg'45'mem'45'cong_38 = erased

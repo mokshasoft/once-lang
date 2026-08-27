@@ -583,6 +583,7 @@ library
       MAlonzo.Code.Once.CCC.Machine.ReadTypedAdequate
       MAlonzo.Code.Once.Float.Decimal
       MAlonzo.Code.Once.Warnings
+      MAlonzo.Code.Once.Float.Arith
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
       MAlonzo.Code.Relation.Binary.Bundles.Raw

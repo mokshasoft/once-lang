@@ -65,47 +65,54 @@ data T_Expr_8
               MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
     C_mul_228 MAlonzo.Code.Once.Surface.Context.T_Usage_60
               MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
-    C_div_238 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_fadd_238 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+               MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
+    C_fsub_248 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+               MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
+    C_fmul_258 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+               MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
+    C_i2f_266 T_Expr_8 |
+    C_div_276 MAlonzo.Code.Once.Surface.Context.T_Usage_60
               MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
-    C_mod''_248 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_mod''_286 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                 MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
-    C_neg_256 T_Expr_8 |
-    C_lt_266 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_neg_294 T_Expr_8 |
+    C_lt_304 MAlonzo.Code.Once.Surface.Context.T_Usage_60
              MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
-    C_le_276 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_le_314 MAlonzo.Code.Once.Surface.Context.T_Usage_60
              MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
-    C_gt_286 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_gt_324 MAlonzo.Code.Once.Surface.Context.T_Usage_60
              MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
-    C_ge_296 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_ge_334 MAlonzo.Code.Once.Surface.Context.T_Usage_60
              MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
-    C_eq_306 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_eq_344 MAlonzo.Code.Once.Surface.Context.T_Usage_60
              MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
-    C_ne_316 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_ne_354 MAlonzo.Code.Once.Surface.Context.T_Usage_60
              MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
-    C_arr''_328 T_Expr_8 |
-    C_sigOp_336 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
+    C_arr''_366 T_Expr_8 |
+    C_sigOp_374 MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4
                 MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_226 |
-    C_closure_344 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_poly_354 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_lift'45'morphism_366 MAlonzo.Code.Once.IR.T_IR_16 |
-    C_morph'45'app_378 MAlonzo.Code.Once.Surface.Context.T_Usage_60
+    C_closure_382 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_poly_392 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_lift'45'morphism_404 MAlonzo.Code.Once.IR.T_IR_16 |
+    C_morph'45'app_416 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                        MAlonzo.Code.Once.Type.T_Type_112 MAlonzo.Code.Once.IR.T_IR_16
                        T_Expr_8 |
-    C_cata_390 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240
+    C_cata_428 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240
                T_Expr_8 |
-    C_ana_402 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240
+    C_ana_440 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240
               T_Expr_8
 -- Once.Surface.Syntax.svar→expr
-d_svar'8594'expr_412 ::
+d_svar'8594'expr_450 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.Type.T_Type_112 ->
   MAlonzo.Code.Once.Surface.Context.T_SVar_184 -> T_Expr_8
-d_svar'8594'expr_412 ~v0 ~v1 ~v2 ~v3 v4 = du_svar'8594'expr_412 v4
-du_svar'8594'expr_412 ::
+d_svar'8594'expr_450 ~v0 ~v1 ~v2 ~v3 v4 = du_svar'8594'expr_450 v4
+du_svar'8594'expr_450 ::
   MAlonzo.Code.Once.Surface.Context.T_SVar_184 -> T_Expr_8
-du_svar'8594'expr_412 v0
+du_svar'8594'expr_450 v0
   = case coe v0 of
       MAlonzo.Code.Once.Surface.Context.C_svar_192 v3 -> coe C_var_16 v3
       _ -> MAlonzo.RTE.mazUnreachableError

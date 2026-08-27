@@ -80,9 +80,25 @@ d_isComparisonOp_94 v0
       C_OpEq_26 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.TypeCheck.Raw.isFloatArithmeticOp
+d_isFloatArithmeticOp_96 :: T_BinOp_6 -> Bool
+d_isFloatArithmeticOp_96 v0
+  = case coe v0 of
+      C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpMul_12 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpDiv_14 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpMod_16 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpLt_18 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpLe_20 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpGt_22 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpGe_24 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpEq_26 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Raw.isArithmeticOp
-d_isArithmeticOp_96 :: T_BinOp_6 -> Bool
-d_isArithmeticOp_96 v0
+d_isArithmeticOp_98 :: T_BinOp_6 -> Bool
+d_isArithmeticOp_98 v0
   = case coe v0 of
       C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10

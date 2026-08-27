@@ -1,0 +1,33 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- FLOAT ARITHMETIC end to end (plan 0.75 F4). Expected exit code 23
+--
+-- `1.5 - 2.1` was `binop left: Type mismatch: expected Int but got Float` until
+-- F4. This program mixes all three operations, so recognition lifts the whole
+-- expression into ONE `arith.block.<digest>` whose body is float instructions:
+-- `addsd`/`mulsd`/`subsd` on x86, `fadd.d`/`fmul.d`/`fsub.d` on RISC-V.
+--
+-- WHAT IT CHECKS HERE is that the program builds and reaches its exit code on
+-- all three targets — i.e. the block links, the instructions assemble, and
+-- nothing traps. The VALUE was checked separately and more sharply: the
+-- emitted block was called from a C harness on x86-64 and from a freestanding
+-- binary under qemu on riscv64, and both returned `0x4016000000000000` — bit
+-- identical to what the host's own C compiler computes for the same
+-- expression.
+--
+-- WHY THE VALUE IS NOT CHECKED THROUGH THE TRACE, which would be better:
+-- `compose emitF@E <expression>` needs the expression at `Unit ω→ Float`, and
+-- the value-lift realm `⊢ᵍ` covers literals, not computations. That is a
+-- PRE-EXISTING limitation and not a float one — `compose emit@E (1 + 2)` fails
+-- identically for `Int`. Lifting it would let `FloatEmitSpec` read arithmetic
+-- results back out of the trace, which is the right home for that check.
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as E
+
+emitLit : IO Unit
+emitLit = emitF@E (1.5 + 2.25 * 2.0 - 0.5)
+
+main : IO Unit
+main = compose exit@S (compose 23 emitLit)

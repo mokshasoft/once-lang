@@ -151,6 +151,66 @@ recognise-body sh other with recognise-path other
 ... | just p  = just (ainput p)
 ... | nothing = nothing
 
+
+------------------------------------------------------------------------
+-- FLOAT body recognition (plan 0.75 F4, step 2)
+--
+-- A SEPARATE function rather than a `NumType`-indexed one, and deliberately:
+-- the integer chain above is proven and heavily `with`-structured, and giving
+-- it an extra index would rewrite every continuation for no gain. The two are
+-- MUTUALLY recursive in one place only — `arith.i2f`, D125's widening, which
+-- is the single node where a float tree contains an integer one.
+--
+-- The SigOp names are what separate the kinds. `arith.add.int` and
+-- `arith.add.float` are different instructions on every target, so matching by
+-- name is exactly the right discrimination and no type index is needed.
+------------------------------------------------------------------------
+
+{-# TERMINATING #-}
+recognise-body-float : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR sh NFloat)
+
+recognise-binop-float : (sh : InputShape) → ∀ {X Y} → IR X Y
+                      → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
+recognise-binop-float sh (⟨ a , b ⟩ _) with recognise-body-float sh a | recognise-body-float sh b
+... | just ra | just rb = just (ra , rb)
+... | _       | _       = nothing
+recognise-binop-float sh _ = nothing
+
+recognise-body-float sh (SigOp si ∘ e) with name si ≟ᶜ bare "arith.add.float"
+... | yes _ with recognise-binop-float sh e
+...   | just (ra , rb) = just (aadd ra rb)
+...   | nothing        = nothing
+recognise-body-float sh (SigOp si ∘ e) | no _ with name si ≟ᶜ bare "arith.sub.float"
+...   | yes _ with recognise-binop-float sh e
+...     | just (ra , rb) = just (asub ra rb)
+...     | nothing        = nothing
+recognise-body-float sh (SigOp si ∘ e) | no _ | no _ with name si ≟ᶜ bare "arith.mul.float"
+...     | yes _ with recognise-binop-float sh e
+...       | just (ra , rb) = just (amul ra rb)
+...       | nothing        = nothing
+-- D125's widening: the operand is an INTEGER tree, so this is the one place
+-- the two recognisers meet.
+recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ with name si ≟ᶜ bare "arith.i2f"
+...       | yes _ with recognise-body sh e
+...         | just r  = just (ai2f r)
+...         | nothing = nothing
+recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ = nothing
+
+-- A float LITERAL. The payload stays a `Decimal` — the one rounding happens at
+-- the backend, at the target's format (D117).
+recognise-body-float sh (const fits-float d ∘ rhs) with is-terminal-f? rhs
+  where
+    is-terminal-f? : ∀ {X Y} → IR X Y → Bool
+    is-terminal-f? terminal = true
+    is-terminal-f? _        = false
+... | true  = just (aflit d)
+... | false = nothing
+recognise-body-float sh (const fits-int _ ∘ _) = nothing
+
+recognise-body-float sh other with recognise-path other
+... | just p  = just (ainput p)
+... | nothing = nothing
+
 ------------------------------------------------------------------------
 -- Block-level entry
 ------------------------------------------------------------------------
@@ -158,13 +218,14 @@ recognise-body sh other with recognise-path other
 -- | Top-level entry. The caller (a higher-level extraction pass)
 -- strips enclosing `curry` layers off the source lambda and
 -- supplies the resulting `InputShape` plus the body IR.
-recognise : (sh : InputShape) → ∀ {A B} → IR A B → Maybe ArithBlock
--- PLAN 0.75 F4: the block is built at `NInt`, because that is all
--- `recognise-body` can produce — it matches `arith.add.int` and its siblings
--- BY NAME, and the float SigOps are `arith.add.float`. So no float block
--- exists today, which is exactly why the emitters' `NFloat` clause is
--- unreachable. Teaching recognition the float names is step one of giving
--- them a lowering, and it must not happen before the emitter can serve them.
-recognise sh ir with recognise-body sh ir
+-- | Top-level entry, now taking the KIND the caller wants. `Once.Arith.Machine.
+-- Rewrite` reads it off the morphism's CODOMAIN — a block returning `Int` is an
+-- integer block and one returning `Float` is a float block — so recognition
+-- never has to guess.
+recognise : (sh : InputShape) (n : NumType) → ∀ {A B} → IR A B → Maybe ArithBlock
+recognise sh NInt ir with recognise-body sh ir
 ... | just body = just (mk-block sh NInt body)
+... | nothing   = nothing
+recognise sh NFloat ir with recognise-body-float sh ir
+... | just body = just (mk-block sh NFloat body)
 ... | nothing   = nothing

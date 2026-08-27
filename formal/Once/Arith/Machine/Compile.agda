@@ -54,8 +54,13 @@ n-regs : ℕ
 n-regs = 2
 
 -- | Scratch budget = maximum recursion depth of binary nodes.
-required-scratch : ∀ {sh} → MArithIR sh NInt → ℕ
+-- PLAN 0.75 F4: kind-POLYMORPHIC. The scratch budget is the tree's binary
+-- nesting depth, which is a fact about its SHAPE — the register discipline is
+-- identical at both kinds, so the budget is too.
+required-scratch : ∀ {sh n} → MArithIR sh n → ℕ
 required-scratch (alit _)     = 0
+required-scratch (aflit _)    = 0
+required-scratch (ai2f a)     = required-scratch a
 required-scratch (ainput _)   = 0
 required-scratch (aadd a b)   = required-scratch a ⊔ suc (required-scratch b)
 required-scratch (asub a b)   = required-scratch a ⊔ suc (required-scratch b)

@@ -26,7 +26,9 @@ import qualified MAlonzo.Code.Data.List.Properties
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
+import qualified MAlonzo.Code.Once.Arith.Type
 import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
 import qualified MAlonzo.Code.Once.SigOp.Info
@@ -38,12 +40,12 @@ d_recognise'45'path_12 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  Maybe [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22]
+  Maybe [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24]
 d_recognise'45'path_12 v0 ~v1 v2 = du_recognise'45'path_12 v0 v2
 du_recognise'45'path_12 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  Maybe [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22]
+  Maybe [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24]
 du_recognise'45'path_12 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
@@ -77,7 +79,7 @@ du_recognise'45'path_12 v0 v1
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                          (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_Fst_24)
+                          (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_Fst_26)
                           (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
                 _ -> coe v2
          MAlonzo.Code.Once.IR.C_snd_50
@@ -87,7 +89,7 @@ du_recognise'45'path_12 v0 v1
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                          (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_Snd_26)
+                          (coe MAlonzo.Code.Once.Arith.Machine.Shape.C_Snd_28)
                           (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
                 _ -> coe v2
          _ -> coe v2)
@@ -113,7 +115,7 @@ du_recognise'45'body_44 v0 v1 v2
                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
                    -> coe
                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                        (coe MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_16 (coe v4))
+                        (coe MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_20 v4)
                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
                  _ -> MAlonzo.RTE.mazUnreachableError) in
     coe
@@ -180,8 +182,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                         -> coe
                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                              (coe
-                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_aadd_18
-                                                                                (coe v20) (coe v21))
+                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_aadd_24
+                                                                                v20 v21)
                                                                       _ -> MAlonzo.RTE.mazUnreachableError
                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                  -> coe v18
@@ -249,11 +251,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                              -> coe
                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                   (coe
-                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_asub_20
-                                                                                                                     (coe
-                                                                                                                        v26)
-                                                                                                                     (coe
-                                                                                                                        v27))
+                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_asub_28
+                                                                                                                     v26
+                                                                                                                     v27)
                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                       -> coe
@@ -331,11 +331,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                   -> coe
                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                        (coe
-                                                                                                                                                          MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22
-                                                                                                                                                          (coe
-                                                                                                                                                             v32)
-                                                                                                                                                          (coe
-                                                                                                                                                             v33))
+                                                                                                                                                          MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                          v32
+                                                                                                                                                          v33)
                                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                            -> coe
@@ -413,7 +411,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                        -> coe
                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                             (coe
-                                                                                                                                                                                               MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                               MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                (coe
                                                                                                                                                                                                   v38)
                                                                                                                                                                                                (coe
@@ -495,7 +493,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                     (coe
                                                                                                                                                                                                                                        v44)
                                                                                                                                                                                                                                     (coe
@@ -571,9 +569,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                           -> coe
                                                                                                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                (coe
-                                                                                                                                                                                                                                                                  MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                     v49))
+                                                                                                                                                                                                                                                                  MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                  v49)
                                                                                                                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                           -> coe
                                                                                                                                                                                                                                                                v48
@@ -621,9 +618,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                 (coe
-                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                      v49))
+                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                   v49)
                                                                                                                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 v48
@@ -679,7 +675,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                      (coe
                                                                                                                                                                                                                                         v44)
                                                                                                                                                                                                                                      (coe
@@ -755,9 +751,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                 (coe
-                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                      v49))
+                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                   v49)
                                                                                                                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 v48
@@ -805,9 +800,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -865,7 +859,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                         -> coe
                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                              (coe
-                                                                                                                                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                 (coe
                                                                                                                                                                                                    v38)
                                                                                                                                                                                                 (coe
@@ -947,7 +941,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                      (coe
                                                                                                                                                                                                                                         v44)
                                                                                                                                                                                                                                      (coe
@@ -1023,9 +1017,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                 (coe
-                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                      v49))
+                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                   v49)
                                                                                                                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 v48
@@ -1073,9 +1066,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -1131,7 +1123,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v44)
                                                                                                                                                                                                                                       (coe
@@ -1207,9 +1199,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -1257,9 +1248,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -1319,11 +1309,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                    -> coe
                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                         (coe
-                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22
-                                                                                                                                                           (coe
-                                                                                                                                                              v32)
-                                                                                                                                                           (coe
-                                                                                                                                                              v33))
+                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                           v32
+                                                                                                                                                           v33)
                                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                             -> coe
@@ -1401,7 +1389,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                         -> coe
                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                              (coe
-                                                                                                                                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                 (coe
                                                                                                                                                                                                    v38)
                                                                                                                                                                                                 (coe
@@ -1483,7 +1471,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                      (coe
                                                                                                                                                                                                                                         v44)
                                                                                                                                                                                                                                      (coe
@@ -1559,9 +1547,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                 (coe
-                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                      v49))
+                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                   v49)
                                                                                                                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 v48
@@ -1609,9 +1596,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -1667,7 +1653,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v44)
                                                                                                                                                                                                                                       (coe
@@ -1743,9 +1729,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -1793,9 +1778,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -1853,7 +1837,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                          -> coe
                                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                               (coe
-                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                  (coe
                                                                                                                                                                                                     v38)
                                                                                                                                                                                                  (coe
@@ -1935,7 +1919,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v44)
                                                                                                                                                                                                                                       (coe
@@ -2011,9 +1995,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -2061,9 +2044,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -2119,7 +2101,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                        (coe
                                                                                                                                                                                                                                           v44)
                                                                                                                                                                                                                                        (coe
@@ -2195,9 +2177,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -2245,9 +2226,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -2305,11 +2285,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                               -> coe
                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_asub_20
-                                                                                                                      (coe
-                                                                                                                         v26)
-                                                                                                                      (coe
-                                                                                                                         v27))
+                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_asub_28
+                                                                                                                      v26
+                                                                                                                      v27)
                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                        -> coe
@@ -2387,11 +2365,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                    -> coe
                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                         (coe
-                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22
-                                                                                                                                                           (coe
-                                                                                                                                                              v32)
-                                                                                                                                                           (coe
-                                                                                                                                                              v33))
+                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                           v32
+                                                                                                                                                           v33)
                                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                             -> coe
@@ -2469,7 +2445,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                         -> coe
                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                              (coe
-                                                                                                                                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                 (coe
                                                                                                                                                                                                    v38)
                                                                                                                                                                                                 (coe
@@ -2551,7 +2527,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                      (coe
                                                                                                                                                                                                                                         v44)
                                                                                                                                                                                                                                      (coe
@@ -2627,9 +2603,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                 (coe
-                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                      v49))
+                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                   v49)
                                                                                                                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 v48
@@ -2677,9 +2652,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -2735,7 +2709,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v44)
                                                                                                                                                                                                                                       (coe
@@ -2811,9 +2785,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -2861,9 +2834,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -2921,7 +2893,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                          -> coe
                                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                               (coe
-                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                  (coe
                                                                                                                                                                                                     v38)
                                                                                                                                                                                                  (coe
@@ -3003,7 +2975,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v44)
                                                                                                                                                                                                                                       (coe
@@ -3079,9 +3051,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -3129,9 +3100,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -3187,7 +3157,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                        (coe
                                                                                                                                                                                                                                           v44)
                                                                                                                                                                                                                                        (coe
@@ -3263,9 +3233,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -3313,9 +3282,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -3375,11 +3343,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                     -> coe
                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                          (coe
-                                                                                                                                                            MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22
-                                                                                                                                                            (coe
-                                                                                                                                                               v32)
-                                                                                                                                                            (coe
-                                                                                                                                                               v33))
+                                                                                                                                                            MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                            v32
+                                                                                                                                                            v33)
                                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                              -> coe
@@ -3457,7 +3423,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                          -> coe
                                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                               (coe
-                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                  (coe
                                                                                                                                                                                                     v38)
                                                                                                                                                                                                  (coe
@@ -3539,7 +3505,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v44)
                                                                                                                                                                                                                                       (coe
@@ -3615,9 +3581,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -3665,9 +3630,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -3723,7 +3687,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                        (coe
                                                                                                                                                                                                                                           v44)
                                                                                                                                                                                                                                        (coe
@@ -3799,9 +3763,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -3849,9 +3812,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -3909,7 +3871,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                           -> coe
                                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                (coe
-                                                                                                                                                                                                  MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                  MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                   (coe
                                                                                                                                                                                                      v38)
                                                                                                                                                                                                   (coe
@@ -3991,7 +3953,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                        (coe
                                                                                                                                                                                                                                           v44)
                                                                                                                                                                                                                                        (coe
@@ -4067,9 +4029,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -4117,9 +4078,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -4175,7 +4135,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                 -> coe
                                                                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                         (coe
                                                                                                                                                                                                                                            v44)
                                                                                                                                                                                                                                         (coe
@@ -4251,9 +4211,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -4301,9 +4260,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                       (coe
-                                                                                                                                                                                                                                                                          v49))
+                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                       v49)
                                                                                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     v48
@@ -4354,9 +4312,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                          -> coe
                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                               (coe
-                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_aadd_18
-                                                                                 (coe v20)
-                                                                                 (coe v21))
+                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_aadd_24
+                                                                                 v20 v21)
                                                                        _ -> MAlonzo.RTE.mazUnreachableError
                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                   -> coe v18
@@ -4424,11 +4381,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                               -> coe
                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_asub_20
-                                                                                                                      (coe
-                                                                                                                         v26)
-                                                                                                                      (coe
-                                                                                                                         v27))
+                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_asub_28
+                                                                                                                      v26
+                                                                                                                      v27)
                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                        -> coe
@@ -4506,11 +4461,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                    -> coe
                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                         (coe
-                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22
-                                                                                                                                                           (coe
-                                                                                                                                                              v32)
-                                                                                                                                                           (coe
-                                                                                                                                                              v33))
+                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                           v32
+                                                                                                                                                           v33)
                                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                             -> coe
@@ -4588,7 +4541,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                         -> coe
                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                              (coe
-                                                                                                                                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                 (coe
                                                                                                                                                                                                    v38)
                                                                                                                                                                                                 (coe
@@ -4670,7 +4623,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                      (coe
                                                                                                                                                                                                                                         v44)
                                                                                                                                                                                                                                      (coe
@@ -4746,9 +4699,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                 (coe
-                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                      v49))
+                                                                                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                   v49)
                                                                                                                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                            -> coe
                                                                                                                                                                                                                                                                 v48
@@ -4796,9 +4748,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -4854,7 +4805,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v44)
                                                                                                                                                                                                                                       (coe
@@ -4930,9 +4881,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -4980,9 +4930,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -5040,7 +4989,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                          -> coe
                                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                               (coe
-                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                  (coe
                                                                                                                                                                                                     v38)
                                                                                                                                                                                                  (coe
@@ -5122,7 +5071,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v44)
                                                                                                                                                                                                                                       (coe
@@ -5198,9 +5147,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -5248,9 +5196,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -5306,7 +5253,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                        (coe
                                                                                                                                                                                                                                           v44)
                                                                                                                                                                                                                                        (coe
@@ -5382,9 +5329,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -5432,9 +5378,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -5494,11 +5439,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                     -> coe
                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                          (coe
-                                                                                                                                                            MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22
-                                                                                                                                                            (coe
-                                                                                                                                                               v32)
-                                                                                                                                                            (coe
-                                                                                                                                                               v33))
+                                                                                                                                                            MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                            v32
+                                                                                                                                                            v33)
                                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                              -> coe
@@ -5576,7 +5519,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                          -> coe
                                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                               (coe
-                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                  (coe
                                                                                                                                                                                                     v38)
                                                                                                                                                                                                  (coe
@@ -5658,7 +5601,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v44)
                                                                                                                                                                                                                                       (coe
@@ -5734,9 +5677,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -5784,9 +5726,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -5842,7 +5783,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                        (coe
                                                                                                                                                                                                                                           v44)
                                                                                                                                                                                                                                        (coe
@@ -5918,9 +5859,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -5968,9 +5908,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -6028,7 +5967,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                           -> coe
                                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                (coe
-                                                                                                                                                                                                  MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                  MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                   (coe
                                                                                                                                                                                                      v38)
                                                                                                                                                                                                   (coe
@@ -6110,7 +6049,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                        (coe
                                                                                                                                                                                                                                           v44)
                                                                                                                                                                                                                                        (coe
@@ -6186,9 +6125,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -6236,9 +6174,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -6294,7 +6231,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                 -> coe
                                                                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                         (coe
                                                                                                                                                                                                                                            v44)
                                                                                                                                                                                                                                         (coe
@@ -6370,9 +6307,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -6420,9 +6356,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                       (coe
-                                                                                                                                                                                                                                                                          v49))
+                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                       v49)
                                                                                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     v48
@@ -6480,11 +6415,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                -> coe
                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                     (coe
-                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_asub_20
-                                                                                                                       (coe
-                                                                                                                          v26)
-                                                                                                                       (coe
-                                                                                                                          v27))
+                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_asub_28
+                                                                                                                       v26
+                                                                                                                       v27)
                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                         -> coe
@@ -6562,11 +6495,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                     -> coe
                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                          (coe
-                                                                                                                                                            MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22
-                                                                                                                                                            (coe
-                                                                                                                                                               v32)
-                                                                                                                                                            (coe
-                                                                                                                                                               v33))
+                                                                                                                                                            MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                            v32
+                                                                                                                                                            v33)
                                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                              -> coe
@@ -6644,7 +6575,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                          -> coe
                                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                               (coe
-                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                  (coe
                                                                                                                                                                                                     v38)
                                                                                                                                                                                                  (coe
@@ -6726,7 +6657,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                       (coe
                                                                                                                                                                                                                                          v44)
                                                                                                                                                                                                                                       (coe
@@ -6802,9 +6733,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                  (coe
-                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                       v49))
+                                                                                                                                                                                                                                                                    MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                    v49)
                                                                                                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                             -> coe
                                                                                                                                                                                                                                                                  v48
@@ -6852,9 +6782,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -6910,7 +6839,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                        (coe
                                                                                                                                                                                                                                           v44)
                                                                                                                                                                                                                                        (coe
@@ -6986,9 +6915,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -7036,9 +6964,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -7096,7 +7023,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                           -> coe
                                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                (coe
-                                                                                                                                                                                                  MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                  MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                   (coe
                                                                                                                                                                                                      v38)
                                                                                                                                                                                                   (coe
@@ -7178,7 +7105,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                        (coe
                                                                                                                                                                                                                                           v44)
                                                                                                                                                                                                                                        (coe
@@ -7254,9 +7181,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -7304,9 +7230,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -7362,7 +7287,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                 -> coe
                                                                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                         (coe
                                                                                                                                                                                                                                            v44)
                                                                                                                                                                                                                                         (coe
@@ -7438,9 +7363,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -7488,9 +7412,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                       (coe
-                                                                                                                                                                                                                                                                          v49))
+                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                       v49)
                                                                                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     v48
@@ -7550,11 +7473,9 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                      -> coe
                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                           (coe
-                                                                                                                                                             MAlonzo.Code.Once.Arith.Machine.IR.C_amul_22
-                                                                                                                                                             (coe
-                                                                                                                                                                v32)
-                                                                                                                                                             (coe
-                                                                                                                                                                v33))
+                                                                                                                                                             MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                             v32
+                                                                                                                                                             v33)
                                                                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                               -> coe
@@ -7632,7 +7553,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                           -> coe
                                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                (coe
-                                                                                                                                                                                                  MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                  MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                   (coe
                                                                                                                                                                                                      v38)
                                                                                                                                                                                                   (coe
@@ -7714,7 +7635,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                        (coe
                                                                                                                                                                                                                                           v44)
                                                                                                                                                                                                                                        (coe
@@ -7790,9 +7711,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                   (coe
-                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                        v49))
+                                                                                                                                                                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                     v49)
                                                                                                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                              -> coe
                                                                                                                                                                                                                                                                   v48
@@ -7840,9 +7760,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -7898,7 +7817,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                 -> coe
                                                                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                         (coe
                                                                                                                                                                                                                                            v44)
                                                                                                                                                                                                                                         (coe
@@ -7974,9 +7893,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -8024,9 +7942,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                       (coe
-                                                                                                                                                                                                                                                                          v49))
+                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                       v49)
                                                                                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     v48
@@ -8084,7 +8001,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                            -> coe
                                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                 (coe
-                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_24
+                                                                                                                                                                                                   MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34
                                                                                                                                                                                                    (coe
                                                                                                                                                                                                       v38)
                                                                                                                                                                                                    (coe
@@ -8166,7 +8083,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                 -> coe
                                                                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                         (coe
                                                                                                                                                                                                                                            v44)
                                                                                                                                                                                                                                         (coe
@@ -8242,9 +8159,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                    (coe
-                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                         v49))
+                                                                                                                                                                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                      v49)
                                                                                                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                               -> coe
                                                                                                                                                                                                                                                                    v48
@@ -8292,9 +8208,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                       (coe
-                                                                                                                                                                                                                                                                          v49))
+                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                       v49)
                                                                                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     v48
@@ -8350,7 +8265,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                  -> coe
                                                                                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                       (coe
-                                                                                                                                                                                                                                         MAlonzo.Code.Once.Arith.Machine.IR.C_amod_26
+                                                                                                                                                                                                                                         MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36
                                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                                             v44)
                                                                                                                                                                                                                                          (coe
@@ -8426,9 +8341,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                     (coe
-                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                       (coe
-                                                                                                                                                                                                                                                                          v49))
+                                                                                                                                                                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                       v49)
                                                                                                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                                -> coe
                                                                                                                                                                                                                                                                     v48
@@ -8476,9 +8390,8 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                                                                 -> coe
                                                                                                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                                                                                                                                                                                                                                                      (coe
-                                                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_28
-                                                                                                                                                                                                                                                                        (coe
-                                                                                                                                                                                                                                                                           v49))
+                                                                                                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40
+                                                                                                                                                                                                                                                                        v49)
                                                                                                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                                                                                                                                                                                                                                 -> coe
                                                                                                                                                                                                                                                                      v48
@@ -8555,29 +8468,2059 @@ du_is'45'terminal'63'_316 v0
          MAlonzo.Code.Once.IR.C_terminal_74
            -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          _ -> coe v1)
--- Once.Arith.Machine.Recognise.recognise
-d_recognise_360 ::
+-- Once.Arith.Machine.Recognise.recognise-body-float
+d_recognise'45'body'45'float_360 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_126
-d_recognise_360 v0 v1 ~v2 v3 = du_recognise_360 v0 v1 v3
-du_recognise_360 ::
+  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10
+d_recognise'45'body'45'float_360 v0 v1 ~v2 v3
+  = du_recognise'45'body'45'float_360 v0 v1 v3
+du_recognise'45'body'45'float_360 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_126
-du_recognise_360 v0 v1 v2
+  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10
+du_recognise'45'body'45'float_360 v0 v1 v2
   = let v3
-          = coe du_recognise'45'body_44 (coe v0) (coe v1) (coe v2) in
+          = let v3 = coe du_recognise'45'path_12 (coe v1) (coe v2) in
+            coe
+              (case coe v3 of
+                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
+                   -> coe
+                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                        (coe MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_20 v4)
+                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
+                 _ -> MAlonzo.RTE.mazUnreachableError) in
+    coe
+      (case coe v2 of
+         MAlonzo.Code.Once.IR.C__'8728'__30 v5 v7 v8
+           -> case coe v7 of
+                MAlonzo.Code.Once.IR.C_const_148 v10 v11
+                  -> case coe v10 of
+                       MAlonzo.Code.Once.IRTy.C_fits'45'int_512
+                         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                       MAlonzo.Code.Once.IRTy.C_fits'45'float_514
+                         -> let v12 = coe du_is'45'terminal'45'f'63'_560 (coe v8) in
+                            coe
+                              (if coe v12
+                                 then coe
+                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                        (coe
+                                           MAlonzo.Code.Once.Arith.Machine.IR.C_aflit_16 (coe v11))
+                                 else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                       _ -> MAlonzo.RTE.mazUnreachableError
+                MAlonzo.Code.Once.IR.C_SigOp_154 v9 v10 v11
+                  -> let v12
+                           = coe
+                               MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                               (coe MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                               (coe
+                                  MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                  (coe MAlonzo.Code.Once.SigOp.Info.d_name_174 (coe v11)))
+                               (coe
+                                  MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                  (coe
+                                     MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                     (coe ("arith.add.float" :: Data.Text.Text)))) in
+                     coe
+                       (case coe v12 of
+                          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v13 v14
+                            -> if coe v13
+                                 then let v15
+                                            = seq
+                                                (coe v14)
+                                                (coe
+                                                   MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                   (coe v13)
+                                                   (coe
+                                                      MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                      erased)) in
+                                      coe
+                                        (case coe v15 of
+                                           MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v16 v17
+                                             -> if coe v16
+                                                  then coe
+                                                         seq (coe v17)
+                                                         (let v18
+                                                                = d_recognise'45'binop'45'float_368
+                                                                    (coe v0) (coe v1)
+                                                                    (coe
+                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                       (coe v9))
+                                                                    (coe v8) in
+                                                          coe
+                                                            (case coe v18 of
+                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v19
+                                                                 -> case coe v19 of
+                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
+                                                                        -> coe
+                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                             (coe
+                                                                                MAlonzo.Code.Once.Arith.Machine.IR.C_aadd_24
+                                                                                v20 v21)
+                                                                      _ -> MAlonzo.RTE.mazUnreachableError
+                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                 -> coe v18
+                                                               _ -> MAlonzo.RTE.mazUnreachableError))
+                                                  else coe
+                                                         seq (coe v17)
+                                                         (let v18
+                                                                = coe
+                                                                    MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                    (coe
+                                                                       MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                    (coe
+                                                                       MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                       (coe
+                                                                          MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                          (coe v11)))
+                                                                    (coe
+                                                                       MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                       (coe
+                                                                          MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                          (coe
+                                                                             ("arith.sub.float"
+                                                                              ::
+                                                                              Data.Text.Text)))) in
+                                                          coe
+                                                            (case coe v18 of
+                                                               MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v19 v20
+                                                                 -> if coe v19
+                                                                      then let v21
+                                                                                 = seq
+                                                                                     (coe v20)
+                                                                                     (coe
+                                                                                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                        (coe v19)
+                                                                                        (coe
+                                                                                           MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                           erased)) in
+                                                                           coe
+                                                                             (case coe v21 of
+                                                                                MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v22 v23
+                                                                                  -> if coe v22
+                                                                                       then coe
+                                                                                              seq
+                                                                                              (coe
+                                                                                                 v23)
+                                                                                              (let v24
+                                                                                                     = d_recognise'45'binop'45'float_368
+                                                                                                         (coe
+                                                                                                            v0)
+                                                                                                         (coe
+                                                                                                            v1)
+                                                                                                         (coe
+                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                            (coe
+                                                                                                               v9))
+                                                                                                         (coe
+                                                                                                            v8) in
+                                                                                               coe
+                                                                                                 (case coe
+                                                                                                         v24 of
+                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v25
+                                                                                                      -> case coe
+                                                                                                                v25 of
+                                                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                             -> coe
+                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                  (coe
+                                                                                                                     MAlonzo.Code.Once.Arith.Machine.IR.C_asub_28
+                                                                                                                     v26
+                                                                                                                     v27)
+                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                      -> coe
+                                                                                                           v24
+                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                       else coe
+                                                                                              seq
+                                                                                              (coe
+                                                                                                 v23)
+                                                                                              (let v24
+                                                                                                     = coe
+                                                                                                         MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                         (coe
+                                                                                                            MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                         (coe
+                                                                                                            MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                            (coe
+                                                                                                               MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                               (coe
+                                                                                                                  v11)))
+                                                                                                         (coe
+                                                                                                            MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                            (coe
+                                                                                                               MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                               (coe
+                                                                                                                  ("arith.mul.float"
+                                                                                                                   ::
+                                                                                                                   Data.Text.Text)))) in
+                                                                                               coe
+                                                                                                 (case coe
+                                                                                                         v24 of
+                                                                                                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v25 v26
+                                                                                                      -> if coe
+                                                                                                              v25
+                                                                                                           then let v27
+                                                                                                                      = seq
+                                                                                                                          (coe
+                                                                                                                             v26)
+                                                                                                                          (coe
+                                                                                                                             MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                             (coe
+                                                                                                                                v25)
+                                                                                                                             (coe
+                                                                                                                                MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                erased)) in
+                                                                                                                coe
+                                                                                                                  (case coe
+                                                                                                                          v27 of
+                                                                                                                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v28 v29
+                                                                                                                       -> if coe
+                                                                                                                               v28
+                                                                                                                            then coe
+                                                                                                                                   seq
+                                                                                                                                   (coe
+                                                                                                                                      v29)
+                                                                                                                                   (let v30
+                                                                                                                                          = d_recognise'45'binop'45'float_368
+                                                                                                                                              (coe
+                                                                                                                                                 v0)
+                                                                                                                                              (coe
+                                                                                                                                                 v1)
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                 (coe
+                                                                                                                                                    v9))
+                                                                                                                                              (coe
+                                                                                                                                                 v8) in
+                                                                                                                                    coe
+                                                                                                                                      (case coe
+                                                                                                                                              v30 of
+                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v31
+                                                                                                                                           -> case coe
+                                                                                                                                                     v31 of
+                                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
+                                                                                                                                                  -> coe
+                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                       (coe
+                                                                                                                                                          MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                          v32
+                                                                                                                                                          v33)
+                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                           -> coe
+                                                                                                                                                v30
+                                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                            else coe
+                                                                                                                                   seq
+                                                                                                                                   (coe
+                                                                                                                                      v29)
+                                                                                                                                   (let v30
+                                                                                                                                          = coe
+                                                                                                                                              MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                 (coe
+                                                                                                                                                    MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                    (coe
+                                                                                                                                                       v11)))
+                                                                                                                                              (coe
+                                                                                                                                                 MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                 (coe
+                                                                                                                                                    MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                                                    (coe
+                                                                                                                                                       ("arith.i2f"
+                                                                                                                                                        ::
+                                                                                                                                                        Data.Text.Text)))) in
+                                                                                                                                    coe
+                                                                                                                                      (case coe
+                                                                                                                                              v30 of
+                                                                                                                                         MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v31 v32
+                                                                                                                                           -> if coe
+                                                                                                                                                   v31
+                                                                                                                                                then let v33
+                                                                                                                                                           = seq
+                                                                                                                                                               (coe
+                                                                                                                                                                  v32)
+                                                                                                                                                               (coe
+                                                                                                                                                                  MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                  (coe
+                                                                                                                                                                     v31)
+                                                                                                                                                                  (coe
+                                                                                                                                                                     MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                                                     erased)) in
+                                                                                                                                                     coe
+                                                                                                                                                       (case coe
+                                                                                                                                                               v33 of
+                                                                                                                                                          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                            -> if coe
+                                                                                                                                                                    v34
+                                                                                                                                                                 then coe
+                                                                                                                                                                        seq
+                                                                                                                                                                        (coe
+                                                                                                                                                                           v35)
+                                                                                                                                                                        (let v36
+                                                                                                                                                                               = coe
+                                                                                                                                                                                   du_recognise'45'body_44
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v0)
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v1)
+                                                                                                                                                                                   (coe
+                                                                                                                                                                                      v8) in
+                                                                                                                                                                         coe
+                                                                                                                                                                           (case coe
+                                                                                                                                                                                   v36 of
+                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                -> coe
+                                                                                                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                        (coe
+                                                                                                                                                                                           v37))
+                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                -> coe
+                                                                                                                                                                                     v36
+                                                                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                 else coe
+                                                                                                                                                                        seq
+                                                                                                                                                                        (coe
+                                                                                                                                                                           v35)
+                                                                                                                                                                        (coe
+                                                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                                                                else (let v33
+                                                                                                                                                            = seq
+                                                                                                                                                                (coe
+                                                                                                                                                                   v32)
+                                                                                                                                                                (coe
+                                                                                                                                                                   MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                   (coe
+                                                                                                                                                                      v31)
+                                                                                                                                                                   (coe
+                                                                                                                                                                      MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                                                      coe
+                                                                                                                                                        (case coe
+                                                                                                                                                                v33 of
+                                                                                                                                                           MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                             -> if coe
+                                                                                                                                                                     v34
+                                                                                                                                                                  then coe
+                                                                                                                                                                         seq
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v35)
+                                                                                                                                                                         (let v36
+                                                                                                                                                                                = coe
+                                                                                                                                                                                    du_recognise'45'body_44
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v0)
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v1)
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v8) in
+                                                                                                                                                                          coe
+                                                                                                                                                                            (case coe
+                                                                                                                                                                                    v36 of
+                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                 -> coe
+                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            v37))
+                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                 -> coe
+                                                                                                                                                                                      v36
+                                                                                                                                                                               _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                  else coe
+                                                                                                                                                                         seq
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v35)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                     _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                           else (let v27
+                                                                                                                       = seq
+                                                                                                                           (coe
+                                                                                                                              v26)
+                                                                                                                           (coe
+                                                                                                                              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                              (coe
+                                                                                                                                 v25)
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                 coe
+                                                                                                                   (case coe
+                                                                                                                           v27 of
+                                                                                                                      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v28 v29
+                                                                                                                        -> if coe
+                                                                                                                                v28
+                                                                                                                             then coe
+                                                                                                                                    seq
+                                                                                                                                    (coe
+                                                                                                                                       v29)
+                                                                                                                                    (let v30
+                                                                                                                                           = d_recognise'45'binop'45'float_368
+                                                                                                                                               (coe
+                                                                                                                                                  v0)
+                                                                                                                                               (coe
+                                                                                                                                                  v1)
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                  (coe
+                                                                                                                                                     v9))
+                                                                                                                                               (coe
+                                                                                                                                                  v8) in
+                                                                                                                                     coe
+                                                                                                                                       (case coe
+                                                                                                                                               v30 of
+                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v31
+                                                                                                                                            -> case coe
+                                                                                                                                                      v31 of
+                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
+                                                                                                                                                   -> coe
+                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                        (coe
+                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                           v32
+                                                                                                                                                           v33)
+                                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                            -> coe
+                                                                                                                                                 v30
+                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                             else coe
+                                                                                                                                    seq
+                                                                                                                                    (coe
+                                                                                                                                       v29)
+                                                                                                                                    (let v30
+                                                                                                                                           = coe
+                                                                                                                                               MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                     (coe
+                                                                                                                                                        v11)))
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                                                     (coe
+                                                                                                                                                        ("arith.i2f"
+                                                                                                                                                         ::
+                                                                                                                                                         Data.Text.Text)))) in
+                                                                                                                                     coe
+                                                                                                                                       (case coe
+                                                                                                                                               v30 of
+                                                                                                                                          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v31 v32
+                                                                                                                                            -> if coe
+                                                                                                                                                    v31
+                                                                                                                                                 then let v33
+                                                                                                                                                            = seq
+                                                                                                                                                                (coe
+                                                                                                                                                                   v32)
+                                                                                                                                                                (coe
+                                                                                                                                                                   MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                   (coe
+                                                                                                                                                                      v31)
+                                                                                                                                                                   (coe
+                                                                                                                                                                      MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                                                      erased)) in
+                                                                                                                                                      coe
+                                                                                                                                                        (case coe
+                                                                                                                                                                v33 of
+                                                                                                                                                           MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                             -> if coe
+                                                                                                                                                                     v34
+                                                                                                                                                                  then coe
+                                                                                                                                                                         seq
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v35)
+                                                                                                                                                                         (let v36
+                                                                                                                                                                                = coe
+                                                                                                                                                                                    du_recognise'45'body_44
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v0)
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v1)
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v8) in
+                                                                                                                                                                          coe
+                                                                                                                                                                            (case coe
+                                                                                                                                                                                    v36 of
+                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                 -> coe
+                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            v37))
+                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                 -> coe
+                                                                                                                                                                                      v36
+                                                                                                                                                                               _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                  else coe
+                                                                                                                                                                         seq
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v35)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                                                                 else (let v33
+                                                                                                                                                             = seq
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v32)
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                    (coe
+                                                                                                                                                                       v31)
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                                                       coe
+                                                                                                                                                         (case coe
+                                                                                                                                                                 v33 of
+                                                                                                                                                            MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                              -> if coe
+                                                                                                                                                                      v34
+                                                                                                                                                                   then coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (let v36
+                                                                                                                                                                                 = coe
+                                                                                                                                                                                     du_recognise'45'body_44
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v0)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v1)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v8) in
+                                                                                                                                                                           coe
+                                                                                                                                                                             (case coe
+                                                                                                                                                                                     v36 of
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             v37))
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       v36
+                                                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                   else coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (coe
+                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                    _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                      else (let v21
+                                                                                  = seq
+                                                                                      (coe v20)
+                                                                                      (coe
+                                                                                         MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                         (coe v19)
+                                                                                         (coe
+                                                                                            MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                            coe
+                                                                              (case coe v21 of
+                                                                                 MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v22 v23
+                                                                                   -> if coe v22
+                                                                                        then coe
+                                                                                               seq
+                                                                                               (coe
+                                                                                                  v23)
+                                                                                               (let v24
+                                                                                                      = d_recognise'45'binop'45'float_368
+                                                                                                          (coe
+                                                                                                             v0)
+                                                                                                          (coe
+                                                                                                             v1)
+                                                                                                          (coe
+                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                             (coe
+                                                                                                                v9))
+                                                                                                          (coe
+                                                                                                             v8) in
+                                                                                                coe
+                                                                                                  (case coe
+                                                                                                          v24 of
+                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v25
+                                                                                                       -> case coe
+                                                                                                                 v25 of
+                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                              -> coe
+                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                   (coe
+                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_asub_28
+                                                                                                                      v26
+                                                                                                                      v27)
+                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                       -> coe
+                                                                                                            v24
+                                                                                                     _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                        else coe
+                                                                                               seq
+                                                                                               (coe
+                                                                                                  v23)
+                                                                                               (let v24
+                                                                                                      = coe
+                                                                                                          MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                          (coe
+                                                                                                             MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                          (coe
+                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                             (coe
+                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                (coe
+                                                                                                                   v11)))
+                                                                                                          (coe
+                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                             (coe
+                                                                                                                MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                (coe
+                                                                                                                   ("arith.mul.float"
+                                                                                                                    ::
+                                                                                                                    Data.Text.Text)))) in
+                                                                                                coe
+                                                                                                  (case coe
+                                                                                                          v24 of
+                                                                                                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v25 v26
+                                                                                                       -> if coe
+                                                                                                               v25
+                                                                                                            then let v27
+                                                                                                                       = seq
+                                                                                                                           (coe
+                                                                                                                              v26)
+                                                                                                                           (coe
+                                                                                                                              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                              (coe
+                                                                                                                                 v25)
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                 erased)) in
+                                                                                                                 coe
+                                                                                                                   (case coe
+                                                                                                                           v27 of
+                                                                                                                      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v28 v29
+                                                                                                                        -> if coe
+                                                                                                                                v28
+                                                                                                                             then coe
+                                                                                                                                    seq
+                                                                                                                                    (coe
+                                                                                                                                       v29)
+                                                                                                                                    (let v30
+                                                                                                                                           = d_recognise'45'binop'45'float_368
+                                                                                                                                               (coe
+                                                                                                                                                  v0)
+                                                                                                                                               (coe
+                                                                                                                                                  v1)
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                  (coe
+                                                                                                                                                     v9))
+                                                                                                                                               (coe
+                                                                                                                                                  v8) in
+                                                                                                                                     coe
+                                                                                                                                       (case coe
+                                                                                                                                               v30 of
+                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v31
+                                                                                                                                            -> case coe
+                                                                                                                                                      v31 of
+                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
+                                                                                                                                                   -> coe
+                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                        (coe
+                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                           v32
+                                                                                                                                                           v33)
+                                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                            -> coe
+                                                                                                                                                 v30
+                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                             else coe
+                                                                                                                                    seq
+                                                                                                                                    (coe
+                                                                                                                                       v29)
+                                                                                                                                    (let v30
+                                                                                                                                           = coe
+                                                                                                                                               MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                     (coe
+                                                                                                                                                        v11)))
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                                                     (coe
+                                                                                                                                                        ("arith.i2f"
+                                                                                                                                                         ::
+                                                                                                                                                         Data.Text.Text)))) in
+                                                                                                                                     coe
+                                                                                                                                       (case coe
+                                                                                                                                               v30 of
+                                                                                                                                          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v31 v32
+                                                                                                                                            -> if coe
+                                                                                                                                                    v31
+                                                                                                                                                 then let v33
+                                                                                                                                                            = seq
+                                                                                                                                                                (coe
+                                                                                                                                                                   v32)
+                                                                                                                                                                (coe
+                                                                                                                                                                   MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                   (coe
+                                                                                                                                                                      v31)
+                                                                                                                                                                   (coe
+                                                                                                                                                                      MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                                                      erased)) in
+                                                                                                                                                      coe
+                                                                                                                                                        (case coe
+                                                                                                                                                                v33 of
+                                                                                                                                                           MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                             -> if coe
+                                                                                                                                                                     v34
+                                                                                                                                                                  then coe
+                                                                                                                                                                         seq
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v35)
+                                                                                                                                                                         (let v36
+                                                                                                                                                                                = coe
+                                                                                                                                                                                    du_recognise'45'body_44
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v0)
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v1)
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v8) in
+                                                                                                                                                                          coe
+                                                                                                                                                                            (case coe
+                                                                                                                                                                                    v36 of
+                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                 -> coe
+                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            v37))
+                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                 -> coe
+                                                                                                                                                                                      v36
+                                                                                                                                                                               _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                  else coe
+                                                                                                                                                                         seq
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v35)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                                                                 else (let v33
+                                                                                                                                                             = seq
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v32)
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                    (coe
+                                                                                                                                                                       v31)
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                                                       coe
+                                                                                                                                                         (case coe
+                                                                                                                                                                 v33 of
+                                                                                                                                                            MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                              -> if coe
+                                                                                                                                                                      v34
+                                                                                                                                                                   then coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (let v36
+                                                                                                                                                                                 = coe
+                                                                                                                                                                                     du_recognise'45'body_44
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v0)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v1)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v8) in
+                                                                                                                                                                           coe
+                                                                                                                                                                             (case coe
+                                                                                                                                                                                     v36 of
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             v37))
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       v36
+                                                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                   else coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (coe
+                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                            else (let v27
+                                                                                                                        = seq
+                                                                                                                            (coe
+                                                                                                                               v26)
+                                                                                                                            (coe
+                                                                                                                               MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                               (coe
+                                                                                                                                  v25)
+                                                                                                                               (coe
+                                                                                                                                  MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                  coe
+                                                                                                                    (case coe
+                                                                                                                            v27 of
+                                                                                                                       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v28 v29
+                                                                                                                         -> if coe
+                                                                                                                                 v28
+                                                                                                                              then coe
+                                                                                                                                     seq
+                                                                                                                                     (coe
+                                                                                                                                        v29)
+                                                                                                                                     (let v30
+                                                                                                                                            = d_recognise'45'binop'45'float_368
+                                                                                                                                                (coe
+                                                                                                                                                   v0)
+                                                                                                                                                (coe
+                                                                                                                                                   v1)
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                   (coe
+                                                                                                                                                      v9))
+                                                                                                                                                (coe
+                                                                                                                                                   v8) in
+                                                                                                                                      coe
+                                                                                                                                        (case coe
+                                                                                                                                                v30 of
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v31
+                                                                                                                                             -> case coe
+                                                                                                                                                       v31 of
+                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
+                                                                                                                                                    -> coe
+                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                         (coe
+                                                                                                                                                            MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                            v32
+                                                                                                                                                            v33)
+                                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                             -> coe
+                                                                                                                                                  v30
+                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                              else coe
+                                                                                                                                     seq
+                                                                                                                                     (coe
+                                                                                                                                        v29)
+                                                                                                                                     (let v30
+                                                                                                                                            = coe
+                                                                                                                                                MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                   (coe
+                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                      (coe
+                                                                                                                                                         v11)))
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                   (coe
+                                                                                                                                                      MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                                                      (coe
+                                                                                                                                                         ("arith.i2f"
+                                                                                                                                                          ::
+                                                                                                                                                          Data.Text.Text)))) in
+                                                                                                                                      coe
+                                                                                                                                        (case coe
+                                                                                                                                                v30 of
+                                                                                                                                           MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v31 v32
+                                                                                                                                             -> if coe
+                                                                                                                                                     v31
+                                                                                                                                                  then let v33
+                                                                                                                                                             = seq
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v32)
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                    (coe
+                                                                                                                                                                       v31)
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                                                       erased)) in
+                                                                                                                                                       coe
+                                                                                                                                                         (case coe
+                                                                                                                                                                 v33 of
+                                                                                                                                                            MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                              -> if coe
+                                                                                                                                                                      v34
+                                                                                                                                                                   then coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (let v36
+                                                                                                                                                                                 = coe
+                                                                                                                                                                                     du_recognise'45'body_44
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v0)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v1)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v8) in
+                                                                                                                                                                           coe
+                                                                                                                                                                             (case coe
+                                                                                                                                                                                     v36 of
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             v37))
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       v36
+                                                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                   else coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (coe
+                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                                                                  else (let v33
+                                                                                                                                                              = seq
+                                                                                                                                                                  (coe
+                                                                                                                                                                     v32)
+                                                                                                                                                                  (coe
+                                                                                                                                                                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v31)
+                                                                                                                                                                     (coe
+                                                                                                                                                                        MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                                                        coe
+                                                                                                                                                          (case coe
+                                                                                                                                                                  v33 of
+                                                                                                                                                             MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                               -> if coe
+                                                                                                                                                                       v34
+                                                                                                                                                                    then coe
+                                                                                                                                                                           seq
+                                                                                                                                                                           (coe
+                                                                                                                                                                              v35)
+                                                                                                                                                                           (let v36
+                                                                                                                                                                                  = coe
+                                                                                                                                                                                      du_recognise'45'body_44
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v0)
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v1)
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v8) in
+                                                                                                                                                                            coe
+                                                                                                                                                                              (case coe
+                                                                                                                                                                                      v36 of
+                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                   -> coe
+                                                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                        (coe
+                                                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              v37))
+                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                   -> coe
+                                                                                                                                                                                        v36
+                                                                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                    else coe
+                                                                                                                                                                           seq
+                                                                                                                                                                           (coe
+                                                                                                                                                                              v35)
+                                                                                                                                                                           (coe
+                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                     _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                 _ -> MAlonzo.RTE.mazUnreachableError))
+                                                               _ -> MAlonzo.RTE.mazUnreachableError))
+                                           _ -> MAlonzo.RTE.mazUnreachableError)
+                                 else (let v15
+                                             = seq
+                                                 (coe v14)
+                                                 (coe
+                                                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                    (coe v13)
+                                                    (coe
+                                                       MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                       coe
+                                         (case coe v15 of
+                                            MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v16 v17
+                                              -> if coe v16
+                                                   then coe
+                                                          seq (coe v17)
+                                                          (let v18
+                                                                 = d_recognise'45'binop'45'float_368
+                                                                     (coe v0) (coe v1)
+                                                                     (coe
+                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                        (coe v9))
+                                                                     (coe v8) in
+                                                           coe
+                                                             (case coe v18 of
+                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v19
+                                                                  -> case coe v19 of
+                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
+                                                                         -> coe
+                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                              (coe
+                                                                                 MAlonzo.Code.Once.Arith.Machine.IR.C_aadd_24
+                                                                                 v20 v21)
+                                                                       _ -> MAlonzo.RTE.mazUnreachableError
+                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                  -> coe v18
+                                                                _ -> MAlonzo.RTE.mazUnreachableError))
+                                                   else coe
+                                                          seq (coe v17)
+                                                          (let v18
+                                                                 = coe
+                                                                     MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                     (coe
+                                                                        MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                     (coe
+                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                        (coe
+                                                                           MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                           (coe v11)))
+                                                                     (coe
+                                                                        MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                        (coe
+                                                                           MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                           (coe
+                                                                              ("arith.sub.float"
+                                                                               ::
+                                                                               Data.Text.Text)))) in
+                                                           coe
+                                                             (case coe v18 of
+                                                                MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v19 v20
+                                                                  -> if coe v19
+                                                                       then let v21
+                                                                                  = seq
+                                                                                      (coe v20)
+                                                                                      (coe
+                                                                                         MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                         (coe v19)
+                                                                                         (coe
+                                                                                            MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                            erased)) in
+                                                                            coe
+                                                                              (case coe v21 of
+                                                                                 MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v22 v23
+                                                                                   -> if coe v22
+                                                                                        then coe
+                                                                                               seq
+                                                                                               (coe
+                                                                                                  v23)
+                                                                                               (let v24
+                                                                                                      = d_recognise'45'binop'45'float_368
+                                                                                                          (coe
+                                                                                                             v0)
+                                                                                                          (coe
+                                                                                                             v1)
+                                                                                                          (coe
+                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                             (coe
+                                                                                                                v9))
+                                                                                                          (coe
+                                                                                                             v8) in
+                                                                                                coe
+                                                                                                  (case coe
+                                                                                                          v24 of
+                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v25
+                                                                                                       -> case coe
+                                                                                                                 v25 of
+                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                              -> coe
+                                                                                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                   (coe
+                                                                                                                      MAlonzo.Code.Once.Arith.Machine.IR.C_asub_28
+                                                                                                                      v26
+                                                                                                                      v27)
+                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                     MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                       -> coe
+                                                                                                            v24
+                                                                                                     _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                        else coe
+                                                                                               seq
+                                                                                               (coe
+                                                                                                  v23)
+                                                                                               (let v24
+                                                                                                      = coe
+                                                                                                          MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                          (coe
+                                                                                                             MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                          (coe
+                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                             (coe
+                                                                                                                MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                (coe
+                                                                                                                   v11)))
+                                                                                                          (coe
+                                                                                                             MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                             (coe
+                                                                                                                MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                (coe
+                                                                                                                   ("arith.mul.float"
+                                                                                                                    ::
+                                                                                                                    Data.Text.Text)))) in
+                                                                                                coe
+                                                                                                  (case coe
+                                                                                                          v24 of
+                                                                                                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v25 v26
+                                                                                                       -> if coe
+                                                                                                               v25
+                                                                                                            then let v27
+                                                                                                                       = seq
+                                                                                                                           (coe
+                                                                                                                              v26)
+                                                                                                                           (coe
+                                                                                                                              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                              (coe
+                                                                                                                                 v25)
+                                                                                                                              (coe
+                                                                                                                                 MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                 erased)) in
+                                                                                                                 coe
+                                                                                                                   (case coe
+                                                                                                                           v27 of
+                                                                                                                      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v28 v29
+                                                                                                                        -> if coe
+                                                                                                                                v28
+                                                                                                                             then coe
+                                                                                                                                    seq
+                                                                                                                                    (coe
+                                                                                                                                       v29)
+                                                                                                                                    (let v30
+                                                                                                                                           = d_recognise'45'binop'45'float_368
+                                                                                                                                               (coe
+                                                                                                                                                  v0)
+                                                                                                                                               (coe
+                                                                                                                                                  v1)
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                  (coe
+                                                                                                                                                     v9))
+                                                                                                                                               (coe
+                                                                                                                                                  v8) in
+                                                                                                                                     coe
+                                                                                                                                       (case coe
+                                                                                                                                               v30 of
+                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v31
+                                                                                                                                            -> case coe
+                                                                                                                                                      v31 of
+                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
+                                                                                                                                                   -> coe
+                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                        (coe
+                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                           v32
+                                                                                                                                                           v33)
+                                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                            -> coe
+                                                                                                                                                 v30
+                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                             else coe
+                                                                                                                                    seq
+                                                                                                                                    (coe
+                                                                                                                                       v29)
+                                                                                                                                    (let v30
+                                                                                                                                           = coe
+                                                                                                                                               MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                     (coe
+                                                                                                                                                        v11)))
+                                                                                                                                               (coe
+                                                                                                                                                  MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                  (coe
+                                                                                                                                                     MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                                                     (coe
+                                                                                                                                                        ("arith.i2f"
+                                                                                                                                                         ::
+                                                                                                                                                         Data.Text.Text)))) in
+                                                                                                                                     coe
+                                                                                                                                       (case coe
+                                                                                                                                               v30 of
+                                                                                                                                          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v31 v32
+                                                                                                                                            -> if coe
+                                                                                                                                                    v31
+                                                                                                                                                 then let v33
+                                                                                                                                                            = seq
+                                                                                                                                                                (coe
+                                                                                                                                                                   v32)
+                                                                                                                                                                (coe
+                                                                                                                                                                   MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                   (coe
+                                                                                                                                                                      v31)
+                                                                                                                                                                   (coe
+                                                                                                                                                                      MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                                                      erased)) in
+                                                                                                                                                      coe
+                                                                                                                                                        (case coe
+                                                                                                                                                                v33 of
+                                                                                                                                                           MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                             -> if coe
+                                                                                                                                                                     v34
+                                                                                                                                                                  then coe
+                                                                                                                                                                         seq
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v35)
+                                                                                                                                                                         (let v36
+                                                                                                                                                                                = coe
+                                                                                                                                                                                    du_recognise'45'body_44
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v0)
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v1)
+                                                                                                                                                                                    (coe
+                                                                                                                                                                                       v8) in
+                                                                                                                                                                          coe
+                                                                                                                                                                            (case coe
+                                                                                                                                                                                    v36 of
+                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                 -> coe
+                                                                                                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            v37))
+                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                 -> coe
+                                                                                                                                                                                      v36
+                                                                                                                                                                               _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                  else coe
+                                                                                                                                                                         seq
+                                                                                                                                                                         (coe
+                                                                                                                                                                            v35)
+                                                                                                                                                                         (coe
+                                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                                                                 else (let v33
+                                                                                                                                                             = seq
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v32)
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                    (coe
+                                                                                                                                                                       v31)
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                                                       coe
+                                                                                                                                                         (case coe
+                                                                                                                                                                 v33 of
+                                                                                                                                                            MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                              -> if coe
+                                                                                                                                                                      v34
+                                                                                                                                                                   then coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (let v36
+                                                                                                                                                                                 = coe
+                                                                                                                                                                                     du_recognise'45'body_44
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v0)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v1)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v8) in
+                                                                                                                                                                           coe
+                                                                                                                                                                             (case coe
+                                                                                                                                                                                     v36 of
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             v37))
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       v36
+                                                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                   else coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (coe
+                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                            else (let v27
+                                                                                                                        = seq
+                                                                                                                            (coe
+                                                                                                                               v26)
+                                                                                                                            (coe
+                                                                                                                               MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                               (coe
+                                                                                                                                  v25)
+                                                                                                                               (coe
+                                                                                                                                  MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                  coe
+                                                                                                                    (case coe
+                                                                                                                            v27 of
+                                                                                                                       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v28 v29
+                                                                                                                         -> if coe
+                                                                                                                                 v28
+                                                                                                                              then coe
+                                                                                                                                     seq
+                                                                                                                                     (coe
+                                                                                                                                        v29)
+                                                                                                                                     (let v30
+                                                                                                                                            = d_recognise'45'binop'45'float_368
+                                                                                                                                                (coe
+                                                                                                                                                   v0)
+                                                                                                                                                (coe
+                                                                                                                                                   v1)
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                   (coe
+                                                                                                                                                      v9))
+                                                                                                                                                (coe
+                                                                                                                                                   v8) in
+                                                                                                                                      coe
+                                                                                                                                        (case coe
+                                                                                                                                                v30 of
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v31
+                                                                                                                                             -> case coe
+                                                                                                                                                       v31 of
+                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
+                                                                                                                                                    -> coe
+                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                         (coe
+                                                                                                                                                            MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                            v32
+                                                                                                                                                            v33)
+                                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                             -> coe
+                                                                                                                                                  v30
+                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                              else coe
+                                                                                                                                     seq
+                                                                                                                                     (coe
+                                                                                                                                        v29)
+                                                                                                                                     (let v30
+                                                                                                                                            = coe
+                                                                                                                                                MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                   (coe
+                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                      (coe
+                                                                                                                                                         v11)))
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                   (coe
+                                                                                                                                                      MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                                                      (coe
+                                                                                                                                                         ("arith.i2f"
+                                                                                                                                                          ::
+                                                                                                                                                          Data.Text.Text)))) in
+                                                                                                                                      coe
+                                                                                                                                        (case coe
+                                                                                                                                                v30 of
+                                                                                                                                           MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v31 v32
+                                                                                                                                             -> if coe
+                                                                                                                                                     v31
+                                                                                                                                                  then let v33
+                                                                                                                                                             = seq
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v32)
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                    (coe
+                                                                                                                                                                       v31)
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                                                       erased)) in
+                                                                                                                                                       coe
+                                                                                                                                                         (case coe
+                                                                                                                                                                 v33 of
+                                                                                                                                                            MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                              -> if coe
+                                                                                                                                                                      v34
+                                                                                                                                                                   then coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (let v36
+                                                                                                                                                                                 = coe
+                                                                                                                                                                                     du_recognise'45'body_44
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v0)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v1)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v8) in
+                                                                                                                                                                           coe
+                                                                                                                                                                             (case coe
+                                                                                                                                                                                     v36 of
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             v37))
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       v36
+                                                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                   else coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (coe
+                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                                                                  else (let v33
+                                                                                                                                                              = seq
+                                                                                                                                                                  (coe
+                                                                                                                                                                     v32)
+                                                                                                                                                                  (coe
+                                                                                                                                                                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v31)
+                                                                                                                                                                     (coe
+                                                                                                                                                                        MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                                                        coe
+                                                                                                                                                          (case coe
+                                                                                                                                                                  v33 of
+                                                                                                                                                             MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                               -> if coe
+                                                                                                                                                                       v34
+                                                                                                                                                                    then coe
+                                                                                                                                                                           seq
+                                                                                                                                                                           (coe
+                                                                                                                                                                              v35)
+                                                                                                                                                                           (let v36
+                                                                                                                                                                                  = coe
+                                                                                                                                                                                      du_recognise'45'body_44
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v0)
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v1)
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v8) in
+                                                                                                                                                                            coe
+                                                                                                                                                                              (case coe
+                                                                                                                                                                                      v36 of
+                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                   -> coe
+                                                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                        (coe
+                                                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              v37))
+                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                   -> coe
+                                                                                                                                                                                        v36
+                                                                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                    else coe
+                                                                                                                                                                           seq
+                                                                                                                                                                           (coe
+                                                                                                                                                                              v35)
+                                                                                                                                                                           (coe
+                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                     _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                 _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                       else (let v21
+                                                                                   = seq
+                                                                                       (coe v20)
+                                                                                       (coe
+                                                                                          MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                          (coe v19)
+                                                                                          (coe
+                                                                                             MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                             coe
+                                                                               (case coe v21 of
+                                                                                  MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v22 v23
+                                                                                    -> if coe v22
+                                                                                         then coe
+                                                                                                seq
+                                                                                                (coe
+                                                                                                   v23)
+                                                                                                (let v24
+                                                                                                       = d_recognise'45'binop'45'float_368
+                                                                                                           (coe
+                                                                                                              v0)
+                                                                                                           (coe
+                                                                                                              v1)
+                                                                                                           (coe
+                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                              (coe
+                                                                                                                 v9))
+                                                                                                           (coe
+                                                                                                              v8) in
+                                                                                                 coe
+                                                                                                   (case coe
+                                                                                                           v24 of
+                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v25
+                                                                                                        -> case coe
+                                                                                                                  v25 of
+                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
+                                                                                                               -> coe
+                                                                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                    (coe
+                                                                                                                       MAlonzo.Code.Once.Arith.Machine.IR.C_asub_28
+                                                                                                                       v26
+                                                                                                                       v27)
+                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                        -> coe
+                                                                                                             v24
+                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                         else coe
+                                                                                                seq
+                                                                                                (coe
+                                                                                                   v23)
+                                                                                                (let v24
+                                                                                                       = coe
+                                                                                                           MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                           (coe
+                                                                                                              MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                           (coe
+                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                              (coe
+                                                                                                                 MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                 (coe
+                                                                                                                    v11)))
+                                                                                                           (coe
+                                                                                                              MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                              (coe
+                                                                                                                 MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                 (coe
+                                                                                                                    ("arith.mul.float"
+                                                                                                                     ::
+                                                                                                                     Data.Text.Text)))) in
+                                                                                                 coe
+                                                                                                   (case coe
+                                                                                                           v24 of
+                                                                                                      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v25 v26
+                                                                                                        -> if coe
+                                                                                                                v25
+                                                                                                             then let v27
+                                                                                                                        = seq
+                                                                                                                            (coe
+                                                                                                                               v26)
+                                                                                                                            (coe
+                                                                                                                               MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                               (coe
+                                                                                                                                  v25)
+                                                                                                                               (coe
+                                                                                                                                  MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                  erased)) in
+                                                                                                                  coe
+                                                                                                                    (case coe
+                                                                                                                            v27 of
+                                                                                                                       MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v28 v29
+                                                                                                                         -> if coe
+                                                                                                                                 v28
+                                                                                                                              then coe
+                                                                                                                                     seq
+                                                                                                                                     (coe
+                                                                                                                                        v29)
+                                                                                                                                     (let v30
+                                                                                                                                            = d_recognise'45'binop'45'float_368
+                                                                                                                                                (coe
+                                                                                                                                                   v0)
+                                                                                                                                                (coe
+                                                                                                                                                   v1)
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                   (coe
+                                                                                                                                                      v9))
+                                                                                                                                                (coe
+                                                                                                                                                   v8) in
+                                                                                                                                      coe
+                                                                                                                                        (case coe
+                                                                                                                                                v30 of
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v31
+                                                                                                                                             -> case coe
+                                                                                                                                                       v31 of
+                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
+                                                                                                                                                    -> coe
+                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                         (coe
+                                                                                                                                                            MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                            v32
+                                                                                                                                                            v33)
+                                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                             -> coe
+                                                                                                                                                  v30
+                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                              else coe
+                                                                                                                                     seq
+                                                                                                                                     (coe
+                                                                                                                                        v29)
+                                                                                                                                     (let v30
+                                                                                                                                            = coe
+                                                                                                                                                MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                   (coe
+                                                                                                                                                      MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                      (coe
+                                                                                                                                                         v11)))
+                                                                                                                                                (coe
+                                                                                                                                                   MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                   (coe
+                                                                                                                                                      MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                                                      (coe
+                                                                                                                                                         ("arith.i2f"
+                                                                                                                                                          ::
+                                                                                                                                                          Data.Text.Text)))) in
+                                                                                                                                      coe
+                                                                                                                                        (case coe
+                                                                                                                                                v30 of
+                                                                                                                                           MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v31 v32
+                                                                                                                                             -> if coe
+                                                                                                                                                     v31
+                                                                                                                                                  then let v33
+                                                                                                                                                             = seq
+                                                                                                                                                                 (coe
+                                                                                                                                                                    v32)
+                                                                                                                                                                 (coe
+                                                                                                                                                                    MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                    (coe
+                                                                                                                                                                       v31)
+                                                                                                                                                                    (coe
+                                                                                                                                                                       MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                                                       erased)) in
+                                                                                                                                                       coe
+                                                                                                                                                         (case coe
+                                                                                                                                                                 v33 of
+                                                                                                                                                            MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                              -> if coe
+                                                                                                                                                                      v34
+                                                                                                                                                                   then coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (let v36
+                                                                                                                                                                                 = coe
+                                                                                                                                                                                     du_recognise'45'body_44
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v0)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v1)
+                                                                                                                                                                                     (coe
+                                                                                                                                                                                        v8) in
+                                                                                                                                                                           coe
+                                                                                                                                                                             (case coe
+                                                                                                                                                                                     v36 of
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                          (coe
+                                                                                                                                                                                             v37))
+                                                                                                                                                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                  -> coe
+                                                                                                                                                                                       v36
+                                                                                                                                                                                _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                   else coe
+                                                                                                                                                                          seq
+                                                                                                                                                                          (coe
+                                                                                                                                                                             v35)
+                                                                                                                                                                          (coe
+                                                                                                                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                                                                  else (let v33
+                                                                                                                                                              = seq
+                                                                                                                                                                  (coe
+                                                                                                                                                                     v32)
+                                                                                                                                                                  (coe
+                                                                                                                                                                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v31)
+                                                                                                                                                                     (coe
+                                                                                                                                                                        MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                                                        coe
+                                                                                                                                                          (case coe
+                                                                                                                                                                  v33 of
+                                                                                                                                                             MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                               -> if coe
+                                                                                                                                                                       v34
+                                                                                                                                                                    then coe
+                                                                                                                                                                           seq
+                                                                                                                                                                           (coe
+                                                                                                                                                                              v35)
+                                                                                                                                                                           (let v36
+                                                                                                                                                                                  = coe
+                                                                                                                                                                                      du_recognise'45'body_44
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v0)
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v1)
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v8) in
+                                                                                                                                                                            coe
+                                                                                                                                                                              (case coe
+                                                                                                                                                                                      v36 of
+                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                   -> coe
+                                                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                        (coe
+                                                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              v37))
+                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                   -> coe
+                                                                                                                                                                                        v36
+                                                                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                    else coe
+                                                                                                                                                                           seq
+                                                                                                                                                                           (coe
+                                                                                                                                                                              v35)
+                                                                                                                                                                           (coe
+                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                             else (let v27
+                                                                                                                         = seq
+                                                                                                                             (coe
+                                                                                                                                v26)
+                                                                                                                             (coe
+                                                                                                                                MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                (coe
+                                                                                                                                   v25)
+                                                                                                                                (coe
+                                                                                                                                   MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                   coe
+                                                                                                                     (case coe
+                                                                                                                             v27 of
+                                                                                                                        MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v28 v29
+                                                                                                                          -> if coe
+                                                                                                                                  v28
+                                                                                                                               then coe
+                                                                                                                                      seq
+                                                                                                                                      (coe
+                                                                                                                                         v29)
+                                                                                                                                      (let v30
+                                                                                                                                             = d_recognise'45'binop'45'float_368
+                                                                                                                                                 (coe
+                                                                                                                                                    v0)
+                                                                                                                                                 (coe
+                                                                                                                                                    v1)
+                                                                                                                                                 (coe
+                                                                                                                                                    MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                    (coe
+                                                                                                                                                       v9))
+                                                                                                                                                 (coe
+                                                                                                                                                    v8) in
+                                                                                                                                       coe
+                                                                                                                                         (case coe
+                                                                                                                                                 v30 of
+                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v31
+                                                                                                                                              -> case coe
+                                                                                                                                                        v31 of
+                                                                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
+                                                                                                                                                     -> coe
+                                                                                                                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                          (coe
+                                                                                                                                                             MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32
+                                                                                                                                                             v32
+                                                                                                                                                             v33)
+                                                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
+                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                              -> coe
+                                                                                                                                                   v30
+                                                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                               else coe
+                                                                                                                                      seq
+                                                                                                                                      (coe
+                                                                                                                                         v29)
+                                                                                                                                      (let v30
+                                                                                                                                             = coe
+                                                                                                                                                 MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
+                                                                                                                                                 (coe
+                                                                                                                                                    MAlonzo.Code.Data.String.Properties.d__'8799'__54)
+                                                                                                                                                 (coe
+                                                                                                                                                    MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Once.SigOp.Info.d_name_174
+                                                                                                                                                       (coe
+                                                                                                                                                          v11)))
+                                                                                                                                                 (coe
+                                                                                                                                                    MAlonzo.Code.Once.CanonicalName.d_parts_8
+                                                                                                                                                    (coe
+                                                                                                                                                       MAlonzo.Code.Once.CanonicalName.d_bare_12
+                                                                                                                                                       (coe
+                                                                                                                                                          ("arith.i2f"
+                                                                                                                                                           ::
+                                                                                                                                                           Data.Text.Text)))) in
+                                                                                                                                       coe
+                                                                                                                                         (case coe
+                                                                                                                                                 v30 of
+                                                                                                                                            MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v31 v32
+                                                                                                                                              -> if coe
+                                                                                                                                                      v31
+                                                                                                                                                   then let v33
+                                                                                                                                                              = seq
+                                                                                                                                                                  (coe
+                                                                                                                                                                     v32)
+                                                                                                                                                                  (coe
+                                                                                                                                                                     MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                     (coe
+                                                                                                                                                                        v31)
+                                                                                                                                                                     (coe
+                                                                                                                                                                        MAlonzo.Code.Relation.Nullary.Reflects.C_of'696'_22
+                                                                                                                                                                        erased)) in
+                                                                                                                                                        coe
+                                                                                                                                                          (case coe
+                                                                                                                                                                  v33 of
+                                                                                                                                                             MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                               -> if coe
+                                                                                                                                                                       v34
+                                                                                                                                                                    then coe
+                                                                                                                                                                           seq
+                                                                                                                                                                           (coe
+                                                                                                                                                                              v35)
+                                                                                                                                                                           (let v36
+                                                                                                                                                                                  = coe
+                                                                                                                                                                                      du_recognise'45'body_44
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v0)
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v1)
+                                                                                                                                                                                      (coe
+                                                                                                                                                                                         v8) in
+                                                                                                                                                                            coe
+                                                                                                                                                                              (case coe
+                                                                                                                                                                                      v36 of
+                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                   -> coe
+                                                                                                                                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                        (coe
+                                                                                                                                                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                           (coe
+                                                                                                                                                                                              v37))
+                                                                                                                                                                                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                   -> coe
+                                                                                                                                                                                        v36
+                                                                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                    else coe
+                                                                                                                                                                           seq
+                                                                                                                                                                           (coe
+                                                                                                                                                                              v35)
+                                                                                                                                                                           (coe
+                                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError)
+                                                                                                                                                   else (let v33
+                                                                                                                                                               = seq
+                                                                                                                                                                   (coe
+                                                                                                                                                                      v32)
+                                                                                                                                                                   (coe
+                                                                                                                                                                      MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32
+                                                                                                                                                                      (coe
+                                                                                                                                                                         v31)
+                                                                                                                                                                      (coe
+                                                                                                                                                                         MAlonzo.Code.Relation.Nullary.Reflects.C_of'8319'_26)) in
+                                                                                                                                                         coe
+                                                                                                                                                           (case coe
+                                                                                                                                                                   v33 of
+                                                                                                                                                              MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v34 v35
+                                                                                                                                                                -> if coe
+                                                                                                                                                                        v34
+                                                                                                                                                                     then coe
+                                                                                                                                                                            seq
+                                                                                                                                                                            (coe
+                                                                                                                                                                               v35)
+                                                                                                                                                                            (let v36
+                                                                                                                                                                                   = coe
+                                                                                                                                                                                       du_recognise'45'body_44
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          v0)
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          v1)
+                                                                                                                                                                                       (coe
+                                                                                                                                                                                          v8) in
+                                                                                                                                                                             coe
+                                                                                                                                                                               (case coe
+                                                                                                                                                                                       v36 of
+                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v37
+                                                                                                                                                                                    -> coe
+                                                                                                                                                                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                                                                                                                                                         (coe
+                                                                                                                                                                                            MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42
+                                                                                                                                                                                            (coe
+                                                                                                                                                                                               v37))
+                                                                                                                                                                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                                                                                                                                                                                    -> coe
+                                                                                                                                                                                         v36
+                                                                                                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                                                     else coe
+                                                                                                                                                                            seq
+                                                                                                                                                                            (coe
+                                                                                                                                                                               v35)
+                                                                                                                                                                            (coe
+                                                                                                                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                                            _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                                        _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                                  _ -> MAlonzo.RTE.mazUnreachableError))
+                                                                _ -> MAlonzo.RTE.mazUnreachableError))
+                                            _ -> MAlonzo.RTE.mazUnreachableError))
+                          _ -> MAlonzo.RTE.mazUnreachableError)
+                _ -> coe v3
+         _ -> coe v3)
+-- Once.Arith.Machine.Recognise.recognise-binop-float
+d_recognise'45'binop'45'float_368 ::
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_recognise'45'binop'45'float_368 v0 v1 v2 v3
+  = let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v3 of
-         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
-           -> coe
-                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                (coe
-                   MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_136 (coe v0)
-                   (coe v4))
-         MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
-         _ -> MAlonzo.RTE.mazUnreachableError)
+         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v8 v9 v10
+           -> case coe v2 of
+                MAlonzo.Code.Once.IRTy.C__'42'__20 v11 v12
+                  -> let v13
+                           = coe
+                               du_recognise'45'body'45'float_360 (coe v0) (coe v1) (coe v8) in
+                     coe
+                       (let v14
+                              = coe
+                                  du_recognise'45'body'45'float_360 (coe v0) (coe v1) (coe v9) in
+                        coe
+                          (case coe v13 of
+                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v15
+                               -> case coe v14 of
+                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v16
+                                      -> coe
+                                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                           (coe
+                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v15)
+                                              (coe v16))
+                                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                             _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
+                _ -> coe v4
+         _ -> coe v4)
+-- Once.Arith.Machine.Recognise._.is-terminal-f?
+d_is'45'terminal'45'f'63'_560 ::
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IR.T_IR_16 -> Bool
+d_is'45'terminal'45'f'63'_560 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6
+  = du_is'45'terminal'45'f'63'_560 v6
+du_is'45'terminal'45'f'63'_560 ::
+  MAlonzo.Code.Once.IR.T_IR_16 -> Bool
+du_is'45'terminal'45'f'63'_560 v0
+  = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
+    coe
+      (case coe v0 of
+         MAlonzo.Code.Once.IR.C_terminal_74
+           -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+         _ -> coe v1)
+-- Once.Arith.Machine.Recognise.recognise
+d_recognise_606 ::
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_142
+d_recognise_606 v0 v1 v2 ~v3 v4 = du_recognise_606 v0 v1 v2 v4
+du_recognise_606 ::
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_142
+du_recognise_606 v0 v1 v2 v3
+  = case coe v1 of
+      MAlonzo.Code.Once.Arith.Type.C_NInt_8
+        -> let v4
+                 = coe du_recognise'45'body_44 (coe v0) (coe v2) (coe v3) in
+           coe
+             (case coe v4 of
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
+                  -> coe
+                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                       (coe
+                          MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_156 (coe v0)
+                          (coe v1) (coe v5))
+                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v4
+                _ -> MAlonzo.RTE.mazUnreachableError)
+      MAlonzo.Code.Once.Arith.Type.C_NFloat_10
+        -> let v4
+                 = coe
+                     du_recognise'45'body'45'float_360 (coe v0) (coe v2) (coe v3) in
+           coe
+             (case coe v4 of
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
+                  -> coe
+                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                       (coe
+                          MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_156 (coe v0)
+                          (coe v1) (coe v5))
+                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v4
+                _ -> MAlonzo.RTE.mazUnreachableError)
+      _ -> MAlonzo.RTE.mazUnreachableError

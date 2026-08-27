@@ -190,7 +190,7 @@ du_algIR_308 v0 v1 v2 v3
                   MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
                   (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)))
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_122
                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
@@ -343,7 +343,7 @@ du_p_434 v0 v1 v2 v3
                   MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
                   (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)))
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_122
                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1) (coe v2)
@@ -654,7 +654,7 @@ du_coalgIR_578 v0 v1 v2 v3
                   MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
                   (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)))
             (coe
-               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_122
                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                (coe
                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v1)

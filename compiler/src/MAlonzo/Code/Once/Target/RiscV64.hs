@@ -415,5 +415,5 @@ d_riscv64_92
       (coe d_riscv64'45'functionPrologue_8)
       (coe d_riscv64'45'functionEpilogue_12)
       (coe
-         MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_emit'45'arith'45'blocks_158)
+         MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_emit'45'arith'45'blocks_204)
       (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.d_convention_58)

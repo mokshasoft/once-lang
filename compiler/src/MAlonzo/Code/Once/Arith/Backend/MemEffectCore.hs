@@ -179,6 +179,22 @@ du_mem'45'preserves_76 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
         -> coe v3 v10 (coe v0 v9)
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xsdiv'45'pow2'45'rri_54 v14 v15 v16
         -> coe v3 v10 (coe v0 v9)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_56 v14
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfadd'45'rr_56 v14 v15
+        -> coe v3 v10 (coe v0 v9)
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsub'45'rr_58 v14 v15
+        -> coe v3 v10 (coe v0 v9)
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfmul'45'rr_60 v14 v15
+        -> coe v3 v10 (coe v0 v9)
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsubr'45'rr_62 v14 v15
+        -> coe v3 v10 (coe v0 v9)
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfneg'45'r_64 v14
+        -> coe v3 v10 (coe v0 v9)
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xi2f'45'r_66 v14 v15
+        -> coe v3 v10 (coe v0 v9)
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'fimm_68 v14 v15
+        -> coe v3 v10 (coe v0 v9)
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_70 v14 v15
+        -> coe v3 v10 (coe v0 v9)
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_72 v14
         -> coe v3 v10 (coe v0 v9)
       _ -> MAlonzo.RTE.mazUnreachableError

@@ -32,17 +32,17 @@ d_plg_26 ::
    AgdaAny ->
    AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   (Maybe Integer -> Integer) ->
-  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22 -> Integer) ->
+  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24 -> Integer) ->
   (Integer -> Maybe Integer) ->
   Integer ->
-  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] -> Integer
+  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] -> Integer
 d_plg_26 ~v0 ~v1 ~v2 v3 v4 v5 v6 v7 = du_plg_26 v3 v4 v5 v6 v7
 du_plg_26 ::
   (Maybe Integer -> Integer) ->
-  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22 -> Integer) ->
+  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24 -> Integer) ->
   (Integer -> Maybe Integer) ->
   Integer ->
-  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] -> Integer
+  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] -> Integer
 du_plg_26 v0 v1 v2 v3 v4
   = case coe v4 of
       []
@@ -73,12 +73,12 @@ d_plg'45'stack'45'write'45'invisible_68 ::
    AgdaAny ->
    AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   (Maybe Integer -> Integer) ->
-  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22 -> Integer) ->
+  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24 -> Integer) ->
   (Integer -> Maybe Integer) ->
   Integer ->
   Integer ->
   Integer ->
-  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] ->
+  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   AgdaAny ->
   T_HeapChase_42 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_plg'45'stack'45'write'45'invisible_68 = erased
@@ -93,18 +93,18 @@ d_heapchase'45'agree_112 ::
    AgdaAny ->
    AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   (Maybe Integer -> Integer) ->
-  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22 -> Integer) ->
+  (MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24 -> Integer) ->
   (Integer -> Maybe Integer) ->
   (Integer -> Maybe Integer) ->
   Integer ->
-  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] ->
+  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   (Integer ->
    AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
   T_HeapChase_42 -> T_HeapChase_42
 d_heapchase'45'agree_112 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 ~v9 v10
   = du_heapchase'45'agree_112 v8 v10
 du_heapchase'45'agree_112 ::
-  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_22] ->
+  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   T_HeapChase_42 -> T_HeapChase_42
 du_heapchase'45'agree_112 v0 v1
   = case coe v0 of

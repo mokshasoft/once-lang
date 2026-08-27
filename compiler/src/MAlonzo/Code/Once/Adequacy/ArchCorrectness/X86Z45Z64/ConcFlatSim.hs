@@ -28179,8 +28179,8 @@ du_x86'45'64'45'traceloop_1844
                    MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.du_val'45'x86'45'64_200 v3
                    v4)
               v0 v2))
-      MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_ev'45'x86'45'64_308
-      MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_arith'45'env'45'x86'45'64_310
+      MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_ev'45'x86'45'64_354
+      MAlonzo.Code.Once.Adequacy.CPU.X86Z45Z64.d_arith'45'env'45'x86'45'64_356
       (coe
          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call'45'sym_50)
 -- Once.Adequacy.ArchCorrectness.X86-64.ConcFlatSim.EE.BlockStep

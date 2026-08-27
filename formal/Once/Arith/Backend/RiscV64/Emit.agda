@@ -204,21 +204,19 @@ emit-arith-block sym (mk-block sh NInt body) =
        program-text instr ++
        "    addi sp, sp, " ++ pad ++ "\n" ++
        "    ret\n\n"
-  -- PLAN 0.75 F4: NO LOWERING FOR A FLOAT BLOCK YET, and the symbol is left
-  -- UNDEFINED on purpose. The abstract machine this emitter drives is
-  -- integer-register shaped (`add-rrr`, `div-rrr`, …), so there is no body to
-  -- write; inventing one — a trap, or an empty body — would build a program
-  -- that runs and is wrong, which is worse than a build that fails. An
-  -- undefined symbol is exactly what an UNRECOGNISED SigOp already produces,
-  -- so this is the existing loud failure rather than a new quiet one.
-  --
-  -- Unreachable today: `Once.Arith.Machine.Recognise` matches `arith.*.int`
-  -- only, so it never packages a float block. This clause is what will be
-  -- replaced when the float register file lands.
 emit-arith-block sym (mk-block sh NFloat body) =
-  "# " ++ sym ++ ": arith block at Float — no lowering yet (plan 0.75 F4).\n" ++
-  "# Symbol intentionally left UNDEFINED; the link fails rather than a\n" ++
-  "# body being invented. Recognition never produces one today.\n\n"
+    let nbody = body             -- no `normalize`: it is the div-guard /
+        --                           degenerate-divisor pre-pass, and both are
+        --                           Int-only by type — a float tree has no
+        --                           `adiv`/`amod` to fold.
+        n     = required-scratch nbody
+        pad   = showℕ (8 * n)
+        instr = emit-program (compile-abs nbody)
+    in sym ++ ":\n" ++
+       "    addi sp, sp, -" ++ pad ++ "\n" ++
+       program-text instr ++
+       "    addi sp, sp, " ++ pad ++ "\n" ++
+       "    ret\n\n"
 
 ------------------------------------------------------------------------
 -- Block-list emission

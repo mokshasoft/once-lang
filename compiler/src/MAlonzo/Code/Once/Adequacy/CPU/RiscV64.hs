@@ -68,7 +68,7 @@ d_run'45'trace'45'riscv64_14 v0 v1
               MAlonzo.Code.Once.Arith.Backend.RiscV64.Dispatch.du_dispatch'45'arith_18
               (\ v5 v6 v7 ->
                  coe
-                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimRiscV64.du_val'45'riscv64_302
+                   MAlonzo.Code.Once.Adequacy.ArchCorrectness.ArithSimRiscV64.du_val'45'riscv64_304
                    v5 v6)
               v2 v4))
       (coe d_step'45'budget'45'riscv64_8) (coe d_ev'45'riscv64_10)
