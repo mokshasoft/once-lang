@@ -185,9 +185,19 @@ hatch. ⚠ `iwkMeths` produces a TERM; nothing yet says it inhabits
 
 ★★ The decider is what makes it generic, and it is controlled
 (`Examples/Knot/WkProbe`): 12 row shapes classify, **and the two
-depth-Forded rows are REFUSED rather than mis-classified**. ⇒ therefore
-`decDesc KnotD ≡ nothing`, so the knot needs **51 computed rows plus 2
-given ones** — the split `Knot/Ctors`/`Knot/Build` already use.
+depth-Forded rows are REFUSED rather than mis-classified**.
+
+★★★ **AND THE ESCAPE HATCH IS STRUCTURAL, not bookkeeping.** The method
+tuple is RIGHT-NESTED, so "classified rows then given rows" is just where
+the nest stops: one constructor (`wkd-stop`) and one tail argument. ⇒
+`decDesc` is **TOTAL**, the contract is statable without naming a row
+(`wkdLen`/`wkdRest`), and a caller with nothing exceptional passes
+`unit`. **Measured: `wkdLen (decDesc KnotD) ≡ 51`** — 51 computed rows
+plus a 2-method tail, the split `Knot/Ctors`/`Knot/Build` already use.
+
+⚠ **The cost is a condition on the table**: unclassifiable rows must be a
+SUFFIX. `KnotD` satisfies it and the generator already appends
+exceptional rows last — that convention is now LOAD-BEARING.
 
 ⇒ `Lib/IWk` §7 names the three remaining obligations and what each rests
 on; `HANDOFF-2026-08-27` §A″ has the state.

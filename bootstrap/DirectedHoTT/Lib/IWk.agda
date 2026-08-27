@@ -149,10 +149,38 @@ data WkCon {Δ : Cx} (a : Var Δ) : ICon Δ → Set where
   wk-κ : {κ : RTm Δ} {C : ICon (Δ ∙)} →
          WkKa a κ → WkCon (vs a) C → WkCon a (iκ κ C)
 
+-- ★★★ THE ESCAPE HATCH, AND IT IS STRUCTURAL.  `wkd-stop E` says
+--   "classify no further; the methods for `E` are SUPPLIED".  ⚠ Note
+--   what it is NOT: a parallel bookkeeping structure listing which rows
+--   are hand-written, which would have to be kept in sync with the
+--   description by hand.  The method tuple is RIGHT-NESTED, so
+--   "classified rows, then given rows" is just where the nest stops —
+--   and `WkDesc`'s own index says where.
+--
+-- ⇒ THE COST IS A CONDITION ON THE TABLE: the rows a weakening cannot
+--   classify must be a SUFFIX of the description.  `KnotD` satisfies it
+--   — `cVar-vz`/`cVar-vs` are rows 52–53 — and the generator already
+--   appends exceptional rows last for an unrelated reason (`∈ID`
+--   positions must not move).  This makes that convention LOAD-BEARING,
+--   which is worth knowing before anyone reorders the table.
 data WkDesc : IDesc → Set where
-  wkd-nil  : WkDesc inil
+  wkd-stop : (E : IDesc) → WkDesc E
   wkd-cons : {C : ICon (ε ∙)} {E : IDesc} →
              WkCon vz C → WkDesc E → WkDesc (C ◂ E)
+
+-- how many rows got classified — ★ OBSERVABLE, so a caller can ASSERT it
+--   and a row that silently stops being classifiable is caught.
+wkdLen : {E : IDesc} → WkDesc E → ℕ
+wkdLen (wkd-stop _)   = zero
+wkdLen (wkd-cons _ W) = suc (wkdLen W)
+
+-- …and WHICH rows are left.  ⚠ The partner of `wkdLen`, and the reason
+--   both exist: together they say exactly what the caller's tail must
+--   inhabit — `imethsTyFrom D I M (j + wkdLen W) (wkdRest W)`.  That is
+--   the escape hatch's contract, statable without mentioning a row.
+wkdRest : {E : IDesc} → WkDesc E → IDesc
+wkdRest (wkd-stop E)  = E
+wkdRest (wkd-cons _ W) = wkdRest W
 
 ------------------------------------------------------------------------
 -- 3. THE PAYLOAD, REBUILT.  ⚠ The two tuples are walked TOGETHER: `q` is
@@ -182,12 +210,15 @@ iwkPay (wk-κ _ w)     q ih = pair (fst q) (iwkPay w (snd q) ih)
 iwkMethod : {Γ Δ : Cx} {a : Var Δ} {C : ICon Δ} → ℕ → WkCon a C → RTm Γ
 iwkMethod k w = lam (lam (lam (icon k (iwkPay w (var (vs vz)) (var vz)))))
 
-iwkMethsFrom : {Γ : Cx} → ℕ → {E : IDesc} → WkDesc E → RTm Γ
-iwkMethsFrom k wkd-nil        = unit
-iwkMethsFrom k (wkd-cons w W) = pair (iwkMethod k w) (iwkMethsFrom (suc k) W)
+-- ⚠ THE TUPLE TAKES A TAIL, and that is the whole escape hatch at the
+--   term level.  `wkd-stop` hands the tail straight back, so a caller
+--   with no exceptional rows passes `unit` and gets the old behaviour.
+iwkMethsFrom : {Γ : Cx} → ℕ → {E : IDesc} → WkDesc E → RTm Γ → RTm Γ
+iwkMethsFrom k (wkd-stop _)   tl = tl
+iwkMethsFrom k (wkd-cons w W) tl = pair (iwkMethod k w) (iwkMethsFrom (suc k) W tl)
 
-iwkMeths : {Γ : Cx} {E : IDesc} → WkDesc E → RTm Γ
-iwkMeths W = iwkMethsFrom zero W
+iwkMeths : {Γ : Cx} {E : IDesc} → WkDesc E → RTm Γ → RTm Γ
+iwkMeths W tl = iwkMethsFrom zero W tl
 
 ------------------------------------------------------------------------
 -- 5. ★★★ THE CLASSIFICATION IS **DECIDED**, NOT SUPPLIED.
@@ -296,13 +327,19 @@ decCon a (iκ κ C) with decKa a κ
 ...   | just w  = just (wk-κ p w)
 ...   | nothing = nothing
 
-decDesc : (E : IDesc) → Maybe (WkDesc E)
-decDesc inil = just wkd-nil
+-- ★★★ AND SO `decDesc` IS **TOTAL**.  It classifies as far as it can and
+--   stops — no `Maybe`, no `get`, no way for a caller to be blocked.
+--
+-- ⚠ AND IT STILL FAILS LOUDLY.  Stopping early does not silently drop
+--   rows: it makes the TAIL bigger, and the caller has to inhabit
+--   `imethsTyFrom D I M k E'` for whatever `E'` is left.  A row that
+--   stops being classifiable turns into methods someone must write, not
+--   into a wrong answer.  `wkdLen` makes it assertable on top of that.
+decDesc : (E : IDesc) → WkDesc E
+decDesc inil = wkd-stop inil
 decDesc (C ◂ E) with decCon vz C
-... | nothing = nothing
-... | just w with decDesc E
-...   | just W  = just (wkd-cons w W)
-...   | nothing = nothing
+... | just w  = wkd-cons w (decDesc E)
+... | nothing = wkd-stop (C ◂ E)
 
 ------------------------------------------------------------------------
 -- 6. ★★ THE LEMMA THE `pinned` CASE RESTS ON.
@@ -365,11 +402,17 @@ pinned-stable {a = a} {j = j} o h = subTm-occ j agree
 --                CODE rather than on an index.  `ka-fst` is one
 --                conversion, `ξ-El (ξ-⌜Id⌝ˡ (βfst …))` — `WkRows.unFst`.
 --
--- ⚠ AND THE ESCAPE HATCH IS A DESIGN QUESTION, NOT PLUMBING.  A
---   hand-written row has to carry its method's TYPING, which `WkDesc`
---   cannot hold and stay decidable DATA.  ⇒ either `WkDesc` splits into
---   data plus a per-row typing argument threaded through `⊢iwkMeths`, or
---   the hand-written rows are supplied as a second tuple and spliced.
---   Design it TOGETHER with the typing lemma; deciding it now, without
---   the lemma to constrain it, would be guessing.
+-- ✅ AND THE ESCAPE HATCH IS SETTLED (§2/§4): `wkd-stop` plus a TAIL
+--   argument.  Its contract is statable without naming a row, which is
+--   what makes the typing lemma's signature writable:
+--
+--     ⊢iwkMethsFrom :
+--       (D : IDesc) (I : RTy ε) (M : RTy ((Γ ∙) ∙)) (j : ℕ)
+--       {E : IDesc} (W : WkDesc E) (tl : RTm ⌊ Γ ⌋) →
+--       Γ ⊢ tl ∷ imethsTyFrom D I M (j + wkdLen W) (wkdRest W) →
+--       Γ ⊢ iwkMethsFrom j W tl ∷ imethsTyFrom D I M j E
+--
+--   ⇒ the caller supplies ONE tail and its ONE derivation.  No parallel
+--     structure to keep in sync with the description, and a caller with
+--     nothing exceptional passes `unit`/`⊢unit`.
 ------------------------------------------------------------------------
