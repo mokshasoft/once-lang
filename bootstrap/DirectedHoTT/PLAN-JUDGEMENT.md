@@ -159,14 +159,30 @@ the index components are projections of a VARIABLE, so the
 weaken-then-substitute round trip COMPUTES. ⇒ expect step 1's
 three-component telescope to cost three.
 
-⬜ **WHAT IS STILL OPEN IS THE PER-FIELD RULE, and it is the real content
-of `Lib/IWk`.** A fold into a constant motive takes the IH at every `iρ`;
-a weakening does not. `dκ`'s `RTy ε` field and `_◂_`'s `ICon (ε ∙)` field
-are pinned at LITERAL indices, so their IH lands one depth too deep and
-the rebuilt row needs the **ORIGINAL field** instead. That choice is a
-function of whether the field's index expression mentions the ambient —
-decidable on `ICon`'s raw `RTm` indices, but not yet built. Plus one
-`⊢jsub` in each of the two depth-Forded `Var` rows.
+✅ **AND THE PER-FIELD RULE IS SETTLED TOO** — `Examples/Knot/WkRows`,
+four methods at one motive, all green. A fold into a constant motive
+takes the IH at every `iρ`; a weakening does not, and `cDCon-kap` is
+where that bites — its two `iρ` fields need OPPOSITE treatments.
+
+| row | what the method does | cost |
+|---|---|---|
+| `cTy-Nat` ford-only | pass the tag ford through | **free** (`βfst`) |
+| `cTm-lam` riding | take the IH | conversions only |
+| `cDCon-kap` pinned + riding | ★ the pinned `RTy ε` takes the **ORIGINAL field**; its sibling takes the IH | — |
+| `cVar-vs` depth-Forded | riding case **plus one `congS`** | one `jsub` |
+
+**The table by shape** (measured, not estimated): 53 rows · 13 ford-only
+· 77 riding recursive fields · **4** rows with a pinned-index field
+(`cTy-IMu`, `cTm-cIMu`, `cDCon-kap`, `cIDesc-cons`) · **2** depth-Forded
+(`cVar-vz`, `cVar-vs`).
+
+⬜ **WHAT IS LEFT IS `Lib/IWk` — computing the rule, not discovering it.**
+`Lib/ISz`'s step (method from the `ICon`, tuple from the `IDesc`) needs
+ONE predicate: *does this field's index expression mention the ambient?*
+— yes ⇒ the IH, no ⇒ the original field. ⚠ A predicate on raw `RTm`
+INDICES, not on the `ICon` constructor: `iρ` covers both cases, one row
+apart. The depth fords are not a third case; `IConWf` already separates
+them via `icw-ford`.
 
 ⚠ **THE ORDER IS FORCED, AND IT IS SHORTER THAN IT LOOKS.**
 `extS σ (vs x) = renTm vs (σ x)` — weakening by ONE, not a general
