@@ -12,11 +12,22 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.WkProbe where
 open import normalizer.Syntax.Types using ( _≡_; refl )
-open import DirectedHoTT.Spec.Syntax using ( vz; _◂_; inil )
+open import DirectedHoTT.Spec.Syntax
+  using ( vz; _◂_; inil; Cx; RTm; εwkTy )
+open import DirectedHoTT.Spec.Typing
+  using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢fst; ⊢snd; ⊢nsuc; imethTy )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Lib.IWk
   using ( WkCon; WkDesc; decCon; decDesc; wkdLen; wkdRest
-        ; Maybe; just; nothing; Chk; tt )
+        ; iwkMethod; ⊢iwkMethod; Mot; sh
+        ; Maybe; just; nothing; Chk; tt; get )
+open import DirectedHoTT.Examples.Knot.Sorts using ( IPair; ⊢IPair; ⊢ixP )
+open import DirectedHoTT.Examples.Knot.Wf
+  using ( KnotWf; cTm-lamWf; cDCon-kapWf )
+open import DirectedHoTT.Examples.Knot.Tags
+  using ( tagTy-Nat; tagTm-lam; tagDCon-kap; memTm-lam; memDCon-kap )
+open import DirectedHoTT.Examples.Knot.WkRows
+  using ( wkTyNat; wkTmLam; wkDkap )
 open import DirectedHoTT.Examples.Knot.Desc
   using ( KnotD
         ; cTy-Nat; cTy-Pi; cTy-IMu
@@ -111,3 +122,62 @@ knot-classified = refl
 
 knot-rest : wkdRest (decDesc KnotD) ≡ (cVar-vz ◂ (cVar-vs ◂ inil))
 knot-rest = refl
+
+------------------------------------------------------------------------
+-- 5. ★★★ AND THE GENERIC METHOD **IS** THE HAND-WRITTEN ONE.
+--
+-- `Examples/Knot/WkRows` wrote four methods by hand, one per row shape.
+-- `Lib/IWk` computes them from the description.  ⚠ Nothing so far said
+-- the two agree — the generic one could have been well typed and a
+-- DIFFERENT term.
+--
+-- ⇒ they are equal by `refl`, at both shapes that have a hand-written
+--   counterpart with no depth ford.  That is the control that ties the
+--   library to its spike, and it is why `WkRows` was kept rather than
+--   deleted once `Lib/IWk` existed.
+------------------------------------------------------------------------
+
+clsNat : WkCon vz cTy-Nat
+clsNat = get (decCon vz cTy-Nat) tt
+
+clsLam : WkCon vz cTm-lam
+clsLam = get (decCon vz cTm-lam) tt
+
+clsKap : WkCon vz cDCon-kap
+clsKap = get (decCon vz cDCon-kap) tt
+
+nat-agrees : {Γ : Cx} → iwkMethod {Γ = Γ} tagTy-Nat clsNat ≡ wkTyNat {Γ}
+nat-agrees = refl
+
+lam-agrees : {Γ : Cx} → iwkMethod {Γ = Γ} tagTm-lam clsLam ≡ wkTmLam {Γ}
+lam-agrees = refl
+
+-- ★ the row the per-field rule is ABOUT: one field takes the IH, its
+--   sibling takes the original field, and the computed method makes the
+--   same two choices the hand-written one did.
+kap-agrees : {Γ : Cx} → iwkMethod {Γ = Γ} tagDCon-kap clsKap ≡ wkDkap {Γ}
+kap-agrees = refl
+
+------------------------------------------------------------------------
+-- 6. ★★ …AND IT TYPES, at the real description.
+--
+-- ⚠ `⊢sh` is the hypothesis `Lib/IFold` had no analogue of: the result
+--   sits at `sh ⟨i⟩`, so `⊢icon` must TYPE that index.  At `I = Σ' Nat
+--   Nat` it is three constructors.
+------------------------------------------------------------------------
+
+⊢shIPair : {Δ : Ctx} {i : RTm ⌊ Δ ⌋} →
+           Δ ⊢ i ∷ εwkTy IPair → Δ ⊢ sh i ∷ εwkTy IPair
+⊢shIPair d = ⊢ixP (⊢fst d) (⊢nsuc (⊢snd d))
+
+⊢genLam : {Γ : Ctx} →
+          Γ ⊢ iwkMethod tagTm-lam clsLam
+            ∷ imethTy KnotD IPair tagTm-lam cTm-lam (Mot KnotD IPair)
+⊢genLam = ⊢iwkMethod KnotD IPair tagTm-lam clsLam KnotWf cTm-lamWf
+                     memTm-lam refl ⊢IPair ⊢shIPair
+
+⊢genKap : {Γ : Ctx} →
+          Γ ⊢ iwkMethod tagDCon-kap clsKap
+            ∷ imethTy KnotD IPair tagDCon-kap cDCon-kap (Mot KnotD IPair)
+⊢genKap = ⊢iwkMethod KnotD IPair tagDCon-kap clsKap KnotWf cDCon-kapWf
+                     memDCon-kap refl ⊢IPair ⊢shIPair

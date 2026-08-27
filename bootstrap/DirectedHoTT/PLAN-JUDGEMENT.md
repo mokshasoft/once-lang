@@ -176,12 +176,20 @@ where that bites — its two `iρ` fields need OPPOSITE treatments.
 (`cTy-IMu`, `cTm-cIMu`, `cDCon-kap`, `cIDesc-cons`) · **2** depth-Forded
 (`cVar-vz`, `cVar-vs`).
 
-⬜ **`Lib/IWk` IS STARTED** — the classifier is built and validated, the
-TYPING is not. ✅ the classification, the method and tuple computed from
-it, the DECIDER that computes the classification from a raw description,
-and `pinned-stable`. ⬜ `⊢iwkMethod`/`⊢iwkMeths`, and a per-row escape
-hatch. ⚠ `iwkMeths` produces a TERM; nothing yet says it inhabits
-`imethsTy`.
+✅ **`Lib/IWk` IS BUILT** — the classification, the method and tuple
+computed from it, the DECIDER, the escape hatch, **and the typing**
+(`⊢iwkPay`/`⊢iwkMethod`/`⊢iwkMethsFrom`).
+
+★★★ **And the computed method IS the hand-written one**, by `refl`, at
+all three shapes `WkRows` covers without a depth ford — including
+`cDCon-kap`, the row the per-field rule is about. ⇒ `WkRows` is the
+library's CONTROL, which is why it was kept.
+
+⚠ **Writing the proof found two bugs the term level could not**: the
+classification was too weak (`pinned` needed CLOSEDNESS, not just
+non-occurrence of the ambient — the rebuild moves every `rides` slot
+too), and `iwkPay`'s `pinned` clause failed to advance the IH tuple.
+Both type-checked before. See `HANDOFF-2026-08-27` §A″.
 
 ★★ The decider is what makes it generic, and it is controlled
 (`Examples/Knot/WkProbe`): 12 row shapes classify, **and the two
