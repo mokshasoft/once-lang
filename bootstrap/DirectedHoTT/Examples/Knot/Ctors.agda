@@ -3,10 +3,10 @@
 --
 -- Regenerate with:  python3 tools/gen-knot.py
 --
--- 53 constructors over 7 sorts, one description, index `Σ' Nat Nat`.
--- The table, the encoding decisions and the two exceptions (`Var`'s
--- depth-Fording) are documented in the generator's header — read that,
--- not this file, to understand the encoding.
+-- 55 constructors over 8 sorts, one description, index `Σ' Nat Nat`.
+-- The table, the encoding decisions and the exceptions (`Var`'s and
+-- `Ctx`'s depth-Fording) are documented in the generator's header —
+-- read that, not this file, to understand the encoding.
 ------------------------------------------------------------------------
 -- ★★★ THE KNOT'S CONSTRUCTORS AS DERIVED RULES.
 --
@@ -37,8 +37,8 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶_; βfst; βsnd; ξ-pairʳ; ξ-nsuc
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ; El-⌜Id⌝; ξ-El; ξ-IMu; ξ-⌜Id⌝ˡ )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
-        ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar
+  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; sCtx
+        ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar; ⊢sCtx
         ; toI; fromI; ⊢ixP; num; ⊢num; num-ren; num-sub )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )

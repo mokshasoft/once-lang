@@ -1,8 +1,9 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — THE KNOT'S INDEX: (SORT, DEPTH).
 --
--- PLAN-INDEXED §5 item 7, step 2.  The whole `RTm`/`RTy` mutual knot —
--- 7 families, 53 constructors — is ONE indexed description over
+-- PLAN-INDEXED §5 item 7, step 2, plus PLAN-JUDGEMENT step 0.  The whole
+-- `RTm`/`RTy` mutual knot AND `Ctx` — 8 families, 55 constructors — is
+-- ONE indexed description over
 -- `I = Σ' Nat Nat`: the first component is a SORT TAG, the second a
 -- CONTEXT DEPTH.
 --
@@ -45,18 +46,25 @@ IPair = Σ' Nat Nat
 ⊢IPair = ty-Σ ty-Nat ty-Nat
 
 ------------------------------------------------------------------------
--- 2. THE SEVEN SORT TAGS.
+-- 2. THE EIGHT SORT TAGS.
 --
 --     0 RTy   1 RTm   2 Desc   3 DCon   4 IDesc   5 ICon   6 Var
+--     7 Ctx
 --
--- ⚠ KEPT AS `Def`s, not inlined numerals.  Every one of the 53 Fording
---   constraints mentions its tag, and a folded `sVar` is one symbol
---   where `nsuc (nsuc (nsuc (nsuc (nsuc (nsuc nzero)))))` is thirteen —
---   `agda-cost-is-elaborated-term-size` applied to the one thing this
---   encoding has 53 copies of.
+-- ⚠ `Ctx` IS THE ONE SORT THAT DOES NOT LIVE IN `Spec/Syntax`.  It is
+--   declared in `Spec/Typing` (it carries an `RTy ⌊ Γ ⌋`, so it cannot
+--   precede the type former it mentions), which is why the generator's
+--   coverage check has to read TWO files.  Appended at tag 7 so that
+--   every existing tag — and hence every `∈ID` position — is unmoved.
+--
+-- ⚠ KEPT AS `Def`s, not inlined numerals.  Every one of the 55 Fording
+--   constraints mentions its tag, and a folded `sCtx` is one symbol
+--   where `nsuc (nsuc (nsuc (nsuc (nsuc (nsuc (nsuc nzero))))))` is
+--   fifteen — `agda-cost-is-elaborated-term-size` applied to the one
+--   thing this encoding has 55 copies of.
 ------------------------------------------------------------------------
 
-sTy sTm sDesc sDCon sIDesc sICon sVar : {Γ : Cx} → RTm Γ
+sTy sTm sDesc sDCon sIDesc sICon sVar sCtx : {Γ : Cx} → RTm Γ
 sTy    = nzero
 sTm    = nsuc sTy
 sDesc  = nsuc sTm
@@ -64,6 +72,7 @@ sDCon  = nsuc sDesc
 sIDesc = nsuc sDCon
 sICon  = nsuc sIDesc
 sVar   = nsuc sICon
+sCtx   = nsuc sVar
 
 ⊢sTy : {Γ : Ctx} → Γ ⊢ sTy ∷ Nat
 ⊢sTy = ⊢nzero
@@ -85,6 +94,9 @@ sVar   = nsuc sICon
 
 ⊢sVar : {Γ : Ctx} → Γ ⊢ sVar ∷ Nat
 ⊢sVar = ⊢nsuc ⊢sICon
+
+⊢sCtx : {Γ : Ctx} → Γ ⊢ sCtx ∷ Nat
+⊢sCtx = ⊢nsuc ⊢sVar
 
 ------------------------------------------------------------------------
 -- 3. THE TWO CONVERSIONS AND THE PAIR LEMMA.
