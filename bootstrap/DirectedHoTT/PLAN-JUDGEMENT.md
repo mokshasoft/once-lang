@@ -142,11 +142,16 @@ it misbehaves.
 
 ⚠⚠ **READ `HANDOFF-2026-08-27` §A′ BEFORE STARTING.** The uniform shift
 that `WkTm`/`WkFin` use works for 54 of the 55 rows and breaks at `◇` —
-and the point is that it does not FAIL there, it fabricates a context and
-type-checks. `◇`'s method is DEAD CODE for any traversal entered at a
-syntax sort, so this is a fork (split `Ctx` out / write the junk down and
-restrict the claim), not a blocker. Derived on paper, not compiled; spike
-`◇` first.
+and the point is that it does not FAIL there, it **fabricates a context
+and type-checks**. ✅ Spiked: `Examples/Knot/WkEmp` is that method,
+green, mapping `⋄ ↦ ◇ ▹ Nat`. `◇`'s method is DEAD CODE for any traversal
+entered at a syntax sort, so this is a fork (split `Ctx` out / write the
+junk down and restrict the claim), not a blocker.
+
+★ And the same spike prices the transports: **two `jsub`s, flat, no
+`wk-single`** — the components are projections of a VARIABLE, so the
+weaken-then-substitute round trip COMPUTES. ⇒ expect step 1's
+three-component telescope to cost three.
 
 ⚠ **THE ORDER IS FORCED, AND IT IS SHORTER THAN IT LOOKS.**
 `extS σ (vs x) = renTm vs (σ x)` — weakening by ONE, not a general
