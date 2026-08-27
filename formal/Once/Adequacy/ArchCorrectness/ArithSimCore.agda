@@ -74,6 +74,8 @@ import Once.Word as OnceWord
 ------------------------------------------------------------------------
 
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
+import Once.Float.Arith as FA
+open import Once.Float.Decimal using (round)
 
 ------------------------------------------------------------------------
 -- PLAN 0.74 J5 — parameterised by the TARGET.
@@ -89,7 +91,7 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 module At (tn : TargetNum) where
 
   open Correct (int-bits tn) (float-format tn) using (exec-xinstr; exec-xprog; exec-xprog-++; xreg-idx)
-  open OnceWord.Width (int-bits tn) using (_⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ; fromℤ)
+  open OnceWord.Width (int-bits tn) using (toℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ; fromℤ)
 
   tgt : XInstr → Maybe XReg
   tgt (XI.Xmov-imm d _)         = just d
@@ -192,19 +194,11 @@ module At (tn : TargetNum) where
   scratch-unchanged (XI.Xmov-out _)           _ s = refl
 
   -- NO instruction changes the abstract input (all update regs/scratch/output).
-  -- | The float instructions, as a PREDICATE, so the residual below can be
-  -- stated over exactly them and no more. A postulate quantified over every
-  -- `XInstr` would subsume the integer cases and make their proofs vacuous —
-  -- the failure mode D114 is named for.
-  data IsFloatXI : XInstr → Set where
-    fx-xfadd-rr : ∀ x y → IsFloatXI (XI.Xfadd-rr x y)
-    fx-xfsub-rr : ∀ x y → IsFloatXI (XI.Xfsub-rr x y)
-    fx-xfmul-rr : ∀ x y → IsFloatXI (XI.Xfmul-rr x y)
-    fx-xfsubr-rr : ∀ x y → IsFloatXI (XI.Xfsubr-rr x y)
-    fx-xfneg-r : ∀ x → IsFloatXI (XI.Xfneg-r x)
-    fx-xi2f-r : ∀ x y → IsFloatXI (XI.Xi2f-r x y)
-    fx-xmov-fimm : ∀ x y → IsFloatXI (XI.Xmov-fimm x y)
-    fx-xmov-farg : ∀ x y → IsFloatXI (XI.Xmov-farg x y)
+  -- | The one float instruction whose correspondence is still open: a FLOAT
+  -- INPUT LEAF. A predicate rather than a blanket, so the residual below
+  -- cannot subsume anything else.
+  data IsFloatArg : XInstr → Set where
+    fx-farg : ∀ x y → IsFloatArg (XI.Xmov-farg x y)
 
   input-unchanged : ∀ i {sh} (s : ArithAbsState sh)
                   → ArithAbsState.input (exec-xinstr i s) ≡ ArithAbsState.input s
@@ -286,6 +280,20 @@ module At (tn : TargetNum) where
     (rt-rem-safe : ∀ d a b s → rr (e1 (XI.Xrem-safe-rrr d a b) s) (arith-reg d) ≡ rr s (arith-reg a) %ˢ rr s (arith-reg b))
     (rt-sdiv    : ∀ d src imm s → rr (e1 (XI.Xsdiv-pow2-rri d src imm) s) (arith-reg d) ≡ sdiv2ᵏ (rr s (arith-reg src)) imm)
     (rt-out     : ∀ src s    → rr (e1 (XI.Xmov-out src) s) out-reg ≡ rr s (arith-reg src))
+    -- PLAN 0.75 F4: the FLOAT step lemmas. Same shape as their integer twins —
+    -- "this instruction writes this value into this register" — and each arch
+    -- discharges them from its own `execInstr`. The value is
+    -- `Once.Float.Arith`'s operation at the target's format, which is the same
+    -- function the abstract machine and the denotation call, so a discharged
+    -- lemma is `refl`-shaped and the pins are what check the operation.
+    (rt-fadd    : ∀ d src s  → rr (e1 (XI.Xfadd-rr d src) s)  (arith-reg d) ≡ FA.fadd (float-format tn) (rr s (arith-reg d)) (rr s (arith-reg src)))
+    (rt-fsub    : ∀ d src s  → rr (e1 (XI.Xfsub-rr d src) s)  (arith-reg d) ≡ FA.fsub (float-format tn) (rr s (arith-reg d)) (rr s (arith-reg src)))
+    (rt-fmul    : ∀ d src s  → rr (e1 (XI.Xfmul-rr d src) s)  (arith-reg d) ≡ FA.fmul (float-format tn) (rr s (arith-reg d)) (rr s (arith-reg src)))
+    -- …and the REVERSE subtract, whose operand order is the whole point.
+    (rt-fsubr   : ∀ d src s  → rr (e1 (XI.Xfsubr-rr d src) s) (arith-reg d) ≡ FA.fsub (float-format tn) (rr s (arith-reg src)) (rr s (arith-reg d)))
+    (rt-fneg    : ∀ d s      → rr (e1 (XI.Xfneg-r d) s)       (arith-reg d) ≡ FA.fneg (float-format tn) (rr s (arith-reg d)))
+    (rt-i2f     : ∀ d src s  → rr (e1 (XI.Xi2f-r d src) s)    (arith-reg d) ≡ FA.i2f (float-format tn) (toℤ (rr s (arith-reg src))))
+    (rt-fimm    : ∀ d dc s   → rr (e1 (XI.Xmov-fimm d dc) s)  (arith-reg d) ≡ round (float-format tn) dc)
     where
 
     ----------------------------------------------------------------------
@@ -422,41 +430,65 @@ module At (tn : TargetNum) where
     -- rides `r` through the abstract frame and `rf-other`. Reload/arg consume the
     -- R-scratch/R-input components; spill/out write no arith register (rf-other).
     ----------------------------------------------------------------------
-    -- THE F4 RESIDUAL: the concrete machines have no float instructions yet.
+    -- THE ONE REMAINING F4 RESIDUAL: a FLOAT INPUT LEAF.
     --
-    -- Everything ABOVE this line is proven for floats — `Once.Float.Arith`'s
-    -- operations, `MArithIR`, `compile-abs`, `abs-validity`, and every
-    -- `Once.Arith.Backend.Correct` refinement. What is missing is one layer
-    -- down: neither `Once.CCC.Target.X86-64.Syntax` nor its RISC-V twin has an
-    -- `addsd` / `fadd.d` at all, so there is no concrete step to relate an
-    -- abstract float step TO.
+    -- The seven float REGISTER operations are discharged above from the arch's
+    -- own `rt-f*` lemmas. This one is different in kind, and the difference is
+    -- `R-input`: it says the concrete path-load equals
+    -- `fromℤ (maybe-zero (project sh p …))` — the INTEGER reading of the bytes
+    -- at that path. A float leaf's bytes are a pattern, and `project` answers
+    -- `nothing` there, so the relation as stated does not describe them.
     --
-    -- Stated over `IsFloatXI` and NOT over every `XInstr`, so it cannot subsume
-    -- the integer cases and quietly make their proofs vacuous — which is the
-    -- shape of defect D114 is named for. `make postulates` sees exactly one
-    -- residual here, and discharging it is: give each arch its float
-    -- instructions, define `execInstr` for them as `Once.Float.Arith`'s
-    -- operations (the D117 pattern — the definition IS the spec, and the pins
-    -- against compiled C are what check it), then the step lemmas are `refl`.
+    -- Fixing it is a modelling question about the INPUT TREE, not about
+    -- arithmetic: `R-input` has to say "the bytes at `p`", with the Int and
+    -- Float readings as two projections of that. Deliberately not rushed in
+    -- alongside the arithmetic.
     --
-    -- CLASSIFICATION: deferred-proof / model-gap, not an axiom. Nothing about
-    -- it is unprovable; the model it needs has not been written.
+    -- WHAT IT DOES AND DOES NOT BLOCK. It is reached only by a block with a
+    -- float-typed PARAMETER. A closed float expression — `1.5 + 2.1`, every
+    -- literal — has `shape-unit` and never emits `Xmov-farg`, so the common
+    -- case is fully proven.
+    --
+    -- CLASSIFICATION: deferred-proof / model-gap, not an axiom.
     ----------------------------------------------------------------------
     postulate
-      float-xinstr-sim : ∀ {sh} (i : XInstr) → IsFloatXI i
-                       → (s-abs : ArithAbsState sh) (s-conc : St)
-                       → Rf s-abs s-conc → R (exec-xinstr i s-abs) (e1 i s-conc)
+      float-arg-sim : ∀ {sh} (i : XInstr) → IsFloatArg i
+                    → (s-abs : ArithAbsState sh) (s-conc : St)
+                    → Rf s-abs s-conc → R (exec-xinstr i s-abs) (e1 i s-conc)
 
     R-step-full : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
                 → Rf s-abs s-conc → R (exec-xinstr i s-abs) (e1 i s-conc)
-    R-step-full (XI.Xfadd-rr a b) s-abs s-conc rf = float-xinstr-sim (XI.Xfadd-rr a b) (fx-xfadd-rr a b) s-abs s-conc rf
-    R-step-full (XI.Xfsub-rr a b) s-abs s-conc rf = float-xinstr-sim (XI.Xfsub-rr a b) (fx-xfsub-rr a b) s-abs s-conc rf
-    R-step-full (XI.Xfmul-rr a b) s-abs s-conc rf = float-xinstr-sim (XI.Xfmul-rr a b) (fx-xfmul-rr a b) s-abs s-conc rf
-    R-step-full (XI.Xfsubr-rr a b) s-abs s-conc rf = float-xinstr-sim (XI.Xfsubr-rr a b) (fx-xfsubr-rr a b) s-abs s-conc rf
-    R-step-full (XI.Xfneg-r a) s-abs s-conc rf = float-xinstr-sim (XI.Xfneg-r a) (fx-xfneg-r a) s-abs s-conc rf
-    R-step-full (XI.Xi2f-r a b) s-abs s-conc rf = float-xinstr-sim (XI.Xi2f-r a b) (fx-xi2f-r a b) s-abs s-conc rf
-    R-step-full (XI.Xmov-fimm a b) s-abs s-conc rf = float-xinstr-sim (XI.Xmov-fimm a b) (fx-xmov-fimm a b) s-abs s-conc rf
-    R-step-full (XI.Xmov-farg a b) s-abs s-conc rf = float-xinstr-sim (XI.Xmov-farg a b) (fx-xmov-farg a b) s-abs s-conc rf
+    -- PLAN 0.75 F4: the float register operations, PROVEN from the arch's
+    -- `rt-f*` lemmas — the same two-branch shape as every integer instruction.
+    R-step-full (XI.Xfadd-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    ... | yes refl = trans (bin-value (FA.fadd (float-format tn)) d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+                           (sym (rt-fadd d src s-conc))
+    ... | no ¬eq = step-other (XI.Xfadd-rr d src) d x w s-abs s-conc refl r ¬eq eq
+    R-step-full (XI.Xfsub-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    ... | yes refl = trans (bin-value (FA.fsub (float-format tn)) d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+                           (sym (rt-fsub d src s-conc))
+    ... | no ¬eq = step-other (XI.Xfsub-rr d src) d x w s-abs s-conc refl r ¬eq eq
+    R-step-full (XI.Xfmul-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    ... | yes refl = trans (bin-value (FA.fmul (float-format tn)) d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+                           (sym (rt-fmul d src s-conc))
+    ... | no ¬eq = step-other (XI.Xfmul-rr d src) d x w s-abs s-conc refl r ¬eq eq
+    R-step-full (XI.Xfsubr-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    ... | yes refl = trans (bin-value (FA.fsub (float-format tn)) src d s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+                           (sym (rt-fsubr d src s-conc))
+    ... | no ¬eq = step-other (XI.Xfsubr-rr d src) d x w s-abs s-conc refl r ¬eq eq
+    R-step-full (XI.Xfneg-r d) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    ... | yes refl = trans (un-value (FA.fneg (float-format tn)) d s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+                           (sym (rt-fneg d s-conc))
+    ... | no ¬eq = step-other (XI.Xfneg-r d) d x w s-abs s-conc refl r ¬eq eq
+    R-step-full (XI.Xi2f-r d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    ... | yes refl = trans (un-value (λ q → FA.i2f (float-format tn) (toℤ q)) src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
+                           (sym (rt-i2f d src s-conc))
+    ... | no ¬eq = step-other (XI.Xi2f-r d src) d x w s-abs s-conc refl r ¬eq eq
+    R-step-full (XI.Xmov-fimm d dc) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    ... | yes refl = trans (sym (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq)))
+                           (sym (rt-fimm d dc s-conc))
+    ... | no ¬eq = step-other (XI.Xmov-fimm d dc) d x w s-abs s-conc refl r ¬eq eq
+    R-step-full (XI.Xmov-farg d p) s-abs s-conc rf = float-arg-sim (XI.Xmov-farg d p) (fx-farg d p) s-abs s-conc rf
     R-step-full (XI.Xmov-m-r d sc) s-abs s-conc (r , rsc , _ , _) = R-step-reload d sc s-abs s-conc r rsc
     R-step-full (XI.Xmov-arg d p)  s-abs s-conc (r , _ , rin , _) = R-step-arg d p s-abs s-conc r rin
     R-step-full (XI.Xmov-r-m sc src) s-abs s-conc (r , _ , _) x w eq =

@@ -409,4 +409,16 @@ module _ (N : ℕ) where
                            (readReg-wr-arith-same (regs s) d _))
     -- rt-out
     (λ src s    → readReg-wr-rax-same (regs s) _)
+    -- rt-fadd rt-fsub rt-fmul rt-fsubr rt-fneg rt-i2f rt-fimm (plan 0.75 F4)
+    -- Each is the SAME one-liner as its integer twin, and that is the payoff
+    -- of `val-*` defining the intended value: the instruction writes it into
+    -- `arith-reg d`, so "what it computes" is `refl` and only the register
+    -- bookkeeping is left.
+    (λ d src s  → readReg-wr-arith-same (regs s) d _)
+    (λ d src s  → readReg-wr-arith-same (regs s) d _)
+    (λ d src s  → readReg-wr-arith-same (regs s) d _)
+    (λ d src s  → readReg-wr-arith-same (regs s) d _)
+    (λ d s      → readReg-wr-arith-same (regs s) d _)
+    (λ d src s  → readReg-wr-arith-same (regs s) d _)
+    (λ d dc s   → readReg-wr-arith-same (regs s) d _)
     public
