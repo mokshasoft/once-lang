@@ -157,12 +157,19 @@ data WkCon {Δ : Cx} (a : Var Δ) : ICon Δ → Set where
 --   "classified rows, then given rows" is just where the nest stops —
 --   and `WkDesc`'s own index says where.
 --
--- ⇒ THE COST IS A CONDITION ON THE TABLE: the rows a weakening cannot
---   classify must be a SUFFIX of the description.  `KnotD` satisfies it
---   — `cVar-vz`/`cVar-vs` are rows 52–53 — and the generator already
---   appends exceptional rows last for an unrelated reason (`∈ID`
---   positions must not move).  This makes that convention LOAD-BEARING,
---   which is worth knowing before anyone reorders the table.
+-- ⚠ AND WHAT IT COSTS IS COVERAGE, **NOT** A RESTRICTION ON WHAT MAY BE
+--   WRITTEN.  Nothing is forbidden: whatever `decDesc` stops at, the
+--   caller supplies the leftover, and any description works.  What
+--   ordering affects is HOW MUCH gets computed — `decDesc` stops at the
+--   FIRST row it cannot classify, so a classifiable row sitting after an
+--   unclassifiable one is simply not computed and lands in the caller's
+--   tail instead.
+--
+--   ⇒ that is invisible unless measured, so `wkdLen`/`wkdRest` measure
+--     it and `Examples/Knot/WkProbe` PINS both: 51 rows computed, and
+--     the leftover is exactly `cVar-vz ◂ cVar-vs ◂ inil`.  For `KnotD`
+--     the stop costs nothing, because the generator already appends
+--     exceptional rows last (so `∈ID` positions do not move).
 data WkDesc : IDesc → Set where
   wkd-stop : (E : IDesc) → WkDesc E
   wkd-cons : {C : ICon (ε ∙)} {E : IDesc} →

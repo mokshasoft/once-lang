@@ -12,10 +12,10 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.WkProbe where
 open import normalizer.Syntax.Types using ( _≡_; refl )
-open import DirectedHoTT.Spec.Syntax using ( vz )
+open import DirectedHoTT.Spec.Syntax using ( vz; _◂_; inil )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Lib.IWk
-  using ( WkCon; WkDesc; decCon; decDesc; wkdLen
+  using ( WkCon; WkDesc; decCon; decDesc; wkdLen; wkdRest
         ; Maybe; just; nothing; Chk; tt )
 open import DirectedHoTT.Examples.Knot.Desc
   using ( KnotD
@@ -92,3 +92,22 @@ knot-classified = refl
 -- ⚠ AND THE STOP IS AT THE RIGHT PLACE.  `wkdLen` alone would be
 --   satisfied by classifying some OTHER 51; §2 pins which two are left,
 --   and these two are the last two rows of the table.
+
+------------------------------------------------------------------------
+-- 4. ★★ AND NO COVERAGE IS LOST — the leftover is EXACTLY the two rows
+--    that were refused, and nothing else.
+--
+-- ⚠ WHY THIS NEEDS SAYING.  `decDesc` stops at the FIRST row it cannot
+--   classify, so a classifiable row sitting AFTER an unclassifiable one
+--   would simply not be computed.  ⚠ That is a COVERAGE loss, not an
+--   unsoundness and not a restriction on what may be written — the
+--   caller supplies the whole leftover either way and nothing is
+--   forbidden.  But it is invisible unless measured.
+--
+-- ⇒ pinning `wkdRest` measures it: the leftover is the two `Var` rows,
+--   so the stop costs nothing here.  Reorder the table and this line
+--   fails, which is the point.
+------------------------------------------------------------------------
+
+knot-rest : wkdRest (decDesc KnotD) ≡ (cVar-vz ◂ (cVar-vs ◂ inil))
+knot-rest = refl

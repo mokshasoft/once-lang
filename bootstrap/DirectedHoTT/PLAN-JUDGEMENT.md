@@ -195,9 +195,12 @@ the nest stops: one constructor (`wkd-stop`) and one tail argument. ⇒
 `unit`. **Measured: `wkdLen (decDesc KnotD) ≡ 51`** — 51 computed rows
 plus a 2-method tail, the split `Knot/Ctors`/`Knot/Build` already use.
 
-⚠ **The cost is a condition on the table**: unclassifiable rows must be a
-SUFFIX. `KnotD` satisfies it and the generator already appends
-exceptional rows last — that convention is now LOAD-BEARING.
+⚠ **And what it costs is COVERAGE, not a restriction.** Nothing is
+forbidden — any description works and the caller supplies the leftover.
+Ordering only affects how much gets computed, since `decDesc` stops at
+the first row it cannot classify. Measured, not assumed: `wkdLen … ≡ 51`
+and `wkdRest … ≡ cVar-vz ◂ cVar-vs ◂ inil`, so for `KnotD` the stop costs
+nothing.
 
 ⇒ `Lib/IWk` §7 names the three remaining obligations and what each rests
 on; `HANDOFF-2026-08-27` §A″ has the state.
