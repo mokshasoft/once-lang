@@ -3,10 +3,13 @@
 --
 -- Regenerate with:  python3 tools/gen-knot.py
 --
--- 55 constructors over 8 sorts, one description, index `Σ' Nat Nat`.
--- The table, the encoding decisions and the exceptions (`Var`'s and
--- `Ctx`'s depth-Fording) are documented in the generator's header —
--- read that, not this file, to understand the encoding.
+-- 53 constructors over 7 sorts, one description, index `Σ' Nat Nat`.
+-- The table, the encoding decisions and the two exceptions (`Var`'s
+-- depth-Fording) are documented in the generator's header — read that,
+-- not this file, to understand the encoding.
+--
+-- ⛔ `Ctx` IS DELIBERATELY NOT HERE.  `Examples/Knot/CtxD`, and the
+--    generator's header says why.
 ------------------------------------------------------------------------
 
 
@@ -19,7 +22,7 @@ open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 -- ★ the tags, CHAINED — `tagTm-lam = suc tagTm-var`, so each is one
 --   symbol rather than a numeral spelled out.
 
-tagTy-base tagTy-U tagTy-Pi tagTy-Sg tagTy-El tagTy-Hom tagTy-Unit tagTy-Nat tagTy-Id tagTy-Mu tagTy-IMu tagTm-var tagTm-lam tagTm-app tagTm-pair tagTm-absurd tagTm-ordtr tagTm-fst tagTm-snd tagTm-cbase tagTm-cPi tagTm-cSg tagTm-cHom tagTm-hrefl tagTm-tr tagTm-ap tagTm-cId tagTm-idrefl tagTm-jsub tagTm-unit tagTm-nzero tagTm-nsuc tagTm-natrec tagTm-con tagTm-elim tagTm-icon tagTm-ielim tagTm-cNat tagTm-cMu tagTm-cIMu tagTm-cUnit tagDesc-nil tagDesc-cons tagDCon-i tagDCon-rho tagDCon-kap tagIDesc-nil tagIDesc-cons tagICon-i tagICon-rho tagICon-kap tagVar-vz tagVar-vs tagCtx-emp tagCtx-ext : ℕ
+tagTy-base tagTy-U tagTy-Pi tagTy-Sg tagTy-El tagTy-Hom tagTy-Unit tagTy-Nat tagTy-Id tagTy-Mu tagTy-IMu tagTm-var tagTm-lam tagTm-app tagTm-pair tagTm-absurd tagTm-ordtr tagTm-fst tagTm-snd tagTm-cbase tagTm-cPi tagTm-cSg tagTm-cHom tagTm-hrefl tagTm-tr tagTm-ap tagTm-cId tagTm-idrefl tagTm-jsub tagTm-unit tagTm-nzero tagTm-nsuc tagTm-natrec tagTm-con tagTm-elim tagTm-icon tagTm-ielim tagTm-cNat tagTm-cMu tagTm-cIMu tagTm-cUnit tagDesc-nil tagDesc-cons tagDCon-i tagDCon-rho tagDCon-kap tagIDesc-nil tagIDesc-cons tagICon-i tagICon-rho tagICon-kap tagVar-vz tagVar-vs : ℕ
 tagTy-base = zero
 tagTy-U = suc tagTy-base
 tagTy-Pi = suc tagTy-U
@@ -73,8 +76,6 @@ tagICon-rho = suc tagICon-i
 tagICon-kap = suc tagICon-rho
 tagVar-vz = suc tagICon-kap
 tagVar-vs = suc tagVar-vz
-tagCtx-emp = suc tagVar-vs
-tagCtx-ext = suc tagCtx-emp
 
 -- ★ …and the membership proofs `⊢icon` asks for.
 memTy-base : tagTy-base ∈ID KnotD
@@ -183,7 +184,3 @@ memVar-vz : tagVar-vz ∈ID KnotD
 memVar-vz = thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (hereID)))))))))))))))))))))))))))))))))))))))))))))))))))
 memVar-vs : tagVar-vs ∈ID KnotD
 memVar-vs = thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (hereID))))))))))))))))))))))))))))))))))))))))))))))))))))
-memCtx-emp : tagCtx-emp ∈ID KnotD
-memCtx-emp = thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (hereID)))))))))))))))))))))))))))))))))))))))))))))))))))))
-memCtx-ext : tagCtx-ext ∈ID KnotD
-memCtx-ext = thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (thereID (hereID))))))))))))))))))))))))))))))))))))))))))))))))))))))

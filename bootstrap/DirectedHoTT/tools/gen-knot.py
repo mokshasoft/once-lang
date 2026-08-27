@@ -2,36 +2,38 @@
 """
 gen-knot.py — the RTm/RTy knot as ONE indexed description.
 
-★ WHY A GENERATOR AND NOT 55 HAND-WRITTEN ROWS.  PLAN-INDEXED §5 item 7
-  needs the whole mutual knot — 8 families, 55 constructors — encoded as a
+★ WHY A GENERATOR AND NOT 53 HAND-WRITTEN ROWS.  PLAN-INDEXED §5 item 7
+  needs the whole mutual knot — 7 families, 53 constructors — encoded as a
   single `IDesc` over `I = Σ' Nat Nat`.  Each constructor needs an `ICon`,
-  an `IConWf`, and (step 3) an `sz` method: ~165 clauses whose ONLY content
+  an `IConWf`, and (step 3) an `sz` method: ~159 clauses whose ONLY content
   is de Bruijn bookkeeping.  Hand-writing them is not work, it is a
   transcription error waiting to happen; `tools/gen-clauses.py`'s header
   records what happened the last time clause families were produced ad hoc.
 
 ★★ THE ENCODING, in one paragraph.  The index is a PAIR: `fst` is a SORT
-  TAG (0 RTy · 1 RTm · 2 Desc · 3 DCon · 4 IDesc · 5 ICon · 6 Var · 7 Ctx),
-  `snd` is a CONTEXT DEPTH.  Every constructor FORDS ITS TAG — `Id Nat
-  (fst ⟨i⟩) t` — and, bar the four rows below, the depth RIDES
+  TAG (0 RTy · 1 RTm · 2 Desc · 3 DCon · 4 IDesc · 5 ICon · 6 Var), `snd`
+  is a CONTEXT DEPTH.  Every constructor FORDS ITS TAG — `Id Nat
+  (fst ⟨i⟩) t` — and, bar the two `Var` rows, the depth RIDES
   unconstrained (PLAN-INDEXED §14).  A recursive
   field names its own index outright: `lam`'s field is
   `pair 1 (suc (snd ⟨i⟩))` (same sort, depth pushed), `El`'s is
   `pair 1 (snd ⟨i⟩)` (other sort, depth held).
 
-⚠ THE DEPTH-FORDED EXCEPTIONS, and they are real.  `Var`'s `vz`/`vs` and
-  `Ctx`'s `◇`/`_▹_` are the constructors whose TARGET depth is constrained
-  — they exist only at `0` or at `suc m` — so they bind an `m : Nat` and
-  Ford the SECOND component too.  That is Fording used exactly as
-  `Examples/Scoped`'s `Fin` uses it, and it is why "Ford the component, not
-  the pair" is the right rule rather than "Ford the tag": BOTH components
-  can need it, INDEPENDENTLY.
+⚠ THE TWO EXCEPTIONS, and they are real.  `Var`'s `vz`/`vs` are the only
+  constructors whose TARGET depth is constrained — they exist only at
+  `suc m` — so they bind an `m : Nat` and Ford the SECOND component too.
+  That is Fording used exactly as `Examples/Scoped`'s `Fin` uses it, and it
+  is why "Ford the component, not the pair" is the right rule rather than
+  "Ford the tag": BOTH components can need it, INDEPENDENTLY.
 
-⚠ AND `Ctx` IS NOT A `Spec/Syntax` DATATYPE.  It carries an `RTy ⌊ Γ ⌋`,
-  so it is declared in `Spec/Typing`, after the type formers it mentions —
-  which is why the coverage check at the bottom reads TWO files.  Its rows
-  are appended LAST so that no existing tag, and hence no `∈ID` position,
-  moves.
+⛔ AND `Ctx` IS NOT ONE OF THESE ROWS — it was, for one day, and the
+  reason it is not is worth keeping.  `_▹_` carries an `RTy ⌊ Γ ⌋`, so
+  `Ctx` DEPENDS on the syntax and the syntax never depends back: a
+  one-directional dependency is a STRATUM, not a member.  Encoded as an
+  8th sort it type-checked, and then made the first knot-wide traversal
+  FABRICATE (`Negative/WkEmp`).  It lives in `Examples/Knot/CtxD` as its
+  own 2-row family over a BARE DEPTH, and needs no tag ford at all.
+  See `HANDOFF-2026-08-27` §A′.
 
 ⚠ DEPTH IS DEGENERATE FOR THE THREE CLOSED SORTS.  `Desc`/`DCon`/`IDesc`
   carry no context, so nothing constrains their depth and `K (2,d)` is the
@@ -54,7 +56,7 @@ depth expressions:
 import sys, os
 
 # ---------------------------------------------------------------- the sorts
-SORTS = ["sTy", "sTm", "sDesc", "sDCon", "sIDesc", "sICon", "sVar", "sCtx"]
+SORTS = ["sTy", "sTm", "sDesc", "sDCon", "sIDesc", "sICon", "sVar"]
 
 D      = ('D',)
 def sucD(n=1): return ('sucD', n)
@@ -71,9 +73,8 @@ FORD_DCON  = ford('fst', ('sortlit', 'sDCon'))
 FORD_IDESC = ford('fst', ('sortlit', 'sIDesc'))
 FORD_ICON  = ford('fst', ('sortlit', 'sICon'))
 FORD_VAR   = ford('fst', ('sortlit', 'sVar'))
-FORD_CTX   = ford('fst', ('sortlit', 'sCtx'))
 
-# ------------------------------------------------------- the 55 constructors
+# ------------------------------------------------------- the 53 constructors
 # (agda name, source constructor, [fields])
 KNOT = [
  # --- RTy, 11 -------------------------------------------------------------
@@ -138,18 +139,9 @@ KNOT = [
  ("cICon-i",   "iι : ICon Δ",                          [FORD_ICON]),
  ("cICon-rho", "iρ : RTm Δ → ICon (Δ ∙) → ICon Δ",     [rec("sTm", D), rec("sICon", sucD()), FORD_ICON]),
  ("cICon-kap", "iκ : RTm Δ → ICon (Δ ∙) → ICon Δ",     [rec("sTm", D), rec("sICon", sucD()), FORD_ICON]),
- # --- Var, 2.  ⚠ DEPTH-FORDED (with `Ctx`'s two, below). -----------------
+ # --- Var, 2.  ⚠ THE ONLY DEPTH-FORDED ROWS. ------------------------------
  ("cVar-vz",   "vz : Var (Γ ∙)",                       [NAT, FORD_VAR, ford('snd', ('sucfld', 0))]),
  ("cVar-vs",   "vs : Var Γ → Var (Γ ∙)",               [NAT, rec("sVar", fld(0)), FORD_VAR, ford('snd', ('sucfld', 0))]),
- # --- Ctx, 2.  ⚠ THE 8th SORT, AND IT LIVES IN `Spec/Typing`. -------------
- # `Ctx` carries an `RTy ⌊ Γ ⌋`, so it is declared after the type formers
- # and is NOT among `Spec/Syntax`'s datatypes — the coverage check reads
- # TWO files for this reason.  Indexed by DEPTH like everything else, so
- # `◇` Fords the depth to `0` and `_▹_` to `suc m`: the 3rd and 4th
- # depth-Forded rows, and the first with ordinary fields BESIDE the Ford.
- ("cCtx-emp",  "◇ : Ctx",                              [FORD_CTX, ford('snd', lit(0))]),
- ("cCtx-ext",  "_▹_ : Ctx → RTy ⌊ Γ ⌋ → Ctx",
-                                                       [NAT, rec("sCtx", fld(0)), rec("sTy", fld(0)), FORD_CTX, ford('snd', ('sucfld', 0))]),
 ]
 
 # ------------------------------------------------------------------ emitters
@@ -261,10 +253,13 @@ BANNER = """--------------------------------------------------------------------
 --
 -- Regenerate with:  python3 tools/gen-knot.py
 --
--- 55 constructors over 8 sorts, one description, index `Σ' Nat Nat`.
--- The table, the encoding decisions and the exceptions (`Var`'s and
--- `Ctx`'s depth-Fording) are documented in the generator's header —
--- read that, not this file, to understand the encoding.
+-- 53 constructors over 7 sorts, one description, index `Σ' Nat Nat`.
+-- The table, the encoding decisions and the two exceptions (`Var`'s
+-- depth-Fording) are documented in the generator's header — read that,
+-- not this file, to understand the encoding.
+--
+-- ⛔ `Ctx` IS DELIBERATELY NOT HERE.  `Examples/Knot/CtxD`, and the
+--    generator's header says why.
 ------------------------------------------------------------------------
 """
 
@@ -276,7 +271,7 @@ def gen_desc():
          "        ; RTy; RTm; var; pair; fst; snd; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝",
          "        ; IMu; ICon; IDesc; iι; iρ; iκ; inil; _◂_ )",
          "open import DirectedHoTT.Examples.Knot.Sorts",
-         "  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; sCtx )",
+         "  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar )",
          ""]
     for name, src, fields in KNOT:
         L.append(f"-- {src}")
@@ -306,18 +301,17 @@ def gen_wf():
     L = [BANNER,
          "-- \u26a0\u26a0 THIS MODULE NEEDS THE **COMPACTING COLLECTOR**.",
          "--",
-         "--   55 `IConWf`s in one module, measured cold on a 7.7 GB box.",
-         "--   RE-MEASURED 2026-08-27 with the two `Ctx` rows added — the",
-         "--   marker is STILL RIGHT, and the two extra rows are free:",
-         "--     -A64m       OOM (143) at 80s   (53 rows: 76s);",
-         "--     -A64m -c    99s, comfortably   (53 rows: 104s).",
-         "--   ⇒ +2 rows moved the number by less than the ±12% noise floor.",
+         "--   53 `IConWf`s in one module, measured cold on a 7.7 GB box.",
+         "--   RE-MEASURED 2026-08-27 at 55 rows (`Ctx` was briefly a sort",
+         "--   here) and the marker held:  -A64m OOM at 80s · -A64m -c 99s,",
+         "--   against 76s / 104s at 53.  ⇒ ±2 rows is inside the ±12% noise",
+         "--   floor: the cost is a row's TELESCOPE DEPTH, not the count.",
          "--",
          "--   `tools/sweep.sh` greps this header for the phrase above and",
          "--   switches collectors on its own (`needs_c`), which is why the",
          "--   words are spelled out rather than described.",
          "--",
-         "-- \u2605 AND THE COST IS THE 55 ROWS, NOT THE ASSEMBLY.  Dropping",
+         "-- \u2605 AND THE COST IS THE 53 ROWS, NOT THE ASSEMBLY.  Dropping",
          "--   `KnotWf` and keeping only the individual `IConWf`s does not",
          "--   move the number.  Splitting the module would not either",
          "--   (`agda-oom-is-a-gc-choice`: splitting measured cost-neutral);",
@@ -337,8 +331,8 @@ def gen_wf():
          "        ; ICodeWf; icw-clo; icw-ford",
          "        ; IDescWf; idwf-nil; idwf-cons )",
          "open import DirectedHoTT.Examples.Knot.Sorts",
-         "  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; sCtx",
-         "        ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar; ⊢sCtx",
+         "  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar",
+         "        ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar",
          "        ; toI; fromI; ⊢ixP )",
          "open import DirectedHoTT.Examples.Knot.Desc",
          "  using ( KnotD",
@@ -360,7 +354,7 @@ def gen_tags():
     """the constructor TAGS and their `∈ID` membership proofs.
 
     ⚠ SEPARATE MODULE, deliberately.  `⊢icon`'s `k ∈ID D` premise is a
-      POSITION in the description, so the 55th proof is 54 nested
+      POSITION in the description, so the 53rd proof is 52 nested
       `thereID`s and the family costs O(n²) nodes.  Isolated here, that
       cost is paid once and by whoever needs it.
     """
@@ -398,7 +392,7 @@ def gen_tags():
 #   This check is that check, for this table.
 
 FAMILY_OF = {"cTy": "RTy", "cTm": "RTm", "cDesc": "Desc", "cDCon": "DCon",
-             "cIDesc": "IDesc", "cICon": "ICon", "cVar": "Var", "cCtx": "Ctx"}
+             "cIDesc": "IDesc", "cICon": "ICon", "cVar": "Var"}
 
 def source_constructors(syntax_path):
     """the constructor names Agda actually declares, per family"""
@@ -423,20 +417,21 @@ def source_constructors(syntax_path):
         out[cur].append(name)
     return out
 
-def verify(syntax_path, typing_path):
-    # ⚠ TWO FILES.  Seven of the eight sorts are `Spec/Syntax` datatypes;
-    #   `Ctx` is not — it carries an `RTy ⌊ Γ ⌋`, so it is declared in
-    #   `Spec/Typing`, after the type formers it mentions.  Reading only
-    #   `Spec/Syntax` would leave the 8th sort UNCHECKED, which is exactly
-    #   the silence this check exists to break.
+def verify(syntax_path):
+    # ⚠ `Ctx` IS NOT CHECKED HERE, AND IT IS NOT UNCHECKED.  It is not a
+    #   `Spec/Syntax` datatype and it is not in this table; its family
+    #   lives in `Examples/Knot/CtxD`, HAND-written, and its coverage is
+    #   enforced by `enCtx`'s clauses — Agda's coverage checker checks
+    #   FUNCTIONS, so a hand-written table with a hand-written map is
+    #   already guarded.  This check exists because a GENERATED table and
+    #   a GENERATED map would omit a row in both at once, silently.
     src = source_constructors(syntax_path)
-    src["Ctx"] = source_constructors(typing_path).get("Ctx", [])
     mine = {}
     for name, decl, _ in KNOT:
         fam = FAMILY_OF[name.split("-")[0]]
         mine.setdefault(fam, []).append(decl.split(" : ")[0].strip())
     bad = 0
-    for fam in ["RTy", "RTm", "Desc", "DCon", "IDesc", "ICon", "Var", "Ctx"]:
+    for fam in ["RTy", "RTm", "Desc", "DCon", "IDesc", "ICon", "Var"]:
         have, want = set(mine.get(fam, [])), set(src.get(fam, []))
         if have != want:
             bad = 1
@@ -457,7 +452,7 @@ def verify(syntax_path, typing_path):
 #   names a BOUND FIELD — neither of which this emitter models.  Hand-written
 #   in `Knot/Build`.
 SORT = {"cTy":"sTy","cTm":"sTm","cDesc":"sDesc","cDCon":"sDCon",
-        "cIDesc":"sIDesc","cICon":"sICon","cVar":"sVar","cCtx":"sCtx"}
+        "cIDesc":"sIDesc","cICon":"sICon","cVar":"sVar"}
 
 def dnsucs(t, inner): return ("⊢nsuc (" * t) + inner + (")" * t)
 
@@ -615,8 +610,8 @@ open import DirectedHoTT.Spec.Typing
         ; _\u27f6_; \u03b2fst; \u03b2snd; \u03be-pair\u02b3; \u03be-nsuc
         ; _\u2245\u1d40_; csym\u1d40; ctrn\u1d40; cred\u1d40; El-\u231cId\u231d; \u03be-El; \u03be-IMu; \u03be-\u231cId\u231d\u02e1 )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; sCtx
-        ; \u22a2sTy; \u22a2sTm; \u22a2sDesc; \u22a2sDCon; \u22a2sIDesc; \u22a2sICon; \u22a2sVar; \u22a2sCtx
+  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
+        ; \u22a2sTy; \u22a2sTm; \u22a2sDesc; \u22a2sDCon; \u22a2sIDesc; \u22a2sICon; \u22a2sVar
         ; toI; fromI; \u22a2ixP; num; \u22a2num; num-ren; num-sub )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
@@ -629,7 +624,7 @@ open import DirectedHoTT.Examples.Knot.Build using ( tyCast; \u22a2numAt; kCast 
 def gen_ctors():
     out = [CTORS_HDR]
     for nm, d, f in KNOT:
-        if nm.startswith("cVar-") or nm.startswith("cCtx-"): continue
+        if nm.startswith("cVar-"): continue
         out += emit_row(nm, d, f)
     return "\n".join(out) + "\n"
 
@@ -639,7 +634,7 @@ MAP_HDR = """""" + BANNER + """-- \u2605\u2605\u2605 THE ADEQUACY MAP.
 --     enTm  : RTm \u0393 \u2192 RTm \u0393\'
 --     \u22a2enTm : (t : RTm \u0393) \u2192 \u0394 \u22a2 enTm t \u2237 K (sTm , num (len \u0393))
 --
--- \u2605 WHAT IT IS FOR.  `Knot/Wf` says the 55 rows are well formed;
+-- \u2605 WHAT IT IS FOR.  `Knot/Wf` says the 53 rows are well formed;
 --   `Knot/Terms` says ONE term encodes, by hand.  Neither says the
 --   description IS the knot.  These clauses do: a row with a swapped field
 --   order or a wrong index stays well-formed and inhabited, and simply
@@ -657,12 +652,6 @@ MAP_HDR = """""" + BANNER + """-- \u2605\u2605\u2605 THE ADEQUACY MAP.
 --     `Knot/Map`    FAILS: `nsuc (num (len \u0393)) != num (num (len \u0393))`.
 --   So the map catches exactly what nothing before it could.
 --
--- \u2605 AND `Ctx` READS ITS DEPTH OFF ITS OWN ARGUMENT.  `\u22a2enCtx u`
---   concludes at depth `len \u230a u \u230b` \u2014 neither an index carried by an
---   Agda type (as `RTy`/`RTm`/`Var` have) nor a caller-supplied
---   parameter (as the three closed sorts have).  It is the 8th sort and
---   the third signature shape.
---
 -- \u26a0 THE `Var` CLAUSES MATCH ON THE CONTEXT.  `vz : Var (\u0393 \u2219)` exists only
 --   at a successor depth, so its clause splits the implicit `\u0393` \u2014 which is
 --   exactly the depth-Fording of `cVar-vz`, on the Agda side.
@@ -674,27 +663,26 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; \u25c7; _\u25b9_; \u230a_\u230b; _\u22a2_\u2237_ )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; sCtx; num; \u22a2num; len )
+  using ( sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; num; \u22a2num; len )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Build
-  using ( Var-vzK; \u22a2Var-vzK; Var-vsK; \u22a2Var-vsK
-        ; Ctx-empK; \u22a2Ctx-empK; Ctx-extK; \u22a2Ctx-extK )
+  using ( Var-vzK; \u22a2Var-vzK; Var-vsK; \u22a2Var-vsK )
 
 """
 
 # ============================ LAYER 3: THE ADEQUACY MAP ====================
 # ★★★ `⌈_⌉ : RTm Γ → RTm ε` and its typing — the theorem that makes the
 #   encoding MEAN something.  `Knot/Terms` shows ONE term encodes, by hand;
-#   these 55 clauses show EVERY term does, and each clause is precisely the
+#   these 53 clauses show EVERY term does, and each clause is precisely the
 #   check that its row's field structure matches the constructor it claims to
 #   encode.  A swapped field order or a wrong index is well-formed,
 #   inhabited, and simply encodes a different language — invisible without
 #   this.
 ENC   = {"sTy":"enTy","sTm":"enTm","sDesc":"enDesc","sDCon":"enDCon",
-         "sIDesc":"enIDesc","sICon":"enICon","sVar":"enVar","sCtx":"enCtx"}
+         "sIDesc":"enIDesc","sICon":"enICon","sVar":"enVar"}
 FAMS  = {"cTy":"sTy","cTm":"sTm","cDesc":"sDesc","cDCon":"sDCon",
-         "cIDesc":"sIDesc","cICon":"sICon","cVar":"sVar","cCtx":"sCtx"}
+         "cIDesc":"sIDesc","cICon":"sICon","cVar":"sVar"}
 # the three CLOSED sorts carry no context, so their lemmas take the depth
 # as a parameter instead of reading it off an Agda type.
 CLOSED = {"sDesc", "sDCon", "sIDesc"}
@@ -717,21 +705,13 @@ def gen_map():
     sigs_t, sigs_d = [], []
     for s, e in [("sTy","enTy"),("sTm","enTm"),("sDesc","enDesc"),
                  ("sDCon","enDCon"),("sIDesc","enIDesc"),("sICon","enICon"),
-                 ("sVar","enVar"),("sCtx","enCtx")]:
+                 ("sVar","enVar")]:
         src = {"sTy":"RTy Γ","sTm":"RTm Γ","sDesc":"Desc","sDCon":"DCon",
-               "sIDesc":"IDesc","sICon":"ICon Θ","sVar":"Var Γ",
-               "sCtx":"Ctx"}[s]
+               "sIDesc":"IDesc","sICon":"ICon Θ","sVar":"Var Γ"}[s]
         bind = ("{Γ Γ' : Cx}" if s in ("sTy","sTm","sVar")
                 else "{Θ Γ' : Cx}" if s == "sICon" else "{Γ' : Cx}")
         sigs_t.append(f"{e} : {bind} → {src} → RTm Γ'")
-        if s == "sCtx":
-            # ⚠ `Ctx` READS ITS OWN DEPTH.  It is not indexed by a `Cx`
-            #   the way `RTy`/`RTm`/`Var` are, and it is not depth-free
-            #   the way the three closed sorts are: the depth is `⌊ u ⌋`,
-            #   a function OF THE ARGUMENT.  Neither branch below fits.
-            sigs_d.append("⊢enCtx : {Δ : Ctx} (u : Ctx) →\n"
-                          "        Δ ⊢ enCtx u ∷ K (pair sCtx (num (len ⌊ u ⌋)))")
-        elif s in CLOSED:
+        if s in CLOSED:
             sigs_d.append(f"⊢{e} : {{Δ : Ctx}} (n : ℕ) (u : {src}) →\n"
                           f"        Δ ⊢ {e} u ∷ K (pair {s} (num n))")
         else:
@@ -748,11 +728,6 @@ def gen_map():
             L.append("enVar {Γ = Γ ∙} vz = Var-vzK (num (len Γ))"); continue
         if nm == "cVar-vs":
             L.append("enVar {Γ = Γ ∙} (vs x) = Var-vsK (num (len Γ)) (enVar x)"); continue
-        if nm == "cCtx-emp":
-            L.append("enCtx ◇ = Ctx-empK"); continue
-        if nm == "cCtx-ext":
-            L.append("enCtx (Γ ▹ A) = "
-                     "Ctx-extK (num (len ⌊ Γ ⌋)) (enCtx Γ) (enTy A)"); continue
         args = " ".join(f"(num {an[j]})" if f[j][0] == "nat"
                         else f"({ENC[f[j][1]]} {an[j]})" for j in nargs)
         L.append(f"{e} {_pat(c, nargs, an)} = {nm[1:]}K" + (" " + args if args else ""))
@@ -766,11 +741,6 @@ def gen_map():
             L.append("⊢enVar {Γ = Γ ∙} vz = ⊢Var-vzK (len Γ)"); continue
         if nm == "cVar-vs":
             L.append("⊢enVar {Γ = Γ ∙} (vs x) = ⊢Var-vsK (len Γ) (⊢enVar x)"); continue
-        if nm == "cCtx-emp":
-            L.append("⊢enCtx ◇ = ⊢Ctx-empK"); continue
-        if nm == "cCtx-ext":
-            L.append("⊢enCtx (Γ ▹ A) = "
-                     "⊢Ctx-extK (len ⌊ Γ ⌋) (⊢enCtx Γ) (⊢enTy A)"); continue
         n_here = "n" if sX in CLOSED else f"(len {CARRIER[sX]})"
         ds = []
         for j in nargs:
@@ -811,11 +781,10 @@ if __name__ == "__main__":
     out = os.path.join(root, "Examples", "Knot")
     n_rho = sum(1 for _, _, fs in KNOT for f in fs if f[0] == 'rec')
     n_kap = sum(1 for _, _, fs in KNOT for f in fs if f[0] in ('nat', 'ford'))
-    assert len(KNOT) == 55, f"expected 55 constructors, got {len(KNOT)}"
-    assert len({n for n, _, _ in KNOT}) == 55, "duplicate constructor name"
-    print("== coverage: the table vs the datatypes Agda declares ==")
-    if verify(os.path.join(root, "Spec", "Syntax.agda"),
-              os.path.join(root, "Spec", "Typing.agda")):
+    assert len(KNOT) == 53, f"expected 53 constructors, got {len(KNOT)}"
+    assert len({n for n, _, _ in KNOT}) == 53, "duplicate constructor name"
+    print("== coverage: the table vs `Spec/Syntax.agda`'s own datatypes ==")
+    if verify(os.path.join(root, "Spec", "Syntax.agda")):
         sys.exit("  ⇒ TABLE AND SYNTAX DISAGREE — nothing written.")
     open(os.path.join(out, "Desc.agda"), "w").write(gen_desc())
     open(os.path.join(out, "Wf.agda"),   "w").write(gen_wf())
