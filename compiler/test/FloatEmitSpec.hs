@@ -59,6 +59,16 @@ encodeAt :: Format -> Double -> Integer
 encodeAt Binary64 v = fromIntegral (castDoubleToWord64 v)
 encodeAt Binary32 v = fromIntegral (castFloatToWord32 (realToFrac v))
 
+-- | An ARITHMETIC expectation, and it CANNOT go through `encodeAt` (plan 0.75
+-- F4). `encodeAt Binary32` narrows a `Double` at the END; a binary32 target
+-- rounds after EVERY operation. Those differ the moment an intermediate is
+-- inexact, so each case carries its value computed at BOTH precisions and the
+-- arch picks. Haskell's defaulting does the work: the same literal expression
+-- is evaluated at `Double` in one field and at `Float` in the other.
+encodeArith :: Format -> (Double, Float) -> Integer
+encodeArith Binary64 (d, _) = fromIntegral (castDoubleToWord64 d)
+encodeArith Binary32 (_, f) = fromIntegral (castFloatToWord32 f)
+
 -- | The literals under test.
 --
 -- The first three are exact dyadic rationals, so the only thing that varies is
@@ -121,8 +131,32 @@ program lit = T.unlines
 
 floatEmitTests :: TestTree
 floatEmitTests = testGroup "Float format in the effect trace"
-  [ testGroup lit [ testCase (archName a) (checkOne a lit v) | a <- backendArches ]
-  | (lit, v) <- literals ]
+  ([ testGroup lit [ testCase (archName a) (checkOne a lit v) | a <- backendArches ]
+   | (lit, v) <- literals ]
+   ++
+   [ testGroup ("arith: " ++ e) [ testCase (archName a) (checkArith a e vs) | a <- backendArches ]
+   | (e, vs) <- arithCases ]
+   ++
+   [ testGroup ("widen: " ++ e) [ testCase (archName a) (checkArith a e vs) | a <- backendArches ]
+   | (e, vs) <- wideningCases ])
+
+-- | Read an ARITHMETIC result back out of the trace. Same assertions as
+-- `checkOne`, against an expectation computed at the arch's OWN precision —
+-- which is what makes this a check on the arithmetic and not just on the
+-- literal encoding.
+checkArith :: BackendArch -> String -> (Double, Float) -> IO ()
+checkArith arch expr vs = do
+  r <- buildAndRunTraceOn arch (slug expr) (arithProgram expr)
+  case r of
+    Left err -> assertFailure err
+    Right (out, code) -> case decodeTrace arch out of
+      Left err  -> assertFailure ("[" ++ tag ++ "] " ++ err)
+      Right ws  -> do
+        assertEqual ("[" ++ tag ++ "] one emitF invocation") 1 (length ws)
+        assertEqual ("[" ++ tag ++ "] emitted machine word for " ++ expr)
+                    (encodeArith (archFloatFormat arch) vs) (head ws)
+        assertEqual ("[" ++ tag ++ "] exit code") 7 code
+  where tag = archName arch
 
 checkOne :: BackendArch -> String -> Double -> IO ()
 checkOne arch lit v = do
@@ -158,6 +192,53 @@ checkOne arch lit v = do
 -- atom — which `-` cannot. So `compose emitF@E -3.14` parses as the
 -- SUBTRACTION `(compose emitF@E) - 3.14`. Parenthesising puts the minus back
 -- in prefix position, where `parseUnaryWF` reads it.
+-- | The ARITHMETIC program. Note the shape: `emitF@E <expr>` APPLIED, not
+-- `compose emitF@E <expr>`.
+--
+-- That distinction cost a wrong conclusion once and is worth writing down.
+-- `compose`'s second argument must be a MORPHISM `Unit ⇒ Float`, so a literal
+-- gets there by the value-lift (`⊢ᵍ`, closed values) and an EXPRESSION has no
+-- route — `compose emit@E (1 + 2)` fails identically for `Int`, so it is not a
+-- float limitation and not an `emitF` limitation. Applying the SigOp directly
+-- has no such requirement, and the effect IS entered: what is never entered is
+-- a `let _ = … in` binding, which is a different shape again.
+arithProgram :: String -> T.Text
+arithProgram expr = T.unlines
+  [ "import I.Linux.Syscalls as S"
+  , "import I.Test.Emit as E"
+  , ""
+  , "emitExpr : IO Unit"
+  , T.pack ("emitExpr = emitF@E (" ++ expr ++ ")")
+  , ""
+  , "main : IO Unit"
+  , "main = compose exit@S (compose 7 emitExpr)"
+  ]
+
+-- | The expressions under test. Each carries its value at both precisions;
+-- the source string and the two Haskell expressions are written once and
+-- stay in step by construction.
+arithCases :: [(String, (Double, Float))]
+arithCases =
+  [ ("1.5 + 2.25 * 2.0 - 0.5", (1.5 + 2.25 * 2.0 - 0.5, 1.5 + 2.25 * 2.0 - 0.5))
+    -- THE case: inexact at both formats, and the two formats disagree — so
+    -- this fails if a target ever computes at the wrong width.
+  , ("0.1 + 0.2",              (0.1 + 0.2,              0.1 + 0.2))
+  , ("3.14 * 2.0",             (3.14 * 2.0,             3.14 * 2.0))
+    -- The expression F4 exists for: `1.5 - 2.1` was a type error until it.
+  , ("1.5 - 2.1",              (1.5 - 2.1,              1.5 - 2.1))
+    -- Negation of a computed value, and a negative literal inside arithmetic.
+  , ("0.0 - (2.5 * 1.5)",      (0.0 - (2.5 * 1.5),      0.0 - (2.5 * 1.5)))
+  ]
+
+-- | D125's widening, on the metal: the `Int` operand is converted by a
+-- correctly-rounded `arith.i2f` and the expression is a `Float`.
+wideningCases :: [(String, (Double, Float))]
+wideningCases =
+  [ ("1 + 1.5",   (1 + 1.5,   1 + 1.5))
+  , ("2.5 * 3",   (2.5 * 3,   2.5 * 3))
+  , ("7 - 0.25",  (7 - 0.25,  7 - 0.25))
+  ]
+
 paren :: String -> String
 paren lit@('-' : _) = "(" ++ lit ++ ")"
 paren lit           = lit
@@ -166,9 +247,21 @@ paren lit           = lit
 -- negative literal becomes `neg` rather than `_`: a directory whose name
 -- starts with a dash is read as an option by every tool the build shells out
 -- to.
+-- Arithmetic sources contain spaces and operators, so the slug maps every
+-- character that is not alphanumeric to a safe stand-in rather than only `.`.
 slug :: String -> String
-slug ('-' : rest) = "floatemit_neg" ++ map dot rest
-slug lit          = "floatemit_" ++ map dot lit
+slug ('-' : rest) = "floatemit_neg" ++ concatMap safe rest
+slug lit          = "floatemit_" ++ concatMap safe lit
 
-dot :: Char -> Char
-dot ch = if ch == '.' then '_' else ch
+safe :: Char -> String
+safe c
+  | c `elem` ['0'..'9'] = [c]
+  | c `elem` ['a'..'z'] = [c]
+  | c == '.'            = "_"
+  | c == '+'            = "p"
+  | c == '-'            = "m"
+  | c == '*'            = "t"
+  | c == ' '            = ""
+  | c == '('            = ""
+  | c == ')'            = ""
+  | otherwise           = "_"

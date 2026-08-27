@@ -9,19 +9,21 @@
 -- `addsd`/`mulsd`/`subsd` on x86, `fadd.d`/`fmul.d`/`fsub.d` on RISC-V.
 --
 -- WHAT IT CHECKS HERE is that the program builds and reaches its exit code on
--- all three targets — i.e. the block links, the instructions assemble, and
--- nothing traps. The VALUE was checked separately and more sharply: the
--- emitted block was called from a C harness on x86-64 and from a freestanding
--- binary under qemu on riscv64, and both returned `0x4016000000000000` — bit
--- identical to what the host's own C compiler computes for the same
--- expression.
+-- all three targets — the block links, the instructions assemble, nothing
+-- traps. The VALUE is checked, more sharply, by `FloatEmitSpec`'s "arith:"
+-- group, which reads the result back out of the effect trace on every arch
+-- against an expectation computed at THAT arch's precision.
 --
--- WHY THE VALUE IS NOT CHECKED THROUGH THE TRACE, which would be better:
--- `compose emitF@E <expression>` needs the expression at `Unit ω→ Float`, and
--- the value-lift realm `⊢ᵍ` covers literals, not computations. That is a
--- PRE-EXISTING limitation and not a float one — `compose emit@E (1 + 2)` fails
--- identically for `Int`. Lifting it would let `FloatEmitSpec` read arithmetic
--- results back out of the trace, which is the right home for that check.
+-- A CORRECTION WORTH KEEPING. This file first said the trace check was out of
+-- reach because `compose emitF@E <expression>` does not typecheck. That is
+-- true and irrelevant: the blocker is `compose`, whose second argument must be
+-- a MORPHISM `Unit ⇒ Float` — so a literal gets there by the value-lift and an
+-- expression has no route. It is not about `emitF`, and not about floats:
+-- `compose emit@E (1 + 2)` fails identically for `Int`. APPLYING the SigOp
+-- (`emitF@E (…)`) has no such requirement and the effect is entered, which is
+-- exactly what `FloatEmitSpec` now does. What is never entered is a
+-- `let _ = … in` binding — a third shape, and the one the older comments in
+-- this directory are about.
 
 import I.Linux.Syscalls as S
 import I.Test.Emit as E
