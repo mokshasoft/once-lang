@@ -1,63 +1,67 @@
 ------------------------------------------------------------------------
--- OCP-0009 · EXAMPLES — ⚠⚠ THE `◇` METHOD, AND WHY IT IS A HAZARD.
+-- ⚠⚠⚠ THIS MODULE IS **RED**.  IT NO LONGER TYPECHECKS, DELIBERATELY —
+--     the encoding it is written against was RETIRED on 2026-08-27 and
+--     this file is the measurement that retired it.  It is kept because
+--     what it measured is not re-derivable from the code that replaced
+--     it: the replacement has no `◇` method to go wrong.
 --
--- `PLAN-JUDGEMENT` step 2 needs object-level weakening over the knot,
--- and the obvious motive is the UNIFORM shift that `Examples/WkTm` and
--- `Examples/WkFin` both use:
+--     It mentions `sCtx`, `cCtx-emp` and `Knot/Build`'s `Ctx-*K`, all of
+--     which are gone.  Do not repair it.
 --
---     M(i,t) = K (pair (fst ⟨i⟩) (nsuc (snd ⟨i⟩)))
+-- ★★★ WHAT IT MEASURED, and it decided a design fork.
 --
--- ⚠ SCOPE, STATED HONESTLY.  ONE method is built here — `◇`'s, the row
--- the fork turns on.  The claim that the other 54 are fine at this
--- motive is a ROW WALK ON PAPER (`HANDOFF-2026-08-27` §A′), not a
--- compile; do not quote it as one.
+--   `Ctx` was briefly the 8th SORT of the knot (tag 7, rows 54–55).
+--   `PLAN-JUDGEMENT` step 2 then needs object-level weakening over that
+--   knot, and the obvious motive is the UNIFORM shift `Examples/WkTm`
+--   and `Examples/WkFin` both use:
 --
--- 54 of the 55 rows are fine at it.  ⚠ `◇` IS NOT.  Its method holds
--- `snd ⟨i⟩ ≡ nzero` and would have to prove `nsuc (snd ⟨i⟩) ≡ nzero` to
--- rebuild ITSELF — weakening a CONTEXT is not a thing, and there is no
--- context one slot deeper to hand back.
+--       M(i,t) = K (pair (fst ⟨i⟩) (nsuc (snd ⟨i⟩)))
 --
--- ⚠⚠⚠ AND THAT IS NOT WHAT HAPPENS.  `K (sCtx, 1)` is INHABITED, so the
---   method can be written with a different constructor and it TYPE-
---   CHECKS.  This file is that method.  It compiles, it is well typed,
---   and **it invents a context out of nothing**:
+--   54 of the 55 rows are fine at it (a ROW WALK ON PAPER, not a
+--   compile).  `◇` is not: its method holds `snd ⟨i⟩ ≡ nzero` and would
+--   have to prove `nsuc (snd ⟨i⟩) ≡ nzero` to rebuild itself.  Weakening
+--   a CONTEXT is not a thing.
 --
---       ⋄ ↦ ◇ ▹ Nat            -- a type that was never there
+--   ⚠⚠ AND IT DID NOT FAIL — IT FABRICATED.  `K (sCtx, 1)` is
+--   INHABITED, so a DIFFERENT constructor closes the goal.  This file
+--   COMPILED, green, under `--safe`, with an empty trust surface, and
+--   what it computed was
 --
---   ⇒ the hazard is a GREEN BUILD, not a red one.  Nothing downstream
---     would notice, because there is no `Ctx`-weakening specification
---     for this to violate.  `verification-that-covers-less-than-it-
---     claims`, reached from a new direction, and the reason this file
---     exists at all: `Examples/Vec.no-cons-at-zero` builds a hazard on
---     purpose for the same reason.
+--       ⋄  ↦  ◇ ▹ Nat            -- a type that was never there
 --
--- ★ WHY IT IS A FORK AND NOT A BLOCKER.  No SYNTAX sort has a `Ctx`
---   field — `Ctx` is mentioned only by JUDGEMENTS — so a traversal
---   entered at `sTy` never reduces this method.  A `renTy` built over
---   the uniform motive is CORRECT WHERE IT IS USED and merely CLAIMS
---   more than it delivers.  See `HANDOFF-2026-08-27` §A′ for the fork.
+--   There is no `Ctx`-weakening specification for that to violate, so
+--   nothing downstream would have noticed.  ⇒ the hazard was a GREEN
+--   BUILD, not a red one: `verification-that-covers-less-than-it-claims`
+--   reached from a new direction.
 --
--- ★★ AND THE COST IS TWO TRANSPORTS AND NOTHING ELSE — the second
---   result, and it was measured after a wrong guess.  The index is a
---   PAIR and BOTH components are known only through their fords, so the
---   answer moves along two `Id`s where `WkFin`'s `fsuc` moved along one.
+-- ★★ AND A SECOND RESULT, WHICH SURVIVES THE RETIREMENT.  A pair-indexed
+--   transport costs TWO `jsub`s, FLAT — one per index component, where
+--   `WkFin`'s `fsuc` moved along one.
 --
---   ⚠ THE `wk-single` ONE EXPECTS DOES NOT APPEAR.  The outer
---   transport's family mentions the inner component, which is weakened
---   past the transport's own binder and then substituted — the round
---   trip that is PROPOSITIONAL in general.  Here it is definitional,
---   because that component is `snd` of a VARIABLE and both actions
---   COMPUTE on variables.  That is `Knot/Build`'s finding (c) again, in
---   the place it was least expected.  ⇒ **measured**: replacing either
---   `wk-single` with `refl` type-checks, so both casts were removed.
+--   ⚠ The `wk-single` one expects does NOT appear.  The outer
+--   transport's family mentions the inner component, weakened past the
+--   transport's own binder and then substituted — PROPOSITIONAL in
+--   general, DEFINITIONAL here, because that component is `snd` of a
+--   VARIABLE and both actions COMPUTE on variables (`Knot/Build`'s
+--   finding (c)).  MEASURED: replacing either `wk-single` with `refl`
+--   type-checked, so both casts came out.
 --
---   ⇒ a pair-indexed transport costs two `jsub`s, flat.  That is the
---   shape every index telescope in the judgement layer will have, and
---   `_∋_∷_`'s is THREE components.
+-- ⇒ THE FORK IT DECIDED.  `Ctx` is not a sort of the syntax — `_▹_`
+--   carries an `RTy ⌊ Γ ⌋`, so `Ctx` depends on the syntax and the
+--   syntax never depends back, and a one-directional dependency is a
+--   STRATUM rather than a member.  It now has its own 2-row family over
+--   a bare depth in `Examples/Knot/CtxD`, which needs no tag ford and
+--   has no `◇` method to get wrong.  `HANDOFF-2026-08-27` §A′ has the
+--   full argument.
+--
+-- ⚠ NOTE WHAT `Examples/Knot/CtxD` §5 DOES WITH THE SAME TERM.  `◇ ▹ Nat`
+--   is an ordinary INHABITANT there, built from its parts.  Here it was
+--   the answer a weakening invented out of nothing.  That difference is
+--   what the fork was about.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.WkEmp where
+module DirectedHoTT.Negative.WkEmp where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs

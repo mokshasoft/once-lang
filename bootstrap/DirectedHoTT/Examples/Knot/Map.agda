@@ -3,17 +3,20 @@
 --
 -- Regenerate with:  python3 tools/gen-knot.py
 --
--- 55 constructors over 8 sorts, one description, index `Σ' Nat Nat`.
--- The table, the encoding decisions and the exceptions (`Var`'s and
--- `Ctx`'s depth-Fording) are documented in the generator's header —
--- read that, not this file, to understand the encoding.
+-- 53 constructors over 7 sorts, one description, index `Σ' Nat Nat`.
+-- The table, the encoding decisions and the two exceptions (`Var`'s
+-- depth-Fording) are documented in the generator's header — read that,
+-- not this file, to understand the encoding.
+--
+-- ⛔ `Ctx` IS DELIBERATELY NOT HERE.  `Examples/Knot/CtxD`, and the
+--    generator's header says why.
 ------------------------------------------------------------------------
 -- ★★★ THE ADEQUACY MAP.
 --
 --     enTm  : RTm Γ → RTm Γ'
 --     ⊢enTm : (t : RTm Γ) → Δ ⊢ enTm t ∷ K (sTm , num (len Γ))
 --
--- ★ WHAT IT IS FOR.  `Knot/Wf` says the 55 rows are well formed;
+-- ★ WHAT IT IS FOR.  `Knot/Wf` says the 53 rows are well formed;
 --   `Knot/Terms` says ONE term encodes, by hand.  Neither says the
 --   description IS the knot.  These clauses do: a row with a swapped field
 --   order or a wrong index stays well-formed and inhabited, and simply
@@ -31,12 +34,6 @@
 --     `Knot/Map`    FAILS: `nsuc (num (len Γ)) != num (num (len Γ))`.
 --   So the map catches exactly what nothing before it could.
 --
--- ★ AND `Ctx` READS ITS DEPTH OFF ITS OWN ARGUMENT.  `⊢enCtx u`
---   concludes at depth `len ⌊ u ⌋` — neither an index carried by an
---   Agda type (as `RTy`/`RTm`/`Var` have) nor a caller-supplied
---   parameter (as the three closed sorts have).  It is the 8th sort and
---   the third signature shape.
---
 -- ⚠ THE `Var` CLAUSES MATCH ON THE CONTEXT.  `vz : Var (Γ ∙)` exists only
 --   at a successor depth, so its clause splits the implicit `Γ` — which is
 --   exactly the depth-Fording of `cVar-vz`, on the Agda side.
@@ -48,12 +45,11 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_ )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; sCtx; num; ⊢num; len )
+  using ( sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; num; ⊢num; len )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.Build
-  using ( Var-vzK; ⊢Var-vzK; Var-vsK; ⊢Var-vsK
-        ; Ctx-empK; ⊢Ctx-empK; Ctx-extK; ⊢Ctx-extK )
+  using ( Var-vzK; ⊢Var-vzK; Var-vsK; ⊢Var-vsK )
 
 
 enTy : {Γ Γ' : Cx} → RTy Γ → RTm Γ'
@@ -63,7 +59,6 @@ enDCon : {Γ' : Cx} → DCon → RTm Γ'
 enIDesc : {Γ' : Cx} → IDesc → RTm Γ'
 enICon : {Θ Γ' : Cx} → ICon Θ → RTm Γ'
 enVar : {Γ Γ' : Cx} → Var Γ → RTm Γ'
-enCtx : {Γ' : Cx} → Ctx → RTm Γ'
 
 ⊢enTy : {Δ : Ctx} {Γ : Cx} (u : RTy Γ) →
         Δ ⊢ enTy u ∷ K (pair sTy (num (len Γ)))
@@ -79,8 +74,6 @@ enCtx : {Γ' : Cx} → Ctx → RTm Γ'
         Δ ⊢ enICon u ∷ K (pair sICon (num (len Θ)))
 ⊢enVar : {Δ : Ctx} {Γ : Cx} (u : Var Γ) →
         Δ ⊢ enVar u ∷ K (pair sVar (num (len Γ)))
-⊢enCtx : {Δ : Ctx} (u : Ctx) →
-        Δ ⊢ enCtx u ∷ K (pair sCtx (num (len ⌊ u ⌋)))
 
 enTy base = Ty-baseK
 enTy U = Ty-UK
@@ -135,8 +128,6 @@ enICon (iρ y0 y1) = ICon-rhoK (enTm y0) (enICon y1)
 enICon (iκ y0 y1) = ICon-kapK (enTm y0) (enICon y1)
 enVar {Γ = Γ ∙} vz = Var-vzK (num (len Γ))
 enVar {Γ = Γ ∙} (vs x) = Var-vsK (num (len Γ)) (enVar x)
-enCtx ◇ = Ctx-empK
-enCtx (Γ ▹ A) = Ctx-extK (num (len ⌊ Γ ⌋)) (enCtx Γ) (enTy A)
 
 ⊢enTy {Γ = Γ} base = ⊢Ty-baseK (len Γ)
 ⊢enTy {Γ = Γ} U = ⊢Ty-UK (len Γ)
@@ -191,5 +182,3 @@ enCtx (Γ ▹ A) = Ctx-extK (num (len ⌊ Γ ⌋)) (enCtx Γ) (enTy A)
 ⊢enICon {Θ = Θ} (iκ y0 y1) = ⊢ICon-kapK (len Θ) (⊢enTm y0) (⊢enICon y1)
 ⊢enVar {Γ = Γ ∙} vz = ⊢Var-vzK (len Γ)
 ⊢enVar {Γ = Γ ∙} (vs x) = ⊢Var-vsK (len Γ) (⊢enVar x)
-⊢enCtx ◇ = ⊢Ctx-empK
-⊢enCtx (Γ ▹ A) = ⊢Ctx-extK (len ⌊ Γ ⌋) (⊢enCtx Γ) (⊢enTy A)

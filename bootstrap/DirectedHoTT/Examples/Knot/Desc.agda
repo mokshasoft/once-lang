@@ -3,10 +3,13 @@
 --
 -- Regenerate with:  python3 tools/gen-knot.py
 --
--- 55 constructors over 8 sorts, one description, index `Σ' Nat Nat`.
--- The table, the encoding decisions and the exceptions (`Var`'s and
--- `Ctx`'s depth-Fording) are documented in the generator's header —
--- read that, not this file, to understand the encoding.
+-- 53 constructors over 7 sorts, one description, index `Σ' Nat Nat`.
+-- The table, the encoding decisions and the two exceptions (`Var`'s
+-- depth-Fording) are documented in the generator's header — read that,
+-- not this file, to understand the encoding.
+--
+-- ⛔ `Ctx` IS DELIBERATELY NOT HERE.  `Examples/Knot/CtxD`, and the
+--    generator's header says why.
 ------------------------------------------------------------------------
 
 
@@ -17,7 +20,7 @@ open import DirectedHoTT.Spec.Syntax
         ; RTy; RTm; var; pair; fst; snd; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝
         ; IMu; ICon; IDesc; iι; iρ; iκ; inil; _◂_ )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; sCtx )
+  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar )
 
 -- base : RTy Γ
 cTy-base : ICon (ε ∙)
@@ -425,24 +428,7 @@ cVar-vs =
      (iκ (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs (vs vz))))) (nsuc (var (vs (vs vz)))))
       iι)))
 
--- ◇ : Ctx
-cCtx-emp : ICon (ε ∙)
-cCtx-emp =
-  iκ (⌜Id⌝ ⌜Nat⌝ (fst (var vz)) sCtx)
-   (iκ (⌜Id⌝ ⌜Nat⌝ (snd (var (vs vz))) nzero)
-    iι)
-
--- _▹_ : Ctx → RTy ⌊ Γ ⌋ → Ctx
-cCtx-ext : ICon (ε ∙)
-cCtx-ext =
-  iκ ⌜Nat⌝
-   (iρ (pair sCtx (var vz))
-    (iρ (pair sTy (var (vs vz)))
-     (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sCtx)
-      (iκ (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs vz))))))
-       iι))))
-
--- ★ the description: 55 constructors, in table order.
+-- ★ the description: 53 constructors, in table order.
 KnotD : IDesc
 KnotD =
   cTy-base ◂ cTy-U ◂ cTy-Pi ◂ cTy-Sg ◂ cTy-El ◂ cTy-Hom ◂ cTy-Unit ◂ 
@@ -453,7 +439,7 @@ KnotD =
   cTm-con ◂ cTm-elim ◂ cTm-icon ◂ cTm-ielim ◂ cTm-cNat ◂ cTm-cMu ◂ 
   cTm-cIMu ◂ cTm-cUnit ◂ cDesc-nil ◂ cDesc-cons ◂ cDCon-i ◂ cDCon-rho ◂ 
   cDCon-kap ◂ cIDesc-nil ◂ cIDesc-cons ◂ cICon-i ◂ cICon-rho ◂ cICon-kap 
-  ◂ cVar-vz ◂ cVar-vs ◂ cCtx-emp ◂ cCtx-ext ◂ inil
+  ◂ cVar-vz ◂ cVar-vs ◂ inil
 
 -- `K (sort, depth)` — the whole knot as ONE family.
 K : {Γ : Cx} → RTm Γ → RTy Γ
