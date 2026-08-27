@@ -13,8 +13,10 @@
 module DirectedHoTT.Examples.Knot.WkProbe where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax using ( vz )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Lib.IWk
-  using ( WkCon; decCon; decDesc; Maybe; just; nothing; Chk; tt )
+  using ( WkCon; WkDesc; decCon; decDesc; wkdLen
+        ; Maybe; just; nothing; Chk; tt )
 open import DirectedHoTT.Examples.Knot.Desc
   using ( KnotD
         ; cTy-Nat; cTy-Pi; cTy-IMu
@@ -69,19 +71,24 @@ vs-out : decCon vz cVar-vs ≡ nothing
 vs-out = refl
 
 ------------------------------------------------------------------------
--- 3. ⇒ AND SO THE WHOLE KNOT IS OUT, which is the finding.
+-- 3. ★★★ AND THE MEASUREMENT: **51 OF THE 53 ROWS ARE CLASSIFIED**, and
+--    the classifier stops exactly where it should.
 --
--- `iwkMeths` needs a method for EVERY row, so `WkDesc KnotD` cannot be
--- computed while `Var`'s two rows are in the list.  ⇒ `Lib/IWk` needs a
--- per-row ESCAPE HATCH — a `WkDesc` constructor taking a HAND-WRITTEN
--- method — and `KnotD` is then 51 computed rows plus 2 given ones.
+-- ⚠ THIS IS THE NUMBER TO ASSERT, not the fact that it type-checks.
+--   `decDesc` is TOTAL — it stops rather than failing — so "it compiled"
+--   says nothing about how far it got.  A row that silently stopped
+--   being classifiable would shorten this and nothing else would notice.
+--   Pinning it makes the coverage a CHECKED claim.
 --
--- ⚠ THAT IS THE SPLIT THE TREE ALREADY USES: `Knot/Ctors` generates 51
---   smart constructors and `Knot/Build` hand-writes the two `Var` rows,
---   for exactly this reason (they Ford the DEPTH).  It is not
---   half-generalization: the enumeration is 2 rows, not 53, and the 51
---   stay computed with the description a variable.
+-- ⇒ 51 computed rows, and a 2-method tail the caller supplies.  That is
+--   the same split `Knot/Ctors` (51 generated) and `Knot/Build` (2
+--   hand-written `Var` rows) already use — and for the same reason,
+--   which is what makes it a design rather than a coincidence.
 ------------------------------------------------------------------------
 
-knot-out : decDesc KnotD ≡ nothing
-knot-out = refl
+knot-classified : wkdLen (decDesc KnotD) ≡ 51
+knot-classified = refl
+
+-- ⚠ AND THE STOP IS AT THE RIGHT PLACE.  `wkdLen` alone would be
+--   satisfied by classifying some OTHER 51; §2 pins which two are left,
+--   and these two are the last two rows of the table.
