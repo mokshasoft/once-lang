@@ -54,6 +54,10 @@ open import Once.Arith.Machine.AbsState
   using (ArithAbsState; Store; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of)
 open import Once.Arith.Machine.AbsInstr using (bin-op; un-op; maybe-zero; move-to-out)
 import Once.Arith.Backend.Correct as Correct
+-- PLAN 0.75 F4: pinned at `NInt`. The simulation core models two INTEGER
+-- scratch registers (`XR0`/`XR1`); a float block needs its own register file
+-- and has no correspondence here yet. Stated in the type so the gate sees it.
+open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR using (MArithIR)
 open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_; emit; emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs; compile-go)
@@ -69,7 +73,7 @@ import Once.Word as OnceWord
 -- generic frame `rf-other`.
 ------------------------------------------------------------------------
 
-open import Once.Target.Arch using (TargetNum; int-bits)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 
 ------------------------------------------------------------------------
 -- PLAN 0.74 J5 — parameterised by the TARGET.
@@ -84,7 +88,7 @@ open import Once.Target.Arch using (TargetNum; int-bits)
 
 module At (tn : TargetNum) where
 
-  open Correct (int-bits tn) using (exec-xinstr; exec-xprog; exec-xprog-++; xreg-idx)
+  open Correct (int-bits tn) (float-format tn) using (exec-xinstr; exec-xprog; exec-xprog-++; xreg-idx)
   open OnceWord.Width (int-bits tn) using (_⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ; fromℤ)
 
   tgt : XInstr → Maybe XReg
@@ -136,7 +140,7 @@ module At (tn : TargetNum) where
     trans (cong (emit i ++_) (emit-program-++ is ys))
           (sym (++-assoc (emit i) (emit-program is) (emit-program ys)))
 
-  block-shape : ∀ {sh} (e : MArithIR sh)
+  block-shape : ∀ {sh} (e : MArithIR sh NInt)
               → emit-program (compile-abs e) ≡ emit-program (compile-go 0 e) ++ (XI.Xmov-out XR0 ∷ [])
   block-shape e = emit-program-++ (compile-go 0 e) (move-to-out 0 ∷ [])
 
@@ -528,7 +532,7 @@ module At (tn : TargetNum) where
     -- result register holds the abstract output — PROVED: the final Xmov-out's
     -- concrete out-reg = arith-reg XR0's read (rt-out), which R ties to the
     -- abstract reg 0 = the block output (block-value-semM makes it defined).
-    output-extract : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s-conc : St)
+    output-extract : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s-conc : St)
       → R (exec-xprog (emit-program (compile-abs e)) (init env))
           (eb (emit-program (compile-abs e)) s-conc)
       → output-of (exec-xprog (emit-program (compile-abs e)) (init env))
@@ -555,7 +559,7 @@ module At (tn : TargetNum) where
         body = trans (trans rr-eq (rf-other (XI.Xmov-out XR0) cPre XR0 (no-tgt-hyp (XI.Xmov-out XR0) refl)))
                      (sym (trans (cong (λ t → rr t out-reg) ebk≡) (rt-out XR0 cPre)))
 
-    arith-block-correct : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s-conc : St)
+    arith-block-correct : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s-conc : St)
       → WF s-conc
       → R-input (init env) s-conc
       → rr (eb (emit-program (compile-abs e)) s-conc) out-reg

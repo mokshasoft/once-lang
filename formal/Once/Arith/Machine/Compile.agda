@@ -36,8 +36,14 @@ open import Once.Arith.Machine.AbsInstr
   using (AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
          neg-rr; spill; reload; move-to-out)
+-- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
+-- that restriction is STATED rather than assumed. Its instruction set
+-- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
+-- no lowering here yet; saying so in the type means the gate sees the gap
+-- instead of a float tree silently taking the integer path.
+open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
 
 ------------------------------------------------------------------------
 -- Register / scratch budget
@@ -48,7 +54,7 @@ n-regs : ℕ
 n-regs = 2
 
 -- | Scratch budget = maximum recursion depth of binary nodes.
-required-scratch : ∀ {sh} → MArithIR sh → ℕ
+required-scratch : ∀ {sh} → MArithIR sh NInt → ℕ
 required-scratch (alit _)     = 0
 required-scratch (ainput _)   = 0
 required-scratch (aadd a b)   = required-scratch a ⊔ suc (required-scratch b)
@@ -77,7 +83,7 @@ safe-lit? (-[1+ suc _ ]) = true    -- ≤ −2
 
 -- Split on every constructor (not a catch-all) so `safe-divisor? e` reduces
 -- definitionally in the correctness proofs.
-safe-divisor? : ∀ {sh} → MArithIR sh → Bool
+safe-divisor? : ∀ {sh} → MArithIR sh NInt → Bool
 safe-divisor? (alit k)   = safe-lit? k
 safe-divisor? (ainput _) = false   -- non-literal divisor: keep the guard
 safe-divisor? (aadd _ _) = false
@@ -100,7 +106,7 @@ div-instr false = div-rrr 0 1 0
 rem-instr true  = rem-safe-rrr 0 1 0
 rem-instr false = rem-rrr 0 1 0
 
-rem-op : ∀ {sh} → MArithIR sh → AbstractInstr
+rem-op : ∀ {sh} → MArithIR sh NInt → AbstractInstr
 rem-op b = rem-instr (safe-divisor? b)
 
 ------------------------------------------------------------------------
@@ -138,7 +144,7 @@ pow2-exp? (-[1+ _ ]) = nothing
 -- | The multiplier/divisor's exponent, when it is such a literal. Split on
 -- every constructor (not a catch-all) so `pow2? e` reduces definitionally in
 -- the strength-reduction correctness proofs.
-pow2? : ∀ {sh} → MArithIR sh → Maybe ℕ
+pow2? : ∀ {sh} → MArithIR sh NInt → Maybe ℕ
 pow2? (alit k)   = pow2-exp? k
 pow2? (ainput _) = nothing
 pow2? (aadd _ _) = nothing
@@ -164,7 +170,7 @@ mul-choose : Maybe ℕ → AbstractInstr
 mul-choose (just j) = shl-rri 0 1 j
 mul-choose nothing  = mul-rrr 0 1 0
 
-mul-op : ∀ {sh} → MArithIR sh → AbstractInstr
+mul-op : ∀ {sh} → MArithIR sh NInt → AbstractInstr
 mul-op b = mul-choose (pow2? b)
 
 -- | Final divide instruction for divisor `b`: a sign-corrected shift when
@@ -173,7 +179,7 @@ div-choose : Maybe ℕ → Bool → AbstractInstr
 div-choose (just j) _ = sdiv-pow2-rri 0 1 j
 div-choose nothing  t = div-instr t
 
-div-op : ∀ {sh} → MArithIR sh → AbstractInstr
+div-op : ∀ {sh} → MArithIR sh NInt → AbstractInstr
 div-op b = div-choose (pow2? b) (safe-divisor? b)
 
 ------------------------------------------------------------------------
@@ -184,7 +190,7 @@ div-op b = div-choose (pow2? b) (safe-divisor? b)
 -- `CompileCorrect.compile-go-correct`): running the result leaves the
 -- value of `e` in reg 0; scratch slots `< d` are preserved; reg 1 may
 -- be clobbered.
-compile-go : ∀ {sh} → ℕ → MArithIR sh → List AbstractInstr
+compile-go : ∀ {sh} → ℕ → MArithIR sh NInt → List AbstractInstr
 compile-go d (alit z)     = load-imm z 0 ∷ []
 compile-go d (ainput p)   = load-input p 0 ∷ []
 compile-go d (aadd a b)   =
@@ -217,7 +223,7 @@ compile-go d (aneg a)     =
   compile-go d a ++ (neg-rr 0 0 ∷ [])
 
 -- | Top-level compile: walk the tree, then move reg 0 to the output.
-compile-abs : ∀ {sh} → MArithIR sh → List AbstractInstr
+compile-abs : ∀ {sh} → MArithIR sh NInt → List AbstractInstr
 compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 
 ------------------------------------------------------------------------
@@ -234,7 +240,7 @@ compile-abs e = compile-go 0 e ++ (move-to-out 0 ∷ [])
 -- A safe literal (k ∉ {0,−1}) is left for `compile-go`'s `div-op` (Part B).
 ------------------------------------------------------------------------
 
-fold-div fold-mod : ∀ {sh} → MArithIR sh → MArithIR sh → MArithIR sh
+fold-div fold-mod : ∀ {sh} → MArithIR sh NInt → MArithIR sh NInt → MArithIR sh NInt
 fold-div a (alit (+ 0))      = alit (-[1+ 0 ])   -- a / 0  = −1
 fold-div a (alit (-[1+ 0 ])) = aneg a            -- a / −1 = −a
 fold-div a b                 = adiv a b
@@ -243,7 +249,7 @@ fold-mod a (alit (-[1+ 0 ])) = alit (+ 0)        -- a % −1 = 0
 fold-mod a b                 = amod a b
 
 -- | Recursively fold degenerate literal divisors throughout the tree.
-normalize : ∀ {sh} → MArithIR sh → MArithIR sh
+normalize : ∀ {sh} → MArithIR sh NInt → MArithIR sh NInt
 normalize (alit z)   = alit z
 normalize (ainput p) = ainput p
 normalize (aadd a b) = aadd (normalize a) (normalize b)

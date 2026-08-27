@@ -35,8 +35,9 @@ open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.Compile using (compile-abs; required-scratch; normalize)
-open import Once.Arith.Machine.IR using (MArithIR; ArithBlock)
-open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
+open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Arith.Machine.IR using (MArithIR; ArithBlock; mk-block)
+open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-kind; block-body)
 open import Once.Arith.SigOp.Block using (block-name)
 open import Once.Target.Symbol using (once-symbol-own)
 
@@ -147,16 +148,34 @@ program-text (i ∷ is) = instr-text i ++ program-text is
 --       addi sp, sp, N
 --       ret
 emit-arith-block : (sym : String) → ArithBlock → String
-emit-arith-block sym blk =
-  let body  = normalize (block-body blk)   -- div-guard elision + degenerate folds
-      n     = required-scratch body
-      pad   = showℕ (8 * n)
-      instr = emit-program (compile-abs body)
-  in sym ++ ":\n" ++
-     "    addi sp, sp, -" ++ pad ++ "\n" ++
-     program-text instr ++
-     "    addi sp, sp, " ++ pad ++ "\n" ++
-     "    ret\n\n"
+-- DESTRUCTURED, not `with block-kind blk`: with-abstraction on one
+-- projection of a record does not refine another projection's TYPE, so
+-- `body` would stay at the abstract kind. The pattern refines both.
+emit-arith-block sym (mk-block sh NInt body) =
+    let nbody = normalize body   -- div-guard elision + degenerate folds
+        n     = required-scratch nbody
+        pad   = showℕ (8 * n)
+        instr = emit-program (compile-abs nbody)
+    in sym ++ ":\n" ++
+       "    addi sp, sp, -" ++ pad ++ "\n" ++
+       program-text instr ++
+       "    addi sp, sp, " ++ pad ++ "\n" ++
+       "    ret\n\n"
+  -- PLAN 0.75 F4: NO LOWERING FOR A FLOAT BLOCK YET, and the symbol is left
+  -- UNDEFINED on purpose. The abstract machine this emitter drives is
+  -- integer-register shaped (`add-rrr`, `div-rrr`, …), so there is no body to
+  -- write; inventing one — a trap, or an empty body — would build a program
+  -- that runs and is wrong, which is worse than a build that fails. An
+  -- undefined symbol is exactly what an UNRECOGNISED SigOp already produces,
+  -- so this is the existing loud failure rather than a new quiet one.
+  --
+  -- Unreachable today: `Once.Arith.Machine.Recognise` matches `arith.*.int`
+  -- only, so it never packages a float block. This clause is what will be
+  -- replaced when the float register file lands.
+emit-arith-block sym (mk-block sh NFloat body) =
+  "# " ++ sym ++ ": arith block at Float — no lowering yet (plan 0.75 F4).\n" ++
+  "# Symbol intentionally left UNDEFINED; the link fails rather than a\n" ++
+  "# body being invented. Recognition never produces one today.\n\n"
 
 ------------------------------------------------------------------------
 -- Block-list emission

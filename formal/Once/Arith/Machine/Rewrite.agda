@@ -37,9 +37,16 @@ import Once.IRTy as II
 open import Once.SigOp.Info using (SigOpInfo)
 
 open import Once.Arith.Machine.AbsState
-  using (InputShape; shape-unit; shape-int; shape-pair)
+  using (InputShape; shape-unit; shape-int; shape-float; shape-pair)
+-- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
+-- that restriction is STATED rather than assumed. Its instruction set
+-- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
+-- no lowering here yet; saying so in the type means the gate sees the gap
+-- instead of a float tree silently taking the integer path.
+open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg;
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
+         numtype-as-type;
          ArithBlock; mk-block; shape-as-type)
 open Once.Arith.Machine.IR.ArithBlock using (block-shape; block-body)
 open import Once.Arith.Machine.Recognise using (recognise; recognise-body)
@@ -71,7 +78,7 @@ shape-of _                                 = nothing
 -- (`aadd` / `asub` / `amul` / `aneg`). Pure leaves (`alit` / `ainput`)
 -- aren't lifted; the existing `const` / projection codegen produces
 -- tighter code.
-has-op : ∀ {sh} → MArithIR sh → Bool
+has-op : ∀ {sh} → MArithIR sh NInt → Bool
 has-op (alit _)    = false
 has-op (ainput _)  = false
 has-op (aadd _ _)  = true
@@ -87,8 +94,8 @@ has-op (aneg _)    = true
 
 -- | Build the `IR A Int` whose runtime behaviour is the recognised
 -- arith block. The domain `A` is whatever `shape-of` returned a
--- shape for; the body is the recognised `MArithIR sh`.
-block-as-ir : ∀ {A sh} → A ≡ ⌊ shape-as-type sh ⌋ → MArithIR sh → IR A ⌊ Int ⌋
+-- shape for; the body is the recognised `MArithIR sh NInt`.
+block-as-ir : ∀ {A sh} → A ≡ ⌊ shape-as-type sh ⌋ → MArithIR sh NInt → IR A ⌊ Int ⌋
 block-as-ir {A} {sh} eq body =
   subst (λ T → IR T ⌊ Int ⌋) (sym eq) (SigOp (block-info body))
 
@@ -104,8 +111,11 @@ try-lift {A} {II.Int} ir                           with shape-of A
 ...   | just body                                   with has-op body
 ...     | false                                     = nothing
 ...     | true                                      =
-            just (block-as-ir eq body , mk-block sh body)
--- Codomain is not Int: never lift (arith blocks return Int).
+            just (block-as-ir eq body , mk-block sh NInt body)
+-- Codomain is not Int: never lift. Plan 0.75 F4 makes a block's codomain a
+-- `NumType` rather than a constant `Int`, but the LIFT is still Int-only —
+-- recognition matches the `.int` SigOp names and the emitters serve `NInt`.
+-- This clause is where a float codomain will become liftable.
 try-lift {_} {_} _ = nothing
 
 ------------------------------------------------------------------------

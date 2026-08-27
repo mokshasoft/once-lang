@@ -11,7 +11,14 @@
 
 open import Data.Nat using (ℕ; zero; suc)
 
-module Once.Arith.Backend.Correct (bits : ℕ) where
+-- PLAN 0.75 F4: the FORMAT joins the width as a module parameter. This module
+-- is pinned at `NInt` and never reads it, but `Sem` is now parameterised by
+-- both and the format must come from the ARCHITECTURE — instantiating it at
+-- some convenient `binary64` here would bake a format where all targets must
+-- be served, which is the D109/D112 mistake. Taking it as a parameter makes
+-- the dependency visible and costs the instantiating arch one word.
+open import Once.Float.Dyadic using (FloatFormat)
+module Once.Arith.Backend.Correct (bits : ℕ) (F : FloatFormat) where
 
 open import Data.Nat using (_≟_; _+_; _*_; _∸_; _%_)
 open import Data.Nat.Properties using (+-comm; *-comm)
@@ -31,14 +38,20 @@ open import Once.Arith.Machine.AbsState
 open import Once.Arith.Machine.AbsInstr
 open import Once.Arith.Backend.XInstr.Syntax
 open import Once.Arith.Backend.XInstr.CodeGen using (emit; emit-program; abs-reg; _≟x_)
-open import Once.Arith.Machine.IR using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg)
+-- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
+-- that restriction is STATED rather than assumed. Its instruction set
+-- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
+-- no lowering here yet; saying so in the type means the gate sees the gap
+-- instead of a float tree silently taking the integer path.
+open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
 open import Once.Arith.Machine.Compile
   using (compile-go; compile-abs; mul-op; mul-choose; div-op; div-choose; rem-op;
          div-instr; rem-instr; safe-divisor?; pow2?)
 open import Once.Arith.Machine.WordSem using (module Sem)
-open Sem bits using (eval-arith-W)
+open Sem bits F using (eval-arith-W)
 import Once.Arith.Machine.CompileCorrect as CC
-open CC bits using (abs-validity)
+open CC bits F using (abs-validity)
 open import Once.Word using (module Width)
 
 open Width bits using (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; shlᵂ; sdiv2ᵏ; norm; modulus; modulus≢0)
@@ -564,7 +577,7 @@ div-instr-bound false = bound0 , bound1 , bound0
 div-choose-bound : (m : Maybe ℕ) (t : Bool) → reg-bound (div-choose m t)
 div-choose-bound (just j) t = bound0 , bound1
 div-choose-bound nothing  t = div-instr-bound t
-div-op-bound : ∀ {sh} (b : MArithIR sh) → reg-bound (div-op b)
+div-op-bound : ∀ {sh} (b : MArithIR sh NInt) → reg-bound (div-op b)
 div-op-bound b = div-choose-bound (pow2? b) (safe-divisor? b)
 
 -- `mul-op b` = `mul-choose (pow2? b)`: a `shl-rri 0 1 j` (reg-bound =
@@ -572,20 +585,20 @@ div-op-bound b = div-choose-bound (pow2? b) (safe-divisor? b)
 mul-choose-bound : (m : Maybe ℕ) → reg-bound (mul-choose m)
 mul-choose-bound (just j) = bound0 , bound1
 mul-choose-bound nothing  = bound0 , bound1 , bound0
-mul-op-bound : ∀ {sh} (b : MArithIR sh) → reg-bound (mul-op b)
+mul-op-bound : ∀ {sh} (b : MArithIR sh NInt) → reg-bound (mul-op b)
 mul-op-bound b = mul-choose-bound (pow2? b)
 
 rem-instr-bound : (t : Bool) → reg-bound (rem-instr t)
 rem-instr-bound true  = bound0 , bound1 , bound0
 rem-instr-bound false = bound0 , bound1 , bound0
-rem-op-bound : ∀ {sh} (b : MArithIR sh) → reg-bound (rem-op b)
+rem-op-bound : ∀ {sh} (b : MArithIR sh NInt) → reg-bound (rem-op b)
 rem-op-bound b = rem-instr-bound (safe-divisor? b)
 
 All-bound-++ : ∀ (xs ys : List AbstractInstr) → All-bound xs → All-bound ys → All-bound (xs ++ ys)
 All-bound-++ []       ys _          by = by
 All-bound-++ (i ∷ is) ys (bi , bis) by = bi , All-bound-++ is ys bis by
 
-compile-go-bound : ∀ {sh} (d : ℕ) (e : MArithIR sh) → All-bound (compile-go d e)
+compile-go-bound : ∀ {sh} (d : ℕ) (e : MArithIR sh NInt) → All-bound (compile-go d e)
 compile-go-bound d (alit z)   = bound0 , tt
 compile-go-bound d (ainput p) = bound0 , tt
 compile-go-bound d (aadd a b) =
@@ -611,7 +624,7 @@ compile-go-bound d (amod a b) =
 compile-go-bound d (aneg a) =
   All-bound-++ (compile-go d a) _ (compile-go-bound d a) ((bound0 , bound0) , tt)
 
-compile-abs-bound : ∀ {sh} (e : MArithIR sh) → All-bound (compile-abs e)
+compile-abs-bound : ∀ {sh} (e : MArithIR sh NInt) → All-bound (compile-abs e)
 compile-abs-bound e = All-bound-++ (compile-go 0 e) _ (compile-go-bound 0 e) (bound0 , tt)
 
 ------------------------------------------------------------------------
@@ -621,7 +634,7 @@ compile-abs-bound e = All-bound-++ (compile-go 0 e) _ (compile-go-bound 0 e) (bo
 -- over the reg-bounded compile-abs) with the abstract validity.
 ------------------------------------------------------------------------
 
-block-correct : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
+block-correct : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) →
   output-of (exec-xprog (emit-program (compile-abs e)) (init env)) ≡ just (eval-arith-W e env)
 block-correct e env =
   trans (proj₁ (proj₂ (proj₂ (refine-program (compile-abs e) (compile-abs-bound e) (init env)))))

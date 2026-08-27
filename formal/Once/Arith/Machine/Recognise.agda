@@ -42,10 +42,17 @@ open import Once.SigOp.Info using (SigOpInfo; name)
 open import Once.CanonicalName using (bare; _≟ᶜ_)
 
 open import Once.Arith.Machine.AbsState
-  using (InputShape; shape-int; shape-pair; InputPath;
+  using (InputShape; shape-int; shape-float; shape-pair; InputPath;
          Side; Fst; Snd)
+-- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
+-- that restriction is STATED rather than assumed. Its instruction set
+-- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
+-- no lowering here yet; saying so in the type means the gate sees the gap
+-- instead of a float tree silently taking the integer path.
+open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg; ArithBlock;
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
+         numtype-as-type; ArithBlock;
          mk-block)
 
 ------------------------------------------------------------------------
@@ -81,13 +88,13 @@ recognise-path _         = nothing
 -- arithmetic ops are identified by `name` (string compare), which
 -- carries enough information without forcing index unification.
 {-# TERMINATING #-}
-recognise-body : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR sh)
+recognise-body : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR sh NInt)
 -- `recognise-binop` recognises the two operands of a binary op. Its codomain
 -- `Y` is a FREE variable, so matching `⟨_,_⟩` instantiates `Y := B * C` freely —
 -- unlike matching the pair directly under `SigOp _ ∘ _`, where the middle object
 -- is the SigOp's ERASED domain `⌊Dom⌋` and `⌊Dom⌋ ≟ B * C` is unification-stuck
 -- (`⌊_⌋` non-invertible). Plan 0.52 M2.
-recognise-binop : (sh : InputShape) → ∀ {X Y} → IR X Y → Maybe (MArithIR sh × MArithIR sh)
+recognise-binop : (sh : InputShape) → ∀ {X Y} → IR X Y → Maybe (MArithIR sh NInt × MArithIR sh NInt)
 recognise-binop sh (⟨ a , b ⟩ _) with recognise-body sh a | recognise-body sh b
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
@@ -152,6 +159,12 @@ recognise-body sh other with recognise-path other
 -- strips enclosing `curry` layers off the source lambda and
 -- supplies the resulting `InputShape` plus the body IR.
 recognise : (sh : InputShape) → ∀ {A B} → IR A B → Maybe ArithBlock
+-- PLAN 0.75 F4: the block is built at `NInt`, because that is all
+-- `recognise-body` can produce — it matches `arith.add.int` and its siblings
+-- BY NAME, and the float SigOps are `arith.add.float`. So no float block
+-- exists today, which is exactly why the emitters' `NFloat` clause is
+-- unreachable. Teaching recognition the float names is step one of giving
+-- them a lowering, and it must not happen before the emitter can serve them.
 recognise sh ir with recognise-body sh ir
-... | just body = just (mk-block sh body)
+... | just body = just (mk-block sh NInt body)
 ... | nothing   = nothing

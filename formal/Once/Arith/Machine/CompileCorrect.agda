@@ -13,7 +13,14 @@
 
 open import Data.Nat using (ℕ)
 
-module Once.Arith.Machine.CompileCorrect (bits : ℕ) where
+-- PLAN 0.75 F4: the FORMAT joins the width as a module parameter. This module
+-- is pinned at `NInt` and never reads it, but `Sem` is now parameterised by
+-- both and the format must come from the ARCHITECTURE — instantiating it at
+-- some convenient `binary64` here would bake a format where all targets must
+-- be served, which is the D109/D112 mistake. Taking it as a parameter makes
+-- the dependency visible and costs the instantiating arch one word.
+open import Once.Float.Dyadic using (FloatFormat)
+module Once.Arith.Machine.CompileCorrect (bits : ℕ) (F : FloatFormat) where
 
 open import Data.Nat using (zero; suc; _<_; s≤s; z≤n; _^_)
 open import Data.Nat.DivMod using (m%n<n)
@@ -34,15 +41,22 @@ open import Once.Arith.Machine.AbsInstr
          div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; neg-rr; spill; reload;
          move-to-out; maybe-zero; bin-op; un-op; module Exec)
 open Exec bits using (step; run-abstract)
+-- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
+-- that restriction is STATED rather than assumed. Its instruction set
+-- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
+-- no lowering here yet; saying so in the type means the gate sees the gap
+-- instead of a float tree silently taking the integer path.
+open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg; eval-arith)
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
+         numtype-as-type; eval-arith)
 open import Once.Word using (module Width)
 open Width bits using
   (fromℤ; _⊕_; _⊖_; _⊗_; _/ˢ_; _%ˢ_; ⊝_; modulus; modulus≢0; shlᵂ; sdiv2ᵏ; ⊗-pow2;
    /ˢ-zero; %ˢ-zero; fromℤ-0; fromℤ-in-range; fromℤ-neg1;
    /ˢ-negOne; %ˢ-negOne; /ˢ-in-range; %ˢ-in-range)
 open import Once.Arith.Machine.WordSem using (module Sem)
-open Sem bits using (eval-arith-W)
+open Sem bits F using (eval-arith-W)
 open import Once.Arith.Machine.Compile
   using (compile-go; compile-abs; mul-op; mul-choose; div-op; div-choose; rem-op;
          div-instr; rem-instr; safe-divisor?; safe-lit?; pow2?; pow2-exp?; pow2-exp?-correct;
@@ -74,7 +88,7 @@ step-div-instr false s = refl
 -- `sdiv2ᵏ`'s definition. Non-power-of-two `b` falls through to `refl` (mul)
 -- or `step-div-instr` (div guard elision).
 
-step-mul-op-eq : ∀ {sh} (b : MArithIR sh) (env : ⟦ sh ⟧S) (s : ArithAbsState sh) →
+step-mul-op-eq : ∀ {sh} (b : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s : ArithAbsState sh) →
   regs s [ 0 ] ≡ just (eval-arith-W b env) →
   step (mul-op b) s ≡ step (mul-rrr 0 1 0) s
 step-mul-op-eq (alit k) env s h with pow2-exp? k in pe
@@ -98,7 +112,7 @@ step-mul-op-eq (adiv a b) env s h = refl
 step-mul-op-eq (amod a b) env s h = refl
 step-mul-op-eq (aneg a)   env s h = refl
 
-step-div-op-eq : ∀ {sh} (b : MArithIR sh) (env : ⟦ sh ⟧S) (s : ArithAbsState sh) →
+step-div-op-eq : ∀ {sh} (b : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s : ArithAbsState sh) →
   regs s [ 0 ] ≡ just (eval-arith-W b env) →
   step (div-op b) s ≡ step (div-rrr 0 1 0) s
 step-div-op-eq (alit k) env s h with pow2-exp? k in pe
@@ -131,7 +145,7 @@ step-rem-instr : ∀ {sh} (t : Bool) (s : ArithAbsState sh) →
 step-rem-instr true  s = refl
 step-rem-instr false s = refl
 
-step-rem-op : ∀ {sh} (b : MArithIR sh) (s : ArithAbsState sh) →
+step-rem-op : ∀ {sh} (b : MArithIR sh NInt) (s : ArithAbsState sh) →
   step (rem-op b) s ≡ step (rem-rrr 0 1 0) s
 step-rem-op b s = step-rem-instr (safe-divisor? b) s
 
@@ -139,7 +153,7 @@ step-rem-op b s = step-rem-instr (safe-divisor? b) s
 -- Strong invariant on `compile-go`
 ------------------------------------------------------------------------
 
-record CompileGoInv {sh} (d : ℕ) (e : MArithIR sh) (s : ArithAbsState sh) : Set where
+record CompileGoInv {sh} (d : ℕ) (e : MArithIR sh NInt) (s : ArithAbsState sh) : Set where
   field
     reg0      : regs (run-abstract (compile-go d e) s) [ 0 ]
                   ≡ just (eval-arith-W e (input s))
@@ -158,7 +172,7 @@ run-abstract-app (i ∷ is) ys s = run-abstract-app is ys (step i s)
 
 eval-arith-W-ainput :
   ∀ {sh} (p : InputPath) (inp : ⟦ sh ⟧S) →
-  eval-arith-W {sh} (ainput p) inp ≡ fromℤ (maybe-zero (project sh p inp))
+  eval-arith-W {sh} {NInt} (ainput p) inp ≡ fromℤ (maybe-zero (project sh p inp))
 eval-arith-W-ainput {sh} p inp with project sh p inp
 ... | just _  = refl
 ... | nothing = refl
@@ -179,10 +193,10 @@ private
   <-suc : ∀ {i d : ℕ} → i < d → i < suc d
   <-suc lt = m≤n⇒m≤1+n lt
 
-compile-go-correct : ∀ {sh} (d : ℕ) (e : MArithIR sh) (s : ArithAbsState sh) →
+compile-go-correct : ∀ {sh} (d : ℕ) (e : MArithIR sh NInt) (s : ArithAbsState sh) →
   CompileGoInv d e s
 
-aneg-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh) (s : ArithAbsState sh) →
+aneg-correct : ∀ {sh} (d : ℕ) (a : MArithIR sh NInt) (s : ArithAbsState sh) →
   CompileGoInv d (aneg a) s
 aneg-correct {sh} d a s = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
@@ -200,7 +214,7 @@ aneg-correct {sh} d a s = record
            ≡ step (neg-rr 0 0) (run-abstract (compile-go d a) s)
     bridge = run-abstract-app (compile-go d a) (neg-rr 0 0 ∷ []) s
 
-aadd-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+aadd-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
   CompileGoInv d (aadd a b) s
 aadd-correct {sh} d a b s = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
@@ -241,7 +255,7 @@ aadd-correct {sh} d a b s = record
     regs-s3-0 = trans (reg0 ih-b)
                       (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
-asub-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+asub-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
   CompileGoInv d (asub a b) s
 asub-correct {sh} d a b s = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
@@ -282,7 +296,7 @@ asub-correct {sh} d a b s = record
     regs-s3-0 = trans (reg0 ih-b)
                       (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
-amul-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+amul-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
   CompileGoInv d (amul a b) s
 amul-correct {sh} d a b s = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
@@ -330,7 +344,7 @@ amul-correct {sh} d a b s = record
     scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
                          (store-write-same (scratch s1) d (regs s1 [ 0 ]))
 
-adiv-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+adiv-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
   CompileGoInv d (adiv a b) s
 adiv-correct {sh} d a b s = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
@@ -378,7 +392,7 @@ adiv-correct {sh} d a b s = record
     scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
                          (store-write-same (scratch s1) d (regs s1 [ 0 ]))
 
-amod-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh) (s : ArithAbsState sh) →
+amod-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NInt) (s : ArithAbsState sh) →
   CompileGoInv d (amod a b) s
 amod-correct {sh} d a b s = record
   { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
@@ -438,7 +452,7 @@ compile-go-correct d (amod a b) s = amod-correct d a b s
 -- Block validity: `output-of (run-abstract (compile-abs e) (init env))`
 ------------------------------------------------------------------------
 
-abs-validity : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
+abs-validity : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) →
   output-of (run-abstract (compile-abs e) (init env)) ≡ just (eval-arith-W e env)
 abs-validity {sh} e env =
   trans (cong output-of (run-abstract-app (compile-go 0 e) (move-to-out 0 ∷ []) (init env)))
@@ -457,7 +471,7 @@ abs-validity {sh} e env =
 module _ (b : ℕ) (eqb : bits ≡ suc b) where
 
   -- every arith value lands in `[0, modulus)` (needed for `/ˢ negOne = ⊝`).
-  eval-in-range : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) → eval-arith-W e env < modulus
+  eval-in-range : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) → eval-arith-W e env < modulus
   eval-in-range (alit z)   env = fromℤ-in-range z
   eval-in-range (ainput p) env with project _ p env
   ... | just z  = fromℤ-in-range z
@@ -473,7 +487,7 @@ module _ (b : ℕ) (eqb : bits ≡ suc b) where
 
   -- single-node folds (the `alit 0 / alit -1` divisor cases); every other
   -- divisor is left untouched (`fold-div a c = adiv a c`, `refl`).
-  fold-div-preserves : ∀ {sh} (a c : MArithIR sh) (env : ⟦ sh ⟧S) →
+  fold-div-preserves : ∀ {sh} (a c : MArithIR sh NInt) (env : ⟦ sh ⟧S) →
     eval-arith-W a env < modulus →
     eval-arith-W (fold-div a c) env ≡ eval-arith-W (adiv a c) env
   fold-div-preserves a (alit (+ 0)) env _ =
@@ -493,7 +507,7 @@ module _ (b : ℕ) (eqb : bits ≡ suc b) where
   fold-div-preserves a (amod _ _) env _ = refl
   fold-div-preserves a (aneg _)   env _ = refl
 
-  fold-mod-preserves : ∀ {sh} (a c : MArithIR sh) (env : ⟦ sh ⟧S) →
+  fold-mod-preserves : ∀ {sh} (a c : MArithIR sh NInt) (env : ⟦ sh ⟧S) →
     eval-arith-W (fold-mod a c) env ≡ eval-arith-W (amod a c) env
   fold-mod-preserves a (alit (+ 0)) env =
     trans (sym (%ˢ-zero (eval-arith-W a env)))
@@ -512,7 +526,7 @@ module _ (b : ℕ) (eqb : bits ≡ suc b) where
   fold-mod-preserves a (amod _ _) env = refl
   fold-mod-preserves a (aneg _)   env = refl
 
-  normalize-preserves : ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) →
+  normalize-preserves : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) →
     eval-arith-W (normalize e) env ≡ eval-arith-W e env
   normalize-preserves (alit z)   env = refl
   normalize-preserves (ainput p) env = refl

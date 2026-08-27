@@ -21,6 +21,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S)
 open import Once.Arith.Machine.AbsState using (init)
+-- PLAN 0.75 F4: pinned at `NInt`. The simulation core models two INTEGER
+-- scratch registers (`XR0`/`XR1`); a float block needs its own register file
+-- and has no correspondence here yet. Stated in the type so the gate sees it.
+open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR using (MArithIR)
 open import Once.Arith.Backend.XInstr.CodeGen using (emit-program)
 open import Once.Arith.Machine.Compile using (compile-abs)
@@ -39,7 +43,7 @@ open import Once.Adequacy.ArchCorrectness.ArithSimX86-32 using (val-x86-32; arit
 -- update on pc only, so `regs (dispatch-arith …) = regs (exec-arith-block …)` and
 -- `arith-block-correct` transfers by defeq.
 arith-dispatch-value :
-    ∀ {sh} (e : MArithIR sh) (env : ⟦ sh ⟧S) (s : State)
+    ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) (s : State)
   → WF s
   → R-input (init env) s
   → readReg (regs (dispatch-arith val-x86-32 (emit-program (compile-abs e)) s)) eax

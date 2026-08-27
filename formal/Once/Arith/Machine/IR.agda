@@ -26,10 +26,12 @@ import Data.Nat as ℕ
 import Data.Sign as Sign
 
 open import Once.Type using (Type; Unit; Int)
+open import Once.Arith.Type using (NumType; NInt; NFloat)
+open import Once.Float.Decimal using (Decimal)
 import Once.Type as T
 open import Once.Arith.Machine.Shape
-  using (InputShape; shape-unit; shape-int; shape-pair; ⟦_⟧S; InputPath;
-         Side; Fst; Snd; project)
+  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath;
+         Side; Fst; Snd; project; projectF)
 
 ------------------------------------------------------------------------
 -- MArithIR: machine-level arith expression tree
@@ -40,15 +42,32 @@ open import Once.Arith.Machine.Shape
 --
 -- Plan 0.20 — mono-Int. Comparison ops / Bool returns and other
 -- widths are out of scope per the plan's Scope section.
-data MArithIR (sh : InputShape) : Set where
-  alit       : ℤ → MArithIR sh
-  ainput     : InputPath → MArithIR sh
-  aadd       : MArithIR sh → MArithIR sh → MArithIR sh
-  asub       : MArithIR sh → MArithIR sh → MArithIR sh
-  amul       : MArithIR sh → MArithIR sh → MArithIR sh
-  adiv       : MArithIR sh → MArithIR sh → MArithIR sh
-  amod       : MArithIR sh → MArithIR sh → MArithIR sh
-  aneg       : MArithIR sh → MArithIR sh
+data MArithIR (sh : InputShape) : NumType → Set where
+  alit       : ℤ → MArithIR sh NInt
+  -- PLAN 0.75 F4: a FLOAT literal's payload is the `Decimal` the programmer
+  -- wrote (D117), not a pattern — the ONE rounding happens at the backend, at
+  -- the target's format, and putting a pattern here would move it earlier and
+  -- cap precision at whatever format this node chose.
+  aflit      : Decimal → MArithIR sh NFloat
+  ainput     : ∀ {n} → InputPath → MArithIR sh n
+  -- `+`, `−` and `×` are POLYMORPHIC in the number kind — one constructor
+  -- each, dispatched by the index. That is the whole reason `NumType` exists
+  -- (`NInt | NFloat`, width-free): the emitter reads the index to choose
+  -- `addq` or `addsd`, and every proof that recurses structurally keeps
+  -- working with `n` implicit.
+  aadd       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n
+  asub       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n
+  amul       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n
+  -- …but `/` and `%` are `Int`-ONLY, and that is not an oversight: float
+  -- division needs a correctly-rounded quotient (a sticky bit through the
+  -- division) and IEEE's `fmod` is a different function from integer
+  -- remainder. `isFloatArithmeticOp` refuses both at the source, so no
+  -- well-typed program can reach a float node here.
+  adiv       : MArithIR sh NInt → MArithIR sh NInt → MArithIR sh NInt
+  amod       : MArithIR sh NInt → MArithIR sh NInt → MArithIR sh NInt
+  aneg       : ∀ {n} → MArithIR sh n → MArithIR sh n
+  -- D125's widening, as a node: `1 + 1.5` puts one of these on the `Int` side.
+  ai2f       : MArithIR sh NInt → MArithIR sh NFloat
 
 ------------------------------------------------------------------------
 -- Denotational semantics
@@ -73,7 +92,14 @@ private
   modℤ a (+ suc d)    = sign a ◃ (∣ a ∣ ℕ.% suc d)
   modℤ a (ℤ.-[1+ d ]) = sign a ◃ (∣ a ∣ ℕ.% suc d)
 
-eval-arith : ∀ {sh} → MArithIR sh → ⟦ sh ⟧S → ℤ
+-- PLAN 0.75 F4: STATED AT `NInt`, and that is the honest restriction rather
+-- than a gap. This is the legacy ℤ evaluator, and there is no ℤ spec for a
+-- float to have — D113 removed the exact value level from `Float` exactly as
+-- D054 removed it from `Int`, so a float's meaning needs a FORMAT and lives in
+-- `WordSem` with the rest of the target-relative semantics. Every clause below
+-- is unchanged: an `NInt` tree cannot contain `aflit` or `ai2f`, so the index
+-- does the restricting and no case analysis is added.
+eval-arith : ∀ {sh} → MArithIR sh NInt → ⟦ sh ⟧S → ℤ
 eval-arith {sh} (alit z)     _   = z
 eval-arith {sh} (ainput p)   inp with project sh p inp
 ... | just z   = z
@@ -99,7 +125,15 @@ eval-arith (aneg a)   inp = ℤ.- eval-arith a inp
 shape-as-type : InputShape → Type
 shape-as-type shape-unit       = Unit
 shape-as-type shape-int        = Int
+shape-as-type shape-float      = T.Float
 shape-as-type (shape-pair l r) = shape-as-type l T.* shape-as-type r
+
+-- | …and the RESULT kind's `Type` (plan 0.75 F4). A block used to be
+-- `IR (shape-as-type sh) Int` with the codomain fixed; now the codomain is
+-- whichever number kind the body computes.
+numtype-as-type : NumType → Type
+numtype-as-type NInt   = Int
+numtype-as-type NFloat = T.Float
 
 ------------------------------------------------------------------------
 -- ArithBlock: the package recognition produces
@@ -114,7 +148,12 @@ record ArithBlock : Set where
   constructor mk-block
   field
     block-shape : InputShape
-    block-body  : MArithIR block-shape
+    -- PLAN 0.75 F4: which number kind the block RETURNS. The body is indexed
+    -- by it, so a block is self-describing about whether the backend should
+    -- emit integer or float instructions — the emitter never has to re-derive
+    -- it from the CCC type.
+    block-kind  : NumType
+    block-body  : MArithIR block-shape block-kind
 
 ------------------------------------------------------------------------
 -- Counts (for register allocation, Phase F)
@@ -122,8 +161,12 @@ record ArithBlock : Set where
 
 -- | Number of leaves (literals + input projections). Sethi–Ullman's
 -- starting estimate for the register budget.
-leaf-count : ∀ {sh} → MArithIR sh → ℕ
+-- Kind-POLYMORPHIC: register pressure is about the tree's shape, not about
+-- which register file the values live in. `ai2f` is a leaf-preserving unary
+-- node like `aneg`.
+leaf-count : ∀ {sh n} → MArithIR sh n → ℕ
 leaf-count (alit _)     = 1
+leaf-count (aflit _)    = 1
 leaf-count (ainput _)   = 1
 leaf-count (aadd a b)   = leaf-count a ℕ.+ leaf-count b
 leaf-count (asub a b)   = leaf-count a ℕ.+ leaf-count b
@@ -131,3 +174,4 @@ leaf-count (amul a b)   = leaf-count a ℕ.+ leaf-count b
 leaf-count (adiv a b)   = leaf-count a ℕ.+ leaf-count b
 leaf-count (amod a b)   = leaf-count a ℕ.+ leaf-count b
 leaf-count (aneg a)     = leaf-count a
+leaf-count (ai2f a)     = leaf-count a

@@ -35,22 +35,26 @@ open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Type using (Type; Int)
 open import Once.SigOp.Info using (SigOpInfo; mk-info; name; Pure)
-open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Prod; con-base)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-Float; base-Prod; con-base)
 open import Once.CanonicalName using (bare)
 
 open import Once.Arith.Machine.AbsState
-  using (InputShape; shape-unit; shape-int; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd)
+  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.IR
-  using (MArithIR; alit; ainput; aadd; asub; amul; adiv; amod; aneg;
+  using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
+         numtype-as-type;
          shape-as-type; ArithBlock; mk-block)
 import Once.Word as OnceWord
 -- PLAN 0.74 J5: was `module W = OnceWord.Word64`. `block-semM` is the
 -- definitional modular-`Word` evaluator an arith BLOCK denotes, and a block
 -- is lowered by all three backends, so its width is the target's.
-open import Once.Target.Arch using (TargetNum; int-bits)
+open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 module W (tn : TargetNum) = OnceWord.Width (int-bits tn)
 
 open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (Decimal; sig; exp10; round)
+import Once.Float.Arith as FA
+open import Once.Arith.Type using (NumType; NInt; NFloat)
 import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
 -- (Core ℤ as I removed: block-info's semI deleted — block-semM is the meaning.)
 
@@ -76,6 +80,14 @@ show-zlit : ℤ → String
 show-zlit (+_ n)         = showℕ n ++ "_"
 show-zlit (-[1+_] n)     = "n" ++ showℕ (suc n) ++ "_"
 
+-- | …and a `Decimal` payload, as its two fields (plan 0.75 F4). Rendered
+-- UNNORMALISED, because the payload is: `0.5` and `0.50` are distinct records
+-- (D116) and therefore distinct blocks. They round to the same word, so the
+-- two bodies are identical — a missed sharing opportunity, never a wrong
+-- answer, and `Once.Float.Decimal` pins the pair agreeing.
+show-dlit : Decimal → String
+show-dlit d = show-zlit (sig d) ++ showℕ (exp10 d) ++ "_"
+
 -- | Render an MArithIR tree as a stable, alphanumeric-only digest.
 -- Plan 0.20 Phase G: the digest is used as the suffix of an assembly
 -- symbol (`once_arith.block.<digest>`), so it must avoid spaces /
@@ -84,8 +96,16 @@ show-zlit (-[1+_] n)     = "n" ++ showℕ (suc n) ++ "_"
 --   A = add, B = sub, M = mul, G = neg.
 -- Leaves: `L` for literal, `I` for input projection. Terminators
 -- (`_`, `Z`) keep the encoding prefix-free.
-show-arith-ir : ∀ {sh} → MArithIR sh → String
+--
+-- PLAN 0.75 F4: `F` for a float literal and `C` for the D125 widening. The
+-- digest must SEPARATE the kinds — `1 + 2` at `Int` and at `Float` are
+-- different blocks needing different instructions, and a digest that collided
+-- them would link one body for both. The `NumType` index does not appear in
+-- the string because it is DETERMINED by the leaves: a tree containing `F` or
+-- `C` is a float tree and no other tree is.
+show-arith-ir : ∀ {sh n} → MArithIR sh n → String
 show-arith-ir (alit z)     = "L" ++ show-zlit z
+show-arith-ir (aflit d)    = "F" ++ show-dlit d
 show-arith-ir (ainput p)   = "I" ++ show-path p
 show-arith-ir (aadd a b)   = "A" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (asub a b)   = "B" ++ show-arith-ir a ++ show-arith-ir b
@@ -93,16 +113,17 @@ show-arith-ir (amul a b)   = "M" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (adiv a b)   = "D" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (amod a b)   = "R" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (aneg a)     = "G" ++ show-arith-ir a
+show-arith-ir (ai2f a)     = "C" ++ show-arith-ir a
 
 -- | The digest is just the serialisation. (A hash function would be
 -- stable across re-renders and shorter; the plan's "64-bit hex digest"
 -- is a Phase E follow-up. The serialisation is sufficient for
 -- correctness; only symbol-table size suffers.)
-block-digest : ∀ {sh} → MArithIR sh → String
+block-digest : ∀ {sh n} → MArithIR sh n → String
 block-digest e = show-arith-ir e
 
 -- | The canonical name for an arith block.
-block-name : ∀ {sh} → MArithIR sh → String
+block-name : ∀ {sh n} → MArithIR sh n → String
 block-name e = "arith.block." ++ block-digest e
 
 ------------------------------------------------------------------------
@@ -127,13 +148,27 @@ block-name e = "arith.block." ++ block-digest e
 -- | Project a `Word` leaf out of a machine-typed input tree. Parallel
 -- to `project` (AbsState) but over `M.⟦ shape-as-type sh ⟧` rather
 -- than `⟦ sh ⟧S`.
-projectM : ∀ (sh : InputShape) → InputPath → M.⟦ shape-as-type sh ⟧ → Maybe OnceWord.Carrier
-projectM shape-unit       _         _       = nothing
-projectM shape-int        []        z       = just z
-projectM shape-int        (_ ∷ _)   _       = nothing
-projectM (shape-pair _ _) []        _       = nothing
-projectM (shape-pair l _) (Fst ∷ p) (x , _) = projectM l p x
-projectM (shape-pair _ r) (Snd ∷ p) (_ , y) = projectM r p y
+-- PLAN 0.75 F4: TAKES THE KIND, and that is a correctness fix rather than
+-- bookkeeping. At the machine level BOTH leaves are `Carrier` — a bit pattern
+-- (D113) — so a kind-blind projection would happily read an `Int` leaf's word
+-- as a float pattern for an `ainput` at `NFloat`, and the types could not
+-- object because the carriers are equal. Silent type confusion, invisible to
+-- every gate: exactly the shape this branch has found three times.
+--
+-- Asking for the kind makes a mismatched path `nothing`, which the caller
+-- defaults. Recognition only ever builds paths that land on the right leaf;
+-- this is what says so.
+projectM : NumType → ∀ (sh : InputShape) → InputPath → M.⟦ shape-as-type sh ⟧ → Maybe OnceWord.Carrier
+projectM _      shape-unit       _         _       = nothing
+projectM NInt   shape-int        []        z       = just z
+projectM NInt   shape-int        (_ ∷ _)   _       = nothing
+projectM NFloat shape-int        _         _       = nothing
+projectM NFloat shape-float      []        w       = just w
+projectM NFloat shape-float      (_ ∷ _)   _       = nothing
+projectM NInt   shape-float      _         _       = nothing
+projectM _      (shape-pair _ _) []        _       = nothing
+projectM k      (shape-pair l _) (Fst ∷ p) (x , _) = projectM k l p x
+projectM k      (shape-pair _ r) (Snd ∷ p) (_ , y) = projectM k r p y
 
 -- | Default-zero for an out-of-shape path (mirrors `eval-arith`'s
 -- `+ 0` rule; well-formed IRs never hit it).
@@ -141,15 +176,37 @@ maybe-zeroM : Maybe OnceWord.Carrier → OnceWord.Carrier
 maybe-zeroM (just w) = w
 maybe-zeroM nothing  = 0
 
-block-semM : ∀ {sh} → MArithIR sh → TargetNum → M.⟦ shape-as-type sh ⟧ → M.⟦ Int ⟧
+-- PLAN 0.75 F4: kind-indexed, and the ops DISPATCH ON THE KIND. `Once.Word`'s
+-- modular ops for `Int`, `Once.Float.Arith`'s for `Float`, both reading the
+-- target out of the `TargetNum` they are handed — the same `semM` the per-op
+-- float SigOps use, so the blocked and per-op paths agree by construction
+-- rather than by two definitions that must be kept in step.
+-- The result type is `Carrier` OUTRIGHT, not `M.⟦ numtype-as-type n ⟧`. Both
+-- reduce to it, but only once `n` is concrete — and a theorem stated over an
+-- abstract `n` (`BlockSemBridge.eval≡semM`) needs the two sides to be the same
+-- type BEFORE any clause is written. `block-info` does the casing instead,
+-- where `n` is available.
+block-semM : ∀ {sh n} → MArithIR sh n → TargetNum
+           → M.⟦ shape-as-type sh ⟧ → OnceWord.Carrier
 block-semM (alit z)        tn _   = W.fromℤ tn z
-block-semM {sh} (ainput p) tn inp = maybe-zeroM (projectM sh p inp)
-block-semM (aadd a b)      tn inp = W._⊕_  tn (block-semM a tn inp) (block-semM b tn inp)
-block-semM (asub a b)      tn inp = W._⊖_  tn (block-semM a tn inp) (block-semM b tn inp)
-block-semM (amul a b)      tn inp = W._⊗_  tn (block-semM a tn inp) (block-semM b tn inp)
+block-semM (aflit d)       tn _   = round (float-format tn) d
+-- SPLIT ON THE KIND even though the two bodies are identical: the result type
+-- `M.⟦ numtype-as-type n ⟧` does not reduce while `n` is a variable, and both
+-- branches reduce it to the same `Carrier`. The duplication is the type
+-- checker's price for the carrier being shared, not a real case distinction.
+block-semM {sh} {NInt}   (ainput p) tn inp = maybe-zeroM (projectM NInt   sh p inp)
+block-semM {sh} {NFloat} (ainput p) tn inp = maybe-zeroM (projectM NFloat sh p inp)
+block-semM {n = NInt}   (aadd a b) tn inp = W._⊕_  tn (block-semM a tn inp) (block-semM b tn inp)
+block-semM {n = NFloat} (aadd a b) tn inp = FA.fadd (float-format tn) (block-semM a tn inp) (block-semM b tn inp)
+block-semM {n = NInt}   (asub a b) tn inp = W._⊖_  tn (block-semM a tn inp) (block-semM b tn inp)
+block-semM {n = NFloat} (asub a b) tn inp = FA.fsub (float-format tn) (block-semM a tn inp) (block-semM b tn inp)
+block-semM {n = NInt}   (amul a b) tn inp = W._⊗_  tn (block-semM a tn inp) (block-semM b tn inp)
+block-semM {n = NFloat} (amul a b) tn inp = FA.fmul (float-format tn) (block-semM a tn inp) (block-semM b tn inp)
 block-semM (adiv a b)      tn inp = W._/ˢ_ tn (block-semM a tn inp) (block-semM b tn inp)
 block-semM (amod a b)      tn inp = W._%ˢ_ tn (block-semM a tn inp) (block-semM b tn inp)
-block-semM (aneg a)        tn inp = W.⊝_   tn (block-semM a tn inp)
+block-semM {n = NInt}   (aneg a)   tn inp = W.⊝_   tn (block-semM a tn inp)
+block-semM {n = NFloat} (aneg a)   tn inp = FA.fneg (float-format tn) (block-semM a tn inp)
+block-semM (ai2f a)        tn inp = FA.i2f (float-format tn) (W.toℤ tn (block-semM a tn inp))
 
 -- | The block's `SigOpInfo`.
 --
@@ -161,11 +218,24 @@ block-semM (aneg a)        tn inp = W.⊝_   tn (block-semM a tn inp)
 shape-as-type-base : ∀ (sh : InputShape) → IsBaseType (shape-as-type sh)
 shape-as-type-base shape-unit       = base-Unit
 shape-as-type-base shape-int        = base-Int
+shape-as-type-base shape-float      = base-Float
 shape-as-type-base (shape-pair l r) = base-Prod (shape-as-type-base l) (shape-as-type-base r)
 
-block-info : ∀ {sh} → MArithIR sh → SigOpInfo (shape-as-type sh) Int
-block-info {sh} e = mk-info
+-- …and the codomain's, which used to be the constant `base-Int`.
+numtype-as-type-base : ∀ (n : NumType) → IsBaseType (numtype-as-type n)
+numtype-as-type-base NInt   = base-Int
+numtype-as-type-base NFloat = base-Float
+
+-- Split on the kind so `M.⟦ numtype-as-type n ⟧` reduces to `block-semM`'s
+-- `Carrier`; the two branches are otherwise identical.
+block-info : ∀ {sh n} → MArithIR sh n → SigOpInfo (shape-as-type sh) (numtype-as-type n)
+block-info {sh} {NInt} e = mk-info
   (bare (block-name e))
   (block-semM e)
   Pure  -- arith blocks are observably pure (no event, no halt)
-  (shape-as-type-base sh) (con-base base-Int)
+  (shape-as-type-base sh) (con-base (numtype-as-type-base NInt))
+block-info {sh} {NFloat} e = mk-info
+  (bare (block-name e))
+  (block-semM e)
+  Pure
+  (shape-as-type-base sh) (con-base (numtype-as-type-base NFloat))
