@@ -140,6 +140,11 @@ it misbehaves.
 
 ### Step 2 — object-level weakening for `RTy`/`RTm`, then `extS`, then `subTm`
 
+⚠⚠ **READ `HANDOFF-2026-08-27` §A′ BEFORE STARTING.** The uniform shift
+that `WkTm`/`WkFin` use is wrong for `◇`, and — the point — it does not
+FAIL there, it fabricates a context and type-checks. The motive has to be
+sort-dependent. Derived on paper, not yet compiled; spike `◇` first.
+
 ⚠ **THE ORDER IS FORCED, AND IT IS SHORTER THAN IT LOOKS.**
 `extS σ (vs x) = renTm vs (σ x)` — weakening by ONE, not a general
 renaming. ⇒ **general renaming is never needed.** The chain is
