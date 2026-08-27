@@ -176,13 +176,21 @@ where that bites — its two `iρ` fields need OPPOSITE treatments.
 (`cTy-IMu`, `cTm-cIMu`, `cDCon-kap`, `cIDesc-cons`) · **2** depth-Forded
 (`cVar-vz`, `cVar-vs`).
 
-⬜ **WHAT IS LEFT IS `Lib/IWk` — computing the rule, not discovering it.**
-`Lib/ISz`'s step (method from the `ICon`, tuple from the `IDesc`) needs
-ONE predicate: *does this field's index expression mention the ambient?*
-— yes ⇒ the IH, no ⇒ the original field. ⚠ A predicate on raw `RTm`
-INDICES, not on the `ICon` constructor: `iρ` covers both cases, one row
-apart. The depth fords are not a third case; `IConWf` already separates
-them via `icw-ford`.
+⬜ **`Lib/IWk` IS STARTED** — the classifier is built and validated, the
+TYPING is not. ✅ the classification, the method and tuple computed from
+it, the DECIDER that computes the classification from a raw description,
+and `pinned-stable`. ⬜ `⊢iwkMethod`/`⊢iwkMeths`, and a per-row escape
+hatch. ⚠ `iwkMeths` produces a TERM; nothing yet says it inhabits
+`imethsTy`.
+
+★★ The decider is what makes it generic, and it is controlled
+(`Examples/Knot/WkProbe`): 12 row shapes classify, **and the two
+depth-Forded rows are REFUSED rather than mis-classified**. ⇒ therefore
+`decDesc KnotD ≡ nothing`, so the knot needs **51 computed rows plus 2
+given ones** — the split `Knot/Ctors`/`Knot/Build` already use.
+
+⇒ `Lib/IWk` §7 names the three remaining obligations and what each rests
+on; `HANDOFF-2026-08-27` §A″ has the state.
 
 ⚠ **THE ORDER IS FORCED, AND IT IS SHORTER THAN IT LOOKS.**
 `extS σ (vs x) = renTm vs (σ x)` — weakening by ONE, not a general
