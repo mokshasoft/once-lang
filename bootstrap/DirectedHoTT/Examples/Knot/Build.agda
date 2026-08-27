@@ -39,7 +39,7 @@
 --   per constructor in a derived lemma, not once per use, and uniform
 --   in the field's position.  That is the shape `⌈_⌉`'s typing will
 --   consume; it is `abstract-the-substituted-terms` applied to a
---   53-row table.
+--   55-row table.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -62,7 +62,8 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTm; sVar; ⊢sTm; ⊢sVar; toI; fromI; ⊢ixP
+  using ( IPair; sTy; sTm; sVar; sCtx; ⊢sTy; ⊢sTm; ⊢sVar; ⊢sCtx
+        ; toI; fromI; ⊢ixP
         ; num; ⊢num; num-ren; num-sub )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Tags
@@ -280,3 +281,131 @@ Var-vsK m x = icon tagVar-vs
     c0 : subTm σ2 (subTm (extS (single x)) (renTm vs (renTm vs (num n))))
        ≡ num n
     c0 = trans (cong (subTm σ2) w2x) (num-sub σ2 n)
+
+------------------------------------------------------------------------
+-- ★★ THE TWO `Ctx` ROWS — the 8th sort, hand-written for the same
+--    reason the `Var` rows are: they Ford the DEPTH.
+--
+-- ⚠ BUT `_▹_` IS A SHAPE THE TABLE DID NOT YET HAVE.  `Var`'s rows Ford
+--   the depth with at most ONE ordinary field beside the Ford; `_▹_` has
+--   TWO — a `Ctx` and an `RTy` — and BOTH sit at the BOUND field's depth
+--   rather than at the ambient's.  Five slots, and the deepest telescope
+--   in the table after `ordtr`'s six.
+--
+-- ★ AND IT COSTS ONE `kCast` AND ONE `⊢-cast`, no more.  Every mangled
+--   form of the two numerals comes back by `num-ren`/`num-sub`, one rung
+--   per action, exactly as the `Var` rows do — the extra field lengthens
+--   the chains without adding a KIND of obligation.  ⇒ the depth-Forded
+--   shape scales to fields, which is what the judgement layer will need
+--   (`_∋_∷_`'s index is a three-component telescope over the same).
+------------------------------------------------------------------------
+
+Ctx-empK : {Γ : Cx} → RTm Γ
+Ctx-empK = icon tagCtx-emp
+  (pair (idrefl ⌜Nat⌝ sCtx) (pair (idrefl ⌜Nat⌝ nzero) unit))
+
+-- ⚠ AT A LITERAL INDEX, SO NOT ONE TRANSPORT.  `◇` Fords the depth to
+--   `0`, so its ambient is the CLOSED `pair sCtx nzero` and both actions
+--   compute on it — `Knot/Terms`' situation, not `Var-vsK`'s.
+⊢Ctx-empK : {Δ : Ctx} → Δ ⊢ Ctx-empK ∷ K (pair sCtx (num 0))
+⊢Ctx-empK =
+  ⊢icon KnotWf memCtx-emp (⊢ixP ⊢sCtx ⊢nzero)
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                          (toI (⊢snd (⊢ixP ⊢sCtx ⊢nzero))) (toI ⊢nzero)))
+                 ty-Unit)
+           (fordFst ⊢sCtx)
+           (⊢pair ty-Unit (fordSnd ⊢nzero) ⊢unit))
+
+Ctx-extK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+Ctx-extK m g a = icon tagCtx-ext
+  (pair m (pair g (pair a (pair (idrefl ⌜Nat⌝ sCtx)
+                                (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))))
+
+⊢Ctx-extK : {Δ : Ctx} (n : ℕ) {g a : RTm ⌊ Δ ⌋} →
+            Δ ⊢ g ∷ K (pair sCtx (num n)) →
+            Δ ⊢ a ∷ K (pair sTy (num n)) →
+            Δ ⊢ Ctx-extK (num n) g a ∷ K (pair sCtx (num (suc n)))
+⊢Ctx-extK n {g = g} {a = a} dg da =
+  ⊢icon KnotWf memCtx-ext (⊢ixP ⊢sCtx (⊢num (suc n)))
+    -- level 0 — the bound depth `m`.  Both recursive fields still read
+    -- it as a VARIABLE here, hence the two `fromI (⊢var …)`.
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sCtx (fromI (⊢var here))))
+             (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here)))))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢fst (⊢ixP ⊢sCtx (⊢numAt (suc n) r3))))
+                              (toI ⊢sCtx)))
+                 (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                                (toI (⊢snd (⊢ixP ⊢sCtx (⊢numAt (suc n) r4))))
+                                (toI (⊢nsuc (fromI (⊢var (there (there (there here)))))))))
+                       ty-Unit))))
+           (toI (⊢num n))
+    -- level 1 — the `Ctx` field.  Its index is `single m`-substituted and
+    -- so COMPUTES to `num n`: `dg` goes in untouched.
+      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢numAt n q1)))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢fst (⊢ixP ⊢sCtx (⊢numAt (suc n) s31))))
+                              (toI ⊢sCtx)))
+                 (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                                (toI (⊢snd (⊢ixP ⊢sCtx (⊢numAt (suc n) s41))))
+                                (toI (⊢nsuc (⊢numAt n w3)))))
+                       ty-Unit)))
+             dg
+    -- level 2 — the `RTy` field.  ⚠ ONE rung further from the binder, so
+    -- its depth arrives as `subTm (single g) (renTm vs (num n))`: the
+    -- single `kCast` this row costs.
+        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢fst (⊢ixP ⊢sCtx (⊢numAt (suc n) s32))))
+                              (toI ⊢sCtx)))
+                 (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                                (toI (⊢snd (⊢ixP ⊢sCtx (⊢numAt (suc n) s42))))
+                                (toI (⊢nsuc (⊢numAt n f42)))))
+                       ty-Unit))
+               (kCast (sym q2) da)
+    -- level 3 — the SORT ford, free as everywhere else
+          (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                                (toI (⊢snd (⊢ixP ⊢sCtx (⊢numAt (suc n) s43))))
+                                (toI (⊢nsuc (⊢numAt n f43)))))
+                       ty-Unit)
+                 (fordFst ⊢sCtx)
+    -- level 4 — the DEPTH ford.  `fordSnd` forces the pair's second
+    -- component and the right-hand side to be the SAME term; here one is
+    -- the four-times-mangled ambient and the other is `suc` of the
+    -- three-times-mangled bound field, so BOTH need the cast.
+            (⊢pair ty-Unit
+                   (⊢-cast (cong₂ (λ z w → El (⌜Id⌝ ⌜Nat⌝ (snd (pair sCtx z))
+                                                          (nsuc w)))
+                                  (sym s44) (sym f44))
+                           (fordSnd (⊢nsuc (⊢num n))))
+                   ⊢unit)))))
+  where
+    r3 : renTm vs (renTm vs (renTm vs (num (suc n)))) ≡ num (suc n)
+    r3 = trans (cong (renTm vs) (trans (cong (renTm vs) (num-ren vs (suc n))) (num-ren vs (suc n)))) (num-ren vs (suc n))
+    s31 : subTm (extS (extS (single (num n)))) (renTm vs (renTm vs (renTm vs (num (suc n))))) ≡ num (suc n)
+    s31 = trans (cong (subTm (extS (extS (single (num n))))) r3) (num-sub (extS (extS (single (num n)))) (suc n))
+    s32 : subTm (extS (single g)) (subTm (extS (extS (single (num n)))) (renTm vs (renTm vs (renTm vs (num (suc n)))))) ≡ num (suc n)
+    s32 = trans (cong (subTm (extS (single g))) s31) (num-sub (extS (single g)) (suc n))
+
+    r4 : renTm vs (renTm vs (renTm vs (renTm vs (num (suc n))))) ≡ num (suc n)
+    r4 = trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (num-ren vs (suc n))) (num-ren vs (suc n)))) (num-ren vs (suc n)))) (num-ren vs (suc n))
+    s41 : subTm (extS (extS (extS (single (num n))))) (renTm vs (renTm vs (renTm vs (renTm vs (num (suc n)))))) ≡ num (suc n)
+    s41 = trans (cong (subTm (extS (extS (extS (single (num n)))))) r4) (num-sub (extS (extS (extS (single (num n))))) (suc n))
+    s42 : subTm (extS (extS (single g))) (subTm (extS (extS (extS (single (num n))))) (renTm vs (renTm vs (renTm vs (renTm vs (num (suc n))))))) ≡ num (suc n)
+    s42 = trans (cong (subTm (extS (extS (single g)))) s41) (num-sub (extS (extS (single g))) (suc n))
+    s43 : subTm (extS (single a)) (subTm (extS (extS (single g))) (subTm (extS (extS (extS (single (num n))))) (renTm vs (renTm vs (renTm vs (renTm vs (num (suc n)))))))) ≡ num (suc n)
+    s43 = trans (cong (subTm (extS (single a))) s42) (num-sub (extS (single a)) (suc n))
+    s44 : subTm (single (idrefl ⌜Nat⌝ sCtx)) (subTm (extS (single a)) (subTm (extS (extS (single g))) (subTm (extS (extS (extS (single (num n))))) (renTm vs (renTm vs (renTm vs (renTm vs (num (suc n))))))))) ≡ num (suc n)
+    s44 = trans (cong (subTm (single (idrefl ⌜Nat⌝ sCtx))) s43) (num-sub (single (idrefl ⌜Nat⌝ sCtx)) (suc n))
+
+    q1 : renTm vs (num n) ≡ num n
+    q1 = num-ren vs n
+    q2 : subTm (single g) (renTm vs (num n)) ≡ num n
+    q2 = trans (cong (subTm (single g)) q1) (num-sub (single g) n)
+
+    w3 : renTm vs (renTm vs (renTm vs (num n))) ≡ num n
+    w3 = trans (cong (renTm vs) (trans (cong (renTm vs) (num-ren vs n)) (num-ren vs n))) (num-ren vs n)
+    f42 : subTm (extS (extS (single g))) (renTm vs (renTm vs (renTm vs (num n)))) ≡ num n
+    f42 = trans (cong (subTm (extS (extS (single g)))) w3) (num-sub (extS (extS (single g))) n)
+    f43 : subTm (extS (single a)) (subTm (extS (extS (single g))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
+    f43 = trans (cong (subTm (extS (single a))) f42) (num-sub (extS (single a)) n)
+    f44 : subTm (single (idrefl ⌜Nat⌝ sCtx)) (subTm (extS (single a)) (subTm (extS (extS (single g))) (renTm vs (renTm vs (renTm vs (num n)))))) ≡ num n
+    f44 = trans (cong (subTm (single (idrefl ⌜Nat⌝ sCtx))) f43) (num-sub (single (idrefl ⌜Nat⌝ sCtx)) n)

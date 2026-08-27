@@ -5,7 +5,7 @@ This one takes the JUDGEMENTS. It is a build plan, not a spike record:
 the spikes are done and §1 says what they settled, so that nothing here
 is re-discovered.
 
-Read `HANDOFF-2026-08-26.md` first for session state; read
+Read `HANDOFF-2026-08-27.md` first for session state; read
 `tools/gen-knot.py`'s header for the syntax encoding this builds on.
 
 ---
@@ -41,25 +41,75 @@ Three facts from those that shape everything below:
   not block it; it does not show the code exists.
 * `extS` needs a **`Fin` eliminator** to case on `vz`/`vs`. That is
   `WkFin`-shaped and known to work, but is not written.
-* **`Ctx` is not encoded.** It is an 8th sort, and it is not among the 53
-  — it lives in `Spec/Typing`, not `Spec/Syntax`.
+* ~~**`Ctx` is not encoded.**~~ ✅ DONE — step 0 below. It is the 8th
+  sort, tags 7, rows 54–55, and it lives in `Spec/Typing` rather than
+  `Spec/Syntax`, which is why the generator's coverage check now reads
+  two files.
 * Reduction is tested only at **small concrete inputs**. Nothing is known
   about `ielim` reduction at knot scale.
 * The **168 rows** are not written.
 
 ## 3. BUILD ORDER
 
-### Step 0 — `Ctx` as the 8th sort  ⟨cheap, independent⟩
+### Step 0 — `Ctx` as the 8th sort  ✅ **DONE 2026-08-27**
 
-`_▹_ : (Γ : Ctx) → RTy ⌊ Γ ⌋ → Ctx`. Index it by DEPTH, as the rest of
-the table is: `Ctx d → RTy d → Ctx (suc d)`. Then the `RTy` field sits at
-`pair sTy ⟨d⟩` — an ordinary cross-sort field at the ambient depth, so it
-costs nothing new. ⚠ `◇` Fords the depth to `0` and `_▹_` to `suc d`, so
-`Ctx` is a Forded family like `Var` and pays §1's transport where its
-index is consumed.
+`Ctx d → RTy d → Ctx (suc d)`, tags 7, rows 54 and 55 — **appended last**,
+so no existing tag and hence no `∈ID` position moved. Regenerated through
+`tools/gen-knot.py`, whose coverage check now reads **two files** (`Ctx`
+lives in `Spec/Typing`, not `Spec/Syntax`) and is controlled: deleting
+`_▹_` from the table makes it report `✗ Ctx: missing ['_▹_']`.
 
-⇒ regenerate through `tools/gen-knot.py`; its coverage check must be
-extended to `Spec/Typing`'s `Ctx` or it will not see the new sort.
+| | |
+|---|---|
+| `Desc`/`Wf`/`Tags`/`Ctors`/`Map` | regenerated, all green |
+| the two rows' smart constructors | `Knot/Build`, hand-written |
+| the adequacy map | `enCtx`/`⊢enCtx` in `Knot/Map` |
+
+★ **THE ROW FORMULA ABOVE WAS RIGHT; THE SENTENCE PRICING IT WAS NOT.**
+`Ctx d → RTy d → Ctx (suc d)` targets `suc d`, so the `RTy` field does
+**not** sit at `pair sTy ⟨d⟩` and is not "an ordinary cross-sort field at
+the ambient depth": BOTH recursive fields sit at the **bound field's**
+depth `m`. That is what makes `_▹_` a shape the table did not previously
+have — `Var`'s rows Ford the depth with
+at most ONE ordinary field beside the Ford; this one has two, and the
+telescope is five slots, the deepest after `ordtr`'s six.
+
+★★ **AND THE DEPTH-FORDED SHAPE SCALES TO FIELDS.** `⊢Ctx-extK` costs
+exactly **one `kCast` and one `⊢-cast`** — every mangled form of the two
+numerals comes back by `num-ren`/`num-sub`, one rung per action, exactly as
+the `Var` rows do. The extra field lengthens the chains without adding a
+KIND of obligation. ⇒ nothing here argues against §3 step 1's three-
+component telescope.
+
+⚠ `◇` IS AT A LITERAL INDEX AND SO COSTS NOTHING. It Fords the depth to
+`0`, so its ambient is the closed `pair sCtx nzero` and both actions
+compute on it — `Knot/Terms`' situation, not `Var-vsK`'s.
+
+**Measured, cold, on the same 7.7 GB box** — the two rows are free:
+
+| | 53 rows | 55 rows |
+|---|---|---|
+| `Knot/Wf`, `-A64m` | OOM at 76s | OOM at 80s |
+| `Knot/Wf`, `-A64m -c` | 104s | **99s** |
+| `Knot/Ctors` | 21s | 15s |
+| `Knot/Build` | — | 6s |
+| `Knot/Map` | 4s | 3s |
+
+⇒ the "needs the compacting collector" marker was **re-measured and is
+still right** (the plan's §5 warning about stale markers applies, and this
+time the marker survived it). And +2 rows moved the number by less than the
+±12% noise floor: **the cost is the SHAPE of a row, not the count.**
+
+⚠ THE NEGATIVE CONTROL, run on the new rows and not merely on the
+mechanism. `Knot/Map`'s `Ctx` clause is the ONLY place where Agda's own
+`_▹_` meets the table, and it is load-bearing:
+
+| perturbation of `⊢enCtx (Γ ▹ A)` | |
+|---|---|
+| swap the two recursive arguments | rejected: `enTy A != enCtx Γ` |
+| depth `suc (len ⌊ Γ ⌋)` | rejected: `nsuc (num …) != num …` |
+
+⇒ field ORDER and the DEPTH are both pinned by the map, for these rows.
 
 ### Step 1 — ★ `_∋_∷_`  ⟨THE FIRST REAL JUDGEMENT, and it is reachable NOW⟩
 
@@ -74,6 +124,14 @@ the `Tm` case and which needs the same treatment for `RTy`.
 no machinery beyond what exists, and it is the smallest thing that
 demonstrates a RELATION over encoded syntax. It is this increment's
 `step 1a`.
+
+⚠ **WHAT STEP 0 DID AND DID NOT UNBLOCK.** `Ctx` is now a sort, so the
+index telescope is WRITABLE. What is still missing is `renTy vs` as an
+`ielim` over the knot returning a knot element — `Examples/WkTm` does it
+for a 3-constructor toy, and the knot has 55. ⚠ Per `Lib/IFold`'s result
+that must be a fold COMPUTED from the description, not 55 enumerated
+methods; an enumerated one is the 147s-vs-5s mistake with a syntax
+codomain instead of `Nat`.
 
 ⚠ Its index is a THREE-component dependent telescope —
 `Σ' Nat (Σ' (Ctx ⟨d⟩) (Σ' (Var ⟨d⟩) (RTy ⟨d⟩)))`. §1a tested two
@@ -151,10 +209,16 @@ Others, each of which cost a cycle:
 
 | | |
 |---|---|
-| `Knot/Wf` (53 `IConWf`) | 104s, **needs `-c`** |
-| `Knot/Ctors` (51 smart ctors) | 21s |
-| `Knot/Map` (the adequacy map) | 4s |
+| `Knot/Wf` (55 `IConWf`) | 99s, **needs `-c`** (re-measured 08-27) |
+| `Knot/Ctors` (51 smart ctors) | 15s |
+| `Knot/Build` (the 4 hand-written rows) | 6s |
+| `Knot/Map` (the adequacy map) | 3s |
 | `Knot/Sz` (via `Lib/IFold`) | 3s |
+
+★ **AND +2 ROWS COST NOTHING** (53 → 55 moved `Wf` from 104s to 99s,
+inside the ±12% noise floor). The driver is a row's TELESCOPE DEPTH, not
+the row count — which is the number that matters for §3, because the
+judgement rows are ~3× as many but no deeper.
 
 ⚠ A "needs `-c`" header is a claim about a **shape**, not a module:
 `Knot/Sz`'s was stale within minutes of being written. Re-measure when

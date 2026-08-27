@@ -3,25 +3,26 @@
 --
 -- Regenerate with:  python3 tools/gen-knot.py
 --
--- 53 constructors over 7 sorts, one description, index `Σ' Nat Nat`.
--- The table, the encoding decisions and the two exceptions (`Var`'s
--- depth-Fording) are documented in the generator's header — read that,
--- not this file, to understand the encoding.
+-- 55 constructors over 8 sorts, one description, index `Σ' Nat Nat`.
+-- The table, the encoding decisions and the exceptions (`Var`'s and
+-- `Ctx`'s depth-Fording) are documented in the generator's header —
+-- read that, not this file, to understand the encoding.
 ------------------------------------------------------------------------
 
 -- ⚠⚠ THIS MODULE NEEDS THE **COMPACTING COLLECTOR**.
 --
---   53 `IConWf`s in one module, measured cold on a 7.7 GB box,
---   and RE-MEASURED 2026-08-26 after `Knot/Sz`'s marker turned out
---   to be stale — this one is not:
---     -A64m       OOM (143) at 76s;
---     -A64m -c    104s, comfortably.
+--   55 `IConWf`s in one module, measured cold on a 7.7 GB box.
+--   RE-MEASURED 2026-08-27 with the two `Ctx` rows added — the
+--   marker is STILL RIGHT, and the two extra rows are free:
+--     -A64m       OOM (143) at 80s   (53 rows: 76s);
+--     -A64m -c    99s, comfortably   (53 rows: 104s).
+--   ⇒ +2 rows moved the number by less than the ±12% noise floor.
 --
 --   `tools/sweep.sh` greps this header for the phrase above and
 --   switches collectors on its own (`needs_c`), which is why the
 --   words are spelled out rather than described.
 --
--- ★ AND THE COST IS THE 53 ROWS, NOT THE ASSEMBLY.  Dropping
+-- ★ AND THE COST IS THE 55 ROWS, NOT THE ASSEMBLY.  Dropping
 --   `KnotWf` and keeping only the individual `IConWf`s does not
 --   move the number.  Splitting the module would not either
 --   (`agda-oom-is-a-gc-choice`: splitting measured cost-neutral);
@@ -42,8 +43,8 @@ open import DirectedHoTT.Spec.Typing
         ; ICodeWf; icw-clo; icw-ford
         ; IDescWf; idwf-nil; idwf-cons )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
-        ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar
+  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar; sCtx
+        ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar; ⊢sCtx
         ; toI; fromI; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc
   using ( KnotD
@@ -99,7 +100,9 @@ open import DirectedHoTT.Examples.Knot.Desc
         ; cICon-rho
         ; cICon-kap
         ; cVar-vz
-        ; cVar-vs )
+        ; cVar-vs
+        ; cCtx-emp
+        ; cCtx-ext )
 
 cTy-baseWf : IConWf KnotD IPair (◇ ▹ IPair) cTy-base
 cTy-baseWf =
@@ -454,6 +457,21 @@ cVar-vsWf =
      (iwf-κ (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs (vs vz))))) (nsuc (var (vs (vs vz))))) (icw-ford ⌜Nat⌝ (snd (var (vs (vs (vs vz))))) (nsuc (var (vs (vs vz))))) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢var (there (there (there here)))))) (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
       iwf-ι)))
 
+cCtx-empWf : IConWf KnotD IPair (◇ ▹ IPair) cCtx-emp
+cCtx-empWf =
+  iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var vz)) sCtx) (icw-ford ⌜Nat⌝ (fst (var vz)) sCtx) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var here))) (toI ⊢sCtx))
+   (iwf-κ (⌜Id⌝ ⌜Nat⌝ (snd (var (vs vz))) nzero) (icw-ford ⌜Nat⌝ (snd (var (vs vz))) nzero) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢var (there here)))) (toI ⊢nzero))
+    iwf-ι)
+
+cCtx-extWf : IConWf KnotD IPair (◇ ▹ IPair) cCtx-ext
+cCtx-extWf =
+  iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
+   (iwf-ρ (pair sCtx (var vz)) (⊢ixP ⊢sCtx (fromI (⊢var here)))
+    (iwf-ρ (pair sTy (var (vs vz))) (⊢ixP ⊢sTy (fromI (⊢var (there here))))
+     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sCtx) (icw-ford ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) sCtx) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI ⊢sCtx))
+      (iwf-κ (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs vz)))))) (icw-ford ⌜Nat⌝ (snd (var (vs (vs (vs (vs vz)))))) (nsuc (var (vs (vs (vs vz)))))) (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢var (there (there (there (there here))))))) (toI (⊢nsuc (fromI (⊢var (there (there (there here))))))))
+       iwf-ι))))
+
 -- ★★★ …AND THE WHOLE KNOT IS WELL-FORMED.
 KnotWf : IDescWf IPair KnotD
 KnotWf =
@@ -510,4 +528,6 @@ KnotWf =
                                                     (idwf-cons cICon-kapWf
                                                      (idwf-cons cVar-vzWf
                                                       (idwf-cons cVar-vsWf
-                                                       idwf-nil))))))))))))))))))))))))))))))))))))))))))))))))))))
+                                                       (idwf-cons cCtx-empWf
+                                                        (idwf-cons cCtx-extWf
+                                                         idwf-nil))))))))))))))))))))))))))))))))))))))))))))))))))))))
