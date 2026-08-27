@@ -498,6 +498,63 @@ infer-complete-RVar-import {ctx} x {T} ¬unit eqLoc eqImp conc
 -- PLAN 0.75 F4: the float twin. Same proof, three ops instead of five —
 -- `isFloatArithmeticOp` admits only `+`, `−` and `×`, so `refl` refutes the
 -- rest before any case analysis happens.
+-- D125's mixed forms. Two more lemmas rather than one parameterised by which
+-- side widens: the operand TYPES differ, so the two statements have genuinely
+-- different types and sharing them would need an index nothing else wants.
+infer-complete-RBinOp-arith-float-il :
+  ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
+    (e₁ e₂ : RawExpr)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
+    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ T.Float}
+    {d₁ d₂ f₁ f₂ : ℕ}
+  → inferElab ctx e₁ ≡ success Int Ψ₁ e₁E d₁ f₁
+  → inferElab ctx e₂ ≡ success T.Float Ψ₂ e₂E d₂ f₂
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
+infer-complete-RBinOp-arith-float-il {ctx} Raw.OpAdd refl e₁ e₂ eq₁ eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success Int _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success T.Float _ _ _ _ , _ | refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-il {ctx} Raw.OpSub refl e₁ e₂ eq₁ eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success Int _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success T.Float _ _ _ _ , _ | refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-il {ctx} Raw.OpMul refl e₁ e₂ eq₁ eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success Int _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success T.Float _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+infer-complete-RBinOp-arith-float-ir :
+  ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
+    (e₁ e₂ : RawExpr)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ T.Float}
+    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+    {d₁ d₂ f₁ f₂ : ℕ}
+  → inferElab ctx e₁ ≡ success T.Float Ψ₁ e₁E d₁ f₁
+  → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success T.Float (Ψ₁ +ᵘ Ψ₂) eE d f
+infer-complete-RBinOp-arith-float-ir {ctx} Raw.OpAdd refl e₁ e₂ eq₁ eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success T.Float _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Int _ _ _ _ , _ | refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-ir {ctx} Raw.OpSub refl e₁ e₂ eq₁ eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success T.Float _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Int _ _ _ _ , _ | refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-ir {ctx} Raw.OpMul refl e₁ e₂ eq₁ eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success T.Float _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Int _ _ _ _ , _ | refl = _ , _ , _ , refl
+
 infer-complete-RBinOp-arith-float :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
     (e₁ e₂ : RawExpr)
@@ -1595,6 +1652,12 @@ mutual
   iFromInfer (t-binop-arith-float {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
     let (_ , _ , _ , eqI) = infer-complete (t-binop-arith-float arithEq d₁ d₂)
     in checkElab-fallback-RBinOp op e₁ e₂ T.Float eqI
+  iFromInfer (t-binop-arith-float-il {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
+    let (_ , _ , _ , eqI) = infer-complete (t-binop-arith-float-il arithEq d₁ d₂)
+    in checkElab-fallback-RBinOp op e₁ e₂ T.Float eqI
+  iFromInfer (t-binop-arith-float-ir {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
+    let (_ , _ , _ , eqI) = infer-complete (t-binop-arith-float-ir arithEq d₁ d₂)
+    in checkElab-fallback-RBinOp op e₁ e₂ T.Float eqI
   iFromInfer (t-binop-cmp {op = op} {e₁ = e₁} {e₂ = e₂} cmpEq d₁ d₂) =
     let (_ , _ , _ , eqI) = infer-complete (t-binop-cmp cmpEq d₁ d₂)
     in checkElab-fallback-RBinOp op e₁ e₂ (Unit T.+ Unit) eqI
@@ -1739,6 +1802,16 @@ mutual
     let (_ , _ , _ , eq₁) = infer-complete d₁
         (_ , _ , _ , eq₂) = infer-complete d₂
     in infer-complete-RBinOp-arith-float op arithEq e₁ e₂ eq₁ eq₂
+  infer-complete
+    (t-binop-arith-float-il {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
+    let (_ , _ , _ , eq₁) = infer-complete d₁
+        (_ , _ , _ , eq₂) = infer-complete d₂
+    in infer-complete-RBinOp-arith-float-il op arithEq e₁ e₂ eq₁ eq₂
+  infer-complete
+    (t-binop-arith-float-ir {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
+    let (_ , _ , _ , eq₁) = infer-complete d₁
+        (_ , _ , _ , eq₂) = infer-complete d₂
+    in infer-complete-RBinOp-arith-float-ir op arithEq e₁ e₂ eq₁ eq₂
   infer-complete
     (t-binop-cmp {op = op} {e₁ = e₁} {e₂ = e₂} cmpEq d₁ d₂) =
     let (_ , _ , _ , eq₁) = infer-complete d₁

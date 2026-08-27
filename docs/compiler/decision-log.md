@@ -8951,3 +8951,99 @@ way, it is a live check that the fold and the rule landed together: had the
 elaborator folded without a rule in `_⊢ᵢ_∶_⨾_`, that `()` would not typecheck.
 
 **Relates**: D054, D113, D116, D117, D118, D120, D122
+
+## D125: `Int` Widens to `Float` Implicitly; `Float` Does Not Narrow to `Int`
+
+**Date**: 2026-08-27 · **Status**: Decided (plan 0.75 F4) ·
+**Amends OCP-0002's "domain separation"** · **Extends D116's argument**
+
+### The decision
+
+`1 + 1.5` compiles. The `Int` operand is converted to `Float` by a CORRECTLY
+ROUNDED conversion, and the expression is a `Float`.
+
+`Float → Int` is NOT implicit and needs an explicit conversion.
+
+### What it replaces
+
+OCP-0002 (implemented 2025-12-28) said:
+
+> **Domain separation:** Mixing integers and floats is a type error.
+> This prevents subtle precision loss from implicit conversions.
+
+The concern was real; the remedy was inconsistent with what D116 later decided
+for the identical phenomenon one step away.
+
+### The argument is D116's, unchanged
+
+`3.14` is not exactly representable, and D116 does not refuse it — it ROUNDS,
+"because IEEE's promise INCLUDES rounding, exactly as `Int`'s promise includes
+wrapping (D054)". An `Int` above `2^(sig-bits+1)` is not exactly representable
+as a `Float` either. **It is the same phenomenon, and IEEE-754 says so
+explicitly**: `convertFromInt` is a correctly-rounded operation, in the same
+list as `+` and as decimal conversion. Refusing one while rounding the other
+was two answers to one question — the shape D113's lesson says to look for.
+
+**It is NOT D115's situation.** D115 refuses an out-of-range `Int` literal
+because the target cannot hold that value AT ALL; the number has no
+representation. An `Int` converted to `Float` always has one — approximately.
+Absent and approximate are different failures.
+
+### Measured, because the argument depends on the hardware agreeing
+
+    (double)(2^53 + 1)     x86-64  0x4340000000000000
+                           riscv64 0x4340000000000000
+
+Identical, and the value is `2^53` — it rounded, quietly, the same way on both.
+No per-arch divergence, so unlike D055 this needs no decision about WHICH
+answer and no backend guard: both targets already implement IEEE's conversion.
+
+### …and why the other direction is not symmetric
+
+    (long long)1e300       x86-64  0x8000000000000000   ("integer indefinite")
+                           riscv64 0x7fffffffffffffff   (SATURATES)
+    (long long)NaN         x86-64  0x8000000000000000
+                           riscv64 0x7fffffffffffffff
+
+The hardware DIVERGES, and on ordinary out-of-range values rather than an
+exotic corner. That is a third D055 situation, and it would need a decision
+about which answer Once promises plus a guard on the losing target. It is also
+a genuine narrowing where truncate-versus-round is a choice the programmer
+should make rather than inherit. Both reasons point the same way, so
+`Float → Int` stays explicit.
+
+### NO WARNING for the conversion, and the reason is a BOUND, not a shrug
+
+The compiler cannot know whether `x + 1.5` rounds — `x` is a runtime value. It
+does not need to: correct rounding means the error is **at most half an ulp**,
+and that same bound already covers `x + y` on two floats, and every arithmetic
+result, and every rounded literal. Warning per site would mean warning on every
+float operation in the program, which is exactly the noise D123's own header
+says kills a warning channel:
+
+> Silence on exactly-representable literals is pinned too: a warning channel
+> that fires on `0.5` is noise, and noise is how a warning channel dies.
+
+WHAT DOES WARN is the case where the exact answer is cheap and the position is
+known — an `Int` LITERAL being widened whose magnitude exceeds
+
+    2 ^ (sig-bits F + 1)        binary64: 2^53      binary32: 2^24
+
+below which every integer converts exactly. That reuses D123's channel and its
+rule unchanged: exact is silent, inexact reports with figures and a position.
+
+### Where the rule goes
+
+Two binop rules (`Int × Float` and `Float × Int`), not a general widening
+judgment. A widening judgment would be the right factoring the moment
+coercion is wanted at APPLICATION sites too — `f 1` for `f : Float → …` — and
+whoever needs that should introduce it rather than add a third and fourth binop
+rule.
+
+A subsumption rule `⊢ᵢ e ∶ Int → ⊢ᵢ e ∶ Float` was rejected outright: it makes
+inference ambiguous (`1` would infer at two types), and a unique inferred type
+is what the bidirectional discipline and `infer-complete` are built on.
+Subsumption belongs in CHECK mode, where `t-subsume` already lives.
+
+**Relates**: D054, D113, D115 (the distinction that does NOT apply), D116, D118,
+D123, D055 (why the other direction differs), OCP-0002 (amended)

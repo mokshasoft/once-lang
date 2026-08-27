@@ -60,7 +60,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _
   m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
   g-int; g-float; g-neg-int; g-neg-float; g-terminal; g-pair; g-inl; g-inr; g-In;
   t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
-  t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-let; t-case;
+  t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-app; t-effApp;
   t-morph-lift; t-value-lift; t-embed; t-lam; t-pair-lit-check;
@@ -76,7 +76,7 @@ open import Once.Adequacy.LiftFnReduce fmt using
 import Once.IR as IR
 open import Once.Arith.SigOp.Builders using (value-info;
   add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-  fadd-info; fsub-info; fmul-info;
+  fadd-info; fsub-info; fmul-info; i2f-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.CanonicalName using (CanonicalName; bare)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-morph; realize-global; poly-usage-eq)
@@ -485,6 +485,45 @@ bridge-i (t-binop-arith-float {op = OpGt} () _ _)
 bridge-i (t-binop-arith-float {op = OpGe} () _ _)
 bridge-i (t-binop-arith-float {op = OpEq} () _ _)
 bridge-i (t-binop-arith-float {op = OpNe} () _ _)
+-- D125: the mixed forms. The trace SHAPE differs from the unmixed clauses —
+-- `i2f` is its own bind, so it contributes an `++ []` on whichever side widens
+-- — and the `cong₂` says exactly where. It is still one `cong₂` and not a
+-- `trans` chain, because `⟦_⟧ᵢ` was written to mirror the elaborated term's
+-- binds rather than to inline the conversion.
+bridge-i (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) re k =
+    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM fadd-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+bridge-i (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) re k =
+    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM fsub-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+bridge-i (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) re k =
+    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM fmul-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+bridge-i (t-binop-arith-float-il {op = OpDiv} () _ _)
+bridge-i (t-binop-arith-float-il {op = OpMod} () _ _)
+bridge-i (t-binop-arith-float-il {op = OpLt} () _ _)
+bridge-i (t-binop-arith-float-il {op = OpLe} () _ _)
+bridge-i (t-binop-arith-float-il {op = OpGt} () _ _)
+bridge-i (t-binop-arith-float-il {op = OpGe} () _ _)
+bridge-i (t-binop-arith-float-il {op = OpEq} () _ _)
+bridge-i (t-binop-arith-float-il {op = OpNe} () _ _)
+bridge-i (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) re k =
+    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM fadd-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+bridge-i (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) re k =
+    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM fsub-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+bridge-i (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) re k =
+    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM fmul-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+bridge-i (t-binop-arith-float-ir {op = OpDiv} () _ _)
+bridge-i (t-binop-arith-float-ir {op = OpMod} () _ _)
+bridge-i (t-binop-arith-float-ir {op = OpLt} () _ _)
+bridge-i (t-binop-arith-float-ir {op = OpLe} () _ _)
+bridge-i (t-binop-arith-float-ir {op = OpGt} () _ _)
+bridge-i (t-binop-arith-float-ir {op = OpGe} () _ _)
+bridge-i (t-binop-arith-float-ir {op = OpEq} () _ _)
+bridge-i (t-binop-arith-float-ir {op = OpNe} () _ _)
 bridge-i (t-binop-arith {op = OpLt} () _ _)
 bridge-i (t-binop-arith {op = OpLe} () _ _)
 bridge-i (t-binop-arith {op = OpGt} () _ _)

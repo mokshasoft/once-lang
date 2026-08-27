@@ -307,6 +307,48 @@ mutual
       → ctx ⊢ᵢ e₂ ∶ Float ⨾ Ψ₂
       → ctx ⊢ᵢ RBinOp op e₁ e₂ ∶ Float ⨾ (Ψ₁ +ᵘ Ψ₂)
 
+    -- MIXED OPERANDS: the `Int` side WIDENS (D125). `1 + 1.5` compiles.
+    --
+    -- This is D116's argument, not a convenience. `3.14` is not exactly
+    -- representable and D116 rounds it rather than refusing, "because IEEE's
+    -- promise INCLUDES rounding"; an `Int` above `2^(sig-bits+1)` is not
+    -- exactly representable either, and IEEE-754 lists `convertFromInt` as a
+    -- correctly-rounded operation beside `+`. Refusing one while rounding the
+    -- other was two answers to one question. It is NOT D115's case: D115
+    -- refuses a literal the target cannot hold AT ALL, and an `Int` always has
+    -- an approximate `Float`.
+    --
+    -- The error is bounded by half an ulp — the same bound that already covers
+    -- `x + y` on two floats — so there is no per-site warning; see D125 for why
+    -- a bound is the reason for silence rather than a shrug.
+    --
+    -- ONLY THIS DIRECTION. `Float → Int` stays explicit: the hardware DIVERGES
+    -- on it (x86 gives "integer indefinite", RISC-V SATURATES, measured), so it
+    -- is a D055 situation, and it is a narrowing where truncate-versus-round is
+    -- the programmer's call.
+    --
+    -- TWO RULES, not a widening judgment: coercion is wanted at exactly this
+    -- site today. If it is ever wanted at APPLICATION sites, factor a widening
+    -- judgment out rather than adding a third and fourth rule here. A
+    -- subsumption rule `⊢ᵢ e ∶ Int → ⊢ᵢ e ∶ Float` is NOT available — it makes
+    -- the inferred type ambiguous, which is what the bidirectional discipline
+    -- rests on.
+    t-binop-arith-float-il :
+      ∀ {ctx : NamedCtx} {op : BinOp} {e₁ e₂ : RawExpr}
+        {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      → isFloatArithmeticOp op ≡ true
+      → ctx ⊢ᵢ e₁ ∶ Int ⨾ Ψ₁
+      → ctx ⊢ᵢ e₂ ∶ Float ⨾ Ψ₂
+      → ctx ⊢ᵢ RBinOp op e₁ e₂ ∶ Float ⨾ (Ψ₁ +ᵘ Ψ₂)
+
+    t-binop-arith-float-ir :
+      ∀ {ctx : NamedCtx} {op : BinOp} {e₁ e₂ : RawExpr}
+        {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+      → isFloatArithmeticOp op ≡ true
+      → ctx ⊢ᵢ e₁ ∶ Float ⨾ Ψ₁
+      → ctx ⊢ᵢ e₂ ∶ Int ⨾ Ψ₂
+      → ctx ⊢ᵢ RBinOp op e₁ e₂ ∶ Float ⨾ (Ψ₁ +ᵘ Ψ₂)
+
     t-binop-cmp : ∀ {ctx : NamedCtx} {op : BinOp} {e₁ e₂ : RawExpr}
                   {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
                 → isComparisonOp op ≡ true

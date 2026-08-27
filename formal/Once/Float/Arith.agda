@@ -289,6 +289,22 @@ fnegAt F w false = w + 2 ^ (exp-bits F + sig-bits F)
 fneg : FloatFormat → ℕ → ℕ
 fneg F w = fnegAt F w (2 ^ (exp-bits F + sig-bits F) ℕ.≤ᵇ w)
 
+-- | `Int` → `Float`, CORRECTLY ROUNDED (plan 0.75 F4, D125).
+--
+-- One line, and that is the argument. An integer `z` IS the exact binary value
+-- `z · 2^0`, so the conversion is the SAME `roundB` every arithmetic result
+-- goes through — not a second rounding story that could drift from the first.
+-- IEEE-754 lists `convertFromInt` as a correctly-rounded operation beside `+`,
+-- and this is that sentence in code.
+--
+-- Integers with `|z| ≤ 2 ^ (sig-bits F + 1)` convert EXACTLY (`bitLen` is then
+-- within the format's `P`, so `roundMag` drops nothing). That threshold is
+-- what D123's channel warns above, and only for LITERALS — a runtime value's
+-- error is bounded by half an ulp like every other rounding, which is why
+-- there is no per-site diagnostic.
+i2f : FloatFormat → ℤ → ℕ
+i2f F z = roundB F (z ·2^ (+ 0))
+
 ------------------------------------------------------------------------
 -- PINNED, and against the RIGHT authority
 --
@@ -394,4 +410,45 @@ _ = refl
 -- Overflow at the NARROWER format, from operands that are finite at binary64 —
 -- the asymmetry D113 exists to make expressible.
 _ : fmul binary32 0x7e967699 0x41200000 ≡ 0x7f800000
+_ = refl
+
+------------------------------------------------------------------------
+-- `Int` → `Float`, pinned (D125)
+--
+-- Measured on BOTH targets, which is what licenses the decision: unlike
+-- division-by-zero (D055) and unlike NaN, the hardware AGREES here, so there
+-- is no answer to choose and no backend guard to write.
+--
+--     (double)(2^53 + 1)   x86-64  0x4340000000000000
+--                          riscv64 0x4340000000000000
+------------------------------------------------------------------------
+
+_ : i2f binary64 (+ 1) ≡ 0x3ff0000000000000
+_ = refl
+
+_ : i2f binary64 (ℤ.- (+ 1)) ≡ 0xbff0000000000000
+_ = refl
+
+_ : i2f binary64 (+ 0) ≡ 0
+_ = refl
+
+-- The exactness threshold, from both sides. `2^53` converts exactly; `2^53+1`
+-- has no binary64 representation and rounds to `2^53` — the same value, which
+-- is precisely the precision loss D125 decided to allow and to bound.
+_ : i2f binary64 (+ 9007199254740992) ≡ 0x4340000000000000
+_ = refl
+
+_ : i2f binary64 (+ 9007199254740993) ≡ 0x4340000000000000
+_ = refl
+
+-- …and at binary32, where the threshold is `2^24` and the SAME literal the
+-- float pins already use sits on it.
+_ : i2f binary32 (+ 16777216) ≡ 0x4b800000
+_ = refl
+
+_ : i2f binary32 (+ 16777217) ≡ 0x4b800000
+_ = refl
+
+-- A mixed expression end to end: `1 + 1.5` is `i2f 1` added to the literal.
+_ : fadd binary64 (i2f binary64 (+ 1)) 0x3ff8000000000000 ≡ 0x4004000000000000
 _ = refl

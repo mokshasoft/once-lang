@@ -55,7 +55,7 @@ open import Once.SigOp.Info using (SigOpInfo; semM)
 open import Once.Arith.SigOp.Builders
   using (value-info; arrow-info; str-lit-info;
          add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-         fadd-info; fsub-info; fmul-info;
+         fadd-info; fsub-info; fmul-info; i2f-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.TypeCheck.Judgment
   using (_⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; _⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
@@ -68,7 +68,7 @@ open import Once.TypeCheck.Judgment
          t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer;
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
-         t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-let; t-case;
+         t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
          t-terminal-app; t-apply-app-infer; t-app; t-effApp)
 
@@ -272,6 +272,35 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-binop-arith-float {op = OpGe}  () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float {op = OpEq}  () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float {op = OpNe}  () _ _ ⟧ᵢ
+-- D125: the mixed forms. The widening is ITS OWN BIND, not an inline
+-- application of `semM i2f-info` inside the operator's argument — so the
+-- meaning mirrors the elaborated term `fadd (i2f e₁) e₂` exactly, bind for
+-- bind. Inlining it typechecks and computes the same VALUE, but produces a
+-- different TRACE SHAPE from `realize-infer`'s, and `MeaningBridge` then has to
+-- neutralise an `++ []` that need never have appeared. Matching the shape is
+-- what keeps that bridge `refl`.
+⟦ t-binop-arith-float-il {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fadd-info fmt (a′ , b))
+⟦ t-binop-arith-float-il {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fsub-info fmt (a′ , b))
+⟦ t-binop-arith-float-il {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fmul-info fmt (a′ , b))
+⟦ t-binop-arith-float-il {op = OpDiv} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-il {op = OpMod} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-il {op = OpLt} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-il {op = OpLe} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-il {op = OpGt} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-il {op = OpGe} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-il {op = OpEq} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-il {op = OpNe} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fadd-info fmt (a , b′))
+⟦ t-binop-arith-float-ir {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fsub-info fmt (a , b′))
+⟦ t-binop-arith-float-ir {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fmul-info fmt (a , b′))
+⟦ t-binop-arith-float-ir {op = OpDiv} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-ir {op = OpMod} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-ir {op = OpLt} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-ir {op = OpLe} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-ir {op = OpGt} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-ir {op = OpGe} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-ir {op = OpEq} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-ir {op = OpNe} () _ _ ⟧ᵢ
 ⟦ t-binop-arith {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM div-info fmt (a , b))
 ⟦ t-binop-arith {op = OpMod} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM mod-info fmt (a , b))
 ⟦_⟧ᵢ (t-binop-arith {op = OpLt} () _ _) fmt

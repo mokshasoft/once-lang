@@ -149,6 +149,12 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   fadd  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   fsub  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   fmul  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
+  -- PLAN 0.75 F4 / D125: the widening itself, as a NODE rather than a silent
+  -- retyping. `1 + 1.5` elaborates to `fadd (i2f 1) 1.5`, so the conversion is
+  -- visible in the surface term, has its own SigOp, and lowers to a real
+  -- instruction. A coercion that left no trace would be the "silent" half of
+  -- "silent precision loss"; this one is written down.
+  i2f   : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} → Expr Γ Ψ Int → Expr Γ Ψ Float
   div   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
   mod'  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
 

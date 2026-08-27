@@ -124,6 +124,11 @@ mutual
   -- PLAN 0.75 F4: structural, exactly as its integer twin above.
   canon-pres-ᵢ bound sub pib (t-binop-arith-float p d₁ d₂) =
     t-binop-arith-float p (canon-pres-ᵢ bound sub pib d₁) (canon-pres-ᵢ bound sub pib d₂)
+  -- D125: the mixed forms, structurally identical again.
+  canon-pres-ᵢ bound sub pib (t-binop-arith-float-il p d₁ d₂) =
+    t-binop-arith-float-il p (canon-pres-ᵢ bound sub pib d₁) (canon-pres-ᵢ bound sub pib d₂)
+  canon-pres-ᵢ bound sub pib (t-binop-arith-float-ir p d₁ d₂) =
+    t-binop-arith-float-ir p (canon-pres-ᵢ bound sub pib d₁) (canon-pres-ᵢ bound sub pib d₂)
   canon-pres-ᵢ bound sub pib (t-binop-cmp p d₁ d₂) =
     t-binop-cmp p (canon-pres-ᵢ bound sub pib d₁) (canon-pres-ᵢ bound sub pib d₂)
   canon-pres-ᵢ bound sub pib (t-id-app d)

@@ -514,7 +514,53 @@ binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
 binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success Int _ _ _ _ , _ | success Int _ _ _ _ , _ with eqAsInt₂
 ... | ()
-binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+-- PLAN 0.75 F4 / D125: `Int` left with `Float` right now SPLITS ON THE
+-- OPERATOR. For `+`, `−` and `×` the `Int` side widens and the binop SUCCEEDS,
+-- so the failure premise is absurd; for the other eight there is no float
+-- form, the error is still `BinOpRightError (TypeMismatch Int Float)`, and the
+-- claim holds unchanged. One clause could not cover both, which is the
+-- statement noticing that the language grew.
+binop-right-err-wraps ctx Raw.OpAdd e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | ()
+binop-right-err-wraps ctx Raw.OpSub e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | ()
+binop-right-err-wraps ctx Raw.OpMul e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | ()
+binop-right-err-wraps ctx Raw.OpDiv e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx Raw.OpMod e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx Raw.OpLt e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx Raw.OpLe e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx Raw.OpGt e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx Raw.OpGe e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx Raw.OpEq e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
+    | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
+... | refl with eqOuter
+...   | refl = refl
+binop-right-err-wraps ctx Raw.OpNe e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
 ... | refl with eqOuter
 ...   | refl = refl

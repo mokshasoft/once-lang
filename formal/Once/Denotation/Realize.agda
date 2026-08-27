@@ -45,7 +45,7 @@ open import Once.TypeCheck.Judgment
          _⊢ᵐ_∶_⇨[_]_; m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
          m-compose; m-case; m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-import;
-         t-annot; t-pair; t-neg; t-neg-float; t-let; t-case; t-binop-arith; t-binop-arith-float; t-binop-cmp;
+         t-annot; t-pair; t-neg; t-neg-float; t-let; t-case; t-binop-arith; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-apply-app-infer;
          t-app; t-effApp;
          t-embed; t-lam; t-value-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
@@ -55,7 +55,7 @@ open import Once.TypeCheck.Judgment
 open import Once.Float.Decimal using (Decimal; decimalOf; negate)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
-  add; sub; mul; div; mod'; fadd; fsub; fmul; lt; le; gt; ge; eq; ne; sigOp; poly;
+  add; sub; mul; div; mod'; fadd; fsub; fmul; i2f; lt; le; gt; ge; eq; ne; sigOp; poly;
   lift-morphism; morph-app; arr')
 open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
@@ -235,6 +235,29 @@ realize-infer (t-binop-arith-float {op = OpGt} () _ _)
 realize-infer (t-binop-arith-float {op = OpGe} () _ _)
 realize-infer (t-binop-arith-float {op = OpEq} () _ _)
 realize-infer (t-binop-arith-float {op = OpNe} () _ _)
+-- D125: the mixed forms wrap the Int side in `i2f`.
+realize-infer (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) = fadd (i2f (realize-infer d₁)) (realize-infer d₂)
+realize-infer (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) = fsub (i2f (realize-infer d₁)) (realize-infer d₂)
+realize-infer (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) = fmul (i2f (realize-infer d₁)) (realize-infer d₂)
+realize-infer (t-binop-arith-float-il {op = OpDiv} () _ _)
+realize-infer (t-binop-arith-float-il {op = OpMod} () _ _)
+realize-infer (t-binop-arith-float-il {op = OpLt} () _ _)
+realize-infer (t-binop-arith-float-il {op = OpLe} () _ _)
+realize-infer (t-binop-arith-float-il {op = OpGt} () _ _)
+realize-infer (t-binop-arith-float-il {op = OpGe} () _ _)
+realize-infer (t-binop-arith-float-il {op = OpEq} () _ _)
+realize-infer (t-binop-arith-float-il {op = OpNe} () _ _)
+realize-infer (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) = fadd (realize-infer d₁) (i2f (realize-infer d₂))
+realize-infer (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) = fsub (realize-infer d₁) (i2f (realize-infer d₂))
+realize-infer (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) = fmul (realize-infer d₁) (i2f (realize-infer d₂))
+realize-infer (t-binop-arith-float-ir {op = OpDiv} () _ _)
+realize-infer (t-binop-arith-float-ir {op = OpMod} () _ _)
+realize-infer (t-binop-arith-float-ir {op = OpLt} () _ _)
+realize-infer (t-binop-arith-float-ir {op = OpLe} () _ _)
+realize-infer (t-binop-arith-float-ir {op = OpGt} () _ _)
+realize-infer (t-binop-arith-float-ir {op = OpGe} () _ _)
+realize-infer (t-binop-arith-float-ir {op = OpEq} () _ _)
+realize-infer (t-binop-arith-float-ir {op = OpNe} () _ _)
 -- comparison binops: dual.
 realize-infer (t-binop-cmp {op = OpLt} _ d₁ d₂) = lt (realize-infer d₁) (realize-infer d₂)
 realize-infer (t-binop-cmp {op = OpLe} _ d₁ d₂) = le (realize-infer d₁) (realize-infer d₂)

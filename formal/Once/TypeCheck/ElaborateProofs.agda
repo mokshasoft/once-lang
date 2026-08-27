@@ -32,6 +32,7 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (_×_; _,_; ∃-syntax; Σ-syntax; proj₂)
 open import Once.Float.Dyadic using (Dyadic)
+open import Once.Float.Decimal using (decimalOf)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong; cong₂; sym; trans)
 open import Once.Type
 open Once.Type using (showQuantity; showType) public
@@ -703,6 +704,8 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.fsub a b) =
   Surface.fsub (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
 resolveExprWF polys pAcc imps userFns fresh (Surface.fmul a b) =
   Surface.fmul (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
+resolveExprWF polys pAcc imps userFns fresh (Surface.i2f a) =
+  Surface.i2f (resolveExprWF polys pAcc imps userFns fresh a)
 resolveExprWF polys pAcc imps userFns fresh (Surface.div a b) =
   Surface.div (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
 resolveExprWF polys pAcc imps userFns fresh (Surface.mod' a b) =
@@ -1560,13 +1563,33 @@ _ : ∃-syntax (λ Ψ → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax 
         ≡ success Float Ψ eE d f))))
 _ = _ , _ , _ , _ , refl
 
--- NO IMPLICIT WIDENING, in both directions. This is the decision, not a gap:
--- a coercion the programmer did not write is a value substitution.
+-- `Int` WIDENS TO `Float` (D125), and these two pins were the OPPOSITE claim
+-- one commit ago — they are what caught the change, which is the point of
+-- pinning behaviour rather than describing it.
+--
+-- The elaborated term is pinned in FULL, not just its type: `i2f` is really
+-- there. A coercion that silently retyped the operand would satisfy a
+-- type-only pin and would be the "silent" half of "silent precision loss".
 _ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RInt (+ 1)) (Raw.RFloat 1 5 1 4))
-      ≡ failure (BinOpRightError (TypeMismatch Int Float))
+      ≡ success Float (zeroUsage +ᵘ zeroUsage)
+          (Surface.fadd (Surface.i2f (Surface.int (+ 1)))
+                        (Surface.float (decimalOf 1 5 1)))
+          (0 ⊔ 0) (NamedCtx.freshCounter emptyCtx)
 _ = refl
 
 _ : inferElab emptyCtx (Raw.RBinOp Raw.OpAdd (Raw.RFloat 1 5 1 0) (Raw.RInt (+ 1)))
+      ≡ success Float (zeroUsage +ᵘ zeroUsage)
+          (Surface.fadd (Surface.float (decimalOf 1 5 1))
+                        (Surface.i2f (Surface.int (+ 1))))
+          (0 ⊔ 0) (NamedCtx.freshCounter emptyCtx)
+_ = refl
+
+-- The OTHER direction is still refused, and that asymmetry is D125's second
+-- half: the hardware diverges on `Float → Int` (x86 "integer indefinite",
+-- RISC-V saturates), so it is a D055 situation AND a narrowing where
+-- truncate-versus-round is the programmer's call. `%` is the witness, since
+-- it is not a float op at all.
+_ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1 0) (Raw.RInt (+ 1)))
       ≡ failure (BinOpRightError (TypeMismatch Float Int))
 _ = refl
 

@@ -330,6 +330,9 @@ mutual
   polys-transport-ᵢ b p pib ac (t-binop-arith pr d₁ d₂) = t-binop-arith pr (polys-transport-ᵢ b p pib ac d₁) (polys-transport-ᵢ b p pib ac d₂)
   -- PLAN 0.75 F4: structural, exactly as its integer twin above.
   polys-transport-ᵢ b p pib ac (t-binop-arith-float pr d₁ d₂) = t-binop-arith-float pr (polys-transport-ᵢ b p pib ac d₁) (polys-transport-ᵢ b p pib ac d₂)
+  -- D125: the mixed forms, structurally identical again.
+  polys-transport-ᵢ b p pib ac (t-binop-arith-float-il pr d₁ d₂) = t-binop-arith-float-il pr (polys-transport-ᵢ b p pib ac d₁) (polys-transport-ᵢ b p pib ac d₂)
+  polys-transport-ᵢ b p pib ac (t-binop-arith-float-ir pr d₁ d₂) = t-binop-arith-float-ir pr (polys-transport-ᵢ b p pib ac d₁) (polys-transport-ᵢ b p pib ac d₂)
   polys-transport-ᵢ b p pib ac (t-binop-cmp pr d₁ d₂) = t-binop-cmp pr (polys-transport-ᵢ b p pib ac d₁) (polys-transport-ᵢ b p pib ac d₂)
   polys-transport-ᵢ b p pib ac (t-id-app d) = t-id-app (polys-transport-ᵢ b p pib ac d)
   polys-transport-ᵢ b p pib ac (t-fst-app d) = t-fst-app (polys-transport-ᵢ b p pib ac d)

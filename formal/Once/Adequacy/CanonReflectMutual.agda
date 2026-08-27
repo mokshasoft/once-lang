@@ -415,6 +415,11 @@ mutual
   -- PLAN 0.75 F4: structural, exactly as its integer twin above.
   canon-reflects-ᵢ bound (Raw.RBinOp op a b) sub (t-binop-arith-float p d₁ d₂) =
     t-binop-arith-float p (canon-reflects-ᵢ bound a sub d₁) (canon-reflects-ᵢ bound b sub d₂)
+  -- D125: the mixed forms, structurally identical again.
+  canon-reflects-ᵢ bound (Raw.RBinOp op a b) sub (t-binop-arith-float-il p d₁ d₂) =
+    t-binop-arith-float-il p (canon-reflects-ᵢ bound a sub d₁) (canon-reflects-ᵢ bound b sub d₂)
+  canon-reflects-ᵢ bound (Raw.RBinOp op a b) sub (t-binop-arith-float-ir p d₁ d₂) =
+    t-binop-arith-float-ir p (canon-reflects-ᵢ bound a sub d₁) (canon-reflects-ᵢ bound b sub d₂)
   canon-reflects-ᵢ bound (Raw.RBinOp op a b) sub (t-binop-cmp p d₁ d₂) =
     t-binop-cmp p (canon-reflects-ᵢ bound a sub d₁) (canon-reflects-ᵢ bound b sub d₂)
   canon-reflects-ᵢ bound (Raw.RLet x e₁ e₂) sub (t-let d₁ d₂) =

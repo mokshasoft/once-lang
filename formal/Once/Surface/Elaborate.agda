@@ -42,7 +42,7 @@ open import Once.Arith.SigOp.IntLit using (lit-int-info)
 open import Once.Arith.SigOp.Builders
 open import Once.CanonicalName using (bare)
   using (str-lit-info; add-info; sub-info; mul-info; div-info; mod-info;
-         fadd-info; fsub-info; fmul-info;
+         fadd-info; fsub-info; fmul-info; i2f-info;
          neg-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info;
          generic-info; value-info; arrow-info)
 open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit)
@@ -112,6 +112,10 @@ fsubIR = SigOp fsub-info
 
 fmulIR : IR (Float * Float) Float
 fmulIR = SigOp fmul-info
+
+-- D125's widening, as its own IR node.
+i2fIR : IR Int Float
+i2fIR = SigOp i2f-info
 
 -- Unary negation (Int → Int)
 negIR : IR Int Int
@@ -266,6 +270,7 @@ elaborate m (mul e₁ e₂) = mulIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ 
 elaborate m (fadd e₁ e₂) = faddIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 elaborate m (fsub e₁ e₂) = fsubIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 elaborate m (fmul e₁ e₂) = fmulIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate m (i2f e) = i2fIR ∘ elaborate m e
 elaborate m (div e₁ e₂) = divIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 elaborate m (mod' e₁ e₂) = modIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
 

@@ -132,6 +132,13 @@ fsub-semM tn (a , b) = FA.fsub (float-format tn) a b
 fmul-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
 fmul-semM tn (a , b) = FA.fmul (float-format tn) a b
 
+-- | `Int` → `Float` (D125). The word is read at its SIGNED value — `W.toℤ`,
+-- the target's width — and then rounded by the same `roundB` every float
+-- result goes through. Reading it unsigned would make `-1` convert to
+-- `2^64 - 1`, which is the `absℤ` bug this branch already found once.
+i2f-semM : TargetNum → M.⟦ Int ⟧ → M.⟦ Once.Type.Float ⟧
+i2f-semM tn w = FA.i2f (float-format tn) (W.toℤ tn w)
+
 ------------------------------------------------------------------------
 -- Postulated semantics (still placeholders — div/mod need a div-by-
 -- zero policy, comparisons need a Bool encoding decision, generic-sem
@@ -204,6 +211,9 @@ fsub-info = mk-info (bare "arith.sub.float") fsub-semM Pure base-F×F con-Float
 
 fmul-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
 fmul-info = mk-info (bare "arith.mul.float") fmul-semM Pure base-F×F con-Float
+
+i2f-info : SigOpInfo Int Once.Type.Float
+i2f-info = mk-info (bare "arith.i2f") i2f-semM Pure base-Int con-Float
 
 -- Comparisons
 lt-info : SigOpInfo (Int * Int) (Unit + Unit)
