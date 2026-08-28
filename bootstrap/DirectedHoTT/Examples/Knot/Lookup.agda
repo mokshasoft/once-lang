@@ -20,25 +20,33 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Lookup where
+open import normalizer.Syntax.Types using ( _≡_; refl; sym )
+open import Agda.Builtin.Nat using ( zero; suc )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Nat; Σ'; El; U; IMu; pair
         ; fst; snd; nsuc; nzero; unit; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; icon; idrefl
-        ; ICon; IDesc; iι; iρ; iκ; inil; _◂_ )
+        ; ICon; IDesc; iι; iρ; iκ; inil; _◂_; _∈ID_; hereID
+        ; isingle; iext; extS; subTm; εwkTy )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv
-        ; ⊢fst; ⊢snd; ⊢nsuc; ⊢pair; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
-        ; ty-Nat; ty-Σ; ty-IMu; ⊢nzero
+        ; ⊢fst; ⊢snd; ⊢nsuc; ⊢pair; ⊢unit; ⊢icon; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
+        ; ty-Nat; ty-Unit; ty-Σ; ty-IMu; ⊢nzero
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ; ICodeWf; icw-clo; icw-ford; icw-imu
         ; IDescWf; idwf-nil; idwf-cons
         ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMu; ξ-El
-        ; _⟶_; βfst; βsnd; ξ-pairˡ; ξ-pairʳ; ξ-nsuc
+        ; _⟶_; _⟶*_; done; step; βfst; βsnd; ξ-fst; ξ-snd
+        ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc
         ; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-⌜IMu⌝; El-⌜Id⌝; ⊢idrefl )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sVar; ⊢sTy; ⊢sVar; toI; fromI; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; elIdN )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.SubjectReduction
+  using ( ⊢wk; ⊢-cast; Sub⊢; Sub⊢-ext; isingle-Sub⊢; iext-Sub⊢ )
+open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
+open import DirectedHoTT.Lib.IWk using ( payStep )
+open import DirectedHoTT.Examples.WkFin using ( transport-fires )
 open import DirectedHoTT.Examples.Knot.CtxD
   using ( CtxD; CtxK; CtxWf; INat; Ctx-extK; ⊢Ctx-extKv; toKn
         ; Ctx-empK; ⊢Ctx-empK; ⊢Ctx-extK )
@@ -142,8 +150,13 @@ kFwd r d = ⊢conv d (credᵀ (ξ-IMu r))
 --   work — `var (vs (vs (vs vz)))` needs a `Cx` at least four deep, so the
 --   context has to be concrete at each step.
 
+-- ⚠ `εwkTy ILk`, NOT `ILk`, even though they are definitionally equal.
+--   `isingle-Sub⊢`'s conclusion is at `◇ ▹ εwkTy I`, and solving `I` from
+--   `εwkTy I ≟ ILk` asks Agda to invert a DEFINED function — it will not
+--   (`pin-implicits-on-defined-set-types`).  Writing the telescope in the
+--   form the lemma states it in is what makes `I` solvable.
 Θ0 : Ctx
-Θ0 = ◇ ▹ ILk
+Θ0 = ◇ ▹ εwkTy ILk
 
 κ₀ : RTm ⌊ Θ0 ⌋
 κ₀ = ⌜Nat⌝                                          -- m : Nat
@@ -315,7 +328,7 @@ lkHereWf D = iwf-κ κ₀ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝ (W₁ D)
 ------------------------------------------------------------------------
 
 Ξ0 : Ctx
-Ξ0 = ◇ ▹ ILk
+Ξ0 = ◇ ▹ εwkTy ILk
 
 λ₀ : RTm ⌊ Ξ0 ⌋
 λ₀ = ⌜Nat⌝                                          -- m
@@ -517,20 +530,20 @@ V₅ =
 
 V₄ : IConWf LkD ILk Ξ4 (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι))))))
 V₄ =
-  iwf-κ λ₄ (icw-imu _ KnotWf)
+  iwf-κ λ₄ (icw-imu (pair sTy (var (vs (vs (vs vz))))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there (there (there here)))))))
     V₅
 
 V₃ : IConWf LkD ILk Ξ3 (iκ λ₃ (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))))))
 V₃ =
-  iwf-κ λ₃ (icw-imu _ KnotWf)
+  iwf-κ λ₃ (icw-imu (pair sTy (var (vs (vs vz)))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there (there here))))))
     V₄
 
 V₂ : IConWf LkD ILk Ξ2
        (iκ λ₂ (iκ λ₃ (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι))))))))
 V₂ =
-  iwf-κ λ₂ (icw-imu _ KnotWf)
+  iwf-κ λ₂ (icw-imu (pair sVar (var (vs vz))) KnotWf)
     (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (fromI (⊢var (there here)))))
     V₃
 
@@ -585,6 +598,23 @@ idCʳ : {Γ : Ctx} {c a b b' t : RTm ⌊ Γ ⌋} → b ⟶ b' →
        Γ ⊢ t ∷ El (⌜Id⌝ c a b') → Γ ⊢ t ∷ El (⌜Id⌝ c a b)
 idCʳ r d = ⊢conv d (csymᵀ (credᵀ (ξ-El (ξ-⌜Id⌝ʳ r))))
 
+-- ★ …and their MULTI-STEP versions, so `WkFin.transport-fires` (a `⟶*`)
+--   can be used as it stands.
+idCᶜ* : {Γ : Ctx} {c c' a b t : RTm ⌊ Γ ⌋} → c ⟶* c' →
+        Γ ⊢ t ∷ El (⌜Id⌝ c' a b) → Γ ⊢ t ∷ El (⌜Id⌝ c a b)
+idCᶜ* done        d = d
+idCᶜ* (step r rs) d = idCᶜ r (idCᶜ* rs d)
+
+idCˡ* : {Γ : Ctx} {c a a' b t : RTm ⌊ Γ ⌋} → a ⟶* a' →
+        Γ ⊢ t ∷ El (⌜Id⌝ c a' b) → Γ ⊢ t ∷ El (⌜Id⌝ c a b)
+idCˡ* done        d = d
+idCˡ* (step r rs) d = idCˡ r (idCˡ* rs d)
+
+idCʳ* : {Γ : Ctx} {c a b b' t : RTm ⌊ Γ ⌋} → b ⟶* b' →
+        Γ ⊢ t ∷ El (⌜Id⌝ c a b') → Γ ⊢ t ∷ El (⌜Id⌝ c a b)
+idCʳ* done        d = d
+idCʳ* (step r rs) d = idCʳ r (idCʳ* rs d)
+
 -- `idrefl c v` at the constraint both of whose sides reduce to `v`
 reflAt : {Γ : Ctx} {c v : RTm ⌊ Γ ⌋} →
          Γ ⊢ c ∷ U → Γ ⊢ v ∷ El c →
@@ -621,19 +651,98 @@ i₀ = pair (nsuc nzero)
                  (⊢wkK (⊢ixP ⊢sTy ⊢nzero) (⊢Ty-NatK 0))))))
 
 
-------------------------------------------------------------------------
--- ⬜ WHAT REMAINS OF §7: the PAYLOAD.
+lkVz : {Γ : Cx} → RTm Γ
+lkVz = icon zero
+  (pair nzero
+    (pair Ctx-empK
+      (pair Ty-NatK
+        (pair (idrefl ⌜Nat⌝ (nsuc nzero))
+          (pair (idrefl (⌜IMu⌝ CtxD INat (nsuc nzero))
+                        (Ctx-extK nzero Ctx-empK Ty-NatK))
+            (pair (idrefl (⌜IMu⌝ KnotD IPair (pair sVar (nsuc nzero)))
+                          (Var-vzK nzero))
+              (pair (idrefl (⌜IMu⌝ KnotD IPair (pair sTy (nsuc nzero)))
+                            (wkK (pair sTy nzero) Ty-NatK))
+                    unit)))))))
+
+-- ⚠ AND `ipayTy-wf`'s `Θ` IS PINNED.  It is a `Ctx` reached only through
+--   `⌊ Θ ⌋` in the explicit arguments, and `⌊_⌋` is not injective — the
+--   hazard `Lib/IFold` records from the other side.  Left implicit the
+--   constraint comes back "blocked on _i".
 --
--- `⊢i₀` above types the INDEX, which is the semantically interesting
--- half — it exercises `wkK` and `Ctx-extK` at real values and shows the
--- four-component telescope is inhabited.  What is still missing is the
--- `⊢icon` payload: seven `⊢pair` levels whose four ford components each
--- need `idrefl` moved along a reduction chain (`idCᶜ`/`idCˡ`/`idCʳ`
--- above are those moves, and `Examples/WkFin.transport-fires` is the
--- two-step chain for the three transports).
---
--- ⚠ UNTIL THAT LANDS, §6's `LkWf` IS EXACTLY THE HAZARD
---   `Examples/Vec.no-cons-at-zero` NAMES: a well-formed description with
---   no closed inhabitant is indistinguishable from a good one.  Do not
---   read §6 as more than it says.
-------------------------------------------------------------------------
+-- ⚠ THE ENVIRONMENTS ARE NAMED, not `_`.  `ipayTy-wf` and `payStep` both
+--   take the substitution explicitly, and it is not inferable from the
+--   result — `subTm σ` is a defined function, so the constraint comes
+--   back "blocked on _σ" (`pin-implicits-on-defined-set-types` again).
+⊢lkVz : {Δ : Ctx} → Δ ⊢ lkVz ∷ Lk i₀
+⊢lkVz {Δ = Δ} =
+  ⊢icon LkWf hereID ⊢i₀
+    (⊢pair (ipayTy-wf {Θ = Θ1} LkD ILk (extS σ₀) C₁ LkWf (W₁ LkD) (Sub⊢-ext h0))
+           (toI ⊢nzero)
+      (⊢-cast (sym (payStep LkD ILk σ₀ nzero C₁))
+        (⊢pair (ipayTy-wf {Θ = Θ2} LkD ILk (extS σ₁) C₂ LkWf (W₂ LkD) (Sub⊢-ext h1))
+               (toCn ⊢Ctx-empK)
+          (⊢-cast (sym (payStep LkD ILk σ₁ Ctx-empK C₂))
+            (⊢pair (ipayTy-wf {Θ = Θ3} LkD ILk (extS σ₂) C₃ LkWf (W₃ LkD) (Sub⊢-ext h2))
+                   (toKn (⊢Ty-NatK 0))
+              (⊢-cast (sym (payStep LkD ILk σ₂ Ty-NatK C₃))
+                (⊢pair (ipayTy-wf {Θ = Θ4} LkD ILk (extS σ₃) C₄ LkWf (W₄ LkD) (Sub⊢-ext h3))
+                       f₃
+                  (⊢-cast (sym (payStep LkD ILk σ₃ v₃ C₄))
+                    (⊢pair (ipayTy-wf {Θ = Θ5} LkD ILk (extS σ₄) C₅ LkWf (W₅ LkD) (Sub⊢-ext h4))
+                           f₄
+                      (⊢-cast (sym (payStep LkD ILk σ₄ v₄ C₅))
+                        (⊢pair (ipayTy-wf {Θ = Θ6} LkD ILk (extS σ₅) C₆ LkWf (W₆ LkD) (Sub⊢-ext h5))
+                               f₅
+                          (⊢-cast (sym (payStep LkD ILk σ₅ v₅ C₆))
+                            (⊢pair ty-Unit f₆ ⊢unit)))))))))))))
+  where
+    v₃ = idrefl ⌜Nat⌝ (nsuc nzero)
+    v₄ = idrefl (⌜IMu⌝ CtxD INat (nsuc nzero)) (Ctx-extK nzero Ctx-empK Ty-NatK)
+    v₅ = idrefl (⌜IMu⌝ KnotD IPair (pair sVar (nsuc nzero))) (Var-vzK nzero)
+    σ₀ = isingle i₀
+    σ₁ = iext σ₀ nzero
+    σ₂ = iext σ₁ Ctx-empK
+    σ₃ = iext σ₂ Ty-NatK
+    σ₄ = iext σ₃ v₃
+    σ₅ = iext σ₄ v₄
+    σ₆ = iext σ₅ v₅
+    v₆ = idrefl (⌜IMu⌝ KnotD IPair (pair sTy (nsuc nzero)))
+                (wkK (pair sTy nzero) Ty-NatK)
+    -- ⚠ `{I = ILk}` PINNED: `isingle-Sub⊢`'s conclusion mentions `I` only
+    --   under `εwkTy`, a DEFINED function, so it never solves on its own.
+    h0 : Sub⊢ Θ0 Δ σ₀
+    h0 = isingle-Sub⊢ {I = ILk} ⊢i₀
+    h1 = iext-Sub⊢ h0 (toI ⊢nzero)
+    h2 = iext-Sub⊢ h1 (toCn ⊢Ctx-empK)
+    h3 = iext-Sub⊢ h2 (toKn (⊢Ty-NatK 0))
+    -- the DEPTH ford: both sides reduce to `suc 0`
+    f₃ : Δ ⊢ v₃ ∷ El (subTm σ₃ κ₃)
+    f₃ = idCˡ (βfst _ _) (reflAt ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero)))
+    h4 = iext-Sub⊢ h3 f₃
+    -- ★ the CONTEXT ford, and ★★ THE TRANSPORT EVAPORATES: at a concrete
+    --   index the ford witness IS an `idrefl`, so `transport-fires`
+    --   collapses the `jsub` in two steps.
+    f₄ : Δ ⊢ v₄ ∷ El (subTm σ₄ κ₄)
+    f₄ = idCᶜ (ξ-⌜IMu⌝ (βfst _ _))
+          (idCˡ* (step (ξ-fst (βsnd _ _)) (step (βfst _ _) done))
+            (idCʳ* (transport-fires _ _ _ _)
+              (reflAt (⊢⌜IMu⌝ CtxWf (toI (⊢nsuc ⊢nzero)))
+                      (toCn (⊢Ctx-extK 0 ⊢Ctx-empK (⊢Ty-NatK 0))))))
+    h5 = iext-Sub⊢ h4 f₄
+    f₅ : Δ ⊢ v₅ ∷ El (subTm σ₅ κ₅)
+    f₅ = idCᶜ (ξ-⌜IMu⌝ (ξ-pairʳ (βfst _ _)))
+          (idCˡ* (step (ξ-fst (ξ-snd (βsnd _ _)))
+                   (step (ξ-fst (βsnd _ _)) (step (βfst _ _) done)))
+            (idCʳ* (transport-fires _ _ _ _)
+              (reflAt (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (⊢nsuc ⊢nzero)))
+                      (toKn (⊢Var-vzK 0)))))
+    f₆ : Δ ⊢ v₆ ∷ El (subTm σ₆ κ₆)
+    f₆ = idCᶜ (ξ-⌜IMu⌝ (ξ-pairʳ (βfst _ _)))
+          (idCˡ* (step (ξ-snd (ξ-snd (βsnd _ _)))
+                   (step (ξ-snd (βsnd _ _)) (step (βsnd _ _) done)))
+            (idCʳ* (transport-fires _ _ _ _)
+              (reflAt (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (⊢nsuc ⊢nzero)))
+                      (toKn (kFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _)))
+                              (kFwd (ξ-pairˡ (βfst _ _))
+                                (⊢wkK (⊢ixP ⊢sTy ⊢nzero) (⊢Ty-NatK 0))))))))
