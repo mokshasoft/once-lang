@@ -31,7 +31,7 @@ open import DirectedHoTT.Spec.Syntax
         ; ielim; renTm; subTm; renTy; εwkTy; εwk-ren; IDesc; ICon; _◂_ )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; wk-single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢pair; ⊢unit
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢pair; ⊢unit; ⊢fst; ⊢snd; ⊢nsuc
         ; IDescWfFrom; idwf-cons
         ; ty-IMu; imethsTy; imethsTyFrom; ⊢ielim )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ren-ty )
@@ -44,9 +44,23 @@ open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import Agda.Builtin.Nat using ( suc )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz; tagVar-vs )
-open import DirectedHoTT.Examples.Knot.WkProbe using ( ⊢shIPair )
 open import DirectedHoTT.Examples.Knot.WkRows
   using ( wkVarVz; ⊢wkVarVz; wkVarVs; ⊢wkVarVs )
+
+------------------------------------------------------------------------
+-- 0. THE SHIFT'S TYPING, at `I = Σ' Nat Nat`.
+--
+-- ⚠ IT LIVES HERE, NOT IN THE PROBE.  `Lib/IWk` takes it as a hypothesis
+--   because the result index is `sh ⟨i⟩` and `⊢icon` must type that; at a
+--   pair index it is three constructors.  ⚠ It was briefly in
+--   `Knot/WkProbe`, which made a REAL module depend on an ASSERTIONS
+--   module — a probe should be a LEAF.  Moving it here inverts that and
+--   takes the probe's whole import closure off everything downstream.
+------------------------------------------------------------------------
+
+⊢shIPair : {Δ : Ctx} {i : RTm ⌊ Δ ⌋} →
+           Δ ⊢ i ∷ εwkTy IPair → Δ ⊢ sh i ∷ εwkTy IPair
+⊢shIPair d = ⊢ixP (⊢fst d) (⊢nsuc (⊢snd d))
 
 ------------------------------------------------------------------------
 -- 1. THE TAIL — the two rows `Lib/IWk` declines to classify.

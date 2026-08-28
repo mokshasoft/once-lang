@@ -462,3 +462,68 @@ argument is instantiated — which is the dependent, value-indexed case
 (`sort` is O(n log n) *in the length*) showing up in the metatheory rather
 than in user code. ⚠ A cost system that grades definitions only would
 report both lemmas as wins here, and be wrong about one of them.
+
+--------------------------------------------------------------------------
+## Once: de Bruijn INDICES make a variable reference context-BOUND — should levels be an option?
+
+Raised 2026-08-28 while writing `Examples/Knot/Lookup`, OCP-0009's first
+judgement row.
+
+### The observation
+
+This does not type-check, and asking why turns out to be worth writing down:
+
+```agda
+A₃ : {Γ : Cx} → RTm Γ
+A₃ = var (vs (vs (vs vz)))          -- ✗
+```
+
+⚠ **And it SHOULD not.** `{Γ : Cx} → RTm Γ` says "usable in ANY context,
+including `ε`" — i.e. CLOSED. `⌜Nat⌝`, `nzero` and the sort tags really are
+closed, which is why they are polymorphic and work. `var (vs³ vz)` is not:
+it denotes the fourth variable from the inside and needs a context at least
+four deep. Agda is refusing a scope error. **Nothing is broken.**
+
+### But the friction underneath it is real, and it is NOT polymorphism
+
+Writing that row, the actual cost was keeping **two encodings of the same
+index in sync by hand**:
+
+| | the term level | the derivation level |
+|---|---|---|
+| the k-th field | `var (vs^k vz)` | `⊢var (there^k here)` |
+
+Every `iκ`'s code counts one way and its `IConWf` counts the other, and the
+count changes per field *and* per binder the type sits under. Most of the
+iterations on `lkHere` were off-by-one between these two, not anything
+semantic. Same story in `Knot/Build`, `Knot/WkRows` and `Lib/IWk`.
+
+### Two candidate fixes, at different levels
+
+**(a) POC-level, and the cheaper one: generate the row's `IConWf` the way
+`Lib/IWk` generates methods.** `Lib/IWk` walks an `ICon` generically and
+never names a de Bruijn index; that is exactly why it has no off-by-one
+class of bug. A judgement row's well-formedness is the same shape of walk.
+⇒ this is a library job and needs no language change.
+
+**(b) Language-level: de Bruijn LEVELS instead of indices.** A level is
+stable under context EXTENSION, so a variable reference genuinely would be
+context-polymorphic (at any context deep enough), and `A₃` above would be
+legal. That is the standard answer to this exact complaint.
+
+⚠ **The cost is not small and should be stated before anyone tries it.**
+Levels make WEAKENING free and SUBSTITUTION expensive — every `subTm` has
+to renumber — where indices do the reverse. This POC's whole
+`renTm`/`subTm`/`extS`/`wk-single` layer, plus `Spec/Variance`'s `occTm`,
+is index-shaped, and the metatheory rests on it. So this is a design axis
+to evaluate on its merits, not a fix to retrofit.
+
+### What would decide it
+
+The `ap`-landing test the other axes use: does levels-vs-indices remove a
+class of *proof* obligation, or only a class of typo? Everything seen so
+far is the latter — off-by-one errors that Agda catches immediately. ⇒ on
+current evidence **(a) is the one worth doing** and (b) is a note, not a
+plan. Revisit if a judgement row turns out to need a variable reference
+that must survive weakening *propositionally* rather than definitionally —
+that would be a real obligation and would change the verdict.

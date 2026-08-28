@@ -28,6 +28,7 @@ open import DirectedHoTT.Examples.Knot.Tags
   using ( tagTy-Nat; tagTm-lam; tagDCon-kap; memTm-lam; memDCon-kap )
 open import DirectedHoTT.Examples.Knot.WkRows
   using ( wkTyNat; wkTmLam; wkDkap )
+open import DirectedHoTT.Examples.Knot.Wk using ( ⊢shIPair )
 open import DirectedHoTT.Examples.Knot.Desc
   using ( KnotD
         ; cTy-Nat; cTy-Pi; cTy-IMu
@@ -166,9 +167,8 @@ kap-agrees = refl
 --   Nat` it is three constructors.
 ------------------------------------------------------------------------
 
-⊢shIPair : {Δ : Ctx} {i : RTm ⌊ Δ ⌋} →
-           Δ ⊢ i ∷ εwkTy IPair → Δ ⊢ sh i ∷ εwkTy IPair
-⊢shIPair d = ⊢ixP (⊢fst d) (⊢nsuc (⊢snd d))
+-- ⚠ `⊢shIPair` now lives in `Knot/Wk`.  It was here, which made a real
+--   module depend on this ASSERTIONS module — a probe should be a leaf.
 
 ⊢genLam : {Γ : Ctx} →
           Γ ⊢ iwkMethod tagTm-lam clsLam
