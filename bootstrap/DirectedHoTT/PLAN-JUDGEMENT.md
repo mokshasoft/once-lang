@@ -142,10 +142,35 @@ that must be a fold COMPUTED from the description, not 55 enumerated
 methods; an enumerated one is the 147s-vs-5s mistake with a syntax
 codomain instead of `Nat`.
 
-⚠ Its index is a THREE-component dependent telescope —
-`Σ' Nat (Σ' (Ctx ⟨d⟩) (Σ' (Var ⟨d⟩) (RTy ⟨d⟩)))`. §1a tested two
-components; three is more of the same but is the first place to look if
-it misbehaves.
+✅ **THE INDEX TELESCOPE IS BUILT AND TYPES** (`Examples/Knot/Lookup`
+§1). Four components — `Σ' Nat (Σ' (CtxK ⟨d⟩) (Σ' (Var@⟨d⟩) (RTy@⟨d⟩)))`
+— and it spans **two different `IMu`s**, where `DepIx` tested two
+components over one. This section flagged it as the first place to look
+if a telescope misbehaves; it did not.
+
+⚠ **WHAT DID BITE IS NOT THE TELESCOPE — IT IS FORDING, AND THIS SECTION
+DID NOT PRICE IT.** `here` targets `(suc m, Γ ▹ A, vz, wk A)`, so it
+Fords all four components. `iwf-κ` wants each ford's code TYPED, and a
+ford's two sides must sit at the SAME code — but the ambient's `Ctx`
+component lives at depth `fst ⟨i⟩` while `Ctx-extK m Γ A` lives at
+`nsuc m`, and those agree only by the DEPTH ford, which is
+PROPOSITIONAL.
+
+⇒ **each of the three later fords transports its RHS along the depth
+ford** (`jsub (⌜IMu⌝ … ⟨-⟩) (symN … p) e` — `WkFin`'s idiom, three times
+in one row). §1 said "Fording costs a transport in the DERIVATION and
+nothing at runtime"; this is the first row that pays it for a **foreign
+family** rather than its own index, and it pays three.
+
+⚠⚠ **AND IT NEEDS SMART CONSTRUCTORS AT A *VARIABLE* DEPTH, WHICH DO NOT
+EXIST.** `⊢Ctx-extK` and `⊢Var-vzK` are both stated at `num n` — an Agda
+NUMERAL — because `Knot/Build`'s §4 rule ("the depth must be a NUMERAL")
+was written for the adequacy map, whose depths are numerals. In a
+constructor's telescope the depth is a bound `iκ ⌜Nat⌝` field, i.e. a
+VARIABLE. ⇒ variable-depth twins are needed first. `Knot/Build`'s route
+(a) (abstract depth + `wk-single` per field, chain length = the field's
+position) is the known-working way; `⊢wkK` is already in this form and
+needs nothing.
 
 ### Step 2 — object-level weakening for `RTy`/`RTm`, then `extS`, then `subTm`
 
