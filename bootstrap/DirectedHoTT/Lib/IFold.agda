@@ -169,9 +169,17 @@ module Fold
   --   would need its own `with` and the two abstractions would not line
   --   up.  Split out, `ifStep b` and `⊢ifStep b` are applied to the SAME
   --   `b`, and both reduce as soon as it does.
+  -- ⚠ `op acc h`, NOT `op h acc`.  The accumulator runs LEFT TO RIGHT,
+  --   so a row's children are combined in the order the fields appear —
+  --   which is the order and the ASSOCIATIVITY that a hand-written
+  --   meta-level measure uses.  `Metatheory/Canonicity`'s
+  --   `szb (⌜Hom⌝ c a b) = sz c + sz a + sz b` parses as
+  --   `(sz c + sz a) + sz b`, and that is exactly what this emits.
+  --   Flipped, every one of the 30 agreement chains would have to carry
+  --   a commutativity-and-associativity rearrangement.
   ifStep : {Γ : Cx} → 𝔹 → RTm Γ → RTm Γ → RTm Γ
-  ifStep true  h acc = op h acc
-  ifStep false h acc = acc
+  ifStep true  acc h = op acc h
+  ifStep false acc h = acc
 
   -- the accumulator pass: `acc` already holds at least one counted child.
   -- ⚠ A SKIPPED FIELD STILL STEPS THE TUPLE.  `ih` has a component for
@@ -179,7 +187,7 @@ module Fold
   --   read the next field's IH as this one's.
   ifTail : {Γ Δ : Cx} → R → ICon Δ → RTm Γ → RTm Γ → RTm Γ
   ifTail r iι       acc ih = acc
-  ifTail r (iρ j C) acc ih = ifTail r C (ifStep (pick r j) (fst ih) acc) (snd ih)
+  ifTail r (iρ j C) acc ih = ifTail r C (ifStep (pick r j) acc (fst ih)) (snd ih)
   ifTail r (iκ κ C) acc ih = ifTail r C acc ih
 
   -- ★ the first COUNTED field seeds the accumulator, which is what
@@ -199,10 +207,10 @@ module Fold
   -- ⚠ THE TELESCOPE IS A `Cx`, NOT A `Ctx`.  Indexed by a `Ctx Θ` the
   --   recursion cannot solve its own implicit: only `⌊ Θ ⌋` occurs, `⌊_⌋`
   --   is not injective, and `⌊ Θ ⌋ ∙ = ⌊ Θ' ⌋` does not determine `Θ'`.
-  ⊢ifStep : {Γ : Ctx} (b : 𝔹) {h acc : RTm ⌊ Γ ⌋} →
-            Γ ⊢ h ∷ Nat → Γ ⊢ acc ∷ Nat → Γ ⊢ ifStep b h acc ∷ Nat
-  ⊢ifStep true  dh da = ⊢op dh da
-  ⊢ifStep false dh da = da
+  ⊢ifStep : {Γ : Ctx} (b : 𝔹) {acc h : RTm ⌊ Γ ⌋} →
+            Γ ⊢ acc ∷ Nat → Γ ⊢ h ∷ Nat → Γ ⊢ ifStep b acc h ∷ Nat
+  ⊢ifStep true  da dh = ⊢op da dh
+  ⊢ifStep false da dh = da
 
   ⊢ifTail : {Γ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) (σ : Sub Δ ⌊ Γ ⌋)
             (r : R) (C : ICon Δ) (q acc ih : RTm ⌊ Γ ⌋) →
@@ -211,8 +219,8 @@ module Fold
   ⊢ifTail D I σ r iι       q acc ih da d = da
   ⊢ifTail D I σ r (iρ j C) q acc ih da d =
     ⊢ifTail D I (iext σ (fst q)) r C (snd q)
-            (ifStep (pick r j) (fst ih) acc) (snd ih)
-            (⊢ifStep (pick r j) (⊢fst d) da)
+            (ifStep (pick r j) acc (fst ih)) (snd ih)
+            (⊢ifStep (pick r j) da (⊢fst d))
             (⊢-cast (wk-singleTy {v = fst ih}
                                  (iihTy D I (iext σ (fst q)) C (snd q) Nat))
                     (⊢snd d))
