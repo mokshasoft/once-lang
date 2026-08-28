@@ -9173,26 +9173,52 @@ postulate-free `SourceFaithful.faithful`), and a prototype of exactly that
 typechecks — rule, realization, meaning, elaborator route (termination
 accepted), and the whole canon/poly family.
 
-**But it is not sound as stated, and this is the finding worth recording.**
-Re-inferring in the locals-free context resolves a name the programmer SHADOWED:
+**Two things blocked it, in order.**
 
-    t-var-import … → lookupLocal ctx x ≡ nothing → …
-
-locals shadow imports, so with a local `x` and an import `x`,
+**(a) A soundness hazard, fixed.** Re-inferring in a CLEARED context resolves a
+name the programmer SHADOWED: locals shadow imports (`t-var-import` carries
+`lookupLocal ctx x ≡ nothing`), so with a local `x` and an import `x`,
 
     λ x . compose emit@E (x + 1)
 
 infers `x` as the LOCAL in the real context and as the IMPORT in the cleared
-one — and the arm would compile to the import. Every existing morphism leaf
-avoids this by carrying the non-shadowing premise EXPLICITLY (`m-named` has
-`lookupLocal ctx x ≡ nothing`); `⊢ᵍ` avoids it by admitting no names at all.
+one — the arm would compile to the import. Every existing morphism leaf avoids
+this by carrying the non-shadowing premise EXPLICITLY; `⊢ᵍ` avoids it by
+admitting no names. The fix is to require the context to have no locals AT ALL,
+written as a context CONSTRUCTOR (`noLocals fresh imps polys sigEffs`) rather
+than a side condition, so there is nothing to shadow and `debruijn` is `S∅`
+definitionally. That covers every top-level definition body and honestly
+excludes arms inside a lambda. It typechecks: rule, realization, meaning,
+elaborator route (termination accepted), canon/poly family.
 
-So `m-closed` needs a third premise: that no free name of `e` is shadowed by a
-local. The cheap sound version is to require the context to have no locals at
-all (`NamedCtx.size ctx ≡ 0`), which covers every top-level definition —
-`compose exit@S (1 + 1)` at the top level — and honestly excludes arms inside a
-lambda. The general version needs a free-name traversal. That choice is open;
-the prototype is saved as `d126-morphism-half.patch`.
+**(b) An ARCHITECTURAL boundary, which is where it stands.** `⊢ᵐ`'s
+completeness statement is
+
+    StrongElab … = Σ[ m ] Σ[ mᵐ ] … × (extract-morph-eff E ≡ just (m , refl))
+                                    × (extractMorphWitness W ≡ just mᵐ)
+                                    × (m ≡ realize-morph mᵐ)
+
+That last component is a SYNTACTIC equality between the elaborator's IR and the
+reference realization. It holds for every existing morphism because each is a
+closed FORM — `IR.id`, `intLit n`, `⟨ m , m' ⟩` — built the same way on both
+sides. It cannot hold for a morphism whose content is an ARBITRARY elaborated
+expression: the elaborator's IR is built from its own `eE`, the reference's from
+`realize-infer w`, and those agree only DENOTATIONALLY (that gap is the entire
+reason `RealizeAgrees` exists).
+
+Weakening the component to denotational equality is the right repair, but the
+fact it would need — `⟦ eE ⟧ˢ ≐ ⟦ realize-infer w ⟧ˢ` — is
+`RealizeAgrees.infer-agree`, and **`RealizeAgrees` imports `Completeness`**. The
+fact lives ABOVE the layer that would have to use it. (`SourceFaithful.faithful`
+is fine — nothing imports Completeness there — so only the infer half is
+stranded.)
+
+So `m-closed` is blocked on a completeness-layer question, not on a lemma:
+either `StrongElab` splits (a weaker obligation for leaves whose IR is an
+elaboration, keeping the strong one where the compose/case reconstruction needs
+it), or the infer-agreement moves below `Completeness`. Both are architectural
+and neither should be done in passing. The design that survives (a) is saved as
+`d126-morphism-half.patch`.
 
 **Relates**: D018 (the decision this implements), D056 (`composeArgB`'s
 value-lift), D041 (the literal value-lift it generalizes), D063 (the realm split
