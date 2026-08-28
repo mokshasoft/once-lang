@@ -717,6 +717,12 @@ mutual
     -- The `ClosedLiftShape` premise is the classic bidirectional side
     -- condition: without it the rule would also fire on `λx. body`, giving one
     -- expression two different check-mode meanings at one type.
+    --
+    -- `zeroUsage` means "consumes no resource", NOT "reads no local": at a
+    -- `Zero`-quantity arrow `Zero *ᵘ Ψ` discards the argument's usage, so
+    -- `f x` can be usage-closed and still mention `x`. The conclusion is
+    -- context-indexed, so that is sound here — the realization is constant in
+    -- its ARGUMENT. A context-FREE morphism cannot be built from this premise.
     t-closed-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type} {π : Once.Type.Purity}
                   → ClosedLiftShape e
                   → ctx ⊢ᵢ e ∶ A ⨾ Surface.zeroUsage

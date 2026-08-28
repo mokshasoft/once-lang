@@ -166,10 +166,14 @@ realize (t-value-lift g)        = lift-morphism (realize-global g)
 -- `realize-global` in place of `realize-infer`. `zeroUsage` is what makes the
 -- `terminal` legitimate: the body reads no local, so there is nothing to
 -- capture and no closure to build.
--- D126: `λ _ → e`, built from the existing `weaken`. `zeroUsage` is what makes
--- that legitimate — the body reads no local, so weakening it under one more
--- binder cannot capture anything, and the lambda's own variable is used with
--- quantity `Zero`.
+-- D126: `λ _ → e`, built from the existing `weaken`. NOTE what `zeroUsage` does
+-- and does not buy: it makes the lambda's own variable `Zero`-used, so the
+-- abstraction is legitimate — but it does NOT say the body is independent of the
+-- AMBIENT environment. `Zero *ᵘ Ψ` discards an argument's usage wholesale, so
+-- `f x` at a `Zero`-quantity arrow is usage-closed while still reading a local.
+-- That is fine here (`⊢ᶜ` is context-indexed and this is constant in its
+-- ARGUMENT, not in `dγ`) and is exactly why the morphism realm needs a
+-- different premise — see D126's entry.
 realize (t-closed-lift {π = Once.Type.pure} _ d) = lam Many PE.refl (weaken (realize-infer d))
 -- …and at `eff`, the same lambda through `arr'` — the pure→eff coercion
 -- `t-subsume` uses. Grade-polymorphism is not free here the way it is for

@@ -9123,6 +9123,36 @@ case: **a decider that insists on all its columns goes stuck on variables, and a
 stuck decision HIDES every decision underneath it from a proof's `with`.** Same
 decisions, same results, decided sooner.
 
+### What `zeroUsage` does NOT mean (found while scoping the morphism half)
+
+The premise says the expression CONSUMES no resource. It does **not** say the
+expression READS no local, and in this semiring those differ:
+
+    _*q_ : Zero *q _ = Zero
+
+so `t-app`'s `Ψ₁ +ᵘ (q *ᵘ Ψ₂)` discards the argument's usage entirely at
+`q = Zero`. A `Zero`-quantity arrow is writable today (`TCaret0`; the parser
+test is `Int ⇒[ mk-kind Zero pure ] Unit`), so
+
+    f : Int ^0-> Int
+    λ x . … (f x) …          -- `f x` : usage zeroUsage, and MENTIONS `x`
+
+is usage-closed while depending on the environment. Consequences:
+
+  * **`strengthen : SExpr Γ zeroUsage A → SExpr ∅ [] A` is FALSE.** The two
+    notions of "closed" in this codebase — empty context (`cata`/`ana`'s
+    `Expr ∅ zeroUsage`) and zero usage in a non-empty context — are NOT
+    equivalent. The first is strictly stronger.
+  * **D126 is still sound**, because `⊢ᶜ` is context-indexed: `λ_. e` is
+    constant in its ARGUMENT, which is all the check realm asks. The rule does
+    not claim, and must not be read as claiming, environment-independence.
+  * **The morphism realm cannot use this premise**, because `⊢ᵐ` realizes to a
+    context-FREE `IR ⌊X⌋ ⌊A⌋`. That needs genuine independence, which only the
+    empty context gives definitionally.
+
+This is worth stating because the obvious reading of "zero usage = global
+element" is the one QTT invites, and it is wrong here.
+
 ### The boundary: `compose` is NOT fixed by this
 
 `compose f g`'s arms are MORPHISMS (`⊢ᵐ`, D063), a different realm with its own
@@ -9130,11 +9160,39 @@ constant rule `m-const`, which likewise takes a `⊢ᵍ`. So `compose exit@S (1 
 still fails; `compose exit@S 17` still works. The sibling rule
 `m-closed : ClosedLiftShape e → ctx ⊢ᵢ e ∶ A ⨾ zeroUsage → ctx ⊢ᵐ e ∶ X ⇨[π] A`
 is NOT a mechanical repeat: `realize-morph` produces an IR morphism DIRECTLY,
-and `m-const` can only do that because `⊢ᵍ` derivations have `realize-global`.
-A `⊢ᵢ` derivation realizes to a SURFACE expression, so `m-closed` needs a
-decision about how a closed expression becomes an IR morphism — strengthening to
-the empty context, or a surface-carrying morphism leaf like `cata`'s algebra.
-That decision is open.
+and `m-const` can only do that because `⊢ᵍ` derivations have `realize-global` —
+a hand-written table (`intLit n`, `floatLit d`, …), one entry per literal form.
+Closedness there is asserted by ENUMERATION, never derived. For a COMPUTED
+closed expression the IR is `elaborate`'s output and there is no table entry.
+
+By the section above, `m-closed`'s premise cannot be `zeroUsage` — strengthening
+is unavailable because it is false. The locals-free context works for the
+REALIZATION (`elaborate C.Heap (realize-infer d) ∘ terminal`, literally the line
+`elaborate`'s own `cata` clause contains, related to the denotation by the
+postulate-free `SourceFaithful.faithful`), and a prototype of exactly that
+typechecks — rule, realization, meaning, elaborator route (termination
+accepted), and the whole canon/poly family.
+
+**But it is not sound as stated, and this is the finding worth recording.**
+Re-inferring in the locals-free context resolves a name the programmer SHADOWED:
+
+    t-var-import … → lookupLocal ctx x ≡ nothing → …
+
+locals shadow imports, so with a local `x` and an import `x`,
+
+    λ x . compose emit@E (x + 1)
+
+infers `x` as the LOCAL in the real context and as the IMPORT in the cleared
+one — and the arm would compile to the import. Every existing morphism leaf
+avoids this by carrying the non-shadowing premise EXPLICITLY (`m-named` has
+`lookupLocal ctx x ≡ nothing`); `⊢ᵍ` avoids it by admitting no names at all.
+
+So `m-closed` needs a third premise: that no free name of `e` is shadowed by a
+local. The cheap sound version is to require the context to have no locals at
+all (`NamedCtx.size ctx ≡ 0`), which covers every top-level definition —
+`compose exit@S (1 + 1)` at the top level — and honestly excludes arms inside a
+lambda. The general version needs a free-name traversal. That choice is open;
+the prototype is saved as `d126-morphism-half.patch`.
 
 **Relates**: D018 (the decision this implements), D056 (`composeArgB`'s
 value-lift), D041 (the literal value-lift it generalizes), D063 (the realm split
