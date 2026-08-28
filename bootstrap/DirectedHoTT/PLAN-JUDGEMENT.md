@@ -254,7 +254,23 @@ with the Kripke motive of §1d at the last step:
 `∀n. (Fin ⟨i⟩ → Tm n) → Tm n`, which adds a `Π` over `Nat` and a `Tm`
 codomain to what `KripkeIx` already does — both ordinary.
 
-### Step 3 — the mutual judgement block
+### Step 3 — the mutual judgement block ⟨★ **GENERATE IT**⟩
+
+⚠⚠ **MEASURED ON STEP 1: HAND-WRITING DOES NOT SCALE HERE.** `_∋_∷_`'s
+TWO rows — 7 and 10 fields — cost a long session, and most of that was de
+Bruijn bookkeeping reducible to one rule (field `j` sits at
+`vs^(k-1-j) vz`, the ambient at `vs^k vz`). Step 3 is **~166 rows**, with
+MORE bookkeeping each: four Forded components and three transports per
+row.
+
+⇒ **extend `tools/gen-knot.py` to emit judgement rows**, with
+`Examples/Knot/Lookup` as the hand-written reference the generator must
+reproduce — the role `Knot/Terms`/`Knot/Build` play for the syntax table.
+The generator's own header already makes this argument for 53 rows: such
+bookkeeping "is not work, it is a transcription error waiting to happen".
+⚠ And generating the `IConWf` is what `FUTURE.md`'s off-by-one fix asks
+for, so the two land together.
+
 
 ⚠ **IT CANNOT BE STAGED THE WAY THE SYNTAX WAS.** `ty-El` needs
 `Γ ⊢ c ∷ U`, so `_⊢ty_` and `_⊢_∷_` are MUTUAL. Per §13 that is one
