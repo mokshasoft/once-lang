@@ -17,7 +17,11 @@
 module DirectedHoTT.Examples.Knot.SzProbe where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc )
+open import DirectedHoTT.Spec.Syntax using ( nzero; fst; var; vz; RTm; ε; _∙ )
+open import DirectedHoTT.Spec.Variance using ( true )
 open import DirectedHoTT.Lib.IFold using ( countSame; rowSort; Maybeℕ; someℕ )
+open import DirectedHoTT.Lib.ISz using ( szSum )
+open import DirectedHoTT.Lib.ISzSort using ( szsSum )
 open import DirectedHoTT.Examples.Knot.Desc
   using ( cTm-var; cTm-lam; cTm-app; cTm-cMu; cTm-elim; cTm-ielim
         ; cTm-cIMu; cTm-con; cTm-icon; cTm-natrec; cTm-ordtr )
@@ -70,4 +74,32 @@ _ = refl
 _ : countSame cTm-natrec ≡ 3
 _ = refl
 _ : countSame cTm-ordtr  ≡ 5
+_ = refl
+
+------------------------------------------------------------------------
+-- 3. ★★★ AND THE GENERALISATION IS STRICT — CHECKED, NOT ASSUMED.
+--
+-- ⚠ THE SWEEP DOES NOT SHOW THIS.  `Lib/ISz` and `Lib/IDepth` still
+--   TYPE-CHECK after `Lib/IFold` gained its `pick` parameter, but
+--   neither of them asserts a computed value, so "all green" is
+--   consistent with the count-all fold now emitting a different term.
+--   These three lines are about the TERMS.
+------------------------------------------------------------------------
+
+-- ⚠ PINNED.  Left as `var vz` the fold's `Γ` is a meta with nothing to
+--   solve it — the statement never mentions the context otherwise.
+ih0 : RTm (ε ∙)
+ih0 = var vz
+
+-- (i) on a row whose every child is same-sort, the two folds are the
+--     SAME TERM — so `pick` cost the old customers nothing.
+_ : szSum true cTm-app ih0 ≡ szsSum (rowSort cTm-app) cTm-app ih0
+_ = refl
+
+-- (ii) and they part company exactly where a child is CROSS-SORT.
+--      `cTm-var`'s one recursive field lands in `Var`, not `Tm`.
+_ : szsSum (rowSort cTm-var) cTm-var ih0 ≡ nzero
+_ = refl
+
+_ : szSum true cTm-var ih0 ≡ fst ih0
 _ = refl
