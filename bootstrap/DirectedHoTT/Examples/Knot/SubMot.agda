@@ -791,13 +791,33 @@ varAt ddi dm dp dt =
 --   shape it actually has.  A handful per row: mechanical, but not
 --   guessable from the outside.
 --
--- ★ AND THERE IS A BETTER PLACE FOR THE WORK: state the two `Var`
---   constructors at an ARBITRARY depth ONCE, in `Knot/Build` beside the
---   variable-depth forms, so both methods just call them.  That is
---   route (a) at TWO rows — which `Knot/Build` priced as "a chain whose
---   length is the field's POSITION", and `cVar-vz` carries its depth at
---   position 0.  ⇒ doing it there also keeps the `Var` constructors'
---   three forms (numeral, variable, arbitrary) in one place.
+-- ★★★ AND THE PATTERN IS ALREADY BUILT — `Lib/IWk` §8–10.  ⚠ THE ROUND
+--   TRIPS ARE SELF-INFLICTED: they appear because a CONCRETE row with a
+--   CONCRETE substitution (`isingle (pair sVar (nsuc d))`) makes
+--   `ipayTy` COMPUTE, leaving stuck `subTm`/`extS` forms to cancel by
+--   hand.  `Lib/IWk` never unfolds one.
+--
+--   `⊢iwkPay` types a payload with the substitution ABSTRACT, carried as
+--   `Sub⊢`, and steps it with
+--
+--       payStep : subTy (single v) (ipayTy D I (extS σ) C)
+--                   ≡ ipayTy D I (iext σ v) C
+--
+--   — the round trip stated ONCE, generic in `σ`, instead of per
+--   occurrence.  `⊢kaComp` and `⊢ixComp` do the same for the two field
+--   kinds, and `pinned-stable` for closed codes.
+--
+--   ⚠⚠ AND IT ALREADY BUILDS AN `icon` AT A MOVED INDEX, which is what
+--   `wkK`'s methods do and what these two need: §10 records that
+--   `⊢icon` wants `k ∈ID D` AND the payload at `ilookupD D k` — "neither
+--   follows from the other, and `Lib/IFold` needed neither, because a
+--   fold never BUILDS an `icon`".  That is precisely this obstacle,
+--   already met and already solved.
+--
+-- ⇒ so the next attempt should NOT be route (a) in `Knot/Build`.  It
+--   should type the rebuilt variable through `Lib/IWk`'s payload
+--   machinery, keeping the environment abstract — the same way `wkK`
+--   does at all 51 of its rows.
 ------------------------------------------------------------------------
 
 -- ★ RETYPING A **SUBJECT**, with context and type left to inference.
