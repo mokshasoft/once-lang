@@ -775,10 +775,37 @@ varAt ddi dm dp dt =
 --   POSITION — costs one `sub-w` and one `wk-single`, the same
 --   composite `⊢extSK` already pays.
 --
--- ⚠ ATTEMPTED 2026-08-28 AND NOT LANDED.  The mismatch
---   (`subTm (extS (single d)) (w (w d))` against `renTm vs _`) appears
---   inside a `⊢ty` ARGUMENT of `⊢pair`, not in a term position, so
---   `⊢-cast` cannot reach it — it needs a `subst` over the payload TYPE.
---   Every other repair in this file has been a `⊢-cast`; this one is a
---   different shape and was left rather than half-done.
+-- ⚠ ATTEMPTED 2026-08-28, PARTLY WORKING, NOT LANDED — and the ANSWER
+--   to "will a `subst` unblock it?" is YES for the technique, NOT YET
+--   for the equations.
+--
+--   The mismatches sit in the SUBJECTS of derivations inside a `⊢ty`
+--   argument, so `⊢-cast` (which moves TYPES) cannot reach them.
+--   `tmCast` below can, and DOES: adding it made the first mismatch go
+--   away and the error move on to the next occurrence.
+--
+--   ⚠ WHAT IS NOT SETTLED IS THE EQUATION.  The remaining occurrences
+--   are not `subTm (extS (single d)) (w (w d))` but nested
+--   `isingle`/`extS` forms that OUGHT to compute to it and do not
+--   reduce on their own, so each needs its round trip stated at the
+--   shape it actually has.  A handful per row: mechanical, but not
+--   guessable from the outside.
+--
+-- ★ AND THERE IS A BETTER PLACE FOR THE WORK: state the two `Var`
+--   constructors at an ARBITRARY depth ONCE, in `Knot/Build` beside the
+--   variable-depth forms, so both methods just call them.  That is
+--   route (a) at TWO rows — which `Knot/Build` priced as "a chain whose
+--   length is the field's POSITION", and `cVar-vz` carries its depth at
+--   position 0.  ⇒ doing it there also keeps the `Var` constructors'
+--   three forms (numeral, variable, arbitrary) in one place.
 ------------------------------------------------------------------------
+
+-- ★ RETYPING A **SUBJECT**, with context and type left to inference.
+--
+-- ⚠ `⊢-cast` moves the TYPE; this moves the TERM.  A bare `subst` will
+--   not do: writing `λ z → _ ⊢ … z … ∷ _` makes Agda abstract the
+--   CONTEXT over `z` too, and those metas never solve.  Fixing `Γ` and
+--   `A` as implicits of a helper is exactly what stops that.
+tmCast : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {t t' : RTm ⌊ Γ ⌋} →
+         t ≡ t' → Γ ⊢ t ∷ A → Γ ⊢ t' ∷ A
+tmCast refl d = d
