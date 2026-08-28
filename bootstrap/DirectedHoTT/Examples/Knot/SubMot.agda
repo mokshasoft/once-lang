@@ -2,7 +2,27 @@
 -- OCP-0009 · EXAMPLES — ★★★ THE MOTIVE `extS`/`subTm` ELIMINATE AT, AND
 -- THE 51 METHODS THAT DO NOTHING.
 --
---     M(i, t) = ∀n. (Var (snd ⟨i⟩) → Tm n) → Tm n
+--     M(i, t) = ∀n. (Var (predTm (snd ⟨i⟩)) → Tm n) → Tm (nsuc n)
+--
+-- ⚠⚠ THE `predTm` IS FORCED, and it is what `Lib/IdSuc` was built for.
+--   `extS` eliminates a VARIABLE: its `vs` method holds `x : Var m` and
+--   a ford `snd ⟨i⟩ ≡ nsuc m`, while `σ` is stated at the ambient index.
+--   Those line up only if `σ`'s domain is the PREDECESSOR — then
+--   `⊢fordPredN` turns the ford into `predTm (snd ⟨i⟩) ≡ m` and `σ x`
+--   type-checks.  A motive stated at `snd ⟨i⟩` cannot be repaired; it is
+--   off by one at the only two rows that matter.
+--
+-- ⬜ AND `subTm`'s MOTIVE IS A DIFFERENT ONE — recorded here so it is not
+--   confused with this:
+--
+--       M(i, t) = ∀n. (Var (snd ⟨i⟩) → Tm n) → K (pair (fst ⟨i⟩) n)
+--
+--   ★ Uniform, and NOT sort-dependent after all: substitution must send
+--     a `Ty` to a `Ty` and a `Tm` to a `Tm`, but the sort is just
+--     `fst ⟨i⟩` — a PROJECTION of the index, not a case split.  ⚠ And
+--     there the 51 do-nothing methods do NOT exist: every row rebuilds
+--     its own constructor.  The no-op story below belongs to `extS`
+--     alone.
 --
 -- ⚠⚠ WHY EVERY ROW GETS A METHOD.  The knot is ONE description, so
 --   casing on a `Var` is an `ielim KnotD` — which demands a method for
@@ -33,19 +53,24 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; pair; snd; Nat; Π; IMu
-        ; ICon; IDesc; _◂_; inil; renTy; εwkTy; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong )
+        ; ICon; IDesc; _◂_; inil; nsuc; renTy; εwkTy; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
-        ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ty-Nat; ty-Π; ty-IMu; ty-Unit
-        ; IConWf; imethTy; imethsTyFrom; ty-Σ
+        ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; ty-Nat; ty-Π; ty-IMu; ty-Unit
+        ; IConWf; imethTy; imethsTyFrom; ty-Σ; βsnd; ξ-pairʳ
         ; IDescWfFrom; idwf-nil; idwf-cons )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
+open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty )
+  using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
-open import DirectedHoTT.Examples.Knot.Tags using ( memTm-nzero )
-open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nzeroK )
-open import DirectedHoTT.Examples.Knot.Terms using ( fordFst )
+open import DirectedHoTT.Examples.Knot.Tags using ( memTm-nzero; memTm-var )
+open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nzeroK; Tm-varK )
+open import DirectedHoTT.Examples.Knot.Terms using ( fordFst; tyFordFst; ixConv )
+open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; ⊢Var-vzKv )
+open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
+open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz )
+open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; ⊢IPair; sTy; sTm; sVar; ⊢sTm; ⊢sVar; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K; cVar-vz; cVar-vs )
@@ -62,20 +87,20 @@ open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 --   touches only the INDEX slot.
 ------------------------------------------------------------------------
 
-subMotK : {Γ : Cx} → RTy ((Γ ∙) ∙)
-subMotK =
-  Π Nat (Π (Π (IMu KnotD IPair (pair sVar (snd (var (vs (vs vz))))))
+extMotK : {Γ : Cx} → RTy ((Γ ∙) ∙)
+extMotK =
+  Π Nat (Π (Π (IMu KnotD IPair (pair sVar (predTm (snd (var (vs (vs vz)))))))
               (IMu KnotD IPair (pair sTm (var (vs vz)))))
-           (IMu KnotD IPair (pair sTm (var (vs vz)))))
+           (IMu KnotD IPair (pair sTm (nsuc (var (vs vz))))))
 
-⊢subMotK : {Γ : Ctx} →
-           ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty subMotK
-⊢subMotK =
+⊢extMotK : {Γ : Ctx} →
+           ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty extMotK
+⊢extMotK =
   ty-Π ty-Nat
     (ty-Π (ty-Π (ty-IMu KnotWf
-                   (⊢ixP ⊢sVar (⊢snd (⊢var (there (there here))))))
+                   (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there here)))))))
                 (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
-          (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+          (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢var (there here))))))
 
 ------------------------------------------------------------------------
 -- ★ THE INHABITANT THE 51 DO-NOTHING METHODS RETURN.
@@ -107,12 +132,12 @@ subMotK =
 -- ★★★ THE DO-NOTHING METHOD — ONE TERM, ONE PROOF, ALL 51 ROWS.
 --
 -- `imethTy` binds exactly THREE things — the index, the payload, the IH
--- tuple — however many fields the row has; `subMotK` adds `n` and `σ`.
+-- tuple — however many fields the row has; `extMotK` adds `n` and `σ`.
 -- So the method is five `lam`s and a constant, and `C` stays ABSTRACT
 -- throughout, exactly as `Lib/IFold` keeps it abstract for the fold.
 --
 -- ⚠ THE SCAFFOLDING IS `Lib/IFold.⊢ifMethod`'s, with the motive swapped
---   from `Nat` to `subMotK`.  `ipayTy-wf` and `iihTy-wf` are already
+--   from `Nat` to `extMotK`.  `ipayTy-wf` and `iihTy-wf` are already
 --   generic in the motive; only `Lib/IPay`'s two `…Nat-wf` helpers are
 --   not, and this proof does not need them.
 ------------------------------------------------------------------------
@@ -122,26 +147,26 @@ constMeth = lam (lam (lam (lam (lam Tm-nzeroK))))
 
 ⊢constMeth : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
              IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
-             Γ ⊢ constMeth ∷ imethTy KnotD IPair k C subMotK
+             Γ ⊢ constMeth ∷ imethTy KnotD IPair k C extMotK
 ⊢constMeth {Γ = Γ} k C wC =
   ⊢lam ⊢IPair
     (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) C
                      KnotWf wC
                      (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
       (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) C}
-                      KnotD IPair subMotK (isingle (var (vs vz))) C (var vz) wC
+                      KnotD IPair extMotK (isingle (var (vs vz))) C (var vz) wC
                       (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
                                                    (εwk-ren vs IPair))
                                             (⊢var (there here))))
-                      ⊢subMotK
+                      ⊢extMotK
                       (⊢-cast (trans (ipayTy-ren vs KnotD IPair (isingle (var vz)) C)
                                      (ipayTy-cong KnotD IPair C
                                        (λ { vz → refl ; (vs ()) })))
                               (⊢var here)))
         (⊢lam ty-Nat
-          (⊢lam (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+          (⊢lam (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
                       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
-            (⊢Tm-nzeroKv (⊢var (there here)))))))
+            (⊢Tm-nzeroKv (⊢nsuc (⊢var (there here))))))))
 
 ------------------------------------------------------------------------
 -- THE METHOD **TYPE** IS WELL-FORMED — the same proof, one level up.
@@ -151,7 +176,7 @@ constMeth = lam (lam (lam (lam (lam Tm-nzeroK))))
 --   `iatCon-wf` — the codomain is `iatCon k ⟨-⟩ M` at an ABSTRACT `M`,
 --   and no such lemma exists.
 --
--- ★ Here it is not needed: `subMotK` IGNORES THE SCRUTINEE, so
+-- ★ Here it is not needed: `extMotK` IGNORES THE SCRUTINEE, so
 --   instantiating it touches only the index slot and `iatCon` COMPUTES.
 --   That is the same property that made `⊢constMeth`'s body writable,
 --   and it is why the motive was written to ignore the scrutinee.
@@ -159,26 +184,26 @@ constMeth = lam (lam (lam (lam (lam Tm-nzeroK))))
 
 imethTyK-wf : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
               IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
-              Γ ⊢ty imethTy KnotD IPair k C subMotK
+              Γ ⊢ty imethTy KnotD IPair k C extMotK
 imethTyK-wf {Γ = Γ} k C wC =
   ty-Π ⊢IPair
     (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) C
                      KnotWf wC
                      (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
       (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) C}
-                      KnotD IPair subMotK (isingle (var (vs vz))) C (var vz) wC
+                      KnotD IPair extMotK (isingle (var (vs vz))) C (var vz) wC
                       (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
                                                    (εwk-ren vs IPair))
                                             (⊢var (there here))))
-                      ⊢subMotK
+                      ⊢extMotK
                       (⊢-cast (trans (ipayTy-ren vs KnotD IPair (isingle (var vz)) C)
                                      (ipayTy-cong KnotD IPair C
                                        (λ { vz → refl ; (vs ()) })))
                               (⊢var here)))
             (ty-Π ty-Nat
-              (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+              (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
                           (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
-                    (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))))))
+                    (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢var (there here)))))))))
 
 ------------------------------------------------------------------------
 -- THE TUPLE'S TYPE, by the same induction as `Lib/IPay`'s Nat version.
@@ -186,7 +211,7 @@ imethTyK-wf {Γ = Γ} k C wC =
 
 imethsTyFromK-wf : {Γ : Ctx} (j : ℕ) (E : IDesc) →
                    IDescWfFrom KnotD IPair E →
-                   Γ ⊢ty imethsTyFrom KnotD IPair subMotK j E
+                   Γ ⊢ty imethsTyFrom KnotD IPair extMotK j E
 imethsTyFromK-wf j inil    idwf-nil          = ty-Unit
 imethsTyFromK-wf j (C ◂ E) (idwf-cons wC wE) =
   ty-Σ (imethTyK-wf j C wC)
@@ -227,14 +252,14 @@ constMethsFrom (cd-cons W)  t = pair constMeth (constMethsFrom W t)
 ⊢constMethsFrom : {Γ : Ctx} (j : ℕ) {E : IDesc} (W : CDesc E) →
                   IDescWfFrom KnotD IPair E →
                   (tl : RTm ⌊ Γ ⌋) →
-                  Γ ⊢ tl ∷ imethsTyFrom KnotD IPair subMotK (cdPos W j) (cdRest W) →
-                  Γ ⊢ constMethsFrom W tl ∷ imethsTyFrom KnotD IPair subMotK j E
+                  Γ ⊢ tl ∷ imethsTyFrom KnotD IPair extMotK (cdPos W j) (cdRest W) →
+                  Γ ⊢ constMethsFrom W tl ∷ imethsTyFrom KnotD IPair extMotK j E
 ⊢constMethsFrom j (cd-stop E) wE tl dtl = dtl
 ⊢constMethsFrom j (cd-cons {C = C} {E = E} W) (idwf-cons wC wE) tl dtl =
   ⊢pair (ren-ty (imethsTyFromK-wf (suc j) E wE) there)
         (⊢constMeth j C wC)
         (⊢-cast (sym (wk-singleTy {v = constMeth}
-                                  (imethsTyFrom KnotD IPair subMotK (suc j) E)))
+                                  (imethsTyFrom KnotD IPair extMotK (suc j) E)))
                 (⊢constMethsFrom (suc j) W wE tl dtl))
 
 ------------------------------------------------------------------------
@@ -260,3 +285,67 @@ _ = refl
 
 _ : cdRest (cdTake 51 KnotD) ≡ (cVar-vz ◂ (cVar-vs ◂ inil))
 _ = refl
+
+------------------------------------------------------------------------
+-- ★ `Tm-varK` AT AN ARBITRARY DEPTH — `Knot/Build`'s `⊢kLam` pattern.
+--
+-- ⚠ `cTm-var`'s row is `iρ (pair sVar (snd ⟨i⟩)) (iκ <sort ford> iι)`:
+--   one recursive field AT THE AMBIENT DEPTH and a sort ford, no depth
+--   ford.  So it takes an arbitrary `d`, and the only cast is the one
+--   `⊢kLam` also pays — `βsnd` reducing the field's index, with no
+--   `ξ-nsuc` because the field sits at the ambient depth, not its
+--   successor.
+------------------------------------------------------------------------
+
+⊢Tm-varKv : {Δ : Ctx} {d a0 : RTm ⌊ Δ ⌋} →
+            Δ ⊢ d ∷ Nat → Δ ⊢ a0 ∷ K (pair sVar d) →
+            Δ ⊢ Tm-varK a0 ∷ K (pair sTm d)
+⊢Tm-varKv {d = d} dd d0 =
+  ⊢icon KnotWf memTm-var (⊢ixP ⊢sTm dd)
+    (⊢pair (tyFordFst ⊢sTm (⊢wk dd))
+           (ixConv (ξ-pairʳ (βsnd sTm d)) d0)
+           (⊢pair ty-Unit (fordFst ⊢sTm) ⊢unit))
+
+------------------------------------------------------------------------
+-- ★★★ THE FIRST REAL METHOD: `extS σ vz = var vz`.
+--
+-- ⚠ NOTHING IS TRANSPORTED HERE.  `vz`'s row has no recursive field, so
+--   there is no `σ` application and the depth ford is never inverted —
+--   the answer is built outright at `nsuc n`.  All the ford work is in
+--   the `vs` method.
+------------------------------------------------------------------------
+
+extVz : {Γ : Cx} → RTm Γ
+extVz = lam (lam (lam (lam (lam (Tm-varK (Var-vzK (var (vs vz))))))))
+
+⊢extVz : {Γ : Ctx} →
+         Γ ⊢ extVz ∷ imethTy KnotD IPair tagVar-vz cVar-vz extMotK
+⊢extVz {Γ = Γ} =
+  ⊢lam ⊢IPair
+    (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) cVar-vz
+                     KnotWf cVar-vzWf
+                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+      (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) cVar-vz}
+                      KnotD IPair extMotK (isingle (var (vs vz))) cVar-vz (var vz) cVar-vzWf
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                                                   (εwk-ren vs IPair))
+                                            (⊢var (there here))))
+                      ⊢extMotK
+                      -- ⚠ NO CAST HERE, unlike `⊢constMeth`.  At an ABSTRACT
+                      --   `C` the payload type is stuck and the two
+                      --   environments must be identified by `ipayTy-ren` +
+                      --   `ipayTy-cong`; at the CONCRETE `cVar-vz` `ipayTy`
+                      --   COMPUTES and they are definitionally equal.
+                      -- ★ Which also means the lemma could not be used here:
+                      --   computed away, its `σ`/`σ'` are unrecoverable —
+                      --   `half-generalization-is-worst`, at one row.
+                      (⊢var here))
+        (⊢lam ty-Nat
+          (⊢lam (ty-Π (ty-IMu KnotWf
+                         (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
+                      (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+            -- ⚠ PINNED: `K` is a DEFINED function, so the goal
+            --   `K (pair sTm _)` does not solve the depth by unification.
+            (⊢Tm-varKv {d = nsuc (var (vs vz))} {a0 = Var-vzK (var (vs vz))}
+                       (⊢nsuc (⊢var (there here)))
+                       (⊢Var-vzKv {x = vs vz} (⊢var (there here))))))))
