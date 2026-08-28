@@ -814,10 +814,31 @@ varAt ddi dm dp dt =
 --   fold never BUILDS an `icon`".  That is precisely this obstacle,
 --   already met and already solved.
 --
--- ⇒ so the next attempt should NOT be route (a) in `Knot/Build`.  It
---   should type the rebuilt variable through `Lib/IWk`'s payload
---   machinery, keeping the environment abstract — the same way `wkK`
---   does at all 51 of its rows.
+-- ⚠⚠ CORRECTION (same day): `Lib/IWk`'s MACHINERY DOES NOT APPLY HERE,
+--   and route (a) really is required.  The reasoning above about
+--   keeping the environment abstract is right as a RULE and wrong as a
+--   plan for these two rows.
+--
+--   `⊢iwkPay` REBUILDS a payload it was handed, at an abstract `τ`
+--   related to an abstract `σ`.  These methods must CONSTRUCT one at a
+--   CONCRETE environment — there is no source payload at the target
+--   index to rebuild from.
+--
+--   ★ AND THE SCRUTINEE CANNOT BE REUSED EITHER, which was the other
+--     hope.  `imethTy` hands the method its index `⟨i⟩` and its payload,
+--     so `icon k p` reconstructs the scrutinee at `K ⟨i⟩` — but `σ`
+--     wants `K (pair sVar (snd ⟨i⟩))`, and `⟨i⟩` is OPAQUE: the sort
+--     ford is propositional, and closing the gap would need
+--     `⟨i⟩ ≡ pair (fst ⟨i⟩) (snd ⟨i⟩)`.
+--
+--   ⚠⚠ THE KERNEL HAS NO PAIR-η.  `Spec/Typing` has `βfst`/`βsnd` and
+--     nothing in the other direction, so that equation is simply not
+--     available.  ⇒ the variable must be REBUILT from `m`, and `m` is a
+--     projection, so its constructor is needed at an ARBITRARY depth.
+--
+-- ⇒ route (a) at these two rows, as originally planned: `⊢Var-vzKt` /
+--   `⊢Var-vsKt` in `Knot/Build`, with each round trip stated at the
+--   shape it actually has (`tmCast` is the tool; see above).
 ------------------------------------------------------------------------
 
 -- ★ RETYPING A **SUBJECT**, with context and type left to inference.
