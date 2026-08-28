@@ -19,7 +19,8 @@ Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜
 | ✅ | `sz` and the same-sort measure | `Lib/ISz`, `Lib/ISzSort`, `Knot/Sz`, `SzS` |
 | ✅ | **`szsTm ⌈t⌉ ⟶* num (sz t)`, all 30 `RTm` rows** | `Knot/SzAgree` — generated |
 | ✅ | census of the headers' numeric claims (C1) | fixed 2 stale claims in `Knot/Terms` |
-| ⬜ | **C2** — `Confluence`'s `⟹-⁺` `UnreachableClauses`; `check-formers` 4–6 | review list, not a build |
+| 🟡 | **C2** — `check-formers` 4–6 | gate 4 CLEAN, gate 6 back to 5 (2 were mine), gate 5 = 3 notes ⬜ |
+| ⬜ | C2 — `Confluence`'s `⟹-⁺` `UnreachableClauses` | hygiene only; diagnosis is expensive, see below |
 
 ## B. Step 1 — `_∋_∷_`
 
@@ -91,3 +92,40 @@ Full state: `HANDOFF-2026-08-27` §"THE PENDING GENERALISATION".
 3. "`sub-w`ⁿ wants indexing" is `Lib/Wk`'s CLAIM, not a measurement —
    and today's three-round-trips-at-three-levels is weak evidence
    AGAINST the simple version.
+
+---
+
+## G. C2 in detail (2026-08-28)
+
+### ✅ gate 4 — vacuously discharged rows: CLEAN
+4 rows are `⊥-elim`, and **all four are `structural`** — the premise is
+genuinely uninhabitable (`noVar` at `var x`, `UnitU-clash` at `unit`,
+`NatU-clash` at `nzero`). ⚠ No `PLACEHOLDER` rows, which are the ones
+that would stand in for a MISSING TYPING RULE. Nothing owed.
+
+### ⬜ gate 5 — promissory notes: 3, all pre-existing
+`Metatheory/LogicalRelation:3773`, `Spec/Typing:290`, `Spec/Typing:438`.
+Each asserts an invariant nothing checks. ⚠ Reviewing these means
+reading the surrounding rule, not running a tool.
+
+### ✅ gate 6 — conditional lemmas with no consumer: 7 → 5
+⚠ **Two of the seven were MINE, added the same day**: `muFwd*`
+(`Knot/JudgeLib`) and `p5*` (`Knot/SubMot`). Both were written for
+symmetry with a lemma that IS used, and neither ever acquired a caller.
+Removed. ★ Symmetry is not a reason to ship a lemma — and the gate
+caught it within hours, which is the argument for running it routinely
+rather than as a parked item.
+The remaining 5 are long-standing and in `LogicalRelation`/`SubjectReduction`.
+
+### ⬜ the `⟹-⁺` `UnreachableClauses` warning
+⚠ **Hygiene, not correctness** — the module compiles and its theorem
+stands; some of 592 clauses are subsumed by earlier ones.
+
+⚠ AND DIAGNOSIS IS EXPENSIVE, measured: Agda reports only the whole
+definition range (3198–4358), there are NO duplicate left-hand sides, so
+finding them means bisecting. ⚠ Dropping a block of clauses makes
+Agda's coverage search blow up — a single half-split did not finish in
+600s, against 2.8s for the intact module. ⇒ a bisect is ~10 runs of
+unknown, possibly very large cost.
+★ Worth doing only if the clauses are to be pruned for another reason.
+

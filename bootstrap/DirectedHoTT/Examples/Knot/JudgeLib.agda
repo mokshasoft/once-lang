@@ -57,15 +57,15 @@ muFwd r d = ⊢conv d (credᵀ (ξ-IMu r))
 --
 -- ⚠ `muFwd` takes ONE step, which is all `Knot/Lookup` needed.  An index
 --   that reduces over several steps — `sortMap s ⟶* s` is six — needs
---   the `⟶*` form, and `subTm` needs it BACKWARDS as well: a value built
---   at the row's own sort has to be read at the motive's `sortMap`ped
---   one, which is the reduction run in reverse.  ★ Free, because `≅ᵀ` is
+--   the `⟶*` form, and `subTm` needs it BACKWARDS: a value built at the
+--   row's own sort has to be read at the motive's `sortMap`ped one,
+--   which is the reduction run in reverse.  ★ Free, because `≅ᵀ` is
 --   symmetric; nothing here inverts a REDUCTION.
+--
+-- ⚠ ONLY THE BACKWARD ONE EXISTS.  A forward `muFwd*` was written at the
+--   same time and had NO consumer — `tools/check-formers.sh` gate 6
+--   flagged it.  Symmetry is not a reason to ship a lemma.
 ------------------------------------------------------------------------
-
-muFwd* : {Γ : Ctx} {D : IDesc} {I : RTy Cx.ε} {i i' t : RTm ⌊ Γ ⌋} →
-         i ⟶* i' → Γ ⊢ t ∷ IMu D I i → Γ ⊢ t ∷ IMu D I i'
-muFwd* r d = ⊢conv d (red→≅ᵀ (⟶ᵀ*-IMu r))
 
 muBwd* : {Γ : Ctx} {D : IDesc} {I : RTy Cx.ε} {i i' t : RTm ⌊ Γ ⌋} →
          i ⟶* i' → Γ ⊢ t ∷ IMu D I i' → Γ ⊢ t ∷ IMu D I i
