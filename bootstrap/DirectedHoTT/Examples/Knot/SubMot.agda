@@ -60,7 +60,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; ⊢nzero; ⊢natrec; wk-single; ty-Nat; ty-Π; ty-IMu; ty-Unit
         ; IConWf; imethTy; imethsTyFrom; ty-Σ; βsnd; βfst; ξ-pairʳ; ξ-pairˡ; ξ-nsuc; single
         ; _⟶*_; done; step; natrec-suc; natrec-zero
-        ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢ielim; imethsTy
+        ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-El; ⊢ielim; imethsTy
         ; IDescWfFrom; idwf-nil; idwf-cons )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; cdTake )
@@ -79,15 +79,17 @@ open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
-open import DirectedHoTT.Examples.Knot.Tags using ( memTm-nzero; memTm-var; tagVar-vs )
+open import DirectedHoTT.Examples.Knot.Tags
+  using ( memTm-nzero; memTm-var; memVar-vz; tagVar-vz; tagVar-vs; tagTm-var )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nzeroK; Tm-varK )
-open import DirectedHoTT.Examples.Knot.Terms using ( fordFst; tyFordFst; ixConv )
-open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; ⊢Var-vzKv )
+open import DirectedHoTT.Examples.Knot.Terms using ( fordFst; fordSnd; tyFordFst; ixConv )
+open import DirectedHoTT.Examples.Knot.Build
+  using ( Var-vzK; ⊢Var-vzKv; Var-vsK; ⊢Var-vsKv )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
-open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz; cVar-vs )
-open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf; cVar-vsWf )
+open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz; cVar-vs; cTm-var )
+open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf; cVar-vsWf; cTm-varWf )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; ⊢IPair; sTy; sTm; sICon; sVar; ⊢sTm; ⊢sVar; ⊢ixP )
+  using ( IPair; ⊢IPair; sTy; sTm; sICon; sVar; ⊢sTm; ⊢sVar; ⊢ixP; toI; fromI )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 
@@ -641,18 +643,24 @@ _ = refl
 --   it belongs beside the motive rather than in any method.
 ------------------------------------------------------------------------
 
-sortConv : {Γ : Ctx} {fi s n t : RTm ⌊ Γ ⌋} {p : RTm ⌊ Γ ⌋} →
+-- ⚠⚠ THE OUTPUT SORT IS `s'`, NOT `s`, AND THE DIFFERENCE IS THE WHOLE
+--   POINT.  Stated with `sortMap s ⟶* s` this lemma is unusable at
+--   exactly the rows it was written for: `sVar` is the ONE sort
+--   `sortMap` moves, so the two `cVar-*` methods build at `sTm` while
+--   their ford names `sVar`.  Every other row has `s' = s` and pays
+--   nothing for the extra generality.
+sortConv : {Γ : Ctx} {fi s s' n t : RTm ⌊ Γ ⌋} {p : RTm ⌊ Γ ⌋} →
            Γ ⊢ fi ∷ Nat → Γ ⊢ s ∷ Nat → Γ ⊢ n ∷ Nat →
            Γ ⊢ p ∷ IdN fi s →
-           sortMap s ⟶* s →
-           Γ ⊢ t ∷ K (pair s n) →
+           sortMap s ⟶* s' →
+           Γ ⊢ t ∷ K (pair s' n) →
            Γ ⊢ jsub (⌜IMu⌝ KnotD IPair (pair (sortMap (var vz)) (w n)))
                     (symN fi p) t
              ∷ K (pair (sortMap fi) n)
 -- ⚠ ONE CAST: the motive carries `n` WEAKENED past its own binder, so
 --   instantiating it leaves `subTm (single fi) (w n)`.  `wk-single`
 --   cancels it — the same round trip `⊢wkK` and `⊢extSK` both pay.
-sortConv {fi = fi} {s = s} {n = n} dfi ds dn dp red dt =
+sortConv {fi = fi} {s = s} {s' = s'} {n = n} dfi ds dn dp red dt =
   ⊢-cast (cong (λ z → K (pair (sortMap fi) z)) (wk-single {v = fi} n))
    (fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf
                    (⊢ixP (⊢sortMap (elAsNat (⊢var here))) (⊢wk dn)))
@@ -662,6 +670,115 @@ sortConv {fi = fi} {s = s} {n = n} dfi ds dn dp red dt =
                 --   instead of `fi`: `⊢jsub`'s `e` premise instantiates
                 --   the motive too.
                 (toMu (muBwd* (⟶*-pairˡ red)
-                        (⊢-cast (cong (λ z → K (pair s z))
+                        (⊢-cast (cong (λ z → K (pair s' z))
                                       (sym (wk-single {v = s} n)))
                                 dt)))))
+
+-- ★ the reduction each row supplies.  `sTm` is the one the `Tm` rows and
+--   both `Var` rows need; `sortMap-var` above is the only one that MOVES.
+sortMap-tm : {Γ : Cx} → sortMap {Γ} sTm ⟶* sTm
+sortMap-tm =
+  ⟶*-trans (⟶*-natrecⁿ (⟶*-trans (pred* (pred* (pred* (pred* (pred-suc _)))))
+                       (⟶*-trans (pred* (pred* (pred* pred-zero)))
+                       (⟶*-trans (pred* (pred* pred-zero))
+                       (⟶*-trans (pred* pred-zero) pred-zero)))))
+           (step (natrec-zero _ _) done)
+
+------------------------------------------------------------------------
+-- ★★★ LOOKUP METHOD 1 of 3: `subTm σ (var x) = σ x`.
+--
+-- ⚠ THIS ROW CANNOT BE COMPUTED, which is why the mask exists.  A
+--   rebuild would produce `icon tagTm-var (pair <a Tm> …)` — `var`
+--   applied to a TERM — so the method's SHAPE differs, not one field.
+--
+-- Binders: σ = vz · n = vs vz · ih = vs² vz · p = vs³ vz · i = vs⁴ vz.
+-- The payload is `(x, fordFst, unit)`, so `x = fst p` and the sort ford
+-- is `fst (snd p)`.  ⚠ The IH exists and is UNUSED — `σ` is applied to
+-- the field itself, not to anything recursive.
+------------------------------------------------------------------------
+
+subVarM : {Γ : Cx} → RTm Γ
+subVarM =
+  lam (lam (lam (lam (lam
+    (jsub (⌜IMu⌝ KnotD IPair (pair (sortMap (var vz)) (var (vs (vs vz)))))
+          (symN (fst (var (vs (vs (vs (vs vz))))))
+                (fst (snd (var (vs (vs (vs vz)))))))
+          (app (var vz) (fst (var (vs (vs (vs vz)))))))))))
+
+⊢subVarM : {Γ : Ctx} →
+           Γ ⊢ subVarM ∷ imethTy KnotD IPair tagTm-var cTm-var subMotK
+⊢subVarM {Γ = Γ} =
+  ⊢lam ⊢IPair
+    (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) cTm-var
+                     KnotWf cTm-varWf
+                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+      (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) cTm-var}
+                      KnotD IPair subMotK (isingle (var (vs vz))) cTm-var (var vz) cTm-varWf
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                                                   (εwk-ren vs IPair))
+                                            (⊢var (there here))))
+                      ⊢subMotK
+                      (⊢var here))
+        (⊢lam ty-Nat
+          (⊢lam (ty-Π (ty-IMu KnotWf
+                         (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                      (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+            (sortConv (⊢fst (⊢var (there (there (there (there here))))))
+                      ⊢sTm
+                      (⊢var (there here))
+                      (fordAs (⊢fst (⊢snd (⊢var (there (there (there here)))))))
+                      sortMap-tm
+                      (⊢app (⊢var here) (⊢fst (⊢var (there (there (there here)))))))))))
+
+------------------------------------------------------------------------
+-- ★ THE SECOND TRANSPORT, shared by both `Var` rows.
+--
+-- Their methods must hand `σ` a `Var (snd ⟨i⟩)`, but what they can BUILD
+-- is `Var-vzK m` / `Var-vsK m x` at depth `nsuc m`.  The DEPTH ford
+-- `snd ⟨i⟩ ≡ nsuc m` closes that gap — a second `jsub`, at the simpler
+-- motive `λ z. K (pair sVar z)`.
+--
+-- ⚠ NO `wk-single` HERE, unlike `sortConv`: this motive mentions no
+--   weakened variable, so instantiating it leaves nothing to cancel.
+------------------------------------------------------------------------
+
+varAt : {Γ : Ctx} {di m t p : RTm ⌊ Γ ⌋} →
+        Γ ⊢ di ∷ Nat → Γ ⊢ m ∷ Nat →
+        Γ ⊢ p ∷ IdN di (nsuc m) →
+        Γ ⊢ t ∷ K (pair sVar (nsuc m)) →
+        Γ ⊢ jsub (⌜IMu⌝ KnotD IPair (pair sVar (var vz))) (symN di p) t
+          ∷ K (pair sVar di)
+varAt ddi dm dp dt =
+  fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
+                (natAsEl (⊢nsuc dm)) (natAsEl ddi)
+                (⊢symN ddi (⊢nsuc dm) dp)
+                (toMu dt))
+
+------------------------------------------------------------------------
+-- ⬜ LOOKUP METHODS 2 and 3 — BLOCKED, and on a KNOWN obstacle.
+--
+-- Both `Var` rows must hand `σ` a `Var (snd ⟨i⟩)` built from their own
+-- payload: `Var-vzK m` / `Var-vsK m x` where `m = fst p`.  Everything
+-- around that is DONE — `varAt` moves it along the depth ford,
+-- `sortConv` reads the result at `sortMap (fst ⟨i⟩)`, and
+-- `sortMap-var : sortMap sVar ⟶* sTm` is proved.
+--
+-- ⚠⚠ WHAT IS MISSING IS THE CONSTRUCTOR AT AN ARBITRARY DEPTH TERM.
+--   `Knot/Build`'s `⊢Var-vzKv` requires a bare VARIABLE (route (c),
+--   free because renaming and substitution COMPUTE on variables), and a
+--   method's depth is `fst p` — a PROJECTION.  ★ So route (c) does not
+--   apply HERE, and `Knot/Build`'s judgement that route (a) is worse,
+--   which is right for the TABLE, does not settle this row.
+--
+-- ★ AND IT IS CHEAP AT THIS ROW: `cVar-vz` carries its depth at field
+--   position 0, so Build's objection — a chain as long as the field's
+--   POSITION — costs one `sub-w` and one `wk-single`, the same
+--   composite `⊢extSK` already pays.
+--
+-- ⚠ ATTEMPTED 2026-08-28 AND NOT LANDED.  The mismatch
+--   (`subTm (extS (single d)) (w (w d))` against `renTm vs _`) appears
+--   inside a `⊢ty` ARGUMENT of `⊢pair`, not in a term position, so
+--   `⊢-cast` cannot reach it — it needs a `subst` over the payload TYPE.
+--   Every other repair in this file has been a `⊢-cast`; this one is a
+--   different shape and was left rather than half-done.
+------------------------------------------------------------------------
