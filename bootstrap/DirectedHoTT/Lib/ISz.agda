@@ -22,4 +22,5 @@ open IF.Fold nzero plusTm nsuc ⊢nzero ⊢plus ⊢nsuc public
   renaming ( ifTail   to szTail   ; ⊢ifTail   to ⊢szTail
            ; ifSum    to szSum    ; ⊢ifSum    to ⊢szSum
            ; ifMethod to szMethod ; ⊢ifMethod to ⊢szMethod
-           ; ifMeths  to szMeths  ; ⊢ifMeths  to ⊢szMeths )
+           ; ifMeths  to szMeths  ; ⊢ifMeths  to ⊢szMeths
+           ; ifMeths-sel to szMeths-sel )

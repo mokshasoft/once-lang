@@ -37,6 +37,7 @@ open import DirectedHoTT.Spec.Syntax
         ; lam; pair; fst; snd; unit; nzero; nsuc
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_
         ; ipayTy; Sub; extS; subTm; subTy; renTy; isingle; iext
+        ; sel; ilookupD; _∈ID_; hereID; thereID
         ; εwkTy; εwk-ren; ipayTy-ren; ipayTy-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
@@ -44,7 +45,8 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢ty_; ty-Unit; ty-Σ; ty-Nat
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
-        ; imethTy; imethsTyFrom; iihTy )
+        ; imethTy; imethsTyFrom; iihTy
+        ; _⟶_; _⟶*_; done; step; βfst; βsnd; ξ-fst; ξ-snd )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; ren-ty; isingle-Sub⊢; iihTy-wf; iihTy-ren; iihTy-cong )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
@@ -167,3 +169,33 @@ module Fold
           (⊢-cast (sym (wk-singleTy {v = ifMethod C}
                                     (imethsTyFrom D I Nat (suc j) E)))
                   (⊢ifMeths D I (suc j) E wD wE tI))
+
+  ------------------------------------------------------------------------
+  -- ★★★ SELECTING A METHOD OUT OF THE TUPLE, IN **ONE** STEP PER ROW.
+  --
+  -- ⚠⚠ WHY THIS IS NOT COSMETIC.  `sel k ms` is `fst (sndᵏ ms)`, and
+  --   `fst`/`snd` are TERM FORMERS stepping by `βfst`/`βsnd` — not
+  --   meta-level projections.  So reaching row `k` of the tuple by hand
+  --   costs `k+1` reduction steps, and the `sz` agreement
+  --   (`szTm ⌈t⌉ ⟶* ⌜ sz t ⌝`) over 53 rows would be ~1400 selection steps
+  --   alone: **O(n²)**, the shape `Knot/Tags` records for `∈ID`.
+  --
+  -- ★ ONE INDUCTION REMOVES IT.  Each row then costs ONE selection step
+  --   plus the fixed tail (three βs for the method's binders, then the IH
+  --   projections), so the agreement becomes O(n) chains of constant
+  --   length.  ⇒ the 53 rows are bulk of a size worth doing, rather than a
+  --   quadratic wall.
+  ------------------------------------------------------------------------
+
+  -- a reduction under `sel k`, i.e. under `fst (sndᵏ ⟨-⟩)`
+  selCong : {Γ : Cx} (k : ℕ) {ms ms' : RTm Γ} → ms ⟶ ms' → sel k ms ⟶ sel k ms'
+  selCong zero    r = ξ-fst r
+  selCong (suc k) r = selCong k (ξ-snd r)
+
+  -- ★ …and the selection itself.  ⚠ The `k ∈ID E` premise is what stops it
+  --   falling off the end of the list, exactly as on `⊢icon`.
+  ifMeths-sel : {Γ : Cx} (E : IDesc) (k : ℕ) → k ∈ID E →
+                sel k (ifMeths {Γ = Γ} E) ⟶* ifMethod (ilookupD E k)
+  ifMeths-sel (C ◂ E) zero    hereID      = step (βfst _ _) done
+  ifMeths-sel (C ◂ E) (suc k) (thereID p) =
+    step (selCong k (βsnd _ _)) (ifMeths-sel E k p)
