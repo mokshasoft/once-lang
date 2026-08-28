@@ -23,12 +23,13 @@ module DirectedHoTT.Examples.Knot.Lookup where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Nat; Σ'; El; IMu; pair
         ; fst; snd; nsuc; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub
-        ; ICon; IDesc; iι; iκ; inil; _◂_ )
+        ; ICon; IDesc; iι; iρ; iκ; inil; _◂_ )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv
-        ; ⊢fst; ⊢snd; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
+        ; ⊢fst; ⊢snd; ⊢nsuc; ⊢pair; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
         ; ty-Nat; ty-Σ; ty-IMu
-        ; IConWf; iwf-ι; iwf-κ; ICodeWf; icw-clo; icw-ford; icw-imu
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; ICodeWf; icw-clo; icw-ford; icw-imu
+        ; IDescWf; idwf-nil; idwf-cons
         ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMu
         ; _⟶_; βfst; βsnd; ξ-pairˡ; ξ-pairʳ; ξ-nsuc )
 open import DirectedHoTT.Examples.Knot.Sorts
@@ -36,9 +37,11 @@ open import DirectedHoTT.Examples.Knot.Sorts
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; elIdN )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.CtxD
   using ( CtxD; CtxK; CtxWf; INat; Ctx-extK; ⊢Ctx-extKv; toKn )
-open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; ⊢Var-vzKv )
+open import DirectedHoTT.Examples.Knot.Build
+  using ( Var-vzK; ⊢Var-vzKv; Var-vsK; ⊢Var-vsKv )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 
 ------------------------------------------------------------------------
@@ -296,3 +299,255 @@ W₁ D =
 -- ★★★ `here` IS WELL FORMED.
 lkHereWf : (D : IDesc) → IConWf D ILk Θ0 lkHere
 lkHereWf D = iwf-κ κ₀ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝ (W₁ D)
+
+------------------------------------------------------------------------
+-- 4. `there` — the same shape plus ONE RECURSIVE FIELD.
+--
+--     there : Γ ∋ x ∷ A → (Γ ▹ B) ∷ vs x ∷ renTy vs A
+--
+-- ⚠ Ten fields: five bound values, the recursive premise, and the same
+--   four fords `here` has — with the same three transports.  ★ The
+--   recursive field is the only genuinely new thing, and its index is the
+--   FOUR-TUPLE `(m, Γ, x, A)`, i.e. the telescope §1 built.
+------------------------------------------------------------------------
+
+Ξ0 : Ctx
+Ξ0 = ◇ ▹ ILk
+
+λ₀ : RTm ⌊ Ξ0 ⌋
+λ₀ = ⌜Nat⌝                                          -- m
+
+Ξ1 : Ctx
+Ξ1 = Ξ0 ▹ El λ₀
+
+λ₁ : RTm ⌊ Ξ1 ⌋
+λ₁ = ⌜IMu⌝ CtxD INat (var vz)                       -- Γ : Ctx m
+
+Ξ2 : Ctx
+Ξ2 = Ξ1 ▹ El λ₁
+
+λ₂ : RTm ⌊ Ξ2 ⌋
+λ₂ = ⌜IMu⌝ KnotD IPair (pair sVar (var (vs vz)))    -- x : Var m
+
+Ξ3 : Ctx
+Ξ3 = Ξ2 ▹ El λ₂
+
+λ₃ : RTm ⌊ Ξ3 ⌋
+λ₃ = ⌜IMu⌝ KnotD IPair (pair sTy (var (vs (vs vz))))   -- A : RTy m
+
+Ξ4 : Ctx
+Ξ4 = Ξ3 ▹ El λ₃
+
+λ₄ : RTm ⌊ Ξ4 ⌋
+λ₄ = ⌜IMu⌝ KnotD IPair (pair sTy (var (vs (vs (vs vz)))))  -- B : RTy m
+
+Ξ5 : Ctx
+Ξ5 = Ξ4 ▹ El λ₄
+
+-- ★ THE RECURSIVE PREMISE, at the four-component index `(m, Γ, x, A)`.
+ρ₅ : RTm ⌊ Ξ5 ⌋
+ρ₅ = pair (var (vs (vs (vs (vs vz)))))
+          (pair (var (vs (vs (vs vz))))
+            (pair (var (vs (vs vz))) (var (vs vz))))
+
+-- ⚠ FROM HERE THE CONTEXTS ARE `Cx`, NOT `Ctx`, and that is forced: the
+--   recursive field extends the telescope by `IMu LkD ILk ρ₅`, which
+--   mentions the description being DEFINED.  ⌊_⌋ only COUNTS, so the
+--   codes after it can be typed at a plain `Cx` and the row stays
+--   definable before `LkD` exists.  The `Ctx`-level telescopes come back
+--   in §5, where `LkD` is available.
+X6 X7 X8 X9 : Cx
+X6 = ⌊ Ξ5 ⌋ ∙
+X7 = X6 ∙
+X8 = X7 ∙
+X9 = X8 ∙
+
+-- the DEPTH ford, `fst ⟨i⟩ ≡ suc m`
+λ₆ : RTm X6
+λ₆ = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz))))))))
+                (nsuc (var (vs (vs (vs (vs (vs vz)))))))
+
+-- the CONTEXT ford — target `Γ ▹ B`, transported along λ₆
+λ₇ : RTm X7
+λ₇ = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))
+          (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) 
+          (jsub (⌜IMu⌝ CtxD INat (var vz))
+                (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz))
+                (Ctx-extK (var (vs (vs (vs (vs (vs (vs vz)))))))
+                          (var (vs (vs (vs (vs (vs vz))))))
+                          (var (vs (vs vz)))))
+
+-- the VARIABLE ford — target `vs x`
+λ₈ : RTm X8
+λ₈ = ⌜Id⌝ (⌜IMu⌝ KnotD IPair
+             (pair sVar (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) 
+          (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
+          (jsub (⌜IMu⌝ KnotD IPair (pair sVar (var vz)))
+                (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))
+                      (var (vs vz)))
+                (Var-vsK (var (vs (vs (vs (vs (vs (vs (vs vz))))))))
+                         (var (vs (vs (vs (vs (vs vz))))))))
+
+-- the TYPE ford — target `wk A`
+λ₉ : RTm X9
+λ₉ = ⌜Id⌝ (⌜IMu⌝ KnotD IPair
+             (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) 
+          (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))
+          (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz)))
+                (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
+                      (var (vs (vs vz))))
+                (wkK (pair sTy (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))
+                     (var (vs (vs (vs (vs (vs vz))))))))
+
+lkThere : ICon (ε ∙)
+lkThere =
+  iκ λ₀ (iκ λ₁ (iκ λ₂ (iκ λ₃ (iκ λ₄
+    (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))))))))
+
+-- ★★★ THE DESCRIPTION.
+LkD : IDesc
+LkD = lkHere ◂ (lkThere ◂ inil)
+
+Lk : {Γ : Cx} → RTm Γ → RTy Γ
+Lk i = IMu LkD ILk i
+
+------------------------------------------------------------------------
+-- 5. `there`'s WELL-FORMEDNESS, one lemma per field.
+--
+-- ⚠ THE TELESCOPES ARE `Ctx` AGAIN HERE, because `LkD` now exists — and
+--   Ξ6 is where the recursive premise enters, extending by
+--   `IMu LkD ILk ρ₅` rather than by an `El`.
+------------------------------------------------------------------------
+
+Ξ6 Ξ7 Ξ8 Ξ9 : Ctx
+Ξ6 = Ξ5 ▹ IMu LkD ILk ρ₅
+Ξ7 = Ξ6 ▹ El λ₆
+Ξ8 = Ξ7 ▹ El λ₇
+Ξ9 = Ξ8 ▹ El λ₈
+
+V₉ : IConWf LkD ILk Ξ9 (iκ λ₉ iι)
+V₉ =
+  iwf-κ λ₉ (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf
+              (⊢ixP ⊢sTy (⊢fst (⊢var (there (there (there (there (there (there (there (there (there here)))))))))))))
+           (toKn (⊢snd (⊢snd (⊢snd
+              (⊢var (there (there (there (there (there (there (there (there (there here))))))))))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var here))))
+                  (toI (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there (there here)))))))))))) 
+                  (toI (⊢fst (⊢var (there (there (there (there (there (there (there (there (there here))))))))))))
+                  (⊢symN (⊢fst (⊢var (there (there (there (there (there (there (there (there (there here)))))))))))
+                         (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there (there here))))))))))) 
+                         (fordAs (⊢var (there (there here)))))
+                  (toKn (kFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _)))
+                          (kFwd (ξ-pairˡ (βfst _ _))
+                            (⊢wkK (⊢ixP ⊢sTy
+                                     (fromI (⊢var (there (there (there (there (there (there (there (there here)))))))))))
+                                  (fromKn (⊢var (there (there (there (there (there here)))))))))))))
+    iwf-ι
+
+V₈ : IConWf LkD ILk Ξ8 (iκ λ₈ (iκ λ₉ iι))
+V₈ =
+  iwf-κ λ₈ (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf
+              (⊢ixP ⊢sVar (⊢fst (⊢var (there (there (there (there (there (there (there (there here))))))))))))
+           (toKn (⊢fst (⊢snd (⊢snd
+              (⊢var (there (there (there (there (there (there (there (there here)))))))))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (fromI (⊢var here))))
+                  (toI (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) 
+                  (toI (⊢fst (⊢var (there (there (there (there (there (there (there (there here)))))))))))
+                  (⊢symN (⊢fst (⊢var (there (there (there (there (there (there (there (there here))))))))))
+                         (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) 
+                         (fordAs (⊢var (there here))))
+                  (toKn (⊢Var-vsKv
+                           (fromI (⊢var (there (there (there (there (there (there (there here)))))))))
+                           (fromKn (⊢var (there (there (there (there (there here)))))))))))
+    V₉
+
+V₇ : IConWf LkD ILk Ξ7 (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))
+V₇ =
+  iwf-κ λ₇ (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ CtxWf
+              (toI (⊢fst (⊢var (there (there (there (there (there (there (there here)))))))))))
+           (toCn (⊢fst (⊢snd (⊢var (there (there (there (there (there (there (there here))))))))))) 
+           (⊢jsub (⊢⌜IMu⌝ CtxWf (⊢var here))
+                  (toI (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here)))))))))) 
+                  (toI (⊢fst (⊢var (there (there (there (there (there (there (there here))))))))))
+                  (⊢symN (⊢fst (⊢var (there (there (there (there (there (there (there here)))))))))
+                         (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) 
+                         (fordAs (⊢var here)))
+                  (toCn (⊢Ctx-extKv
+                           (fromI (⊢var (there (there (there (there (there (there here))))))))
+                           (fromCn (⊢var (there (there (there (there (there here)))))))
+                           (fromKn (⊢var (there (there here))))))))
+    V₈
+
+V₆ : IConWf LkD ILk Ξ6 (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι))))
+V₆ =
+  iwf-κ λ₆ (icw-ford _ _ _)
+    (⊢⌜Id⌝ ⊢⌜Nat⌝
+      (toI (⊢fst (⊢var (there (there (there (there (there (there here)))))))))
+      (toI (⊢nsuc (fromI (⊢var (there (there (there (there (there here)))))))))) 
+    V₇
+
+-- ★ THE RECURSIVE PREMISE.  Its index is the four-tuple `(m, Γ, x, A)`.
+-- ★ THE RECURSIVE PREMISE.  Its index is the four-tuple `(m, Γ, x, A)` —
+--   the telescope §1 built, now carrying actual field values.
+--
+-- ⚠ `⊢pair`'s FIRST argument is the ⊢ty of the TAIL, not of the head.
+V₅ : IConWf LkD ILk Ξ5 (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))))
+V₅ =
+  iwf-ρ ρ₅
+    (⊢pair (ty-Σ (ty-IMu CtxWf (toI (⊢var here)))
+             (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here))))
+                   (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there here)))))))
+           (fromI (⊢var (there (there (there (there here))))))
+      (⊢pair (ty-Σ (ty-IMu KnotWf
+                     (⊢ixP ⊢sVar (⊢wk (fromI (⊢var (there (there (there (there here)))))))))
+                   (ty-IMu KnotWf
+                     (⊢ixP ⊢sTy (⊢wk (⊢wk (fromI (⊢var (there (there (there (there here))))))))))) 
+             (fromCn (⊢var (there (there (there here)))))
+        (⊢pair (ty-IMu KnotWf
+                 (⊢ixP ⊢sTy (⊢wk (fromI (⊢var (there (there (there (there here)))))))))
+               (fromKn (⊢var (there (there here))))
+               (fromKn (⊢var (there here))))))
+    V₆
+
+V₄ : IConWf LkD ILk Ξ4 (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι))))))
+V₄ =
+  iwf-κ λ₄ (icw-imu _ KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there (there (there here)))))))
+    V₅
+
+V₃ : IConWf LkD ILk Ξ3 (iκ λ₃ (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))))))
+V₃ =
+  iwf-κ λ₃ (icw-imu _ KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there (there here))))))
+    V₄
+
+V₂ : IConWf LkD ILk Ξ2
+       (iκ λ₂ (iκ λ₃ (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι))))))))
+V₂ =
+  iwf-κ λ₂ (icw-imu _ KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (fromI (⊢var (there here)))))
+    V₃
+
+V₁ : IConWf LkD ILk Ξ1
+       (iκ λ₁ (iκ λ₂ (iκ λ₃ (iκ λ₄ (iρ ρ₅ (iκ λ₆ (iκ λ₇ (iκ λ₈ (iκ λ₉ iι)))))))))
+V₁ =
+  iwf-κ λ₁ (icw-imu (var vz) CtxWf) (⊢⌜IMu⌝ CtxWf (⊢var here)) V₂
+
+-- ★★★ `there` IS WELL FORMED.
+lkThereWf : IConWf LkD ILk Ξ0 lkThere
+lkThereWf = iwf-κ λ₀ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝ V₁
+
+------------------------------------------------------------------------
+-- 6. ★★★ THE JUDGEMENT IS A WELL-FORMED INDEXED DESCRIPTION.
+--
+--     `_∋_∷_` — two constructors, a four-component dependent index over
+--     TWO different `IMu`s, and six Fording transports between them.
+--
+-- `PLAN-JUDGEMENT` step 1, and the first RELATION over encoded syntax.
+------------------------------------------------------------------------
+
+LkWf : IDescWf ILk LkD
+LkWf = idwf-cons (lkHereWf LkD) (idwf-cons lkThereWf idwf-nil)
