@@ -121,11 +121,23 @@ The remaining 5 are long-standing and in `LogicalRelation`/`SubjectReduction`.
 ⚠ **Hygiene, not correctness** — the module compiles and its theorem
 stands; some of 592 clauses are subsumed by earlier ones.
 
-⚠ AND DIAGNOSIS IS EXPENSIVE, measured: Agda reports only the whole
-definition range (3198–4358), there are NO duplicate left-hand sides, so
-finding them means bisecting. ⚠ Dropping a block of clauses makes
-Agda's coverage search blow up — a single half-split did not finish in
-600s, against 2.8s for the intact module. ⇒ a bisect is ~10 runs of
-unknown, possibly very large cost.
-★ Worth doing only if the clauses are to be pruned for another reason.
+⚠ DIAGNOSIS IS EXPENSIVE BUT **TRACTABLE** — corrected 2026-08-28 with
+data, having first written it off as "unknown, possibly very large".
+Agda reports only the whole definition range (3198–4358) and there are
+NO duplicate left-hand sides, so finding them means BISECTING 592
+clauses. A half-split does not finish in 600s (against 2.8s intact) —
+but run to completion in the background it takes **~15 min per step**,
+not forever.
+
+★ AND THE ARGUMENT IS SOUND EVEN THOUGH THE SPLIT DOES NOT TYPE-CHECK.
+Dropping clauses breaks COVERAGE (`rc=42`), but the
+`UnreachableClauses` warning can only be about clauses that REMAIN — so
+"warning still present after dropping X" proves an unreachable clause
+lies outside X.
+
+    step 1: drop 296..591 → warning STILL present  ⇒ one lies in 0..295
+
+⇒ ~9 steps remain, ~15 min each, for a COSMETIC gain. Continue only if
+those clauses are being pruned for another reason — but the method is
+now known to work, which it was not before.
 
