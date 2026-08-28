@@ -29,24 +29,26 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.SubMot where
-open import normalizer.Syntax.Types using ( refl; trans; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; pair; snd; Nat; Π; IMu
-        ; ICon; IDesc; renTy; εwkTy; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong )
+        ; ICon; IDesc; _◂_; inil; renTy; εwkTy; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ty-Nat; ty-Π; ty-IMu; ty-Unit
-        ; IConWf; imethTy )
+        ; IConWf; imethTy; imethsTyFrom; ty-Σ
+        ; IDescWfFrom; idwf-nil; idwf-cons )
+open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( ⊢-cast; isingle-Sub⊢; iihTy-wf )
+  using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
 open import DirectedHoTT.Examples.Knot.Tags using ( memTm-nzero )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nzeroK )
 open import DirectedHoTT.Examples.Knot.Terms using ( fordFst )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; ⊢IPair; sTy; sTm; sVar; ⊢sTm; ⊢sVar; ⊢ixP )
-open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
+open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 
 ------------------------------------------------------------------------
@@ -140,3 +142,121 @@ constMeth = lam (lam (lam (lam (lam Tm-nzeroK))))
           (⊢lam (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
                       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
             (⊢Tm-nzeroKv (⊢var (there here)))))))
+
+------------------------------------------------------------------------
+-- THE METHOD **TYPE** IS WELL-FORMED — the same proof, one level up.
+--
+-- ⚠ `Lib/IPay` has this only at `Nat` (`imethTyNat-wf`), because that is
+--   all `Lib/IFold` needed.  Generalising it in `Lib/IPay` would need an
+--   `iatCon-wf` — the codomain is `iatCon k ⟨-⟩ M` at an ABSTRACT `M`,
+--   and no such lemma exists.
+--
+-- ★ Here it is not needed: `subMotK` IGNORES THE SCRUTINEE, so
+--   instantiating it touches only the index slot and `iatCon` COMPUTES.
+--   That is the same property that made `⊢constMeth`'s body writable,
+--   and it is why the motive was written to ignore the scrutinee.
+------------------------------------------------------------------------
+
+imethTyK-wf : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
+              IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+              Γ ⊢ty imethTy KnotD IPair k C subMotK
+imethTyK-wf {Γ = Γ} k C wC =
+  ty-Π ⊢IPair
+    (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) C
+                     KnotWf wC
+                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+      (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) C}
+                      KnotD IPair subMotK (isingle (var (vs vz))) C (var vz) wC
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                                                   (εwk-ren vs IPair))
+                                            (⊢var (there here))))
+                      ⊢subMotK
+                      (⊢-cast (trans (ipayTy-ren vs KnotD IPair (isingle (var vz)) C)
+                                     (ipayTy-cong KnotD IPair C
+                                       (λ { vz → refl ; (vs ()) })))
+                              (⊢var here)))
+            (ty-Π ty-Nat
+              (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                          (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+                    (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))))))
+
+------------------------------------------------------------------------
+-- THE TUPLE'S TYPE, by the same induction as `Lib/IPay`'s Nat version.
+------------------------------------------------------------------------
+
+imethsTyFromK-wf : {Γ : Ctx} (j : ℕ) (E : IDesc) →
+                   IDescWfFrom KnotD IPair E →
+                   Γ ⊢ty imethsTyFrom KnotD IPair subMotK j E
+imethsTyFromK-wf j inil    idwf-nil          = ty-Unit
+imethsTyFromK-wf j (C ◂ E) (idwf-cons wC wE) =
+  ty-Σ (imethTyK-wf j C wC)
+       (ren-ty (imethsTyFromK-wf (suc j) E wE) there)
+
+------------------------------------------------------------------------
+-- ★★★ THE TUPLE: `n` COMPUTED ROWS THEN A GIVEN TAIL.
+--
+-- ⚠ THE ESCAPE HATCH IS STRUCTURAL, exactly as in `Lib/IWk`: the method
+--   tuple is RIGHT-NESTED, so "computed rows then given rows" is just
+--   where the nest stops — one constructor and one tail argument.  No
+--   row is named and no ordering is required of the table; ordering only
+--   decides how much gets computed.
+--
+-- ★ AND UNLIKE `Lib/IWk` THERE IS NOTHING TO DECIDE.  `Lib/IWk` must
+--   CLASSIFY each row (`WkIx`, `WkKa`, …) because a weakening method
+--   depends on the row's fields.  A do-nothing method does not, so
+--   `CDesc` carries no per-row data — it is a length, made type-safe by
+--   being indexed by the description it walks.
+------------------------------------------------------------------------
+
+data CDesc : IDesc → Set where
+  cd-stop : (E : IDesc) → CDesc E
+  cd-cons : {C : ICon (ε ∙)} {E : IDesc} → CDesc E → CDesc (C ◂ E)
+
+cdRest : {E : IDesc} → CDesc E → IDesc
+cdRest (cd-stop E) = E
+cdRest (cd-cons W)  = cdRest W
+
+cdPos : {E : IDesc} → CDesc E → ℕ → ℕ
+cdPos (cd-stop E) j = j
+cdPos (cd-cons W)  j = cdPos W (suc j)
+
+constMethsFrom : {Γ : Cx} {E : IDesc} → CDesc E → RTm Γ → RTm Γ
+constMethsFrom (cd-stop E) t = t
+constMethsFrom (cd-cons W)  t = pair constMeth (constMethsFrom W t)
+
+⊢constMethsFrom : {Γ : Ctx} (j : ℕ) {E : IDesc} (W : CDesc E) →
+                  IDescWfFrom KnotD IPair E →
+                  (tl : RTm ⌊ Γ ⌋) →
+                  Γ ⊢ tl ∷ imethsTyFrom KnotD IPair subMotK (cdPos W j) (cdRest W) →
+                  Γ ⊢ constMethsFrom W tl ∷ imethsTyFrom KnotD IPair subMotK j E
+⊢constMethsFrom j (cd-stop E) wE tl dtl = dtl
+⊢constMethsFrom j (cd-cons {C = C} {E = E} W) (idwf-cons wC wE) tl dtl =
+  ⊢pair (ren-ty (imethsTyFromK-wf (suc j) E wE) there)
+        (⊢constMeth j C wC)
+        (⊢-cast (sym (wk-singleTy {v = constMeth}
+                                  (imethsTyFrom KnotD IPair subMotK (suc j) E)))
+                (⊢constMethsFrom (suc j) W wE tl dtl))
+
+------------------------------------------------------------------------
+-- ★ TAKING THE FIRST `n` ROWS — total, and it stops early if the
+--   description runs out.
+------------------------------------------------------------------------
+
+cdTake : ℕ → (E : IDesc) → CDesc E
+cdTake zero    E        = cd-stop E
+cdTake (suc n) inil     = cd-stop inil
+cdTake (suc n) (C ◂ E)  = cd-cons (cdTake n E)
+
+------------------------------------------------------------------------
+-- ★★★ AND THE SPLIT IS WHERE IT SHOULD BE — CHECKED, NOT ASSUMED.
+--
+-- ⚠ The same control `Examples/Knot/WkProbe` runs for `Lib/IWk`
+--   (`wkdLen (decDesc KnotD) ≡ 51`).  Without it, "51 computed + 2
+--   given" is an assertion about a 53-row generated table.
+------------------------------------------------------------------------
+
+_ : cdPos (cdTake 51 KnotD) 0 ≡ 51
+_ = refl
+
+_ : cdRest (cdTake 51 KnotD) ≡ (cVar-vz ◂ (cVar-vs ◂ inil))
+_ = refl
