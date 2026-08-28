@@ -21,17 +21,18 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Lookup where
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Nat; Σ'; El; IMu; pair
-        ; fst; snd; nsuc; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub
+  using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Nat; Σ'; El; U; IMu; pair
+        ; fst; snd; nsuc; nzero; unit; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; icon; idrefl
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_ )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv
         ; ⊢fst; ⊢snd; ⊢nsuc; ⊢pair; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
-        ; ty-Nat; ty-Σ; ty-IMu
+        ; ty-Nat; ty-Σ; ty-IMu; ⊢nzero
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ; ICodeWf; icw-clo; icw-ford; icw-imu
         ; IDescWf; idwf-nil; idwf-cons
-        ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMu
-        ; _⟶_; βfst; βsnd; ξ-pairˡ; ξ-pairʳ; ξ-nsuc )
+        ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMu; ξ-El
+        ; _⟶_; βfst; βsnd; ξ-pairˡ; ξ-pairʳ; ξ-nsuc
+        ; ξ-⌜Id⌝ᶜ; ξ-⌜Id⌝ˡ; ξ-⌜Id⌝ʳ; ξ-⌜IMu⌝; El-⌜Id⌝; ⊢idrefl )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sVar; ⊢sTy; ⊢sVar; toI; fromI; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
@@ -39,10 +40,12 @@ open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; elIdN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.CtxD
-  using ( CtxD; CtxK; CtxWf; INat; Ctx-extK; ⊢Ctx-extKv; toKn )
+  using ( CtxD; CtxK; CtxWf; INat; Ctx-extK; ⊢Ctx-extKv; toKn
+        ; Ctx-empK; ⊢Ctx-empK; ⊢Ctx-extK )
 open import DirectedHoTT.Examples.Knot.Build
-  using ( Var-vzK; ⊢Var-vzKv; Var-vsK; ⊢Var-vsKv )
+  using ( Var-vzK; ⊢Var-vzK; ⊢Var-vzKv; Var-vsK; ⊢Var-vsKv )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
+open import DirectedHoTT.Examples.Knot.Ctors using ( Ty-NatK; ⊢Ty-NatK )
 
 ------------------------------------------------------------------------
 -- 1. THE INDEX.
@@ -551,3 +554,86 @@ lkThereWf = iwf-κ λ₀ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝ V₁
 
 LkWf : IDescWf ILk LkD
 LkWf = idwf-cons (lkHereWf LkD) (idwf-cons lkThereWf idwf-nil)
+
+------------------------------------------------------------------------
+-- 7. ⚠⚠ AND IT IS INHABITED — without this, §6 is
+--    `verification-that-covers-less-than-it-claims`.
+--
+-- A description can be well formed and have NO closed inhabitant at any
+-- index — `Examples/Vec.no-cons-at-zero` is that hazard proved on
+-- purpose, and `Knot/Terms` exists for exactly this reason on the syntax
+-- side.  Six Fording constraints is plenty of rope.
+--
+-- ★ THE WITNESS: `(◇ ▹ Nat) ∋ vz ∷ renTy vs Nat`, encoded — the smallest
+--   `here`.  At a CONCRETE index every ford witness is an `idrefl`, and
+--   ★★ the three TRANSPORTS EVAPORATE: `jsub d (symN a (idrefl …)) e ⟶* e`
+--   in two steps (`Examples/WkFin.transport-fires`).  ⇒ the transports
+--   that §2 pays in the DERIVATION cost nothing at runtime, which is
+--   `PLAN-JUDGEMENT` §1's claim, now exercised at a judgement.
+------------------------------------------------------------------------
+
+-- one conversion step on each part of a Fording constraint
+idCᶜ : {Γ : Ctx} {c c' a b t : RTm ⌊ Γ ⌋} → c ⟶ c' →
+       Γ ⊢ t ∷ El (⌜Id⌝ c' a b) → Γ ⊢ t ∷ El (⌜Id⌝ c a b)
+idCᶜ r d = ⊢conv d (csymᵀ (credᵀ (ξ-El (ξ-⌜Id⌝ᶜ r))))
+
+idCˡ : {Γ : Ctx} {c a a' b t : RTm ⌊ Γ ⌋} → a ⟶ a' →
+       Γ ⊢ t ∷ El (⌜Id⌝ c a' b) → Γ ⊢ t ∷ El (⌜Id⌝ c a b)
+idCˡ r d = ⊢conv d (csymᵀ (credᵀ (ξ-El (ξ-⌜Id⌝ˡ r))))
+
+idCʳ : {Γ : Ctx} {c a b b' t : RTm ⌊ Γ ⌋} → b ⟶ b' →
+       Γ ⊢ t ∷ El (⌜Id⌝ c a b') → Γ ⊢ t ∷ El (⌜Id⌝ c a b)
+idCʳ r d = ⊢conv d (csymᵀ (credᵀ (ξ-El (ξ-⌜Id⌝ʳ r))))
+
+-- `idrefl c v` at the constraint both of whose sides reduce to `v`
+reflAt : {Γ : Ctx} {c v : RTm ⌊ Γ ⌋} →
+         Γ ⊢ c ∷ U → Γ ⊢ v ∷ El c →
+         Γ ⊢ idrefl c v ∷ El (⌜Id⌝ c v v)
+reflAt {c = c} {v = v} dc dv =
+  ⊢conv (⊢idrefl dc dv) (csymᵀ (credᵀ (El-⌜Id⌝ c v v)))
+
+-- the index: `(1, ◇ ▹ Nat, vz, wk Nat)`
+i₀ : {Γ : Cx} → RTm Γ
+i₀ = pair (nsuc nzero)
+       (pair (Ctx-extK nzero Ctx-empK Ty-NatK)
+         (pair (Var-vzK nzero) (wkK (pair sTy nzero) Ty-NatK)))
+
+-- ⚠ RESTATED, not `∷ ILk`: `ILk` is pinned at `RTy ε` because that is
+--   what `IMu` takes, and a derivation needs it at an arbitrary `Δ`.
+--   Same move as `⊢ILk`.
+⊢i₀ : {Δ : Ctx} → Δ ⊢ i₀ ∷
+      Σ' Nat
+        (Σ' (CtxK (var vz))
+          (Σ' (K (pair sVar (var (vs vz))))
+              (K (pair sTy (var (vs (vs vz)))))))
+⊢i₀ =
+  ⊢pair (ty-Σ (ty-IMu CtxWf (toI (⊢var here)))
+          (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here))))
+                (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there here)))))))
+        (⊢nsuc ⊢nzero)
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc ⊢nzero)))
+                 (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc ⊢nzero))))
+           (⊢Ctx-extK 0 ⊢Ctx-empK (⊢Ty-NatK 0))
+      (⊢pair (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc ⊢nzero)))
+             (⊢Var-vzK 0)
+             (kFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _)))
+               (kFwd (ξ-pairˡ (βfst _ _))
+                 (⊢wkK (⊢ixP ⊢sTy ⊢nzero) (⊢Ty-NatK 0))))))
+
+
+------------------------------------------------------------------------
+-- ⬜ WHAT REMAINS OF §7: the PAYLOAD.
+--
+-- `⊢i₀` above types the INDEX, which is the semantically interesting
+-- half — it exercises `wkK` and `Ctx-extK` at real values and shows the
+-- four-component telescope is inhabited.  What is still missing is the
+-- `⊢icon` payload: seven `⊢pair` levels whose four ford components each
+-- need `idrefl` moved along a reduction chain (`idCᶜ`/`idCˡ`/`idCʳ`
+-- above are those moves, and `Examples/WkFin.transport-fires` is the
+-- two-step chain for the three transports).
+--
+-- ⚠ UNTIL THAT LANDS, §6's `LkWf` IS EXACTLY THE HAZARD
+--   `Examples/Vec.no-cons-at-zero` NAMES: a well-formed description with
+--   no closed inhabitant is indistinguishable from a good one.  Do not
+--   read §6 as more than it says.
+------------------------------------------------------------------------
