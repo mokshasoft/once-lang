@@ -169,6 +169,8 @@ mutual
   polys-reflect-ᶜ b p pib ac (t-subsume d) = t-subsume (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-lam le d) = t-lam le (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-value-lift d) = t-value-lift (polys-reflect-ᵍ b p d)
+  -- D126: structural, on the INFER sub-derivation rather than a `⊢ᵍ` one.
+  polys-reflect-ᶜ b p pib ac (t-closed-lift cls d) = t-closed-lift cls (polys-reflect-ᵢ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-pair-lit-check d₁ d₂) = t-pair-lit-check (polys-reflect-ᶜ b p pib ac d₁) (polys-reflect-ᶜ b p pib ac d₂)
   polys-reflect-ᶜ b p pib ac (t-In-app-check wf d) = t-In-app-check wf (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-apply-check d) = t-apply-check (polys-reflect-ᵢ b p pib ac d)

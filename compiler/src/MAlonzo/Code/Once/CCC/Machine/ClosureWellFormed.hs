@@ -211,13 +211,13 @@ du_prim'45'sv_538 v0 v1
       MAlonzo.Code.Once.IRTy.C_fits'45'int_512
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
-             (coe MAlonzo.Code.Once.Type.C_Int_136)
-             (coe MAlonzo.Code.Once.Type.C_fits'45'int_198) (coe v1)
+             (coe MAlonzo.Code.Once.Type.C_Int_132)
+             (coe MAlonzo.Code.Once.Type.C_fits'45'int_194) (coe v1)
       MAlonzo.Code.Once.IRTy.C_fits'45'float_514
         -> coe
              MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76
-             (coe MAlonzo.Code.Once.Type.C_Float_138)
-             (coe MAlonzo.Code.Once.Type.C_fits'45'float_200) (coe v1)
+             (coe MAlonzo.Code.Once.Type.C_Float_134)
+             (coe MAlonzo.Code.Once.Type.C_fits'45'float_196) (coe v1)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.ValidAtWF
 d_ValidAtWF_546 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()

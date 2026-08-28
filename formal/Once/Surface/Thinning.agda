@@ -171,15 +171,20 @@ thin-usage-singleUse (keep θ) (suc i) q  = cong (Zero ∷_) (thin-usage-singleU
 -- This single function replaces ALL exchange functions!
 -- Preserves the usage vector via thin-usage propagation.
 
+-- TOP-LEVEL, not `where`-bound: the `var` clause's double transport has to be
+-- NAMEABLE, because the denotational soundness of renaming
+-- (`Once.Denotation.ThinSound`) is a statement about exactly this term. A
+-- `where`-bound helper cannot be quantified over from outside, which is the
+-- only reason this moved.
+substᵀ₂ : ∀ {a b c} {A : Set a} {B : Set b} (C : A → B → Set c)
+        → {x₁ x₂ : A} {y₁ y₂ : B} → x₁ ≡ x₂ → y₁ ≡ y₂ → C x₁ y₁ → C x₂ y₂
+substᵀ₂ C refl refl z = z
+
 rename : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m} {Ψ : Usage n} {A : Type}
        → (θ : Γ ⊆ Δ) → SExpr Γ Ψ A → SExpr Δ (thin-usage θ Ψ) A
 rename {Δ = Δ} θ (Surface.var i) =
-  subst₂ (SExpr Δ) (sym (thin-usage-singleUse θ i One))
-         (sym (thin-var-lookup θ i)) (Surface.var (thin-var θ i))
-  where
-    subst₂ : ∀ {a b c} {A : Set a} {B : Set b} (C : A → B → Set c)
-           → {x₁ x₂ : A} {y₁ y₂ : B} → x₁ ≡ x₂ → y₁ ≡ y₂ → C x₁ y₁ → C x₂ y₂
-    subst₂ C refl refl z = z
+  substᵀ₂ (SExpr Δ) (sym (thin-usage-singleUse θ i One))
+          (sym (thin-var-lookup θ i)) (Surface.var (thin-var θ i))
 rename θ (Surface.lam q p e) = Surface.lam q p (rename (keep θ) e)
 rename {Δ = Δ} θ (Surface.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = q} f x) =
   subst (λ Ψ → SExpr Δ Ψ _)

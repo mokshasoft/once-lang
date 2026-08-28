@@ -53,7 +53,7 @@ du_tvarGo_26 v0 v1 v2
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                (coe MAlonzo.Code.Once.Type.C_PTVar_278 (coe v0))
+                (coe MAlonzo.Code.Once.Type.C_PTVar_274 (coe v0))
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
                    (coe C_tvar_14)))
@@ -78,7 +78,7 @@ d_tvarP_46 v0
 -- Once.Parser.Generic.PolyInst.tvar-shrink
 d_tvar'45'shrink_58 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_TVarRel_8 -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 d_tvar'45'shrink_58 ~v0 ~v1 v2 v3 = du_tvar'45'shrink_58 v2 v3
@@ -108,7 +108,7 @@ d_tvarGo'45'complete_70 = erased
 -- Once.Parser.Generic.PolyInst.tvar-complete
 d_tvar'45'complete_110 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   T_TVarRel_8 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_tvar'45'complete_110 = erased
@@ -118,23 +118,23 @@ d_PolyAlg_118 ::
 d_PolyAlg_118
   = coe
       MAlonzo.Code.Once.Parser.Generic.Relation.C_constructor_252
-      (coe MAlonzo.Code.Once.Type.C_PUnit_254)
-      (coe MAlonzo.Code.Once.Type.C_PVoid_256)
-      (coe MAlonzo.Code.Once.Type.C_PInt_270)
-      (coe MAlonzo.Code.Once.Type.C_PFloat_272)
-      (coe MAlonzo.Code.Once.Type.C_PBuffer_276)
-      (coe MAlonzo.Code.Once.Type.C_PStr_274)
-      (coe MAlonzo.Code.Once.Type.C__P'42'__258)
-      (coe MAlonzo.Code.Once.Type.C__P'43'__260)
-      (coe MAlonzo.Code.Once.Type.C_PEff_264)
+      (coe MAlonzo.Code.Once.Type.C_PUnit_250)
+      (coe MAlonzo.Code.Once.Type.C_PVoid_252)
+      (coe MAlonzo.Code.Once.Type.C_PInt_266)
+      (coe MAlonzo.Code.Once.Type.C_PFloat_268)
+      (coe MAlonzo.Code.Once.Type.C_PBuffer_272)
+      (coe MAlonzo.Code.Once.Type.C_PStr_270)
+      (coe MAlonzo.Code.Once.Type.C__P'42'__254)
+      (coe MAlonzo.Code.Once.Type.C__P'43'__256)
+      (coe MAlonzo.Code.Once.Type.C_PEff_260)
       (\ v0 v1 ->
          coe
-           MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__262 (coe v1) (coe v0))
-      (coe MAlonzo.Code.Once.Type.C_Pμ'45'type_266)
-      (coe MAlonzo.Code.Once.Type.C_PK_246)
-      (coe MAlonzo.Code.Once.Type.C_PId_248)
-      (coe MAlonzo.Code.Once.Type.C__P'8853'__250)
-      (coe MAlonzo.Code.Once.Type.C__P'8855'__252)
+           MAlonzo.Code.Once.Type.C__P'8658''91'_'93'__258 (coe v1) (coe v0))
+      (coe MAlonzo.Code.Once.Type.C_Pμ'45'type_262)
+      (coe MAlonzo.Code.Once.Type.C_PK_242)
+      (coe MAlonzo.Code.Once.Type.C_PId_244)
+      (coe MAlonzo.Code.Once.Type.C__P'8853'__246)
+      (coe MAlonzo.Code.Once.Type.C__P'8855'__248)
       (\ v0 v1 v2 v3 -> coe du_tvar'45'shrink_58 v2 v3) d_tvarP_46
 -- Once.Parser.Generic.PolyInst._.ParsesArrowTailG
 d_ParsesArrowTailG_148 a0 a1 a2 a3 = ()
@@ -155,7 +155,7 @@ d_ParsesTypeG_162 a0 a1 a2 = ()
 -- Once.Parser.Generic.PolyInst._.typeShrink
 d_typeShrink_164 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_374 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -173,9 +173,9 @@ d_ParsesSumG_170 a0 a1 a2 = ()
 d_ParsesSumTailG_172 a0 a1 a2 a3 = ()
 -- Once.Parser.Generic.PolyInst._.arrowTailShrink
 d_arrowTailShrink_174 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesArrowTailG_376 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -186,7 +186,7 @@ d_arrowTailShrink_174 v0 v1 v2 v3 v4
 -- Once.Parser.Generic.PolyInst._.atomShrink
 d_atomShrink_176 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesAtomG_364 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -197,7 +197,7 @@ d_atomShrink_176
 -- Once.Parser.Generic.PolyInst._.funcAtomShrink
 d_funcAtomShrink_178 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncAtomG_378 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -208,7 +208,7 @@ d_funcAtomShrink_178
 -- Once.Parser.Generic.PolyInst._.funcProdShrink
 d_funcProdShrink_180 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncProdG_380 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -218,9 +218,9 @@ d_funcProdShrink_180 v0 v1 v2 v3
       (coe d_PolyAlg_118) v0 v3
 -- Once.Parser.Generic.PolyInst._.funcProdTailShrink
 d_funcProdTailShrink_182 ::
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncProdTailG_382 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -231,7 +231,7 @@ d_funcProdTailShrink_182 v0 v1 v2 v3 v4
 -- Once.Parser.Generic.PolyInst._.funcSumShrink
 d_funcSumShrink_184 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncSumG_384 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -241,9 +241,9 @@ d_funcSumShrink_184 v0 v1 v2 v3
       (coe d_PolyAlg_118) v0 v3
 -- Once.Parser.Generic.PolyInst._.funcSumTailShrink
 d_funcSumTailShrink_186 ::
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncSumTailG_386 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -254,7 +254,7 @@ d_funcSumTailShrink_186 v0 v1 v2 v3 v4
 -- Once.Parser.Generic.PolyInst._.prodShrink
 d_prodShrink_240 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesProdG_366 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -264,9 +264,9 @@ d_prodShrink_240 v0 v1 v2 v3
       (coe d_PolyAlg_118) v0 v3
 -- Once.Parser.Generic.PolyInst._.prodTailShrink
 d_prodTailShrink_242 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesProdTailG_368 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -277,7 +277,7 @@ d_prodTailShrink_242 v0 v1 v2 v3 v4
 -- Once.Parser.Generic.PolyInst._.sumShrink
 d_sumShrink_252 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesSumG_370 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -287,9 +287,9 @@ d_sumShrink_252 v0 v1 v2 v3
       (coe d_PolyAlg_118) v0 v3
 -- Once.Parser.Generic.PolyInst._.sumTailShrink
 d_sumTailShrink_254 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesSumTailG_372 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
@@ -299,7 +299,7 @@ d_sumTailShrink_254 v0 v1 v2 v3 v4
       (coe d_PolyAlg_118) v1 v4
 -- Once.Parser.Generic.PolyInst._.arrowTailP
 d_arrowTailP_342 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_arrowTailP_342
@@ -340,7 +340,7 @@ d_fProdP_350
       (coe d_PolyAlg_118)
 -- Once.Parser.Generic.PolyInst._.fProdTailP
 d_fProdTailP_352 ::
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_fProdTailP_352
@@ -357,7 +357,7 @@ d_fSumP_354
       (coe d_PolyAlg_118)
 -- Once.Parser.Generic.PolyInst._.fSumTailP
 d_fSumTailP_356 ::
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_fSumTailP_356
@@ -382,7 +382,7 @@ d_prodP_360
       (coe d_PolyAlg_118)
 -- Once.Parser.Generic.PolyInst._.prodTailP
 d_prodTailP_362 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_prodTailP_362
@@ -399,7 +399,7 @@ d_sumP_364
       (coe d_PolyAlg_118)
 -- Once.Parser.Generic.PolyInst._.sumTailP
 d_sumTailP_366 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_sumTailP_366
@@ -408,10 +408,10 @@ d_sumTailP_366
       (coe d_PolyAlg_118)
 -- Once.Parser.Generic.PolyInst._.sound-arrowTail
 d_sound'45'arrowTail_370 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesArrowTailG_376
@@ -423,7 +423,7 @@ d_sound'45'arrowTail_370 v0 v1 v2 v3 v4 v5
 d_sound'45'atom_372 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesAtomG_364
@@ -435,7 +435,7 @@ d_sound'45'atom_372 v0 v1 v2 v3 v4
 d_sound'45'fAtom_374 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncAtomG_378
@@ -447,7 +447,7 @@ d_sound'45'fAtom_374 v0 v1 v2 v3 v4
 d_sound'45'fProd_376 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncProdG_380
@@ -457,10 +457,10 @@ d_sound'45'fProd_376 v0 v1 v2 v3 v4
       (coe d_PolyAlg_118) v0
 -- Once.Parser.Generic.PolyInst._.sound-fProdTail
 d_sound'45'fProdTail_378 ::
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncProdTailG_382
@@ -472,7 +472,7 @@ d_sound'45'fProdTail_378 v0 v1 v2 v3 v4 v5
 d_sound'45'fSum_380 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncSumG_384
@@ -482,10 +482,10 @@ d_sound'45'fSum_380 v0 v1 v2 v3 v4
       (coe d_PolyAlg_118) v0
 -- Once.Parser.Generic.PolyInst._.sound-fSumTail
 d_sound'45'fSumTail_382 ::
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncSumTailG_386
@@ -497,7 +497,7 @@ d_sound'45'fSumTail_382 v0 v1 v2 v3 v4 v5
 d_sound'45'kw_384 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesAtomG_364
@@ -509,7 +509,7 @@ d_sound'45'kw_384 v0 v1 v2 v3 v4
 d_sound'45'type_386 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_374
@@ -521,7 +521,7 @@ d_sound'45'type_386 v0 v1 v2 v3 v4
 d_sound'45'prod_388 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesProdG_366
@@ -531,10 +531,10 @@ d_sound'45'prod_388 v0 v1 v2 v3 v4
       (coe d_PolyAlg_118) v0
 -- Once.Parser.Generic.PolyInst._.sound-prodTail
 d_sound'45'prodTail_390 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesProdTailG_368
@@ -546,7 +546,7 @@ d_sound'45'prodTail_390 v0 v1 v2 v3 v4 v5
 d_sound'45'sum_392 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesSumG_370
@@ -556,10 +556,10 @@ d_sound'45'sum_392 v0 v1 v2 v3 v4
       (coe d_PolyAlg_118) v0
 -- Once.Parser.Generic.PolyInst._.sound-sumTail
 d_sound'45'sumTail_394 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesSumTailG_372
@@ -569,9 +569,9 @@ d_sound'45'sumTail_394 v0 v1 v2 v3 v4 v5
       (coe d_PolyAlg_118) v1
 -- Once.Parser.Generic.PolyInst._.complete-arrowTail
 d_complete'45'arrowTail_398 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesArrowTailG_376 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -579,7 +579,7 @@ d_complete'45'arrowTail_398 = erased
 -- Once.Parser.Generic.PolyInst._.complete-atom
 d_complete'45'atom_400 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesAtomG_364 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -587,7 +587,7 @@ d_complete'45'atom_400 = erased
 -- Once.Parser.Generic.PolyInst._.complete-fAtom
 d_complete'45'fAtom_402 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncAtomG_378 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -595,16 +595,16 @@ d_complete'45'fAtom_402 = erased
 -- Once.Parser.Generic.PolyInst._.complete-fProd
 d_complete'45'fProd_404 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncProdG_380 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_complete'45'fProd_404 = erased
 -- Once.Parser.Generic.PolyInst._.complete-fProdTail
 d_complete'45'fProdTail_406 ::
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncProdTailG_382 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -612,16 +612,16 @@ d_complete'45'fProdTail_406 = erased
 -- Once.Parser.Generic.PolyInst._.complete-fSum
 d_complete'45'fSum_408 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncSumG_384 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_complete'45'fSum_408 = erased
 -- Once.Parser.Generic.PolyInst._.complete-fSumTail
 d_complete'45'fSumTail_410 ::
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyFunctor_242 ->
+  MAlonzo.Code.Once.Type.T_PolyFunctor_238 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesFuncSumTailG_386 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -629,7 +629,7 @@ d_complete'45'fSumTail_410 = erased
 -- Once.Parser.Generic.PolyInst._.complete-type
 d_complete'45'type_412 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_374 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -637,16 +637,16 @@ d_complete'45'type_412 = erased
 -- Once.Parser.Generic.PolyInst._.complete-prod
 d_complete'45'prod_414 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesProdG_366 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_complete'45'prod_414 = erased
 -- Once.Parser.Generic.PolyInst._.complete-prodTail
 d_complete'45'prodTail_416 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesProdTailG_368 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -654,16 +654,16 @@ d_complete'45'prodTail_416 = erased
 -- Once.Parser.Generic.PolyInst._.complete-sum
 d_complete'45'sum_418 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesSumG_370 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_complete'45'sum_418 = erased
 -- Once.Parser.Generic.PolyInst._.complete-sumTail
 d_complete'45'sumTail_420 ::
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesSumTailG_372 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

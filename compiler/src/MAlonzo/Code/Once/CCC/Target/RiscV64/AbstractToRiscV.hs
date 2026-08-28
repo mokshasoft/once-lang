@@ -725,7 +725,7 @@ d_compile'45'abstract_168 v0
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2270 v1 v2 v3
         -> case coe v2 of
-             MAlonzo.Code.Once.Type.C_fits'45'int_198
+             MAlonzo.Code.Once.Type.C_fits'45'int_194
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe
@@ -734,7 +734,7 @@ d_compile'45'abstract_168 v0
                        (coe
                           MAlonzo.Code.Once.Word.d_fromℤ_20 (coe (64 :: Integer)) (coe v3)))
                     (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-             MAlonzo.Code.Once.Type.C_fits'45'float_200
+             MAlonzo.Code.Once.Type.C_fits'45'float_196
                -> coe
                     MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                     (coe

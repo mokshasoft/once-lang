@@ -29,33 +29,33 @@ import qualified MAlonzo.Code.Once.Type
 -- Once.Grammar.Convert.gtypeToType
 d_gtypeToType_6 ::
   MAlonzo.Code.Once.Grammar.T_GType_8 ->
-  Maybe MAlonzo.Code.Once.Type.T_Type_112
+  Maybe MAlonzo.Code.Once.Type.T_Type_108
 d_gtypeToType_6 v0
   = case coe v0 of
       MAlonzo.Code.Once.Grammar.C_TUnit_12
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Type.C_Unit_122)
+             (coe MAlonzo.Code.Once.Type.C_Unit_118)
       MAlonzo.Code.Once.Grammar.C_TVoid_14
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Type.C_Void_124)
+             (coe MAlonzo.Code.Once.Type.C_Void_120)
       MAlonzo.Code.Once.Grammar.C_TInt_16
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Type.C_Int_136)
+             (coe MAlonzo.Code.Once.Type.C_Int_132)
       MAlonzo.Code.Once.Grammar.C_TFloat_18
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Type.C_Float_138)
+             (coe MAlonzo.Code.Once.Type.C_Float_134)
       MAlonzo.Code.Once.Grammar.C_TBuffer_20
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Type.C_Buffer_142)
+             (coe MAlonzo.Code.Once.Type.C_Buffer_138)
       MAlonzo.Code.Once.Grammar.C_TString_22
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Type.C_Str_140)
+             (coe MAlonzo.Code.Once.Type.C_Str_136)
       MAlonzo.Code.Once.Grammar.C__'8658''91'_'93'__24 v1 v2 v3
         -> let v4 = d_gtypeToType_6 (coe v1) in
            coe
@@ -68,7 +68,7 @@ d_gtypeToType_6 v0
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                  (coe
-                                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v6)
+                                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 (coe v6)
                                     (coe
                                        MAlonzo.Code.Once.Type.C_mk'45'kind_50 (coe v2)
                                        (coe MAlonzo.Code.Once.Type.C_pure_34))
@@ -86,7 +86,7 @@ d_gtypeToType_6 v0
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v5) (coe v6))
+                                 (coe MAlonzo.Code.Once.Type.C__'42'__122 (coe v5) (coe v6))
                           _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
       MAlonzo.Code.Once.Grammar.C__'8853'__28 v1 v2
@@ -100,7 +100,7 @@ d_gtypeToType_6 v0
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.Type.C__'43'__128 (coe v5) (coe v6))
+                                 (coe MAlonzo.Code.Once.Type.C__'43'__124 (coe v5) (coe v6))
                           _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
       MAlonzo.Code.Once.Grammar.C_TEff_30 v1 v2
@@ -115,7 +115,7 @@ d_gtypeToType_6 v0
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                  (coe
-                                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 (coe v5)
+                                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 (coe v5)
                                     (coe
                                        MAlonzo.Code.Once.Type.C_mk'45'kind_50
                                        (coe MAlonzo.Code.Once.Type.C_Many_10)
@@ -130,7 +130,7 @@ d_gtypeToType_6 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                       (coe MAlonzo.Code.Once.Type.C_μ'45'type_132 (coe v3))
+                       (coe MAlonzo.Code.Once.Type.C_μ'45'type_128 (coe v3))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.Grammar.C_TVar_34 v1
@@ -139,7 +139,7 @@ d_gtypeToType_6 v0
 -- Once.Grammar.Convert.gfunctorToFunctor
 d_gfunctorToFunctor_8 ::
   MAlonzo.Code.Once.Grammar.T_GFunctor_10 ->
-  Maybe MAlonzo.Code.Once.Type.T_Functor_110
+  Maybe MAlonzo.Code.Once.Type.T_Functor_106
 d_gfunctorToFunctor_8 v0
   = case coe v0 of
       MAlonzo.Code.Once.Grammar.C_GFK_36 v1
@@ -149,13 +149,13 @@ d_gfunctorToFunctor_8 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                       (coe MAlonzo.Code.Once.Type.C_K_114 (coe v3))
+                       (coe MAlonzo.Code.Once.Type.C_K_110 (coe v3))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.Grammar.C_GFId_38
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-             (coe MAlonzo.Code.Once.Type.C_Id_116)
+             (coe MAlonzo.Code.Once.Type.C_Id_112)
       MAlonzo.Code.Once.Grammar.C_GFSum_40 v1 v2
         -> let v3 = d_gfunctorToFunctor_8 (coe v1) in
            coe
@@ -167,7 +167,7 @@ d_gfunctorToFunctor_8 v0
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.Type.C__'8853'__118 (coe v5) (coe v6))
+                                 (coe MAlonzo.Code.Once.Type.C__'8853'__114 (coe v5) (coe v6))
                           _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
       MAlonzo.Code.Once.Grammar.C_GFProd_42 v1 v2
@@ -181,25 +181,25 @@ d_gfunctorToFunctor_8 v0
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe MAlonzo.Code.Once.Type.C__'8855'__120 (coe v5) (coe v6))
+                                 (coe MAlonzo.Code.Once.Type.C__'8855'__116 (coe v5) (coe v6))
                           _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.Convert.typeToGType
 d_typeToGType_160 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   Maybe MAlonzo.Code.Once.Grammar.T_GType_8
 d_typeToGType_160 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Type.C_Unit_122
+      MAlonzo.Code.Once.Type.C_Unit_118
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe MAlonzo.Code.Once.Grammar.C_TUnit_12)
-      MAlonzo.Code.Once.Type.C_Void_124
+      MAlonzo.Code.Once.Type.C_Void_120
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe MAlonzo.Code.Once.Grammar.C_TVoid_14)
-      MAlonzo.Code.Once.Type.C__'42'__126 v1 v2
+      MAlonzo.Code.Once.Type.C__'42'__122 v1 v2
         -> let v3 = d_typeToGType_160 (coe v1) in
            coe
              (let v4 = d_typeToGType_160 (coe v2) in
@@ -213,7 +213,7 @@ d_typeToGType_160 v0
                                  (coe MAlonzo.Code.Once.Grammar.C__'8855'__26 (coe v5) (coe v6))
                           _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
-      MAlonzo.Code.Once.Type.C__'43'__128 v1 v2
+      MAlonzo.Code.Once.Type.C__'43'__124 v1 v2
         -> let v3 = d_typeToGType_160 (coe v1) in
            coe
              (let v4 = d_typeToGType_160 (coe v2) in
@@ -227,7 +227,7 @@ d_typeToGType_160 v0
                                  (coe MAlonzo.Code.Once.Grammar.C__'8853'__28 (coe v5) (coe v6))
                           _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
-      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v1 v2 v3
+      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v1 v2 v3
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C_mk'45'kind_50 v4 v5
                -> case coe v5 of
@@ -272,7 +272,7 @@ d_typeToGType_160 v0
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Type.C_μ'45'type_132 v1
+      MAlonzo.Code.Once.Type.C_μ'45'type_128 v1
         -> let v2 = d_functorToGFunctor_162 (coe v1) in
            coe
              (case coe v2 of
@@ -282,32 +282,32 @@ d_typeToGType_160 v0
                        (coe MAlonzo.Code.Once.Grammar.C_GMu_32 (coe v3))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
                 _ -> MAlonzo.RTE.mazUnreachableError)
-      MAlonzo.Code.Once.Type.C_ν'45'type_134 v1
+      MAlonzo.Code.Once.Type.C_ν'45'type_130 v1
         -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-      MAlonzo.Code.Once.Type.C_Int_136
+      MAlonzo.Code.Once.Type.C_Int_132
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe MAlonzo.Code.Once.Grammar.C_TInt_16)
-      MAlonzo.Code.Once.Type.C_Float_138
+      MAlonzo.Code.Once.Type.C_Float_134
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe MAlonzo.Code.Once.Grammar.C_TFloat_18)
-      MAlonzo.Code.Once.Type.C_Str_140
+      MAlonzo.Code.Once.Type.C_Str_136
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe MAlonzo.Code.Once.Grammar.C_TString_22)
-      MAlonzo.Code.Once.Type.C_Buffer_142
+      MAlonzo.Code.Once.Type.C_Buffer_138
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe MAlonzo.Code.Once.Grammar.C_TBuffer_20)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.Convert.functorToGFunctor
 d_functorToGFunctor_162 ::
-  MAlonzo.Code.Once.Type.T_Functor_110 ->
+  MAlonzo.Code.Once.Type.T_Functor_106 ->
   Maybe MAlonzo.Code.Once.Grammar.T_GFunctor_10
 d_functorToGFunctor_162 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Type.C_K_114 v1
+      MAlonzo.Code.Once.Type.C_K_110 v1
         -> let v2 = d_typeToGType_160 (coe v1) in
            coe
              (case coe v2 of
@@ -317,11 +317,11 @@ d_functorToGFunctor_162 v0
                        (coe MAlonzo.Code.Once.Grammar.C_GFK_36 (coe v3))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v2
                 _ -> MAlonzo.RTE.mazUnreachableError)
-      MAlonzo.Code.Once.Type.C_Id_116
+      MAlonzo.Code.Once.Type.C_Id_112
         -> coe
              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
              (coe MAlonzo.Code.Once.Grammar.C_GFId_38)
-      MAlonzo.Code.Once.Type.C__'8853'__118 v1 v2
+      MAlonzo.Code.Once.Type.C__'8853'__114 v1 v2
         -> let v3 = d_functorToGFunctor_162 (coe v1) in
            coe
              (let v4 = d_functorToGFunctor_162 (coe v2) in
@@ -335,7 +335,7 @@ d_functorToGFunctor_162 v0
                                  (coe MAlonzo.Code.Once.Grammar.C_GFSum_40 (coe v5) (coe v6))
                           _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
-      MAlonzo.Code.Once.Type.C__'8855'__120 v1 v2
+      MAlonzo.Code.Once.Type.C__'8855'__116 v1 v2
         -> let v3 = d_functorToGFunctor_162 (coe v1) in
            coe
              (let v4 = d_functorToGFunctor_162 (coe v2) in
@@ -352,14 +352,14 @@ d_functorToGFunctor_162 v0
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.Convert.typeToGType-gtypeToType
 d_typeToGType'45'gtypeToType_318 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Grammar.T_GType_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_typeToGType'45'gtypeToType_318 = erased
 -- Once.Grammar.Convert.functorToGFunctor-gfunctorToFunctor
 d_functorToGFunctor'45'gfunctorToFunctor_324 ::
-  MAlonzo.Code.Once.Type.T_Functor_110 ->
+  MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Grammar.T_GFunctor_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
@@ -367,19 +367,19 @@ d_functorToGFunctor'45'gfunctorToFunctor_324 = erased
 -- Once.Grammar.Convert.gtypeToType-typeToGType
 d_gtypeToType'45'typeToGType_566 ::
   MAlonzo.Code.Once.Grammar.T_GType_8 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_gtypeToType'45'typeToGType_566 = erased
 -- Once.Grammar.Convert.gfunctorToFunctor-functorToGFunctor
 d_gfunctorToFunctor'45'functorToGFunctor_572 ::
   MAlonzo.Code.Once.Grammar.T_GFunctor_10 ->
-  MAlonzo.Code.Once.Type.T_Functor_110 ->
+  MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_gfunctorToFunctor'45'functorToGFunctor_572 = erased
 -- Once.Grammar.Convert.GrammarExpressible
-d_GrammarExpressible_810 :: MAlonzo.Code.Once.Type.T_Type_112 -> ()
+d_GrammarExpressible_810 :: MAlonzo.Code.Once.Type.T_Type_108 -> ()
 d_GrammarExpressible_810 = erased
 -- Once.Grammar.Convert.parseGType
 d_parseGType_816 ::
@@ -891,7 +891,7 @@ data T_NoNuF_870
     C_nnuf'45'prod_930 T_NoNuF_870 T_NoNuF_870
 -- Once.Grammar.Convert.typeToGType-NoNu
 d_typeToGType'45'NoNu_936 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   T_NoNu_868 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_typeToGType'45'NoNu_936 v0 v1
   = case coe v1 of
@@ -921,7 +921,7 @@ d_typeToGType'45'NoNu_936 v0 v1
              (coe MAlonzo.Code.Once.Grammar.C_TBuffer_20) erased
       C_nnu'45'prod_888 v4 v5
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'42'__126 v6 v7
+             MAlonzo.Code.Once.Type.C__'42'__122 v6 v7
                -> let v8 = d_typeToGType'45'NoNu_936 (coe v6) (coe v4) in
                   coe
                     (let v9 = d_typeToGType'45'NoNu_936 (coe v7) (coe v5) in
@@ -941,7 +941,7 @@ d_typeToGType'45'NoNu_936 v0 v1
              _ -> MAlonzo.RTE.mazUnreachableError
       C_nnu'45'sum_894 v4 v5
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'43'__128 v6 v7
+             MAlonzo.Code.Once.Type.C__'43'__124 v6 v7
                -> let v8 = d_typeToGType'45'NoNu_936 (coe v6) (coe v4) in
                   coe
                     (let v9 = d_typeToGType'45'NoNu_936 (coe v7) (coe v5) in
@@ -961,7 +961,7 @@ d_typeToGType'45'NoNu_936 v0 v1
              _ -> MAlonzo.RTE.mazUnreachableError
       C_nnu'45'fun_902 v5 v6
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v7 v8 v9
+             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v7 v8 v9
                -> case coe v8 of
                     MAlonzo.Code.Once.Type.C_mk'45'kind_50 v10 v11
                       -> let v12 = d_typeToGType'45'NoNu_936 (coe v7) (coe v5) in
@@ -984,7 +984,7 @@ d_typeToGType'45'NoNu_936 v0 v1
              _ -> MAlonzo.RTE.mazUnreachableError
       C_nnu'45'eff_908 v4 v5
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v6 v7 v8
+             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v6 v7 v8
                -> let v9 = d_typeToGType'45'NoNu_936 (coe v6) (coe v4) in
                   coe
                     (let v10 = d_typeToGType'45'NoNu_936 (coe v8) (coe v5) in
@@ -1003,7 +1003,7 @@ d_typeToGType'45'NoNu_936 v0 v1
              _ -> MAlonzo.RTE.mazUnreachableError
       C_nnu'45'mu_912 v3
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C_μ'45'type_132 v4
+             MAlonzo.Code.Once.Type.C_μ'45'type_128 v4
                -> let v5 = d_functorToGFunctor'45'NoNuF_942 (coe v4) (coe v3) in
                   coe
                     (case coe v5 of
@@ -1016,13 +1016,13 @@ d_typeToGType'45'NoNu_936 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.Convert.functorToGFunctor-NoNuF
 d_functorToGFunctor'45'NoNuF_942 ::
-  MAlonzo.Code.Once.Type.T_Functor_110 ->
+  MAlonzo.Code.Once.Type.T_Functor_106 ->
   T_NoNuF_870 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_functorToGFunctor'45'NoNuF_942 v0 v1
   = case coe v1 of
       C_nnuf'45'k_916 v3
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C_K_114 v4
+             MAlonzo.Code.Once.Type.C_K_110 v4
                -> let v5 = d_typeToGType'45'NoNu_936 (coe v4) (coe v3) in
                   coe
                     (case coe v5 of
@@ -1038,7 +1038,7 @@ d_functorToGFunctor'45'NoNuF_942 v0 v1
              (coe MAlonzo.Code.Once.Grammar.C_GFId_38) erased
       C_nnuf'45'sum_924 v4 v5
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'8853'__118 v6 v7
+             MAlonzo.Code.Once.Type.C__'8853'__114 v6 v7
                -> let v8 = d_functorToGFunctor'45'NoNuF_942 (coe v6) (coe v4) in
                   coe
                     (let v9 = d_functorToGFunctor'45'NoNuF_942 (coe v7) (coe v5) in
@@ -1057,7 +1057,7 @@ d_functorToGFunctor'45'NoNuF_942 v0 v1
              _ -> MAlonzo.RTE.mazUnreachableError
       C_nnuf'45'prod_930 v4 v5
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'8855'__120 v6 v7
+             MAlonzo.Code.Once.Type.C__'8855'__116 v6 v7
                -> let v8 = d_functorToGFunctor'45'NoNuF_942 (coe v6) (coe v4) in
                   coe
                     (let v9 = d_functorToGFunctor'45'NoNuF_942 (coe v7) (coe v5) in

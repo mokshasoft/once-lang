@@ -41,9 +41,9 @@ open import Relation.Binary.PropositionalEquality
 
 open import Once.Type using (Type)
 open import Once.CanonicalName using (CanonicalName; canonical; showCanonical)
-open import Once.TypeCheck.Raw as Raw using (RawExpr)
+open import Once.TypeCheck.Raw as Raw using (RawExpr; cls-var)
 open import Once.Parser.Module.Resolve
-  using (canonExpr; canonVar; isBuiltinName; elemStr; lookupUnaliased)
+  using (canonExpr; canonVar; isBuiltinName; elemStr; lookupUnaliased; cls-reflect)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; classifyAppHead; composeMid; composeArgB;
          domainOfHead; ctxWithImportsAndPolys)
@@ -334,6 +334,11 @@ reflect-var-ᶜ false bound x sub eb (t-morph-lift d) = t-morph-lift (reflect-va
 reflect-var-ᶜ false bound x sub eb (t-embed d)      = t-embed (reflect-var-ᵢ false bound x sub eb d)
 reflect-var-ᶜ false bound x sub eb (t-subsume d)    = t-subsume (reflect-var-ᶜ false bound x sub eb d)
 reflect-var-ᶜ false bound x sub eb (t-value-lift ())
+-- D126: a bare variable IS a liftable shape, so the resolved form can carry the
+-- closed lift too. Reflect the INFER premise; the side condition is `cls-var`
+-- on both sides (`canonVar` keeps a variable a variable-or-resolved-name).
+reflect-var-ᶜ false bound x sub eb (t-closed-lift _ d) =
+  t-closed-lift cls-var (reflect-var-ᵢ false bound x sub eb d)
 
 ------------------------------------------------------------------------
 -- PLAN 0.73 F3: a unary minus on a BARE VARIABLE.
@@ -516,6 +521,9 @@ mutual
   canon-reflects-ᶜ bound e sub (t-embed d)      = t-embed (canon-reflects-ᵢ bound e sub d)
   canon-reflects-ᶜ bound e sub (t-subsume d)    = t-subsume (canon-reflects-ᶜ bound e sub d)
   canon-reflects-ᶜ bound e sub (t-value-lift d) = t-value-lift (canon-reflects-ᵍ bound e d)
+  -- D126: structural, on the INFER sub-derivation rather than a `⊢ᵍ` one.
+  canon-reflects-ᶜ bound e sub (t-closed-lift cls d) =
+    t-closed-lift (cls-reflect bound [] [] e cls) (canon-reflects-ᵢ bound e sub d)
 
   reflect-app-var-ᶜ : ∀ {ctx A Ψ} (b : Bool) (bound : List String) (y : String) (X : RawExpr)
     → Names⊆ ctx bound → (elemStr y bound ∨ isBuiltinName y) ≡ b

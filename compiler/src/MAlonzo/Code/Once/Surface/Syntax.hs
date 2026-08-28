@@ -34,28 +34,28 @@ data T_Expr_8
     C_lam_32 MAlonzo.Code.Once.Type.T_Quantity_4 T_Expr_8 |
     C_app_48 MAlonzo.Code.Once.Surface.Context.T_Usage_60
              MAlonzo.Code.Once.Surface.Context.T_Usage_60
-             MAlonzo.Code.Once.Type.T_Type_112
+             MAlonzo.Code.Once.Type.T_Type_108
              MAlonzo.Code.Once.Type.T_Quantity_4 T_Expr_8 T_Expr_8 |
     C_effApp_62 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                 MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                MAlonzo.Code.Once.Type.T_Type_112 T_Expr_8 T_Expr_8 |
+                MAlonzo.Code.Once.Type.T_Type_108 T_Expr_8 T_Expr_8 |
     C_pair_76 MAlonzo.Code.Once.Surface.Context.T_Usage_60
               MAlonzo.Code.Once.Surface.Context.T_Usage_60 T_Expr_8 T_Expr_8 |
-    C_fst''_88 MAlonzo.Code.Once.Type.T_Type_112 T_Expr_8 |
-    C_snd''_100 MAlonzo.Code.Once.Type.T_Type_112 T_Expr_8 |
+    C_fst''_88 MAlonzo.Code.Once.Type.T_Type_108 T_Expr_8 |
+    C_snd''_100 MAlonzo.Code.Once.Type.T_Type_108 T_Expr_8 |
     C_inl''_112 T_Expr_8 | C_inr''_124 T_Expr_8 |
     C_case''_146 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                  MAlonzo.Code.Once.Surface.Context.T_Usage_60
                  MAlonzo.Code.Once.Surface.Context.T_Usage_60
                  MAlonzo.Code.Once.Type.T_Quantity_4
                  MAlonzo.Code.Once.Type.T_Quantity_4
-                 MAlonzo.Code.Once.Type.T_Type_112 MAlonzo.Code.Once.Type.T_Type_112
+                 MAlonzo.Code.Once.Type.T_Type_108 MAlonzo.Code.Once.Type.T_Type_108
                  T_Expr_8 T_Expr_8 T_Expr_8 |
     C_unit_152 | C_absurd_162 T_Expr_8 |
     C_let''_178 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                 MAlonzo.Code.Once.Surface.Context.T_Usage_60
                 MAlonzo.Code.Once.Type.T_Quantity_4
-                MAlonzo.Code.Once.Type.T_Type_112 T_Expr_8 T_Expr_8 |
+                MAlonzo.Code.Once.Type.T_Type_108 T_Expr_8 T_Expr_8 |
     C_int_184 Integer |
     C_str_190 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_float_198 MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 |
@@ -96,7 +96,7 @@ data T_Expr_8
     C_poly_392 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_lift'45'morphism_404 MAlonzo.Code.Once.IR.T_IR_16 |
     C_morph'45'app_416 MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                       MAlonzo.Code.Once.Type.T_Type_112 MAlonzo.Code.Once.IR.T_IR_16
+                       MAlonzo.Code.Once.Type.T_Type_108 MAlonzo.Code.Once.IR.T_IR_16
                        T_Expr_8 |
     C_cata_428 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240
                T_Expr_8 |
@@ -107,12 +107,12 @@ d_svar'8594'expr_450 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Surface.Context.T_SVar_184 -> T_Expr_8
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Surface.Context.T_SVar_210 -> T_Expr_8
 d_svar'8594'expr_450 ~v0 ~v1 ~v2 ~v3 v4 = du_svar'8594'expr_450 v4
 du_svar'8594'expr_450 ::
-  MAlonzo.Code.Once.Surface.Context.T_SVar_184 -> T_Expr_8
+  MAlonzo.Code.Once.Surface.Context.T_SVar_210 -> T_Expr_8
 du_svar'8594'expr_450 v0
   = case coe v0 of
-      MAlonzo.Code.Once.Surface.Context.C_svar_192 v3 -> coe C_var_16 v3
+      MAlonzo.Code.Once.Surface.Context.C_svar_218 v3 -> coe C_var_16 v3
       _ -> MAlonzo.RTE.mazUnreachableError

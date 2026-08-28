@@ -35,7 +35,7 @@ open import Data.List.Properties using (++-identityʳ)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 
-open import Once.Type using (Type; Purity; mk-kind; Many; pure; _⇒[_]_; _+_; _*_; μ-type; ⟦_⟧T; Functor; Int; Unit)
+open import Once.Type using (Type; Purity; mk-kind; Many; pure; eff; _⇒[_]_; _+_; _*_; μ-type; ⟦_⟧T; Functor; Int; Unit)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
   IsConcrete; con-base; con-fun)
@@ -63,7 +63,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-app; t-effApp;
-  t-morph-lift; t-value-lift; t-embed; t-lam; t-pair-lit-check;
+  t-morph-lift; t-value-lift; t-closed-lift; t-embed; t-lam; t-pair-lit-check;
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
   t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
   t-var-poly-instantiate-infer)
@@ -83,6 +83,7 @@ open import Once.Denotation.Realize using (realize; realize-infer; realize-morph
 open import Once.Adequacy.SourceFaithful fmt using (faithful)
 open import Once.Surface.Elaborate using (elaborate)
 import Once.Denotation.SourceDenote as SD
+open import Once.Denotation.ThinSound using (weaken-⟦⟧)
 open import Once.Adequacy.MeaningRelation fmt
   using (RelV; RelT; RelT-return; RelT-bind)
 open import Once.Adequacy.CataBridge fmt using (cata-bridge)
@@ -595,6 +596,23 @@ bridge-i (t-effApp _ df dx) re k = refl , λ {a} {b} _ k' →
 -- Morphism / value lift — `returnT` of the (bridge-m / bridge-g)-related arrow.
 bridge-c (t-morph-lift d) re k = refl , bridge-m d
 bridge-c (t-value-lift g) re k = refl , λ {a} {b} _ → bridge-g g b
+-- D126's closed lift. Both sides are the CONSTANT arrow: the meaning ignores
+-- its argument outright, the realization ignores it by weakening. So the pair's
+-- value half discards the argument relation and hands back the INFER bridge,
+-- transported across `weaken-⟦⟧` (weakening does not change a meaning).
+-- Split on π: `realize` does (the eff arrow wraps the same lambda in `arr'`),
+-- so neither side reduces until it is known. `⟦arr' f⟧ = ⟦f⟧`, so both clauses
+-- are the same proof.
+bridge-c (t-closed-lift {A = A} {π = pure} _ d) {dγ₂ = dγ₂} re k =
+  refl , λ {a} {b} _ →
+    subst (λ y → RelT A ((⟦ d ⟧ᵢ fmt) _) y)
+          (sym (weaken-⟦⟧ (realize-infer d) fmt dγ₂ b))
+          (bridge-i d re)
+bridge-c (t-closed-lift {A = A} {π = eff} _ d) {dγ₂ = dγ₂} re k =
+  refl , λ {a} {b} _ →
+    subst (λ y → RelT A ((⟦ d ⟧ᵢ fmt) _) y)
+          (sym (weaken-⟦⟧ (realize-infer d) fmt dγ₂ b))
+          (bridge-i d re)
 bridge-c (t-embed d) re = bridge-i d re
 bridge-c (t-lam _ d) re k = refl , λ {a} {b} rv → bridge-c d (re , rv)
 bridge-c (t-pair-lit-check da db) re k =

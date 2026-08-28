@@ -29,7 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.Parser.Module.Resolve using (canonExpr; isBuiltinName; elemStr)
+open import Once.Parser.Module.Resolve using (canonExpr; isBuiltinName; elemStr; cls-canon)
 open import Once.TypeCheck.Classify
   using (NamedCtx; composeMid; lookupPoly; lookupPolyPrefix⇒lookupPoly; extendNamedCtx; ctxWithImportsAndPolys)
 open import Once.TypeCheck.Context using (names)
@@ -196,6 +196,9 @@ mutual
   canon-pres-ᶜ bound sub pib (t-lam {x = x} {A = A} le d) =
     t-lam le (canon-pres-ᶜ (x ∷ bound) (⊆ᵇ-cons x sub) (poly-ext x A pib) d)
   canon-pres-ᶜ bound sub pib (t-value-lift d) = t-value-lift (pres-ᵍ bound d)
+  -- D126: structural, on the INFER sub-derivation rather than a `⊢ᵍ` one.
+  canon-pres-ᶜ bound sub pib (t-closed-lift cls d) =
+    t-closed-lift (cls-canon bound [] [] cls) (canon-pres-ᵢ bound sub pib d)
   canon-pres-ᶜ bound sub pib (t-pair-lit-check d₁ d₂) =
     t-pair-lit-check (canon-pres-ᶜ bound sub pib d₁) (canon-pres-ᶜ bound sub pib d₂)
   canon-pres-ᶜ bound sub pib (t-In-app-check wf d)

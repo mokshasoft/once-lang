@@ -48,11 +48,12 @@ open import Once.TypeCheck.Judgment
          t-annot; t-pair; t-neg; t-neg-float; t-let; t-case; t-binop-arith; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-apply-app-infer;
          t-app; t-effApp;
-         t-embed; t-lam; t-value-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
+         t-embed; t-lam; t-value-lift; t-closed-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
          t-apply-check; t-inl-app-check; t-inr-app-check; t-initial-app-check;
          t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer)
 open import Once.Float.Decimal using (Decimal; decimalOf; negate)
+open import Once.Surface.Thinning using (weaken)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
   add; sub; mul; div; mod'; fadd; fsub; fmul; i2f; lt; le; gt; ge; eq; ne; sigOp; poly;
@@ -63,6 +64,7 @@ open import Once.CanonicalName using (bare)
 open import Once.Surface.Syntax using (_+ᵘ_; _*ᵘ_)
 open import Once.Surface.Properties using (+ᵘ-identityˡ; *ᵘ-zeroʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_; subst; trans; cong; sym)
+import Relation.Binary.PropositionalEquality as PE
 
 -- The reference elaboration (D063): a mutual block
 --   realize       (⊢ᶜ → SExpr)   -- check-mode
@@ -159,6 +161,21 @@ realize-morph (m-named-resolved {cn = cn} _ bA cB) = IR.SigOp (value-info cn bA 
 ------------------------------------------------------------------------
 realize (t-morph-lift d)        = lift-morphism (realize-morph d)
 realize (t-value-lift g)        = lift-morphism (realize-global g)
+-- D126: a closed expression lifts by composing its own elaboration with
+-- `terminal` — which is precisely what `t-value-lift` does for a value, with
+-- `realize-global` in place of `realize-infer`. `zeroUsage` is what makes the
+-- `terminal` legitimate: the body reads no local, so there is nothing to
+-- capture and no closure to build.
+-- D126: `λ _ → e`, built from the existing `weaken`. `zeroUsage` is what makes
+-- that legitimate — the body reads no local, so weakening it under one more
+-- binder cannot capture anything, and the lambda's own variable is used with
+-- quantity `Zero`.
+realize (t-closed-lift {π = Once.Type.pure} _ d) = lam Many PE.refl (weaken (realize-infer d))
+-- …and at `eff`, the same lambda through `arr'` — the pure→eff coercion
+-- `t-subsume` uses. Grade-polymorphism is not free here the way it is for
+-- `t-value-lift`, because `Surface.lam` is pure and `lift-morphism` is not
+-- available without strengthening the body to the empty context.
+realize (t-closed-lift {π = Once.Type.eff} _ d)  = arr' (lam Many PE.refl (weaken (realize-infer d)))
 realize (t-embed d)             = realize-infer d
 realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)
 realize (t-pair-lit-check da db) = pair (realize da) (realize db)

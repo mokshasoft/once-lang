@@ -27,6 +27,8 @@ module Once.TypeCheck.ErrorProofs where
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using ()
 open import Data.Empty using (⊥; ⊥-elim)
+open import Data.Nat using (ℕ)
+open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; t-unit; t-str)
 open import Relation.Nullary using (¬_; yes; no)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃; ∃-syntax; _×_; _,_; proj₁)
@@ -40,6 +42,7 @@ open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
          inferElabV; checkElabV; _≟T_; isRIntVliftTarget?;
+         closed-lift-aux; embedOrSubsume-no;
          -- the negation dispatch's literal view (plan 0.74 J6 step 3 for
          -- `RInt`, plan 0.73 F3 for `RFloat`) — the CONSTRUCTORS have to be
          -- listed, the qualified name alone does not bring them into pattern
@@ -335,6 +338,93 @@ check-RInt-type-mismatch ctx n T ¬eq eq
 ... | no _ with eq
 ...   | refl = refl
 
+-- D126 reaches the leaf error lemmas below. At an ARROW expected type the
+-- elaborator no longer simply fails — it tries the closed-expression lift. The
+-- MESSAGE is unchanged (`TypeMismatch T A`, whatever `T` is), but the proof now
+-- has to walk the lift's three decisions, so that walk is factored out here
+-- rather than repeated per leaf.
+cl-err : ∀ (ctx : NamedCtx) (e : RawExpr) (T' X B : Type) (π : T.Purity)
+           {Ψ : Surface.Usage (NamedCtx.size ctx)}
+           (eE : SExpr (NamedCtx.debruijn ctx) Ψ T') (d fr : ℕ)
+           (w : ctx ⊢ᵢ e ∶ T' ⨾ Ψ) {err : TypeError}
+       → proj₁ (closed-lift-aux ctx e T' X B π eE d fr w
+                  (Raw.closedLiftShape? e) (T' ≟T B) (Surface.zeroUsage? Ψ))
+           ≡ failure err
+       → err ≡ TypeMismatch (X T.⇒[ T.mk-kind T.Many π ] B) T'
+cl-err ctx e T' X B π {Ψ} eE d fr w eq
+  with T' ≟T B | Raw.closedLiftShape? e | Surface.zeroUsage? Ψ | eq
+... | no _     | _       | _           | refl = refl
+... | yes _    | _       | nothing     | refl = refl
+... | yes refl | nothing | just refl   | refl = refl
+-- Both decisions hold: the lift FIRES, so the failure hypothesis is absurd —
+-- and `π` has to be split for that to reduce, because `realize` splits on it.
+cl-err ctx e T' X B T.pure {Ψ} eE d fr w eq
+  | yes refl | just c | just refl | ()
+cl-err ctx e T' X B T.eff {Ψ} eE d fr w eq
+  | yes refl | just c | just refl | ()
+
+-- | `embedOrSubsume-no`'s error is `TypeMismatch T A` for EVERY expected `T`.
+-- The clauses are the expected type, because that is what it matches first.
+embedOrSubsume-no-err :
+  ∀ (ctx : NamedCtx) (e : RawExpr) (T A : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    (eE : SExpr (NamedCtx.debruijn ctx) Ψ A) (d fr : ℕ)
+    (w : ctx ⊢ᵢ e ∶ A ⨾ Ψ) {err : TypeError}
+  → proj₁ (embedOrSubsume-no ctx e T A eE d fr w) ≡ failure err
+  → err ≡ TypeMismatch T A
+embedOrSubsume-no-err ctx e Unit A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e T.Void A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e T.Int A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e T.Float A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e T.Str A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e T.Buffer A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e (P T.* Q) A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e (P T.+ Q) A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e (T.μ-type F) A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e (T.ν-type F) A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e (P T.⇒[ T.mk-kind T.One q ] Q) A eE d fr w refl = refl
+embedOrSubsume-no-err ctx e (P T.⇒[ T.mk-kind T.Zero q ] Q) A eE d fr w refl = refl
+-- PURE arrow: subsumption needs an eff target, so this is the lift outright —
+-- and `A` needs no split.
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] B) A eE d fr w eq =
+  cl-err ctx e A X B T.pure eE d fr w eq
+-- EFF arrow with an inferred MANY-PURE arrow: subsumption first.
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B)
+                      (A' T.⇒[ T.mk-kind T.Many T.pure ] B') eE d fr w eq
+  with X ≟T A' | B ≟T B' | eq
+... | yes refl | yes refl | ()
+... | yes refl | no _     | eq' =
+      cl-err ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] B') X B T.eff eE d fr w eq'
+... | no _     | _        | eq' =
+      cl-err ctx e (A' T.⇒[ T.mk-kind T.Many T.pure ] B') X B T.eff eE d fr w eq'
+-- …every other inferred type at an eff arrow is the lift.
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) Unit eE d fr w eq =
+  cl-err ctx e Unit X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) T.Void eE d fr w eq =
+  cl-err ctx e T.Void X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) T.Int eE d fr w eq =
+  cl-err ctx e T.Int X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) T.Float eE d fr w eq =
+  cl-err ctx e T.Float X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) T.Str eE d fr w eq =
+  cl-err ctx e T.Str X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) T.Buffer eE d fr w eq =
+  cl-err ctx e T.Buffer X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (P T.* Q) eE d fr w eq =
+  cl-err ctx e (P T.* Q) X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (P T.+ Q) eE d fr w eq =
+  cl-err ctx e (P T.+ Q) X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (T.μ-type F) eE d fr w eq =
+  cl-err ctx e (T.μ-type F) X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (T.ν-type F) eE d fr w eq =
+  cl-err ctx e (T.ν-type F) X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (A' T.⇒[ T.mk-kind T.Many T.eff ] B') eE d fr w eq =
+  cl-err ctx e (A' T.⇒[ T.mk-kind T.Many T.eff ] B') X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (A' T.⇒[ T.mk-kind T.One q ] B') eE d fr w eq =
+  cl-err ctx e (A' T.⇒[ T.mk-kind T.One q ] B') X B T.eff eE d fr w eq
+embedOrSubsume-no-err ctx e (X T.⇒[ T.mk-kind T.Many T.eff ] B) (A' T.⇒[ T.mk-kind T.Zero q ] B') eE d fr w eq =
+  cl-err ctx e (A' T.⇒[ T.mk-kind T.Zero q ] B') X B T.eff eE d fr w eq
+
 check-RUnit-type-mismatch :
   ∀ (ctx : NamedCtx) (T : Type) {err : TypeError}
   → ¬ (T ≡ Unit)
@@ -343,8 +433,7 @@ check-RUnit-type-mismatch :
 check-RUnit-type-mismatch ctx T ¬eq eq
   with T ≟T Unit
 ... | yes refl = ⊥-elim (¬eq refl)
-... | no _ with eq
-...   | refl = refl
+... | no _     = embedOrSubsume-no-err ctx Raw.RUnit T Unit Surface.unit 0 _ t-unit eq
 
 check-RStringLit-type-mismatch :
   ∀ (ctx : NamedCtx) (s : _) (T : Type) {err : TypeError}
@@ -354,8 +443,7 @@ check-RStringLit-type-mismatch :
 check-RStringLit-type-mismatch ctx s T ¬eq eq
   with T ≟T Str
 ... | yes refl = ⊥-elim (¬eq refl)
-... | no _ with eq
-...   | refl = refl
+... | no _     = embedOrSubsume-no-err ctx (Raw.RStringLit s) T Str (Surface.str s) 0 _ (t-str s) eq
 lam-usage-violation-is-UsageViolation :
   ∀ (ctx : NamedCtx) (x : String) (body : Raw.RawExpr)
     (A : Type) (q : _) (B : Type)

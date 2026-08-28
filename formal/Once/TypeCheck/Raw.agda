@@ -17,6 +17,8 @@ open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ)
 open import Once.Type using (Type; Functor)
 open import Once.CanonicalName using (CanonicalName)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
 -- Binary Operators (OCP-0002)
@@ -209,3 +211,70 @@ isArithmeticOp OpGt  = false
 isArithmeticOp OpGe  = false
 isArithmeticOp OpEq  = false
 isArithmeticOp OpNe  = false
+------------------------------------------------------------------------
+-- D126: the closed-expression lift's side condition
+------------------------------------------------------------------------
+
+-- | The shapes with NO check-mode rule of their own — the ones whose
+-- check-mode elaboration falls through to infer-then-embed.
+--
+-- This is the classic bidirectional side condition ("the subsumption rule
+-- applies only to non-introduction forms"), written out. Without it D126
+-- would be derivable for `λx. body` too, and then two DIFFERENT check-mode
+-- derivations — `t-lam` and the lift — would give the same expression two
+-- different meanings at the same type. The elaborator resolves that in favour
+-- of `t-lam`, so the judgment must not claim the other.
+--
+-- The check-DIRECTED shapes left out, and where each is already served:
+--   * `RLam`            — `t-lam` (and it has no infer rule at all).
+--   * `RInt` / `RFloat` / `- <literal>`
+--                       — the older value-lift (D018/D041/D124), which gives
+--                         these the same constant morphism by another route.
+--   * `RPair`           — `checkPairLit`, and closed pairs by `g-pair`.
+--   * `RApp`            — head-directed (`In`/`inl`/`inr`/`apply`/the morphism
+--                         combinators). A lift for ordinary applications would
+--                         need the head view as a further premise; not done.
+data ClosedLiftShape : RawExpr → Set where
+  cls-var    : ∀ {x}         → ClosedLiftShape (RVar x)
+  cls-qual   : ∀ {n a}       → ClosedLiftShape (RQualified n a)
+  cls-res    : ∀ {cn}        → ClosedLiftShape (RResolved cn)
+  cls-let    : ∀ {x e₁ e₂}   → ClosedLiftShape (RLet x e₁ e₂)
+  cls-destr  : ∀ {s x eL y eR} → ClosedLiftShape (RDestruct s x eL y eR)
+  cls-unit   :                 ClosedLiftShape RUnit
+  cls-str    : ∀ {s}         → ClosedLiftShape (RStringLit s)
+  cls-annot  : ∀ {e T}       → ClosedLiftShape (RAnnot e T)
+  cls-binop  : ∀ {op a b}    → ClosedLiftShape (RBinOp op a b)
+
+-- | Decides it. The elaborator calls this on the expression it is checking, so
+-- the rule's side condition is discharged by the elaborator itself.
+closedLiftShape? : ∀ (e : RawExpr) → Maybe (ClosedLiftShape e)
+closedLiftShape? (RVar _)              = just cls-var
+closedLiftShape? (RQualified _ _)      = just cls-qual
+closedLiftShape? (RResolved _)         = just cls-res
+closedLiftShape? (RLet _ _ _)          = just cls-let
+closedLiftShape? (RDestruct _ _ _ _ _) = just cls-destr
+closedLiftShape? RUnit                 = just cls-unit
+closedLiftShape? (RStringLit _)        = just cls-str
+closedLiftShape? (RAnnot _ _)          = just cls-annot
+closedLiftShape? (RBinOp _ _ _)        = just cls-binop
+closedLiftShape? (RApp _ _)            = nothing
+closedLiftShape? (RLam _ _)            = nothing
+closedLiftShape? (RPair _ _)           = nothing
+closedLiftShape? (RInt _)              = nothing
+closedLiftShape? (RFloat _ _ _ _)      = nothing
+closedLiftShape? (RUnaryOp _ _)        = nothing
+closedLiftShape? (RAna _ _)            = nothing
+
+-- | …and agrees with the witness, which is what makes the elaborator's
+-- dispatch reduce in the completeness proof.
+closedLiftShape?-just : ∀ {e : RawExpr} (c : ClosedLiftShape e)
+                      → closedLiftShape? e ≡ just c
+closedLiftShape?-just cls-var   = refl
+closedLiftShape?-just cls-qual  = refl
+closedLiftShape?-just cls-res   = refl
+closedLiftShape?-just cls-let   = refl
+closedLiftShape?-just cls-destr = refl
+closedLiftShape?-just cls-unit  = refl
+closedLiftShape?-just cls-str   = refl
+closedLiftShape?-just cls-annot = refl
+closedLiftShape?-just cls-binop = refl

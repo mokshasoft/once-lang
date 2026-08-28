@@ -84,7 +84,7 @@ du_pdb'45'sub_10 v0 v1
 d_pdb'45'fb'45'sig'45'go_36 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   Bool -> Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14

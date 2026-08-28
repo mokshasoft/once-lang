@@ -159,7 +159,7 @@ d_decode'45'unread_302
 -- Once.Adequacy.FlatEvents.FlatEventTrace.decode-arg
 d_decode'45'arg_306 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_200 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 -> AgdaAny
 d_decode'45'arg_306 v0 v1 v2 v3
@@ -170,22 +170,22 @@ d_decode'45'arg_306 v0 v1 v2 v3
            -> case coe v3 of
                 MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76 v5 v6 v7
                   -> case coe v6 of
-                       MAlonzo.Code.Once.Type.C_fits'45'int_198 -> coe v7
+                       MAlonzo.Code.Once.Type.C_fits'45'int_194 -> coe v7
                        _ -> coe v4
                 _ -> coe v4
          MAlonzo.Code.Once.Functor.Translate.C_base'45'Float_208
            -> case coe v3 of
                 MAlonzo.Code.Once.CCC.Machine.SMCore.C_SV'45'Lit_76 v5 v6 v7
                   -> case coe v6 of
-                       MAlonzo.Code.Once.Type.C_fits'45'float_200 -> coe v7
+                       MAlonzo.Code.Once.Type.C_fits'45'float_196 -> coe v7
                        _ -> coe v4
                 _ -> coe v4
          _ -> coe v4)
 -- Once.Adequacy.FlatEvents.FlatEventTrace.machine-event
 d_machine'45'event_320 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118
@@ -193,7 +193,7 @@ d_machine'45'event_320 v0 v1 ~v2 v3 v4
   = du_machine'45'event_320 v0 v1 v3 v4
 du_machine'45'event_320 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
   MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118

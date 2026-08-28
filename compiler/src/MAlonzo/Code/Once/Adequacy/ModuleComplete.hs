@@ -48,23 +48,23 @@ import qualified MAlonzo.Code.Once.TypeCheck.Raw
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Adequacy.ModuleComplete.EffUU
-d_EffUU_6 :: MAlonzo.Code.Once.Type.T_Type_112
+d_EffUU_6 :: MAlonzo.Code.Once.Type.T_Type_108
 d_EffUU_6
   = coe
-      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
-      (coe MAlonzo.Code.Once.Type.C_Unit_122)
+      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126
+      (coe MAlonzo.Code.Once.Type.C_Unit_118)
       (coe
          MAlonzo.Code.Once.Type.C_mk'45'kind_50
          (coe MAlonzo.Code.Once.Type.C_Many_10)
          (coe MAlonzo.Code.Once.Type.C_eff_36))
-      (coe MAlonzo.Code.Once.Type.C_Unit_122)
+      (coe MAlonzo.Code.Once.Type.C_Unit_118)
 -- Once.Adequacy.ModuleComplete.compileFunBody-complete
 d_compileFunBody'45'complete_24 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
@@ -76,7 +76,7 @@ du_compileFunBody'45'complete_24 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -104,7 +104,7 @@ du_compileFunBody'45'complete_24 v0 v1 v2 v3 v4 v5 v6
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                (coe
-                  MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_5446
+                  MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_6848
                   (coe
                      MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                      (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
@@ -116,7 +116,7 @@ d_compileFun'45'complete_64 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -130,7 +130,7 @@ du_compileFun'45'complete_64 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -337,7 +337,7 @@ d_caf'45'go'45'find'45'complete_286 v0 v1 v2 v3 v4 v5 v6
                                                                   (coe
                                                                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                                                      (coe
-                                                                        MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_5446
+                                                                        MAlonzo.Code.Once.TypeCheck.Completeness.du_check'45'complete_6848
                                                                         (coe
                                                                            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                                                                            (coe v3) (coe v0)
@@ -376,7 +376,7 @@ d_caf'45'go'45'find'45'complete_286 v0 v1 v2 v3 v4 v5 v6
                                                                                  ::
                                                                                  Data.Text.Text)))
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Type.C_Unit_122)
+                                                                             MAlonzo.Code.Once.Type.C_Unit_118)
                                                                           (coe
                                                                              MAlonzo.Code.Once.Compile.d_wrapMainAsEntry_8
                                                                              (coe v29))
@@ -509,7 +509,7 @@ d_findMain'45'main'45'here_384 ::
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Maybe MAlonzo.Code.Once.Type.T_Type_112 ->
+  Maybe MAlonzo.Code.Once.Type.T_Type_108 ->
   Maybe MAlonzo.Code.Once.Parser.Module.Core.T_AllocStrategy_8 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -525,7 +525,7 @@ d_cf0_458 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
   MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
@@ -546,7 +546,7 @@ d_cf0_458 ~v0 ~v1 ~v2 v3 ~v4 v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 v12 ~v13
   = du_cf0_458 v3 v5 v12
 du_cf0_458 ::
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.Compile.T_CompiledFun_230
 du_cf0_458 v0 v1 v2
@@ -575,7 +575,7 @@ d_ca'45'eq_460 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
   MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
@@ -599,7 +599,7 @@ d_result_462 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
   MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
@@ -620,7 +620,7 @@ d_result_462 ~v0 ~v1 ~v2 v3 ~v4 v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 v12
   = du_result_462 v3 v5 v12 v14 v15
 du_result_462 ::
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_230] ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -655,7 +655,7 @@ du_result_462 v0 v1 v2 v3 v4
                                        (coe
                                           MAlonzo.Code.Once.CanonicalName.d_bare_12
                                           (coe ("main" :: Data.Text.Text)))
-                                       (coe MAlonzo.Code.Once.Type.C_Unit_122)
+                                       (coe MAlonzo.Code.Once.Type.C_Unit_118)
                                        (coe MAlonzo.Code.Once.Compile.d_wrapMainAsEntry_8 (coe v2))
                                        (coe v12))
                                     (coe v3))
@@ -798,7 +798,7 @@ d_mainRealized'45'go_572 v0 v1 v2 v3 v4 v5
                               (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v14))
                               (coe ("main" :: Data.Text.Text)))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__240 (coe v9)
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__224 (coe v9)
                               (coe d_EffUU_6))
                            (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v14))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -812,7 +812,7 @@ d_mrg'45'dispatch_598 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
   MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
@@ -957,7 +957,7 @@ d_go_730 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
@@ -974,7 +974,7 @@ du_go_730 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_go_730 v0 v1 v2 v3 v4 v5 v6
@@ -1073,7 +1073,7 @@ d_go_846 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
@@ -1092,7 +1092,7 @@ du_go_846 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
@@ -1148,7 +1148,7 @@ d_cf0_886 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_230] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -1169,7 +1169,7 @@ d_cf0_886 ~v0 ~v1 ~v2 v3 v4 ~v5 ~v6 ~v7 v8 ~v9 ~v10 ~v11 ~v12 ~v13
   = du_cf0_886 v3 v4 v8
 du_cf0_886 ::
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.Compile.T_CompiledFun_230
 du_cf0_886 v0 v1 v2
@@ -1197,7 +1197,7 @@ d_fm0_888 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_230] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -1220,7 +1220,7 @@ d_dispatch_892 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_230] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -1244,7 +1244,7 @@ du_dispatch_892 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_230] ->
   MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
@@ -1288,14 +1288,14 @@ du_dispatch_892 v0 v1 v2 v3 v4 v5 v6 v7 v8
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Adequacy.ModuleComplete._._._.mx
 d_mx_908 ::
-  Maybe MAlonzo.Code.Once.Type.T_Type_112 ->
+  Maybe MAlonzo.Code.Once.Type.T_Type_108 ->
   Maybe MAlonzo.Code.Once.Parser.Module.Core.T_AllocStrategy_8 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   Bool ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_230] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -1321,7 +1321,7 @@ du_mx_908 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Once.Compile.T_CompiledFun_230] ->
   MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->

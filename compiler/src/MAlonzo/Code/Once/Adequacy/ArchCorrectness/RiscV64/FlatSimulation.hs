@@ -8922,8 +8922,8 @@ du_block'45'step'45'load'45'const_1740 v0 v1 v2 v3 v4 v5
       du_block'45'step'45'li_1252 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2270
-         (coe MAlonzo.Code.Once.Type.C_Int_136)
-         (coe MAlonzo.Code.Once.Type.C_fits'45'int_198) (coe v4))
+         (coe MAlonzo.Code.Once.Type.C_Int_132)
+         (coe MAlonzo.Code.Once.Type.C_fits'45'int_194) (coe v4))
       (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_a0_18)
       (coe
          MAlonzo.Code.Once.Word.d_fromℤ_20 (coe (64 :: Integer)) (coe v4))
@@ -9754,8 +9754,8 @@ du_block'45'step'45'load'45'const'45'float_1962 v0 v1 v2 v3 v4 v5
       du_block'45'step'45'li_1252 (coe v0) (coe v1) (coe v2) (coe v3)
       (coe
          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'load'45'const_2270
-         (coe MAlonzo.Code.Once.Type.C_Float_138)
-         (coe MAlonzo.Code.Once.Type.C_fits'45'float_200) (coe v4))
+         (coe MAlonzo.Code.Once.Type.C_Float_134)
+         (coe MAlonzo.Code.Once.Type.C_fits'45'float_196) (coe v4))
       (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_a0_18)
       (coe
          MAlonzo.Code.Once.Float.Decimal.d_round_174

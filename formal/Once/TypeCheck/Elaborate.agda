@@ -143,14 +143,17 @@ open import Once.TypeCheck.Judgment
 ≟T-⇒-aux : ∀ {A₁ B₁ A₂ B₂ k₁ k₂}
          → Dec (A₁ ≡ A₂) → Dec (k₁ ≡ k₂) → Dec (B₁ ≡ B₂)
          → Dec ((A₁ ⇒[ k₁ ] B₁) ≡ (A₂ ⇒[ k₂ ] B₂))
+-- Clause ORDER is load-bearing, not cosmetic: each `no` clause leaves the OTHER
+-- two columns unsplit, so a kind clash (`pure` vs `eff`, `Many` vs `One`) decides
+-- the arrow WITHOUT the domain/codomain deciders having to reduce first. With the
+-- old all-eight-combinations order, `(A ⇒eff B) ≟T (A' ⇒pure B')` was stuck on
+-- `A ≟T A'` for variable A/A' — and a stuck outer decision HIDES the inner ones
+-- from a proof's `with`, which is what made D126's `embedOrSubsume-lifts`
+-- unprovable. Same decisions, same results; just decided sooner.
+≟T-⇒-aux _          (no ¬k)    _          = no λ { refl → ¬k refl }
+≟T-⇒-aux (no ¬p)    _          _          = no λ { refl → ¬p refl }
+≟T-⇒-aux _          _          (no ¬r)    = no λ { refl → ¬r refl }
 ≟T-⇒-aux (yes refl) (yes refl) (yes refl) = yes refl
-≟T-⇒-aux (yes refl) (yes refl) (no ¬r)    = no λ { refl → ¬r refl }
-≟T-⇒-aux (yes refl) (no ¬k)    (yes _)    = no λ { refl → ¬k refl }
-≟T-⇒-aux (yes refl) (no ¬k)    (no _)     = no λ { refl → ¬k refl }
-≟T-⇒-aux (no ¬p)    (yes _)    (yes _)    = no λ { refl → ¬p refl }
-≟T-⇒-aux (no ¬p)    (yes _)    (no _)     = no λ { refl → ¬p refl }
-≟T-⇒-aux (no ¬p)    (no _)     (yes _)    = no λ { refl → ¬p refl }
-≟T-⇒-aux (no ¬p)    (no _)     (no _)     = no λ { refl → ¬p refl }
 
 ≟T-μ-aux : ∀ {F₁ F₂} → Dec (F₁ ≡ F₂) → Dec (μ-type F₁ ≡ μ-type F₂)
 ≟T-μ-aux (yes refl) = yes refl
@@ -488,25 +491,85 @@ classifyEffArrow : (T : Type) → EffArrowView T
 classifyEffArrow (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) = eav-eff A B
 classifyEffArrow T = eav-other T
 
+-- | D126's dispatch. `just refl` on BOTH decisions means the inferred type is
+-- the arrow's codomain and nothing local was read — the two halves of "this is
+-- a global element". Anything else is the type mismatch it always was.
+closed-lift-aux : ∀ (ctx : NamedCtx) (e : RawExpr)
+                    {Ψ : Surface.Usage (NamedCtx.size ctx)} (T' X B : Type)
+                    (π : Once.Type.Purity)
+                → SExpr (NamedCtx.debruijn ctx) Ψ T' → (depth fresh : ℕ)
+                → ctx ⊢ᵢ e ∶ T' ⨾ Ψ
+                → Maybe (Raw.ClosedLiftShape e)
+                → Dec (T' ≡ B) → Maybe (Ψ ≡ Surface.zeroUsage)
+                → VerifiedCheckResult ctx e
+                    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+-- Clause order, again for REDUCTION: each rejection leaves the other two columns
+-- unsplit, so whichever of the three is known decides. A single all-three-match
+-- clause first would go stuck on the shape decider, whose argument is the raw
+-- expression and so is stuck for an abstract one.
+closed-lift-aux ctx e T' X B π eE depth fresh w _ (no _) _ =
+  failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) T') , tt
+closed-lift-aux ctx e T' X B π eE depth fresh w _ _ nothing =
+  failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) T') , tt
+closed-lift-aux ctx e T' X B π eE depth fresh w nothing _ _ =
+  failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) T') , tt
+closed-lift-aux ctx e T' X B Once.Type.pure eE depth fresh w (just cls) (yes refl) (just refl) =
+  success Surface.zeroUsage
+          (Surface.lam Once.Type.Many refl
+             (Once.Surface.Thinning.weaken eE))
+          (suc depth) fresh
+  , t-closed-lift cls w
+closed-lift-aux ctx e T' X B Once.Type.eff eE depth fresh w (just cls) (yes refl) (just refl) =
+  success Surface.zeroUsage
+          (Surface.arr' (Surface.lam Once.Type.Many refl
+             (Once.Surface.Thinning.weaken eE)))
+          (suc depth) fresh
+  , t-closed-lift cls w
+
+-- ARGUMENT ORDER: the EXPECTED type `T` comes first, and it is the one every
+-- clause discriminates on. With the inferred `T'` first, the subsumption clause
+-- went stuck whenever `T'` was a variable — which hid every clause below it, so
+-- a proof holding an ABSTRACT inferred type could not reduce this at all.
 embedOrSubsume-no : ∀ (ctx : NamedCtx) (e : RawExpr)
-                      {Ψ : Surface.Usage (NamedCtx.size ctx)} (T' T : Type)
+                      {Ψ : Surface.Usage (NamedCtx.size ctx)} (T T' : Type)
                   → SExpr (NamedCtx.debruijn ctx) Ψ T' → (depth fresh : ℕ)
                   → ctx ⊢ᵢ e ∶ T' ⨾ Ψ → VerifiedCheckResult ctx e T
-embedOrSubsume-no ctx e (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')
-                        (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+embedOrSubsume-no ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+                        (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')
                         eE depth fresh w with A ≟T A' | B ≟T B'
 ... | yes refl | yes refl = success _ (Surface.arr' eE) depth fresh , t-subsume (t-embed w)
-... | _        | _        = failure (TypeMismatch
-                              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
-                              (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')) , tt
-embedOrSubsume-no ctx e T' T eE depth fresh w = failure (TypeMismatch T T') , tt
+-- …and when it is NOT a subsume, fall through to D126 rather than failing:
+-- a closed `e : A' ⇒pure B'` at an eff-arrow target is still a global element.
+... | _        | _        =
+      closed-lift-aux ctx e (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')
+                      A B Once.Type.eff eE depth fresh w (Raw.closedLiftShape? e)
+                      ((A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B') ≟T B)
+                      (Surface.zeroUsage? _)
+-- D126: THE CLOSED-EXPRESSION LIFT. The expected type is a PURE arrow and the
+-- expression infers at its codomain using no local variable, so it is a global
+-- element and lifts to the constant morphism — which is what D018 decided
+-- ("values with implicit lifting") and D056 spelled out ("a value `v : B` used
+-- where a morphism is expected is the constant morphism `const v : Unit → B`").
+--
+-- Before this, `compose exit@S (1 + 1)` was `expected (Unit ω→ Int) but got
+-- Int`, because `⊢ᵍ` enumerates the literal FORMS and `1 + 1` is not one of
+-- them — an implementation narrower than the decision.
+--
+-- BOTH DECISIONS ARE ARGUMENTS, not `with`s: the codomain match and the
+-- zero-usage check. Same convention as `cfm-build-gated`, and it keeps this
+-- clause reducing for an abstract `e`.
+embedOrSubsume-no ctx e (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) T'
+                  eE depth fresh w =
+  closed-lift-aux ctx e T' X B π eE depth fresh w
+                  (Raw.closedLiftShape? e) (T' ≟T B) (Surface.zeroUsage? _)
+embedOrSubsume-no ctx e T T' eE depth fresh w = failure (TypeMismatch T T') , tt
 
 embedOrSubsume : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
                → VerifiedInferResult ctx e → VerifiedCheckResult ctx e T
 embedOrSubsume ctx e T (failure err , _) = failure err , tt
 embedOrSubsume ctx e T (success T' Ψ eE d fr , w) with T ≟T T'
 ... | yes refl = success Ψ eE d fr , t-embed w
-... | no _     = embedOrSubsume-no ctx e T' T eE d fr w
+... | no _     = embedOrSubsume-no ctx e T T' eE d fr w
 
 ------------------------------------------------------------------------
 -- QTT Usage Helpers

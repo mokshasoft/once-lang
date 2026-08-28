@@ -38,18 +38,18 @@ import qualified MAlonzo.Code.Once.TypeCheck.ElaborateProofs
 -- Once.Adequacy.MainForm.EffUU
 d_EffUU_12 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Type_112
+  MAlonzo.Code.Once.Type.T_Type_108
 d_EffUU_12 ~v0 = du_EffUU_12
-du_EffUU_12 :: MAlonzo.Code.Once.Type.T_Type_112
+du_EffUU_12 :: MAlonzo.Code.Once.Type.T_Type_108
 du_EffUU_12
   = coe
-      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
-      (coe MAlonzo.Code.Once.Type.C_Unit_122)
+      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126
+      (coe MAlonzo.Code.Once.Type.C_Unit_118)
       (coe
          MAlonzo.Code.Once.Type.C_mk'45'kind_50
          (coe MAlonzo.Code.Once.Type.C_Many_10)
          (coe MAlonzo.Code.Once.Type.C_eff_36))
-      (coe MAlonzo.Code.Once.Type.C_Unit_122)
+      (coe MAlonzo.Code.Once.Type.C_Unit_118)
 -- Once.Adequacy.MainForm.Payload
 d_Payload_16 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->

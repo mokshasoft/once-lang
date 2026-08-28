@@ -34,8 +34,8 @@ import qualified MAlonzo.Code.Once.Type
 
 -- Once.CCC.Machine.Validity.pair
 d_pair_8 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   AgdaAny -> AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_pair_8 v0 v1 v2 v3
   = coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'pair_308 v2 v3

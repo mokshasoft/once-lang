@@ -74,6 +74,7 @@ open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; ffi-concrete)
 open import Once.Arith.SigOp.Builders using (generic-semM)
 import Once.Denotation.SourceDenote as SD
+open import Once.Denotation.ThinSound using (weaken-⟦⟧)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-base; con-fun; base-Unit)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?; isConcrete?)
@@ -1109,44 +1110,104 @@ agree-check-RApp-argdriven-aux {ctx} f arg T errInfer nothing eqAH eq fCheckIH a
 -- `t-subsume (t-embed w)`; since `⟦arr' f⟧ = ⟦f⟧` and `realize (t-subsume …)`
 -- re-wraps in `arr'`, the agreement is EXACTLY the inferred-expr IH (`iIH`).
 -- Every non-subsuming shape makes `embedOrSubsume-no` fail ⇒ success-eq absurd.
+-- D126's mirror. `closed-lift-aux` succeeds exactly when its three decisions
+-- do, and then BOTH sides are `λ_. <body>` over the SAME weakening — the
+-- elaborator's `eE` on one side, `realize-infer wᵢ` on the other. So the
+-- agreement is the infer IH carried through `weaken`, which is what
+-- `Once.Denotation.ThinSound.weaken-⟦⟧` is for. (Clause order mirrors
+-- `closed-lift-aux`'s: any failing column decides.)
+agree-closed-lift-aux : ∀ {ctx : NamedCtx} {e : RawExpr} (T' X B : Type) (π : Purity)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    (eE : Expr (NamedCtx.debruijn ctx) Ψ T') (d fr : ℕ) (wᵢ : ctx ⊢ᵢ e ∶ T' ⨾ Ψ)
+    (mc : Maybe (Raw.ClosedLiftShape e))
+    (dB : Dec (T' ≡ B)) (dΨ : Maybe (Ψ ≡ Surface.zeroUsage))
+    {Ψ' se d' fr'} {w : ctx ⊢ᶜ e ∶ (X ⇒[ mk-kind Many π ] B) ⨾ Ψ'}
+  → E.closed-lift-aux ctx e T' X B π eE d fr wᵢ mc dB dΨ ≡ (success Ψ' se d' fr' , w)
+  → (iIH : ∀ dγ k → SD.⟦ eE ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer wᵢ ⟧ˢ fmt dγ k)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+agree-closed-lift-aux T' X B π eE d fr wᵢ _       (no _)     _           () iIH
+agree-closed-lift-aux T' X B π eE d fr wᵢ _       (yes _)    nothing     () iIH
+agree-closed-lift-aux T' X B π eE d fr wᵢ nothing (yes refl) (just refl) () iIH
+agree-closed-lift-aux T' X B pure eE d fr wᵢ (just c) (yes refl) (just refl) refl iIH dγ k =
+  cong (λ f → returnT f k)
+       (extensionality (λ a →
+          trans (weaken-⟦⟧ eE fmt dγ a)
+                (trans (extensionality (λ j → iIH dγ j))
+                       (sym (weaken-⟦⟧ (realize-infer wᵢ) fmt dγ a)))))
+-- `⟦arr' f⟧ = ⟦f⟧` on both sides, so the eff case is the pure one verbatim.
+agree-closed-lift-aux T' X B eff eE d fr wᵢ (just c) (yes refl) (just refl) refl iIH dγ k =
+  cong (λ f → returnT f k)
+       (extensionality (λ a →
+          trans (weaken-⟦⟧ eE fmt dγ a)
+                (trans (extensionality (λ j → iIH dγ j))
+                       (sym (weaken-⟦⟧ (realize-infer wᵢ) fmt dγ a)))))
+
+-- Plan 0.52 M1 + D126: the agreement mirror of `embedOrSubsume-no`. It splits on
+-- the EXPECTED type first, because that is what `embedOrSubsume-no` matches
+-- first. Three outcomes: subsumption (an inferred pure arrow at an eff arrow),
+-- the closed lift (any arrow target), and TypeMismatch (everything else).
 agree-embedOrSubsume-no : ∀ {ctx : NamedCtx} {e : RawExpr} (T' T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     (eE : Expr (NamedCtx.debruijn ctx) Ψ T') (d fr : ℕ) (wᵢ : ctx ⊢ᵢ e ∶ T' ⨾ Ψ)
     {Ψ' se d' fr'} {w : ctx ⊢ᶜ e ∶ T ⨾ Ψ'}
-  → E.embedOrSubsume-no ctx e T' T eE d fr wᵢ ≡ (success Ψ' se d' fr' , w)
+  → E.embedOrSubsume-no ctx e T T' eE d fr wᵢ ≡ (success Ψ' se d' fr' , w)
   → (iIH : ∀ dγ k → SD.⟦ eE ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer wᵢ ⟧ˢ fmt dγ k)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+-- PURE arrow target: subsumption cannot apply (it needs an eff target), so this
+-- is the closed lift or nothing — and `T'` needs no split.
+agree-embedOrSubsume-no T' (X ⇒[ mk-kind Many pure ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux T' X B pure eE d fr wᵢ _ _ _ eq iIH dγ k
+-- EFF arrow target with an inferred MANY-PURE arrow: SUBSUMPTION when the
+-- domain and codomain fit, the lift otherwise.
 agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k
   with A E.≟T A' | B E.≟T B' | eq
 ... | yes refl | yes refl | refl = iIH dγ k
-... | yes refl | no _     | ()
-... | no _     | _        | ()
-agree-embedOrSubsume-no Unit                          T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no Void                          T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no Int                           T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no Float                         T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no Str                           T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no Buffer                        T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (_ * _)                       T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (_ + _)                       T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (μ-type _)                    T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (ν-type _)                    T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (_ ⇒[ mk-kind Many eff ] _)   T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (_ ⇒[ mk-kind One _ ] _)      T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (_ ⇒[ mk-kind Zero _ ] _)     T eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Unit                          eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Void                          eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Int                           eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Float                         eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Str                           eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') Buffer                        eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ * _)                       eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ + _)                       eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (μ-type _)                    eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (ν-type _)                    eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ ⇒[ mk-kind Many pure ] _)  eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ ⇒[ mk-kind One _ ] _)      eE d fr wᵢ () iIH
-agree-embedOrSubsume-no (A' ⇒[ mk-kind Many pure ] B') (_ ⇒[ mk-kind Zero _ ] _)     eE d fr wᵢ () iIH
+... | yes refl | no _     | eq'  =
+      agree-closed-lift-aux (A ⇒[ mk-kind Many pure ] B') A B eff eE d fr wᵢ _ _ _ eq' iIH dγ k
+... | no _     | yes _    | eq'  =
+      agree-closed-lift-aux (A' ⇒[ mk-kind Many pure ] B') A B eff eE d fr wᵢ _ _ _ eq' iIH dγ k
+... | no _     | no _     | eq'  =
+      agree-closed-lift-aux (A' ⇒[ mk-kind Many pure ] B') A B eff eE d fr wᵢ _ _ _ eq' iIH dγ k
+-- …and every other inferred type at an eff arrow goes straight to the lift.
+agree-embedOrSubsume-no Unit (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux Unit A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no Void (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux Void A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no Int (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux Int A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no Float (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux Float A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no Str (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux Str A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no Buffer (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux Buffer A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no (P * Q) (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux (P * Q) A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no (P + Q) (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux (P + Q) A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no (μ-type F) (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux (μ-type F) A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no (ν-type F) (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux (ν-type F) A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Many eff ] B') (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux (A' ⇒[ mk-kind Many eff ] B') A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no (A' ⇒[ mk-kind One q ] B') (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux (A' ⇒[ mk-kind One q ] B') A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+agree-embedOrSubsume-no (A' ⇒[ mk-kind Zero q ] B') (A ⇒[ mk-kind Many eff ] B) eE d fr wᵢ eq iIH dγ k =
+  agree-closed-lift-aux (A' ⇒[ mk-kind Zero q ] B') A B eff eE d fr wᵢ _ _ _ eq iIH dγ k
+-- Every NON-arrow expected type: the elaborator's TypeMismatch catch-all.
+agree-embedOrSubsume-no T' Unit eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' Void eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' Int eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' Float eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' Str eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' Buffer eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' (_ * _) eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' (_ + _) eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' (μ-type _) eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' (ν-type _) eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' (_ ⇒[ mk-kind One _ ] _) eE d fr wᵢ () iIH
+agree-embedOrSubsume-no T' (_ ⇒[ mk-kind Zero _ ] _) eE d fr wᵢ () iIH
 
 -- The agreement for the WHOLE `embedOrSubsume` combinator (every infer-then-check
 -- site = `embedOrSubsume ctx e T (inferElabV ctx e)`). Embed (`T ≟T T'` = yes):

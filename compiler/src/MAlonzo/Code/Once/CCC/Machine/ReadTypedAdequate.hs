@@ -38,13 +38,13 @@ d_readTyped_94 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   Maybe AgdaAny
 d_readTyped_94 ~v0 ~v1 ~v2 = du_readTyped_94
 du_readTyped_94 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   Maybe AgdaAny
@@ -64,18 +64,18 @@ d_readable'63'_770 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Type_112 -> Maybe T_Readable_756
+  MAlonzo.Code.Once.Type.T_Type_108 -> Maybe T_Readable_756
 d_readable'63'_770 ~v0 ~v1 ~v2 v3 = du_readable'63'_770 v3
 du_readable'63'_770 ::
-  MAlonzo.Code.Once.Type.T_Type_112 -> Maybe T_Readable_756
+  MAlonzo.Code.Once.Type.T_Type_108 -> Maybe T_Readable_756
 du_readable'63'_770 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Type.C_Unit_122
+         MAlonzo.Code.Once.Type.C_Unit_118
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'unit_758)
-         MAlonzo.Code.Once.Type.C__'42'__126 v2 v3
+         MAlonzo.Code.Once.Type.C__'42'__122 v2 v3
            -> let v4 = coe du_readable'63'_770 (coe v2) in
               coe
                 (let v5 = coe du_readable'63'_770 (coe v3) in
@@ -89,7 +89,7 @@ du_readable'63'_770 v0
                                     (coe C_r'45'pair_766 v6 v7)
                              _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                       _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
-         MAlonzo.Code.Once.Type.C_Int_136
+         MAlonzo.Code.Once.Type.C_Int_132
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'int_760)
          _ -> coe v1)
@@ -112,7 +112,7 @@ d_readTyped'45'adequate_826 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   T_Readable_756 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->

@@ -9047,3 +9047,96 @@ Subsumption belongs in CHECK mode, where `t-subsume` already lives.
 
 **Relates**: D054, D113, D115 (the distinction that does NOT apply), D116, D118,
 D123, D055 (why the other direction differs), OCP-0002 (amended)
+
+---
+
+## D126: A Closed EXPRESSION Lifts to a Constant Morphism, Not Just a Closed LITERAL
+
+**Date**: 2026-08-28 · **Status**: Decided (plan 0.75, follow-on) ·
+**Closes a gap between D018/D056 and the implementation**
+
+### The decision
+
+Where a pure or effectful arrow `X ⇒ B` is expected, an expression that
+
+  1. infers at `B`, and
+  2. reads no local variable (usage `zeroUsage`), and
+  3. has no check-mode rule of its own
+
+is the CONSTANT morphism `λ_. e`. One rule, `t-closed-lift`, grade-polymorphic
+in the arrow's purity:
+
+```
+    ClosedLiftShape e     ctx ⊢ᵢ e ∶ A ⨾ zeroUsage
+    ─────────────────────────────────────────────── t-closed-lift
+    ctx ⊢ᶜ e ∶ (X ⇒[Many π] A) ⨾ zeroUsage
+```
+
+`g : Unit -> Int` with `g = 1 + 2` now typechecks. It did not before.
+
+### What was wrong
+
+D018 said "values, with implicit lifting to morphisms". D056 spelled it out: "a
+value `v : B` used where a morphism is expected is the constant morphism". The
+IMPLEMENTATION was narrower than the decision: the lift went through `⊢ᵍ`, which
+ENUMERATES literal forms (`g-int`, `g-float`, `g-pair`, `g-In`, …). `1 + 1` is
+not one of them, so it was rejected — with a message (`expected (Unit ω→ Int)
+but got Int`) that describes the implementation's limit, not a language rule.
+Nothing about `1 + 1` is less of a global element than `1` is.
+
+### The side condition is not a hedge
+
+`ClosedLiftShape` lists the shapes with no check-mode rule of their own. Without
+it the rule fires on `λx. body` too, and then ONE expression has TWO check-mode
+derivations at ONE type — `t-lam` and the lift — with different meanings. This
+is the classic bidirectional side condition (subsumption applies to
+non-introduction forms only), written out. The forms left out are each already
+served: `RInt`/`RFloat`/`- <literal>` by the older value-lift (D018/D041/D124),
+`RPair` by `checkPairLit` and `g-pair`, `RLam` by `t-lam` (which has no infer
+rule at all, so the rule is not even statable there), `RApp` head-directed.
+
+### Grade-polymorphic, because a lemma said so
+
+`embedOrSubsume-lifts` says a check that succeeds at the pure arrow also
+succeeds at the eff arrow. A pure-only lift makes that FALSE the moment a closed
+expression lifts. The lemma is the guard that caught it — and its old proof,
+which discharged every non-subsuming case as ABSURD ("the pure target never
+subsumes, so it fails for every inferred `T'`"), is now a real proof.
+
+### What it cost, and what that revealed
+
+The realization is `λ_. e`, so the elaborator's and `realize`'s bodies differ by
+`weaken`. Their agreement (`RealizeAgrees`) therefore needs
+
+    ⟦ rename θ e ⟧ˢ fmt dδ ≡ ⟦ e ⟧ˢ fmt (restrictᴰ θ dδ)
+
+which did not exist: `rename` had NO semantic justification anywhere, because
+every construct that needed a closed subterm either carried it in the EMPTY
+context (`cata`/`ana`) or embedded a pre-built IR morphism (`lift-morphism`).
+D126 is the first construct that weakens a genuine subterm. The lemma is now
+`Once.Denotation.ThinSound` — a plain structural induction, and reusable.
+
+Three deciders had to be re-ordered to make any of this reduce (`≟T-⇒-aux`,
+`≟k-aux`, `closed-lift-aux`) and `embedOrSubsume-no`'s first two type arguments
+swapped so the EXPECTED type is matched first. The rule is the same in each
+case: **a decider that insists on all its columns goes stuck on variables, and a
+stuck decision HIDES every decision underneath it from a proof's `with`.** Same
+decisions, same results, decided sooner.
+
+### The boundary: `compose` is NOT fixed by this
+
+`compose f g`'s arms are MORPHISMS (`⊢ᵐ`, D063), a different realm with its own
+constant rule `m-const`, which likewise takes a `⊢ᵍ`. So `compose exit@S (1 + 1)`
+still fails; `compose exit@S 17` still works. The sibling rule
+`m-closed : ClosedLiftShape e → ctx ⊢ᵢ e ∶ A ⨾ zeroUsage → ctx ⊢ᵐ e ∶ X ⇨[π] A`
+is NOT a mechanical repeat: `realize-morph` produces an IR morphism DIRECTLY,
+and `m-const` can only do that because `⊢ᵍ` derivations have `realize-global`.
+A `⊢ᵢ` derivation realizes to a SURFACE expression, so `m-closed` needs a
+decision about how a closed expression becomes an IR morphism — strengthening to
+the empty context, or a surface-carrying morphism leaf like `cata`'s algebra.
+That decision is open.
+
+**Relates**: D018 (the decision this implements), D056 (`composeArgB`'s
+value-lift), D041 (the literal value-lift it generalizes), D063 (the realm split
+that scopes it), D067 (the same grade-polymorphism argument for `t-value-lift`),
+D124 (the negated-literal lift), D058 (IR-free judgment)

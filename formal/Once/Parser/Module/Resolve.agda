@@ -46,7 +46,9 @@ open import Once.TypeCheck.Principal using (siglessSchema)
 open import Once.CanonicalName using (CanonicalName; canonical)
 open import Once.TypeCheck.Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair;
-         RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
+         RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna;
+         ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr;
+         cls-unit; cls-str; cls-annot; cls-binop)
 
 ------------------------------------------------------------------------
 -- ModuleMap: path → resolved Module
@@ -267,6 +269,52 @@ canonExpr bound um am (RAnnot e t)        = RAnnot (canonExpr bound um am e) t
 canonExpr bound um am (RBinOp op a b)     = RBinOp op (canonExpr bound um am a) (canonExpr bound um am b)
 canonExpr bound um am (RUnaryOp op e)     = RUnaryOp op (canonExpr bound um am e)
 canonExpr bound um am (RAna F c)          = RAna F (canonExpr bound um am c)
+
+-- | D126: resolution PRESERVES the closed-lift side condition. It has to —
+-- otherwise a derivation using the lift would not survive `canonExpr`. The two
+-- shape-CHANGING cases are the interesting ones, and both land back in the set:
+-- a bare `RVar` becomes `RResolved` (or stays), and `RQualified` becomes
+-- `RResolved` (or stays).
+cls-canon : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap)
+              {e : RawExpr}
+          → ClosedLiftShape e → ClosedLiftShape (canonExpr bound um am e)
+cls-canon bound um am (cls-var {x = x})
+  with elemStr x bound ∨ isBuiltinName x | lookupUnaliased um x
+... | true  | _      = cls-var
+... | false | just _ = cls-res
+... | false | nothing = cls-res
+cls-canon bound um am (cls-qual {a = alias}) with lookupImportAlias am alias
+... | just _  = cls-res
+... | nothing = cls-qual
+cls-canon bound um am cls-res   = cls-res
+cls-canon bound um am cls-let   = cls-let
+cls-canon bound um am cls-destr = cls-destr
+cls-canon bound um am cls-unit  = cls-unit
+cls-canon bound um am cls-str   = cls-str
+cls-canon bound um am cls-annot = cls-annot
+cls-canon bound um am cls-binop = cls-binop
+
+-- | …and REFLECTS it: `canonExpr` never turns a check-directed shape into a
+-- liftable one, so the seven non-liftable shapes are absurd on the left.
+cls-reflect : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap)
+                (e : RawExpr)
+            → ClosedLiftShape (canonExpr bound um am e) → ClosedLiftShape e
+cls-reflect bound um am (RVar _) _              = cls-var
+cls-reflect bound um am (RQualified _ _) _      = cls-qual
+cls-reflect bound um am (RResolved _) _         = cls-res
+cls-reflect bound um am (RLet _ _ _) _          = cls-let
+cls-reflect bound um am (RDestruct _ _ _ _ _) _ = cls-destr
+cls-reflect bound um am RUnit _                 = cls-unit
+cls-reflect bound um am (RStringLit _) _        = cls-str
+cls-reflect bound um am (RAnnot _ _) _          = cls-annot
+cls-reflect bound um am (RBinOp _ _ _) _        = cls-binop
+cls-reflect bound um am (RApp _ _) ()
+cls-reflect bound um am (RLam _ _) ()
+cls-reflect bound um am (RPair _ _) ()
+cls-reflect bound um am (RInt _) ()
+cls-reflect bound um am (RFloat _ _ _ _) ()
+cls-reflect bound um am (RUnaryOp _ _) ()
+cls-reflect bound um am (RAna _ _) ()
 
 -- | Apply `canonExpr` to a decl's function body; everything else is untouched
 -- (signatures/imports/type-aliases carry no expression refs). The initial bound

@@ -25,18 +25,18 @@ import qualified MAlonzo.Code.Once.Type
 -- Once.Adequacy.WrapBridge.EffUU
 d_EffUU_8 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Type_112
+  MAlonzo.Code.Once.Type.T_Type_108
 d_EffUU_8 ~v0 = du_EffUU_8
-du_EffUU_8 :: MAlonzo.Code.Once.Type.T_Type_112
+du_EffUU_8 :: MAlonzo.Code.Once.Type.T_Type_108
 du_EffUU_8
   = coe
-      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
-      (coe MAlonzo.Code.Once.Type.C_Unit_122)
+      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126
+      (coe MAlonzo.Code.Once.Type.C_Unit_118)
       (coe
          MAlonzo.Code.Once.Type.C_mk'45'kind_50
          (coe MAlonzo.Code.Once.Type.C_Many_10)
          (coe MAlonzo.Code.Once.Type.C_eff_36))
-      (coe MAlonzo.Code.Once.Type.C_Unit_122)
+      (coe MAlonzo.Code.Once.Type.C_Unit_118)
 -- Once.Adequacy.WrapBridge.wrap-trace
 d_wrap'45'trace_16 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->

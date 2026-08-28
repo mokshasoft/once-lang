@@ -31,7 +31,7 @@ import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 d_Binding_6 = ()
 data T_Binding_6
   = C_mkBinding_20 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                   MAlonzo.Code.Once.Type.T_Type_112
+                   MAlonzo.Code.Once.Type.T_Type_108
                    MAlonzo.Code.Once.Type.T_Quantity_4
 -- Once.TypeCheck.Context.Binding.name
 d_name_14 ::
@@ -41,7 +41,7 @@ d_name_14 v0
       C_mkBinding_20 v1 v2 v3 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Context.Binding.type
-d_type_16 :: T_Binding_6 -> MAlonzo.Code.Once.Type.T_Type_112
+d_type_16 :: T_Binding_6 -> MAlonzo.Code.Once.Type.T_Type_108
 d_type_16 v0
   = case coe v0 of
       C_mkBinding_20 v1 v2 v3 -> coe v2
@@ -62,7 +62,7 @@ d_'8709'_24 = coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
 d__'44'_'8759'__26 ::
   [T_Binding_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_112 -> [T_Binding_6]
+  MAlonzo.Code.Once.Type.T_Type_108 -> [T_Binding_6]
 d__'44'_'8759'__26 v0 v1 v2
   = coe
       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -74,7 +74,7 @@ d__'44'_'8759'__26 v0 v1 v2
 d__'44'_'8759'_'94'__34 ::
   [T_Binding_6] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Quantity_4 -> [T_Binding_6]
 d__'44'_'8759'_'94'__34 v0 v1 v2 v3
   = coe
@@ -83,7 +83,7 @@ d__'44'_'8759'_'94'__34 v0 v1 v2 v3
 -- Once.TypeCheck.Context.LookupResult
 d_LookupResult_44 = ()
 data T_LookupResult_44
-  = C_found_52 MAlonzo.Code.Once.Type.T_Type_112
+  = C_found_52 MAlonzo.Code.Once.Type.T_Type_108
                MAlonzo.Code.Once.Type.T_Quantity_4 Integer |
     C_notFound_54
 -- Once.TypeCheck.Context.lookup
@@ -220,7 +220,7 @@ d_lookupWithEvidence_166 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Context.ctxTypes
 d_ctxTypes_234 ::
-  [T_Binding_6] -> [MAlonzo.Code.Once.Type.T_Type_112]
+  [T_Binding_6] -> [MAlonzo.Code.Once.Type.T_Type_108]
 d_ctxTypes_234 v0
   = case coe v0 of
       [] -> coe v0

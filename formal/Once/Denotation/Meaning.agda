@@ -63,7 +63,7 @@ open import Once.TypeCheck.Judgment
          m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
          m-compose; m-case; m-pair; m-curry; m-cata; m-const;
          m-named; m-named-resolved;
-         t-morph-lift; t-value-lift; t-embed; t-lam; t-pair-lit-check;
+         t-morph-lift; t-value-lift; t-closed-lift; t-embed; t-lam; t-pair-lit-check;
          t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
          t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer;
@@ -205,6 +205,11 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 
 ⟦ t-morph-lift d ⟧ᶜ fmt         dγ = returnT (⟦ d ⟧ᵐ fmt)
 ⟦ t-value-lift g ⟧ᶜ fmt         dγ = returnT (λ _ → returnT (⟦ g ⟧ᵍ fmt))
+-- D126: the constant function returning the expression's meaning. `dγ` is
+-- passed through rather than discarded — the expression is closed in the LOCAL
+-- variables (`zeroUsage`), which is not the same as closed in the definition
+-- context: it may still reference a SigOp or a same-module def.
+⟦ t-closed-lift _ d ⟧ᶜ fmt      dγ = returnT (λ _ → (⟦ d ⟧ᵢ fmt) dγ)
 ⟦ t-embed d ⟧ᶜ fmt              dγ = (⟦ d ⟧ᵢ fmt) dγ
 ⟦ t-lam _ d ⟧ᶜ fmt              dγ = returnT (λ a → (⟦ d ⟧ᶜ fmt) (dγ , a))
 ⟦ t-pair-lit-check da db ⟧ᶜ fmt dγ = (⟦ da ⟧ᶜ fmt) dγ >>=T λ a → (⟦ db ⟧ᶜ fmt) dγ >>=T λ b → returnT (a , b)

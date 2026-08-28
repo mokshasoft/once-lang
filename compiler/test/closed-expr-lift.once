@@ -1,0 +1,33 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- Closed EXPRESSION at an arrow type (D126). Expected exit code 23
+--
+-- D018 says a value used where a morphism is expected is the constant
+-- morphism. The implementation only ever honoured that for closed LITERALS,
+-- because the lift went through `⊢ᵍ`, which enumerates literal FORMS. So
+--
+--     sum : Unit -> Int
+--     sum = 1 + 2
+--
+-- failed with `Type mismatch: expected (Unit ω→ Int) but got Int`, while the
+-- identical definition with `3` compiled. Nothing about `1 + 2` is less of a
+-- global element than `3` is; `t-closed-lift` closes that.
+--
+-- The rule needs the operand to read no local variable, so `sum` and `prod`
+-- below are exactly the closed case; a capturing body still has to be a lambda.
+--
+-- WHAT THIS CHECKS is the whole path, not just the typechecker: the lifted
+-- constant elaborates, the arith block lowers, and the program reaches its
+-- exit code.
+
+import I.Linux.Syscalls as S
+
+sum : Unit -> Int
+sum = 1 + 2
+
+prod : Unit -> Int
+prod = 4 * 5
+
+main : IO Unit
+main = compose exit@S 23

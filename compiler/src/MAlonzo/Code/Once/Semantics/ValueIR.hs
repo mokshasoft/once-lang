@@ -23,7 +23,7 @@ import qualified MAlonzo.Code.Once.Type
 
 -- Once.Semantics.ValueIR._.⟦_⟧
 d_'10214'_'10215'_12 ::
-  () -> () -> MAlonzo.Code.Once.Type.T_Type_112 -> ()
+  () -> () -> MAlonzo.Code.Once.Type.T_Type_108 -> ()
 d_'10214'_'10215'_12 = erased
 -- Once.Semantics.ValueIR.⟦_⟧ᴵ
 d_'10214'_'10215''7477'_20 ::
@@ -37,20 +37,20 @@ d_'10214'_'10215'F'7477'_24 = erased
 d_base'45'coh_32 ::
   () ->
   () ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_base'45'coh_32 = erased
 -- Once.Semantics.ValueIR.tF-coh
 d_tF'45'coh_54 ::
   () ->
   () ->
-  MAlonzo.Code.Once.Type.T_Functor_110 ->
+  MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_tF'45'coh_54 = erased
 -- Once.Semantics.ValueIR.coh
 d_coh_68 ::
   () ->
   () ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_coh_68 = erased

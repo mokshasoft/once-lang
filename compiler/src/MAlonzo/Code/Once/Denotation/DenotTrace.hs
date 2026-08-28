@@ -189,7 +189,7 @@ d_eval'7472'_12 v0 v1 v2 v3 v4
                                (coe v0) (coe v10) (coe v2) (coe v11) (coe v9))
                             (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_56
                                (coe
-                                  MAlonzo.Code.Once.Type.C_μ'45'type_132
+                                  MAlonzo.Code.Once.Type.C_μ'45'type_128
                                   (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590 (coe v10)))
                                (coe v4)))
                 _ -> coe v5
@@ -210,7 +210,7 @@ d_eval'7472'_12 v0 v1 v2 v3 v4
                             (coe
                                MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_60
                                (coe
-                                  MAlonzo.Code.Once.Type.C_ν'45'type_134
+                                  MAlonzo.Code.Once.Type.C_ν'45'type_130
                                   (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590 (coe v10)))
                                (coe
                                   MAlonzo.Code.Once.Semantics.Value.du_sem'45'ana_1026
@@ -710,8 +710,8 @@ d_layer_392 v0 v1 v2 v3 v4 v5
 -- Once.Denotation.DenotTrace.liftFn
 d_liftFn_404 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_liftFn_404 v0 v1 v2 v3 v4

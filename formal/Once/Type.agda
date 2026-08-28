@@ -207,10 +207,12 @@ eff  ≟p eff  = yes refl
 ≟k-aux : ∀ {q₁ q₂ p₁ p₂}
        → Dec (q₁ ≡ q₂) → Dec (p₁ ≡ p₂)
        → Dec (mk-kind q₁ p₁ ≡ mk-kind q₂ p₂)
+-- `no` in EITHER column decides, without splitting the other. See the note on
+-- `≟T-⇒-aux`: a decider that insists on both columns goes stuck on variables and
+-- hides the decisions underneath it from a proof's `with`.
+≟k-aux (no ¬q)    _          = no λ { refl → ¬q refl }
+≟k-aux _          (no ¬p)    = no λ { refl → ¬p refl }
 ≟k-aux (yes refl) (yes refl) = yes refl
-≟k-aux (yes refl) (no ¬p)    = no λ { refl → ¬p refl }
-≟k-aux (no ¬q)    (yes _)    = no λ { refl → ¬q refl }
-≟k-aux (no ¬q)    (no _)     = no λ { refl → ¬q refl }
 
 _≟k_ : (k₁ k₂ : ArrowKind) → Dec (k₁ ≡ k₂)
 mk-kind q₁ p₁ ≟k mk-kind q₂ p₂ = ≟k-aux (q₁ ≟q q₂) (p₁ ≟p p₂)

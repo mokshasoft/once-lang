@@ -33,7 +33,7 @@ d_ppB'45'go'45'sound_18 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -57,7 +57,7 @@ du_ppB'45'go'45'sound_18 v0 v1
 -- Once.Grammar.PolyTypeBridge.parsePolyTypeB-sound
 d_parsePolyTypeB'45'sound_42 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -79,7 +79,7 @@ d_ppB'45'go'45'complete_60 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_374 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -1193,7 +1193,7 @@ du_ppB'45'go'45'complete_60 v0 v1
 -- Once.Grammar.PolyTypeBridge.parsePolyTypeB-complete
 d_parsePolyTypeB'45'complete_100 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_PolyType_244 ->
+  MAlonzo.Code.Once.Type.T_PolyType_240 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_374 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14

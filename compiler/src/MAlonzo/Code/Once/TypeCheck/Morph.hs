@@ -28,26 +28,26 @@ import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
 -- Once.TypeCheck.Morph._≡T?_
 d__'8801'T'63'__10 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d__'8801'T'63'__10 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Type.C_Unit_122
+         MAlonzo.Code.Once.Type.C_Unit_118
            -> case coe v1 of
-                MAlonzo.Code.Once.Type.C_Unit_122
+                MAlonzo.Code.Once.Type.C_Unit_118
                   -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 erased
                 _ -> coe v2
-         MAlonzo.Code.Once.Type.C_Void_124
+         MAlonzo.Code.Once.Type.C_Void_120
            -> case coe v1 of
-                MAlonzo.Code.Once.Type.C_Void_124
+                MAlonzo.Code.Once.Type.C_Void_120
                   -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 erased
                 _ -> coe v2
-         MAlonzo.Code.Once.Type.C__'42'__126 v3 v4
+         MAlonzo.Code.Once.Type.C__'42'__122 v3 v4
            -> case coe v1 of
-                MAlonzo.Code.Once.Type.C__'42'__126 v5 v6
+                MAlonzo.Code.Once.Type.C__'42'__122 v5 v6
                   -> let v7 = d__'8801'T'63'__10 (coe v3) (coe v5) in
                      coe
                        (let v8 = d__'8801'T'63'__10 (coe v4) (coe v6) in
@@ -60,9 +60,9 @@ d__'8801'T'63'__10 v0 v1
                                     _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                              _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                 _ -> coe v2
-         MAlonzo.Code.Once.Type.C__'43'__128 v3 v4
+         MAlonzo.Code.Once.Type.C__'43'__124 v3 v4
            -> case coe v1 of
-                MAlonzo.Code.Once.Type.C__'43'__128 v5 v6
+                MAlonzo.Code.Once.Type.C__'43'__124 v5 v6
                   -> let v7 = d__'8801'T'63'__10 (coe v3) (coe v5) in
                      coe
                        (let v8 = d__'8801'T'63'__10 (coe v4) (coe v6) in
@@ -75,24 +75,24 @@ d__'8801'T'63'__10 v0 v1
                                     _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                              _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                 _ -> coe v2
-         MAlonzo.Code.Once.Type.C_Int_136
+         MAlonzo.Code.Once.Type.C_Int_132
            -> case coe v1 of
-                MAlonzo.Code.Once.Type.C_Int_136
+                MAlonzo.Code.Once.Type.C_Int_132
                   -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 erased
                 _ -> coe v2
-         MAlonzo.Code.Once.Type.C_Float_138
+         MAlonzo.Code.Once.Type.C_Float_134
            -> case coe v1 of
-                MAlonzo.Code.Once.Type.C_Float_138
+                MAlonzo.Code.Once.Type.C_Float_134
                   -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 erased
                 _ -> coe v2
-         MAlonzo.Code.Once.Type.C_Str_140
+         MAlonzo.Code.Once.Type.C_Str_136
            -> case coe v1 of
-                MAlonzo.Code.Once.Type.C_Str_140
+                MAlonzo.Code.Once.Type.C_Str_136
                   -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 erased
                 _ -> coe v2
-         MAlonzo.Code.Once.Type.C_Buffer_142
+         MAlonzo.Code.Once.Type.C_Buffer_138
            -> case coe v1 of
-                MAlonzo.Code.Once.Type.C_Buffer_142
+                MAlonzo.Code.Once.Type.C_Buffer_138
                   -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 erased
                 _ -> coe v2
          _ -> coe v2)
@@ -372,8 +372,8 @@ d_morphRaw'63'_92 v0
 d_morphToIR_200 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   T_MorphRaw_68 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16
 d_morphToIR_200 v0 v1 v2 v3
   = case coe v1 of
@@ -391,7 +391,7 @@ d_morphToIR_200 v0 v1 v2 v3
         -> let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
            coe
              (case coe v2 of
-                MAlonzo.Code.Once.Type.C__'42'__126 v5 v6
+                MAlonzo.Code.Once.Type.C__'42'__122 v5 v6
                   -> let v7 = d__'8801'T'63'__10 (coe v5) (coe v3) in
                      coe
                        (case coe v7 of
@@ -406,7 +406,7 @@ d_morphToIR_200 v0 v1 v2 v3
         -> let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
            coe
              (case coe v2 of
-                MAlonzo.Code.Once.Type.C__'42'__126 v5 v6
+                MAlonzo.Code.Once.Type.C__'42'__122 v5 v6
                   -> let v7 = d__'8801'T'63'__10 (coe v6) (coe v3) in
                      coe
                        (case coe v7 of
@@ -421,7 +421,7 @@ d_morphToIR_200 v0 v1 v2 v3
         -> let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
            coe
              (case coe v3 of
-                MAlonzo.Code.Once.Type.C__'43'__128 v5 v6
+                MAlonzo.Code.Once.Type.C__'43'__124 v5 v6
                   -> let v7 = d__'8801'T'63'__10 (coe v2) (coe v5) in
                      coe
                        (case coe v7 of
@@ -438,7 +438,7 @@ d_morphToIR_200 v0 v1 v2 v3
         -> let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
            coe
              (case coe v3 of
-                MAlonzo.Code.Once.Type.C__'43'__128 v5 v6
+                MAlonzo.Code.Once.Type.C__'43'__124 v5 v6
                   -> let v7 = d__'8801'T'63'__10 (coe v2) (coe v6) in
                      coe
                        (case coe v7 of
@@ -455,7 +455,7 @@ d_morphToIR_200 v0 v1 v2 v3
         -> let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
            coe
              (case coe v3 of
-                MAlonzo.Code.Once.Type.C_Unit_122
+                MAlonzo.Code.Once.Type.C_Unit_118
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Once.IR.C_terminal_74)
@@ -464,7 +464,7 @@ d_morphToIR_200 v0 v1 v2 v3
         -> let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
            coe
              (case coe v2 of
-                MAlonzo.Code.Once.Type.C_Void_124
+                MAlonzo.Code.Once.Type.C_Void_120
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Once.IR.C_initial_78)
@@ -477,7 +477,7 @@ d_morphToIR_200 v0 v1 v2 v3
                       -> let v12 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
                          coe
                            (case coe v2 of
-                              MAlonzo.Code.Once.Type.C__'43'__128 v13 v14
+                              MAlonzo.Code.Once.Type.C__'43'__124 v13 v14
                                 -> let v15
                                          = d_morphToIR_200 (coe v11) (coe v6) (coe v13) (coe v3) in
                                    coe

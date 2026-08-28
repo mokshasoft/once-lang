@@ -27,19 +27,19 @@ import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
 -- Once.Adequacy.MainIRForm.EffUU
-d_EffUU_6 :: MAlonzo.Code.Once.Type.T_Type_112
+d_EffUU_6 :: MAlonzo.Code.Once.Type.T_Type_108
 d_EffUU_6
   = coe
-      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130
-      (coe MAlonzo.Code.Once.Type.C_Unit_122)
+      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126
+      (coe MAlonzo.Code.Once.Type.C_Unit_118)
       (coe
          MAlonzo.Code.Once.Type.C_mk'45'kind_50
          (coe MAlonzo.Code.Once.Type.C_Many_10)
          (coe MAlonzo.Code.Once.Type.C_eff_36))
-      (coe MAlonzo.Code.Once.Type.C_Unit_122)
+      (coe MAlonzo.Code.Once.Type.C_Unit_118)
 -- Once.Adequacy.MainIRForm.validateMain-EffUU
 d_validateMain'45'EffUU_10 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_validateMain'45'EffUU_10 = erased
@@ -48,7 +48,7 @@ d_compileFun'45'main'45'EffUU_76 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->

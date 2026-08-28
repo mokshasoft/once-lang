@@ -62,6 +62,9 @@ lookupQuantity (Γ , _ ^ _) (Fin.suc i) = lookupQuantity Γ i
 ------------------------------------------------------------------------
 
 -- | Usage vector: tracks how many times each variable is used
+open import Data.Maybe using (Maybe; just; nothing)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+
 data Usage : ℕ → Set where
   []  : Usage 0
   _∷_ : ∀ {n} → Quantity → Usage n → Usage (ℕ.suc n)
@@ -72,6 +75,28 @@ infixr 5 _∷_
 zeroUsage : ∀ {n} → Usage n
 zeroUsage {0} = []
 zeroUsage {ℕ.suc n} = Zero ∷ zeroUsage
+
+-- | Is this usage vector ALL ZERO — i.e. does the expression read no local
+-- variable? (D126.)
+--
+-- Returns the PROOF, not a `Bool`: the closed-expression lift needs
+-- `Ψ ≡ zeroUsage` to build its derivation, and a boolean would have to be
+-- re-inverted at the use site. Same shape as `isRIntView` — the decision
+-- carries what the caller will need.
+zeroUsage? : ∀ {n} (Ψ : Usage n) → Maybe (Ψ ≡ zeroUsage)
+zeroUsage? []            = just refl
+zeroUsage? (Zero ∷ Ψ)    with zeroUsage? Ψ
+... | just refl          = just refl
+... | nothing            = nothing
+zeroUsage? (One ∷ _)     = nothing
+zeroUsage? (Many ∷ _)    = nothing
+
+-- The decider says `just` on the diagonal. Completeness needs this: a closed
+-- expression's usage IS `zeroUsage`, but `zeroUsage? zeroUsage` is stuck until
+-- the size is known, and `nothing` carries no evidence to contradict.
+zeroUsage?-just : ∀ {n} → zeroUsage? (zeroUsage {n}) ≡ just refl
+zeroUsage?-just {0}       = refl
+zeroUsage?-just {ℕ.suc n} rewrite zeroUsage?-just {n} = refl
 
 -- | Single variable usage (one variable used with quantity q, rest unused)
 singleUse : ∀ {n} → Fin n → Quantity → Usage n

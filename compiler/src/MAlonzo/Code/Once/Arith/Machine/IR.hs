@@ -131,31 +131,31 @@ d_eval'45'arith_70 v0 v1 v2
 -- Once.Arith.Machine.IR.shape-as-type
 d_shape'45'as'45'type_134 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  MAlonzo.Code.Once.Type.T_Type_112
+  MAlonzo.Code.Once.Type.T_Type_108
 d_shape'45'as'45'type_134 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'unit_10
-        -> coe MAlonzo.Code.Once.Type.C_Unit_122
+        -> coe MAlonzo.Code.Once.Type.C_Unit_118
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'int_12
-        -> coe MAlonzo.Code.Once.Type.C_Int_136
+        -> coe MAlonzo.Code.Once.Type.C_Int_132
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'float_14
-        -> coe MAlonzo.Code.Once.Type.C_Float_138
+        -> coe MAlonzo.Code.Once.Type.C_Float_134
       MAlonzo.Code.Once.Arith.Machine.Shape.C_shape'45'pair_16 v1 v2
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__126
+             MAlonzo.Code.Once.Type.C__'42'__122
              (coe d_shape'45'as'45'type_134 (coe v1))
              (coe d_shape'45'as'45'type_134 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.IR.numtype-as-type
 d_numtype'45'as'45'type_140 ::
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
-  MAlonzo.Code.Once.Type.T_Type_112
+  MAlonzo.Code.Once.Type.T_Type_108
 d_numtype'45'as'45'type_140 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Type.C_NInt_8
-        -> coe MAlonzo.Code.Once.Type.C_Int_136
+        -> coe MAlonzo.Code.Once.Type.C_Int_132
       MAlonzo.Code.Once.Arith.Type.C_NFloat_10
-        -> coe MAlonzo.Code.Once.Type.C_Float_138
+        -> coe MAlonzo.Code.Once.Type.C_Float_134
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.IR.ArithBlock
 d_ArithBlock_142 = ()

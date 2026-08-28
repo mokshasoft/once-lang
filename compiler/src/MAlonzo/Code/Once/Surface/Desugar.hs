@@ -28,8 +28,8 @@ import qualified MAlonzo.Code.Once.Type
 
 -- Once.Surface.Desugar.sigOp-desugar
 d_sigOp'45'desugar_10 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Functor.Translate.T_IsBaseType_200 ->
   MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_226 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
@@ -42,8 +42,8 @@ d_sigOp'45'desugar_10 v0 v1 v2 v3 v4
          (MAlonzo.Code.Once.CanonicalName.d_bare_12 (coe v4)) v2 v3)
 -- Once.Surface.Desugar.desugar
 d_desugar_22 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
   MAlonzo.Code.Once.IR.T_IR_16
@@ -63,7 +63,7 @@ d_desugar_22 v0 v1 v2 v3
         -> coe MAlonzo.Code.Once.IR.C_snd_50
       MAlonzo.Code.Once.Surface.IR.C_'10216'_'44'_'10217'_38 v7 v8
         -> case coe v1 of
-             MAlonzo.Code.Once.Type.C__'42'__126 v9 v10
+             MAlonzo.Code.Once.Type.C__'42'__122 v9 v10
                -> coe
                     MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
                     (d_desugar_22 (coe v0) (coe v9) (coe v2) (coe v7))
@@ -75,7 +75,7 @@ d_desugar_22 v0 v1 v2 v3
         -> coe MAlonzo.Code.Once.IR.C_inr_62 v2
       MAlonzo.Code.Once.Surface.IR.C_'91'_'44'_'93'_58 v7 v8
         -> case coe v0 of
-             MAlonzo.Code.Once.Type.C__'43'__128 v9 v10
+             MAlonzo.Code.Once.Type.C__'43'__124 v9 v10
                -> coe
                     MAlonzo.Code.Once.IR.C_case_70
                     (d_desugar_22 (coe v9) (coe v1) (coe v2) (coe v7))
@@ -87,11 +87,11 @@ d_desugar_22 v0 v1 v2 v3
         -> coe MAlonzo.Code.Once.IR.C_initial_78
       MAlonzo.Code.Once.Surface.IR.C_curry_74 v7
         -> case coe v1 of
-             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__130 v8 v9 v10
+             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v8 v9 v10
                -> coe
                     MAlonzo.Code.Once.IR.C_curry_86
                     (d_desugar_22
-                       (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v8))
+                       (coe MAlonzo.Code.Once.Type.C__'42'__122 (coe v0) (coe v8))
                        (coe v10) (coe v2) (coe v7))
                     v2
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -103,9 +103,9 @@ d_desugar_22 v0 v1 v2 v3
         -> coe
              MAlonzo.Code.Once.IR.C__'8728'__30
              (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
-                (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v5)))
+                (coe MAlonzo.Code.Once.Type.C__'42'__122 (coe v0) (coe v5)))
              (d_desugar_22
-                (coe MAlonzo.Code.Once.Type.C__'42'__126 (coe v0) (coe v5))
+                (coe MAlonzo.Code.Once.Type.C__'42'__122 (coe v0) (coe v5))
                 (coe v1) (coe v2) (coe v8))
              (coe
                 MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
@@ -117,8 +117,8 @@ d_desugar_22 v0 v1 v2 v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Surface.Desugar.desugar-default
 d_desugar'45'default_82 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
   MAlonzo.Code.Once.IR.T_IR_16
 d_desugar'45'default_82 v0 v1

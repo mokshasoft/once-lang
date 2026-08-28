@@ -55,8 +55,8 @@ data T_IR_16
                MAlonzo.Code.Once.IRTy.T_WellFormedFI_114 T_IR_16 T_NatTr_18 |
     C_free'45'heap_144 MAlonzo.Code.Once.Memory.HeapAddress.T_HeapRef_8 |
     C_const_148 MAlonzo.Code.Once.IRTy.T_FitsInRegI_510 AgdaAny |
-    C_SigOp_154 MAlonzo.Code.Once.Type.T_Type_112
-                MAlonzo.Code.Once.Type.T_Type_112
+    C_SigOp_154 MAlonzo.Code.Once.Type.T_Type_108
+                MAlonzo.Code.Once.Type.T_Type_108
                 MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160
 -- Once.IR.NatTr
 d_NatTr_18 a0 a1 = ()

@@ -529,6 +529,7 @@ library
       MAlonzo.Code.Once.Adequacy.FaithfulLemmas
       MAlonzo.Code.Once.Adequacy.FlatEvents
       MAlonzo.Code.Once.Denotation.SourceDenote
+      MAlonzo.Code.Once.Denotation.ThinSound
       MAlonzo.Code.Once.Adequacy.SourceFaithful
       MAlonzo.Code.Once.Adequacy.SourceTrace
       MAlonzo.Code.Once.Denotation.Admissible

@@ -372,6 +372,8 @@ mutual
   polys-transport-ᶜ b p pib ac (t-subsume d) = t-subsume (polys-transport-ᶜ b p pib ac d)
   polys-transport-ᶜ b p pib ac (t-lam le d) = t-lam le (polys-transport-ᶜ b p pib ac d)
   polys-transport-ᶜ b p pib ac (t-value-lift d) = t-value-lift (polys-transport-ᵍ b p d)
+  -- D126: structural, on the INFER sub-derivation rather than a `⊢ᵍ` one.
+  polys-transport-ᶜ b p pib ac (t-closed-lift cls d) = t-closed-lift cls (polys-transport-ᵢ b p pib ac d)
   polys-transport-ᶜ b p pib ac (t-pair-lit-check d₁ d₂) = t-pair-lit-check (polys-transport-ᶜ b p pib ac d₁) (polys-transport-ᶜ b p pib ac d₂)
   polys-transport-ᶜ b p pib ac (t-In-app-check wf d) = t-In-app-check wf (polys-transport-ᶜ b p pib ac d)
   polys-transport-ᶜ b p pib ac (t-apply-check d) = t-apply-check (polys-transport-ᵢ b p pib ac d)

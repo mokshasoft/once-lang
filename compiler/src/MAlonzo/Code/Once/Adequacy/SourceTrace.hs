@@ -45,13 +45,13 @@ import qualified MAlonzo.Code.Relation.Nullary.Reflects
 
 -- Once.Adequacy.SourceTrace.isUnit?
 d_isUnit'63'_8 ::
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_isUnit'63'_8 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
-         MAlonzo.Code.Once.Type.C_Unit_122
+         MAlonzo.Code.Once.Type.C_Unit_118
            -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 erased
          _ -> coe v1)
 -- Once.Adequacy.SourceTrace.findMain-here
@@ -217,10 +217,10 @@ d_'10214'_'10215'IR_56 v0 v1
                         MAlonzo.Code.Once.Denotation.DenotTrace.d_eval'7472'_12 (coe v1)
                         (coe
                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
-                           (coe MAlonzo.Code.Once.Type.C_Unit_122))
+                           (coe MAlonzo.Code.Once.Type.C_Unit_118))
                         (coe
                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
-                           (coe MAlonzo.Code.Once.Type.C_Unit_122))
+                           (coe MAlonzo.Code.Once.Type.C_Unit_118))
                         (coe v2) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
                      (coe v3)))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -248,7 +248,7 @@ d_srcToModule'45'aux_70 v0 v1
         -> coe
              d_eitherToMaybe_66
              (coe
-                MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_704
+                MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_926
                 (coe v0) (coe v2))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError

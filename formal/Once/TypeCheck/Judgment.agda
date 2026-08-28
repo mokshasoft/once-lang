@@ -54,7 +54,8 @@ open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RFloat;
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
-         BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp)
+         BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp;
+         ClosedLiftShape)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; lookupPolyPrefix;
@@ -677,6 +678,49 @@ mutual
     t-value-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type} {π : Once.Type.Purity}
                  → ctx ⊢ᵍ e ∶ A
                  → ctx ⊢ᶜ e ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Surface.zeroUsage
+
+    -- | A CLOSED EXPRESSION is a global element too (D126). The generalisation
+    -- of `t-value-lift` from the syntactic value forms to the semantic notion.
+    --
+    -- WHY IT WAS MISSING. D018 decided "values with implicit lifting" — you
+    -- write `puts "hello"`, not `compose puts "hello"` — and D056 spelled the
+    -- rule out: "a value `v : B` used where a morphism is expected is the
+    -- constant morphism `const v : Unit → B`". D063's table then defines the
+    -- value realm as the GLOBAL ELEMENT `1 → A`. But `⊢ᵍ` is a SYNTACTIC
+    -- enumeration — `g-int`, `g-float`, `g-pair`, … — and `1 + 1` is a closed
+    -- term of type `Int`, hence a global element, with no `⊢ᵍ` derivation. So
+    -- `compose exit@S (1 + 1)` was a type error against a decision that says
+    -- it should not be. The gap was in the implementation, not the design.
+    --
+    -- `zeroUsage` IS THE CLOSEDNESS CONDITION, and it is the whole premise:
+    -- it says no LOCAL variable is used, which is exactly when `e ∘ terminal`
+    -- is legitimate. An expression that reads a local would need a closure,
+    -- and this rule cannot fire for it.
+    --
+    -- NOT ADDED TO `⊢ᵍ`, deliberately. A rule `⊢ᵢ e ∶ A ⨾ 0 → ⊢ᵍ e ∶ A` would
+    -- overlap every existing constructor (`g-int n` AND the closed lift of
+    -- `t-int n`), and `⊢ᵍ`'s completeness proofs — `checkG-just`,
+    -- `gd-completeV`, `const-morph-strong` — are about the elaborator finding
+    -- THE derivation. Check mode is where the failure actually happens, so
+    -- check mode is where the rule belongs.
+    --
+    -- The existing per-form lifts still take precedence in the elaborator;
+    -- this catches everything they do not, at BOTH numeric types at once.
+    -- GRADE-POLYMORPHIC, exactly as `t-value-lift` is (D067), and for the same
+    -- reason: `embedOrSubsume-lifts` says a check that succeeds at the PURE
+    -- arrow also succeeds at the EFF one. A pure-only rule would make that
+    -- FALSE the moment a closed expression lifted — the lemma is the guard
+    -- that caught it.
+    --
+    -- `realize` cases on `π`: `λ _ → e` at pure, and `arr'` of it at eff (the
+    -- same pure→eff coercion `t-subsume` uses).
+    -- The `ClosedLiftShape` premise is the classic bidirectional side
+    -- condition: without it the rule would also fire on `λx. body`, giving one
+    -- expression two different check-mode meanings at one type.
+    t-closed-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type} {π : Once.Type.Purity}
+                  → ClosedLiftShape e
+                  → ctx ⊢ᵢ e ∶ A ⨾ Surface.zeroUsage
+                  → ctx ⊢ᶜ e ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Surface.zeroUsage
 
     -- Plan 0.36 Phase 2a follow-up: check-mode for the pair LITERAL
     -- `(a , b)` at a product type. Checks the components bidirectionally

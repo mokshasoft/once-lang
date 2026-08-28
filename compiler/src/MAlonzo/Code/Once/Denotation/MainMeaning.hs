@@ -101,7 +101,7 @@ d_mainMeaning'7496''45'go_22 v0 v1 v2 v3 v4 v5 v6
                               (coe MAlonzo.Code.Once.Parser.d_funName_108 (coe v15))
                               (coe ("main" :: Data.Text.Text)))
                            (coe
-                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__240 (coe v10)
+                              MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__224 (coe v10)
                               (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
                            (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v15))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -115,7 +115,7 @@ d_mmd'45'dispatch_50 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Type_112 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->

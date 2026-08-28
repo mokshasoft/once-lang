@@ -33,7 +33,7 @@ open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
 import Data.Maybe
 open import Data.Product using (∃; ∃-syntax; Σ-syntax; _×_; _,_; proj₁; proj₂)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 open import Data.String.Properties as StrProp using (_≟_)
 
@@ -41,12 +41,14 @@ open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
                                   _*_; _+_; _⇒[_]_; Quantity; _≤q_;
                                   Zero; One; Many)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RResolved; RInt; RStringLit; RUnit; RAnnot; RPair)
+  using (RawExpr; RVar; RQualified; RResolved; RInt; RStringLit; RUnit; RAnnot; RPair;
+         ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr;
+         cls-unit; cls-str; cls-annot; cls-binop)
 open import Once.CanonicalName using (CanonicalName; showCanonical)
 open import Once.TypeCheck.ElaborateProofs
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
-         inferElabV; checkElabV; _≟T_; embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
+         inferElabV; checkElabV; _≟T_; embedOrSubsume; closed-lift-aux; VerifiedInferResult; isRIntVliftTarget?;
          classifyAppHead; classifyAppHeadView; ahv-other;
          classifyAppHead-nothing⇒view-other; AppHeadView;
          classifyBareBuiltin; checkG; inspectWellFormedF; wfv-yes; wfv-no;
@@ -996,6 +998,30 @@ completeness-gap-initial-app-check-eq {ctx} arg T eqC
 
 -- (Plan 0.52 M1: `completeness-gap-arr-app-check-eq` retired with `t-arr-app-check`.)
 
+-- D126: the closed-expression lift fires at BOTH arrow purities on the SAME two
+-- decisions, so a pure success transfers to eff by SHARING them. This is why
+-- `t-closed-lift` is grade-polymorphic: `embedOrSubsume-lifts` below says every
+-- successful pure-arrow check also succeeds at the eff arrow, and a pure-only
+-- lift would have made that false the moment a closed expression lifted.
+closed-lift-aux-lifts : ∀ (ctx : NamedCtx) (e : RawExpr) (T' A B : Type)
+    {Ψ' : Surface.Usage (NamedCtx.size ctx)}
+    (eE' : SExpr (NamedCtx.debruijn ctx) Ψ' T') (d' f' : ℕ)
+    (w : ctx ⊢ᵢ e ∶ T' ⨾ Ψ')
+    (mc : Maybe (ClosedLiftShape e))
+    (dB : Dec (T' ≡ B)) (dΨ : Maybe (Ψ' ≡ Surface.zeroUsage))
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)} {d f : ℕ}
+  → proj₁ (closed-lift-aux ctx e T' A B T.pure eE' d' f' w mc dB dΨ) ≡ success Ψ eE d f
+  → ∃[ eE'' ] ∃[ d'' ] ∃[ f'' ]
+      proj₁ (closed-lift-aux ctx e T' A B T.eff eE' d' f' w mc dB dΨ) ≡ success Ψ eE'' d'' f''
+-- Mirrors `closed-lift-aux`'s clause order exactly — each rejection leaves the
+-- other columns unsplit, which is what lets these three reduce to `failure`.
+closed-lift-aux-lifts ctx e T' A B eE' d' f' w _        (no _)     _           ()
+closed-lift-aux-lifts ctx e T' A B eE' d' f' w _        (yes _)    nothing     ()
+closed-lift-aux-lifts ctx e T' A B eE' d' f' w nothing  (yes refl) (just refl) ()
+closed-lift-aux-lifts ctx e T' A B eE' d' f' w (just c) (yes refl) (just refl) refl =
+  _ , _ , _ , refl
+
 -- The ONE bridge for every infer-then-check site (the generic `checkElabV`
 -- catch-all is definitionally `embedOrSubsume … (inferElabV …)`): embed at the
 -- pure target, SUBSUME at the eff target. (eff side: eff-arrow ≠ inferred
@@ -1018,23 +1044,200 @@ embedOrSubsume-lifts ctx e A B (success T' Ψ' eE' d' f' , w) eqP
 ...       | yes refl | yes refl = _ , _ , _ , refl
 ...       | no ¬a    | _        = ⊥-elim (¬a refl)
 ...       | yes _     | no ¬b    = ⊥-elim (¬b refl)
--- `(A⇒pure B) ≟T T'` = no: the PURE target never subsumes (subsume needs an eff
--- target), so `embedOrSubsume-no … (pure arrow)` fails for every inferred `T'`.
--- Case `T'` so `embedOrSubsume-no` reduces (it matches `T'` first).
-embedOrSubsume-lifts ctx e A B (success Unit              Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success Void              Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success Int               Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success Float             Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success Str               Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success Buffer            Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success (_ T.* _)         Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success (_ T.+ _)         Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success (T.μ-type _)      Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success (T.ν-type _)      Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.Many T.pure ] _) Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.Many T.eff ] _)  Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.One _ ] _)       Ψ' eE' d' f' , w) eqP | no _ | ()
-embedOrSubsume-lifts ctx e A B (success (_ T.⇒[ T.mk-kind T.Zero _ ] _)      Ψ' eE' d' f' , w) eqP | no _ | ()
+-- D126 CHANGED THE GROUND UNDER THIS LEMMA. What used to stand here said the
+-- PURE target "never subsumes, so it fails for every inferred T'" — and the
+-- closed-expression lift is exactly what makes that false. So the `no` cases are
+-- no longer absurd: they are the lift, at both arrows, on the same decisions.
+-- Still case `T'`, because `embedOrSubsume-no` matches `T'` first.
+embedOrSubsume-lifts ctx e A B (success Unit Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e Unit A B eE' d' f' w
+    (Raw.closedLiftShape? e) (Unit ≟T B) (Surface.zeroUsage? Ψ') eqP'
+embedOrSubsume-lifts ctx e A B (success Void Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e Void A B eE' d' f' w
+    (Raw.closedLiftShape? e) (Void ≟T B) (Surface.zeroUsage? Ψ') eqP'
+embedOrSubsume-lifts ctx e A B (success Int Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e Int A B eE' d' f' w
+    (Raw.closedLiftShape? e) (Int ≟T B) (Surface.zeroUsage? Ψ') eqP'
+embedOrSubsume-lifts ctx e A B (success Float Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e Float A B eE' d' f' w
+    (Raw.closedLiftShape? e) (Float ≟T B) (Surface.zeroUsage? Ψ') eqP'
+embedOrSubsume-lifts ctx e A B (success Str Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e Str A B eE' d' f' w
+    (Raw.closedLiftShape? e) (Str ≟T B) (Surface.zeroUsage? Ψ') eqP'
+embedOrSubsume-lifts ctx e A B (success Buffer Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e Buffer A B eE' d' f' w
+    (Raw.closedLiftShape? e) (Buffer ≟T B) (Surface.zeroUsage? Ψ') eqP'
+embedOrSubsume-lifts ctx e A B (success (A₁ T.* B₁) Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e (A₁ T.* B₁) A B eE' d' f' w
+    (Raw.closedLiftShape? e) ((A₁ T.* B₁) ≟T B) (Surface.zeroUsage? Ψ') eqP'
+embedOrSubsume-lifts ctx e A B (success (A₁ T.+ B₁) Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e (A₁ T.+ B₁) A B eE' d' f' w
+    (Raw.closedLiftShape? e) ((A₁ T.+ B₁) ≟T B) (Surface.zeroUsage? Ψ') eqP'
+embedOrSubsume-lifts ctx e A B (success (T.μ-type F) Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e (T.μ-type F) A B eE' d' f' w
+    (Raw.closedLiftShape? e) ((T.μ-type F) ≟T B) (Surface.zeroUsage? Ψ') eqP'
+embedOrSubsume-lifts ctx e A B (success (T.ν-type F) Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e (T.ν-type F) A B eE' d' f' w
+    (Raw.closedLiftShape? e) ((T.ν-type F) ≟T B) (Surface.zeroUsage? Ψ') eqP'
+-- The KIND-clashing arrow rows are as uniform as the non-arrows: the reordered
+-- `≟T-⇒-aux` decides them on the kind alone, and `embedOrSubsume-no`'s
+-- subsumption clause wants a MANY-PURE `T'`, which these are not.
+embedOrSubsume-lifts ctx e A B (success (A' T.⇒[ T.mk-kind T.One q ] B') Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e (A' T.⇒[ T.mk-kind T.One q ] B') A B eE' d' f' w
+    (Raw.closedLiftShape? e)
+    ((A' T.⇒[ T.mk-kind T.One q ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
+embedOrSubsume-lifts ctx e A B (success (A' T.⇒[ T.mk-kind T.Zero q ] B') Ψ' eE' d' f' , w) eqP | no _ | eqP' =
+  closed-lift-aux-lifts ctx e (A' T.⇒[ T.mk-kind T.Zero q ] B') A B eE' d' f' w
+    (Raw.closedLiftShape? e)
+    ((A' T.⇒[ T.mk-kind T.Zero q ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
+-- A MANY-PURE `T'` at the eff target is the one row that meets SUBSUMPTION.
+-- Split its two deciders: when both fit, the outer `≟T` would have fired
+-- (hence `¬p refl`); otherwise the elaborator falls through to the same lift.
+embedOrSubsume-lifts ctx e A B
+  (success (A' T.⇒[ T.mk-kind T.Many T.pure ] B') Ψ' eE' d' f' , w) eqP | no ¬p | eqP'
+  with A ≟T A' | B ≟T B'
+... | yes refl | yes refl = ⊥-elim (¬p refl)
+-- `yes refl`, not `yes _`: the subsumption clause matches `refl`, so an opaque
+-- proof leaves it stuck and the fall-through never reduces.
+... | yes refl | no _     =
+      closed-lift-aux-lifts ctx e (A T.⇒[ T.mk-kind T.Many T.pure ] B') A B eE' d' f' w
+        (Raw.closedLiftShape? e)
+        ((A T.⇒[ T.mk-kind T.Many T.pure ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
+... | no _     | _        =
+      closed-lift-aux-lifts ctx e (A' T.⇒[ T.mk-kind T.Many T.pure ] B') A B eE' d' f' w
+        (Raw.closedLiftShape? e)
+        ((A' T.⇒[ T.mk-kind T.Many T.pure ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
+
+-- A MANY-EFF `T'` is the one row where the eff target can EMBED. Then the pure
+-- side's own decision was cyclic, so it cannot have succeeded: nothing to
+-- transfer. (Split one column at a time — that is all the decider needs.)
+embedOrSubsume-lifts ctx e A B
+  (success (A' T.⇒[ T.mk-kind T.Many T.eff ] B') Ψ' eE' d' f' , w) eqP | no _ | eqP'
+  with A ≟T A'
+... | no _ =
+      closed-lift-aux-lifts ctx e (A' T.⇒[ T.mk-kind T.Many T.eff ] B') A B eE' d' f' w
+        (Raw.closedLiftShape? e)
+        ((A' T.⇒[ T.mk-kind T.Many T.eff ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
+... | yes refl with B ≟T B'
+...   | no _ =
+        closed-lift-aux-lifts ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B') A B eE' d' f' w
+          (Raw.closedLiftShape? e)
+          ((A T.⇒[ T.mk-kind T.Many T.eff ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
+...   | yes refl with (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≟T B | eqP'
+...     | yes () | _
+...     | no _   | ()
+
+------------------------------------------------------------------------
+-- D126: the closed-expression lift's own reduction
+------------------------------------------------------------------------
+
+-- At a PURE arrow the target can never BE the inferred type — `X ⇒ B ≡ B` is
+-- cyclic — so `embedOrSubsume` always takes its `no` branch and lands in
+-- `closed-lift-aux` with both of its decisions satisfied.
+embedOrSubsume-closed-pure : ∀ (ctx : NamedCtx) (e : RawExpr) (X B : Type)
+    (c : ClosedLiftShape e)
+    {eE₀ : SExpr (NamedCtx.debruijn ctx) Surface.zeroUsage B} {d₀ f₀ : ℕ}
+    {w : ctx ⊢ᵢ e ∶ B ⨾ Surface.zeroUsage}
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      proj₁ (embedOrSubsume ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] B)
+               (success B Surface.zeroUsage eE₀ d₀ f₀ , w))
+        ≡ success Surface.zeroUsage eE d f
+-- NESTED, not two columns: `B ≟T B` only APPEARS in the goal once the outer
+-- decision has resolved and `embedOrSubsume-no` has reduced, so abstracting it
+-- up front would abstract nothing.
+embedOrSubsume-closed-pure ctx e X B c
+  with (X T.⇒[ T.mk-kind T.Many T.pure ] B) ≟T B
+... | yes ()
+... | no _ with B ≟T B
+...   | no ¬q   = ⊥-elim (¬q refl)
+...   | yes refl
+        rewrite Raw.closedLiftShape?-just c
+              | Surface.zeroUsage?-just {NamedCtx.size ctx} = _ , _ , _ , refl
+
+-- …and the eff arrow rides `embedOrSubsume-lifts`, which is the whole point of
+-- making the rule grade-polymorphic.
+embedOrSubsume-closed : ∀ (ctx : NamedCtx) (e : RawExpr) (X B : Type) (π : T.Purity)
+    (c : ClosedLiftShape e)
+    {eE₀ : SExpr (NamedCtx.debruijn ctx) Surface.zeroUsage B} {d₀ f₀ : ℕ}
+    {w : ctx ⊢ᵢ e ∶ B ⨾ Surface.zeroUsage}
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      proj₁ (embedOrSubsume ctx e (X T.⇒[ T.mk-kind T.Many π ] B)
+               (success B Surface.zeroUsage eE₀ d₀ f₀ , w))
+        ≡ success Surface.zeroUsage eE d f
+embedOrSubsume-closed ctx e X B T.pure c = embedOrSubsume-closed-pure ctx e X B c
+embedOrSubsume-closed ctx e X B T.eff  c {eE₀} {d₀} {f₀} {w} =
+  embedOrSubsume-lifts ctx e X B (success B Surface.zeroUsage eE₀ d₀ f₀ , w)
+    (proj₂ (proj₂ (proj₂ (embedOrSubsume-closed-pure ctx e X B c {eE₀} {d₀} {f₀} {w}))))
+
+-- The elaborator's check-mode dispatch is by expression SHAPE, so this splits on
+-- the side condition — which is precisely the list of shapes that fall through
+-- to `embedOrSubsume`. That is what the premise is FOR.
+checkElab-closed-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {B : Type}
+    (X : Type) (π : T.Purity) (c : ClosedLiftShape e)
+    {eE₀ : SExpr (NamedCtx.debruijn ctx) Surface.zeroUsage B} {d₀ f₀ : ℕ}
+  → inferElab ctx e ≡ success B Surface.zeroUsage eE₀ d₀ f₀
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      checkElab ctx e (X T.⇒[ T.mk-kind T.Many π ] B)
+        ≡ success Surface.zeroUsage eE d f
+checkElab-closed-lift {ctx} X π (cls-var {x = x}) eqInf with inferElabV ctx (Raw.RVar x)
+... | failure _ , _ with eqInf
+...   | ()
+checkElab-closed-lift {ctx} {B = B} X π (cls-var {x = x}) eqInf
+  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
+... | refl = embedOrSubsume-closed ctx (Raw.RVar x) X B π (cls-var {x = x})
+
+checkElab-closed-lift {ctx} X π (cls-qual {n = n} {a = a}) eqInf with inferElabV ctx (Raw.RQualified n a)
+... | failure _ , _ with eqInf
+...   | ()
+checkElab-closed-lift {ctx} {B = B} X π (cls-qual {n = n} {a = a}) eqInf
+  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
+... | refl = embedOrSubsume-closed ctx (Raw.RQualified n a) X B π (cls-qual {n = n} {a = a})
+
+checkElab-closed-lift {ctx} X π (cls-res {cn = cn}) eqInf with inferElabV ctx (Raw.RResolved cn)
+... | failure _ , _ with eqInf
+...   | ()
+checkElab-closed-lift {ctx} {B = B} X π (cls-res {cn = cn}) eqInf
+  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
+... | refl = embedOrSubsume-closed ctx (Raw.RResolved cn) X B π (cls-res {cn = cn})
+
+checkElab-closed-lift {ctx} X π (cls-let {x = x} {e₁ = e₁} {e₂ = e₂}) eqInf with inferElabV ctx (Raw.RLet x e₁ e₂)
+... | failure _ , _ with eqInf
+...   | ()
+checkElab-closed-lift {ctx} {B = B} X π (cls-let {x = x} {e₁ = e₁} {e₂ = e₂}) eqInf
+  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
+... | refl = embedOrSubsume-closed ctx (Raw.RLet x e₁ e₂) X B π (cls-let {x = x} {e₁ = e₁} {e₂ = e₂})
+
+checkElab-closed-lift {ctx} X π (cls-destr {s = sc} {x = xl} {eL = eL} {y = xr} {eR = eR}) eqInf with inferElabV ctx (Raw.RDestruct sc xl eL xr eR)
+... | failure _ , _ with eqInf
+...   | ()
+checkElab-closed-lift {ctx} {B = B} X π (cls-destr {s = sc} {x = xl} {eL = eL} {y = xr} {eR = eR}) eqInf
+  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
+... | refl = embedOrSubsume-closed ctx (Raw.RDestruct sc xl eL xr eR) X B π (cls-destr {s = sc} {x = xl} {eL = eL} {y = xr} {eR = eR})
+
+-- No `with inferElabV` for the two literal infers: they REDUCE, so there is
+-- nothing to abstract and the equation alone pins the type.
+checkElab-closed-lift {ctx} X π (cls-unit) eqInf with eqInf
+... | refl = embedOrSubsume-closed ctx (Raw.RUnit) X Unit π (cls-unit)
+
+-- No `with inferElabV` for the two literal infers: they REDUCE, so there is
+-- nothing to abstract and the equation alone pins the type.
+checkElab-closed-lift {ctx} X π (cls-str {s = str}) eqInf with eqInf
+... | refl = embedOrSubsume-closed ctx (Raw.RStringLit str) X Str π (cls-str {s = str})
+
+checkElab-closed-lift {ctx} X π (cls-annot {e = e₀} {T = T₀}) eqInf with inferElabV ctx (Raw.RAnnot e₀ T₀)
+... | failure _ , _ with eqInf
+...   | ()
+checkElab-closed-lift {ctx} {B = B} X π (cls-annot {e = e₀} {T = T₀}) eqInf
+  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
+... | refl = embedOrSubsume-closed ctx (Raw.RAnnot e₀ T₀) X B π (cls-annot {e = e₀} {T = T₀})
+
+checkElab-closed-lift {ctx} X π (cls-binop {op = op} {a = a₁} {b = b₁}) eqInf with inferElabV ctx (Raw.RBinOp op a₁ b₁)
+... | failure _ , _ with eqInf
+...   | ()
+checkElab-closed-lift {ctx} {B = B} X π (cls-binop {op = op} {a = a₁} {b = b₁}) eqInf
+  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
+... | refl = embedOrSubsume-closed ctx (Raw.RBinOp op a₁ b₁) X B π (cls-binop {op = op} {a = a₁} {b = b₁})
+
 
 postulate
   completeness-gap-arg-driven-app-check :
@@ -1568,6 +1771,16 @@ mutual
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         checkElab ctx e A ≡ success Ψ eE d f
 
+  -- D126: the closed-expression lift is COMPLETE — the infer premise gives the
+  -- inferElab equation and the shape premise says the elaborator routes there.
+  closed-lift-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {B : Type} (X : Type)
+      {π : T.Purity}
+    → ClosedLiftShape e
+    → ctx ⊢ᵢ e ∶ B ⨾ Surface.zeroUsage
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx e (X T.⇒[ T.mk-kind T.Many π ] B)
+          ≡ success Surface.zeroUsage eE d f
+
   -- Strong (paired `checkElabV`) view of the switch — mirrors `check-completeV`
   -- over `check-complete`, but from the INFER derivation (so a pair's components
   -- are reached without a re-wrap). Feeds `checkPairLit`'s two scrutinees.
@@ -1594,6 +1807,10 @@ mutual
   check-completeV-from-infer {ctx} {e} {A} d
     with checkElabV ctx e A | iFromInfer d
   ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
+
+  closed-lift-complete X {π} c d =
+    let (_ , _ , _ , eqInf) = infer-complete d
+    in checkElab-closed-lift X π c eqInf
 
   pair-lit-reduce eqA eqB rewrite eqA | eqB = _ , _ , _ , refl
 
@@ -2023,6 +2240,8 @@ mutual
   -- subsumes the 13 deleted combinator clauses and REPLACES the two false
   -- `*-eff-complete` postulates with a single TRUE one.
   check-complete (t-morph-lift d) = morph-complete d
+  -- D126: the closed-expression lift (`compose exit@S (1 + 1)`).
+  check-complete (t-closed-lift {X = X} c d) = closed-lift-complete X c d
   check-complete (t-In-app-check {arg = arg} {F = F} eqWF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     in checkElab-fallback-RApp-In arg F eqWF eqA
@@ -2106,6 +2325,9 @@ mutual
   subsume-complete {ctx} (t-morph-lift (m-inr eqL eqI))      = morph-complete {ctx = ctx} (m-inr eqL eqI)
   subsume-complete {ctx} (t-morph-lift (m-const g))          = morph-complete {ctx = ctx} (m-const g)
   subsume-complete {ctx} (t-value-lift {X = X} g) = gd-complete {π = T.eff} X g
+  -- D126 at the EFF arrow — the SAME lemma, instantiated at `eff`. That is what
+  -- grade-polymorphism buys: no separate eff bridge.
+  subsume-complete (t-closed-lift {X = X} c d) = closed-lift-complete X {T.eff} c d
   subsume-complete {ctx} (t-lam {x = x} {body = body} {A = A} {B = B} {q' = q'} leqEq bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
     in check-complete-RLam-eff ctx x body A q' B leqEq eqBody
