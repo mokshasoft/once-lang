@@ -134,6 +134,20 @@ generator is only checked against itself.
 Never by a Spike, and per BRANCH. No finished library ships without a
 use site. Promote finished spike material.
 
+### ⭐ Keep the ENVIRONMENT abstract — instantiating early is the trap
+
+⚠ Substitution round trips (`subTm (extS (single d)) (w (w d))` and
+friends) appear ONLY when a concrete row meets a concrete substitution:
+then `ipayTy` COMPUTES and leaves stuck forms to cancel one at a time.
+`Lib/IWk` never unfolds one — it carries the environment as `Sub⊢` and
+steps it with `payStep`, the round trip stated ONCE and generic in `σ`.
+
+⇒ **If you are writing casts to cancel a round trip, you have already
+taken the wrong turn.** This is `half-generalization-is-worst` in its
+other direction: instantiating too early rather than generalising too
+late. Measured 2026-08-28 — a hand-cast route in `Knot/SubMot` was
+abandoned for exactly this reason.
+
 ### ⭐ Do not add lemmas to a heavily-imported module
 
 Measured (`Lib/AmrecRen`): the same lemmas inside `Lib/Amrec` took a
