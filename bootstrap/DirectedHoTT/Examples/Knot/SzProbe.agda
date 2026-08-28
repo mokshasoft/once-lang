@@ -23,8 +23,12 @@ open import DirectedHoTT.Lib.IFold using ( countSame; rowSort; Maybeℕ; someℕ
 open import DirectedHoTT.Lib.ISz using ( szSum )
 open import DirectedHoTT.Lib.ISzSort using ( szsSum )
 open import DirectedHoTT.Examples.Knot.Desc
-  using ( cTm-var; cTm-lam; cTm-app; cTm-cMu; cTm-elim; cTm-ielim
-        ; cTm-cIMu; cTm-con; cTm-icon; cTm-natrec; cTm-ordtr )
+  using ( cTm-var; cTm-lam; cTm-absurd; cTm-app; cTm-pair
+        ; cTm-fst; cTm-snd; cTm-cbase; cTm-cNat; cTm-cUnit
+        ; cTm-cMu; cTm-cPi; cTm-cSg; cTm-cHom; cTm-hrefl
+        ; cTm-tr; cTm-ap; cTm-cId; cTm-idrefl; cTm-jsub
+        ; cTm-unit; cTm-nzero; cTm-nsuc; cTm-ordtr; cTm-natrec
+        ; cTm-con; cTm-elim; cTm-icon; cTm-ielim; cTm-cIMu )
 
 ------------------------------------------------------------------------
 -- 1. ★ THE ROW'S OWN SORT IS READABLE FROM ITS TAG FORD.
@@ -37,53 +41,107 @@ _ : rowSort cTm-app ≡ someℕ 1
 _ = refl
 
 ------------------------------------------------------------------------
--- 2. ★★★ AND THE COUNTS AGREE WITH `szb`, ROW BY ROW.
+-- 2. ★★★ AND THE COUNTS AGREE WITH `szb`, ROW BY ROW — ALL **30** OF THEM.
 --
---   `Metatheory/Canonicity`:        vs `countSame`:
---     szb (var x)        = zero          0   ← the `Var` child is CROSS-SORT
---     szb (lam t)        = sz t          1
---     szb (app f a)      = sz f + sz a   2
---     szb (⌜Mu⌝ D)       = zero          0   ← the `Desc` is CROSS-SORT
---     szb (elim D ms t)  = sz ms + sz t  2   ← 3 `iρ`, one cross-sort
---     szb (ielim D i ms t) = 3 subterms  3   ← 4 `iρ`, one cross-sort
---     szb (⌜IMu⌝ D I i)  = sz i          1   ← 3 `iρ`, two cross-sort
---     szb (con k p)      = sz p          1
---     szb (icon k p)     = sz p          1
---     szb (natrec z w n) = 3 subterms    3
---     szb (ordtr a t u p q) = 5 subterms 5
+-- ⚠ THE COUNT IS THE CLAIM.  `Metatheory/Canonicity`'s `szb` has exactly
+--   30 clauses and the table has exactly 30 `cTm-` rows; every one is
+--   below.  A probe over a SUBSET would pass just as green while saying
+--   nothing about the rows it skipped — and the interesting rows here
+--   are precisely the irregular ones.
+--
+--     szb (var)    = zero                   0   ← the `Var` child is CROSS-SORT
+--     szb (lam)    = sz t                   1
+--     szb (absurd) = sz c + sz e            2
+--     szb (app)    = sz f + sz a            2
+--     szb (pair)   = sz a + sz b            2
+--     szb (fst)    = sz p                   1
+--     szb (snd)    = sz p                   1
+--     szb (cbase)  = zero                   0   ← no fields
+--     szb (cNat)   = zero                   0   ← no fields
+--     szb (cUnit)  = zero                   0   ← no fields
+--     szb (cMu)    = zero                   0   ← the `Desc` is CROSS-SORT
+--     szb (cPi)    = sz c + sz d            2
+--     szb (cSg)    = sz c + sz d            2
+--     szb (cHom)   = sz c + sz a + sz b     3
+--     szb (hrefl)  = sz c + sz t            2
+--     szb (tr)     = sz d + sz p + sz e     3
+--     szb (ap)     = sz c + sz b + sz p     3
+--     szb (cId)    = sz c + sz a + sz b     3
+--     szb (idrefl) = sz c + sz t            2
+--     szb (jsub)   = sz d + sz p + sz e     3
+--     szb (unit)   = zero                   0   ← no fields
+--     szb (nzero)  = zero                   0   ← no fields
+--     szb (nsuc)   = sz n                   1
+--     szb (ordtr)  = 5 subterms             5
+--     szb (natrec) = sz z + sz w + sz n     3
+--     szb (con)    = sz p                   1   ← the tag `k` is a κ, not a child
+--     szb (elim)   = sz ms + sz t           2   ← 3 `iρ`, one CROSS-SORT
+--     szb (icon)   = sz p                   1
+--     szb (ielim)  = sz i + sz ms + sz t    3   ← 4 `iρ`, one CROSS-SORT
+--     szb (cIMu)   = sz i                   1   ← 3 `iρ`, two CROSS-SORT
 ------------------------------------------------------------------------
 
 _ : countSame cTm-var    ≡ 0
 _ = refl
 _ : countSame cTm-lam    ≡ 1
 _ = refl
+_ : countSame cTm-absurd ≡ 2
+_ = refl
 _ : countSame cTm-app    ≡ 2
+_ = refl
+_ : countSame cTm-pair   ≡ 2
+_ = refl
+_ : countSame cTm-fst    ≡ 1
+_ = refl
+_ : countSame cTm-snd    ≡ 1
+_ = refl
+_ : countSame cTm-cbase  ≡ 0
+_ = refl
+_ : countSame cTm-cNat   ≡ 0
+_ = refl
+_ : countSame cTm-cUnit  ≡ 0
 _ = refl
 _ : countSame cTm-cMu    ≡ 0
 _ = refl
+_ : countSame cTm-cPi    ≡ 2
+_ = refl
+_ : countSame cTm-cSg    ≡ 2
+_ = refl
+_ : countSame cTm-cHom   ≡ 3
+_ = refl
+_ : countSame cTm-hrefl  ≡ 2
+_ = refl
+_ : countSame cTm-tr     ≡ 3
+_ = refl
+_ : countSame cTm-ap     ≡ 3
+_ = refl
+_ : countSame cTm-cId    ≡ 3
+_ = refl
+_ : countSame cTm-idrefl ≡ 2
+_ = refl
+_ : countSame cTm-jsub   ≡ 3
+_ = refl
+_ : countSame cTm-unit   ≡ 0
+_ = refl
+_ : countSame cTm-nzero  ≡ 0
+_ = refl
+_ : countSame cTm-nsuc   ≡ 1
+_ = refl
+_ : countSame cTm-ordtr  ≡ 5
+_ = refl
+_ : countSame cTm-natrec ≡ 3
+_ = refl
+_ : countSame cTm-con    ≡ 1
+_ = refl
 _ : countSame cTm-elim   ≡ 2
+_ = refl
+_ : countSame cTm-icon   ≡ 1
 _ = refl
 _ : countSame cTm-ielim  ≡ 3
 _ = refl
 _ : countSame cTm-cIMu   ≡ 1
 _ = refl
-_ : countSame cTm-con    ≡ 1
-_ = refl
-_ : countSame cTm-icon   ≡ 1
-_ = refl
-_ : countSame cTm-natrec ≡ 3
-_ = refl
-_ : countSame cTm-ordtr  ≡ 5
-_ = refl
 
-------------------------------------------------------------------------
--- 3. ★★★ AND THE GENERALISATION IS STRICT — CHECKED, NOT ASSUMED.
---
--- ⚠ THE SWEEP DOES NOT SHOW THIS.  `Lib/ISz` and `Lib/IDepth` still
---   TYPE-CHECK after `Lib/IFold` gained its `pick` parameter, but
---   neither of them asserts a computed value, so "all green" is
---   consistent with the count-all fold now emitting a different term.
---   These three lines are about the TERMS.
 ------------------------------------------------------------------------
 
 -- ⚠ PINNED.  Left as `var vz` the fold's `Γ` is a meta with nothing to
