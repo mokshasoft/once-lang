@@ -126,6 +126,12 @@ Two constructors, and it mentions **only** `Ctx`, `Var`, `RTy` and
 `renTy vs` — weakening by ONE, which `Examples/WkTm` already provides in
 the `Tm` case and which needs the same treatment for `RTy`.
 
+✅✅ **DONE 2026-08-28** — `Examples/Knot/Lookup`. Well formed AND
+inhabited: `LkD`/`LkWf`, and `⊢lkVz` at `(◇ ▹ Nat) ∋ vz ∷ renTy vs Nat`.
+★ The three transports EVAPORATE at a concrete index, so §1's "Fording
+costs a transport in the DERIVATION and nothing at runtime" is now
+exercised at a judgement rather than asserted.
+
 ★ **DO THIS BEFORE SUBSTITUTION.** It is a complete judgement, it needs
 no machinery beyond what exists, and it is the smallest thing that
 demonstrates a RELATION over encoded syntax. It is this increment's
