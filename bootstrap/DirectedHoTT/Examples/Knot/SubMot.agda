@@ -524,9 +524,6 @@ sortMap s = natrec s sTm (p5 s)
 --   one that moves.
 ------------------------------------------------------------------------
 
-p5* : {Γ : Cx} {t t' : RTm Γ} → t ⟶* t' → p5 t ⟶* p5 t'
-p5* r = pred* (pred* (pred* (pred* (pred* r))))
-
 sortMap-var : {Γ : Cx} → sortMap {Γ} sVar ⟶* sTm
 sortMap-var =
   ⟶*-trans (⟶*-natrecⁿ (⟶*-trans (pred* (pred* (pred* (pred* (pred-suc _)))))
