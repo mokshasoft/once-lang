@@ -347,3 +347,47 @@ Var-vsK m x = icon tagVar-vs
                      ty-Unit)
                (fordFst ⊢sVar)
           (⊢pair ty-Unit (fordSnd (⊢nsuc dy)) ⊢unit))))
+
+------------------------------------------------------------------------
+-- ⬜ RUNG 4 — `Var-vzK` AT AN **ARBITRARY** DEPTH TERM.  ATTEMPTED
+--    2026-08-28, PARTLY WORKING, NOT LANDED.  State recorded so the next
+--    attempt starts from data rather than from guesses.
+--
+-- ⚠ WHY IT IS WANTED AT ALL, given this file's header rejects route (a):
+--   `Examples/Knot/SubMot`'s two `Var` substitution methods must rebuild
+--   a variable from `m = fst p`, a PROJECTION of the method's payload.
+--   Route (c) — "make the depth a context VARIABLE" — has nothing to
+--   offer there: no variable exists.  ⇒ route (a) is FORCED at this row,
+--   and cheap in principle, since `cVar-vz` carries its depth at field
+--   position 0.
+--
+-- ★ WHAT WORKS.  Two of the payload's four positions close with a
+--   SUBJECT cast (`tmCast : t ≡ t' → Γ ⊢ t ∷ A → Γ ⊢ t' ∷ A`) at
+--
+--       rt : subTm (extS (single d)) (w (w d)) ≡ w d
+--       rt = trans (sub-w {σ = single d} (w d)) (cong w (wk-single d))
+--
+--   ⚠ AND THE TWO SIDES OF THE SORT FORD WANT DIFFERENT FORMS OF THE
+--     SAME TERM — the left substituted, the right not.  Only the goal
+--     says which; there is no rule to read it off the row.
+--
+-- ⬜ WHAT DOES NOT.  The DEPTH ford's witness needs a **TYPE** cast, not
+--   a subject one: its term is fixed as `idrefl ⌜Nat⌝ (nsuc d)` by
+--   `Var-vzK d`'s own definition, so the round trip must move the type
+--   around it.  Its goal is
+--
+--       subTy (single (idrefl ⌜Nat⌝ sVar))
+--        (subTy (extS (single d))
+--         (El (subTm (extS (extS (isingle (pair sVar (nsuc d)))))
+--              (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs vz)))) (nsuc (var (vs vz)))))))
+--
+--   ⚠ and the equation it needs lives at `⌊ Δ ⌋ ∙`, ONE BINDER DEEPER
+--     than `rt` — a third shape, not a third use of the first two.
+--
+-- ⇒ THREE round trips at THREE levels for ONE row.  That is `Knot/Build`
+--   route (a)'s cost showing up exactly as this file's header predicts,
+--   at a row where it cannot be avoided.  ★ Next attempt: state the
+--   third equation at `⌊ Δ ⌋ ∙` FIRST, from the goal above, rather than
+--   deriving it from `rt`.
+------------------------------------------------------------------------
+
