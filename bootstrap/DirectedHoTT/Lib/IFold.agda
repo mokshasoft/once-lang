@@ -37,7 +37,7 @@ open import DirectedHoTT.Spec.Syntax
         ; lam; pair; fst; snd; unit; nzero; nsuc
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_
         ; ipayTy; Sub; extS; subTm; subTy; renTy; isingle; iext
-        ; sel; ilookupD; _∈ID_; hereID; thereID
+        ; sel; ilookupD; _∈ID_; hereID; thereID; ⌜Id⌝; Var
         ; εwkTy; εwk-ren; ipayTy-ren; ipayTy-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
@@ -50,6 +50,7 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; ren-ty; isingle-Sub⊢; iihTy-wf; iihTy-ren; iihTy-cong )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
+open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf; imethsTyFromNat-wf )
 
 ------------------------------------------------------------------------
@@ -58,6 +59,83 @@ open import DirectedHoTT.Lib.IPay using ( ipayTy-wf; imethsTyFromNat-wf )
 --   ⚠ All three must be CONTEXT-POLYMORPHIC: they are used under the
 --   method's three binders, at a depth the caller never names.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ⬜ SPIKE — CAN A FIELD BE CLASSIFIED SAME-SORT vs CROSS-SORT?
+--
+-- The `sz` agreement `szTm ⌈t⌉ ⟶* ⌜ sz t ⌝` fails because the meta-level
+-- `szb` folds over `RTm` ALONE — the other sorts are separate Agda types
+-- and it treats them as ATOMS — while this fold traverses all seven at
+-- once.  ⚠ Measured 28/28: `szb`'s count is exactly the number of
+-- SAME-SORT `iρ` fields, so the gap is precisely the CROSS-SORT ones.
+--
+-- ⇒ the question this section answers: is "same sort as the row" a
+--   DECISION computable from the raw `ICon`, or does it need per-row data
+--   (which would be the enumeration `Lib/IWk` exists to avoid)?
+------------------------------------------------------------------------
+
+data Maybeℕ : Set where
+  noℕ   : Maybeℕ
+  someℕ : ℕ → Maybeℕ
+
+-- ★ THE MOVE THAT SIDESTEPS THE CONTEXT MISMATCH.  A field's sort lives
+--   at depth `j` and the row's tag ford at depth `k`, so the two sort
+--   literals inhabit DIFFERENT `RTm Δ`s and cannot be compared directly.
+--   Both are closed numerals, so read their VALUES instead and compare
+--   in `ℕ` — context-free, and no `RTm` equality is needed at all.
+numVal : {Δ : Cx} → RTm Δ → Maybeℕ
+numVal nzero    = someℕ zero
+numVal (nsuc t) with numVal t
+... | someℕ n = someℕ (suc n)
+... | noℕ     = noℕ
+numVal _        = noℕ
+
+eqℕ : ℕ → ℕ → 𝔹
+eqℕ zero    zero    = true
+eqℕ (suc a) (suc b) = eqℕ a b
+eqℕ _       _       = false
+
+-- ★ the row's OWN sort, read off its tag ford.  ⚠ A SCAN, not per-row
+--   data: the ford is `⌜Id⌝ c (fst ⟨i⟩) s`, the shape `Lib/IWk.decKa`
+--   already recognises, and `s` is the row's sort literal.
+rowSort : {Δ : Cx} → ICon Δ → Maybeℕ
+rowSort iι                              = noℕ
+rowSort (iρ j C)                        = rowSort C
+rowSort (iκ (⌜Id⌝ c (fst (var a)) s) C) with numVal s
+... | someℕ n = someℕ n
+... | noℕ     = rowSort C
+rowSort (iκ κ C)                        = rowSort C
+
+-- …and a field's sort, from its `pair s d` index.
+fieldSort : {Δ : Cx} → RTm Δ → Maybeℕ
+fieldSort (pair s d) = numVal s
+fieldSort _          = noℕ
+
+-- the predicate, against an ALREADY-READ row sort.  ⚠ `Maybeℕ` is
+-- context-free, so it threads through the telescope unchanged — which is
+-- the whole reason the sorts were turned into `ℕ`s.
+sameSortAt : {Δ : Cx} → Maybeℕ → RTm Δ → 𝔹
+sameSortAt noℕ       j = false
+sameSortAt (someℕ r) j with fieldSort j
+... | someℕ f = eqℕ r f
+... | noℕ     = false
+
+-- ★★ HOW MANY CHILDREN A SAME-SORT MEASURE WOULD COUNT.
+countSameAt : {Δ : Cx} → Maybeℕ → ICon Δ → ℕ
+countSameAt r iι       = zero
+countSameAt r (iκ κ C) = countSameAt r C
+countSameAt r (iρ j C) with sameSortAt r j
+... | true  = suc (countSameAt r C)
+... | false = countSameAt r C
+
+countSame : {Δ : Cx} → ICon Δ → ℕ
+countSame C = countSameAt (rowSort C) C
+
+-- ★★ THE PREDICATE.  `true` iff the field recurses at the ROW's OWN sort.
+sameSort : {Δ : Cx} → ICon Δ → RTm Δ → 𝔹
+sameSort C j with rowSort C | fieldSort j
+... | someℕ r | someℕ f = eqℕ r f
+... | _       | _       = false
 
 module Fold
   (z   : {Γ : Cx} → RTm Γ)
