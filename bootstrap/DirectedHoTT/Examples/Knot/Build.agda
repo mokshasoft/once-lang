@@ -45,7 +45,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Build where
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
+  using ( Cx; ε; _∙; vz; vs; Var
         ; RTy; RTm; El; Unit; Nat; Σ'; IMu
         ; var; pair; fst; snd; unit; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝; idrefl; icon
         ; Ren; Sub; renTm; subTm; extS; εwkTm; εwkTm-ren; εwkTm-sub )
@@ -280,3 +280,39 @@ Var-vsK m x = icon tagVar-vs
     c0 : subTm σ2 (subTm (extS (single x)) (renTm vs (renTm vs (num n))))
        ≡ num n
     c0 = trans (cong (subTm σ2) w2x) (num-sub σ2 n)
+
+------------------------------------------------------------------------
+-- ★★ `Var-vzK` AT A **VARIABLE** DEPTH — and why it is needed at all.
+--
+-- ⚠ §4's rule "the depth must be a NUMERAL" was written for the ADEQUACY
+--   MAP, whose depths are `len Γ` and hence numerals.  A JUDGEMENT's
+--   constructor telescope is the other case: its depth is a bound
+--   `iκ ⌜Nat⌝` field, i.e. a VARIABLE.
+--
+-- ★ AND THAT IS THE CHEAP CASE, not a harder one — route (c) of this
+--   module's header, verbatim: renaming and substitution COMPUTE on a
+--   variable, so every `num-ren`/`num-sub` chain the numeral version
+--   needs collapses to `refl` and the derivation is SHORTER.
+--
+-- ⇒ the two forms are siblings, neither subsumes the other, and which one
+--   applies is decided by whether the depth is a numeral or a variable.
+------------------------------------------------------------------------
+
+⊢Var-vzKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} → Δ ⊢ var x ∷ Nat →
+            Δ ⊢ Var-vzK (var x) ∷ K (pair sVar (nsuc (var x)))
+⊢Var-vzKv {x = x} dx =
+  ⊢icon KnotWf memVar-vz (⊢ixP ⊢sVar (⊢nsuc dx))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                          (toI (⊢fst (⊢ixP ⊢sVar (⊢nsuc (⊢wk dx)))))
+                          (toI ⊢sVar)))
+                 (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                                (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk dx))))))
+                                (toI (⊢nsuc (fromI (⊢var (there here)))))))
+                       ty-Unit))
+           (toI dx)
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                            (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk dx)))))
+                            (toI (⊢nsuc (⊢wk dx)))))
+                   ty-Unit)
+             (fordFst ⊢sVar)
+        (⊢pair ty-Unit (fordSnd (⊢nsuc dx)) ⊢unit)))

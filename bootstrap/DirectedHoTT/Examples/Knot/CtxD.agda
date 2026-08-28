@@ -46,7 +46,7 @@ module DirectedHoTT.Examples.Knot.CtxD where
 open import normalizer.Syntax.Types using ( _≡_; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; vz; vs
+  using ( Cx; ε; _∙; vz; vs; Var
         ; RTy; RTm; El; Unit; Nat; Σ'; IMu
         ; var; pair; unit; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; idrefl; icon
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_; _∈ID_; hereID; thereID
@@ -60,7 +60,7 @@ open import DirectedHoTT.Spec.Typing
         ; ICodeWf; icw-clo; icw-ford; icw-imu
         ; IDescWf; idwf-nil; idwf-cons
         ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜Id⌝; El-⌜IMu⌝ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ⊢wk )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; ⊢sTy; toI; fromI; ⊢ixP; num; ⊢num; num-ren; num-sub )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
@@ -263,3 +263,45 @@ enCtx (Γ ▹ A) = Ctx-extK (num (len ⌊ Γ ⌋)) (enCtx Γ) (enTy A)
 
 ⊢enCtx ◇       = ⊢Ctx-empK
 ⊢enCtx (Γ ▹ A) = ⊢Ctx-extK (len ⌊ Γ ⌋) (⊢enCtx Γ) (⊢enTy A)
+
+------------------------------------------------------------------------
+-- 7. ★★ `_▹_` AT A **VARIABLE** DEPTH.
+--
+-- ⚠ §4's smart constructors are at `num n` — a NUMERAL — because their
+--   customer is the adequacy map, whose depths are `len ⌊ Γ ⌋`.  A
+--   JUDGEMENT's constructor telescope is the other case: its depth is a
+--   bound `iκ ⌜Nat⌝` field, i.e. a VARIABLE.
+--
+-- ★ AND IT IS THE CHEAP CASE.  Renaming and substitution COMPUTE on a
+--   variable, so every `num-ren`/`num-sub` chain §4 needed collapses to
+--   `refl`: the nine equations vanish, the `kCast` vanishes, and the
+--   `⊢-cast` on the depth ford vanishes with them.  `Knot/Build`'s route
+--   (c), and the two forms are siblings — neither subsumes the other.
+------------------------------------------------------------------------
+
+⊢Ctx-extKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {g a : RTm ⌊ Δ ⌋} →
+             Δ ⊢ var x ∷ Nat →
+             Δ ⊢ g ∷ CtxK (var x) →
+             Δ ⊢ a ∷ K (pair sTy (var x)) →
+             Δ ⊢ Ctx-extK (var x) g a ∷ CtxK (nsuc (var x))
+⊢Ctx-extKv {x = x} {g = g} {a = a} dx dg da =
+  ⊢icon CtxWf (thereID hereID) (toI (⊢nsuc dx))
+    (⊢pair (ty-Σ (ty-IMu CtxWf (⊢var here))
+             (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here))))))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢nsuc (⊢wk (⊢wk (⊢wk dx)))))
+                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                     ty-Unit)))
+           (toI dx)
+      (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (⊢wk dx))))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢nsuc (⊢wk (⊢wk dx))))
+                              (toI (⊢nsuc (⊢wk (⊢wk dx))))))
+                     ty-Unit))
+             dg
+        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢nsuc (⊢wk dx)))
+                              (toI (⊢nsuc (⊢wk dx)))))
+                     ty-Unit)
+               (toKn da)
+          (⊢pair ty-Unit (reflId (⊢nsuc dx)) ⊢unit))))
