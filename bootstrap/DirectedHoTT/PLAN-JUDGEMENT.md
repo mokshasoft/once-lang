@@ -176,6 +176,12 @@ where that bites — its two `iρ` fields need OPPOSITE treatments.
 (`cTy-IMu`, `cTm-cIMu`, `cDCon-kap`, `cIDesc-cons`) · **2** depth-Forded
 (`cVar-vz`, `cVar-vs`).
 
+✅✅ **AND `wkK` EXISTS** — `Examples/Knot/Wk`:
+`wkK : K i → K (sh i)`, the **first function over syntax** the encoded
+knot has (everything before was a measure or a constructor). 51 methods
+computed by `Lib/IWk`, 2 given (the depth-Forded `Var` rows), assembled by
+`⊢iwkMethsFrom` and closed by `⊢ielim`. ⚠ Nothing in it enumerates a row.
+
 ✅ **`Lib/IWk` IS BUILT** — the classification, the method and tuple
 computed from it, the DECIDER, the escape hatch, **and the typing**
 (`⊢iwkPay`/`⊢iwkMethod`/`⊢iwkMethsFrom`).
@@ -238,7 +244,19 @@ description over a tagged index — fine, but it means no partial landing:
 | `_⟶_` | 73 | — |
 | `Canon`, `Prog` | 20 | the above |
 
-### Step 4 — `prog` object-level
+### Step 4 — `prog` object-level ⟨★★★ **THIS IS THE DOGFOODING TARGET**⟩
+
+⚠ **SAY SO HERE, because it is scattered across four files.** "Dogfooding"
+in this tree means replacing THIS POC's OWN hand-rolled measure recursion
+— `prog`/`usplit`/`trS`/`ordtrS`, each threading an explicit `ℕ` bound and
+a `≤` premise — with `⊢amrec`. `ARCHITECTURE.md` says that becomes
+possible "the moment `RTm` is a kernel type and `sz` is definable";
+`Examples/Dogfood.agda` demonstrates the recursor is derivable in the
+kernel and records that the real target is blocked on INDEXED
+DESCRIPTIONS, not on the WF axis.
+
+⇒ the KNOT is the prerequisite, not the exhibit. **This step is the
+exhibit**, and steps 1–3 exist to reach it.
 
 Only now is `⊢amrec`-through-`prog` (PLAN-INDEXED §5 item 7) statable.
 `Examples/AmrecIMuRec` already shows a recursing step at an `IMu`

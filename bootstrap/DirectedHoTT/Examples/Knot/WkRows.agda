@@ -93,11 +93,11 @@ open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; ⊢IPair; sTy; sTm; sDCon; sVar; ⊢sTy; ⊢sTm; ⊢sDCon; ⊢sVar
         ; toI; fromI; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc
-  using ( KnotD; K; cTy-Nat; cTm-lam; cDCon-kap; cVar-vs )
+  using ( KnotD; K; cTy-Nat; cTm-lam; cDCon-kap; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Tags
-  using ( tagTy-Nat; tagTm-lam; tagDCon-kap; tagVar-vs
-        ; memTy-Nat; memTm-lam; memDCon-kap; memVar-vs )
+  using ( tagTy-Nat; tagTm-lam; tagDCon-kap; tagVar-vz; tagVar-vs
+        ; memTy-Nat; memTm-lam; memDCon-kap; memVar-vz; memVar-vs )
 
 ------------------------------------------------------------------------
 -- 0. MOVING ALONG A REDUCTION OF THE INDEX, both ways.
@@ -461,3 +461,72 @@ wkVarVs =
 --   that need it are exactly the two whose target depth is constrained —
 --   which `IConWf` already distinguishes, via `icw-ford`.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- 7. `cVar-vz` — the OTHER depth-Forded row, and the last method the
+--    knot's weakening was missing.
+--
+-- ★ STRICTLY EASIER THAN §5.  Same shape minus the recursive field: bump
+--   the bound `m`, pass the tag ford through, `congS` the depth ford.
+--   No IH at all — `iihTy` is `Unit` here, because `cVar-vz` has no `iρ`.
+------------------------------------------------------------------------
+
+tyPayVz : {Γ : Ctx} → (Γ ▹ Σ' Nat Nat) ⊢ty
+          Σ' (El ⌜Nat⌝)
+            (Σ' (El (⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) sVar))
+              (Σ' (El (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs vz))))
+                                  (nsuc (var (vs vz))))) Unit))
+tyPayVz =
+  ty-Σ (ty-El ⊢⌜Nat⌝)
+    (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there here)))) (toI ⊢sVar)))
+      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                     (toI (⊢snd (⊢var (there (there here)))))
+                     (toI (⊢nsuc (fromI (⊢var (there here)))))))
+            ty-Unit))
+
+wkVarVz : {Γ : Cx} → RTm Γ
+wkVarVz =
+  lam (lam (lam
+    (icon tagVar-vz
+      (pair (nsuc (fst (var (vs vz))))                  -- m' := suc m
+        (pair (fst (snd (var (vs vz))))                 -- the tag ford
+          (pair (congS (snd (var (vs (vs vz))))         -- ★ THE TRANSPORT
+                       (fst (snd (snd (var (vs vz))))))
+                unit))))))
+
+⊢wkVarVz : {Γ : Ctx} →
+           Γ ⊢ wkVarVz ∷ imethTy KnotD IPair tagVar-vz cVar-vz wkMot
+⊢wkVarVz =
+  ⊢lam ⊢IPair
+    (⊢lam tyPayVz
+      (⊢lam ty-Unit
+        (⊢icon KnotWf memVar-vz
+               (⊢ixP (⊢fst (⊢var (there (there here))))
+                     (⊢nsuc (⊢snd (⊢var (there (there here))))))
+          (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                                (toI (⊢fst (⊢ixP
+                                   (⊢fst (⊢var (there (there (there here)))))
+                                   (⊢nsuc (⊢snd (⊢var (there (there (there here)))))))))
+                                (toI ⊢sVar)))
+                       (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                                      (toI (⊢snd (⊢ixP
+                                         (⊢fst (⊢var (there (there (there (there here))))))
+                                         (⊢nsuc (⊢snd (⊢var (there (there (there (there here))))))))))
+                                      (toI (⊢nsuc (fromI (⊢var (there here)))))))
+                             ty-Unit))
+                 (toI (⊢nsuc (fromI (⊢fst (⊢var (there here))))))
+            (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                                  (toI (⊢snd (⊢ixP
+                                     (⊢fst (⊢var (there (there (there here)))))
+                                     (⊢nsuc (⊢snd (⊢var (there (there (there here)))))))))
+                                  (toI (⊢nsuc (⊢nsuc (fromI (⊢fst (⊢var (there (there here))))))))))
+                         ty-Unit)
+                   (unFst (⊢fst (⊢snd (⊢var (there here)))))
+              (⊢pair ty-Unit
+                     (⊢conv (⊢conv (⊢congS (⊢snd (⊢var (there (there here))))
+                                           (⊢nsuc (fromI (⊢fst (⊢var (there here)))))
+                                           (⊢conv (⊢fst (⊢snd (⊢snd (⊢var (there here)))))
+                                                  (elIdN _ _)))
+                                   (csymᵀ (elIdN _ _)))
+                            (csymᵀ (credᵀ (ξ-El (ξ-⌜Id⌝ˡ (βsnd _ _))))))
+                     ⊢unit))))))
