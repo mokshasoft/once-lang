@@ -89,3 +89,23 @@ injSucN a p = predN (nsuc a) p
   ⊢conv (⊢predN (⊢nsuc da) (⊢nsuc db) dp)
         (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (pred-suc a)))
                (red→≅ᵀ (⟶ᵀ*-Idʳ (pred-suc b))))
+
+------------------------------------------------------------------------
+-- 3. ★ THE SHAPE THE FORD ACTUALLY COMES IN.
+--
+-- A Forded row constrains the AMBIENT index: `⟨j⟩ ≡ nsuc m`, with `j` a
+-- bound variable and `m` a field.  Neither side is a `nsuc` of anything
+-- known, so `injSucN` does not apply — what is wanted is
+-- `predTm ⟨j⟩ ≡ m`, which is `predN` with only the RIGHT endpoint
+-- reduced.
+--
+-- ⚠ THIS IS THE FORM `Fin`'s AND THE KNOT'S `Var` ROWS BOTH TAKE.
+--   `Examples/Scoped`'s `fzeroC`/`fsucC` ford `⟨j⟩ ≡ nsuc m`; the knot's
+--   `cVar-vz`/`cVar-vs` ford `snd ⟨i⟩ ≡ nsuc m`.  Same lemma serves both.
+------------------------------------------------------------------------
+
+⊢fordPredN : {Γ : Ctx} {j m p : RTm ⌊ Γ ⌋} →
+             Γ ⊢ j ∷ Nat → Γ ⊢ m ∷ Nat → Γ ⊢ p ∷ IdN j (nsuc m) →
+             Γ ⊢ predN j p ∷ IdN (predTm j) m
+⊢fordPredN {m = m} dj dm dp =
+  ⊢conv (⊢predN dj (⊢nsuc dm) dp) (red→≅ᵀ (⟶ᵀ*-Idʳ (pred-suc m)))
