@@ -925,6 +925,213 @@ def gen_szagree():
                  % (_pat(c, nargs, an), nm[1:], nm[1:], tail))
     return "\n".join(L) + "\n"
 
+# ====================== STEP 3: JUDGEMENT ROWS, GENERATED ==================
+# ⚠⚠ MEASURED ON STEP 1: HAND-WRITING DOES NOT SCALE HERE.  `_∋_∷_`'s TWO
+#   rows — 7 and 10 fields — cost a long session, and most of it was de
+#   Bruijn bookkeeping reducible to ONE rule:
+#
+#       at `k` fields bound, field `j` sits at `vs^(k-1-j) vz`,
+#       and the ambient index at `vs^k vz`.
+#
+#   ★★ AND A WRONG INDEX IS INVISIBLE AT THE `ICon` LEVEL.  An `ICon`
+#   type-checks with ANY in-scope variable of the right type — the bug
+#   found on 2026-08-26 (`λ₈` naming `Γ` where it meant `x`) was caught
+#   only by the `IConWf`, and it surfaced there as the Wf demanding a slot
+#   matching the WRONG term, which reads like a Wf bug.  So this is not
+#   tedium: it is a transcription error waiting to happen, in the one
+#   place where the error does not look like itself.
+#
+# ⇒ a row is DESCRIBED (binders · recursive premises · one value per index
+#   component) and the positions are COMPUTED.
+
+# ---- expressions -----------------------------------------------------------
+def V(name):      return ('v', name)      # a binder, BY NAME — never by index
+AMB             = ('amb',)                # the ambient index variable ⟨i⟩
+def RAW(t):       return ('raw', t)
+def AP(f, *a):    return ('ap', f, a)
+def PAIR(a, b):   return ('pair', a, b)
+def NSUC(a):      return ('nsuc', a)
+def TUP(*a):
+    e = a[-1]
+    for x in reversed(a[:-1]): e = PAIR(x, e)
+    return e
+
+# ---- the index telescope ---------------------------------------------------
+# each component is the CODE of its type, as a function of a depth expression
+def TNAT():        return ('tnat',)
+def TCTX():        return ('tctx',)
+def TKNOT(sort):   return ('tknot', sort)
+
+def _code(comp, d):
+    "the object-level code for telescope component `comp` at depth `d`"
+    if comp[0] == 'tnat':  return RAW("⌜Nat⌝")
+    if comp[0] == 'tctx':  return AP("⌜IMu⌝", RAW("CtxD"), RAW("INat"), d)
+    return AP("⌜IMu⌝", RAW("KnotD"), RAW("IPair"), PAIR(RAW(comp[1]), d))
+
+def _proj(c, n, e):
+    """component `c` of an `n`-component right-nested telescope value `e`.
+    ⚠ THE LAST ONE IS `snd`, NOT `fst (snd …)` — a right-nested Σ has no
+      wrapper on its final component, and off by one here is a term that
+      still type-checks at a DIFFERENT component."""
+    for _ in range(c): e = AP("snd", e)
+    return e if c == n - 1 else AP("fst", e)
+
+def rend(e, k, ix):
+    """`e` at a point where `k` fields are bound.  ★ THE ONLY PLACE THE
+    de Bruijn RULE IS WRITTEN."""
+    t = e[0]
+    if t == 'v':    return dbv(k - 1 - ix[e[1]])
+    if t == 'amb':  return dbv(k)
+    if t == 'raw':  return e[1]
+    if t == 'ap':   return e[1] + "".join(" " + par(rend(x, k, ix)) for x in e[2])
+    if t == 'pair': return "pair %s %s" % (par(rend(e[1], k, ix)), par(rend(e[2], k, ix)))
+    if t == 'nsuc': return "nsuc " + par(rend(e[1], k, ix))
+    raise ValueError(e)
+
+# ---- a row -----------------------------------------------------------------
+class JRow:
+    def __init__(self, name, binders, prems, vals):
+        self.name, self.binders, self.prems, self.vals = name, binders, prems, vals
+
+def jrow_fields(row, tel):
+    """the row's fields, in order, as (kind, expression).  ★ BINDERS, THEN
+    RECURSIVE PREMISES, THEN ONE FORD PER INDEX COMPONENT."""
+    ix, out = {}, []
+    for nm, code in row.binders:
+        ix[nm] = len(out); out.append(('κ', code))
+    for nm, tup in row.prems:
+        ix[nm] = len(out); out.append(('ρ', tup))
+    n = len(tel)
+    depth_at = None
+    for c in range(n):
+        if c == 0:
+            # the DEPTH ford: no transport, nothing to transport ALONG yet
+            f = AP("⌜Id⌝", RAW("⌜Nat⌝"), AP("fst", AMB), row.vals[0])
+            depth_at = len(out)
+        else:
+            # ★ every later component is stated at `fst ⟨i⟩` but BUILT at the
+            #   row's own depth, so it is transported along the depth ford.
+            ty_amb = _code(tel[c], AP("fst", AMB))
+            ty_var = _code(tel[c], RAW("var vz"))
+            f = AP("⌜Id⌝", ty_amb, _proj(c, n, AMB),
+                   AP("jsub", ty_var,
+                      AP("symN", AP("fst", AMB), V('#depth')),
+                      row.vals[c]))
+            ix['#depth'] = depth_at
+        out.append(('κ', f))
+    return ix, out
+
+def emit_jrow(row, tel, pre, ity, idesc):
+    """the Θ/κ/ICon chain for one row.  `pre` names the row's telescope
+    variables (`Θ`/`κ` for one row, `Ξ`/`λ` for the next…).
+
+    ⚠ THE TELESCOPE STOPS BEING A `Ctx` AT THE FIRST RECURSIVE PREMISE.
+      That field extends by `IMu D I …`, which mentions the description
+      being DEFINED.  `⌊_⌋` only COUNTS, so everything after it is typed
+      at a plain `Cx` and the row stays writable before `D` exists; the
+      `Ctx`-level telescope comes back where the Wf is proved."""
+    ix, fs = jrow_fields(row, tel)
+    T, F = pre
+    X = "X" + T
+    L = [f"{T}0 : Ctx", f"{T}0 = ◇ ▹ εwkTy {ity}", ""]
+    cur, is_ctx = f"{T}0", True
+    for k, (kind, e) in enumerate(fs):
+        vis = {n: j for n, j in ix.items() if j < k or n == '#depth'}
+        L.append(f"{F}{k} : RTm {('⌊ ' + cur + ' ⌋') if is_ctx else cur}")
+        L.append(f"{F}{k} = {rend(e, k, vis)}")
+        L.append("")
+        nxt = (f"{T}{k+1}" if is_ctx and kind == 'κ' else f"{X}{k+1}")
+        if is_ctx and kind == 'κ':
+            L += [f"{nxt} : Ctx", f"{nxt} = {cur} ▹ El {F}{k}", ""]
+        elif is_ctx:
+            L += [f"{nxt} : Cx", f"{nxt} = ⌊ {cur} ⌋ ∙", ""]
+            is_ctx = False
+        else:
+            L += [f"{nxt} : Cx", f"{nxt} = {cur} ∙", ""]
+        cur = nxt
+    body = "iι"
+    for k in range(len(fs) - 1, -1, -1):
+        body = f"{'iκ' if fs[k][0] == 'κ' else 'iρ'} {F}{k} ({body})"
+    L.append(f"{row.name} : ICon (ε ∙)")
+    L.append(f"{row.name} = {body}")
+    return "\n".join(L)
+
+LOOKUPGEN_HDR = """--- GENERATED by tools/gen-knot.py — do not edit.
+------------------------------------------------------------------------
+-- OCP-0009 · EXAMPLES — ★★★ THE JUDGEMENT-ROW EMITTER'S **CONTROL**.
+--
+-- `Examples/Knot/Lookup` writes `_∋_∷_`'s two rows BY HAND — 7 and 10
+-- fields, four transported Forded components each.  This module has the
+-- generator emit the same two rows from a DESCRIPTION (binders ·
+-- recursive premises · one value per index component) and checks the
+-- results are `refl`-equal to the hand-written ones.
+--
+-- ★★ WHY A CONTROL AND NOT A REPLACEMENT.  Same role `Examples/Knot/
+--   WkRows` plays for `Lib/IWk`: the hand-written rows were derived
+--   independently, so agreement is evidence.  Delete them and the
+--   generator is only checked against itself.
+--
+-- ⚠⚠ AND THE ERROR THIS CATCHES IS INVISIBLE OTHERWISE.  An `ICon`
+--   type-checks with ANY in-scope variable of the right type, so a field
+--   naming the wrong binder is well-typed.  The real bug of 2026-08-26
+--   — `λ₈` naming `Γ` where it meant `x` — surfaced only in the
+--   `IConWf`, and there it looked like a Wf bug.  The one rule the
+--   generator centralises is exactly the one that was got wrong:
+--
+--       at `k` fields bound, field `j` sits at `vs^(k-1-j) vz`,
+--       and the ambient index at `vs^k vz`.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.LookupGen where
+open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Spec.Syntax
+  using ( Cx; ε; _∙; RTm; var; vz; vs; pair; fst; snd; nsuc; El; IMu
+        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; ICon; iι; iρ; iκ; εwkTy )
+open import DirectedHoTT.Spec.Typing using ( Ctx; ◇; _▹_; ⌊_⌋ )
+open import DirectedHoTT.Examples.Knot.Sorts using ( IPair; sTy; sVar )
+open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
+open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; Ctx-extK )
+open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
+open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
+open import DirectedHoTT.Lib.ArithComm using ( symN )
+open import DirectedHoTT.Examples.Knot.Lookup
+  using ( ILk; LkD; lkHere; lkThere )
+
+"""
+
+def gen_lookupgen():
+    TEL = [TNAT(), TCTX(), TKNOT("sVar"), TKNOT("sTy")]
+    here = JRow("lkHereG",
+      [("m", _code(TNAT(), None)),
+       ("G", _code(TCTX(), V("m"))),
+       ("A", _code(TKNOT("sTy"), V("m")))],
+      [],
+      [NSUC(V("m")),
+       AP("Ctx-extK", V("m"), V("G"), V("A")),
+       AP("Var-vzK", V("m")),
+       AP("wkK", PAIR(RAW("sTy"), V("m")), V("A"))])
+    there = JRow("lkThereG",
+      [("m", _code(TNAT(), None)),
+       ("G", _code(TCTX(), V("m"))),
+       ("x", _code(TKNOT("sVar"), V("m"))),
+       ("A", _code(TKNOT("sTy"), V("m"))),
+       ("B", _code(TKNOT("sTy"), V("m")))],
+      [("ih", TUP(V("m"), V("G"), V("x"), V("A")))],
+      [NSUC(V("m")),
+       AP("Ctx-extK", V("m"), V("G"), V("B")),
+       AP("Var-vsK", V("m"), V("x")),
+       AP("wkK", PAIR(RAW("sTy"), V("m")), V("A"))])
+    L = [LOOKUPGEN_HDR,
+         emit_jrow(here, TEL, ("Θ", "κ"), "ILk", "LkD"), "",
+         emit_jrow(there, TEL, ("Ξ", "λ"), "ILk", "LkD"), "",
+         "------------------------------------------------------------------------",
+         "-- ★★★ THE CONTROL: generated ≡ hand-written, both rows.",
+         "------------------------------------------------------------------------",
+         "", "_ : lkHereG ≡ lkHere", "_ = refl", "",
+         "_ : lkThereG ≡ lkThere", "_ = refl"]
+    return "\n".join(L) + "\n"
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out = os.path.join(root, "Examples", "Knot")
@@ -941,6 +1148,7 @@ if __name__ == "__main__":
     open(os.path.join(out, "Ctors.agda"), "w").write(gen_ctors())
     open(os.path.join(out, "Map.agda"),   "w").write(gen_map())
     open(os.path.join(out, "SzAgree.agda"), "w").write(gen_szagree())
+    open(os.path.join(out, "LookupGen.agda"), "w").write(gen_lookupgen())
     print(f"{len(KNOT)} constructors · {n_rho} recursive fields · "
           f"{n_kap} κ fields · {2 * (n_rho + n_kap) + 2 * len(KNOT)} "
           f"generated clauses")
