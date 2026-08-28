@@ -285,11 +285,40 @@ description over a tagged index — fine, but it means no partial landing:
 
 | | rows | needs |
 |---|---|---|
-| `_∋_∷_` | 2 | weakening (step 1) |
+| `_∋_∷_` | 2 | weakening (step 1) — ✅ DONE, `Knot/Lookup` |
 | `_⊢ty_` + `_⊢_∷_` | 43 | substitution (step 2) |
 | `_⟶ᵀ_`, `_≅ᵀ_` | 30 | — |
 | `_⟶_` | 73 | — |
 | `Canon`, `Prog` | 20 | the above |
+
+⚠⚠ **THE TWO "—" ROWS ARE MISLEADING, AND SO WERE TWO LATER ESTIMATES OF
+MINE.** Measured 2026-08-28, three times, each answer superseding the
+last:
+
+1. *"~27 rows blocked on `subTm`"* — over-reported. The scan counted any
+   mention of a substitution-ish name, `renTm vs` included.
+2. *"30 rows buildable now (`_⟶ᵀ_` + `_≅ᵀ_`)"* — right about
+   substitution, wrong about structure. Only **15** rules genuinely need
+   `subTm`: `β`, `ap-J`, `natrec-suc`, `ι-elim`, `ι-ielim`, and ten of
+   `_⊢_∷_`. Eight more need weakening ONLY, which `wkK` already
+   supplies. 125 need neither.
+3. ★★★ **BUT THE JUDGEMENTS ARE A CHAIN**, and that is what decides it:
+
+       ⟶      self-contained        (5 rules need `subTm`)
+       ⟶ᵀ  →  ⟶                     (`ξ-Homˡ : t ⟶ t' → …`)
+       ≅ᵀ  →  ⟶ᵀ  →  ⟶              (`credᵀ`)
+       ∋      self-contained        ✅ done
+       ⊢ty ↔ ⊢  →  ∋, ≅ᵀ, ⊢ty       (mutual, and 10 need `subTm`)
+
+   `_⟶_` sits at the BOTTOM and five of its rules need `subTm`. A
+   judgement is ONE description, so it cannot land with 68 of 73 rows.
+   ⇒ **everything above `_∋_∷_` is blocked, and on ONE thing:
+   object-level `subTm`.** The "—" read as "no prerequisites"; it means
+   "no SUBSTITUTION prerequisite", which is not the same claim.
+
+⇒ ★ **STEP 2 BEFORE STEP 3.** Not a judgement call — a measured
+dependency. `wkK` is done; the remainder is `Fin eliminator → extS →
+subTm`.
 
 ### Step 4 — `prog` object-level ⟨★★★ **THIS IS THE DOGFOODING TARGET**⟩
 
