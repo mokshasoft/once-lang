@@ -806,6 +806,22 @@ imethsTyFromMot-wf D I j (C ◂ E) wD (idwf-cons wC wE) tI ⊢sh =
   ty-Σ (imethTyMot-wf D I j C wD wC tI ⊢sh)
        (ren-ty (imethsTyFromMot-wf D I (suc j) E wD wE tI ⊢sh) there)
 
+-- ★ the leftover's OWN well-formedness, peeled rather than enumerated.
+--   ⚠ The caller needs `IDescWfFrom D I (wkdRest W)` to type the tail, and
+--   getting there from `IDescWf I D` by hand is 51 `idwf-cons` peels for
+--   `KnotD` — i.e. exactly the enumeration this module exists to avoid.
+--   One recursion over the `WkDesc` does it instead.
+wfDrop : {D : IDesc} {I : RTy ε} {E : IDesc} →
+         IDescWfFrom D I E → (W : WkDesc E) → IDescWfFrom D I (wkdRest W)
+wfDrop wE                (wkd-stop _)   = wE
+wfDrop (idwf-cons wC wE) (wkd-cons w W) = wfDrop wE W
+
+-- …and the same for the position, so the tail's type is statable.
+splDrop : {D : IDesc} {j : ℕ} {E : IDesc} →
+          Split D j E → (W : WkDesc E) → Split D (posOf W j) (wkdRest W)
+splDrop sp (wkd-stop _)   = sp
+splDrop sp (wkd-cons w W) = splDrop (spl-step sp) W
+
 -- ★★★ THE TUPLE.  ⚠ `Split D j E` is what lets each row hand `⊢icon` its
 --   MEMBERSHIP and its LOOKUP, derived on the way past rather than
 --   enumerated; and `posOf` is defined by the same recursion as the walk,
