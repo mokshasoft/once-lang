@@ -14,9 +14,10 @@ module DirectedHoTT.Lib.IDepth where
 open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc )
 open import DirectedHoTT.Spec.Typing using ( ⊢nzero; ⊢nsuc )
 open import DirectedHoTT.Lib.NatMax using ( maxTm; ⊢max )
+open import DirectedHoTT.Spec.Variance using ( 𝔹; true )
 import DirectedHoTT.Lib.IFold as IF
 
-open IF.Fold nzero maxTm nsuc ⊢nzero ⊢max ⊢nsuc public
+open IF.Fold 𝔹 (λ _ → true) (λ b _ → b) nzero maxTm nsuc ⊢nzero ⊢max ⊢nsuc public
   renaming ( ifTail   to dpTail   ; ⊢ifTail   to ⊢dpTail
            ; ifSum    to dpSum    ; ⊢ifSum    to ⊢dpSum
            ; ifMethod to dpMethod ; ⊢ifMethod to ⊢dpMethod
