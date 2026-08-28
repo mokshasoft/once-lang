@@ -53,24 +53,30 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; pair; snd; Nat; Π; IMu
-        ; ICon; IDesc; _◂_; inil; nsuc; renTy; εwkTy; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong )
+        ; ICon; IDesc; _◂_; inil; nsuc; unit; renTm; renTy; εwkTy; app; fst; jsub; ⌜IMu⌝; ielim; Σ'; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
-        ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; ty-Nat; ty-Π; ty-IMu; ty-Unit
-        ; IConWf; imethTy; imethsTyFrom; ty-Σ; βsnd; ξ-pairʳ
+        ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; wk-single; ty-Nat; ty-Π; ty-IMu; ty-Unit
+        ; IConWf; imethTy; imethsTyFrom; ty-Σ; βsnd; βfst; ξ-pairʳ; ξ-pairˡ; ξ-nsuc; single
+        ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢ielim; imethsTy
         ; IDescWfFrom; idwf-nil; idwf-cons )
-open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
+open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred )
+open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
+open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN )
+open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
+open import DirectedHoTT.Examples.Knot.JudgeLib using ( muFwd; fordAs; toMu; fromMu )
+open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
-open import DirectedHoTT.Examples.Knot.Tags using ( memTm-nzero; memTm-var )
+open import DirectedHoTT.Examples.Knot.Tags using ( memTm-nzero; memTm-var; tagVar-vs )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nzeroK; Tm-varK )
 open import DirectedHoTT.Examples.Knot.Terms using ( fordFst; tyFordFst; ixConv )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; ⊢Var-vzKv )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
-open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz )
-open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf )
+open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz; cVar-vs )
+open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf; cVar-vsWf )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; ⊢IPair; sTy; sTm; sVar; ⊢sTm; ⊢sVar; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K; cVar-vz; cVar-vs )
@@ -349,3 +355,130 @@ extVz = lam (lam (lam (lam (lam (Tm-varK (Var-vzK (var (vs vz))))))))
             (⊢Tm-varKv {d = nsuc (var (vs vz))} {a0 = Var-vzK (var (vs vz))}
                        (⊢nsuc (⊢var (there here)))
                        (⊢Var-vzKv {x = vs vz} (⊢var (there here))))))))
+
+------------------------------------------------------------------------
+-- ★★★ THE SECOND REAL METHOD: `extS σ (vs x) = wk (σ x)`.
+--
+-- ⚠ THIS IS WHERE THE FORD IS PAID.  `cVar-vs`'s payload is
+--   `(m, x, fordFst, fordSnd)` with `x : Var m`, while `σ` is stated at
+--   `Var (predTm (snd ⟨i⟩))`.  `⊢fordPredN` turns the DEPTH ford
+--   `snd ⟨i⟩ ≡ nsuc m` into `predTm (snd ⟨i⟩) ≡ m`, and `symN` orients
+--   it so a single `⊢jsub` moves `x` to where `σ` can eat it.
+--
+-- ★ ONE `jsub`, exactly as `Examples/WkFin` measured — and it works only
+--   because `⌜IMu⌝` IS A CODE, so `⊢jsub` can transport along the
+--   family.  §12's decision, cashed again.
+--
+-- ⚠ AND THE RESULT NEEDS TWO β STEPS.  `⊢wkK` lands at `K (sh i)` with
+--   `sh i = pair (fst i) (nsuc (snd i))`; at `i = pair sTm n` both
+--   projections are REDEXES, so `muFwd` fires twice to reach
+--   `K (pair sTm (nsuc n))`.
+------------------------------------------------------------------------
+
+extVs : {Γ : Cx} → RTm Γ
+extVs =
+  lam (lam (lam (lam (lam
+    (wkK (pair sTm (var (vs vz)))
+         (app (var vz)
+              (jsub (⌜IMu⌝ KnotD IPair (pair sVar (var vz)))
+                    (symN (predTm (snd (var (vs (vs (vs (vs vz)))))))
+                          (predN (snd (var (vs (vs (vs (vs vz))))))
+                                 (fst (snd (snd (snd (var (vs (vs (vs vz))))))))))
+                    (fst (snd (var (vs (vs (vs vz)))))))))))))
+
+⊢extVs : {Γ : Ctx} →
+         Γ ⊢ extVs ∷ imethTy KnotD IPair tagVar-vs cVar-vs extMotK
+⊢extVs {Γ = Γ} =
+  ⊢lam ⊢IPair
+    (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) cVar-vs
+                     KnotWf cVar-vsWf
+                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+      (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) cVar-vs}
+                      KnotD IPair extMotK (isingle (var (vs vz))) cVar-vs (var vz) cVar-vsWf
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                                                   (εwk-ren vs IPair))
+                                            (⊢var (there here))))
+                      ⊢extMotK
+                      (⊢var here))
+        (⊢lam ty-Nat
+          (⊢lam (ty-Π (ty-IMu KnotWf
+                         (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
+                      (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+            -- ⚠ TWO β STEPS, INNERMOST FIRST: `sh i` projects `i` twice
+            --   and both projections are redexes at `pair sTm n`.
+            (muFwd (ξ-pairʳ (ξ-nsuc (βsnd sTm (var (vs vz)))))
+              (muFwd (ξ-pairˡ (βfst sTm (var (vs vz))))
+                (⊢wkK (⊢ixP ⊢sTm (⊢var (there here)))
+                      (⊢app (⊢var here) tx))))))))
+  where
+    -- the payload binder, and the two components the method needs
+    dp = ⊢var (there (there (there here)))
+    dm = elAsNat (⊢fst dp)
+    dsi = ⊢pred (⊢snd (⊢var (there (there (there (there here))))))
+    -- ★ THE FORD, INVERTED AND ORIENTED.
+    deq = ⊢symN (⊢pred (⊢snd (⊢var (there (there (there (there here)))))))
+                dm
+                (⊢fordPredN (⊢snd (⊢var (there (there (there (there here))))))
+                            dm
+                            (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp))))))
+    -- ⚠ `⊢jsub`'s ENDPOINTS live at `El ⌜Nat⌝` (that is `IdN`'s carrier)
+    --   while `⊢pred`/`⊢symN`/`⊢fordPredN` all want `Nat`.  Both forms of
+    --   the same two terms are needed; the conversion is free but the
+    --   mismatch is invisible until `⊢jsub` is applied.
+    tx = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
+                       (natAsEl dm) (natAsEl dsi) deq
+                       (toMu (⊢fst (⊢snd dp))))
+
+------------------------------------------------------------------------
+-- ★★★ THE 53-METHOD TUPLE, AND `extS`.
+--
+-- 51 do-nothing methods computed at an abstract row, then the two that
+-- matter — the split `Examples/Knot/SzProbe`-style controls above show
+-- lands exactly at `cVar-vz ◂ cVar-vs ◂ inil`.
+------------------------------------------------------------------------
+
+extTail : {Γ : Cx} → RTm Γ
+extTail = pair extVz (pair extVs unit)
+
+⊢extTail : {Γ : Ctx} →
+           Γ ⊢ extTail ∷ imethsTyFrom KnotD IPair extMotK 51
+                                      (cVar-vz ◂ (cVar-vs ◂ inil))
+⊢extTail =
+  ⊢pair (ren-ty (imethsTyFromK-wf 52 (cVar-vs ◂ inil)
+                                  (idwf-cons cVar-vsWf idwf-nil)) there)
+        ⊢extVz
+        (⊢-cast (sym (wk-singleTy {v = extVz}
+                        (imethsTyFrom KnotD IPair extMotK 52 (cVar-vs ◂ inil))))
+          (⊢pair (ren-ty (imethsTyFromK-wf 53 inil idwf-nil) there)
+                 ⊢extVs
+                 (⊢-cast (sym (wk-singleTy {v = extVs}
+                                 (imethsTyFrom KnotD IPair extMotK 53 inil)))
+                         ⊢unit)))
+
+extMethsK : {Γ : Cx} → RTm Γ
+extMethsK = constMethsFrom (cdTake 51 KnotD) extTail
+
+⊢extMethsK : {Γ : Ctx} → Γ ⊢ extMethsK ∷ imethsTy KnotD IPair extMotK KnotD
+⊢extMethsK = ⊢constMethsFrom 0 (cdTake 51 KnotD) KnotWf extTail ⊢extTail
+
+-- ★★★ `extS` — the eliminator.  `extSK i k` is `∀n. (Var (predTm (snd i))
+--   → Tm n) → Tm (nsuc n)`; at `i = pair sVar (nsuc m)` the domain
+--   reduces to `Var m`, which is `extS`'s type.
+extSK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+extSK i k = ielim KnotD i extMethsK k
+
+⊢extSK : {Γ : Ctx} {i k : RTm ⌊ Γ ⌋} →
+         Γ ⊢ i ∷ Σ' Nat Nat → Γ ⊢ k ∷ K i →
+         Γ ⊢ extSK i k ∷ Π Nat (Π (Π (K (pair sVar (predTm (snd (w i)))))
+                                     (K (pair sTm (var (vs vz)))))
+                                  (K (pair sTm (nsuc (var (vs vz))))))
+-- ⚠ ONE CAST, AND IT IS THE ROUND TRIP AGAIN.  `iinst` leaves the index
+--   as `subTm (extS (single k)) (w (w i))`; `sub-w` pushes the
+--   substitution under one weakening and `wk-single` cancels it against
+--   the other.  Same composite `⊢wkK` pays, one binder deeper.
+⊢extSK {i = i} {k = k} di dk =
+  ⊢-cast (cong (λ z → Π Nat (Π (Π (K (pair sVar (predTm (snd z))))
+                                  (K (pair sTm (var (vs vz)))))
+                               (K (pair sTm (nsuc (var (vs vz)))))))
+               (trans (sub-w {σ = single k} (w i)) (cong w (wk-single {v = k} i))))
+         (⊢ielim KnotWf ⊢extMotK di ⊢extMethsK dk)
