@@ -20,8 +20,11 @@ open import DirectedHoTT.Spec.Variance using ( 𝔹; true )
 import DirectedHoTT.Lib.IFold as IF
 
 open IF.Fold 𝔹 (λ _ → true) (λ b _ → b) nzero plusTm nsuc ⊢nzero ⊢plus ⊢nsuc public
-  renaming ( ifTail   to szTail   ; ⊢ifTail   to ⊢szTail
+  renaming ( ifStep    to szStep    ; ⊢ifStep    to ⊢szStep
+           ; ifSumStep to szSumStep
+           ; ifTail   to szTail   ; ⊢ifTail   to ⊢szTail
            ; ifSum    to szSum    ; ⊢ifSum    to ⊢szSum
+           ; ⊢ifSumStep to ⊢szSumStep
            ; ifMethod to szMethod ; ⊢ifMethod to ⊢szMethod
            ; ifMeths  to szMeths  ; ⊢ifMeths  to ⊢szMeths
            ; ifMeths-sel to szMeths-sel )

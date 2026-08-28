@@ -37,8 +37,11 @@ import DirectedHoTT.Lib.IFold as IF
 open IF using ( Maybeℕ; rowSort; sameSortAt )
 
 open IF.Fold Maybeℕ rowSort sameSortAt nzero plusTm nsuc ⊢nzero ⊢plus ⊢nsuc public
-  renaming ( ifTail   to szsTail   ; ⊢ifTail   to ⊢szsTail
+  renaming ( ifStep    to szsStep    ; ⊢ifStep    to ⊢szsStep
+           ; ifSumStep to szsSumStep
+           ; ifTail   to szsTail   ; ⊢ifTail   to ⊢szsTail
            ; ifSum    to szsSum    ; ⊢ifSum    to ⊢szsSum
+           ; ⊢ifSumStep to ⊢szsSumStep
            ; ifMethod to szsMethod ; ⊢ifMethod to ⊢szsMethod
            ; ifMeths  to szsMeths  ; ⊢ifMeths  to ⊢szsMeths
            ; ifMeths-sel to szsMeths-sel )

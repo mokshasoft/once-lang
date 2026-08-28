@@ -22,11 +22,14 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Metatheory.Confluence
   using ( ⟶*-trans; ⟶*-appˡ; ⟶*-fst; ⟶*-snd; ⟶*-nsuc
         ; ⟶*-natrecᶻ; ⟶*-natrecⁿ; ⟶*-ielimᵗ )
-open import DirectedHoTT.Lib.NatNum using ( num; plus-num )
+open import DirectedHoTT.Lib.NatNum using ( num )
+open import DirectedHoTT.Lib.IFold using ( rowSort )
+open import DirectedHoTT.Lib.ISzRed
+  using ( AllIH; aih-ι; aih-κ; aih-ρ; szsSum-red )
 open import DirectedHoTT.Metatheory.Canonicity using ( sz )
 open import DirectedHoTT.Lib.ISzSort using ( szsMeths-sel )
 open import DirectedHoTT.Examples.Knot.Sorts using ( sTm )
-open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
+open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; cTm-app )
 open import DirectedHoTT.Examples.Knot.Tags
   using ( tagTm-nzero; memTm-nzero; tagTm-app; memTm-app )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nzeroK; Tm-appK )
@@ -84,22 +87,19 @@ agree-app i ef ea nf na hf ha =
     β₁ = ⟶*-appˡ (⟶*-appˡ (step (β _ _) done))
     β₂ = ⟶*-appˡ (step (β _ _) done)
     β₃ = step (β _ _) done
-    -- the accumulator is `plusTm (fst ihs) (fst (snd ihs))`, and
-    -- `plusTm m n = natrec n _ m` — so the FIRST child is reached
-    -- through `⟶*-natrecⁿ` and the SECOND through `⟶*-natrecᶻ`.
-    -- ⚠ EACH CHILD IS PEELED **TWICE**.  `iihs` builds a tuple entry as
-    --   `ielim … (fst p)` — the SCRUTINEE is a projection of the
-    --   payload, not the child itself.  So each IH is reached by first
-    --   reducing that scrutinee down to the child (through
-    --   `⟶*-ielimᵗ`), and only then projecting the finished entry out
-    --   of the IH tuple with `βfst`/`βsnd`.  Two peels per field, at
-    --   different depths, and they are easy to confuse.
-    hf' = ⟶*-trans (⟶*-ielimᵗ (step (βfst _ _) done)) hf
-    ha' = ⟶*-trans (⟶*-ielimᵗ (⟶*-trans (⟶*-fst (step (βsnd _ _) done))
-                                        (step (βfst _ _) done))) ha
-    body = ⟶*-nsuc
-             (⟶*-trans (⟶*-natrecⁿ (⟶*-trans (step (βfst _ _) done) hf'))
-               (⟶*-trans (⟶*-natrecᶻ
-                            (⟶*-trans (⟶*-fst (step (βsnd _ _) done))
-                                      (⟶*-trans (step (βfst _ _) done) ha')))
-                         (plus-num nf na)))
+    -- ⚠ EACH CHILD IS PEELED **TWICE**, AT DIFFERENT DEPTHS.  `iihs`
+    --   builds a tuple entry as `ielim … (fst p)`, so the entry has to
+    --   be projected out of the IH TUPLE (`βfst`/`βsnd` at the top) and
+    --   its SCRUTINEE reduced from a projection of the payload down to
+    --   the child (`⟶*-ielimᵗ`, one level in).  Two peels, easy to
+    --   confuse, and the only genuinely row-specific work left.
+    hf' = ⟶*-trans (step (βfst _ _) done)
+                   (⟶*-trans (⟶*-ielimᵗ (step (βfst _ _) done)) hf)
+    ha' = ⟶*-trans (⟶*-fst (step (βsnd _ _) done))
+            (⟶*-trans (step (βfst _ _) done)
+              (⟶*-trans (⟶*-ielimᵗ (⟶*-trans (⟶*-fst (step (βsnd _ _) done))
+                                             (step (βfst _ _) done)))
+                        ha))
+    -- ★ and the whole `natrec`/`plus-num` plumbing is now ONE call.
+    body = ⟶*-nsuc (szsSum-red (rowSort cTm-app) cTm-app
+                               (aih-ρ hf' (aih-ρ ha' (aih-κ aih-ι))))
