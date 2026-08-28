@@ -24,8 +24,9 @@ module DirectedHoTT.Examples.Knot.JudgeLib where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; RTy; IDesc; IMu; El; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝ )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; _⟶_
+  using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; _⟶_; _⟶*_
         ; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMu )
+open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; elIdN )
 
 -- ★ THE DESCRIPTION AND ITS INDEX TYPE ARE IMPLICIT, and that is the
@@ -50,3 +51,22 @@ fordAs {a = a} {b = b} d = ⊢conv d (elIdN a b)
 muFwd : {Γ : Ctx} {D : IDesc} {I : RTy Cx.ε} {i i' t : RTm ⌊ Γ ⌋} →
         i ⟶ i' → Γ ⊢ t ∷ IMu D I i → Γ ⊢ t ∷ IMu D I i'
 muFwd r d = ⊢conv d (credᵀ (ξ-IMu r))
+
+------------------------------------------------------------------------
+-- ★ THE SAME MOVE ALONG A REDUCTION SEQUENCE, BOTH WAYS.
+--
+-- ⚠ `muFwd` takes ONE step, which is all `Knot/Lookup` needed.  An index
+--   that reduces over several steps — `sortMap s ⟶* s` is six — needs
+--   the `⟶*` form, and `subTm` needs it BACKWARDS as well: a value built
+--   at the row's own sort has to be read at the motive's `sortMap`ped
+--   one, which is the reduction run in reverse.  ★ Free, because `≅ᵀ` is
+--   symmetric; nothing here inverts a REDUCTION.
+------------------------------------------------------------------------
+
+muFwd* : {Γ : Ctx} {D : IDesc} {I : RTy Cx.ε} {i i' t : RTm ⌊ Γ ⌋} →
+         i ⟶* i' → Γ ⊢ t ∷ IMu D I i → Γ ⊢ t ∷ IMu D I i'
+muFwd* r d = ⊢conv d (red→≅ᵀ (⟶ᵀ*-IMu r))
+
+muBwd* : {Γ : Ctx} {D : IDesc} {I : RTy Cx.ε} {i i' t : RTm ⌊ Γ ⌋} →
+         i ⟶* i' → Γ ⊢ t ∷ IMu D I i' → Γ ⊢ t ∷ IMu D I i
+muBwd* r d = ⊢conv d (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu r)))

@@ -69,11 +69,12 @@ open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 import DirectedHoTT.Lib.ISub as IS
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-natrecⁿ )
+open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-pairˡ )
 open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN )
 open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
-open import DirectedHoTT.Examples.Knot.JudgeLib using ( muFwd; fordAs; toMu; fromMu )
+open import DirectedHoTT.Examples.Knot.JudgeLib
+  using ( muFwd; muBwd*; fordAs; toMu; fromMu )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk )
@@ -619,3 +620,48 @@ isLookup k = orB (eqℕ k 11) (orB (eqℕ k 51) (eqℕ k 52))
 
 _ : sdGiven (decSub isLookup 0 KnotD) ≡ 3
 _ = refl
+
+------------------------------------------------------------------------
+-- ★★★ THE ONE LEMMA EVERY ROW NEEDS.
+--
+-- A method's RESULT is at index `pair (sortMap (fst ⟨i⟩)) n`, while what
+-- it builds — an `icon` for a computed row, `σ x` for a lookup one —
+-- sits at the row's OWN sort `s`.  The row's sort ford says
+-- `fst ⟨i⟩ ≡ s`, so the two are reconciled by transporting along it.
+--
+-- ⚠ TWO MOVES, AND ONLY ONE OF THEM IS THE FORD.
+--   1. `sortMap s ⟶* s` — the row's own reduction (six steps), run
+--      BACKWARDS: the value is built at `s` and must be READ at
+--      `sortMap s`.  ★ Free, because `≅ᵀ` is symmetric; no reduction is
+--      inverted, only a conversion.
+--   2. `jsub` along `symN` of the ford, through the motive
+--      `λ z. K (pair (sortMap z) n)`.
+--
+-- ★ ONE lemma for all 53 rows, computed and given alike — which is why
+--   it belongs beside the motive rather than in any method.
+------------------------------------------------------------------------
+
+sortConv : {Γ : Ctx} {fi s n t : RTm ⌊ Γ ⌋} {p : RTm ⌊ Γ ⌋} →
+           Γ ⊢ fi ∷ Nat → Γ ⊢ s ∷ Nat → Γ ⊢ n ∷ Nat →
+           Γ ⊢ p ∷ IdN fi s →
+           sortMap s ⟶* s →
+           Γ ⊢ t ∷ K (pair s n) →
+           Γ ⊢ jsub (⌜IMu⌝ KnotD IPair (pair (sortMap (var vz)) (w n)))
+                    (symN fi p) t
+             ∷ K (pair (sortMap fi) n)
+-- ⚠ ONE CAST: the motive carries `n` WEAKENED past its own binder, so
+--   instantiating it leaves `subTm (single fi) (w n)`.  `wk-single`
+--   cancels it — the same round trip `⊢wkK` and `⊢extSK` both pay.
+sortConv {fi = fi} {s = s} {n = n} dfi ds dn dp red dt =
+  ⊢-cast (cong (λ z → K (pair (sortMap fi) z)) (wk-single {v = fi} n))
+   (fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf
+                   (⊢ixP (⊢sortMap (elAsNat (⊢var here))) (⊢wk dn)))
+                (natAsEl ds) (natAsEl dfi)
+                (⊢symN dfi ds dp)
+                -- ⚠ AND THE SAME ROUND TRIP ON THE OTHER SIDE, at `s`
+                --   instead of `fi`: `⊢jsub`'s `e` premise instantiates
+                --   the motive too.
+                (toMu (muBwd* (⟶*-pairˡ red)
+                        (⊢-cast (cong (λ z → K (pair s z))
+                                      (sym (wk-single {v = s} n)))
+                                dt)))))
