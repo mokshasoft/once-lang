@@ -64,15 +64,21 @@
 module DirectedHoTT.Lib.ISub where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; RTm; Var; ICon; app; lam; pair; fst; snd; unit; nsuc; icon; var; vz; vs )
+  using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil
+        ; app; lam; pair; fst; snd; unit; nsuc; icon; var; vz; vs )
+open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 open import DirectedHoTT.Lib.IWk
-  using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf )
+  using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf
+        ; Maybe; just; nothing; decCon )
 
 module Sub
   -- ★ the ONE thing that differs from weakening: how a substitution is
   --   pushed under a binder.  Given the target depth `n` and the
   --   substitution `σ`, produce the pair one binder deeper.
-  (extN : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ)   -- n σ ↦ σ⁺
+  -- ⚠ IT TAKES THE SOURCE DEPTH TOO.  `extS` is an `ielim` at index
+  --   `pair sVar (nsuc d)`, so building `σ⁺` needs `d`, not just the
+  --   target `n` — the parameter cannot be `n σ ↦ σ⁺`.
+  (extN : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ)   -- d n σ ↦ σ⁺
   where
 
   -- `nsuc^k`
@@ -82,9 +88,9 @@ module Sub
 
   -- `ext^k`, threading the depth: the j-th extension is taken at the
   -- depth the j-1 previous ones produced.
-  extsN : {Γ : Cx} → ℕ → RTm Γ → RTm Γ → RTm Γ
-  extsN zero    n σ = σ
-  extsN (suc k) n σ = extN (sucsN k n) (extsN k n σ)
+  extsN : {Γ : Cx} → ℕ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  extsN zero    d n σ = σ
+  extsN (suc k) d n σ = extN (sucsN k d) (sucsN k n) (extsN k d n σ)
 
   ------------------------------------------------------------------------
   -- ONE FIELD.
@@ -96,10 +102,10 @@ module Sub
   ------------------------------------------------------------------------
 
   sPick : {Γ Δ : Cx} {a : Var Δ} {j : RTm Δ} →
-          WkIx a j → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  sPick (rides _ _ p) n σ q ih =
-    app (app ih (sucsN (depthOf p) n)) (extsN (depthOf p) n σ)
-  sPick (pinned _ _)  n σ q ih = q
+          WkIx a j → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  sPick (rides _ _ p) d n σ q ih =
+    app (app ih (sucsN (depthOf p) n)) (extsN (depthOf p) d n σ)
+  sPick (pinned _ _)  d n σ q ih = q
 
   ------------------------------------------------------------------------
   -- THE PAYLOAD, REBUILT.  ⚠ The two tuples are walked TOGETHER, as in
@@ -108,11 +114,11 @@ module Sub
   ------------------------------------------------------------------------
 
   isubPay : {Γ Δ : Cx} {a : Var Δ} {C : ICon Δ} →
-            WkCon a C → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  isubPay wk-ι           n σ q ih = unit
-  isubPay (wk-ρ ix w)    n σ q ih =
-    pair (sPick ix n σ (fst q) (fst ih)) (isubPay w n σ (snd q) (snd ih))
-  isubPay (wk-κ _ w)     n σ q ih = pair (fst q) (isubPay w n σ (snd q) ih)
+            WkCon a C → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  isubPay wk-ι           d n σ q ih = unit
+  isubPay (wk-ρ ix w)    d n σ q ih =
+    pair (sPick ix d n σ (fst q) (fst ih)) (isubPay w d n σ (snd q) (snd ih))
+  isubPay (wk-κ _ w)     d n σ q ih = pair (fst q) (isubPay w d n σ (snd q) ih)
 
   ------------------------------------------------------------------------
   -- ★★★ THE METHOD.
@@ -131,7 +137,57 @@ module Sub
                ℕ → WkCon a C → RTm Γ
   isubMethod k w =
     lam (lam (lam (lam (lam
-      (icon k (isubPay w (var (vs vz))          -- n
-                         (var vz)               -- σ
-                         (var (vs (vs (vs vz))))  -- the payload
-                         (var (vs (vs vz)))))))))  -- the IH tuple
+      (icon k (isubPay w (snd (var (vs (vs (vs (vs vz)))))) -- d = snd ⟨i⟩
+                         (var (vs vz))                     -- n
+                         (var vz)                          -- σ
+                         (var (vs (vs (vs vz))))           -- the payload
+                         (var (vs (vs vz)))))))))          -- the IH tuple
+
+  ------------------------------------------------------------------------
+  -- ★★★ THE MASK: PER ROW, COMPUTED **OR** GIVEN.
+  --
+  -- ⚠⚠ WHY NOT `Lib/IMeths`' PREFIX HATCH — MEASURED, see the header:
+  --   `subTm`'s three σ-applying rows sit at 11, 51 and 52 of 53, so the
+  --   exceptions are not a suffix and a prefix walk cannot express them.
+  --
+  -- ★ AND THE MASK IS NOT MERELY A LENGTH: a computed row carries its
+  --   CLASSIFICATION, exactly as `Lib/IWk`'s `wkd-cons` does.  That is
+  --   the difference between this and `Lib/IMeths`, and it is why the
+  --   mask lives here rather than there.
+  ------------------------------------------------------------------------
+
+  data SubDesc : IDesc → Set where
+    sd-nil  : SubDesc inil
+    sd-comp : {C : ICon (ε ∙)} {E : IDesc} →
+              WkCon vz C → SubDesc E → SubDesc (C ◂ E)
+    sd-give : {C : ICon (ε ∙)} {E : IDesc} → SubDesc E → SubDesc (C ◂ E)
+
+  -- ★ THE MASK IS COMPUTED, from a predicate naming the LOOKUP rows.
+  --
+  -- ⚠ AND IT IS TOTAL IN BOTH DIRECTIONS.  A row the caller does not
+  --   flag is still only computed if `Lib/IWk`'s decider classifies it;
+  --   otherwise it falls back to GIVEN.  So an unclassifiable row can
+  --   never block the walk — it just lands in the caller's lap, which is
+  --   the same contract `decDesc` has.
+  decSub : (give? : ℕ → 𝔹) → ℕ → (E : IDesc) → SubDesc E
+  decSub give? j inil    = sd-nil
+  decSub give? j (C ◂ E) with give? j
+  ... | true  = sd-give (decSub give? (suc j) E)
+  ... | false with decCon vz C
+  ...   | just w  = sd-comp w (decSub give? (suc j) E)
+  ...   | nothing = sd-give (decSub give? (suc j) E)
+
+  ------------------------------------------------------------------------
+  -- THE TUPLE.  ⚠ Right-nested, like every other method tuple here.
+  ------------------------------------------------------------------------
+
+  isubMeths : {Γ : Cx} → ((k : ℕ) → RTm Γ) → ℕ → {E : IDesc} → SubDesc E → RTm Γ
+  isubMeths give j sd-nil        = unit
+  isubMeths give j (sd-comp w W) = pair (isubMethod j w) (isubMeths give (suc j) W)
+  isubMeths give j (sd-give W)   = pair (give j)         (isubMeths give (suc j) W)
+
+  -- how many rows the caller must supply, and where they are
+  sdGiven : {E : IDesc} → SubDesc E → ℕ
+  sdGiven sd-nil        = zero
+  sdGiven (sd-comp _ W) = sdGiven W
+  sdGiven (sd-give W)   = suc (sdGiven W)

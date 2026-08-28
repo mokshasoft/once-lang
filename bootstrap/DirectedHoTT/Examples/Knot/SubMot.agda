@@ -64,6 +64,9 @@ open import DirectedHoTT.Spec.Typing
         ; IDescWfFrom; idwf-nil; idwf-cons )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; cdTake )
+open import DirectedHoTT.Lib.IFold using ( eqℕ )
+open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
+import DirectedHoTT.Lib.ISub as IS
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-natrecⁿ )
@@ -576,3 +579,43 @@ subMotK =
           (ty-IMu KnotWf
              (⊢ixP (⊢sortMap (⊢fst (⊢var (there (there (there here))))))
                    (⊢var (there here)))))
+
+------------------------------------------------------------------------
+-- ★★★ `subTm`'s METHOD TUPLE — 50 COMPUTED, 3 GIVEN.
+--
+-- ⚠ `extN` TAKES THE SOURCE DEPTH.  `extS` is an `ielim` at index
+--   `pair sVar (nsuc d)`, so pushing `σ` under a binder needs `d` as
+--   well as the target `n`.  Everything is weakened by one inside the
+--   `lam`, which is the whole content of the definition.
+------------------------------------------------------------------------
+
+extNK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+extNK d n σ =
+  lam (app (app (extSK (pair sVar (nsuc (w d))) (var vz)) (w n)) (w σ))
+
+open IS.Sub extNK
+
+-- ★ the three rows that APPLY `σ` rather than rebuilding: `cTm-var` and
+--   the two `cVar-*`.  ⚠ Their positions are DATA about the generated
+--   table, so they are asserted below rather than trusted.
+-- ⚠ NOT literal PATTERNS: Agda expands them to `suc (suc …)` and
+--   refuses at this size (`LiteralTooBig`).  `eqℕ` compares instead.
+orB : 𝔹 → 𝔹 → 𝔹
+orB true  _ = true
+orB false b = b
+
+isLookup : ℕ → 𝔹
+isLookup k = orB (eqℕ k 11) (orB (eqℕ k 51) (eqℕ k 52))
+
+------------------------------------------------------------------------
+-- ★★★ AND THE MASK HITS EXACTLY THREE ROWS — CHECKED.
+--
+-- ⚠⚠ THIS CONTROL IS STRONGER THAN IT LOOKS.  `decSub` falls back to
+--   GIVEN for any row `Lib/IWk`'s decider cannot classify, so a count of
+--   3 says BOTH that the three lookups are where `isLookup` claims AND
+--   that the other FIFTY all classify.  A silent misclassification would
+--   show up here as 4 or more.
+------------------------------------------------------------------------
+
+_ : sdGiven (decSub isLookup 0 KnotD) ≡ 3
+_ = refl
