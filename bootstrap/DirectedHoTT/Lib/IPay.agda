@@ -105,3 +105,43 @@ imethsTyFromNat-wf D I j inil    wD idwf-nil        tI = ty-Unit
 imethsTyFromNat-wf D I j (C ◂ E) wD (idwf-cons wC wE) tI =
   ty-Σ (imethTyNat-wf D I j C wD wC tI)
        (ren-ty (imethsTyFromNat-wf D I (suc j) E wD wE tI) there)
+
+------------------------------------------------------------------------
+-- ⬜ `iatCon-wf` — SPIKED 2026-08-28, 2 of its 3 cases proved.
+--
+-- ★ WHY IT MATTERS: it is the ONE thing keeping `imethTyNat-wf` above
+--   stuck at `Nat`.  `imethTy`'s codomain is `iatCon k ⟨-⟩ M`, and
+--   nobody has shown that is a TYPE at an abstract `M`; all four
+--   customers of the method-tuple shape dodge it differently
+--   (`Lib/IFold`: M = Nat.  `Lib/IWk`: its own `…Mot-wf`.
+--   `Knot/SubMot`: a motive written to IGNORE the scrutinee so `iatCon`
+--   computes).  Generalising this module is gated on it.
+--
+-- ★★ AND THE APPROACH IS SOUND — the statement TYPE-CHECKS:
+--
+--     iconS-Sub⊢ : IDescWf I D → k ∈ID D → Γ ⊢ i ∷ εwkTy I →
+--                  Sub⊢ ((Γ ▹ εwkTy I) ▹ IMu D I (var vz))
+--                       (Γ ▹ ipayTy D I (isingle i) (ilookupD D k))
+--                       (iconS k i)
+--
+--   ⚠ `iinst-wf` is the precedent but does NOT generalise to it:
+--     `iinst` substitutes a GIVEN term into the scrutinee slot, so its
+--     `Sub⊢` is `⊢single`.  `iconS` BUILDS one — `icon k (var vz)` —
+--     from the payload binder, so the payload must be in the TARGET
+--     context and `⊢single` cannot serve.
+--
+-- ✅ CASE 1, the scrutinee slot: `⊢icon` with the index weakened
+--    (`εwk-ren`) and the payload retyped (`ipayTy-ren` + `ipayTy-cong`)
+--    — the same pair `Lib/IFold.⊢ifMethod` uses.
+-- ✅ CASE 2, the index slot: `εwkTy I` is CLOSED so all three actions
+--    fix it, ⚠ but only PROPOSITIONALLY — `εwkTy` is a defined function,
+--    so none of the steps computes and the chain is
+--    `εwk-ren`/`εwk-ren`/`εwk-sub` explicitly.
+-- ⬜ CASE 3, everything else: needs
+--    `subTy (iconS k i) (renTy vs (renTy vs A)) ≡ renTy vs A`.
+--    Two `subTy-renTy` steps compose the renamings, then `subTy-cong`
+--    identifies `(iconS k i ₛ∘ᵣ vs) ₛ∘ᵣ vs` with `λ x → var (vs x)`;
+--    what is missing is the last hop, "substituting by a renaming IS
+--    renaming".  ⇒ look for that lemma before writing one.
+------------------------------------------------------------------------
+
