@@ -53,15 +53,19 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; pair; snd; Nat; Π; IMu
-        ; ICon; IDesc; _◂_; inil; nsuc; unit; renTm; renTy; εwkTy; app; fst; jsub; ⌜IMu⌝; ielim; Σ'; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong )
+        ; ICon; IDesc; _◂_; inil; nsuc; nzero; unit; natrec; renTm; renTy; εwkTy
+        ; app; fst; jsub; ⌜IMu⌝; ielim; Σ'; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
-        ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; wk-single; ty-Nat; ty-Π; ty-IMu; ty-Unit
+        ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; ⊢nzero; ⊢natrec; wk-single; ty-Nat; ty-Π; ty-IMu; ty-Unit
         ; IConWf; imethTy; imethsTyFrom; ty-Σ; βsnd; βfst; ξ-pairʳ; ξ-pairˡ; ξ-nsuc; single
+        ; _⟶*_; done; step; natrec-suc; natrec-zero
         ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢ielim; imethsTy
         ; IDescWfFrom; idwf-nil; idwf-cons )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w )
-open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred )
+open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
+open import DirectedHoTT.Lib.ArithMonus using ( pred* )
+open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-natrecⁿ )
 open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN )
 open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
@@ -78,7 +82,7 @@ open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
 open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf; cVar-vsWf )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; ⊢IPair; sTy; sTm; sVar; ⊢sTm; ⊢sVar; ⊢ixP )
+  using ( IPair; ⊢IPair; sTy; sTm; sICon; sVar; ⊢sTm; ⊢sVar; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 
@@ -482,3 +486,113 @@ extSK i k = ielim KnotD i extMethsK k
                                (K (pair sTm (nsuc (var (vs vz)))))))
                (trans (sub-w {σ = single k} (w i)) (cong w (wk-single {v = k} i))))
          (⊢ielim KnotWf ⊢extMotK di ⊢extMethsK dk)
+
+------------------------------------------------------------------------
+-- ⬜ TOWARD `subTm` — AND THE SORT MAP ITS MOTIVE NEEDS.
+--
+-- ⚠⚠ THE OBVIOUS MOTIVE IS UNWRITABLE.  Substitution must send a `Ty`
+--   to a `Ty` and a `Tm` to a `Tm`, so
+--
+--       ∀n. (Var (snd ⟨i⟩) → Tm n) → K (pair (fst ⟨i⟩) n)
+--
+--   looks right and is uniform — but at sort `sVar` it demands a
+--   `Var n` at a GENERIC `n`, and `Var 0` is EMPTY.  Those two methods
+--   could not be written at all.  ⇒ and that is not an encoding
+--   accident: substitution genuinely maps a VARIABLE to a TERM.
+--
+-- ★★★ SO THE SORT MOVES: `sVar ↦ sTm`, everything else fixed.  ⚠ AND IT
+--   IS NOT A CASE AT THE TYPE LEVEL — only the INDEX is computed, so the
+--   motive stays a plain `K (pair … n)`:
+--
+--       sortMap s = natrec s sTm (pred⁵ s)
+--
+--   `pred⁵ s` is `0` for every sort but `sVar` (which is 6), so the
+--   `natrec` returns `s` on the nose everywhere else and `sTm` there.
+--   ⚠ `pred⁵`, NOT `s ∸ 5`: they compute the same thing here, but
+--   `pred-suc`/`pred-zero` chain directly while `monus` costs a
+--   `monus-suc` per step FIRST and then the same `pred`s.
+--
+-- ⚠ IT DOES NOT COMPUTE DEFINITIONALLY.  The object-level `natrec`
+--   steps by `⟶`, not by Agda's equality, so every row pays ONE
+--   CONVERSION to reduce `sortMap <its sort>` — about six steps, and
+--   uniform.  That is the price of not having a type-level case.
+------------------------------------------------------------------------
+
+p5 : {Γ : Cx} → RTm Γ → RTm Γ
+p5 s = predTm (predTm (predTm (predTm (predTm s))))
+
+⊢p5 : {Γ : Ctx} {s : RTm ⌊ Γ ⌋} → Γ ⊢ s ∷ Nat → Γ ⊢ p5 s ∷ Nat
+⊢p5 ds = ⊢pred (⊢pred (⊢pred (⊢pred (⊢pred ds))))
+
+sortMap : {Γ : Cx} → RTm Γ → RTm Γ
+sortMap s = natrec s sTm (p5 s)
+
+⊢sortMap : {Γ : Ctx} {s : RTm ⌊ Γ ⌋} → Γ ⊢ s ∷ Nat → Γ ⊢ sortMap s ∷ Nat
+⊢sortMap ds = ⊢natrec ty-Nat ds ⊢sTm (⊢p5 ds)
+
+------------------------------------------------------------------------
+-- ★★★ AND IT REDUCES AS CLAIMED — CHECKED, NOT ASSERTED.
+--
+-- ⚠ The whole design rests on `sortMap` moving EXACTLY ONE sort.  Three
+--   controls: the sort below the boundary, the boundary itself, and the
+--   one that moves.
+------------------------------------------------------------------------
+
+p5* : {Γ : Cx} {t t' : RTm Γ} → t ⟶* t' → p5 t ⟶* p5 t'
+p5* r = pred* (pred* (pred* (pred* (pred* r))))
+
+sortMap-var : {Γ : Cx} → sortMap {Γ} sVar ⟶* sTm
+sortMap-var =
+  ⟶*-trans (⟶*-natrecⁿ (⟶*-trans (pred* (pred* (pred* (pred* (pred-suc _)))))
+                       (⟶*-trans (pred* (pred* (pred* (pred-suc _))))
+                       (⟶*-trans (pred* (pred* (pred-suc _)))
+                       (⟶*-trans (pred* (pred-suc _)) (pred-suc _))))))
+           (step (natrec-suc _ _ _) done)
+
+sortMap-icon : {Γ : Cx} → sortMap {Γ} sICon ⟶* sICon
+sortMap-icon =
+  ⟶*-trans (⟶*-natrecⁿ (⟶*-trans (pred* (pred* (pred* (pred* (pred-suc _)))))
+                       (⟶*-trans (pred* (pred* (pred* (pred-suc _))))
+                       (⟶*-trans (pred* (pred* (pred-suc _)))
+                       (⟶*-trans (pred* (pred-suc _)) (pred-suc _))))))
+           (step (natrec-zero _ _) done)
+
+sortMap-ty : {Γ : Cx} → sortMap {Γ} sTy ⟶* sTy
+sortMap-ty =
+  ⟶*-trans (⟶*-natrecⁿ (⟶*-trans (pred* (pred* (pred* (pred* pred-zero))))
+                       (⟶*-trans (pred* (pred* (pred* pred-zero)))
+                       (⟶*-trans (pred* (pred* pred-zero))
+                       (⟶*-trans (pred* pred-zero) pred-zero)))))
+           (step (natrec-zero _ _) done)
+
+------------------------------------------------------------------------
+-- ★★★ AND THEREFORE `subTm`'s MOTIVE.
+--
+--     M(i, t) = ∀n. (Var (snd ⟨i⟩) → Tm n) → K (pair (sortMap (fst ⟨i⟩)) n)
+--
+-- ⚠ THE SORT IS A COMPUTED INDEX, NOT A TYPE-LEVEL CASE.  `K (pair … n)`
+--   is one type former applied to one term; only that term discriminates.
+--   ⇒ nothing here needs a `natrec` over CODES, which is what a genuinely
+--   sort-dependent motive would have cost.
+--
+-- ⚠⚠ AND UNLIKE `extMotK` THERE ARE NO NO-OP ROWS.  Every one of the 53
+--   rebuilds its own constructor with substituted children, so this is
+--   generator work — `tools/gen-knot.py` already holds the field list
+--   each method needs.
+------------------------------------------------------------------------
+
+subMotK : {Γ : Cx} → RTy ((Γ ∙) ∙)
+subMotK =
+  Π Nat (Π (Π (IMu KnotD IPair (pair sVar (snd (var (vs (vs vz))))))
+              (IMu KnotD IPair (pair sTm (var (vs vz)))))
+           (IMu KnotD IPair (pair (sortMap (fst (var (vs (vs (vs vz)))))) (var (vs vz)))))
+
+⊢subMotK : {Γ : Ctx} →
+           ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty subMotK
+⊢subMotK =
+  ty-Π ty-Nat
+    (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (there (there here))))))
+                (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+          (ty-IMu KnotWf
+             (⊢ixP (⊢sortMap (⊢fst (⊢var (there (there (there here))))))
+                   (⊢var (there here)))))
