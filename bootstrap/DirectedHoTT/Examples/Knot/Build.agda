@@ -316,3 +316,34 @@ Var-vsK m x = icon tagVar-vs
                    ty-Unit)
              (fordFst ⊢sVar)
         (⊢pair ty-Unit (fordSnd (⊢nsuc dx)) ⊢unit)))
+
+-- …and `Var-vsK` likewise.  ⚠ Same story: the numeral form serves the
+--   adequacy map, this one serves a constructor telescope.
+⊢Var-vsKv : {Δ : Ctx} {y : Var ⌊ Δ ⌋} {x : RTm ⌊ Δ ⌋} →
+            Δ ⊢ var y ∷ Nat → Δ ⊢ x ∷ K (pair sVar (var y)) →
+            Δ ⊢ Var-vsK (var y) x ∷ K (pair sVar (nsuc (var y)))
+⊢Var-vsKv {y = y} {x = x} dy dx =
+  ⊢icon KnotWf memVar-vs (⊢ixP ⊢sVar (⊢nsuc dy))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var here))))
+             (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                            (toI (⊢fst (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk dy))))))
+                            (toI ⊢sVar)))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk (⊢wk dy)))))))
+                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                     ty-Unit)))
+           (toI dy)
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                            (toI (⊢fst (⊢ixP ⊢sVar (⊢nsuc (⊢wk dy)))))
+                            (toI ⊢sVar)))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk dy))))))
+                              (toI (⊢nsuc (⊢wk (⊢wk dy))))))
+                     ty-Unit))
+             dx
+        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk dy)))))
+                              (toI (⊢nsuc (⊢wk dy)))))
+                     ty-Unit)
+               (fordFst ⊢sVar)
+          (⊢pair ty-Unit (fordSnd (⊢nsuc dy)) ⊢unit))))
