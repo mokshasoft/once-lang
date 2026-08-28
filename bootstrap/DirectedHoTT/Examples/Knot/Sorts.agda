@@ -141,24 +141,13 @@ fromI d = ⊢conv d (credᵀ El-⌜Nat⌝)
 --   constructor takes it explicitly for this reason.
 ------------------------------------------------------------------------
 
-num : {Γ : Cx} → ℕ → RTm Γ
-num zero    = nzero
-num (suc n) = nsuc (num n)
-
-⊢num : {Δ : Ctx} (n : ℕ) → Δ ⊢ num n ∷ Nat
-⊢num zero    = ⊢nzero
-⊢num (suc n) = ⊢nsuc (⊢num n)
-
--- ★ a numeral is FIXED by every renaming and every substitution.  Two
---   inductions, two lines each, and they absorb an ARBITRARY action —
---   which is what keeps the chains below from growing with position.
-num-ren : {Γ Δ : Cx} (ρ : Ren Γ Δ) (n : ℕ) → renTm ρ (num n) ≡ num n
-num-ren ρ zero    = refl
-num-ren ρ (suc n) = cong nsuc (num-ren ρ n)
-
-num-sub : {Γ Δ : Cx} (σ : Sub Γ Δ) (n : ℕ) → subTm σ (num n) ≡ num n
-num-sub σ zero    = refl
-num-sub σ (suc n) = cong nsuc (num-sub σ n)
+-- ⚠ `num` AND ITS THREE LEMMAS NOW LIVE IN `Lib/NatNum`, RE-EXPORTED
+--   HERE.  They moved down so that `plus-num` — `plusTm` on two
+--   numerals reduces to a numeral — could sit next to `plusTm` instead
+--   of above it.  Still exactly one `num`; every existing importer of
+--   `Sorts` is unaffected.
+open import DirectedHoTT.Lib.NatNum public
+  using ( num; ⊢num; num-ren; num-sub )
 
 -- the object-level depth of an Agda context
 len : Cx → ℕ
