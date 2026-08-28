@@ -63,6 +63,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢ielim; imethsTy
         ; IDescWfFrom; idwf-nil; idwf-cons )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w )
+open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; cdTake )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-natrecⁿ )
@@ -243,17 +244,9 @@ imethsTyFromK-wf j (C ◂ E) (idwf-cons wC wE) =
 --   being indexed by the description it walks.
 ------------------------------------------------------------------------
 
-data CDesc : IDesc → Set where
-  cd-stop : (E : IDesc) → CDesc E
-  cd-cons : {C : ICon (ε ∙)} {E : IDesc} → CDesc E → CDesc (C ◂ E)
-
-cdRest : {E : IDesc} → CDesc E → IDesc
-cdRest (cd-stop E) = E
-cdRest (cd-cons W)  = cdRest W
-
-cdPos : {E : IDesc} → CDesc E → ℕ → ℕ
-cdPos (cd-stop E) j = j
-cdPos (cd-cons W)  j = cdPos W (suc j)
+-- ⚠ `CDesc` AND ITS OPERATIONS MOVED TO `Lib/IMeths` — nothing in them
+--   mentions the knot, a motive or a sort.  A library wanting to import
+--   an example is the signal that the example held something general.
 
 constMethsFrom : {Γ : Cx} {E : IDesc} → CDesc E → RTm Γ → RTm Γ
 constMethsFrom (cd-stop E) t = t
@@ -275,19 +268,6 @@ constMethsFrom (cd-cons W)  t = pair constMeth (constMethsFrom W t)
 ------------------------------------------------------------------------
 -- ★ TAKING THE FIRST `n` ROWS — total, and it stops early if the
 --   description runs out.
-------------------------------------------------------------------------
-
-cdTake : ℕ → (E : IDesc) → CDesc E
-cdTake zero    E        = cd-stop E
-cdTake (suc n) inil     = cd-stop inil
-cdTake (suc n) (C ◂ E)  = cd-cons (cdTake n E)
-
-------------------------------------------------------------------------
--- ★★★ AND THE SPLIT IS WHERE IT SHOULD BE — CHECKED, NOT ASSUMED.
---
--- ⚠ The same control `Examples/Knot/WkProbe` runs for `Lib/IWk`
---   (`wkdLen (decDesc KnotD) ≡ 51`).  Without it, "51 computed + 2
---   given" is an assertion about a 53-row generated table.
 ------------------------------------------------------------------------
 
 _ : cdPos (cdTake 51 KnotD) 0 ≡ 51
