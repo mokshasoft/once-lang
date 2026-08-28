@@ -6,7 +6,7 @@
 --   be well-formed and have NO CLOSED INHABITANT at any index —
 --   `Examples/Vec.no-cons-at-zero` is that hazard proved on purpose, and
 --   `Examples/PairIx` §3 exists for the same reason.  `KnotWf` says the
---   WF judgement accepts 55 rows; it does not say anything lives at one.
+--   WF judgement accepts 53 rows; it does not say anything lives at one.
 --
 -- ★ WHAT IS BUILT, chosen to cover every encoding decision the generator
 --   makes and not one row more:
@@ -100,8 +100,12 @@ tyFordFst dt dd =
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- 1. `Nat`, sort 0 — the FORD-ONLY shape.  32 of the 55 rows look
+-- 1. `Nat`, sort 0 — the FORD-ONLY shape.  ⚠ 13 of the 53 rows look
 --    exactly like this modulo their tag, so one witness settles them.
+--    (COUNTED 2026-08-28, not estimated: the rows whose every field is a
+--    ford are `cTy-base`, `cTy-U`, `cTy-Unit`, `cTy-Nat`, `cTm-cbase`,
+--    `cTm-unit`, `cTm-nzero`, `cTm-cNat`, `cTm-cUnit`, `cDesc-nil`,
+--    `cDCon-i`, `cIDesc-nil`, `cICon-i`.)
 ------------------------------------------------------------------------
 
 kNat : {Γ : Cx} → RTm Γ
