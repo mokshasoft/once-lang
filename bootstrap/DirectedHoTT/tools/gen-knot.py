@@ -1007,6 +1007,91 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
     return (name, binders, prems, lhs, rhs, foreign)
 
 
+# ============================ SORT INFERENCE ==============================
+# ★★★ THE MUTUAL PAIR BINDS `∀ {Γ A B t}` — NO TYPES AT ALL.
+#
+# Every judgement so far said what its binders were (`{t t' : RTm Γ}`).
+# `_⊢_∷_` and `_⊢ty_` do not, so the sort has to be inferred from USE:
+#   · `Γ ⊢ty A`      ⇒ Γ a context, A a TYPE
+#   · `Γ ⊢ t ∷ A`    ⇒ t a TERM, A a TYPE
+#   · `Γ ∋ x ∷ A`    ⇒ x a VARIABLE
+#   · an argument of a knot constructor ⇒ THAT FIELD's sort, from `KNOT`
+#
+# ⚠⚠ AND IT IS CHECKED, NOT TRUSTED.  A binder must get ONE sort from all
+#   its occurrences; a conflict or an unassigned binder is a REFUSAL.  A
+#   wrong sort produces a row that type-checks and means something else —
+#   which `{D : Desc}` already did once in this layer.
+#
+# ⚠ AN UNKNOWN HEAD CARRIES NO INFORMATION.  The first version propagated
+#   the ambient sort into unknown applications, so `subTy (single u) B`
+#   typed `u` as a TYPE and seven rules "conflicted".  Measured 36/43;
+#   with unknown heads contributing nothing it is 42/43, and the one
+#   refusal (`⊢ielim`'s motive `M`) is real.
+
+def _rule_lines(path, dataname):
+    "…for a judgement written as `data X where`, not `data X : … where`"
+    src = open(path, encoding="utf-8").read().split("\n")
+    i = next(k for k, l in enumerate(src) if l.startswith("data " + dataname + " where"))
+    out, j, cur = [], i + 1, None
+    while j < len(src):
+        l = src[j]
+        if l and not l[0].isspace(): break
+        if re.match(r"^  [^ \-]", l):
+            if cur: out.append(cur)
+            cur = l.strip()
+        elif cur is not None and l.startswith("    ") and not l.strip().startswith("--"):
+            cur += " " + l.strip()
+        j += 1
+    if cur: out.append(cur)
+    return [r for r in out if ":" in r]
+
+def infer_sorts(rule, CT, FSORT):
+    "(name, {binder: sort}) or (name, None, why) — see the note above"
+    name, ty = rule.split(":", 1)
+    m = re.match(r"\s*∀\s*\{([^}]*)\}\s*→(.*)", ty, re.S)
+    if not m: return (name.strip(), None, "no ∀-telescope")
+    names, body = m.group(1).split(), m.group(2)
+    sorts, conflict = {}, []
+    def put(v, srt):
+        v = v.strip()
+        if v not in names or srt is None: return
+        if v in sorts and sorts[v] != srt: conflict.append((v, sorts[v], srt))
+        else: sorts[v] = srt
+    def scan(e, srt):
+        if e[0] == "a": put(e[1], srt); return
+        h = e[1][0]
+        if h[0] == "a" and h[1] in CT:
+            fs = FSORT[CT[h[1]]]
+            for i, x in enumerate(e[1][1:]):
+                scan(x, fs[i] if i < len(fs) else None)
+        else:
+            for x in e[1][1:]: scan(x, None)
+    for part in _split_top(body):
+        p = part.strip()
+        mm = re.match(r"^\(?\s*([^()⊢∋]+?)\s*(?:▹\s*([^()]+?))?\s*\)?\s*⊢ty\s+(.*)$", p)
+        if mm:
+            put(mm.group(1), "ctx")
+            if mm.group(2): put(mm.group(2), "sTy")
+            scan(_parse_spine(_tokens(mm.group(3))), "sTy"); continue
+        mm = re.match(r"^\(?\s*([^()⊢∋]+?)\s*(?:▹\s*([^()]+?))?\s*\)?\s*⊢\s+(.*?)\s*∷\s*(.*)$", p)
+        if mm:
+            put(mm.group(1), "ctx")
+            if mm.group(2): put(mm.group(2), "sTy")
+            scan(_parse_spine(_tokens(mm.group(3))), "sTm")
+            scan(_parse_spine(_tokens(mm.group(4))), "sTy"); continue
+        mm = re.match(r"^\(?\s*([^()⊢∋]+?)\s*\)?\s*∋\s+(.*?)\s*∷\s*(.*)$", p)
+        if mm:
+            put(mm.group(1), "ctx"); put(mm.group(2), "sVar")
+            scan(_parse_spine(_tokens(mm.group(3))), "sTy"); continue
+    if conflict: return (name.strip(), None, "conflicting sorts %s" % conflict)
+    miss = [n for n in names if n not in sorts]
+    if miss: return (name.strip(), None, "unassigned %s" % miss)
+    return (name.strip(), sorts, None)
+
+FIELD_SORT = {("%sK" % n[1:]): [(f[1] if f[0] == "rec" else "nat")
+                                for f in fs if f[0] in ("rec", "nat")]
+              for n, _, fs in KNOT}
+
 # ============================ A JUDGEMENT, END TO END ======================
 # ★★★ ONE FUNCTION PER JUDGEMENT WOULD BE FIVE COPIES.  The judgements
 #   differ in four things — the datatype's name, its relation symbol, its
