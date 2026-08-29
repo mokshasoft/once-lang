@@ -139,6 +139,45 @@ typechecking.
 ⚠ A judgement is ONE description, so none of these lands partially.
 `subTm` is done, so the chain is unblocked; `_⟶_` sits at the bottom.
 
+### 2.0 — what stopped the first row before it was written
+
+A `_⟶_` row's index is `(m, source, target)`, and the source is built from
+the syntax's smart constructors — `β`'s is `Tm-appK m (Tm-lamK m t) s`. So
+the very first row needs `⊢Tm-appK` **at the row's own bound depth**.
+
+⚠ **And every typed smart constructor in `Knot/Ctors` takes `(n : ℕ)` —
+an Agda numeral.** Only five variable-depth twins existed
+(`⊢Ctx-extKv`, `⊢Var-vzKv`, `⊢Var-vsKv`, and two in `SubMot`).
+`PLAN-JUDGEMENT` flagged this and it was still open.
+
 | # | Attempt | Result |
 |---|---------|--------|
-| | | |
+| 0 | *(not attempted)* hand-write 51 `v` twins | ⚠ this is the shape the previous log warns about: 51 lemmas is not an obstacle, it is a missing abstraction |
+| 1 | teach `emit_row` a **depth mode** and generate them | ✅ `Knot/CtorsV`, 51 lemmas, **rc=0** |
+
+★★ **AND THE TWO FORMS ARE NOT THE SAME LEMMA — the difference is what a
+depth *does* under a binder.**
+
+* `num n` is renaming-**invariant**, so every position under a binder has
+  to be *recognised* as still being `num n`. That is what `Knot/Ctors`'
+  `num-ren`/`num-sub` chains do, one per field position.
+* `var x` is renaming-**covariant**: it simply *moves*, and moving is what
+  `⊢wk` already does. A substitution `single a` applied to `var (vs x)`
+  **computes** back to `var x`.
+
+⇒ **every chain the numeral form pays for collapses.** Measured, not
+claimed: `Ctors` carries **39** `where` blocks of equations; `CtorsV`
+carries **2** (both from a `lit` depth, which stays a numeral in either
+mode). The variable form is the *shorter* derivation.
+
+⚠ **On cost, only the structural count is a measurement.** `CtorsV`
+checks in 3s in the sweep, but `Ctors`' 15–21s is a previously recorded
+*cold* figure and was not re-timed here — so that comparison is
+indicative, not head-to-head. The 39-vs-2 `where` count is the claim that
+is actually measured.
+
+★ **The control on the refactor is that the numeral output did not
+move.** `emit_row` gained one flag; regenerating produced a
+byte-identical `Ctors.agda` apart from one double-space. A refactor of a
+generator that emits both forms cannot be trusted otherwise — and this
+is the same reason `LookupGen` exists.

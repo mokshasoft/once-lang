@@ -56,7 +56,7 @@ Ty-baseK  = icon tagTy-base (pair (idrefl ⌜Nat⌝ sTy) unit)
 
 ⊢Ty-baseK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ Ty-baseK  ∷ K (pair sTy (num n))
-⊢Ty-baseK n  =
+⊢Ty-baseK n =
   ⊢icon KnotWf memTy-base (⊢ixP ⊢sTy (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTy)
@@ -68,7 +68,7 @@ Ty-UK  = icon tagTy-U (pair (idrefl ⌜Nat⌝ sTy) unit)
 
 ⊢Ty-UK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ Ty-UK  ∷ K (pair sTy (num n))
-⊢Ty-UK n  =
+⊢Ty-UK n =
   ⊢icon KnotWf memTy-U (⊢ixP ⊢sTy (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTy)
@@ -190,7 +190,7 @@ Ty-UnitK  = icon tagTy-Unit (pair (idrefl ⌜Nat⌝ sTy) unit)
 
 ⊢Ty-UnitK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ Ty-UnitK  ∷ K (pair sTy (num n))
-⊢Ty-UnitK n  =
+⊢Ty-UnitK n =
   ⊢icon KnotWf memTy-Unit (⊢ixP ⊢sTy (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTy)
@@ -202,7 +202,7 @@ Ty-NatK  = icon tagTy-Nat (pair (idrefl ⌜Nat⌝ sTy) unit)
 
 ⊢Ty-NatK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ Ty-NatK  ∷ K (pair sTy (num n))
-⊢Ty-NatK n  =
+⊢Ty-NatK n =
   ⊢icon KnotWf memTy-Nat (⊢ixP ⊢sTy (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTy)
@@ -523,7 +523,7 @@ Tm-cbaseK  = icon tagTm-cbase (pair (idrefl ⌜Nat⌝ sTm) unit)
 
 ⊢Tm-cbaseK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ Tm-cbaseK  ∷ K (pair sTm (num n))
-⊢Tm-cbaseK n  =
+⊢Tm-cbaseK n =
   ⊢icon KnotWf memTm-cbase (⊢ixP ⊢sTm (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTm)
@@ -833,7 +833,7 @@ Tm-unitK  = icon tagTm-unit (pair (idrefl ⌜Nat⌝ sTm) unit)
 
 ⊢Tm-unitK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ Tm-unitK  ∷ K (pair sTm (num n))
-⊢Tm-unitK n  =
+⊢Tm-unitK n =
   ⊢icon KnotWf memTm-unit (⊢ixP ⊢sTm (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTm)
@@ -845,7 +845,7 @@ Tm-nzeroK  = icon tagTm-nzero (pair (idrefl ⌜Nat⌝ sTm) unit)
 
 ⊢Tm-nzeroK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ Tm-nzeroK  ∷ K (pair sTm (num n))
-⊢Tm-nzeroK n  =
+⊢Tm-nzeroK n =
   ⊢icon KnotWf memTm-nzero (⊢ixP ⊢sTm (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTm)
@@ -1056,7 +1056,7 @@ Tm-cNatK  = icon tagTm-cNat (pair (idrefl ⌜Nat⌝ sTm) unit)
 
 ⊢Tm-cNatK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ Tm-cNatK  ∷ K (pair sTm (num n))
-⊢Tm-cNatK n  =
+⊢Tm-cNatK n =
   ⊢icon KnotWf memTm-cNat (⊢ixP ⊢sTm (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTm)
@@ -1120,7 +1120,7 @@ Tm-cUnitK  = icon tagTm-cUnit (pair (idrefl ⌜Nat⌝ sTm) unit)
 
 ⊢Tm-cUnitK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ Tm-cUnitK  ∷ K (pair sTm (num n))
-⊢Tm-cUnitK n  =
+⊢Tm-cUnitK n =
   ⊢icon KnotWf memTm-cUnit (⊢ixP ⊢sTm (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTm)
@@ -1132,7 +1132,7 @@ Desc-nilK  = icon tagDesc-nil (pair (idrefl ⌜Nat⌝ sDesc) unit)
 
 ⊢Desc-nilK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ Desc-nilK  ∷ K (pair sDesc (num n))
-⊢Desc-nilK n  =
+⊢Desc-nilK n =
   ⊢icon KnotWf memDesc-nil (⊢ixP ⊢sDesc (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sDesc)
@@ -1171,7 +1171,7 @@ DCon-iK  = icon tagDCon-i (pair (idrefl ⌜Nat⌝ sDCon) unit)
 
 ⊢DCon-iK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ DCon-iK  ∷ K (pair sDCon (num n))
-⊢DCon-iK n  =
+⊢DCon-iK n =
   ⊢icon KnotWf memDCon-i (⊢ixP ⊢sDCon (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sDCon)
@@ -1228,7 +1228,7 @@ IDesc-nilK  = icon tagIDesc-nil (pair (idrefl ⌜Nat⌝ sIDesc) unit)
 
 ⊢IDesc-nilK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ IDesc-nilK  ∷ K (pair sIDesc (num n))
-⊢IDesc-nilK n  =
+⊢IDesc-nilK n =
   ⊢icon KnotWf memIDesc-nil (⊢ixP ⊢sIDesc (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sIDesc)
@@ -1267,7 +1267,7 @@ ICon-iK  = icon tagICon-i (pair (idrefl ⌜Nat⌝ sICon) unit)
 
 ⊢ICon-iK : {Δ : Ctx} (n : ℕ) →
         Δ ⊢ ICon-iK  ∷ K (pair sICon (num n))
-⊢ICon-iK n  =
+⊢ICon-iK n =
   ⊢icon KnotWf memICon-i (⊢ixP ⊢sICon (⊢num n))
     (⊢pair (ty-Unit)
            (fordFst ⊢sICon)
