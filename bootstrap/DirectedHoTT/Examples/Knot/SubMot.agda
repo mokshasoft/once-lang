@@ -84,7 +84,7 @@ open import DirectedHoTT.Examples.Knot.Tags
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nzeroK; Tm-varK )
 open import DirectedHoTT.Examples.Knot.Terms using ( fordFst; fordSnd; tyFordFst; ixConv )
 open import DirectedHoTT.Examples.Knot.Build
-  using ( Var-vzK; ⊢Var-vzKv; Var-vsK; ⊢Var-vsKv )
+  using ( Var-vzK; Var-vsK; ⊢Var-vzKv; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
 open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz; cVar-vs; cTm-var )
 open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf; cVar-vsWf; cTm-varWf )
@@ -752,98 +752,102 @@ varAt ddi dm dp dt =
                 (toMu dt))
 
 ------------------------------------------------------------------------
--- ⬜ LOOKUP METHODS 2 and 3 — BLOCKED, and on a KNOWN obstacle.
+-- ★★★ LOOKUP METHODS 2 and 3 — the `Var` rows.
 --
--- Both `Var` rows must hand `σ` a `Var (snd ⟨i⟩)` built from their own
--- payload: `Var-vzK m` / `Var-vsK m x` where `m = fst p`.  Everything
--- around that is DONE — `varAt` moves it along the depth ford,
--- `sortConv` reads the result at `sortMap (fst ⟨i⟩)`, and
--- `sortMap-var : sortMap sVar ⟶* sTm` is proved.
+-- At sort `sVar` the motive's target is `K (pair (sortMap (fst ⟨i⟩)) n)`
+-- and `sortMap sVar ⟶* sTm`, so these produce a TERM — which is exactly
+-- what substituting a variable does.  ⚠ That is why the motive needed
+-- `sortMap`: `K (pair (fst ⟨i⟩) n)` would demand a `Var n` here, and
+-- `Var 0` is empty.
 --
--- ⚠⚠ WHAT IS MISSING IS THE CONSTRUCTOR AT AN ARBITRARY DEPTH TERM.
---   `Knot/Build`'s `⊢Var-vzKv` requires a bare VARIABLE (route (c),
---   free because renaming and substitution COMPUTE on variables), and a
---   method's depth is `fst p` — a PROJECTION.  ★ So route (c) does not
---   apply HERE, and `Knot/Build`'s judgement that route (a) is worse,
---   which is right for the TABLE, does not settle this row.
+-- ⚠ TWO TRANSPORTS EACH, along DIFFERENT fords:
+--   `varAt`    — the DEPTH ford, to hand `σ` a `Var (snd ⟨i⟩)`.
+--   `sortConv` — the SORT ford, to read the resulting `Tm n` at
+--                `sortMap (fst ⟨i⟩)`.
 --
--- ★ AND IT IS CHEAP AT THIS ROW: `cVar-vz` carries its depth at field
---   position 0, so Build's objection — a chain as long as the field's
---   POSITION — costs one `sub-w` and one `wk-single`, the same
---   composite `⊢extSK` already pays.
---
--- ⚠ ATTEMPTED 2026-08-28, PARTLY WORKING, NOT LANDED — and the ANSWER
---   to "will a `subst` unblock it?" is YES for the technique, NOT YET
---   for the equations.
---
---   The mismatches sit in the SUBJECTS of derivations inside a `⊢ty`
---   argument, so `⊢-cast` (which moves TYPES) cannot reach them.
---   `tmCast` below can, and DOES: adding it made the first mismatch go
---   away and the error move on to the next occurrence.
---
---   ⚠ WHAT IS NOT SETTLED IS THE EQUATION.  The remaining occurrences
---   are not `subTm (extS (single d)) (w (w d))` but nested
---   `isingle`/`extS` forms that OUGHT to compute to it and do not
---   reduce on their own, so each needs its round trip stated at the
---   shape it actually has.  A handful per row: mechanical, but not
---   guessable from the outside.
---
--- ★★★ AND THE PATTERN IS ALREADY BUILT — `Lib/IWk` §8–10.  ⚠ THE ROUND
---   TRIPS ARE SELF-INFLICTED: they appear because a CONCRETE row with a
---   CONCRETE substitution (`isingle (pair sVar (nsuc d))`) makes
---   `ipayTy` COMPUTE, leaving stuck `subTm`/`extS` forms to cancel by
---   hand.  `Lib/IWk` never unfolds one.
---
---   `⊢iwkPay` types a payload with the substitution ABSTRACT, carried as
---   `Sub⊢`, and steps it with
---
---       payStep : subTy (single v) (ipayTy D I (extS σ) C)
---                   ≡ ipayTy D I (iext σ v) C
---
---   — the round trip stated ONCE, generic in `σ`, instead of per
---   occurrence.  `⊢kaComp` and `⊢ixComp` do the same for the two field
---   kinds, and `pinned-stable` for closed codes.
---
---   ⚠⚠ AND IT ALREADY BUILDS AN `icon` AT A MOVED INDEX, which is what
---   `wkK`'s methods do and what these two need: §10 records that
---   `⊢icon` wants `k ∈ID D` AND the payload at `ilookupD D k` — "neither
---   follows from the other, and `Lib/IFold` needed neither, because a
---   fold never BUILDS an `icon`".  That is precisely this obstacle,
---   already met and already solved.
---
--- ⚠⚠ CORRECTION (same day): `Lib/IWk`'s MACHINERY DOES NOT APPLY HERE,
---   and route (a) really is required.  The reasoning above about
---   keeping the environment abstract is right as a RULE and wrong as a
---   plan for these two rows.
---
---   `⊢iwkPay` REBUILDS a payload it was handed, at an abstract `τ`
---   related to an abstract `σ`.  These methods must CONSTRUCT one at a
---   CONCRETE environment — there is no source payload at the target
---   index to rebuild from.
---
---   ★ AND THE SCRUTINEE CANNOT BE REUSED EITHER, which was the other
---     hope.  `imethTy` hands the method its index `⟨i⟩` and its payload,
---     so `icon k p` reconstructs the scrutinee at `K ⟨i⟩` — but `σ`
---     wants `K (pair sVar (snd ⟨i⟩))`, and `⟨i⟩` is OPAQUE: the sort
---     ford is propositional, and closing the gap would need
---     `⟨i⟩ ≡ pair (fst ⟨i⟩) (snd ⟨i⟩)`.
---
---   ⚠⚠ THE KERNEL HAS NO PAIR-η.  `Spec/Typing` has `βfst`/`βsnd` and
---     nothing in the other direction, so that equation is simply not
---     available.  ⇒ the variable must be REBUILT from `m`, and `m` is a
---     projection, so its constructor is needed at an ARBITRARY depth.
---
--- ⇒ route (a) at these two rows, as originally planned: `⊢Var-vzKt` /
---   `⊢Var-vsKt` in `Knot/Build`, with each round trip stated at the
---   shape it actually has (`tmCast` is the tool; see above).
+-- ★ AND THE VARIABLE IS REBUILT, not reused.  `imethTy` does hand the
+--   method its index and payload, so `icon k p` would reconstruct the
+--   scrutinee at `K ⟨i⟩` — but `σ` wants `K (pair sVar (snd ⟨i⟩))` and
+--   `⟨i⟩` is OPAQUE; closing that needs a pair-η the kernel does not
+--   have.  Hence `Knot/Build`'s arbitrary-depth `⊢Var-vzKt`/`⊢Var-vsKt`.
 ------------------------------------------------------------------------
 
--- ★ RETYPING A **SUBJECT**, with context and type left to inference.
---
--- ⚠ `⊢-cast` moves the TYPE; this moves the TERM.  A bare `subst` will
---   not do: writing `λ z → _ ⊢ … z … ∷ _` makes Agda abstract the
---   CONTEXT over `z` too, and those metas never solve.  Fixing `Γ` and
---   `A` as implicits of a helper is exactly what stops that.
-tmCast : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {t t' : RTm ⌊ Γ ⌋} →
-         t ≡ t' → Γ ⊢ t ∷ A → Γ ⊢ t' ∷ A
-tmCast refl d = d
+subVzM : {Γ : Cx} → RTm Γ
+subVzM =
+  lam (lam (lam (lam (lam
+    (jsub (⌜IMu⌝ KnotD IPair (pair (sortMap (var vz)) (var (vs (vs vz)))))
+          (symN (fst (var (vs (vs (vs (vs vz))))))
+                (fst (snd (var (vs (vs (vs vz)))))))
+          (app (var vz)
+               (jsub (⌜IMu⌝ KnotD IPair (pair sVar (var vz)))
+                     (symN (snd (var (vs (vs (vs (vs vz)))))) (fst (snd (snd (var (vs (vs (vs vz))))))))
+                     (Var-vzK (fst (var (vs (vs (vs vz)))))))))))))
+
+⊢subVzM : {Γ : Ctx} →
+          Γ ⊢ subVzM ∷ imethTy KnotD IPair tagVar-vz cVar-vz subMotK
+⊢subVzM {Γ = Γ} =
+  ⊢lam ⊢IPair
+    (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) cVar-vz
+                     KnotWf cVar-vzWf
+                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+      (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) cVar-vz}
+                      KnotD IPair subMotK (isingle (var (vs vz))) cVar-vz (var vz) cVar-vzWf
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                                                   (εwk-ren vs IPair))
+                                            (⊢var (there here))))
+                      ⊢subMotK
+                      (⊢var here))
+        (⊢lam ty-Nat
+          (⊢lam (ty-Π (ty-IMu KnotWf
+                         (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                      (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+            (sortConv (⊢fst (⊢var (there (there (there (there here))))))
+                      ⊢sVar
+                      (⊢var (there here))
+                      (fordAs (⊢fst (⊢snd (⊢var (there (there (there here)))))))
+                      sortMap-var
+                      (⊢app (⊢var here)
+                            (varAt (⊢snd (⊢var (there (there (there (there here))))))
+                                   (elAsNat (⊢fst (⊢var (there (there (there here))))))
+                                   (fordAs (⊢fst (⊢snd (⊢snd (⊢var (there (there (there here))))))))
+                                   (⊢Var-vzKt (elAsNat (⊢fst (⊢var (there (there (there here))))))))))))))
+
+subVsM : {Γ : Cx} → RTm Γ
+subVsM =
+  lam (lam (lam (lam (lam
+    (jsub (⌜IMu⌝ KnotD IPair (pair (sortMap (var vz)) (var (vs (vs vz)))))
+          (symN (fst (var (vs (vs (vs (vs vz))))))
+                (fst (snd (snd (var (vs (vs (vs vz))))))))
+          (app (var vz)
+               (jsub (⌜IMu⌝ KnotD IPair (pair sVar (var vz)))
+                     (symN (snd (var (vs (vs (vs (vs vz)))))) (fst (snd (snd (snd (var (vs (vs (vs vz)))))))))
+                     (Var-vsK (fst (var (vs (vs (vs vz))))) (fst (snd (var (vs (vs (vs vz))))))))))))))
+
+⊢subVsM : {Γ : Ctx} →
+          Γ ⊢ subVsM ∷ imethTy KnotD IPair tagVar-vs cVar-vs subMotK
+⊢subVsM {Γ = Γ} =
+  ⊢lam ⊢IPair
+    (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) cVar-vs
+                     KnotWf cVar-vsWf
+                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+      (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) cVar-vs}
+                      KnotD IPair subMotK (isingle (var (vs vz))) cVar-vs (var vz) cVar-vsWf
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                                                   (εwk-ren vs IPair))
+                                            (⊢var (there here))))
+                      ⊢subMotK
+                      (⊢var here))
+        (⊢lam ty-Nat
+          (⊢lam (ty-Π (ty-IMu KnotWf
+                         (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                      (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+            (sortConv (⊢fst (⊢var (there (there (there (there here))))))
+                      ⊢sVar
+                      (⊢var (there here))
+                      (fordAs (⊢fst (⊢snd (⊢snd (⊢var (there (there (there here))))))))
+                      sortMap-var
+                      (⊢app (⊢var here)
+                            (varAt (⊢snd (⊢var (there (there (there (there here))))))
+                                   (elAsNat (⊢fst (⊢var (there (there (there here))))))
+                                   (fordAs (⊢fst (⊢snd (⊢snd (⊢snd (⊢var (there (there (there here)))))))))
+                                   (⊢Var-vsKt (elAsNat (⊢fst (⊢var (there (there (there here)))))) (⊢fst (⊢snd (⊢var (there (there (there here))))))))))))))
