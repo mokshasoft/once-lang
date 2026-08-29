@@ -17,11 +17,16 @@
 -- so that the flip is legible: these are the same literals, with the opposite
 -- verdict.
 --
--- WHAT THIS SUITE CANNOT SEE, said out loud. `Once.Warnings.roundingWarnings`
--- (D123) computes the exact error and the ulps for a rounded literal, but
--- nothing in the Haskell driver calls it — the warning channel exists in Agda
--- and is not reachable from `once`. Until it is wired, "accepted" is the whole
--- observable here and this suite cannot distinguish `0.5` from `0.1`. The
+-- WHAT THIS SUITE CAN NOW SEE. `Once.Warnings.roundingWarnings` (D123) is
+-- WIRED to the driver, so "accepted" is no longer the whole observable: every
+-- exact literal below asserts SILENCE on stderr and every rounded one asserts
+-- the warning FIRES and names the literal. That distinction — `0.5` from `0.1`
+-- — is what this suite could not make before, and it is what makes D116's "the
+-- refusal is replaced by a warning" true rather than half true.
+--
+-- Wiring it immediately caught a renderer defect: the fraction numeral was
+-- printed UNPADDED, so `0.01` (payload `frac = 1, flen = 2`) rendered as
+-- `0.1` — a different literal from the source. `showFrac` pads it now. The
 -- per-literal ENCODING is checked elsewhere and for real: `FloatEmitSpec`
 -- reads the emitted machine word back out of the effect trace on all three
 -- arches, and `Once.Float.Decimal` pins `round` against glibc/GHC patterns.
@@ -35,9 +40,11 @@
 module FloatSpec (floatTests) where
 
 import Test.Tasty
+import Test.Tasty.HUnit (testCase, assertBool)
+import Data.List (isInfixOf)
 import qualified Data.Text as T
 
-import TypeErrorSpec (accepts)
+import TypeErrorSpec (accepts, typeCheckStderr)
 
 -- | A one-line program binding a float literal at type `Float`.
 lit :: String -> [T.Text]
@@ -49,11 +56,29 @@ lit v = [ "x : Float", T.pack ("x = " ++ v) ]
 negLit :: String -> [T.Text]
 negLit v = lit ('-' : v)
 
+-- | The warning channel is now WIRED (D123 → the driver), so "accepted" is no
+-- longer the whole observable: an exact literal must compile AND say nothing,
+-- a rounded one must compile AND say so. That distinction is what this suite
+-- could not make while `Once.Warnings` was unreachable from `once`.
+--
+-- `once check` fixes the arch at x86-64, so these are binary64's verdicts.
 exact :: String -> TestTree
-exact v = accepts (v ++ " is exact") (lit v)
+exact v = testGroup (v ++ " is exact")
+  [ accepts "compiles" (lit v)
+  , testCase "and warns about nothing" $ do
+      err <- typeCheckStderr (T.unlines (lit v))
+      assertBool ("expected silence for " ++ v ++ ", got: " ++ err)
+                 (not ("warning:" `isInfixOf` err))
+  ]
 
 rounded :: String -> TestTree
-rounded v = accepts (v ++ " rounds, and compiles (D116)") (lit v)
+rounded v = testGroup (v ++ " rounds, and compiles (D116)")
+  [ accepts "compiles" (lit v)
+  , testCase "and says it rounded" $ do
+      err <- typeCheckStderr (T.unlines (lit v))
+      assertBool ("expected a rounding warning for " ++ v ++ ", got: " ++ err)
+                 ("warning:" `isInfixOf` err && ("literal " ++ v) `isInfixOf` err)
+  ]
 
 floatTests :: TestTree
 floatTests = testGroup "Float literals"

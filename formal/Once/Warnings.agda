@@ -51,7 +51,7 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Bool using (Bool; true; false)
-open import Data.String using (String) renaming (_++_ to _<>_)
+open import Data.String using (String; length) renaming (_++_ to _<>_)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
@@ -322,8 +322,22 @@ private
 showQ : ExactQ → String
 showQ q = showℤ (num q) <> "/" <> showNat (den q)
 
+-- | The fraction numeral, PADDED to its digit count.
+--
+-- The payload stores `0.01` as `frac = 1, flen = 2` (D116: the payload is the
+-- decimal the programmer wrote, and `flen` is part of it). Printing `frac`
+-- alone renders that as `0.1` — a DIFFERENT literal from the one in the source,
+-- which is the one thing a diagnostic may never do. The digit count is not
+-- decoration; it is where the leading zeros live.
+zeros : ℕ → String
+zeros zero    = ""
+zeros (suc n) = "0" <> zeros n
+
+showFrac : ℕ → ℕ → String
+showFrac f l = zeros (l ∸ length (showNat f)) <> showNat f
+
 showLit : ℕ → ℕ → ℕ → String
-showLit i f l = showNat i <> "." <> showNat f <> " (" <> showNat l <> " frac digits)"
+showLit i f l = showNat i <> "." <> showFrac f l <> " (" <> showNat l <> " frac digits)"
 
 renderWarning : Warning → String
 renderWarning (FloatRounded i f l at stored absErr ulps) =

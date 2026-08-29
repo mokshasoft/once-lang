@@ -5,7 +5,7 @@
 -- These test cases verify that ill-typed programs are correctly rejected.
 -- `accepts`/`rejects`/`typeCheckSource` are exported so FloatSpec can reuse
 -- them rather than duplicate the temp-file + `once check` plumbing.
-module TypeErrorSpec (typeErrorTests, accepts, rejects, typeCheckSource) where
+module TypeErrorSpec (typeErrorTests, accepts, rejects, typeCheckSource, typeCheckStderr) where
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -230,6 +230,19 @@ typeCheckSource source = withSystemTempFile "test.once" $ \path handle -> do
   case exitCode of
     ExitSuccess -> return (Right ())
     ExitFailure _ -> return (Left (stdout ++ stderr))
+
+-- | The STDERR of `once check` — the warning channel (D123/D116).
+--
+-- Separate from `typeCheckSource`, which folds both streams into its failure
+-- case: a warning is not a failure, so reading the channel needs its own door.
+-- This is what lets `FloatSpec` tell `0.5` from `0.1`, which it could not do
+-- while `Once.Warnings` was unreachable from the driver.
+typeCheckStderr :: T.Text -> IO String
+typeCheckStderr source = withSystemTempFile "test.once" $ \path handle -> do
+  TIO.hPutStr handle source
+  hClose handle
+  (_, _, err) <- runOnce ["check", path]
+  return err
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True

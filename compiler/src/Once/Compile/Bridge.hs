@@ -33,6 +33,7 @@ module Once.Compile.Bridge
   , parseSource
   , moduleImports
   , moduleHasMain
+  , moduleWarnings
   , resolveImports
   , compileFromModule
   ) where
@@ -47,6 +48,7 @@ import qualified MAlonzo.Code.Once.Compile as MC
 import qualified MAlonzo.Code.Once.IR as MCIR
 import qualified MAlonzo.Code.Once.Adequacy.Compile as MVC
 import qualified MAlonzo.Code.Once.Target.Arch as MTA
+import qualified MAlonzo.Code.Once.Warnings as MW
 import qualified MAlonzo.Code.Once.Parser as MP
 import qualified MAlonzo.Code.Once.Parser.Module.Core as MMC
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve as MMR
@@ -185,6 +187,19 @@ moduleHasMain (Module m) = any isMain (MMC.d_decls_48 m)
   where
     isMain (MMC.C_DFunDef_36 name _ _) = agdaToText name == T.pack "main"
     isMain _                           = False
+
+-- | D123/D116: the rounding warnings this module has AT THIS TARGET, rendered.
+--
+-- `warningsFor` is a PURE QUERY of the parsed module and the arch — deliberately
+-- not threaded through `compile`, so wiring it does not change the pipeline's
+-- type. It is arch-relative because rounding is (D113): the same literal is
+-- exact at one target's format and not at another's.
+--
+-- Until this existed, D116's "K3 removed the refusal; this is what replaces it"
+-- was only half true — the refusal was gone and the replacement unreachable.
+moduleWarnings :: Arch -> Module -> [Text]
+moduleWarnings arch (Module m) =
+  map agdaToText (MW.d_warningsFor_402 (toMArch arch) (unsafeCoerce m))
 
 -- | Flatten imports: for each `DImport path (just alias)` in the
 -- user's module, substitute the primitives of the imported module

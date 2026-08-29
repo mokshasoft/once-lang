@@ -31,6 +31,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import System.Directory (removeFile, doesFileExist, doesDirectoryExist, getCurrentDirectory, makeAbsolute)
 import System.Exit (ExitCode(..), exitFailure, exitSuccess)
+import System.IO (hPutStrLn, stderr)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
 import System.Environment (lookupEnv)
 import System.Process (readProcessWithExitCode)
@@ -269,7 +270,10 @@ runCheck opts = do
     Left err -> do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
-    Right (mod_, _, _) ->
+    Right (mod_, _, _) -> do
+      -- The arch is fixed here, so these are x86-64's warnings; `build --target`
+      -- reports the ones for the target actually being built.
+      emitWarnings Bridge.X86_64 mod_
       -- doOpt is irrelevant for Check stage (optimizer runs after type checking)
       case Bridge.compileFromModule Bridge.AllocHeap Bridge.Check False Bridge.X86_64 mod_ of
         Checked -> do
@@ -332,6 +336,19 @@ runBuild opts = do
 -- import. This is how SigOp `call once_<name>` references resolve to
 -- actual code (e.g. an `exit` syscall body lives in
 -- `Strata/Interpretations/<interp>/Syscalls.<arch>`'s `once_exit`).
+-- | D123/D116: print the target's rounding warnings to stderr.
+--
+-- `Bridge.moduleWarnings` is a pure query of the module and the arch, so this
+-- is a REPORT, not a pipeline stage — it cannot change what is compiled. It is
+-- what makes D116's "the refusal is replaced by a warning" true rather than
+-- half true: before this, `Once.Warnings` computed the exact error and the ulps
+-- and nothing called it.
+--
+-- Arch-relative on purpose (D113): the same literal is exact at one target's
+-- format and rounded at another's.
+emitWarnings :: Bridge.Arch -> Bridge.Module -> IO ()
+emitWarnings arch m = mapM_ (hPutStrLn stderr . T.unpack) (Bridge.moduleWarnings arch m)
+
 runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> Bridge.Module
                  -> FilePath -> [[T.Text]] -> IO ()
 runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
@@ -341,7 +358,8 @@ runVerifiedBuild opts outputBase arch mod_ strataDir importPaths =
         -- Other strategies (Pool/Arena/Const) not yet supported by the
         -- elaborator's AllocMode; treat as Heap.
         _               -> Bridge.AllocHeap
-  in
+  in do
+  emitWarnings arch mod_
   case Bridge.compileFromModule allocMode Bridge.Build (buildOptimize opts) arch mod_ of
     Built asmText -> do
       let asmPath = outputBase ++ ".s"
