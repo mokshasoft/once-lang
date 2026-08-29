@@ -89,6 +89,19 @@ scratch-text record { slot = s } =
 -- Per-instruction text
 ------------------------------------------------------------------------
 
+-- | The fixup, appended to every op that can produce a NaN. Numeric local
+-- labels, as the integer divide already uses.
+canon-nan-64 : String → String
+canon-nan-64 dst =
+  "    ucomisd %xmm0, %xmm0\n" ++
+  "    jnp 1f\n" ++
+  "    pcmpeqd %xmm1, %xmm1\n" ++
+  "    psrlq $52, %xmm1\n" ++
+  "    psllq $51, %xmm1\n" ++
+  "    movapd %xmm1, %xmm0\n" ++
+  "1:\n" ++
+  "    movq %xmm0, " ++ dst ++ "\n"
+
 instr-text : XInstr → String
 instr-text (Xmov-imm dst z)   = "    movq $" ++ showℤ z ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-rr dst src)  = "    movq " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
@@ -223,33 +236,51 @@ instr-text (Xneg-r dst)       = "    negq " ++ reg-text dst ++ "\n"
 -- `movq` they already are — a bit pattern is 8 bytes either way — instead of
 -- the abstract register file needing a second half.
 --
--- STILL OWED HERE (D055's rule, decided and not yet emitted): x86 sets the
--- sign on an invalid result and PROPAGATES an operand NaN payload, where Once
--- promises the canonical NaN. A canonicalising fixup belongs after each op
--- that can produce one, elidable where the result is provably not a NaN.
+-- D055's NaN CANONICALISATION, emitted. x86 sets the sign on an invalid result
+-- and PROPAGATES an operand's NaN payload; Once promises ONE canonical NaN on
+-- every target, and RISC-V produces it natively. So the fixup belongs here, and
+-- here only — the cost lands where the hardware forces it and everyone gets the
+-- same answer.
+--
+-- `ucomisd %xmm0, %xmm0` sets PF exactly when the operand is unordered with
+-- itself, which is exactly when it is a NaN. The constant is built IN REGISTER
+-- rather than loaded:
+--
+--     pcmpeqd %xmm1, %xmm1   -- all ones
+--     psrlq   $52,   %xmm1   -- 0x0000000000000FFF   (12 ones)
+--     psllq   $51,   %xmm1   -- bits 51..62 = 0x7FF8000000000000
+--
+-- which is `nan binary64` — `(2^11 − 1) · 2^52 + 2^51`. Building it avoids a
+-- scratch GPR (so no new entry in `Confine.writes`) and avoids a rodata slot
+-- (so `instr-text` stays a function of the instruction alone).
+--
+-- NOT applied to `fneg`: the spec's `fneg` is a sign-bit flip that is exact on
+-- every pattern INCLUDING NaN, so canonicalising there would contradict it.
 ------------------------------------------------------------------------
+
+
 instr-text (Xfadd-rr dst src) =
   "    movq " ++ reg-text dst ++ ", %xmm0\n" ++
   "    movq " ++ reg-text src ++ ", %xmm1\n" ++
   "    addsd %xmm1, %xmm0\n" ++
-  "    movq %xmm0, " ++ reg-text dst ++ "\n"
+  canon-nan-64 (reg-text dst)
 instr-text (Xfsub-rr dst src) =
   "    movq " ++ reg-text dst ++ ", %xmm0\n" ++
   "    movq " ++ reg-text src ++ ", %xmm1\n" ++
   "    subsd %xmm1, %xmm0\n" ++
-  "    movq %xmm0, " ++ reg-text dst ++ "\n"
+  canon-nan-64 (reg-text dst)
 -- REVERSE subtract: `dst := src − dst`. The operand order is the whole
 -- difference, and it is why this instruction exists (see `XInstr.Syntax`).
 instr-text (Xfsubr-rr dst src) =
   "    movq " ++ reg-text src ++ ", %xmm0\n" ++
   "    movq " ++ reg-text dst ++ ", %xmm1\n" ++
   "    subsd %xmm1, %xmm0\n" ++
-  "    movq %xmm0, " ++ reg-text dst ++ "\n"
+  canon-nan-64 (reg-text dst)
 instr-text (Xfmul-rr dst src) =
   "    movq " ++ reg-text dst ++ ", %xmm0\n" ++
   "    movq " ++ reg-text src ++ ", %xmm1\n" ++
   "    mulsd %xmm1, %xmm0\n" ++
-  "    movq %xmm0, " ++ reg-text dst ++ "\n"
+  canon-nan-64 (reg-text dst)
 -- Negation is a SIGN-BIT FLIP done in the GPR — exact on every pattern,
 -- including NaN and −0, which `0 − x` would not be.
 --
@@ -263,7 +294,7 @@ instr-text (Xfdiv-rrr dst a b) =
   "    movq " ++ reg-text a ++ ", %xmm0\n" ++
   "    movq " ++ reg-text b ++ ", %xmm1\n" ++
   "    divsd %xmm1, %xmm0\n" ++
-  "    movq %xmm0, " ++ reg-text dst ++ "\n"
+  canon-nan-64 (reg-text dst)
 instr-text (Xfneg-r dst) =
   "    btcq $63, " ++ reg-text dst ++ "\n"
 instr-text (Xi2f-r dst src) =

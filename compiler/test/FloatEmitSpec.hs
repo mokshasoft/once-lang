@@ -138,7 +138,13 @@ floatEmitTests = testGroup "Float format in the effect trace"
    | (e, vs) <- arithCases ]
    ++
    [ testGroup ("widen: " ++ e) [ testCase (archName a) (checkArith a e vs) | a <- backendArches ]
-   | (e, vs) <- wideningCases ])
+   | (e, vs) <- wideningCases ]
+   ++
+   -- D055: the DECIDED NaN, not the hardware's. x86 answers
+   -- `0xfff8000000000000` for `0.0 / 0.0` in silicon.
+   [ testGroup ("canonical NaN: " ++ e)
+       [ testCase (archName a) (checkCanonNaN a e) | a <- backendArches ]
+   | e <- [ "0.0 / 0.0", "0.0 * (1.0 / 0.0)" ] ])
 
 -- | Read an ARITHMETIC result back out of the trace. Same assertions as
 -- `checkOne`, against an expectation computed at the arch's OWN precision —
@@ -157,6 +163,34 @@ checkArith arch expr vs = do
                     (encodeArith (archFloatFormat arch) vs) (head ws)
         assertEqual ("[" ++ tag ++ "] exit code") 7 code
   where tag = archName arch
+
+-- | D055's NaN canonicalisation, on the metal.
+--
+-- The expectation is the DECIDED value, not the measured one, and that is the
+-- whole point: x86 hardware answers `0xfff8000000000000` for `0.0 / 0.0` (it
+-- sets the sign on an invalid result) and propagates operand payloads, while
+-- RISC-V produces one canonical NaN natively. Once promises the RISC-V answer
+-- everywhere, so the x86 emitters carry a canonicalising fixup. This test is
+-- what makes that promise falsifiable — take the fixup out and x86-64 and
+-- x86-32 fail here while riscv64 still passes.
+checkCanonNaN :: BackendArch -> String -> IO ()
+checkCanonNaN arch expr = do
+  r <- buildAndRunTraceOn arch (slug expr) (arithProgram expr)
+  case r of
+    Left err -> assertFailure err
+    Right (out, code) -> case decodeTrace arch out of
+      Left err  -> assertFailure ("[" ++ tag ++ "] " ++ err)
+      Right ws  -> do
+        assertEqual ("[" ++ tag ++ "] one emitF invocation") 1 (length ws)
+        assertEqual ("[" ++ tag ++ "] canonical NaN (D055) for " ++ expr)
+                    (canonNaN (archFloatFormat arch)) (head ws)
+        assertEqual ("[" ++ tag ++ "] exit code") 7 code
+  where tag = archName arch
+
+-- | `(2^e − 1) · 2^s + 2^(s−1)` — `Once.Float.Arith.nan`, in Haskell.
+canonNaN :: Format -> Integer
+canonNaN Binary64 = ((2 ^ (11 :: Int) - 1) * 2 ^ (52 :: Int)) + 2 ^ (51 :: Int)
+canonNaN Binary32 = ((2 ^ (8  :: Int) - 1) * 2 ^ (23 :: Int)) + 2 ^ (22 :: Int)
 
 checkOne :: BackendArch -> String -> Double -> IO ()
 checkOne arch lit v = do

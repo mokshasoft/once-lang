@@ -76,6 +76,18 @@ scratch-text record { slot = s } =
 -- Per-instruction text
 ------------------------------------------------------------------------
 
+-- | The binary32 canonicalising fixup. See the header.
+canon-nan-32 : String → String
+canon-nan-32 dst =
+  "    ucomiss %xmm0, %xmm0\n" ++
+  "    jnp 1f\n" ++
+  "    pcmpeqd %xmm1, %xmm1\n" ++
+  "    psrld $23, %xmm1\n" ++
+  "    pslld $22, %xmm1\n" ++
+  "    movaps %xmm1, %xmm0\n" ++
+  "1:\n" ++
+  "    movd %xmm0, " ++ dst ++ "\n"
+
 instr-text : XInstr → String
 instr-text (Xmov-imm dst z)   = "    movl $" ++ showℤ z ++ ", " ++ reg-text dst ++ "\n"
 instr-text (Xmov-rr dst src)  = "    movl " ++ reg-text src ++ ", " ++ reg-text dst ++ "\n"
@@ -196,35 +208,43 @@ instr-text (Xneg-r dst)       = "    negl " ++ reg-text dst ++ "\n"
 -- whole point of D113's parameterisation: the same `Decimal` payload rounds
 -- to four bytes here and eight on x86-64, from one `round`.
 --
--- STILL OWED (D055's rule): the NaN canonicalising fixup, as on x86-64.
+-- D055's NaN canonicalisation, emitted — the binary32 twin of x86-64's. Same
+-- construction, one format narrower:
+--
+--     pcmpeqd %xmm1, %xmm1   -- all ones
+--     psrld   $23,   %xmm1   -- 0x000001FF   (9 ones)
+--     pslld   $22,   %xmm1   -- bits 22..30 = 0x7FC00000
+--
+-- which is `nan binary32` — `(2^8 − 1) · 2^23 + 2^22`. Not applied to `fneg`,
+-- which is a sign-bit flip and exact on every pattern including NaN.
 ------------------------------------------------------------------------
 instr-text (Xfadd-rr dst src) =
   "    movd " ++ reg-text dst ++ ", %xmm0\n" ++
   "    movd " ++ reg-text src ++ ", %xmm1\n" ++
   "    addss %xmm1, %xmm0\n" ++
-  "    movd %xmm0, " ++ reg-text dst ++ "\n"
+  canon-nan-32 (reg-text dst)
 instr-text (Xfsub-rr dst src) =
   "    movd " ++ reg-text dst ++ ", %xmm0\n" ++
   "    movd " ++ reg-text src ++ ", %xmm1\n" ++
   "    subss %xmm1, %xmm0\n" ++
-  "    movd %xmm0, " ++ reg-text dst ++ "\n"
+  canon-nan-32 (reg-text dst)
 instr-text (Xfsubr-rr dst src) =
   "    movd " ++ reg-text src ++ ", %xmm0\n" ++
   "    movd " ++ reg-text dst ++ ", %xmm1\n" ++
   "    subss %xmm1, %xmm0\n" ++
-  "    movd %xmm0, " ++ reg-text dst ++ "\n"
+  canon-nan-32 (reg-text dst)
 instr-text (Xfmul-rr dst src) =
   "    movd " ++ reg-text dst ++ ", %xmm0\n" ++
   "    movd " ++ reg-text src ++ ", %xmm1\n" ++
   "    mulss %xmm1, %xmm0\n" ++
-  "    movd %xmm0, " ++ reg-text dst ++ "\n"
+  canon-nan-32 (reg-text dst)
 -- Three-address, so both sources are read into the FP scratch pair BEFORE
 -- the destination is written — which is what lets `dst` alias `b`.
 instr-text (Xfdiv-rrr dst a b) =
   "    movd " ++ reg-text a ++ ", %xmm0\n" ++
   "    movd " ++ reg-text b ++ ", %xmm1\n" ++
   "    divss %xmm1, %xmm0\n" ++
-  "    movd %xmm0, " ++ reg-text dst ++ "\n"
+  canon-nan-32 (reg-text dst)
 instr-text (Xfneg-r dst) =
   "    xorl $-2147483648, " ++ reg-text dst ++ "\n"
 instr-text (Xi2f-r dst src) =

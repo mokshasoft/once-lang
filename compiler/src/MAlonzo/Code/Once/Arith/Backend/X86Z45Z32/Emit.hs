@@ -73,11 +73,43 @@ d_scratch'45'text_20 v0
                 (mulInt (coe (4 :: Integer)) (coe v1)))
              ("(%esp)" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Arith.Backend.X86-32.Emit.canon-nan-32
+d_canon'45'nan'45'32_24 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_canon'45'nan'45'32_24 v0
+  = coe
+      MAlonzo.Code.Data.String.Base.d__'43''43'__20
+      ("    ucomiss %xmm0, %xmm0\n" :: Data.Text.Text)
+      (coe
+         MAlonzo.Code.Data.String.Base.d__'43''43'__20
+         ("    jnp 1f\n" :: Data.Text.Text)
+         (coe
+            MAlonzo.Code.Data.String.Base.d__'43''43'__20
+            ("    pcmpeqd %xmm1, %xmm1\n" :: Data.Text.Text)
+            (coe
+               MAlonzo.Code.Data.String.Base.d__'43''43'__20
+               ("    psrld $23, %xmm1\n" :: Data.Text.Text)
+               (coe
+                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                  ("    pslld $22, %xmm1\n" :: Data.Text.Text)
+                  (coe
+                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                     ("    movaps %xmm1, %xmm0\n" :: Data.Text.Text)
+                     (coe
+                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                        ("1:\n" :: Data.Text.Text)
+                        (coe
+                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                           ("    movd %xmm0, " :: Data.Text.Text)
+                           (coe
+                              MAlonzo.Code.Data.String.Base.d__'43''43'__20 v0
+                              ("\n" :: Data.Text.Text)))))))))
 -- Once.Arith.Backend.X86-32.Emit.instr-text
-d_instr'45'text_24 ::
+d_instr'45'text_28 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_instr'45'text_24 v0
+d_instr'45'text_28 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'imm_26 v1 v2
         -> coe
@@ -132,7 +164,7 @@ d_instr'45'text_24 v0
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
                       (d_reg'45'text_16 (coe v1)) ("\n" :: Data.Text.Text))))
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'arg_34 v1 v2
-        -> coe du_path'45'load'45'text_70 (coe v1) (coe v2)
+        -> coe du_path'45'load'45'text_74 (coe v1) (coe v2)
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xadd'45'rr_36 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -523,12 +555,7 @@ d_instr'45'text_24 v0
                             (coe
                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                ("    addss %xmm1, %xmm0\n" :: Data.Text.Text)
-                               (coe
-                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                  ("    movd %xmm0, " :: Data.Text.Text)
-                                  (coe
-                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                     (d_reg'45'text_16 (coe v1)) ("\n" :: Data.Text.Text)))))))))
+                               (d_canon'45'nan'45'32_24 (coe d_reg'45'text_16 (coe v1)))))))))
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsub'45'rr_58 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -551,12 +578,7 @@ d_instr'45'text_24 v0
                             (coe
                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                ("    subss %xmm1, %xmm0\n" :: Data.Text.Text)
-                               (coe
-                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                  ("    movd %xmm0, " :: Data.Text.Text)
-                                  (coe
-                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                     (d_reg'45'text_16 (coe v1)) ("\n" :: Data.Text.Text)))))))))
+                               (d_canon'45'nan'45'32_24 (coe d_reg'45'text_16 (coe v1)))))))))
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfmul'45'rr_60 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -579,12 +601,7 @@ d_instr'45'text_24 v0
                             (coe
                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                ("    mulss %xmm1, %xmm0\n" :: Data.Text.Text)
-                               (coe
-                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                  ("    movd %xmm0, " :: Data.Text.Text)
-                                  (coe
-                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                     (d_reg'45'text_16 (coe v1)) ("\n" :: Data.Text.Text)))))))))
+                               (d_canon'45'nan'45'32_24 (coe d_reg'45'text_16 (coe v1)))))))))
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfdiv'45'rrr_62 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -607,12 +624,7 @@ d_instr'45'text_24 v0
                             (coe
                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                ("    divss %xmm1, %xmm0\n" :: Data.Text.Text)
-                               (coe
-                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                  ("    movd %xmm0, " :: Data.Text.Text)
-                                  (coe
-                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                     (d_reg'45'text_16 (coe v1)) ("\n" :: Data.Text.Text)))))))))
+                               (d_canon'45'nan'45'32_24 (coe d_reg'45'text_16 (coe v1)))))))))
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsubr'45'rr_64 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -635,12 +647,7 @@ d_instr'45'text_24 v0
                             (coe
                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                ("    subss %xmm1, %xmm0\n" :: Data.Text.Text)
-                               (coe
-                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                  ("    movd %xmm0, " :: Data.Text.Text)
-                                  (coe
-                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                     (d_reg'45'text_16 (coe v1)) ("\n" :: Data.Text.Text)))))))))
+                               (d_canon'45'nan'45'32_24 (coe d_reg'45'text_16 (coe v1)))))))))
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfneg'45'r_66 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -682,7 +689,7 @@ d_instr'45'text_24 v0
                       (d_reg'45'text_16 (coe v1)) ("\n" :: Data.Text.Text))))
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_72 v1 v2
         -> coe
-             d_instr'45'text_24
+             d_instr'45'text_28
              (coe
                 MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'arg_34
                 (coe v1) (coe v2))
@@ -695,16 +702,16 @@ d_instr'45'text_24 v0
                 (d_reg'45'text_16 (coe v1)) (", %eax\n" :: Data.Text.Text))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-32.Emit._.side-offset
-d_side'45'offset_54 ::
+d_side'45'offset_58 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_side'45'offset_54 ~v0 ~v1 v2 = du_side'45'offset_54 v2
-du_side'45'offset_54 ::
+d_side'45'offset_58 ~v0 ~v1 v2 = du_side'45'offset_58 v2
+du_side'45'offset_58 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-du_side'45'offset_54 v0
+du_side'45'offset_58 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Machine.Shape.C_Fst_26
         -> coe ("0" :: Data.Text.Text)
@@ -712,19 +719,19 @@ du_side'45'offset_54 v0
         -> coe ("4" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-32.Emit._.walk-eax-rest
-d_walk'45'eax'45'rest_56 ::
+d_walk'45'eax'45'rest_60 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_walk'45'eax'45'rest_56 ~v0 ~v1 v2 v3
-  = du_walk'45'eax'45'rest_56 v2 v3
-du_walk'45'eax'45'rest_56 ::
+d_walk'45'eax'45'rest_60 ~v0 ~v1 v2 v3
+  = du_walk'45'eax'45'rest_60 v2 v3
+du_walk'45'eax'45'rest_60 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-du_walk'45'eax'45'rest_56 v0 v1
+du_walk'45'eax'45'rest_60 v0 v1
   = case coe v1 of
       [] -> coe ("" :: Data.Text.Text)
       (:) v2 v3
@@ -734,11 +741,11 @@ du_walk'45'eax'45'rest_56 v0 v1
                      ("    movl " :: Data.Text.Text)
                      (coe
                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                        (coe du_side'45'offset_54 (coe v2))
+                        (coe du_side'45'offset_58 (coe v2))
                         (coe
                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
                            ("(%eax), %eax\n" :: Data.Text.Text)
-                           (coe du_walk'45'eax'45'rest_56 (coe v0) (coe v3)))) in
+                           (coe du_walk'45'eax'45'rest_60 (coe v0) (coe v3)))) in
            coe
              (case coe v3 of
                 []
@@ -747,7 +754,7 @@ du_walk'45'eax'45'rest_56 v0 v1
                        ("    movl " :: Data.Text.Text)
                        (coe
                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                          (coe du_side'45'offset_54 (coe v2))
+                          (coe du_side'45'offset_58 (coe v2))
                           (coe
                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
                              ("(%eax), " :: Data.Text.Text)
@@ -757,19 +764,19 @@ du_walk'45'eax'45'rest_56 v0 v1
                 _ -> coe v4)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-32.Emit._.path-load-text
-d_path'45'load'45'text_70 ::
+d_path'45'load'45'text_74 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_path'45'load'45'text_70 ~v0 ~v1 v2 v3
-  = du_path'45'load'45'text_70 v2 v3
-du_path'45'load'45'text_70 ::
+d_path'45'load'45'text_74 ~v0 ~v1 v2 v3
+  = du_path'45'load'45'text_74 v2 v3
+du_path'45'load'45'text_74 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-du_path'45'load'45'text_70 v0 v1
+du_path'45'load'45'text_74 v0 v1
   = case coe v1 of
       []
         -> coe
@@ -785,11 +792,11 @@ du_path'45'load'45'text_70 v0 v1
                      ("    movl " :: Data.Text.Text)
                      (coe
                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                        (coe du_side'45'offset_54 (coe v2))
+                        (coe du_side'45'offset_58 (coe v2))
                         (coe
                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
                            ("(%ecx), %eax\n" :: Data.Text.Text)
-                           (coe du_walk'45'eax'45'rest_56 (coe v0) (coe v3)))) in
+                           (coe du_walk'45'eax'45'rest_60 (coe v0) (coe v3)))) in
            coe
              (case coe v3 of
                 []
@@ -798,7 +805,7 @@ du_path'45'load'45'text_70 v0 v1
                        ("    movl " :: Data.Text.Text)
                        (coe
                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                          (coe du_side'45'offset_54 (coe v2))
+                          (coe du_side'45'offset_58 (coe v2))
                           (coe
                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
                              ("(%ecx), " :: Data.Text.Text)
@@ -808,23 +815,23 @@ du_path'45'load'45'text_70 v0 v1
                 _ -> coe v4)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-32.Emit.program-text
-d_program'45'text_168 ::
+d_program'45'text_172 ::
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_program'45'text_168 v0
+d_program'45'text_172 v0
   = case coe v0 of
       [] -> coe ("" :: Data.Text.Text)
       (:) v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (d_instr'45'text_24 (coe v1)) (d_program'45'text_168 (coe v2))
+             (d_instr'45'text_28 (coe v1)) (d_program'45'text_172 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-32.Emit.emit-arith-block
-d_emit'45'arith'45'block_176 ::
+d_emit'45'arith'45'block_180 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_144 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_emit'45'arith'45'block_176 v0 v1
+d_emit'45'arith'45'block_180 v0 v1
   = case coe v1 of
       MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_158 v2 v3 v4
         -> case coe v3 of
@@ -865,7 +872,7 @@ d_emit'45'arith'45'block_176 v0 v1
                                             (", %esp\n" :: Data.Text.Text)
                                             (coe
                                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                               (d_program'45'text_168
+                                               (d_program'45'text_172
                                                   (coe
                                                      MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_870
                                                      (coe
@@ -945,7 +952,7 @@ d_emit'45'arith'45'block_176 v0 v1
                                             (", %esp\n" :: Data.Text.Text)
                                             (coe
                                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                               (d_program'45'text_168
+                                               (d_program'45'text_172
                                                   (coe
                                                      MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_870
                                                      (coe
@@ -988,10 +995,10 @@ d_emit'45'arith'45'block_176 v0 v1
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-32.Emit.arith-block-symbol
-d_arith'45'block'45'symbol_206 ::
+d_arith'45'block'45'symbol_210 ::
   MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_144 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_arith'45'block'45'symbol_206 v0
+d_arith'45'block'45'symbol_210 v0
   = coe
       MAlonzo.Code.Once.Target.Symbol.d_once'45'symbol'45'own_56
       (coe
@@ -999,10 +1006,10 @@ d_arith'45'block'45'symbol_206 v0
          (coe
             MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_156 (coe v0)))
 -- Once.Arith.Backend.X86-32.Emit.emit-arith-blocks
-d_emit'45'arith'45'blocks_210 ::
+d_emit'45'arith'45'blocks_214 ::
   [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_144] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_emit'45'arith'45'blocks_210 v0
+d_emit'45'arith'45'blocks_214 v0
   = case coe v0 of
       [] -> coe ("" :: Data.Text.Text)
       (:) v1 v2
@@ -1011,13 +1018,13 @@ d_emit'45'arith'45'blocks_210 v0
              (".globl " :: Data.Text.Text)
              (coe
                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_arith'45'block'45'symbol_206 (coe v1))
+                (d_arith'45'block'45'symbol_210 (coe v1))
                 (coe
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    ("\n" :: Data.Text.Text)
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                      (d_emit'45'arith'45'block_176
-                         (coe d_arith'45'block'45'symbol_206 (coe v1)) (coe v1))
-                      (d_emit'45'arith'45'blocks_210 (coe v2)))))
+                      (d_emit'45'arith'45'block_180
+                         (coe d_arith'45'block'45'symbol_210 (coe v1)) (coe v1))
+                      (d_emit'45'arith'45'blocks_214 (coe v2)))))
       _ -> MAlonzo.RTE.mazUnreachableError
