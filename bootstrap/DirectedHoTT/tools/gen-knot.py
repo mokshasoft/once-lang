@@ -868,6 +868,10 @@ BINDER_SORT = {
     "RTm Γ":          ("sTm", 0),
     "RTm (Γ ∙)":      ("sTm", 1),
     "RTm ((Γ ∙) ∙)":  ("sTm", 2),
+    # ★ the TYPE-level judgements bind `RTy`, at the same depths.
+    "RTy Γ":          ("sTy", 0),
+    "RTy (Γ ∙)":      ("sTy", 1),
+    "RTy ((Γ ∙) ∙)":  ("sTy", 2),
     "Desc":           ("sDesc", 0),
     "IDesc":          ("sIDesc", 0),
     # ⚠ `RTy ε` is a CLOSED type — sort `sTy` at depth ZERO, not at the
@@ -928,7 +932,12 @@ def _groups(p):
         out.append(p[i+1:j]); i = j + 1
     return out
 
-def _tokens(s): return re.findall(r"[()]|[^\s()]+", s)
+def _tokens(s):
+    # ⚠ DROP EXPLICIT IMPLICIT ARGUMENTS.  `⌜base⌝ {Γ}` is the same term
+    #   as `⌜base⌝`; left in, `{Γ}` reads as an unmapped constructor and
+    #   four rules look like a missing library.
+    s = re.sub(r"\{[^{}]*\}", " ", s)
+    return re.findall(r"[()]|[^\s()]+", s)
 
 def _parse_spine(ts):
     def atom(i):
@@ -944,18 +953,33 @@ def _parse_spine(ts):
     e, _ = spine(0)
     return e
 
-def translate_rule(r, CT):
-    """(name, binders, prems, lhs, rhs) or (name, None, reason)"""
+def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
+    """(name, binders, prems, lhs, rhs) or (name, None, reason).
+
+    ⚠ THE RELATION SYMBOL IS A PARAMETER.  Splitting on `⟶` when the
+      judgement is `_⟶ᵀ_` leaves a stray `ᵀ` in the right-hand side, and
+      the failure reads as an unmapped constructor — 26 of them, which
+      looks like a missing library and is a one-character bug."""
     name, ty = r.split(":", 1)
     name = name.strip()
     parts = _split_top(ty)
-    binders, prems = [], []
+    binders, prems, foreign = [], [], []
     for p in parts[:-1]:
         gs = _groups(p)
         if gs is None:
-            if "⟶" in p:
-                a, b = [x.strip() for x in p.split("⟶")]
+            if REL in p:
+                a, b = [x.strip() for x in p.split(REL)]
                 prems.append((a, b)); continue
+            # ⚠ LONGEST RELATION FIRST: `⟶ᵀ` contains `⟶`, so testing the
+            #   short one first mis-reads a type-level premise as a
+            #   term-level one — silently, and the row still typechecks.
+            hit = None
+            for rel, comp in sorted(FOREIGN_RELS, key=lambda x: -len(x[0])):
+                if rel in p: hit = (rel, comp); break
+            if hit:
+                rel, comp = hit
+                a, b = [x.strip() for x in p.split(rel)]
+                foreign.append((a, b, comp)); continue
             return (name, None, "premise %r" % p)
         for g in gs:
             if ":" not in g: return (name, None, "binder %r" % g)
@@ -968,8 +992,8 @@ def translate_rule(r, CT):
             else:
                 return (name, None, "binder type %r" % t)
     concl = parts[-1]
-    if "⟶" not in concl: return (name, None, "conclusion %r" % concl)
-    lhs, rhs = [x.strip() for x in concl.split("⟶")]
+    if REL not in concl: return (name, None, "conclusion %r" % concl)
+    lhs, rhs = [x.strip() for x in concl.split(REL)]
     known = {b[0] for b in binders}
     unk = []
     def walk(e):
@@ -979,8 +1003,170 @@ def translate_rule(r, CT):
         for x in e[1]: walk(x)
     walk(_parse_spine(_tokens(lhs))); walk(_parse_spine(_tokens(rhs)))
     if unk: return (name, None, "unmapped %s" % sorted(set(unk)))
-    return (name, binders, prems, lhs, rhs)
+    return (name, binders, prems, lhs, rhs, foreign)
 
+
+# ============================ A JUDGEMENT, END TO END ======================
+# ★★★ ONE FUNCTION PER JUDGEMENT WOULD BE FIVE COPIES.  The judgements
+#   differ in four things — the datatype's name, its relation symbol, its
+#   index telescope, and which OTHER judgements it may cite — so those
+#   are parameters and the pipeline is written once.
+#
+# ★ AND THE MODULE SIZE IS CHOSEN FROM A MEASUREMENT, not a guess:
+#   bisected at ~1.8 s/row with the OOM cliff above ~50 rows on a 5.5 GB
+#   cap, so `SPLIT_AT` is 34 and anything larger is emitted in halves.
+SPLIT_AT = 34
+
+class Judgement:
+    def __init__(self, data, rel, tel, ity, ixdef, desc, mod, wf, cites=(), extra=""):
+        self.data, self.rel, self.tel, self.ity = data, rel, tel, ity
+        self.ixdef, self.desc, self.mod, self.wf = ixdef, desc, mod, wf
+        self.cites, self.extra = cites, extra
+
+def _jrows(J, CT):
+    "the translated rows, and the rules that did not translate"
+    rows, skipped = [], []
+    src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                       "Spec", "Typing.agda")
+    for r in rules_of(src, J.data):
+        t = translate_rule(r, CT, J.rel, J.cites)
+        if t[1] is None: skipped.append((t[0], t[2])); continue
+        nm, binders, prems, lhs, rhs, foreign = t
+        bs, dep = [(_DEPTH, _code(TNAT(), None))], {}
+        for b, srt, dp in binders:
+            dep[b] = dp
+            bs.append((b, _code(TNAT(), None) if srt == "nat"
+                          else _code(TKNOT(srt), _depth_at(dp))))
+        for i, (a, b, fcomp) in enumerate(foreign):
+            bs.append(("fp%d" % i,
+                       _code(fcomp, TUP(V(_DEPTH),
+                             _val(_parse_spine(_tokens(a)), CT, V(_DEPTH)),
+                             _val(_parse_spine(_tokens(b)), CT, V(_DEPTH))))))
+        ps = []
+        for i, (a, b) in enumerate(prems):
+            d = dep.get(a.strip(), 0)
+            ps.append(("ih%d" % i, TUP(_depth_at(d),
+                       _val(_parse_spine(_tokens(a)), CT, _depth_at(d)),
+                       _val(_parse_spine(_tokens(b)), CT, _depth_at(d)))))
+        rows.append((nm, JRow("rd" + nm, bs, ps,
+                     [V(_DEPTH), _val(_parse_spine(_tokens(lhs)), CT, V(_DEPTH)),
+                                 _val(_parse_spine(_tokens(rhs)), CT, V(_DEPTH))])))
+    return rows, skipped
+
+JHDR = """--- GENERATED by tools/gen-knot.py — do not edit.
+------------------------------------------------------------------------
+-- OCP-0009 · EXAMPLES — ★★★ `%(data)s`%(what)s
+--
+-- ⚠⚠ THE RULES ARE **PARSED OUT OF `Spec/Typing.agda`**, not transcribed.
+--   A hand-written table is one chance per row to name the wrong
+--   variable — the error class `Knot/LookupGen` exists to catch, and one
+--   an `ICon` never reveals, because it type-checks with ANY in-scope
+--   variable of the right type.  The Agda-former → knot-constructor map
+--   comes from `KNOT`'s own `decl` strings, so nothing is typed twice.
+--
+-- ★ ANY RULE THAT DID NOT TRANSLATE IS NAMED BELOW.  Emitting a subset
+--   silently is `verification-that-covers-less-than-it-claims`.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.%(mod)s where
+open import normalizer.Syntax.Types using ( _≡_; refl )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+  using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; fst; snd; nsuc; nzero
+        ; El; IMu; Σ'; Nat
+        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; ICon; IDesc; iι; iρ; iκ; inil; _◂_; εwkTy )
+open import DirectedHoTT.Spec.Typing
+  using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_
+        ; IConWf; iwf-ι; iwf-κ; iwf-ρ; ICodeWf; icw-clo; icw-ford; icw-imu
+        ; IDescWf; idwf-nil; idwf-cons
+        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nsuc; ⊢nzero
+        ; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
+        ; ⊢pair; ty-Σ; ty-Nat; ty-IMu
+        ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
+open import DirectedHoTT.Examples.Knot.Sorts
+  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
+        ; toI; fromI; ⊢ixP; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; num )
+open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
+open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
+open import DirectedHoTT.Examples.Knot.Ctors
+open import DirectedHoTT.Examples.Knot.CtorsV
+open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
+open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
+open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+%(extra)s
+"""
+
+def gen_j_rows(J, CT):
+    rows, skipped = _jrows(J, CT)
+    _JCACHE[J.mod] = rows
+    L = [JHDR % dict(data=J.data, what=", THE ROWS.", mod=J.mod + "Rows",
+                     extra=J.extra)]
+    L.append("%s : RTy ε" % J.ity)
+    L.append("%s = %s" % (J.ity, J.ixdef))
+    L.append("")
+    L.append("-- ⚠ NOT EMITTED — %d of %d rules:" % (len(skipped), len(skipped) + len(rows)))
+    for n, w in skipped: L.append("--     %-12s %s" % (n, w))
+    L.append("")
+    for i, (nm, row) in enumerate(rows):
+        tag = J.mod + _tagof(i)
+        L.append("-- %s" % nm)
+        L.append(emit_jrow(row, J.tel, (tag, "k" + tag), J.ity, J.desc))
+        L.append("")
+    L.append("-" * 72)
+    L.append("-- ★★★ …AND THE JUDGEMENT ITSELF.")
+    L.append("-" * 72)
+    L.append("%s : IDesc" % J.desc)
+    L.append("%s =" % J.desc)
+    line, body = "  ", []
+    for nm, _ in rows:
+        if len(line) > 62: body.append(line); line = "  "
+        line += "rd%s ◂ " % nm
+    body.append(line + "inil")
+    L.append("\n".join(body))
+    return "\n".join(L) + "\n"
+
+_JCACHE = {}
+
+def gen_j_wf(J, part, lo, hi, last):
+    rows = _JCACHE[J.mod]
+    imp = ("open import DirectedHoTT.Examples.Knot.%sRows\n" % J.mod
+           + ("open import DirectedHoTT.Examples.Knot.%sWfA\n" % J.mod
+              if part == "B" else "") + J.extra)
+    L = [JHDR % dict(data=J.data, what=" IS A WELL-FORMED DESCRIPTION.",
+                     mod=J.mod + "Wf" + part, extra=imp)]
+    for nm, row in rows[lo:hi]:
+        tag = J.mod + _tagof(rows.index((nm, row)))
+        L.append("-- %s" % nm)
+        L.append(emit_jrowwf(row, J.tel, (tag, "k" + tag), J.ity,
+                             "rd%sWf" % nm, J.desc))
+        L.append("")
+    if last:
+        L.append("-" * 72)
+        L.append("-- ★★★ …AND IT IS WELL FORMED.")
+        L.append("-" * 72)
+        L.append("%s : IDescWf %s %s" % (J.wf, J.ity, J.desc))
+        L.append("%s =" % J.wf)
+        L.append(nest(["idwf-cons (rd%sWf %s)" % (nm, J.desc) if not row.prems
+                       else "idwf-cons rd%sWf" % nm
+                       for nm, row in rows], "idwf-nil", 2))
+    return "\n".join(L) + "\n"
+
+def write_judgement(J, out, CT):
+    "…sized from the measured cost model."
+    open(os.path.join(out, J.mod + "Rows.agda"), "w").write(gen_j_rows(J, CT))
+    n = len(_JCACHE[J.mod])
+    if n <= SPLIT_AT:
+        open(os.path.join(out, J.mod + "Wf.agda"), "w").write(
+            gen_j_wf(J, "", 0, n, True))
+        return [J.mod + "Wf"]
+    h = (n + 1) // 2
+    open(os.path.join(out, J.mod + "WfA.agda"), "w").write(
+        gen_j_wf(J, "A", 0, h, False))
+    open(os.path.join(out, J.mod + "WfB.agda"), "w").write(
+        gen_j_wf(J, "B", h, n, True))
+    return [J.mod + "WfA", J.mod + "WfB"]
 
 # ============================ LAYER 3: THE ADEQUACY MAP ====================
 # ★★★ `⌈_⌉ : RTm Γ → RTm ε` and its typing — the theorem that makes the
@@ -1270,11 +1456,23 @@ def TUP(*a):
 # ---- the index telescope ---------------------------------------------------
 # each component is the CODE of its type, as a function of a depth expression
 def TNAT():        return ('tnat',)
+# ★★★ A COMPONENT THAT IS ANOTHER JUDGEMENT.
+#
+# ⚠ THE JUDGEMENTS ARE A CHAIN — `ξ-El : t ⟶ t' → El t ⟶ᵀ El t'` — and a
+#   premise at a DIFFERENT judgement is NOT an `iρ` field.  `iρ` means
+#   "recursive in the description being defined"; this is a value of a
+#   FOREIGN family, which is a κ field carrying an `⌜IMu⌝` code, exactly
+#   as `_∋_∷_`'s `Ctx` and `Var` components are.
+#   ⇒ so `PLAN-JUDGEMENT`'s "the judgements form a chain" is, in the
+#     encoding, the difference between `iρ` and `icw-imu`.
+def TJ(desc, ity, wf, tel): return ('tj', desc, ity, wf, tel)
 def TCTX():        return ('tctx',)
 def TKNOT(sort):   return ('tknot', sort)
 
 def _code(comp, d):
-    "the object-level code for telescope component `comp` at depth `d`"
+    """the object-level code for telescope component `comp` at depth `d`.
+    ⚠ For a `tj` component `d` is the WHOLE index tuple, not a depth."""
+    if comp[0] == 'tj':    return AP("⌜IMu⌝", RAW(comp[1]), RAW(comp[2]), d)
     if comp[0] == 'tnat':  return RAW("⌜Nat⌝")
     if comp[0] == 'tctx':  return AP("⌜IMu⌝", RAW("CtxD"), RAW("INat"), d)
     return AP("⌜IMu⌝", RAW("KnotD"), RAW("IPair"), PAIR(RAW(comp[1]), d))
@@ -1389,6 +1587,7 @@ def _telty(comp):
     return ('nat',) if comp[0] == 'tnat' else ('mu', comp)
 
 def _famwf(comp):
+    if comp[0] == 'tj':   return comp[3]
     return "CtxWf" if comp[0] == 'tctx' else "KnotWf"
 
 def _ixderiv(comp, dnat):
@@ -1404,6 +1603,9 @@ def _codewf(comp, dnat):
     if comp[0] == 'tnat': return "⊢⌜Nat⌝"
     return "⊢⌜IMu⌝ %s %s" % (_famwf(comp), par(_ixderiv(comp, dnat)))
 
+# foreign judgements a row may cite, by their description name
+FOREIGN = {}
+
 def _binder_comp(code):
     """(component, depth-expression) recovered from a binder's CODE.
     ★ So the description does not have to say twice what it already says
@@ -1413,6 +1615,7 @@ def _binder_comp(code):
     _, h, args = code
     assert h == "⌜IMu⌝", code
     fam = args[0][1]
+    if fam in FOREIGN: return FOREIGN[fam], args[2]
     if fam == "CtxD": return TCTX(), args[2]
     return TKNOT(args[2][1][1]), args[2][2]    # PAIR(RAW(sort), depth)
 
@@ -1563,6 +1766,31 @@ def _tupcomps(e):
     out.append(e)
     return out
 
+def _tupderiv(comps, tel, k, vis, bty):
+    """the index TUPLE's typing — a right-nested `⊢pair`, each carrying
+    the ⊢ty of its TAIL.
+
+    ★ SHARED by the `iρ` rung and by a FOREIGN-JUDGEMENT κ field, because
+      they need the same thing: a value of a family indexed by a
+      telescope.  The only difference is which description it belongs to,
+      and that is the caller's `tel`."""
+    m = len(tel)
+    body = None
+    for j in range(m - 2, -1, -1):
+        if j == 0:
+            depfn = lambda t: dbd(t)
+        else:
+            d0 = jdAt(comps[0], k, vis, bty, tel, 'nat')
+            depfn = (lambda d0: (lambda t: _wks(t, d0)))(d0)
+        ty = _tailty(j + 1, 0 if j == 0 else 1, tel, depfn)
+        head = par(jdAt(comps[j], k, vis, bty, tel, 'nat' if j == 0 else 'mu'))
+        if body is None:
+            body = "⊢pair %s %s %s" % (par(ty), head,
+                     par(jdAt(comps[m - 1], k, vis, bty, tel, 'mu')))
+        else:
+            body = "⊢pair %s %s\n      (%s)" % (par(ty), head, body)
+    return body
+
 def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None):
     """the `IConWf` chain for one row — one lemma per field, innermost
     first, exactly as `Knot/Lookup` writes them by hand.
@@ -1584,16 +1812,20 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None):
     para = (npr == 0)
     if not para:
         assert idesc is not None, "a row with a premise needs its description"
-        rho = nb
+        rho = next(j for j, (kd, _) in enumerate(fs) if kd == 'ρ')
         names = ["%s%d" % (T, j) for j in range(rho + 1, len(fs) + 1)]
         L.append("-- ★ the telescope, back at `Ctx` level: `emit_jrow` had to")
         L.append("--   drop to a bare `Cx` at the premise to stay writable")
         L.append("--   before `%s` existed." % idesc)
         L.append("%s : Ctx" % " ".join(names))
-        L.append("%s%d = %s%d ▹ IMu %s %s %s%d"
-                 % (T, rho + 1, T, rho, idesc, ity, F, rho))
-        for j in range(rho + 1, len(fs)):
-            L.append("%s%d = %s%d ▹ El %s%d" % (T, j + 1, T, j, F, j))
+        # ⚠ EXTEND BY FIELD KIND, NOT BY POSITION.  `ctrnᵀ` has TWO
+        #   recursive premises, and assuming "the first is `iρ`, the rest
+        #   are `iκ`" gives the second one an `El` where it needs an
+        #   `IMu` — a context that is wrong only from that field on.
+        for j in range(rho, len(fs)):
+            ext = ("IMu %s %s %s%d" % (idesc, ity, F, j)) if fs[j][0] == 'ρ' \
+                  else ("El %s%d" % (F, j))
+            L.append("%s%d = %s%d ▹ %s" % (T, j + 1, T, j, ext))
         L.append("")
     for k in range(len(fs) - 1, -1, -1):
         kind, e = fs[k]
@@ -1606,33 +1838,7 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None):
             # ★★★ THE RECURSIVE PREMISE.  Its derivation is the index
             #   TUPLE's typing: a right-nested `⊢pair`, each carrying the
             #   ⊢ty of its TAIL.
-            comps = _tupcomps(e)
-            body, m = None, len(tel)
-            for j in range(m - 2, -1, -1):
-                if j == 0:
-                    depfn = lambda t: dbd(t)          # the Σ-BOUND depth
-                else:
-                    d0 = jdAt(comps[0], k, vis, bty, tel, 'nat')
-                    depfn = (lambda d0: (lambda t: _wks(t, d0)))(d0)
-                # ⚠ `t` STARTS AT 1 FOR A VALUE DEPTH, 0 FOR THE BOUND
-                #   ONE.  `⊢pair`'s ⊢ty argument is already UNDER the
-                #   pair's own binder, so a depth taken from the ambient
-                #   context is one weakening away — while the Σ-bound
-                #   depth IS that binder.  Off by one here still
-                #   typechecks at a different component.
-                ty = _tailty(j + 1, 0 if j == 0 else 1, tel, depfn)
-                if body is None:
-                    body = ("⊢pair %s %s %s"
-                            % (par(ty),
-                               par(jdAt(comps[j], k, vis, bty, tel,
-                                        'nat' if j == 0 else 'mu')),
-                               par(jdAt(comps[m - 1], k, vis, bty, tel, 'mu'))))
-                else:
-                    body = ("⊢pair %s %s\n      (%s)"
-                            % (par(ty),
-                               par(jdAt(comps[j], k, vis, bty, tel,
-                                        'nat' if j == 0 else 'mu')),
-                               body))
+            body = _tupderiv(_tupcomps(e), tel, k, vis, bty)
             rung = "iwf-ρ %s%d\n    (%s)" % (F, k, body)
             C = "C" + T
             L.append("%s%d : ICon ⌊ %s%d ⌋" % (C, k, T, k))
@@ -1647,6 +1853,15 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None):
             comp = bty[row.binders[k][0]]
             if comp[0] == 'tnat':
                 rung = "iwf-κ %s%d (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝" % (F, k)
+            elif comp[0] == 'tj':
+                # ★ A FOREIGN JUDGEMENT'S ELEMENT — a κ field carrying an
+                #   `⌜IMu⌝` code over ANOTHER description, and its
+                #   well-formedness is that description's `IDescWf`.
+                dep = bdep[row.binders[k][0]]
+                rung = ("iwf-κ %s%d (icw-imu %s %s)\n    (⊢⌜IMu⌝ %s %s)"
+                        % (F, k, par(rend(dep, k, vis)), _famwf(comp),
+                           _famwf(comp),
+                           par(_tupderiv(_tupcomps(dep), comp[4], k, vis, bty))))
             else:
                 dep = bdep[row.binders[k][0]]
                 dnat = jdAt(dep, k, vis, bty, tel, 'nat')
@@ -1959,13 +2174,19 @@ def gen_redrows():
                         os.path.abspath(__file__))), "Spec", "Typing.agda"), "_⟶_"):
         t = translate_rule(r, CT)
         if t[1] is None: skipped.append((t[0], t[2])); continue
-        nm, binders, prems, lhs, rhs = t
+        nm, binders, prems, lhs, rhs, foreign = t
         bs = [(_DEPTH, _code(TNAT(), None))]
         dep = {}
         for b, srt, dp in binders:
             dep[b] = dp
             bs.append((b, _code(TNAT(), None) if srt == "nat"
                           else _code(TKNOT(srt), _depth_at(dp))))
+        # ★ a FOREIGN premise is a κ BINDER, not an `iρ` field.
+        for i, (a, b, fcomp) in enumerate(foreign):
+            fdep = TUP(V(_DEPTH),
+                       _val(_parse_spine(_tokens(a)), CT, V(_DEPTH)),
+                       _val(_parse_spine(_tokens(b)), CT, V(_DEPTH)))
+            bs.append(("fp%d" % i, _code(fcomp, fdep)))
         ps = []
         for i, (a, b) in enumerate(prems):
             d = dep.get(a.strip(), 0)
@@ -2126,6 +2347,34 @@ def gen_lookupgen():
          "_ : lkThereG ≡ lkThere", "_ = refl"]
     return "\n".join(L) + "\n"
 
+TEL_RED = [TNAT(), TKNOT("sTm"), TKNOT("sTm")]
+TEL_TYR = [TNAT(), TKNOT("sTy"), TKNOT("sTy")]
+
+# ★ registered so `_binder_comp` recognises a foreign judgement's code
+FOREIGN["RedD"] = TJ("RedD", "IRed", "RedWf", TEL_RED)
+
+J_TYRED = Judgement(
+    "_⟶ᵀ_", "⟶ᵀ", TEL_TYR, "ITyRed",
+    "Σ' Nat (Σ' (IMu KnotD IPair (pair sTy (var vz)))\n"
+    "                  (IMu KnotD IPair (pair sTy (var (vs vz)))))",
+    "TyRedD", "TyRed", "TyRedWf",
+    cites=[("⟶", FOREIGN["RedD"])],
+    extra=("open import DirectedHoTT.Examples.Knot.RedRows using ( RedD; IRed )\n"
+           "open import DirectedHoTT.Examples.Knot.RedWfB using ( RedWf )"))
+
+
+FOREIGN["TyRedD"] = TJ("TyRedD", "ITyRed", "TyRedWf", TEL_TYR)
+
+J_CONV = Judgement(
+    "_≅ᵀ_", "≅ᵀ", TEL_TYR, "IConv",
+    "Σ' Nat (Σ' (IMu KnotD IPair (pair sTy (var vz)))\n"
+    "                  (IMu KnotD IPair (pair sTy (var (vs vz)))))",
+    "ConvD", "Conv", "ConvWf",
+    cites=[("⟶ᵀ", FOREIGN["TyRedD"])],
+    extra=("open import DirectedHoTT.Examples.Knot.TyRedRows using ( TyRedD; ITyRed )\n"
+           "open import DirectedHoTT.Examples.Knot.TyRedWf using ( TyRedWf )"))
+
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out = os.path.join(root, "Examples", "Knot")
@@ -2148,6 +2397,10 @@ if __name__ == "__main__":
     _half = (len(_ROWS) + 1) // 2
     open(os.path.join(out, "RedWfA.agda"), "w").write(gen_redwf("A", 0, _half))
     open(os.path.join(out, "RedWfB.agda"), "w").write(gen_redwf("B", _half, len(_ROWS)))
+    _CT = {d.split(":")[0].strip(): n[1:] + "K" for n, d, _ in KNOT}
+    for _J in (J_TYRED, J_CONV):
+        for _m in write_judgement(_J, out, _CT):
+            print("  wrote", _m)
     print(f"{len(KNOT)} constructors · {n_rho} recursive fields · "
           f"{n_kap} κ fields · {2 * (n_rho + n_kap) + 2 * len(KNOT)} "
           f"generated clauses")
