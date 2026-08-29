@@ -43,7 +43,7 @@ Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜
 | ✅ | lookup method 1 of 3 (`cTm-var`) | `Knot/SubMot` |
 | ✅ | **lookup methods 2–3** (`cVar-vz`, `cVar-vs`) | `Knot/SubMot` — all 3 given rows done |
 | ✅ | `⊢Var-vzKt` / `⊢Var-vsKt` — constructors at an ARBITRARY depth | `Knot/Build` rungs 4–5; ONE lemma `rtA v X` composed, not 3 chains |
-| ⬜ | the 50 computed rows' **typing** | `Lib/ISub` — `Lib/IWk` found 2 bugs here the term level could not |
+| 🟡 | the 50 computed rows' **typing** | ⚠ needs a REFINED classification — see below |
 | ⬜ | assemble `subTm` and its `⊢ielim` | |
 
 ## D. Step 3 — the judgement layer (~148 rows)
@@ -78,7 +78,7 @@ Full state: `HANDOFF-2026-08-27` §"THE PENDING GENERALISATION".
 | | item |
 |---|---|
 | ✅ | `Lib/IMeths` — the walk, lifted out of `Examples` |
-| ✅ | `Lib/ISub` reuses `Lib/IWk`'s classification UNCHANGED |
+| ⚠ | `Lib/ISub` reuses `Lib/IWk`'s classification for the TERM; the TYPING needs one more datum |
 | 🟡 | **`iatCon-wf`** — 2 of 3 cases proved; gates generalising `Lib/IPay` off `Nat` |
 | ⬜ | `payStep` is MISFILED in `Lib/IWk` (both outside customers do substitution) |
 | ⬜ | `sub-w`/`²`/`³`/`⁴` want INDEXING not listing (26 customers) |
