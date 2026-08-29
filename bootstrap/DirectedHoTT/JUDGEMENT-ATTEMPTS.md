@@ -206,8 +206,60 @@ its index depth as `D` / `sucD k` / `lit k`. Threading it is six lines;
 guessing it is a class of bug. The same shape as `_binder_comp` — the
 description already said it once.
 
-✅ The `_⟶_` interface is settled. What remains for the 73 rules is
-transcription against `Spec/Typing`, plus one open item: `β`'s RHS is an
-object-level `subTm`, so `subTmK` needs a `WF_CTOR` entry whose typing
-goes through `⊢motAppK` (the eliminator lands at a Π, not at `K` — see
-`SUBTM-ATTEMPTS.md` step 6).
+✅ The `_⟶_` interface is settled.
+
+### 2.2 — transcription, or translation?
+
+⚠ **Hand-writing 73 table entries is transcription; it is also 73 chances
+to name the wrong variable — the exact error class `LookupGen` exists to
+catch.** So the rules are **parsed out of `Spec/Typing.agda`** instead,
+and the Agda-former → knot-constructor map is derived from `KNOT`'s own
+`decl` strings. Nothing is typed twice.
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 5 | translate the 73 rules; regex for the binder groups | ⚠ **31/73** |
+| 6 | handle several binder groups per `→`-piece | ⚠ 39/73 — still the regex: `[^)}]` cannot span `RTm (Γ ∙)` |
+| 7 | balanced-paren scanner instead of a regex | ✅ **65/73** |
+
+★★ **The lesson is about the NUMBER, not the parser.** Attempts 5 and 6
+each produced a plausible coverage figure, and both were *my tool's*
+limitation reported as *the rules'* difficulty. Had I stopped at 31/73 I
+would have concluded that 42 rules need bespoke handling and gone looking
+for an abstraction to cover them — a whole design detour off a number I
+generated myself. ⇒ **before concluding a task is hard, check that the
+measurement isn't your own bug.**
+
+✅ **And the 8 remaining failures are real, and fall into exactly two
+named classes** — the ones `PLAN-JUDGEMENT` predicted:
+
+| class | rules | what they need |
+|---|---|---|
+| object-level substitution | `β`, `natrec-suc`, `ι-elim`, `ι-ielim` | `subTmK` + the payload selectors; typing via `⊢motAppK` |
+| decidable side conditions | `hrefl-pw`, `tr-pw`, `tr-J-Hom`, `ap-J` | a premise `pw? C ≡ true` — not a judgement, a **boolean** |
+
+⇒ so the honest answer to "is it mechanical?" is **65 of 73 are**, and
+the other 8 are two interface questions, not 8 separate problems.
+
+### 2.3 — emitting them
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 8 | translate + emit all 65 `ICon`s | ⚠ `KeyError: 'm'` — **`tr-J-Mu` binds its own `m`**, colliding with the row's depth variable |
+| 9 | key the depth binder as `#m` (no Agda name contains `#`) | ⚠ Agda rejects `y0_0`: "the part 0 is not valid because it is a literal" |
+| 10 | letters-only per-row prefixes | ⚠ `Var-vzK` is not in scope, then: it takes its depth **at the term level** |
+| 11 | thread the depth through the **value** tree too, by the same field table | ✅ **rc=0 — all 65 rows** |
+
+⚠ **Attempt 8 is the one worth keeping.** A rule's own variable can be
+named anything, including whatever the emitter calls its depth. Here it
+crashed; had the binder orders lined up it would have **silently
+resolved to the rule's `m`** and produced a well-typed row meaning
+something else — the error class this whole generator exists to remove.
+⇒ emitter-internal names must be un-nameable, not merely unlikely.
+
+★ **And attempt 10→11 is the depth-threading finding again, at the term
+level.** The `Var` constructors take their depth explicitly — they Ford
+the depth as well as the tag, which is the exception `Knot/Build` exists
+for — so the same `FIELD_DEPTH` walk the *derivation* emitter needed is
+needed by the *value* emitter. One table, two consumers, and it was
+already there.
