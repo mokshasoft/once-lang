@@ -288,11 +288,43 @@ and `var x` is its `j = 0` case. `⊢Var-vzKv` — the lemma the `v` form was
 generalised *from* — happens to be a `j = 0` use, which is why the
 narrower shape looked right.
 
-⬜ **Next:** widen `emit_row`'s `V` mode to carry `j`, and have the
-emitter's depth-threading supply `(j, x)` rather than a derivation text.
-`Knot/RedWf` is not emitted until then — the generator's call is
-commented out with a pointer here, so the tree stays green rather than
-carrying a module that does not check.
+### 2.5 — the widening, and where `RedWf` actually stands
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 13 | widen the `v` form to `sucs j (var x)` | ⚠ **would not unify.** `sucs` is a recursive *function*; `sucs ?j (var ?x)` never matches `nsuc (var y)` |
+| 14 | make the depth an **explicit, fully general** term `d` + `⊢ d ∷ Nat` | ⚠ unsolved metas — `cong f refl` has nothing to fix its type |
+| 15 | never emit `refl` under a `cong` (a pure-renaming prefix *is* `refl`) | ✅ `Knot/CtorsV` rc=0 at an arbitrary depth |
+| 16 | point `WF_CTOR` at the `Var` lemmas | ⚠ `⊢Var-vzKv` is `var x` — but **`⊢Var-vzKt` already existed**, at an arbitrary depth, built earlier the same session |
+| 17 | `Var-vzK`'s argument is its **source** depth (`: K (sVar , nsuc d)`) — pass the predecessor | ⚠ term fixed, derivation still off: the two were separate strings |
+| 18 | carry the depth **structured** — `(base, derivation, #nsucs)` — so both sides and the predecessor come from one place | ✅ **all 65 `IConWf`s typecheck** |
+| 19 | add the `IDescWf` assembly | ⚠ **OOM (rc=143)**, `-A64m` and `-A64m -c` |
+| 20 | drop the assembly, keep the 65 rungs | ⚠ **still OOM** |
+
+★★★ **The general-depth widening is DONE and is the right abstraction.**
+`num n` must be *recognised* under a binder (chains); a general `d` must
+be *moved* (`⊢wk`) and its substitutions *cancelled* (the `sub-wᵉ`
+ladder — measured: the table needs exponent 4 and `Lib/Wk` stops at
+`sub-w⁴`, which is not luck: both are bounded by the widest row).
+
+⚠ **And attempt 16 is the "hidden library" pattern for the third time.**
+`⊢Var-vzKt`/`⊢Var-vsKt` — the arbitrary-depth forms — were built
+*earlier in the same session*, and the table pointed at the narrow twins
+for two commits because the narrow ones were written first.
+
+⚠⚠ **ATTEMPT 19→20 IS A CORRECTION TO MY OWN CLAIM.** After 19 I wrote
+that "the 65-deep `idwf-cons` nest is what OOMs — not the rows", because
+Agda had reached the assembly and reported a *type* error there. Attempt
+20 removed the assembly and it **still OOMs**. ⇒ the split point is
+**unknown**, and `exit 143 is not evidence about cost` claimed a third
+victim — my own note says two OCP-0009 conclusions had already been
+wrong for this exact reason.
+
+⬜ **Where this leaves `RedWf`:** the emitter is finished and every rung
+it produces has been *seen* to typecheck; the module as a whole does not
+fit in 7.7 GB. It is **not emitted**, so nothing in the tree claims the
+judgement is well formed. Next step is to bisect the module (halves, not
+guesses) to find what actually costs, rather than to reason about it.
 
 ★ **And attempt 10→11 is the depth-threading finding again, at the term
 level.** The `Var` constructors take their depth explicitly — they Ford

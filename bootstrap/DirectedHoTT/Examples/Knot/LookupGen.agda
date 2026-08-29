@@ -47,7 +47,7 @@ open import DirectedHoTT.Examples.Knot.Sorts
   using ( toI; fromI; ⊢ixP; ⊢sTy; ⊢sVar )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.CtxD using ( CtxWf; ⊢Ctx-extKv )
-open import DirectedHoTT.Examples.Knot.Build using ( ⊢Var-vzKv; ⊢Var-vsKv )
+open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Wk using ( ⊢wkK )
 open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( ⊢symN )
@@ -138,7 +138,7 @@ W_Θ5 D =
                   (toI (⊢fst (⊢var (there (there (there (there (there here))))))))
                   (⊢symN (⊢fst (⊢var (there (there (there (there (there here))))))) (⊢nsuc (fromI (⊢var (there (there (there (there here)))))))
                          (fordAs (⊢var (there here))))
-                  (toMu (⊢Var-vzKv (fromI (⊢var (there (there (there (there here))))))))))
+                  (toMu (⊢Var-vzKt (fromI (⊢var (there (there (there (there here))))))))))
     (W_Θ6 D)
 
 W_Θ4 : (D : IDesc) → IConWf D ILk Θ4 (iκ κ4 (iκ κ5 (iκ κ6 (iι))))
@@ -279,7 +279,7 @@ W_Ξ8 =
                   (toI (⊢fst (⊢var (there (there (there (there (there (there (there (there here)))))))))))
                   (⊢symN (⊢fst (⊢var (there (there (there (there (there (there (there (there here)))))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))
                          (fordAs (⊢var (there here))))
-                  (toMu (⊢Var-vsKv (fromI (⊢var (there (there (there (there (there (there (there here))))))))) (fromMu (⊢var (there (there (there (there (there here)))))))))))
+                  (toMu (⊢Var-vsKt (fromI (⊢var (there (there (there (there (there (there (there here))))))))) (fromMu (⊢var (there (there (there (there (there here)))))))))))
     W_Ξ9
 
 W_Ξ7 : IConWf LkD ILk Ξ7 (iκ λ7 (iκ λ8 (iκ λ9 (iι))))
