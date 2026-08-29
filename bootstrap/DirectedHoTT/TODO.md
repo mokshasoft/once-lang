@@ -47,7 +47,7 @@ Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜
 | ✅ | **step 1/6 — `⊢extNK`** (the extension preserves types) | `Knot/SubMot`; took 7 attempts, see `SUBTM-ATTEMPTS.md` |
 | ✅ | **step 2/6 — `⊢sPick`** (+ `⊢sucs`, `⊢extsN`) | `Lib/ISub.Sub.Typing`; forced `IsNum` |
 | ✅ | **step 3/6 — `⊢isubPay`** (+`⊢kaPick`, `⊢fordMapK`, `⊢motAppK`) | `Lib/ISub.Sub.Typing`, INSTANTIATED over the knot |
-| ⬜ | step 4/6 — `⊢isubMethod` | |
+| ✅ | **step 4/6 — `⊢isubMethodK`** | `Knot/SubMot` — at the KNOT, not `Lib`: the last two binders are the motive's |
 | ⬜ | step 5/6 — the tuple at the mask | |
 | ⬜ | step 6/6 — assemble `subTmK` + `⊢subTmK` (the `⊢ielim`) | |
 

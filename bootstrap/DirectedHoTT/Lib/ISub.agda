@@ -92,20 +92,21 @@ open import DirectedHoTT.Spec.Syntax
         ; Sub; subTm; RTy; IMu; Nat; El; extS; ipayTy )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm )
 open import DirectedHoTT.Spec.Typing
-  using ( _⟶*_; Ctx; ⌊_⌋; _⊢_∷_; ⊢app; ⊢conv; ⊢nsuc; iinst
+  using ( _⟶*_; done; step; csymᵀ; Ctx; ⌊_⌋; _⊢_∷_; ⊢app; ⊢conv; ⊢nsuc; iinst
         ; ⊢pair; ⊢unit; ⊢fst; ⊢snd
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ; IDescWf; iihTy; wk-single )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢ )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-pairˡ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu )
+open import DirectedHoTT.Metatheory.Confluence
+  using ( ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-⌜Id⌝ˡ )
+open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-El )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.IWk
   using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf; sucs
         ; Maybe; just; nothing; decCon; decSucs; decClosed; decVar
-        ; pinned-stable; isSucs-sub; payStep )
+        ; pinned-stable; isSucs-sub; payStep; sucs-red )
 
 module Sub
   -- ★ the ONE thing that differs from weakening: how a substitution is
@@ -485,6 +486,16 @@ module Sub
                 Γ ⊢ fordMap fi (num k) t ∷ El (⌜Id⌝ ⌜Nat⌝ (smap fi) (num k)))
     where
 
+    -- ★ the mirror of `Knot/SubMot`'s `⟶*-castₗ`, needed here for the
+    --   same reason: `isSucs-sub` is an `≡` and the endpoint it names
+    --   is where a REDUCTION has to start.
+    ⟶*-castₗ : {Γ : Cx} {a a' b : RTm Γ} → a ≡ a' → a' ⟶* b → a ⟶* b
+    ⟶*-castₗ refl r = r
+
+    sucs-red* : {Γ : Cx} (k : ℕ) {x y : RTm Γ} → x ⟶* y → sucs k x ⟶* sucs k y
+    sucs-red* k done       = done
+    sucs-red* k (step r q) = step (sucs-red k r) (sucs-red* k q)
+
     ⊢sucs : {Γ : Ctx} (k : ℕ) {n : RTm ⌊ Γ ⌋} →
             Γ ⊢ n ∷ Nat → Γ ⊢ sucs k n ∷ Nat
     ⊢sucs zero    dn = dn
@@ -516,7 +527,14 @@ module Sub
     ⊢sPick : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
              {j : RTm ⌊ Θ ⌋} {d n sb q ih : RTm ⌊ Γ ⌋}
              (ix : SubIx a j) →
-             snd (σ a) ≡ d → snd (τ a) ≡ n →
+             -- ⚠⚠ σ's HYPOTHESIS IS AN `≡` AND τ's IS A `⟶*`, and the
+             --   asymmetry is forced by the CUSTOMER.  `σ` is
+             --   `isingle ⟨i⟩` with `⟨i⟩` a VARIABLE, so `snd (σ a)` is
+             --   the ambient depth on the nose.  `τ` is `isingle (pair
+             --   (smap ⟨s⟩) n)` — a literal pair — so `snd (τ a)` is a
+             --   STUCK PROJECTION and only `βsnd` moves it.
+             --   ⇒ state each at the shape its own side has.
+             snd (σ a) ≡ d → snd (τ a) ⟶* n →
              Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ sb ∷ STy d n →
              Γ ⊢ q  ∷ IMu D I (subTm σ j) →
              Γ ⊢ ih ∷ iinst (subTm σ j) q M →
@@ -534,17 +552,23 @@ module Sub
     --     · `st` reduces it to `num N`, which is `subTm τ s` again.
     ⊢sPick {Γ = Γ} {σ = σ} {τ = τ} {n = n} (s-rides {s = s} qn p st)
            hσ hτ dd dn dsb dq dih =
-      ⊢-cast (cong (IMu D I) (cong₂ pair (sym (isNum-sub qn τ)) (sym eqτ)))
-        (⊢conv (⊢-cast (cong (λ z → IMu D I (pair (smap z) (sucs k n)))
-                             (isNum-sub qn σ))
-                 (⊢motApp dih (⊢sucs k dn)
-                   (⊢-cast (cong (λ z → STy z (sucs k n)) (sym eqσ))
-                           (⊢extsN k dd dn dsb))))
-               (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ st))))
+      -- ⚠ AND THE TWO ENDPOINTS ARE PAID IN DIFFERENT CURRENCIES: the
+      --   SORT closes by an `≡` (`isNum-sub`), the DEPTH by a `⟶*` run
+      --   BACKWARDS (`csymᵀ`).  One `⊢-cast` then one `⊢conv`, never a
+      --   single step doing both.
+      ⊢conv (⊢-cast (cong (λ z → IMu D I (pair z (sucs k n)))
+                          (sym (isNum-sub qn τ)))
+              (⊢conv (⊢-cast (cong (λ z → IMu D I (pair (smap z) (sucs k n)))
+                                   (isNum-sub qn σ))
+                       (⊢motApp dih (⊢sucs k dn)
+                         (⊢-cast (cong (λ z → STy z (sucs k n)) (sym eqσ))
+                                 (⊢extsN k dd dn dsb))))
+                     (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ st)))))
+            (csymᵀ (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ redτ))))
       where
-        k   = depthOf p
-        eqσ = trans (isSucs-sub p σ) (cong (sucs k) hσ)
-        eqτ = trans (isSucs-sub p τ) (cong (sucs k) hτ)
+        k    = depthOf p
+        eqσ  = trans (isSucs-sub p σ) (cong (sucs k) hσ)
+        redτ = ⟶*-castₗ (isSucs-sub p τ) (sucs-red* k hτ)
 
     ------------------------------------------------------------------------
     -- ★★★ ONE κ FIELD, TYPED — and the two halves are not the same kind
@@ -556,18 +580,20 @@ module Sub
 
     ⊢kaPick : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
               {κ : RTm ⌊ Θ ⌋} {fi t : RTm ⌊ Γ ⌋} (ka : SubKa a κ) →
-              fst (σ a) ≡ fi → fst (τ a) ≡ smap fi → Γ ⊢ fi ∷ Nat →
+              -- ⚠ same asymmetry as `⊢sPick`, same reason.
+              fst (σ a) ≡ fi → fst (τ a) ⟶* smap fi → Γ ⊢ fi ∷ Nat →
               Γ ⊢ t ∷ El (subTm σ κ) →
               Γ ⊢ kaPick ka fi t ∷ El (subTm τ κ)
     ⊢kaPick {σ = σ} {τ = τ} (sk-clo κ o) hσ hτ dfi dt =
       ⊢-cast (cong El (pinned-stable κ σ τ o)) dt
     ⊢kaPick {σ = σ} {τ = τ} {fi = fi} (sk-fst qb st) hσ hτ dfi dt =
-      ⊢-cast (cong₂ (λ z y → El (⌜Id⌝ ⌜Nat⌝ z y))
-                    (sym hτ) (sym (isNum-sub qb τ)))
+      ⊢conv (⊢-cast (cong (λ y → El (⌜Id⌝ ⌜Nat⌝ (smap fi) y))
+                          (sym (isNum-sub qb τ)))
         (⊢fordMap (numOf qb) st dfi
           (⊢-cast (cong₂ (λ z y → El (⌜Id⌝ ⌜Nat⌝ z y))
                          hσ (isNum-sub qb σ))
-                  dt))
+                  dt)))
+            (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-⌜Id⌝ˡ hτ))))
 
     ------------------------------------------------------------------------
     -- ★★★ THE PAYLOAD, REBUILT AND TYPED.  The twin of `Lib/IWk`'s
@@ -590,8 +616,8 @@ module Sub
                {C : ICon ⌊ Θ ⌋} {fi d n sb : RTm ⌊ Γ ⌋}
                (w : SubCon a C) → IConWf D I Θ C → IDescWf I D →
                Sub⊢ Θ Γ σ → Sub⊢ Θ Γ τ →
-               fst (σ a) ≡ fi → fst (τ a) ≡ smap fi →
-               snd (σ a) ≡ d → snd (τ a) ≡ n →
+               fst (σ a) ≡ fi → fst (τ a) ⟶* smap fi →
+               snd (σ a) ≡ d → snd (τ a) ⟶* n →
                Γ ⊢ fi ∷ Nat → Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat →
                Γ ⊢ sb ∷ STy d n →
                (q ih : RTm ⌊ Γ ⌋) →
