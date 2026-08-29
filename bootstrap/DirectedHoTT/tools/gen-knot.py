@@ -53,7 +53,7 @@ depth expressions:
     ('D',)        `snd ⟨i⟩`            ('sucD', n)  `suc^n (snd ⟨i⟩)`
     ('lit', n)    the numeral `n`      ('fld', j)   field `j`, as a Nat
 """
-import sys, os
+import sys, os, re
 
 # ---------------------------------------------------------------- the sorts
 SORTS = ["sTy", "sTm", "sDesc", "sDCon", "sIDesc", "sICon", "sVar"]
@@ -792,6 +792,139 @@ open import DirectedHoTT.Examples.Knot.Build
   using ( Var-vzK; \u22a2Var-vzK; Var-vsK; \u22a2Var-vsK )
 
 """
+
+# ============================ THE JUDGEMENT-RULE TRANSLATOR ================
+# ★★★ THE RULES ARE PARSED OUT OF `Spec/Typing.agda`, NOT TRANSCRIBED.
+#
+# ⚠ 166 hand-written table entries is 166 chances to name the wrong
+#   variable — the exact error class `LookupGen` exists to catch, and the
+#   one the generator's header already argues is "a transcription error
+#   waiting to happen".  The Agda-former → knot-constructor map is
+#   derived from `KNOT`'s own `decl` strings, so nothing is typed twice.
+#
+# ⚠⚠ AND THE COVERAGE REPORT IS THE POINT.  A rule this cannot translate
+#   is NAMED, in the generator's output and in the generated file's
+#   header.  Silently emitting 65 of 73 rows would be
+#   `verification-that-covers-less-than-it-claims`.
+
+# a binder's type → (knot sort, how many binders deeper than the row)
+BINDER_SORT = {
+    "RTm Γ":          ("sTm", 0),
+    "RTm (Γ ∙)":      ("sTm", 1),
+    "RTm ((Γ ∙) ∙)":  ("sTm", 2),
+    "Desc":           ("sDesc", 0),
+    "IDesc":          ("sIDesc", 0),
+    # ⚠ `RTy ε` is a CLOSED type — sort `sTy` at depth ZERO, not at the
+    #   row's depth.  Typing it as the row's depth compiles and means
+    #   something else.
+    "RTy ε":          ("sTy", "closed"),
+}
+NAT_BINDER = {"ℕ"}
+
+def _agda_ctor_map():
+    "Agda term former → knot smart constructor, from the table itself"
+    return {d.split(":")[0].strip(): n[1:] + "K" for n, _, _ in KNOT
+            for d in [next(dd for nn, dd, _ in KNOT if nn == n)]}
+
+def rules_of(path, dataname):
+    src = open(path, encoding="utf-8").read().split("\n")
+    i = next(k for k, l in enumerate(src) if l.startswith("data " + dataname))
+    out, j, cur = [], i + 1, None
+    while j < len(src):
+        l = src[j]
+        if l and not l[0].isspace(): break
+        if re.match(r"^  [^ \-]", l):
+            if cur: out.append(cur)
+            cur = l.strip()
+        elif cur is not None and l.startswith("    ") and not l.strip().startswith("--"):
+            cur += " " + l.strip()
+        j += 1
+    if cur: out.append(cur)
+    return [r for r in out if ":" in r]
+
+def _split_top(s, sep="→"):
+    d, parts, cur = 0, [], ""
+    for ch in s:
+        if ch in "({": d += 1
+        elif ch in ")}": d -= 1
+        if ch == sep and d == 0: parts.append(cur); cur = ""
+        else: cur += ch
+    parts.append(cur)
+    return [p.strip() for p in parts]
+
+def _groups(p):
+    """balanced (…)/{…} groups, or None if `p` is not purely binders.
+    ⚠ A REGEX CANNOT DO THIS: `RTm (Γ ∙)` has nested parens, and a
+      `[^)}]` class stops at the inner one.  Two attempts reported 31/73
+      and 39/73 coverage — both were the regex, not the rules."""
+    out, i = [], 0
+    while i < len(p):
+        if p[i].isspace(): i += 1; continue
+        if p[i] not in "({": return None
+        d, j = 0, i
+        while j < len(p):
+            if p[j] in "({": d += 1
+            elif p[j] in ")}":
+                d -= 1
+                if d == 0: break
+            j += 1
+        if j >= len(p): return None
+        out.append(p[i+1:j]); i = j + 1
+    return out
+
+def _tokens(s): return re.findall(r"[()]|[^\s()]+", s)
+
+def _parse_spine(ts):
+    def atom(i):
+        if ts[i] == "(":
+            e, i = spine(i + 1)
+            return e, i + 1
+        return ("a", ts[i]), i + 1
+    def spine(i):
+        args = []
+        while i < len(ts) and ts[i] != ")":
+            e, i = atom(i); args.append(e)
+        return (args[0] if len(args) == 1 else ("ap", args)), i
+    e, _ = spine(0)
+    return e
+
+def translate_rule(r, CT):
+    """(name, binders, prems, lhs, rhs) or (name, None, reason)"""
+    name, ty = r.split(":", 1)
+    name = name.strip()
+    parts = _split_top(ty)
+    binders, prems = [], []
+    for p in parts[:-1]:
+        gs = _groups(p)
+        if gs is None:
+            if "⟶" in p:
+                a, b = [x.strip() for x in p.split("⟶")]
+                prems.append((a, b)); continue
+            return (name, None, "premise %r" % p)
+        for g in gs:
+            if ":" not in g: return (name, None, "binder %r" % g)
+            nms, t = g.split(":", 1); t = t.strip()
+            if t in NAT_BINDER:
+                for nm in nms.split(): binders.append((nm, "nat", 0))
+            elif t in BINDER_SORT:
+                srt, dp = BINDER_SORT[t]
+                for nm in nms.split(): binders.append((nm, srt, dp))
+            else:
+                return (name, None, "binder type %r" % t)
+    concl = parts[-1]
+    if "⟶" not in concl: return (name, None, "conclusion %r" % concl)
+    lhs, rhs = [x.strip() for x in concl.split("⟶")]
+    known = {b[0] for b in binders}
+    unk = []
+    def walk(e):
+        if e[0] == "a":
+            if e[1] not in CT and e[1] not in known: unk.append(e[1])
+            return
+        for x in e[1]: walk(x)
+    walk(_parse_spine(_tokens(lhs))); walk(_parse_spine(_tokens(rhs)))
+    if unk: return (name, None, "unmapped %s" % sorted(set(unk)))
+    return (name, binders, prems, lhs, rhs)
+
 
 # ============================ LAYER 3: THE ADEQUACY MAP ====================
 # ★★★ `⌈_⌉ : RTm Γ → RTm ε` and its typing — the theorem that makes the
@@ -1579,18 +1712,18 @@ open import DirectedHoTT.Examples.Knot.Lookup
 
 REDROWS_HDR = """--- GENERATED by tools/gen-knot.py — do not edit.
 ------------------------------------------------------------------------
--- OCP-0009 · EXAMPLES — ★ THE `_⟶_` ROW SPIKE.
+-- OCP-0009 · EXAMPLES — ★★★ `_⟶_`, THE REDUCTION JUDGEMENT.
 --
--- ONE reduction rule, generated end to end: the `ICon` and its
--- `IConWf`.  ⚠ It is here to settle the INTERFACE before 73 rules are
--- transcribed, which is what `JUDGEMENT-ATTEMPTS.md` §2 is about.
+-- ⚠⚠ THE RULES ARE **PARSED OUT OF `Spec/Typing.agda`**, not transcribed.
+--   166 hand-written table entries is 166 chances to name the wrong
+--   variable — the error class `Knot/LookupGen` exists to catch, and one
+--   an `ICon` never reveals because it type-checks with ANY in-scope
+--   variable of the right type.  The Agda-former → knot-constructor map
+--   comes from `KNOT`'s own `decl` strings, so nothing is typed twice.
 --
---     βfst : fst (pair a b) ⟶ a
---
--- ★ WHAT IT EXERCISES THAT `_∋_∷_` DID NOT: index components built from
---   the KNOT'S OWN constructors.  Those carry no term-level depth, so
---   their typing lemma needs the row's depth INJECTED — and not
---   uniformly, since a constructor under a binder sits deeper.
+-- ★ AND THE SKIPPED RULES ARE NAMED BELOW.  Emitting 65 of 73 rows
+--   without saying so would be exactly
+--   `verification-that-covers-less-than-it-claims`.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -1598,21 +1731,24 @@ module DirectedHoTT.Examples.Knot.RedRows where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; fst; snd; nsuc; El; IMu; Σ'; Nat
+  using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; fst; snd; nsuc; nzero
+        ; El; IMu; Σ'; Nat
         ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; ICon; IDesc; iι; iρ; iκ; εwkTy )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_
         ; IConWf; iwf-ι; iwf-κ; iwf-ρ; ICodeWf; icw-clo; icw-ford; icw-imu
-        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nsuc; ⊢num
+        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nsuc; ⊢num; ⊢nzero
         ; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
         ; ⊢pair; ty-Σ; ty-Nat; ty-IMu
         ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTm; toI; fromI; ⊢ixP; ⊢sTm; num )
+  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
+        ; toI; fromI; ⊢ixP; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; num )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
-open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-fstK; Tm-pairK )
-open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Tm-fstKv; ⊢Tm-pairKv )
+open import DirectedHoTT.Examples.Knot.Ctors
+open import DirectedHoTT.Examples.Knot.CtorsV
+open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
 open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -1624,19 +1760,95 @@ IRed = Σ' Nat (Σ' (IMu KnotD IPair (pair sTm (var vz)))
 
 """
 
+_GREEK = "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ"
+
+# ⚠⚠ THE DEPTH BINDER'S KEY MUST NOT BE AN AGDA IDENTIFIER.  `tr-J-Mu`
+#   binds its own `m`, and a row whose depth variable is also called `m`
+#   either crashes the emitter (if the orders differ) or — worse —
+#   silently resolves to the RULE's `m`.  `#m` cannot collide because no
+#   Agda name contains `#`.
+_DEPTH = "#m"
+
+def _depth_at(dp):
+    if dp == "closed": return RAW("nzero")
+    e = V(_DEPTH)
+    for _ in range(dp): e = NSUC(e)
+    return e
+
+# ⚠⚠ THE TWO `Var` CONSTRUCTORS TAKE THEIR DEPTH AT THE TERM LEVEL.
+#   Every other knot constructor carries none — `Var` Fords the DEPTH as
+#   well as the tag, which is the exception `Knot/Build` exists for.  So
+#   the depth has to be threaded through the value tree as well as
+#   through the derivation tree, and by the same field table.
+_DEPTH_ARG = {"Var-vzK", "Var-vsK"}
+
+def _shift(dep, E):
+    if E[0] == "lit":  return RAW("num %d" % E[1])
+    if E[0] == "sucD":
+        e = dep
+        for _ in range(E[1]): e = NSUC(e)
+        return e
+    return dep
+
+def _val(e, CT, dep):
+    "a parsed Agda spine → the row description's value language"
+    if e[0] == "a":
+        h = e[1]
+        if h in CT:
+            c = CT[h]
+            return AP(c, dep) if c in _DEPTH_ARG else AP(c)
+        return V(h)
+    args = e[1]
+    h = args[0]
+    assert h[0] == "a", h
+    if h[1] in CT:
+        c = CT[h[1]]
+        fds = FIELD_DEPTH.get(c, [])
+        sub = [_val(x, CT, _shift(dep, fds[i]) if i < len(fds) else dep)
+               for i, x in enumerate(args[1:])]
+        return AP(c, *([dep] + sub)) if c in _DEPTH_ARG else AP(c, *sub)
+    return V(h[1])
+
 def gen_redrows():
+    CT = {d.split(":")[0].strip(): n[1:] + "K" for n, d, _ in KNOT}
     TEL = [TNAT(), TKNOT("sTm"), TKNOT("sTm")]
-    row = JRow("redBfstG",
-      [("m", _code(TNAT(), None)),
-       ("a", _code(TKNOT("sTm"), V("m"))),
-       ("b", _code(TKNOT("sTm"), V("m")))],
-      [],
-      [V("m"),
-       AP("Tm-fstK", AP("Tm-pairK", V("a"), V("b"))),
-       V("a")])
-    return "\n".join([REDROWS_HDR,
-        emit_jrow(row, TEL, ("Ρ", "ψ"), "IRed", "RedD"), "",
-        emit_jrowwf(row, TEL, ("Ρ", "ψ"), "IRed", "redBfstWfG"), ""]) + "\n"
+    rows, skipped = [], []
+    for r in rules_of(os.path.join(os.path.dirname(os.path.dirname(
+                        os.path.abspath(__file__))), "Spec", "Typing.agda"), "_⟶_"):
+        t = translate_rule(r, CT)
+        if t[1] is None: skipped.append((t[0], t[2])); continue
+        nm, binders, prems, lhs, rhs = t
+        bs = [(_DEPTH, _code(TNAT(), None))]
+        dep = {}
+        for b, srt, dp in binders:
+            dep[b] = dp
+            bs.append((b, _code(TNAT(), None) if srt == "nat"
+                          else _code(TKNOT(srt), _depth_at(dp))))
+        ps = []
+        for i, (a, b) in enumerate(prems):
+            d = dep.get(a.strip(), 0)
+            ps.append((f"ih{i}", TUP(_depth_at(d),
+                                     _val(_parse_spine(_tokens(a)), CT, _depth_at(d)),
+                                     _val(_parse_spine(_tokens(b)), CT, _depth_at(d)))))
+        rows.append((nm, JRow("rd" + nm, bs, ps,
+                              [V(_DEPTH),
+                               _val(_parse_spine(_tokens(lhs)), CT, V(_DEPTH)),
+                               _val(_parse_spine(_tokens(rhs)), CT, V(_DEPTH))])))
+    L = [REDROWS_HDR]
+    L.append("-- ⚠ NOT EMITTED — %d of %d rules, in two classes:" % (len(skipped), len(skipped) + len(rows)))
+    for n, w in skipped: L.append("--     %-12s %s" % (n, w))
+    L.append("")
+    for i, (nm, row) in enumerate(rows):
+        # ⚠ AGDA REJECTS A DIGIT AFTER `_` IN A NAME (`y0_0` — "the part
+        #   0 is not valid because it is a literal"), so the per-row
+        #   prefix is letters only.
+        tag = _GREEK[i % len(_GREEK)] + ("" if i < len(_GREEK)
+                                         else _GREEK[i // len(_GREEK)])
+        pre = (tag, "k" + tag)
+        L.append("-- %s" % nm)
+        L.append(emit_jrow(row, TEL, pre, "IRed", "RedD"))
+        L.append("")
+    return "\n".join(L) + "\n"
 
 
 def gen_lookupgen():
