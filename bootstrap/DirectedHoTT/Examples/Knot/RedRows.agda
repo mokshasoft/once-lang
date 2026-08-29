@@ -25,7 +25,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_
         ; IConWf; iwf-ι; iwf-κ; iwf-ρ; ICodeWf; icw-clo; icw-ford; icw-imu
-        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nsuc; ⊢num; ⊢nzero
+        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nsuc; ⊢nzero
         ; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
         ; ⊢pair; ty-Σ; ty-Nat; ty-IMu
         ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
@@ -1929,7 +1929,7 @@ kΘΒ3 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) (var (vs (vs vz)))
 ΘΒ4 = ΘΒ3 ▹ El kΘΒ3
 
 kΘΒ4 : RTm ⌊ ΘΒ4 ⌋
-kΘΒ4 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs vz)))))))) (fst (snd (var (vs (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs vz)))))) (var vz)) (Tm-trK (Tm-varK (Var-vzK (nsuc (var (vs (vs (vs vz))))))) (Tm-lamK (var (vs (vs vz)))) (var (vs vz))))
+kΘΒ4 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs vz)))))))) (fst (snd (var (vs (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs vz)))))) (var vz)) (Tm-trK (Tm-varK (Var-vzK (var (vs (vs (vs vz)))))) (Tm-lamK (var (vs (vs vz)))) (var (vs vz))))
 
 ΘΒ5 : Ctx
 ΘΒ5 = ΘΒ4 ▹ El kΘΒ4

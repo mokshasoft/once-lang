@@ -52,12 +52,13 @@ open import DirectedHoTT.Spec.Syntax
         ; Ren; Sub; renTm; subTm; extS )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; wk-single
         ; ⊢pair; ⊢fst; ⊢snd; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢idrefl; ⊢icon
         ; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-IMu
         ; _⟶_; βfst; βsnd; ξ-pairʳ; ξ-nsuc
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ; El-⌜Id⌝; ξ-El; ξ-IMu; ξ-⌜Id⌝ˡ )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; sub-w³; sub-w⁴ )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
         ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar
@@ -66,766 +67,1189 @@ open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Tags
 open import DirectedHoTT.Examples.Knot.Terms using ( ixConv; fordFst; tyFordFst )
+open import DirectedHoTT.Examples.Knot.Build using ( tyCast; kCast )
 open import DirectedHoTT.Examples.Knot.Ctors
   using ( Ty-baseK; Ty-UK; Ty-PiK; Ty-SgK; Ty-ElK; Ty-HomK; Ty-UnitK; Ty-NatK; Ty-IdK; Ty-MuK; Ty-IMuK; Tm-varK; Tm-lamK; Tm-appK; Tm-pairK; Tm-absurdK; Tm-ordtrK; Tm-fstK; Tm-sndK; Tm-cbaseK; Tm-cPiK; Tm-cSgK; Tm-cHomK; Tm-hreflK; Tm-trK; Tm-apK; Tm-cIdK; Tm-idreflK; Tm-jsubK; Tm-unitK; Tm-nzeroK; Tm-nsucK; Tm-natrecK; Tm-conK; Tm-elimK; Tm-iconK; Tm-ielimK; Tm-cNatK; Tm-cMuK; Tm-cIMuK; Tm-cUnitK; Desc-nilK; Desc-consK; DCon-iK; DCon-rhoK; DCon-kapK; IDesc-nilK; IDesc-consK; ICon-iK; ICon-rhoK; ICon-kapK )
 
+-- ★ the depth, RECOGNISED at a position it was moved to.  `⊢numAt`'s
+--   general twin: `Knot/Build`'s version bakes in `⊢num`, which only a
+--   numeral depth has.
+⊢natAt : {Γ : Ctx} {t u : RTm ⌊ Γ ⌋} → t ≡ u → Γ ⊢ u ∷ Nat → Γ ⊢ t ∷ Nat
+⊢natAt eq d = subst (λ z → _ ⊢ z ∷ Nat) (sym eq) d
+
 
 -- base : RTy Γ
-⊢Ty-baseKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ Ty-baseK  ∷ K (pair sTy (var x))
-⊢Ty-baseKv {x = x} dx =
-  ⊢icon KnotWf memTy-base (⊢ixP ⊢sTy (dx))
+⊢Ty-baseKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ Ty-baseK  ∷ K (pair sTy (d))
+⊢Ty-baseKv d dd =
+  ⊢icon KnotWf memTy-base (⊢ixP ⊢sTy (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTy)
      ⊢unit)
 
 -- U : RTy Γ
-⊢Ty-UKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ Ty-UK  ∷ K (pair sTy (var x))
-⊢Ty-UKv {x = x} dx =
-  ⊢icon KnotWf memTy-U (⊢ixP ⊢sTy (dx))
+⊢Ty-UKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ Ty-UK  ∷ K (pair sTy (d))
+⊢Ty-UKv d dd =
+  ⊢icon KnotWf memTy-U (⊢ixP ⊢sTy (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTy)
      ⊢unit)
 
 -- Π : RTy Γ → RTy (Γ ∙) → RTy Γ
-⊢Ty-PiKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTy (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTy (nsuc (var x))) →
-        Δ ⊢ Ty-PiK a0 a1 ∷ K (pair sTy (var x))
-⊢Ty-PiKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTy-Pi (⊢ixP ⊢sTy (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢ixP ⊢sTy (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (⊢wk (dx)))))) (toI ⊢sTy))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sTy (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (dx))))) (toI ⊢sTy))) (ty-Unit))
-            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTy (subTm (single a0) (renTm vs (var x)))))) (d1))
+⊢Ty-PiKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTy (d)) →
+        Δ ⊢ a1 ∷ K (pair sTy (nsuc (d))) →
+        Δ ⊢ Ty-PiK a0 a1 ∷ K (pair sTy (d))
+⊢Ty-PiKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTy-Pi (⊢ixP ⊢sTy (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢ixP ⊢sTy (⊢natAt e1 (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTy))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTy (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTy))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTy (subTm (single a0) (renTm vs (d)))))) (kCast (sym (cong nsuc (e3))) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTy)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- Σ' : RTy Γ → RTy (Γ ∙) → RTy Γ
-⊢Ty-SgKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTy (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTy (nsuc (var x))) →
-        Δ ⊢ Ty-SgK a0 a1 ∷ K (pair sTy (var x))
-⊢Ty-SgKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTy-Sg (⊢ixP ⊢sTy (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢ixP ⊢sTy (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (⊢wk (dx)))))) (toI ⊢sTy))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sTy (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (dx))))) (toI ⊢sTy))) (ty-Unit))
-            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTy (subTm (single a0) (renTm vs (var x)))))) (d1))
+⊢Ty-SgKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTy (d)) →
+        Δ ⊢ a1 ∷ K (pair sTy (nsuc (d))) →
+        Δ ⊢ Ty-SgK a0 a1 ∷ K (pair sTy (d))
+⊢Ty-SgKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTy-Sg (⊢ixP ⊢sTy (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢ixP ⊢sTy (⊢natAt e1 (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTy))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTy (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTy))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTy (subTm (single a0) (renTm vs (d)))))) (kCast (sym (cong nsuc (e3))) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTy)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- El : RTm Γ → RTy Γ
-⊢Ty-ElKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Ty-ElK a0 ∷ K (pair sTy (var x))
-⊢Ty-ElKv {x = x} {a0 = a0} dx d0 =
-  ⊢icon KnotWf memTy-El (⊢ixP ⊢sTy (dx))
-    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (dx))))) (toI ⊢sTy))) (ty-Unit))
-           (ixConv (ξ-pairʳ (βsnd sTy (var x))) (d0))
+⊢Ty-ElKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ Ty-ElK a0 ∷ K (pair sTy (d))
+⊢Ty-ElKv d {a0 = a0} dd d0 =
+  ⊢icon KnotWf memTy-El (⊢ixP ⊢sTy (dd))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e0 (⊢wk (dd)))))) (toI ⊢sTy))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTy (d))) (d0))
      (⊢pair (ty-Unit)
             (fordFst ⊢sTy)
       ⊢unit))
+  where
+    e0 : renTm vs (d) ≡ w (d)
+    e0 = refl
 
 -- Hom : RTy Γ → RTm Γ → RTm Γ → RTy Γ
-⊢Ty-HomKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTy (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Ty-HomK a0 a1 a2 ∷ K (pair sTy (var x))
-⊢Ty-HomKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTy-Hom (⊢ixP ⊢sTy (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTy))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (βsnd sTy (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (⊢wk (dx)))))) (toI ⊢sTy))) (ty-Unit)))
-            (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a0) (renTm vs (var x))))) (d1))
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (dx))))) (toI ⊢sTy))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+⊢Ty-HomKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTy (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Ty-HomK a0 a1 a2 ∷ K (pair sTy (d))
+⊢Ty-HomKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTy-Hom (⊢ixP ⊢sTy (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢natAt e2 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTy))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTy (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢natAt e4 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e3 (⊢wk (⊢wk (dd))))))) (toI ⊢sTy))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a0) (renTm vs (d))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e6 (⊢wk (dd)))))) (toI ⊢sTy))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e7) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTy)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : renTm vs (d) ≡ w (d)
+    e2 = refl
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e3 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e4 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e5 : subTm (single a0) (renTm vs (d)) ≡ d
+    e5 = wk-single {v = a0} d
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e6 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e7 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- Unit : RTy Γ
-⊢Ty-UnitKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ Ty-UnitK  ∷ K (pair sTy (var x))
-⊢Ty-UnitKv {x = x} dx =
-  ⊢icon KnotWf memTy-Unit (⊢ixP ⊢sTy (dx))
+⊢Ty-UnitKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ Ty-UnitK  ∷ K (pair sTy (d))
+⊢Ty-UnitKv d dd =
+  ⊢icon KnotWf memTy-Unit (⊢ixP ⊢sTy (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTy)
      ⊢unit)
 
 -- Nat : RTy Γ
-⊢Ty-NatKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ Ty-NatK  ∷ K (pair sTy (var x))
-⊢Ty-NatKv {x = x} dx =
-  ⊢icon KnotWf memTy-Nat (⊢ixP ⊢sTy (dx))
+⊢Ty-NatKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ Ty-NatK  ∷ K (pair sTy (d))
+⊢Ty-NatKv d dd =
+  ⊢icon KnotWf memTy-Nat (⊢ixP ⊢sTy (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTy)
      ⊢unit)
 
 -- Id : RTy Γ → RTm Γ → RTm Γ → RTy Γ
-⊢Ty-IdKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTy (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Ty-IdK a0 a1 a2 ∷ K (pair sTy (var x))
-⊢Ty-IdKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTy-Id (⊢ixP ⊢sTy (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTy))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (βsnd sTy (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (⊢wk (dx)))))) (toI ⊢sTy))) (ty-Unit)))
-            (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a0) (renTm vs (var x))))) (d1))
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (dx))))) (toI ⊢sTy))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+⊢Ty-IdKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTy (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Ty-IdK a0 a1 a2 ∷ K (pair sTy (d))
+⊢Ty-IdKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTy-Id (⊢ixP ⊢sTy (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢natAt e2 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTy))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTy (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢natAt e4 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e3 (⊢wk (⊢wk (dd))))))) (toI ⊢sTy))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a0) (renTm vs (d))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e6 (⊢wk (dd)))))) (toI ⊢sTy))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e7) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTy)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : renTm vs (d) ≡ w (d)
+    e2 = refl
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e3 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e4 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e5 : subTm (single a0) (renTm vs (d)) ≡ d
+    e5 = wk-single {v = a0} d
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e6 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e7 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- Mu : Desc → RTy Γ
-⊢Ty-MuKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sDesc (var x)) →
-        Δ ⊢ Ty-MuK a0 ∷ K (pair sTy (var x))
-⊢Ty-MuKv {x = x} {a0 = a0} dx d0 =
-  ⊢icon KnotWf memTy-Mu (⊢ixP ⊢sTy (dx))
-    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (dx))))) (toI ⊢sTy))) (ty-Unit))
-           (ixConv (ξ-pairʳ (βsnd sTy (var x))) (d0))
+⊢Ty-MuKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sDesc (d)) →
+        Δ ⊢ Ty-MuK a0 ∷ K (pair sTy (d))
+⊢Ty-MuKv d {a0 = a0} dd d0 =
+  ⊢icon KnotWf memTy-Mu (⊢ixP ⊢sTy (dd))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e0 (⊢wk (dd)))))) (toI ⊢sTy))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTy (d))) (d0))
      (⊢pair (ty-Unit)
             (fordFst ⊢sTy)
       ⊢unit))
+  where
+    e0 : renTm vs (d) ≡ w (d)
+    e0 = refl
 
 -- IMu : IDesc → RTy ε → RTm Γ → RTy Γ
-⊢Ty-IMuKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sIDesc (var x)) →
+⊢Ty-IMuKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sIDesc (d)) →
         Δ ⊢ a1 ∷ K (pair sTy (num 0)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Ty-IMuK a0 a1 a2 ∷ K (pair sTy (var x))
-⊢Ty-IMuKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTy-IMu (⊢ixP ⊢sTy (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢num 0))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTy))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (βsnd sTy (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (⊢wk (dx)))))) (toI ⊢sTy))) (ty-Unit)))
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Ty-IMuK a0 a1 a2 ∷ K (pair sTy (d))
+⊢Ty-IMuKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTy-IMu (⊢ixP ⊢sTy (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢num 0))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTy))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTy (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTy (⊢natAt e3 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e2 (⊢wk (⊢wk (dd))))))) (toI ⊢sTy))) (ty-Unit)))
             (d1)
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢wk (dx))))) (toI ⊢sTy))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTy (⊢natAt e4 (⊢wk (dd)))))) (toI ⊢sTy))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTy (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e5) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTy)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e2 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e3 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e3 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e4 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e4 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e5 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e5 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- var : Var Γ → RTm Γ
-⊢Tm-varKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sVar (var x)) →
-        Δ ⊢ Tm-varK a0 ∷ K (pair sTm (var x))
-⊢Tm-varKv {x = x} {a0 = a0} dx d0 =
-  ⊢icon KnotWf memTm-var (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
+⊢Tm-varKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sVar (d)) →
+        Δ ⊢ Tm-varK a0 ∷ K (pair sTm (d))
+⊢Tm-varKv d {a0 = a0} dd d0 =
+  ⊢icon KnotWf memTm-var (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
      (⊢pair (ty-Unit)
             (fordFst ⊢sTm)
       ⊢unit))
+  where
+    e0 : renTm vs (d) ≡ w (d)
+    e0 = refl
 
 -- lam : RTm (Γ ∙) → RTm Γ
-⊢Tm-lamKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (nsuc (var x))) →
-        Δ ⊢ Tm-lamK a0 ∷ K (pair sTm (var x))
-⊢Tm-lamKv {x = x} {a0 = a0} dx d0 =
-  ⊢icon KnotWf memTm-lam (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-           (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (var x)))) (d0))
+⊢Tm-lamKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (nsuc (d))) →
+        Δ ⊢ Tm-lamK a0 ∷ K (pair sTm (d))
+⊢Tm-lamKv d {a0 = a0} dd d0 =
+  ⊢icon KnotWf memTm-lam (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (d)))) (d0))
      (⊢pair (ty-Unit)
             (fordFst ⊢sTm)
       ⊢unit))
+  where
+    e0 : renTm vs (d) ≡ w (d)
+    e0 = refl
 
 -- app : RTm Γ → RTm Γ → RTm Γ
-⊢Tm-appKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-appK a0 a1 ∷ K (pair sTm (var x))
-⊢Tm-appKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTm-app (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
+⊢Tm-appKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-appK a0 a1 ∷ K (pair sTm (d))
+⊢Tm-appKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTm-app (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e3) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTm)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- pair : RTm Γ → RTm Γ → RTm Γ
-⊢Tm-pairKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-pairK a0 a1 ∷ K (pair sTm (var x))
-⊢Tm-pairKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTm-pair (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
+⊢Tm-pairKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-pairK a0 a1 ∷ K (pair sTm (d))
+⊢Tm-pairKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTm-pair (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e3) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTm)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- absurd : RTm Γ → RTm Γ → RTm Γ
-⊢Tm-absurdKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-absurdK a0 a1 ∷ K (pair sTm (var x))
-⊢Tm-absurdKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTm-absurd (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
+⊢Tm-absurdKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-absurdK a0 a1 ∷ K (pair sTm (d))
+⊢Tm-absurdKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTm-absurd (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e3) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTm)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- ordtr : (5 × RTm Γ) → RTm Γ
-⊢Tm-ordtrKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 a3 a4 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a3 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a4 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-ordtrK a0 a1 a2 a3 a4 ∷ K (pair sTm (var x))
-⊢Tm-ordtrKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} {a3 = a3} {a4 = a4} dx d0 d1 d2 d3 d4 =
-  ⊢icon KnotWf memTm-ordtr (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx)))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (⊢wk (dx))))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dx))))))))) (toI ⊢sTm))) (ty-Unit))))))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (⊢wk (dx)))))))) (toI ⊢sTm))) (ty-Unit)))))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
-      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTm))) (ty-Unit))))
-             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
-       (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-              (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a2) (subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (var x))))))))) (d3))
-        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-               (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a3) (subTm (extS (single a2)) (subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (var x))))))))))) (d4))
+⊢Tm-ordtrKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 a3 a4 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ a3 ∷ K (pair sTm (d)) →
+        Δ ⊢ a4 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-ordtrK a0 a1 a2 a3 a4 ∷ K (pair sTm (d))
+⊢Tm-ordtrKv d {a0 = a0} {a1 = a1} {a2 = a2} {a3 = a3} {a4 = a4} dd d0 d1 d2 d3 d4 =
+  ⊢icon KnotWf memTm-ordtr (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e4 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e3 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (⊢wk (⊢wk (dd))))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (⊢wk (⊢wk (⊢wk (dd)))))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dd)))))))))) (toI ⊢sTm))) (ty-Unit))))))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e8 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e7 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e6 (⊢wk (⊢wk (⊢wk (dd))))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e5 (⊢wk (⊢wk (⊢wk (⊢wk (dd))))))))) (toI ⊢sTm))) (ty-Unit)))))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e9) d1))
+      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e12 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e11 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e10 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTm))) (ty-Unit))))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e13) d2))
+       (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e15 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e14 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+              (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a2) (subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))))))) (kCast (sym e16) d3))
+        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e17 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+               (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a3) (subTm (extS (single a2)) (subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (d))))))))))) (kCast (sym e18) d4))
          (⊢pair (ty-Unit)
                 (fordFst ⊢sTm)
           ⊢unit))))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (d))))) ≡ w (w (w (w (w (d)))))
+    e0 = refl
+    e1 : renTm vs (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (w (w (d))))
+    e1 = refl
+    e2 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e2 = refl
+    e3 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e3 = refl
+    e4 : renTm vs (d) ≡ w (d)
+    e4 = refl
+    e5 : subTm (extS (extS (extS (extS (single a0))))) (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (d)))))) ≡ w (w (w (w (d))))
+    e5 = trans (sub-w⁴ {σ = single a0} (w d)) (cong w (cong w (cong w (cong w (wk-single {v = a0} d)))))
+    e6 : subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (d))))) ≡ w (w (w (d)))
+    e6 = trans (sub-w³ {σ = single a0} (w d)) (cong w (cong w (cong w (wk-single {v = a0} d))))
+    e7 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e7 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e8 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e8 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e9 : subTm (single a0) (renTm vs (d)) ≡ d
+    e9 = wk-single {v = a0} d
+    e10 : subTm (extS (extS (extS (single a1)))) (subTm (extS (extS (extS (extS (single a0))))) (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (d))))))) ≡ w (w (w (d)))
+    e10 = trans (cong (subTm (extS (extS (extS (single a1))))) (trans (sub-w⁴ {σ = single a0} (w d)) (cong w (cong w (cong w (cong w (wk-single {v = a0} d))))))) (trans (sub-w³ {σ = single a1} (w d)) (cong w (cong w (cong w (wk-single {v = a1} d)))))
+    e11 : subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (d)))))) ≡ w (w (d))
+    e11 = trans (cong (subTm (extS (extS (single a1)))) (trans (sub-w³ {σ = single a0} (w d)) (cong w (cong w (cong w (wk-single {v = a0} d)))))) (trans (sub-w² {σ = single a1} (w d)) (cong w (cong w (wk-single {v = a1} d))))
+    e12 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e12 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e13 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e13 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
+    e14 : subTm (extS (extS (single a2))) (subTm (extS (extS (extS (single a1)))) (subTm (extS (extS (extS (extS (single a0))))) (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (d)))))))) ≡ w (w (d))
+    e14 = trans (cong (subTm (extS (extS (single a2)))) (trans (cong (subTm (extS (extS (extS (single a1))))) (trans (sub-w⁴ {σ = single a0} (w d)) (cong w (cong w (cong w (cong w (wk-single {v = a0} d))))))) (trans (sub-w³ {σ = single a1} (w d)) (cong w (cong w (cong w (wk-single {v = a1} d))))))) (trans (sub-w² {σ = single a2} (w d)) (cong w (cong w (wk-single {v = a2} d))))
+    e15 : subTm (extS (single a2)) (subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (d))))))) ≡ w (d)
+    e15 = trans (cong (subTm (extS (single a2))) (trans (cong (subTm (extS (extS (single a1)))) (trans (sub-w³ {σ = single a0} (w d)) (cong w (cong w (cong w (wk-single {v = a0} d)))))) (trans (sub-w² {σ = single a1} (w d)) (cong w (cong w (wk-single {v = a1} d)))))) (trans (sub-w {σ = single a2} (w d)) (cong w (wk-single {v = a2} d)))
+    e16 : subTm (single a2) (subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))))) ≡ d
+    e16 = trans (cong (subTm (single a2)) (trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d))))) (wk-single {v = a2} d)
+    e17 : subTm (extS (single a3)) (subTm (extS (extS (single a2))) (subTm (extS (extS (extS (single a1)))) (subTm (extS (extS (extS (extS (single a0))))) (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (d))))))))) ≡ w (d)
+    e17 = trans (cong (subTm (extS (single a3))) (trans (cong (subTm (extS (extS (single a2)))) (trans (cong (subTm (extS (extS (extS (single a1))))) (trans (sub-w⁴ {σ = single a0} (w d)) (cong w (cong w (cong w (cong w (wk-single {v = a0} d))))))) (trans (sub-w³ {σ = single a1} (w d)) (cong w (cong w (cong w (wk-single {v = a1} d))))))) (trans (sub-w² {σ = single a2} (w d)) (cong w (cong w (wk-single {v = a2} d)))))) (trans (sub-w {σ = single a3} (w d)) (cong w (wk-single {v = a3} d)))
+    e18 : subTm (single a3) (subTm (extS (single a2)) (subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (d)))))))) ≡ d
+    e18 = trans (cong (subTm (single a3)) (trans (cong (subTm (extS (single a2))) (trans (cong (subTm (extS (extS (single a1)))) (trans (sub-w³ {σ = single a0} (w d)) (cong w (cong w (cong w (wk-single {v = a0} d)))))) (trans (sub-w² {σ = single a1} (w d)) (cong w (cong w (wk-single {v = a1} d)))))) (trans (sub-w {σ = single a2} (w d)) (cong w (wk-single {v = a2} d))))) (wk-single {v = a3} d)
 
 -- fst : RTm Γ → RTm Γ
-⊢Tm-fstKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-fstK a0 ∷ K (pair sTm (var x))
-⊢Tm-fstKv {x = x} {a0 = a0} dx d0 =
-  ⊢icon KnotWf memTm-fst (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
+⊢Tm-fstKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-fstK a0 ∷ K (pair sTm (d))
+⊢Tm-fstKv d {a0 = a0} dd d0 =
+  ⊢icon KnotWf memTm-fst (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
      (⊢pair (ty-Unit)
             (fordFst ⊢sTm)
       ⊢unit))
+  where
+    e0 : renTm vs (d) ≡ w (d)
+    e0 = refl
 
 -- snd : RTm Γ → RTm Γ
-⊢Tm-sndKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-sndK a0 ∷ K (pair sTm (var x))
-⊢Tm-sndKv {x = x} {a0 = a0} dx d0 =
-  ⊢icon KnotWf memTm-snd (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
+⊢Tm-sndKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-sndK a0 ∷ K (pair sTm (d))
+⊢Tm-sndKv d {a0 = a0} dd d0 =
+  ⊢icon KnotWf memTm-snd (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
      (⊢pair (ty-Unit)
             (fordFst ⊢sTm)
       ⊢unit))
+  where
+    e0 : renTm vs (d) ≡ w (d)
+    e0 = refl
 
 -- ⌜base⌝ : RTm Γ
-⊢Tm-cbaseKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ Tm-cbaseK  ∷ K (pair sTm (var x))
-⊢Tm-cbaseKv {x = x} dx =
-  ⊢icon KnotWf memTm-cbase (⊢ixP ⊢sTm (dx))
+⊢Tm-cbaseKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ Tm-cbaseK  ∷ K (pair sTm (d))
+⊢Tm-cbaseKv d dd =
+  ⊢icon KnotWf memTm-cbase (⊢ixP ⊢sTm (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTm)
      ⊢unit)
 
 -- ⌜Π⌝ : RTm Γ → RTm (Γ ∙) → RTm Γ
-⊢Tm-cPiKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (nsuc (var x))) →
-        Δ ⊢ Tm-cPiK a0 a1 ∷ K (pair sTm (var x))
-⊢Tm-cPiKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTm-cPi (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (var x)))))) (d1))
+⊢Tm-cPiKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (nsuc (d))) →
+        Δ ⊢ Tm-cPiK a0 a1 ∷ K (pair sTm (d))
+⊢Tm-cPiKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTm-cPi (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (d)))))) (kCast (sym (cong nsuc (e3))) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTm)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- ⌜Σ⌝ : RTm Γ → RTm (Γ ∙) → RTm Γ
-⊢Tm-cSgKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (nsuc (var x))) →
-        Δ ⊢ Tm-cSgK a0 a1 ∷ K (pair sTm (var x))
-⊢Tm-cSgKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTm-cSg (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (var x)))))) (d1))
+⊢Tm-cSgKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (nsuc (d))) →
+        Δ ⊢ Tm-cSgK a0 a1 ∷ K (pair sTm (d))
+⊢Tm-cSgKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTm-cSg (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (d)))))) (kCast (sym (cong nsuc (e3))) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTm)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- ⌜Hom⌝ : (3 × RTm Γ) → RTm Γ
-⊢Tm-cHomKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-cHomK a0 a1 a2 ∷ K (pair sTm (var x))
-⊢Tm-cHomKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTm-cHom (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTm))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+⊢Tm-cHomKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-cHomK a0 a1 a2 ∷ K (pair sTm (d))
+⊢Tm-cHomKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTm-cHom (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e4 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e3 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e6 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e7) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTm)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : renTm vs (d) ≡ w (d)
+    e2 = refl
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e3 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e4 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e5 : subTm (single a0) (renTm vs (d)) ≡ d
+    e5 = wk-single {v = a0} d
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e6 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e7 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- hrefl : RTm Γ → RTm Γ → RTm Γ
-⊢Tm-hreflKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-hreflK a0 a1 ∷ K (pair sTm (var x))
-⊢Tm-hreflKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTm-hrefl (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
+⊢Tm-hreflKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-hreflK a0 a1 ∷ K (pair sTm (d))
+⊢Tm-hreflKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTm-hrefl (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e3) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTm)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- tr : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
-⊢Tm-trKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (nsuc (var x))) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-trK a0 a1 a2 ∷ K (pair sTm (var x))
-⊢Tm-trKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTm-tr (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTm))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (var x)))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+⊢Tm-trKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (nsuc (d))) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-trK a0 a1 a2 ∷ K (pair sTm (d))
+⊢Tm-trKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTm-tr (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (d)))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e4 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e3 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e6 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e7) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTm)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : renTm vs (d) ≡ w (d)
+    e2 = refl
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e3 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e4 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e5 : subTm (single a0) (renTm vs (d)) ≡ d
+    e5 = wk-single {v = a0} d
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e6 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e7 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- ap : RTm Γ → RTm (Γ ∙) → RTm Γ → RTm Γ
-⊢Tm-apKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (nsuc (var x))) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-apK a0 a1 a2 ∷ K (pair sTm (var x))
-⊢Tm-apKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTm-ap (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢wk (dx))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTm))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (var x)))))) (d1))
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+⊢Tm-apKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (nsuc (d))) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-apK a0 a1 a2 ∷ K (pair sTm (d))
+⊢Tm-apKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTm-ap (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd)))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e4 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e3 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (d)))))) (kCast (sym (cong nsuc (e5))) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e6 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e7) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTm)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : renTm vs (d) ≡ w (d)
+    e2 = refl
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e3 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e4 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e5 : subTm (single a0) (renTm vs (d)) ≡ d
+    e5 = wk-single {v = a0} d
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e6 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e7 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- ⌜Id⌝ : (3 × RTm Γ) → RTm Γ
-⊢Tm-cIdKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-cIdK a0 a1 a2 ∷ K (pair sTm (var x))
-⊢Tm-cIdKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTm-cId (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTm))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+⊢Tm-cIdKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-cIdK a0 a1 a2 ∷ K (pair sTm (d))
+⊢Tm-cIdKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTm-cId (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e4 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e3 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e6 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e7) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTm)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : renTm vs (d) ≡ w (d)
+    e2 = refl
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e3 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e4 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e5 : subTm (single a0) (renTm vs (d)) ≡ d
+    e5 = wk-single {v = a0} d
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e6 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e7 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- idrefl : RTm Γ → RTm Γ → RTm Γ
-⊢Tm-idreflKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-idreflK a0 a1 ∷ K (pair sTm (var x))
-⊢Tm-idreflKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTm-idrefl (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
+⊢Tm-idreflKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-idreflK a0 a1 ∷ K (pair sTm (d))
+⊢Tm-idreflKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTm-idrefl (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e3) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTm)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- jsub : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
-⊢Tm-jsubKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (nsuc (var x))) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-jsubK a0 a1 a2 ∷ K (pair sTm (var x))
-⊢Tm-jsubKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTm-jsub (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTm))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (var x)))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+⊢Tm-jsubKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (nsuc (d))) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-jsubK a0 a1 a2 ∷ K (pair sTm (d))
+⊢Tm-jsubKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTm-jsub (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sTm (d)))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e4 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e3 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e6 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e7) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTm)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : renTm vs (d) ≡ w (d)
+    e2 = refl
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e3 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e4 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e5 : subTm (single a0) (renTm vs (d)) ≡ d
+    e5 = wk-single {v = a0} d
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e6 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e7 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- unit : RTm Γ
-⊢Tm-unitKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ Tm-unitK  ∷ K (pair sTm (var x))
-⊢Tm-unitKv {x = x} dx =
-  ⊢icon KnotWf memTm-unit (⊢ixP ⊢sTm (dx))
+⊢Tm-unitKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ Tm-unitK  ∷ K (pair sTm (d))
+⊢Tm-unitKv d dd =
+  ⊢icon KnotWf memTm-unit (⊢ixP ⊢sTm (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTm)
      ⊢unit)
 
 -- nzero : RTm Γ
-⊢Tm-nzeroKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ Tm-nzeroK  ∷ K (pair sTm (var x))
-⊢Tm-nzeroKv {x = x} dx =
-  ⊢icon KnotWf memTm-nzero (⊢ixP ⊢sTm (dx))
+⊢Tm-nzeroKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ Tm-nzeroK  ∷ K (pair sTm (d))
+⊢Tm-nzeroKv d dd =
+  ⊢icon KnotWf memTm-nzero (⊢ixP ⊢sTm (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTm)
      ⊢unit)
 
 -- nsuc : RTm Γ → RTm Γ
-⊢Tm-nsucKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-nsucK a0 ∷ K (pair sTm (var x))
-⊢Tm-nsucKv {x = x} {a0 = a0} dx d0 =
-  ⊢icon KnotWf memTm-nsuc (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
+⊢Tm-nsucKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-nsucK a0 ∷ K (pair sTm (d))
+⊢Tm-nsucKv d {a0 = a0} dd d0 =
+  ⊢icon KnotWf memTm-nsuc (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
      (⊢pair (ty-Unit)
             (fordFst ⊢sTm)
       ⊢unit))
+  where
+    e0 : renTm vs (d) ≡ w (d)
+    e0 = refl
 
 -- natrec : RTm Γ → RTm ((Γ ∙) ∙) → RTm Γ → RTm Γ
-⊢Tm-natrecKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (nsuc (nsuc (var x)))) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-natrecK a0 a1 a2 ∷ K (pair sTm (var x))
-⊢Tm-natrecKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTm-natrec (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTm))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-            (ixConv (ξ-pairʳ (ξ-nsuc (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (var x))))))) (d1))
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+⊢Tm-natrecKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (nsuc (nsuc (d)))) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-natrecK a0 a1 a2 ∷ K (pair sTm (d))
+⊢Tm-natrecKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTm-natrec (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢nsuc (⊢snd (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd))))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e4 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e3 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (ξ-nsuc (ξ-nsuc (βsnd sTm (subTm (single a0) (renTm vs (d))))))) (kCast (sym (cong nsuc (cong nsuc (e5)))) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e6 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e7) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTm)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : renTm vs (d) ≡ w (d)
+    e2 = refl
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e3 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e4 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e5 : subTm (single a0) (renTm vs (d)) ≡ d
+    e5 = wk-single {v = a0} d
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e6 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e7 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- con : ℕ → RTm Γ → RTm Γ
-⊢Tm-conKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
+⊢Tm-conKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
         Δ ⊢ a0 ∷ Nat →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-conK a0 a1 ∷ K (pair sTm (var x))
-⊢Tm-conKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTm-con (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-conK a0 a1 ∷ K (pair sTm (d))
+⊢Tm-conKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTm-con (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
            (toI d0)
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e3) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTm)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- elim : Desc → RTm Γ → RTm Γ → RTm Γ
-⊢Tm-elimKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sDesc (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-elimK a0 a1 a2 ∷ K (pair sTm (var x))
-⊢Tm-elimKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTm-elim (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTm))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+⊢Tm-elimKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sDesc (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-elimK a0 a1 a2 ∷ K (pair sTm (d))
+⊢Tm-elimKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTm-elim (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e4 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e3 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e5) d1))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e6 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e7) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTm)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : renTm vs (d) ≡ w (d)
+    e2 = refl
+    e3 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e3 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e4 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e4 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e5 : subTm (single a0) (renTm vs (d)) ≡ d
+    e5 = wk-single {v = a0} d
+    e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e6 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e7 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- icon : ℕ → RTm Γ → RTm Γ
-⊢Tm-iconKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
+⊢Tm-iconKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
         Δ ⊢ a0 ∷ Nat →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-iconK a0 a1 ∷ K (pair sTm (var x))
-⊢Tm-iconKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memTm-icon (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-iconK a0 a1 ∷ K (pair sTm (d))
+⊢Tm-iconKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memTm-icon (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
            (toI d0)
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e3) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sTm)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- ielim : IDesc → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-⊢Tm-ielimKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 a3 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sIDesc (var x)) →
-        Δ ⊢ a1 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a3 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-ielimK a0 a1 a2 a3 ∷ K (pair sTm (var x))
-⊢Tm-ielimKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} {a3 = a3} dx d0 d1 d2 d3 =
-  ⊢icon KnotWf memTm-ielim (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (⊢wk (dx)))))))) (toI ⊢sTm))) (ty-Unit)))))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTm))) (ty-Unit))))
-            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (var x))))) (d1))
-      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
-             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
-       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-              (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a2) (subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (var x))))))))) (d3))
+⊢Tm-ielimKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 a3 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sIDesc (d)) →
+        Δ ⊢ a1 ∷ K (pair sTm (d)) →
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ a3 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-ielimK a0 a1 a2 a3 ∷ K (pair sTm (d))
+⊢Tm-ielimKv d {a0 = a0} {a1 = a1} {a2 = a2} {a3 = a3} dd d0 d1 d2 d3 =
+  ⊢icon KnotWf memTm-ielim (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e3 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (⊢wk (⊢wk (dd))))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (⊢wk (⊢wk (dd))))))))) (toI ⊢sTm))) (ty-Unit)))))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e6 (⊢wk (dd))))))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e5 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e4 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTm))) (ty-Unit))))
+            (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a0) (renTm vs (d))))) (kCast (sym e7) d1))
+      (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e9 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e8 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e10) d2))
+       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e11 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+              (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a2) (subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))))))) (kCast (sym e12) d3))
         (⊢pair (ty-Unit)
                (fordFst ⊢sTm)
          ⊢unit)))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (w (w (d))))
+    e0 = refl
+    e1 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e1 = refl
+    e2 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e2 = refl
+    e3 : renTm vs (d) ≡ w (d)
+    e3 = refl
+    e4 : subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (d))))) ≡ w (w (w (d)))
+    e4 = trans (sub-w³ {σ = single a0} (w d)) (cong w (cong w (cong w (wk-single {v = a0} d))))
+    e5 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e5 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e6 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e6 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e7 : subTm (single a0) (renTm vs (d)) ≡ d
+    e7 = wk-single {v = a0} d
+    e8 : subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (d)))))) ≡ w (w (d))
+    e8 = trans (cong (subTm (extS (extS (single a1)))) (trans (sub-w³ {σ = single a0} (w d)) (cong w (cong w (cong w (wk-single {v = a0} d)))))) (trans (sub-w² {σ = single a1} (w d)) (cong w (cong w (wk-single {v = a1} d))))
+    e9 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e9 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e10 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e10 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
+    e11 : subTm (extS (single a2)) (subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (d))))))) ≡ w (d)
+    e11 = trans (cong (subTm (extS (single a2))) (trans (cong (subTm (extS (extS (single a1)))) (trans (sub-w³ {σ = single a0} (w d)) (cong w (cong w (cong w (wk-single {v = a0} d)))))) (trans (sub-w² {σ = single a1} (w d)) (cong w (cong w (wk-single {v = a1} d)))))) (trans (sub-w {σ = single a2} (w d)) (cong w (wk-single {v = a2} d)))
+    e12 : subTm (single a2) (subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))))) ≡ d
+    e12 = trans (cong (subTm (single a2)) (trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d))))) (wk-single {v = a2} d)
 
 -- ⌜Nat⌝ : RTm Γ
-⊢Tm-cNatKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ Tm-cNatK  ∷ K (pair sTm (var x))
-⊢Tm-cNatKv {x = x} dx =
-  ⊢icon KnotWf memTm-cNat (⊢ixP ⊢sTm (dx))
+⊢Tm-cNatKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ Tm-cNatK  ∷ K (pair sTm (d))
+⊢Tm-cNatKv d dd =
+  ⊢icon KnotWf memTm-cNat (⊢ixP ⊢sTm (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTm)
      ⊢unit)
 
 -- ⌜Mu⌝ : Desc → RTm Γ
-⊢Tm-cMuKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sDesc (var x)) →
-        Δ ⊢ Tm-cMuK a0 ∷ K (pair sTm (var x))
-⊢Tm-cMuKv {x = x} {a0 = a0} dx d0 =
-  ⊢icon KnotWf memTm-cMu (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
+⊢Tm-cMuKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sDesc (d)) →
+        Δ ⊢ Tm-cMuK a0 ∷ K (pair sTm (d))
+⊢Tm-cMuKv d {a0 = a0} dd d0 =
+  ⊢icon KnotWf memTm-cMu (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
      (⊢pair (ty-Unit)
             (fordFst ⊢sTm)
       ⊢unit))
+  where
+    e0 : renTm vs (d) ≡ w (d)
+    e0 = refl
 
 -- ⌜IMu⌝ : IDesc → RTy ε → RTm Γ → RTm Γ
-⊢Tm-cIMuKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 a2 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sIDesc (var x)) →
+⊢Tm-cIMuKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 a2 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sIDesc (d)) →
         Δ ⊢ a1 ∷ K (pair sTy (num 0)) →
-        Δ ⊢ a2 ∷ K (pair sTm (var x)) →
-        Δ ⊢ Tm-cIMuK a0 a1 a2 ∷ K (pair sTm (var x))
-⊢Tm-cIMuKv {x = x} {a0 = a0} {a1 = a1} {a2 = a2} dx d0 d1 d2 =
-  ⊢icon KnotWf memTm-cIMu (⊢ixP ⊢sTm (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢num 0))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (⊢wk (dx))))))) (toI ⊢sTm))) (ty-Unit))))
-           (ixConv (ξ-pairʳ (βsnd sTm (var x))) (d0))
-     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (⊢wk (dx)))))) (toI ⊢sTm))) (ty-Unit)))
+        Δ ⊢ a2 ∷ K (pair sTm (d)) →
+        Δ ⊢ Tm-cIMuK a0 a1 a2 ∷ K (pair sTm (d))
+⊢Tm-cIMuKv d {a0 = a0} {a1 = a1} {a2 = a2} dd d0 d1 d2 =
+  ⊢icon KnotWf memTm-cIMu (⊢ixP ⊢sTm (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢num 0))) (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e1 (⊢wk (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e0 (⊢wk (⊢wk (⊢wk (dd)))))))) (toI ⊢sTm))) (ty-Unit))))
+           (ixConv (ξ-pairʳ (βsnd sTm (d))) (d0))
+     (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢ixP ⊢sTm (⊢natAt e3 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e2 (⊢wk (⊢wk (dd))))))) (toI ⊢sTm))) (ty-Unit)))
             (d1)
-      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢wk (dx))))) (toI ⊢sTm))) (ty-Unit))
-             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (var x))))))) (d2))
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sTm (⊢natAt e4 (⊢wk (dd)))))) (toI ⊢sTm))) (ty-Unit))
+             (ixConv (ξ-pairʳ (βsnd sTm (subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d))))))) (kCast (sym e5) d2))
        (⊢pair (ty-Unit)
               (fordFst ⊢sTm)
         ⊢unit))))
+  where
+    e0 : renTm vs (renTm vs (renTm vs (d))) ≡ w (w (w (d)))
+    e0 = refl
+    e1 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e1 = refl
+    e2 : subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d)))) ≡ w (w (d))
+    e2 = trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d)))
+    e3 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e3 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e4 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (d))))) ≡ w (d)
+    e4 = trans (cong (subTm (extS (single a1))) (trans (sub-w² {σ = single a0} (w d)) (cong w (cong w (wk-single {v = a0} d))))) (trans (sub-w {σ = single a1} (w d)) (cong w (wk-single {v = a1} d)))
+    e5 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (d)))) ≡ d
+    e5 = trans (cong (subTm (single a1)) (trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d)))) (wk-single {v = a1} d)
 
 -- ⌜Unit⌝ : RTm Γ
-⊢Tm-cUnitKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ Tm-cUnitK  ∷ K (pair sTm (var x))
-⊢Tm-cUnitKv {x = x} dx =
-  ⊢icon KnotWf memTm-cUnit (⊢ixP ⊢sTm (dx))
+⊢Tm-cUnitKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ Tm-cUnitK  ∷ K (pair sTm (d))
+⊢Tm-cUnitKv d dd =
+  ⊢icon KnotWf memTm-cUnit (⊢ixP ⊢sTm (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sTm)
      ⊢unit)
 
 -- dnil : Desc
-⊢Desc-nilKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ Desc-nilK  ∷ K (pair sDesc (var x))
-⊢Desc-nilKv {x = x} dx =
-  ⊢icon KnotWf memDesc-nil (⊢ixP ⊢sDesc (dx))
+⊢Desc-nilKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ Desc-nilK  ∷ K (pair sDesc (d))
+⊢Desc-nilKv d dd =
+  ⊢icon KnotWf memDesc-nil (⊢ixP ⊢sDesc (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sDesc)
      ⊢unit)
 
 -- _◃_ : DCon → Desc → Desc
-⊢Desc-consKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sDCon (var x)) →
-        Δ ⊢ a1 ∷ K (pair sDesc (var x)) →
-        Δ ⊢ Desc-consK a0 a1 ∷ K (pair sDesc (var x))
-⊢Desc-consKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memDesc-cons (⊢ixP ⊢sDesc (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢ixP ⊢sDesc (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDesc (⊢wk (⊢wk (dx)))))) (toI ⊢sDesc))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sDesc (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDesc (⊢wk (dx))))) (toI ⊢sDesc))) (ty-Unit))
-            (ixConv (ξ-pairʳ (βsnd sDesc (subTm (single a0) (renTm vs (var x))))) (d1))
+⊢Desc-consKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sDCon (d)) →
+        Δ ⊢ a1 ∷ K (pair sDesc (d)) →
+        Δ ⊢ Desc-consK a0 a1 ∷ K (pair sDesc (d))
+⊢Desc-consKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memDesc-cons (⊢ixP ⊢sDesc (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢ixP ⊢sDesc (⊢natAt e1 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDesc (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sDesc))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sDesc (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDesc (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sDesc))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sDesc (subTm (single a0) (renTm vs (d))))) (kCast (sym e3) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sDesc)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- dι : DCon
-⊢DCon-iKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ DCon-iK  ∷ K (pair sDCon (var x))
-⊢DCon-iKv {x = x} dx =
-  ⊢icon KnotWf memDCon-i (⊢ixP ⊢sDCon (dx))
+⊢DCon-iKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ DCon-iK  ∷ K (pair sDCon (d))
+⊢DCon-iKv d dd =
+  ⊢icon KnotWf memDCon-i (⊢ixP ⊢sDCon (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sDCon)
      ⊢unit)
 
 -- dρ : DCon → DCon
-⊢DCon-rhoKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sDCon (var x)) →
-        Δ ⊢ DCon-rhoK a0 ∷ K (pair sDCon (var x))
-⊢DCon-rhoKv {x = x} {a0 = a0} dx d0 =
-  ⊢icon KnotWf memDCon-rho (⊢ixP ⊢sDCon (dx))
-    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDCon (⊢wk (dx))))) (toI ⊢sDCon))) (ty-Unit))
-           (ixConv (ξ-pairʳ (βsnd sDCon (var x))) (d0))
+⊢DCon-rhoKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sDCon (d)) →
+        Δ ⊢ DCon-rhoK a0 ∷ K (pair sDCon (d))
+⊢DCon-rhoKv d {a0 = a0} dd d0 =
+  ⊢icon KnotWf memDCon-rho (⊢ixP ⊢sDCon (dd))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDCon (⊢natAt e0 (⊢wk (dd)))))) (toI ⊢sDCon))) (ty-Unit))
+           (ixConv (ξ-pairʳ (βsnd sDCon (d))) (d0))
      (⊢pair (ty-Unit)
             (fordFst ⊢sDCon)
       ⊢unit))
+  where
+    e0 : renTm vs (d) ≡ w (d)
+    e0 = refl
 
 -- dκ : RTy ε → DCon → DCon
-⊢DCon-kapKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
+⊢DCon-kapKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
         Δ ⊢ a0 ∷ K (pair sTy (num 0)) →
-        Δ ⊢ a1 ∷ K (pair sDCon (var x)) →
-        Δ ⊢ DCon-kapK a0 a1 ∷ K (pair sDCon (var x))
-⊢DCon-kapKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memDCon-kap (⊢ixP ⊢sDCon (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sDCon (⊢snd (⊢ixP ⊢sDCon (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDCon (⊢wk (⊢wk (dx)))))) (toI ⊢sDCon))) (ty-Unit)))
+        Δ ⊢ a1 ∷ K (pair sDCon (d)) →
+        Δ ⊢ DCon-kapK a0 a1 ∷ K (pair sDCon (d))
+⊢DCon-kapKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memDCon-kap (⊢ixP ⊢sDCon (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sDCon (⊢snd (⊢ixP ⊢sDCon (⊢natAt e1 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDCon (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sDCon))) (ty-Unit)))
            (d0)
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDCon (⊢wk (dx))))) (toI ⊢sDCon))) (ty-Unit))
-            (ixConv (ξ-pairʳ (βsnd sDCon (subTm (single a0) (renTm vs (var x))))) (d1))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sDCon (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sDCon))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sDCon (subTm (single a0) (renTm vs (d))))) (kCast (sym e3) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sDCon)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- inil : IDesc
-⊢IDesc-nilKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ IDesc-nilK  ∷ K (pair sIDesc (var x))
-⊢IDesc-nilKv {x = x} dx =
-  ⊢icon KnotWf memIDesc-nil (⊢ixP ⊢sIDesc (dx))
+⊢IDesc-nilKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ IDesc-nilK  ∷ K (pair sIDesc (d))
+⊢IDesc-nilKv d dd =
+  ⊢icon KnotWf memIDesc-nil (⊢ixP ⊢sIDesc (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sIDesc)
      ⊢unit)
 
 -- _◂_ : ICon (ε ∙) → IDesc → IDesc
-⊢IDesc-consKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
+⊢IDesc-consKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
         Δ ⊢ a0 ∷ K (pair sICon (num 1)) →
-        Δ ⊢ a1 ∷ K (pair sIDesc (var x)) →
-        Δ ⊢ IDesc-consK a0 a1 ∷ K (pair sIDesc (var x))
-⊢IDesc-consKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memIDesc-cons (⊢ixP ⊢sIDesc (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢snd (⊢ixP ⊢sIDesc (⊢wk (dx)))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sIDesc (⊢wk (⊢wk (dx)))))) (toI ⊢sIDesc))) (ty-Unit)))
+        Δ ⊢ a1 ∷ K (pair sIDesc (d)) →
+        Δ ⊢ IDesc-consK a0 a1 ∷ K (pair sIDesc (d))
+⊢IDesc-consKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memIDesc-cons (⊢ixP ⊢sIDesc (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢snd (⊢ixP ⊢sIDesc (⊢natAt e1 (⊢wk (dd))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sIDesc (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sIDesc))) (ty-Unit)))
            (d0)
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sIDesc (⊢wk (dx))))) (toI ⊢sIDesc))) (ty-Unit))
-            (ixConv (ξ-pairʳ (βsnd sIDesc (subTm (single a0) (renTm vs (var x))))) (d1))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sIDesc (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sIDesc))) (ty-Unit))
+            (ixConv (ξ-pairʳ (βsnd sIDesc (subTm (single a0) (renTm vs (d))))) (kCast (sym e3) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sIDesc)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- iι : ICon Δ
-⊢ICon-iKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ ICon-iK  ∷ K (pair sICon (var x))
-⊢ICon-iKv {x = x} dx =
-  ⊢icon KnotWf memICon-i (⊢ixP ⊢sICon (dx))
+⊢ICon-iKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ ICon-iK  ∷ K (pair sICon (d))
+⊢ICon-iKv d dd =
+  ⊢icon KnotWf memICon-i (⊢ixP ⊢sICon (dd))
     (⊢pair (ty-Unit)
            (fordFst ⊢sICon)
      ⊢unit)
 
 -- iρ : RTm Δ → ICon (Δ ∙) → ICon Δ
-⊢ICon-rhoKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sICon (nsuc (var x))) →
-        Δ ⊢ ICon-rhoK a0 a1 ∷ K (pair sICon (var x))
-⊢ICon-rhoKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memICon-rho (⊢ixP ⊢sICon (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sICon (⊢nsuc (⊢snd (⊢ixP ⊢sICon (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢wk (⊢wk (dx)))))) (toI ⊢sICon))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sICon (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢wk (dx))))) (toI ⊢sICon))) (ty-Unit))
-            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sICon (subTm (single a0) (renTm vs (var x)))))) (d1))
+⊢ICon-rhoKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sICon (nsuc (d))) →
+        Δ ⊢ ICon-rhoK a0 a1 ∷ K (pair sICon (d))
+⊢ICon-rhoKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memICon-rho (⊢ixP ⊢sICon (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sICon (⊢nsuc (⊢snd (⊢ixP ⊢sICon (⊢natAt e1 (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sICon))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sICon (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sICon))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sICon (subTm (single a0) (renTm vs (d)))))) (kCast (sym (cong nsuc (e3))) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sICon)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 
 -- iκ : RTm Δ → ICon (Δ ∙) → ICon Δ
-⊢ICon-kapKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {a0 a1 : RTm ⌊ Δ ⌋} →
-        Δ ⊢ var x ∷ Nat →
-        Δ ⊢ a0 ∷ K (pair sTm (var x)) →
-        Δ ⊢ a1 ∷ K (pair sICon (nsuc (var x))) →
-        Δ ⊢ ICon-kapK a0 a1 ∷ K (pair sICon (var x))
-⊢ICon-kapKv {x = x} {a0 = a0} {a1 = a1} dx d0 d1 =
-  ⊢icon KnotWf memICon-kap (⊢ixP ⊢sICon (dx))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sICon (⊢nsuc (⊢snd (⊢ixP ⊢sICon (⊢wk (dx))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢wk (⊢wk (dx)))))) (toI ⊢sICon))) (ty-Unit)))
-           (ixConv (ξ-pairʳ (βsnd sICon (var x))) (d0))
-     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢wk (dx))))) (toI ⊢sICon))) (ty-Unit))
-            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sICon (subTm (single a0) (renTm vs (var x)))))) (d1))
+⊢ICon-kapKv : {Δ : Ctx} (d : RTm ⌊ Δ ⌋) {a0 a1 : RTm ⌊ Δ ⌋} →
+        Δ ⊢ d ∷ Nat →
+        Δ ⊢ a0 ∷ K (pair sTm (d)) →
+        Δ ⊢ a1 ∷ K (pair sICon (nsuc (d))) →
+        Δ ⊢ ICon-kapK a0 a1 ∷ K (pair sICon (d))
+⊢ICon-kapKv d {a0 = a0} {a1 = a1} dd d0 d1 =
+  ⊢icon KnotWf memICon-kap (⊢ixP ⊢sICon (dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sICon (⊢nsuc (⊢snd (⊢ixP ⊢sICon (⊢natAt e1 (⊢wk (dd)))))))) (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢natAt e0 (⊢wk (⊢wk (dd))))))) (toI ⊢sICon))) (ty-Unit)))
+           (ixConv (ξ-pairʳ (βsnd sICon (d))) (d0))
+     (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢sICon (⊢natAt e2 (⊢wk (dd)))))) (toI ⊢sICon))) (ty-Unit))
+            (ixConv (ξ-pairʳ (ξ-nsuc (βsnd sICon (subTm (single a0) (renTm vs (d)))))) (kCast (sym (cong nsuc (e3))) d1))
       (⊢pair (ty-Unit)
              (fordFst ⊢sICon)
        ⊢unit)))
+  where
+    e0 : renTm vs (renTm vs (d)) ≡ w (w (d))
+    e0 = refl
+    e1 : renTm vs (d) ≡ w (d)
+    e1 = refl
+    e2 : subTm (extS (single a0)) (renTm vs (renTm vs (d))) ≡ w (d)
+    e2 = trans (sub-w {σ = single a0} (w d)) (cong w (wk-single {v = a0} d))
+    e3 : subTm (single a0) (renTm vs (d)) ≡ d
+    e3 = wk-single {v = a0} d
 

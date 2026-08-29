@@ -469,7 +469,7 @@ def sigma(i, e):
     return s
 
 def term_of(acts, NN="n", V=False):
-    t = "var x" if V else f"num {NN}"
+    t = "d" if V else f"num {NN}"
     for a in reversed(acts):
         t = f"renTm vs ({t})" if a[0] == "ren" else f"subTm ({sigma(a[1],a[2])}) ({t})"
     return t
@@ -500,22 +500,62 @@ def depth_expr(E, V=False):
         if E[0] == "D":    return "num n"
         if E[0] == "sucD": return "num (" + "suc (" * E[1] + "n" + ")" * E[1] + ")"
         raise ValueError(E)
-    if E[0] == "D":    return "var x"
-    if E[0] == "sucD": return "nsuc (" * E[1] + "var x" + ")" * E[1]
+    if E[0] == "D":    return "d"
+    if E[0] == "sucD": return "nsuc (" * E[1] + "d" + ")" * E[1]
     raise ValueError(E)
 
-def _dvar(r):
-    "the depth derivation `r` binders in, for a VARIABLE depth"
-    return "⊢wk (" * r + "dx" + ")" * r
+def _dwk(r):
+    "the depth derivation `r` weakenings in"
+    return "⊢wk (" * r + "dd" + ")" * r
+
+def _surplus(acts):
+    "renamings that survive the substitutions"
+    return max(sum(1 for a in acts if a[0] == "ren")
+               - sum(1 for a in acts if a[0] == "sub"), 0)
 
 def depderiv(acts, en, V):
     """the DEPTH's derivation at a position reached by `acts`.
-    ★ numeral: recognise it (`⊢numAt` + the chain).
-    ★ variable: move it (`⊢wk`), and the substitutions cancel renamings
-      on a variable, so only the surplus renamings survive."""
+
+    ★ numeral: RECOGNISE it — `num n` is renaming-invariant, so every
+      position is still `num n` and `⊢numAt` cashes the chain.
+    ★ general: MOVE it — `⊢wk` per surviving renaming, and the chain
+      says the substitutions cancelled the rest."""
     if not V: return "⊢num n" if en == "refl" else f"⊢numAt n {en}"
-    r = sum(1 for a in acts if a[0] == "ren") - sum(1 for a in acts if a[0] == "sub")
-    return _dvar(max(r, 0))
+    if en == "refl": return _dwk(_surplus(acts))
+    return f"⊢natAt {en} ({_dwk(_surplus(acts))})"
+
+def wtimes(r, t):
+    return "w (" * r + t + ")" * r
+
+def eq_gen(acts):
+    """`term_of(acts)` ≡ `wʳ d`, for an ARBITRARY depth `d`.
+
+    ⚠⚠ THIS IS WHERE A GENERAL DEPTH COSTS WHAT A NUMERAL DOES NOT.
+      `num-sub σ n` cancels a substitution at ANY `σ`, because `num n` is
+      closed.  For a general `d` the cancellation depends on `σ`'s
+      SHAPE — `subTm (extSᵉ (single a)) (wᵉ⁺¹ d) ≡ wᵉ d` — so it is the
+      `sub-wᵉ` ladder, one rung per binder crossed.  ★ Measured: the
+      deepest exponent the table needs is 4, and `Lib/Wk` stops at
+      `sub-w⁴`.  Exactly deep enough, which is not luck: both are
+      bounded by the widest row's field count."""
+    # ⚠ NEVER EMIT `cong f refl`.  A bare `refl` under a `cong` has
+    #   nothing to fix its type, so the metas never solve — and the error
+    #   surfaces far from here, as an unsolved constraint on a
+    #   `subTm (single a0) (renTm vs _x)`.  A pure-renaming prefix IS
+    #   `refl`, because `w` is `renTm vs`.
+    if not acts or all(a[0] == "ren" for a in acts): return "refl"
+    a, rest = acts[0], acts[1:]
+    inner = eq_gen(rest)
+    if a[0] == "ren":
+        return "refl" if inner == "refl" else f"cong (renTm vs) ({inner})"
+    i, e = a[1], a[2]
+    sw = "wk-single {v = a%d} d" % i
+    if e > 0:
+        lad = "sub-w" + ("" if e == 1 else "\u00b2\u00b3\u2074"[e - 2])
+        sw = (f"trans ({lad} {{σ = single a{i}}} (w d)) "
+              f"({'cong w (' * e}{sw}{')' * e})")
+    if inner == "refl": return sw
+    return f"trans (cong (subTm ({sigma(i, e)})) ({inner})) ({sw})"
 
 def entry_ty(f, sX, dd, NN="n", dd0=None):
     "⚠ `dd`/`dd0` are the DEPTH DERIVATIONS, already built for the mode."
@@ -575,11 +615,11 @@ def emit_row(name, decl, fields, V=False):
     eqs = {}
     def en(acts):
         if not acts: return "refl"
-        t = term_of(acts)
+        t = term_of(acts, V=V)
         if t not in eqs: eqs[t] = (f"e{len(eqs)}", acts)
         return eqs[t][0]
     def dd(acts):
-        return depderiv(acts, en(acts) if not V else None, V)
+        return depderiv(acts, en(acts), V)
     def needs_eq(f):
         return f[0] == "ford" or (f[0] == "rec" and f[2][0] in ("D", "sucD"))
     def B_of(k):
@@ -595,16 +635,20 @@ def emit_row(name, decl, fields, V=False):
         a = actions(k, k)
         e = (en(a) if (fields[k][0] == "rec" and fields[k][2][0] in ("D", "sucD"))
              else "refl")
-        cs.append(component(fields[k], k, sX, "refl" if V else e, term_of(a, V=V)))
+        cs.append(component(fields[k], k, sX, e, term_of(a, V=V)))
     prem = ["Δ ⊢ a{} ∷ Nat".format(j) if fields[j][0] == "nat"
             else f"Δ ⊢ a{j} ∷ K (pair {fields[j][1]} ({depth_expr(fields[j][2], V)}))"
             for j in nargs]
     imp = " ".join(f"a{j}" for j in nargs)
     sig = "⊢%sK%s" % (nm, "v" if V else "")
     if V:
-        L.append(f"{sig} : {{Δ : Ctx}} {{x : Var ⌊ Δ ⌋}}"
+        # ⚠ THE DEPTH IS AN EXPLICIT ARGUMENT, not an implicit to be
+        #   unified.  `sucs j (var x)` would not unify against
+        #   `nsuc (var y)` — `sucs` is a recursive function — and that is
+        #   what made the `var x` form unusable under a binder.
+        L.append(f"{sig} : {{Δ : Ctx}} (d : RTm ⌊ Δ ⌋)"
                  + (f" {{{imp} : RTm ⌊ Δ ⌋}}" if nargs else "") + " →")
-        L.append("        Δ ⊢ var x ∷ Nat →")
+        L.append("        Δ ⊢ d ∷ Nat →")
     else:
         L.append(f"{sig} : {{Δ : Ctx}} (n : ℕ)"
                  + (f" {{{imp} : RTm ⌊ Δ ⌋}}" if nargs else "") + " →")
@@ -617,7 +661,7 @@ def emit_row(name, decl, fields, V=False):
     #   `n` is explicit and precedes the field implicits.
     flds = [f"{{a{j} = a{j}}}" for j in nargs]
     ds   = [f"d{j}" for j in nargs]
-    lhs  = (["{x = x}"] + flds + ["dx"] + ds) if V else (["n"] + flds + ds)
+    lhs  = (["d"] + flds + ["dd"] + ds) if V else (["n"] + flds + ds)
     L.append(f"{sig} " + " ".join(lhs) + " =")
     L.append(f"  ⊢icon KnotWf mem{nm} (⊢ixP ⊢{sX} ({depderiv([], 'refl', V)}))")
     ind = "    "
@@ -626,11 +670,15 @@ def emit_row(name, decl, fields, V=False):
         L.append(f"{ind}       ({cs[k]})")
         ind += " "
     L.append(f"{ind}⊢unit" + ")" * m)
-    if eqs and not V:
+    if eqs:
         L.append("  where")
         for t, (e, acts) in eqs.items():
-            L.append(f"    {e} : {t} ≡ num n")
-            L.append(f"    {e} = {eq_of(acts)}")
+            if V:
+                L.append(f"    {e} : {t} ≡ {wtimes(_surplus(acts), 'd')}")
+                L.append(f"    {e} = {eq_gen(acts)}")
+            else:
+                L.append(f"    {e} : {t} ≡ num n")
+                L.append(f"    {e} = {eq_of(acts)}")
     L.append("")
     return L
 
@@ -716,12 +764,13 @@ open import DirectedHoTT.Spec.Syntax
         ; Ren; Sub; renTm; subTm; extS )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; \u25c7; _\u25b9_; \u230a_\u230b; single
-        ; _\u22a2_\u2237_; _\u22a2ty_; \u22a2var; here; there; \u22a2conv
+        ; _\u22a2_\u2237_; _\u22a2ty_; \u22a2var; here; there; \u22a2conv; wk-single
         ; \u22a2pair; \u22a2fst; \u22a2snd; \u22a2unit; \u22a2nzero; \u22a2nsuc; \u22a2\u231cNat\u231d; \u22a2\u231cId\u231d; \u22a2idrefl; \u22a2icon
         ; ty-El; ty-Unit; ty-Nat; ty-\u03a3; ty-IMu
         ; _\u27f6_; \u03b2fst; \u03b2snd; \u03be-pair\u02b3; \u03be-nsuc
         ; _\u2245\u1d40_; csym\u1d40; ctrn\u1d40; cred\u1d40; El-\u231cId\u231d; \u03be-El; \u03be-IMu; \u03be-\u231cId\u231d\u02e1 )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( \u22a2wk )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w\u00b2; sub-w\u00b3; sub-w\u2074 )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
         ; \u22a2sTy; \u22a2sTm; \u22a2sDesc; \u22a2sDCon; \u22a2sIDesc; \u22a2sICon; \u22a2sVar
@@ -730,8 +779,15 @@ open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Tags
 open import DirectedHoTT.Examples.Knot.Terms using ( ixConv; fordFst; tyFordFst )
+open import DirectedHoTT.Examples.Knot.Build using ( tyCast; kCast )
 open import DirectedHoTT.Examples.Knot.Ctors
   using ( """ + "; ".join(n[1:] + "K" for n, _, _ in KNOT if not n.startswith("cVar-")) + """ )
+
+-- ★ the depth, RECOGNISED at a position it was moved to.  `\u22a2numAt`'s
+--   general twin: `Knot/Build`'s version bakes in `\u22a2num`, which only a
+--   numeral depth has.
+\u22a2natAt : {\u0393 : Ctx} {t u : RTm \u230a \u0393 \u230b} \u2192 t \u2261 u \u2192 \u0393 \u22a2 u \u2237 Nat \u2192 \u0393 \u22a2 t \u2237 Nat
+\u22a2natAt eq d = subst (\u03bb z \u2192 _ \u22a2 z \u2237 Nat) (sym eq) d
 
 """
 
@@ -1315,9 +1371,15 @@ WF_CTOR = {
     for n, _, fs in KNOT if not n.startswith("cVar-")
 }
 WF_CTOR.update({
+    # ★ THE TWO `Var` ROWS ALREADY HAD THEIR ARBITRARY-DEPTH FORM.
+    #   `⊢Var-vzKt`/`⊢Var-vsKt` (`Knot/Build`) take the depth as an
+    #   IMPLICIT term, solved from `Var-vzK d`'s own argument — so they
+    #   need only its DERIVATION (`DD`), not the term again.
+    #   ⚠ The table pointed at `⊢Var-vzKv` (`var x`) for two commits.
+    #   The narrow twin was written first and shadowed the general one.
+    "Var-vzK":  ("⊢Var-vzKt", ["DD"],       None),
+    "Var-vsK":  ("⊢Var-vsKt", ["DD", "MU"], None),
     "Ctx-extK": ("⊢Ctx-extKv", ["N", "MU", "MU"], None),
-    "Var-vzK":  ("⊢Var-vzKv",  ["N"],             None),
-    "Var-vsK":  ("⊢Var-vsKv",  ["N", "MU"],       None),
     # ★ `wkK` lands at `sh (pair s m)` while the ford wants
     #   `pair s (nsuc m)` — the same two β-steps every time.
     "wkK":      ("⊢wkK",       ["IX", "MU"],      "WK"),
@@ -1374,11 +1436,29 @@ FIELD_DEPTH = {
     for n, _, fs in KNOT if not n.startswith("cVar-")
 }
 
+# ★★★ THE THREADED DEPTH IS STRUCTURED, NOT A STRING: `(base term, base
+#   derivation, how many `nsuc`s)`.
+#
+# ⚠⚠ IT HAS TO BE.  Three consumers want different things of it — the
+#   value emitter wants the TERM, the derivation emitter wants the
+#   DERIVATION, and `Var-vzK`/`Var-vsK` want the PREDECESSOR of both,
+#   because their argument is their SOURCE depth.  Carrying only the two
+#   rendered strings makes the predecessor un-takeable, and adjusting one
+#   string without the other puts them out of step — which surfaces as a
+#   mismatch in the constructor's index, far from the cause.
+def _dep_t(dep):  return nsucs(dep[2], dep[0])
+def _dep_d(dep):  return dnsucs(dep[2], dep[1])
+
+def _dep_pred(dep):
+    if dep[2] == 0:
+        raise ValueError("a Var at a non-successor depth: %r" % (dep,))
+    return (dep[0], dep[1], dep[2] - 1)
+
 def _deepen(dep, E):
-    "the depth derivation for a field whose index sits at `E`"
-    if E[0] == "lit":  return f"⊢num {E[1]}"
+    "the depth for a field whose index sits at `E`"
+    if E[0] == "lit":  return ("num %d" % E[1], "⊢num %d" % E[1], 0)
     if E[0] == "D":    return dep
-    if E[0] == "sucD": return dnsucs(E[1], dep)
+    if E[0] == "sucD": return (dep[0], dep[1], dep[2] + E[1])
     return dep                      # `fld` — the field names another field
 
 def jd(e, k, ix, binders, tel):
@@ -1418,9 +1498,20 @@ def jd(e, k, ix, binders, tel):
             head, roles, post = WF_CTOR[h]
             ds, ai = [], 0
             for r in roles:
+                if r == 'DD':
+                    # ★ CONSUME the depth the TERM already carries, and
+                    #   emit its derivation.  ⚠ Synthesising it from the
+                    #   threaded depth instead double-counts: `Var-vsK`'s
+                    #   first argument IS its source depth, whether the
+                    #   row was hand-written or parsed.
+                    a = args[ai]; ai += 1
+                    ds.append(par(jdAt(a, k, ix, binders, tel, 'nat')))
+                    continue
                 if r == 'DX':
-                    # ★ the ROW's depth, not one of the term's arguments
-                    ds.append(par(DEPTHD[0]))
+                    # ★ the ROW's depth — the TERM and then its
+                    #   derivation, in that order.
+                    ds.append(par(_dep_t(DEPTHD[0])))
+                    ds.append(par(_dep_d(DEPTHD[0])))
                     continue
                 a = args[ai]
                 # ★ descend at the field's OWN depth
@@ -1567,7 +1658,16 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None):
                         % (F, k, damb, par(d0)))
             else:
                 comp = tel[c]
-                DEPTHD[0] = d0          # ★ the row's depth, for the tree below
+                # ★ the row's depth — TERM and derivation — for the tree
+                #   below.
+                # ⚠ THE ROW'S OWN DEPTH CAN ALREADY CARRY `nsuc`s — a
+                #   rule whose conclusion is at `nsuc m` is ordinary.
+                #   Peel them into the counter, or a `Var` inside such a
+                #   row has no predecessor to take.
+                _b, _n = row.vals[0], 0
+                while _b[0] == "nsuc": _b, _n = _b[1], _n + 1
+                DEPTHD[0] = (rend(_b, k, vis),
+                             jdAt(_b, k, vis, bty, tel, 'nat'), _n)
                 rung = ("iwf-κ %s%d (icw-ford _ _ _)\n"
                         "    (⊢⌜Id⌝ %s\n"
                         "           %s\n"
@@ -1700,7 +1800,7 @@ open import DirectedHoTT.Examples.Knot.Sorts
   using ( toI; fromI; ⊢ixP; ⊢sTy; ⊢sVar )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.CtxD using ( CtxWf; ⊢Ctx-extKv )
-open import DirectedHoTT.Examples.Knot.Build using ( ⊢Var-vzKv; ⊢Var-vsKv )
+open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Wk using ( ⊢wkK )
 open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( ⊢symN )
@@ -1737,7 +1837,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_
         ; IConWf; iwf-ι; iwf-κ; iwf-ρ; ICodeWf; icw-clo; icw-ford; icw-imu
-        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nsuc; ⊢num; ⊢nzero
+        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nsuc; ⊢nzero
         ; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
         ; ⊢pair; ty-Σ; ty-Nat; ty-IMu
         ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
@@ -1785,7 +1885,16 @@ def _depth_at(dp):
 #   well as the tag, which is the exception `Knot/Build` exists for.  So
 #   the depth has to be threaded through the value tree as well as
 #   through the derivation tree, and by the same field table.
+# ⚠⚠ AND THE DEPTH THEY TAKE IS THEIR **SOURCE**, NOT THEIR RESULT.
+#   `Var-vzK d : K (sVar , nsuc d)` — the depth ford is what makes a
+#   variable exist only at a SUCCESSOR depth.  So the value emitter must
+#   hand these the PREDECESSOR of the depth at that position, and a `vz`
+#   at a non-successor depth is ill-typed anyway.
 _DEPTH_ARG = {"Var-vzK", "Var-vsK"}
+
+def _pred(dep):
+    if dep[0] == "nsuc": return dep[1]
+    raise ValueError("a Var at a non-successor depth: %r" % (dep,))
 
 def _shift(dep, E):
     if E[0] == "lit":  return RAW("num %d" % E[1])
@@ -1801,7 +1910,7 @@ def _val(e, CT, dep):
         h = e[1]
         if h in CT:
             c = CT[h]
-            return AP(c, dep) if c in _DEPTH_ARG else AP(c)
+            return AP(c, _pred(dep)) if c in _DEPTH_ARG else AP(c)
         return V(h)
     args = e[1]
     h = args[0]
@@ -1811,7 +1920,7 @@ def _val(e, CT, dep):
         fds = FIELD_DEPTH.get(c, [])
         sub = [_val(x, CT, _shift(dep, fds[i]) if i < len(fds) else dep)
                for i, x in enumerate(args[1:])]
-        return AP(c, *([dep] + sub)) if c in _DEPTH_ARG else AP(c, *sub)
+        return AP(c, *([_pred(dep)] + sub)) if c in _DEPTH_ARG else AP(c, *sub)
     return V(h[1])
 
 def gen_redrows():
@@ -1903,7 +2012,7 @@ open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
-open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKv; ⊢Var-vsKv )
+open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -1920,11 +2029,32 @@ def gen_redwf():
                              "rd%sWf" % nm, "RedD"))
         L.append("")
     L.append("-" * 72)
-    L.append("-- ★★★ …AND THE WHOLE JUDGEMENT IS WELL FORMED.")
+    L.append("-- ⬜⬜ …AND THE ASSEMBLY IS **NOT** ESTABLISHED — read this.")
+    L.append("--")
+    L.append("-- ⚠⚠ THE 65 ROWS ABOVE ARE EACH WELL FORMED.  THE JUDGEMENT")
+    L.append("--   IS NOT YET KNOWN TO BE: `IDescWf IRed RedD` needs a")
+    L.append("--   65-deep `idwf-cons` nest, and that nest is what OOMs —")
+    L.append("--   measured on a 7.7 GB box, with `-A64m` and again with")
+    L.append("--   `-A64m -c`.  ⚠ NOT the rows: before the assembly was")
+    L.append("--   added Agda reached it and reported a TYPE error there,")
+    L.append("--   so all 65 had already checked.")
+    L.append("--")
+    L.append("-- ★ `Knot/Wf`'s 53-deep `KnotWf` does fit, so the cliff is")
+    L.append("--   between 53 and 65 nested `idwf-cons` at THIS index — one")
+    L.append("--   more datum for `agda-perf-is-mutual-block-size`.")
+    L.append("--")
+    L.append("-- ⇒ do not write `RedWf` in a header or a claim until this")
+    L.append("--   line type-checks.  See JUDGEMENT-ATTEMPTS.md §2.5.")
     L.append("-" * 72)
-    L.append("RedWf : IDescWf IRed RedD")
-    L.append("RedWf =")
-    L.append(nest(["idwf-cons rd%sWf" % nm for nm, _, _ in _ROWS], "idwf-nil", 2))
+    L.append("-- RedWf : IDescWf IRed RedD")
+    L.append("-- RedWf =")
+    # ⚠ A ROW WITH NO RECURSIVE PREMISE IS `D`-PARAMETRIC and must be
+    #   APPLIED here; one with a premise is already at `RedD`.  The two
+    #   shapes are not interchangeable — see `emit_jrowwf`.
+    L.append("\n".join("-- " + x for x in
+             nest(["idwf-cons (rd%sWf RedD)" % nm if not row.prems
+                   else "idwf-cons rd%sWf" % nm
+                   for nm, row, _ in _ROWS], "idwf-nil", 2).split("\n")))
     return "\n".join(L) + "\n"
 
 
@@ -1991,9 +2121,10 @@ if __name__ == "__main__":
     open(os.path.join(out, "SzAgree.agda"), "w").write(gen_szagree())
     open(os.path.join(out, "LookupGen.agda"), "w").write(gen_lookupgen())
     open(os.path.join(out, "RedRows.agda"), "w").write(gen_redrows())
-    # ⬜ NOT EMITTED YET — see JUDGEMENT-ATTEMPTS.md §2.4.  The `v`
-    #   constructors are stated at `var x`, and a constructor UNDER A
-    #   BINDER sits at `nsuc (var x)`, which is not a variable.
+    # ⬜ NOT EMITTED — the module OOMs on a 7.7 GB box, with `-A64m` and
+    #   again with `-A64m -c`.  See JUDGEMENT-ATTEMPTS.md §2.5; the
+    #   emitter itself is finished and every rung it produces has been
+    #   seen to typecheck.
     # open(os.path.join(out, "RedWf.agda"), "w").write(gen_redwf())
     print(f"{len(KNOT)} constructors · {n_rho} recursive fields · "
           f"{n_kap} κ fields · {2 * (n_rho + n_kap) + 2 * len(KNOT)} "
