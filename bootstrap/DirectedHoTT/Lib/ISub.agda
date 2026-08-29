@@ -84,15 +84,17 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.ISub where
-open import normalizer.Syntax.Types using ( _≡_ )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil; iι; iρ; iκ
-        ; app; lam; pair; fst; snd; unit; nsuc; icon; var; vz; vs )
+        ; app; lam; pair; fst; snd; unit; nzero; nsuc; icon; var; vz; vs
+        ; Sub; subTm )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm )
 open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
+open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.IWk
-  using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf
+  using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf; sucs
         ; Maybe; just; nothing; decCon; decSucs; decClosed; WkKa; decKa )
 
 module Sub
@@ -108,8 +110,64 @@ module Sub
   --   `extN` is: `sortMap` is built over the KNOT and `Lib` may not
   --   import `Examples`.
   (smap : {Γ : Cx} → RTm Γ → RTm Γ)
-  (decStable : {Δ : Cx} (s : RTm Δ) → Maybe (smap s ⟶* s))
+  -- ⚠ INDEXED BY THE NUMERAL'S **VALUE**, not by a term, and the
+  --   witness is Γ-GENERIC.  See `IsNum` below: the typing needs this
+  --   proof AFTER a substitution has been applied, and only a value can
+  --   cross the context boundary.
+  (decStable : (k : ℕ) → Maybe ({Δ : Cx} → smap {Δ} (num k) ⟶* num k))
   where
+
+  ------------------------------------------------------------------------
+  -- ★★★ AND THE SORT IS A **NUMERAL** — which is DATA, not a side
+  -- condition.  ⚠⚠ THIS IS THE SECOND HALF OF THE 2026-08-29 CORRECTION
+  -- in this module's header, and it was found by trying to state
+  -- `⊢sPick`.
+  --
+  -- ⚠ CLOSEDNESS CANNOT CROSS A SUBSTITUTION.  `⊢sPick`'s result lands
+  --   at `IMu D I (pair (smap (subTm σ s)) …)` and the payload slot
+  --   wants `subTm τ s`, so the witness is needed of `subTm σ s`, not of
+  --   `s`.  But `s : RTm Δ` and `subTm σ s : RTm Γ` are in DIFFERENT
+  --   CONTEXTS, so `subTm σ s ≡ s` is not even well-typed — closedness
+  --   gives `pinned-stable`, which relates two substitutions and never
+  --   strips one.  ★ No amount of care with `occTm` fixes this; the
+  --   classification has to carry more.
+  --
+  -- ★ AND IT CAN, because every riding field's sort over `KnotD` is a
+  --   literal TAG.  Recorded as `IsNum`, the sort has a VALUE in `ℕ`,
+  --   which crosses contexts freely: `subTm σ s ≡ num (numOf p)` is a
+  --   two-line induction, and closedness drops out as a COROLLARY
+  --   (`isNum-occ`) instead of being assumed.  ⇒ the same Fording move the
+  --   knot's indices use, one level up.
+  ------------------------------------------------------------------------
+
+  data IsNum {Δ : Cx} : RTm Δ → Set where
+    n-zero : IsNum nzero
+    n-suc  : {t : RTm Δ} → IsNum t → IsNum (nsuc t)
+
+  numOf : {Δ : Cx} {s : RTm Δ} → IsNum s → ℕ
+  numOf n-zero    = zero
+  numOf (n-suc p) = suc (numOf p)
+
+  -- ★ the value crosses the context boundary; the term does not.
+  -- ⚠ NOT `Lib/NatNum.num-sub`, which is the statement about `num k`
+  --   ITSELF.  This one starts from an arbitrary term KNOWN to be a
+  --   numeral, which is the only form the classifier can hand over.
+  isNum-sub : {Δ Γ : Cx} {s : RTm Δ} (p : IsNum s) (σ : Sub Δ Γ) →
+            subTm σ s ≡ num (numOf p)
+  isNum-sub n-zero    σ = refl
+  isNum-sub (n-suc p) σ = cong nsuc (isNum-sub p σ)
+
+  -- ⚠ AND CLOSEDNESS IS DERIVED, so `s-rides` need not carry it.
+  isNum-occ : {Δ : Cx} {s : RTm Δ} → IsNum s → (x : Var Δ) → occTm x s ≡ false
+  isNum-occ n-zero    x = refl
+  isNum-occ (n-suc p) x = isNum-occ p x
+
+  decNum : {Δ : Cx} (s : RTm Δ) → Maybe (IsNum s)
+  decNum nzero    = just n-zero
+  decNum (nsuc t) with decNum t
+  ... | just p  = just (n-suc p)
+  ... | nothing = nothing
+  decNum _        = nothing
 
   ------------------------------------------------------------------------
   -- ★★★ THE REFINED INDEX CLASSIFICATION.
@@ -125,9 +183,9 @@ module Sub
   ------------------------------------------------------------------------
 
   data SubIx {Δ : Cx} (a : Var Δ) : RTm Δ → Set where
-    s-rides  : (s : RTm Δ) → ((x : Var Δ) → occTm x s ≡ false) →
+    s-rides  : {s : RTm Δ} (q : IsNum s) →
                {d : RTm Δ} → IsSucs a d →
-               smap s ⟶* s →
+               ({Γ : Cx} → smap {Γ} (num (numOf q)) ⟶* num (numOf q)) →
                SubIx a (pair s d)
     s-pinned : (j : RTm Δ) → ((x : Var Δ) → occTm x j ≡ false) → SubIx a j
 
@@ -135,7 +193,7 @@ module Sub
   --   how many binders deeper the field sits, hence how many times `σ`
   --   must be extended.
   sDepth : {Δ : Cx} {a : Var Δ} {j : RTm Δ} → SubIx a j → ℕ
-  sDepth (s-rides _ _ p _) = depthOf p
+  sDepth (s-rides _ p _) = depthOf p
   sDepth (s-pinned _ _)    = zero
 
   ------------------------------------------------------------------------
@@ -160,18 +218,21 @@ module Sub
     sc-κ : {κ : RTm Δ} {C : ICon (Δ ∙)} →
            WkKa a κ → SubCon (vs a) C → SubCon a (iκ κ C)
 
-  decSubIx : {Δ : Cx} (a : Var Δ) (j : RTm Δ) → Maybe (SubIx a j)
-  decSubIx a (pair s d) with decSucs a d | decClosed s | decStable s
-  ... | just p  | just cs | just st = just (s-rides s cs p st)
-  ... | _       | _       | _       = decSPin a (pair s d)
-    where
-      decSPin : {Δ' : Cx} (b : Var Δ') (k : RTm Δ') → Maybe (SubIx b k)
-      decSPin b k with decClosed k
-      ... | just o  = just (s-pinned k o)
-      ... | nothing = nothing
-  decSubIx a j with decClosed j
-  ... | just o  = just (s-pinned j o)
+  decSPin : {Δ : Cx} (b : Var Δ) (k : RTm Δ) → Maybe (SubIx b k)
+  decSPin b k with decClosed k
+  ... | just o  = just (s-pinned k o)
   ... | nothing = nothing
+
+  decSubIx : {Δ : Cx} (a : Var Δ) (j : RTm Δ) → Maybe (SubIx a j)
+  decSubIx a (pair s d) with decSucs a d | decNum s
+  ... | just p  | just q  = pick (decStable (numOf q))
+    where
+      pick : Maybe ({Γ : Cx} → smap {Γ} (num (numOf q)) ⟶* num (numOf q)) →
+             Maybe (SubIx a (pair s d))
+      pick (just st) = just (s-rides q p st)
+      pick nothing   = decSPin a (pair s d)
+  ... | _       | _       = decSPin a (pair s d)
+  decSubIx a j = decSPin a j
 
   decSubCon : {Δ : Cx} (a : Var Δ) (C : ICon Δ) → Maybe (SubCon a C)
   decSubCon a iι = just sc-ι
@@ -186,16 +247,16 @@ module Sub
   ...   | just w  = just (sc-κ p w)
   ...   | nothing = nothing
 
-  -- `nsuc^k`
-  sucsN : {Γ : Cx} → ℕ → RTm Γ → RTm Γ
-  sucsN zero    n = n
-  sucsN (suc k) n = nsuc (sucsN k n)
-
+  -- ⚠ `nsuc^k` IS `Lib/IWk`'s `sucs`, IMPORTED rather than repeated.
+  --   A local copy compiled fine and was WRONG to keep: `isSucs-sub`
+  --   states the depth in terms of `sucs`, so a duplicate would have
+  --   made every use of that lemma pay a rewrite between two identical
+  --   definitions.
   -- `ext^k`, threading the depth: the j-th extension is taken at the
   -- depth the j-1 previous ones produced.
   extsN : {Γ : Cx} → ℕ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
   extsN zero    d n σ = σ
-  extsN (suc k) d n σ = extN (sucsN k d) (sucsN k n) (extsN k d n σ)
+  extsN (suc k) d n σ = extN (sucs k d) (sucs k n) (extsN k d n σ)
 
   ------------------------------------------------------------------------
   -- ONE FIELD.
@@ -208,8 +269,8 @@ module Sub
 
   sPick : {Γ Δ : Cx} {a : Var Δ} {j : RTm Δ} →
           SubIx a j → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  sPick (s-rides _ _ p _) d n σ q ih =
-    app (app ih (sucsN (depthOf p) n)) (extsN (depthOf p) d n σ)
+  sPick (s-rides _ p _) d n σ q ih =
+    app (app ih (sucs (depthOf p) n)) (extsN (depthOf p) d n σ)
   sPick (s-pinned _ _)    d n σ q ih = q
 
   ------------------------------------------------------------------------
