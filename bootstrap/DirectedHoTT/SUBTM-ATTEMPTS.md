@@ -72,11 +72,39 @@ not just block the proof; it hid the library.**
 
 ---
 
-## Steps 2–6 — open
+## Step 2 — `⊢sPick` (the ρ component) 🟡
+
+⚠ No attempts yet — the first thing STATING it produced was not a proof
+but a **correction to the classification**, so that is the row.
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 0 | state `⊢sPick` over `SubIx` as it stood (`rides` carries *`s` is closed* + `smap s ⟶* s`) | ⚠ **not even well-typed.** The witness is needed of `subTm σ s`, and `s : RTm Δ` vs `subTm σ s : RTm Γ` are in different contexts |
+
+★ **Closedness cannot cross a substitution.** `pinned-stable` relates two
+substitutions and never strips one, so no amount of care with `occTm`
+reaches `subTm σ s ≡ s` — the statement does not typecheck. The
+classification has to carry more.
+
+⇒ **`IsNum`.** Every riding field's sort over `KnotD` is a literal tag,
+so record it as a numeral: the sort then has a **value in `ℕ`**, and a
+value crosses contexts freely. `isNum-sub : subTm σ s ≡ num (numOf p)` is
+a two-line induction and closedness comes out as a corollary
+(`isNum-occ`) rather than being assumed. The same Fording move the knot's
+own indices use, one level up.
+
+✅ Landed, both green, and **the mask still reads `sdGiven … ≡ 3`** — the
+refined classifier loses no rows. `decStable` is now indexed by the
+numeral's *value* and returns a Γ-generic witness; over the knot that
+cost nothing, because the six `sortMap-*` chains were already stated for
+an arbitrary `Γ` and `sTy … sICon` are `num 0 … num 5` definitionally.
+
+⬜ Remaining: `⊢sucs`, `⊢extsN` (iterate `⊢ext`), and `⊢sPick` itself.
+
+## Steps 3–6 — open
 
 Rows get added here as they are tried, **before** the next attempt.
 
-* ⬜ **2.** `⊢sPick`'s `rides` case
 * ⬜ **3.** `⊢isubPay`'s two recursive cases
 * ⬜ **4.** `⊢isubMethod`
 * ⬜ **5.** the tuple at the mask

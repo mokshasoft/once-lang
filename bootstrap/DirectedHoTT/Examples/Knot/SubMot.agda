@@ -94,7 +94,7 @@ open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz; cVar-vs; cTm-var )
 open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf; cVar-vsWf; cTm-varWf )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; ⊢IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
-        ; ⊢sTm; ⊢sVar; ⊢ixP; toI; fromI )
+        ; ⊢sTm; ⊢sVar; ⊢ixP; toI; fromI; num )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 
@@ -651,14 +651,21 @@ sortMap-idesc =
 --   `sIDesc`/`sICon` and never `sVar`.
 ------------------------------------------------------------------------
 
-decStableK : {Δ : Cx} (s : RTm Δ) → Maybe (sortMap s ⟶* s)
-decStableK nzero                                    = just sortMap-ty
-decStableK (nsuc nzero)                             = just sortMap-tm
-decStableK (nsuc (nsuc nzero))                      = just sortMap-desc
-decStableK (nsuc (nsuc (nsuc nzero)))               = just sortMap-dcon
-decStableK (nsuc (nsuc (nsuc (nsuc nzero))))        = just sortMap-idesc
-decStableK (nsuc (nsuc (nsuc (nsuc (nsuc nzero))))) = just sortMap-icon
-decStableK _                                        = nothing
+-- ⚠ INDEXED BY THE VALUE `k`, NOT BY A TERM, and the witness is
+--   Γ-GENERIC — see `Lib/ISub`'s `IsNum`.  The typing needs this proof
+--   of `subTm σ s`, which lives in a DIFFERENT CONTEXT from `s`, and
+--   only a value crosses that boundary.  ★ It costs nothing: the six
+--   chains were already stated for an arbitrary `Γ`, and `sTy … sICon`
+--   are `num 0 … num 5` DEFINITIONALLY (`Knot/Sorts`), so the clauses
+--   are the same six.
+decStableK : (k : ℕ) → Maybe ({Δ : Cx} → sortMap {Δ} (num k) ⟶* num k)
+decStableK zero                               = just sortMap-ty
+decStableK (suc zero)                         = just sortMap-tm
+decStableK (suc (suc zero))                   = just sortMap-desc
+decStableK (suc (suc (suc zero)))             = just sortMap-dcon
+decStableK (suc (suc (suc (suc zero))))       = just sortMap-idesc
+decStableK (suc (suc (suc (suc (suc zero))))) = just sortMap-icon
+decStableK _                                  = nothing
 
 -- ⚠ the module now takes the SORT MAP and its stability decider too.
 open IS.Sub extNK sortMap decStableK
