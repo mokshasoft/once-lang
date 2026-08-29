@@ -88,7 +88,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong�
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil; iι; iρ; iκ
-        ; app; lam; pair; fst; snd; unit; nzero; nsuc; icon; var; vz; vs
+        ; app; lam; pair; fst; snd; unit; nzero; nsuc; icon; var; vz; vs; ⌜Id⌝; ⌜Nat⌝
         ; Sub; subTm; RTy; IMu; Nat )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm )
 open import DirectedHoTT.Spec.Typing
@@ -99,7 +99,7 @@ open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IM
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.IWk
   using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf; sucs
-        ; Maybe; just; nothing; decCon; decSucs; decClosed; WkKa; decKa
+        ; Maybe; just; nothing; decCon; decSucs; decClosed; decVar
         ; pinned-stable; isSucs-sub )
 
 module Sub
@@ -120,6 +120,24 @@ module Sub
   --   proof AFTER a substitution has been applied, and only a value can
   --   cross the context boundary.
   (decStable : (k : ℕ) → Maybe ({Δ : Cx} → smap {Δ} (num k) ⟶* num k))
+  -- ★★★ AND THE SORT FORD'S **ACTION**.  ⚠⚠ WEAKENING COPIES A κ FIELD
+  --   AND SUBSTITUTION MAY NOT — the third place the two part company,
+  --   and the one that changes the TERM rather than just the proof.
+  --
+  --   `Lib/IWk`'s `⊢kaComp` copies a tag ford because `fst (sh ⟨i⟩) ⟶
+  --   fst ⟨i⟩`: the two ford types are CONVERTIBLE, so the same witness
+  --   inhabits both.  Under substitution the output index reads
+  --   `smap (fst ⟨i⟩)`, which does NOT reduce to `fst ⟨i⟩` — mapping the
+  --   sort is the whole point of `smap`.  ⇒ the witness must be ACTED
+  --   ON: given the row's tag `b` and a proof of `fst ⟨i⟩ ≡ b`, produce
+  --   one of `smap (fst ⟨i⟩) ≡ b`.  An object-level congruence, so it is
+  --   the customer's (over the knot: `jsub` along the ford).
+  -- ⚠ IT TAKES THE AMBIENT SORT `fst ⟨i⟩` TOO.  The action is a
+  --   SYMMETRIC transport — the base case is at the TAG and the goal is
+  --   at the ambient — and `symN` names its source explicitly.  ⇒ so
+  --   `isubPay` threads `fst ⟨i⟩` beside the depth; the sort was never
+  --   needed while a κ field was a copy.
+  (fordMap : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ)   -- fi, tag, witness
   where
 
   ------------------------------------------------------------------------
@@ -175,6 +193,53 @@ module Sub
   decNum _        = nothing
 
   ------------------------------------------------------------------------
+  -- ★★★ AND THE κ CLASSIFICATION IS REFINED THE SAME WAY.  `Lib/IWk`'s
+  -- `WkKa` records a tag ford's tag as CLOSED; the ACTION needs it as a
+  -- NUMERAL, for the same reason `SubIx` does — `fordMap` is applied in
+  -- `Γ` to data named in `Δ`, and only a value crosses that boundary.
+  --
+  -- ⚠ AND IT CARRIES THE STABILITY WITNESS TOO.  `fordMap`'s base case
+  --   is `smap b ≡ b`, so the tag must be a sort `smap` fixes.  ★ That
+  --   is not an extra assumption over the knot — it is the same premise
+  --   `s-rides` already makes, and the mask's `sdGiven … ≡ 3` control
+  --   reports immediately if any computed row fails it.
+  ------------------------------------------------------------------------
+
+  data SubKa {Δ : Cx} (a : Var Δ) : RTm Δ → Set where
+    sk-clo : (κ : RTm Δ) → ((x : Var Δ) → occTm x κ ≡ false) → SubKa a κ
+    -- ⚠ THE CODE IS PINNED TO `⌜Nat⌝`, not left abstract.  A tag ford's
+    --   code is `⌜Nat⌝` because an index's components ARE naturals, and
+    --   `fordMap`'s customer has to name a motive — over an abstract
+    --   closed `c` there is no motive to name.  ★ Nothing is lost: a row
+    --   whose ford has another code simply falls through to `sk-clo` or
+    --   to GIVEN, and the mask's count reports it.
+    sk-fst : {b : RTm Δ} (qb : IsNum b) →
+             ({Γ : Cx} → smap {Γ} (num (numOf qb)) ⟶* num (numOf qb)) →
+             SubKa a (⌜Id⌝ ⌜Nat⌝ (fst (var a)) b)
+
+  decSKClo : {Δ : Cx} (a : Var Δ) (κ : RTm Δ) → Maybe (SubKa a κ)
+  decSKClo a κ with decClosed κ
+  ... | just o  = just (sk-clo κ o)
+  ... | nothing = nothing
+
+  decSKFord : {Δ : Cx} (a : Var Δ) (e : RTm Δ) →
+              Maybe (SubKa a (⌜Id⌝ ⌜Nat⌝ (fst (var a)) e))
+  decSKFord a e with decNum e
+  ... | just qb = pickK (decStable (numOf qb))
+    where
+      pickK : Maybe ({Γ : Cx} → smap {Γ} (num (numOf qb)) ⟶* num (numOf qb)) →
+              Maybe (SubKa a (⌜Id⌝ ⌜Nat⌝ (fst (var a)) e))
+      pickK (just st) = just (sk-fst qb st)
+      pickK nothing   = decSKClo a (⌜Id⌝ ⌜Nat⌝ (fst (var a)) e)
+  ... | nothing = decSKClo a (⌜Id⌝ ⌜Nat⌝ (fst (var a)) e)
+
+  decSubKa : {Δ : Cx} (a : Var Δ) (κ : RTm Δ) → Maybe (SubKa a κ)
+  decSubKa a (⌜Id⌝ ⌜Nat⌝ (fst (var b)) e) with decVar b a
+  ... | just refl = decSKFord a e
+  ... | nothing   = decSKClo a (⌜Id⌝ ⌜Nat⌝ (fst (var b)) e)
+  decSubKa a κ = decSKClo a κ
+
+  ------------------------------------------------------------------------
   -- ★★★ THE REFINED INDEX CLASSIFICATION.
   --
   -- ⚠ `Lib/IWk`'s `WkIx` is NOT enough for the typing, though it is for
@@ -221,7 +286,7 @@ module Sub
     sc-ρ : {j : RTm Δ} {C : ICon (Δ ∙)} →
            SubIx a j → SubCon (vs a) C → SubCon a (iρ j C)
     sc-κ : {κ : RTm Δ} {C : ICon (Δ ∙)} →
-           WkKa a κ → SubCon (vs a) C → SubCon a (iκ κ C)
+           SubKa a κ → SubCon (vs a) C → SubCon a (iκ κ C)
 
   decSPin : {Δ : Cx} (b : Var Δ) (k : RTm Δ) → Maybe (SubIx b k)
   decSPin b k with decClosed k
@@ -246,7 +311,7 @@ module Sub
   ... | just p with decSubCon (vs a) C
   ...   | just w  = just (sc-ρ p w)
   ...   | nothing = nothing
-  decSubCon a (iκ κ C) with decKa a κ
+  decSubCon a (iκ κ C) with decSubKa a κ
   ... | nothing = nothing
   ... | just p with decSubCon (vs a) C
   ...   | just w  = just (sc-κ p w)
@@ -278,6 +343,14 @@ module Sub
     app (app ih (sucs (depthOf p) n)) (extsN (depthOf p) d n σ)
   sPick (s-pinned _ _)    d n σ q ih = q
 
+  -- ★ AND THE κ FIELD IS NOT ALWAYS A COPY.  ⚠ A closed code is — its
+  --   type does not mention the ambient, so both substitutions leave it
+  --   alone.  A TAG FORD is not: see `fordMap`'s note above.
+  kaPick : {Γ Δ : Cx} {a : Var Δ} {κ : RTm Δ} →
+           SubKa a κ → RTm Γ → RTm Γ → RTm Γ
+  kaPick (sk-clo _ _)  fi p = p
+  kaPick (sk-fst qb _) fi p = fordMap fi (num (numOf qb)) p
+
   ------------------------------------------------------------------------
   -- THE PAYLOAD, REBUILT.  ⚠ The two tuples are walked TOGETHER, as in
   -- `Lib/IWk.iwkPay`: `q` has a slot per FIELD and `ih` one per
@@ -285,11 +358,12 @@ module Sub
   ------------------------------------------------------------------------
 
   isubPay : {Γ Δ : Cx} {a : Var Δ} {C : ICon Δ} →
-            SubCon a C → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  isubPay sc-ι           d n σ q ih = unit
-  isubPay (sc-ρ ix w)    d n σ q ih =
-    pair (sPick ix d n σ (fst q) (fst ih)) (isubPay w d n σ (snd q) (snd ih))
-  isubPay (sc-κ _ w)     d n σ q ih = pair (fst q) (isubPay w d n σ (snd q) ih)
+            SubCon a C → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  isubPay sc-ι           fi d n σ q ih = unit
+  isubPay (sc-ρ ix w)    fi d n σ q ih =
+    pair (sPick ix d n σ (fst q) (fst ih)) (isubPay w fi d n σ (snd q) (snd ih))
+  isubPay (sc-κ ka w)    fi d n σ q ih =
+    pair (kaPick ka fi (fst q)) (isubPay w fi d n σ (snd q) ih)
 
   ------------------------------------------------------------------------
   -- ★★★ THE METHOD.
@@ -308,7 +382,8 @@ module Sub
                ℕ → SubCon a C → RTm Γ
   isubMethod k w =
     lam (lam (lam (lam (lam
-      (icon k (isubPay w (snd (var (vs (vs (vs (vs vz)))))) -- d = snd ⟨i⟩
+      (icon k (isubPay w (fst (var (vs (vs (vs (vs vz)))))) -- fi = fst ⟨i⟩
+                         (snd (var (vs (vs (vs (vs vz)))))) -- d  = snd ⟨i⟩
                          (var (vs vz))                     -- n
                          (var vz)                          -- σ
                          (var (vs (vs (vs vz))))           -- the payload

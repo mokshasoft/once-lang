@@ -54,7 +54,8 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; pair; snd; Nat; Π; IMu
         ; ICon; IDesc; _◂_; inil; nsuc; nzero; unit; natrec; renTm; renTy; εwkTy
-        ; app; fst; jsub; ⌜IMu⌝; ielim; Σ'; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong )
+        ; app; fst; jsub; ⌜IMu⌝; ielim; Σ'; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong
+        ; ⌜Id⌝; ⌜Nat⌝; idrefl )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; ⊢nzero; ⊢natrec; wk-single; ty-Nat; ty-Π; ty-IMu; ty-Unit
@@ -667,8 +668,31 @@ decStableK (suc (suc (suc (suc zero))))       = just sortMap-idesc
 decStableK (suc (suc (suc (suc (suc zero))))) = just sortMap-icon
 decStableK _                                  = nothing
 
--- ⚠ the module now takes the SORT MAP and its stability decider too.
-open IS.Sub extNK sortMap decStableK
+------------------------------------------------------------------------
+-- ★★★ THE SORT FORD'S ACTION — the third place weakening and
+-- substitution part company, and the only one that changes the TERM.
+--
+-- ⚠ `Lib/IWk` COPIES a tag ford through a method, because at the
+--   weakened index the constraint reads `fst (sh ⟨i⟩) ≡ b` and `βfst`
+--   takes that to `fst ⟨i⟩ ≡ b` — the very witness the method holds.
+--   ★ Under substitution the output index reads `sortMap (fst ⟨i⟩)`,
+--   and NOTHING reduces that to `fst ⟨i⟩`: mapping the sort is what
+--   `sortMap` is for.  ⇒ the witness has to be ACTED ON.
+--
+-- ★ AND THE ACTION IS `jsub` ONE MORE TIME, in the direction `sortConv`
+--   does not go: `symN` turns `fi ≡ b` around, the motive
+--   `λ z. sortMap z ≡ b` is transported to `fi`, and the base case
+--   `sortMap b ≡ b` is the row's own stability chain read as an
+--   identity.  ⇒ the SAME datum `s-rides` already carries.
+------------------------------------------------------------------------
+
+fordMapK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+fordMapK fi b p =
+  jsub (⌜Id⌝ ⌜Nat⌝ (sortMap (var vz)) (w b)) (symN fi p) (idrefl ⌜Nat⌝ b)
+
+-- ⚠ the module now takes the SORT MAP, its stability decider, and the
+--   ford action.
+open IS.Sub extNK sortMap decStableK fordMapK
 
 -- ★ the three rows that APPLY `σ` rather than rebuilding: `cTm-var` and
 --   the two `cVar-*`.  ⚠ Their positions are DATA about the generated
