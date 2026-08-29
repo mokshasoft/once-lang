@@ -61,7 +61,11 @@ module Sem (bits : ℕ) (F : FloatFormat) where
   eval-arith-W {n = NFloat} (asub a b) inp = FA.fsub F (eval-arith-W a inp) (eval-arith-W b inp)
   eval-arith-W {n = NInt}   (amul a b) inp = eval-arith-W a inp ⊗ eval-arith-W b inp
   eval-arith-W {n = NFloat} (amul a b) inp = FA.fmul F (eval-arith-W a inp) (eval-arith-W b inp)
-  eval-arith-W (adiv a b) inp = eval-arith-W a inp /ˢ eval-arith-W b inp
+  eval-arith-W {n = NInt}   (adiv a b) inp = eval-arith-W a inp /ˢ eval-arith-W b inp
+  -- The float quotient is `FA.fdiv` — correctly rounded via the sticky bit, and
+  -- TOTAL like its integer sibling (D055): `x/0` is a signed infinity, `0/0`
+  -- the canonical NaN. Neither traps, so neither needs a guard.
+  eval-arith-W {n = NFloat} (adiv a b) inp = FA.fdiv F (eval-arith-W a inp) (eval-arith-W b inp)
   eval-arith-W (amod a b) inp = eval-arith-W a inp %ˢ eval-arith-W b inp
   eval-arith-W {n = NInt}   (aneg a)   inp = ⊝ eval-arith-W a inp
   -- Float negation is a SIGN-BIT FLIP, not `0 − x`: the latter turns `−0` into

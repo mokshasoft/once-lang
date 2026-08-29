@@ -228,6 +228,20 @@ arithCases =
   , ("1.5 - 2.1",              (1.5 - 2.1,              1.5 - 2.1))
     -- Negation of a computed value, and a negative literal inside arithmetic.
   , ("0.0 - (2.5 * 1.5)",      (0.0 - (2.5 * 1.5),      0.0 - (2.5 * 1.5)))
+    -- DIVISION. `1.0 / 3.0` is non-terminating in binary, so the quotient is
+    -- inexact by construction and every discarded bit has to be accounted for
+    -- — this is the case the sticky bit exists for, run on the metal.
+  , ("1.0 / 3.0",              (1.0 / 3.0,              1.0 / 3.0))
+    -- ⭐ The discriminator. `0.1 / 0.3` answers ONE ULP ABOVE `1.0 / 3.0`
+    -- despite both being `0.333…`, because the operands are themselves rounded
+    -- and the true quotient falls the other side of the boundary. A divider
+    -- that truncated, or that rounded without the remainder, passes the line
+    -- above and fails this one.
+  , ("0.1 / 0.3",              (0.1 / 0.3,              0.1 / 0.3))
+    -- Exact quotient: the remainder is zero, so the sticky fold must be a
+    -- no-op. And a division mixed with the other three operations.
+  , ("6.0 / 3.0",              (6.0 / 3.0,              6.0 / 3.0))
+  , ("1.5 + 7.0 / 11.0",       (1.5 + 7.0 / 11.0,       1.5 + 7.0 / 11.0))
   ]
 
 -- | D125's widening, on the metal: the `Int` operand is converted by a
@@ -235,6 +249,8 @@ arithCases =
 wideningCases :: [(String, (Double, Float))]
 wideningCases =
   [ ("1 + 1.5",   (1 + 1.5,   1 + 1.5))
+    -- Widening on the LEFT of a division, so the `i2f` and the quotient meet.
+  , ("1 / 4.0",   (1 / 4.0,   1 / 4.0))
   , ("2.5 * 3",   (2.5 * 3,   2.5 * 3))
   , ("7 - 0.25",  (7 - 0.25,  7 - 0.25))
   ]

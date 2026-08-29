@@ -76,7 +76,7 @@ open import Once.Adequacy.LiftFnReduce fmt using
 import Once.IR as IR
 open import Once.Arith.SigOp.Builders using (value-info;
   add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-  fadd-info; fsub-info; fmul-info; i2f-info;
+  fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.CanonicalName using (CanonicalName; bare)
 open import Once.Denotation.Realize using (realize; realize-infer; realize-morph; realize-global; poly-usage-eq)
@@ -478,7 +478,9 @@ bridge-i (t-binop-arith-float {op = OpSub} _ d₁ d₂) re k =
 bridge-i (t-binop-arith-float {op = OpMul} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
   , cong₂ (λ a b → semM fmul-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
-bridge-i (t-binop-arith-float {op = OpDiv} () _ _)
+bridge-i (t-binop-arith-float {op = OpDiv} _ d₁ d₂) re k =
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM fdiv-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
 bridge-i (t-binop-arith-float {op = OpMod} () _ _)
 bridge-i (t-binop-arith-float {op = OpLt} () _ _)
 bridge-i (t-binop-arith-float {op = OpLe} () _ _)
@@ -500,7 +502,9 @@ bridge-i (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) re k =
 bridge-i (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) re k =
     cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
   , cong₂ (λ a b → semM fmul-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
-bridge-i (t-binop-arith-float-il {op = OpDiv} () _ _)
+bridge-i (t-binop-arith-float-il {op = OpDiv} _ d₁ d₂) re k =
+    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM fdiv-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
 bridge-i (t-binop-arith-float-il {op = OpMod} () _ _)
 bridge-i (t-binop-arith-float-il {op = OpLt} () _ _)
 bridge-i (t-binop-arith-float-il {op = OpLe} () _ _)
@@ -517,7 +521,9 @@ bridge-i (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) re k =
 bridge-i (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) re k =
     cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
   , cong₂ (λ a b → semM fmul-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
-bridge-i (t-binop-arith-float-ir {op = OpDiv} () _ _)
+bridge-i (t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂) re k =
+    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
+  , cong₂ (λ a b → semM fdiv-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
 bridge-i (t-binop-arith-float-ir {op = OpMod} () _ _)
 bridge-i (t-binop-arith-float-ir {op = OpLt} () _ _)
 bridge-i (t-binop-arith-float-ir {op = OpLe} () _ _)

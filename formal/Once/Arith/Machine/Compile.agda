@@ -33,7 +33,7 @@ open import Data.Nat.Properties using (≡ᵇ⇒≡)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
 open import Once.Arith.Machine.AbsInstr
-  using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
+  using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
          neg-rr; spill; reload; move-to-out)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
@@ -236,12 +236,19 @@ compile-go {n = NFloat} d (amul a b) =
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++
   (reload d 1 ∷ fmul-rrr 0 1 0 ∷ [])
-compile-go d (adiv a b)   =
+compile-go {n = NInt}   d (adiv a b) =
   -- After: reg 0 = (reg 1) /ˢ (reg 0) = a /ˢ b.  `div-op b` picks the
   -- guard-elided variant when `b` is a safe literal (Part B).
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++
   (reload d 1 ∷ div-op b ∷ [])
+-- The float quotient needs no divisor guard: `x/0` is a signed infinity and
+-- `0/0` is the canonical NaN (D055 — total, no traps), so there is nothing to
+-- branch on and the instruction stands alone.
+compile-go {n = NFloat} d (adiv a b) =
+  compile-go d a ++ (spill 0 d ∷ []) ++
+  compile-go (suc d) b ++
+  (reload d 1 ∷ fdiv-rrr 0 1 0 ∷ [])
 compile-go d (amod a b)   =
   -- After: reg 0 = (reg 1) %ˢ (reg 0) = a %ˢ b.
   compile-go d a ++ (spill 0 d ∷ []) ++

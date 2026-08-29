@@ -648,63 +648,68 @@ du_val'45'x86'45'64_200 v0 v1
              (coe d_rd_162 (coe v1) (coe v3)) (coe v4)
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfadd'45'rr_56 v2 v3
         -> coe
-             MAlonzo.Code.Once.Float.Arith.d_fadd_214
+             MAlonzo.Code.Once.Float.Arith.d_fadd_314
              (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42)
              (coe d_rd_162 (coe v1) (coe v2)) (coe d_rd_162 (coe v1) (coe v3))
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsub'45'rr_58 v2 v3
         -> coe
-             MAlonzo.Code.Once.Float.Arith.d_fsub_216
+             MAlonzo.Code.Once.Float.Arith.d_fsub_316
              (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42)
              (coe d_rd_162 (coe v1) (coe v2)) (coe d_rd_162 (coe v1) (coe v3))
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfmul'45'rr_60 v2 v3
         -> coe
-             MAlonzo.Code.Once.Float.Arith.d_fmul_218
+             MAlonzo.Code.Once.Float.Arith.d_fmul_318
              (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42)
              (coe d_rd_162 (coe v1) (coe v2)) (coe d_rd_162 (coe v1) (coe v3))
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsubr'45'rr_62 v2 v3
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfdiv'45'rrr_62 v2 v3 v4
         -> coe
-             MAlonzo.Code.Once.Float.Arith.d_fsub_216
+             MAlonzo.Code.Once.Float.Arith.d_fdiv_320
+             (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42)
+             (coe d_rd_162 (coe v1) (coe v3)) (coe d_rd_162 (coe v1) (coe v4))
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsubr'45'rr_64 v2 v3
+        -> coe
+             MAlonzo.Code.Once.Float.Arith.d_fsub_316
              (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42)
              (coe d_rd_162 (coe v1) (coe v3)) (coe d_rd_162 (coe v1) (coe v2))
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfneg'45'r_64 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfneg'45'r_66 v2
         -> coe
-             MAlonzo.Code.Once.Float.Arith.d_fneg_248
+             MAlonzo.Code.Once.Float.Arith.d_fneg_356
              (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42)
              (coe d_rd_162 (coe v1) (coe v2))
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xi2f'45'r_66 v2 v3
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xi2f'45'r_68 v2 v3
         -> coe
-             MAlonzo.Code.Once.Float.Arith.d_i2f_254
+             MAlonzo.Code.Once.Float.Arith.d_i2f_362
              (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42)
              (coe
                 MAlonzo.Code.Once.Word.d_toℤ_50 (coe (64 :: Integer))
                 (coe d_rd_162 (coe v1) (coe v3)))
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'fimm_68 v2 v3
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'fimm_70 v2 v3
         -> coe
              MAlonzo.Code.Once.Float.Decimal.d_round_174
              (coe MAlonzo.Code.Once.Float.Dyadic.d_binary64_42) (coe v3)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_70 v2 v3
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_72 v2 v3
         -> coe d_path'45'load_194 (coe v1) (coe v3)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_72 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_74 v2
         -> coe d_rd_162 (coe v1) (coe v2)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.CPU.X86-64.step-budget-x86-64
-d_step'45'budget'45'x86'45'64_352
+d_step'45'budget'45'x86'45'64_360
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.step-budget-x86-64"
 -- Once.Adequacy.CPU.X86-64.ev-x86-64
-d_ev'45'x86'45'64_354
+d_ev'45'x86'45'64_362
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.ev-x86-64"
 -- Once.Adequacy.CPU.X86-64.arith-env-x86-64
-d_arith'45'env'45'x86'45'64_356
+d_arith'45'env'45'x86'45'64_364
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.arith-env-x86-64"
 -- Once.Adequacy.CPU.X86-64.run-trace-x86-64
-d_run'45'trace'45'x86'45'64_358 ::
+d_run'45'trace'45'x86'45'64_366 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_370 ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
-d_run'45'trace'45'x86'45'64_358 v0 v1
+d_run'45'trace'45'x86'45'64_366 v0 v1
   = coe
       MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_162
       (coe
@@ -728,23 +733,23 @@ d_run'45'trace'45'x86'45'64_358 v0 v1
             coe
               MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Dispatch.du_dispatch'45'arith_18
               (\ v5 v6 v7 -> coe du_val'45'x86'45'64_200 v5 v6) v2 v4))
-      (coe d_step'45'budget'45'x86'45'64_352) (coe d_ev'45'x86'45'64_354)
-      (coe d_arith'45'env'45'x86'45'64_356 v0) (coe v0) (coe v1)
+      (coe d_step'45'budget'45'x86'45'64_360) (coe d_ev'45'x86'45'64_362)
+      (coe d_arith'45'env'45'x86'45'64_364 v0) (coe v0) (coe v1)
 -- Once.Adequacy.CPU.X86-64.decode-x86-64
-d_decode'45'x86'45'64_364
+d_decode'45'x86'45'64_372
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.decode-x86-64"
 -- Once.Adequacy.CPU.X86-64.assemble-x86-64
-d_assemble'45'x86'45'64_366
+d_assemble'45'x86'45'64_374
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.CPU.X86-64.assemble-x86-64"
 -- Once.Adequacy.CPU.X86-64.arch-semantics
-d_arch'45'semantics_368 ::
+d_arch'45'semantics_376 ::
   MAlonzo.Code.Once.Adequacy.CPU.Interface.T_ArchSemantics_10
-d_arch'45'semantics_368
+d_arch'45'semantics_376
   = coe
       MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_56
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_initState_404
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_run_768
-      d_run'45'trace'45'x86'45'64_358 d_decode'45'x86'45'64_364
-      d_assemble'45'x86'45'64_366
+      d_run'45'trace'45'x86'45'64_366 d_decode'45'x86'45'64_372
+      d_assemble'45'x86'45'64_374

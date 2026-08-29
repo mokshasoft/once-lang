@@ -213,7 +213,7 @@ du_exec1'45'preserves_84 v0 v1 v2 v3 v4 v5
          MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_writeReg_268
          erased erased erased
          MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Confine.d_writes_10
-         MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Confine.d_confined_76 v1
+         MAlonzo.Code.Once.Arith.Backend.X86Z45Z64.Confine.d_confined_78 v1
          (coe v0 v1 v2)
          (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_regs_382
             (coe v2)))

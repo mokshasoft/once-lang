@@ -144,6 +144,7 @@ resolveExpr-faithful polys imps userFns fresh (Srf.mul a b) dγ k rewrite resolv
 resolveExpr-faithful polys imps userFns fresh (Srf.fadd a b) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k | resolveExpr-faithful polys imps userFns fresh b dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.fsub a b) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k | resolveExpr-faithful polys imps userFns fresh b dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.fmul a b) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k | resolveExpr-faithful polys imps userFns fresh b dγ k = refl
+resolveExpr-faithful polys imps userFns fresh (Srf.fdiv a b) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k | resolveExpr-faithful polys imps userFns fresh b dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.i2f a) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.div a b) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k | resolveExpr-faithful polys imps userFns fresh b dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.mod' a b) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k | resolveExpr-faithful polys imps userFns fresh b dγ k = refl

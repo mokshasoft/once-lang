@@ -46,7 +46,7 @@ open import Once.Functor.Translate using (con-fun)
 open import Once.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
   using (add-info; sub-info; mul-info; div-info; mod-info;
-         fadd-info; fsub-info; fmul-info; i2f-info; neg-info;
+         fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info; neg-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.Target.Arch using (TargetNum)
 
@@ -227,6 +227,11 @@ thin-⟦⟧ θ (fmul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) fmt dδ =
   trans (⟦⟧-substΨ {eq = sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)}
                    (fmul (rename θ a) (rename θ b)) fmt dδ)
         (bind₂ (λ va vb → returnT (semM fmul-info fmt (va , vb)))
+               (thin-⟦⟧ θ a fmt dδ) (thin-⟦⟧ θ b fmt dδ))
+thin-⟦⟧ θ (fdiv {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) fmt dδ =
+  trans (⟦⟧-substΨ {eq = sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)}
+                   (fdiv (rename θ a) (rename θ b)) fmt dδ)
+        (bind₂ (λ va vb → returnT (semM fdiv-info fmt (va , vb)))
                (thin-⟦⟧ θ a fmt dδ) (thin-⟦⟧ θ b fmt dδ))
 thin-⟦⟧ θ (div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) fmt dδ =
   trans (⟦⟧-substΨ {eq = sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)}

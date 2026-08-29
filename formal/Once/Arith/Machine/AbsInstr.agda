@@ -119,6 +119,9 @@ data AbstractInstr : Set where
   fadd-rrr    : ℕ → ℕ → ℕ → AbstractInstr
   fsub-rrr    : ℕ → ℕ → ℕ → AbstractInstr
   fmul-rrr    : ℕ → ℕ → ℕ → AbstractInstr
+  -- | Correctly-rounded division (`FA.fdiv`), admitted now that the sticky bit
+  -- exists. `%` has no float form — IEEE's `fmod` is a different function.
+  fdiv-rrr    : ℕ → ℕ → ℕ → AbstractInstr
 
   -- | `fneg-rr dst a` : a SIGN-BIT FLIP, not `0 − x` — the latter turns `−0`
   -- into `+0` and canonicalises a NaN, neither of which negation may do.
@@ -239,6 +242,9 @@ module Exec (bits : ℕ) (F : FloatFormat) where
   step (fmul-rrr dst a b) s = record s
     { regs = ArithAbsState.regs s [ dst ↦
         bin-op (FA.fmul F) (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
+  step (fdiv-rrr dst a b) s = record s
+    { regs = ArithAbsState.regs s [ dst ↦
+        bin-op (FA.fdiv F) (ArithAbsState.regs s [ a ]) (ArithAbsState.regs s [ b ]) ] }
   step (fneg-rr dst a) s = record s
     { regs = ArithAbsState.regs s [ dst ↦
         un-op (FA.fneg F) (ArithAbsState.regs s [ a ]) ] }

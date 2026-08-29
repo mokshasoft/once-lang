@@ -402,35 +402,176 @@ d_mulV_182 v0 v1 v2
              _ -> MAlonzo.RTE.mazUnreachableError
       C_fv'45'nan_60 -> coe d_nan_78 (coe v0)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Float.Arith.fadd
-d_fadd_214 ::
+-- Once.Float.Arith.setLow
+d_setLow_214 :: Integer -> Integer
+d_setLow_214 v0
+  = coe
+      addInt (coe (1 :: Integer))
+      (coe
+         mulInt (coe (2 :: Integer))
+         (coe
+            MAlonzo.Code.Data.Nat.Base.du__'47'__318 (coe v0)
+            (coe (2 :: Integer))))
+-- Once.Float.Arith.stickyAt
+d_stickyAt_218 :: Integer -> Integer -> Integer
+d_stickyAt_218 v0 v1
+  = coe
+      MAlonzo.Code.Data.Bool.Base.du_if_then_else__44
+      (coe eqInt (coe v1) (coe (0 :: Integer))) (coe v0)
+      (coe d_setLow_214 (coe v0))
+-- Once.Float.Arith.guardShift
+d_guardShift_224 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer -> Integer -> Integer
-d_fadd_214 v0 v1 v2
+d_guardShift_224 v0 v1 v2
+  = coe
+      MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22
+      (addInt
+         (coe
+            addInt (coe (3 :: Integer))
+            (coe MAlonzo.Code.Once.Float.Dyadic.d_bitLen_110 (coe v2)))
+         (coe MAlonzo.Code.Once.Float.Dyadic.d_sig'45'bits_34 (coe v0)))
+      (MAlonzo.Code.Once.Float.Dyadic.d_bitLen_110 (coe v1))
+-- Once.Float.Arith.stickyQuot
+d_stickyQuot_232 :: Integer -> Integer -> Integer
+d_stickyQuot_232 v0 v1
+  = coe
+      d_stickyAt_218
+      (coe
+         MAlonzo.Code.Data.Nat.Base.du__'47'__318 (coe v0)
+         (coe addInt (coe (1 :: Integer)) (coe v1)))
+      (coe
+         MAlonzo.Code.Data.Nat.Base.du__'37'__330 (coe v0)
+         (coe addInt (coe (1 :: Integer)) (coe v1)))
+-- Once.Float.Arith.divBin
+d_divBin_238 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  T_Bin_6 -> Integer -> Integer -> Integer -> T_Bin_6
+d_divBin_238 v0 v1 v2 v3 v4
+  = coe
+      C__'183'2'94'__16
+      (coe
+         d_applySign_62 (coe d_xorS_142 (coe d_signB_50 (coe v1)) (coe v2))
+         (coe
+            d_stickyQuot_232
+            (coe
+               mulInt
+               (coe
+                  MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18
+                  (coe d_sigB_12 (coe v1)))
+               (coe
+                  MAlonzo.Code.Data.Nat.Base.d__'94'__276 (coe (2 :: Integer))
+                  (coe
+                     d_guardShift_224 (coe v0)
+                     (coe
+                        MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18
+                        (coe d_sigB_12 (coe v1)))
+                     (coe addInt (coe (1 :: Integer)) (coe v4)))))
+            (coe v4)))
+      (coe
+         MAlonzo.Code.Data.Integer.Base.d__'45'__302
+         (coe
+            MAlonzo.Code.Data.Integer.Base.d__'45'__302
+            (coe d_expB_14 (coe v1)) (coe v3))
+         (coe
+            d_guardShift_224 (coe v0)
+            (coe
+               MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18
+               (coe d_sigB_12 (coe v1)))
+            (coe addInt (coe (1 :: Integer)) (coe v4))))
+-- Once.Float.Arith.divV
+d_divV_250 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  T_FloatVal_54 -> T_FloatVal_54 -> Integer
+d_divV_250 v0 v1 v2
+  = case coe v1 of
+      C_fv'45'fin_56 v3
+        -> case coe v2 of
+             C_fv'45'fin_56 v4
+               -> let v5
+                        = MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18
+                            (coe d_sigB_12 (coe v3)) in
+                  coe
+                    (let v6
+                           = MAlonzo.Code.Data.Integer.Base.d_'8739'_'8739'_18
+                               (coe d_sigB_12 (coe v4)) in
+                     coe
+                       (case coe v5 of
+                          0 -> case coe v6 of
+                                 0 -> coe d_nan_78 (coe v0)
+                                 _ -> coe
+                                        MAlonzo.Code.Once.Float.Decimal.d_signedZero_112 (coe v0)
+                                        (coe
+                                           d_xorS_142 (coe d_signB_50 (coe v3))
+                                           (coe d_signB_50 (coe v4)))
+                          _ -> case coe v6 of
+                                 0 -> coe
+                                        MAlonzo.Code.Once.Float.Decimal.d_infinity_106 (coe v0)
+                                        (coe
+                                           d_xorS_142 (coe d_signB_50 (coe v3))
+                                           (coe d_signB_50 (coe v4)))
+                                 _ -> let v7 = subInt (coe v6) (coe (1 :: Integer)) in
+                                      coe
+                                        (coe
+                                           d_roundB_136 (coe v0)
+                                           (coe
+                                              d_divBin_238 (coe v0) (coe v3)
+                                              (coe d_signB_50 (coe v4)) (coe d_expB_14 (coe v4))
+                                              (coe v7)))))
+             C_fv'45'inf_58 v4
+               -> coe
+                    MAlonzo.Code.Once.Float.Decimal.d_signedZero_112 (coe v0)
+                    (coe d_xorS_142 (coe d_signB_50 (coe v3)) (coe v4))
+             C_fv'45'nan_60 -> coe d_nan_78 (coe v0)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_fv'45'inf_58 v3
+        -> case coe v2 of
+             C_fv'45'fin_56 v4
+               -> coe
+                    MAlonzo.Code.Once.Float.Decimal.d_infinity_106 (coe v0)
+                    (coe d_xorS_142 (coe v3) (coe d_signB_50 (coe v4)))
+             C_fv'45'inf_58 v4 -> coe d_nan_78 (coe v0)
+             C_fv'45'nan_60 -> coe d_nan_78 (coe v0)
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_fv'45'nan_60 -> coe d_nan_78 (coe v0)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Float.Arith.fadd
+d_fadd_314 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  Integer -> Integer -> Integer
+d_fadd_314 v0 v1 v2
   = coe
       d_addV_154 (coe v0) (coe d_decode_116 (coe v0) (coe v1))
       (coe d_decode_116 (coe v0) (coe v2))
 -- Once.Float.Arith.fsub
-d_fsub_216 ::
+d_fsub_316 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer -> Integer -> Integer
-d_fsub_216 v0 v1 v2
+d_fsub_316 v0 v1 v2
   = coe
       d_addV_154 (coe v0) (coe d_decode_116 (coe v0) (coe v1))
       (coe d_negV_148 (coe d_decode_116 (coe v0) (coe v2)))
 -- Once.Float.Arith.fmul
-d_fmul_218 ::
+d_fmul_318 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer -> Integer -> Integer
-d_fmul_218 v0 v1 v2
+d_fmul_318 v0 v1 v2
   = coe
       d_mulV_182 (coe v0) (coe d_decode_116 (coe v0) (coe v1))
       (coe d_decode_116 (coe v0) (coe v2))
+-- Once.Float.Arith.fdiv
+d_fdiv_320 ::
+  MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
+  Integer -> Integer -> Integer
+d_fdiv_320 v0 v1 v2
+  = coe
+      d_divV_250 (coe v0) (coe d_decode_116 (coe v0) (coe v1))
+      (coe d_decode_116 (coe v0) (coe v2))
 -- Once.Float.Arith.fnegAt
-d_fnegAt_238 ::
+d_fnegAt_346 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer -> Bool -> Integer
-d_fnegAt_238 v0 v1 v2
+d_fnegAt_346 v0 v1 v2
   = if coe v2
       then coe
              MAlonzo.Code.Agda.Builtin.Nat.d__'45'__22 v1
@@ -450,12 +591,12 @@ d_fnegAt_238 v0 v1 v2
                    (coe MAlonzo.Code.Once.Float.Dyadic.d_sig'45'bits_34 (coe v0))))
              (coe v1)
 -- Once.Float.Arith.fneg
-d_fneg_248 ::
+d_fneg_356 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer -> Integer
-d_fneg_248 v0 v1
+d_fneg_356 v0 v1
   = coe
-      d_fnegAt_238 (coe v0) (coe v1)
+      d_fnegAt_346 (coe v0) (coe v1)
       (coe
          MAlonzo.Code.Data.Nat.Base.d__'8804''7495'__14
          (coe
@@ -466,76 +607,76 @@ d_fneg_248 v0 v1
                (coe MAlonzo.Code.Once.Float.Dyadic.d_sig'45'bits_34 (coe v0))))
          (coe v1))
 -- Once.Float.Arith.i2f
-d_i2f_254 ::
+d_i2f_362 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer -> Integer
-d_i2f_254 v0 v1
+d_i2f_362 v0 v1
   = coe
       d_roundB_136 (coe v0)
       (coe C__'183'2'94'__16 (coe v1) (coe (0 :: Integer)))
 -- Once.Float.Arith.≡ᵇ-sym
-d_'8801''7495''45'sym_316 ::
+d_'8801''7495''45'sym_456 ::
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8801''7495''45'sym_316 = erased
+d_'8801''7495''45'sym_456 = erased
 -- Once.Float.Arith.≡ᵇ⇒≡
-d_'8801''7495''8658''8801'_326 ::
+d_'8801''7495''8658''8801'_466 ::
   Integer ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'8801''7495''8658''8801'_326 = erased
+d_'8801''7495''8658''8801'_466 = erased
 -- Once.Float.Arith.+B-comm
-d_'43'B'45'comm_338 ::
+d_'43'B'45'comm_478 ::
   T_Bin_6 ->
   T_Bin_6 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'43'B'45'comm_338 = erased
+d_'43'B'45'comm_478 = erased
 -- Once.Float.Arith.*B-comm
-d_'42'B'45'comm_358 ::
+d_'42'B'45'comm_498 ::
   T_Bin_6 ->
   T_Bin_6 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'42'B'45'comm_358 = erased
+d_'42'B'45'comm_498 = erased
 -- Once.Float.Arith.addV-inf-aux
-d_addV'45'inf'45'aux_376 ::
+d_addV'45'inf'45'aux_516 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer ->
   Integer ->
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_addV'45'inf'45'aux_376 = erased
+d_addV'45'inf'45'aux_516 = erased
 -- Once.Float.Arith.addV-comm
-d_addV'45'comm_398 ::
+d_addV'45'comm_538 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   T_FloatVal_54 ->
   T_FloatVal_54 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_addV'45'comm_398 = erased
+d_addV'45'comm_538 = erased
 -- Once.Float.Arith.xorS-comm
-d_xorS'45'comm_438 ::
+d_xorS'45'comm_578 ::
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_xorS'45'comm_438 = erased
+d_xorS'45'comm_578 = erased
 -- Once.Float.Arith.mulV-inf-fin-aux
-d_mulV'45'inf'45'fin'45'aux_456 ::
+d_mulV'45'inf'45'fin'45'aux_596 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer ->
   Integer -> Bool -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mulV'45'inf'45'fin'45'aux_456 = erased
+d_mulV'45'inf'45'fin'45'aux_596 = erased
 -- Once.Float.Arith.mulV-comm
-d_mulV'45'comm_476 ::
+d_mulV'45'comm_616 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   T_FloatVal_54 ->
   T_FloatVal_54 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mulV'45'comm_476 = erased
+d_mulV'45'comm_616 = erased
 -- Once.Float.Arith.fadd-comm
-d_fadd'45'comm_518 ::
+d_fadd'45'comm_658 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fadd'45'comm_518 = erased
+d_fadd'45'comm_658 = erased
 -- Once.Float.Arith.fmul-comm
-d_fmul'45'comm_532 ::
+d_fmul'45'comm_672 ::
   MAlonzo.Code.Once.Float.Dyadic.T_FloatFormat_28 ->
   Integer ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_fmul'45'comm_532 = erased
+d_fmul'45'comm_672 = erased

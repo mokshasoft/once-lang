@@ -65,6 +65,7 @@ mem-preserves (Xsdiv-pow2-rri _ _ _) s fr _ _ _ = AgreeMemFrom-refl fr (memory s
 mem-preserves (Xfadd-rr _ _)       s fr _ _ _ = AgreeMemFrom-refl fr (memory s)
 mem-preserves (Xfsub-rr _ _)       s fr _ _ _ = AgreeMemFrom-refl fr (memory s)
 mem-preserves (Xfmul-rr _ _)       s fr _ _ _ = AgreeMemFrom-refl fr (memory s)
+mem-preserves (Xfdiv-rrr _ _ _)    s fr _ _ _ = AgreeMemFrom-refl fr (memory s)
 mem-preserves (Xfsubr-rr _ _)      s fr _ _ _ = AgreeMemFrom-refl fr (memory s)
 mem-preserves (Xfneg-r _)          s fr _ _ _ = AgreeMemFrom-refl fr (memory s)
 mem-preserves (Xi2f-r _ _)         s fr _ _ _ = AgreeMemFrom-refl fr (memory s)

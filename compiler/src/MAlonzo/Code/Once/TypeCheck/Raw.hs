@@ -89,7 +89,7 @@ d_isFloatArithmeticOp_96 v0
       C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       C_OpMul_12 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      C_OpDiv_14 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpDiv_14 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       C_OpMod_16 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       C_OpLt_18 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
       C_OpLe_20 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8

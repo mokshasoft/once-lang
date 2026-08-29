@@ -101,13 +101,13 @@ du_has'45'op_38 v0
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       MAlonzo.Code.Once.Arith.Machine.IR.C_amul_32 v2 v3
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_34 v1 v2
+      MAlonzo.Code.Once.Arith.Machine.IR.C_adiv_36 v2 v3
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_36 v1 v2
+      MAlonzo.Code.Once.Arith.Machine.IR.C_amod_38 v1 v2
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_40 v2
+      MAlonzo.Code.Once.Arith.Machine.IR.C_aneg_42 v2
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-      MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_42 v1
+      MAlonzo.Code.Once.Arith.Machine.IR.C_ai2f_44 v1
         -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.Rewrite.block-as-ir
@@ -129,13 +129,13 @@ du_block'45'as'45'ir_46 v0 v1 v2
   = coe
       MAlonzo.Code.Once.IR.C_SigOp_154
       (coe
-         MAlonzo.Code.Once.Arith.Machine.IR.d_shape'45'as'45'type_134
+         MAlonzo.Code.Once.Arith.Machine.IR.d_shape'45'as'45'type_136
          (coe v0))
       (coe
-         MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_140
+         MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_142
          (coe v1))
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_502 (coe v0)
+         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_510 (coe v0)
          (coe v1) (coe v2))
 -- Once.Arith.Machine.Rewrite.try-lift
 d_try'45'lift_62 ::
@@ -174,7 +174,7 @@ d_try'45'lift_62 v0 v1 v2
                                                               MAlonzo.Code.Once.Arith.Type.C_NInt_8)
                                                            (coe v9))
                                                         (coe
-                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_156
+                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_158
                                                            (coe v6)
                                                            (coe
                                                               MAlonzo.Code.Once.Arith.Type.C_NInt_8)
@@ -212,7 +212,7 @@ d_try'45'lift_62 v0 v1 v2
                                                               MAlonzo.Code.Once.Arith.Type.C_NFloat_10)
                                                            (coe v9))
                                                         (coe
-                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_156
+                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_158
                                                            (coe v6)
                                                            (coe
                                                               MAlonzo.Code.Once.Arith.Type.C_NFloat_10)

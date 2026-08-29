@@ -38,7 +38,7 @@ open import Once.Arith.Machine.AbsState
   using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath; project; projectF;
          Store; empty-store; _[_↦_]; _[_]; store-write-same; store-write-other)
 open import Once.Arith.Machine.AbsInstr
-  using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
+  using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; neg-rr; spill; reload;
          move-to-out; maybe-zero; maybe-zero-f; bin-op; un-op; module Exec)
 open Exec bits F using (step; run-abstract)
@@ -617,6 +617,51 @@ fmul-correct {sh} d a b s = record
                       (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
 
 
+-- Division is structurally the multiplication proof with `FA.fdiv` in place of
+-- `FA.fmul` — the sticky bit lives inside `fdiv`, not in the compilation, so
+-- nothing here has to know about it.
+fdiv-correct : ∀ {sh} (d : ℕ) (a b : MArithIR sh NFloat) (s : ArithAbsState sh) →
+  CompileGoInv d (adiv a b) s
+fdiv-correct {sh} d a b s = record
+  { reg0      = trans (cong (λ x → regs x [ 0 ]) bridge)
+                      (cong₂ (bin-op (FA.fdiv F))
+                             (trans scratch-s3-d (reg0 ih-a))
+                             regs-s3-0)
+  ; scratch≤  = λ i lt → trans (cong (λ x → scratch x [ i ]) bridge)
+                          (trans (scratch≤ ih-b i (<-suc lt))
+                          (trans (store-write-other (scratch s1) d i
+                                   (regs s1 [ 0 ]) (d≢i lt))
+                                 (scratch≤ ih-a i lt)))
+  ; input-eq  = trans (cong input bridge)
+                      (trans (input-eq ih-b) (input-eq ih-a))
+  ; output-eq = trans (cong output bridge)
+                      (trans (output-eq ih-b) (output-eq ih-a))
+  }
+  where
+    ih-a = compile-go-correct d a s
+    s1   = run-abstract (compile-go d a) s
+    s2   = step (spill 0 d) s1
+    ih-b = compile-go-correct (suc d) b s2
+    s3   = run-abstract (compile-go (suc d) b) s2
+    s4   = step (reload d 1) s3
+    s5   = step (fdiv-rrr 0 1 0) s4
+
+    bridge : run-abstract (compile-go d (adiv a b)) s ≡ s5
+    bridge = trans
+      (run-abstract-app (compile-go d a)
+        (spill 0 d ∷ compile-go (suc d) b ++ (reload d 1 ∷ fdiv-rrr 0 1 0 ∷ [])) s)
+      (run-abstract-app (compile-go (suc d) b)
+        (reload d 1 ∷ fdiv-rrr 0 1 0 ∷ []) s2)
+
+    scratch-s3-d : scratch s3 [ d ] ≡ regs s1 [ 0 ]
+    scratch-s3-d = trans (scratch≤ ih-b d ≤-refl)
+                         (store-write-same (scratch s1) d (regs s1 [ 0 ]))
+
+    regs-s3-0 : regs s3 [ 0 ] ≡ just (eval-arith-W b (input s))
+    regs-s3-0 = trans (reg0 ih-b)
+                      (cong (λ x → just (eval-arith-W b x)) (input-eq ih-a))
+
+
 -- Kind dispatch: the same node name selects the integer or the float proof.
 compile-go-correct d (alit z) s = record
   { reg0      = refl
@@ -639,7 +684,8 @@ compile-go-correct d (ai2f a) s = i2f-correct d a s
 compile-go-correct {n = NInt} d (aadd a b) s = aadd-correct d a b s
 compile-go-correct {n = NInt} d (asub a b) s = asub-correct d a b s
 compile-go-correct {n = NInt} d (amul a b) s = amul-correct d a b s
-compile-go-correct d (adiv a b) s = adiv-correct d a b s
+compile-go-correct {n = NInt}   d (adiv a b) s = adiv-correct d a b s
+compile-go-correct {n = NFloat} d (adiv a b) s = fdiv-correct d a b s
 compile-go-correct d (amod a b) s = amod-correct d a b s
 
 ------------------------------------------------------------------------

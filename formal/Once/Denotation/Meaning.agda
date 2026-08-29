@@ -55,7 +55,7 @@ open import Once.SigOp.Info using (SigOpInfo; semM)
 open import Once.Arith.SigOp.Builders
   using (value-info; arrow-info; str-lit-info;
          add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-         fadd-info; fsub-info; fmul-info; i2f-info;
+         fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.TypeCheck.Judgment
   using (_⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; _⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
@@ -267,9 +267,12 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-binop-arith-float {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fadd-info fmt (a , b))
 ⟦ t-binop-arith-float {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fsub-info fmt (a , b))
 ⟦ t-binop-arith-float {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fmul-info fmt (a , b))
--- `/` and `%` are NOT float arithmetic ops (see `isFloatArithmeticOp`), so the
--- witness refutes them here exactly as it refutes the comparisons.
-⟦ t-binop-arith-float {op = OpDiv} () _ _ ⟧ᵢ
+-- `/` joins them: the quotient is correctly rounded (the sticky bit lives in
+-- `FA.fdiv`) and total, so it denotes like the other three.
+⟦ t-binop-arith-float {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fdiv-info fmt (a , b))
+-- `%` is NOT a float arithmetic op (see `isFloatArithmeticOp`): IEEE's `fmod`
+-- is a different function and needs its own decision. The witness refutes it
+-- here exactly as it refutes the comparisons.
 ⟦ t-binop-arith-float {op = OpMod} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float {op = OpLt}  () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float {op = OpLe}  () _ _ ⟧ᵢ
@@ -287,7 +290,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-binop-arith-float-il {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fadd-info fmt (a′ , b))
 ⟦ t-binop-arith-float-il {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fsub-info fmt (a′ , b))
 ⟦ t-binop-arith-float-il {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fmul-info fmt (a′ , b))
-⟦ t-binop-arith-float-il {op = OpDiv} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-il {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fdiv-info fmt (a′ , b))
 ⟦ t-binop-arith-float-il {op = OpMod} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-il {op = OpLt} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-il {op = OpLe} () _ _ ⟧ᵢ
@@ -298,7 +301,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fadd-info fmt (a , b′))
 ⟦ t-binop-arith-float-ir {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fsub-info fmt (a , b′))
 ⟦ t-binop-arith-float-ir {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fmul-info fmt (a , b′))
-⟦ t-binop-arith-float-ir {op = OpDiv} () _ _ ⟧ᵢ
+⟦ t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fdiv-info fmt (a , b′))
 ⟦ t-binop-arith-float-ir {op = OpMod} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-ir {op = OpLt} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-ir {op = OpLe} () _ _ ⟧ᵢ

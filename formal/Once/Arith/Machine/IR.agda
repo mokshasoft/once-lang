@@ -58,12 +58,15 @@ data MArithIR (sh : InputShape) : NumType → Set where
   aadd       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n
   asub       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n
   amul       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n
-  -- …but `/` and `%` are `Int`-ONLY, and that is not an oversight: float
-  -- division needs a correctly-rounded quotient (a sticky bit through the
-  -- division) and IEEE's `fmod` is a different function from integer
-  -- remainder. `isFloatArithmeticOp` refuses both at the source, so no
-  -- well-typed program can reach a float node here.
-  adiv       : MArithIR sh NInt → MArithIR sh NInt → MArithIR sh NInt
+  -- `/` joins them: `Once.Float.Arith.fdiv` is the correctly-rounded quotient
+  -- (the sticky bit through the division), pinned against the machine on both
+  -- formats, so a float `adiv` now has a meaning to denote.
+  adiv       : ∀ {n} → MArithIR sh n → MArithIR sh n → MArithIR sh n
+  -- `%` stays `Int`-ONLY, and that IS still principled: IEEE's `fmod` is a
+  -- different function from integer remainder, and D055's identity
+  -- `a = (a/b)*b + (a%b)` does not survive rounding. It needs its own decision
+  -- before it can have a node. `isFloatArithmeticOp` refuses it at the source,
+  -- so no well-typed program reaches a float `amod`.
   amod       : MArithIR sh NInt → MArithIR sh NInt → MArithIR sh NInt
   aneg       : ∀ {n} → MArithIR sh n → MArithIR sh n
   -- D125's widening, as a node: `1 + 1.5` puts one of these on the `Int` side.

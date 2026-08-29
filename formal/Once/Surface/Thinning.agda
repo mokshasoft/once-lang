@@ -228,6 +228,8 @@ rename {Δ = Δ} θ (Surface.fsub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.fsub (rename θ a) (rename θ b))
 rename {Δ = Δ} θ (Surface.fmul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.fmul (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.fdiv {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.fdiv (rename θ a) (rename θ b))
 -- D125's widening: unary and usage-preserving, so no `+ᵘ` transport.
 rename θ (Surface.i2f a) = Surface.i2f (rename θ a)
 rename {Δ = Δ} θ (Surface.div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =

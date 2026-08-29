@@ -1,0 +1,33 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- FLOAT DIVISION end to end. Expected exit code 29
+--
+-- `/` was refused on floats until now, and the refusal was principled rather
+-- than lazy: a correctly-rounded quotient needs a STICKY BIT, because the exact
+-- quotient of two dyadics is in general not a dyadic (`1/3`) and there is
+-- nothing exact to hand the rounder. `Once.Float.Arith.divBin` computes enough
+-- quotient bits that the rounding position is strictly above the last one and
+-- folds "the division was inexact" into that last bit.
+--
+-- THE GUARD SHIFT IS `+ 3`, NOT `+ 2`, and this program is downstream of that.
+-- With one discarded bit the sticky would be folded into the ROUND bit itself
+-- and `1.0 / 3.0` answers one ulp high. The module pins that case against the
+-- machine; here the whole pipeline runs.
+--
+-- What this checks that the pins cannot: that the block LOWERS (the recogniser
+-- folds `arith.div.float` into an arith block rather than leaving a call to a
+-- runtime symbol that does not exist), that it ASSEMBLES on all three targets
+-- (`divsd` / `divss` / `fdiv.d`), and that the program reaches its exit code.
+--
+-- The VALUE is read back by `FloatEmitSpec` out of the effect trace, at each
+-- arch's own precision — that is where the answer is checked, not here.
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as E
+
+emitQuot : IO Unit
+emitQuot = emitF@E (1.0 / 3.0 + 7.0 / 11.0)
+
+main : IO Unit
+main = compose exit@S (compose 29 emitQuot)

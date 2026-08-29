@@ -314,6 +314,7 @@ faithful (mul a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ih�
 faithful (fadd a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
 faithful (fsub a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
 faithful (fmul a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
+faithful (fdiv a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
 faithful (i2f a)    dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) = refl   -- unary: no `++` to neutralise, cf. `neg`
 faithful (div a b)  dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl
 faithful (mod' a b) dγ n rewrite ihᴰ a dγ (λ j → faithful a dγ j) | ihᴰ b dγ (λ j → faithful b dγ j) = cong₂ _,_ (++-identityʳ _) refl

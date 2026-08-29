@@ -132,6 +132,13 @@ fsub-semM tn (a , b) = FA.fsub (float-format tn) a b
 fmul-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
 fmul-semM tn (a , b) = FA.fmul (float-format tn) a b
 
+-- | Division. TOTAL like its integer sibling (D055) — `x/0` is a signed
+-- infinity and `0/0` the canonical NaN — so there is no guard and no second
+-- shape; `FA.fdiv` carries the sticky bit that makes the quotient correctly
+-- rounded, and nothing above this line has to know about it.
+fdiv-semM : TargetNum → M.⟦ Once.Type.Float * Once.Type.Float ⟧ → M.⟦ Once.Type.Float ⟧
+fdiv-semM tn (a , b) = FA.fdiv (float-format tn) a b
+
 -- | `Int` → `Float` (D125). The word is read at its SIGNED value — `W.toℤ`,
 -- the target's width — and then rounded by the same `roundB` every float
 -- result goes through. Reading it unsigned would make `-1` convert to
@@ -211,6 +218,9 @@ fsub-info = mk-info (bare "arith.sub.float") fsub-semM Pure base-F×F con-Float
 
 fmul-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
 fmul-info = mk-info (bare "arith.mul.float") fmul-semM Pure base-F×F con-Float
+
+fdiv-info : SigOpInfo (Once.Type.Float * Once.Type.Float) Once.Type.Float
+fdiv-info = mk-info (bare "arith.div.float") fdiv-semM Pure base-F×F con-Float
 
 i2f-info : SigOpInfo Int Once.Type.Float
 i2f-info = mk-info (bare "arith.i2f") i2f-semM Pure base-Int con-Float

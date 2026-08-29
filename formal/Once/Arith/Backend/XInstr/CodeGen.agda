@@ -23,7 +23,7 @@ open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.Arith.Machine.AbsState using (InputPath; Side; Fst; Snd)
 open import Once.Arith.Machine.AbsInstr
-  using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
+  using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
          div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri;
          neg-rr; spill; reload; move-to-out)
 open import Once.Arith.Backend.XInstr.Syntax
@@ -171,6 +171,11 @@ emit (fmul-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
 ...     | yes _                            = Xfmul-rr xd xa ∷ []
 ...     | no _                             = Xmov-rr xd xa ∷ Xfmul-rr xd xb ∷ []
 emit (fmul-rrr _ _ _) | _ | _ | _          = []
+-- Three-address: the sources are read before the destination is written, so
+-- the `dst ≡ b` aliasing that forces `fmul`'s swap analysis cannot bite.
+emit (fdiv-rrr dst a b) with abs-reg dst | abs-reg a | abs-reg b
+... | just xd | just xa | just xb          = Xfdiv-rrr xd xa xb ∷ []
+... | _       | _       | _                = []
 emit (fneg-rr dst a) with abs-reg dst | abs-reg a
 ... | just xd | just xa = Xmov-rr xd xa ∷ Xfneg-r xd ∷ []
 ... | _       | _       = []

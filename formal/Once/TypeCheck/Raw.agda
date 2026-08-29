@@ -190,7 +190,7 @@ isFloatArithmeticOp : BinOp → Bool
 isFloatArithmeticOp OpAdd = true
 isFloatArithmeticOp OpSub = true
 isFloatArithmeticOp OpMul = true
-isFloatArithmeticOp OpDiv = false
+isFloatArithmeticOp OpDiv = true
 isFloatArithmeticOp OpMod = false
 isFloatArithmeticOp OpLt  = false
 isFloatArithmeticOp OpLe  = false

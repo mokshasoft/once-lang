@@ -127,6 +127,10 @@ val-riscv64 (XI.Xneg-r d)              s _ = W.⊝ (rd s d)
 val-riscv64 (XI.Xfadd-rr d src)          s _ = FA.fadd binary64 (rd s d) (rd s src)
 val-riscv64 (XI.Xfsub-rr d src)          s _ = FA.fsub binary64 (rd s d) (rd s src)
 val-riscv64 (XI.Xfmul-rr d src)          s _ = FA.fmul binary64 (rd s d) (rd s src)
+val-riscv64 (XI.Xfdiv-rrr d a b)          s _ = FA.fdiv binary64 (rd s a) (rd s b)
+-- Three-address: both sources are named, so unlike the 2-address float ops
+-- the destination is not also an operand.
+val-riscv64 (XI.Xfdiv-rrr d a b)       s _ = FA.fdiv binary64 (rd s a) (rd s b)
 val-riscv64 (XI.Xfsubr-rr d src)         s _ = FA.fsub binary64 (rd s src) (rd s d)
 val-riscv64 (XI.Xfneg-r d)               s _ = FA.fneg binary64 (rd s d)
 val-riscv64 (XI.Xi2f-r d src)            s _ = FA.i2f binary64 (W.toℤ (rd s src))
@@ -220,6 +224,8 @@ module _ (N : ℕ) where
   mem-keep (XI.Xfadd-rr _ _)           s addr _ = refl
   mem-keep (XI.Xfsub-rr _ _)           s addr _ = refl
   mem-keep (XI.Xfmul-rr _ _)           s addr _ = refl
+  mem-keep (XI.Xfdiv-rrr _ _ _)           s addr _ = refl
+  mem-keep (XI.Xfdiv-rrr _ _ _) s addr _ = refl
   mem-keep (XI.Xfsubr-rr _ _)          s addr _ = refl
   mem-keep (XI.Xfneg-r _)              s addr _ = refl
   mem-keep (XI.Xi2f-r _ _)             s addr _ = refl
@@ -267,6 +273,7 @@ module _ (N : ℕ) where
   rf-other (XI.Xfadd-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfadd-rr d src) s) (¬d≡x d x h)
   rf-other (XI.Xfsub-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfsub-rr d src) s) (¬d≡x d x h)
   rf-other (XI.Xfmul-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfmul-rr d src) s) (¬d≡x d x h)
+  rf-other (XI.Xfdiv-rrr d a b) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfdiv-rrr d a b) s) (¬d≡x d x h)
   rf-other (XI.Xfsubr-rr d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfsubr-rr d src) s) (¬d≡x d x h)
   rf-other (XI.Xfneg-r d) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xfneg-r d) s) (¬d≡x d x h)
   rf-other (XI.Xi2f-r d src) s x h = readReg-wr-arith-other (regs s) d x (V (XI.Xi2f-r d src) s) (¬d≡x d x h)
@@ -290,6 +297,7 @@ module _ (N : ℕ) where
   t0-inv (XI.Xfadd-rr d src2) s = wr-arith-t0 (regs s) d (V (XI.Xfadd-rr d src2) s)
   t0-inv (XI.Xfsub-rr d src2) s = wr-arith-t0 (regs s) d (V (XI.Xfsub-rr d src2) s)
   t0-inv (XI.Xfmul-rr d src2) s = wr-arith-t0 (regs s) d (V (XI.Xfmul-rr d src2) s)
+  t0-inv (XI.Xfdiv-rrr d a b) s = wr-arith-t0 (regs s) d (V (XI.Xfdiv-rrr d a b) s)
   t0-inv (XI.Xfsubr-rr d src2) s = wr-arith-t0 (regs s) d (V (XI.Xfsubr-rr d src2) s)
   t0-inv (XI.Xfneg-r d) s = wr-arith-t0 (regs s) d (V (XI.Xfneg-r d) s)
   t0-inv (XI.Xi2f-r d src2) s = wr-arith-t0 (regs s) d (V (XI.Xi2f-r d src2) s)
@@ -329,6 +337,7 @@ module _ (N : ℕ) where
   mem-agree-heap (XI.Xfadd-rr d src2) s inStk a inH = mem-keep (XI.Xfadd-rr d src2) s a tt
   mem-agree-heap (XI.Xfsub-rr d src2) s inStk a inH = mem-keep (XI.Xfsub-rr d src2) s a tt
   mem-agree-heap (XI.Xfmul-rr d src2) s inStk a inH = mem-keep (XI.Xfmul-rr d src2) s a tt
+  mem-agree-heap (XI.Xfdiv-rrr d a b) s inStk a' inH = mem-keep (XI.Xfdiv-rrr d a b) s a' tt
   mem-agree-heap (XI.Xfsubr-rr d src2) s inStk a inH = mem-keep (XI.Xfsubr-rr d src2) s a tt
   mem-agree-heap (XI.Xfneg-r d) s inStk a inH = mem-keep (XI.Xfneg-r d) s a tt
   mem-agree-heap (XI.Xi2f-r d src2) s inStk a inH = mem-keep (XI.Xi2f-r d src2) s a tt
@@ -365,6 +374,7 @@ module _ (N : ℕ) where
   pl-inv (XI.Xfadd-rr d src2) s wf p = pl-inv-ns (XI.Xfadd-rr d src2) s p refl
   pl-inv (XI.Xfsub-rr d src2) s wf p = pl-inv-ns (XI.Xfsub-rr d src2) s p refl
   pl-inv (XI.Xfmul-rr d src2) s wf p = pl-inv-ns (XI.Xfmul-rr d src2) s p refl
+  pl-inv (XI.Xfdiv-rrr d a b) s wf p = pl-inv-ns (XI.Xfdiv-rrr d a b) s p refl
   pl-inv (XI.Xfsubr-rr d src2) s wf p = pl-inv-ns (XI.Xfsubr-rr d src2) s p refl
   pl-inv (XI.Xfneg-r d) s wf p = pl-inv-ns (XI.Xfneg-r d) s p refl
   pl-inv (XI.Xi2f-r d src2) s wf p = pl-inv-ns (XI.Xi2f-r d src2) s p refl
@@ -432,4 +442,6 @@ module _ (N : ℕ) where
     (λ d s      → readReg-wr-arith-same (regs s) d _)
     (λ d src s  → readReg-wr-arith-same (regs s) d _)
     (λ d dc s   → readReg-wr-arith-same (regs s) d _)
+    -- rt-fdiv: three-address, so four binders rather than three.
+    (λ d a b s  → readReg-wr-arith-same (regs s) d _)
     public

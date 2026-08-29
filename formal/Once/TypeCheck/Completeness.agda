@@ -529,6 +529,11 @@ infer-complete-RBinOp-arith-float-il {ctx} Raw.OpMul refl e₁ e₂ eq₁ eq₂
 ... | success Int _ _ _ _ , _ | refl
     with inferElabV ctx e₂ | eq₂
 ...   | success T.Float _ _ _ _ , _ | refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-il {ctx} Raw.OpDiv refl e₁ e₂ eq₁ eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success Int _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success T.Float _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 infer-complete-RBinOp-arith-float-ir :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
@@ -556,6 +561,11 @@ infer-complete-RBinOp-arith-float-ir {ctx} Raw.OpMul refl e₁ e₂ eq₁ eq₂
 ... | success T.Float _ _ _ _ , _ | refl
     with inferElabV ctx e₂ | eq₂
 ...   | success Int _ _ _ _ , _ | refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float-ir {ctx} Raw.OpDiv refl e₁ e₂ eq₁ eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success T.Float _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success Int _ _ _ _ , _ | refl = _ , _ , _ , refl
 
 infer-complete-RBinOp-arith-float :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isFloatArithmeticOp op ≡ true)
@@ -579,6 +589,11 @@ infer-complete-RBinOp-arith-float {ctx} Raw.OpSub refl e₁ e₂ eq₁ eq₂
     with inferElabV ctx e₂ | eq₂
 ...   | success T.Float _ _ _ _ , _ | refl = _ , _ , _ , refl
 infer-complete-RBinOp-arith-float {ctx} Raw.OpMul refl e₁ e₂ eq₁ eq₂
+  with inferElabV ctx e₁ | eq₁
+... | success T.Float _ _ _ _ , _ | refl
+    with inferElabV ctx e₂ | eq₂
+...   | success T.Float _ _ _ _ , _ | refl = _ , _ , _ , refl
+infer-complete-RBinOp-arith-float {ctx} Raw.OpDiv refl e₁ e₂ eq₁ eq₂
   with inferElabV ctx e₁ | eq₁
 ... | success T.Float _ _ _ _ , _ | refl
     with inferElabV ctx e₂ | eq₂

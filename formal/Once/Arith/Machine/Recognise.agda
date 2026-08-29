@@ -188,13 +188,17 @@ recognise-body-float sh (SigOp si ∘ e) | no _ | no _ with name si ≟ᶜ bare 
 ...     | yes _ with recognise-binop-float sh e
 ...       | just (ra , rb) = just (amul ra rb)
 ...       | nothing        = nothing
+recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ with name si ≟ᶜ bare "arith.div.float"
+...       | yes _ with recognise-binop-float sh e
+...         | just (ra , rb) = just (adiv ra rb)
+...         | nothing        = nothing
 -- D125's widening: the operand is an INTEGER tree, so this is the one place
 -- the two recognisers meet.
-recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ with name si ≟ᶜ bare "arith.i2f"
-...       | yes _ with recognise-body sh e
-...         | just r  = just (ai2f r)
-...         | nothing = nothing
-recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ = nothing
+recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ with name si ≟ᶜ bare "arith.i2f"
+...         | yes _ with recognise-body sh e
+...           | just r  = just (ai2f r)
+...           | nothing = nothing
+recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ | no _ = nothing
 
 -- A float LITERAL. The payload stays a `Decimal` — the one rounding happens at
 -- the backend, at the target's format (D117).

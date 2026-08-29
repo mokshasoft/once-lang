@@ -271,13 +271,94 @@ mulV F (fv-fin x) (fv-inf t) =
   if isZeroB x then nan F else infinity F (xorS (signB x) t)
 mulV F (fv-fin x) (fv-fin y) = roundB F (x *B y)
 
--- | The three operations, on BIT PATTERNS at a format. No target parameter
+------------------------------------------------------------------------
+-- DIVISION — the one operation whose exact result is not a `Bin`
+--
+-- `x +B y` and `x *B y` are exact: dyadics are closed under both, so `roundB`
+-- receives the true value and rounds it once. A QUOTIENT of two dyadics is in
+-- general not a dyadic (`1/3`), so there is nothing exact to hand `roundB`.
+--
+-- The standard remedy, and the only subtle part of this module: compute enough
+-- quotient bits that the rounding position is strictly above the last one, and
+-- fold the fact that the division was inexact into that last bit — the STICKY
+-- BIT. `roundB`'s half-even then gives the correctly-rounded quotient, because
+-- the only case it can get wrong is an exact tie, and a non-zero remainder is
+-- exactly the evidence that the tie is not exact.
+--
+-- WHY THE LSB IS A SAFE PLACE TO PUT IT. `roundB` targets `sig-bits F + 1`
+-- significant bits. `g` below is chosen so the quotient has at least one more
+-- bit than that, so its LSB lies strictly BELOW the rounding position. Setting
+-- it can therefore never move the value across a rounding boundary; it can
+-- only turn "discarded bits are exactly one half" into "strictly more than one
+-- half", which is precisely the tie-break IEEE asks for.
+
+-- | Set the low bit — the sticky fold. `2 * (q / 2)` clears it, `+ 1` sets it.
+setLow : ℕ → ℕ
+setLow q = 2 * (q / 2) + 1
+
+stickyAt : ℕ → ℕ → ℕ
+stickyAt q r = if r ℕ.≡ᵇ 0 then q else setLow q
+
+-- | The guard shift, and the `+ 3` is load-bearing.
+--
+-- `roundB` targets `T = sig-bits F + 1` bits, and `bitLen q ≥ bitLen n ∸ bitLen
+-- my`, so `g = (T + 2 + bitLen my) ∸ bitLen mx` guarantees `bitLen q ≥ T + 2`:
+-- at least TWO discarded bits.
+--
+-- Two, not one. With a single discarded bit that bit IS the round bit, and
+-- folding the sticky into it corrupts the very decision it is meant to inform —
+-- `1.0 / 3.0` then answers one ulp high (`…556` for `…555`), which is the first
+-- pin below and how this was caught.
+guardShift : FloatFormat → ℕ → ℕ → ℕ
+guardShift F mx my = (sig-bits F + 3 + bitLen my) ∸ bitLen mx
+
+-- | Quotient of `n` by a divisor given as `suc d`. The divisor arrives ALREADY
+-- KNOWN NON-ZERO, as a `suc` pattern rather than as a `NonZero` instance,
+-- because the zero divisor is not an edge case to be defaulted — it is a
+-- different IEEE result (a signed infinity), enumerated in `divV`.
+stickyQuot : ℕ → ℕ → ℕ
+stickyQuot n d = stickyAt (n / suc d) (n % suc d)
+
+-- | The quotient of two finite dyadics whose divisor magnitude is `suc d`,
+-- carrying its own stickiness. Exact when the division is exact.
+--
+-- `guardShift` is called twice rather than bound in a `where`, the same
+-- convention `roundB` follows: a `where`-bound tuple stops the whole thing
+-- reducing for an abstract argument.
+divBin : FloatFormat → Bin → ℕ → ℤ → ℕ → Bin
+divBin F x sy eY d =
+  applySign (xorS (signB x) sy)
+            (stickyQuot (∣ sigB x ∣ * 2 ^ guardShift F ∣ sigB x ∣ (suc d)) d)
+    ·2^ (expB x ℤ.- eY ℤ.- (+ guardShift F ∣ sigB x ∣ (suc d)))
+
+-- | IEEE's division table, enumerated like the other two. Two invalid cases
+-- (`∞/∞`, `0/0`) and one that is NOT invalid and must not be confused with
+-- them: a finite non-zero over zero is a signed infinity, which is `divideByZero`,
+-- not `invalid`. D055 already decided Once has no traps, so both simply return
+-- their value.
+divV : FloatFormat → FloatVal → FloatVal → ℕ
+divV F fv-nan     _          = nan F
+divV F (fv-inf _) fv-nan     = nan F
+divV F (fv-fin _) fv-nan     = nan F
+divV F (fv-inf s) (fv-inf t) = nan F
+divV F (fv-inf s) (fv-fin y) = infinity F (xorS s (signB y))
+divV F (fv-fin x) (fv-inf t) = signedZero F (xorS (signB x) t)
+-- The finite/finite table, split on the two MAGNITUDES so the non-zero divisor
+-- reaches `divBin` as a `suc` and nothing has to invent a value for zero.
+divV F (fv-fin x) (fv-fin y) with ∣ sigB x ∣ | ∣ sigB y ∣
+... | zero  | zero  = nan F                                          -- 0/0 invalid
+... | suc _ | zero  = infinity F (xorS (signB x) (signB y))          -- x/0
+... | zero  | suc d = signedZero F (xorS (signB x) (signB y))        -- 0/y
+... | suc _ | suc d = roundB F (divBin F x (signB y) (expB y) d)
+
+-- | The four operations, on BIT PATTERNS at a format. No target parameter
 -- beyond the format: the answer is the same on every target BY DECISION
 -- (D055), and the backends conform to it rather than the other way round.
-fadd fsub fmul : FloatFormat → ℕ → ℕ → ℕ
+fadd fsub fmul fdiv : FloatFormat → ℕ → ℕ → ℕ
 fadd F a b = addV F (decode F a) (decode F b)
 fsub F a b = addV F (decode F a) (negV (decode F b))
 fmul F a b = mulV F (decode F a) (decode F b)
+fdiv F a b = divV F (decode F a) (decode F b)
 
 -- | Negation is a SIGN-BIT FLIP, not a decode/round round-trip. IEEE says so —
 -- negation is exact and defined on every pattern including NaN — and a
@@ -381,6 +462,68 @@ _ = refl
 _ : fmul binary64 0 0x7ff0000000000000 ≡ 0x7ff8000000000000
 _ = refl
 
+------------------------------------------------------------------------
+-- DIVISION, against the machine
+--
+-- These are the pins the sticky bit exists for. `1.0 / 3.0` and `7.0 / 11.0`
+-- are non-terminating in binary, so their quotients are inexact by
+-- construction and every discarded bit has to be accounted for.
+--
+-- ⭐ `0.1 / 0.3` is the sharp one. It answers `…556`, ONE ULP ABOVE
+-- `1.0 / 3.0`'s `…555`, even though both are `0.333…` — the operands are
+-- themselves rounded, so the true quotient falls the other side of the
+-- boundary. A division that truncated, or that rounded without the remainder,
+-- gets `…555` here and passes every other pin in this block.
+
+_ : fdiv binary64 0x3ff0000000000000 0x4008000000000000 ≡ 0x3fd5555555555555
+_ = refl
+
+_ : fdiv binary64 0x401c000000000000 0x4026000000000000 ≡ 0x3fe45d1745d1745d
+_ = refl
+
+_ : fdiv binary64 0x3fb999999999999a 0x3fd3333333333333 ≡ 0x3fd5555555555556
+_ = refl
+
+-- Exact quotients: the remainder is zero, so the sticky fold must be a no-op.
+_ : fdiv binary64 0x3ff0000000000000 0x4000000000000000 ≡ 0x3fe0000000000000
+_ = refl
+
+_ : fdiv binary64 0x4018000000000000 0x4008000000000000 ≡ 0x4000000000000000
+_ = refl
+
+-- An inexact operand over an exact one: the answer is the operand's fraction
+-- with the exponent decremented, so a bug in the guard shift shows up here.
+_ : fdiv binary64 0x40091eb851eb851f 0x4000000000000000 ≡ 0x3ff91eb851eb851f
+_ = refl
+
+-- Signs are the XOR, on both sides.
+_ : fdiv binary64 0xc01c000000000000 0x4000000000000000 ≡ 0xc00c000000000000
+_ = refl
+
+_ : fdiv binary64 0x3ff0000000000000 0xc010000000000000 ≡ 0xbfd0000000000000
+_ = refl
+
+-- The division table. `x/0` is a signed INFINITY and `0/0` is invalid; they are
+-- different answers and the enumeration keeps them apart. As with `fadd`'s
+-- invalid case these are the DECIDED (RISC-V) NaN, not x86's.
+_ : fdiv binary64 0x3ff0000000000000 0 ≡ 0x7ff0000000000000
+_ = refl
+
+_ : fdiv binary64 0xbff0000000000000 0 ≡ 0xfff0000000000000
+_ = refl
+
+_ : fdiv binary64 0 0 ≡ 0x7ff8000000000000
+_ = refl
+
+_ : fdiv binary64 0x7ff0000000000000 0x7ff0000000000000 ≡ 0x7ff8000000000000
+_ = refl
+
+_ : fdiv binary64 0x3ff0000000000000 0x7ff0000000000000 ≡ 0
+_ = refl
+
+_ : fdiv binary64 0x7ff0000000000000 0x4000000000000000 ≡ 0x7ff0000000000000
+_ = refl
+
 -- Negation is a bit flip and is exact on every pattern.
 _ : fneg binary64 0x3ff8000000000000 ≡ 0xbff8000000000000
 _ = refl
@@ -394,6 +537,15 @@ _ = refl
 ------------------------------------------------------------------------
 
 _ : fadd binary32 0x3fc00000 0x40200000 ≡ 0x40800000
+_ = refl
+
+-- Division at binary32: the same function, a different precision, and the
+-- quotient lands on a different bit — which is what makes the format a
+-- parameter rather than a constant.
+_ : fdiv binary32 0x3f800000 0x40400000 ≡ 0x3eaaaaab
+_ = refl
+
+_ : fdiv binary32 0x40e00000 0x41300000 ≡ 0x3f22e8ba
 _ = refl
 
 _ : fadd binary32 0x3dcccccd 0x3e4ccccd ≡ 0x3e99999a

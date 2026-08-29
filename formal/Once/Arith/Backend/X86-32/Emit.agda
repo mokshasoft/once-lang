@@ -218,6 +218,13 @@ instr-text (Xfmul-rr dst src) =
   "    movd " ++ reg-text src ++ ", %xmm1\n" ++
   "    mulss %xmm1, %xmm0\n" ++
   "    movd %xmm0, " ++ reg-text dst ++ "\n"
+-- Three-address, so both sources are read into the FP scratch pair BEFORE
+-- the destination is written — which is what lets `dst` alias `b`.
+instr-text (Xfdiv-rrr dst a b) =
+  "    movd " ++ reg-text a ++ ", %xmm0\n" ++
+  "    movd " ++ reg-text b ++ ", %xmm1\n" ++
+  "    divss %xmm1, %xmm0\n" ++
+  "    movd %xmm0, " ++ reg-text dst ++ "\n"
 instr-text (Xfneg-r dst) =
   "    xorl $-2147483648, " ++ reg-text dst ++ "\n"
 instr-text (Xi2f-r dst src) =

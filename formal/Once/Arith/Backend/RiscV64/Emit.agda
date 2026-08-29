@@ -109,6 +109,13 @@ instr-text (Xfmul-rr dst src) =
   "    fmv.d.x ft1, " ++ reg-text src ++ "\n" ++
   "    fmul.d ft0, ft0, ft1\n" ++
   "    fmv.x.d " ++ reg-text dst ++ ", ft0\n"
+-- Three-address, so both sources are read into the FP scratch pair BEFORE
+-- the destination is written — which is what lets `dst` alias `b`.
+instr-text (Xfdiv-rrr dst a b) =
+  "    fmv.d.x ft0, " ++ reg-text a ++ "\n" ++
+  "    fmv.d.x ft1, " ++ reg-text b ++ "\n" ++
+  "    fdiv.d ft0, ft0, ft1\n" ++
+  "    fmv.x.d " ++ reg-text dst ++ ", ft0\n"
 instr-text (Xfneg-r dst) =
   "    fmv.d.x ft0, " ++ reg-text dst ++ "\n" ++
   "    fneg.d ft0, ft0\n" ++

@@ -1560,7 +1560,7 @@ du_closed'45'lift'45'aux_484 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                                                MAlonzo.Code.Once.Surface.Syntax.C_lam_32
                                                                (coe MAlonzo.Code.Once.Type.C_Zero_6)
                                                                (coe
-                                                                  MAlonzo.Code.Once.Surface.Thinning.du_weaken_1010
+                                                                  MAlonzo.Code.Once.Surface.Thinning.du_weaken_1024
                                                                   (coe
                                                                      MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                      (coe v0))
@@ -1588,13 +1588,13 @@ du_closed'45'lift'45'aux_484 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                                                                   MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                   (coe v0)))
                                                             (coe
-                                                               MAlonzo.Code.Once.Surface.Syntax.C_arr''_366
+                                                               MAlonzo.Code.Once.Surface.Syntax.C_arr''_376
                                                                (coe
                                                                   MAlonzo.Code.Once.Surface.Syntax.C_lam_32
                                                                   (coe
                                                                      MAlonzo.Code.Once.Type.C_Zero_6)
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Surface.Thinning.du_weaken_1010
+                                                                     MAlonzo.Code.Once.Surface.Thinning.du_weaken_1024
                                                                      (coe
                                                                         MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                         (coe v0))
@@ -1771,7 +1771,7 @@ d_embedOrSubsume'45'no_600 v0 v1 v2 v3 v4 v5 v6 v7 v8
                                                                                                                           (coe
                                                                                                                              v2)
                                                                                                                           (coe
-                                                                                                                             MAlonzo.Code.Once.Surface.Syntax.C_arr''_366
+                                                                                                                             MAlonzo.Code.Once.Surface.Syntax.C_arr''_376
                                                                                                                              v5)
                                                                                                                           (coe
                                                                                                                              v6)
@@ -1845,7 +1845,7 @@ d_specId_778 ~v0 = du_specId_778
 du_specId_778 :: MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
 du_specId_778
   = coe
-      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
       (coe MAlonzo.Code.Once.IR.C_id_22)
 -- Once.TypeCheck.Elaborate.specFst
 d_specFst_786 ::
@@ -1856,7 +1856,7 @@ d_specFst_786 ~v0 ~v1 = du_specFst_786
 du_specFst_786 :: MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
 du_specFst_786
   = coe
-      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
       (coe MAlonzo.Code.Once.IR.C_fst_44)
 -- Once.TypeCheck.Elaborate.specSnd
 d_specSnd_796 ::
@@ -1867,7 +1867,7 @@ d_specSnd_796 ~v0 ~v1 = du_specSnd_796
 du_specSnd_796 :: MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
 du_specSnd_796
   = coe
-      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
       (coe MAlonzo.Code.Once.IR.C_snd_50)
 -- Once.TypeCheck.Elaborate.specInl
 d_specInl_806 ::
@@ -1878,7 +1878,7 @@ d_specInl_806 ~v0 ~v1 = du_specInl_806
 du_specInl_806 :: MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
 du_specInl_806
   = coe
-      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
       (coe
          MAlonzo.Code.Once.IR.C_inl_56 (coe MAlonzo.Code.Once.IR.C_Heap_8))
 -- Once.TypeCheck.Elaborate.specInr
@@ -1890,7 +1890,7 @@ d_specInr_816 ~v0 ~v1 = du_specInr_816
 du_specInr_816 :: MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
 du_specInr_816
   = coe
-      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
       (coe
          MAlonzo.Code.Once.IR.C_inr_62 (coe MAlonzo.Code.Once.IR.C_Heap_8))
 -- Once.TypeCheck.Elaborate.specUnitGen
@@ -2082,7 +2082,7 @@ d_specTerminal_840 ~v0 = du_specTerminal_840
 du_specTerminal_840 :: MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
 du_specTerminal_840
   = coe
-      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
       (coe MAlonzo.Code.Once.IR.C_terminal_74)
 -- Once.TypeCheck.Elaborate.specInitial
 d_specInitial_846 ::
@@ -2092,7 +2092,7 @@ d_specInitial_846 ~v0 = du_specInitial_846
 du_specInitial_846 :: MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
 du_specInitial_846
   = coe
-      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
       (coe MAlonzo.Code.Once.IR.C_initial_78)
 -- Once.TypeCheck.Elaborate.specCurry
 d_specCurry_856 ::
@@ -2624,7 +2624,7 @@ du_extract'45'morph'45'aux_918 v0 v1
   = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v1 of
-         MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404 v8
+         MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414 v8
            -> case coe v0 of
                 MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v9 v10 v11
                   -> coe
@@ -2685,7 +2685,7 @@ du_extract'45'morph'45'eff'45'aux_956 v0 v1 v2 v3 v4
   = let v5 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v4 of
-         MAlonzo.Code.Once.Surface.Syntax.C_arr''_366 v11
+         MAlonzo.Code.Once.Surface.Syntax.C_arr''_376 v11
            -> case coe v0 of
                 MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v12 v13 v14
                   -> coe
@@ -2693,14 +2693,14 @@ du_extract'45'morph'45'eff'45'aux_956 v0 v1 v2 v3 v4
                        (coe MAlonzo.Code.Once.Type.d__'8658'__146 (coe v1) (coe v2))
                        (coe v1) (coe v2) (coe MAlonzo.Code.Once.Type.C_pure_34) (coe v11)
                 _ -> coe v5
-         MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404 v11
+         MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414 v11
            -> case coe v0 of
                 MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v12 v13 v14
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v11) erased)
                 _ -> coe v5
-         MAlonzo.Code.Once.Surface.Syntax.C_cata_428 v11 v12
+         MAlonzo.Code.Once.Surface.Syntax.C_cata_438 v11 v12
            -> case coe v0 of
                 MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v13 v14 v15
                   -> case coe v13 of
@@ -3534,7 +3534,7 @@ d_inferElab'45'RApp'45'id_1746 v0 v1
                    MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                    (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v3)))
              (coe
-                MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416 v3 v2
+                MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v3 v2
                 (coe MAlonzo.Code.Once.IR.C_id_22) v4)
              (coe addInt (coe (1 :: Integer)) (coe v5)) (coe v6)
       C_failure_302 v2 -> coe v1
@@ -3574,7 +3574,7 @@ du_inferElabV'45'RVar'45'poly'45'ground'45'aux_1788 v0 v1 v2 v3
                 (coe
                    MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                    (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
-                (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_392 v1)
+                (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_402 v1)
                 (coe (0 :: Integer))
                 (coe
                    MAlonzo.Code.Once.TypeCheck.Classify.d_freshCounter_360 (coe v0)))
@@ -3822,7 +3822,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                                     (coe
                                                                                                        v0)))
                                                                                               (coe
-                                                                                                 MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                                 MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                                     (coe
@@ -3925,7 +3925,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                                            (coe
                                                                                                               v0)))
                                                                                                      (coe
-                                                                                                        MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                                        MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                                            (coe
@@ -4030,7 +4030,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                                            (coe
                                                                                                               v0)))
                                                                                                      (coe
-                                                                                                        MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                                        MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                                            (coe
@@ -4121,7 +4121,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                        MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                                        (coe v0)))
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                    MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                     (coe
                                                                                        MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                        (coe v0))
@@ -4189,7 +4189,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                        MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                                        (coe v0)))
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                    MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                     (coe
                                                                                        MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                        (coe v0))
@@ -4271,7 +4271,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                                            (coe
                                                                                                               v0)))
                                                                                                      (coe
-                                                                                                        MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                                        MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                                            (coe
@@ -4380,7 +4380,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                                            (coe
                                                                                                               v0)))
                                                                                                      (coe
-                                                                                                        MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                                        MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                                            (coe
@@ -4472,7 +4472,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                            MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                            (coe v0)))
                                                      (coe
-                                                        MAlonzo.Code.Once.Surface.Syntax.C_poly_392
+                                                        MAlonzo.Code.Once.Surface.Syntax.C_poly_402
                                                         v1)
                                                      (coe (0 :: Integer))
                                                      (coe
@@ -4729,7 +4729,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                                      (coe
                                                                                                         v0)))
                                                                                                (coe
-                                                                                                  MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                                  MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                                   (coe
                                                                                                      MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                                      (coe
@@ -4833,7 +4833,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                                             (coe
                                                                                                                v0)))
                                                                                                       (coe
-                                                                                                         MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                                         MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                                             (coe
@@ -4938,7 +4938,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                                             (coe
                                                                                                                v0)))
                                                                                                       (coe
-                                                                                                         MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                                         MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                                             (coe
@@ -5029,7 +5029,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                         MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                                         (coe v0)))
                                                                                   (coe
-                                                                                     MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                     MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                      (coe
                                                                                         MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                         (coe v0))
@@ -5097,7 +5097,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                         MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                                         (coe v0)))
                                                                                   (coe
-                                                                                     MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                     MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                      (coe
                                                                                         MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                         (coe v0))
@@ -5179,7 +5179,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                                             (coe
                                                                                                                v0)))
                                                                                                       (coe
-                                                                                                         MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                                         MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                                             (coe
@@ -5288,7 +5288,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                                                                             (coe
                                                                                                                v0)))
                                                                                                       (coe
-                                                                                                         MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1194
+                                                                                                         MAlonzo.Code.Once.Surface.Thinning.du_weakenFromEmpty_1208
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Once.TypeCheck.Classify.d_debruijn_358
                                                                                                             (coe
@@ -5380,7 +5380,7 @@ d_checkElab'45'RVar_1880 v0 v1 v2
                                                             MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                             (coe v0)))
                                                       (coe
-                                                         MAlonzo.Code.Once.Surface.Syntax.C_poly_392
+                                                         MAlonzo.Code.Once.Surface.Syntax.C_poly_402
                                                          v1)
                                                       (coe (0 :: Integer))
                                                       (coe
@@ -5553,7 +5553,7 @@ d_checkPair_1890 v0 v1 v2 v3
                                                                                                                                                                     (coe
                                                                                                                                                                        v0)))
                                                                                                                                                               (coe
-                                                                                                                                                                 MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                                                                                                                 MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                                                                                                                  (coe
                                                                                                                                                                     MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
                                                                                                                                                                     v35
@@ -5755,9 +5755,9 @@ d_checkPair_1890 v0 v1 v2 v3
                                                                                                                                                                     (coe
                                                                                                                                                                        v0)))
                                                                                                                                                               (coe
-                                                                                                                                                                 MAlonzo.Code.Once.Surface.Syntax.C_arr''_366
+                                                                                                                                                                 MAlonzo.Code.Once.Surface.Syntax.C_arr''_376
                                                                                                                                                                  (coe
-                                                                                                                                                                    MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                                                                                                                    MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                                                                                                                     (coe
                                                                                                                                                                        MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
                                                                                                                                                                        v35
@@ -5949,7 +5949,7 @@ d_checkCase_1912 v0 v1 v2 v3
                                                                                                         (coe
                                                                                                            v23)
                                                                                                         (coe
-                                                                                                           MAlonzo.Code.Once.Surface.Syntax.C_arr''_366
+                                                                                                           MAlonzo.Code.Once.Surface.Syntax.C_arr''_376
                                                                                                            v24)
                                                                                                         (coe
                                                                                                            v25)
@@ -6087,7 +6087,7 @@ d_checkCaseGo_1928 v0 v1 v2 v3 v4 v5 v6
                                                                                                           (coe
                                                                                                              v0)))
                                                                                                     (coe
-                                                                                                       MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                                                       MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                                                        (coe
                                                                                                           MAlonzo.Code.Once.IR.C_case_70
                                                                                                           v27
@@ -6214,7 +6214,7 @@ d_checkCompose_1938 v0 v1 v2 v3
                                                                                                  (coe
                                                                                                     v21)
                                                                                                  (coe
-                                                                                                    MAlonzo.Code.Once.Surface.Syntax.C_arr''_366
+                                                                                                    MAlonzo.Code.Once.Surface.Syntax.C_arr''_376
                                                                                                     v22)
                                                                                                  (coe
                                                                                                     v23)
@@ -6370,7 +6370,7 @@ du_checkComposeGo_1954 v0 v1 v2 v3 v4 v5 v6
                                                                                                                  (coe
                                                                                                                     v0)))
                                                                                                            (coe
-                                                                                                              MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                                                              MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                                                               (coe
                                                                                                                  MAlonzo.Code.Once.IR.C__'8728'__30
                                                                                                                  (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
@@ -6543,7 +6543,7 @@ d_checkCurry_1962 v0 v1 v2
                                                                                                                          (coe
                                                                                                                             v0)))
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                                                                      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.IR.C_curry_86
                                                                                                                          v25
@@ -6671,9 +6671,9 @@ d_checkCurry_1962 v0 v1 v2
                                                                                                                          (coe
                                                                                                                             v0)))
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.Surface.Syntax.C_arr''_366
+                                                                                                                      MAlonzo.Code.Once.Surface.Syntax.C_arr''_376
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                                                                         MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                                                                          (coe
                                                                                                                             MAlonzo.Code.Once.IR.C_curry_86
                                                                                                                             v25
@@ -6854,7 +6854,7 @@ d_checkApply_1970 v0 v1 v2
                                                                                                            (coe
                                                                                                               v7)))
                                                                                                      (coe
-                                                                                                        MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416
+                                                                                                        MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
                                                                                                         v7
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.Type.C__'42'__122
@@ -7136,7 +7136,7 @@ d_checkIn_1978 v0 v1 v2
                                                                                MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                                (coe v0)))
                                                                          (coe
-                                                                            MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                            MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                             v16)
                                                                          (coe (0 :: Integer))
                                                                          (coe
@@ -7161,7 +7161,7 @@ d_checkIn_1978 v0 v1 v2
                                                                                 MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                                 (coe v0)))
                                                                           (coe
-                                                                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                              v14)
                                                                           (coe (0 :: Integer))
                                                                           (coe
@@ -7246,7 +7246,7 @@ du_checkInGo_1988 v0 v1 v2 v3
                                        MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                        (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v8)))
                                  (coe
-                                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416 v8
+                                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v8
                                     (MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162
                                        (coe v2)
                                        (coe MAlonzo.Code.Once.Type.C_μ'45'type_128 (coe v2)))
@@ -7344,7 +7344,7 @@ d_checkCata_1996 v0 v1 v2
                                                                                     C_success_324
                                                                                     (coe v18)
                                                                                     (coe
-                                                                                       MAlonzo.Code.Once.Surface.Syntax.C_arr''_366
+                                                                                       MAlonzo.Code.Once.Surface.Syntax.C_arr''_376
                                                                                        v19)
                                                                                     (coe v20)
                                                                                     (coe v21))
@@ -7428,7 +7428,7 @@ du_checkCataGo_2010 v0 v1 v2 v3 v4 v5
                                                     MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                     (coe v0)))
                                               (coe
-                                                 MAlonzo.Code.Once.Surface.Syntax.C_cata_428 v6 v11)
+                                                 MAlonzo.Code.Once.Surface.Syntax.C_cata_438 v6 v11)
                                               (coe addInt (coe (1 :: Integer)) (coe v12))
                                               (coe
                                                  MAlonzo.Code.Once.TypeCheck.Classify.d_freshCounter_360
@@ -8537,7 +8537,7 @@ du_checkElabV'45'wf_2040 v0 v1 v2
                                                                                     C_success_324
                                                                                     (coe v21)
                                                                                     (coe
-                                                                                       MAlonzo.Code.Once.Surface.Syntax.C_arr''_366
+                                                                                       MAlonzo.Code.Once.Surface.Syntax.C_arr''_376
                                                                                        (coe
                                                                                           MAlonzo.Code.Once.Surface.Syntax.C_lam_32
                                                                                           v20 v16))
@@ -8774,7 +8774,7 @@ du_inferElabV'45'RUnaryOp'45'aux_2070 v0
                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                            (coe
                               C_success_300 (coe v3) (coe v4)
-                              (coe MAlonzo.Code.Once.Surface.Syntax.C_neg_294 v5)
+                              (coe MAlonzo.Code.Once.Surface.Syntax.C_neg_304 v5)
                               (coe addInt (coe (1 :: Integer)) (coe v6)) (coe v7))
                            (coe MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'neg_144 v2)
                     MAlonzo.Code.Once.Type.C_Float_134
@@ -8926,7 +8926,7 @@ d_checkElabV'45'neg'45'int'45'aux_2102 v0 v1 v2 v3
                              MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
                           (coe
-                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                              (coe
                                 MAlonzo.Code.Once.Surface.Elaborate.du_intLit_8
                                 (coe MAlonzo.Code.Data.Integer.Base.d_'45'__260 (coe v1))))
@@ -9014,7 +9014,7 @@ du_checkElabV'45'neg'45'float'45'aux_2120 v0 v1 v2 v3 v4 v5
                              MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
                           (coe
-                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                              (coe
                                 MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_20
                                 (coe
@@ -9321,7 +9321,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
                                                              (coe v6) (coe v13))
                                                           (coe
-                                                             MAlonzo.Code.Once.Surface.Syntax.C_div_276
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_div_286
                                                              v6 v13 v7 v14)
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9339,7 +9339,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
                                                              (coe v6) (coe v13))
                                                           (coe
-                                                             MAlonzo.Code.Once.Surface.Syntax.C_mod''_286
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_mod''_296
                                                              v6 v13 v7 v14)
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9362,7 +9362,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
                                                              (coe v6) (coe v13))
                                                           (coe
-                                                             MAlonzo.Code.Once.Surface.Syntax.C_lt_304
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_lt_314
                                                              v6 v13 v7 v14)
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9385,7 +9385,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
                                                              (coe v6) (coe v13))
                                                           (coe
-                                                             MAlonzo.Code.Once.Surface.Syntax.C_le_314
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_le_324
                                                              v6 v13 v7 v14)
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9408,7 +9408,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
                                                              (coe v6) (coe v13))
                                                           (coe
-                                                             MAlonzo.Code.Once.Surface.Syntax.C_gt_324
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_gt_334
                                                              v6 v13 v7 v14)
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9431,7 +9431,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
                                                              (coe v6) (coe v13))
                                                           (coe
-                                                             MAlonzo.Code.Once.Surface.Syntax.C_ge_334
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_ge_344
                                                              v6 v13 v7 v14)
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9454,7 +9454,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
                                                              (coe v6) (coe v13))
                                                           (coe
-                                                             MAlonzo.Code.Once.Surface.Syntax.C_eq_344
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_eq_354
                                                              v6 v13 v7 v14)
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9477,7 +9477,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
                                                              (coe v6) (coe v13))
                                                           (coe
-                                                             MAlonzo.Code.Once.Surface.Syntax.C_ne_354
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_ne_364
                                                              v6 v13 v7 v14)
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9501,7 +9501,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fadd_238
                                                              v6 v13
                                                              (coe
-                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_266
+                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_276
                                                                 v7)
                                                              v14)
                                                           (coe
@@ -9523,7 +9523,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fsub_248
                                                              v6 v13
                                                              (coe
-                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_266
+                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_276
                                                                 v7)
                                                              v14)
                                                           (coe
@@ -9545,7 +9545,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fmul_258
                                                              v6 v13
                                                              (coe
-                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_266
+                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_276
                                                                 v7)
                                                              v14)
                                                           (coe
@@ -9559,13 +9559,24 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                   -> coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                        (coe
-                                                          C_failure_302
+                                                          C_success_300 (coe v12)
                                                           (coe
-                                                             MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_80
+                                                             MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
+                                                             (coe v6) (coe v13))
+                                                          (coe
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_fdiv_268
+                                                             v6 v13
                                                              (coe
-                                                                MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_60
-                                                                (coe v5) (coe v12))))
-                                                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_276
+                                                                v7)
+                                                             v14)
+                                                          (coe
+                                                             MAlonzo.Code.Data.Nat.Base.d__'8852'__208
+                                                             (coe v8) (coe v15))
+                                                          (coe v16))
+                                                       (coe
+                                                          MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'arith'45'float'45'il_248
+                                                          v6 v13 v4 v11)
                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpMod_16
                                                   -> coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -9775,7 +9786,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fadd_238
                                                              v6 v13 v7
                                                              (coe
-                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_266
+                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_276
                                                                 v14))
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9796,7 +9807,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fsub_248
                                                              v6 v13 v7
                                                              (coe
-                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_266
+                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_276
                                                                 v14))
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9817,7 +9828,7 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                              MAlonzo.Code.Once.Surface.Syntax.C_fmul_258
                                                              v6 v13 v7
                                                              (coe
-                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_266
+                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_276
                                                                 v14))
                                                           (coe
                                                              MAlonzo.Code.Data.Nat.Base.d__'8852'__208
@@ -9830,13 +9841,23 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                   -> coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                        (coe
-                                                          C_failure_302
+                                                          C_success_300 (coe v5)
                                                           (coe
-                                                             MAlonzo.Code.Once.TypeCheck.Error.C_BinOpRightError_80
+                                                             MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
+                                                             (coe v6) (coe v13))
+                                                          (coe
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_fdiv_268
+                                                             v6 v13 v7
                                                              (coe
-                                                                MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_60
-                                                                (coe v5) (coe v12))))
-                                                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                                                MAlonzo.Code.Once.Surface.Syntax.C_i2f_276
+                                                                v14))
+                                                          (coe
+                                                             MAlonzo.Code.Data.Nat.Base.d__'8852'__208
+                                                             (coe v8) (coe v15))
+                                                          (coe v16))
+                                                       (coe
+                                                          MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'arith'45'float'45'ir_262
+                                                          v6 v13 v4 v11)
                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpMod_16
                                                   -> coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -9975,15 +9996,20 @@ du_inferElabV'45'RBinOp'45'aux_2130 v0 v1 v2
                                                   -> coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                        (coe
-                                                          C_failure_302
+                                                          C_success_300 (coe v12)
                                                           (coe
-                                                             MAlonzo.Code.Once.TypeCheck.Error.C_BinOpLeftError_78
-                                                             (coe
-                                                                MAlonzo.Code.Once.TypeCheck.Error.C_TypeMismatch_60
-                                                                (coe
-                                                                   MAlonzo.Code.Once.Type.C_Int_132)
-                                                                (coe v12))))
-                                                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                                             MAlonzo.Code.Once.Surface.Context.du__'43''7512'__116
+                                                             (coe v6) (coe v13))
+                                                          (coe
+                                                             MAlonzo.Code.Once.Surface.Syntax.C_fdiv_268
+                                                             v6 v13 v7 v14)
+                                                          (coe
+                                                             MAlonzo.Code.Data.Nat.Base.d__'8852'__208
+                                                             (coe v8) (coe v15))
+                                                          (coe v16))
+                                                       (coe
+                                                          MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'arith'45'float_234
+                                                          v6 v13 v4 v11)
                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_OpMod_16
                                                   -> coe
                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -10660,7 +10686,7 @@ du_inferElabV'45'RQualified'45'arrow'45'aux_2282 v0 v1 v2 v3 v4 v5
                           MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                           (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
                        (coe
-                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                           (coe
                              MAlonzo.Code.Once.IR.C_SigOp_154 (coe v3) (coe v4)
                              (coe
@@ -10758,7 +10784,7 @@ du_inferElabV'45'RResolved'45'arrow'45'aux_2298 v0 v1 v2 v3 v4 v5
                           MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                           (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
                        (coe
-                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                           (coe
                              MAlonzo.Code.Once.IR.C_SigOp_154 (coe v2) (coe v3)
                              (coe
@@ -10833,7 +10859,7 @@ du_inferElabV'45'RQualified'45'value'45'aux_2310 v0 v1 v2 v3 v4
                    MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                    (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
                 (coe
-                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_374
+                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_384
                    (MAlonzo.Code.Once.CanonicalName.d_bare_12
                       (coe
                          MAlonzo.Code.Data.String.Base.d__'43''43'__20 v2
@@ -10888,7 +10914,7 @@ du_inferElabV'45'RResolved'45'value'45'aux_2320 v0 v1 v2 v3
                 (coe
                    MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                    (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
-                (coe MAlonzo.Code.Once.Surface.Syntax.C_sigOp_374 v1 v4)
+                (coe MAlonzo.Code.Once.Surface.Syntax.C_sigOp_384 v1 v4)
                 (coe (0 :: Integer))
                 (coe
                    MAlonzo.Code.Once.TypeCheck.Classify.d_freshCounter_360 (coe v0)))
@@ -10936,7 +10962,7 @@ du_inferElabV'45'RVar'45'lookup'45'aux_2334 v0 v1 v2 v3
                            (coe
                               C_success_300 (coe v5) (coe v7)
                               (coe
-                                 MAlonzo.Code.Once.Surface.Syntax.du_svar'8594'expr_450 (coe v8))
+                                 MAlonzo.Code.Once.Surface.Syntax.du_svar'8594'expr_460 (coe v8))
                               (coe (0 :: Integer))
                               (coe
                                  MAlonzo.Code.Once.TypeCheck.Classify.d_freshCounter_360 (coe v0)))
@@ -10991,7 +11017,7 @@ du_inferElabV'45'RVar'45'import'45'value'45'aux_2344 v0 v1 v2 v3
                    MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                    (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
                 (coe
-                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_374
+                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_384
                    (MAlonzo.Code.Once.CanonicalName.d_bare_12 (coe v1)) v4)
                 (coe (0 :: Integer))
                 (coe
@@ -11294,7 +11320,7 @@ du_inferElabV'45'RApp'45'dispatch_2364 v0 v1 v2 v3
                                        MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                        (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v8)))
                                  (coe
-                                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416 v8 v7
+                                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v8 v7
                                     (coe MAlonzo.Code.Once.IR.C_id_22) v9)
                                  (coe addInt (coe (1 :: Integer)) (coe v10)) (coe v11))
                               (coe
@@ -11343,7 +11369,7 @@ du_inferElabV'45'RApp'45'dispatch_2364 v0 v1 v2 v3
                                               MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                               (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v8)))
                                         (coe
-                                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416 v8 v7
+                                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v8 v7
                                            (coe MAlonzo.Code.Once.IR.C_fst_44) v9)
                                         (coe addInt (coe (1 :: Integer)) (coe v10)) (coe v11))
                                      (coe
@@ -11450,7 +11476,7 @@ du_inferElabV'45'RApp'45'dispatch_2364 v0 v1 v2 v3
                                               MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                               (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v8)))
                                         (coe
-                                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416 v8 v7
+                                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v8 v7
                                            (coe MAlonzo.Code.Once.IR.C_snd_50) v9)
                                         (coe addInt (coe (1 :: Integer)) (coe v10)) (coe v11))
                                      (coe
@@ -11540,7 +11566,7 @@ du_inferElabV'45'RApp'45'dispatch_2364 v0 v1 v2 v3
                                        MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                        (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v8)))
                                  (coe
-                                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416 v8 v7
+                                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v8 v7
                                     (coe MAlonzo.Code.Once.IR.C_terminal_74) v9)
                                  (coe addInt (coe (1 :: Integer)) (coe v10)) (coe v11))
                               (coe
@@ -11708,7 +11734,7 @@ du_inferElabV'45'RApp'45'dispatch_2364 v0 v1 v2 v3
                                                                                               (coe
                                                                                                  v8)))
                                                                                         (coe
-                                                                                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416
+                                                                                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
                                                                                            v8
                                                                                            (coe
                                                                                               MAlonzo.Code.Once.Type.C__'42'__122
@@ -11987,7 +12013,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                                (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9)))
                                          (coe
-                                            MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416 v9
+                                            MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v9
                                             v8 (coe MAlonzo.Code.Once.IR.C_id_22) v10)
                                          (coe addInt (coe (1 :: Integer)) (coe v11)) (coe v12))
                                       (coe
@@ -12054,7 +12080,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                       (coe MAlonzo.Code.Once.Type.C_Many_10)
                                                       (coe v9)))
                                                 (coe
-                                                   MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416
+                                                   MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
                                                    v9 v8 (coe MAlonzo.Code.Once.IR.C_fst_44) v10)
                                                 (coe addInt (coe (1 :: Integer)) (coe v11))
                                                 (coe v12))
@@ -12195,7 +12221,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                       (coe MAlonzo.Code.Once.Type.C_Many_10)
                                                       (coe v9)))
                                                 (coe
-                                                   MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416
+                                                   MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
                                                    v9 v8 (coe MAlonzo.Code.Once.IR.C_snd_50) v10)
                                                 (coe addInt (coe (1 :: Integer)) (coe v11))
                                                 (coe v12))
@@ -12315,7 +12341,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                                (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v9)))
                                          (coe
-                                            MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416 v9
+                                            MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v9
                                             v8 (coe MAlonzo.Code.Once.IR.C_terminal_74) v10)
                                          (coe addInt (coe (1 :: Integer)) (coe v11)) (coe v12))
                                       (coe
@@ -12386,7 +12412,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                       (coe MAlonzo.Code.Once.Type.C_Many_10)
                                                       (coe v10)))
                                                 (coe
-                                                   MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416
+                                                   MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
                                                    v10 v5
                                                    (coe
                                                       MAlonzo.Code.Once.IR.C_inl_56
@@ -12495,7 +12521,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                                             MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                             (coe v0)))
                                                                       (coe
-                                                                         MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                         MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                          v17)
                                                                       (coe (0 :: Integer))
                                                                       (coe
@@ -12520,7 +12546,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                                              MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                              (coe v0)))
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                           v15)
                                                                        (coe (0 :: Integer))
                                                                        (coe
@@ -12588,7 +12614,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                  MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                                  (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v11)))
                                            (coe
-                                              MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416
+                                              MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
                                               v11 v6
                                               (coe
                                                  MAlonzo.Code.Once.IR.C_inl_56
@@ -12695,7 +12721,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                       (coe MAlonzo.Code.Once.Type.C_Many_10)
                                                       (coe v10)))
                                                 (coe
-                                                   MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416
+                                                   MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
                                                    v10 v6
                                                    (coe
                                                       MAlonzo.Code.Once.IR.C_inr_62
@@ -12804,7 +12830,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                                             MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                             (coe v0)))
                                                                       (coe
-                                                                         MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                         MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                          v17)
                                                                       (coe (0 :: Integer))
                                                                       (coe
@@ -12829,7 +12855,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                                              MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                              (coe v0)))
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                           v15)
                                                                        (coe (0 :: Integer))
                                                                        (coe
@@ -12897,7 +12923,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                  MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                                  (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v11)))
                                            (coe
-                                              MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416
+                                              MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
                                               v11 v7
                                               (coe
                                                  MAlonzo.Code.Once.IR.C_inr_62
@@ -12980,7 +13006,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                        MAlonzo.Code.Once.Surface.Context.du__'42''7512'__128
                                        (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v8)))
                                  (coe
-                                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416 v8
+                                    MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v8
                                     (coe MAlonzo.Code.Once.Type.C_Void_120)
                                     (coe MAlonzo.Code.Once.IR.C_initial_78) v9)
                                  (coe addInt (coe (1 :: Integer)) (coe v10)) (coe v11))
@@ -13191,7 +13217,7 @@ du_checkElabV'45'RApp'45'dispatch_2376 v0 v1 v2 v3 v4
                                                                                                       (coe
                                                                                                          v9)))
                                                                                                 (coe
-                                                                                                   MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_416
+                                                                                                   MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
                                                                                                    v9
                                                                                                    (coe
                                                                                                       MAlonzo.Code.Once.Type.C__'42'__122
@@ -13618,7 +13644,7 @@ du_checkElabV'45'RApp'45'other'45'argdriven'45'aux_2390 v0 v1 v2 v3
                                                                             MAlonzo.Code.Once.Type.C_Many_10)
                                                                          (coe v10)))
                                                                    (coe
-                                                                      MAlonzo.Code.Once.Surface.Syntax.C_arr''_366
+                                                                      MAlonzo.Code.Once.Surface.Syntax.C_arr''_376
                                                                       (coe
                                                                          MAlonzo.Code.Once.Surface.Syntax.C_app_48
                                                                          v23 v10 v9
@@ -13790,7 +13816,7 @@ d_checkElabV'45'RVar'45'bbc'45'id'45'failure'45'aux_2398 v0 v1 v2
                                                                       MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                       (coe v0)))
                                                                 (coe
-                                                                   MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                   MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                    (coe
                                                                       MAlonzo.Code.Once.IR.C_id_22))
                                                                 (coe (0 :: Integer))
@@ -13945,7 +13971,7 @@ d_checkElabV'45'RVar'45'bbc'45'fst'45'failure'45'aux_2406 v0 v1 v2
                                                                              MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                              (coe v0)))
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                           (coe
                                                                              MAlonzo.Code.Once.IR.C_fst_44))
                                                                        (coe (0 :: Integer))
@@ -14144,7 +14170,7 @@ d_checkElabV'45'RVar'45'bbc'45'snd'45'failure'45'aux_2414 v0 v1 v2
                                                                              MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                              (coe v0)))
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                           (coe
                                                                              MAlonzo.Code.Once.IR.C_snd_50))
                                                                        (coe (0 :: Integer))
@@ -14330,7 +14356,7 @@ d_checkElabV'45'RVar'45'bbc'45'terminal'45'failure'45'aux_2422 v0
                                                          MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                          (coe v0)))
                                                    (coe
-                                                      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                       (coe MAlonzo.Code.Once.IR.C_terminal_74))
                                                    (coe (0 :: Integer))
                                                    (coe
@@ -14511,7 +14537,7 @@ d_checkElabV'45'RVar'45'bbc'45'initial'45'failure'45'aux_2430 v0 v1
                                                          MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                          (coe v0)))
                                                    (coe
-                                                      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                       (coe MAlonzo.Code.Once.IR.C_initial_78))
                                                    (coe (0 :: Integer))
                                                    (coe
@@ -14693,7 +14719,7 @@ d_checkElabV'45'RVar'45'bbc'45'inl'45'failure'45'aux_2438 v0 v1 v2
                                                                              MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                              (coe v0)))
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                           (coe
                                                                              MAlonzo.Code.Once.IR.C_inl_56
                                                                              (coe
@@ -14898,7 +14924,7 @@ d_checkElabV'45'RVar'45'bbc'45'inr'45'failure'45'aux_2446 v0 v1 v2
                                                                              MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                              (coe v0)))
                                                                        (coe
-                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                          MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                           (coe
                                                                              MAlonzo.Code.Once.IR.C_inr_62
                                                                              (coe
@@ -15246,7 +15272,7 @@ d_checkElabV'45'RVar'45'bbc'45'other'45'aux_2496 v0 v1 v2 v3
                                  (coe
                                     MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                                     (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
-                                 (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_392 v1)
+                                 (coe MAlonzo.Code.Once.Surface.Syntax.C_poly_402 v1)
                                  (coe (0 :: Integer))
                                  (coe
                                     MAlonzo.Code.Once.TypeCheck.Classify.d_freshCounter_360
@@ -15282,7 +15308,7 @@ d_checkElabV'45'RInt'45'aux_2508 v0 v1 v2 v3
                              MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
                           (coe
-                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                              (coe MAlonzo.Code.Once.Surface.Elaborate.du_intLit_8 (coe v1)))
                           (coe (0 :: Integer))
                           (coe
@@ -15371,7 +15397,7 @@ du_checkElabV'45'RFloat'45'aux_2526 v0 v1 v2 v3 v4 v5
                              MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                              (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
                           (coe
-                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                              (coe
                                 MAlonzo.Code.Once.Surface.Elaborate.du_floatLit_20
                                 (coe
@@ -15509,7 +15535,7 @@ d_checkElabV'45'RPair'45'aux_2548 v0 v1 v2 v3 v4
                                                                                    MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                                                                                    (coe v0)))
                                                                              (coe
-                                                                                MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_404
+                                                                                MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                                                                 v24)
                                                                              (coe (0 :: Integer))
                                                                              (coe
@@ -15643,7 +15669,7 @@ d_ext'45'arrow'45'info_2558 v0 v1 v2 v3 v4 v5 v6 v7
              (coe
                 MAlonzo.Code.Once.SigOp.Info.C_pureV_140
                 (coe
-                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_406 v0 v1
+                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_416 v0 v1
                    (coe
                       MAlonzo.Code.Data.String.Base.d__'43''43'__20 v3
                       (coe
@@ -15737,7 +15763,7 @@ d_ext'45'arrow'45'info_2558 v0 v1 v2 v3 v4 v5 v6 v7
                                  (coe
                                     MAlonzo.Code.Once.SigOp.Info.C_pureV_140
                                     (coe
-                                       MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_406
+                                       MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_416
                                        v0 v1
                                        (coe
                                           MAlonzo.Code.Data.String.Base.d__'43''43'__20 v3
@@ -15767,7 +15793,7 @@ d_ext'45'resolved'45'info'45'aux_2564 v0 v1 v2 v3 v4 v5 v6 v7
              (coe
                 MAlonzo.Code.Once.SigOp.Info.C_pureV_140
                 (coe
-                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_406 v0 v1
+                   MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_416 v0 v1
                    (MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v2))))
              (coe v6)
              (coe MAlonzo.Code.Once.SigOp.Info.C_ffi'45'concrete_152 (coe v7))
@@ -15809,7 +15835,7 @@ d_ext'45'resolved'45'info'45'aux_2564 v0 v1 v2 v3 v4 v5 v6 v7
                               (coe
                                  MAlonzo.Code.Once.SigOp.Info.C_pureV_140
                                  (coe
-                                    MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_406 v0
+                                    MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'semM_416 v0
                                     v1
                                     (MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v2))))
                               (coe v6)

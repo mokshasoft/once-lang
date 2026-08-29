@@ -185,13 +185,13 @@ d_thin'45''10214''10215'_270 ::
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_thin'45''10214''10215'_270 = erased
 -- Once.Denotation.ThinSound.restrictᴰ-refl
-d_restrict'7472''45'refl_980 ::
+d_restrict'7472''45'refl_998 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_restrict'7472''45'refl_980 = erased
+d_restrict'7472''45'refl_998 = erased
 -- Once.Denotation.ThinSound.⟦⟧-substΨ-cons
-d_'10214''10215''45'substΨ'45'cons_1014 ::
+d_'10214''10215''45'substΨ'45'cons_1032 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -201,9 +201,9 @@ d_'10214''10215''45'substΨ'45'cons_1014 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_'10214''10215''45'substΨ'45'cons_1014 = erased
+d_'10214''10215''45'substΨ'45'cons_1032 = erased
 -- Once.Denotation.ThinSound.weaken-⟦⟧
-d_weaken'45''10214''10215'_1042 ::
+d_weaken'45''10214''10215'_1060 ::
   Integer ->
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -214,4 +214,4 @@ d_weaken'45''10214''10215'_1042 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_weaken'45''10214''10215'_1042 = erased
+d_weaken'45''10214''10215'_1060 = erased

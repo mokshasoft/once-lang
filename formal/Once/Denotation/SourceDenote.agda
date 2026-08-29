@@ -53,7 +53,7 @@ open import Once.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
 open import Once.CanonicalName using (bare)
   using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-         fadd-info; fsub-info; fmul-info; i2f-info;
+         fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info; value-info; arrow-info; str-lit-info)
 
 open Once.Surface.Syntax.Expr
@@ -182,6 +182,7 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 ⟦ fadd a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM fadd-info fmt (va , vb))
 ⟦ fsub a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM fsub-info fmt (va , vb))
 ⟦ fmul a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM fmul-info fmt (va , vb))
+⟦ fdiv a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM fdiv-info fmt (va , vb))
 ⟦ i2f a ⟧ˢ fmt       dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → returnT (semM i2f-info fmt va)
 ⟦ div a b ⟧ˢ fmt      dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM div-info fmt (va , vb))
 ⟦ mod' a b ⟧ˢ fmt     dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (semM mod-info fmt (va , vb))

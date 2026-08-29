@@ -257,6 +257,13 @@ instr-text (Xfmul-rr dst src) =
 -- CLOBBERS a second register, and the correspondence models this instruction
 -- as a SINGLE write. Complementing the bit in place keeps the model honest
 -- rather than needing the `rax` peel that `Xsdiv-pow2-rri` carries.
+-- Three-address, so both sources are read into the FP scratch pair BEFORE
+-- the destination is written — which is what lets `dst` alias `b`.
+instr-text (Xfdiv-rrr dst a b) =
+  "    movq " ++ reg-text a ++ ", %xmm0\n" ++
+  "    movq " ++ reg-text b ++ ", %xmm1\n" ++
+  "    divsd %xmm1, %xmm0\n" ++
+  "    movq %xmm0, " ++ reg-text dst ++ "\n"
 instr-text (Xfneg-r dst) =
   "    btcq $63, " ++ reg-text dst ++ "\n"
 instr-text (Xi2f-r dst src) =

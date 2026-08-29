@@ -138,6 +138,11 @@ data XInstr : Set where
   Xfadd-rr  : XReg → XReg → XInstr           -- dst := dst `fadd` src
   Xfsub-rr  : XReg → XReg → XInstr
   Xfmul-rr  : XReg → XReg → XInstr
+  -- | THREE-address, unlike its `fadd`/`fmul` neighbours, and for the same
+  -- reason `Xdiv-rrr` is: division does not commute, so the 2-address
+  -- `dst := dst op src` form cannot express `dst := a / b` when `dst` is
+  -- `b` — which is exactly the register assignment `compile-go` produces.
+  Xfdiv-rrr : XReg → XReg → XReg → XInstr    -- dst := a / b (correctly rounded)
 
   -- | REVERSE subtract: `dst := src − dst`. It exists to avoid a PROOF, and
   -- that is worth stating. `compile-go` leaves the subtrahend in `dst`, so the

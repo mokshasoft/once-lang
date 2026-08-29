@@ -149,6 +149,9 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   fadd  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   fsub  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   fmul  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
+  -- Division joins them (`Once.Float.Arith.fdiv`, correctly rounded via the
+  -- sticky bit). TOTAL, so unlike integer `div` it carries no guard.
+  fdiv  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Float → Expr Γ Ψ₂ Float → Expr Γ (Ψ₁ +ᵘ Ψ₂) Float
   -- PLAN 0.75 F4 / D125: the widening itself, as a NODE rather than a silent
   -- retyping. `1 + 1.5` elaborates to `fadd (i2f 1) 1.5`, so the conversion is
   -- visible in the surface term, has its own SigOp, and lowers to a real

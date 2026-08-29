@@ -137,6 +137,8 @@ val-x86-64 (XI.Xneg-r d)              s _ = W.⊝ (rd s d)
 val-x86-64 (XI.Xfadd-rr d src)         s _ = FA.fadd binary64 (rd s d) (rd s src)
 val-x86-64 (XI.Xfsub-rr d src)         s _ = FA.fsub binary64 (rd s d) (rd s src)
 val-x86-64 (XI.Xfmul-rr d src)         s _ = FA.fmul binary64 (rd s d) (rd s src)
+-- Three-address, so both operands are read from their own registers.
+val-x86-64 (XI.Xfdiv-rrr d a b)         s _ = FA.fdiv binary64 (rd s a) (rd s b)
 val-x86-64 (XI.Xfsubr-rr d src)        s _ = FA.fsub binary64 (rd s src) (rd s d)
 val-x86-64 (XI.Xfneg-r d)              s _ = FA.fneg binary64 (rd s d)
 val-x86-64 (XI.Xi2f-r d src)           s _ = FA.i2f binary64 (W.toℤ (rd s src))

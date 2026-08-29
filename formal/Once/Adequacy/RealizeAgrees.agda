@@ -455,7 +455,8 @@ agree-RBinOp Raw.OpSub (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) r
   rewrite s₁ refl dγ k | s₂ refl dγ k = refl
 agree-RBinOp Raw.OpMul (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
   rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpDiv (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
+agree-RBinOp Raw.OpDiv (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
 agree-RBinOp Raw.OpMod (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
 agree-RBinOp Raw.OpLt (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
 agree-RBinOp Raw.OpLe (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
@@ -478,8 +479,10 @@ agree-RBinOp Raw.OpMul (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) ref
   rewrite s₁ refl dγ k | s₂ refl dγ k = refl
 agree-RBinOp Raw.OpMul (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
   rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpDiv (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
-agree-RBinOp Raw.OpDiv (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) () s₁ s₂
+agree-RBinOp Raw.OpDiv (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp Raw.OpDiv (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
+  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
 agree-RBinOp Raw.OpMod (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
 agree-RBinOp Raw.OpMod (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) () s₁ s₂
 agree-RBinOp Raw.OpLt (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂

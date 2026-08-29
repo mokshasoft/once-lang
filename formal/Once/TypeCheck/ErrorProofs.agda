@@ -623,7 +623,7 @@ binop-right-err-wraps ctx Raw.OpMul e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
 binop-right-err-wraps ctx Raw.OpDiv e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
 ... | refl with eqOuter
-...   | refl = refl
+...   | ()
 binop-right-err-wraps ctx Raw.OpMod e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
     | success Int _ _ _ _ , _ | success T.Float _ _ _ _ , _ with eqAsInt₂
 ... | refl with eqOuter

@@ -704,6 +704,8 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.fsub a b) =
   Surface.fsub (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
 resolveExprWF polys pAcc imps userFns fresh (Surface.fmul a b) =
   Surface.fmul (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
+resolveExprWF polys pAcc imps userFns fresh (Surface.fdiv a b) =
+  Surface.fdiv (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
 resolveExprWF polys pAcc imps userFns fresh (Surface.i2f a) =
   Surface.i2f (resolveExprWF polys pAcc imps userFns fresh a)
 resolveExprWF polys pAcc imps userFns fresh (Surface.div a b) =
@@ -1593,13 +1595,19 @@ _ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1 0) (Raw.RInt (+ 1
       ≡ failure (BinOpRightError (TypeMismatch Float Int))
 _ = refl
 
--- `/` and `%` on floats have no lowering, so they REPORT. `Once.Float.Arith`
--- records why each is absent; this is where the user-visible consequence is
--- pinned, so removing the restriction cannot happen silently.
+-- `/` on floats LOWERS now: `Once.Float.Arith.fdiv` is the correctly-rounded
+-- quotient (a sticky bit through the division), pinned against the machine on
+-- both formats, so the restriction this pin used to record is gone. The pin is
+-- kept and FLIPPED rather than deleted, so the change is legible here.
 _ : inferElab emptyCtx (Raw.RBinOp Raw.OpDiv (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 0 1 6))
-      ≡ failure (BinOpLeftError (TypeMismatch Int Float))
+      ≡ success Float (zeroUsage +ᵘ zeroUsage)
+          (Surface.fdiv (Surface.float (decimalOf 1 5 1)) (Surface.float (decimalOf 2 0 1)))
+          (0 ⊔ 0) (NamedCtx.freshCounter emptyCtx)
 _ = refl
 
+-- `%` still reports: IEEE's `fmod` is a different function from integer
+-- remainder and D055's `a = (a/b)*b + (a%b)` does not survive rounding, so it
+-- needs its own decision before it can have a lowering.
 _ : inferElab emptyCtx (Raw.RBinOp Raw.OpMod (Raw.RFloat 1 5 1 0) (Raw.RFloat 2 0 1 6))
       ≡ failure (BinOpLeftError (TypeMismatch Int Float))
 _ = refl

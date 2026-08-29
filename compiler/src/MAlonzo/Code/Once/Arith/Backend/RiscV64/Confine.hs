@@ -159,67 +159,74 @@ d_writes_10 v0
                 MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsubr'45'rr_62 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfdiv'45'rrr_62 v1 v2 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfneg'45'r_64 v1
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsubr'45'rr_64 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xi2f'45'r_66 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfneg'45'r_66 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'fimm_68 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xi2f'45'r_68 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_70 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'fimm_70 v1 v2
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe
                 MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'reg_10
                 (coe v1))
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_72 v1
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_72 v1 v2
+        -> coe
+             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+             (coe
+                MAlonzo.Code.Once.Arith.Backend.RiscV64.Emit.d_arith'45'reg_10
+                (coe v1))
+             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_74 v1
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
              (coe MAlonzo.Code.Once.Target.RiscV64.PhysReg.C_a0_18)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.RiscV64.Confine.NotCCC
-d_NotCCC_56 ::
+d_NotCCC_58 ::
   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 -> ()
-d_NotCCC_56 = erased
+d_NotCCC_58 = erased
 -- Once.Arith.Backend.RiscV64.Confine.arith-notccc
-d_arith'45'notccc_62 ::
+d_arith'45'notccc_64 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XReg_10 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_arith'45'notccc_62 = erased
+d_arith'45'notccc_64 = erased
 -- Once.Arith.Backend.RiscV64.Confine.a0-notccc
-d_a0'45'notccc_70 ::
+d_a0'45'notccc_72 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_a0'45'notccc_70 = erased
+d_a0'45'notccc_72 = erased
 -- Once.Arith.Backend.RiscV64.Confine.confined
-d_confined_74 ::
+d_confined_76 ::
   MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_confined_74 v0
+d_confined_76 v0
   = case coe v0 of
       MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'imm_26 v1 v2
         -> coe
@@ -295,35 +302,39 @@ d_confined_74 v0
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsubr'45'rr_62 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfdiv'45'rrr_62 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfneg'45'r_64 v1
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfsubr'45'rr_64 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xi2f'45'r_66 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xfneg'45'r_66 v1
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'fimm_68 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xi2f'45'r_68 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_70 v1 v2
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'fimm_70 v1 v2
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
-      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_72 v1
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'farg_72 v1 v2
+        -> coe
+             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
+             (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
+      MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.C_Xmov'45'out_74 v1
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60 erased
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.RiscV64.Confine.confined-instance
-d_confined'45'instance_120 ::
+d_confined'45'instance_124 ::
   MAlonzo.Code.Once.Arith.Backend.Adequacy.T_ArithEmitConfined_10
-d_confined'45'instance_120
+d_confined'45'instance_124
   = coe
       MAlonzo.Code.Once.Arith.Backend.Adequacy.C_constructor_54
-      (coe d_writes_10) (coe d_confined_74)
+      (coe d_writes_10) (coe d_confined_76)

@@ -357,5 +357,5 @@ d_x86'45'32_90
       (coe d_x86'45'32'45'functionPrologue_8)
       (coe d_x86'45'32'45'functionEpilogue_12)
       (coe
-         MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_emit'45'arith'45'blocks_204)
+         MAlonzo.Code.Once.Arith.Backend.X86Z45Z32.Emit.d_emit'45'arith'45'blocks_210)
       (coe MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg.d_convention_32)
