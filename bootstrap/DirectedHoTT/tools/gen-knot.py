@@ -1021,6 +1021,204 @@ def jrow_fields(row, tel):
         out.append(('κ', f))
     return ix, out
 
+
+# ---- the Wf TWIN -----------------------------------------------------------
+#
+# ★★★ A SECOND EMITTER OVER THE SAME DESCRIPTION — the pair
+#   `emit_icon`/`emit_iconwf` already is for the syntax rows, one level up.
+#   The row description gains NOTHING: a binder's telescope component is
+#   RECOVERED from the code expression it already carries.
+#
+# ⚠⚠ AND IT IS A TWIN OF `jrow_fields`, **NOT** OF `rend`.  Two nodes drop
+#   information the derivation needs: `jsub d p e` takes three arguments
+#   where `⊢jsub` takes FIVE, and `symN a p` takes two where `⊢symN` takes
+#   THREE — the missing ones are the transport's ENDPOINTS.  Recovering
+#   them from a finished expression is guesswork; building the derivation
+#   where `row.vals[0]` and `fst ⟨i⟩` are still in hand is not.
+#
+# ⚠ THE CONTROL IS THAT IT TYPECHECKS, not that it equals the
+#   hand-written proof.  Any inhabitant of `IConWf D I Θ C` is as good as
+#   any other, and this emitter deliberately produces a DIFFERENT one —
+#   `toI (fromI d)` where `Knot/Lookup` writes `d`, for instance.
+#   Demanding proof-term equality would be a STRONGER demand than
+#   correctness, and one a stray coercion would break.
+
+# a smart constructor's typing lemma: (head, arg roles, post-conversion)
+#   N  — coerce the argument to native `Nat`
+#   MU — coerce it to a native `IMu`
+#   IX — the argument is a `pair`; emit `⊢ixP` over it
+WF_CTOR = {
+    "Ctx-extK": ("⊢Ctx-extKv", ["N", "MU", "MU"], None),
+    "Var-vzK":  ("⊢Var-vzKv",  ["N"],             None),
+    "Var-vsK":  ("⊢Var-vsKv",  ["N", "MU"],       None),
+    # ★ `wkK` lands at `sh (pair s m)` while the ford wants
+    #   `pair s (nsuc m)` — the same two β-steps every time.
+    "wkK":      ("⊢wkK",       ["IX", "MU"],      "WK"),
+}
+
+def _telty(comp):
+    return ('nat',) if comp[0] == 'tnat' else ('mu', comp)
+
+def _famwf(comp):
+    return "CtxWf" if comp[0] == 'tctx' else "KnotWf"
+
+def _ixderiv(comp, dnat):
+    """the family's INDEX derivation, from one at native `Nat`.
+    ⚠ `CtxD`'s index is `INat` — already `El ⌜Nat⌝` — and `KnotD`'s is
+      `Σ' Nat Nat`.  The two want OPPOSITE coercions, and this is the
+      only place that difference is written down."""
+    if comp[0] == 'tctx': return "toI " + par(dnat)
+    return "⊢ixP ⊢%s %s" % (comp[1], par(dnat))
+
+def _codewf(comp, dnat):
+    "…and that the CODE itself is in `U`"
+    if comp[0] == 'tnat': return "⊢⌜Nat⌝"
+    return "⊢⌜IMu⌝ %s %s" % (_famwf(comp), par(_ixderiv(comp, dnat)))
+
+def _binder_comp(code):
+    """(component, depth-expression) recovered from a binder's CODE.
+    ★ So the description does not have to say twice what it already says
+      once — and the two emitters cannot drift apart about it."""
+    if code[0] == 'raw':                       # ⌜Nat⌝
+        return TNAT(), None
+    _, h, args = code
+    assert h == "⌜IMu⌝", code
+    fam = args[0][1]
+    if fam == "CtxD": return TCTX(), args[2]
+    return TKNOT(args[2][1][1]), args[2][2]    # PAIR(RAW(sort), depth)
+
+def jd(e, k, ix, binders, tel):
+    """(text, ty) — `e`'s derivation at `k` bound fields, at its NATIVE
+    type.  ty is ('nat',) | ('mu', comp) | ('tel', c) | ('u',)."""
+    t = e[0]
+    if t == 'v':
+        comp = binders[e[1]]
+        txt = dbd(k - 1 - ix[e[1]])
+        if comp[0] == 'tnat': return ("fromI (%s)" % txt, ('nat',))
+        return ("fromMu (%s)" % txt, ('mu', comp))
+    if t == 'amb':
+        return (dbd(k), ('tel', 0))
+    if t == 'raw':
+        if e[1] == "⌜Nat⌝": return ("⊢⌜Nat⌝", ('u',))
+        return ("⊢" + e[1], ('nat',))
+    if t == 'nsuc':
+        return ("⊢nsuc " + par(jdAt(e[1], k, ix, binders, tel, 'nat')), ('nat',))
+    if t == 'pair':
+        return ("⊢ixP %s %s" % (par(jdAt(e[1], k, ix, binders, tel, 'nat')),
+                                par(jdAt(e[2], k, ix, binders, tel, 'nat'))),
+                ('ipair',))
+    if t == 'ap':
+        h, args = e[1], e[2]
+        if h in ('fst', 'snd'):
+            inner, ity = jd(args[0], k, ix, binders, tel)
+            assert ity[0] == 'tel', ("projection off a non-telescope", e)
+            c = ity[1]
+            if h == 'fst':
+                return ("⊢fst " + par(inner), _telty(tel[c]))
+            # ⚠ THE LAST COMPONENT HAS NO `fst`.  A right-nested Σ ends
+            #   bare, and off by one here is a derivation that still
+            #   typechecks — at a DIFFERENT component.
+            nxt = ('tel', c + 1) if c + 2 < len(tel) else _telty(tel[c + 1])
+            return ("⊢snd " + par(inner), nxt)
+        if h in WF_CTOR:
+            head, roles, post = WF_CTOR[h]
+            ds = []
+            for a, r in zip(args, roles):
+                ds.append(par(jd(a, k, ix, binders, tel)[0]) if r == 'IX'
+                          else par(jdAt(a, k, ix, binders, tel,
+                                        'nat' if r == 'N' else 'mu')))
+            txt = head + "".join(" " + d for d in ds)
+            if post == 'WK':
+                txt = ("muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) "
+                       "(muFwd (ξ-pairˡ (βfst _ _)) (%s))" % txt)
+            return (txt, ('mu', ('opaque',)))
+        raise ValueError("no Wf rule for head %r" % (h,))
+    raise ValueError(e)
+
+def jdAt(e, k, ix, binders, tel, want):
+    "…coerced to `want` ∈ {'nat', 'mu', 'el'}"
+    txt, ty = jd(e, k, ix, binders, tel)
+    if ty[0] == 'tel': ty = _telty(tel[ty[1]])
+    if want != 'el': return txt
+    return ("toI " if ty[0] == 'nat' else "toMu ") + par(txt)
+
+def emit_jrowwf(row, tel, pre, ity, wfname):
+    """the `IConWf` chain for one row — one lemma per field, innermost
+    first, exactly as `Knot/Lookup` writes them by hand.
+
+    ⚠ `D` STAYS A PARAMETER: `IConWf` mentions it only at `iwf-ρ`."""
+    ix, fs = jrow_fields(row, tel)
+    T, F = pre
+    bty = {nm: _binder_comp(code)[0] for nm, code in row.binders}
+    bdep = {nm: _binder_comp(code)[1] for nm, code in row.binders}
+    n, nb, npr = len(tel), len(row.binders), len(row.prems)
+    depth_at = ix.get('#depth')
+    L, W = [], "W_" + T
+    for k in range(len(fs) - 1, -1, -1):
+        kind, e = fs[k]
+        vis = {nm: j for nm, j in ix.items() if j < k or nm == '#depth'}
+        damb, inner = dbd(k), ("iwf-ι" if k == len(fs) - 1 else "%s%d" % (W, k + 1))
+        if kind == 'ρ':
+            raise NotImplementedError("iwf-ρ: the recursive premise's index tuple")
+        if k < nb:
+            comp = bty[row.binders[k][0]]
+            if comp[0] == 'tnat':
+                rung = "iwf-κ %s%d (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝" % (F, k)
+            else:
+                dep = bdep[row.binders[k][0]]
+                dnat = jdAt(dep, k, vis, bty, tel, 'nat')
+                rung = ("iwf-κ %s%d (icw-imu %s %s)\n    %s"
+                        % (F, k, par(rend(_ixterm(comp, dep), k, vis)),
+                           _famwf(comp), par(_codewf(comp, dnat))))
+        else:
+            c = k - nb - npr
+            d0 = jdAt(row.vals[0], k, vis, bty, tel, 'nat')
+            if c == 0:
+                rung = ("iwf-κ %s%d (icw-ford _ _ _)\n"
+                        "    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (%s))) (toI %s))"
+                        % (F, k, damb, par(d0)))
+            else:
+                comp = tel[c]
+                rung = ("iwf-κ %s%d (icw-ford _ _ _)\n"
+                        "    (⊢⌜Id⌝ %s\n"
+                        "           %s\n"
+                        "           (⊢jsub %s\n"
+                        "                  (toI %s)\n"
+                        "                  (toI (⊢fst (%s)))\n"
+                        "                  (⊢symN (⊢fst (%s)) %s\n"
+                        "                         (fordAs (%s)))\n"
+                        "                  %s))"
+                        % (F, k,
+                           par(_codewf(comp, "⊢fst (%s)" % damb)),
+                           par(jdAt(_proj(c, n, AMB), k, vis, bty, tel, 'el')),
+                           par(_codewf(comp, "fromI (⊢var here)")),
+                           par(d0), damb, damb, par(d0),
+                           dbd(k - 1 - depth_at),
+                           par(jdAt(row.vals[c], k, vis, bty, tel, 'el'))))
+        L.append("%s%d : (D : IDesc) → IConWf D %s %s%d %s"
+                 % (W, k, ity, T, k, _conFrom(fs, F, k)))
+        L.append("%s%d D =\n  %s\n    (%s)" % (W, k, rung,
+                 inner if inner == "iwf-ι" else inner + " D"))
+        L.append("")
+    L.append("%s : (D : IDesc) → IConWf D %s %s0 %s" % (wfname, ity, T, row.name))
+    L.append("%s = %s0" % (wfname, W))
+    return "\n".join(reversed_blocks(L))
+
+def reversed_blocks(L):
+    "the rungs come out innermost-first; Agda wants them declared that way"
+    return L
+
+def _ixterm(comp, dep):
+    "the index TERM an `icw-imu` names"
+    return dep if comp[0] == 'tctx' else PAIR(RAW(comp[1]), dep)
+
+def _conFrom(fs, F, k):
+    "the ICon suffix from field `k` on"
+    body = "iι"
+    for j in range(len(fs) - 1, k - 1, -1):
+        body = "%s %s%d (%s)" % ('iκ' if fs[j][0] == 'κ' else 'iρ', F, j, body)
+    return "(%s)" % body
+
 def emit_jrow(row, tel, pre, ity, idesc):
     """the Θ/κ/ICon chain for one row.  `pre` names the row's telescope
     variables (`Θ`/`κ` for one row, `Ξ`/`λ` for the next…).
@@ -1087,7 +1285,7 @@ module DirectedHoTT.Examples.Knot.LookupGen where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; var; vz; vs; pair; fst; snd; nsuc; El; IMu
-        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; ICon; iι; iρ; iκ; εwkTy )
+        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; ICon; IDesc; iι; iρ; iκ; εwkTy )
 open import DirectedHoTT.Spec.Typing using ( Ctx; ◇; _▹_; ⌊_⌋ )
 open import DirectedHoTT.Examples.Knot.Sorts using ( IPair; sTy; sVar )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
@@ -1095,6 +1293,19 @@ open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; Ctx-extK )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
 open import DirectedHoTT.Lib.ArithComm using ( symN )
+open import DirectedHoTT.Spec.Typing
+  using ( IConWf; iwf-ι; iwf-κ; ICodeWf; icw-clo; icw-ford; icw-imu
+        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nsuc
+        ; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
+        ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
+open import DirectedHoTT.Examples.Knot.Sorts
+  using ( toI; fromI; ⊢ixP; ⊢sTy; ⊢sVar )
+open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
+open import DirectedHoTT.Examples.Knot.CtxD using ( CtxWf; ⊢Ctx-extKv )
+open import DirectedHoTT.Examples.Knot.Build using ( ⊢Var-vzKv; ⊢Var-vsKv )
+open import DirectedHoTT.Examples.Knot.Wk using ( ⊢wkK )
+open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
+open import DirectedHoTT.Lib.ArithComm using ( ⊢symN )
 open import DirectedHoTT.Examples.Knot.Lookup
   using ( ILk; LkD; lkHere; lkThere )
 
@@ -1124,6 +1335,17 @@ def gen_lookupgen():
        AP("wkK", PAIR(RAW("sTy"), V("m")), V("A"))])
     L = [LOOKUPGEN_HDR,
          emit_jrow(here, TEL, ("Θ", "κ"), "ILk", "LkD"), "",
+         "-" * 72,
+         "-- ★★★ AND ITS WELL-FORMEDNESS, FROM THE SAME DESCRIPTION.",
+         "--",
+         "-- ⚠ THE CONTROL HERE IS THAT IT TYPECHECKS, not that it equals",
+         "--   `Knot/Lookup`'s hand-written chain.  Any inhabitant of",
+         "--   `IConWf D I Θ C` is as good as any other, and this one is",
+         "--   deliberately different (`toI (fromI d)` where the hand-written",
+         "--   proof writes `d`).  Proof-term equality would be a STRONGER",
+         "--   demand than correctness.",
+         "-" * 72, "",
+         emit_jrowwf(here, TEL, ("Θ", "κ"), "ILk", "lkHereWfG"), "",
          emit_jrow(there, TEL, ("Ξ", "λ"), "ILk", "LkD"), "",
          "------------------------------------------------------------------------",
          "-- ★★★ THE CONTROL: generated ≡ hand-written, both rows.",
