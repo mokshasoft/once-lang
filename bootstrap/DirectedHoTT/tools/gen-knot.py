@@ -998,7 +998,8 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
     unk = []
     def walk(e):
         if e[0] == "a":
-            if e[1] not in CT and e[1] not in known: unk.append(e[1])
+            if e[1] not in CT and e[1] not in known and e[1] not in ("renTm", "vs"):
+                unk.append(e[1])
             return
         for x in e[1]: walk(x)
     walk(_parse_spine(_tokens(lhs))); walk(_parse_spine(_tokens(rhs)))
@@ -1033,7 +1034,9 @@ def _jrows(J, CT):
         if t[1] is None: skipped.append((t[0], t[2])); continue
         nm, binders, prems, lhs, rhs, foreign = t
         bs, dep = [(_DEPTH, _code(TNAT(), None))], {}
+        _BSORT.clear()
         for b, srt, dp in binders:
+            _BSORT[b] = srt
             dep[b] = dp
             bs.append((b, _code(TNAT(), None) if srt == "nat"
                           else _code(TKNOT(srt), _depth_at(dp))))
@@ -1092,6 +1095,7 @@ open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
+open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -2147,8 +2151,19 @@ def _shift(dep, E):
         return e
     return dep
 
+# ★ the SORT of each binder, for `renTm`'s translation.  Set per row.
+_BSORT = {}
+
 def _val(e, CT, dep):
-    "a parsed Agda spine → the row description's value language"
+    """a parsed Agda spine → the row description's value language.
+
+    ⚠ `renTm vs X` IS OBJECT-LEVEL WEAKENING, i.e. `wkK`.  It appears in
+      `Hom-U`/`Hom-Π`, whose right-hand sides push a term under the Π
+      they introduce.  ★ `wkK` and its `⊢wkK` already existed — they are
+      what `_∋_∷_`'s `A` component uses — so this is a translation gap,
+      not a missing lemma, and the third time that has been the answer.
+    ⚠ Its index argument is the SOURCE index, so it takes the PREDECESSOR
+      of the depth at that position — the same rule as `Var-vzK`."""
     if e[0] == "a":
         h = e[1]
         if h in CT:
@@ -2158,6 +2173,11 @@ def _val(e, CT, dep):
     args = e[1]
     h = args[0]
     assert h[0] == "a", h
+    if h[1] == "renTm" and len(args) == 3:
+        x = args[2]
+        srt = _BSORT.get(x[1] if x[0] == "a" else None, "sTm")
+        p = _pred(dep)
+        return AP("wkK", PAIR(RAW(srt), p), _val(x, CT, p))
     if h[1] in CT:
         c = CT[h[1]]
         fds = FIELD_DEPTH.get(c, [])

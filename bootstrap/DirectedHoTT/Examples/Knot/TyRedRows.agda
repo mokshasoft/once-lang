@@ -37,6 +37,7 @@ open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
+open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -47,9 +48,7 @@ ITyRed : RTy ε
 ITyRed = Σ' Nat (Σ' (IMu KnotD IPair (pair sTy (var vz)))
                   (IMu KnotD IPair (pair sTy (var (vs vz)))))
 
--- ⚠ NOT EMITTED — 2 of 26 rules:
---     Hom-U        unmapped ['renTm']
---     Hom-Π        unmapped ['renTm']
+-- ⚠ NOT EMITTED — 0 of 26 rules:
 
 -- El-⌜base⌝
 TyRedΑ0 : Ctx
@@ -800,7 +799,7 @@ TyRedΡ6 = TyRedΡ5 ▹ El kTyRedΡ5
 rdHom-Nat-ss : ICon (ε ∙)
 rdHom-Nat-ss = iκ kTyRedΡ0 (iκ kTyRedΡ1 (iκ kTyRedΡ2 (iκ kTyRedΡ3 (iκ kTyRedΡ4 (iκ kTyRedΡ5 (iι))))))
 
--- ξ-Homᵀ
+-- Hom-U
 TyRedΣ0 : Ctx
 TyRedΣ0 = ◇ ▹ εwkTy ITyRed
 
@@ -811,57 +810,39 @@ TyRedΣ1 : Ctx
 TyRedΣ1 = TyRedΣ0 ▹ El kTyRedΣ0
 
 kTyRedΣ1 : RTm ⌊ TyRedΣ1 ⌋
-kTyRedΣ1 = ⌜IMu⌝ KnotD IPair (pair sTy (var vz))
+kTyRedΣ1 = ⌜IMu⌝ KnotD IPair (pair sTm (var vz))
 
 TyRedΣ2 : Ctx
 TyRedΣ2 = TyRedΣ1 ▹ El kTyRedΣ1
 
 kTyRedΣ2 : RTm ⌊ TyRedΣ2 ⌋
-kTyRedΣ2 = ⌜IMu⌝ KnotD IPair (pair sTy (var (vs vz)))
+kTyRedΣ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
 
 TyRedΣ3 : Ctx
 TyRedΣ3 = TyRedΣ2 ▹ El kTyRedΣ2
 
 kTyRedΣ3 : RTm ⌊ TyRedΣ3 ⌋
-kTyRedΣ3 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs vz))))
+kTyRedΣ3 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) (var (vs (vs vz)))
 
 TyRedΣ4 : Ctx
 TyRedΣ4 = TyRedΣ3 ▹ El kTyRedΣ3
 
 kTyRedΣ4 : RTm ⌊ TyRedΣ4 ⌋
-kTyRedΣ4 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs (vs vz)))))
+kTyRedΣ4 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs vz)))))))) (fst (snd (var (vs (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs vz)))))) (var vz)) (Ty-HomK Ty-UK (var (vs (vs vz))) (var (vs vz))))
 
 TyRedΣ5 : Ctx
 TyRedΣ5 = TyRedΣ4 ▹ El kTyRedΣ4
 
 kTyRedΣ5 : RTm ⌊ TyRedΣ5 ⌋
-kTyRedΣ5 = pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs (vs vz)))) (var (vs (vs vz))))
+kTyRedΣ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs vz))))))))) (snd (snd (var (vs (vs (vs (vs (vs vz)))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs vz))) (Ty-PiK (Ty-ElK (var (vs (vs (vs vz))))) (Ty-ElK (wkK (pair sTm (var (vs (vs (vs (vs vz)))))) (var (vs (vs vz)))))))
 
-XTyRedΣ6 : Cx
-XTyRedΣ6 = ⌊ TyRedΣ5 ⌋ ∙
+TyRedΣ6 : Ctx
+TyRedΣ6 = TyRedΣ5 ▹ El kTyRedΣ5
 
-kTyRedΣ6 : RTm XTyRedΣ6
-kTyRedΣ6 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))
+rdHom-U : ICon (ε ∙)
+rdHom-U = iκ kTyRedΣ0 (iκ kTyRedΣ1 (iκ kTyRedΣ2 (iκ kTyRedΣ3 (iκ kTyRedΣ4 (iκ kTyRedΣ5 (iι))))))
 
-XTyRedΣ7 : Cx
-XTyRedΣ7 = XTyRedΣ6 ∙
-
-kTyRedΣ7 : RTm XTyRedΣ7
-kTyRedΣ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-HomK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz)))) (var (vs (vs vz)))))
-
-XTyRedΣ8 : Cx
-XTyRedΣ8 = XTyRedΣ7 ∙
-
-kTyRedΣ8 : RTm XTyRedΣ8
-kTyRedΣ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-HomK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
-
-XTyRedΣ9 : Cx
-XTyRedΣ9 = XTyRedΣ8 ∙
-
-rdξ-Homᵀ : ICon (ε ∙)
-rdξ-Homᵀ = iκ kTyRedΣ0 (iκ kTyRedΣ1 (iκ kTyRedΣ2 (iκ kTyRedΣ3 (iκ kTyRedΣ4 (iρ kTyRedΣ5 (iκ kTyRedΣ6 (iκ kTyRedΣ7 (iκ kTyRedΣ8 (iι)))))))))
-
--- ξ-Homˡ
+-- Hom-Π
 TyRedΤ0 : Ctx
 TyRedΤ0 = ◇ ▹ εwkTy ITyRed
 
@@ -878,7 +859,7 @@ TyRedΤ2 : Ctx
 TyRedΤ2 = TyRedΤ1 ▹ El kTyRedΤ1
 
 kTyRedΤ2 : RTm ⌊ TyRedΤ2 ⌋
-kTyRedΤ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
+kTyRedΤ2 = ⌜IMu⌝ KnotD IPair (pair sTy (nsuc (var (vs vz))))
 
 TyRedΤ3 : Ctx
 TyRedΤ3 = TyRedΤ2 ▹ El kTyRedΤ2
@@ -896,33 +877,27 @@ TyRedΤ5 : Ctx
 TyRedΤ5 = TyRedΤ4 ▹ El kTyRedΤ4
 
 kTyRedΤ5 : RTm ⌊ TyRedΤ5 ⌋
-kTyRedΤ5 = ⌜IMu⌝ RedD IRed (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs vz))) (var (vs vz))))
+kTyRedΤ5 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz)))))
 
 TyRedΤ6 : Ctx
 TyRedΤ6 = TyRedΤ5 ▹ El kTyRedΤ5
 
 kTyRedΤ6 : RTm ⌊ TyRedΤ6 ⌋
-kTyRedΤ6 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))
+kTyRedΤ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) (Ty-HomK (Ty-PiK (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))) (var (vs (vs vz))) (var (vs vz))))
 
 TyRedΤ7 : Ctx
 TyRedΤ7 = TyRedΤ6 ▹ El kTyRedΤ6
 
 kTyRedΤ7 : RTm ⌊ TyRedΤ7 ⌋
-kTyRedΤ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-HomK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs vz)))))
+kTyRedΤ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) (Ty-PiK (var (vs (vs (vs (vs (vs vz)))))) (Ty-HomK (var (vs (vs (vs (vs vz))))) (Tm-appK (wkK (pair sTm (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs vz))))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs (vs vz)))))))))) (Tm-appK (wkK (pair sTm (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs vz)))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs (vs vz)))))))))))))
 
 TyRedΤ8 : Ctx
 TyRedΤ8 = TyRedΤ7 ▹ El kTyRedΤ7
 
-kTyRedΤ8 : RTm ⌊ TyRedΤ8 ⌋
-kTyRedΤ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-HomK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
+rdHom-Π : ICon (ε ∙)
+rdHom-Π = iκ kTyRedΤ0 (iκ kTyRedΤ1 (iκ kTyRedΤ2 (iκ kTyRedΤ3 (iκ kTyRedΤ4 (iκ kTyRedΤ5 (iκ kTyRedΤ6 (iκ kTyRedΤ7 (iι))))))))
 
-TyRedΤ9 : Ctx
-TyRedΤ9 = TyRedΤ8 ▹ El kTyRedΤ8
-
-rdξ-Homˡ : ICon (ε ∙)
-rdξ-Homˡ = iκ kTyRedΤ0 (iκ kTyRedΤ1 (iκ kTyRedΤ2 (iκ kTyRedΤ3 (iκ kTyRedΤ4 (iκ kTyRedΤ5 (iκ kTyRedΤ6 (iκ kTyRedΤ7 (iκ kTyRedΤ8 (iι)))))))))
-
--- ξ-Homʳ
+-- ξ-Homᵀ
 TyRedΥ0 : Ctx
 TyRedΥ0 = ◇ ▹ εwkTy ITyRed
 
@@ -939,7 +914,7 @@ TyRedΥ2 : Ctx
 TyRedΥ2 = TyRedΥ1 ▹ El kTyRedΥ1
 
 kTyRedΥ2 : RTm ⌊ TyRedΥ2 ⌋
-kTyRedΥ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
+kTyRedΥ2 = ⌜IMu⌝ KnotD IPair (pair sTy (var (vs vz)))
 
 TyRedΥ3 : Ctx
 TyRedΥ3 = TyRedΥ2 ▹ El kTyRedΥ2
@@ -957,33 +932,33 @@ TyRedΥ5 : Ctx
 TyRedΥ5 = TyRedΥ4 ▹ El kTyRedΥ4
 
 kTyRedΥ5 : RTm ⌊ TyRedΥ5 ⌋
-kTyRedΥ5 = ⌜IMu⌝ RedD IRed (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs vz)) (var vz)))
+kTyRedΥ5 = pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs (vs vz)))) (var (vs (vs vz))))
 
-TyRedΥ6 : Ctx
-TyRedΥ6 = TyRedΥ5 ▹ El kTyRedΥ5
+XTyRedΥ6 : Cx
+XTyRedΥ6 = ⌊ TyRedΥ5 ⌋ ∙
 
-kTyRedΥ6 : RTm ⌊ TyRedΥ6 ⌋
+kTyRedΥ6 : RTm XTyRedΥ6
 kTyRedΥ6 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))
 
-TyRedΥ7 : Ctx
-TyRedΥ7 = TyRedΥ6 ▹ El kTyRedΥ6
+XTyRedΥ7 : Cx
+XTyRedΥ7 = XTyRedΥ6 ∙
 
-kTyRedΥ7 : RTm ⌊ TyRedΥ7 ⌋
-kTyRedΥ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-HomK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
+kTyRedΥ7 : RTm XTyRedΥ7
+kTyRedΥ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-HomK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz)))) (var (vs (vs vz)))))
 
-TyRedΥ8 : Ctx
-TyRedΥ8 = TyRedΥ7 ▹ El kTyRedΥ7
+XTyRedΥ8 : Cx
+XTyRedΥ8 = XTyRedΥ7 ∙
 
-kTyRedΥ8 : RTm ⌊ TyRedΥ8 ⌋
-kTyRedΥ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-HomK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))))
+kTyRedΥ8 : RTm XTyRedΥ8
+kTyRedΥ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-HomK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
 
-TyRedΥ9 : Ctx
-TyRedΥ9 = TyRedΥ8 ▹ El kTyRedΥ8
+XTyRedΥ9 : Cx
+XTyRedΥ9 = XTyRedΥ8 ∙
 
-rdξ-Homʳ : ICon (ε ∙)
-rdξ-Homʳ = iκ kTyRedΥ0 (iκ kTyRedΥ1 (iκ kTyRedΥ2 (iκ kTyRedΥ3 (iκ kTyRedΥ4 (iκ kTyRedΥ5 (iκ kTyRedΥ6 (iκ kTyRedΥ7 (iκ kTyRedΥ8 (iι)))))))))
+rdξ-Homᵀ : ICon (ε ∙)
+rdξ-Homᵀ = iκ kTyRedΥ0 (iκ kTyRedΥ1 (iκ kTyRedΥ2 (iκ kTyRedΥ3 (iκ kTyRedΥ4 (iρ kTyRedΥ5 (iκ kTyRedΥ6 (iκ kTyRedΥ7 (iκ kTyRedΥ8 (iι)))))))))
 
--- ξ-Idᵀ
+-- ξ-Homˡ
 TyRedΦ0 : Ctx
 TyRedΦ0 = ◇ ▹ εwkTy ITyRed
 
@@ -1000,7 +975,7 @@ TyRedΦ2 : Ctx
 TyRedΦ2 = TyRedΦ1 ▹ El kTyRedΦ1
 
 kTyRedΦ2 : RTm ⌊ TyRedΦ2 ⌋
-kTyRedΦ2 = ⌜IMu⌝ KnotD IPair (pair sTy (var (vs vz)))
+kTyRedΦ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
 
 TyRedΦ3 : Ctx
 TyRedΦ3 = TyRedΦ2 ▹ El kTyRedΦ2
@@ -1018,33 +993,33 @@ TyRedΦ5 : Ctx
 TyRedΦ5 = TyRedΦ4 ▹ El kTyRedΦ4
 
 kTyRedΦ5 : RTm ⌊ TyRedΦ5 ⌋
-kTyRedΦ5 = pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs (vs vz)))) (var (vs (vs vz))))
+kTyRedΦ5 = ⌜IMu⌝ RedD IRed (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs vz))) (var (vs vz))))
 
-XTyRedΦ6 : Cx
-XTyRedΦ6 = ⌊ TyRedΦ5 ⌋ ∙
+TyRedΦ6 : Ctx
+TyRedΦ6 = TyRedΦ5 ▹ El kTyRedΦ5
 
-kTyRedΦ6 : RTm XTyRedΦ6
+kTyRedΦ6 : RTm ⌊ TyRedΦ6 ⌋
 kTyRedΦ6 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))
 
-XTyRedΦ7 : Cx
-XTyRedΦ7 = XTyRedΦ6 ∙
+TyRedΦ7 : Ctx
+TyRedΦ7 = TyRedΦ6 ▹ El kTyRedΦ6
 
-kTyRedΦ7 : RTm XTyRedΦ7
-kTyRedΦ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-IdK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz)))) (var (vs (vs vz)))))
+kTyRedΦ7 : RTm ⌊ TyRedΦ7 ⌋
+kTyRedΦ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-HomK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs vz)))))
 
-XTyRedΦ8 : Cx
-XTyRedΦ8 = XTyRedΦ7 ∙
+TyRedΦ8 : Ctx
+TyRedΦ8 = TyRedΦ7 ▹ El kTyRedΦ7
 
-kTyRedΦ8 : RTm XTyRedΦ8
-kTyRedΦ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-IdK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
+kTyRedΦ8 : RTm ⌊ TyRedΦ8 ⌋
+kTyRedΦ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-HomK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
 
-XTyRedΦ9 : Cx
-XTyRedΦ9 = XTyRedΦ8 ∙
+TyRedΦ9 : Ctx
+TyRedΦ9 = TyRedΦ8 ▹ El kTyRedΦ8
 
-rdξ-Idᵀ : ICon (ε ∙)
-rdξ-Idᵀ = iκ kTyRedΦ0 (iκ kTyRedΦ1 (iκ kTyRedΦ2 (iκ kTyRedΦ3 (iκ kTyRedΦ4 (iρ kTyRedΦ5 (iκ kTyRedΦ6 (iκ kTyRedΦ7 (iκ kTyRedΦ8 (iι)))))))))
+rdξ-Homˡ : ICon (ε ∙)
+rdξ-Homˡ = iκ kTyRedΦ0 (iκ kTyRedΦ1 (iκ kTyRedΦ2 (iκ kTyRedΦ3 (iκ kTyRedΦ4 (iκ kTyRedΦ5 (iκ kTyRedΦ6 (iκ kTyRedΦ7 (iκ kTyRedΦ8 (iι)))))))))
 
--- ξ-Idˡ
+-- ξ-Homʳ
 TyRedΧ0 : Ctx
 TyRedΧ0 = ◇ ▹ εwkTy ITyRed
 
@@ -1079,7 +1054,7 @@ TyRedΧ5 : Ctx
 TyRedΧ5 = TyRedΧ4 ▹ El kTyRedΧ4
 
 kTyRedΧ5 : RTm ⌊ TyRedΧ5 ⌋
-kTyRedΧ5 = ⌜IMu⌝ RedD IRed (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs vz))) (var (vs vz))))
+kTyRedΧ5 = ⌜IMu⌝ RedD IRed (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs vz)) (var vz)))
 
 TyRedΧ6 : Ctx
 TyRedΧ6 = TyRedΧ5 ▹ El kTyRedΧ5
@@ -1091,21 +1066,21 @@ TyRedΧ7 : Ctx
 TyRedΧ7 = TyRedΧ6 ▹ El kTyRedΧ6
 
 kTyRedΧ7 : RTm ⌊ TyRedΧ7 ⌋
-kTyRedΧ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-IdK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs vz)))))
+kTyRedΧ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-HomK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
 
 TyRedΧ8 : Ctx
 TyRedΧ8 = TyRedΧ7 ▹ El kTyRedΧ7
 
 kTyRedΧ8 : RTm ⌊ TyRedΧ8 ⌋
-kTyRedΧ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-IdK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
+kTyRedΧ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-HomK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))))
 
 TyRedΧ9 : Ctx
 TyRedΧ9 = TyRedΧ8 ▹ El kTyRedΧ8
 
-rdξ-Idˡ : ICon (ε ∙)
-rdξ-Idˡ = iκ kTyRedΧ0 (iκ kTyRedΧ1 (iκ kTyRedΧ2 (iκ kTyRedΧ3 (iκ kTyRedΧ4 (iκ kTyRedΧ5 (iκ kTyRedΧ6 (iκ kTyRedΧ7 (iκ kTyRedΧ8 (iι)))))))))
+rdξ-Homʳ : ICon (ε ∙)
+rdξ-Homʳ = iκ kTyRedΧ0 (iκ kTyRedΧ1 (iκ kTyRedΧ2 (iκ kTyRedΧ3 (iκ kTyRedΧ4 (iκ kTyRedΧ5 (iκ kTyRedΧ6 (iκ kTyRedΧ7 (iκ kTyRedΧ8 (iι)))))))))
 
--- ξ-Idʳ
+-- ξ-Idᵀ
 TyRedΨ0 : Ctx
 TyRedΨ0 = ◇ ▹ εwkTy ITyRed
 
@@ -1122,7 +1097,7 @@ TyRedΨ2 : Ctx
 TyRedΨ2 = TyRedΨ1 ▹ El kTyRedΨ1
 
 kTyRedΨ2 : RTm ⌊ TyRedΨ2 ⌋
-kTyRedΨ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
+kTyRedΨ2 = ⌜IMu⌝ KnotD IPair (pair sTy (var (vs vz)))
 
 TyRedΨ3 : Ctx
 TyRedΨ3 = TyRedΨ2 ▹ El kTyRedΨ2
@@ -1140,33 +1115,33 @@ TyRedΨ5 : Ctx
 TyRedΨ5 = TyRedΨ4 ▹ El kTyRedΨ4
 
 kTyRedΨ5 : RTm ⌊ TyRedΨ5 ⌋
-kTyRedΨ5 = ⌜IMu⌝ RedD IRed (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs vz)) (var vz)))
+kTyRedΨ5 = pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs (vs vz)))) (var (vs (vs vz))))
 
-TyRedΨ6 : Ctx
-TyRedΨ6 = TyRedΨ5 ▹ El kTyRedΨ5
+XTyRedΨ6 : Cx
+XTyRedΨ6 = ⌊ TyRedΨ5 ⌋ ∙
 
-kTyRedΨ6 : RTm ⌊ TyRedΨ6 ⌋
+kTyRedΨ6 : RTm XTyRedΨ6
 kTyRedΨ6 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))
 
-TyRedΨ7 : Ctx
-TyRedΨ7 = TyRedΨ6 ▹ El kTyRedΨ6
+XTyRedΨ7 : Cx
+XTyRedΨ7 = XTyRedΨ6 ∙
 
-kTyRedΨ7 : RTm ⌊ TyRedΨ7 ⌋
-kTyRedΨ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-IdK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
+kTyRedΨ7 : RTm XTyRedΨ7
+kTyRedΨ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-IdK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz)))) (var (vs (vs vz)))))
 
-TyRedΨ8 : Ctx
-TyRedΨ8 = TyRedΨ7 ▹ El kTyRedΨ7
+XTyRedΨ8 : Cx
+XTyRedΨ8 = XTyRedΨ7 ∙
 
-kTyRedΨ8 : RTm ⌊ TyRedΨ8 ⌋
-kTyRedΨ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-IdK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))))
+kTyRedΨ8 : RTm XTyRedΨ8
+kTyRedΨ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-IdK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
 
-TyRedΨ9 : Ctx
-TyRedΨ9 = TyRedΨ8 ▹ El kTyRedΨ8
+XTyRedΨ9 : Cx
+XTyRedΨ9 = XTyRedΨ8 ∙
 
-rdξ-Idʳ : ICon (ε ∙)
-rdξ-Idʳ = iκ kTyRedΨ0 (iκ kTyRedΨ1 (iκ kTyRedΨ2 (iκ kTyRedΨ3 (iκ kTyRedΨ4 (iκ kTyRedΨ5 (iκ kTyRedΨ6 (iκ kTyRedΨ7 (iκ kTyRedΨ8 (iι)))))))))
+rdξ-Idᵀ : ICon (ε ∙)
+rdξ-Idᵀ = iκ kTyRedΨ0 (iκ kTyRedΨ1 (iκ kTyRedΨ2 (iκ kTyRedΨ3 (iκ kTyRedΨ4 (iρ kTyRedΨ5 (iκ kTyRedΨ6 (iκ kTyRedΨ7 (iκ kTyRedΨ8 (iι)))))))))
 
--- ξ-IMu
+-- ξ-Idˡ
 TyRedΩ0 : Ctx
 TyRedΩ0 = ◇ ▹ εwkTy ITyRed
 
@@ -1177,13 +1152,13 @@ TyRedΩ1 : Ctx
 TyRedΩ1 = TyRedΩ0 ▹ El kTyRedΩ0
 
 kTyRedΩ1 : RTm ⌊ TyRedΩ1 ⌋
-kTyRedΩ1 = ⌜IMu⌝ KnotD IPair (pair sIDesc (var vz))
+kTyRedΩ1 = ⌜IMu⌝ KnotD IPair (pair sTy (var vz))
 
 TyRedΩ2 : Ctx
 TyRedΩ2 = TyRedΩ1 ▹ El kTyRedΩ1
 
 kTyRedΩ2 : RTm ⌊ TyRedΩ2 ⌋
-kTyRedΩ2 = ⌜IMu⌝ KnotD IPair (pair sTy nzero)
+kTyRedΩ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
 
 TyRedΩ3 : Ctx
 TyRedΩ3 = TyRedΩ2 ▹ El kTyRedΩ2
@@ -1201,7 +1176,7 @@ TyRedΩ5 : Ctx
 TyRedΩ5 = TyRedΩ4 ▹ El kTyRedΩ4
 
 kTyRedΩ5 : RTm ⌊ TyRedΩ5 ⌋
-kTyRedΩ5 = ⌜IMu⌝ RedD IRed (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs vz)) (var vz)))
+kTyRedΩ5 = ⌜IMu⌝ RedD IRed (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs vz))) (var (vs vz))))
 
 TyRedΩ6 : Ctx
 TyRedΩ6 = TyRedΩ5 ▹ El kTyRedΩ5
@@ -1213,19 +1188,141 @@ TyRedΩ7 : Ctx
 TyRedΩ7 = TyRedΩ6 ▹ El kTyRedΩ6
 
 kTyRedΩ7 : RTm ⌊ TyRedΩ7 ⌋
-kTyRedΩ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-IMuK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
+kTyRedΩ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-IdK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs vz)))))
 
 TyRedΩ8 : Ctx
 TyRedΩ8 = TyRedΩ7 ▹ El kTyRedΩ7
 
 kTyRedΩ8 : RTm ⌊ TyRedΩ8 ⌋
-kTyRedΩ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-IMuK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))))
+kTyRedΩ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-IdK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
 
 TyRedΩ9 : Ctx
 TyRedΩ9 = TyRedΩ8 ▹ El kTyRedΩ8
 
+rdξ-Idˡ : ICon (ε ∙)
+rdξ-Idˡ = iκ kTyRedΩ0 (iκ kTyRedΩ1 (iκ kTyRedΩ2 (iκ kTyRedΩ3 (iκ kTyRedΩ4 (iκ kTyRedΩ5 (iκ kTyRedΩ6 (iκ kTyRedΩ7 (iκ kTyRedΩ8 (iι)))))))))
+
+-- ξ-Idʳ
+TyRedΑΒ0 : Ctx
+TyRedΑΒ0 = ◇ ▹ εwkTy ITyRed
+
+kTyRedΑΒ0 : RTm ⌊ TyRedΑΒ0 ⌋
+kTyRedΑΒ0 = ⌜Nat⌝
+
+TyRedΑΒ1 : Ctx
+TyRedΑΒ1 = TyRedΑΒ0 ▹ El kTyRedΑΒ0
+
+kTyRedΑΒ1 : RTm ⌊ TyRedΑΒ1 ⌋
+kTyRedΑΒ1 = ⌜IMu⌝ KnotD IPair (pair sTy (var vz))
+
+TyRedΑΒ2 : Ctx
+TyRedΑΒ2 = TyRedΑΒ1 ▹ El kTyRedΑΒ1
+
+kTyRedΑΒ2 : RTm ⌊ TyRedΑΒ2 ⌋
+kTyRedΑΒ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
+
+TyRedΑΒ3 : Ctx
+TyRedΑΒ3 = TyRedΑΒ2 ▹ El kTyRedΑΒ2
+
+kTyRedΑΒ3 : RTm ⌊ TyRedΑΒ3 ⌋
+kTyRedΑΒ3 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs vz))))
+
+TyRedΑΒ4 : Ctx
+TyRedΑΒ4 = TyRedΑΒ3 ▹ El kTyRedΑΒ3
+
+kTyRedΑΒ4 : RTm ⌊ TyRedΑΒ4 ⌋
+kTyRedΑΒ4 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs (vs vz)))))
+
+TyRedΑΒ5 : Ctx
+TyRedΑΒ5 = TyRedΑΒ4 ▹ El kTyRedΑΒ4
+
+kTyRedΑΒ5 : RTm ⌊ TyRedΑΒ5 ⌋
+kTyRedΑΒ5 = ⌜IMu⌝ RedD IRed (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs vz)) (var vz)))
+
+TyRedΑΒ6 : Ctx
+TyRedΑΒ6 = TyRedΑΒ5 ▹ El kTyRedΑΒ5
+
+kTyRedΑΒ6 : RTm ⌊ TyRedΑΒ6 ⌋
+kTyRedΑΒ6 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))
+
+TyRedΑΒ7 : Ctx
+TyRedΑΒ7 = TyRedΑΒ6 ▹ El kTyRedΑΒ6
+
+kTyRedΑΒ7 : RTm ⌊ TyRedΑΒ7 ⌋
+kTyRedΑΒ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-IdK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
+
+TyRedΑΒ8 : Ctx
+TyRedΑΒ8 = TyRedΑΒ7 ▹ El kTyRedΑΒ7
+
+kTyRedΑΒ8 : RTm ⌊ TyRedΑΒ8 ⌋
+kTyRedΑΒ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-IdK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))))
+
+TyRedΑΒ9 : Ctx
+TyRedΑΒ9 = TyRedΑΒ8 ▹ El kTyRedΑΒ8
+
+rdξ-Idʳ : ICon (ε ∙)
+rdξ-Idʳ = iκ kTyRedΑΒ0 (iκ kTyRedΑΒ1 (iκ kTyRedΑΒ2 (iκ kTyRedΑΒ3 (iκ kTyRedΑΒ4 (iκ kTyRedΑΒ5 (iκ kTyRedΑΒ6 (iκ kTyRedΑΒ7 (iκ kTyRedΑΒ8 (iι)))))))))
+
+-- ξ-IMu
+TyRedΒΒ0 : Ctx
+TyRedΒΒ0 = ◇ ▹ εwkTy ITyRed
+
+kTyRedΒΒ0 : RTm ⌊ TyRedΒΒ0 ⌋
+kTyRedΒΒ0 = ⌜Nat⌝
+
+TyRedΒΒ1 : Ctx
+TyRedΒΒ1 = TyRedΒΒ0 ▹ El kTyRedΒΒ0
+
+kTyRedΒΒ1 : RTm ⌊ TyRedΒΒ1 ⌋
+kTyRedΒΒ1 = ⌜IMu⌝ KnotD IPair (pair sIDesc (var vz))
+
+TyRedΒΒ2 : Ctx
+TyRedΒΒ2 = TyRedΒΒ1 ▹ El kTyRedΒΒ1
+
+kTyRedΒΒ2 : RTm ⌊ TyRedΒΒ2 ⌋
+kTyRedΒΒ2 = ⌜IMu⌝ KnotD IPair (pair sTy nzero)
+
+TyRedΒΒ3 : Ctx
+TyRedΒΒ3 = TyRedΒΒ2 ▹ El kTyRedΒΒ2
+
+kTyRedΒΒ3 : RTm ⌊ TyRedΒΒ3 ⌋
+kTyRedΒΒ3 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs vz))))
+
+TyRedΒΒ4 : Ctx
+TyRedΒΒ4 = TyRedΒΒ3 ▹ El kTyRedΒΒ3
+
+kTyRedΒΒ4 : RTm ⌊ TyRedΒΒ4 ⌋
+kTyRedΒΒ4 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs (vs vz)))))
+
+TyRedΒΒ5 : Ctx
+TyRedΒΒ5 = TyRedΒΒ4 ▹ El kTyRedΒΒ4
+
+kTyRedΒΒ5 : RTm ⌊ TyRedΒΒ5 ⌋
+kTyRedΒΒ5 = ⌜IMu⌝ RedD IRed (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs vz)) (var vz)))
+
+TyRedΒΒ6 : Ctx
+TyRedΒΒ6 = TyRedΒΒ5 ▹ El kTyRedΒΒ5
+
+kTyRedΒΒ6 : RTm ⌊ TyRedΒΒ6 ⌋
+kTyRedΒΒ6 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))
+
+TyRedΒΒ7 : Ctx
+TyRedΒΒ7 = TyRedΒΒ6 ▹ El kTyRedΒΒ6
+
+kTyRedΒΒ7 : RTm ⌊ TyRedΒΒ7 ⌋
+kTyRedΒΒ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (Ty-IMuK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
+
+TyRedΒΒ8 : Ctx
+TyRedΒΒ8 = TyRedΒΒ7 ▹ El kTyRedΒΒ7
+
+kTyRedΒΒ8 : RTm ⌊ TyRedΒΒ8 ⌋
+kTyRedΒΒ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Ty-IMuK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))))
+
+TyRedΒΒ9 : Ctx
+TyRedΒΒ9 = TyRedΒΒ8 ▹ El kTyRedΒΒ8
+
 rdξ-IMu : ICon (ε ∙)
-rdξ-IMu = iκ kTyRedΩ0 (iκ kTyRedΩ1 (iκ kTyRedΩ2 (iκ kTyRedΩ3 (iκ kTyRedΩ4 (iκ kTyRedΩ5 (iκ kTyRedΩ6 (iκ kTyRedΩ7 (iκ kTyRedΩ8 (iι)))))))))
+rdξ-IMu = iκ kTyRedΒΒ0 (iκ kTyRedΒΒ1 (iκ kTyRedΒΒ2 (iκ kTyRedΒΒ3 (iκ kTyRedΒΒ4 (iκ kTyRedΒΒ5 (iκ kTyRedΒΒ6 (iκ kTyRedΒΒ7 (iκ kTyRedΒΒ8 (iι)))))))))
 
 ------------------------------------------------------------------------
 -- ★★★ …AND THE JUDGEMENT ITSELF.
@@ -1235,5 +1332,5 @@ TyRedD =
   rdEl-⌜base⌝ ◂ rdEl-⌜Π⌝ ◂ rdEl-⌜Σ⌝ ◂ rdEl-⌜Hom⌝ ◂ rdEl-⌜Id⌝ ◂ 
   rdEl-⌜Nat⌝ ◂ rdEl-⌜Mu⌝ ◂ rdEl-⌜IMu⌝ ◂ rdEl-⌜Unit⌝ ◂ rdξ-El ◂ 
   rdξ-Πˡ ◂ rdξ-Πʳ ◂ rdξ-Σˡ ◂ rdξ-Σʳ ◂ rdHom-Nat-z ◂ rdHom-Nat-sz ◂ 
-  rdHom-Nat-ss ◂ rdξ-Homᵀ ◂ rdξ-Homˡ ◂ rdξ-Homʳ ◂ rdξ-Idᵀ ◂ rdξ-Idˡ ◂ 
-  rdξ-Idʳ ◂ rdξ-IMu ◂ inil
+  rdHom-Nat-ss ◂ rdHom-U ◂ rdHom-Π ◂ rdξ-Homᵀ ◂ rdξ-Homˡ ◂ rdξ-Homʳ ◂ 
+  rdξ-Idᵀ ◂ rdξ-Idˡ ◂ rdξ-Idʳ ◂ rdξ-IMu ◂ inil
