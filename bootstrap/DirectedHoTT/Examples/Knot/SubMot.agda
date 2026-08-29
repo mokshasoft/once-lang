@@ -49,7 +49,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.SubMot where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; pair; snd; Nat; Π; IMu
@@ -60,7 +60,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; ⊢nzero; ⊢natrec; wk-single; ty-Nat; ty-Π; ty-IMu; ty-Unit
         ; IConWf; imethTy; imethsTyFrom; ty-Σ; βsnd; βfst; ξ-pairʳ; ξ-pairˡ; ξ-nsuc; single
-        ; _⟶*_; done; step; natrec-suc; natrec-zero; csymᵀ
+        ; _⟶*_; done; step; natrec-suc; natrec-zero; csymᵀ; iinst
         ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-El; ⊢ielim; imethsTy
         ; IDescWfFrom; idwf-nil; idwf-cons )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w; ren-w )
@@ -69,11 +69,11 @@ open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 import DirectedHoTT.Lib.ISub as IS
 open import DirectedHoTT.Lib.IWk using ( Maybe; just; nothing )
-open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; subTm )
+open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; subTm; extS )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
 open import DirectedHoTT.Metatheory.Confluence
-  using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-⌜Id⌝ˡ )
+  using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-⌜Id⌝ˡ )
 open import DirectedHoTT.Metatheory.Injectivity
   using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Πˡ; ⟶ᵀ*-El )
 open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
@@ -1132,3 +1132,90 @@ predSndSub v D =
                            (⊢wk dsb))
                    (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ
                      (⟶ᵀ*-IMu (⟶*-pairʳ (predSndSub (renTm vs n) (renTm vs d))))))))))
+
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- ★★★ THE IH, ELIMINATED — `Lib/ISub`'s second obligation.
+--
+-- ★ THE TWO `⊢app`s GO THROUGH UNAIDED.  What the motive owes is only
+--   its RESULT INDEX, and it owes it in the two currencies this file
+--   keeps separate:
+--
+--     · an `≡` — `iinst` leaves the index under FOUR nested
+--       substitutions, and collapsing them is the `sub-w`/`wk-single`
+--       round trip, three rungs of it.  ⚠ The DEPTH slot needs none:
+--       a substitution applied to a VARIABLE computes, so only the last
+--       `wk-single` survives.
+--     · a `⟶*` — the index arrives as `sortMap (fst (pair s dd))` and
+--       `βfst` is a REDUCTION.  ⇒ `⊢conv`, not `⊢-cast`.
+--
+-- ⚠ AND `sortMap` MENTIONS ITS ARGUMENT TWICE: `natrec s sTm (p5 s)`
+--   puts it in the ZERO branch and inside the SCRUTINEE.  So lifting a
+--   reduction through it takes both congruences, not one.
+------------------------------------------------------------------------
+
+sortMap-red : {Γ : Cx} {a b : RTm Γ} → a ⟶* b → sortMap a ⟶* sortMap b
+sortMap-red r =
+  ⟶*-trans (⟶*-natrecᶻ r)
+           (⟶*-natrecⁿ (pred* (pred* (pred* (pred* (pred* r))))))
+
+-- ★ THE THREE RUNGS, and each is `sub-w` then the next one down.  The
+--   innermost `subTm (extS³ (single J)) (var (vs³ vz))` computes to
+--   `w³ J` on its own — variables are where substitution still reduces.
+towerJ : {Γ : Cx} (sb m u J : RTm Γ) →
+         subTm (single sb)
+           (subTm (extS (single m))
+             (subTm (extS (extS (single u)))
+               (subTm (extS (extS (extS (single J)))) (var (vs (vs (vs vz)))))))
+           ≡ J
+towerJ sb m u J = trans (cong (λ z → subTm (single sb) (subTm (extS (single m)) z)) rA)
+                   (trans (cong (subTm (single sb)) rB) rC)
+  where
+    rB' : subTm (extS (single u)) (w (w J)) ≡ w J
+    rB' = trans (sub-w {σ = single u} (w J)) (cong w (wk-single {v = u} J))
+    rA : subTm (extS (extS (single u))) (w (w (w J))) ≡ w (w J)
+    rA = trans (sub-w {σ = extS (single u)} (w (w J))) (cong w rB')
+    rB : subTm (extS (single m)) (w (w J)) ≡ w J
+    rB = trans (sub-w {σ = single m} (w J)) (cong w (wk-single {v = m} J))
+    rC : subTm (single sb) (w J) ≡ J
+    rC = wk-single {v = sb} J
+
+-- ⚠ AND THE ARGUMENT'S TOWER IS ONE RUNG SHORTER — it is read under the
+--   Π, so `iinst`'s outermost substitution has not reached it.
+towerA : {Γ : Cx} (m u J : RTm Γ) →
+         subTm (single m)
+           (subTm (extS (single u))
+             (subTm (extS (extS (single J))) (var (vs (vs vz))))) ≡ J
+towerA m u J =
+  trans (cong (subTm (single m))
+              (trans (sub-w {σ = single u} (w J)) (cong w (wk-single {v = u} J))))
+        (wk-single {v = m} J)
+
+-- ★ the mirror of `⟶*-castᵣ`: a reduction's LEFT endpoint, moved by an
+--   `≡`.  ⚠ Needed for the SAME reason — `βsnd` is stated at the pair
+--   and the goal states it under the tower.
+⟶*-castₗ : {Γ : Cx} {a a' b : RTm Γ} → a ≡ a' → a' ⟶* b → a ⟶* b
+⟶*-castₗ refl r = r
+
+⊢motAppK : {Γ : Ctx} {s dd u h m sb : RTm ⌊ Γ ⌋} →
+           Γ ⊢ h ∷ iinst (pair s dd) u subMotK → Γ ⊢ m ∷ Nat →
+           Γ ⊢ sb ∷ SubTy dd m →
+           Γ ⊢ app (app h m) sb ∷ K (pair (sortMap s) m)
+⊢motAppK {s = s} {dd = dd} {u = u} {m = m} {sb = sb} dh dm dsb =
+  ⊢conv (⊢-cast (cong₂ (λ a b → K (pair (sortMap (fst a)) b))
+                       (towerJ sb m u (pair s dd)) (wk-single {v = sb} m))
+                (⊢app (⊢app dh dm)
+                  (⊢conv dsb
+                    (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-IMu
+                      (⟶*-pairʳ (⟶*-castₗ (cong snd (towerA m u (pair s dd)))
+                                          (step (βsnd s dd) done))))))))))
+        (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ (sortMap-red (step (βfst s dd) done)))))
+
+------------------------------------------------------------------------
+-- ★★★ AND THE TYPING MODULE IS INSTANTIATED — which is the real check
+-- that steps 1–3 fit together.  ⚠ Each of the three obligations was
+-- built against a signature written in `Lib`, so nothing here confirms
+-- they COMPOSE until this line typechecks.
+------------------------------------------------------------------------
+
+open Typing KnotD IPair SubTy subMotK ⊢extNK ⊢motAppK ⊢fordMapK
