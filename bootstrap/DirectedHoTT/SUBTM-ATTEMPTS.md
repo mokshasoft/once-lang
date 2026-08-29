@@ -232,7 +232,57 @@ Two counting traps worth keeping:
   Without that control the `iihTy` casts would carry five stacked
   `renTy (extR (extR vs))`s with nothing to cancel them.
 
-## Steps 5–6 — open
+## Step 5 — the tuple at the mask ✅ CLOSED
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 1 | `imethTySubK-wf`, `imethsTyFromSubK-wf`, `⊢isubMethsK`, obligations as a `data GiveOK` | ✅ rc=0 first try — but the obligations cost **53 constructors** |
+| 2 | make `GiveOK` a recursive **`Set`** instead of a datatype | ✅ rc=0, and it reduces to `Pr _ (Pr _ (Pr _ OKg))` — **three** |
+
+★ `Lib/IWk`'s tuple walks a *prefix* and stops with a caller-supplied
+tail. This one is total and interleaved (rows 11, 51, 52 of 53), so the
+walk cannot end early and the obligations cannot be a suffix. Computing
+them from the mask is the same move as computing the mask itself, one
+level up — and the caller never names a position, so a wrong `isLookup`
+is a type error rather than a silently misplaced method.
+
+## Step 6 — `subTmK` + `⊢subTmK` ✅ CLOSED
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 1 | `giveK` by `eqℕ`, `giveOKK`, `⊢ielim` | ⚠ `UnsolvedConstraints`, blocked on `_give` |
+| 2 | pin `{give = giveK}` at the call site | ✅ rc=0 |
+
+⚠ `GiveOK` is a **defined `Set`**, so it is not injective: `GiveOK Γ give
+0 subDescK` unfolds and consumes its `give` argument, leaving nothing to
+solve the meta from. That is `pin-implicits-on-defined-set-types`,
+third customer — the price of attempt 2 in step 5, and worth it.
+
+★ **`⊢ielim` needed no cast.** It lands at `iinst i x M`, and `⊢motAppK`
+takes its hypothesis in exactly that shape, so the eliminator and the IH
+interface meet without a round trip between them. That was not luck: it
+is why `⊢sPick`'s IH hypothesis was stated at `iinst` back in step 2.
+
+---
+
+# Verdict
+
+**`subTm` is built and typed.** Six steps, ~20 recorded attempts, and the
+shape of the work is unmistakable in the table: **every genuinely hard
+step was a correction to an interface, not a failed proof.**
+
+| step | attempts | what actually blocked it |
+|---|---|---|
+| 1 `⊢extNK` | 7 | "build first, cast second" — an unstated premise |
+| 2 `⊢sPick` | 2 | closedness cannot cross a substitution ⇒ `IsNum` |
+| 3 `⊢isubPay` | 6 | a κ ford is not a copy ⇒ `fordMap` |
+| 4 `⊢isubMethodK` | 2 | wrong module; and τ's hypotheses are reductions |
+| 5 the tuple | 2 | 53 obligations vs 3 |
+| 6 `subTmK` | 2 | a defined `Set` is not injective |
+
+Once each interface said what the goal was actually asking, the
+derivations went in first try — steps 2, 3, 5 and the whole of `⊢isubPay`
+did exactly that. **The cost was never the proofs.**
 
 Rows get added here as they are tried, **before** the next attempt.
 
