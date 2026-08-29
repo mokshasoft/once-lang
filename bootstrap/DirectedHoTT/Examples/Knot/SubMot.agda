@@ -934,3 +934,43 @@ subVsM =
 
 shS : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 shS n i = pair (sortMap (fst i)) n
+
+------------------------------------------------------------------------
+-- ⬜ NEXT: `⊢isubPay` — the payload rebuild's typing.
+--
+-- ★★ THE STATEMENT TYPE-CHECKS (verified 2026-08-29, then backed out
+--   because its holes break the build).  Recorded so the next attempt
+--   starts from a known-good signature rather than re-deriving it:
+--
+--     SubTy d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
+--
+--     ⊢isubPay : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
+--                {C : ICon ⌊ Θ ⌋} {dp n sb q ih : RTm ⌊ Γ ⌋}
+--                (w : SubCon a C) → IConWf KnotD IPair Θ C →
+--                Sub⊢ Θ Γ σ → Sub⊢ Θ Γ τ → τ a ≡ shS n (σ a) →
+--                Γ ⊢ n ∷ Nat → Γ ⊢ sb ∷ SubTy dp n →
+--                Γ ⊢ q ∷ ipayTy KnotD IPair σ C →
+--                Γ ⊢ ih ∷ iihTy KnotD IPair σ C q subMotK →
+--                Γ ⊢ isubPay w dp n sb q ih ∷ ipayTy KnotD IPair τ C
+--
+--   ⚠ It mirrors `Lib/IWk.⊢iwkPay` slot for slot, with `τ a ≡ sh (σ a)`
+--     replaced by `τ a ≡ shS n (σ a)` — same relation, different action.
+--
+-- ✅ WHAT ALREADY CLOSES: the `sc-ι` case (`⊢unit`), and `⊢sPick`'s
+--   `pinned` case — `Lib/IWk`'s `pinned-stable` transfers VERBATIM,
+--   which is the part of the shared classification that really is shared.
+--
+-- ⬜ WHAT IS OPEN: `⊢sPick`'s `rides` case and the two `⊢isubPay`
+--   recursive cases.  ⚠ `rides` needs two premises the sketch above
+--   does not yet thread — the IH's own type (`iinst (subTm σ j) q
+--   subMotK`) and the EXTENSION's typing,
+--
+--       ⊢extN : Γ ⊢ sb ∷ SubTy d n → Γ ⊢ extN d n sb ∷ SubTy (nsuc d) (nsuc n)
+--
+--   which `⊢extSK` should supply.  Then the case is: apply the IH at
+--   `(nsuc^k n, ext^k σ)`, landing at `K (pair (sortMap s) (nsuc^k n))`,
+--   and convert to `K (pair s (nsuc^k n))` by ONE `muFwd*` along
+--   `⟶*-pairˡ st` — `st` being precisely the witness `SubIx` was
+--   refined to carry.
+------------------------------------------------------------------------
+
