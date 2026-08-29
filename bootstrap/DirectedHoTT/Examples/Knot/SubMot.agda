@@ -974,3 +974,42 @@ shS n i = pair (sortMap (fst i)) n
 --   refined to carry.
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- ★ STEP 1 OF THE REMAINING SIX: the EXTENSION's typing.  ⬜ IN PROGRESS.
+--
+-- `⊢isubPay`'s `rides` case pushes `σ` under `k` binders, so `extN` must
+-- be type-preserving:
+--
+--     ⊢extNK : Γ ⊢ sb ∷ SubTy d n → Γ ⊢ extNK d n sb ∷ SubTy (nsuc d) (nsuc n)
+--     SubTy d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
+--
+-- ✅ THE STRUCTURE TYPE-CHECKS: `⊢lam` over `⊢app (⊢app (⊢extSK …) …) …`
+--   is accepted, and `⊢extSK` applies with `⊢ixP ⊢sVar (⊢nsuc (⊢wk dd))`
+--   and `⊢var here`.  Only TWO casts are missing, both on the same
+--   round-trip family.
+--
+-- ⬜ CAST 1 — the RESULT: `subTm (single (w sb)) (w (w n)) ≡ w n`, a
+--   single `wk-single`.  Straightforward.
+-- ⬜ CAST 2 — the ARGUMENT, in the Π's DOMAIN.  ⚠ `⊢extSK` states its
+--   domain at `predTm (snd (w i))`, so the application instantiates it
+--   to a `predTm` of a substituted pair.  ★ THE TOOL IS ALREADY PROVED
+--   AND SITS ABOVE — `predSndPair d : predTm (snd (pair sVar (nsuc d)))
+--   ⟶* d`.  What is not yet settled is HOW to apply it: the mismatch is
+--   inside a Π DOMAIN, so it wants a `≅ᵀ` congruence for `Π`, not the
+--   `⊢-cast`/`muBwd*` pair used elsewhere.
+--
+-- ⚠ FOUR GUESSED CASTS WERE TRIED AND BACKED OUT.  Each time the goal
+--   moved rather than closed, which is the signal recorded in
+--   `LESSONS.md` §1: read the goal, state the equation at the shape it
+--   HAS.  ⇒ next attempt: find or prove the `Π`-domain conversion
+--   FIRST, then apply `predSndPair` through it.
+------------------------------------------------------------------------
+
+SubTy : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
+SubTy d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
+
+-- ★ the reduction cast 2 needs: one `βsnd`, then one `pred-suc`.
+predSndPair : {Γ : Cx} (d : RTm Γ) →
+              predTm (snd (pair sVar (nsuc d))) ⟶* d
+predSndPair d = ⟶*-trans (pred* (step (βsnd sVar (nsuc d)) done)) (pred-suc d)
+
