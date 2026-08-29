@@ -61,7 +61,7 @@ gated on `subTm`**.
 |---|---|---|
 | ✅ | the row emitter + its control | `tools/gen-knot.py`, `Knot/LookupGen` |
 | ✅ | **the `IConWf` emitter** | `emit_jrowwf`; both `_∋_∷_` rows generate + typecheck (`Knot/LookupGen`) |
-| ⬜ | `_⟶_` | 73 |
+| ⬜ | `_⟶_` | 73 — prerequisite `Knot/CtorsV` (variable-depth ctors) ✅ DONE |
 | ⬜ | `_⟶ᵀ_` | 26 |
 | ⬜ | `_≅ᵀ_` | 4 |
 | ⬜ | `_⊢ty_` + `_⊢_∷_` (mutual) | 43 |

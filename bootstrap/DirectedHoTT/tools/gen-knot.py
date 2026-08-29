@@ -468,8 +468,8 @@ def sigma(i, e):
     for _ in range(e): s = f"extS ({s})"
     return s
 
-def term_of(acts, NN="n"):
-    t = f"num {NN}"
+def term_of(acts, NN="n", V=False):
+    t = "var x" if V else f"num {NN}"
     for a in reversed(acts):
         t = f"renTm vs ({t})" if a[0] == "ren" else f"subTm ({sigma(a[1],a[2])}) ({t})"
     return t
@@ -482,23 +482,53 @@ def eq_of(acts, NN="n"):
     s = sigma(a[1], a[2])
     return f"trans (cong (subTm ({s})) ({eq_of(rest, NN)})) (num-sub ({s}) {NN})"
 
-def depth_expr(E):
-    if E[0] == "D":    return "num n"
-    if E[0] == "sucD": return "num (" + "suc (" * E[1] + "n" + ")" * E[1] + ")"
+def depth_expr(E, V=False):
+    """the depth a field's index sits at.
+
+    ⚠⚠ THE TWO MODES DIFFER IN WHAT THEY CAN SAY, not merely in syntax.
+      `num n` is renaming-INVARIANT, so every position under a binder has
+      to be RECOGNISED as still being `num n` — that is what the
+      `num-ren`/`num-sub` chains do.  `var x` is renaming-COVARIANT: it
+      simply MOVES, and moving is what `⊢wk` already does.
+      ⇒ so the variable form needs no equations at all, and a
+        substitution `single a` applied to `var (vs x)` COMPUTES back to
+        `var x`.  Every chain the numeral form pays for collapses.
+    ⚠ A `lit` depth stays a NUMERAL in both modes — it is a fixed depth,
+      not the row's own."""
     if E[0] == "lit":  return f"num {E[1]}"
+    if not V:
+        if E[0] == "D":    return "num n"
+        if E[0] == "sucD": return "num (" + "suc (" * E[1] + "n" + ")" * E[1] + ")"
+        raise ValueError(E)
+    if E[0] == "D":    return "var x"
+    if E[0] == "sucD": return "nsuc (" * E[1] + "var x" + ")" * E[1]
     raise ValueError(E)
 
-def entry_ty(f, sX, en, NN="n", en0=None):
+def _dvar(r):
+    "the depth derivation `r` binders in, for a VARIABLE depth"
+    return "⊢wk (" * r + "dx" + ")" * r
+
+def depderiv(acts, en, V):
+    """the DEPTH's derivation at a position reached by `acts`.
+    ★ numeral: recognise it (`⊢numAt` + the chain).
+    ★ variable: move it (`⊢wk`), and the substitutions cancel renamings
+      on a variable, so only the surplus renamings survive."""
+    if not V: return "⊢num n" if en == "refl" else f"⊢numAt n {en}"
+    r = sum(1 for a in acts if a[0] == "ren") - sum(1 for a in acts if a[0] == "sub")
+    return _dvar(max(r, 0))
+
+def entry_ty(f, sX, dd, NN="n", dd0=None):
+    "⚠ `dd`/`dd0` are the DEPTH DERIVATIONS, already built for the mode."
     if f[0] == "nat":  return "ty-El ⊢⌜Nat⌝"
     if f[0] == "ford":
         if f[1] == "snd":            # the DEPTH ford — `Var` only
-            return (f"ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢ixP ⊢{sX} (⊢numAt {NN} {en}))))"
-                    f" (toI (⊢nsuc (⊢numAt n {en0}))))")
-        return (f"ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢{sX} (⊢numAt {NN} {en})))) (toI ⊢{sX}))")
+            return (f"ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢ixP ⊢{sX} ({dd}))))"
+                    f" (toI (⊢nsuc ({dd0}))))")
+        return (f"ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢ixP ⊢{sX} ({dd})))) (toI ⊢{sX}))")
     s, E = f[1], f[2]
     if E[0] == "lit": return f"ty-IMu KnotWf (⊢ixP ⊢{s} (⊢num {E[1]}))"
-    if E[0] == "fld": return f"ty-IMu KnotWf (⊢ixP ⊢{s} (⊢numAt n {en0}))"
-    inner = f"⊢snd (⊢ixP ⊢{sX} (⊢numAt {NN} {en}))"
+    if E[0] == "fld": return f"ty-IMu KnotWf (⊢ixP ⊢{s} ({dd0}))"
+    inner = f"⊢snd (⊢ixP ⊢{sX} ({dd}))"
     if E[0] == "sucD": inner = dnsucs(E[1], inner)
     return f"ty-IMu KnotWf (⊢ixP ⊢{s} ({inner}))"
 
@@ -523,56 +553,80 @@ def component(f, j, sX, en, mangled, en0=None, eA=None):
         cast = f"kCast (sym {inner}) d{j}"
     return f"ixConv (ξ-pairʳ ({red})) ({cast})"
 
-def emit_row(name, decl, fields):
+def emit_row(name, decl, fields, V=False):
+    """one constructor and its typing.
+
+    ⚠⚠ `V=True` emits the VARIABLE-DEPTH twin, and it is not cosmetic:
+      a judgement row's depth is a BOUND FIELD, so every constructor a
+      rule mentions needs this form.  See `depth_expr` for why the two
+      cannot be one lemma."""
     sX, m = SORT[name.split("-")[0]], len(fields)
     nm = name[1:]
     nargs = [j for j, f in enumerate(fields) if f[0] in ("rec", "nat")]
     L = [f"-- {decl}"]
-    L.append(f"{nm}K : {{Γ : Cx}} → " + "RTm Γ → " * len(nargs) + "RTm Γ")
-    pay = "unit"
-    for j in reversed(range(m)):
-        c = f"a{j}" if fields[j][0] in ("rec","nat") else f"(idrefl ⌜Nat⌝ {sX})"
-        pay = f"pair {c} ({pay})" if pay != "unit" else f"pair {c} unit"
-    L.append(f"{nm}K " + " ".join(f"a{j}" for j in nargs) + f" = icon tag{nm} ({pay})")
-    L.append("")
+    if not V:
+        L.append(f"{nm}K : {{Γ : Cx}} → " + "RTm Γ → " * len(nargs) + "RTm Γ")
+        pay = "unit"
+        for j in reversed(range(m)):
+            c = f"a{j}" if fields[j][0] in ("rec","nat") else f"(idrefl ⌜Nat⌝ {sX})"
+            pay = f"pair {c} ({pay})" if pay != "unit" else f"pair {c} unit"
+        L.append(f"{nm}K " + " ".join(f"a{j}" for j in nargs) + f" = icon tag{nm} ({pay})")
+        L.append("")
     eqs = {}
     def en(acts):
         if not acts: return "refl"
         t = term_of(acts)
         if t not in eqs: eqs[t] = (f"e{len(eqs)}", acts)
         return eqs[t][0]
+    def dd(acts):
+        return depderiv(acts, en(acts) if not V else None, V)
     def needs_eq(f):
         return f[0] == "ford" or (f[0] == "rec" and f[2][0] in ("D", "sucD"))
     def B_of(k):
         if k == m - 1: return "ty-Unit"
         B = "ty-Unit"
         for j in reversed(range(k + 1, m)):
-            e = en(actions(k, j)) if needs_eq(fields[j]) else "refl"
-            B = f"ty-Σ ({entry_ty(fields[j], sX, e)}) ({B})"
+            d = dd(actions(k, j)) if needs_eq(fields[j]) else depderiv([], "refl", V)
+            B = f"ty-Σ ({entry_ty(fields[j], sX, d, dd0=d)}) ({B})"
         return B
     Bs, cs = [], []
     for k in range(m):
         Bs.append(B_of(k))
         a = actions(k, k)
-        e = en(a) if (fields[k][0] == "rec" and fields[k][2][0] in ("D", "sucD")) else "refl"
-        cs.append(component(fields[k], k, sX, e, term_of(a)))
+        e = (en(a) if (fields[k][0] == "rec" and fields[k][2][0] in ("D", "sucD"))
+             else "refl")
+        cs.append(component(fields[k], k, sX, "refl" if V else e, term_of(a, V=V)))
     prem = ["Δ ⊢ a{} ∷ Nat".format(j) if fields[j][0] == "nat"
-            else f"Δ ⊢ a{j} ∷ K (pair {fields[j][1]} ({depth_expr(fields[j][2])}))"
+            else f"Δ ⊢ a{j} ∷ K (pair {fields[j][1]} ({depth_expr(fields[j][2], V)}))"
             for j in nargs]
     imp = " ".join(f"a{j}" for j in nargs)
-    L.append(f"⊢{nm}K : {{Δ : Ctx}} (n : ℕ)" + (f" {{{imp} : RTm ⌊ Δ ⌋}}" if nargs else "") + " →")
+    sig = "⊢%sK%s" % (nm, "v" if V else "")
+    if V:
+        L.append(f"{sig} : {{Δ : Ctx}} {{x : Var ⌊ Δ ⌋}}"
+                 + (f" {{{imp} : RTm ⌊ Δ ⌋}}" if nargs else "") + " →")
+        L.append("        Δ ⊢ var x ∷ Nat →")
+    else:
+        L.append(f"{sig} : {{Δ : Ctx}} (n : ℕ)"
+                 + (f" {{{imp} : RTm ⌊ Δ ⌋}}" if nargs else "") + " →")
     for p in prem: L.append(f"        {p} →")
-    L.append(f"        Δ ⊢ {nm}K " + " ".join(f"a{j}" for j in nargs) + f" ∷ K (pair {sX} (num n))")
-    L.append(f"⊢{nm}K n " + " ".join(f"{{a{j} = a{j}}}" for j in nargs) +
-             (" " if nargs else "") + " ".join(f"d{j}" for j in nargs) + " =")
-    L.append(f"  ⊢icon KnotWf mem{nm} (⊢ixP ⊢{sX} (⊢num n))")
+    L.append(f"        Δ ⊢ {nm}K " + " ".join(f"a{j}" for j in nargs)
+             + f" ∷ K (pair {sX} ({depth_expr(('D',), V)}))")
+    # ⚠ ALL IMPLICITS FIRST.  The variable form binds `x` alongside the
+    #   field implicits, so its explicit arguments (`dx`, then the
+    #   premises) all come after them — unlike the numeral form, whose
+    #   `n` is explicit and precedes the field implicits.
+    flds = [f"{{a{j} = a{j}}}" for j in nargs]
+    ds   = [f"d{j}" for j in nargs]
+    lhs  = (["{x = x}"] + flds + ["dx"] + ds) if V else (["n"] + flds + ds)
+    L.append(f"{sig} " + " ".join(lhs) + " =")
+    L.append(f"  ⊢icon KnotWf mem{nm} (⊢ixP ⊢{sX} ({depderiv([], 'refl', V)}))")
     ind = "    "
     for k in range(m):
         L.append(f"{ind}(⊢pair ({Bs[k]})")
         L.append(f"{ind}       ({cs[k]})")
         ind += " "
     L.append(f"{ind}⊢unit" + ")" * m)
-    if eqs:
+    if eqs and not V:
         L.append("  where")
         for t, (e, acts) in eqs.items():
             L.append(f"    {e} : {t} ≡ num n")
@@ -620,6 +674,74 @@ open import DirectedHoTT.Examples.Knot.Terms using ( ixConv; fordFst; tyFordFst 
 open import DirectedHoTT.Examples.Knot.Build using ( tyCast; \u22a2numAt; kCast )
 
 """
+
+CTORSV_HDR = """""" + BANNER + """-- \u2605\u2605\u2605 THE SAME CONSTRUCTORS AT A **VARIABLE** DEPTH.
+--
+--     \u22a2Tm-lamKv : \u0394 \u22a2 var x \u2237 Nat \u2192 \u0394 \u22a2 b \u2237 K (sTm , nsuc (var x))
+--                          \u2192 \u0394 \u22a2 Tm-lamK b \u2237 K (sTm , var x)
+--
+-- \u26a0\u26a0 WHY BOTH FORMS EXIST, and it is not a duplication.  A JUDGEMENT
+--   ROW's depth is a BOUND FIELD \u2014 a variable \u2014 while the adequacy map's
+--   is an Agda NUMERAL.  Neither subsumes the other:
+--
+--     `num n` is renaming-INVARIANT, so every position under a binder has
+--     to be RECOGNISED as still being `num n`.  That is what `Knot/Ctors`'
+--     `num-ren`/`num-sub` chains do, and there is one per field position.
+--
+--     `var x` is renaming-COVARIANT: it simply MOVES, which is what `\u22a2wk`
+--     already does.  And a substitution `single a` applied to `var (vs x)`
+--     COMPUTES back to `var x`.
+--
+--   \u2605 \u21d2 EVERY CHAIN THE NUMERAL FORM PAYS FOR COLLAPSES HERE.  These
+--     derivations carry no `where` block at all.  `\u22a2Var-vzKv` in
+--     `Knot/Build` was the first sighting; this module is that observation
+--     applied to all 51 rows.
+--
+-- \u26a0 THE TWO `Var` ROWS ARE STILL NOT HERE \u2014 they Ford the DEPTH as well
+--   as the tag.  `Knot/Build` has them, and has had the `v` forms since
+--   before this module existed.
+--
+-- \u2605 GENERATED FROM THE SAME TABLE by the same emitter, with one flag.
+--   The numeral output is byte-identical to what it was before the flag
+--   existed, which is the control that the refactor changed nothing.
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.CtorsV where
+open import normalizer.Syntax.Types using ( _\u2261_; refl; sym; trans; cong; subst )
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to \u2115 )
+open import DirectedHoTT.Spec.Syntax
+  using ( Cx; \u03b5; _\u2219; vz; vs; Var
+        ; RTy; RTm; El; Unit; Nat; \u03a3'; IMu
+        ; var; pair; fst; snd; unit; nzero; nsuc; \u231cNat\u231d; \u231cId\u231d; idrefl; icon
+        ; Ren; Sub; renTm; subTm; extS )
+open import DirectedHoTT.Spec.Typing
+  using ( Ctx; \u25c7; _\u25b9_; \u230a_\u230b; single
+        ; _\u22a2_\u2237_; _\u22a2ty_; \u22a2var; here; there; \u22a2conv
+        ; \u22a2pair; \u22a2fst; \u22a2snd; \u22a2unit; \u22a2nzero; \u22a2nsuc; \u22a2\u231cNat\u231d; \u22a2\u231cId\u231d; \u22a2idrefl; \u22a2icon
+        ; ty-El; ty-Unit; ty-Nat; ty-\u03a3; ty-IMu
+        ; _\u27f6_; \u03b2fst; \u03b2snd; \u03be-pair\u02b3; \u03be-nsuc
+        ; _\u2245\u1d40_; csym\u1d40; ctrn\u1d40; cred\u1d40; El-\u231cId\u231d; \u03be-El; \u03be-IMu; \u03be-\u231cId\u231d\u02e1 )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( \u22a2wk )
+open import DirectedHoTT.Examples.Knot.Sorts
+  using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
+        ; \u22a2sTy; \u22a2sTm; \u22a2sDesc; \u22a2sDCon; \u22a2sIDesc; \u22a2sICon; \u22a2sVar
+        ; toI; fromI; \u22a2ixP; num; \u22a2num )
+open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
+open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
+open import DirectedHoTT.Examples.Knot.Tags
+open import DirectedHoTT.Examples.Knot.Terms using ( ixConv; fordFst; tyFordFst )
+open import DirectedHoTT.Examples.Knot.Ctors
+  using ( """ + "; ".join(n[1:] + "K" for n, _, _ in KNOT if not n.startswith("cVar-")) + """ )
+
+"""
+
+def gen_ctorsv():
+    out = [CTORSV_HDR]
+    for nm, d, f in KNOT:
+        if nm.startswith("cVar-"): continue
+        out += emit_row(nm, d, f, V=True)
+    return "\n".join(out) + "\n"
+
 
 def gen_ctors():
     out = [CTORS_HDR]
@@ -1462,6 +1584,7 @@ if __name__ == "__main__":
     open(os.path.join(out, "Wf.agda"),   "w").write(gen_wf())
     open(os.path.join(out, "Tags.agda"), "w").write(gen_tags())
     open(os.path.join(out, "Ctors.agda"), "w").write(gen_ctors())
+    open(os.path.join(out, "CtorsV.agda"), "w").write(gen_ctorsv())
     open(os.path.join(out, "Map.agda"),   "w").write(gen_map())
     open(os.path.join(out, "SzAgree.agda"), "w").write(gen_szagree())
     open(os.path.join(out, "LookupGen.agda"), "w").write(gen_lookupgen())
