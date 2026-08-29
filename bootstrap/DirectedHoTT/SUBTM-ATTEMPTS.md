@@ -199,10 +199,42 @@ is the only thing that proves the three obligations *compose*. Each was
 built against a signature written in `Lib`; nothing before that line
 confirmed they fit together.
 
-## Steps 4–6 — open
+## Step 4 — `⊢isubMethodK` ✅ CLOSED
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 0 | put it in `Lib`, beside `⊢isubPay` | ⚠ **can't.** The method's last two binders are the MOTIVE's own, and typing them needs `subMotK` to unfold — the one thing `Lib` cannot do |
+| 1 | build it at the knot, `⊢subVarM`'s five-lam prologue + `⊢icon` | ✅ rc=0 (import and cast iterations only, no goal moved) |
+
+★ What `Lib` owed was genericity in the **row**, and `⊢isubPay` delivers
+that. Genericity in the **motive** was never the customer's need — so
+row 0 is a correction to where the lemma lives, not to what it says.
+
+★★ **A computed row needs no `sortConv`.** The three given rows build at
+their own sort and transport; a computed row builds its `icon` at the
+output index `pair (sortMap (fst ⟨i⟩)) n` directly, so the method's
+result type is met on the nose.
+
+⇒ **and that is what forced `⊢isubPay`'s τ hypotheses to be reductions.**
+`τ` is `isingle (pair (sortMap (fst ⟨i⟩)) n)`, so `fst (τ vz)` and
+`snd (τ vz)` are stuck projections of a literal pair — one `βfst` and one
+`βsnd`, not two `refl`s. `σ` is `isingle ⟨i⟩` with `⟨i⟩` a *variable*,
+and both of its hypotheses **are** `refl`. Same lesson as steps 2 and 3:
+state each side at the shape it has.
+
+Two counting traps worth keeping:
+
+* the payload cast takes **four** renamings and the IH's **three** — a
+  binder's type lives in the context *before* it, so each is weakened
+  past itself as well as past everything inner.
+* `subMotK-ren = refl` — the motive mentions nothing of the ambient
+  context, so pushing a renaming past its two slots is the identity.
+  Without that control the `iihTy` casts would carry five stacked
+  `renTy (extR (extR vs))`s with nothing to cancel them.
+
+## Steps 5–6 — open
 
 Rows get added here as they are tried, **before** the next attempt.
 
-* ⬜ **4.** `⊢isubMethod`
 * ⬜ **5.** the tuple at the mask
 * ⬜ **6.** `subTmK` + `⊢subTmK`

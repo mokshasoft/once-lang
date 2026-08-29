@@ -55,12 +55,12 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; pair; snd; Nat; Π; IMu
         ; ICon; IDesc; _◂_; inil; nsuc; nzero; unit; natrec; renTm; renTy; εwkTy
         ; app; fst; jsub; ⌜IMu⌝; ielim; Σ'; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong
-        ; ⌜Id⌝; ⌜Nat⌝; idrefl; El )
+        ; ⌜Id⌝; ⌜Nat⌝; idrefl; El; _∈ID_; ilookupD )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; ⊢nzero; ⊢natrec; wk-single; ty-Nat; ty-Π; ty-IMu; ty-Unit
         ; IConWf; imethTy; imethsTyFrom; ty-Σ; βsnd; βfst; ξ-pairʳ; ξ-pairˡ; ξ-nsuc; single
-        ; _⟶*_; done; step; natrec-suc; natrec-zero; csymᵀ; iinst
+        ; _⟶*_; done; step; natrec-suc; natrec-zero; csymᵀ; iinst; iihTy
         ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-El; ⊢ielim; imethsTy
         ; IDescWfFrom; idwf-nil; idwf-cons )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w; ren-w )
@@ -69,7 +69,7 @@ open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 import DirectedHoTT.Lib.ISub as IS
 open import DirectedHoTT.Lib.IWk using ( Maybe; just; nothing )
-open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; subTm; extS )
+open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; subTm; extS; extR )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
 open import DirectedHoTT.Metatheory.Confluence
@@ -83,7 +83,7 @@ open import DirectedHoTT.Examples.Knot.JudgeLib
   using ( muFwd; muBwd*; fordAs; toMu; fromMu )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk )
+  using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk; iihTy-ren; iihTy-cong )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
 open import DirectedHoTT.Examples.Knot.Tags
   using ( memTm-nzero; memTm-var; memVar-vz; tagVar-vz; tagVar-vs; tagTm-var )
@@ -1219,3 +1219,109 @@ towerA m u J =
 ------------------------------------------------------------------------
 
 open Typing KnotD IPair SubTy subMotK ⊢extNK ⊢motAppK ⊢fordMapK
+
+------------------------------------------------------------------------
+-- ★★★ STEP 4 OF SIX: ONE COMPUTED METHOD, TYPED.
+--
+-- ⚠ IT LIVES HERE AND NOT IN `Lib`, and that is not an accident.  The
+--   method's last two binders are the MOTIVE's own, so typing them needs
+--   `subMotK` to unfold — the one thing `Lib/ISub` cannot do.  ★ What
+--   `Lib` owed was genericity in the ROW, and `⊢isubPay` delivers that;
+--   genericity in the MOTIVE was never the customer's need.
+--
+-- ★★ AND A COMPUTED ROW NEEDS NO `sortConv`.  The three GIVEN rows build
+--   at their own sort and transport; a computed row builds its `icon`
+--   AT THE OUTPUT INDEX `pair (sortMap (fst ⟨i⟩)) n` directly, so the
+--   method's result type is met on the nose.
+--
+-- ⚠ WHICH IS WHY `⊢isubPay`'s τ HYPOTHESES ARE REDUCTIONS.  `τ` is
+--   `isingle (pair (sortMap (fst ⟨i⟩)) n)`, so `fst (τ vz)` and
+--   `snd (τ vz)` are STUCK PROJECTIONS OF A LITERAL PAIR: one `βfst` and
+--   one `βsnd`, not two `refl`s.  `σ` is `isingle ⟨i⟩` with `⟨i⟩` a
+--   VARIABLE, and both of its hypotheses ARE `refl`.
+------------------------------------------------------------------------
+
+-- ★ ONE RENAMING OF THE PAYLOAD TYPE, stated once.  ⚠ `⊢subVarM` needs
+--   no such lemma because its row is CONCRETE and `ipayTy` computes; at
+--   an abstract `C` it is stuck, so the environment has to be pushed
+--   through by hand.  Composed with itself it covers any depth.
+payRenK : {Γ : Cx} (v : RTm Γ) (C : ICon (ε ∙)) →
+          renTy vs (ipayTy KnotD IPair (isingle v) C) ≡
+          ipayTy KnotD IPair (isingle (renTm vs v)) C
+payRenK v C = trans (ipayTy-ren vs KnotD IPair (isingle v) C)
+                    (ipayTy-cong KnotD IPair C (λ { vz → refl ; (vs ()) }))
+
+-- ★ CONTROL: the motive mentions NOTHING of the ambient context — its
+--   deepest variable is `vs³ vz`, and it sits under two Π binders of its
+--   own, so both references land inside its own two slots.  ⇒ pushing a
+--   renaming past those two slots is the IDENTITY, and `refl` proves it.
+--   ⚠ Without this the `iihTy` casts below would carry five stacked
+--   `renTy (extR (extR vs))`s with nothing to cancel them.
+subMotK-ren : {Γ : Cx} → renTy (extR (extR (vs {Γ = Γ}))) subMotK ≡ subMotK
+subMotK-ren = refl
+
+-- ★ and the same, one level up, for the IH tuple's type.
+ihRenK : {Γ : Cx} (v q : RTm Γ) (C : ICon (ε ∙)) (M : RTy ((Γ ∙) ∙)) →
+         renTy vs (iihTy KnotD IPair (isingle v) C q M)
+           ≡ iihTy KnotD IPair (isingle (renTm vs v)) C (renTm vs q)
+                   (renTy (extR (extR vs)) M)
+ihRenK v q C M =
+  trans (iihTy-ren vs KnotD IPair (isingle v) C q M)
+        (iihTy-cong KnotD IPair C (renTm vs q) (renTy (extR (extR vs)) M)
+                    (λ { vz → refl ; (vs ()) }))
+
+⊢isubMethodK : {Γ : Ctx} (k : ℕ) {C : ICon (ε ∙)}
+               (w : SubCon vz C) → IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+               k ∈ID KnotD → ilookupD KnotD k ≡ C →
+               Γ ⊢ isubMethod k w ∷ imethTy KnotD IPair k C subMotK
+⊢isubMethodK {Γ = Γ} k {C = C} w wC mem look =
+  ⊢lam ⊢IPair
+    (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) C
+                     KnotWf wC
+                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+      (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) C}
+                      KnotD IPair subMotK (isingle (var (vs vz))) C (var vz) wC
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                                                   (εwk-ren vs IPair))
+                                            (⊢var (there here))))
+                      ⊢subMotK
+                      (⊢-cast (payRenK (var vz) C) (⊢var here)))
+        (⊢lam ty-Nat
+          (⊢lam (ty-Π (ty-IMu KnotWf
+                         (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                      (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+            (⊢icon KnotWf mem
+                   (⊢ixP (⊢sortMap (⊢fst (⊢var (there (there (there (there here))))))) (⊢var (there here)))
+                   (⊢-cast (cong (ipayTy KnotD IPair
+                                    (isingle (pair (sortMap (fst (var (vs (vs (vs (vs vz)))))))
+                                                   (var (vs vz)))))
+                                 (sym look))
+                     (⊢isubPay w wC KnotWf
+                       (isingle-Sub⊢ (⊢var (there (there (there (there here))))))
+                       (isingle-Sub⊢ (⊢ixP (⊢sortMap (⊢fst (⊢var (there (there (there (there here)))))))
+                                           (⊢var (there here))))
+                       refl (step (βfst _ _) done) refl (step (βsnd _ _) done)
+                       (⊢fst (⊢var (there (there (there (there here)))))) (⊢snd (⊢var (there (there (there (there here)))))) (⊢var (there here))
+                       (⊢var here)
+                       (var (vs (vs (vs vz)))) (var (vs (vs vz)))
+                       -- ⚠ FOUR RENAMINGS, not three: a binder's TYPE
+                       --   lives in the context BEFORE it, so the payload
+                       --   is weakened past ITSELF as well as past `ih`,
+                       --   `n` and `σ`.
+                       (⊢-cast (trans (cong (renTy vs)
+                                 (trans (cong (renTy vs)
+                                   (trans (cong (renTy vs) (payRenK (var vz) C))
+                                          (payRenK (var (vs vz)) C)))
+                                   (payRenK (var (vs (vs vz))) C)))
+                                 (payRenK (var (vs (vs (vs vz)))) C))
+                               (⊢var (there (there (there here)))))
+                       -- ⚠ THREE, for the same reason the payload took
+                       --   four: `ih` is weakened past itself, `n` and
+                       --   `σ`.  ★ And the MOTIVE cancels by `refl` —
+                       --   see `subMotK-ren`.
+                       (⊢-cast (trans (cong (renTy vs)
+                                 (trans (cong (renTy vs)
+                                          (ihRenK (var (vs vz)) (var vz) C subMotK))
+                                        (ihRenK (var (vs (vs vz))) (var (vs vz)) C subMotK)))
+                                 (ihRenK (var (vs (vs (vs vz)))) (var (vs (vs vz))) C subMotK))
+                               (⊢var (there (there here)))))))))))
