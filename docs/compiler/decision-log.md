@@ -9335,3 +9335,69 @@ the typing judgment hands you. Two consequences, and neither may be waved:
 **Relates**: D018 (the lifting this replaces), D056, D063, D044/D045, D039 (why
 the fast path must be proved, not optimized), D126 (retired), OCP-0006 (source
 is spec), OCP-0009 (the kernel whose shape this follows)
+
+---
+
+## D128: Float `/` Is Correctly Rounded and TOTAL; Float `%` Has No Lowering
+
+**Date**: 2026-08-29 · **Status**: Decided (plan 0.73 follow-on) ·
+**Follows**: D113 (Float follows D054), D055 (total division, one semantics)
+
+### The decision
+
+`/` on `Float` compiles. Its meaning is `Once.Float.Arith.fdiv` — the
+correctly-rounded quotient — and it is TOTAL in D055's sense: `x/0` is a signed
+infinity, `0/0` the canonical NaN, no traps, the same answer on every target.
+
+`%` on `Float` does NOT compile, and that is not an oversight.
+
+### Why `/` needed more than `+` and `*`
+
+Dyadics are closed under addition and multiplication, so `roundB` receives the
+EXACT result and rounds once. A quotient of two dyadics is in general not a
+dyadic (`1/3`), so there is nothing exact to hand it. The remedy is the
+standard one: compute enough quotient bits that the rounding position is
+strictly above the last one, and fold "the division was inexact" — a non-zero
+remainder — into that last bit. `roundB`'s half-even is then correct, because
+the only case it can get wrong is an exact tie, and a non-zero remainder is
+exactly the evidence that the tie is not exact.
+
+**The guard shift is `+ 3`, not `+ 2`, and this is the part worth recording.**
+With `+ 2` the quotient carries exactly ONE discarded bit — which is the round
+bit — so the sticky is folded into the very decision it is meant to inform, and
+`1.0 / 3.0` answers one ulp high. Two discarded bits, so the LSB lies strictly
+below the rounding position.
+
+`0.1 / 0.3` is the pin that discriminates: it answers ONE ULP ABOVE
+`1.0 / 3.0` despite both being `0.333…`, because the operands are themselves
+rounded and the true quotient falls the other side of the boundary. A divider
+that truncated, or that rounded without the remainder, passes every other pin.
+
+### Why `%` is refused
+
+IEEE's `fmod` is a DIFFERENT function from integer remainder — it is exact,
+not correctly rounded, and defined by repeated subtraction. D055's identity
+
+    a = (a / b) * b + (a % b)
+
+which ties Once's integer `/` and `%` together, does not survive rounding: the
+rounded quotient times `b` is not `a` minus the exact remainder. So `%` is not
+"division's other half" at `Float` the way it is at `Int`, and pretending
+otherwise would make one operator mean two things.
+
+It therefore needs its OWN decision — what Once's float `%` is, if it is
+anything — before it can have a lowering. Until then `isFloatArithmeticOp`
+refuses it at the source and the refusal is PINNED in `ElaborateProofs`, so
+lifting it cannot happen silently.
+
+### Consequences
+
+- `adiv` in `MArithIR` is grade-polymorphic; `amod` stays `Int`-only.
+- `Xfdiv-rrr` is THREE-address, unlike its commutative float neighbours: `dst
+  := dst op src` cannot express `a / b` when `dst` is `b`, which is exactly the
+  register assignment `compile-go` produces. The integer divide is three-address
+  for the same reason.
+- `divsd` / `divss` / `fdiv.d`, with D055's NaN canonicalisation after it on x86.
+
+**Relates**: D054, D055, D113, D116, D117, D118 (±∞ on overflow, which `x/0`
+now also produces)
