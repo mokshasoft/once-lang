@@ -84,18 +84,23 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.ISub where
-open import normalizer.Syntax.Types using ( _≡_; refl; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil; iι; iρ; iκ
         ; app; lam; pair; fst; snd; unit; nzero; nsuc; icon; var; vz; vs
-        ; Sub; subTm )
+        ; Sub; subTm; RTy; IMu; Nat )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm )
-open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
+open import DirectedHoTT.Spec.Typing
+  using ( _⟶*_; Ctx; ⌊_⌋; _⊢_∷_; ⊢app; ⊢conv; ⊢nsuc; iinst )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast )
+open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-pairˡ )
+open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.IWk
   using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf; sucs
-        ; Maybe; just; nothing; decCon; decSucs; decClosed; WkKa; decKa )
+        ; Maybe; just; nothing; decCon; decSucs; decClosed; WkKa; decKa
+        ; pinned-stable; isSucs-sub )
 
 module Sub
   -- ★ the ONE thing that differs from weakening: how a substitution is
@@ -358,3 +363,97 @@ module Sub
   sdGiven (sd-comp _ W) = sdGiven W
   sdGiven (sd-give W)   = suc (sdGiven W)
 
+
+  ------------------------------------------------------------------------
+  -- ★★★ THE TYPING.
+  --
+  -- ⚠ FOUR PARAMETERS, and every one of them is here because `Lib` may
+  --   not import `Examples` — exactly the reason `extN` is a parameter
+  --   of the enclosing module.  ★ Which is also the right generic shape:
+  --   what a customer supplies is its ACTION and its MOTIVE, and nothing
+  --   below mentions a sort tag or the knot.
+  --
+  -- ⚠⚠ `⊢motApp` HANDS OVER THE IH **ELIMINATED**, not the motive.  The
+  --   alternative — pass the motive and apply it here — needs `iinst`'s
+  --   de Bruijn layout to unfold, which is precisely the knot-specific
+  --   computation `Lib` cannot do.  ★ And the index is taken APART into
+  --   `pair s dd` at the interface: a field's index IS a pair, and left
+  --   whole every use would owe a `βsnd` that only the customer can
+  --   discharge.  ⇒ state the equation at the shape it HAS.
+  ------------------------------------------------------------------------
+
+  module Typing
+    (D : IDesc) (I : RTy ε)
+    -- the SUBSTITUTION's own type: source depth `d`, target depth `n`
+    (STy : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ)
+    -- the motive, in the two slots `iihTy` binds: index, then element
+    (M : {Γ : Cx} → RTy ((Γ ∙) ∙))
+    (⊢ext : {Γ : Ctx} {d n σ : RTm ⌊ Γ ⌋} →
+            Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ σ ∷ STy d n →
+            Γ ⊢ extN d n σ ∷ STy (nsuc d) (nsuc n))
+    (⊢motApp : {Γ : Ctx} {s dd u h m sb : RTm ⌊ Γ ⌋} →
+               Γ ⊢ h ∷ iinst (pair s dd) u M → Γ ⊢ m ∷ Nat →
+               Γ ⊢ sb ∷ STy dd m →
+               Γ ⊢ app (app h m) sb ∷ IMu D I (pair (smap s) m))
+    where
+
+    ⊢sucs : {Γ : Ctx} (k : ℕ) {n : RTm ⌊ Γ ⌋} →
+            Γ ⊢ n ∷ Nat → Γ ⊢ sucs k n ∷ Nat
+    ⊢sucs zero    dn = dn
+    ⊢sucs (suc k) dn = ⊢nsuc (⊢sucs k dn)
+
+    -- ★ `⊢extNK`, ITERATED — which is the whole reason step 1 came
+    --   first.  ⚠ No cast: `extsN (suc k)` extends at `sucs k d`, and
+    --   `⊢ext` lands at `nsuc (sucs k d) = sucs (suc k) d`, so the two
+    --   sides MEET definitionally.  That is what threading the depth
+    --   through `extsN` bought.
+    ⊢extsN : {Γ : Ctx} (k : ℕ) {d n σ : RTm ⌊ Γ ⌋} →
+             Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ σ ∷ STy d n →
+             Γ ⊢ extsN k d n σ ∷ STy (sucs k d) (sucs k n)
+    ⊢extsN zero    dd dn dσ = dσ
+    ⊢extsN (suc k) dd dn dσ =
+      ⊢ext (⊢sucs k dd) (⊢sucs k dn) (⊢extsN k dd dn dσ)
+
+    ------------------------------------------------------------------------
+    -- ★★★ ONE FIELD, TYPED.  The twin of `Lib/IWk`'s `⊢ixComp`, and it
+    -- splits the same two ways — but the `rides` half is a DIFFERENT
+    -- proof, because substitution moves the SORT and weakening does not.
+    --
+    -- ⚠ THE TWO HYPOTHESES ARE ABOUT `snd (σ a)` AND `snd (τ a)`, not
+    --   about `σ a` and `τ a`.  A row's ambient index is a PAIR and only
+    --   its DEPTH is what the field's index rides; `isSucs-sub` already
+    --   states it that way, so this is the shape that composes.
+    ------------------------------------------------------------------------
+
+    ⊢sPick : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
+             {j : RTm ⌊ Θ ⌋} {d n sb q ih : RTm ⌊ Γ ⌋}
+             (ix : SubIx a j) →
+             snd (σ a) ≡ d → snd (τ a) ≡ n →
+             Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ sb ∷ STy d n →
+             Γ ⊢ q  ∷ IMu D I (subTm σ j) →
+             Γ ⊢ ih ∷ iinst (subTm σ j) q M →
+             Γ ⊢ sPick ix d n sb q ih ∷ IMu D I (subTm τ j)
+    -- ⚠ THE PINNED CASE IS `Lib/IWk`'s, VERBATIM: a closed index is not
+    --   moved by either substitution, so the ORIGINAL field serves.
+    ⊢sPick {σ = σ} {τ = τ} (s-pinned j o) hσ hτ dd dn dsb dq dih =
+      ⊢-cast (cong (IMu D I) (pinned-stable j σ τ o)) dq
+    -- ★ AND THE RIDING CASE IS THE ONE THE NUMERAL WAS FOR.  Three moves,
+    --   in the order the goal presents them:
+    --     · the IH lands at `smap (subTm σ s)`;
+    --     · `isNum-sub` replaces that by `smap (num N)` — the ONLY step
+    --       that crosses the context boundary, and the reason `IsNum`
+    --       exists;
+    --     · `st` reduces it to `num N`, which is `subTm τ s` again.
+    ⊢sPick {Γ = Γ} {σ = σ} {τ = τ} {n = n} (s-rides {s = s} qn p st)
+           hσ hτ dd dn dsb dq dih =
+      ⊢-cast (cong (IMu D I) (cong₂ pair (sym (isNum-sub qn τ)) (sym eqτ)))
+        (⊢conv (⊢-cast (cong (λ z → IMu D I (pair (smap z) (sucs k n)))
+                             (isNum-sub qn σ))
+                 (⊢motApp dih (⊢sucs k dn)
+                   (⊢-cast (cong (λ z → STy z (sucs k n)) (sym eqσ))
+                           (⊢extsN k dd dn dsb))))
+               (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ st))))
+      where
+        k   = depthOf p
+        eqσ = trans (isSucs-sub p σ) (cong (sucs k) hσ)
+        eqτ = trans (isSucs-sub p τ) (cong (sucs k) hτ)

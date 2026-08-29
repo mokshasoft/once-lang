@@ -72,7 +72,7 @@ not just block the proof; it hid the library.**
 
 ---
 
-## Step 2 — `⊢sPick` (the ρ component) 🟡
+## Step 2 — `⊢sPick` (the ρ component) ✅ CLOSED
 
 ⚠ No attempts yet — the first thing STATING it produced was not a proof
 but a **correction to the classification**, so that is the row.
@@ -99,7 +99,28 @@ numeral's *value* and returns a Γ-generic witness; over the knot that
 cost nothing, because the six `sortMap-*` chains were already stated for
 an arbitrary `Γ` and `sTy … sICon` are `num 0 … num 5` definitionally.
 
-⬜ Remaining: `⊢sucs`, `⊢extsN` (iterate `⊢ext`), and `⊢sPick` itself.
+| # | Attempt | Result |
+|---|---------|--------|
+| 1 | with `IsNum` in place, state and prove `⊢sucs`, `⊢extsN`, `⊢sPick` in a new `Sub.Typing` submodule | ✅ **rc=0 first try** |
+
+★ **First try, after four backed-out attempts on step 1 and a stated
+correction on step 2.** That is the pattern the log is meant to make
+visible: the expensive part was never the proof, it was finding the
+premise the goal was really making. Once the classification carried the
+sort's *value*, `⊢sPick` was fifteen lines with no search in them.
+
+Two interface choices did the work, both instances of *state the equation
+at the shape it has*:
+
+* **`⊢motApp` hands over the IH already ELIMINATED.** Passing the motive
+  instead would need `iinst`'s de Bruijn layout to unfold — a
+  knot-specific computation `Lib` cannot do.
+* **The index is taken apart into `pair s dd` at the interface.** A
+  field's index *is* a pair; left whole, every use owes a `βsnd` that
+  only the customer can discharge.
+
+⬜ Remaining for the customer: discharge `⊢ext` (that is `⊢extNK`, done)
+and `⊢motApp` over the knot.
 
 ## Steps 3–6 — open
 
