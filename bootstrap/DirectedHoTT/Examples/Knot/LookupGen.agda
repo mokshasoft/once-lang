@@ -29,7 +29,7 @@ module DirectedHoTT.Examples.Knot.LookupGen where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; var; vz; vs; pair; fst; snd; nsuc; El; IMu
-        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; ICon; iι; iρ; iκ; εwkTy )
+        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; ICon; IDesc; iι; iρ; iκ; εwkTy )
 open import DirectedHoTT.Spec.Typing using ( Ctx; ◇; _▹_; ⌊_⌋ )
 open import DirectedHoTT.Examples.Knot.Sorts using ( IPair; sTy; sVar )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
@@ -37,6 +37,19 @@ open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; Ctx-extK )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
 open import DirectedHoTT.Lib.ArithComm using ( symN )
+open import DirectedHoTT.Spec.Typing
+  using ( IConWf; iwf-ι; iwf-κ; ICodeWf; icw-clo; icw-ford; icw-imu
+        ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nsuc
+        ; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
+        ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
+open import DirectedHoTT.Examples.Knot.Sorts
+  using ( toI; fromI; ⊢ixP; ⊢sTy; ⊢sVar )
+open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
+open import DirectedHoTT.Examples.Knot.CtxD using ( CtxWf; ⊢Ctx-extKv )
+open import DirectedHoTT.Examples.Knot.Build using ( ⊢Var-vzKv; ⊢Var-vsKv )
+open import DirectedHoTT.Examples.Knot.Wk using ( ⊢wkK )
+open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
+open import DirectedHoTT.Lib.ArithComm using ( ⊢symN )
 open import DirectedHoTT.Examples.Knot.Lookup
   using ( ILk; LkD; lkHere; lkThere )
 
@@ -88,6 +101,82 @@ open import DirectedHoTT.Examples.Knot.Lookup
 
 lkHereG : ICon (ε ∙)
 lkHereG = iκ κ0 (iκ κ1 (iκ κ2 (iκ κ3 (iκ κ4 (iκ κ5 (iκ κ6 (iι)))))))
+
+------------------------------------------------------------------------
+-- ★★★ AND ITS WELL-FORMEDNESS, FROM THE SAME DESCRIPTION.
+--
+-- ⚠ THE CONTROL HERE IS THAT IT TYPECHECKS, not that it equals
+--   `Knot/Lookup`'s hand-written chain.  Any inhabitant of
+--   `IConWf D I Θ C` is as good as any other, and this one is
+--   deliberately different (`toI (fromI d)` where the hand-written
+--   proof writes `d`).  Proof-term equality would be a STRONGER
+--   demand than correctness.
+------------------------------------------------------------------------
+
+W_Θ6 : (D : IDesc) → IConWf D ILk Θ6 (iκ κ6 (iι))
+W_Θ6 D =
+  iwf-κ κ6 (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (⊢fst (⊢var (there (there (there (there (there (there here))))))))))
+           (toMu (⊢snd (⊢snd (⊢snd (⊢var (there (there (there (there (there (there here)))))))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var here))))
+                  (toI (⊢nsuc (fromI (⊢var (there (there (there (there (there here)))))))))
+                  (toI (⊢fst (⊢var (there (there (there (there (there (there here)))))))))
+                  (⊢symN (⊢fst (⊢var (there (there (there (there (there (there here)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there here))))))))
+                         (fordAs (⊢var (there (there here)))))
+                  (toMu (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTy (fromI (⊢var (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there here)))))))))))
+    (iwf-ι)
+
+W_Θ5 : (D : IDesc) → IConWf D ILk Θ5 (iκ κ5 (iκ κ6 (iι)))
+W_Θ5 D =
+  iwf-κ κ5 (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (⊢fst (⊢var (there (there (there (there (there here)))))))))
+           (toMu (⊢fst (⊢snd (⊢snd (⊢var (there (there (there (there (there here))))))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (fromI (⊢var here))))
+                  (toI (⊢nsuc (fromI (⊢var (there (there (there (there here))))))))
+                  (toI (⊢fst (⊢var (there (there (there (there (there here))))))))
+                  (⊢symN (⊢fst (⊢var (there (there (there (there (there here))))))) (⊢nsuc (fromI (⊢var (there (there (there (there here)))))))
+                         (fordAs (⊢var (there here))))
+                  (toMu (⊢Var-vzKv (fromI (⊢var (there (there (there (there here))))))))))
+    (W_Θ6 D)
+
+W_Θ4 : (D : IDesc) → IConWf D ILk Θ4 (iκ κ4 (iκ κ5 (iκ κ6 (iι))))
+W_Θ4 D =
+  iwf-κ κ4 (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ CtxWf (toI (⊢fst (⊢var (there (there (there (there here))))))))
+           (toMu (⊢fst (⊢snd (⊢var (there (there (there (there here))))))))
+           (⊢jsub (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here))))
+                  (toI (⊢nsuc (fromI (⊢var (there (there (there here)))))))
+                  (toI (⊢fst (⊢var (there (there (there (there here)))))))
+                  (⊢symN (⊢fst (⊢var (there (there (there (there here)))))) (⊢nsuc (fromI (⊢var (there (there (there here))))))
+                         (fordAs (⊢var here)))
+                  (toMu (⊢Ctx-extKv (fromI (⊢var (there (there (there here))))) (fromMu (⊢var (there (there here)))) (fromMu (⊢var (there here)))))))
+    (W_Θ5 D)
+
+W_Θ3 : (D : IDesc) → IConWf D ILk Θ3 (iκ κ3 (iκ κ4 (iκ κ5 (iκ κ6 (iι)))))
+W_Θ3 D =
+  iwf-κ κ3 (icw-ford _ _ _)
+    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
+    (W_Θ4 D)
+
+W_Θ2 : (D : IDesc) → IConWf D ILk Θ2 (iκ κ2 (iκ κ3 (iκ κ4 (iκ κ5 (iκ κ6 (iι))))))
+W_Θ2 D =
+  iwf-κ κ2 (icw-imu (pair sTy (var (vs vz))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here)))))
+    (W_Θ3 D)
+
+W_Θ1 : (D : IDesc) → IConWf D ILk Θ1 (iκ κ1 (iκ κ2 (iκ κ3 (iκ κ4 (iκ κ5 (iκ κ6 (iι)))))))
+W_Θ1 D =
+  iwf-κ κ1 (icw-imu (var vz) CtxWf)
+    (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here))))
+    (W_Θ2 D)
+
+W_Θ0 : (D : IDesc) → IConWf D ILk Θ0 (iκ κ0 (iκ κ1 (iκ κ2 (iκ κ3 (iκ κ4 (iκ κ5 (iκ κ6 (iι))))))))
+W_Θ0 D =
+  iwf-κ κ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
+    (W_Θ1 D)
+
+lkHereWfG : (D : IDesc) → IConWf D ILk Θ0 lkHereG
+lkHereWfG = W_Θ0
 
 Ξ0 : Ctx
 Ξ0 = ◇ ▹ εwkTy ILk
