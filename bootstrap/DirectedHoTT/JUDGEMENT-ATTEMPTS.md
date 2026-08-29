@@ -463,3 +463,28 @@ telescope costs.
 as the control; then the tag and the padded telescope; then the 35
 translatable rules. The 8 substitution rules join the `β` group from
 §2.2 and are the last thing in the layer.
+
+## §4.1 — sort inference ✅ **42 / 43**
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 27 | infer from use; an unknown head propagates the ambient sort to its children | ⚠ **36/43**, seven "conflicts" |
+| 28 | an unknown head contributes **nothing** | ✅ **42/43** |
+
+★★ **Attempt 27's seven conflicts were all the fallback, not the rules.**
+`subTy (single u) B` scanned at sort `sTy` typed `u` as a *type*, so
+`⊢app`, `⊢pair`, `⊢natrec`, `⊢con`, `⊢elim`, `⊢icon`, `⊢ielim` all
+"conflicted". An unknown head carries **no information** — that is the
+correct rule, and it is the same shape as every other over-eager default
+in this log.
+
+⚠ And it is worth saying plainly: **that is the fourth coverage number in
+this layer that was my own tool.** 31/73, 0/26, 36/43 — and each time
+the first instinct was to go looking for a missing mechanism.
+
+✅ The one refusal is real: `⊢ielim`'s motive `M` gets no sort from any
+occurrence, so the inference **declines** rather than guessing. Spot-
+checked by hand against the source: `⊢var` → `x:sVar, A:sTy`;
+`⊢lam` → `A:sTy, t:sTm, B:sTy`; `⊢fst` → `p:sTm, A:sTy, B:sTy`.
+
+⬜ **Next:** the tagged index and the padded telescope, then emission.
