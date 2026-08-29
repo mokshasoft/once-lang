@@ -122,7 +122,7 @@ at the shape it has*:
 ⬜ Remaining for the customer: discharge `⊢ext` (that is `⊢extNK`, done)
 and `⊢motApp` over the knot.
 
-## Step 3 — `⊢isubPay` 🟡
+## Step 3 — `⊢isubPay` ✅ CLOSED (Lib side)
 
 ⚠ Stating it produced a correction *again*, and this one is worse than
 step 2's: it changes the **term**, not just the proof.
@@ -160,7 +160,24 @@ Two knock-on refinements, both forced, both the *same* move as step 2:
 refined κ classification loses no rows either. That control is now
 earning its keep twice.
 
-⬜ Remaining: `⊢fordMapK` over the knot, then `⊢isubPay` itself.
+| # | Attempt | Result |
+|---|---------|--------|
+| 1 | with `SubKa`/`fordMap` in place, prove `⊢kaPick` and `⊢isubPay` | ✅ rc=0 (two scope slips, no goal moved) |
+
+★ Same shape as step 2: once the classification carried what the goal
+was actually asking for, the proof went in without search. `⊢isubPay` is
+structurally `Lib/IWk`'s `⊢iwkPay` — same walk, same `payStep` casts —
+with each field's component lemma swapped.
+
+Two things it does *not* pay that `⊢iwkPay` does:
+
+* the four index hypotheses **thread unchanged** through the recursion,
+  because `iext σ u (vs x) = σ x`. No `cong`, no re-derivation per depth.
+* the IH slot needs **no cast**. `⊢iwkPay` instantiates `Mot D I` and
+  owes a `wk-single` round trip; `⊢sPick` takes its hypothesis at
+  `iinst`, which is the shape `iihTy` hands over.
+
+⬜ Remaining for the customer: `⊢fordMapK` and `⊢motApp` over the knot.
 
 ## Steps 4–6 — open
 
