@@ -211,6 +211,40 @@ formulation that needs an axiom is not.
 - ⭐ **Sweep transports away at consolidation** — replace `psubst`/rewrite
   with structural data (perms/isos). It is what made the adequacy splice
   lemmas tractable.
+- ⭐⭐ **When guesses start stacking up, TABULATE them and read what they
+  SHARE.** Gap A took 51 attempts and what broke it was writing the first
+  51 down, not attempting a 52nd: all of 45–51 assumed `⊢S3` gets built
+  first and converted second. `subTm`'s `⊢extNK` repeated it exactly —
+  four casts, one unstated premise ("build the body, cast second"), and
+  under that premise NO cast could have worked, because the mismatch sat
+  inside a Π domain no `⊢-cast` reaches.
+  ⚠ **The premise does not just block the proof — it HIDES THE LIBRARY.**
+  `ξ-Πˡ` and `⟶ᵀ*-Πˡ` had been proved long before, and four attempts
+  never looked for them because under the dropped premise a Π-domain
+  congruence had nowhere to be used. Same again at `⊢fordMapK`:
+  `⟶*-⌜Id⌝ˡ` and `⟶ᵀ*-El` already existed.
+  ⇒ the rule: **a backed-out attempt gets a row before the next one is
+  tried**, and the useful column is *why it failed*, not *what was
+  tried*. Records: `poc/OCP0009/GAP-A-ATTEMPTS.md`, `SUBTM-ATTEMPTS.md`.
+- ⭐⭐ **State each side at the shape IT has — the two sides need not
+  match.** `⊢isubPay`'s σ hypotheses are `≡` and its τ hypotheses are
+  `⟶*`, because `σ` is `isingle ⟨i⟩` with `⟨i⟩` a VARIABLE while `τ` is
+  `isingle (pair … n)` — a literal pair, whose projections are STUCK.
+  Forcing both into one currency costs a `βfst`/`βsnd` at every use.
+  ⚠ A `⟶*` hypothesis is strictly weaker than an `≡`, so this is free —
+  **but only while the reduction lands at a CONCRETE type former.**
+  Through an abstract parameter (`STy`) it would have needed its own
+  congruence hypothesis.
+- ⭐⭐ **Obligations should be COMPUTED, not enumerated — a recursive
+  `Set`, not a datatype.** `subTm`'s method tuple interleaves 50 computed
+  rows with 3 given ones. As a `data GiveOK` with a node per row the
+  witness is 53 constructors carrying nothing at 50 of them; as a
+  `Set`-valued recursion over the mask it REDUCES to `Pr _ (Pr _ (Pr _
+  OKg))` and the caller writes three derivations naming no positions.
+  ★ It also makes the mask self-checking: a wrong lookup predicate
+  becomes a type error rather than a misplaced method.
+  ⚠ The price is the entry above it — a defined `Set` is not injective,
+  so the caller must PIN the implicit it consumes.
 
 ## 5. Standing constraints
 
