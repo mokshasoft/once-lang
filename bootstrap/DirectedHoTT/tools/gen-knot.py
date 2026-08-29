@@ -1991,7 +1991,10 @@ if __name__ == "__main__":
     open(os.path.join(out, "SzAgree.agda"), "w").write(gen_szagree())
     open(os.path.join(out, "LookupGen.agda"), "w").write(gen_lookupgen())
     open(os.path.join(out, "RedRows.agda"), "w").write(gen_redrows())
-    open(os.path.join(out, "RedWf.agda"), "w").write(gen_redwf())
+    # ⬜ NOT EMITTED YET — see JUDGEMENT-ATTEMPTS.md §2.4.  The `v`
+    #   constructors are stated at `var x`, and a constructor UNDER A
+    #   BINDER sits at `nsuc (var x)`, which is not a variable.
+    # open(os.path.join(out, "RedWf.agda"), "w").write(gen_redwf())
     print(f"{len(KNOT)} constructors · {n_rho} recursive fields · "
           f"{n_kap} κ fields · {2 * (n_rho + n_kap) + 2 * len(KNOT)} "
           f"generated clauses")

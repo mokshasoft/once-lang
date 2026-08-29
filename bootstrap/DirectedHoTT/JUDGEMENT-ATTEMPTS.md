@@ -257,6 +257,43 @@ resolved to the rule's `m`** and produced a well-typed row meaning
 something else — the error class this whole generator exists to remove.
 ⇒ emitter-internal names must be un-nameable, not merely unlikely.
 
+### 2.4 — the Wf for those 65: `var x` is the wrong generality ⬜ OPEN
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 12 | generate the 65 `IConWf`s into a split module `Knot/RedWf` | ⚠ **`var _x != nsuc (var (vs⁶ vz))`** at `tr-J-base` |
+
+★★★ **`Knot/CtorsV`'s `var x` is too narrow, and this is the third time
+the *depth* has been the interface question.** `tr-J-base` binds
+`c a m : RTm (Γ ∙)`, so its `⌜Hom⌝ c a m` sits at depth `nsuc (var m)` —
+and that is **not a variable**, so `⊢Tm-cHomKv` cannot apply.
+
+⇒ there are **three** depth shapes, not two:
+
+| shape | who needs it | what makes it work |
+|---|---|---|
+| `num n` | the adequacy map | renaming-invariant ⇒ `num-ren`/`num-sub` chains |
+| `var x` | a flat judgement row | computes under ren/sub |
+| **`sucs j (var x)`** | **a row binding under a binder** | **also computes** — nothing is lost |
+
+★ **The fix is to widen, not to add a third lemma.** `sucs j (var x)` is
+still structurally computable — `renTm vs` pushes through `nsuc` to a
+variable lookup — so it keeps the "no equations" property that made the
+`v` form *shorter* than the numeral one. A fully general `d : RTm` would
+**not**: it reintroduces `wk-single` chains at every substituted
+position, which is the cost the `v` form exists to avoid.
+
+⇒ so the correct statement was never `var x`; it was `sucs j (var x)`,
+and `var x` is its `j = 0` case. `⊢Var-vzKv` — the lemma the `v` form was
+generalised *from* — happens to be a `j = 0` use, which is why the
+narrower shape looked right.
+
+⬜ **Next:** widen `emit_row`'s `V` mode to carry `j`, and have the
+emitter's depth-threading supply `(j, x)` rather than a derivation text.
+`Knot/RedWf` is not emitted until then — the generator's call is
+commented out with a pointer here, so the tree stays green rather than
+carrying a module that does not check.
+
 ★ **And attempt 10→11 is the depth-threading finding again, at the term
 level.** The `Var` constructors take their depth explicitly — they Ford
 the depth as well as the tag, which is the exception `Knot/Build` exists
