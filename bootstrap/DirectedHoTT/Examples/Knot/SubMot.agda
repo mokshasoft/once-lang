@@ -59,19 +59,21 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; ⊢nzero; ⊢natrec; wk-single; ty-Nat; ty-Π; ty-IMu; ty-Unit
         ; IConWf; imethTy; imethsTyFrom; ty-Σ; βsnd; βfst; ξ-pairʳ; ξ-pairˡ; ξ-nsuc; single
-        ; _⟶*_; done; step; natrec-suc; natrec-zero
+        ; _⟶*_; done; step; natrec-suc; natrec-zero; csymᵀ
         ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-El; ⊢ielim; imethsTy
         ; IDescWfFrom; idwf-nil; idwf-cons )
-open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w )
+open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w; ren-w )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; cdTake )
 open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 import DirectedHoTT.Lib.ISub as IS
 open import DirectedHoTT.Lib.IWk using ( Maybe; just; nothing )
-open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; iihTy )
+open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; subTm )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-pairˡ )
+open import DirectedHoTT.Metatheory.Confluence
+  using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-pairˡ; ⟶*-pairʳ )
+open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Πˡ )
 open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN )
 open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
@@ -975,7 +977,7 @@ shS n i = pair (sortMap (fst i)) n
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- ★ STEP 1 OF THE REMAINING SIX: the EXTENSION's typing.  ⬜ IN PROGRESS.
+-- ★★★ STEP 1 OF THE REMAINING SIX: the EXTENSION's typing.  ✅ CLOSED.
 --
 -- `⊢isubPay`'s `rides` case pushes `σ` under `k` binders, so `extN` must
 -- be type-preserving:
@@ -983,33 +985,94 @@ shS n i = pair (sortMap (fst i)) n
 --     ⊢extNK : Γ ⊢ sb ∷ SubTy d n → Γ ⊢ extNK d n sb ∷ SubTy (nsuc d) (nsuc n)
 --     SubTy d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
 --
--- ✅ THE STRUCTURE TYPE-CHECKS: `⊢lam` over `⊢app (⊢app (⊢extSK …) …) …`
---   is accepted, and `⊢extSK` applies with `⊢ixP ⊢sVar (⊢nsuc (⊢wk dd))`
---   and `⊢var here`.  Only TWO casts are missing, both on the same
---   round-trip family.
+-- ⚠⚠ FOUR CASTS WERE GUESSED AT THE RESULT AND ALL FOUR WERE BACKED
+--   OUT.  What finally closed it was NOT a fifth cast but dropping the
+--   assumption the four shared — that the body gets BUILT first and
+--   CONVERTED second.  Listing them made the shared premise visible;
+--   `SUBTM-ATTEMPTS.md` has the table, and this is the second time the
+--   list-the-attempts move has paid (`poc/OCP0009/GAP-A-ATTEMPTS.md` was
+--   the first, at 51).
 --
--- ⬜ CAST 1 — the RESULT: `subTm (single (w sb)) (w (w n)) ≡ w n`, a
---   single `wk-single`.  Straightforward.
--- ⬜ CAST 2 — the ARGUMENT, in the Π's DOMAIN.  ⚠ `⊢extSK` states its
---   domain at `predTm (snd (w i))`, so the application instantiates it
---   to a `predTm` of a substituted pair.  ★ THE TOOL IS ALREADY PROVED
---   AND SITS ABOVE — `predSndPair d : predTm (snd (pair sVar (nsuc d)))
---   ⟶* d`.  What is not yet settled is HOW to apply it: the mismatch is
---   inside a Π DOMAIN, so it wants a `≅ᵀ` congruence for `Π`, not the
---   `⊢-cast`/`muBwd*` pair used elsewhere.
+-- ★ CONVERT THE INPUT AT ITS SOURCE.  At the result the mismatch sits
+--   inside a Π DOMAIN, where a `⊢-cast` cannot reach it.  At the
+--   argument the type is still concrete, and it takes TWO conversions
+--   OF DIFFERENT KINDS, which is why no single cast was ever going to
+--   work:
 --
--- ⚠ FOUR GUESSED CASTS WERE TRIED AND BACKED OUT.  Each time the goal
---   moved rather than closed, which is the signal recorded in
---   `LESSONS.md` §1: read the goal, state the equation at the shape it
---   HAS.  ⇒ next attempt: find or prove the `Π`-domain conversion
---   FIRST, then apply `predSndPair` through it.
+--     · the CODOMAIN differs by a RENAMING — `ren-w`, an `≡`, so a
+--       `⊢-cast`;
+--     · the DOMAIN differs by a REDUCTION — `predSndSub`, a `⟶*`
+--       lifted through the `Π` by `⟶ᵀ*-Πˡ`, so a `⊢conv`.
+--
+-- ★ AND BOTH TOOLS ALREADY EXISTED: `ξ-Πˡ` (`Spec/Typing`) and
+--   `⟶ᵀ*-Πˡ` (`Metatheory/Injectivity`) were proved long before this
+--   file.  The four attempts never looked for them because, under the
+--   dropped assumption, a Π-domain congruence had no place to be used.
 ------------------------------------------------------------------------
 
 SubTy : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
 SubTy d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
 
--- ★ the reduction cast 2 needs: one `βsnd`, then one `pred-suc`.
+-- ★ the domain conversion needs: one `βsnd`, then one `pred-suc`.
 predSndPair : {Γ : Cx} (d : RTm Γ) →
               predTm (snd (pair sVar (nsuc d))) ⟶* d
 predSndPair d = ⟶*-trans (pred* (step (βsnd sVar (nsuc d)) done)) (pred-suc d)
 
+-- ⚠ AND IT IS NEEDED UNDER A SUBSTITUTION, which is NOT the same
+--   statement.  `⊢extSK`'s domain is instantiated to `predTm (snd (w i))`
+--   with `i` the SUBSTITUTED pair, so the `nsuc`'s argument arrives as
+--   `subTm (single v) (w (w d))` rather than as `w d`.  `predSndPair`
+--   still does all the reducing — only its right ENDPOINT has to be
+--   moved, and an endpoint is an `≡`, so it moves by a cast and not by
+--   another reduction.
+--
+-- ⬜ GENERALISATION CANDIDATE (with the two families in
+--   HANDOFF-2026-08-27 §"THE PENDING GENERALISATION"): `⟶*-castᵣ` is
+--   carrier-generic plumbing with nothing knot-specific in it.  It is
+--   local only because this is its first customer; a second one moves
+--   it down to a reduction lib.
+⟶*-castᵣ : {Γ : Cx} {a b b' : RTm Γ} → b ≡ b' → a ⟶* b → a ⟶* b'
+⟶*-castᵣ refl r = r
+
+predSndSub : {Γ : Cx} (v D : RTm Γ) →
+             subTm (single v) (predTm (snd (w (pair sVar (nsuc D))))) ⟶* D
+predSndSub v D =
+  ⟶*-castᵣ (wk-single {v = v} D)
+           (predSndPair (subTm (single v) (w D)))
+
+------------------------------------------------------------------------
+-- ★★★ AND THE INPUT IS CONVERTED AT ITS SOURCE, NOT THE RESULT AFTER.
+--
+-- ⚠⚠ FOUR EARLIER ATTEMPTS ALL SHARED ONE ASSUMPTION — that the body is
+--   BUILT first and CAST second — and each time the goal moved rather
+--   than closed.  Dropping that assumption is what closes it, and it is
+--   `build-dont-transport` (which closed gap A's `⊢S3s` after 51
+--   attempts) applied one level down.  See `SUBTM-ATTEMPTS.md`.
+--
+-- ★ The tool was in the codebase already: `⟶ᵀ*-Πˡ` lifts a domain
+--   reduction through a `Π`, so `predSndPair` reaches the place it is
+--   needed.  Nothing new had to be proved — only stated in the right
+--   position, where the type is still CONCRETE and the congruence is
+--   writable.
+------------------------------------------------------------------------
+
+⊢extNK : {Γ : Ctx} {d n sb : RTm ⌊ Γ ⌋} →
+         Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ sb ∷ SubTy d n →
+         Γ ⊢ extNK d n sb ∷ SubTy (nsuc d) (nsuc n)
+⊢extNK {d = d} {n = n} {sb = sb} dd dn dsb =
+  ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc dd)))
+    (⊢-cast (cong (λ z → K (pair sTm (nsuc z)))
+                  (wk-single {v = renTm vs sb} (renTm vs n)))
+      (⊢app (⊢app (⊢extSK (⊢ixP ⊢sVar (⊢nsuc (⊢wk dd))) (⊢var here))
+                  (⊢wk dn))
+            -- ⚠ TWO CONVERSIONS ON THE INPUT, of DIFFERENT KINDS: the
+            --   codomain differs by a RENAMING (`ren-w`, an `≡`), the
+            --   domain by a REDUCTION (`predSndPair`, a `⟶*` lifted
+            --   through `Π` by `⟶ᵀ*-Πˡ`).  Neither is reachable from
+            --   the result end, which is why four casts there failed.
+            (⊢conv (⊢-cast (cong (λ z → Π (K (pair sVar (renTm vs d)))
+                                          (K (pair sTm z)))
+                                 (ren-w {ρ = vs} n))
+                           (⊢wk dsb))
+                   (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ
+                     (⟶ᵀ*-IMu (⟶*-pairʳ (predSndSub (renTm vs n) (renTm vs d))))))))))
