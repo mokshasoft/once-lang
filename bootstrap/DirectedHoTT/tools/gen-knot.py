@@ -1142,11 +1142,42 @@ def jdAt(e, k, ix, binders, tel, want):
     if want != 'el': return txt
     return ("toI " if ty[0] == 'nat' else "toMu ") + par(txt)
 
-def emit_jrowwf(row, tel, pre, ity, wfname):
+def _codety(comp, dnat):
+    "the index component's TYPE is well formed"
+    if comp[0] == 'tnat': return "ty-Nat"
+    return "ty-IMu %s %s" % (_famwf(comp), par(_ixderiv(comp, dnat)))
+
+def _tailty(c, t, tel, depfn):
+    """the ⊢ty of the index telescope's TAIL from component `c`, `t` Σ
+    binders deep.  ⚠ `⊢pair`'s FIRST argument is the ⊢ty of the TAIL, not
+    of the head — and each component sits one binder deeper than the
+    last, which is what `t` counts."""
+    head = _codety(tel[c], depfn(t))
+    if c == len(tel) - 1: return head
+    return "ty-Σ %s %s" % (par(head), par(_tailty(c + 1, t + 1, tel, depfn)))
+
+def _wks(t, txt):
+    return ("⊢wk (" * t) + txt + (")" * t)
+
+def _tupcomps(e):
+    "a right-nested `pair` tuple, flattened"
+    out = []
+    while e[0] == 'pair':
+        out.append(e[1]); e = e[2]
+    out.append(e)
+    return out
+
+def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None):
     """the `IConWf` chain for one row — one lemma per field, innermost
     first, exactly as `Knot/Lookup` writes them by hand.
 
-    ⚠ `D` STAYS A PARAMETER: `IConWf` mentions it only at `iwf-ρ`."""
+    ⚠⚠ `D` STAYS A PARAMETER ONLY FOR A ROW WITH NO RECURSIVE PREMISE.
+      `IConWf` mentions `D` only at `iwf-ρ` — but the row's TELESCOPE
+      mentions it too, from the premise onwards: that field extends the
+      context by `IMu D I ρ`.  ⇒ a row with a premise is proved at the
+      CONCRETE description, and its post-premise contexts have to be
+      re-declared at `Ctx` level, because `emit_jrow` had to drop to a
+      bare `Cx` there to stay writable before `D` existed."""
     ix, fs = jrow_fields(row, tel)
     T, F = pre
     bty = {nm: _binder_comp(code)[0] for nm, code in row.binders}
@@ -1154,12 +1185,64 @@ def emit_jrowwf(row, tel, pre, ity, wfname):
     n, nb, npr = len(tel), len(row.binders), len(row.prems)
     depth_at = ix.get('#depth')
     L, W = [], "W_" + T
+    para = (npr == 0)
+    if not para:
+        assert idesc is not None, "a row with a premise needs its description"
+        rho = nb
+        names = ["%s%d" % (T, j) for j in range(rho + 1, len(fs) + 1)]
+        L.append("-- ★ the telescope, back at `Ctx` level: `emit_jrow` had to")
+        L.append("--   drop to a bare `Cx` at the premise to stay writable")
+        L.append("--   before `%s` existed." % idesc)
+        L.append("%s : Ctx" % " ".join(names))
+        L.append("%s%d = %s%d ▹ IMu %s %s %s%d"
+                 % (T, rho + 1, T, rho, idesc, ity, F, rho))
+        for j in range(rho + 1, len(fs)):
+            L.append("%s%d = %s%d ▹ El %s%d" % (T, j + 1, T, j, F, j))
+        L.append("")
     for k in range(len(fs) - 1, -1, -1):
         kind, e = fs[k]
         vis = {nm: j for nm, j in ix.items() if j < k or nm == '#depth'}
-        damb, inner = dbd(k), ("iwf-ι" if k == len(fs) - 1 else "%s%d" % (W, k + 1))
+        damb = dbd(k)
+        inner = ("iwf-ι" if k == len(fs) - 1
+                 else ("%s%d" % (W, k + 1)) + ("" if npr == 0 else ""))
+        if k < len(fs) - 1 and npr == 0: inner = "%s%d" % (W, k + 1)
         if kind == 'ρ':
-            raise NotImplementedError("iwf-ρ: the recursive premise's index tuple")
+            # ★★★ THE RECURSIVE PREMISE.  Its derivation is the index
+            #   TUPLE's typing: a right-nested `⊢pair`, each carrying the
+            #   ⊢ty of its TAIL.
+            comps = _tupcomps(e)
+            body, m = None, len(tel)
+            for j in range(m - 2, -1, -1):
+                if j == 0:
+                    depfn = lambda t: dbd(t)          # the Σ-BOUND depth
+                else:
+                    d0 = jdAt(comps[0], k, vis, bty, tel, 'nat')
+                    depfn = (lambda d0: (lambda t: _wks(t, d0)))(d0)
+                # ⚠ `t` STARTS AT 1 FOR A VALUE DEPTH, 0 FOR THE BOUND
+                #   ONE.  `⊢pair`'s ⊢ty argument is already UNDER the
+                #   pair's own binder, so a depth taken from the ambient
+                #   context is one weakening away — while the Σ-bound
+                #   depth IS that binder.  Off by one here still
+                #   typechecks at a different component.
+                ty = _tailty(j + 1, 0 if j == 0 else 1, tel, depfn)
+                if body is None:
+                    body = ("⊢pair %s %s %s"
+                            % (par(ty),
+                               par(jdAt(comps[j], k, vis, bty, tel,
+                                        'nat' if j == 0 else 'mu')),
+                               par(jdAt(comps[m - 1], k, vis, bty, tel, 'mu'))))
+                else:
+                    body = ("⊢pair %s %s\n      (%s)"
+                            % (par(ty),
+                               par(jdAt(comps[j], k, vis, bty, tel,
+                                        'nat' if j == 0 else 'mu')),
+                               body))
+            rung = "iwf-ρ %s%d\n    (%s)" % (F, k, body)
+            L.append("%s%d : IConWf %s %s %s%d %s"
+                     % (W, k, idesc, ity, T, k, _conFrom(fs, F, k)))
+            L.append("%s%d =\n  %s\n    %s" % (W, k, rung, inner))
+            L.append("")
+            continue
         if k < nb:
             comp = bty[row.binders[k][0]]
             if comp[0] == 'tnat':
@@ -1195,12 +1278,20 @@ def emit_jrowwf(row, tel, pre, ity, wfname):
                            par(d0), damb, damb, par(d0),
                            dbd(k - 1 - depth_at),
                            par(jdAt(row.vals[c], k, vis, bty, tel, 'el'))))
-        L.append("%s%d : (D : IDesc) → IConWf D %s %s%d %s"
-                 % (W, k, ity, T, k, _conFrom(fs, F, k)))
-        L.append("%s%d D =\n  %s\n    (%s)" % (W, k, rung,
-                 inner if inner == "iwf-ι" else inner + " D"))
+        if para:
+            L.append("%s%d : (D : IDesc) → IConWf D %s %s%d %s"
+                     % (W, k, ity, T, k, _conFrom(fs, F, k)))
+            L.append("%s%d D =\n  %s\n    (%s)" % (W, k, rung,
+                     inner if inner == "iwf-ι" else inner + " D"))
+        else:
+            L.append("%s%d : IConWf %s %s %s%d %s"
+                     % (W, k, idesc, ity, T, k, _conFrom(fs, F, k)))
+            L.append("%s%d =\n  %s\n    %s" % (W, k, rung, inner))
         L.append("")
-    L.append("%s : (D : IDesc) → IConWf D %s %s0 %s" % (wfname, ity, T, row.name))
+    if para:
+        L.append("%s : (D : IDesc) → IConWf D %s %s0 %s" % (wfname, ity, T, row.name))
+    else:
+        L.append("%s : IConWf %s %s %s0 %s" % (wfname, idesc, ity, T, row.name))
     L.append("%s = %s0" % (wfname, W))
     return "\n".join(reversed_blocks(L))
 
@@ -1294,7 +1385,8 @@ open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
 open import DirectedHoTT.Lib.ArithComm using ( symN )
 open import DirectedHoTT.Spec.Typing
-  using ( IConWf; iwf-ι; iwf-κ; ICodeWf; icw-clo; icw-ford; icw-imu
+  using ( IConWf; iwf-ι; iwf-κ; iwf-ρ; ICodeWf; icw-clo; icw-ford; icw-imu
+        ; ⊢pair; ty-Σ; ty-Nat; ty-IMu
         ; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nsuc
         ; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢jsub
         ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
@@ -1306,6 +1398,7 @@ open import DirectedHoTT.Examples.Knot.Build using ( ⊢Var-vzKv; ⊢Var-vsKv )
 open import DirectedHoTT.Examples.Knot.Wk using ( ⊢wkK )
 open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( ⊢symN )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Lookup
   using ( ILk; LkD; lkHere; lkThere )
 
@@ -1347,6 +1440,7 @@ def gen_lookupgen():
          "-" * 72, "",
          emit_jrowwf(here, TEL, ("Θ", "κ"), "ILk", "lkHereWfG"), "",
          emit_jrow(there, TEL, ("Ξ", "λ"), "ILk", "LkD"), "",
+         emit_jrowwf(there, TEL, ("Ξ", "λ"), "ILk", "lkThereWfG", "LkD"), "",
          "------------------------------------------------------------------------",
          "-- ★★★ THE CONTROL: generated ≡ hand-written, both rows.",
          "------------------------------------------------------------------------",

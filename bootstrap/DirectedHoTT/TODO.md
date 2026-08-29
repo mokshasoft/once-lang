@@ -60,7 +60,7 @@ gated on `subTm`**.
 | | item | rows |
 |---|---|---|
 | ✅ | the row emitter + its control | `tools/gen-knot.py`, `Knot/LookupGen` |
-| ⬜ | the `IConWf` emitter | — |
+| ✅ | **the `IConWf` emitter** | `emit_jrowwf`; both `_∋_∷_` rows generate + typecheck (`Knot/LookupGen`) |
 | ⬜ | `_⟶_` | 73 |
 | ⬜ | `_⟶ᵀ_` | 26 |
 | ⬜ | `_≅ᵀ_` | 4 |
