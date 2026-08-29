@@ -84,14 +84,16 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.ISub where
+open import normalizer.Syntax.Types using ( _≡_ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil
+  using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil; iι; iρ; iκ
         ; app; lam; pair; fst; snd; unit; nsuc; icon; var; vz; vs )
-open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
+open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm )
+open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
 open import DirectedHoTT.Lib.IWk
   using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf
-        ; Maybe; just; nothing; decCon )
+        ; Maybe; just; nothing; decCon; decSucs; decClosed; WkKa; decKa )
 
 module Sub
   -- ★ the ONE thing that differs from weakening: how a substitution is
@@ -101,7 +103,88 @@ module Sub
   --   `pair sVar (nsuc d)`, so building `σ⁺` needs `d`, not just the
   --   target `n` — the parameter cannot be `n σ ↦ σ⁺`.
   (extN : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ)   -- d n σ ↦ σ⁺
+  -- ★ THE SORT MAP, and a decision procedure for the ONE property the
+  --   typing needs of it.  ⚠ Both are parameters for the same reason
+  --   `extN` is: `sortMap` is built over the KNOT and `Lib` may not
+  --   import `Examples`.
+  (smap : {Γ : Cx} → RTm Γ → RTm Γ)
+  (decStable : {Δ : Cx} (s : RTm Δ) → Maybe (smap s ⟶* s))
   where
+
+  ------------------------------------------------------------------------
+  -- ★★★ THE REFINED INDEX CLASSIFICATION.
+  --
+  -- ⚠ `Lib/IWk`'s `WkIx` is NOT enough for the typing, though it is for
+  --   the term — see this module's header.  A `rides` field's method
+  --   applies the IH, which lands at `K (pair (smap s) …)` where the
+  --   payload slot wants `K (pair s …)`; those agree only if
+  --   `smap s ⟶* s`, and `WkIx` records only that `s` is CLOSED.
+  --
+  -- ★ So `SubIx` is `WkIx` plus exactly that witness.  Everything else —
+  --   `IsSucs`, `depthOf`, the `pinned` case — is `Lib/IWk`'s, unchanged.
+  ------------------------------------------------------------------------
+
+  data SubIx {Δ : Cx} (a : Var Δ) : RTm Δ → Set where
+    s-rides  : (s : RTm Δ) → ((x : Var Δ) → occTm x s ≡ false) →
+               {d : RTm Δ} → IsSucs a d →
+               smap s ⟶* s →
+               SubIx a (pair s d)
+    s-pinned : (j : RTm Δ) → ((x : Var Δ) → occTm x j ≡ false) → SubIx a j
+
+  -- ⚠ THE DEPTH IS READ OFF THE `IsSucs`, exactly as in `Lib/IWk`: it is
+  --   how many binders deeper the field sits, hence how many times `σ`
+  --   must be extended.
+  sDepth : {Δ : Cx} {a : Var Δ} {j : RTm Δ} → SubIx a j → ℕ
+  sDepth (s-rides _ _ p _) = depthOf p
+  sDepth (s-pinned _ _)    = zero
+
+  ------------------------------------------------------------------------
+  -- THE ROW, and its decider.
+  --
+  -- ⚠⚠ THE κ FIELDS ARE **NOT** SETTLED BY `Lib/IWk`'s `WkKa` EITHER,
+  --   and this is the second place weakening and substitution part
+  --   company.  `ka-fst` says a TAG FORD's witness "still serves"
+  --   because `fst (sh ⟨i⟩) ⟶ fst ⟨i⟩` — the shift leaves the sort
+  --   alone.  Substitution MAPS the sort, so at the new index the ford
+  --   reads `smap (fst ⟨i⟩) ≡ s` and the old witness does not serve.
+  --   ★ That gap is exactly what `Knot/SubMot`'s `sortConv` closes, so
+  --   the classification can keep `WkKa` and let the TYPING pay — but it
+  --   is worth knowing that `WkKa` is reused for its SHAPE here, not
+  --   because its justification carries over.
+  ------------------------------------------------------------------------
+
+  data SubCon {Δ : Cx} (a : Var Δ) : ICon Δ → Set where
+    sc-ι : SubCon a iι
+    sc-ρ : {j : RTm Δ} {C : ICon (Δ ∙)} →
+           SubIx a j → SubCon (vs a) C → SubCon a (iρ j C)
+    sc-κ : {κ : RTm Δ} {C : ICon (Δ ∙)} →
+           WkKa a κ → SubCon (vs a) C → SubCon a (iκ κ C)
+
+  decSubIx : {Δ : Cx} (a : Var Δ) (j : RTm Δ) → Maybe (SubIx a j)
+  decSubIx a (pair s d) with decSucs a d | decClosed s | decStable s
+  ... | just p  | just cs | just st = just (s-rides s cs p st)
+  ... | _       | _       | _       = decSPin a (pair s d)
+    where
+      decSPin : {Δ' : Cx} (b : Var Δ') (k : RTm Δ') → Maybe (SubIx b k)
+      decSPin b k with decClosed k
+      ... | just o  = just (s-pinned k o)
+      ... | nothing = nothing
+  decSubIx a j with decClosed j
+  ... | just o  = just (s-pinned j o)
+  ... | nothing = nothing
+
+  decSubCon : {Δ : Cx} (a : Var Δ) (C : ICon Δ) → Maybe (SubCon a C)
+  decSubCon a iι = just sc-ι
+  decSubCon a (iρ j C) with decSubIx a j
+  ... | nothing = nothing
+  ... | just p with decSubCon (vs a) C
+  ...   | just w  = just (sc-ρ p w)
+  ...   | nothing = nothing
+  decSubCon a (iκ κ C) with decKa a κ
+  ... | nothing = nothing
+  ... | just p with decSubCon (vs a) C
+  ...   | just w  = just (sc-κ p w)
+  ...   | nothing = nothing
 
   -- `nsuc^k`
   sucsN : {Γ : Cx} → ℕ → RTm Γ → RTm Γ
@@ -124,10 +207,10 @@ module Sub
   ------------------------------------------------------------------------
 
   sPick : {Γ Δ : Cx} {a : Var Δ} {j : RTm Δ} →
-          WkIx a j → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  sPick (rides _ _ p) d n σ q ih =
+          SubIx a j → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  sPick (s-rides _ _ p _) d n σ q ih =
     app (app ih (sucsN (depthOf p) n)) (extsN (depthOf p) d n σ)
-  sPick (pinned _ _)  d n σ q ih = q
+  sPick (s-pinned _ _)    d n σ q ih = q
 
   ------------------------------------------------------------------------
   -- THE PAYLOAD, REBUILT.  ⚠ The two tuples are walked TOGETHER, as in
@@ -136,11 +219,11 @@ module Sub
   ------------------------------------------------------------------------
 
   isubPay : {Γ Δ : Cx} {a : Var Δ} {C : ICon Δ} →
-            WkCon a C → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-  isubPay wk-ι           d n σ q ih = unit
-  isubPay (wk-ρ ix w)    d n σ q ih =
+            SubCon a C → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+  isubPay sc-ι           d n σ q ih = unit
+  isubPay (sc-ρ ix w)    d n σ q ih =
     pair (sPick ix d n σ (fst q) (fst ih)) (isubPay w d n σ (snd q) (snd ih))
-  isubPay (wk-κ _ w)     d n σ q ih = pair (fst q) (isubPay w d n σ (snd q) ih)
+  isubPay (sc-κ _ w)     d n σ q ih = pair (fst q) (isubPay w d n σ (snd q) ih)
 
   ------------------------------------------------------------------------
   -- ★★★ THE METHOD.
@@ -156,7 +239,7 @@ module Sub
   ------------------------------------------------------------------------
 
   isubMethod : {Γ Δ : Cx} {a : Var Δ} {C : ICon Δ} →
-               ℕ → WkCon a C → RTm Γ
+               ℕ → SubCon a C → RTm Γ
   isubMethod k w =
     lam (lam (lam (lam (lam
       (icon k (isubPay w (snd (var (vs (vs (vs (vs vz)))))) -- d = snd ⟨i⟩
@@ -181,7 +264,7 @@ module Sub
   data SubDesc : IDesc → Set where
     sd-nil  : SubDesc inil
     sd-comp : {C : ICon (ε ∙)} {E : IDesc} →
-              WkCon vz C → SubDesc E → SubDesc (C ◂ E)
+              SubCon vz C → SubDesc E → SubDesc (C ◂ E)
     sd-give : {C : ICon (ε ∙)} {E : IDesc} → SubDesc E → SubDesc (C ◂ E)
 
   -- ★ THE MASK IS COMPUTED, from a predicate naming the LOOKUP rows.
@@ -195,7 +278,7 @@ module Sub
   decSub give? j inil    = sd-nil
   decSub give? j (C ◂ E) with give? j
   ... | true  = sd-give (decSub give? (suc j) E)
-  ... | false with decCon vz C
+  ... | false with decSubCon vz C
   ...   | just w  = sd-comp w (decSub give? (suc j) E)
   ...   | nothing = sd-give (decSub give? (suc j) E)
 
@@ -213,3 +296,4 @@ module Sub
   sdGiven sd-nil        = zero
   sdGiven (sd-comp _ W) = sdGiven W
   sdGiven (sd-give W)   = suc (sdGiven W)
+
