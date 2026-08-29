@@ -367,3 +367,47 @@ the depth as well as the tag, which is the exception `Knot/Build` exists
 for — so the same `FIELD_DEPTH` walk the *derivation* emitter needed is
 needed by the *value* emitter. One table, two consumers, and it was
 already there.
+
+---
+
+# §3 — `_⟶ᵀ_` and `_≅ᵀ_`
+
+    TyRedWf : IDescWf ITyRed TyRedD      -- 24 of 26 rules, 29s
+    ConvWf  : IDescWf IConv  ConvD       -- 4 of 4 rules,    6s
+
+★★★ **THE CHAIN IS NOW REAL IN THE ENCODING.** `ConvD` cites `TyRedD`
+cites `RedD`, and that citation is what `PLAN-JUDGEMENT`'s "the
+judgements form a chain" *is*, concretely.
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 21 | run the `_⟶_` translator at `_⟶ᵀ_` | ⚠ **0/26.** The relation symbol was hard-coded: splitting on `⟶` leaves a stray `ᵀ`, so 26 rules read as *unmapped constructors* |
+| 22 | parameterise the relation; add `RTy` binder sorts | ⚠ 14/26 — then `{Γ}` (explicit implicit args) read as constructors too |
+| 23 | strip `{…}` from term expressions | ⚠ 18/26; the rest are `t ⟶ t'` premises — a **different judgement** |
+| 24 | a foreign premise is a κ field over the other description (`icw-imu`), **not** an `iρ` | ✅ 24/26, and `_≅ᵀ_` goes 3/4 → **4/4** |
+| 25 | emit `ConvWf` | ⚠ `ctrnᵀ` has **two** recursive premises; the post-`ρ` contexts assumed one |
+| 26 | extend the context by field **kind**, not position | ✅ **rc=0**, all four Wf modules |
+
+★★ **`iρ` versus `icw-imu` is the whole content of "the judgements are a
+chain".** `iρ` means *recursive in the description being defined*; a
+premise at another judgement is a value of a **foreign family**, which is
+a κ field carrying an `⌜IMu⌝` code — structurally identical to
+`_∋_∷_`'s `Ctx` and `Var` components. Once said that way it needed no new
+machinery: `_tupderiv` is shared with the `iρ` rung.
+
+⚠ **Attempts 21–23 are three coverage figures that were all my own
+tool.** 0/26, then 14/26, then 18/26 — a hard-coded relation symbol, an
+unmapped binder sort, and unstripped implicit arguments. Same lesson as
+§2.2, and I hit it again: **a coverage number produced by your own
+translator is a claim about the translator until proven otherwise.**
+
+★ **And the module sizing came from the measurement, not a guess.**
+`SPLIT_AT = 34`, from the bisect's ~1.8 s/row and the cliff above ~50.
+`TyRed` (24 rows) was emitted as one module and came in at 29s against a
+43s prediction — under the model, so the model is conservative, which is
+the right direction for it to be wrong in.
+
+⬜ **Still open:** `Hom-U`/`Hom-Π` (they mention `renTm`, i.e. object-level
+weakening — `wkK` exists, so this is a `WF_CTOR` entry away), the 8
+`_⟶_` rules from §2.2, and the two mutual judgements `_⊢ty_`/`_⊢_∷_`
+(43 rows, and they need a **tagged** index because they are mutual).
