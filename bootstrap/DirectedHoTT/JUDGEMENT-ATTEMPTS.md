@@ -411,3 +411,55 @@ the right direction for it to be wrong in.
 weakening — `wkK` exists, so this is a `WF_CTOR` entry away), the 8
 `_⟶_` rules from §2.2, and the two mutual judgements `_⊢ty_`/`_⊢_∷_`
 (43 rows, and they need a **tagged** index because they are mutual).
+
+---
+
+# §4 — `_⊢ty_` / `_⊢_∷_`: the design, stated before building
+
+**43 rules** (32 + 11), surveyed:
+
+| | count |
+|---|---|
+| cite `⊢ty` from `⊢_∷_` or vice versa (**mutual**) | 16 |
+| extend the context — `(Γ ▹ A) ⊢ t ∷ B` | 12 |
+| need object-level substitution (`subTy (single u) B`) | 8 |
+| cite `∋` / `≅ᵀ` (foreign premises — mechanism exists) | 1 / 1 |
+
+★ **Three new mechanisms, and only one is a real decision.**
+
+**(i) Binder sorts are NOT given.** Every rule binds `∀ {Γ A B t}` with no
+types at all — unlike every judgement so far, where `{t t' : RTm Γ}` said
+it outright. The sort has to be **inferred from use**: a binder in a
+`⊢ty` position is `sTy`, the subject of `⊢ _ ∷ _` is `sTm`, the subject
+of `∋` is `sVar`, `Γ` is a `Ctx`.
+⚠ And the inference must be **checked, not trusted**: the same binder
+must get one consistent sort from all its occurrences, and a conflict has
+to be a refusal. A wrong sort produces a well-typed row meaning something
+else — the exact failure this generator exists to prevent, and the one
+`{D : Desc}` already caused once in §2.2.
+
+**(ii) Context-extending premises** — `(Γ ▹ A) ⊢ t ∷ B` — put
+`Ctx-extK m Γ A` in the premise's `Ctx` component. ★ Free: that
+constructor and `⊢Ctx-extKv` are what `_∋_∷_`'s rows already use.
+
+**(iii) They are MUTUAL — and this is the decision.**
+
+⚠ **I am not going to claim the alternative is impossible, because I
+have not checked it.** Two descriptions citing each other would need a
+`mutual` block over the two `IDesc` definitions *and* over their `IDescWf`
+proofs. Agda supports mutual definitions, so the honest statement is that
+it is **untried**, not that it cannot work — `PLAN-JUDGEMENT` chose "one
+description over a tagged index" with more context than I have here, and
+that is a reason to prefer it, not a proof.
+
+⇒ **the tagged-index plan**, and its cost is concrete: one description
+whose index is `(tag, m, Ctx, Tm, Ty)`, where a `⊢ty` row Fords the tag
+to 0 and puts a **dummy** in the `Tm` slot (`Tm-unitK`, which exists at
+every depth). The `Tm` slot cannot instead *change sort* with the tag —
+a telescope component's sort is fixed — so padding is what a uniform
+telescope costs.
+
+⬜ **Order to build it in:** sort inference first, with its conflict check
+as the control; then the tag and the padded telescope; then the 35
+translatable rules. The 8 substitution rules join the `β` group from
+§2.2 and are the last thing in the layer.
