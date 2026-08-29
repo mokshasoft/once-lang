@@ -55,7 +55,7 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; pair; snd; Nat; Π; IMu
         ; ICon; IDesc; _◂_; inil; nsuc; nzero; unit; natrec; renTm; renTy; εwkTy
         ; app; fst; jsub; ⌜IMu⌝; ielim; Σ'; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong
-        ; ⌜Id⌝; ⌜Nat⌝; idrefl )
+        ; ⌜Id⌝; ⌜Nat⌝; idrefl; El )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; ⊢nzero; ⊢natrec; wk-single; ty-Nat; ty-Π; ty-IMu; ty-Unit
@@ -73,10 +73,11 @@ open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; subTm )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
 open import DirectedHoTT.Metatheory.Confluence
-  using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-pairˡ; ⟶*-pairʳ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Πˡ )
+  using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-⌜Id⌝ˡ )
+open import DirectedHoTT.Metatheory.Injectivity
+  using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Πˡ; ⟶ᵀ*-El )
 open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
-open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN )
+open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; elIdN; ⊢reflN )
 open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
 open import DirectedHoTT.Examples.Knot.JudgeLib
   using ( muFwd; muBwd*; fordAs; toMu; fromMu )
@@ -95,7 +96,7 @@ open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz; cVar-vs; cTm-var )
 open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf; cVar-vsWf; cTm-varWf )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; ⊢IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
-        ; ⊢sTm; ⊢sVar; ⊢ixP; toI; fromI; num )
+        ; ⊢sTm; ⊢sVar; ⊢ixP; toI; fromI; num; ⊢num )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 
@@ -689,6 +690,30 @@ decStableK _                                  = nothing
 fordMapK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
 fordMapK fi b p =
   jsub (⌜Id⌝ ⌜Nat⌝ (sortMap (var vz)) (w b)) (symN fi p) (idrefl ⌜Nat⌝ b)
+
+-- ⚠ ONE CAST, and it is the round trip every `jsub` here pays: the
+--   motive carries the TAG weakened past its own binder, so instantiating
+--   it at `fi` leaves `subTm (single fi) (w (num k))`.  ★ The MOTIVE's
+--   own `sortMap (var vz)` needs NO cast — `sortMap` is substitution
+--   transparent, which is the same fact `sortConv` relies on.
+⊢fordMapK : {Γ : Ctx} {fi t : RTm ⌊ Γ ⌋} (k : ℕ) →
+            ({Δ : Cx} → sortMap {Δ} (num k) ⟶* num k) →
+            Γ ⊢ fi ∷ Nat → Γ ⊢ t ∷ El (⌜Id⌝ ⌜Nat⌝ fi (num k)) →
+            Γ ⊢ fordMapK fi (num k) t ∷ El (⌜Id⌝ ⌜Nat⌝ (sortMap fi) (num k))
+⊢fordMapK {fi = fi} k st dfi dt =
+  ⊢-cast (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ (sortMap fi) z))
+               (wk-single {v = fi} (num k)))
+    (⊢jsub (⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢sortMap (elAsNat (⊢var here))))
+                         (natAsEl (⊢wk (⊢num k))))
+           (natAsEl (⊢num k)) (natAsEl dfi)
+           (⊢symN dfi (⊢num k) (⊢conv dt (elIdN fi (num k))))
+           -- ★ THE BASE CASE IS THE ROW'S OWN STABILITY CHAIN, read as
+           --   an identity: `idrefl` proves `num k ≡ num k`, and `st`
+           --   moves the left endpoint back to `sortMap (num k)`.
+           (⊢-cast (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ (sortMap (num k)) z))
+                         (sym (wk-single {v = num k} (num k))))
+             (⊢conv (⊢conv (⊢reflN (⊢num k)) (csymᵀ (elIdN (num k) (num k))))
+                    (csymᵀ (red→≅ᵀ (⟶ᵀ*-El (⟶*-⌜Id⌝ˡ st)))))))
 
 -- ⚠ the module now takes the SORT MAP, its stability decider, and the
 --   ford action.
