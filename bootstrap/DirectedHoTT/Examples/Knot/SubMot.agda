@@ -67,7 +67,7 @@ open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdP
 open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 import DirectedHoTT.Lib.ISub as IS
-open import DirectedHoTT.Lib.IWk using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; depthOf )
+open import DirectedHoTT.Lib.IWk using ( Maybe; just; nothing )
 open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; iihTy )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
@@ -91,7 +91,8 @@ open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
 open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz; cVar-vs; cTm-var )
 open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf; cVar-vsWf; cTm-varWf )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; ⊢IPair; sTy; sTm; sICon; sVar; ⊢sTm; ⊢sVar; ⊢ixP; toI; fromI )
+  using ( IPair; ⊢IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
+        ; ⊢sTm; ⊢sVar; ⊢ixP; toI; fromI )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 
@@ -595,7 +596,70 @@ extNK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
 extNK d n σ =
   lam (app (app (extSK (pair sVar (nsuc (w d))) (var vz)) (w n)) (w σ))
 
-open IS.Sub extNK
+
+-- ★ the reduction each row supplies.  `sTm` is the one the `Tm` rows and
+--   both `Var` rows need; `sortMap-var` above is the only one that MOVES.
+sortMap-tm : {Γ : Cx} → sortMap {Γ} sTm ⟶* sTm
+sortMap-tm =
+  ⟶*-trans (⟶*-natrecⁿ (⟶*-trans (pred* (pred* (pred* (pred* (pred-suc _)))))
+                       (⟶*-trans (pred* (pred* (pred* pred-zero)))
+                       (⟶*-trans (pred* (pred* pred-zero))
+                       (⟶*-trans (pred* pred-zero) pred-zero)))))
+           (step (natrec-zero _ _) done)
+
+sortMap-desc : {Γ : Cx} → sortMap {Γ} sDesc ⟶* sDesc
+sortMap-desc =
+  ⟶*-trans (⟶*-natrecⁿ (⟶*-trans (pred* (pred* (pred* (pred* (pred-suc _)))))
+                       (⟶*-trans (pred* (pred* (pred* (pred-suc _))))
+                       (⟶*-trans (pred* (pred* pred-zero))
+                       (⟶*-trans (pred* pred-zero)
+                       pred-zero)))))
+           (step (natrec-zero _ _) done)
+
+sortMap-dcon : {Γ : Cx} → sortMap {Γ} sDCon ⟶* sDCon
+sortMap-dcon =
+  ⟶*-trans (⟶*-natrecⁿ (⟶*-trans (pred* (pred* (pred* (pred* (pred-suc _)))))
+                       (⟶*-trans (pred* (pred* (pred* (pred-suc _))))
+                       (⟶*-trans (pred* (pred* (pred-suc _)))
+                       (⟶*-trans (pred* pred-zero)
+                       pred-zero)))))
+           (step (natrec-zero _ _) done)
+
+sortMap-idesc : {Γ : Cx} → sortMap {Γ} sIDesc ⟶* sIDesc
+sortMap-idesc =
+  ⟶*-trans (⟶*-natrecⁿ (⟶*-trans (pred* (pred* (pred* (pred* (pred-suc _)))))
+                       (⟶*-trans (pred* (pred* (pred* (pred-suc _))))
+                       (⟶*-trans (pred* (pred* (pred-suc _)))
+                       (⟶*-trans (pred* (pred-suc _))
+                       pred-zero)))))
+           (step (natrec-zero _ _) done)
+
+------------------------------------------------------------------------
+-- ★★★ `sortMap`-STABILITY, DECIDED.
+--
+-- ⚠ THE ONE DATUM `Lib/IWk`'s CLASSIFIER DOES NOT CARRY.  A computed
+--   row's field lands at `K (pair (sortMap s) …)` where the slot wants
+--   `K (pair s …)`, so the typing needs `sortMap s ⟶* s` per field.
+--
+-- ★ Six sorts satisfy it and one does not — `sVar`, the sort `sortMap`
+--   exists to move.  ⚠ And that is exactly right: the three rows whose
+--   fields are `sVar`-sorted are the LOOKUP rows, which are GIVEN, so
+--   `nothing` here can never block a computed row.  Measured over
+--   `KnotD`: the 50 computed rows use `sTy`/`sTm`/`sDesc`/`sDCon`/
+--   `sIDesc`/`sICon` and never `sVar`.
+------------------------------------------------------------------------
+
+decStableK : {Δ : Cx} (s : RTm Δ) → Maybe (sortMap s ⟶* s)
+decStableK nzero                                    = just sortMap-ty
+decStableK (nsuc nzero)                             = just sortMap-tm
+decStableK (nsuc (nsuc nzero))                      = just sortMap-desc
+decStableK (nsuc (nsuc (nsuc nzero)))               = just sortMap-dcon
+decStableK (nsuc (nsuc (nsuc (nsuc nzero))))        = just sortMap-idesc
+decStableK (nsuc (nsuc (nsuc (nsuc (nsuc nzero))))) = just sortMap-icon
+decStableK _                                        = nothing
+
+-- ⚠ the module now takes the SORT MAP and its stability decider too.
+open IS.Sub extNK sortMap decStableK
 
 -- ★ the three rows that APPLY `σ` rather than rebuilding: `cTm-var` and
 --   the two `cVar-*`.  ⚠ Their positions are DATA about the generated
@@ -672,16 +736,6 @@ sortConv {fi = fi} {s = s} {s' = s'} {n = n} dfi ds dn dp red dt =
                         (⊢-cast (cong (λ z → K (pair s' z))
                                       (sym (wk-single {v = s} n)))
                                 dt)))))
-
--- ★ the reduction each row supplies.  `sTm` is the one the `Tm` rows and
---   both `Var` rows need; `sortMap-var` above is the only one that MOVES.
-sortMap-tm : {Γ : Cx} → sortMap {Γ} sTm ⟶* sTm
-sortMap-tm =
-  ⟶*-trans (⟶*-natrecⁿ (⟶*-trans (pred* (pred* (pred* (pred* (pred-suc _)))))
-                       (⟶*-trans (pred* (pred* (pred* pred-zero)))
-                       (⟶*-trans (pred* (pred* pred-zero))
-                       (⟶*-trans (pred* pred-zero) pred-zero)))))
-           (step (natrec-zero _ _) done)
 
 ------------------------------------------------------------------------
 -- ★★★ LOOKUP METHOD 1 of 3: `subTm σ (var x) = σ x`.
