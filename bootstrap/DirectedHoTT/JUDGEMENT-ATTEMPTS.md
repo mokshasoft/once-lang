@@ -108,14 +108,31 @@ RECOVERED from the code expression it already carries** (`_binder_comp`),
 rather than being added to the description. The description gains
 nothing, and the two emitters cannot drift apart about it.
 
-⬜ **NEXT, and it is the one rung `here` does not exercise:** `iwf-ρ`, the
-recursive premise. Two pieces, both visible in `Knot/Lookup`'s `V₅`:
+| # | Attempt | Result |
+|---|---------|--------|
+| 2 | `iwf-ρ` for the `there` row — the index tuple as a nested `⊢pair` | ⚠ generated, but **one `⊢wk` short at every tail component** |
+| 3 | start the binder count at 1 for a *value* depth, 0 for the *bound* one | ✅ **rc=0**, both rows, sweep ALL GREEN (140 modules) |
 
-* the row's telescope stops being a `Ctx` at the first `ρ` (it extends by
-  `IMu D I …`, which mentions the description being defined), so the Wf
-  needs its own `Ctx`-level names past that point;
-* the rung carries the **index tuple's** derivation — a nested `⊢pair`
-  with `ty-Σ` well-formedness arguments at each component.
+★ **The off-by-one is the same class of error the row emitter exists to
+prevent**, one level up: `⊢pair`'s ⊢ty argument is already *under* the
+pair's own binder, so a depth taken from the ambient context is one
+weakening away — while the Σ-bound depth *is* that binder. And like the
+others it **still typechecks at a different component**, which is why the
+rule is now written down in the emitter rather than counted per row.
+
+⚠ **And the premise brings a structural constraint the log should
+record:** a row with a recursive premise **cannot** keep `D` as a
+parameter. `IConWf` mentions `D` only at `iwf-ρ`, but the row's
+*telescope* mentions it too from the premise onwards — that field extends
+the context by `IMu D I ρ`. ⇒ such a row is proved at the **concrete**
+description, and its post-premise contexts have to be re-declared at
+`Ctx` level, because `emit_jrow` had to drop to a bare `Cx` there to stay
+writable before `D` existed. `Knot/Lookup` does exactly this by hand
+(`Ξ6 Ξ7 Ξ8 Ξ9 : Ctx`); the emitter now does it too.
+
+✅ **THE `IConWf` EMITTER IS DONE** — both `_∋_∷_` rows, all four rung
+kinds (`icw-clo`, `icw-imu`, `icw-ford`, `iwf-ρ`), generated and
+typechecking.
 
 ## 2. The rows — `_⟶_` (73), `_⟶ᵀ_`/`_≅ᵀ_` (30), `_⊢ty_`/`_⊢_∷_` (43), `Canon`/`Prog` (20)
 
