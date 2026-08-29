@@ -181,6 +181,18 @@ formulation that needs an axiom is not.
   Type SIZE is not the cost — the transport is.
 - ⭐ **Abstract the SUBSTITUTED TERMS.** Measured 87×: substitution
   lemmas care about depth, not content.
+  ⚠⚠ **AND ABSTRACT *BOTH* SIDES — half is the trap.** A round-trip
+  lemma has two terms in it: the one being SUBSTITUTED and the one
+  substituted INTO. Abstracting only the target looks generic and is
+  not. **The tell: you need a near-duplicate lemma the moment a second
+  field appears**, and then a third, and you conclude the row costs
+  "three chains at three levels". It does not — that is the
+  half-abstraction talking. Measured 2026-08-28/29 on `⊢Var-vzKt` /
+  `⊢Var-vsKt`: fully abstracted, ONE lemma (`rtA v X`) served three
+  positions and the "three levels" turned out to be one lemma composed
+  with itself.
+  ⚠ This entry existed and was still missed TWICE in two days, which is
+  why the tell is now written down rather than the rule alone.
 - ⭐ **Pointwise beats tower lemmas.** Index motives by the ambient
   RENAMING — one peel instead of one per depth.
 - ⭐ **Type certificates by DERIVATION.** Sub-lemma on the derivation is

@@ -89,9 +89,13 @@ Full state: `HANDOFF-2026-08-27` §"THE PENDING GENERALISATION".
    renaming" — look for that lemma before writing one.
 2. The mask may not be the last shape needed; `subTm`'s 50 computed rows
    are not typed yet.
-3. "`sub-w`ⁿ wants indexing" is `Lib/Wk`'s CLAIM, not a measurement —
-   and today's three-round-trips-at-three-levels is weak evidence
-   AGAINST the simple version.
+3. ~~"`sub-w`ⁿ wants indexing" is `Lib/Wk`'s CLAIM, not a measurement~~
+   ✅ **RESOLVED 2026-08-29, and the other way round.** `⊢Var-vsKt` uses
+   `sub-w` and `sub-w²` at SUCCESSIVE RUNGS INSIDE ONE PROOF, composed
+   into a four-step descent — which is exactly "iterates of one lemma".
+   ⚠ My note of 08-28 called the same row weak evidence AGAINST; that
+   reading depended on the three chains being distinct, and they were an
+   artefact of half-abstraction. Evidence now points FOR the indexing.
 
 ---
 
