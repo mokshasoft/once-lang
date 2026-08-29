@@ -68,7 +68,8 @@ open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdP
 open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 import DirectedHoTT.Lib.ISub as IS
-open import DirectedHoTT.Lib.IWk using ( Maybe; just; nothing )
+open import DirectedHoTT.Lib.IWk
+  using ( Maybe; just; nothing; Split; spl-nil; spl-cons; spl-mem; spl-look; spl-step )
 open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; subTm; extS; extR )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
@@ -1325,3 +1326,140 @@ ihRenK v q C M =
                                         (ihRenK (var (vs (vs vz))) (var (vs vz)) C subMotK)))
                                  (ihRenK (var (vs (vs (vs vz)))) (var (vs (vs vz))) C subMotK))
                                (⊢var (there (there here)))))))))))
+
+------------------------------------------------------------------------
+-- ★★★ STEP 5 OF SIX: THE TUPLE, AT THE MASK.
+--
+-- ⚠ `Lib/IWk`'s tuple walks a PREFIX and stops with a caller-supplied
+--   tail.  This one is TOTAL and INTERLEAVED — `subTm`'s three given
+--   rows sit at 11, 51 and 52 of 53 — so the walk cannot end early and
+--   the obligations cannot be a suffix.
+--
+-- ★ SO THE OBLIGATIONS ARE COMPUTED FROM THE MASK, exactly as the term
+--   is: `GiveOK` has one node per row and asks for a derivation at
+--   precisely the `sd-give` positions.  ⇒ the caller owes three
+--   derivations, not 53, and never has to say WHERE they go.
+------------------------------------------------------------------------
+
+-- ★ the method type's own well-formedness, at THIS motive.  ⚠ It is
+--   `Lib/IWk`'s `imethTyMot-wf` with the two motive-dependent places
+--   replaced: `iihTy-wf`'s motive argument, and the RESULT, which for a
+--   Π-motive is a `ty-Π` chain rather than one `ty-IMu`.
+imethTySubK-wf : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
+                 IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+                 Γ ⊢ty imethTy KnotD IPair k C subMotK
+imethTySubK-wf {Γ = Γ} k C wC =
+  ty-Π ⊢IPair
+    (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) C
+                     KnotWf wC
+                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+      (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) C}
+                      KnotD IPair subMotK (isingle (var (vs vz))) C (var vz) wC
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
+                                                   (εwk-ren vs IPair))
+                                            (⊢var (there here))))
+                      ⊢subMotK
+                      (⊢-cast (payRenK (var vz) C) (⊢var here)))
+            (ty-Π ty-Nat
+              (ty-Π (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢snd (⊢var (there (there (there here)))))))
+                          (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+                    (ty-IMu KnotWf
+                       (⊢ixP (⊢sortMap (⊢fst (⊢var (there (there (there (there here))))))) (⊢var (there here))))))))
+
+imethsTyFromSubK-wf : {Γ : Ctx} (j : ℕ) (E : IDesc) →
+                      IDescWfFrom KnotD IPair E →
+                      Γ ⊢ty imethsTyFrom KnotD IPair subMotK j E
+imethsTyFromSubK-wf j inil    idwf-nil          = ty-Unit
+imethsTyFromSubK-wf j (C ◂ E) (idwf-cons wC wE) =
+  ty-Σ (imethTySubK-wf j C wC)
+       (ren-ty (imethsTyFromSubK-wf (suc j) E wE) there)
+
+-- ★★★ THE OBLIGATIONS — COMPUTED, not a datatype.
+--
+-- ⚠⚠ AS A DATATYPE THIS COSTS 53 CONSTRUCTORS.  A `data GiveOK` with a
+--   node per row is the obvious encoding, and its inhabitant would be
+--   `gv-comp` applied 53 times with three `gv-give`s buried in it —
+--   generated, checked, and carrying nothing at 50 of those positions.
+--
+-- ★ AS A RECURSIVE `Set` IT COSTS THREE.  `GiveOK` walks the mask and
+--   emits an obligation only at `sd-give`, so over `KnotD` it REDUCES to
+--   `Pr _ (Pr _ (Pr _ OK))` — and the caller writes exactly the three
+--   derivations, in order, with no positions mentioned anywhere.
+--   ⇒ the same reason the mask is computed rather than enumerated, one
+--     level up.
+data OKg : Set where
+  okg : OKg
+
+data Pr (A B : Set) : Set where
+  pr : A → B → Pr A B
+
+GiveOK : (Γ : Ctx) (give : (k : ℕ) → RTm ⌊ Γ ⌋) → ℕ → {E : IDesc} → SubDesc E → Set
+GiveOK Γ give j sd-nil        = OKg
+GiveOK Γ give j (sd-comp _ W) = GiveOK Γ give (suc j) W
+GiveOK Γ give j (sd-give {C = C} W) =
+  Pr (Γ ⊢ give j ∷ imethTy KnotD IPair j C subMotK) (GiveOK Γ give (suc j) W)
+
+⊢isubMethsK : {Γ : Ctx} {j : ℕ} {E : IDesc} {give : (k : ℕ) → RTm ⌊ Γ ⌋}
+              (W : SubDesc E) → Split KnotD j E → IDescWfFrom KnotD IPair E →
+              GiveOK Γ give j W →
+              Γ ⊢ isubMeths give j W ∷ imethsTyFrom KnotD IPair subMotK j E
+⊢isubMethsK sd-nil        sp idwf-nil          okg      = ⊢unit
+⊢isubMethsK {j = j} {give = give} (sd-comp w W) sp (idwf-cons wC wE) g =
+  ⊢pair (ren-ty (imethsTyFromSubK-wf (suc j) _ wE) there)
+        (⊢isubMethodK j w wC (spl-mem sp) (spl-look sp))
+        (⊢-cast (sym (wk-singleTy {v = isubMethod j w} _))
+                (⊢isubMethsK W (spl-step sp) wE g))
+⊢isubMethsK {j = j} {give = give} (sd-give W) sp (idwf-cons wC wE) (pr dg g) =
+  ⊢pair (ren-ty (imethsTyFromSubK-wf (suc j) _ wE) there)
+        dg
+        (⊢-cast (sym (wk-singleTy {v = give j} _))
+                (⊢isubMethsK W (spl-step sp) wE g))
+
+------------------------------------------------------------------------
+-- ★★★ STEP 6 OF SIX: `subTm`, ASSEMBLED.
+--
+-- ⚠ `giveK` DISPATCHES BY `eqℕ`, NOT BY A LITERAL PATTERN.  `giveK 51 =
+--   …` is a numeric literal in a PATTERN, which Agda desugars to 51
+--   `suc`s and rejects as `LiteralTooBig`; the same numbers are fine in
+--   an EXPRESSION.  `isLookup` above already had to be written this way.
+------------------------------------------------------------------------
+
+pickTm : {Γ : Cx} → 𝔹 → RTm Γ → RTm Γ → RTm Γ
+pickTm true  a b = a
+pickTm false a b = b
+
+giveK : {Γ : Cx} (k : ℕ) → RTm Γ
+giveK k = pickTm (eqℕ k 11) subVarM
+            (pickTm (eqℕ k 51) subVzM
+              (pickTm (eqℕ k 52) subVsM unit))
+
+subDescK : SubDesc KnotD
+subDescK = decSub isLookup 0 KnotD
+
+-- ★★★ AND THE OBLIGATIONS ARE THREE DERIVATIONS IN A ROW.  ⚠ No
+--   positions appear here: `GiveOK` reduced the mask to exactly the
+--   `sd-give` slots, so a wrong `isLookup` would show up as a type
+--   error, not as a silently misplaced method.
+giveOKK : {Γ : Ctx} → GiveOK Γ giveK 0 subDescK
+giveOKK = pr ⊢subVarM (pr ⊢subVzM (pr ⊢subVsM okg))
+
+subMethsK : {Γ : Cx} → RTm Γ
+subMethsK = isubMeths giveK 0 subDescK
+
+⊢subMethsK : {Γ : Ctx} → Γ ⊢ subMethsK ∷ imethsTy KnotD IPair subMotK KnotD
+-- ⚠ `{give = giveK}` PINNED, and it must be.  `GiveOK` is a DEFINED
+--   `Set`, so it is not injective: `GiveOK Γ give 0 subDescK` unfolds
+--   and consumes its `give` argument, leaving nothing to solve the meta
+--   from.  `pin-implicits-on-defined-set-types`, third customer.
+⊢subMethsK = ⊢isubMethsK {give = giveK} subDescK spl-nil KnotWf giveOKK
+
+subTmK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+subTmK i x = ielim KnotD i subMethsK x
+
+-- ★ NO CAST.  `⊢ielim` already lands at `iinst i x M`, and `⊢motAppK`
+--   takes its hypothesis in exactly that shape — so the eliminator and
+--   the IH interface meet without a round trip between them.
+⊢subTmK : {Γ : Ctx} {i x : RTm ⌊ Γ ⌋} →
+          Γ ⊢ i ∷ εwkTy IPair → Γ ⊢ x ∷ K i →
+          Γ ⊢ subTmK i x ∷ iinst i x subMotK
+⊢subTmK di dx = ⊢ielim KnotWf ⊢subMotK di ⊢subMethsK dx

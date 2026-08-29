@@ -48,8 +48,8 @@ Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜
 | ✅ | **step 2/6 — `⊢sPick`** (+ `⊢sucs`, `⊢extsN`) | `Lib/ISub.Sub.Typing`; forced `IsNum` |
 | ✅ | **step 3/6 — `⊢isubPay`** (+`⊢kaPick`, `⊢fordMapK`, `⊢motAppK`) | `Lib/ISub.Sub.Typing`, INSTANTIATED over the knot |
 | ✅ | **step 4/6 — `⊢isubMethodK`** | `Knot/SubMot` — at the KNOT, not `Lib`: the last two binders are the motive's |
-| ⬜ | step 5/6 — the tuple at the mask | |
-| ⬜ | step 6/6 — assemble `subTmK` + `⊢subTmK` (the `⊢ielim`) | |
+| ✅ | **step 5/6 — the tuple at the mask** | `Knot/SubMot`; obligations COMPUTED — 3, not 53 |
+| ✅ | **step 6/6 — `subTmK` + `⊢subTmK`** | `Knot/SubMot`; `⊢ielim` needed NO cast |
 
 ## D. Step 3 — the judgement layer (~148 rows)
 
