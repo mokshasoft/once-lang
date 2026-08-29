@@ -60,6 +60,7 @@ open import DirectedHoTT.Spec.Typing
         ; El-⌜Id⌝; ξ-El; ξ-IMu; ξ-⌜Id⌝ˡ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTm; sVar; ⊢sTm; ⊢sVar; toI; fromI; ⊢ixP
@@ -349,45 +350,72 @@ Var-vsK m x = icon tagVar-vs
           (⊢pair ty-Unit (fordSnd (⊢nsuc dy)) ⊢unit))))
 
 ------------------------------------------------------------------------
--- ⬜ RUNG 4 — `Var-vzK` AT AN **ARBITRARY** DEPTH TERM.  ATTEMPTED
---    2026-08-28, PARTLY WORKING, NOT LANDED.  State recorded so the next
---    attempt starts from data rather than from guesses.
+-- ★★★ RUNG 4: `Var-vzK` AT AN **ARBITRARY** DEPTH TERM.
 --
--- ⚠ WHY IT IS WANTED AT ALL, given this file's header rejects route (a):
---   `Examples/Knot/SubMot`'s two `Var` substitution methods must rebuild
---   a variable from `m = fst p`, a PROJECTION of the method's payload.
---   Route (c) — "make the depth a context VARIABLE" — has nothing to
---   offer there: no variable exists.  ⇒ route (a) is FORCED at this row,
---   and cheap in principle, since `cVar-vz` carries its depth at field
---   position 0.
+-- ⚠ ROUTE (a), AND HERE IT IS FORCED.  `Knot/SubMot`'s two `Var`
+--   substitution methods rebuild a variable from `m = fst p`, a
+--   PROJECTION of the method's payload — so route (c)'s "make the depth
+--   a context VARIABLE" has nothing to offer: there is no variable.
+--   ★ And reusing the scrutinee fails too: `σ` wants
+--   `K (pair sVar (snd ⟨i⟩))` while `icon k p` sits at `K ⟨i⟩`, and
+--   closing that needs a pair-η the kernel does not have.
 --
--- ★ WHAT WORKS.  Two of the payload's four positions close with a
---   SUBJECT cast (`tmCast : t ≡ t' → Γ ⊢ t ∷ A → Γ ⊢ t' ∷ A`) at
---
---       rt : subTm (extS (single d)) (w (w d)) ≡ w d
---       rt = trans (sub-w {σ = single d} (w d)) (cong w (wk-single d))
---
---   ⚠ AND THE TWO SIDES OF THE SORT FORD WANT DIFFERENT FORMS OF THE
---     SAME TERM — the left substituted, the right not.  Only the goal
---     says which; there is no rule to read it off the row.
---
--- ⬜ WHAT DOES NOT.  The DEPTH ford's witness needs a **TYPE** cast, not
---   a subject one: its term is fixed as `idrefl ⌜Nat⌝ (nsuc d)` by
---   `Var-vzK d`'s own definition, so the round trip must move the type
---   around it.  Its goal is
---
---       subTy (single (idrefl ⌜Nat⌝ sVar))
---        (subTy (extS (single d))
---         (El (subTm (extS (extS (isingle (pair sVar (nsuc d)))))
---              (⌜Id⌝ ⌜Nat⌝ (snd (var (vs (vs vz)))) (nsuc (var (vs vz)))))))
---
---   ⚠ and the equation it needs lives at `⌊ Δ ⌋ ∙`, ONE BINDER DEEPER
---     than `rt` — a third shape, not a third use of the first two.
---
--- ⇒ THREE round trips at THREE levels for ONE row.  That is `Knot/Build`
---   route (a)'s cost showing up exactly as this file's header predicts,
---   at a row where it cannot be avoided.  ★ Next attempt: state the
---   third equation at `⌊ Δ ⌋ ∙` FIRST, from the goal above, rather than
---   deriving it from `rt`.
+-- ★★★ AND THE ROUND TRIP IS **GENERIC IN THE TERM**, which is what makes
+--   this cheap after all.  A first attempt (2026-08-28) stated it
+--   separately at each position and concluded "three round trips at
+--   three levels".  ⚠ That was an artefact of stating them at CONCRETE
+--   terms: there is ONE trip, `rt₁`, and the deeper one is `rt₁`
+--   composed with `wk-single`.  Two lemmas, both `∀ X`.
 ------------------------------------------------------------------------
 
+-- retyping a SUBJECT.  ⚠ `⊢-cast` moves the TYPE; a bare `subst` makes
+-- Agda abstract the CONTEXT too and those metas never solve.
+tmCast : {Δ : Ctx} {A : RTy ⌊ Δ ⌋} {t t' : RTm ⌊ Δ ⌋} →
+         t ≡ t' → Δ ⊢ t ∷ A → Δ ⊢ t' ∷ A
+tmCast refl d = d
+
+⊢Var-vzKt : {Δ : Ctx} {d : RTm ⌊ Δ ⌋} → Δ ⊢ d ∷ Nat →
+            Δ ⊢ Var-vzK d ∷ K (pair sVar (nsuc d))
+⊢Var-vzKt {Δ = Δ} {d = d} dd =
+  ⊢icon KnotWf memVar-vz (⊢ixP ⊢sVar (⊢nsuc dd))
+    (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                          (toI (⊢fst (⊢ixP ⊢sVar (⊢nsuc (⊢wk dd)))))
+                          (toI ⊢sVar)))
+                 (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                                (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk dd))))))
+                                (toI (⊢nsuc (fromI (⊢var (there here)))))))
+                       ty-Unit))
+           (toI dd)
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                            (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc dw))))
+                            (toI (⊢nsuc (⊢wk dd)))))
+                   ty-Unit)
+             (fordFst ⊢sVar)
+        (⊢pair ty-Unit
+               (⊢-cast eqFord (fordSnd {t = sVar} (⊢nsuc dd)))
+               ⊢unit)))
+  where
+    -- ★ ONE round trip, generic in the term it is stated at.
+    rt₁ : (X : RTm ⌊ Δ ⌋) → subTm (extS (single d)) (w (w X)) ≡ w X
+    rt₁ X = trans (sub-w {σ = single d} (w X)) (cong w (wk-single {v = d} X))
+
+    -- …and the deeper one is that, then one more `wk-single`.
+    rt₂ : (X : RTm ⌊ Δ ⌋) →
+          subTm (single (idrefl ⌜Nat⌝ sVar)) (subTm (extS (single d)) (w (w X))) ≡ X
+    rt₂ X = trans (cong (subTm (single (idrefl ⌜Nat⌝ sVar))) (rt₁ X))
+                  (wk-single {v = idrefl ⌜Nat⌝ sVar} X)
+
+    -- ⚠ the CONTEXT is left to inference: `dw` is used one binder
+    --   deeper, inside the payload.
+    dw : _ ⊢ subTm (extS (single d)) (w (w d)) ∷ Nat
+    dw = tmCast (sym (rt₁ d)) (⊢wk dd)
+
+    -- ⚠ THE TWO ENDPOINTS NEED **DIFFERENT** TRIPS, which is the whole
+    --   subtlety of this row.  The LEFT one carries the index through
+    --   `w (w -)` and needs the full `rt₂`; the RIGHT one meets
+    --   `extS (single d)` at a VARIABLE — which substitutes
+    --   definitionally — so only the outer `wk-single` is left.
+    eqFord : _
+    eqFord = cong₂ (λ a b → El (⌜Id⌝ ⌜Nat⌝ (snd a) b))
+                   (sym (rt₂ (pair sVar (nsuc d))))
+                   (sym (cong nsuc (wk-single {v = idrefl ⌜Nat⌝ sVar} d)))
