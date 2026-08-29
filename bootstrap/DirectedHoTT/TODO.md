@@ -41,8 +41,8 @@ Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜
 | ✅ | `sortConv` — the one lemma all 53 rows need | `Knot/SubMot` |
 | ✅ | the per-row mask, verified 50 rows classify | `Lib/ISub`, `Lib/IMeths` |
 | ✅ | lookup method 1 of 3 (`cTm-var`) | `Knot/SubMot` |
-| 🟡 | **lookup methods 2–3** (`cVar-vz`, `cVar-vs`) | blocked on ⬇ |
-| 🟡 | `⊢Var-vzKt` / `⊢Var-vsKt` — constructors at an ARBITRARY depth | `Knot/Build` — 3 round trips at 3 levels; 2 kinds of cast |
+| ✅ | **lookup methods 2–3** (`cVar-vz`, `cVar-vs`) | `Knot/SubMot` — all 3 given rows done |
+| ✅ | `⊢Var-vzKt` / `⊢Var-vsKt` — constructors at an ARBITRARY depth | `Knot/Build` rungs 4–5; ONE lemma `rtA v X` composed, not 3 chains |
 | ⬜ | the 50 computed rows' **typing** | `Lib/ISub` — `Lib/IWk` found 2 bugs here the term level could not |
 | ⬜ | assemble `subTm` and its `⊢ielim` | |
 
