@@ -9224,3 +9224,114 @@ and neither should be done in passing. The design that survives (a) is saved as
 value-lift), D041 (the literal value-lift it generalizes), D063 (the realm split
 that scopes it), D067 (the same grade-polymorphism argument for `t-value-lift`),
 D124 (the negated-literal lift), D058 (IR-free judgment)
+
+---
+
+## D127: Composition Is Context-Indexed — One Lift, Written, and No Global-Element Realm
+
+**Date**: 2026-08-29 · **Status**: Decided (design); plan `0.76-context-indexed-composition.md` ·
+**Supersedes**: D018's lifting rule, D056 point 2, **D126 in full** ·
+**Retires the TYPING half of**: D063's `⊢ᵐ` realm ·
+**Reasoned from**: the CCC, and the OCP-0009 directed kernel's shape
+
+### The decision
+
+1. A `compose` / `case` / `pair` / `curry` arm is an **ordinary term of arrow
+   type in the ambient context** — `Γ ⊢ e ⇐ A ⇒ B`. It need not be closed, and
+   it need not be one of an enumerated list of forms.
+2. **The value→morphism lift is written, never inserted.** `\_ -> e`, or the
+   derived `const = curry fst`. There is no implicit rule taking a term of type
+   `B` where `A ⇒ B` is expected.
+3. Consequently `⊢ᵍ` as a *lifting* device, `t-value-lift`, `m-const` and the
+   whole closed-form arm grammar are retired, and so is D126 — both the landed
+   `⊢ᶜ` half and the blocked `⊢ᵐ` half.
+
+`compose emit@E 5` stops being legal. `compose emit@E (\_ -> 5)` is how it is
+written, and — the point — `\x -> compose emit@E (\_ -> x)` becomes legal too.
+
+### Why: L1 and L2 are the same operation
+
+Two liftings appear to be in play. They are one.
+
+    L1  (context-indexed)   Hom(Γ,B) → Hom(Γ, A⇒B)     b ↦ curry (b ∘ π₁)
+    L2  (global element)    Hom(1,B) → Hom(A,B)        v ↦ v ∘ !
+
+Instantiate L1 at `Γ = 1` and transport along `Hom(1, A⇒B) ≅ Hom(A,B)`:
+`curry (v ∘ π₁)` corresponds to `v ∘ π₁ ∘ ⟨!, id⟩ = v ∘ !`. That is L2. So there
+is ONE lift — precompose with the projection, then transpose — it is natural in
+`Γ`, and it is **total**.
+
+**The partiality was never in the lift.** It was in *demanding the result be a
+global element*, i.e. in the arm position, not in the operation. That is why
+D126's `⊢ᶜ` rule and `m-const` kept wanting different premises: they are the
+same rule at two bases, and only one of them was made to land somewhere
+requiring `Γ = 1`.
+
+### The space, and why this cell
+
+Two independent axes, four cells:
+
+|                                   | lift **written** | lift **inserted** |
+|-----------------------------------|------------------|-------------------|
+| arms must be global elements (Γ=1)| C                | A / B             |
+| arms are Γ-indexed terms          | **F ← this**     | E                 |
+
+A and B are not two designs; they are one done badly and done exactly. A (the
+status quo) approximates "is a global element" by ENUMERATING syntactic forms —
+which is why the list kept growing (`g-neg-int`, `g-neg-float`, D124/F3,
+D126's `ClosedLiftShape`) and why a literal lifts while a name bound to that
+same literal does not. B decides the condition exactly, and stalls elsewhere.
+
+**Axis 1.** `Hom(Γ, A⇒B)` is a perfectly good object; nothing in the category
+privileges `Γ = 1`. Requiring it is a REPRESENTATION property — "this composite
+needs no closure" — promoted into the typing judgment.
+
+**Axis 2.** The lift is total and canonical, so inserting it can never fail or
+surprise; that is the honest case for implicitness. Against it: OCP-0006's
+criterion makes the source language the spec, so the term you write is the term
+whose meaning is defined, and insertion breaks that identity.
+
+F is the only cell needing **no side condition anywhere**. A, B and C each must
+answer "is this arm a global element?" — guessed, decided, or supplied.
+
+### What the OCP-0009 kernel contributes
+
+Not an argument from precedent — from shape. The directed kernel has exactly
+two judgments, `Γ ⊢ t ∷ A` and `Γ ⊢ty A`, **both context-indexed, with no
+context-free realm**: `Hom A t u` is a type IN A CONTEXT and its inhabitants are
+ordinary terms. Its only implicit rule is `⊢conv`, which changes nothing; the
+point→arrow passage `hrefl` is a NAMED constructor; and a side condition
+guarding a semantic boundary is a judgment premise in `Spec/` (`Variance`),
+deliberately — *"part of what the theory is, not a theorem about it"*. Both axes
+above land where that kernel already is.
+
+### What this costs, stated plainly
+
+Context-indexed composition is built from exponentials:
+
+    compose f g  =  curry (apply ∘ ⟨ f ∘ π₁ , apply ∘ ⟨ g ∘ π₁ , π₂ ⟩ ⟩)
+
+so the direct `IR.∘` emission that D044/D045/D056 established is no longer what
+the typing judgment hands you. Two consequences, and neither may be waved:
+
+- **Closed arms must still emit `IR.∘`.** That becomes a PROVED SPECIALIZATION —
+  one equation, discharged once — and explicitly NOT a general optimizer pass.
+  D039 found the optimizer unsound (it dropped effectful SigOps), which is why
+  D044/D045 removed the dependency; F must not reintroduce it.
+- **`⊢ᵐ` was FORCING something.** D063's realm exists so `realize-morph` is total
+  and the categorical laws are forced through the agreement bridge. Retiring the
+  realm as a typing distinction does not retire that obligation; where the laws
+  get forced instead is an open item the plan must answer, not assume.
+
+### Consequences
+
+- `compose emit@E 5` and friends stop compiling; migration is 5 sites.
+- `cata`'s algebra is currently a `⊢ᵐ` morphism. Under F it becomes a
+  Γ-indexed term, which admits a capturing algebra — a real semantic widening,
+  to be decided deliberately rather than inherited.
+- `Once.Denotation.ThinSound` (added for D126's `weaken`) loses its only
+  consumer unless the new elaboration needs it.
+
+**Relates**: D018 (the lifting this replaces), D056, D063, D044/D045, D039 (why
+the fast path must be proved, not optimized), D126 (retired), OCP-0006 (source
+is spec), OCP-0009 (the kernel whose shape this follows)
