@@ -2,7 +2,7 @@
 -- OCP-0009 — GAP A, EQUATION 4: `gcd (suc a , suc b) = gcd (suc a , b ∸ a)`
 --             PROPOSITIONALLY, AT VARIABLES.  (Route 8 for `⊢S3s`.)
 --
--- ⚠ WHAT THE OTHER SEVEN SHARE.  Attempts 45-51 (see GAP-A-ATTEMPTS.md)
+-- ⚠ WHAT THE OTHER SEVEN SHARE.  Attempts 45-51 (see `poc/OCP0009/GAP-A-ATTEMPTS.md`)
 --   all build `⊢S3` at the LAYERED type and convert afterwards.  Seven
 --   formulations, seven OOMs — including attempt 51, which transported only
 --   `⊢PAIRˢ`, whose type is the CLOSED `PairT` and therefore cannot grow.
@@ -20,7 +20,7 @@
 --     `⊢app` assembly plus one TERM equality (cheap peels, not a
 --     derivation transport).
 --   ⇒ if this OOMs, the cost is not the transport either, and the whole
---     reading in GAP-A-ATTEMPTS.md is wrong.
+--     reading in `poc/OCP0009/GAP-A-ATTEMPTS.md` is wrong.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}

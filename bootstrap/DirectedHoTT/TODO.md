@@ -44,7 +44,12 @@ Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜
 | ✅ | **lookup methods 2–3** (`cVar-vz`, `cVar-vs`) | `Knot/SubMot` — all 3 given rows done |
 | ✅ | `⊢Var-vzKt` / `⊢Var-vsKt` — constructors at an ARBITRARY depth | `Knot/Build` rungs 4–5; ONE lemma `rtA v X` composed, not 3 chains |
 | 🟡 | the 50 computed rows' **typing** | ⚠ needs a REFINED classification — see below |
-| ⬜ | assemble `subTm` and its `⊢ielim` | |
+| ✅ | **step 1/6 — `⊢extNK`** (the extension preserves types) | `Knot/SubMot`; took 7 attempts, see `SUBTM-ATTEMPTS.md` |
+| ⬜ | step 2/6 — `⊢sPick`'s `rides` case | |
+| ⬜ | step 3/6 — `⊢isubPay`'s two recursive cases | |
+| ⬜ | step 4/6 — `⊢isubMethod` | |
+| ⬜ | step 5/6 — the tuple at the mask | |
+| ⬜ | step 6/6 — assemble `subTmK` + `⊢subTmK` (the `⊢ielim`) | |
 
 ## D. Step 3 — the judgement layer (~148 rows)
 
