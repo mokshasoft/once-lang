@@ -67,6 +67,8 @@ open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdP
 open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 import DirectedHoTT.Lib.ISub as IS
+open import DirectedHoTT.Lib.IWk using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; depthOf )
+open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; iihTy )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-pairˡ )
@@ -851,3 +853,30 @@ subVsM =
                                    (elAsNat (⊢fst (⊢var (there (there (there here))))))
                                    (fordAs (⊢fst (⊢snd (⊢snd (⊢snd (⊢var (there (there (there here)))))))))
                                    (⊢Var-vsKt (elAsNat (⊢fst (⊢var (there (there (there here)))))) (⊢fst (⊢snd (⊢var (there (there (there here))))))))))))))
+
+------------------------------------------------------------------------
+-- ⬜ THE 50 COMPUTED ROWS' TYPING — statement first.
+--
+-- ★ MIRRORS `Lib/IWk.⊢iwkPay` EXACTLY, including the discipline that
+--   matters: the environment stays ABSTRACT (`σ`, `τ` with `Sub⊢`) and
+--   is stepped with `payStep`, never unfolded.  ⚠ Unfolding it is what
+--   produced the round-trip thicket in `Knot/Build` rungs 4–5, and that
+--   was forced there (a CONCRETE constructor); here it is not.
+--
+-- ⚠ AND THE RELATION IS THE SAME SHAPE.  `Lib/IWk` relates its two
+--   environments by `τ a ≡ sh (σ a)`; substitution relates them by
+--
+--       τ a ≡ shS n (σ a)   where   shS n i = pair (sortMap (fst i)) n
+--
+--   — the index's SORT is mapped and its DEPTH replaced, where weakening
+--   kept the sort and bumped the depth.  Same slot, different action.
+--
+-- ⚠⚠ THE TYPING LIVES HERE, NOT IN `Lib/ISub`, because `subMotK`
+--   mentions `sortMap`/`KnotD`/`IPair`.  Parameterising `Lib/ISub` by a
+--   motive would be speculative — `Lib/IFold` earned its algebra
+--   parameter by having two customers.  `C` still stays ABSTRACT, which
+--   is what keeps this ONE proof rather than 50.
+------------------------------------------------------------------------
+
+shS : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+shS n i = pair (sortMap (fst i)) n

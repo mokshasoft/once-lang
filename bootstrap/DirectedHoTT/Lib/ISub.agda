@@ -14,8 +14,30 @@
 --   those 30 clauses are `⟶*` CHAINS at concrete rows.  53 TYPING
 --   DERIVATIONS at concrete rows are the expensive thing.
 --
--- ★★★ AND THE CLASSIFICATION IS ALREADY BUILT.  `Lib/IWk`'s `WkCon` /
---   `WkIx` / `IsSucs` say exactly what substitution needs to know:
+-- ⚠⚠ CORRECTION (2026-08-29): "`Lib/IWk`'s classification serves
+--   substitution UNCHANGED" is true of the TERM and FALSE of the TYPING.
+--   Recorded here because it was asserted twice and the mask's
+--   `sdGiven … ≡ 3` control appeared to confirm it — that control checks
+--   which rows CLASSIFY, which is a term-level property.
+--
+--   ★ THE GAP: a `rides s cs p` field's method applies the IH, which
+--     lands at `K (pair (sortMap s) …)`, while the payload slot wants
+--     `K (pair s …)`.  Those agree only if `sortMap s ⟶* s`, and
+--     `WkIx` records only that `s` is CLOSED.  ⚠ Weakening never needed
+--     it because weakening does not touch the SORT — it bumps the depth.
+--
+--   ✅ AND THE PREMISE HOLDS, measured over `KnotD`: the 50 computed
+--     rows' recursive fields use six sorts — `sTy` 9, `sTm` 57,
+--     `sDesc` 4, `sDCon` 3, `sIDesc` 4, `sICon` 3 — and NEVER `sVar`,
+--     which is the one sort `sortMap` moves.  `sVar` occurs only in the
+--     three LOOKUP rows, which are given.
+--
+--   ⇒ so `Lib/ISub` needs its own index classification: `WkIx`'s, plus
+--     a witness `sortMap s ⟶* s`.  ⚠ Decidable — `s` is a numeral, so
+--     `pred⁵ s ≡ 0` decides it and the chain is built by recursion —
+--     but it is DATA the weakening classifier does not carry.
+--
+-- ★★★ WHAT `Lib/IWk` DOES STILL GIVE, unchanged:
 --
 --     `rides s _ p`  — the field's index RIDES the ambient depth, and
 --                      `depthOf p` is how many binders deeper it sits.
