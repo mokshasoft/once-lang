@@ -122,11 +122,50 @@ at the shape it has*:
 ⬜ Remaining for the customer: discharge `⊢ext` (that is `⊢extNK`, done)
 and `⊢motApp` over the knot.
 
-## Steps 3–6 — open
+## Step 3 — `⊢isubPay` 🟡
+
+⚠ Stating it produced a correction *again*, and this one is worse than
+step 2's: it changes the **term**, not just the proof.
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 0 | reuse `Lib/IWk`'s κ case — a ford field is COPIED, retyped by `⊢kaComp` | ⚠ **the copy does not inhabit the target type.** Not a proof gap; the term is wrong |
+
+★ Weakening copies a tag ford because at the shifted index the constraint
+reads `fst (sh ⟨i⟩) ≡ b`, and `βfst` takes that to `fst ⟨i⟩ ≡ b` — the
+witness the method already holds. The two types are **convertible**.
+Under substitution the output index reads `smap (fst ⟨i⟩)`, and nothing
+reduces that to `fst ⟨i⟩`: mapping the sort is what `smap` is *for*. ⇒
+the witness must be **acted on**.
+
+⇒ **`fordMap`**, a fourth module parameter, and `isubPay`'s κ clause is
+no longer `pair (fst q) …`. Over the knot the action is `jsub` once more,
+in the direction `sortConv` does not go: `symN` turns `fi ≡ b` around,
+the motive `λ z. sortMap z ≡ b` transports to `fi`, and the base case
+`sortMap b ≡ b` is the row's own stability chain read as an identity —
+**the same datum `s-rides` already carries**.
+
+Two knock-on refinements, both forced, both the *same* move as step 2:
+
+* `SubKa` replaces `WkKa`: a tag ford's **tag must be a numeral**
+  (`fordMap` is applied in `Γ` to data named in `Δ`) and must carry the
+  stability witness (it is `fordMap`'s base case).
+* the ford's **code is pinned to `⌜Nat⌝`** rather than left an abstract
+  closed term — over an abstract code there is no motive to name. A row
+  with another code falls through to `sk-clo` or to GIVEN.
+* `isubPay` now threads `fst ⟨i⟩` beside the depth. The sort was never
+  needed while a κ field was a copy.
+
+✅ Landed, both green, **and the mask still reads `sdGiven … ≡ 3`** — the
+refined κ classification loses no rows either. That control is now
+earning its keep twice.
+
+⬜ Remaining: `⊢fordMapK` over the knot, then `⊢isubPay` itself.
+
+## Steps 4–6 — open
 
 Rows get added here as they are tried, **before** the next attempt.
 
-* ⬜ **3.** `⊢isubPay`'s two recursive cases
 * ⬜ **4.** `⊢isubMethod`
 * ⬜ **5.** the tuple at the mask
 * ⬜ **6.** `subTmK` + `⊢subTmK`
