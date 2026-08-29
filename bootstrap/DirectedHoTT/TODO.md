@@ -46,7 +46,7 @@ Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜
 | 🟡 | the 50 computed rows' **typing** | ⚠ needs a REFINED classification — see below |
 | ✅ | **step 1/6 — `⊢extNK`** (the extension preserves types) | `Knot/SubMot`; took 7 attempts, see `SUBTM-ATTEMPTS.md` |
 | ✅ | **step 2/6 — `⊢sPick`** (+ `⊢sucs`, `⊢extsN`) | `Lib/ISub.Sub.Typing`; forced `IsNum` |
-| 🟡 | step 3/6 — `⊢isubPay` | `Lib/ISub.Sub.Typing` DONE (+`⊢kaPick`); knot owes `⊢fordMapK`, `⊢motApp` |
+| ✅ | **step 3/6 — `⊢isubPay`** (+`⊢kaPick`, `⊢fordMapK`, `⊢motAppK`) | `Lib/ISub.Sub.Typing`, INSTANTIATED over the knot |
 | ⬜ | step 4/6 — `⊢isubMethod` | |
 | ⬜ | step 5/6 — the tuple at the mask | |
 | ⬜ | step 6/6 — assemble `subTmK` + `⊢subTmK` (the `⊢ielim`) | |

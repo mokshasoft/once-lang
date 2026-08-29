@@ -122,7 +122,7 @@ at the shape it has*:
 ⬜ Remaining for the customer: discharge `⊢ext` (that is `⊢extNK`, done)
 and `⊢motApp` over the knot.
 
-## Step 3 — `⊢isubPay` ✅ CLOSED (Lib side)
+## Step 3 — `⊢isubPay` ✅ CLOSED
 
 ⚠ Stating it produced a correction *again*, and this one is worse than
 step 2's: it changes the **term**, not just the proof.
@@ -177,7 +177,27 @@ Two things it does *not* pay that `⊢iwkPay` does:
   owes a `wk-single` round trip; `⊢sPick` takes its hypothesis at
   `iinst`, which is the shape `iihTy` hands over.
 
-⬜ Remaining for the customer: `⊢fordMapK` and `⊢motApp` over the knot.
+| # | Attempt | Result |
+|---|---------|--------|
+| 2 | `⊢fordMapK` — `jsub` along `symN`, base case from the stability chain | ✅ rc=0 |
+| 3 | `⊢motAppK` — the two `⊢app`s, naively | ⚠ apps go through; the RESULT index is under four nested substitutions |
+| 4 | + `⊢-cast` collapsing the tower, `⊢conv` along `βfst` under `sortMap` | ⚠ now the ARGUMENT's domain mismatches — its own tower, one rung shorter |
+| 5 | + convert `dsb` **at its source** (`⟶ᵀ*-Πˡ`, `βsnd`), left endpoint moved by `⟶*-castₗ` | ✅ rc=0 |
+
+★ **Attempt 4→5 is step 1's lesson, reused without a search.** The
+argument's mismatch sits inside a Π domain; the fix was already known —
+convert the input where its type is still concrete — so it cost one
+attempt instead of four. That is the log paying for itself.
+
+⚠ `sortMap` mentions its argument **twice** (`natrec s sTm (p5 s)`: the
+zero branch and inside the scrutinee), so lifting a reduction through it
+takes both congruences. `sortMap-red` does it in two lines.
+
+✅ **And `Sub.Typing` is instantiated over the knot** — `open Typing
+KnotD IPair SubTy subMotK ⊢extNK ⊢motAppK ⊢fordMapK` typechecks, which
+is the only thing that proves the three obligations *compose*. Each was
+built against a signature written in `Lib`; nothing before that line
+confirmed they fit together.
 
 ## Steps 4–6 — open
 
