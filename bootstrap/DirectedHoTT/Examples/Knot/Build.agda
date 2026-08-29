@@ -60,7 +60,7 @@ open import DirectedHoTT.Spec.Typing
         ; El-⌜Id⌝; ξ-El; ξ-IMu; ξ-⌜Id⌝ˡ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w² )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTm; sVar; ⊢sTm; ⊢sVar; toI; fromI; ⊢ixP
@@ -419,3 +419,108 @@ tmCast refl d = d
     eqFord = cong₂ (λ a b → El (⌜Id⌝ ⌜Nat⌝ (snd a) b))
                    (sym (rt₂ (pair sVar (nsuc d))))
                    (sym (cong nsuc (wk-single {v = idrefl ⌜Nat⌝ sVar} d)))
+
+------------------------------------------------------------------------
+-- ★★★ RUNG 5: `Var-vsK` AT AN ARBITRARY DEPTH TERM.
+--
+-- The same shape as rung 4 with ONE MORE FIELD — the recursive `x` — so
+-- every trip sits one substitution deeper.  ⚠ Stated generically from
+-- the start this time, rather than discovered per position.
+------------------------------------------------------------------------
+
+⊢Var-vsKt : {Δ : Ctx} {d x : RTm ⌊ Δ ⌋} →
+            Δ ⊢ d ∷ Nat → Δ ⊢ x ∷ K (pair sVar d) →
+            Δ ⊢ Var-vsK d x ∷ K (pair sVar (nsuc d))
+⊢Var-vsKt {Δ = Δ} {d = d} {x = x} dd dx =
+  ⊢icon KnotWf memVar-vs (⊢ixP ⊢sVar (⊢nsuc dd))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var here))))
+             (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                            (toI (⊢fst (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk dd))))))
+                            (toI ⊢sVar)))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk (⊢wk dd)))))))
+                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                     ty-Unit)))
+           (toI dd)
+      (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                            (toI (⊢fst (⊢ixP ⊢sVar (⊢nsuc dw1))))
+                            (toI ⊢sVar)))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc dw2))))
+                              (toI (⊢nsuc (⊢wk (⊢wk dd))))))
+                     ty-Unit))
+             dx
+        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc dw3))))
+                              (toI (⊢nsuc dw4))))
+                     ty-Unit)
+               (fordFst ⊢sVar)
+          (⊢pair ty-Unit
+                 (⊢-cast eqFord (fordSnd {t = sVar} (⊢nsuc dd)))
+                 ⊢unit))))
+  where
+    -- ★★★ GENERIC IN **BOTH** TERMS — the one being substituted AND the
+    --   one substituted into.  ⚠ Rung 4 abstracted only the target and
+    --   then needed a second, near-identical lemma the moment a second
+    --   field appeared.  `abstract-the-substituted-terms`, measured at
+    --   87× in this codebase, applies to these lemmas too.
+    rtA : (v X : RTm ⌊ Δ ⌋) → subTm (extS (single v)) (w (w X)) ≡ w X
+    rtA v X = trans (sub-w {σ = single v} (w X)) (cong w (wk-single {v = v} X))
+
+    rt₁ : (X : RTm ⌊ Δ ⌋) → subTm (extS (single d)) (w (w X)) ≡ w X
+    rt₁ = rtA d
+
+    dw1 : _ ⊢ subTm (extS (single d)) (w (w d)) ∷ Nat
+    dw1 = tmCast (sym (rt₁ d)) (⊢wk dd)
+
+    -- ★★ THE NEXT RUNG OF THE SAME FAMILY, and it needs `sub-w²`.
+    --   ⚠ This is `Lib/Wk`'s own note cashed in: `sub-w`/`sub-w²`/… are
+    --   "iterates of one lemma and want indexing, not listing", and here
+    --   are two successive rungs inside ONE proof.  Evidence for that
+    --   pending item rather than an assertion about it.
+    rt₂ : (X : RTm ⌊ Δ ⌋) →
+          subTm (extS (extS (single d))) (w (w (w X))) ≡ w (w X)
+    rt₂ X = trans (sub-w² {σ = single d} (w X))
+                  (cong (λ z → w (w z)) (wk-single {v = d} X))
+
+    dw2 : _ ⊢ subTm (extS (extS (single d))) (w (w (w d))) ∷ Nat
+    dw2 = tmCast (sym (rt₂ d)) (⊢wk (⊢wk dd))
+
+    -- ★ and the two composed: the `x` field's substitution meets what
+    --   `rt₂` left behind.
+    rt₃ : (X : RTm ⌊ Δ ⌋) →
+          subTm (extS (single x)) (subTm (extS (extS (single d))) (w (w (w X))))
+            ≡ w X
+    rt₃ X = trans (cong (subTm (extS (single x))) (rt₂ X)) (rtA x X)
+
+    dw3 : _ ⊢ subTm (extS (single x))
+                    (subTm (extS (extS (single d))) (w (w (w d)))) ∷ Nat
+    dw3 = tmCast (sym (rt₃ d)) (⊢wk dd)
+
+    -- ★ `rtA`'s THIRD use, at a third pair of arguments.  This is what
+    --   the fully-abstracted form buys: one lemma, not one per position.
+    dw4 : _ ⊢ subTm (extS (single x)) (w (w d)) ∷ Nat
+    dw4 = tmCast (sym (rtA x d)) (⊢wk dd)
+
+    -- ★ the full descent: all FOUR fields' substitutions, composed.
+    rt₄ : (X : RTm ⌊ Δ ⌋) →
+          subTm (single (idrefl ⌜Nat⌝ sVar))
+                (subTm (extS (single x))
+                       (subTm (extS (extS (single d))) (w (w (w X)))))
+            ≡ X
+    rt₄ X = trans (cong (subTm (single (idrefl ⌜Nat⌝ sVar))) (rt₃ X))
+                  (wk-single {v = idrefl ⌜Nat⌝ sVar} X)
+
+    -- ⚠ THE RIGHT ENDPOINT IS ONE LAYER SHALLOWER, exactly as at rung 4.
+    --   It reaches `extS (extS (single d))` at a VARIABLE, which
+    --   substitutes definitionally, so its descent starts a level in.
+    rt₄ᵣ : (X : RTm ⌊ Δ ⌋) →
+           subTm (single (idrefl ⌜Nat⌝ sVar)) (subTm (extS (single x)) (w (w X)))
+             ≡ X
+    rt₄ᵣ X = trans (cong (subTm (single (idrefl ⌜Nat⌝ sVar))) (rtA x X))
+                   (wk-single {v = idrefl ⌜Nat⌝ sVar} X)
+
+    eqFord : _
+    eqFord = cong₂ (λ a b → El (⌜Id⌝ ⌜Nat⌝ (snd a) b))
+                   (sym (rt₄ (pair sVar (nsuc d))))
+                   (sym (rt₄ᵣ (nsuc d)))
