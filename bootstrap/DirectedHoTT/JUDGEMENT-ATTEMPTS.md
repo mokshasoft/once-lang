@@ -320,11 +320,46 @@ Agda had reached the assembly and reported a *type* error there. Attempt
 victim — my own note says two OCP-0009 conclusions had already been
 wrong for this exact reason.
 
-⬜ **Where this leaves `RedWf`:** the emitter is finished and every rung
-it produces has been *seen* to typecheck; the module as a whole does not
-fit in 7.7 GB. It is **not emitted**, so nothing in the tree claims the
-judgement is well formed. Next step is to bisect the module (halves, not
-guesses) to find what actually costs, rather than to reason about it.
+### 2.6 — the bisect ✅ `_⟶_` IS A WELL-FORMED DESCRIPTION
+
+    RedWf : IDescWf IRed RedD          -- Knot/RedWfB, rc=0, 56s
+
+**Measured, on a 5.5 GB cgroup cap (`check.sh`, not the box's 7.7 GB):**
+
+| rows | 8 | 16 | 32 | 48 | 52 | 54 | 56 | 64 | 65 |
+|---|---|---|---|---|---|---|---|---|---|
+| secs | 10 | 25 | 50 | 87 | — | 101 | — | — | — |
+| rc | 0 | 0 | 0 | 0 | **143** | **0** | 143 | 143 | 143 |
+
+★★★ **It is LINEAR — ~1.8 s/row — and there is no bad row.** 52 OOMed
+while **54 passed**, at the same runtime. The module simply sits near the
+cap and whether it trips is noise. ⇒ `exit-143-is-not-evidence-about-cost`
+for the **third** time in this project, and the second time in this log.
+
+⇒ **Split into halves: 51s + 48s = 99s, against 65 × 1.8 ≈ 117s
+predicted.** Cost-neutral in time, exactly as `agda-oom-is-a-gc-choice`
+records — and the assembly then went in at 56s.
+
+⚠⚠ **AND BOTH OF MY EARLIER DIAGNOSES WERE WRONG.** I said the 65-deep
+`idwf-cons` nest was the cost (it is not: it typechecks fine once the
+module fits), and then that the rows must be (they are not either). The
+module was simply too big **as one unit** — a fact no amount of reasoning
+about the *shape* of the contents was going to reach.
+
+**Two emitter improvements made along the way, both real:**
+
+* **the `ICon` suffixes are NAMED, not inlined.** `_conFrom` spelled the
+  whole nest at every rung — n(n+1)/2 `iκ` nodes where n would do.
+  `Knot/Lookup` names them by hand (`C₅ = iκ κ₅ C₆`); the emitter now
+  does too. Specialisation where an abstraction was already written down.
+* **the ambient projection is Def-lifted.** `⊢fst ⟨i⟩` occurs three times
+  per ford rung; a named `Def` is shared by Agda's term traversals, an
+  inline copy is walked once per occurrence by every phase — the argument
+  `check.sh`'s own header makes about `⊢strong-base'`.
+
+⚠ Neither was measured *in isolation* — they went in before the bisect,
+so the 1.8 s/row figure includes them and their individual effect is
+unknown. Recorded as unquantified.
 
 ★ **And attempt 10→11 is the depth-threading finding again, at the term
 level.** The `Var` constructors take their depth explicitly — they Ford
