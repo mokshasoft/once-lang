@@ -21,7 +21,7 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; fst; snd; nsuc; nzero
         ; El; IMu; Σ'; Nat
-        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; ICon; IDesc; iι; iρ; iκ; εwkTy )
+        ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; ICon; IDesc; iι; iρ; iκ; inil; _◂_; εwkTy )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_
         ; IConWf; iwf-ι; iwf-κ; iwf-ρ; ICodeWf; icw-clo; icw-ford; icw-imu
@@ -3902,3 +3902,21 @@ XΡΓ9 = XΡΓ8 ∙
 rdξ-⌜IMu⌝ : ICon (ε ∙)
 rdξ-⌜IMu⌝ = iκ kΡΓ0 (iκ kΡΓ1 (iκ kΡΓ2 (iκ kΡΓ3 (iκ kΡΓ4 (iρ kΡΓ5 (iκ kΡΓ6 (iκ kΡΓ7 (iκ kΡΓ8 (iι)))))))))
 
+------------------------------------------------------------------------
+-- ★★★ …AND THE JUDGEMENT ITSELF.
+------------------------------------------------------------------------
+RedD : IDesc
+RedD =
+  rdβfst ◂ rdβsnd ◂ rdξ-lam ◂ rdξ-appˡ ◂ rdξ-appʳ ◂ rdξ-pairˡ ◂ 
+  rdξ-pairʳ ◂ rdordtr-z ◂ rdordtr-szz ◂ rdordtr-ssz ◂ rdordtr-szs ◂ 
+  rdordtr-sss ◂ rdξ-ordtrᵃ ◂ rdξ-ordtrᵗ ◂ rdξ-ordtrᵘ ◂ rdξ-ordtrᵖ ◂ 
+  rdξ-ordtrq ◂ rdξ-absurdᶜ ◂ rdξ-absurdᵉ ◂ rdξ-fst ◂ rdξ-snd ◂ 
+  rdξ-⌜Π⌝ˡ ◂ rdξ-⌜Π⌝ʳ ◂ rdξ-⌜Σ⌝ˡ ◂ rdξ-⌜Σ⌝ʳ ◂ rdtr-J-base ◂ rdtr-J-Σ ◂ 
+  rdtr-J-Unit ◂ rdtr-J-Id ◂ rdtr-J-Mu ◂ rdtr-J-IMu ◂ rdtr-taut ◂ 
+  rdξ-⌜Hom⌝ᶜ ◂ rdξ-⌜Hom⌝ˡ ◂ rdξ-⌜Hom⌝ʳ ◂ rdξ-hreflᶜ ◂ rdξ-hreflᵃ ◂ 
+  rdξ-trᵈ ◂ rdξ-trᵖ ◂ rdξ-trᵉ ◂ rdξ-apᶜ ◂ rdξ-apᵇ ◂ rdξ-apᵖ ◂ rdjsub-refl ◂ 
+  rdξ-⌜Id⌝ᶜ ◂ rdξ-⌜Id⌝ˡ ◂ rdξ-⌜Id⌝ʳ ◂ rdξ-idreflᶜ ◂ rdξ-idreflᵃ ◂ 
+  rdξ-jsubᵈ ◂ rdξ-jsubᵖ ◂ rdξ-jsubᵉ ◂ rdnatrec-zero ◂ rdξ-nsuc ◂ 
+  rdξ-natrecᶻ ◂ rdξ-natrecˢ ◂ rdξ-natrecⁿ ◂ rdξ-con ◂ rdξ-elimᵐ ◂ 
+  rdξ-elimᵗ ◂ rdξ-icon ◂ rdξ-ielimⁱ ◂ rdξ-ielimᵐ ◂ rdξ-ielimᵗ ◂ 
+  rdξ-⌜IMu⌝ ◂ inil
