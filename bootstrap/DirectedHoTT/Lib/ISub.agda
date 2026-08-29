@@ -89,18 +89,23 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil; iι; iρ; iκ
         ; app; lam; pair; fst; snd; unit; nzero; nsuc; icon; var; vz; vs; ⌜Id⌝; ⌜Nat⌝
-        ; Sub; subTm; RTy; IMu; Nat )
+        ; Sub; subTm; RTy; IMu; Nat; El; extS; ipayTy )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm )
 open import DirectedHoTT.Spec.Typing
-  using ( _⟶*_; Ctx; ⌊_⌋; _⊢_∷_; ⊢app; ⊢conv; ⊢nsuc; iinst )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast )
+  using ( _⟶*_; Ctx; ⌊_⌋; _⊢_∷_; ⊢app; ⊢conv; ⊢nsuc; iinst
+        ; ⊢pair; ⊢unit; ⊢fst; ⊢snd
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; IDescWf; iihTy; wk-single )
+open import DirectedHoTT.Metatheory.SubjectReduction
+  using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢ )
+open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
+open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-pairˡ )
 open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.IWk
   using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf; sucs
         ; Maybe; just; nothing; decCon; decSucs; decClosed; decVar
-        ; pinned-stable; isSucs-sub )
+        ; pinned-stable; isSucs-sub; payStep )
 
 module Sub
   -- ★ the ONE thing that differs from weakening: how a substitution is
@@ -470,6 +475,14 @@ module Sub
                Γ ⊢ h ∷ iinst (pair s dd) u M → Γ ⊢ m ∷ Nat →
                Γ ⊢ sb ∷ STy dd m →
                Γ ⊢ app (app h m) sb ∷ IMu D I (pair (smap s) m))
+    -- ★ and the ford action's typing.  ⚠ IT TAKES THE STABILITY CHAIN
+    --   AS AN ARGUMENT: `sk-fst` carries it precisely so this can, and
+    --   it is what the action's BASE CASE needs.
+    (⊢fordMap : {Γ : Ctx} {fi t : RTm ⌊ Γ ⌋} (k : ℕ) →
+                ({Δ : Cx} → smap {Δ} (num k) ⟶* num k) →
+                Γ ⊢ fi ∷ Nat →
+                Γ ⊢ t ∷ El (⌜Id⌝ ⌜Nat⌝ fi (num k)) →
+                Γ ⊢ fordMap fi (num k) t ∷ El (⌜Id⌝ ⌜Nat⌝ (smap fi) (num k)))
     where
 
     ⊢sucs : {Γ : Ctx} (k : ℕ) {n : RTm ⌊ Γ ⌋} →
@@ -532,3 +545,79 @@ module Sub
         k   = depthOf p
         eqσ = trans (isSucs-sub p σ) (cong (sucs k) hσ)
         eqτ = trans (isSucs-sub p τ) (cong (sucs k) hτ)
+
+    ------------------------------------------------------------------------
+    -- ★★★ ONE κ FIELD, TYPED — and the two halves are not the same kind
+    -- of step.  A CLOSED code is retyped by a cast, exactly as in
+    -- `Lib/IWk`.  A TAG FORD is not retyped at all: its witness was
+    -- REPLACED at the term level, and this is where that replacement is
+    -- justified.
+    ------------------------------------------------------------------------
+
+    ⊢kaPick : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
+              {κ : RTm ⌊ Θ ⌋} {fi t : RTm ⌊ Γ ⌋} (ka : SubKa a κ) →
+              fst (σ a) ≡ fi → fst (τ a) ≡ smap fi → Γ ⊢ fi ∷ Nat →
+              Γ ⊢ t ∷ El (subTm σ κ) →
+              Γ ⊢ kaPick ka fi t ∷ El (subTm τ κ)
+    ⊢kaPick {σ = σ} {τ = τ} (sk-clo κ o) hσ hτ dfi dt =
+      ⊢-cast (cong El (pinned-stable κ σ τ o)) dt
+    ⊢kaPick {σ = σ} {τ = τ} {fi = fi} (sk-fst qb st) hσ hτ dfi dt =
+      ⊢-cast (cong₂ (λ z y → El (⌜Id⌝ ⌜Nat⌝ z y))
+                    (sym hτ) (sym (isNum-sub qb τ)))
+        (⊢fordMap (numOf qb) st dfi
+          (⊢-cast (cong₂ (λ z y → El (⌜Id⌝ ⌜Nat⌝ z y))
+                         hσ (isNum-sub qb σ))
+                  dt))
+
+    ------------------------------------------------------------------------
+    -- ★★★ THE PAYLOAD, REBUILT AND TYPED.  The twin of `Lib/IWk`'s
+    -- `⊢iwkPay`, and structurally identical to it: the two tuples are
+    -- walked together, only the `ρ` case advances both, and each field's
+    -- component lemma decides what its slot owes.
+    --
+    -- ⚠ THE FOUR INDEX HYPOTHESES THREAD UNCHANGED through the recursive
+    --   calls, because `iext σ u (vs x) = σ x` — extending the SOURCE
+    --   context with a value does not touch what the ambient maps to.
+    --   ⇒ no `cong`, no re-derivation per depth.
+    --
+    -- ★ AND THE IH SLOT NEEDS NO CAST, unlike `Lib/IWk`'s.  There the
+    --   motive is `Mot D I`, whose instantiation leaves a `wk-single`
+    --   round trip; here `⊢sPick` takes its hypothesis at `iinst` —
+    --   which is the shape `iihTy` HANDS OVER.
+    ------------------------------------------------------------------------
+
+    ⊢isubPay : {Γ Θ : Ctx} {σ τ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {a : Var ⌊ Θ ⌋}
+               {C : ICon ⌊ Θ ⌋} {fi d n sb : RTm ⌊ Γ ⌋}
+               (w : SubCon a C) → IConWf D I Θ C → IDescWf I D →
+               Sub⊢ Θ Γ σ → Sub⊢ Θ Γ τ →
+               fst (σ a) ≡ fi → fst (τ a) ≡ smap fi →
+               snd (σ a) ≡ d → snd (τ a) ≡ n →
+               Γ ⊢ fi ∷ Nat → Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat →
+               Γ ⊢ sb ∷ STy d n →
+               (q ih : RTm ⌊ Γ ⌋) →
+               Γ ⊢ q  ∷ ipayTy D I σ C →
+               Γ ⊢ ih ∷ iihTy D I σ C q M →
+               Γ ⊢ isubPay w fi d n sb q ih ∷ ipayTy D I τ C
+    ⊢isubPay sc-ι iwf-ι wD hσ hτ fσ fτ sσ sτ dfi dd dn dsb q ih dq dih = ⊢unit
+    ⊢isubPay {σ = σ} {τ = τ} (sc-ρ ix w) (iwf-ρ j dj wC) wD hσ hτ fσ fτ sσ sτ
+             dfi dd dn dsb q ih dq dih =
+      ⊢pair (ipayTy-wf D I (extS τ) _ wD wC (Sub⊢-ext hτ))
+            c₀
+            (⊢-cast (sym (payStep D I τ _ _))
+              (⊢isubPay w wC wD (iext-Sub⊢ hσ (⊢fst dq)) (iext-Sub⊢ hτ c₀)
+                        fσ fτ sσ sτ dfi dd dn dsb (snd q) (snd ih)
+                        (⊢-cast (payStep D I σ (fst q) _) (⊢snd dq))
+                        (⊢-cast (wk-singleTy {v = fst ih} _) (⊢snd dih))))
+      where
+        c₀ = ⊢sPick ix sσ sτ dd dn dsb (⊢fst dq) (⊢fst dih)
+    ⊢isubPay {σ = σ} {τ = τ} (sc-κ {C = C'} ka w) (iwf-κ κ _ dc wC) wD hσ hτ fσ fτ sσ sτ
+             dfi dd dn dsb q ih dq dih =
+      ⊢pair (ipayTy-wf D I (extS τ) C' wD wC (Sub⊢-ext hτ))
+            c₀
+            (⊢-cast (sym (payStep D I τ (kaPick ka _ (fst q)) C'))
+              (⊢isubPay w wC wD (iext-Sub⊢ hσ (⊢fst dq)) (iext-Sub⊢ hτ c₀)
+                        fσ fτ sσ sτ dfi dd dn dsb (snd q) ih
+                        (⊢-cast (payStep D I σ (fst q) C') (⊢snd dq))
+                        dih))
+      where
+        c₀ = ⊢kaPick ka fσ fτ dfi (⊢fst dq)
