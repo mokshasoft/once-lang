@@ -181,3 +181,33 @@ move.** `emit_row` gained one flag; regenerating produced a
 byte-identical `Ctors.agda` apart from one double-space. A refactor of a
 generator that emits both forms cannot be trusted otherwise — and this
 is the same reason `LookupGen` exists.
+
+### 2.1 — the `_⟶_` row spike
+
+⚠ **Do not transcribe 73 rules and then find out.** One rule, generated
+end to end (`Knot/RedRows`: `βfst : fst (pair a b) ⟶ a`, the `ICon` and
+its `IConWf`), to settle what a *knot-constructor* index component needs
+that `_∋_∷_`'s foreign-family ones did not.
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 2 | reuse `WF_CTOR` as a hand table, as for `Ctx-extK`/`wkK` | ⚠ **wrong shape.** A knot constructor carries no term-level depth, so its typing lemma needs the row's depth *injected* — and 51 hand entries is the abstraction smell again |
+| 3 | generate `WF_CTOR` from `KNOT`, injecting the row's depth (`DX`) | ⚠ right for flat terms, **silently wrong under a binder** |
+| 4 | thread the depth *through the constructor tree*, adjusting per field | ✅ **rc=0** |
+
+★★ **Attempt 3→4 is the finding.** `Tm-lamK (Tm-fstK x)` has its `lam` at
+the row's depth and its `fst` one binder deeper. "The row's depth
+everywhere" is right for every flat term and wrong only under a binder —
+so it would have generated 73 rows of which most typechecked, and the
+failures would have looked like row bugs.
+
+⇒ **and the adjustment was already in the table**: every field records
+its index depth as `D` / `sucD k` / `lit k`. Threading it is six lines;
+guessing it is a class of bug. The same shape as `_binder_comp` — the
+description already said it once.
+
+✅ The `_⟶_` interface is settled. What remains for the 73 rules is
+transcription against `Spec/Typing`, plus one open item: `β`'s RHS is an
+object-level `subTm`, so `subTmK` needs a `WF_CTOR` entry whose typing
+goes through `⊢motAppK` (the eliminator lands at a Π, not at `K` — see
+`SUBTM-ATTEMPTS.md` step 6).
