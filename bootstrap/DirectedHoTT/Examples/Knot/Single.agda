@@ -47,6 +47,7 @@ open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf; cVar-vsWf )
 open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vs )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vs )
+open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-varK )
 open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Tm-varKv )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs )
@@ -264,12 +265,9 @@ splK51 = splTake spl-nil (cdTake 51 KnotD)
 --   fail; keeping them apart makes this eight lines.
 ------------------------------------------------------------------------
 
-SubTyK : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
-SubTyK d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
-
 ⊢singleK : {Γ : Ctx} {n u : RTm ⌊ Γ ⌋} →
            Γ ⊢ n ∷ Nat → Γ ⊢ u ∷ K (pair sTm n) →
-           Γ ⊢ singleK n u ∷ SubTyK (nsuc n) n
+           Γ ⊢ singleK n u ∷ SubTy (nsuc n) n
 ⊢singleK {n = n} {u = u} dn du =
   ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc dn)))
     (⊢conv (⊢-cast (cong (λ z → K (pair sTm (predTm (snd z))))

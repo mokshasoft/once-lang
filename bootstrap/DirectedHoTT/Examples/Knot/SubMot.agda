@@ -91,7 +91,7 @@ open import DirectedHoTT.Lib.IPay using ( ipayTy-wf; ⊢methLam )
 open import DirectedHoTT.Examples.Knot.Tags
   using ( memTm-nzero; memTm-var; memVar-vz; tagVar-vz; tagVar-vs; tagTm-var )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nzeroK; Tm-varK )
-open import DirectedHoTT.Examples.Knot.Terms using ( fordFst; fordSnd; tyFordFst; ixConv )
+open import DirectedHoTT.Examples.Knot.Terms using ( fordFst; fordSnd; tyFordFst; ixConv; SubTy )
 open import DirectedHoTT.Examples.Knot.Build
   using ( Var-vzK; Var-vsK; ⊢Var-vzKv; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
@@ -1065,8 +1065,8 @@ shS n i = pair (sortMap (fst i)) n
 --   dropped assumption, a Π-domain congruence had no place to be used.
 ------------------------------------------------------------------------
 
-SubTy : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
-SubTy d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
+-- ⚠ `SubTy` MOVED to `Knot/Terms` — `Knot/Single` had re-defined it
+--   character for character.  Imported above.
 
 -- ★ the domain conversion needs: one `βsnd`, then one `pred-suc`.
 -- ⚠ LIFTED.  The body is `Lib/ArithMonus`'s `pred-snd-pair`, which takes
