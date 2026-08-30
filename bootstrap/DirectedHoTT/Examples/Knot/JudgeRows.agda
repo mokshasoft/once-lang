@@ -42,6 +42,9 @@ open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
+open import DirectedHoTT.Examples.Knot.SubApp
+  using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKv )
 open import DirectedHoTT.Examples.Knot.Lookup using ( LkD; ILk; LkWf )
 open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
@@ -66,17 +69,17 @@ IJudge =
 -- ⚠ NOT EMITTED — 15 of 43 rules:
 --     ty-Mu      unparsed premise
 --     ty-IMu     unparsed premise
---     ⊢app       unmapped ['single', 'subTy']
---     ⊢pair      unmapped ['single', 'subTy']
---     ⊢snd       unmapped ['single', 'subTy']
---     ⊢tr        unparsed premise
---     ⊢ap        unparsed premise
+--     ⊢app       conflicting depths [('B', 1, 0)]
+--     ⊢pair      conflicting depths [('B', 1, 0)]
+--     ⊢snd       conflicting depths [('B', 1, 0)]
+--     ⊢tr        conflicting depths [('c', 1, 0), ('a', 1, 0), ('c', 1, 0), ('a', 1, 0)]
+--     ⊢ap        conflicting depths [('b', 1, 0), ('b', 1, 0)]
 --     ⊢⌜Mu⌝      unparsed premise
 --     ⊢⌜IMu⌝     unparsed premise
---     ⊢jsub      unmapped ['single', 'subTm']
---     ⊢natrec    unparsed premise
+--     ⊢jsub      conflicting depths [('d', 1, 0), ('d', 1, 0)]
+--     ⊢natrec    conflicting depths [('M', 1, 0), ('M', 1, 0)]
 --     ⊢con       unparsed premise
---     ⊢elim      unparsed premise
+--     ⊢elim      conflicting depths [('M', 1, 0)]
 --     ⊢icon      unparsed premise
 --     ⊢ielim     unassigned ['M']
 

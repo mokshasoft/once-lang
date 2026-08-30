@@ -1092,6 +1092,17 @@ FIELD_SORT = {("%sK" % n[1:]): [(f[1] if f[0] == "rec" else "nat")
                                 for f in fs if f[0] in ("rec", "nat")]
               for n, _, fs in KNOT}
 
+# ★ …and the wrappers' fields.  ⚠ `None` for the SUBSTITUTION argument:
+#   it is not a knot term at any sort, and claiming one would propagate
+#   a wrong sort outward through `scan`.  The sort that matters is the
+#   SUBSTITUTED term's, and it is the whole difference between
+#   `subTmAtK` and `subTyAtK`.
+FIELD_SORT.update({
+    "singleK":  ["sTm"],
+    "subTmAtK": [None, "sTm"],
+    "subTyAtK": [None, "sTy"],
+})
+
 # ============================ THE MUTUAL PAIR =============================
 # ★★★ `_⊢ty_` AND `_⊢_∷_` ARE ONE DESCRIPTION OVER A TAGGED INDEX.
 #
@@ -1368,6 +1379,9 @@ open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
+open import DirectedHoTT.Examples.Knot.SubApp
+  using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 %(extra)s
 """
 
@@ -1937,6 +1951,15 @@ WF_CTOR.update({
     # ★ `wkK` lands at `sh (pair s m)` while the ford wants
     #   `pair s (nsuc m)` — the same two β-steps every time.
     "wkK":      ("⊢wkK",       ["IX", "MU"],      "WK"),
+    # ★★★ THE SUBSTITUTION WRAPPERS.  `Knot/SubApp` proved these; the
+    #   roles say only WHERE each argument comes from.
+    # ⚠ `DD`, NOT a fresh "current depth" role.  `_val` PREPENDS the
+    #   depth, so by the time the derivation emitter walks the tree the
+    #   depth is `args[0]` — synthesising it again from `DEPTHD` emits
+    #   it twice and drops the last real argument off the end.
+    "singleK":  ("⊢singleK",  ["DD", "MU"],       None),
+    "subTmAtK": ("⊢subTmAtK", ["DD", "IX", "MU"], None),
+    "subTyAtK": ("⊢subTyAtK", ["DD", "IX", "MU"], None),
 })
 
 def _telty(comp):
@@ -1994,6 +2017,22 @@ FIELD_DEPTH = {
                       for f in fs if f[0] in ("rec", "nat")]
     for n, _, fs in KNOT if not n.startswith("cVar-")
 }
+
+# ★★★ THE SUBSTITUTION WRAPPERS, and their SECOND argument sits one
+#   binder deeper.  `subTm σ t` reads `t` under the binder the
+#   substitution consumes — that is the whole content of "a substitution
+#   lowers the depth by one", and it is the only thing the walk needs to
+#   be told about them.
+# ⚠ INDEXED BY THE **EMITTED** POSITION, so the prepended depth occupies
+#   slot 0.  `_val` walks SOURCE arguments and so reads this table at
+#   `i + 1`; the derivation emitter walks the emitted tree and reads it
+#   at `ai`.  Getting that offset wrong silently reads `t` at the
+#   substitution's depth instead of one binder deeper.
+FIELD_DEPTH.update({
+    "singleK":  [('D',), ('D',)],
+    "subTmAtK": [('D',), ('D',), ('sucD', 1)],
+    "subTyAtK": [('D',), ('D',), ('sucD', 1)],
+})
 
 # ★★★ THE THREADED DEPTH IS STRUCTURED, NOT A STRING: `(base term, base
 #   derivation, how many `nsuc`s)`.
@@ -2476,6 +2515,8 @@ open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Examples.Knot.Single using ( singleK )
+open import DirectedHoTT.Examples.Knot.SubApp using ( subTmAtK; subTyAtK )
 
 -- ★ the judgement's index: a depth and two terms at it.
 IRed : RTy ε
@@ -2515,6 +2556,19 @@ def _depth_at(dp):
 #   hand these the PREDECESSOR of the depth at that position, and a `vz`
 #   at a non-successor depth is ill-typed anyway.
 _DEPTH_ARG = {"Var-vzK", "Var-vsK"}
+
+# ★★★ …AND THE SUBSTITUTION WRAPPERS TAKE THE AMBIENT DEPTH, NOT ITS
+#   PREDECESSOR.  `subTmAtK n σ t : Tm n` with `t : Tm (nsuc n)` — the
+#   wrapper is named for where it LANDS, so `n` is the depth at the
+#   position, unshifted.  ⚠ `_DEPTH_ARG`'s rule is the opposite one and
+#   using it here silently builds a term one binder too shallow.
+_DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK"}
+
+# ★ what a rule NAMES → what the object level CALLS it.  `single`,
+#   `subTm` and `subTy` are the three the judgement rules mention, and
+#   `Knot/SubApp` supplies all three with the index and target depth
+#   that the rule does not write down.
+_SUBST_CT = {"single": "singleK", "subTm": "subTmAtK", "subTy": "subTyAtK"}
 
 def _pred(dep):
     if dep[0] == "nsuc": return dep[1]
@@ -2558,13 +2612,17 @@ def _val(e, CT, dep):
     if h[1] in CT:
         c = CT[h[1]]
         fds = FIELD_DEPTH.get(c, [])
-        sub = [_val(x, CT, _shift(dep, fds[i]) if i < len(fds) else dep)
+        off = 1 if c in _DEPTH_PRE else 0
+        sub = [_val(x, CT, _shift(dep, fds[i + off]) if i + off < len(fds) else dep)
                for i, x in enumerate(args[1:])]
-        return AP(c, *([_pred(dep)] + sub)) if c in _DEPTH_ARG else AP(c, *sub)
+        if c in _DEPTH_ARG: return AP(c, *([_pred(dep)] + sub))
+        if c in _DEPTH_PRE: return AP(c, *([dep] + sub))
+        return AP(c, *sub)
     return V(h[1])
 
 def gen_redrows():
     CT = {d.split(":")[0].strip(): n[1:] + "K" for n, d, _ in KNOT}
+    CT.update(_SUBST_CT)
     TEL = [TNAT(), TKNOT("sTm"), TKNOT("sTm")]
     rows, skipped = [], []
     for r in rules_of(os.path.join(os.path.dirname(os.path.dirname(
@@ -2663,6 +2721,9 @@ open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vz
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
+open import DirectedHoTT.Examples.Knot.SubApp
+  using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.RedRows
 %s
 """
@@ -2796,6 +2857,7 @@ if __name__ == "__main__":
     open(os.path.join(out, "RedWfA.agda"), "w").write(gen_redwf("A", 0, _half))
     open(os.path.join(out, "RedWfB.agda"), "w").write(gen_redwf("B", _half, len(_ROWS)))
     _CT = {d.split(":")[0].strip(): n[1:] + "K" for n, d, _ in KNOT}
+    _CT.update(_SUBST_CT)
     for _J in (J_TYRED, J_CONV):
         for _m in write_judgement(_J, out, _CT):
             print("  wrote", _m)
