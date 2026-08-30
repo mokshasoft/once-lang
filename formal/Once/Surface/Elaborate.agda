@@ -220,6 +220,24 @@ distribIR m =
   apply ∘ ⟨ case (curry (inl m ∘ swapIR m) m) (curry (inr m ∘ swapIR m) m) ∘ snd
           , fst ⟩ m
 
+-- D127: the four combinator morphisms. CLOSED — they mention no arm, so an
+-- arm's effects happen once, where `⟨_,_⟩` runs it, and not per call.
+compIR : ∀ {A B C} → (m : AllocMode) → IR ((B ⇛ C) * (A ⇛ B)) (A ⇛ C)
+compIR m = curry (apply ∘ ⟨ fst ∘ fst , apply ∘ ⟨ snd ∘ fst , snd ⟩ m ⟩ m) m
+
+copairIR : ∀ {A B C} → (m : AllocMode) → IR ((A ⇛ C) * (B ⇛ C)) ((A + B) ⇛ C)
+copairIR m =
+  curry (case (apply ∘ ⟨ fst ∘ fst , snd ⟩ m)
+              (apply ∘ ⟨ snd ∘ fst , snd ⟩ m)
+         ∘ distribIR m) m
+
+forkIR : ∀ {A B C} → (m : AllocMode) → IR ((A ⇛ B) * (A ⇛ C)) (A ⇛ (B * C))
+forkIR m = curry (⟨ apply ∘ ⟨ fst ∘ fst , snd ⟩ m
+                  , apply ∘ ⟨ snd ∘ fst , snd ⟩ m ⟩ m) m
+
+curryIR : ∀ {A B C} → (m : AllocMode) → IR ((A * B) ⇛ C) (A ⇛ (B ⇛ C))
+curryIR m = curry (curry (apply ∘ ⟨ fst ∘ fst , ⟨ snd ∘ fst , snd ⟩ m ⟩ m) m) m
+
 elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
 
 -- Variable: project from environment
@@ -231,42 +249,24 @@ elaborate m (var i) = proj i
 -- The quantity q is enforced during type checking, not during elaboration
 elaborate m (lam q _ e) = curry (elaborate m e) m
 
--- D127: the categorical combinators.
+-- D127: the categorical combinators — CLOSED morphisms composed with the
+-- pairing of the arms.
 --
--- THIS IS WHERE THE LINEARITY IN THEIR USAGE RULES IS CASHED OUT. Each arm's
--- elaboration appears EXACTLY ONCE on the right, so the composite consumes
--- each arm's resources once — which is what `comp'`/`copair'`/`fork'`/`curry'`
--- claim with `Ψ₁ +ᵘ Ψ₂` and what an `app`-encoding could not have delivered
--- (application scales its argument by the arrow's grade).
+-- The shape matters and is not cosmetic. `⟨ elaborate f , elaborate g ⟩` runs
+-- each arm ONCE, when the composite is BUILT; the closed combinator morphism
+-- then makes the closure out of the two results. Fusing the arms inward
+-- instead — `curry (apply ∘ ⟨ f ∘ fst , … ⟩)` — puts them under the `curry`,
+-- so an arm that EMITS would re-emit on every call of the composite and the
+-- trace would not match `⟦ comp' f g ⟧ˢ`, which binds both arms OUTSIDE the
+-- function it returns. Same fact the usage index records as `Ψ₁ +ᵘ Ψ₂`
+-- rather than `Many *ᵘ …`, seen from the semantics instead of the resources.
 --
--- `comp' f g` is the CCC's internal composition, `Γ → (A ⇒ C)`:
---
---     curry (apply ∘ ⟨ f ∘ fst , apply ∘ ⟨ g ∘ fst , snd ⟩ ⟩)
---
--- reading `fst : Γ * A → Γ` and `snd : Γ * A → A`. Both `f` and `g` are
--- pre-composed with the SAME projection rather than duplicated: the pairing
--- shares Γ, it does not copy either arm.
-elaborate m (comp' f g) =
-  curry (apply ∘ ⟨ elaborate m f ∘ fst
-                 , apply ∘ ⟨ elaborate m g ∘ fst , snd ⟩ m ⟩ m) m
-
--- `copair' f g` : the copairing, `Γ → ((A + B) ⇒ C)`. Distribute Γ over the
--- sum, then case: `curry (case (apply ∘ ⟨f ∘ fst, snd⟩) (apply ∘ ⟨g ∘ fst, snd⟩)
--- ∘ distrib)`.
-elaborate m (copair' f g) =
-  curry (case (apply ∘ ⟨ elaborate m f ∘ fst , snd ⟩ m)
-              (apply ∘ ⟨ elaborate m g ∘ fst , snd ⟩ m)
-         ∘ distribIR m) m
-
--- `fork' f g` : the pairing, `Γ → (A ⇒ (B * C))`.
-elaborate m (fork' f g) =
-  curry (⟨ apply ∘ ⟨ elaborate m f ∘ fst , snd ⟩ m
-         , apply ∘ ⟨ elaborate m g ∘ fst , snd ⟩ m ⟩ m) m
-
--- `curry' f` : `Γ → (A ⇒ (B ⇒ C))` from `Γ → ((A * B) ⇒ C)`.
-elaborate m (curry' f) =
-  curry (curry (apply ∘ ⟨ elaborate m f ∘ fst ∘ fst
-                        , ⟨ snd ∘ fst , snd ⟩ m ⟩ m) m) m
+-- The four morphisms are closed and arm-free, which is also what lets O1's
+-- closed-arm equation be about them alone.
+elaborate m (comp' f g)   = compIR m   ∘ ⟨ elaborate m f , elaborate m g ⟩ m
+elaborate m (copair' f g) = copairIR m ∘ ⟨ elaborate m f , elaborate m g ⟩ m
+elaborate m (fork' f g)   = forkIR m   ∘ ⟨ elaborate m f , elaborate m g ⟩ m
+elaborate m (curry' f)    = curryIR m  ∘ elaborate m f
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
 -- IR's apply is quantity-polymorphic, no coercion needed
