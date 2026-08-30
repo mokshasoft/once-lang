@@ -41,8 +41,11 @@ open import Once.TypeCheck.Raw using (RawExpr;
   OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
-  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; g-int; g-float; g-neg-int; g-neg-float; g-terminal; g-pair; g-inl; g-inr; g-In;
-         _⊢ᵐ_∶_⇨[_]_; m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
+  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
+         t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
+         t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
+         t-compose-check; t-case-copair-check; t-pair-morph-check;
+         t-curry-check; t-cata-check;
          m-compose; m-case; m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-import;
          t-annot; t-pair; t-neg; t-neg-float; t-let; t-case; t-binop-arith; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-binop-cmp;
@@ -57,7 +60,7 @@ open import Once.Surface.Thinning using (weaken)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
   add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; poly;
-  lift-morphism; morph-app; arr')
+  lift-morphism; morph-app; arr'; cata; comp'; copair'; fork'; curry')
 open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
 open import Once.CanonicalName using (bare)
@@ -86,72 +89,6 @@ realize-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
                 {Ψ : Usage (NamedCtx.size ctx)}
               → ctx ⊢ᵢ e ∶ A ⨾ Ψ → Expr (NamedCtx.debruijn ctx) Ψ A
 
-------------------------------------------------------------------------
--- realize-global — the VALUE realm (⊢ᵍ) → its global-element IR.
---
--- The closed-value half of the CCC trichotomy (D063): a `⊢ᵍ` derivation
--- denotes a global element, read off the (term-free) derivation as the
--- direct IR — the elaborator-free mirror of `checkG`'s IR construction
--- (`Once.TypeCheck.Elaborate.checkG`, which `realize` must NOT import).
--- Parametric in the domain `X`: a global element `X → A` factors through
--- the terminal, so the constructors ignore `X`. Reused by `realize-morph`'s
--- `m-const` leaf (a value used where a morphism is expected = const morphism).
-------------------------------------------------------------------------
-realize-global : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type}
-               → ctx ⊢ᵍ e ∶ A → IR ⌊ X ⌋ ⌊ A ⌋
-realize-global (g-int n)        = intLit n
--- PLAN 0.73 F3 / D120's other half: the FOLDED payload, so the value realm
--- and the infer realm produce the same IR object for the same source text.
-realize-global (g-neg-int n)    = intLit (- n)
-realize-global (g-neg-float i f l p) = floatLit (negate (decimalOf i f l))
--- The reference elaboration reads the DYADIC off the acceptance witness — the
--- same value the elaborator uses — so the two cannot disagree about what the
--- literal denotes.
-realize-global (g-float i f l p) = floatLit (decimalOf i f l)
-realize-global (g-terminal _ _) = IR.terminal
-realize-global (g-pair ga gb)   = ⟨ realize-global ga , realize-global gb ⟩ IR.Heap
-realize-global (g-inl ga)       = IR.inl IR.Heap ∘ realize-global ga
-realize-global (g-inr gb)       = IR.inr IR.Heap ∘ realize-global gb
-realize-global (g-In {F = F} {wfF = wfF} _ garg) =
-  IR.In (wf-⌊⌋ wfF) IR.Heap ∘ subst (λ o → IR ⌊ _ ⌋ o) (⌊⟧T-commute F (μ-type F)) (realize-global garg)
-
-------------------------------------------------------------------------
--- realize-morph — the MORPHISM realm (⊢ᵐ) → its categorical IR (D063).
---
--- The middle of the CCC trichotomy. STRUCTURAL on the combinators
--- (`m-compose`/`m-case`/`m-pair`/`m-curry`/`m-cata`) → the DIRECT
--- categorical IR (`IR.∘`/`IR.case`/`IR.⟨_,_⟩`/`IR.curry`/`IR.Cata`), so the
--- agreement bridge forces the categorical LAWS. EXTENSIONAL leaves:
---   • `m-const` → `realize-global` (a value is a constant morphism).
---   • `m-named` → `IR.SigOp (value-info x)` — the PRINCIPLED morphism form
---     (D064: a named def IS a morphism; the closure-returner ABI is corrected
---     separately, bridged meanwhile by `realize-agrees` via the β/uncurry iso).
---   • `m-lam`  → the closed lambda's body interpreted in the one-variable
---     context `(∅, x)` and supplied the unit: `elaborate (realize body) ∘
---     ⟨ terminal , id ⟩`. (Uses `realize` (the ⊢ᶜ reference) + `elaborate`
---     (row-2, verified by `faithful`) — NOT `checkElab`, so the elaborator-free
---     boundary holds.)
-------------------------------------------------------------------------
-realize-morph : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Once.Type.Purity}
-              → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → IR ⌊ A ⌋ ⌊ B ⌋
-realize-morph (m-id _ _)        = IR.id
-realize-morph (m-fst _ _)       = IR.fst
-realize-morph (m-snd _ _)       = IR.snd
-realize-morph (m-terminal _ _)  = IR.terminal
-realize-morph (m-initial _ _)   = IR.initial
-realize-morph (m-inl _ _)       = IR.inl IR.Heap
-realize-morph (m-inr _ _)       = IR.inr IR.Heap
-realize-morph (m-compose _ df dg) = realize-morph df ∘ realize-morph dg
-realize-morph (m-case df dg)    = IR.case (realize-morph df) (realize-morph dg)
-realize-morph (m-pair df dg)    = ⟨ realize-morph df , realize-morph dg ⟩ IR.Heap
-realize-morph (m-curry df)      = IR.curry (realize-morph df) IR.Heap
--- Plan 0.54: DIRECT — the algebra is a morphism (`⊢ᵐ`), read straight to its
--- categorical IR; no `elaborate` round-trip, uniform with the other combinators.
-realize-morph (m-cata {F = F} {wfF = wfF} _ dalg) =
-  IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ _ ⌋) (⌊⟧T-commute F _) (realize-morph dalg))
-realize-morph (m-const gd)      = realize-global gd
-realize-morph (m-named {x = x} _ _ _ bA cB) = IR.SigOp (value-info (bare x) bA cB)
-realize-morph (m-named-resolved {cn = cn} _ bA cB) = IR.SigOp (value-info cn bA cB)
 
 ------------------------------------------------------------------------
 -- realize (⊢ᶜ) — check-mode reference elaboration.
@@ -159,27 +96,21 @@ realize-morph (m-named-resolved {cn = cn} _ bA cB) = IR.SigOp (value-info cn bA 
 -- categorical IR (forcing the laws); the rest are the genuinely
 -- bidirectional / value-former rules kept in `⊢ᶜ`.
 ------------------------------------------------------------------------
-realize (t-morph-lift d)        = lift-morphism (realize-morph d)
-realize (t-value-lift g)        = lift-morphism (realize-global g)
--- D126: a closed expression lifts by composing its own elaboration with
--- `terminal` — which is precisely what `t-value-lift` does for a value, with
--- `realize-global` in place of `realize-infer`. `zeroUsage` is what makes the
--- `terminal` legitimate: the body reads no local, so there is nothing to
--- capture and no closure to build.
--- D126: `λ _ → e`, built from the existing `weaken`. NOTE what `zeroUsage` does
--- and does not buy: it makes the lambda's own variable `Zero`-used, so the
--- abstraction is legitimate — but it does NOT say the body is independent of the
--- AMBIENT environment. `Zero *ᵘ Ψ` discards an argument's usage wholesale, so
--- `f x` at a `Zero`-quantity arrow is usage-closed while still reading a local.
--- That is fine here (`⊢ᶜ` is context-indexed and this is constant in its
--- ARGUMENT, not in `dγ`) and is exactly why the morphism realm needs a
--- different premise — see D126's entry.
-realize (t-closed-lift {π = Once.Type.pure} _ d) = lam Many PE.refl (weaken (realize-infer d))
--- …and at `eff`, the same lambda through `arr'` — the pure→eff coercion
--- `t-subsume` uses. Grade-polymorphism is not free here the way it is for
--- `t-value-lift`, because `Surface.lam` is pure and `lift-morphism` is not
--- available without strengthening the body to the empty context.
-realize (t-closed-lift {π = Once.Type.eff} _ d)  = arr' (lam Many PE.refl (weaken (realize-infer d)))
+-- D127: the combinators realize to the SURFACE term formers, not to a
+-- separate morphism realm. The point-free leaves are still the plain
+-- categorical generators — those were always closed and still are.
+realize (t-id-check _ _)             = lift-morphism IR.id
+realize (t-fst-check _ _)            = lift-morphism IR.fst
+realize (t-snd-check _ _)            = lift-morphism IR.snd
+realize (t-terminal-morph-check _ _) = lift-morphism IR.terminal
+realize (t-initial-morph-check _ _)  = lift-morphism IR.initial
+realize (t-inl-morph-check _ _)      = lift-morphism (IR.inl IR.Heap)
+realize (t-inr-morph-check _ _)      = lift-morphism (IR.inr IR.Heap)
+realize (t-compose-check _ df dg)    = comp'   (realize df) (realize dg)
+realize (t-case-copair-check df dg)  = copair' (realize df) (realize dg)
+realize (t-pair-morph-check df dg)   = fork'   (realize df) (realize dg)
+realize (t-curry-check df)           = curry'  (realize df)
+realize (t-cata-check {wfF = wfF} _ dalg) = cata wfF (realize dalg)
 realize (t-embed d)             = realize-infer d
 realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)
 realize (t-pair-lit-check da db) = pair (realize da) (realize db)

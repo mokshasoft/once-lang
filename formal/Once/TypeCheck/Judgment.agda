@@ -549,14 +549,15 @@ mutual
     -- Widening it to the ambient context would admit a CAPTURING algebra —
     -- a real semantic widening, and plan 0.76 risk 3 says to decide that in
     -- its own entry rather than inherit it from this refactor.
+    -- The algebra's usage is `zeroUsage`, STATED rather than quantified: the
+    -- cleared context has no locals, so there is nothing for it to use. This
+    -- is the same closedness `Surface.cata` demands of the algebra it carries.
     t-cata-check : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
                    {π : Once.Type.Purity} {wfF : WellFormedF F}
-                   {Ψ : Surface.Usage
-                          (NamedCtx.size (ctxWithImportsAndPolys (NamedCtx.imports ctx)
-                                                                 (NamedCtx.polys ctx)))}
                  → wellFormedF? F ≡ just wfF
                  → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-                     ⊢ᶜ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Ψ
+                     ⊢ᶜ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+                     ⨾ Surface.zeroUsage
                  → ctx ⊢ᶜ RApp (RVar "cata") alg
                          ∶ ((μ-type F) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                          ⨾ Surface.zeroUsage
