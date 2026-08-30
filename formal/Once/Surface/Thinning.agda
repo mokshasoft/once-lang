@@ -197,6 +197,18 @@ rename {Δ = Δ} θ (Surface.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
 rename {Δ = Δ} θ (Surface.pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))
         (Surface.pair (rename θ a) (rename θ b))
+-- D127: the four combinators thin componentwise; their usage is `Ψ₁ +ᵘ Ψ₂`,
+-- so they need `thin-usage-+ᵘ` exactly as `pair` does.
+rename {Δ = Δ} θ (Surface.comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))
+        (Surface.comp' (rename θ f) (rename θ g))
+rename {Δ = Δ} θ (Surface.copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))
+        (Surface.copair' (rename θ f) (rename θ g))
+rename {Δ = Δ} θ (Surface.fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))
+        (Surface.fork' (rename θ f) (rename θ g))
+rename θ (Surface.curry' f) = Surface.curry' (rename θ f)
 rename θ (Surface.fst' p) = Surface.fst' (rename θ p)
 rename θ (Surface.arr' f) = Surface.arr' (rename θ f)
 rename θ (Surface.snd' p) = Surface.snd' (rename θ p)

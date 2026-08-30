@@ -200,6 +200,26 @@ distribute {Γ} {A} {B} m = distrib' ∘ swap' m
 -- --alloc flag via Once.Compile.compileFunBody. Backwards-compatible
 -- alias `elaborate-default = elaborate Heap` preserves the old
 -- semantics for any caller that doesn't want to choose.
+-- D127 support: DISTRIBUTIVITY, derived — no new IR primitive.
+--
+-- A `case` arm that may mention the ambient context needs `Γ × (A + B) →
+-- (Γ × A) + (Γ × B)`; before D127 the arms were closed, so `IR.case` alone
+-- sufficed and this was never needed. Every CCC has it, and this is the
+-- standard construction: send the sum into an exponential over Γ, then apply.
+--
+--     distribIR = apply ∘ ⟨ case (curry (inl ∘ swap)) (curry (inr ∘ swap)) ∘ snd
+--                         , fst ⟩
+--
+-- with `swap = ⟨ snd , fst ⟩`. Each of the two branch morphisms is built once
+-- and neither duplicates its input.
+swapIR : ∀ {A B} → AllocMode → IR (A * B) (B * A)
+swapIR m = ⟨ snd , fst ⟩ m
+
+distribIR : ∀ {G A B} → (m : AllocMode) → IR (G * (A + B)) ((G * A) + (G * B))
+distribIR m =
+  apply ∘ ⟨ case (curry (inl m ∘ swapIR m) m) (curry (inr m ∘ swapIR m) m) ∘ snd
+          , fst ⟩ m
+
 elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
 
 -- Variable: project from environment
@@ -210,6 +230,43 @@ elaborate m (var i) = proj i
 -- IR curry is quantity-polymorphic, so it directly produces (A ⇒[ q ] B)
 -- The quantity q is enforced during type checking, not during elaboration
 elaborate m (lam q _ e) = curry (elaborate m e) m
+
+-- D127: the categorical combinators.
+--
+-- THIS IS WHERE THE LINEARITY IN THEIR USAGE RULES IS CASHED OUT. Each arm's
+-- elaboration appears EXACTLY ONCE on the right, so the composite consumes
+-- each arm's resources once — which is what `comp'`/`copair'`/`fork'`/`curry'`
+-- claim with `Ψ₁ +ᵘ Ψ₂` and what an `app`-encoding could not have delivered
+-- (application scales its argument by the arrow's grade).
+--
+-- `comp' f g` is the CCC's internal composition, `Γ → (A ⇒ C)`:
+--
+--     curry (apply ∘ ⟨ f ∘ fst , apply ∘ ⟨ g ∘ fst , snd ⟩ ⟩)
+--
+-- reading `fst : Γ * A → Γ` and `snd : Γ * A → A`. Both `f` and `g` are
+-- pre-composed with the SAME projection rather than duplicated: the pairing
+-- shares Γ, it does not copy either arm.
+elaborate m (comp' f g) =
+  curry (apply ∘ ⟨ elaborate m f ∘ fst
+                 , apply ∘ ⟨ elaborate m g ∘ fst , snd ⟩ m ⟩ m) m
+
+-- `copair' f g` : the copairing, `Γ → ((A + B) ⇒ C)`. Distribute Γ over the
+-- sum, then case: `curry (case (apply ∘ ⟨f ∘ fst, snd⟩) (apply ∘ ⟨g ∘ fst, snd⟩)
+-- ∘ distrib)`.
+elaborate m (copair' f g) =
+  curry (case (apply ∘ ⟨ elaborate m f ∘ fst , snd ⟩ m)
+              (apply ∘ ⟨ elaborate m g ∘ fst , snd ⟩ m)
+         ∘ distribIR m) m
+
+-- `fork' f g` : the pairing, `Γ → (A ⇒ (B * C))`.
+elaborate m (fork' f g) =
+  curry (⟨ apply ∘ ⟨ elaborate m f ∘ fst , snd ⟩ m
+         , apply ∘ ⟨ elaborate m g ∘ fst , snd ⟩ m ⟩ m) m
+
+-- `curry' f` : `Γ → (A ⇒ (B ⇒ C))` from `Γ → ((A * B) ⇒ C)`.
+elaborate m (curry' f) =
+  curry (curry (apply ∘ ⟨ elaborate m f ∘ fst ∘ fst
+                        , ⟨ snd ∘ fst , snd ⟩ m ⟩ m) m) m
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
 -- IR's apply is quantity-polymorphic, no coercion needed

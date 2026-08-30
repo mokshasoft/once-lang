@@ -491,41 +491,6 @@ classifyEffArrow : (T : Type) → EffArrowView T
 classifyEffArrow (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) = eav-eff A B
 classifyEffArrow T = eav-other T
 
--- | D126's dispatch. `just refl` on BOTH decisions means the inferred type is
--- the arrow's codomain and nothing local was read — the two halves of "this is
--- a global element". Anything else is the type mismatch it always was.
-closed-lift-aux : ∀ (ctx : NamedCtx) (e : RawExpr)
-                    {Ψ : Surface.Usage (NamedCtx.size ctx)} (T' X B : Type)
-                    (π : Once.Type.Purity)
-                → SExpr (NamedCtx.debruijn ctx) Ψ T' → (depth fresh : ℕ)
-                → ctx ⊢ᵢ e ∶ T' ⨾ Ψ
-                → Maybe (Raw.ClosedLiftShape e)
-                → Dec (T' ≡ B) → Maybe (Ψ ≡ Surface.zeroUsage)
-                → VerifiedCheckResult ctx e
-                    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
--- Clause order, again for REDUCTION: each rejection leaves the other two columns
--- unsplit, so whichever of the three is known decides. A single all-three-match
--- clause first would go stuck on the shape decider, whose argument is the raw
--- expression and so is stuck for an abstract one.
-closed-lift-aux ctx e T' X B π eE depth fresh w _ (no _) _ =
-  failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) T') , tt
-closed-lift-aux ctx e T' X B π eE depth fresh w _ _ nothing =
-  failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) T') , tt
-closed-lift-aux ctx e T' X B π eE depth fresh w nothing _ _ =
-  failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) T') , tt
-closed-lift-aux ctx e T' X B Once.Type.pure eE depth fresh w (just cls) (yes refl) (just refl) =
-  success Surface.zeroUsage
-          (Surface.lam Once.Type.Many refl
-             (Once.Surface.Thinning.weaken eE))
-          (suc depth) fresh
-  , t-closed-lift cls w
-closed-lift-aux ctx e T' X B Once.Type.eff eE depth fresh w (just cls) (yes refl) (just refl) =
-  success Surface.zeroUsage
-          (Surface.arr' (Surface.lam Once.Type.Many refl
-             (Once.Surface.Thinning.weaken eE)))
-          (suc depth) fresh
-  , t-closed-lift cls w
-
 -- ARGUMENT ORDER: the EXPECTED type `T` comes first, and it is the one every
 -- clause discriminates on. With the inferred `T'` first, the subsumption clause
 -- went stuck whenever `T'` was a variable — which hid every clause below it, so
@@ -538,13 +503,12 @@ embedOrSubsume-no ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.
                         (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')
                         eE depth fresh w with A ≟T A' | B ≟T B'
 ... | yes refl | yes refl = success _ (Surface.arr' eE) depth fresh , t-subsume (t-embed w)
--- …and when it is NOT a subsume, fall through to D126 rather than failing:
--- a closed `e : A' ⇒pure B'` at an eff-arrow target is still a global element.
+-- D127: and when it is NOT a subsume, it is a type error. There is no lift to
+-- fall through to any more — a value used where an arrow is expected is
+-- written `\_ -> v`.
 ... | _        | _        =
-      closed-lift-aux ctx e (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')
-                      A B Once.Type.eff eE depth fresh w (Raw.closedLiftShape? e)
-                      ((A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B') ≟T B)
-                      (Surface.zeroUsage? _)
+      failure (TypeMismatch (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+                            (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B')) , tt
 -- D126: THE CLOSED-EXPRESSION LIFT. The expected type is a PURE arrow and the
 -- expression infers at its codomain using no local variable, so it is a global
 -- element and lifts to the constant morphism — which is what D018 decided
@@ -558,10 +522,6 @@ embedOrSubsume-no ctx e (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.
 -- BOTH DECISIONS ARE ARGUMENTS, not `with`s: the codomain match and the
 -- zero-usage check. Same convention as `cfm-build-gated`, and it keeps this
 -- clause reducing for an abstract `e`.
-embedOrSubsume-no ctx e (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) T'
-                  eE depth fresh w =
-  closed-lift-aux ctx e T' X B π eE depth fresh w
-                  (Raw.closedLiftShape? e) (T' ≟T B) (Surface.zeroUsage? _)
 embedOrSubsume-no ctx e T T' eE depth fresh w = failure (TypeMismatch T T') , tt
 
 embedOrSubsume : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
@@ -760,66 +720,6 @@ inspectWellFormedF F with wellFormedF? F in eq
 ... | just wfF = wfv-yes eq
 ... | nothing  = wfv-no eq
 
--- Plan 0.41: elaborate a closed global-element value. Recurses on the raw
--- value-shape, producing the parametric global element `IR X A` *together
--- with* its `⊢ᵍ` derivation — so the `t-value-lift` bridge gets both the IR
--- (for `lift-morphism`) and the soundness witness, and completeness can
--- recurse on the `⊢ᵍ` derivation. Per-type knowledge at the leaves
--- (`intLit`/`terminal`); structure via the generic generators. `nothing` for
--- non-value shapes — `⊢ᵍ` is the extractable family by construction.
--- TOTAL (K3): every float literal has a global element.
-checkG-RFloat-aux : (ctx : NamedCtx) (X : Type) (i f l p : ℕ)
-                 → Maybe (IR ⌊ X ⌋ ⌊ Once.Type.Float ⌋ × (ctx ⊢ᵍ Raw.RFloat i f l p ∶ Once.Type.Float))
-checkG-RFloat-aux ctx X i f l p = just (floatLit (decimalOf i f l) , g-float i f l p)
-
-checkG : (ctx : NamedCtx) (X : Type) (e : RawExpr) (A : Type)
-       → Maybe (IR ⌊ X ⌋ ⌊ A ⌋ × (ctx ⊢ᵍ e ∶ A))
-checkG ctx X (Raw.RInt n) Once.Type.Int = just (intLit n , g-int n)
--- A float literal is a value too, and it carries F4's decision the same way
--- infer-mode does. With-free via an aux so completeness can rewrite by
--- `accept?-complete` and see this reduce.
-checkG ctx X (Raw.RFloat i f l p) Once.Type.Float = checkG-RFloat-aux ctx X i f l p
--- PLAN 0.73 F3 / D120's other half: a NEGATED literal is a closed value too.
--- The payload is the folded one, so `intLit (- n)` and `floatLit (negate …)`
--- are the same IR objects the `⊢ᵢ` fold produces — one literal, no runtime
--- negation, in either realm.
-checkG ctx X (Raw.RUnaryOp Raw.OpNeg (Raw.RInt n)) Once.Type.Int =
-  just (intLit (- n) , g-neg-int n)
-checkG ctx X (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l p)) Once.Type.Float =
-  just (floatLit (Decimal.negate (decimalOf i f l)) , g-neg-float i f l p)
-checkG ctx X (Raw.RVar "terminal") Once.Type.Unit
-  with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
-... | llv-not-found eqL | liv-not-found eqI = just (IR.terminal , g-terminal eqL eqI)
-... | _                 | _                 = nothing
-checkG ctx X (Raw.RPair a b) (A Once.Type.* B) with checkG ctx X a A | checkG ctx X b B
-... | just (ma , ga) | just (mb , gb) = just (IR.⟨ ma , mb ⟩ IR.Heap , g-pair ga gb)
-... | _ | _ = nothing
-checkG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B) with checkG ctx X arg A
-... | just (ma , ga) = just (IR.inl IR.Heap IR.∘ ma , g-inl ga)
-... | nothing = nothing
-checkG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B) with checkG ctx X arg B
-... | just (mb , gb) = just (IR.inr IR.Heap IR.∘ mb , g-inr gb)
-... | nothing = nothing
-checkG ctx X (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F) with inspectWellFormedF F
-... | wfv-no _ = nothing
-... | wfv-yes {wfF} eqWF with checkG ctx X arg (⟦ F ⟧T (Once.Type.μ-type F))
-...   | just (marg , garg) = just (IR.In (wf-⌊⌋ wfF) IR.Heap IR.∘ subst (λ o → IR ⌊ X ⌋ o) (⌊⟧T-commute F (Once.Type.μ-type F)) marg , g-In eqWF garg)
-...   | nothing = nothing
-checkG _ _ _ _ = nothing
-
--- View bundling `checkG`'s outcome with its equation (mirrors
--- `inspectLookupLocal`/`inspectWellFormedF`). The value-lift `checkElabV`
--- clauses scrutinise this instead of `checkG` directly, so completeness
--- connects to the same view and reduces — no `with checkG` opacity, no
--- dispatch-reduction postulate.
-data CheckGView (ctx : NamedCtx) (X : Type) (e : RawExpr) (A : Type) : Set where
-  cgv-just    : ∀ {m gd} → checkG ctx X e A ≡ just (m , gd) → CheckGView ctx X e A
-  cgv-nothing : checkG ctx X e A ≡ nothing → CheckGView ctx X e A
-
-inspectCheckG : (ctx : NamedCtx) (X : Type) (e : RawExpr) (A : Type) → CheckGView ctx X e A
-inspectCheckG ctx X e A with checkG ctx X e A in eq
-... | just (m , gd) = cgv-just eq
-... | nothing       = cgv-nothing eq
 
 
 
@@ -1247,12 +1147,8 @@ mutual
     → NegOperandView e
     → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg e) T
   checkElabV-neg-int-aux : (ctx : NamedCtx) (n : ℤ) (T : Type)
-    → Maybe (∃-syntax (λ X → ∃-syntax (λ π →
-        T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int))))
     → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RInt n)) T
   checkElabV-neg-float-aux : (ctx : NamedCtx) (i f l p : ℕ) (T : Type)
-    → Maybe (∃-syntax (λ X → ∃-syntax (λ π →
-        T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.Float))))
     → VerifiedCheckResult ctx (Raw.RUnaryOp Raw.OpNeg (Raw.RFloat i f l p)) T
   inferElabV-RBinOp-aux : (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : RawExpr)
     → VerifiedInferResult ctx e₁ → VerifiedInferResult ctx e₂
@@ -1442,19 +1338,15 @@ mutual
     ∀ (ctx : NamedCtx) (x : String) (T : Type)
     → VerifiedInferResult ctx (Raw.RVar x)
     → VerifiedCheckResult ctx (Raw.RVar x) T
-  -- RInt check-mode dispatch, taking the value-lift decision explicitly
-  -- (`just (X , refl)` ⇒ pure-arrow-to-Int target ⇒ value-lift; `nothing` ⇒
-  -- the generic infer-and-match). One scrutinee, no clause overlap.
+  -- D127: NO value-lift dispatch. A literal has ONE meaning at ONE type, so
+  -- check mode is infer-and-match and nothing about the literal is decided by
+  -- the expected type. The `Maybe (X , π , T ≡ X ⇒ Int)` scrutinee these two
+  -- carried WAS the target-directedness, and it is gone with the lift.
   checkElabV-RInt-aux :
     ∀ (ctx : NamedCtx) (n : ℤ) (T : Type)
-    → Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Int))))
     → VerifiedCheckResult ctx (Raw.RInt n) T
-  -- RFloat check-mode dispatch. ONE _ scrutinee now — the value-lift view.
-  -- F4's acceptance decision is gone (plan 0.74 K3, D116): every float literal
-  -- is well-typed and rounds at the target, so there is nothing to decide.
   checkElabV-RFloat-aux :
     ∀ (ctx : NamedCtx) (i f l p : ℕ) (T : Type)
-    → Maybe (∃-syntax (λ X → ∃-syntax (λ π → T ≡ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.Float))))
     → VerifiedCheckResult ctx (Raw.RFloat i f l p) T
 
   -- RFloat infer-mode. No dispatch _ left at all — it is the `RInt` clause with
@@ -1604,12 +1496,9 @@ mutual
         with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ...     | failure err , _ = failure err , tt
   ...     | success Ψg gE dg frg , wG
-            with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
-  ...       | just (mf , _) | just (mg , _) | just mFᵐ | just mGᵐ =
-              success Surface.zeroUsage
-                (Surface.lift-morphism (IR.⟨ mf , mg ⟩ IR.Heap))
-                (suc (df Data.Nat.⊔ dg)) frg , t-morph-lift (m-pair mFᵐ mGᵐ)
-  ...       | _ | _ | _ | _ = failure (BuiltinTypeMismatch "pair") , tt
+            =
+              success _ (Surface.fork' fE gE)
+                (suc (df Data.Nat.⊔ dg)) frg , t-pair-morph-check wF wG
   -- Plan 0.52 (pure⊑eff): the pair morphism is grade-poly, so at an EFF arrow it
   -- is the pure pair wrapped in arr'/t-subsume (the m-pair morphism stays pure).
   checkPair ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg
@@ -1620,12 +1509,9 @@ mutual
         with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ...     | failure err , _ = failure err , tt
   ...     | success Ψg gE dg frg , wG
-            with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
-  ...       | just (mf , _) | just (mg , _) | just mFᵐ | just mGᵐ =
-              success Surface.zeroUsage
-                (Surface.arr' (Surface.lift-morphism (IR.⟨ mf , mg ⟩ IR.Heap)))
-                (suc (df Data.Nat.⊔ dg)) frg , t-subsume (t-morph-lift (m-pair mFᵐ mGᵐ))
-  ...       | _ | _ | _ | _ = failure (BuiltinTypeMismatch "pair") , tt
+            =
+              success _ (Surface.arr' (Surface.fork' fE gE))
+                (suc (df Data.Nat.⊔ dg)) frg , t-subsume (t-pair-morph-check wF wG)
   -- Any other shape falls through to failure. Consistent with
   -- ahv-inl's per-shape exhaustive enumeration pattern.
   checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair") , tt
@@ -1674,11 +1560,9 @@ mutual
         with checkElabV ctx g (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ...     | failure err , _ = failure err , tt
   ...     | success Ψg gE dg frg , wG
-            with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
-  ...         | just (m_f , _) | just (m_g , _) | just mFᵐ | just mGᵐ =
-                success Surface.zeroUsage (Surface.lift-morphism (IR.case m_f m_g))
-                  (suc (df Data.Nat.⊔ dg)) frf , t-morph-lift (m-case mFᵐ mGᵐ)
-  ...         | _ | _ | _ | _ = failure (BuiltinTypeMismatch "case") , tt
+            =
+                success _ (Surface.copair' fE gE)
+                  (suc (df Data.Nat.⊔ dg)) frf , t-case-copair-check wF wG
 
   -- Plan 0.6 Phase C.7 POC-3 + 0.6.2 Phase 3b: bare `compose f g`
   -- check-mode. Expected `A ⇒[Many] C`. Primary path: infer g's type
@@ -1720,33 +1604,25 @@ mutual
   ...     | success Ψg gE dg frg , wG
             with checkElabV ctx f (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ...         | failure err , _ = failure err , tt
-  ...         | success Ψf fE df frf , wF
-                with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG
-  ...             | just (m_f , _) | just (m_g , _) | just mFᵐ | just mGᵐ =
-                    success Surface.zeroUsage (Surface.lift-morphism (m_f IR.∘ m_g))
-                      (suc (df Data.Nat.⊔ dg)) frf , t-morph-lift (m-compose eqB mFᵐ mGᵐ)
-  ...             | _ | _ | _ | _ = failure (BuiltinTypeMismatch "compose") , tt
+  ...         | success Ψf fE df frf , wF =
+                  success _ (Surface.comp' fE gE) (suc (df Data.Nat.⊔ dg)) frf
+                  , t-compose-check eqB wF wG
 
   -- Plan 0.6 Phase C.7 POC-3: `curry f` check-mode.
   -- Expected `A ⇒[Many] (B ⇒[Many] C)`. Check f at `(A * B) ⇒[Many] C`.
   checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
     with checkElabV ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ... | failure err , _ = failure err , tt
-  ... | success Ψ argE d fr , w with extract-morph-eff argE | extractMorphWitness w
-  ...   | just (mf , _) | just mFᵐ =
-          success Surface.zeroUsage (Surface.lift-morphism (IR.curry mf IR.Heap)) (suc d) fr
-          , t-morph-lift (m-curry mFᵐ)
-  ...   | _ | _ = failure (BuiltinTypeMismatch "curry") , tt
+  ... | success Ψ argE d fr , w =
+          success _ (Surface.curry' argE) (suc d) fr , t-curry-check w
   -- Plan 0.52 (pure⊑eff): curry at an EFF outer arrow is the pure curry wrapped
   -- in arr'/t-subsume (the m-curry morphism stays pure; inner arrow unchanged).
   checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
     with checkElabV ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ... | failure err , _ = failure err , tt
-  ... | success Ψ argE d fr , w with extract-morph-eff argE | extractMorphWitness w
-  ...   | just (mf , _) | just mFᵐ =
-          success Surface.zeroUsage (Surface.arr' (Surface.lift-morphism (IR.curry mf IR.Heap))) (suc d) fr
-          , t-subsume (t-morph-lift (m-curry mFᵐ))
-  ...   | _ | _ = failure (BuiltinTypeMismatch "curry") , tt
+  ... | success Ψ argE d fr , w =
+          success _ (Surface.arr' (Surface.curry' argE)) (suc d) fr
+          , t-subsume (t-curry-check w)
   checkCurry _ _ _ = failure (BuiltinTypeMismatch "curry") , tt
 
   -- Plan 0.6 Phase C.7 POC-3: `apply p` check-mode.
@@ -1789,14 +1665,8 @@ mutual
   -- through `checkInGo`), check the argument at the functor layer, emit
   -- `morph-app (IR.In wfF Heap) argE`.
   checkIn ctx arg (Once.Type.μ-type F) = checkInGo ctx arg F (wellFormedF? F) refl
-  -- Plan 0.41 structural value-lift: `In arg` at a pure arrow to `μ-type F`
-  -- is a closed global-element value — route through `checkG`.
-  checkIn ctx arg (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (Once.Type.μ-type F))
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F)
-  ... | cgv-nothing _    = failure (BuiltinTypeMismatch "In") , tt
-  ... | cgv-just {m} {gd} _ =
-          success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
-          , t-value-lift gd
+  -- D127: `In arg` at an ARROW type is no longer a lift. It falls through to
+  -- the mismatch below, and the program writes `\_ -> In arg`.
   checkIn _ _ _ = failure (BuiltinTypeMismatch "In") , tt
 
   checkInGo ctx arg F nothing _ = failure (BuiltinTypeMismatch "In") , tt
@@ -1842,14 +1712,13 @@ mutual
     with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
                     alg (⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
   ... | failure err , _ = failure err , tt
-  ... | success Surface.[] algE d fr , wArg with extractMorphWitness wArg
-  -- Plan 0.54: the algebra must be a MORPHISM. Recover its `⊢ᵐ` witness; a
-  -- non-morphism (e.g. lambda) algebra is rejected (surface sugar bracket-
-  -- abstracts to a morphism before this slot — deferred).
-  ...   | just mᵐ =
+  -- D127: no witness extraction. The algebra's own check-derivation IS the
+  -- premise, and the empty debruijn context is what `Surface.cata` demands of
+  -- the algebra it carries — the closedness is enforced by the CONTEXT, as it
+  -- always was, not by a realm.
+  ... | success Surface.[] algE d fr , wArg =
           success _ (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
-            , t-morph-lift (m-cata eqW mᵐ)
-  ...   | nothing = failure (BuiltinTypeMismatch "cata") , tt
+            , t-cata-check eqW wArg
 
   -- Body for the hoisted `ahv-other` (generic application) branch.
   inferElab-RApp-other ctx f x with asFun (inferElab ctx f)
@@ -2036,9 +1905,9 @@ mutual
   -- infer-and-match. Routed through ONE scrutinee (`isRIntVliftTarget? T`) so
   -- the two outcomes don't overlap (no stuck `checkElabV (RInt n) T` for
   -- variable `T`). Behaviour is unchanged; the dispatch is now analysable.
-  checkElabV-wf ctx ac (Raw.RInt n) T = checkElabV-RInt-aux ctx n T (isRIntVliftTarget? T)
+  checkElabV-wf ctx ac (Raw.RInt n) T = checkElabV-RInt-aux ctx n T
   checkElabV-wf ctx ac (Raw.RFloat i f l p) T =
-    checkElabV-RFloat-aux ctx i f l p T (isRFloatVliftTarget? T)
+    checkElabV-RFloat-aux ctx i f l p T
   -- PLAN 0.73 F3: `- <literal>` gets the same value-lift the bare literal
   -- does. Before this it fell through to the generic clause below, which
   -- infers `Int`/`Float` and then mismatches against the ARROW the position
@@ -2224,35 +2093,24 @@ mutual
   inferElabV-neg-aux ctx e (nov-other .e) = inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e)
 
   checkElabV-neg-dispatch ctx .(Raw.RInt n) T (nov-int n) =
-    checkElabV-neg-int-aux ctx n T (isRIntVliftTarget? T)
+    checkElabV-neg-int-aux ctx n T
   checkElabV-neg-dispatch ctx .(Raw.RFloat i f l p) T (nov-float i f l p) =
-    checkElabV-neg-float-aux ctx i f l p T (isRFloatVliftTarget? T)
+    checkElabV-neg-float-aux ctx i f l p T
   -- NOT a literal: the old generic clause verbatim, `embedOrSubsume` included,
   -- so the pure→eff subsumption (`t-subsume`, plan 0.52 M1) is not lost.
   checkElabV-neg-dispatch ctx e T (nov-other .e) =
     embedOrSubsume ctx (Raw.RUnaryOp Raw.OpNeg e) T
                    (inferElabV-RUnaryOp-aux ctx e (inferElabV ctx e))
 
-  checkElabV-neg-int-aux ctx n T (just (X , π , refl)) =
-    success Surface.zeroUsage (Surface.lift-morphism (intLit (- n))) 0 (NamedCtx.freshCounter ctx)
-    , t-value-lift (g-neg-int n)
-  -- NOT an arrow target, so `embedOrSubsume` would degenerate to `t-embed`
-  -- anyway (`embedOrSubsume-no` only does work when the INFERRED type is a
-  -- pure arrow, and a negated literal infers at `Int`). Written out so the
-  -- FOLDED literal is what gets embedded — routing through
+  -- Written out so the FOLDED literal is what gets embedded — routing through
   -- `inferElabV ctx (RUnaryOp OpNeg (RInt n))` would be the same term but
   -- would stop reducing wherever the view has been abstracted.
-  checkElabV-neg-int-aux ctx n T nothing with T ≟T Int
+  checkElabV-neg-int-aux ctx n T with T ≟T Int
   ... | yes refl = success Surface.zeroUsage (Surface.int (- n)) 1 (NamedCtx.freshCounter ctx)
                  , t-embed (t-neg (t-int n))
   ... | no _     = failure (TypeMismatch T Int) , tt
 
-  checkElabV-neg-float-aux ctx i f l p T (just (X , π , refl)) =
-    success Surface.zeroUsage
-            (Surface.lift-morphism (floatLit (Decimal.negate (decimalOf i f l))))
-            0 (NamedCtx.freshCounter ctx)
-    , t-value-lift (g-neg-float i f l p)
-  checkElabV-neg-float-aux ctx i f l p T nothing with T ≟T Once.Type.Float
+  checkElabV-neg-float-aux ctx i f l p T with T ≟T Once.Type.Float
   ... | yes refl = success Surface.zeroUsage
                            (Surface.float (Decimal.negate (decimalOf i f l))) 1
                            (NamedCtx.freshCounter ctx)
@@ -2564,24 +2422,8 @@ mutual
   ... | r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RApp f arg) T r
   ... | (failure err , _) = failure err , tt
   -- ahv-inl: T must be sum type A+B; check arg at A.
-  -- Plan 0.41 structural value-lift: `inl arg` / `inr arg` at a *pure arrow*
-  -- to a sum is a closed global-element value — route through `checkG`, which
-  -- yields the IR and the `⊢ᵍ` derivation for the `t-value-lift` bridge.
-  -- Specific clauses before the value-type `with T` dispatch (first-match).
-  checkElabV-RApp-dispatch ctx f arg
-    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B)) ahv-inl _
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B)
-  ... | cgv-nothing _ = failure InlNeedsSumType , tt
-  ... | cgv-just {m} {gd} _ =
-          success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
-          , t-value-lift gd
-  checkElabV-RApp-dispatch ctx f arg
-    (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B)) ahv-inr _
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B)
-  ... | cgv-nothing _ = failure InrNeedsSumType , tt
-  ... | cgv-just {m} {gd} _ =
-          success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
-          , t-value-lift gd
+  -- D127: `inl arg` / `inr arg` at an ARROW type are no longer lifts; the
+  -- value-type dispatch below is the only route.
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ with T
   ... | (A Once.Type.+ B) with checkElabV ctx arg A
   ...   | failure err , _ = failure err , tt
@@ -2663,7 +2505,7 @@ mutual
   -- T = canonical & both lookups nothing & inner type-checks pass.
   checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Y) err (llv-not-found eqLoc) (liv-not-found eqImp) with X ≟T Y
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-id eqLoc eqImp)
+        success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , t-id-check eqLoc eqImp
   ... | no _ = failure (BuiltinTypeMismatch "id") , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "id") , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "id") , tt
@@ -2682,7 +2524,7 @@ mutual
 
   checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A') err (llv-not-found eqLoc) (liv-not-found eqImp) with A ≟T A'
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-fst eqLoc eqImp)
+        success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , t-fst-check eqLoc eqImp
   ... | no _ = failure (BuiltinTypeMismatch "fst") , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "fst") , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "fst") , tt
@@ -2712,7 +2554,7 @@ mutual
   -- bbc-snd: canonical T = (A * B) ⇒[Many,pure] B'
   checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B') err (llv-not-found eqLoc) (liv-not-found eqImp) with B ≟T B'
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-snd eqLoc eqImp)
+        success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , t-snd-check eqLoc eqImp
   ... | no _ = failure (BuiltinTypeMismatch "snd") , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "snd") , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "snd") , tt
@@ -2741,7 +2583,7 @@ mutual
 
   -- bbc-terminal: canonical T = A ⇒[Many,pure] Unit
   checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-not-found eqLoc) (liv-not-found eqImp) =
-    success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-terminal eqLoc eqImp)
+    success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , t-terminal-morph-check eqLoc eqImp
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "terminal") , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-found _) _ = failure (BuiltinTypeMismatch "terminal") , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx Unit err _ _ = failure err , tt
@@ -2769,7 +2611,7 @@ mutual
 
   -- bbc-initial: canonical T = Void ⇒[Many,pure] A
   checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) err (llv-not-found eqLoc) (liv-not-found eqImp) =
-    success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-initial eqLoc eqImp)
+    success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , t-initial-morph-check eqLoc eqImp
   checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "initial") , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "initial") , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx Unit err _ _ = failure err , tt
@@ -2798,7 +2640,7 @@ mutual
   -- bbc-inl: canonical T = A ⇒[Many,pure] (A' + B)
   checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A' Once.Type.+ B)) err (llv-not-found eqLoc) (liv-not-found eqImp) with A ≟T A'
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism (IR.inl IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-inl eqLoc eqImp)
+        success Surface.zeroUsage (Surface.lift-morphism (IR.inl IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-inl-morph-check eqLoc eqImp
   ... | no _ = failure (BuiltinTypeMismatch "inl") , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "inl") , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-found _) _ = failure (BuiltinTypeMismatch "inl") , tt
@@ -2828,7 +2670,7 @@ mutual
   -- bbc-inr: canonical T = B ⇒[Many,pure] (A + B')
   checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B')) err (llv-not-found eqLoc) (liv-not-found eqImp) with B ≟T B'
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism (IR.inr IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-morph-lift (m-inr eqLoc eqImp)
+        success Surface.zeroUsage (Surface.lift-morphism (IR.inr IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-inr-morph-check eqLoc eqImp
   ... | no _ = failure (BuiltinTypeMismatch "inr") , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "inr") , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-found _) _ = failure (BuiltinTypeMismatch "inr") , tt
@@ -2876,18 +2718,12 @@ mutual
   -- RFloat: value-lift on a pure-arrow-to-Float target; otherwise embed at
   -- `Float` or report a genuine type mismatch. The only failure left is a type
   -- mismatch — representability is no longer a way to fail.
-  checkElabV-RFloat-aux ctx i f l p T (just (X , π , refl)) =
-    success Surface.zeroUsage (Surface.lift-morphism (floatLit (decimalOf i f l))) 0 (NamedCtx.freshCounter ctx)
-    , t-value-lift (g-float i f l p)
-  checkElabV-RFloat-aux ctx i f l p T nothing with T ≟T Once.Type.Float
+  checkElabV-RFloat-aux ctx i f l p T with T ≟T Once.Type.Float
   ... | yes refl = success Surface.zeroUsage (Surface.float (decimalOf i f l)) 0 (NamedCtx.freshCounter ctx)
                  , t-embed (t-float i f l p)
   ... | no _     = failure (TypeMismatch T Once.Type.Float) , tt
 
-  checkElabV-RInt-aux ctx n T (just (X , π , refl)) =
-    success Surface.zeroUsage (Surface.lift-morphism (intLit n)) 0 (NamedCtx.freshCounter ctx)
-    , t-value-lift (g-int n)
-  checkElabV-RInt-aux ctx n T nothing with inferElabV ctx (Raw.RInt n)
+  checkElabV-RInt-aux ctx n T with inferElabV ctx (Raw.RInt n)
   ... | failure err , _ = failure err , tt
   ... | success T' Ψ eE d fr , w with T ≟T T'
   ...   | yes refl = success Ψ eE d fr , t-embed w
@@ -2897,13 +2733,10 @@ mutual
   -- pure-arrow-to-product → value-lift via checkG (inspectCheckG); else the
   -- generic infer+match. The latter two are the old clauses verbatim.
   checkElabV-RPair-aux ctx a b _ (rpt-prod A B) = checkPairLit ctx a b A B
-  checkElabV-RPair-aux ctx a b _ (rpt-vlift X A B π)
-    with inspectCheckG ctx X (Raw.RPair a b) (A Once.Type.* B)
-  ... | cgv-nothing _ = failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.* B))
-                                        (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.* B))) , tt
-  ... | cgv-just {m} {gd} _ =
-          success Surface.zeroUsage (Surface.lift-morphism m) 0 (NamedCtx.freshCounter ctx)
-          , t-value-lift gd
+  -- D127: a pair literal at an ARROW type is no longer a lift.
+  checkElabV-RPair-aux ctx a b _ (rpt-vlift X A B π) =
+    failure (TypeMismatch (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.* B))
+                          (A Once.Type.* B)) , tt
   checkElabV-RPair-aux ctx a b _ (rpt-other T) with inferElabV ctx (Raw.RPair a b)
   ... | failure err , _ = failure err , tt
   ... | success T' Ψ eE d fr , w with T ≟T T'
