@@ -38,7 +38,7 @@ open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
-open import DirectedHoTT.Examples.Knot.JudgeLib using ( toMu; fromMu; fordAs; muFwd )
+open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 

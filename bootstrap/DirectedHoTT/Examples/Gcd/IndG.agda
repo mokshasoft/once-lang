@@ -41,7 +41,7 @@ open import DirectedHoTT.Metatheory.Injectivity
   using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El; doneᵀ )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; Ren⊢; ⊢[] )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; ren-w; cong₃; cong₄; pw1 )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; ren-w; cong₃; cong₄; pw1; sub-w-single )
 open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asN )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
@@ -203,7 +203,7 @@ module Plumb (M : Motive) where
            (ihCallElim dh dy (⊢-cast homEq dq))
     where
       peel₁ : (t : RTm ⌊ _ ⌋) → subTm (extS (single y)) (w (w t)) ≡ w t
-      peel₁ t = trans (sub-w {σ = single y} (w t)) (cong w (wk-single {v = y} t))
+      peel₁ t = sub-w-single t
 
       homEq = cong (Hom Nat (nsuc (subTm (single y) msr)))
                    (sym (wk-single {v = y} μ))
@@ -313,7 +313,7 @@ module Plumb (M : Motive) where
     ⊢-cast (cong El eq2) (⊢app (⊢-cast eq1 (⊢app de di)) dh)
     where
       p₁ : (t : RTm ⌊ _ ⌋) → subTm (extS (single i)) (w (w t)) ≡ w t
-      p₁ t = trans (sub-w {σ = single i} (w t)) (cong w (wk-single {v = i} t))
+      p₁ t = sub-w-single t
 
       eq1 = cong₂ Π (trans (indPWT-sub (w μ) (var vz))
                            (cong (λ u → indPWT u i) (wk-single {v = i} μ)))

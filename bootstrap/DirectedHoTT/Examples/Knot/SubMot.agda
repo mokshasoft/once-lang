@@ -63,7 +63,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶*_; done; step; natrec-suc; natrec-zero; csymᵀ; iinst; iihTy
         ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-El; ⊢ielim; imethsTy
         ; IDescWfFrom; idwf-nil; idwf-cons )
-open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w; ren-w )
+open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w; ren-w; sub-w-single )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; cdTake )
 open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
@@ -80,8 +80,8 @@ open import DirectedHoTT.Metatheory.Injectivity
 open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; elIdN; ⊢reflN )
 open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
-open import DirectedHoTT.Examples.Knot.JudgeLib
-  using ( muFwd; muBwd*; fordAs; toMu; fromMu )
+open import DirectedHoTT.Lib.ICast
+  using ( muFwd; muBwd*; fordAs; toMu; fromMu; ⟶*-castᵣ; ⟶*-castₗ )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk; iihTy-ren; iihTy-cong )
@@ -1088,8 +1088,8 @@ predSndPair d = ⟶*-trans (pred* (step (βsnd sVar (nsuc d)) done)) (pred-suc d
 --   carrier-generic plumbing with nothing knot-specific in it.  It is
 --   local only because this is its first customer; a second one moves
 --   it down to a reduction lib.
-⟶*-castᵣ : {Γ : Cx} {a b b' : RTm Γ} → b ≡ b' → a ⟶* b → a ⟶* b'
-⟶*-castᵣ refl r = r
+-- ⚠ `⟶*-castᵣ` now lives in `Lib/ICast` beside its mirror
+--   `⟶*-castₗ`, which `Lib/ISub` had written independently.
 
 predSndSub : {Γ : Cx} (v D : RTm Γ) →
              subTm (single v) (predTm (snd (w (pair sVar (nsuc D))))) ⟶* D
@@ -1188,15 +1188,11 @@ towerA : {Γ : Cx} (m u J : RTm Γ) →
            (subTm (extS (single u))
              (subTm (extS (extS (single J))) (var (vs (vs vz))))) ≡ J
 towerA m u J =
-  trans (cong (subTm (single m))
-              (trans (sub-w {σ = single u} (w J)) (cong w (wk-single {v = u} J))))
-        (wk-single {v = m} J)
+  trans (cong (subTm (single m)) (sub-w-single J)) (wk-single {v = m} J)
 
--- ★ the mirror of `⟶*-castᵣ`: a reduction's LEFT endpoint, moved by an
---   `≡`.  ⚠ Needed for the SAME reason — `βsnd` is stated at the pair
---   and the goal states it under the tower.
-⟶*-castₗ : {Γ : Cx} {a a' b : RTm Γ} → a ≡ a' → a' ⟶* b → a ⟶* b
-⟶*-castₗ refl r = r
+-- ⚠ `⟶*-castₗ` comes from `Lib/ICast` now.  It had been written THREE
+--   times independently — here, in `Lib/ISub`, and (as `⟶*-castᵣ`) once
+--   more in this same file — which is what finally moved the pair down.
 
 ⊢motAppK : {Γ : Ctx} {s dd u h m sb : RTm ⌊ Γ ⌋} →
            Γ ⊢ h ∷ iinst (pair s dd) u subMotK → Γ ⊢ m ∷ Nat →

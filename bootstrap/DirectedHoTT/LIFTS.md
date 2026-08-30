@@ -66,6 +66,33 @@ in the same import graph.
 
 ---
 
+## ✅ DONE 2026-08-30 — the `Lib`/`Examples` lifts
+
+Sweep ALL GREEN, 151 modules.
+
+| lift | copies removed |
+|---|---|
+| `Examples/Knot/JudgeLib` → **`Lib/ICast`** | — (an Examples→Lib move; 14 importers across 4 descriptions) |
+| **`Lib/Wk.sub-w-single`** | **6** — `Gcd/Dvd`, `Gcd/IndG` ×2, `Gcd/StepExt`, `GcdIndStepConcrete`, `Knot/Build`'s `rtA` |
+| `Lib/Wk.ren-sub` reused | **4** — 2 inside `Lib/Wk` itself, 2 in `Examples/AmrecT` |
+| `Lib/Wk.ren-subTy` reused | **1** — `Examples/AmrecT` (the very lemma just lifted from `Lib/Wk`'s own `where`) |
+| **`⟶*-castᵣ`/`⟶*-castₗ` → `Lib/ICast`** | **3** — `Knot/SubMot` ×2 and `Lib/ISub` |
+
+★★ **The `⟶*-cast` pair is the sharpest case.** Each was written "local,
+pending a second customer" — one in `Knot/SubMot`, its mirror in
+`Lib/ISub` — and when the clash surfaced there turned out to be a
+**third**, `⟶*-castₗ` again, in `SubMot` itself. Three independent
+writings of a two-line lemma inside one session, none able to see the
+others. ⇒ "pending a second customer" is not a safe deferral when the
+lemma is `where`-bound or file-local: **you will not notice the second
+customer arriving.**
+
+⚠ One false alarm worth recording: `GcdIndStepConcrete` returned rc=143
+under a plain `check.sh`. Not a regression — its own header says it needs
+the compacting collector, and `tools/sweep.sh` switches by grepping for
+that phrase. With `-c` it is rc=0. `exit-143-is-not-evidence-about-cost`,
+fourth sighting; this time the file's own documentation caught it.
+
 ## What is safe to do now, and what is not
 
 * ✅ **Within `Lib/` and `Examples/`** — `AmrecT`'s three copies, the five

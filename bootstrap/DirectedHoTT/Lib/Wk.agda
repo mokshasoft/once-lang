@@ -123,6 +123,22 @@ ren-sub : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm Γ) →
 ren-sub {ρ = ρ} t = trans (cong (renTm ρ) (sym (subTm-id t)))
                           (renTm-subTm {σ = idₛ} t)
 
+-- ★★★ THE ONE-BINDER PEEL — `sub-w` then `wk-single`, the composite
+--   that appears whenever a term is carried past a binder and then
+--   substituted back.
+--
+-- ⚠⚠ IT HAD **SIX** INDEPENDENT COPIES before being written here:
+--   `Gcd/Dvd:414`, `Gcd/IndG:205`, `Gcd/IndG:315` (as `p₁`),
+--   `Gcd/StepExt:488`, `Comparison/GcdIndStepConcrete:118` (all as
+--   `peel₁`), and `Knot/Build:467` as `rtA` — the last already
+--   generalised in the substituted term, which is why it served three
+--   positions there.  ⇒ every one of them a `where`-bound proof, so
+--   nothing could find the others.
+sub-w-single : {Γ : Cx} {v : RTm Γ} (t : RTm Γ) →
+               subTm (extS (single v)) (w (w t)) ≡ w t
+sub-w-single {v = v} t =
+  trans (sub-w {σ = single v} (w t)) (cong w (wk-single {v = v} t))
+
 nrs-w : {Γ : Cx} (t : RTm Γ) → subTm nrs (w t) ≡ w (w t)
 nrs-w t = trans (subTm-renTm t) (sym (trans (renTm-renTm t) (ren-sub t)))
 
@@ -192,8 +208,9 @@ wᶠ²-single t =
     bridge : ∀ x → _
     bridge vz     = refl
     bridge (vs x) = refl
+    -- ⚠ was a local copy of the top-level `ren-sub` above.
     ren-sub'' : (u : RTm _) → renTm vs u ≡ subTm (λ x → var (vs x)) u
-    ren-sub'' u = trans (cong (renTm vs) (sym (subTm-id u))) (renTm-subTm u)
+    ren-sub'' u = ren-sub u
 
 -- ⚠ THE PATTERN, and it is a ladder in waiting: `single (var (vs^(n-1) vz))`
 --   collapses `n` family-weakenings to `n-1` ordinary ones.  Three rungs
@@ -222,8 +239,9 @@ wᶠ-nrs t =
     bridge : ∀ x → _
     bridge vz     = refl
     bridge (vs x) = refl
+    -- ⚠ was a local copy of the top-level `ren-sub` above.
     ren-sub' : (u : RTm _) → renTm _ u ≡ subTm (λ x → var _) u
-    ren-sub' u = trans (cong (renTm _) (sym (subTm-id u))) (renTm-subTm u)
+    ren-sub' u = ren-sub u
 
 ren-wᶠ : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm (Γ ∙)) →
          renTm (extR (extR ρ)) (wᶠ t) ≡ wᶠ (renTm (extR ρ) t)

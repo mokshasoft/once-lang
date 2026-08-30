@@ -60,7 +60,7 @@ open import DirectedHoTT.Spec.Typing
         ; El-⌜Id⌝; ξ-El; ξ-IMu; ξ-⌜Id⌝ˡ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w² )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; sub-w-single )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTm; sVar; ⊢sTm; ⊢sVar; toI; fromI; ⊢ixP
@@ -465,7 +465,9 @@ tmCast refl d = d
     --   field appeared.  `abstract-the-substituted-terms`, measured at
     --   87× in this codebase, applies to these lemmas too.
     rtA : (v X : RTm ⌊ Δ ⌋) → subTm (extS (single v)) (w (w X)) ≡ w X
-    rtA v X = trans (sub-w {σ = single v} (w X)) (cong w (wk-single {v = v} X))
+    -- ⚠ this IS `Lib/Wk.sub-w-single`, which was written here first and
+    --   independently five more times across the Gcd examples.
+    rtA v X = sub-w-single X
 
     rt₁ : (X : RTm ⌊ Δ ⌋) → subTm (extS (single d)) (w (w X)) ≡ w X
     rt₁ = rtA d

@@ -74,7 +74,7 @@ open import DirectedHoTT.Metatheory.SubjectReduction
 open import DirectedHoTT.Lib.Amrec
   using ( Prv; prv; prvTm; prvOk; StepExt; StepPW; wR; renren; renTy-idR
         ; subrenTy; aIHTat-ren; aIHTat-sub; idOfRed )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; sub-w³; ren-w )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; sub-w³; ren-w; sub-w-single )
 open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asP )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
 open import DirectedHoTT.Metatheory.Injectivity
@@ -486,8 +486,7 @@ pwElim {μ = μ} {i₁ = i₁} {i₂ = i₂} {y = y} {q = q} dh dy dq =
   where
     -- one binder in: the two IHs lose one `w`, the bound loses its `w`
     peel₁ : (t : RTm ⌊ _ ⌋) → subTm (extS (single y)) (w (w t)) ≡ w t
-    peel₁ t = trans (sub-w {σ = single y} (w t))
-                    (cong w (wk-single {v = y} t))
+    peel₁ t = sub-w-single t
 
     eq1 = cong₂ (λ u f → Π (Hom Nat (nsuc (subTm (single y) msr)) u) f)
                 (wk-single {v = y} μ)
