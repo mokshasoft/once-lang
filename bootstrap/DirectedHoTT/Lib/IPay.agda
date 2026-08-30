@@ -24,14 +24,14 @@ open import DirectedHoTT.Spec.Syntax
         ; renTy; extR; isingle; ipayTy-ren; ipayTy-cong
         ; ICon; IDesc; iι; iρ; iκ; ipayTy; Sub; extS; subTm; subTy
         ; εwkTy; εwk-sub; εwk-ren; _◂_; inil
-        ; ilookupD; _∈ID_; hereID; thereID; icon; subTy-renTy; subTy-cong )
+        ; ilookupD; _∈ID_; hereID; thereID; icon; lam; subTy-renTy; subTy-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; ⊢var; here; there
         ; _⊢ty_; ty-Unit; ty-Σ; ty-El; ty-IMu; ty-Π; ty-Nat
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
-        ; imethTy; imethsTyFrom; ⊢icon; iconS; iatCon )
+        ; imethTy; imethsTyFrom; ⊢icon; iconS; iatCon; iihTy; ⊢lam )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk; Ren⊢-ext
         ; isingle-Sub⊢; iihTy-wf )
@@ -327,3 +327,51 @@ imethsTyFrom-wf D I j inil    wD idwf-nil          sp tI wM = ty-Unit
 imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
   ty-Σ (imethTy-wf D I j C wD wC (spl-mem sp) (spl-look sp) tI wM)
        (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI wM) there)
+
+------------------------------------------------------------------------
+-- ★★★ A METHOD IS THREE LAMS AND A BODY — the shareable prologue.
+--
+-- ⚠⚠ AND "A CONSTANT METHOD AT AN ABSTRACT MOTIVE" DOES NOT EXIST.  An
+--   arbitrary `M` may be UNINHABITED, so nothing can produce its
+--   codomain in general.  `Knot/SubMot`'s `constMeth` works only because
+--   `extMotK`'s codomain happens to be a `Tm` and `Tm-nzeroK` inhabits
+--   it — and two of its five `⊢lam`s are `extMotK`'s own Π shape, not
+--   the method's.
+--
+-- ★ WHAT **IS** SHAREABLE IS THE PROLOGUE, and it is the bulk of the
+--   boilerplate: the index binder, the payload binder and the IH binder,
+--   whose three ⊢ty obligations are `tI`, `ipayTy-wf` and `iihTy-wf`
+--   with the `ipayTy-ren`/`ipayTy-cong` retype of the payload variable.
+--   ⇒ every customer writes only its BODY.
+------------------------------------------------------------------------
+
+⊢methLam : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙))
+           {M : RTy ((⌊ Γ ⌋ ∙) ∙)}
+           {b : RTm ⌊ (((Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C)
+                        ▹ iihTy D I (isingle (var (vs vz))) C (var vz)
+                                (renTy (extR (extR vs))
+                                       (renTy (extR (extR vs)) M))) ⌋} →
+           IDescWf I D → IConWf D I (◇ ▹ εwkTy I) C →
+           ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
+           ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+           ((((Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C)
+              ▹ iihTy D I (isingle (var (vs vz))) C (var vz)
+                      (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
+             ⊢ b ∷ renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M))) →
+           Γ ⊢ lam (lam (lam b)) ∷ imethTy D I k C M
+⊢methLam {Γ = Γ} D I k C wD wC tI wM db =
+  ⊢lam tI
+    (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
+                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+      (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
+                      D I _ (isingle (var (vs vz))) C (var vz) wC
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
+                                                   (εwk-ren vs I))
+                                            (⊢var (there here))))
+                      (ren-ty (ren-ty wM (Ren⊢-ins² (εwk-ren vs I)))
+                              (Ren⊢-ins² (εwk-ren vs I)))
+                      (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
+                                     (ipayTy-cong D I C
+                                       (λ { vz → refl ; (vs ()) })))
+                              (⊢var here)))
+            db))
