@@ -6,17 +6,17 @@
 -- typing DERIVATIONS (Plan 0.58 north star, OCP-0006).
 --
 -- This is the IR-FREE reference semantics: recursion on the typing derivation,
--- landing in the value domain `⟦_⟧ᴰ` / trace monad `T`. It replaces the current
+-- landing in the value domain `⟦_⟧ᴰ` / trace monad `T`. It replaces the
 -- `SD.⟦ realize _ ⟧ˢ` route, whose only IR contact is `Surface.Expr`'s
--- `lift-morphism`/`morph-app` leaves (a morphism represented AS `IR`). Denoting
--- the morphism realm `⊢ᵐ` directly to a function `⟦A⟧ᴰ → T⟦B⟧ᴰ = ⟦A ⇒ B⟧ᴰ`
--- removes IR entirely — note the imports below contain NO `Once.IR`, NO `evalᴰ`.
+-- `lift-morphism`/`morph-app` leaves (a morphism represented AS `IR`) — note
+-- the imports below contain NO `Once.IR`, NO `evalᴰ`.
 --
--- P1 (this file): the VALUE realm `⟦_⟧ᵍ` and the MORPHISM realm `⟦_⟧ᵐ` — exactly
--- the two realms that leak IR today. Self-contained (⊢ᵐ recurses only into ⊢ᵐ/⊢ᵍ).
--- The three genuinely-hard cases (`m-cata` fold, `m-named` def-environment, `g-In`
--- initial algebra) are P1 SCAFFOLDS, discharged in P2. The `⊢ᶜ`/`⊢ᵢ` realms (the
--- mechanical mirror of `SD`) are added next.
+-- D127: TWO REALMS, `⟦_⟧ᶜ` AND `⟦_⟧ᵢ`. The separate value realm `⟦_⟧ᵍ` and
+-- morphism realm `⟦_⟧ᵐ` are gone with the judgments they denoted. A
+-- combinator's arms are now context-indexed, so their meanings are produced
+-- UNDER an environment and the combinator composes what comes back; at a
+-- closed arm the environment is unused and the clause is the old `⟦_⟧ᵐ` one
+-- verbatim. That is the sense in which this generalises rather than replaces.
 ------------------------------------------------------------------------
 
 module Once.Denotation.Meaning where
@@ -58,12 +58,12 @@ open import Once.Arith.SigOp.Builders
          fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
          lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.TypeCheck.Judgment
-  using (_⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_; _⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
-         g-int; g-float; g-neg-int; g-neg-float; g-terminal; g-pair; g-inl; g-inr; g-In;
-         m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr;
-         m-compose; m-case; m-pair; m-curry; m-cata; m-const;
-         m-named; m-named-resolved;
-         t-morph-lift; t-value-lift; t-closed-lift; t-embed; t-lam; t-pair-lit-check;
+  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
+         t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
+         t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
+         t-compose-check; t-case-copair-check; t-pair-morph-check;
+         t-curry-check; t-cata-check;
+         t-embed; t-lam; t-pair-lit-check;
          t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
          t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer;
@@ -108,58 +108,6 @@ named-sem : ∀ {A B : Type} → TargetNum → CanonicalName → IsBaseType A �
 named-sem {A} {B} fmt cn bA cB a =
   λ _ → (emit-D (value-info {A} {B} cn bA cB) (forget a) , inject (semM (value-info {A} {B} cn bA cB) fmt (forget a)))
 
-------------------------------------------------------------------------
--- The VALUE realm `⊢ᵍ` — a closed global element denotes a value `⟦A⟧ᴰ`.
-------------------------------------------------------------------------
-
-⟦_⟧ᵍ : ∀ {ctx e A} → ctx ⊢ᵍ e ∶ A → TargetNum → ⟦ A ⟧ᴰ
--- D054: an `Int` literal MEANS its two's-complement machine word, via
--- `Once.Word.fromℤ` — the same function the elaborator's `intLit` and the
--- blocked arith path use. It used to be `absℤ` (absolute value), so `-5` would
--- have meant 5; harmless only because no negative literal can be written yet,
--- and plan 0.73 F3 was about to change that.
--- D115: at THIS target's width, from the threaded numerics — NOT a baked
--- `Word64`. `Int` is signed two's complement (D054), so `-5` denotes
--- `2^w - 5` and is width-relative exactly as a float literal is
--- format-relative. This is the same clause as `⟦ float … ⟧`, one type over.
-⟦ g-int n      ⟧ᵍ fmt = OnceWord.Width.fromℤ (int-bits fmt) n
--- PLAN 0.73 F3 / D120's other half. Same payloads as `⟦ t-neg (t-int n) ⟧ᵢ`
--- and `⟦ t-neg-float … ⟧ᵢ` respectively, which is what makes the two realms
--- agree on `-5` and `-3.14` rather than merely both compile.
-⟦ g-neg-int n  ⟧ᵍ fmt = OnceWord.Width.fromℤ (int-bits fmt) (ℤ.- n)
-⟦ g-neg-float i f l p ⟧ᵍ fmt = round (float-format fmt) (negate (decimalOf i f l))
--- …and a float literal means ITS ENCODING AT THE TARGET'S FORMAT (D113).
--- `⟦ Float ⟧` is the target's representation, not an exact value, and `1.5`
--- has no target-free one — so the reference meaning takes the format. This
--- clause is the entire reason it does; every other clause just passes it on.
-⟦ g-float i f l p ⟧ᵍ fmt = round (float-format fmt) (decimalOf i f l)
-⟦ g-terminal _ _ ⟧ᵍ fmt = tt
-⟦ g-pair ga gb ⟧ᵍ fmt = (⟦ ga ⟧ᵍ fmt) , (⟦ gb ⟧ᵍ fmt)
-⟦ g-inl ga     ⟧ᵍ fmt = inj₁ (⟦ ga ⟧ᵍ fmt)
-⟦ g-inr gb     ⟧ᵍ fmt = inj₂ (⟦ gb ⟧ᵍ fmt)
-⟦ g-In _ garg  ⟧ᵍ fmt = in-value (⟦ garg ⟧ᵍ fmt)
-
-------------------------------------------------------------------------
--- The MORPHISM realm `⊢ᵐ` — a categorical arrow denotes a Kleisli function
--- `⟦A⟧ᴰ → T⟦B⟧ᴰ = ⟦A ⇒ B⟧ᴰ`. Grade-erased (`π` ignored by the value domain).
-------------------------------------------------------------------------
-
-⟦_⟧ᵐ : ∀ {ctx e A π B} → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → TargetNum → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
-⟦ m-id _ _        ⟧ᵐ fmt = λ a  → returnT a
-⟦ m-fst _ _       ⟧ᵐ fmt = λ ab → returnT (proj₁ ab)
-⟦ m-snd _ _       ⟧ᵐ fmt = λ ab → returnT (proj₂ ab)
-⟦ m-terminal _ _  ⟧ᵐ fmt = λ _  → returnT tt
-⟦ m-initial _ _   ⟧ᵐ fmt = λ v  → ⊥-elim v
-⟦ m-inl _ _       ⟧ᵐ fmt = λ a  → returnT (inj₁ a)
-⟦ m-inr _ _       ⟧ᵐ fmt = λ b  → returnT (inj₂ b)
-⟦ m-compose _ f g ⟧ᵐ fmt = λ a  → (⟦ g ⟧ᵐ fmt) a >>=T (⟦ f ⟧ᵐ fmt)
-⟦ m-case f g      ⟧ᵐ fmt = λ ab → [ (⟦ f ⟧ᵐ fmt) , (⟦ g ⟧ᵐ fmt) ]′ ab
-⟦ m-pair f g      ⟧ᵐ fmt = λ a  → (⟦ f ⟧ᵐ fmt) a >>=T λ b → (⟦ g ⟧ᵐ fmt) a >>=T λ c → returnT (b , c)
-⟦ m-curry f       ⟧ᵐ fmt = λ a  → returnT (λ b → (⟦ f ⟧ᵐ fmt) (a , b))
-⟦ m-const gv      ⟧ᵐ fmt = λ _  → returnT (⟦ gv ⟧ᵍ fmt)
-⟦ m-cata {wfF = wfF} _ alg ⟧ᵐ fmt = cata-sem wfF (⟦ alg ⟧ᵐ fmt)
-⟦_⟧ᵐ {A = A} {B = B} (m-named {x = x} _ _ _ bA cB)        fmt = named-sem {A} {B} fmt (bare x) bA cB
-⟦_⟧ᵐ {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) fmt = named-sem {A} {B} fmt cn bA cB
 
 ------------------------------------------------------------------------
 -- (P3) The env — IR-free positional lookup into `⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ`.
@@ -203,13 +151,42 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦_⟧ᶜ : ∀ {ctx e A Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → Env ctx → T ⟦ A ⟧ᴰ
 ⟦_⟧ᵢ : ∀ {ctx e A Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → Env ctx → T ⟦ A ⟧ᴰ
 
-⟦ t-morph-lift d ⟧ᶜ fmt         dγ = returnT (⟦ d ⟧ᵐ fmt)
-⟦ t-value-lift g ⟧ᶜ fmt         dγ = returnT (λ _ → returnT (⟦ g ⟧ᵍ fmt))
--- D126: the constant function returning the expression's meaning. `dγ` is
--- passed through rather than discarded — the expression is closed in the LOCAL
--- variables (`zeroUsage`), which is not the same as closed in the definition
--- context: it may still reference a SigOp or a same-module def.
-⟦ t-closed-lift _ d ⟧ᶜ fmt      dγ = returnT (λ _ → (⟦ d ⟧ᵢ fmt) dγ)
+------------------------------------------------------------------------
+-- D127: the categorical combinators, CONTEXT-INDEXED.
+--
+-- These were `⟦_⟧ᵐ`, a separate realm denoting `⟦A⟧ᴰ → T⟦B⟧ᴰ` with no
+-- environment because a `⊢ᵐ` arm was closed by construction. The meanings
+-- below are the SAME functions, now produced under an environment: each arm
+-- is evaluated at `dγ` first, and the combinator combines the two Kleisli
+-- functions that come back. At a closed arm `dγ` is unused and the two agree
+-- clause for clause — which is what makes this a generalisation rather than
+-- a redefinition.
+--
+-- The leaves are `returnT` of the plain categorical generator, as they were.
+------------------------------------------------------------------------
+⟦ t-id-check _ _              ⟧ᶜ fmt dγ = returnT (λ a  → returnT a)
+⟦ t-fst-check _ _             ⟧ᶜ fmt dγ = returnT (λ ab → returnT (proj₁ ab))
+⟦ t-snd-check _ _             ⟧ᶜ fmt dγ = returnT (λ ab → returnT (proj₂ ab))
+⟦ t-terminal-morph-check _ _  ⟧ᶜ fmt dγ = returnT (λ _  → returnT tt)
+⟦ t-initial-morph-check _ _   ⟧ᶜ fmt dγ = returnT (λ v  → ⊥-elim v)
+⟦ t-inl-morph-check _ _       ⟧ᶜ fmt dγ = returnT (λ a  → returnT (inj₁ a))
+⟦ t-inr-morph-check _ _       ⟧ᶜ fmt dγ = returnT (λ b  → returnT (inj₂ b))
+⟦ t-compose-check _ df dg ⟧ᶜ fmt dγ =
+  (⟦ df ⟧ᶜ fmt) dγ >>=T λ vf → (⟦ dg ⟧ᶜ fmt) dγ >>=T λ vg →
+  returnT (λ a → vg a >>=T vf)
+⟦ t-case-copair-check df dg ⟧ᶜ fmt dγ =
+  (⟦ df ⟧ᶜ fmt) dγ >>=T λ vf → (⟦ dg ⟧ᶜ fmt) dγ >>=T λ vg →
+  returnT (λ ab → [ vf , vg ]′ ab)
+⟦ t-pair-morph-check df dg ⟧ᶜ fmt dγ =
+  (⟦ df ⟧ᶜ fmt) dγ >>=T λ vf → (⟦ dg ⟧ᶜ fmt) dγ >>=T λ vg →
+  returnT (λ a → vf a >>=T λ b → vg a >>=T λ c → returnT (b , c))
+⟦ t-curry-check df ⟧ᶜ fmt dγ =
+  (⟦ df ⟧ᶜ fmt) dγ >>=T λ vf → returnT (λ a → returnT (λ b → vf (a , b)))
+-- The algebra is typed in the CLEARED context (plan 0.76 holds the widening
+-- back for its own decision), so it runs on the empty environment — the same
+-- `tt` the telescope rules use.
+⟦ t-cata-check {wfF = wfF} _ dalg ⟧ᶜ fmt dγ =
+  (⟦ dalg ⟧ᶜ fmt) tt >>=T λ valg → returnT (cata-sem wfF valg)
 ⟦ t-embed d ⟧ᶜ fmt              dγ = (⟦ d ⟧ᵢ fmt) dγ
 ⟦ t-lam _ d ⟧ᶜ fmt              dγ = returnT (λ a → (⟦ d ⟧ᶜ fmt) (dγ , a))
 ⟦ t-pair-lit-check da db ⟧ᶜ fmt dγ = (⟦ da ⟧ᶜ fmt) dγ >>=T λ a → (⟦ db ⟧ᶜ fmt) dγ >>=T λ b → returnT (a , b)
