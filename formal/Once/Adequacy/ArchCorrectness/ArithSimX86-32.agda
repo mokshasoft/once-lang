@@ -434,6 +434,11 @@ open Core
   -- rt-arg (peel eax)
   (λ d p s    → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _)
                       (readReg-wr-arith-same (regs s) d _))
+  -- rt-farg — the SAME memory read, discharged the same way. A float load is
+  -- a load; only the abstract reading of the bytes differed, and the typed
+  -- path decides that now.
+  (λ d p s    → trans (readReg-wr-eax-arith (writeReg (regs s) (arith-reg d) _) d _)
+                      (readReg-wr-arith-same (regs s) d _))
   -- rt-add rt-sub rt-imul
   (λ d src s  → readReg-wr-arith-same (regs s) d _)
   (λ d src s  → readReg-wr-arith-same (regs s) d _)

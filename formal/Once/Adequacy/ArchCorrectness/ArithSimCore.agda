@@ -37,11 +37,12 @@ module Once.Adequacy.ArchCorrectness.ArithSimCore where
 open import Data.Nat using (ℕ; _≟_; _+_; _*_; NonZero)
 open import Data.Nat.Properties using (*-cancelˡ-≡; +-cancelˡ-≡)
 open import Data.Integer using (ℤ)
+open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ-syntax)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; subst₂)
 open import Relation.Nullary using (¬_; yes; no)
@@ -51,16 +52,19 @@ open import Once.Arith.Backend.XInstr.Syntax as XI using (XInstr; XReg; XScratch
 open XI using (XR0; XR1)
 open import Once.Arith.Machine.Shape using (InputShape; ⟦_⟧S; InputPath; project)
 open import Once.Arith.Machine.AbsState
-  using (ArithAbsState; Store; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of)
-open import Once.Arith.Machine.AbsInstr using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fneg-rr; i2f-rr; bin-op; un-op; maybe-zero; move-to-out)
+  using (ArithAbsState; Store; _[_]; _[_↦_]; init; store-write-same; store-write-other; output-of;
+         InputShape; ⟦_⟧S; InputPath; project; projectF;
+         Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ;
+         project-path; projectF-path)
+open import Once.Arith.Machine.AbsInstr using (AbstractInstr; load-input; load-finput; load-imm; load-fimm; add-rrr; sub-rrr; mul-rrr; div-rrr; rem-rrr; div-safe-rrr; rem-safe-rrr; shl-rri; sdiv-pow2-rri; neg-rr; spill; reload; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; bin-op; un-op; maybe-zero; maybe-zero-f; move-to-out)
 import Once.Arith.Backend.Correct as Correct
 -- PLAN 0.75 F4: pinned at `NInt`. The simulation core models two INTEGER
 -- scratch registers (`XR0`/`XR1`); a float block needs its own register file
 -- and has no correspondence here yet. Stated in the type so the gate sees it.
 open import Once.Arith.Type using (NumType; NInt; NFloat)
-open import Once.Arith.Machine.IR using (MArithIR)
+open import Once.Arith.Machine.IR using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
 open import Once.Arith.Backend.XInstr.CodeGen using (_≟x_; emit; emit-program)
-open import Once.Arith.Machine.Compile using (compile-abs; compile-go)
+open import Once.Arith.Machine.Compile using (compile-abs; compile-go; mul-op; div-op; rem-op; mul-choose; div-choose; div-instr; rem-instr; pow2?; safe-divisor?)
 open import Once.Arith.SigOp.Block using (block-semM)
 open import Once.Arith.SigOp.BlockSemBridge using (toWord)
 open import Once.Arith.Backend.BlockValueSemM using (block-value-semM)
@@ -159,6 +163,119 @@ module At (tn : TargetNum) where
   block-shape e = emit-program-++ (compile-go 0 e) (move-to-out 0 ∷ [])
 
   ------------------------------------------------------------------------
+  -- Load well-formedness.
+  --
+  -- `Xmov-arg`/`Xmov-farg` carry an UNTYPED `InputPath` — the ISA is shape-free
+  -- by design — so an instruction cannot say on its own that its path lands on
+  -- a leaf of the kind it reads. That fact is decided by the PROGRAM, not by
+  -- any state, so it travels beside the program as a well-formedness relation
+  -- and is DISCHARGED here, by induction on the IR: `compile-go` emits those
+  -- two instructions only from an `ainput`, which holds a typed `Path sh n`.
+  ------------------------------------------------------------------------
+
+  LoadOK : InputShape → XInstr → Set
+  LoadOK sh (XI.Xmov-arg  d p) = Σ-syntax (Path sh NInt)   (λ tp → ⌊ tp ⌋ᴾ ≡ p)
+  LoadOK sh (XI.Xmov-farg d p) = Σ-syntax (Path sh NFloat) (λ tp → ⌊ tp ⌋ᴾ ≡ p)
+  LoadOK sh _                  = ⊤
+
+  LoadsWF : InputShape → List XInstr → Set
+  LoadsWF sh []       = ⊤
+  LoadsWF sh (i ∷ is) = LoadOK sh i × LoadsWF sh is
+
+  lw-++ : ∀ {sh} (xs ys : List XInstr)
+        → LoadsWF sh xs → LoadsWF sh ys → LoadsWF sh (xs ++ ys)
+  lw-++ []       ys _        wy = wy
+  lw-++ (x ∷ xs) ys (ox , w) wy = ox , lw-++ xs ys w wy
+
+  -- | The same, one level up: `emit-program` distributes over `++`.
+  lw-cat : ∀ {sh} (xs ys : List AbstractInstr)
+         → LoadsWF sh (emit-program xs) → LoadsWF sh (emit-program ys)
+         → LoadsWF sh (emit-program (xs ++ ys))
+  lw-cat {sh} xs ys wx wy =
+    subst (LoadsWF sh) (sym (emit-program-++ xs ys))
+          (lw-++ (emit-program xs) (emit-program ys) wx wy)
+
+  -- The three instruction SELECTORS (strength reduction / divisor guard). Each
+  -- is factored through a chooser on the decision, so one `with` makes it
+  -- reduce; every branch is an arithmetic instruction, hence trivially OK.
+  -- Matching on the CHOOSER's own argument, not on the decision inside
+  -- `mul-op`/`div-op`: `with pow2? b` abstracts syntactically, and `mul-op b`
+  -- does not mention `pow2? b` until it is unfolded, so the branch bodies
+  -- would not reduce. This is the shape those choosers were factored for.
+  lw-mul-choose : ∀ {sh} (mj : Maybe ℕ) → LoadsWF sh (emit (mul-choose mj))
+  lw-mul-choose (just j) = _
+  lw-mul-choose nothing  = _
+
+  lw-div-instr : ∀ {sh} (t : Bool) → LoadsWF sh (emit (div-instr t))
+  lw-div-instr true  = _
+  lw-div-instr false = _
+
+  lw-rem-instr : ∀ {sh} (t : Bool) → LoadsWF sh (emit (rem-instr t))
+  lw-rem-instr true  = _
+  lw-rem-instr false = _
+
+  lw-div-choose : ∀ {sh} (mj : Maybe ℕ) (t : Bool) → LoadsWF sh (emit (div-choose mj t))
+  lw-div-choose (just j) t = _
+  lw-div-choose nothing  t = lw-div-instr t
+
+  lw-mul-op : ∀ {sh sh'} (b : MArithIR sh' NInt) → LoadsWF sh (emit (mul-op b))
+  lw-mul-op b = lw-mul-choose (pow2? b)
+
+  lw-div-op : ∀ {sh sh'} (b : MArithIR sh' NInt) → LoadsWF sh (emit (div-op b))
+  lw-div-op b = lw-div-choose (pow2? b) (safe-divisor? b)
+
+  lw-rem-op : ∀ {sh sh'} (b : MArithIR sh' NInt) → LoadsWF sh (emit (rem-op b))
+  lw-rem-op b = lw-rem-instr (safe-divisor? b)
+
+  -- The two program SKELETONS. `++` cannot be inverted by unification, so the
+  -- left operand is named and everything to its right is inferred; stating the
+  -- skeleton once keeps the twelve IR clauses to one line each.
+  lw-bin : ∀ {sh n m} (d : ℕ) (a : MArithIR sh n) (b : MArithIR sh m) (tl : List AbstractInstr)
+         → LoadsWF sh (emit-program (compile-go d a))
+         → LoadsWF sh (emit-program (compile-go (ℕ.suc d) b))
+         → LoadsWF sh (emit-program tl)
+         → LoadsWF sh (emit-program (compile-go d a ++ (spill 0 d ∷ []) ++
+                                     compile-go (ℕ.suc d) b ++ tl))
+  lw-bin d a b tl wa wb wtl =
+    lw-cat (compile-go d a) ((spill 0 d ∷ []) ++ compile-go (ℕ.suc d) b ++ tl) wa
+      (lw-cat (spill 0 d ∷ []) (compile-go (ℕ.suc d) b ++ tl) _
+        (lw-cat (compile-go (ℕ.suc d) b) tl wb wtl))
+
+  lw-un : ∀ {sh n} (d : ℕ) (a : MArithIR sh n) (tl : List AbstractInstr)
+        → LoadsWF sh (emit-program (compile-go d a))
+        → LoadsWF sh (emit-program tl)
+        → LoadsWF sh (emit-program (compile-go d a ++ tl))
+  lw-un d a tl wa wtl = lw-cat (compile-go d a) tl wa wtl
+
+  compile-loads : ∀ {sh n} (d : ℕ) (e : MArithIR sh n)
+                → LoadsWF sh (emit-program (compile-go d e))
+  compile-loads d (alit z)   = _
+  compile-loads d (aflit dc) = _
+  -- THE TWO CLAUSES THIS WHOLE RELATION EXISTS FOR: the typed path erased by
+  -- `compile-go` is handed straight back as the witness.
+  compile-loads {n = NInt}   d (ainput p) = (p , refl) , _
+  compile-loads {n = NFloat} d (ainput p) = (p , refl) , _
+  compile-loads {n = NInt}   d (aadd a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
+  compile-loads {n = NFloat} d (aadd a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
+  compile-loads {n = NInt}   d (asub a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
+  compile-loads {n = NFloat} d (asub a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
+  compile-loads {n = NInt}   d (amul a b) =
+    lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) (_ , lw-++ (emit (mul-op b)) [] (lw-mul-op b) _)
+  compile-loads {n = NFloat} d (amul a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
+  compile-loads {n = NInt}   d (adiv a b) =
+    lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) (_ , lw-++ (emit (div-op b)) [] (lw-div-op b) _)
+  compile-loads {n = NFloat} d (adiv a b) = lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) _
+  compile-loads d (amod a b) =
+    lw-bin d a b _ (compile-loads d a) (compile-loads (ℕ.suc d) b) (_ , lw-++ (emit (rem-op b)) [] (lw-rem-op b) _)
+  compile-loads {n = NInt}   d (aneg a) = lw-un d a _ (compile-loads d a) _
+  compile-loads {n = NFloat} d (aneg a) = lw-un d a _ (compile-loads d a) _
+  compile-loads d (ai2f a)              = lw-un d a _ (compile-loads d a) _
+
+  compile-loads-abs : ∀ {sh n} (e : MArithIR sh n)
+                    → LoadsWF sh (emit-program (compile-abs e))
+  compile-loads-abs e = lw-cat (compile-go 0 e) (move-to-out 0 ∷ []) (compile-loads 0 e) _
+
+  ------------------------------------------------------------------------
   -- Spill is the ONLY instruction that writes the abstract scratch store (and,
   -- concretely, memory). `NonSpill` marks the other 15; `scratch-unchanged` is
   -- their (arch-neutral) abstract-scratch invariance, feeding `scratch-frame`.
@@ -197,12 +314,6 @@ module At (tn : TargetNum) where
   scratch-unchanged (XI.Xmov-out _)           _ s = refl
 
   -- NO instruction changes the abstract input (all update regs/scratch/output).
-  -- | The one float instruction whose correspondence is still open: a FLOAT
-  -- INPUT LEAF. A predicate rather than a blanket, so the residual below
-  -- cannot subsume anything else.
-  data IsFloatArg : XInstr → Set where
-    fx-farg : ∀ x y → IsFloatArg (XI.Xmov-farg x y)
-
   input-unchanged : ∀ i {sh} (s : ArithAbsState sh)
                   → ArithAbsState.input (exec-xinstr i s) ≡ ArithAbsState.input s
   input-unchanged (XI.Xmov-imm _ _)         s = refl
@@ -274,6 +385,11 @@ module At (tn : TargetNum) where
     (rt-mov-rr  : ∀ d src s  → rr (e1 (XI.Xmov-rr d src) s)  (arith-reg d) ≡ rr s (arith-reg src))
     (rt-reload  : ∀ d sc s   → rr (e1 (XI.Xmov-m-r d sc) s)  (arith-reg d) ≡ def (mem s (sa s sc)))
     (rt-arg     : ∀ d p s    → rr (e1 (XI.Xmov-arg d p) s)   (arith-reg d) ≡ pl s p)
+    -- The float load reads THE SAME memory — a path-load is a path-load — so
+    -- every arch discharges this exactly as it discharges `rt-arg`. Only the
+    -- ABSTRACT interpretation of those bytes differed, and the typed path now
+    -- decides that.
+    (rt-farg    : ∀ d p s    → rr (e1 (XI.Xmov-farg d p) s)  (arith-reg d) ≡ pl s p)
     (rt-add     : ∀ d src s  → rr (e1 (XI.Xadd-rr d src) s)  (arith-reg d) ≡ rr s (arith-reg d) ⊕ rr s (arith-reg src))
     (rt-sub     : ∀ d src s  → rr (e1 (XI.Xsub-rr d src) s)  (arith-reg d) ≡ rr s (arith-reg d) ⊖ rr s (arith-reg src))
     (rt-imul    : ∀ d src s  → rr (e1 (XI.Ximul-rr d src) s) (arith-reg d) ≡ rr s (arith-reg d) ⊗ rr s (arith-reg src))
@@ -412,20 +528,72 @@ module At (tn : TargetNum) where
     ----------------------------------------------------------------------
     -- R-input — the input correspondence (for arg).
     ----------------------------------------------------------------------
+    -- | The machine word a TYPED leaf holds. `Int` leaves narrow through
+    -- `fromℤ` (the leaf carries a spec integer); a float leaf is already a
+    -- pattern. No `Maybe`, so no default to be false about.
+    leafWord : ∀ {sh n} → Path sh n → ⟦ sh ⟧S → ℕ
+    leafWord here-int   z       = fromℤ z
+    leafWord here-flt   w       = w
+    leafWord (go-fst p) (x , _) = leafWord p x
+    leafWord (go-snd p) (_ , y) = leafWord p y
+
+    leafWord-int : ∀ {sh} (tp : Path sh NInt) (inp : ⟦ sh ⟧S)
+                 → leafWord tp inp ≡ fromℤ (readLeaf tp inp)
+    leafWord-int here-int   z       = refl
+    leafWord-int (go-fst p) (x , _) = leafWord-int p x
+    leafWord-int (go-snd p) (_ , y) = leafWord-int p y
+
+    leafWord-flt : ∀ {sh} (tp : Path sh NFloat) (inp : ⟦ sh ⟧S)
+                 → leafWord tp inp ≡ readLeaf tp inp
+    leafWord-flt here-flt   w       = refl
+    leafWord-flt (go-fst p) (x , _) = leafWord-flt p x
+    leafWord-flt (go-snd p) (_ , y) = leafWord-flt p y
+
+    -- | The call-site laid the argument out. Quantified over TYPED paths, which
+    -- is the whole repair: the old statement claimed the concrete load equals
+    -- the INTEGER reading at EVERY path, which is false at a float leaf — so a
+    -- block with a float parameter could not satisfy its own precondition, and
+    -- `Xmov-farg` could not be proved against it.
     R-input : ∀ {sh} → ArithAbsState sh → St → Set
     R-input {sh} s-abs s-conc =
-      ∀ (p : InputPath)
-      → pl s-conc p ≡ fromℤ (maybe-zero (project sh p (ArithAbsState.input s-abs)))
+      ∀ {n} (p : Path sh n)
+      → pl s-conc ⌊ p ⌋ᴾ ≡ leafWord p (ArithAbsState.input s-abs)
 
-    R-step-arg : ∀ {sh} (d : XReg) (p : InputPath) (s-abs : ArithAbsState sh) (s-conc : St)
+    -- | The one thing an instruction cannot say about itself: that its path
+    -- lands on a leaf of the type it reads. The ISA is untyped BY DESIGN (the
+    -- syntax is shape-free even where the semantics is not), so the fact
+    -- travels beside the program rather than inside the instruction — which is
+    -- what a well-formedness relation is for.
+    --
+    -- Discharged by construction: `compile-go` only ever emits these two from
+    -- an `ainput`, which now holds a typed path.
+    R-step-arg : ∀ {sh} (d : XReg) (tp : Path sh NInt) (s-abs : ArithAbsState sh) (s-conc : St)
                → R s-abs s-conc → R-input s-abs s-conc
-               → R (exec-xinstr (XI.Xmov-arg d p) s-abs) (e1 (XI.Xmov-arg d p) s-conc)
-    R-step-arg d p s-abs s-conc r ri x w eq with x ≟x d
+               → R (exec-xinstr (XI.Xmov-arg d ⌊ tp ⌋ᴾ) s-abs) (e1 (XI.Xmov-arg d ⌊ tp ⌋ᴾ) s-conc)
+    R-step-arg d tp s-abs s-conc r ri x w eq with x ≟x d
     ... | yes refl =
-          sym (trans (rt-arg d p s-conc)
-                     (trans (ri p)
-                            (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))))
-    ... | no ¬eq = step-other (XI.Xmov-arg d p) d x w s-abs s-conc refl r ¬eq eq
+          sym (trans (rt-arg d ⌊ tp ⌋ᴾ s-conc)
+              (trans (ri tp)
+              (trans (leafWord-int tp (ArithAbsState.input s-abs))
+              (trans (sym (cong (λ m → fromℤ (maybe-zero m)) (project-path tp (ArithAbsState.input s-abs))))
+                     (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))))))
+    ... | no ¬eq = step-other (XI.Xmov-arg d ⌊ tp ⌋ᴾ) d x w s-abs s-conc refl r ¬eq eq
+
+    -- | The float twin, and it is the SAME proof — which is the point. It was a
+    -- postulate only because `R-input` could not describe a float leaf; now
+    -- that it can, `rt-farg` (the concrete load is the same memory read as
+    -- `rt-arg`'s) closes it exactly as `rt-arg` closes the integer one.
+    R-step-farg : ∀ {sh} (d : XReg) (tp : Path sh NFloat) (s-abs : ArithAbsState sh) (s-conc : St)
+                → R s-abs s-conc → R-input s-abs s-conc
+                → R (exec-xinstr (XI.Xmov-farg d ⌊ tp ⌋ᴾ) s-abs) (e1 (XI.Xmov-farg d ⌊ tp ⌋ᴾ) s-conc)
+    R-step-farg d tp s-abs s-conc r ri x w eq with x ≟x d
+    ... | yes refl =
+          sym (trans (rt-farg d ⌊ tp ⌋ᴾ s-conc)
+              (trans (ri tp)
+              (trans (leafWord-flt tp (ArithAbsState.input s-abs))
+              (trans (sym (cong maybe-zero-f (projectF-path tp (ArithAbsState.input s-abs))))
+                     (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))))))
+    ... | no ¬eq = step-other (XI.Xmov-farg d ⌊ tp ⌋ᴾ) d x w s-abs s-conc refl r ¬eq eq
 
     ----------------------------------------------------------------------
     -- Rf = R × R-scratch × R-input — the FULL relation and block simulation.
@@ -438,120 +606,111 @@ module At (tn : TargetNum) where
     -- rides `r` through the abstract frame and `rf-other`. Reload/arg consume the
     -- R-scratch/R-input components; spill/out write no arith register (rf-other).
     ----------------------------------------------------------------------
-    -- THE ONE REMAINING F4 RESIDUAL: a FLOAT INPUT LEAF.
+    -- The float input leaf, PROVEN (was the one F4 residual).
     --
-    -- The seven float REGISTER operations are discharged above from the arch's
-    -- own `rt-f*` lemmas. This one is different in kind, and the difference is
-    -- `R-input`: it says the concrete path-load equals
-    -- `fromℤ (maybe-zero (project sh p …))` — the INTEGER reading of the bytes
-    -- at that path. A float leaf's bytes are a pattern, and `project` answers
-    -- `nothing` there, so the relation as stated does not describe them.
+    -- It was a postulate because `R-input` could not describe a float leaf: it
+    -- claimed the concrete load equals the INTEGER reading at every path, and a
+    -- float leaf's bytes are a pattern. That was not a proof difficulty — the
+    -- missing fact, which leaf a load reads, is decided by the PROGRAM and is
+    -- not recoverable from a state relation.
     --
-    -- Fixing it is a modelling question about the INPUT TREE, not about
-    -- arithmetic: `R-input` has to say "the bytes at `p`", with the Int and
-    -- Float readings as two projections of that. Deliberately not rushed in
-    -- alongside the arithmetic.
-    --
-    -- WHAT IT DOES AND DOES NOT BLOCK. It is reached only by a block with a
-    -- float-typed PARAMETER. A closed float expression — `1.5 + 2.1`, every
-    -- literal — has `shape-unit` and never emits `Xmov-farg`, so the common
-    -- case is fully proven.
-    --
-    -- CLASSIFICATION: deferred-proof / model-gap, not an axiom.
+    -- Typed paths supply it: `ainput` carries a `Path sh n`, `compile-go`
+    -- erases it into the untyped ISA, and `LoadOK` carries it alongside the
+    -- program. `R-input` is then stated over typed paths and is true at BOTH
+    -- leaf kinds, and the two step lemmas are the same proof twice.
     ----------------------------------------------------------------------
-    postulate
-      float-arg-sim : ∀ {sh} (i : XInstr) → IsFloatArg i
-                    → (s-abs : ArithAbsState sh) (s-conc : St)
-                    → Rf s-abs s-conc → R (exec-xinstr i s-abs) (e1 i s-conc)
 
-    R-step-full : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
+    R-step-full : ∀ {sh} (i : XInstr) → LoadOK sh i
+                → (s-abs : ArithAbsState sh) (s-conc : St)
                 → Rf s-abs s-conc → R (exec-xinstr i s-abs) (e1 i s-conc)
     -- PLAN 0.75 F4: the float register operations, PROVEN from the arch's
     -- `rt-f*` lemmas — the same two-branch shape as every integer instruction.
-    R-step-full (XI.Xfadd-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xfadd-rr d src) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value (FA.fadd (float-format tn)) d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-fadd d src s-conc))
     ... | no ¬eq = step-other (XI.Xfadd-rr d src) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xfsub-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xfsub-rr d src) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value (FA.fsub (float-format tn)) d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-fsub d src s-conc))
     ... | no ¬eq = step-other (XI.Xfsub-rr d src) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xfmul-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xfmul-rr d src) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value (FA.fmul (float-format tn)) d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-fmul d src s-conc))
     ... | no ¬eq = step-other (XI.Xfmul-rr d src) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xfsubr-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xfsubr-rr d src) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value (FA.fsub (float-format tn)) src d s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-fsubr d src s-conc))
     ... | no ¬eq = step-other (XI.Xfsubr-rr d src) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xfneg-r d) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xfneg-r d) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (un-value (FA.fneg (float-format tn)) d s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-fneg d s-conc))
     ... | no ¬eq = step-other (XI.Xfneg-r d) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xi2f-r d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xi2f-r d src) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (un-value (λ q → FA.i2f (float-format tn) (toℤ q)) src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-i2f d src s-conc))
     ... | no ¬eq = step-other (XI.Xi2f-r d src) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xmov-fimm d dc) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xmov-fimm d dc) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (sym (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq)))
                            (sym (rt-fimm d dc s-conc))
     ... | no ¬eq = step-other (XI.Xmov-fimm d dc) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xmov-farg d p) s-abs s-conc rf = float-arg-sim (XI.Xmov-farg d p) (fx-farg d p) s-abs s-conc rf
-    R-step-full (XI.Xmov-m-r d sc) s-abs s-conc (r , rsc , _ , _) = R-step-reload d sc s-abs s-conc r rsc
-    R-step-full (XI.Xmov-arg d p)  s-abs s-conc (r , _ , rin , _) = R-step-arg d p s-abs s-conc r rin
-    R-step-full (XI.Xmov-r-m sc src) s-abs s-conc (r , _ , _) x w eq =
+    R-step-full (XI.Xmov-m-r d sc) lok s-abs s-conc (r , rsc , _ , _) = R-step-reload d sc s-abs s-conc r rsc
+    R-step-full (XI.Xmov-r-m sc src) lok s-abs s-conc (r , _ , _) x w eq =
       trans (r x w eq) (sym (rf-other (XI.Xmov-r-m sc src) s-conc x (no-tgt-hyp (XI.Xmov-r-m sc src) refl)))
-    R-step-full (XI.Xmov-out src) s-abs s-conc (r , _ , _) x w eq =
+    R-step-full (XI.Xmov-arg d p) (tp , refl) s-abs s-conc (r , _ , ri , _) =
+      R-step-arg d tp s-abs s-conc r ri
+    R-step-full (XI.Xmov-farg d p) (tp , refl) s-abs s-conc (r , _ , ri , _) =
+      R-step-farg d tp s-abs s-conc r ri
+    R-step-full (XI.Xmov-out src) lok s-abs s-conc (r , _ , _) x w eq =
       trans (r x w eq) (sym (rf-other (XI.Xmov-out src) s-conc x (no-tgt-hyp (XI.Xmov-out src) refl)))
-    R-step-full (XI.Xmov-imm d z) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xmov-imm d z) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (sym (just-injective (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq)))
                            (sym (rt-mov-imm d z s-conc))
     ... | no ¬eq = step-other (XI.Xmov-imm d z) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xmov-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xmov-rr d src) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (r src w (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-mov-rr d src s-conc))
     ... | no ¬eq = step-other (XI.Xmov-rr d src) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xadd-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xadd-rr d src) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value _⊕_ d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-add d src s-conc))
     ... | no ¬eq = step-other (XI.Xadd-rr d src) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xsub-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xsub-rr d src) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value _⊖_ d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-sub d src s-conc))
     ... | no ¬eq = step-other (XI.Xsub-rr d src) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Ximul-rr d src) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Ximul-rr d src) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value _⊗_ d src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-imul d src s-conc))
     ... | no ¬eq = step-other (XI.Ximul-rr d src) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xneg-r d) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xneg-r d) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (un-value ⊝_ d s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-neg d s-conc))
     ... | no ¬eq = step-other (XI.Xneg-r d) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xshl-rri d src imm) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xshl-rri d src imm) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (un-value (λ q → shlᵂ q imm) src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-shl d src imm s-conc))
     ... | no ¬eq = step-other (XI.Xshl-rri d src imm) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xdiv-rrr d a b) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xdiv-rrr d a b) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value _/ˢ_ a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-div d a b s-conc))
     ... | no ¬eq = step-other (XI.Xdiv-rrr d a b) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xfdiv-rrr d a b) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xfdiv-rrr d a b) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value (FA.fdiv (float-format tn)) a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-fdiv d a b s-conc))
     ... | no ¬eq = step-other (XI.Xfdiv-rrr d a b) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xrem-rrr d a b) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xrem-rrr d a b) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value _%ˢ_ a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-rem d a b s-conc))
     ... | no ¬eq = step-other (XI.Xrem-rrr d a b) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xdiv-safe-rrr d a b) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xdiv-safe-rrr d a b) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value _/ˢ_ a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-div-safe d a b s-conc))
     ... | no ¬eq = step-other (XI.Xdiv-safe-rrr d a b) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xrem-safe-rrr d a b) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xrem-safe-rrr d a b) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (bin-value _%ˢ_ a b s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-rem-safe d a b s-conc))
     ... | no ¬eq = step-other (XI.Xrem-safe-rrr d a b) d x w s-abs s-conc refl r ¬eq eq
-    R-step-full (XI.Xsdiv-pow2-rri d src imm) s-abs s-conc (r , _ , _) x w eq with x ≟x d
+    R-step-full (XI.Xsdiv-pow2-rri d src imm) lok s-abs s-conc (r , _ , _) x w eq with x ≟x d
     ... | yes refl = trans (un-value (λ q → sdiv2ᵏ q imm) src s-abs s-conc w r (trans (sym (store-write-same (ArithAbsState.regs s-abs) (xreg-idx d) _)) eq))
                            (sym (rt-sdiv d src imm s-conc))
     ... | no ¬eq = step-other (XI.Xsdiv-pow2-rri d src imm) d x w s-abs s-conc refl r ¬eq eq
@@ -561,8 +720,8 @@ module At (tn : TargetNum) where
     input-frame : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
                 → WF s-conc → R-input s-abs s-conc → R-input (exec-xinstr i s-abs) (e1 i s-conc)
     input-frame i s-abs s-conc wf rin p =
-      trans (pl-inv i s-conc wf p)
-            (trans (rin p) (cong (λ v → fromℤ (maybe-zero (project _ p v))) (sym (input-unchanged i s-abs))))
+      trans (pl-inv i s-conc wf ⌊ p ⌋ᴾ)
+            (trans (rin p) (cong (leafWord p) (sym (input-unchanged i s-abs))))
 
     -- Same slot ⇒ same scratch address (XScratch eta: `sc = mk-scratch (slot sc)`).
     sa-slot-eq : ∀ s sc sc' → XScratch.slot sc ≡ XScratch.slot sc' → sa s sc ≡ sa s sc'
@@ -624,18 +783,21 @@ module At (tn : TargetNum) where
     scratch-frame (XI.Xmov-farg a b) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-farg a b) tt s-abs s-conc rsc
     scratch-frame (XI.Xmov-out src) s-abs s-conc r rsc = nonspill-sf (XI.Xmov-out src) tt s-abs s-conc rsc
 
-    Rf-step : ∀ {sh} (i : XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
+    Rf-step : ∀ {sh} (i : XInstr) → LoadOK sh i → (s-abs : ArithAbsState sh) (s-conc : St)
             → Rf s-abs s-conc → Rf (exec-xinstr i s-abs) (e1 i s-conc)
-    Rf-step i s-abs s-conc rf@(rr₀ , rsc , rin , wf) =
-      R-step-full i s-abs s-conc rf , scratch-frame i s-abs s-conc rr₀ rsc
+    Rf-step i lok s-abs s-conc rf@(rr₀ , rsc , rin , wf) =
+      R-step-full i lok s-abs s-conc rf , scratch-frame i s-abs s-conc rr₀ rsc
       , input-frame i s-abs s-conc wf rin , wf-e1 i s-conc wf
 
-    Rf-sim : ∀ {sh} (xs : List XInstr) (s-abs : ArithAbsState sh) (s-conc : St)
+    -- The fold carries the program's `LoadsWF` and peels one `LoadOK` per
+    -- instruction — the only place the program fact is consumed.
+    Rf-sim : ∀ {sh} (xs : List XInstr) → LoadsWF sh xs
+           → (s-abs : ArithAbsState sh) (s-conc : St)
            → Rf s-abs s-conc
            → Rf (exec-xprog xs s-abs) (eb xs s-conc)
-    Rf-sim []       s-abs s-conc rf rewrite eb-nil s-conc = rf
-    Rf-sim (i ∷ is) s-abs s-conc rf rewrite eb-cons i is s-conc =
-      Rf-sim is (exec-xinstr i s-abs) (e1 i s-conc) (Rf-step i s-abs s-conc rf)
+    Rf-sim []       lw s-abs s-conc rf rewrite eb-nil s-conc = rf
+    Rf-sim (i ∷ is) (lok , lw) s-abs s-conc rf rewrite eb-cons i is s-conc =
+      Rf-sim is lw (exec-xinstr i s-abs) (e1 i s-conc) (Rf-step i lok s-abs s-conc rf)
 
     ----------------------------------------------------------------------
     -- Rf at block entry (`init env`).
@@ -696,5 +858,5 @@ module At (tn : TargetNum) where
     arith-block-correct e env s-conc wf ri =
       just-injective
         (trans (sym (output-extract e env s-conc
-                       (proj₁ (Rf-sim (emit-program (compile-abs e)) (init env) s-conc (Rf-init env s-conc wf ri)))))
+                       (proj₁ (Rf-sim (emit-program (compile-abs e)) (compile-loads-abs e) (init env) s-conc (Rf-init env s-conc wf ri)))))
                (block-value-semM tn e env))
