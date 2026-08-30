@@ -1489,28 +1489,39 @@ def write_mutual(out, CT):
     open(os.path.join(out, "JudgeRows.agda"), "w").write("\n".join(L) + "\n")
 
     # ---- and its well-formedness, sized by the measured cost model
-    W = [JHDR % dict(data="_⊢ty_ / _⊢_∷_",
-                     what=" IS A WELL-FORMED DESCRIPTION.", mod="JudgeWf",
-                     extra=MUT_EXTRA
-                     + "\nopen import DirectedHoTT.Examples.Knot.JudgeRows")]
-    for i, (nm, row) in enumerate(rows):
-        tag = "J" + _tagof(i)
-        W.append("-- %s" % nm)
-        W.append(emit_jrowwf(row, TEL, (tag, "k" + tag), "IJudge",
-                             "jd%sWf" % nm, "JudgeD"))
-        W.append("")
-    W.append("-" * 72)
-    W.append("-- ★★★ …AND IT IS WELL FORMED.")
-    W.append("-" * 72)
-    W.append("JudgeWf : IDescWf IJudge JudgeD")
-    W.append("JudgeWf =")
-    W.append(nest(["idwf-cons (jd%sWf JudgeD)" % nm if not row.prems
-                   else "idwf-cons jd%sWf" % nm
-                   for nm, row in rows], "idwf-nil", 2))
-    # ⬜ NOT EMITTED YET — the padded `Tm` slot's derivation leaves its
-    #   context a meta (`_Γ ▹ _A != ◇`).  The ROWS are green; only the
-    #   well-formedness is open.  See JUDGEMENT-ATTEMPTS.md §4.2.
-    # open(os.path.join(out, "JudgeWf.agda"), "w").write("\n".join(W) + "\n")
+    # ⚠⚠ SPLIT IN HALVES, AND THE ROW COUNT ALONE WAS THE WRONG MODEL.
+    #   `SPLIT_AT = 34` was calibrated on `_⟶_`'s THREE-component index;
+    #   this judgement's is FIVE, and 28 rows OOMed as one module.  The
+    #   cost scales with the telescope's WIDTH as well as its length —
+    #   each extra component is another ford, another transport, another
+    #   `⊢pair` rung per premise.
+    half = (len(rows) + 1) // 2
+    for part, lo, hi in (("A", 0, half), ("B", half, len(rows))):
+        W = [JHDR % dict(data="_⊢ty_ / _⊢_∷_",
+                         what=" IS A WELL-FORMED DESCRIPTION.",
+                         mod="JudgeWf" + part,
+                         extra=MUT_EXTRA
+                         + "\nopen import DirectedHoTT.Examples.Knot.JudgeRows"
+                         + ("\nopen import DirectedHoTT.Examples.Knot.JudgeWfA"
+                            if part == "B" else ""))]
+        for i in range(lo, hi):
+            nm, row = rows[i]
+            tag = "J" + _tagof(i)
+            W.append("-- %s" % nm)
+            W.append(emit_jrowwf(row, TEL, (tag, "k" + tag), "IJudge",
+                                 "jd%sWf" % nm, "JudgeD"))
+            W.append("")
+        if part == "B":
+            W.append("-" * 72)
+            W.append("-- ★★★ …AND IT IS WELL FORMED.")
+            W.append("-" * 72)
+            W.append("JudgeWf : IDescWf IJudge JudgeD")
+            W.append("JudgeWf =")
+            W.append(nest(["idwf-cons (jd%sWf JudgeD)" % nm if not row.prems
+                           else "idwf-cons jd%sWf" % nm
+                           for nm, row in rows], "idwf-nil", 2))
+        open(os.path.join(out, "JudgeWf%s.agda" % part), "w").write(
+            "\n".join(W) + "\n")
     return rows
 
 # ============================ LAYER 3: THE ADEQUACY MAP ====================
@@ -2044,6 +2055,18 @@ def jd(e, k, ix, binders, tel):
             return ("⊢snd " + par(inner), nxt)
         if h in WF_CTOR:
             head, roles, post = WF_CTOR[h]
+            # ★★★ A CONSTRUCTOR THAT TAKES ITS DEPTH EXPLICITLY RESETS
+            #   THE THREAD.  `Ctx-extK m Γ A : Ctx (nsuc m)` — its
+            #   CONTENTS live at `m`, not at the `nsuc m` the enclosing
+            #   index sits at.  It is not a `KNOT` row, so `FIELD_DEPTH`
+            #   has nothing to say and its children were inheriting the
+            #   ambient depth.
+            _saved = DEPTHD[0]
+            if roles and roles[0] == "N" and args:
+                _b, _n = args[0], 0
+                while _b[0] == "nsuc": _b, _n = _b[1], _n + 1
+                DEPTHD[0] = (rend(_b, k, ix),
+                             jdAt(_b, k, ix, binders, tel, 'nat'), _n)
             ds, ai = [], 0
             for r in roles:
                 if r == 'DD':
@@ -2071,6 +2094,7 @@ def jd(e, k, ix, binders, tel):
                           else par(jdAt(a, k, ix, binders, tel,
                                         'nat' if r == 'N' else 'mu')))
                 DEPTHD[0] = keep
+            DEPTHD[0] = _saved
             txt = head + "".join(" " + d for d in ds)
             if post == 'WK':
                 txt = ("muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) "
@@ -2119,6 +2143,16 @@ def _tupderiv(comps, tel, k, vis, bty):
       they need the same thing: a value of a family indexed by a
       telescope.  The only difference is which description it belongs to,
       and that is the caller's `tel`."""
+    # ⚠⚠ SET THE THREADED DEPTH FROM *THIS* TUPLE.  `DEPTHD` is global
+    #   mutable state, set by the ford branch; a premise's values are
+    #   derived here, so without this they read the depth of whichever
+    #   ford rung ran last.  The symptom is a constructor applied to the
+    #   AMBIENT INDEX where its depth belongs, and it surfaces as an
+    #   unsolved context meta — nowhere near the cause.
+    _b, _n = comps[0], 0
+    while _b[0] == "nsuc": _b, _n = _b[1], _n + 1
+    _keep = DEPTHD[0]
+    DEPTHD[0] = (rend(_b, k, vis), jdAt(_b, k, vis, bty, tel, 'nat'), _n)
     m = len(tel)
     body = None
     for j in range(m - 2, -1, -1):
@@ -2134,6 +2168,7 @@ def _tupderiv(comps, tel, k, vis, bty):
                      par(jdAt(comps[m - 1], k, vis, bty, tel, 'mu')))
         else:
             body = "⊢pair %s %s\n      (%s)" % (par(ty), head, body)
+    DEPTHD[0] = _keep
     return body
 
 def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None):
