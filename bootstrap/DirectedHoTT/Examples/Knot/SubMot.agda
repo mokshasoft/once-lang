@@ -69,7 +69,9 @@ open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 import DirectedHoTT.Lib.ISub as IS
 open import DirectedHoTT.Lib.IWk
-  using ( Maybe; just; nothing; Split; spl-nil; spl-cons; spl-mem; spl-look; spl-step )
+  using ( Maybe; just; nothing )
+open import DirectedHoTT.Lib.IPay
+  using ( Split; spl-nil; spl-cons; spl-mem; spl-look; spl-step )
 open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; subTm; extS; extR )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )

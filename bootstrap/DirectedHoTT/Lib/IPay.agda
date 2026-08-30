@@ -24,7 +24,7 @@ open import DirectedHoTT.Spec.Syntax
         ; renTy; extR; isingle; ipayTy-ren; ipayTy-cong
         ; ICon; IDesc; iι; iρ; iκ; ipayTy; Sub; extS; subTm; subTy
         ; εwkTy; εwk-sub; εwk-ren; _◂_; inil
-        ; ilookupD; _∈ID_; icon; subTy-renTy; subTy-cong )
+        ; ilookupD; _∈ID_; hereID; thereID; icon; subTy-renTy; subTy-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; ⊢var; here; there
@@ -35,7 +35,7 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk; Ren⊢-ext
         ; isingle-Sub⊢; iihTy-wf )
-open import DirectedHoTT.Lib.Wk using ( ren-subTy )
+open import DirectedHoTT.Lib.Wk using ( ren-subTy; Ren⊢-ins² )
 
 ipayTy-wf : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε)
             (σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋) (C : ICon ⌊ Θ ⌋) →
@@ -228,29 +228,102 @@ iatCon-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) {i : RTm ⌊ Γ ⌋}
 iatCon-wf D I k wD mem di wM = sub-ty wM (iconS-Sub⊢ D I k wD mem di)
 
 ------------------------------------------------------------------------
--- ⬜ NEXT: `imethTy-wf` — the method type at an ABSTRACT motive.
---
--- ★ THE GATE IS OPEN: `iatCon-wf` above supplies the codomain, which is
---   the thing that kept `imethTyNat-wf` pinned to `Nat`.  What remains
---   is de Bruijn bookkeeping, and it is worth writing down exactly.
---
---     imethTy D I k C M =
---       Π (εwkTy I)
---         (Π (ipayTy D I (isingle (var vz)) C)
---            (Π (iihTy … (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
---               (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M)))))
---
---   ⇒ the motive appears at THREE different weakenings, and each needs a
---     `Ren⊢` to move `wM` there.
---
--- ⚠ ATTEMPTED 2026-08-30 and backed out: `Ren⊢-ext (Ren⊢-ext there)` is
---   NOT the right witness.  `Ren⊢-ext` renames the type it extends by,
---   so its target context carries `renTy vs (εwkTy I)` where the goal
---   has `εwkTy I` — equal only by `εwk-ren`, and `Ren⊢` is a FUNCTION
---   type, so no `⊢-cast` reaches it.  It must be built POINTWISE, or a
---   `Ren⊢`-level cast lemma written first.
---
--- ⇒ this is the same trap as everywhere else in this layer: the shape
---   that looks right (`extR (extR vs)`) inserts ONE binder, and the two
---   nested `renTy`s insert TWO.  Count them from the goal, do not guess.
+-- ★ WHERE A ROW SITS IN A DESCRIPTION — moved here from `Lib/IWk`.
+--   It mentions only `IDesc` and `ℕ`, and the method-tuple lemmas below
+--   need it, so it cannot live above them.
 ------------------------------------------------------------------------
+
+data Split : IDesc → ℕ → IDesc → Set where
+  spl-nil  : {E : IDesc} → Split E zero E
+  spl-cons : {D : IDesc} {j : ℕ} {E : IDesc} {C : ICon (ε ∙)} →
+             Split D j E → Split (C ◂ D) (suc j) E
+
+spl-mem : {D : IDesc} {j : ℕ} {C : ICon (ε ∙)} {E : IDesc} →
+          Split D j (C ◂ E) → j ∈ID D
+spl-mem spl-nil      = hereID
+spl-mem (spl-cons s) = thereID (spl-mem s)
+
+spl-look : {D : IDesc} {j : ℕ} {C : ICon (ε ∙)} {E : IDesc} →
+           Split D j (C ◂ E) → ilookupD D j ≡ C
+spl-look spl-nil      = refl
+spl-look (spl-cons s) = spl-look s
+
+spl-step : {D : IDesc} {j : ℕ} {C : ICon (ε ∙)} {E : IDesc} →
+           Split D j (C ◂ E) → Split D (suc j) E
+spl-step spl-nil      = spl-cons spl-nil
+spl-step (spl-cons s) = spl-cons (spl-step s)
+
+------------------------------------------------------------------------
+-- ★★★ THE METHOD TYPE IS WELL FORMED **AT AN ABSTRACT MOTIVE**.
+--
+-- ⚠⚠ THIS IS WHAT `iatCon-wf` WAS FOR.  `imethTyNat-wf` above is this
+--   lemma with `M = Nat`, and it existed only because the codomain
+--   `renTy vs (iatCon k ⟨-⟩ M)` could not be shown to be a type unless
+--   `M` was concrete enough for `iatCon` to compute.  ⇒ all four
+--   customers of the method-tuple shape dodged that differently; with
+--   this they can share.
+--
+-- ★ THE MOTIVE APPEARS AT THREE WEAKENINGS, and `Lib/Wk.Ren⊢-ins²`
+--   carries `wM` to each: TWICE for the `iihTy` slot (two nested
+--   `renTy (extR (extR vs))`, i.e. two binders inserted), ONCE for the
+--   codomain.  ⚠ Counting those from the goal rather than from the
+--   shape is the whole difficulty — `extR (extR vs)` inserts ONE.
+--
+-- ★ AND THE MOTIVE'S ⊢ty IS TAKEN IN THE SHAPE `⊢ielim` DEMANDS, so a
+--   caller passes the derivation it already had for the eliminator.
+------------------------------------------------------------------------
+
+imethTy-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙))
+             {M : RTy ((⌊ Γ ⌋ ∙) ∙)} →
+             IDescWf I D → IConWf D I (◇ ▹ εwkTy I) C →
+             k ∈ID D → ilookupD D k ≡ C →
+             ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
+             ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+             Γ ⊢ty imethTy D I k C M
+imethTy-wf {Γ = Γ} D I k C {M = M} wD wC mem look tI wM =
+  ty-Π tI
+    (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
+                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+      (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
+                      D I _ (isingle (var (vs vz))) C (var vz) wC
+                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
+                                                   (εwk-ren vs I))
+                                            (⊢var (there here))))
+                      (ren-ty (ren-ty wM (Ren⊢-ins² (εwk-ren vs I)))
+                              (Ren⊢-ins² (εwk-ren vs I)))
+                      (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
+                                     (ipayTy-cong D I C
+                                       (λ { vz → refl ; (vs ()) })))
+                              (⊢var here)))
+            (ren-ty (subst (λ E → ((Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) E)
+                                     ⊢ty iatCon k (var vz)
+                                          (renTy (extR (extR vs)) M))
+                           look
+                           (iatCon-wf D I k wD mem
+                              (⊢-cast (εwk-ren vs I) (⊢var here))
+                              (ren-ty wM (Ren⊢-ins² (εwk-ren vs I)))))
+                    there)))
+
+------------------------------------------------------------------------
+-- ★★★ …AND THE WHOLE METHOD TUPLE'S TYPE, AT AN ABSTRACT MOTIVE.
+--
+-- `imethsTyFromNat-wf` above is this with `M = Nat`.  ⚠ The recursion
+--   stays at `Γ` with the SAME `M`: `imethsTyFrom`'s tail is
+--   `renTy vs (imethsTyFrom … M (suc j) E)` — the whole tail weakened,
+--   not the motive — so `wM` is passed through untouched and only the
+--   RESULT is weakened by `ren-ty … there`.
+--
+-- ⚠ `Split` is what lets each row hand `imethTy-wf` its MEMBERSHIP and
+--   its LOOKUP, derived on the way past rather than enumerated.
+------------------------------------------------------------------------
+
+imethsTyFrom-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc)
+                  {M : RTy ((⌊ Γ ⌋ ∙) ∙)} →
+                  IDescWf I D → IDescWfFrom D I E → Split D j E →
+                  ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
+                  ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+                  Γ ⊢ty imethsTyFrom D I M j E
+imethsTyFrom-wf D I j inil    wD idwf-nil          sp tI wM = ty-Unit
+imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
+  ty-Σ (imethTy-wf D I j C wD wC (spl-mem sp) (spl-look sp) tI wM)
+       (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI wM) there)

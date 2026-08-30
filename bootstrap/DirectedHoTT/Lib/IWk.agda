@@ -82,7 +82,9 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢; isingle-Sub⊢; ren-ty
         ; iihTy-wf; iihTy-ren; iihTy-cong )
-open import DirectedHoTT.Lib.IPay using ( ipayTy-wf; imethsTyFromNat-wf )
+open import DirectedHoTT.Lib.IPay
+  using ( ipayTy-wf; imethsTyFromNat-wf
+        ; Split; spl-nil; spl-cons; spl-mem; spl-look; spl-step )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Spec.Variance
   using ( 𝔹; true; false; _∨_; ∨-false; occTm; subTm-occ )
@@ -663,25 +665,11 @@ ridesConv {σ = σ} {τ = τ} {a = a} {s = s} {d = d} D I cs p sq dt =
 --   `spl-nil : Split D 0 D` — so the top-level caller says nothing.
 --   `Knot/Tags` pays O(n²) to enumerate the memberships; this derives
 --   each one on the way past instead.
-data Split : IDesc → ℕ → IDesc → Set where
-  spl-nil  : {E : IDesc} → Split E zero E
-  spl-cons : {D : IDesc} {j : ℕ} {E : IDesc} {C : ICon (ε ∙)} →
-             Split D j E → Split (C ◂ D) (suc j) E
-
-spl-mem : {D : IDesc} {j : ℕ} {C : ICon (ε ∙)} {E : IDesc} →
-          Split D j (C ◂ E) → j ∈ID D
-spl-mem spl-nil      = hereID
-spl-mem (spl-cons s) = thereID (spl-mem s)
-
-spl-look : {D : IDesc} {j : ℕ} {C : ICon (ε ∙)} {E : IDesc} →
-           Split D j (C ◂ E) → ilookupD D j ≡ C
-spl-look spl-nil      = refl
-spl-look (spl-cons s) = spl-look s
-
-spl-step : {D : IDesc} {j : ℕ} {C : ICon (ε ∙)} {E : IDesc} →
-           Split D j (C ◂ E) → Split D (suc j) E
-spl-step spl-nil      = spl-cons spl-nil
-spl-step (spl-cons s) = spl-cons (spl-step s)
+-- ⚠ `Split` MOVED TO `Lib/IPay` 2026-08-30.  It mentions only `IDesc`
+--   and `ℕ` — nothing about weakening — and `imethsTyFrom-wf` needs it
+--   from BELOW this module.  Same "general thing in the wrong module"
+--   as `ren-subTy` and `JudgeLib`; here it was blocking a generalisation
+--   through an import cycle rather than through a failed grep.
 
 -- where the tuple's walk ENDS.  ⚠ Defined by the same recursion the walk
 --   takes, so `posOf (wkd-cons w W) j` is `posOf W (suc j)` DEFINITIONALLY

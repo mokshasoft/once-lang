@@ -38,7 +38,8 @@ open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ren-ty )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Lib.IWk
   using ( sh; Mot; decDesc; iwkMeths; ⊢iwkMethsFrom; wkdRest
-        ; wfDrop; Split; spl-nil; imethsTyFromMot-wf )
+        ; wfDrop; imethsTyFromMot-wf )
+open import DirectedHoTT.Lib.IPay using ( Split; spl-nil )
 open import DirectedHoTT.Examples.Knot.Sorts using ( IPair; ⊢IPair; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
