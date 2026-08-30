@@ -9468,3 +9468,93 @@ is — in the IR — and the erasure boundary is exactly where it should stop.
   guard are deleted.
 
 **Relates**: D112, D113, D054
+
+---
+
+## D130: Composition Is LINEAR in Each Arm — the Term Language Was the Thing That Was Wrong
+
+**Date**: 2026-08-30 · **Status**: Decided (plan 0.76 Phase B) ·
+**Follows**: D127 (context-indexed composition), OCP-9 (QTT multiplicities)
+
+### The decision
+
+A context-indexed combinator's usage is the SUM of its arms':
+
+    ctx ⊢ᶜ f ∶ (B ⇒[Many π] C) ⨾ Ψ₁     ctx ⊢ᶜ g ∶ (A ⇒[Many π] B) ⨾ Ψ₂
+    ───────────────────────────────────────────────────────────────────
+       ctx ⊢ᶜ compose f g ∶ (A ⇒[Many π] C) ⨾ (Ψ₁ +ᵘ Ψ₂)
+
+and `Surface.Expr` gains four PRIMITIVES — `comp'`, `copair'`, `fork'`,
+`curry'` — whose typing rules state that directly, one per judgment rule.
+
+### The question D127 left open
+
+D127 made the arms ordinary terms in the ambient context. That makes their
+usage visible for the first time, and three readings are available:
+
+| | `compose f g` costs | |
+|---|---|---|
+| linear | `Ψ₁ +ᵘ Ψ₂` | **chosen** |
+| as-encoded | `Ψ₁ +ᵘ (Many *ᵘ Ψ₂)` | asymmetric |
+| closure-conservative | `Many *ᵘ (Ψ₁ +ᵘ Ψ₂)` | |
+
+They differ observably: whether a LINEAR local may be captured in a
+`compose` arm.
+
+### Why linear, and why QTT does not decide it
+
+**QTT's lambda does not scale its captured context.** Atkey's rule — and
+`Surface.lam` — passes `Ψ` through untouched, popping only the bound
+variable's head usage. So "the closure is callable many times, therefore its
+captures cost `Many`" is not how QTT counts; repeated calling is charged
+where the closure is USED. That removes the third reading.
+
+**Composition is linear in both arguments.** `comp : (B⇒C) × (A⇒B) →
+(A⇒C)` uses each component of its pair exactly once — visible in its own
+definition, `curry (apply ∘ ⟨fst∘fst, apply ∘ ⟨snd∘fst, snd⟩⟩)`. There is no
+reading on which `g` is used more often than `f`, so the second reading's
+asymmetry cannot be a fact about `∘`.
+
+Where does that asymmetry come from, then? From encoding composition as an
+APPLICATION. QTT's application rule `Γ + q·Δ ⊢ f x : B` scales the argument
+by the arrow's grade because a `Many`-graded function MAY duplicate its
+argument. That is correct for an arbitrary function and simply not what `∘`
+does.
+
+**So QTT supplies the bookkeeping; the category decides the rule.** The
+usage index should record what composition is, and composition is bilinear.
+
+### What it cost, and why that was the right direction
+
+Every eliminator the term language had — `app`, `effApp`, `morph-app` —
+scales its argument. So the term language could express only the
+conservative reading. Rather than weaken the spec to fit it (the inversion
+D057 and D114 were both written to stop), the TERM LANGUAGE gained the four
+primitives, and the linearity is DISCHARGED in `Once.Surface.Elaborate`
+rather than assumed: each elaborates to a closed CCC morphism composed with
+`⟨ arm₁ , arm₂ ⟩`, and the pairing is what makes "each arm once" true.
+
+### The bug this immediately caught
+
+The first elaboration fused the arms inward —
+`curry (apply ∘ ⟨ f ∘ fst , apply ∘ ⟨ g ∘ fst , snd ⟩ ⟩)` — which puts them
+UNDER the `curry`. An arm that emits would then re-emit on every call of the
+composite, and the trace would not match `⟦ comp' f g ⟧ˢ`, which binds both
+arms outside the function it returns. The closed-morphism form
+(`compIR ∘ ⟨ ef , eg ⟩`) runs each arm once, at build time.
+
+**The usage index and the trace semantics were saying the same thing**, and
+the encoding disagreed with both. That is the value of having the resource
+annotation at all: it made a trace-level defect visible as a type error.
+
+### Consequences
+
+- `copair'` needs distributivity `Γ × (A + B) → (Γ × A) + (Γ × B)`, which
+  never arose while `case` arms were closed. DERIVED (`distribIR`), not a new
+  IR primitive.
+- The four `IR` morphisms are closed and arm-free, which is what lets 0.76's
+  O1 (closed arms still emit `IR.∘`) be stated about them alone.
+- A linear local may NOT be captured in a compose arm and then have the
+  composite called twice — the rule now says so.
+
+**Relates**: D018, D056, D063, D127, OCP-9
