@@ -517,9 +517,31 @@ Both were my scan, not the rules.
 without that check the emitter died with a `KeyError` deep in the value
 translator instead of reporting an honest skip.
 
-⬜ **`JudgeWf` is not emitted.** The padded `Tm` slot's derivation leaves
-its context a meta (`_Γ ▹ _A != ◇`). The rows are green; only the
-well-formedness is open, and it is the first thing to pick up.
+✅ **`JudgeWf : IDescWf IJudge JudgeD`** — `JudgeWfA` 85s + `JudgeWfB`
+76s. **All four judgements are now well-formed descriptions.**
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 34 | emit `JudgeWf` | ⚠ `_Γ ▹ _A != ◇` — the padded slot's context is a meta |
+| 35 | set the threaded depth inside `_tupderiv` too | ⚠ `nsuc (var …) != var …` at `⊢⌜Π⌝` |
+| 36 | `Ctx-extK` **resets** the thread: its contents live at `m`, not at the `nsuc m` its result sits at | ⚠ OOM — errors gone, size left |
+| 37 | split in halves | ✅ **rc=0**, both |
+
+★★★ **The depth thread is global mutable state with four writers, and
+that is the bug class.** `DEPTHD` is set by the ford branch; `_tupderiv`
+did not set it, so a premise's values read whichever ford rung ran last.
+Then `Ctx-extK`, not being a `KNOT` row, had no `FIELD_DEPTH` entry and
+its children inherited the enclosing depth instead of the `m` it takes
+explicitly. ⇒ **it should be a parameter, not a global** — three of the
+last four bugs are the same shape, and each surfaced far from its cause.
+
+⚠⚠ **AND THE COST MODEL WAS WRONG IN A NAMEABLE WAY.** `SPLIT_AT = 34`
+was calibrated on `_⟶_`'s **three**-component index; this judgement's is
+**five**, and 28 rows OOMed as one module. Measured: 1.8 s/row at three
+components, **5.75 s/row** at five — the cost scales with the telescope's
+**width**, not just the row count, because each extra component is
+another ford, another transport, and another `⊢pair` rung per premise.
+⇒ size by `rows × components`, not by rows.
 
 ⬜ **The 15 unemitted rules are two classes, both already named:** 10 are
 *side conditions* (`DescWf D`, `k ∈D D`, `NoNatC c`, `occTm vz c ≡
