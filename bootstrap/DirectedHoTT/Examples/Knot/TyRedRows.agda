@@ -31,7 +31,8 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
-        ; toI; fromI; ⊢ixP; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; num )
+        ; toI; fromI; ⊢ixP; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar
+        ; num; ⊢num )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors

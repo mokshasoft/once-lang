@@ -488,3 +488,41 @@ checked by hand against the source: `⊢var` → `x:sVar, A:sTy`;
 `⊢lam` → `A:sTy, t:sTm, B:sTy`; `⊢fst` → `p:sTm, A:sTy, B:sTy`.
 
 ⬜ **Next:** the tagged index and the padded telescope, then emission.
+
+## §4.2 — the mutual pair, emitted ✅ rows · ⬜ well-formedness
+
+    JudgeD : IDesc        -- Knot/JudgeRows, 28 of 43 rules, rc=0
+
+★★ **The tagged index works, and the tag is load-bearing.** Without it
+`Γ ⊢ty Unit` and `Γ ⊢ unit ∷ Unit` collide: a `⊢ty` row pads its `Tm`
+slot with `Tm-unitK`, and `⊢unit` is a `⊢_∷_` rule whose subject *is*
+that dummy.
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 29 | depth inference by regex over each part | ⚠ **31/43** — `Γ ⊢ty Π A B` types `B` at depth 0 while `(Γ ▹ A) ⊢ty B` types it at 1 |
+| 30 | walk structurally, using `KNOT`'s field depths | ⚠ 33/43 — two more of my own defaults |
+| 31 | `∋` parts have no context extension at slot 2; unknown heads contribute nothing | ✅ **42/43** sorts *and* depths |
+| 32 | emit; foreign `≅ᵀ` and `∋` premises as κ fields | ✅ 32 rows |
+| 33 | check the **values** too, not just the premises | ✅ 28 rows, `JudgeRows` rc=0 |
+
+⚠ **Attempt 29→31 is the fifth and sixth time in this layer.** `Π`'s
+second field is at `sucD 1` and `KNOT` says so — the conclusion is not
+evidence of depth 0, it is evidence of depth 1 *read through the
+constructor*. And a `∋` premise has no extension where `⊢ty`/`⊢_∷_` do.
+Both were my scan, not the rules.
+
+★ Attempt 33 matters for a different reason: a rule can fail in its
+**values** rather than its premises (`⊢app`'s `subTy (single u) B`), and
+without that check the emitter died with a `KeyError` deep in the value
+translator instead of reporting an honest skip.
+
+⬜ **`JudgeWf` is not emitted.** The padded `Tm` slot's derivation leaves
+its context a meta (`_Γ ▹ _A != ◇`). The rows are green; only the
+well-formedness is open, and it is the first thing to pick up.
+
+⬜ **The 15 unemitted rules are two classes, both already named:** 10 are
+*side conditions* (`DescWf D`, `k ∈D D`, `NoNatC c`, `occTm vz c ≡
+false`, `flat? cA ≡ true`) — the same class as `_⟶_`'s `pw?`/`stkA?` — and
+4 need object-level substitution, joining the `β` group. Plus `⊢ielim`'s
+motive `M`, which the sort inference honestly declines.
