@@ -129,13 +129,13 @@ du_block'45'as'45'ir_46 v0 v1 v2
   = coe
       MAlonzo.Code.Once.IR.C_SigOp_154
       (coe
-         MAlonzo.Code.Once.Arith.Machine.IR.d_shape'45'as'45'type_136
+         MAlonzo.Code.Once.Arith.Machine.IR.d_shape'45'as'45'type_118
          (coe v0))
       (coe
-         MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_142
+         MAlonzo.Code.Once.Arith.Machine.IR.d_numtype'45'as'45'type_124
          (coe v1))
       (coe
-         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_510 (coe v0)
+         MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_520 (coe v0)
          (coe v1) (coe v2))
 -- Once.Arith.Machine.Rewrite.try-lift
 d_try'45'lift_62 ::
@@ -174,7 +174,7 @@ d_try'45'lift_62 v0 v1 v2
                                                               MAlonzo.Code.Once.Arith.Type.C_NInt_8)
                                                            (coe v9))
                                                         (coe
-                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_158
+                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_140
                                                            (coe v6)
                                                            (coe
                                                               MAlonzo.Code.Once.Arith.Type.C_NInt_8)
@@ -194,7 +194,7 @@ d_try'45'lift_62 v0 v1 v2
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                             -> let v8
                                      = coe
-                                         MAlonzo.Code.Once.Arith.Machine.Recognise.du_recognise'45'body'45'float_360
+                                         MAlonzo.Code.Once.Arith.Machine.Recognise.du_recognise'45'body'45'float_378
                                          (coe v6) (coe v0) (coe v2) in
                                coe
                                  (case coe v8 of
@@ -212,7 +212,7 @@ d_try'45'lift_62 v0 v1 v2
                                                               MAlonzo.Code.Once.Arith.Type.C_NFloat_10)
                                                            (coe v9))
                                                         (coe
-                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_158
+                                                           MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_140
                                                            (coe v6)
                                                            (coe
                                                               MAlonzo.Code.Once.Arith.Type.C_NFloat_10)

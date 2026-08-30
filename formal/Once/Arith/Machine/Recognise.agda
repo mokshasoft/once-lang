@@ -43,7 +43,7 @@ open import Once.CanonicalName using (bare; _≟ᶜ_)
 
 open import Once.Arith.Machine.AbsState
   using (InputShape; shape-int; shape-float; shape-pair; InputPath;
-         Side; Fst; Snd)
+         Side; Fst; Snd; Path; typePath?)
 -- PLAN 0.75 F4: the abstract-machine compile path is pinned at `NInt`, and
 -- that restriction is STATED rather than assumed. Its instruction set
 -- (`add-rrr`, `div-rrr`, …) is integer-register shaped, so a float block has
@@ -146,10 +146,15 @@ recognise-body sh (const fits-int v ∘ rhs) with is-terminal? rhs
 ... | false = nothing
 recognise-body sh (const fits-float _ ∘ _) = nothing
 
--- Otherwise: try projection-chain.
+-- Otherwise: try projection-chain. The chain gives an UNTYPED path; `typePath?`
+-- establishes that it lands on an `Int` leaf before an `ainput` can be built.
+-- Refusing is the point: a chain landing on a float leaf used to be recognised
+-- and then evaluate to `0`.
 recognise-body sh other with recognise-path other
-... | just p  = just (ainput p)
-... | nothing = nothing
+... | just p  with typePath? sh NInt p
+...   | just tp = just (ainput tp)
+...   | nothing = nothing
+recognise-body sh other | nothing = nothing
 
 
 ------------------------------------------------------------------------
@@ -211,9 +216,13 @@ recognise-body-float sh (const fits-float d ∘ rhs) with is-terminal-f? rhs
 ... | false = nothing
 recognise-body-float sh (const fits-int _ ∘ _) = nothing
 
+-- The float twin, and the SAME refusal one type over: a chain landing on an
+-- `Int` leaf is not a float input.
 recognise-body-float sh other with recognise-path other
-... | just p  = just (ainput p)
-... | nothing = nothing
+... | just p  with typePath? sh NFloat p
+...   | just tp = just (ainput tp)
+...   | nothing = nothing
+recognise-body-float sh other | nothing = nothing
 
 ------------------------------------------------------------------------
 -- Block-level entry

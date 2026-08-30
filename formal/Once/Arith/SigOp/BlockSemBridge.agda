@@ -30,7 +30,8 @@ open import Data.Maybe using (Maybe; just; nothing) renaming (map to mapMaybe)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 
 open import Once.Arith.Machine.Shape
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd; project; projectF)
+  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd; project; projectF;
+         Path; here-int; here-flt; go-fst; go-snd; readLeaf; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
          numtype-as-type; shape-as-type)
@@ -41,7 +42,7 @@ import Once.Float.Arith as FA
 import Once.Word as OnceWord
 open import Once.Float.Dyadic using (Dyadic)
 import Once.Semantics.Value OnceWord.Carrier OnceWord.Carrier as M
-open import Once.Arith.SigOp.Block using (block-semM; projectM; maybe-zeroM)
+open import Once.Arith.SigOp.Block using (block-semM; projectM; maybe-zeroM; readLeafM)
 
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 
@@ -100,18 +101,6 @@ module _ (tn : TargetNum) where
   -- Piece 5: the two evaluators agree, modulo the input bridge.
   ------------------------------------------------------------------------
 
-  -- Leaf: `eval-arith-W (ainput p)` = `maybe-zeroM (mapMaybe fromℤ (project …))`.
-  ainput-leaf : ∀ (sh : InputShape) (p : InputPath) (env : ⟦ sh ⟧S)
-              → eval-arith-W {sh} {NInt} (ainput p) env ≡ maybe-zeroM (mapMaybe W.fromℤ (project sh p env))
-  -- The `nothing` case USED TO BE `refl` and no longer is, which is a real
-  -- consequence of un-baking the width: `fromℤ (+ 0)` is `0 % 2^bits`, and
-  -- that computes to `0` only when `bits` is a literal. At an abstract width
-  -- it needs the lemma. Every `refl` that quietly depended on the width being
-  -- 64 shows up exactly like this.
-  ainput-leaf sh p env with project sh p env
-  ... | just z  = refl
-  ... | nothing = W.fromℤ-0
-
   -- PLAN 0.75 F4: the FLOAT leaf's commute, and it is `refl` at every shape —
   -- `toWord` is the identity on a float leaf, because there is no spec-level
   -- float value to narrow from (D113). The `Int` twin above needs `fromℤ`
@@ -131,27 +120,28 @@ module _ (tn : TargetNum) where
   -- call `Once.Float.Arith`'s operations at the SAME format — `F` here is
   -- literally `float-format tn` — so there is nothing to reconcile, exactly as
   -- there is nothing to reconcile between two `⊕`s at the same width.
-  -- The float twin of `ainput-leaf`. `eval-arith-W`'s float leaf is a `with`
-  -- too, so it needs the same unsticking — and BOTH branches are `refl` here,
-  -- because there is no `fromℤ` on this side to make the default non-trivial.
-  ainputF-leaf : ∀ (sh : InputShape) (p : InputPath) (env : ⟦ sh ⟧S)
-               → eval-arith-W {sh} {NFloat} (ainput p) env ≡ maybe-zeroM (projectF sh p env)
-  ainputF-leaf sh p env with projectF sh p env
-  ... | just w  = refl
-  ... | nothing = refl
+  -- With both `ainput` reads TOTAL, the four leaf lemmas above collapse to one
+  -- induction on the typed path — and it is `refl` at every leaf. The old
+  -- lemmas had to reconcile two `Maybe`s and their two invented defaults;
+  -- there are no defaults left to reconcile.
+  readLeaf-commute : ∀ {sh} (p : Path sh NInt) (env : ⟦ sh ⟧S)
+                   → readLeafM p (toWord sh env) ≡ W.fromℤ (readLeaf p env)
+  readLeaf-commute here-int   z       = refl
+  readLeaf-commute (go-fst p) (x , y) = readLeaf-commute p x
+  readLeaf-commute (go-snd p) (x , y) = readLeaf-commute p y
+
+  readLeafF-commute : ∀ {sh} (p : Path sh NFloat) (env : ⟦ sh ⟧S)
+                    → readLeafM p (toWord sh env) ≡ readLeaf p env
+  readLeafF-commute here-flt   w       = refl
+  readLeafF-commute (go-fst p) (x , y) = readLeafF-commute p x
+  readLeafF-commute (go-snd p) (x , y) = readLeafF-commute p y
 
   eval≡semM : ∀ {sh n} (e : MArithIR sh n) (env : ⟦ sh ⟧S)
             → eval-arith-W e env ≡ block-semM e tn (toWord sh env)
   eval≡semM (alit z)   env = refl
   eval≡semM (aflit d)  env = refl
-  eval≡semM {sh} {NInt} (ainput p) env =
-    trans (ainput-leaf sh p env)
-          (cong maybe-zeroM (sym (project-commute sh p env)))
-  -- `maybe-zeroM` on BOTH sides: `eval-arith-W`'s float default and
-  -- `block-semM`'s are the same function, so the only step is the commute.
-  eval≡semM {sh} {NFloat} (ainput p) env =
-    trans (ainputF-leaf sh p env)
-          (cong maybe-zeroM (sym (projectF-commute sh p env)))
+  eval≡semM {sh} {NInt}   (ainput p) env = sym (readLeaf-commute p env)
+  eval≡semM {sh} {NFloat} (ainput p) env = sym (readLeafF-commute p env)
   eval≡semM {n = NInt}   (aadd a b) env = cong₂ W._⊕_  (eval≡semM a env) (eval≡semM b env)
   eval≡semM {n = NFloat} (aadd a b) env = cong₂ (FA.fadd F) (eval≡semM a env) (eval≡semM b env)
   eval≡semM {n = NInt}   (asub a b) env = cong₂ W._⊖_  (eval≡semM a env) (eval≡semM b env)

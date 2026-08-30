@@ -1089,32 +1089,32 @@ d_project'45'commute_308 ::
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_project'45'commute_308 = erased
--- Once.Arith.SigOp.BlockSemBridge._.ainput-leaf
-d_ainput'45'leaf_356 ::
-  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ainput'45'leaf_356 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.projectF-commute
-d_projectF'45'commute_388 ::
+d_projectF'45'commute_356 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_projectF'45'commute_388 = erased
--- Once.Arith.SigOp.BlockSemBridge._.ainputF-leaf
-d_ainputF'45'leaf_436 ::
+d_projectF'45'commute_356 = erased
+-- Once.Arith.SigOp.BlockSemBridge._.readLeaf-commute
+d_readLeaf'45'commute_404 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
-  [MAlonzo.Code.Once.Arith.Machine.Shape.T_Side_24] ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ainputF'45'leaf_436 = erased
+d_readLeaf'45'commute_404 = erased
+-- Once.Arith.SigOp.BlockSemBridge._.readLeafF-commute
+d_readLeafF'45'commute_426 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_Path_68 ->
+  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_readLeafF'45'commute_426 = erased
 -- Once.Arith.SigOp.BlockSemBridge._.eval≡semM
-d_eval'8801'semM_470 ::
+d_eval'8801'semM_450 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_eval'8801'semM_470 = erased
+d_eval'8801'semM_450 = erased

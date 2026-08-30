@@ -4349,18 +4349,19 @@ d_pre_2876 ::
 d_pre_2876 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
            ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21 ~v22 ~v23 ~v24 ~v25
            ~v26 ~v27 ~v28 ~v29 ~v30 ~v31 ~v32 ~v33 ~v34 ~v35 ~v36 ~v37 ~v38
-           ~v39 ~v40 ~v41 ~v42 ~v43 ~v44 ~v45 ~v46 ~v47 v48 ~v49 ~v50 ~v51
-  = du_pre_2876 v48
+           ~v39 ~v40 ~v41 ~v42 ~v43 ~v44 ~v45 ~v46 v47 v48 ~v49 ~v50 ~v51
+  = du_pre_2876 v47 v48
 du_pre_2876 ::
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   [MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24]
-du_pre_2876 v0
+du_pre_2876 v0 v1
   = coe
       MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_870
       (coe
-         MAlonzo.Code.Once.Arith.Machine.Compile.du_compile'45'go_180
-         (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8) (coe (0 :: Integer))
-         (coe v0))
+         MAlonzo.Code.Once.Arith.Machine.Compile.d_compile'45'go_180
+         (coe v0) (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8)
+         (coe (0 :: Integer)) (coe v1))
 -- Once.Adequacy.ArchCorrectness.ArithSimCore.At.Core._.aPre
 d_aPre_2878 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
@@ -4525,7 +4526,7 @@ du_aPre_2878 v0 v1 v2 v3
       MAlonzo.Code.Once.Arith.Backend.Correct.d_exec'45'xprog_258
       (coe MAlonzo.Code.Once.Target.Arch.d_int'45'bits_22 (coe v0))
       (coe MAlonzo.Code.Once.Target.Arch.d_float'45'format_24 (coe v0))
-      (coe v1) (coe du_pre_2876 (coe v2))
+      (coe v1) (coe du_pre_2876 (coe v1) (coe v2))
       (coe MAlonzo.Code.Once.Arith.Machine.AbsState.du_init_154 (coe v3))
 -- Once.Adequacy.ArchCorrectness.ArithSimCore.At.Core._.cPre
 d_cPre_2880 ::
@@ -4678,14 +4679,16 @@ d_cPre_2880 ::
 d_cPre_2880 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 v12
             ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21 ~v22 ~v23 ~v24 ~v25
             ~v26 ~v27 ~v28 ~v29 ~v30 ~v31 ~v32 ~v33 ~v34 ~v35 ~v36 ~v37 ~v38
-            ~v39 ~v40 ~v41 ~v42 ~v43 ~v44 ~v45 ~v46 ~v47 v48 ~v49 v50 ~v51
-  = du_cPre_2880 v12 v48 v50
+            ~v39 ~v40 ~v41 ~v42 ~v43 ~v44 ~v45 ~v46 v47 v48 ~v49 v50 ~v51
+  = du_cPre_2880 v12 v47 v48 v50
 du_cPre_2880 ::
   ([MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24] ->
    AgdaAny -> AgdaAny) ->
+  MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10 ->
   AgdaAny -> AgdaAny
-du_cPre_2880 v0 v1 v2 = coe v0 (coe du_pre_2876 (coe v1)) v2
+du_cPre_2880 v0 v1 v2 v3
+  = coe v0 (coe du_pre_2876 (coe v1) (coe v2)) v3
 -- Once.Adequacy.ArchCorrectness.ArithSimCore.At.Core._.blk≡
 d_blk'8801'_2882 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->

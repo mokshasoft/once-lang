@@ -17,7 +17,6 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
-import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Once.Arith.Machine.IR
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.Arith.Type
@@ -48,26 +47,15 @@ d_eval'45'arith'45'W_38 v0 v1 v2 v3 v4 v5
       MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_20 v7
         -> case coe v3 of
              MAlonzo.Code.Once.Arith.Type.C_NInt_8
-               -> let v8
-                        = MAlonzo.Code.Once.Arith.Machine.Shape.d_project_34
-                            (coe v2) (coe v7) (coe v5) in
-                  coe
-                    (case coe v8 of
-                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
-                         -> coe MAlonzo.Code.Once.Word.d_fromℤ_20 (coe v0) (coe v9)
-                       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                         -> coe
-                              MAlonzo.Code.Once.Word.d_fromℤ_20 (coe v0) (coe (0 :: Integer))
-                       _ -> MAlonzo.RTE.mazUnreachableError)
+               -> coe
+                    MAlonzo.Code.Once.Word.d_fromℤ_20 (coe v0)
+                    (coe
+                       MAlonzo.Code.Once.Arith.Machine.Shape.du_readLeaf_96 (coe v2)
+                       (coe v7) (coe v5))
              MAlonzo.Code.Once.Arith.Type.C_NFloat_10
-               -> let v8
-                        = MAlonzo.Code.Once.Arith.Machine.Shape.d_projectF_52
-                            (coe v2) (coe v7) (coe v5) in
-                  coe
-                    (case coe v8 of
-                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9 -> coe v9
-                       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe (0 :: Integer)
-                       _ -> MAlonzo.RTE.mazUnreachableError)
+               -> coe
+                    MAlonzo.Code.Once.Arith.Machine.Shape.du_readLeaf_96 (coe v2)
+                    (coe v7) (coe v5)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Arith.Machine.IR.C_aadd_24 v7 v8
         -> case coe v3 of

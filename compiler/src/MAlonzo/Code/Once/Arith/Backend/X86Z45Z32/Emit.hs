@@ -829,11 +829,11 @@ d_program'45'text_172 v0
 -- Once.Arith.Backend.X86-32.Emit.emit-arith-block
 d_emit'45'arith'45'block_180 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_144 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_126 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_emit'45'arith'45'block_180 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_158 v2 v3 v4
+      MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_140 v2 v3 v4
         -> case coe v3 of
              MAlonzo.Code.Once.Arith.Type.C_NInt_8
                -> coe
@@ -876,8 +876,8 @@ d_emit'45'arith'45'block_180 v0 v1
                                                   (coe
                                                      MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_870
                                                      (coe
-                                                        MAlonzo.Code.Once.Arith.Machine.Compile.du_compile'45'abs_268
-                                                        (coe v3)
+                                                        MAlonzo.Code.Once.Arith.Machine.Compile.d_compile'45'abs_268
+                                                        (coe v2) (coe v3)
                                                         (coe
                                                            MAlonzo.Code.Once.Arith.Machine.Compile.du_normalize_298
                                                            (coe v4)))))
@@ -956,8 +956,8 @@ d_emit'45'arith'45'block_180 v0 v1
                                                   (coe
                                                      MAlonzo.Code.Once.Arith.Backend.XInstr.CodeGen.d_emit'45'program_870
                                                      (coe
-                                                        MAlonzo.Code.Once.Arith.Machine.Compile.du_compile'45'abs_268
-                                                        (coe v3) (coe v4))))
+                                                        MAlonzo.Code.Once.Arith.Machine.Compile.d_compile'45'abs_268
+                                                        (coe v2) (coe v3) (coe v4))))
                                                (coe
                                                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                   ("    addl $" :: Data.Text.Text)
@@ -996,7 +996,7 @@ d_emit'45'arith'45'block_180 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Backend.X86-32.Emit.arith-block-symbol
 d_arith'45'block'45'symbol_210 ::
-  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_144 ->
+  MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_126 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_arith'45'block'45'symbol_210 v0
   = coe
@@ -1004,10 +1004,12 @@ d_arith'45'block'45'symbol_210 v0
       (coe
          MAlonzo.Code.Once.Arith.SigOp.Block.du_block'45'name_342
          (coe
-            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_156 (coe v0)))
+            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'shape_134 (coe v0))
+         (coe
+            MAlonzo.Code.Once.Arith.Machine.IR.d_block'45'body_138 (coe v0)))
 -- Once.Arith.Backend.X86-32.Emit.emit-arith-blocks
 d_emit'45'arith'45'blocks_214 ::
-  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_144] ->
+  [MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_126] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_emit'45'arith'45'blocks_214 v0
   = case coe v0 of

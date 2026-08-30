@@ -31,7 +31,9 @@ open import Once.Float.Decimal using (Decimal)
 import Once.Type as T
 open import Once.Arith.Machine.Shape
   using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath;
-         Side; Fst; Snd; project; projectF)
+         Side; Fst; Snd; project; projectF;
+         Path; here-int; here-flt; go-fst; go-snd; LeafVal; readLeaf; ⌊_⌋ᴾ;
+         project-path; projectF-path)
 
 ------------------------------------------------------------------------
 -- MArithIR: machine-level arith expression tree
@@ -49,7 +51,12 @@ data MArithIR (sh : InputShape) : NumType → Set where
   -- the target's format, and putting a pattern here would move it earlier and
   -- cap precision at whatever format this node chose.
   aflit      : Decimal → MArithIR sh NFloat
-  ainput     : ∀ {n} → InputPath → MArithIR sh n
+  -- The path is TYPED (`Path sh n`): it lands on an `n` leaf by construction.
+  -- Untyped, this node could read a float leaf as an `Int`, and the abstract
+  -- machine had to invent `0` for that — a value for a case that should not
+  -- exist, and the reason the float-argument correspondence was a postulate.
+  -- The evidence travels with the path instead, so `readLeaf` is total.
+  ainput     : ∀ {n} → Path sh n → MArithIR sh n
   -- `+`, `−` and `×` are POLYMORPHIC in the number kind — one constructor
   -- each, dispatched by the index. That is the whole reason `NumType` exists
   -- (`NInt | NFloat`, width-free): the emitter reads the index to choose
@@ -104,9 +111,9 @@ private
 -- does the restricting and no case analysis is added.
 eval-arith : ∀ {sh} → MArithIR sh NInt → ⟦ sh ⟧S → ℤ
 eval-arith {sh} (alit z)     _   = z
-eval-arith {sh} (ainput p)   inp with project sh p inp
-... | just z   = z
-... | nothing  = + 0
+-- No `with`, no default: the path proves the leaf is an `Int` leaf, so the
+-- read is total. This clause used to invent `+ 0` for the impossible case.
+eval-arith {sh} (ainput p)   inp = readLeaf p inp
 eval-arith (aadd a b) inp = eval-arith a inp ℤ.+ eval-arith b inp
 eval-arith (asub a b) inp = eval-arith a inp ℤ.- eval-arith b inp
 eval-arith (amul a b) inp = eval-arith a inp ℤ.* eval-arith b inp

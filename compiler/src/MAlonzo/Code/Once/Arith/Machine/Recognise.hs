@@ -113,9 +113,17 @@ du_recognise'45'body_44 v0 v1 v2
             coe
               (case coe v3 of
                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
-                   -> coe
-                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                        (coe MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_20 v4)
+                   -> let v5
+                            = MAlonzo.Code.Once.Arith.Machine.Shape.d_typePath'63'_160
+                                (coe v0) (coe MAlonzo.Code.Once.Arith.Type.C_NInt_8) (coe v4) in
+                      coe
+                        (case coe v5 of
+                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
+                             -> coe
+                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                  (coe MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_20 v6)
+                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
+                           _ -> MAlonzo.RTE.mazUnreachableError)
                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
                  _ -> MAlonzo.RTE.mazUnreachableError) in
     coe
@@ -8437,28 +8445,36 @@ du_is'45'terminal'63'_316 v0
            -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          _ -> coe v1)
 -- Once.Arith.Machine.Recognise.recognise-body-float
-d_recognise'45'body'45'float_360 ::
+d_recognise'45'body'45'float_378 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10
-d_recognise'45'body'45'float_360 v0 v1 ~v2 v3
-  = du_recognise'45'body'45'float_360 v0 v1 v3
-du_recognise'45'body'45'float_360 ::
+d_recognise'45'body'45'float_378 v0 v1 ~v2 v3
+  = du_recognise'45'body'45'float_378 v0 v1 v3
+du_recognise'45'body'45'float_378 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_MArithIR_10
-du_recognise'45'body'45'float_360 v0 v1 v2
+du_recognise'45'body'45'float_378 v0 v1 v2
   = let v3
           = let v3 = coe du_recognise'45'path_12 (coe v1) (coe v2) in
             coe
               (case coe v3 of
                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
-                   -> coe
-                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                        (coe MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_20 v4)
+                   -> let v5
+                            = MAlonzo.Code.Once.Arith.Machine.Shape.d_typePath'63'_160
+                                (coe v0) (coe MAlonzo.Code.Once.Arith.Type.C_NFloat_10) (coe v4) in
+                      coe
+                        (case coe v5 of
+                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
+                             -> coe
+                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                  (coe MAlonzo.Code.Once.Arith.Machine.IR.C_ainput_20 v6)
+                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
+                           _ -> MAlonzo.RTE.mazUnreachableError)
                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v3
                  _ -> MAlonzo.RTE.mazUnreachableError) in
     coe
@@ -8470,7 +8486,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                        MAlonzo.Code.Once.IRTy.C_fits'45'int_512
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                        MAlonzo.Code.Once.IRTy.C_fits'45'float_514
-                         -> let v12 = coe du_is'45'terminal'45'f'63'_596 (coe v8) in
+                         -> let v12 = coe du_is'45'terminal'45'f'63'_614 (coe v8) in
                             coe
                               (if coe v12
                                  then coe
@@ -8512,7 +8528,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                   then coe
                                                          seq (coe v17)
                                                          (let v18
-                                                                = d_recognise'45'binop'45'float_368
+                                                                = d_recognise'45'binop'45'float_386
                                                                     (coe v0) (coe v1)
                                                                     (coe
                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
@@ -8574,7 +8590,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                               (coe
                                                                                                  v23)
                                                                                               (let v24
-                                                                                                     = d_recognise'45'binop'45'float_368
+                                                                                                     = d_recognise'45'binop'45'float_386
                                                                                                          (coe
                                                                                                             v0)
                                                                                                          (coe
@@ -8654,7 +8670,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                    (coe
                                                                                                                                       v29)
                                                                                                                                    (let v30
-                                                                                                                                          = d_recognise'45'binop'45'float_368
+                                                                                                                                          = d_recognise'45'binop'45'float_386
                                                                                                                                               (coe
                                                                                                                                                  v0)
                                                                                                                                               (coe
@@ -8734,7 +8750,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                         (coe
                                                                                                                                                                            v35)
                                                                                                                                                                         (let v36
-                                                                                                                                                                               = d_recognise'45'binop'45'float_368
+                                                                                                                                                                               = d_recognise'45'binop'45'float_386
                                                                                                                                                                                    (coe
                                                                                                                                                                                       v0)
                                                                                                                                                                                    (coe
@@ -8916,7 +8932,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                          (coe
                                                                                                                                                                             v35)
                                                                                                                                                                          (let v36
-                                                                                                                                                                                = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                = d_recognise'45'binop'45'float_386
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v0)
                                                                                                                                                                                     (coe
@@ -9100,7 +9116,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                     (coe
                                                                                                                                        v29)
                                                                                                                                     (let v30
-                                                                                                                                           = d_recognise'45'binop'45'float_368
+                                                                                                                                           = d_recognise'45'binop'45'float_386
                                                                                                                                                (coe
                                                                                                                                                   v0)
                                                                                                                                                (coe
@@ -9180,7 +9196,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                          (coe
                                                                                                                                                                             v35)
                                                                                                                                                                          (let v36
-                                                                                                                                                                                = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                = d_recognise'45'binop'45'float_386
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v0)
                                                                                                                                                                                     (coe
@@ -9362,7 +9378,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                           (coe
                                                                                                                                                                              v35)
                                                                                                                                                                           (let v36
-                                                                                                                                                                                 = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                 = d_recognise'45'binop'45'float_386
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v0)
                                                                                                                                                                                      (coe
@@ -9544,7 +9560,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                (coe
                                                                                                   v23)
                                                                                                (let v24
-                                                                                                      = d_recognise'45'binop'45'float_368
+                                                                                                      = d_recognise'45'binop'45'float_386
                                                                                                           (coe
                                                                                                              v0)
                                                                                                           (coe
@@ -9624,7 +9640,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                     (coe
                                                                                                                                        v29)
                                                                                                                                     (let v30
-                                                                                                                                           = d_recognise'45'binop'45'float_368
+                                                                                                                                           = d_recognise'45'binop'45'float_386
                                                                                                                                                (coe
                                                                                                                                                   v0)
                                                                                                                                                (coe
@@ -9704,7 +9720,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                          (coe
                                                                                                                                                                             v35)
                                                                                                                                                                          (let v36
-                                                                                                                                                                                = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                = d_recognise'45'binop'45'float_386
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v0)
                                                                                                                                                                                     (coe
@@ -9886,7 +9902,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                           (coe
                                                                                                                                                                              v35)
                                                                                                                                                                           (let v36
-                                                                                                                                                                                 = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                 = d_recognise'45'binop'45'float_386
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v0)
                                                                                                                                                                                      (coe
@@ -10070,7 +10086,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                      (coe
                                                                                                                                         v29)
                                                                                                                                      (let v30
-                                                                                                                                            = d_recognise'45'binop'45'float_368
+                                                                                                                                            = d_recognise'45'binop'45'float_386
                                                                                                                                                 (coe
                                                                                                                                                    v0)
                                                                                                                                                 (coe
@@ -10150,7 +10166,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                           (coe
                                                                                                                                                                              v35)
                                                                                                                                                                           (let v36
-                                                                                                                                                                                 = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                 = d_recognise'45'binop'45'float_386
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v0)
                                                                                                                                                                                      (coe
@@ -10332,7 +10348,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                            (coe
                                                                                                                                                                               v35)
                                                                                                                                                                            (let v36
-                                                                                                                                                                                  = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                  = d_recognise'45'binop'45'float_386
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v0)
                                                                                                                                                                                       (coe
@@ -10514,7 +10530,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                    then coe
                                                           seq (coe v17)
                                                           (let v18
-                                                                 = d_recognise'45'binop'45'float_368
+                                                                 = d_recognise'45'binop'45'float_386
                                                                      (coe v0) (coe v1)
                                                                      (coe
                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
@@ -10576,7 +10592,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                (coe
                                                                                                   v23)
                                                                                                (let v24
-                                                                                                      = d_recognise'45'binop'45'float_368
+                                                                                                      = d_recognise'45'binop'45'float_386
                                                                                                           (coe
                                                                                                              v0)
                                                                                                           (coe
@@ -10656,7 +10672,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                     (coe
                                                                                                                                        v29)
                                                                                                                                     (let v30
-                                                                                                                                           = d_recognise'45'binop'45'float_368
+                                                                                                                                           = d_recognise'45'binop'45'float_386
                                                                                                                                                (coe
                                                                                                                                                   v0)
                                                                                                                                                (coe
@@ -10736,7 +10752,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                          (coe
                                                                                                                                                                             v35)
                                                                                                                                                                          (let v36
-                                                                                                                                                                                = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                = d_recognise'45'binop'45'float_386
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v0)
                                                                                                                                                                                     (coe
@@ -10918,7 +10934,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                           (coe
                                                                                                                                                                              v35)
                                                                                                                                                                           (let v36
-                                                                                                                                                                                 = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                 = d_recognise'45'binop'45'float_386
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v0)
                                                                                                                                                                                      (coe
@@ -11102,7 +11118,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                      (coe
                                                                                                                                         v29)
                                                                                                                                      (let v30
-                                                                                                                                            = d_recognise'45'binop'45'float_368
+                                                                                                                                            = d_recognise'45'binop'45'float_386
                                                                                                                                                 (coe
                                                                                                                                                    v0)
                                                                                                                                                 (coe
@@ -11182,7 +11198,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                           (coe
                                                                                                                                                                              v35)
                                                                                                                                                                           (let v36
-                                                                                                                                                                                 = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                 = d_recognise'45'binop'45'float_386
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v0)
                                                                                                                                                                                      (coe
@@ -11364,7 +11380,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                            (coe
                                                                                                                                                                               v35)
                                                                                                                                                                            (let v36
-                                                                                                                                                                                  = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                  = d_recognise'45'binop'45'float_386
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v0)
                                                                                                                                                                                       (coe
@@ -11546,7 +11562,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                 (coe
                                                                                                    v23)
                                                                                                 (let v24
-                                                                                                       = d_recognise'45'binop'45'float_368
+                                                                                                       = d_recognise'45'binop'45'float_386
                                                                                                            (coe
                                                                                                               v0)
                                                                                                            (coe
@@ -11626,7 +11642,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                      (coe
                                                                                                                                         v29)
                                                                                                                                      (let v30
-                                                                                                                                            = d_recognise'45'binop'45'float_368
+                                                                                                                                            = d_recognise'45'binop'45'float_386
                                                                                                                                                 (coe
                                                                                                                                                    v0)
                                                                                                                                                 (coe
@@ -11706,7 +11722,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                           (coe
                                                                                                                                                                              v35)
                                                                                                                                                                           (let v36
-                                                                                                                                                                                 = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                 = d_recognise'45'binop'45'float_386
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v0)
                                                                                                                                                                                      (coe
@@ -11888,7 +11904,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                            (coe
                                                                                                                                                                               v35)
                                                                                                                                                                            (let v36
-                                                                                                                                                                                  = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                  = d_recognise'45'binop'45'float_386
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v0)
                                                                                                                                                                                       (coe
@@ -12072,7 +12088,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                       (coe
                                                                                                                                          v29)
                                                                                                                                       (let v30
-                                                                                                                                             = d_recognise'45'binop'45'float_368
+                                                                                                                                             = d_recognise'45'binop'45'float_386
                                                                                                                                                  (coe
                                                                                                                                                     v0)
                                                                                                                                                  (coe
@@ -12152,7 +12168,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                            (coe
                                                                                                                                                                               v35)
                                                                                                                                                                            (let v36
-                                                                                                                                                                                  = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                  = d_recognise'45'binop'45'float_386
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v0)
                                                                                                                                                                                       (coe
@@ -12334,7 +12350,7 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                                                                                                                                                                             (coe
                                                                                                                                                                                v35)
                                                                                                                                                                             (let v36
-                                                                                                                                                                                   = d_recognise'45'binop'45'float_368
+                                                                                                                                                                                   = d_recognise'45'binop'45'float_386
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v0)
                                                                                                                                                                                        (coe
@@ -12505,13 +12521,13 @@ du_recognise'45'body'45'float_360 v0 v1 v2
                 _ -> coe v3
          _ -> coe v3)
 -- Once.Arith.Machine.Recognise.recognise-binop-float
-d_recognise'45'binop'45'float_368 ::
+d_recognise'45'binop'45'float_386 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_recognise'45'binop'45'float_368 v0 v1 v2 v3
+d_recognise'45'binop'45'float_386 v0 v1 v2 v3
   = let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v3 of
@@ -12520,11 +12536,11 @@ d_recognise'45'binop'45'float_368 v0 v1 v2 v3
                 MAlonzo.Code.Once.IRTy.C__'42'__20 v11 v12
                   -> let v13
                            = coe
-                               du_recognise'45'body'45'float_360 (coe v0) (coe v1) (coe v8) in
+                               du_recognise'45'body'45'float_378 (coe v0) (coe v1) (coe v8) in
                      coe
                        (let v14
                               = coe
-                                  du_recognise'45'body'45'float_360 (coe v0) (coe v1) (coe v9) in
+                                  du_recognise'45'body'45'float_378 (coe v0) (coe v1) (coe v9) in
                         coe
                           (case coe v13 of
                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v15
@@ -12540,7 +12556,7 @@ d_recognise'45'binop'45'float_368 v0 v1 v2 v3
                 _ -> coe v4
          _ -> coe v4)
 -- Once.Arith.Machine.Recognise._.is-terminal-f?
-d_is'45'terminal'45'f'63'_596 ::
+d_is'45'terminal'45'f'63'_614 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.Float.Decimal.T_Decimal_6 ->
@@ -12548,11 +12564,11 @@ d_is'45'terminal'45'f'63'_596 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> Bool
-d_is'45'terminal'45'f'63'_596 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6
-  = du_is'45'terminal'45'f'63'_596 v6
-du_is'45'terminal'45'f'63'_596 ::
+d_is'45'terminal'45'f'63'_614 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 v6
+  = du_is'45'terminal'45'f'63'_614 v6
+du_is'45'terminal'45'f'63'_614 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> Bool
-du_is'45'terminal'45'f'63'_596 v0
+du_is'45'terminal'45'f'63'_614 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
@@ -12560,21 +12576,21 @@ du_is'45'terminal'45'f'63'_596 v0
            -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          _ -> coe v1)
 -- Once.Arith.Machine.Recognise.recognise
-d_recognise_642 ::
+d_recognise_678 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_144
-d_recognise_642 v0 v1 v2 ~v3 v4 = du_recognise_642 v0 v1 v2 v4
-du_recognise_642 ::
+  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_126
+d_recognise_678 v0 v1 v2 ~v3 v4 = du_recognise_678 v0 v1 v2 v4
+du_recognise_678 ::
   MAlonzo.Code.Once.Arith.Machine.Shape.T_InputShape_8 ->
   MAlonzo.Code.Once.Arith.Type.T_NumType_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
-  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_144
-du_recognise_642 v0 v1 v2 v3
+  Maybe MAlonzo.Code.Once.Arith.Machine.IR.T_ArithBlock_126
+du_recognise_678 v0 v1 v2 v3
   = case coe v1 of
       MAlonzo.Code.Once.Arith.Type.C_NInt_8
         -> let v4
@@ -12585,21 +12601,21 @@ du_recognise_642 v0 v1 v2 v3
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe
-                          MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_158 (coe v0)
+                          MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_140 (coe v0)
                           (coe v1) (coe v5))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v4
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.Arith.Type.C_NFloat_10
         -> let v4
                  = coe
-                     du_recognise'45'body'45'float_360 (coe v0) (coe v2) (coe v3) in
+                     du_recognise'45'body'45'float_378 (coe v0) (coe v2) (coe v3) in
            coe
              (case coe v4 of
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe
-                          MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_158 (coe v0)
+                          MAlonzo.Code.Once.Arith.Machine.IR.C_mk'45'block_140 (coe v0)
                           (coe v1) (coe v5))
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v4
                 _ -> MAlonzo.RTE.mazUnreachableError)

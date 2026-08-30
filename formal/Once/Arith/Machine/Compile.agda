@@ -44,6 +44,7 @@ open import Once.Arith.Machine.AbsInstr
 open import Once.Arith.Type using (NumType; NInt; NFloat)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f)
+open import Once.Arith.Machine.Shape using (⌊_⌋ᴾ)
 
 ------------------------------------------------------------------------
 -- Register / scratch budget
@@ -207,8 +208,13 @@ div-op b = div-choose (pow2? b) (safe-divisor? b)
 compile-go : ∀ {sh n} → ℕ → MArithIR sh n → List AbstractInstr
 compile-go d (alit z)     = load-imm z 0 ∷ []
 compile-go d (aflit dc)   = load-fimm dc 0 ∷ []
-compile-go {n = NInt}   d (ainput p) = load-input p 0 ∷ []
-compile-go {n = NFloat} d (ainput p) = load-finput p 0 ∷ []
+-- THE ERASURE BOUNDARY. The abstract ISA stays untyped — `add-rrr 0 1 0` does
+-- not care what shape the block's parameter has, and indexing twenty
+-- constructors by `sh` to serve two would be indexing the wrong thing. The
+-- type travels as far as the IR node and stops here; what the proof needs on
+-- the other side is recovered from `project-path` / `projectF-path`.
+compile-go {n = NInt}   d (ainput p) = load-input ⌊ p ⌋ᴾ 0 ∷ []
+compile-go {n = NFloat} d (ainput p) = load-finput ⌊ p ⌋ᴾ 0 ∷ []
 compile-go {n = NInt} d (aadd a b) =
   compile-go d a ++ (spill 0 d ∷ []) ++
   compile-go (suc d) b ++

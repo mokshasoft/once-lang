@@ -39,7 +39,8 @@ open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Int; base-
 open import Once.CanonicalName using (bare)
 
 open import Once.Arith.Machine.AbsState
-  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd)
+  using (InputShape; shape-unit; shape-int; shape-float; shape-pair; ⟦_⟧S; InputPath; Side; Fst; Snd;
+         Path; here-int; here-flt; go-fst; go-snd; ⌊_⌋ᴾ)
 open import Once.Arith.Machine.IR
   using (MArithIR; alit; aflit; ainput; aadd; asub; amul; adiv; amod; aneg; ai2f;
          numtype-as-type;
@@ -106,7 +107,7 @@ show-dlit d = show-zlit (sig d) ++ showℕ (exp10 d) ++ "_"
 show-arith-ir : ∀ {sh n} → MArithIR sh n → String
 show-arith-ir (alit z)     = "L" ++ show-zlit z
 show-arith-ir (aflit d)    = "F" ++ show-dlit d
-show-arith-ir (ainput p)   = "I" ++ show-path p
+show-arith-ir (ainput p)   = "I" ++ show-path ⌊ p ⌋ᴾ
 show-arith-ir (aadd a b)   = "A" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (asub a b)   = "B" ++ show-arith-ir a ++ show-arith-ir b
 show-arith-ir (amul a b)   = "M" ++ show-arith-ir a ++ show-arith-ir b
@@ -170,6 +171,17 @@ projectM _      (shape-pair _ _) []        _       = nothing
 projectM k      (shape-pair l _) (Fst ∷ p) (x , _) = projectM k l p x
 projectM k      (shape-pair _ r) (Snd ∷ p) (_ , y) = projectM k r p y
 
+-- | THE machine-side read, along a TYPED path — total, so no default. The
+-- `Maybe` version above survives only for the untyped `InputPath` callers; a
+-- node built by `ainput` always has the typed one, and `projectM-path` below
+-- says the two agree, which is what lets the old callers keep working while
+-- the invented `0` becomes unreachable rather than merely unlikely.
+readLeafM : ∀ {sh n} → Path sh n → M.⟦ shape-as-type sh ⟧ → OnceWord.Carrier
+readLeafM here-int   z       = z
+readLeafM here-flt   w       = w
+readLeafM (go-fst p) (x , _) = readLeafM p x
+readLeafM (go-snd p) (_ , y) = readLeafM p y
+
 -- | Default-zero for an out-of-shape path (mirrors `eval-arith`'s
 -- `+ 0` rule; well-formed IRs never hit it).
 maybe-zeroM : Maybe OnceWord.Carrier → OnceWord.Carrier
@@ -194,8 +206,7 @@ block-semM (aflit d)       tn _   = round (float-format tn) d
 -- `M.⟦ numtype-as-type n ⟧` does not reduce while `n` is a variable, and both
 -- branches reduce it to the same `Carrier`. The duplication is the type
 -- checker's price for the carrier being shared, not a real case distinction.
-block-semM {sh} {NInt}   (ainput p) tn inp = maybe-zeroM (projectM NInt   sh p inp)
-block-semM {sh} {NFloat} (ainput p) tn inp = maybe-zeroM (projectM NFloat sh p inp)
+block-semM {sh} (ainput p) tn inp = readLeafM p inp
 block-semM {n = NInt}   (aadd a b) tn inp = W._⊕_  tn (block-semM a tn inp) (block-semM b tn inp)
 block-semM {n = NFloat} (aadd a b) tn inp = FA.fadd (float-format tn) (block-semM a tn inp) (block-semM b tn inp)
 block-semM {n = NInt}   (asub a b) tn inp = W._⊖_  tn (block-semM a tn inp) (block-semM b tn inp)

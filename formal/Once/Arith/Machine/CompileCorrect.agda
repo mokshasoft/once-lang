@@ -35,7 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Relation.Nullary using (¬_)
 
 open import Once.Arith.Machine.AbsState
-  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath; project; projectF;
+  using (ArithAbsState; InputShape; ⟦_⟧S; init; output-of; InputPath; project; projectF; Path; readLeaf; ⌊_⌋ᴾ; project-path; projectF-path;
          Store; empty-store; _[_↦_]; _[_]; store-write-same; store-write-other)
 open import Once.Arith.Machine.AbsInstr
   using (load-finput; load-fimm; fadd-rrr; fsub-rrr; fmul-rrr; fdiv-rrr; fneg-rr; i2f-rr; AbstractInstr; load-input; load-imm; add-rrr; sub-rrr; mul-rrr;
@@ -175,24 +175,26 @@ run-abstract-app : ∀ {sh} (xs ys : List AbstractInstr) (s : ArithAbsState sh) 
 run-abstract-app []       ys s = refl
 run-abstract-app (i ∷ is) ys s = run-abstract-app is ys (step i s)
 
+-- THE PLACE THE INVENTED DEFAULT DIES. The abstract `load-input` still reads
+-- through the `Maybe` (the ISA is untyped, by design), but the path it was
+-- given is an ERASED TYPED path, and `project-path` says the projection is
+-- `just` there. So `maybe-zero`'s other branch is not "unlikely" or "ruled out
+-- by a validity theorem stated elsewhere" — it is unreachable by the type of
+-- the node that produced the instruction.
 eval-arith-W-ainput :
-  ∀ {sh} (p : InputPath) (inp : ⟦ sh ⟧S) →
-  eval-arith-W {sh} {NInt} (ainput p) inp ≡ fromℤ (maybe-zero (project sh p inp))
-eval-arith-W-ainput {sh} p inp with project sh p inp
-... | just _  = refl
-... | nothing = refl
+  ∀ {sh} (p : Path sh NInt) (inp : ⟦ sh ⟧S) →
+  eval-arith-W {sh} {NInt} (ainput p) inp ≡ fromℤ (maybe-zero (project sh ⌊ p ⌋ᴾ inp))
+eval-arith-W-ainput {sh} p inp rewrite project-path p inp = refl
 
 -- PLAN 0.75 F4: the float twin. Both branches are `refl` — there is no `fromℤ`
 -- on this side to make the default non-trivial, which is D113 showing through
 -- again: a float leaf is already a pattern.
 eval-arith-W-finput :
-  ∀ {sh} (p : InputPath) (inp : ⟦ sh ⟧S) →
-  eval-arith-W {sh} {NFloat} (ainput p) inp ≡ maybe-zero-f (projectF sh p inp)
-eval-arith-W-finput {sh} p inp with projectF sh p inp
-... | just _  = refl
-... | nothing = refl
+  ∀ {sh} (p : Path sh NFloat) (inp : ⟦ sh ⟧S) →
+  eval-arith-W {sh} {NFloat} (ainput p) inp ≡ maybe-zero-f (projectF sh ⌊ p ⌋ᴾ inp)
+eval-arith-W-finput {sh} p inp rewrite projectF-path p inp = refl
 
-compile-go-correct-ainput : ∀ {sh} (d : ℕ) (p : InputPath) (s : ArithAbsState sh) →
+compile-go-correct-ainput : ∀ {sh} (d : ℕ) (p : Path sh NInt) (s : ArithAbsState sh) →
   CompileGoInv {n = NInt} d (ainput p) s
 compile-go-correct-ainput {sh} d p s = record
   { reg0      = cong just (sym (eval-arith-W-ainput p (input s)))
@@ -713,9 +715,8 @@ module _ (b : ℕ) (eqb : bits ≡ suc b) where
   -- every arith value lands in `[0, modulus)` (needed for `/ˢ negOne = ⊝`).
   eval-in-range : ∀ {sh} (e : MArithIR sh NInt) (env : ⟦ sh ⟧S) → eval-arith-W e env < modulus
   eval-in-range (alit z)   env = fromℤ-in-range z
-  eval-in-range (ainput p) env with project _ p env
-  ... | just z  = fromℤ-in-range z
-  ... | nothing = fromℤ-in-range (+ 0)
+  -- One case, not two: the read is total, so there is no default to bound.
+  eval-in-range (ainput p) env = fromℤ-in-range (readLeaf p env)
   eval-in-range (aadd a c) env = m%n<n _ modulus
   eval-in-range (asub a c) env = m%n<n _ modulus
   eval-in-range (amul a c) env = m%n<n _ modulus

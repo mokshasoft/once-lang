@@ -18,10 +18,12 @@ module Once.Arith.Machine.Shape where
 
 open import Data.Nat using (ℕ)
 open import Data.Integer using (ℤ)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe; just; nothing) renaming (map to mapᴹ)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Once.Arith.Type using (NumType; NInt; NFloat)
 
 ------------------------------------------------------------------------
 -- InputShape: tree-shape of an arith block's input
@@ -86,3 +88,86 @@ projectF shape-float      (_ ∷ _)  _       = nothing
 projectF (shape-pair _ _) []       _       = nothing
 projectF (shape-pair l _) (Fst ∷ p) (x , _) = projectF l p x
 projectF (shape-pair _ r) (Snd ∷ p) (_ , y) = projectF r p y
+
+------------------------------------------------------------------------
+-- TYPED PATHS — the leaf's type is part of the path, not a side condition
+--
+-- `project`'s header above says the quiet part out loud: "a path that lands
+-- anywhere else — including on a FLOAT leaf — is `nothing`, and the caller
+-- defaults… the default never fires in practice." That default is a value
+-- INVENTED for a case that should not exist, and inventing it is what made the
+-- float-argument correspondence unstatable: `R-input` had to claim the
+-- concrete load equals the INTEGER reading at every path, which is false at a
+-- float leaf, and no repair fixes it because the missing fact — which leaf
+-- this load reads — is decided by the PROGRAM and cannot be recovered from a
+-- state relation.
+--
+-- So the fact travels with the path. A `Path sh n` is a path that lands on an
+-- `n` leaf of `sh`, BY CONSTRUCTION, and `readLeaf` is total: there is no
+-- `Maybe`, hence no default, hence nothing to be false about. `shape-unit` and
+-- interior nodes simply have no inhabitant, which is the correct statement —
+-- nothing loads from them.
+------------------------------------------------------------------------
+
+data Path : InputShape → NumType → Set where
+  here-int : Path shape-int   NInt
+  here-flt : Path shape-float NFloat
+  go-fst   : ∀ {l r n} → Path l n → Path (shape-pair l r) n
+  go-snd   : ∀ {l r n} → Path r n → Path (shape-pair l r) n
+
+-- | What a leaf of each kind holds. The asymmetry is `InputShape`'s own (see
+-- `shape-float`): an `Int` leaf carries a spec-level integer, a float leaf
+-- carries the target's bit pattern.
+LeafVal : NumType → Set
+LeafVal NInt   = ℤ
+LeafVal NFloat = ℕ
+
+-- | THE read. Total, because the path proves the leaf is there.
+readLeaf : ∀ {sh n} → Path sh n → ⟦ sh ⟧S → LeafVal n
+readLeaf here-int   z       = z
+readLeaf here-flt   w       = w
+readLeaf (go-fst p) (x , _) = readLeaf p x
+readLeaf (go-snd p) (_ , y) = readLeaf p y
+
+-- | Erasure to the untyped path. The CONCRETE side wants this: an address
+-- computation genuinely does not care which type lives at the end of it, so
+-- the index stops at the boundary rather than being pushed through the ISA.
+⌊_⌋ᴾ : ∀ {sh n} → Path sh n → InputPath
+⌊ here-int  ⌋ᴾ = []
+⌊ here-flt  ⌋ᴾ = []
+⌊ go-fst p  ⌋ᴾ = Fst ∷ ⌊ p ⌋ᴾ
+⌊ go-snd p  ⌋ᴾ = Snd ∷ ⌊ p ⌋ᴾ
+
+-- | …and the two bridges that retire the defaults: along an erased typed path
+-- the old projections are `just`, so `maybe-zero` provably never fires.
+project-path : ∀ {sh} (p : Path sh NInt) (inp : ⟦ sh ⟧S)
+             → project sh ⌊ p ⌋ᴾ inp ≡ just (readLeaf p inp)
+project-path here-int   z       = refl
+project-path (go-fst p) (x , _) = project-path p x
+project-path (go-snd p) (_ , y) = project-path p y
+
+projectF-path : ∀ {sh} (p : Path sh NFloat) (inp : ⟦ sh ⟧S)
+              → projectF sh ⌊ p ⌋ᴾ inp ≡ just (readLeaf p inp)
+projectF-path here-flt   w       = refl
+projectF-path (go-fst p) (x , _) = projectF-path p x
+projectF-path (go-snd p) (_ , y) = projectF-path p y
+
+-- | Type an untyped path against a shape. This is the FRONTIER: recognition
+-- meets an `InputPath` read off a projection chain and must establish which
+-- leaf it lands on before it can build an `ainput`.
+--
+-- `nothing` is now a REFUSAL rather than a silent zero. Before typed paths, a
+-- chain landing on a float leaf in an `Int` tree was recognised happily and
+-- then evaluated to `0`; now it is simply not an arith block, and stays a
+-- general IR term. That is a behaviour change and it is the right one.
+typePath? : ∀ (sh : InputShape) (n : NumType) → InputPath → Maybe (Path sh n)
+typePath? shape-int        NInt   []        = just here-int
+typePath? shape-float      NFloat []        = just here-flt
+typePath? (shape-pair l _) n      (Fst ∷ p) = mapᴹ go-fst (typePath? l n p)
+typePath? (shape-pair _ r) n      (Snd ∷ p) = mapᴹ go-snd (typePath? r n p)
+typePath? shape-unit       _      _         = nothing
+typePath? shape-int        NInt   (_ ∷ _)   = nothing
+typePath? shape-int        NFloat _         = nothing
+typePath? shape-float      NFloat (_ ∷ _)   = nothing
+typePath? shape-float      NInt   _         = nothing
+typePath? (shape-pair _ _) _      []        = nothing
