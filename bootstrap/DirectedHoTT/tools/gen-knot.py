@@ -1092,6 +1092,189 @@ FIELD_SORT = {("%sK" % n[1:]): [(f[1] if f[0] == "rec" else "nat")
                                 for f in fs if f[0] in ("rec", "nat")]
               for n, _, fs in KNOT}
 
+# ============================ THE MUTUAL PAIR =============================
+# ★★★ `_⊢ty_` AND `_⊢_∷_` ARE ONE DESCRIPTION OVER A TAGGED INDEX.
+#
+#     (depth , Ctx , Tm , Ty , tag)
+#
+# ⚠ THE TAG IS NOT DECORATION.  Without it the two judgements COLLIDE:
+#   a `⊢ty` row pads its `Tm` slot with a dummy, and `⊢unit : Γ ⊢ unit ∷
+#   Unit` is a `⊢_∷_` rule whose subject IS that dummy.  The tag is what
+#   keeps `Γ ⊢ty Unit` and `Γ ⊢ unit ∷ Unit` apart.
+#
+# ⚠ AND THE PADDING IS WHAT A UNIFORM TELESCOPE COSTS.  The `Tm` slot
+#   cannot change SORT with the tag — a component's sort is fixed — so a
+#   `⊢ty` row carries a meaningless term.  The alternative (two mutually
+#   citing descriptions) needs a `mutual` block over both `IDesc`s and
+#   both `IDescWf`s and is UNTRIED, not impossible; see
+#   JUDGEMENT-ATTEMPTS.md §4.
+#
+# ⚠ THE DEPTH IS INFERRED TOO, not just the sort.  `⊢lam` binds `t` and
+#   `B` in `(Γ ▹ A)`, i.e. one deeper, and nothing in `∀ {Γ A B t}` says
+#   so — it is read off the PREMISE's context, exactly as the sort is
+#   read off the premise's shape.
+TEL_JUDGE = None          # built in the main block, once `TCTX` exists
+
+def _parse_jpart(p):
+    """one premise or conclusion of the mutual pair.
+    → ('ty', ctx, ext, A) | ('tm', ctx, ext, t, A) | ('lk', ctx, x, A) | None"""
+    mm = re.match(r"^\(?\s*([^()⊢∋▹]+?)\s*(?:▹\s*([^()]+?))?\s*\)?\s*⊢ty\s+(.*)$", p)
+    if mm: return ("ty", mm.group(1).strip(), mm.group(2), mm.group(3))
+    mm = re.match(r"^\(?\s*([^()⊢∋▹]+?)\s*(?:▹\s*([^()]+?))?\s*\)?\s*⊢\s+(.*?)\s*∷\s*(.*)$", p)
+    if mm: return ("tm", mm.group(1).strip(), mm.group(2), mm.group(3), mm.group(4))
+    mm = re.match(r"^\(?\s*([^()⊢∋▹]+?)\s*\)?\s*∋\s+(.*?)\s*∷\s*(.*)$", p)
+    if mm: return ("lk", mm.group(1).strip(), mm.group(2), mm.group(3))
+    return None
+
+def infer_depths(rule, names, CT):
+    """{binder: k} — how many binders deep each one lives.
+
+    ⚠⚠ IT MUST WALK STRUCTURALLY, exactly as the SORT inference does.  A
+      regex over the conclusion types `B` in `Γ ⊢ty Π A B` at depth 0,
+      while the premise `(Γ ▹ A) ⊢ty B` types it at 1 — and the two
+      "conflict".  ★ `Π`'s SECOND FIELD IS AT `sucD 1`, and `KNOT` says
+      so; the conclusion is not evidence of depth 0, it is evidence of
+      depth 1 read through the constructor.  Measured: crude 31/43,
+      structural 43/43.
+    ⚠ A genuine conflict is still a REFUSAL."""
+    body = re.match(r"\s*∀\s*\{[^}]*\}\s*→(.*)", rule.split(":", 1)[1], re.S).group(1)
+    d, bad = {}, []
+    def put(v, k):
+        v = v.strip()
+        if v not in names: return
+        if v in d and d[v] != k: bad.append((v, d[v], k))
+        else: d[v] = k
+    def scan(e, k):
+        # ⚠ `k is None` means NO INFORMATION.  An unknown head — `subTy
+        #   (single u) B` — says nothing about how deep its children sit,
+        #   and assuming "the same depth" makes `B` conflict with the
+        #   `Π A B` that binds it.  Third sighting of this default in one
+        #   sub-task; the rule is uniform now.
+        if e[0] == "a": put(e[1], k) if k is not None else None; return
+        h = e[1][0]
+        if h[0] == "a" and h[1] in CT:
+            fds = FIELD_DEPTH.get(CT[h[1]], [])
+            for i, x in enumerate(e[1][1:]):
+                E = fds[i] if i < len(fds) else ("D",)
+                scan(x, None if k is None
+                        else k + (E[1] if E[0] == "sucD" else 0))
+        else:
+            for x in e[1][1:]: scan(x, None)
+    for part in _split_top(body):
+        q = _parse_jpart(part.strip())
+        if q is None: continue
+        # ⚠ ONLY `ty`/`tm` PARTS CARRY A CONTEXT EXTENSION AT SLOT 2.
+        #   For a `∋` part slot 2 is the VARIABLE, and reading it as an
+        #   extension puts every lookup premise one binder too deep.
+        ext = q[2] if q[0] in ("ty", "tm") else None
+        deep = 1 if ext else 0
+        put(q[1], 0)
+        if ext: put(ext, 0)
+        for t in (q[3:] if q[0] != "lk" else q[2:]):
+            scan(_parse_spine(_tokens(t)), deep)
+    if bad: return None, "conflicting depths %s" % bad
+    miss = [n for n in names if n not in d]
+    if miss: return None, "unassigned depths %s" % miss
+    return d, None
+
+
+def _ctxval(ctxname, ext, dep, CT):
+    """the premise's `Ctx` component: `Γ`, or `Ctx-extK m Γ A`.
+
+    ⚠ THE EXTENSION IS AN EXPRESSION, not a binder name.  `⊢lam`'s is
+      `(Γ ▹ A)` but `ty-El`'s is `(Γ ▹ El c)` — treating it as a name
+      dies with a `KeyError` on the string `"El c"`."""
+    if not ext: return V(ctxname)
+    return AP("Ctx-extK", dep, V(ctxname),
+              _val(_parse_spine(_tokens(ext)), CT, dep))
+
+def _mutual_rows(CT, TEL, dummy):
+    """the 43 rules of `_⊢ty_` + `_⊢_∷_`, as ONE tagged description."""
+    src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                       "Spec", "Typing.agda")
+    rows, skipped = [], []
+    for tag, dn in ((0, "_⊢ty_"), (1, "_⊢_∷_")):
+        for r in _rule_lines(src, dn):
+            nm, sorts, why = infer_sorts(r, CT, FIELD_SORT)
+            if sorts is None: skipped.append((nm, why)); continue
+            deps, why = infer_depths(r, list(sorts), CT)
+            if deps is None: skipped.append((nm, why)); continue
+            body = re.match(r"\s*∀\s*\{[^}]*\}\s*→(.*)", r.split(":", 1)[1], re.S).group(1)
+            raw = [x.strip() for x in _split_top(body)]
+            parts, fconv = [], []
+            for x in raw:
+                q = _parse_jpart(x)
+                if q is not None: parts.append(q); continue
+                # ★ a CONVERSION premise is foreign, at `_≅ᵀ_`
+                if "≅ᵀ" in x:
+                    a, b = [y.strip() for y in x.split("≅ᵀ")]
+                    fconv.append((a, b)); continue
+                parts.append(None)
+            if any(q is None for q in parts):
+                skipped.append((nm, "unparsed premise")); continue
+            # ⚠ A RULE CAN FAIL IN ITS VALUES, NOT ONLY ITS PREMISES.
+            #   `⊢app`'s conclusion is `subTy (single u) B`; the premises
+            #   all parse, and without this the emitter dies with a
+            #   `KeyError` deep in the value translator instead of
+            #   reporting an honest skip.
+            unk = []
+            def chk(e):
+                if e[0] == "a":
+                    if (e[1] not in CT and e[1] not in sorts
+                            and e[1] not in ("renTm", "vs")):
+                        unk.append(e[1])
+                    return
+                for x in e[1]: chk(x)
+            for q in parts:
+                for t in (q[3:] if q[0] != "lk" else q[2:]):
+                    chk(_parse_spine(_tokens(t)))
+                if q[0] in ("ty", "tm") and q[2]:
+                    chk(_parse_spine(_tokens(q[2])))
+            if unk:
+                skipped.append((nm, "unmapped %s" % sorted(set(unk)))); continue
+            _BSORT.clear()
+            bs = [(_DEPTH, _code(TNAT(), None))]
+            for b, srt in sorts.items():
+                _BSORT[b] = srt
+                if srt == "ctx":
+                    bs.append((b, _code(TCTX(), _depth_at(deps[b]))))
+                else:
+                    bs.append((b, _code(TKNOT(srt), _depth_at(deps[b]))))
+            for i, (a, b) in enumerate(fconv):
+                bs.append(("fc%d" % i, _code(FOREIGN["ConvD"],
+                    TUP(V(_DEPTH),
+                        _val(_parse_spine(_tokens(a)), CT, V(_DEPTH)),
+                        _val(_parse_spine(_tokens(b)), CT, V(_DEPTH))))))
+            def ix_of(q):
+                "the (depth, Ctx, Tm, Ty, tag) tuple a part denotes"
+                ext = q[2] if q[0] in ("ty", "tm") else None
+                d = _depth_at(1 if ext else 0)
+                cx = _ctxval(q[1], ext, V(_DEPTH), CT)
+                if q[0] == "ty":
+                    tm, ty, tg = dummy, q[3], 0
+                else:
+                    tm, ty, tg = q[3], q[4], 1
+                return TUP(d, cx,
+                           _val(_parse_spine(_tokens(tm)), CT, d) if tm is not dummy
+                             else dummy,
+                           _val(_parse_spine(_tokens(ty)), CT, d),
+                           RAW("num %d" % tg))
+            # ★ a `∋` premise is foreign too, at `_∋_∷_` — the judgement
+            #   `Knot/Lookup` built by hand, and the first one there was.
+            ps = []
+            for i, q in enumerate(parts[:-1]):
+                if q[0] == "lk":
+                    bs.append(("lk%d" % i, _code(FOREIGN["LkD"],
+                        TUP(V(_DEPTH), V(q[1]),
+                            _val(_parse_spine(_tokens(q[2])), CT, V(_DEPTH)),
+                            _val(_parse_spine(_tokens(q[3])), CT, V(_DEPTH))))))
+                    continue
+                ps.append(("ih%d" % i, ix_of(q)))
+            concl = parts[-1]
+            vals = _tupcomps(ix_of(concl))
+            rows.append((nm, JRow("jd" + nm, bs, ps, vals)))
+    return rows, skipped
+
 # ============================ A JUDGEMENT, END TO END ======================
 # ★★★ ONE FUNCTION PER JUDGEMENT WOULD BE FIVE COPIES.  The judgements
 #   differ in four things — the datatype's name, its relation symbol, its
@@ -1174,7 +1357,8 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
-        ; toI; fromI; ⊢ixP; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; num )
+        ; toI; fromI; ⊢ixP; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar
+        ; num; ⊢num )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors
@@ -1256,6 +1440,78 @@ def write_judgement(J, out, CT):
     open(os.path.join(out, J.mod + "WfB.agda"), "w").write(
         gen_j_wf(J, "B", h, n, True))
     return [J.mod + "WfA", J.mod + "WfB"]
+
+IJUDGE_DEF = """Σ' Nat
+    (Σ' (IMu CtxD INat (var vz))
+      (Σ' (IMu KnotD IPair (pair sTm (var (vs vz))))
+        (Σ' (IMu KnotD IPair (pair sTy (var (vs (vs vz)))))
+            Nat)))"""
+
+MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKv )
+open import DirectedHoTT.Examples.Knot.Lookup using ( LkD; ILk; LkWf )
+open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
+open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )"""
+
+def write_mutual(out, CT):
+    """`_⊢ty_` + `_⊢_∷_`, ONE description over a TAGGED index."""
+    TEL = [TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"), TNAT()]
+    rows, skipped = _mutual_rows(CT, TEL, AP("Tm-unitK"))
+    L = [JHDR % dict(data="_⊢ty_ / _⊢_∷_", what=", ONE TAGGED DESCRIPTION.",
+                     mod="JudgeRows", extra=MUT_EXTRA)]
+    L += ["-- ★★★ THE INDEX IS TAGGED, and the tag is not decoration: a",
+          "--   `⊢ty` row PADS its `Tm` slot with a dummy, and `⊢unit :`",
+          "--   `Γ ⊢ unit ∷ Unit` is a `⊢_∷_` rule whose subject IS that",
+          "--   dummy.  The tag is what keeps `Γ ⊢ty Unit` and",
+          "--   `Γ ⊢ unit ∷ Unit` apart.",
+          "--",
+          "-- ⚠ AND THE PADDING IS WHAT A UNIFORM TELESCOPE COSTS: the slot",
+          "--   cannot change SORT with the tag.",
+          "IJudge : RTy ε", "IJudge =", "  " + IJUDGE_DEF, ""]
+    L.append("-- ⚠ NOT EMITTED — %d of %d rules:" % (len(skipped), len(skipped) + len(rows)))
+    for n, w in skipped: L.append("--     %-10s %s" % (n, w))
+    L.append("")
+    for i, (nm, row) in enumerate(rows):
+        tag = "J" + _tagof(i)
+        L.append("-- %s" % nm)
+        L.append(emit_jrow(row, TEL, (tag, "k" + tag), "IJudge", "JudgeD"))
+        L.append("")
+    L.append("-" * 72)
+    L.append("-- ★★★ …AND THE MUTUAL PAIR IS ONE DESCRIPTION.")
+    L.append("-" * 72)
+    L.append("JudgeD : IDesc")
+    L.append("JudgeD =")
+    line, body = "  ", []
+    for nm, _ in rows:
+        if len(line) > 62: body.append(line); line = "  "
+        line += "jd%s ◂ " % nm
+    body.append(line + "inil")
+    L.append("\n".join(body))
+    open(os.path.join(out, "JudgeRows.agda"), "w").write("\n".join(L) + "\n")
+
+    # ---- and its well-formedness, sized by the measured cost model
+    W = [JHDR % dict(data="_⊢ty_ / _⊢_∷_",
+                     what=" IS A WELL-FORMED DESCRIPTION.", mod="JudgeWf",
+                     extra=MUT_EXTRA
+                     + "\nopen import DirectedHoTT.Examples.Knot.JudgeRows")]
+    for i, (nm, row) in enumerate(rows):
+        tag = "J" + _tagof(i)
+        W.append("-- %s" % nm)
+        W.append(emit_jrowwf(row, TEL, (tag, "k" + tag), "IJudge",
+                             "jd%sWf" % nm, "JudgeD"))
+        W.append("")
+    W.append("-" * 72)
+    W.append("-- ★★★ …AND IT IS WELL FORMED.")
+    W.append("-" * 72)
+    W.append("JudgeWf : IDescWf IJudge JudgeD")
+    W.append("JudgeWf =")
+    W.append(nest(["idwf-cons (jd%sWf JudgeD)" % nm if not row.prems
+                   else "idwf-cons jd%sWf" % nm
+                   for nm, row in rows], "idwf-nil", 2))
+    # ⬜ NOT EMITTED YET — the padded `Tm` slot's derivation leaves its
+    #   context a meta (`_Γ ▹ _A != ◇`).  The ROWS are green; only the
+    #   well-formedness is open.  See JUDGEMENT-ATTEMPTS.md §4.2.
+    # open(os.path.join(out, "JudgeWf.agda"), "w").write("\n".join(W) + "\n")
+    return rows
 
 # ============================ LAYER 3: THE ADEQUACY MAP ====================
 # ★★★ `⌈_⌉ : RTm Γ → RTm ε` and its typing — the theorem that makes the
@@ -2175,7 +2431,8 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
-        ; toI; fromI; ⊢ixP; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; num )
+        ; toI; fromI; ⊢ixP; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar
+        ; num; ⊢num )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors
@@ -2361,7 +2618,8 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
-        ; toI; fromI; ⊢ixP; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; num )
+        ; toI; fromI; ⊢ixP; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar
+        ; num; ⊢num )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors
@@ -2506,6 +2764,10 @@ if __name__ == "__main__":
     for _J in (J_TYRED, J_CONV):
         for _m in write_judgement(_J, out, _CT):
             print("  wrote", _m)
+    FOREIGN["ConvD"] = TJ("ConvD", "IConv", "ConvWf", TEL_TYR)
+    FOREIGN["LkD"] = TJ("LkD", "ILk", "LkWf",
+                        [TNAT(), TCTX(), TKNOT("sVar"), TKNOT("sTy")])
+    print("  wrote JudgeRows (%d rows)" % len(write_mutual(out, _CT)))
     print(f"{len(KNOT)} constructors · {n_rho} recursive fields · "
           f"{n_kap} κ fields · {2 * (n_rho + n_kap) + 2 * len(KNOT)} "
           f"generated clauses")
