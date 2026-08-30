@@ -548,3 +548,70 @@ another ford, another transport, and another `⊢pair` rung per premise.
 false`, `flat? cA ≡ true`) — the same class as `_⟶_`'s `pw?`/`stkA?` — and
 4 need object-level substitution, joining the `β` group. Plus `⊢ielim`'s
 motive `M`, which the sort inference honestly declines.
+
+---
+
+# §5 — what "finish the remaining 23" actually costs
+
+⚠ **It is not 23 rules of the same kind.** Classified mechanically:
+
+| need | rules | status |
+|---|---|---|
+| **more judgements as descriptions** — `DescWf`, `DConWf`, `IDescWf`, `IConWf`, `∈D`, `∈ID` | 6 | ✅ mechanical: the pipeline already does this |
+| **object-level substitution** — `β`, `natrec-suc`, `ι-elim`, `ι-ielim`, `⊢app`, `⊢pair`, `⊢snd`, `⊢jsub` | 8 | ⚠ needs **`singleK`**, an object-level `single u`. `subTmK` exists; the *substitution being applied* does not |
+| **boolean functions over syntax** — `pw?`, `stkA?`, `flat?`, `NoNatC`, `occTm` | 4+ | ⚠ each is a new object-level `ielim`, the same kind of work as `sz`/`wkK`/`subTm` |
+| `⊢ielim`'s motive `M` | 1 | ⚠ sort inference declines; needs an annotation |
+| `Canon` / `Prog` | ~20 | ✅ mechanical — and they **do** belong here (see below) |
+
+★★ **`Canon`/`Prog` belong in this layer, and my earlier doubt was
+wrong.** I had suggested they might not, because they live in
+`Metatheory/Canonicity.agda`. That is an inference from *location*, and
+it is bad: `prog : ◇ ⊢ t ∷ T → sz t ≤ n → Prog t` — the dogfooding
+target's own type mentions both `_⊢_∷_` and `Prog`. They are inductive
+predicates over `RTm`, the same shape as the judgements.
+
+⚠⚠ **AND STEP 3 MUST BE COMPLETE FOR STEP 4 TO BE HONEST.** A judgement
+missing 15 of 43 rows is a *different, smaller language*. `prog` stated
+over it would not be `prog` for this kernel — it would be a claim about
+something else that happens to typecheck.
+
+---
+
+# §6 — could a proof search plug these gaps? — **measured**
+
+The question: much of what the emitter produces looks forced, so could a
+search (Idris2's `auto`, Agda's Agsy) fill it instead?
+
+**Experiment.** Replace all 24 `⊢pair` well-formedness arguments in
+`TyRedWf` — the `ty-Σ (ty-IMu …) …` chains — with `_`, and check.
+
+**Result: 24 unsolved metas.** Unification does *not* determine them.
+They are **derivations**, and a proof is not fixed by its type: `_⊢ty_`
+is a datatype with eleven constructors and no proof irrelevance.
+
+★ **But that is an argument FOR search, not against it.** These goals are
+strictly syntax-directed — a goal `Γ ⊢ty Σ' A B` admits only `ty-Σ`, and
+its subgoals are again determined by the telescope's shape. A depth-first
+search with the goal's head selecting the rule would close every one of
+them, and this is exactly the class Agsy is good at.
+
+⚠⚠ **AND YET IT WOULD NOT HAVE SAVED THIS SESSION.** Look at what the
+logs actually record as expensive: `IsNum` instead of closedness,
+`fordMap` because a κ ford is not a copy, `sucs j (var x)` vs an explicit
+general depth, the tagged index, `iρ` vs `icw-imu`. **In every one of
+those the goal itself was wrong** — the statement was not yet the right
+statement. A search fills a hole; it cannot tell you the hole is in the
+wrong place.
+
+⇒ so the honest split:
+
+* **Search would help** with the bookkeeping tier — coercion chains
+  (`toI`/`fromI`/`toMu`/`fordAs`), `⊢ty` well-formedness, the `⊢pair`
+  tuples, the `⊢wk` depth derivations. That is most of the *volume*.
+* **Search would not help** with the interface tier, which is where every
+  hard step in `SUBTM-ATTEMPTS.md` and this file actually was.
+
+★ **And the three-of-four errors you noticed are a third thing again** —
+neither tier. They were the *generator* threading a wrong depth through
+global mutable state; the proofs were fine once the depth was right. The
+fix there is a parameter, not a search.
