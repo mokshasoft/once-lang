@@ -24,12 +24,28 @@ Shims do not merge. If a shim is unavoidable, it needs an explicit decision
 Special scrutiny, in order:
 
 - **`Once.Spec` MUST essentially not change.** It is the one home of the
-  language definition; a branch whose diff touches `formal/Once/Spec.agda`
-  needs a written justification per hunk, and "the proof needed it" is never
-  one — the implementation bridges to the spec, not the spec to the
-  implementation (top-down specs). Legitimate reasons are a language-level
-  decision recorded in the decision log, or a pure addition that defines a
-  new observable.
+  language definition; a branch whose diff touches it needs a written
+  justification per hunk, and "the proof needed it" is never one — the
+  implementation bridges to the spec, not the spec to the implementation
+  (top-down specs). Legitimate reasons are a language-level decision recorded
+  in the decision log, or a pure addition that defines a new observable.
+
+  **The spec is not a path — it is a RE-EXPORT CLOSURE, and a path filter
+  cannot see it.** `Once/Spec.agda` re-exports five modules, and two of them
+  re-export implementation-namespaced files VERBATIM: `Once.Spec.Typing` is
+  `Once.TypeCheck.Judgment`, and `Once.Spec.Meaning` re-exports from
+  `Once.Denotation`. So a branch can rewrite the entire declarative typing
+  judgment while `formal/Once/Spec.agda` and `formal/Once/Spec/*` show a
+  one-line comment diff. Plan 0.76 did exactly that (66 rules over four
+  judgment forms → 51 over two) and the path filter below printed nothing.
+  Resolve the closure and diff THAT, not the directory:
+
+      git diff master..HEAD --stat -- \
+        formal/Once/Spec.agda formal/Once/Spec/ \
+        formal/Once/TypeCheck/Judgment.agda formal/Once/Denotation/Trace.agda
+
+  and re-derive the list from `Once/Spec*.agda`'s imports whenever it changes
+  — a stale list is the same hole again.
 - **Top-level module impact.** The analysis must STATE which top-level
   modules the diff touches, each with what changed and why — these are the
   trust anchors, so their diffs get read hunk by hunk, not skimmed:
