@@ -35,8 +35,9 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; subTm-cong
         ; subTy-renTy; subTy-id; renTy-renTy; renTy-subTy; renTm-cong; idₛ )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; there; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ren-lemma; Ren⊢-ext )
+  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _∋_∷_; here; there; wk-single )
+open import DirectedHoTT.Metatheory.SubjectReduction
+  using ( ren-lemma; Ren⊢; Ren⊢-ext; ∋-cast )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -407,3 +408,36 @@ w²-single {x = x} t = wkGen br t
     br vz          = refl
     br (vs vz)     = refl
     br (vs (vs u)) = refl
+
+------------------------------------------------------------------------
+-- ★★★ INSERTING ONE BINDER **BELOW THE TOP TWO** — the renaming
+-- `extR (extR vs)`, as a `Ren⊢`.
+--
+-- ⚠⚠ `Ren⊢-ext (Ren⊢-ext there)` IS NOT THIS.  `Ren⊢-ext` renames the
+--   type it extends by, so its target context reads
+--   `renTy vs A` where a caller with a renaming-STABLE `A` (`εwkTy I`,
+--   say) has plain `A`.  Those agree only PROPOSITIONALLY, and `Ren⊢` is
+--   a FUNCTION type — no `⊢-cast` reaches it.  ⇒ it must be pointwise.
+--
+-- ★ AND THE MIDDLE TYPE IS A SEPARATE PARAMETER, not `renTy vs A`.  It
+--   cannot be `A` itself: the source has `A : RTy ⌊ Γ ⌋` while the
+--   target needs it one binder deeper.  So the caller supplies `A'` and
+--   the equation relating them — which for `εwkTy I` is `εwk-ren`.
+------------------------------------------------------------------------
+
+Ren⊢-ins² : {Γ : Ctx} {X A : RTy ⌊ Γ ⌋} {A' B : RTy (⌊ Γ ⌋ ∙)} →
+            renTy vs A ≡ A' →
+            Ren⊢ ((Γ ▹ A) ▹ B) (((Γ ▹ X) ▹ A') ▹ renTy (extR vs) B)
+                 (extR (extR vs))
+-- ★ each case is `ren-wTy`, once per binder the variable sits under.
+Ren⊢-ins² {B = B} eqA here =
+  ∋-cast (sym (ren-wTy {ρ = extR vs} B)) here
+Ren⊢-ins² {A = A} eqA (there here) =
+  ∋-cast (sym (trans (ren-wTy {ρ = extR vs} (renTy vs A))
+                     (trans (cong (renTy vs) (ren-wTy {ρ = vs} A))
+                            (cong (λ z → renTy vs (renTy vs z)) eqA))))
+         (there here)
+Ren⊢-ins² eqA (there (there {A = A₀} v)) =
+  ∋-cast (sym (trans (ren-wTy {ρ = extR vs} (renTy vs A₀))
+                     (cong (renTy vs) (ren-wTy {ρ = vs} A₀))))
+         (there (there (there v)))

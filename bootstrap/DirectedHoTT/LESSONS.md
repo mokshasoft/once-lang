@@ -235,6 +235,12 @@ formulation that needs an axiom is not.
   **but only while the reduction lands at a CONCRETE type former.**
   Through an abstract parameter (`STy`) it would have needed its own
   congruence hypothesis.
+- ⭐⭐ **MOVING A DEFINITION BETWEEN MODULES IS NOT A LOCAL EDIT.**
+  Moving `Split` from `Lib/IWk` down to `Lib/IPay` compiled `Lib/IPay`
+  and `Lib/IWk` fine and broke **twelve** modules: a `using`-import does
+  not RE-EXPORT, so `Lib/IWk` had silently been the export point its
+  consumers named. ⚠ Checking the module you EDITED is not checking the
+  MOVE — grep for the moved names across the tree, or sweep.
 - ⭐⭐ **Obligations should be COMPUTED, not enumerated — a recursive
   `Set`, not a datatype.** `subTm`'s method tuple interleaves 50 computed
   rows with 3 given ones. As a `data GiveOK` with a node per row the
