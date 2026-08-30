@@ -136,6 +136,12 @@ resolveExpr-faithful polys imps userFns fresh (Srf.neg e) dγ k rewrite resolveE
 resolveExpr-faithful polys imps userFns fresh (Srf.absurd e) dγ k rewrite resolveExpr-faithful polys imps userFns fresh e dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.morph-app m a) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.app f a) dγ k rewrite resolveExpr-faithful polys imps userFns fresh f dγ k | resolveExpr-faithful polys imps userFns fresh a dγ k = refl
+-- D127: the combinators resolve componentwise; both arms' IHs rewrite and the
+-- meaning is a function of the two results, so `refl` closes each.
+resolveExpr-faithful polys imps userFns fresh (Srf.comp' f g) dγ k rewrite resolveExpr-faithful polys imps userFns fresh f dγ k | resolveExpr-faithful polys imps userFns fresh g dγ k = refl
+resolveExpr-faithful polys imps userFns fresh (Srf.copair' f g) dγ k rewrite resolveExpr-faithful polys imps userFns fresh f dγ k | resolveExpr-faithful polys imps userFns fresh g dγ k = refl
+resolveExpr-faithful polys imps userFns fresh (Srf.fork' f g) dγ k rewrite resolveExpr-faithful polys imps userFns fresh f dγ k | resolveExpr-faithful polys imps userFns fresh g dγ k = refl
+resolveExpr-faithful polys imps userFns fresh (Srf.curry' f) dγ k rewrite resolveExpr-faithful polys imps userFns fresh f dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.pair a b) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k | resolveExpr-faithful polys imps userFns fresh b dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.add a b) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k | resolveExpr-faithful polys imps userFns fresh b dγ k = refl
 resolveExpr-faithful polys imps userFns fresh (Srf.sub a b) dγ k rewrite resolveExpr-faithful polys imps userFns fresh a dγ k | resolveExpr-faithful polys imps userFns fresh b dγ k = refl
