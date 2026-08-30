@@ -44,7 +44,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nsuc; ⊢fst; ⊢snd; ⊢app; ⊢natrec
         ; ⊢conv; _≅ᵀ_; csymᵀ; ty-Π; wk-single )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢ )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; cong₃; cong₄ )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; cong₃; cong₄; sub-w-single )
 open import DirectedHoTT.Lib.Pair using ( PairT )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
@@ -116,7 +116,7 @@ indGElim {μ = μ} {f = f} {u₁ = u₁} {u₂ = u₂} {i = i} {h = h} de di dh 
   ⊢-cast (cong El eq2) (⊢app (⊢-cast eq1 (⊢app de di)) dh)
   where
     p₁ : (t : RTm ⌊ _ ⌋) → subTm (extS (single i)) (w (w t)) ≡ w t
-    p₁ t = trans (sub-w {σ = single i} (w t)) (cong w (wk-single {v = i} t))
+    p₁ t = sub-w-single t
 
     eq1 = cong₂ Π (trans (indPWT-sub (w μ) (var vz))
                          (cong (λ u → indPWT u i) (wk-single {v = i} μ)))

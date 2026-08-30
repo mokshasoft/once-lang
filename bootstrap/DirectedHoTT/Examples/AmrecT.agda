@@ -54,6 +54,7 @@
 module DirectedHoTT.Examples.AmrecT where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Lib.Wk using ( cong₄; ren-sub; ren-w; sub-w; w )
+import DirectedHoTT.Lib.Wk as W
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; Ren
         ; RTy; El; Hom; Nat; U
@@ -167,8 +168,10 @@ nrs-wTy T =
   trans (subTy-renTy T)
         (sym (trans (renTy-renTy T) (ren-subTy T)))
   where
+    -- ⚠ was a local copy; `Lib/Wk.ren-subTy` is the same statement,
+    --   lifted out of ITS `where` block 2026-08-30.
     ren-subTy : (T : RTy _) → renTy _ T ≡ subTy (λ x → var _) T
-    ren-subTy T = trans (cong (renTy _) (sym (subTy-id T))) (renTy-subTy T)
+    ren-subTy T = W.ren-subTy T
 
 -- ⚠ this one needs a pointwise BRIDGE: `extS nrs ₛ∘ᵣ extR vs` and
 --   `extR vs ∘ᵣ extR vs` agree, but only after casing on the variable —
@@ -182,8 +185,9 @@ wᶠ-nrs t =
     bridge : ∀ x → _
     bridge vz     = refl
     bridge (vs x) = refl
+    -- ⚠ was a local copy of `Lib/Wk.ren-sub`.
     ren-sub' : (u : RTm _) → renTm _ u ≡ subTm (λ x → var _) u
-    ren-sub' u = trans (cong (renTm _) (sym (subTm-id u))) (renTm-subTm u)
+    ren-sub' u = ren-sub u
 
 -- ⚠ bridge: the family under TWO `extR vs` then `single (var (vs vz))`
 --   collapses to a single weakening.  This is the spine's cancellation.
@@ -197,8 +201,9 @@ wᶠ²-single t =
     bridge : ∀ x → _
     bridge vz     = refl
     bridge (vs x) = refl
+    -- ⚠ was a local copy of `Lib/Wk.ren-sub`.
     ren-sub'' : (u : RTm _) → renTm vs u ≡ subTm (λ x → var (vs x)) u
-    ren-sub'' u = trans (cong (renTm vs) (sym (subTm-id u))) (renTm-subTm u)
+    ren-sub'' u = ren-sub u
 
 -- ⚠ bridge: one `wᶠ` then `single (var vz)` is the IDENTITY — the family's
 --   variable is put back exactly where it came from.

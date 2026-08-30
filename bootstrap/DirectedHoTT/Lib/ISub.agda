@@ -103,6 +103,7 @@ open import DirectedHoTT.Metatheory.Confluence
   using ( ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-⌜Id⌝ˡ )
 open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-El )
 open import DirectedHoTT.Lib.NatNum using ( num )
+open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ )
 open import DirectedHoTT.Lib.IWk
   using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf; sucs
         ; Maybe; just; nothing; decCon; decSucs; decClosed; decVar
@@ -486,11 +487,8 @@ module Sub
                 Γ ⊢ fordMap fi (num k) t ∷ El (⌜Id⌝ ⌜Nat⌝ (smap fi) (num k)))
     where
 
-    -- ★ the mirror of `Knot/SubMot`'s `⟶*-castₗ`, needed here for the
-    --   same reason: `isSucs-sub` is an `≡` and the endpoint it names
-    --   is where a REDUCTION has to start.
-    ⟶*-castₗ : {Γ : Cx} {a a' b : RTm Γ} → a ≡ a' → a' ⟶* b → a ⟶* b
-    ⟶*-castₗ refl r = r
+    -- ⚠ `⟶*-castₗ` now comes from `Lib/ICast`, beside the `⟶*-castᵣ`
+    --   that `Knot/SubMot` had written independently three days later.
 
     sucs-red* : {Γ : Cx} (k : ℕ) {x y : RTm Γ} → x ⟶* y → sucs k x ⟶* sucs k y
     sucs-red* k done       = done

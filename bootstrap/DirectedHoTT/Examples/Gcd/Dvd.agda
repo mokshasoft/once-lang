@@ -30,7 +30,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢conv; _≅ᵀ_; csymᵀ; natrec-zero; _⟶*_; step; done; β; ξ-appˡ; wk-single )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
 open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w; ren-w )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w; ren-w; sub-w-single )
 open import DirectedHoTT.Lib.Pair using ( PairT; asN; asP )
 open import DirectedHoTT.Lib.DvdArith
   using ( QCode; ⊢QCode; QCode-sub; QCode-ren; QCode-red; QCode-conv
@@ -412,7 +412,7 @@ indPWElim {μ = μ} {i = i} {y = y} {q = q} dh dy dq =
   where
     -- one binder in: the handle loses one `w`, the bound loses its `w`
     peel₁ : (t : RTm ⌊ _ ⌋) → subTm (extS (single y)) (w (w t)) ≡ w t
-    peel₁ t = trans (sub-w {σ = single y} (w t)) (cong w (wk-single {v = y} t))
+    peel₁ t = sub-w-single t
 
     eq1 = cong₂ (λ u c → Π (Hom Nat (nsuc (subTm (single y) msr)) u) (El c))
                 (wk-single {v = y} μ)

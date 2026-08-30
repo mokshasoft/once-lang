@@ -123,11 +123,11 @@ ILk =
 --   `IMu …`.  One `El-⌜IMu⌝` each way.
 ------------------------------------------------------------------------
 
--- ★ ALL FOUR NOW LIVE IN `Examples/Knot/JudgeLib`, stated in terms of
+-- ★ ALL FOUR NOW LIVE IN `Lib/ICast`, stated in terms of
 --   the CODE alone, with the description and its index type IMPLICIT.
 --   ⚠ `toCn`/`toKn` were the SAME function, as were `fromCn`/`fromKn` —
 --   `El-⌜IMu⌝` does not care which description it unfolds.
-open import DirectedHoTT.Examples.Knot.JudgeLib public
+open import DirectedHoTT.Lib.ICast public
   using ( toMu; fromMu; fordAs; muFwd )
 
 -- ⚠ THE TELESCOPES AND THE CODES INTERLEAVE, and they must: `κₖ` lives in
