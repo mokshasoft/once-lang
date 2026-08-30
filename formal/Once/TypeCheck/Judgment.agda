@@ -440,219 +440,125 @@ mutual
   --   * `t-embed` promoting any infer derivation to check mode.
   --     This is the bidirectional discipline's core "synthesis
   --     subsumes checking" rule.
-  -- | Plan 0.41: a CLOSED global-element value of type A. This is the
-  -- extractable value family — every derivation elaborates to a
-  -- `lift-morphism` (a closed CCC morphism), so `extract-morph` always
-  -- succeeds on it (unlike a general `⊢ᶜ` derivation, which may be a named
-  -- ref `t-embed` → `sigOp`, not extractable). The structure mirrors the
-  -- value constructors; leaves carry the per-type encoding. The bridge
-  -- `t-value-lift` lifts it to a pure morphism `X ⇒[pure] A`. No usage index:
-  -- a closed value is `zeroUsage` by construction.
-  data _⊢ᵍ_∶_ : (ctx : NamedCtx) → RawExpr → Type → Set where
-    g-int  : ∀ {ctx : NamedCtx} (n : ℤ) → ctx ⊢ᵍ RInt n ∶ Int
-    -- …and the value realm, witness-free for the same reason.
-    g-float : ∀ {ctx : NamedCtx} (i f l p : ℕ)
-            → ctx ⊢ᵍ RFloat i f l p ∶ Float
-
-    -- A NEGATED literal is a CLOSED VALUE too, and leaving it out was a real
-    -- hole rather than an omission of convenience. `⊢ᵍ` is what a literal is
-    -- checked against in a pure-arrow position — a SigOp argument, the shape
-    -- `compose emit@E (-5)` — and without these rules that program was
-    -- `Type mismatch: expected (Unit ω→ Int) but got Int`, for `Int` since
-    -- D120 and for `Float` from the moment F3 made `-3.14` well-typed at all.
-    --
-    -- Both realms now answer the same question the same way, which is the
-    -- point: D120 folded in `⊢ᵢ` only, so `-5` was one literal when inferred
-    -- and no literal at all when checked. That split is exactly the shape
-    -- D113's lesson says to look for.
-    --
-    -- The payloads are the folded ones — `- n` and `negate (decimalOf i f l)`
-    -- — so `realize-global` and `⟦_⟧ᵍ` agree with their `⊢ᵢ` twins by
-    -- construction, and `moduleIntLits` already scans `RUnaryOp OpNeg (RInt n)`
-    -- as `- n` (`negLits`), so the range gate sees the value that is stored.
-    g-neg-int : ∀ {ctx : NamedCtx} (n : ℤ)
-              → ctx ⊢ᵍ RUnaryOp OpNeg (RInt n) ∶ Int
-    g-neg-float : ∀ {ctx : NamedCtx} (i f l p : ℕ)
-                → ctx ⊢ᵍ RUnaryOp OpNeg (RFloat i f l p) ∶ Float
-    -- The Unit leaf is the bare `terminal` morphism (avoids a special `RVar`
-    -- elaborator clause that would block the general `RVar` reduction); its
-    -- top-level bridge routes through the existing `t-terminal-check`. The
-    -- lookup premises (cf. `t-terminal-check`) rule out a shadowing local/import
-    -- `terminal`, so the rule is not over-general (Plan 0.42).
-    g-terminal : ∀ {ctx : NamedCtx}
-               → lookupLocal ctx "terminal" ≡ nothing
-               → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
-               → ctx ⊢ᵍ RVar "terminal" ∶ Once.Type.Unit
-    g-pair : ∀ {ctx : NamedCtx} {a b : RawExpr} {A B : Type}
-           → ctx ⊢ᵍ a ∶ A → ctx ⊢ᵍ b ∶ B
-           → ctx ⊢ᵍ RPair a b ∶ (A Once.Type.* B)
-    g-inl  : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
-           → ctx ⊢ᵍ arg ∶ A
-           → ctx ⊢ᵍ RApp (RVar "inl") arg ∶ (A Once.Type.+ B)
-    g-inr  : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
-           → ctx ⊢ᵍ arg ∶ B
-           → ctx ⊢ᵍ RApp (RVar "inr") arg ∶ (A Once.Type.+ B)
-    g-In   : ∀ {ctx : NamedCtx} {arg : RawExpr} {F : Functor} {wfF : WellFormedF F}
-           → wellFormedF? F ≡ just wfF
-           → ctx ⊢ᵍ arg ∶ (⟦ F ⟧T (μ-type F))
-           → ctx ⊢ᵍ RApp (RVar "In") arg ∶ (μ-type F)
-
-  -- | Plan 0.49 / D063: the MORPHISM realm — a closed function expression `e`
-  -- denoting a categorical arrow `A → B`. The dual of the value family `⊢ᵍ`
-  -- (`Hom(1,A)`) at the function level (`Hom(A,B) ≅ Hom(1,Bᴬ)`). The CCC
-  -- trichotomy: values (`⊢ᵍ`) / morphisms (`⊢ᵐ`) / closures (`t-lam`).
-  --
-  -- Grade-FREE: the IR is grade-erased (D046, `eff ∘` *is* `pure ∘`), so a
-  -- morphism tracks only domain/codomain; purity is applied at the lift
-  -- (`t-morph-lift`). Closed ⇒ NO usage index (like `⊢ᵍ`).
-  --
-  -- STRUCTURAL over the categorical combinators (`m-compose`/`m-case`/`m-pair`/
-  -- `m-curry`/`m-cata`, recursing on `⊢ᵐ`) — so the agreement bridge forces the
-  -- categorical LAWS. EXTENSIONAL leaves (`m-id`/… point-free primitives;
-  -- `m-const` reusing `⊢ᵍ`; `m-named` a plain morphism ref; `m-lam` a *closed*
-  -- lambda read as its body in the one-variable context). `realize-morph`
-  -- (`Once.Denotation.Realize`) maps each clause to the DIRECT categorical IR.
-  --
-  -- A capturing closure (`t-lam`) is structurally NOT a `⊢ᵐ`, so it can never be
-  -- a `compose`/`case` arm — which is exactly why the eff fork disappears and the
-  -- two false `*-eff-complete` completeness postulates become provable.
-  -- D066: GRADE-INDEXED — `_⊢ᵐ_∶_⇨[ π ]_` carries the morphism's purity. Pure
-  -- morphisms are grade-poly (π free); effectful ones are grade-fixed. The IR
-  -- stays grade-erased (`realize-morph` ignores π); π lives only in the surface
-  -- type, applied by `t-morph-lift`. This makes `checkElab` and `⊢ᵐ` agree
-  -- (`morph-complete` provable) and excludes the unsound `eff → pure`.
-  data _⊢ᵐ_∶_⇨[_]_ : (ctx : NamedCtx) → RawExpr → Type → Once.Type.Purity → Type → Set where
-
-    ----------------------------------------------------------------
-    -- Point-free primitive leaves — pure morphisms, GRADE-POLY (π free; D065).
-    -- Lookups must fail so user shadowing wins.
-    ----------------------------------------------------------------
-    m-id : ∀ {ctx : NamedCtx} {T : Type} {π : Once.Type.Purity}
-         → lookupLocal ctx "id" ≡ nothing
-         → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
-         → ctx ⊢ᵐ RVar "id" ∶ T ⇨[ π ] T
-
-    m-fst : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
-          → lookupLocal ctx "fst" ≡ nothing
-          → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
-          → ctx ⊢ᵐ RVar "fst" ∶ (A * B) ⇨[ π ] A
-
-    m-snd : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
-          → lookupLocal ctx "snd" ≡ nothing
-          → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
-          → ctx ⊢ᵐ RVar "snd" ∶ (A * B) ⇨[ π ] B
-
-    m-terminal : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
-               → lookupLocal ctx "terminal" ≡ nothing
-               → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
-               → ctx ⊢ᵐ RVar "terminal" ∶ A ⇨[ π ] Unit
-
-    m-initial : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
-              → lookupLocal ctx "initial" ≡ nothing
-              → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
-              → ctx ⊢ᵐ RVar "initial" ∶ Void ⇨[ π ] A
-
-    m-inl : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
-          → lookupLocal ctx "inl" ≡ nothing
-          → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
-          → ctx ⊢ᵐ RVar "inl" ∶ A ⇨[ π ] (A + B)
-
-    m-inr : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
-          → lookupLocal ctx "inr" ≡ nothing
-          → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
-          → ctx ⊢ᵐ RVar "inr" ∶ B ⇨[ π ] (A + B)
-
-    ----------------------------------------------------------------
-    -- Categorical combinators (recurse on ⊢ᵐ → force the laws).
-    ----------------------------------------------------------------
-    -- `m-compose`/`m-case` share a single π (D032). The `composeMid` premise
-    -- mirrors `checkCompose`'s middle-type recovery (the only combinator whose
-    -- middle type `B` isn't pinned by the conclusion type).
-    m-compose : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type} {π : Once.Type.Purity}
-              → composeMid ctx f g A ≡ just B
-              → ctx ⊢ᵐ f ∶ B ⇨[ π ] C
-              → ctx ⊢ᵐ g ∶ A ⇨[ π ] B
-              → ctx ⊢ᵐ RApp (RApp (RVar "compose") f) g ∶ A ⇨[ π ] C
-
-    m-case : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type} {π : Once.Type.Purity}
-           → ctx ⊢ᵐ f ∶ A ⇨[ π ] C
-           → ctx ⊢ᵐ g ∶ B ⇨[ π ] C
-           → ctx ⊢ᵐ RApp (RApp (RVar "case") f) g ∶ (A + B) ⇨[ π ] C
-
-    -- `m-pair`/`m-curry` are PURE-fixed (their `checkElab` paths are pure-only).
-    m-pair : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
-           → ctx ⊢ᵐ f ∶ A ⇨[ Once.Type.pure ] B
-           → ctx ⊢ᵐ g ∶ A ⇨[ Once.Type.pure ] C
-           → ctx ⊢ᵐ RApp (RApp (RVar "pair") f) g ∶ A ⇨[ Once.Type.pure ] (B * C)
-
-    m-curry : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
-            → ctx ⊢ᵐ f ∶ (A * B) ⇨[ Once.Type.pure ] C
-            → ctx ⊢ᵐ RApp (RVar "curry") f
-                    ∶ A ⇨[ Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-
-    -- Plan 0.54: the cata algebra is a MORPHISM `⟦F⟧T A → A` (`⊢ᵐ`), not a
-    -- general `⊢ᶜ`. This keeps `realize-morph (m-cata)` DIRECT — `Cata wfF
-    -- (realize-morph dalg)` — with no `elaborate` round-trip, uniform with every
-    -- other combinator, and makes `cata-morph-strong` provable via `morph-realize`.
-    -- Lambda algebras become surface sugar (bracket-abstracted to a morphism
-    -- before this slot); point-free algebras only meanwhile. The cata's grade π
-    -- follows the algebra's.
-    m-cata : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
-             {π : Once.Type.Purity} {wfF : WellFormedF F}
-           → wellFormedF? F ≡ just wfF
-           → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-               ⊢ᵐ alg ∶ (⟦ F ⟧T A) ⇨[ π ] A
-           → ctx ⊢ᵐ RApp (RVar "cata") alg ∶ (μ-type F) ⇨[ π ] A
-
-    -- (Plan 0.52 M1: `m-arr` retired — pure⊑eff is now `t-subsume`.)
-
-    ----------------------------------------------------------------
-    -- Extensional leaves.
-    ----------------------------------------------------------------
-    -- A closed value is the constant morphism `A → B` (D018). PURE. REUSES `⊢ᵍ`.
-    -- D069: GRADE-POLY (`π` free) — a closed value is effect-free.
-    m-const : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : Once.Type.Purity}
-            → ctx ⊢ᵍ e ∶ B
-            → ctx ⊢ᵐ e ∶ A ⇨[ π ] B
-
-    -- A named arrow reference is a morphism at the IMPORT's grade π (the ABI by
-    -- which `once_x` is called is downstream codegen, NOT part of the spec).
-    m-named : ∀ {ctx : NamedCtx} {x : String} {A B : Type} {π : Once.Type.Purity}
-            → ¬ (x ≡ "unit")
-            → lookupLocal ctx x ≡ nothing
-            → lookupImport (NamedCtx.imports ctx) x
-                ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
-            → IsBaseType A → IsConcrete B  -- Plan 0.58: FFI SigOp is concrete
-            → ctx ⊢ᵐ RVar x ∶ A ⇨[ π ] B
-
-    -- Plan 0.50 Stage 2 (D064): the RESOLVED-name morphism, the `⊢ᵐ` analog of
-    -- `t-var-resolved`. A canonicalized arrow reference `RResolved cn` is a
-    -- morphism at the import's grade — so a named function used as a VALUE
-    -- (e.g. `compose g g`) extracts as a morphism, mirroring the direct-call case.
-    m-named-resolved : ∀ {ctx : NamedCtx} {cn : CanonicalName} {A B : Type} {π : Once.Type.Purity}
-                     → lookupImport (NamedCtx.imports ctx) (showCanonical cn)
-                         ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
-                     → IsBaseType A → IsConcrete B  -- Plan 0.58: FFI SigOp is concrete
-                     → ctx ⊢ᵐ RResolved cn ∶ A ⇨[ π ] B
-
-    -- (D066: `m-lam` dropped — a closed lambda as a morphism is unreachable via
-    -- `extractMorphWitness` (its outer-ctx-emptiness can't be recovered there);
-    -- cata algebras go through `m-cata` (closed `⊢ᶜ`). Lambdas in `⊢ᶜ` use `t-lam`.)
-
   data _⊢ᶜ_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
                  → Surface.Usage (NamedCtx.size ctx) → Set where
 
-    -- | Plan 0.49 / D063: lift a MORPHISM into check-mode at any purity grade
-    -- π — the mirror of `t-value-lift` (which lifts a `⊢ᵍ` value). This single
-    -- bridge SUBSUMES the entire combinator check-rule zoo (`t-id-check`,
-    -- `t-fst-check`, …, `t-compose-check`, `t-case-copair-check`, `t-pair-check`,
-    -- `t-cata-check`, the bare `t-{inl,inr,initial,arr}-check`). Closed ⇒
-    -- `zeroUsage`. Grade-polymorphic: `compose` at eff is just `{π = eff}`,
-    -- with no separate eff path (the eff fork is gone).
-    t-morph-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-                   {π : Once.Type.Purity}
-                 → ctx ⊢ᵐ e ∶ A ⇨[ π ] B
-                 → ctx ⊢ᶜ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+    ----------------------------------------------------------------
+    -- D127: THE CATEGORICAL COMBINATORS, CONTEXT-INDEXED.
+    --
+    -- These were the `⊢ᵐ` realm, reached through the single bridge
+    -- `t-morph-lift`. The realm existed so that a combinator's arms were
+    -- CLOSED by construction — which is what made `realize-morph` total and
+    -- forced the categorical laws, and also what made an arm unable to
+    -- mention an enclosing binder.
+    --
+    -- Under D127 an arm is an ordinary term of arrow type IN THE AMBIENT
+    -- CONTEXT: same rules, `⊢ᶜ` premises, and a usage index that is the sum
+    -- of the arms'. `\x -> compose emit@E (\_ -> x)` becomes well-typed —
+    -- that is the point — and `compose emit@E 5` becomes ill-typed, because
+    -- `5` is not an arrow and the lift is now WRITTEN (`\_ -> 5`).
+    --
+    -- The point-free leaves below are the ordinary typing of the generators
+    -- they always were; the lookup premises keep user shadowing winning.
+    ----------------------------------------------------------------
+
+    t-id-check : ∀ {ctx : NamedCtx} {T : Type} {π : Once.Type.Purity}
+               → lookupLocal ctx "id" ≡ nothing
+               → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
+               → ctx ⊢ᶜ RVar "id" ∶ (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] T)
+                       ⨾ Surface.zeroUsage
+
+    t-fst-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
+                → lookupLocal ctx "fst" ≡ nothing
+                → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
+                → ctx ⊢ᶜ RVar "fst" ∶ ((A * B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+                        ⨾ Surface.zeroUsage
+
+    t-snd-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
+                → lookupLocal ctx "snd" ≡ nothing
+                → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
+                → ctx ⊢ᶜ RVar "snd" ∶ ((A * B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+                        ⨾ Surface.zeroUsage
+
+    t-terminal-morph-check : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
+                           → lookupLocal ctx "terminal" ≡ nothing
+                           → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
+                           → ctx ⊢ᶜ RVar "terminal"
+                                   ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
+                                   ⨾ Surface.zeroUsage
+
+    t-initial-morph-check : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
+                          → lookupLocal ctx "initial" ≡ nothing
+                          → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
+                          → ctx ⊢ᶜ RVar "initial"
+                                  ∶ (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+                                  ⨾ Surface.zeroUsage
+
+    t-inl-morph-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
+                      → lookupLocal ctx "inl" ≡ nothing
+                      → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
+                      → ctx ⊢ᶜ RVar "inl" ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A + B))
+                              ⨾ Surface.zeroUsage
+
+    t-inr-morph-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
+                      → lookupLocal ctx "inr" ≡ nothing
+                      → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
+                      → ctx ⊢ᶜ RVar "inr" ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A + B))
+                              ⨾ Surface.zeroUsage
+
+    -- `composeMid` SURVIVES (plan 0.76 A3): D044/D045 chose a locally
+    -- decidable, unification-free bidirectional rule deliberately, and making
+    -- `compose` an ordinary polymorphic constant is a separate decision.
+    t-compose-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                      {π : Once.Type.Purity}
+                      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                    → composeMid ctx f g A ≡ just B
+                    → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₁
+                    → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ₂
+                    → ctx ⊢ᶜ RApp (RApp (RVar "compose") f) g
+                            ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
+                            ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+
+    t-case-copair-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                          {π : Once.Type.Purity}
+                          {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                        → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₁
+                        → ctx ⊢ᶜ g ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₂
+                        → ctx ⊢ᶜ RApp (RApp (RVar "case") f) g
+                                ∶ ((A + B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
+                                ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+
+    -- `pair`/`curry` stay PURE-fixed, as their `⊢ᵐ` predecessors were.
+    t-pair-morph-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                         {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                       → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ₁
+                       → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₂
+                       → ctx ⊢ᶜ RApp (RApp (RVar "pair") f) g
+                               ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B * C))
+                               ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
+
+    t-curry-check : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
+                    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                  → ctx ⊢ᶜ f ∶ ((A * B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ
+                  → ctx ⊢ᶜ RApp (RVar "curry") f
+                          ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ]
+                             (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
+                          ⨾ Ψ
+
+    -- The cata algebra keeps `m-cata`'s CLEARED context, deliberately.
+    -- Widening it to the ambient context would admit a CAPTURING algebra —
+    -- a real semantic widening, and plan 0.76 risk 3 says to decide that in
+    -- its own entry rather than inherit it from this refactor.
+    t-cata-check : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
+                   {π : Once.Type.Purity} {wfF : WellFormedF F}
+                   {Ψ : Surface.Usage
+                          (NamedCtx.size (ctxWithImportsAndPolys (NamedCtx.imports ctx)
+                                                                 (NamedCtx.polys ctx)))}
+                 → wellFormedF? F ≡ just wfF
+                 → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+                     ⊢ᶜ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Ψ
+                 → ctx ⊢ᶜ RApp (RVar "cata") alg
+                         ∶ ((μ-type F) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                          ⨾ Surface.zeroUsage
 
     t-embed : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
@@ -666,67 +572,6 @@ mutual
           → (q' Once.Type.≤q q) ≡ true
           → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ (q' ∷ᵘ Ψ)
           → ctx ⊢ᶜ RLam x body ∶ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ⨾ Ψ
-
-    -- | Plan 0.41 / D018: a closed value IS its pure global element
-    -- (`Hom(1,A) ≅ A`). The bridge from the `⊢ᵍ` value family (above) to a
-    -- pure morphism `X ⇒[Many pure] A`. Because `⊢ᵍ` is the extractable
-    -- family by construction, completeness recurses on the `⊢ᵍ` derivation
-    -- (no over-generality — a named ref `t-embed` is not a `⊢ᵍ` value, so it
-    -- can't reach this rule). PURE-only — masquerade-safe (D046's grade).
-    -- D069: GRADE-POLY (`π` free). A closed value is effect-free, so the constant
-    -- morphism `X ⇒[Many π] A` inhabits any grade — `t-subsume` is unneeded for it.
-    t-value-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type} {π : Once.Type.Purity}
-                 → ctx ⊢ᵍ e ∶ A
-                 → ctx ⊢ᶜ e ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Surface.zeroUsage
-
-    -- | A CLOSED EXPRESSION is a global element too (D126). The generalisation
-    -- of `t-value-lift` from the syntactic value forms to the semantic notion.
-    --
-    -- WHY IT WAS MISSING. D018 decided "values with implicit lifting" — you
-    -- write `puts "hello"`, not `compose puts "hello"` — and D056 spelled the
-    -- rule out: "a value `v : B` used where a morphism is expected is the
-    -- constant morphism `const v : Unit → B`". D063's table then defines the
-    -- value realm as the GLOBAL ELEMENT `1 → A`. But `⊢ᵍ` is a SYNTACTIC
-    -- enumeration — `g-int`, `g-float`, `g-pair`, … — and `1 + 1` is a closed
-    -- term of type `Int`, hence a global element, with no `⊢ᵍ` derivation. So
-    -- `compose exit@S (1 + 1)` was a type error against a decision that says
-    -- it should not be. The gap was in the implementation, not the design.
-    --
-    -- `zeroUsage` IS THE CLOSEDNESS CONDITION, and it is the whole premise:
-    -- it says no LOCAL variable is used, which is exactly when `e ∘ terminal`
-    -- is legitimate. An expression that reads a local would need a closure,
-    -- and this rule cannot fire for it.
-    --
-    -- NOT ADDED TO `⊢ᵍ`, deliberately. A rule `⊢ᵢ e ∶ A ⨾ 0 → ⊢ᵍ e ∶ A` would
-    -- overlap every existing constructor (`g-int n` AND the closed lift of
-    -- `t-int n`), and `⊢ᵍ`'s completeness proofs — `checkG-just`,
-    -- `gd-completeV`, `const-morph-strong` — are about the elaborator finding
-    -- THE derivation. Check mode is where the failure actually happens, so
-    -- check mode is where the rule belongs.
-    --
-    -- The existing per-form lifts still take precedence in the elaborator;
-    -- this catches everything they do not, at BOTH numeric types at once.
-    -- GRADE-POLYMORPHIC, exactly as `t-value-lift` is (D067), and for the same
-    -- reason: `embedOrSubsume-lifts` says a check that succeeds at the PURE
-    -- arrow also succeeds at the EFF one. A pure-only rule would make that
-    -- FALSE the moment a closed expression lifted — the lemma is the guard
-    -- that caught it.
-    --
-    -- `realize` cases on `π`: `λ _ → e` at pure, and `arr'` of it at eff (the
-    -- same pure→eff coercion `t-subsume` uses).
-    -- The `ClosedLiftShape` premise is the classic bidirectional side
-    -- condition: without it the rule would also fire on `λx. body`, giving one
-    -- expression two different check-mode meanings at one type.
-    --
-    -- `zeroUsage` means "consumes no resource", NOT "reads no local": at a
-    -- `Zero`-quantity arrow `Zero *ᵘ Ψ` discards the argument's usage, so
-    -- `f x` can be usage-closed and still mention `x`. The conclusion is
-    -- context-indexed, so that is sound here — the realization is constant in
-    -- its ARGUMENT. A context-FREE morphism cannot be built from this premise.
-    t-closed-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {A X : Type} {π : Once.Type.Purity}
-                  → ClosedLiftShape e
-                  → ctx ⊢ᵢ e ∶ A ⨾ Surface.zeroUsage
-                  → ctx ⊢ᶜ e ∶ (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) ⨾ Surface.zeroUsage
 
     -- Plan 0.36 Phase 2a follow-up: check-mode for the pair LITERAL
     -- `(a , b)` at a product type. Checks the components bidirectionally
@@ -880,27 +725,4 @@ Typed : (ctx : NamedCtx) → RawExpr → Type
       → Surface.Usage (NamedCtx.size ctx) → Set
 Typed ctx e A Ψ = ctx ⊢ e ∶ A ⨾ Ψ
 
-------------------------------------------------------------------------
--- Morphism-witness extraction (Plan 0.49 / D063, C3 enabler)
---
--- After the collapse, the ONLY way to check-derive an expression at an
--- arrow type with the morphism-realm shape is `t-morph-lift` (over a `⊢ᵐ`).
--- So a component arm of `compose`/`case`/`pair` that the elaborator already
--- check-elaborated at arrow type exposes its underlying `⊢ᵐ` derivation by a
--- two-clause match — no separate 17-clause morphism elaborator needed. A
--- non-morphism check-derivation (a closure `t-lam`, an `t-embed`, …) yields
--- `nothing`, which is exactly the elaborator's "this arm is not a morphism →
--- reject" path (D056: the closure composition path is retired).
-------------------------------------------------------------------------
-extractMorphWitness : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
-                        {π : Once.Type.Purity}
-                        {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                    → ctx ⊢ᶜ e ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ
-                    → Maybe (ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
--- (Plan 0.52 M1: `extractMorph-arr` retired with `m-arr`.)
 
-extractMorphWitness (t-morph-lift mF)                  = just mF
-extractMorphWitness (t-value-lift g)                   = just (m-const g)
-extractMorphWitness (t-embed (t-var-import ¬u eqL eqI (con-fun bA cB))) = just (m-named ¬u eqL eqI bA cB)
-extractMorphWitness (t-embed (t-var-resolved eq (con-fun bA cB)))       = just (m-named-resolved eq bA cB)
-extractMorphWitness _                                  = nothing
