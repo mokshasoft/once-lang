@@ -31,11 +31,12 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢ty_; ty-Unit; ty-Σ; ty-El; ty-IMu; ty-Π; ty-Nat
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
-        ; imethTy; imethsTyFrom; ⊢icon; iconS; iatCon; iihTy; ⊢lam )
+        ; imethTy; imethsTyFrom; ⊢icon; iconS; iatCon; iihTy; ⊢lam; ⊢pair )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk; Ren⊢-ext
         ; isingle-Sub⊢; iihTy-wf )
-open import DirectedHoTT.Lib.Wk using ( ren-subTy; Ren⊢-ins² )
+open import DirectedHoTT.Lib.Wk using ( ren-subTy; Ren⊢-ins²; wk-singleTy )
+open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; methsFrom )
 
 ipayTy-wf : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε)
             (σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋) (C : ICon ⌊ Θ ⌋) →
@@ -375,3 +376,42 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
                                        (λ { vz → refl ; (vs ()) })))
                               (⊢var here)))
             db))
+
+------------------------------------------------------------------------
+-- ★★★ …AND ITS TYPING, generic in the method AND the motive.
+--
+-- ⚠ THE PER-ROW METHOD IS A HYPOTHESIS, not a fixed term.  A tuple built
+--   from one repeated method needs that method to type AT EVERY ROW —
+--   which is a property of the method, not of the walk — so the caller
+--   supplies it once, quantified over the row.
+--
+-- ★ `Split` is what hands each row its MEMBERSHIP and its LOOKUP on the
+--   way past, so `imethTy-wf` can be reached without enumerating.
+------------------------------------------------------------------------
+
+⊢methsFrom : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) {E : IDesc}
+             (W : CDesc E) {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {m : RTm ⌊ Γ ⌋} →
+             IDescWf I D → IDescWfFrom D I E → Split D j E →
+             ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
+             ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+             ({k : ℕ} {C : ICon (ε ∙)} → IConWf D I (◇ ▹ εwkTy I) C →
+                k ∈ID D → ilookupD D k ≡ C → Γ ⊢ m ∷ imethTy D I k C M) →
+             (tl : RTm ⌊ Γ ⌋) →
+             Γ ⊢ tl ∷ imethsTyFrom D I M (cdPos W j) (cdRest W) →
+             Γ ⊢ methsFrom W m tl ∷ imethsTyFrom D I M j E
+⊢methsFrom D I j (cd-stop E) wD wE sp tI wM dm tl dtl = dtl
+⊢methsFrom D I j (cd-cons {C = C} {E = E} W) {m = m} wD (idwf-cons wC wE)
+           sp tI wM dm tl dtl =
+  ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI wM) there)
+        (dm wC (spl-mem sp) (spl-look sp))
+        (⊢-cast (sym (wk-singleTy {v = m} _))
+                (⊢methsFrom D I (suc j) W wD wE (spl-step sp) tI wM dm tl dtl))
+
+-- ★ …and where the PREFIX walk leaves the position, computed by the same
+--   recursion the walk takes.  ⚠ Without this a caller needs `Split D 51
+--   …` as 51 nested `spl-cons` — a term the size of the description,
+--   written by hand, for something the walk already knows.
+splTake : {D : IDesc} {j : ℕ} {E : IDesc} →
+          Split D j E → (W : CDesc E) → Split D (cdPos W j) (cdRest W)
+splTake sp (cd-stop _) = sp
+splTake sp (cd-cons W) = splTake (spl-step sp) W
