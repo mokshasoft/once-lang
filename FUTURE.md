@@ -527,3 +527,63 @@ current evidence **(a) is the one worth doing** and (b) is a note, not a
 plan. Revisit if a judgement row turns out to need a variable reference
 that must survive weakening *propositionally* rather than definitionally —
 that would be a real obligation and would change the verdict.
+
+## Once: TACTIC-STYLE HOLE FILLING — a syntax-directed search for the forced steps
+
+**Where the idea came from.** Encoding OCP-0009's judgement layer produced
+thousands of lines of *derivations* that a human never chose: coercion
+chains (`toI`/`fromI`/`toMu`/`fordAs`), `⊢ty` well-formedness, `⊢pair`
+telescope tuples, `⊢wk` depth derivations. They are generated today by a
+Python emitter that has to know each rule. Idris2 has `auto` / proof
+search for exactly this class, and Agda has Agsy.
+
+★ **MEASURED, not assumed.** Replacing all 24 `⊢pair` well-formedness
+arguments in `Examples/Knot/TyRedWf` with `_` gives **24 unsolved metas** —
+so plain unification does *not* determine them. They are derivations, and
+`_⊢ty_` has eleven constructors with no proof irrelevance.
+
+⇒ **But that is the argument FOR a search.** The goals are strictly
+syntax-directed: a goal `Γ ⊢ty Σ' A B` admits only `ty-Σ`, and its
+subgoals follow the telescope's shape. Depth-first with the goal's head
+selecting the rule closes all 24. This tier is most of the *volume* of a
+mechanised metatheory.
+
+### ⚠ What it would NOT do, and this is the point
+
+The expensive steps in `SUBTM-ATTEMPTS.md` and `JUDGEMENT-ATTEMPTS.md`
+were **not** unfilled holes. They were:
+
+* `IsNum` instead of closedness — closedness cannot cross a substitution;
+* `fordMap` — a κ ford is not a copy under substitution;
+* an explicit general depth instead of `sucs j (var x)` — which does not
+  unify;
+* a tagged index for the mutual pair;
+* `iρ` versus `icw-imu` for a foreign premise.
+
+**In every one the goal itself was wrong.** A search fills a hole; it
+cannot tell you the hole is in the wrong place. ⇒ do not sell this as a
+silver bullet, and do not let it hide interface errors by making a wrong
+statement *provable-looking*.
+
+### ★ The real value: turning thinking into mechanism, and failing faster
+
+Two concrete wins, both worth having:
+
+1. **Volume.** The bookkeeping tier stops being hand- or generator-written.
+2. **Faster refutation.** If the search *cannot* close a forced-looking
+   goal, that is evidence the statement is wrong — arriving in seconds
+   rather than after a hand-written attempt. Several of the corrections
+   above took multiple attempts precisely because "this should be
+   mechanical" was never tested cheaply.
+
+### Design notes for Once
+
+* **Syntax-directed first, not general resolution.** The win comes from
+  the goal's head determining the rule; unrestricted search is what makes
+  these tools unpredictable.
+* **Budgeted and reported.** A search that silently gives up is
+  `verification-that-covers-less-than-it-claims`; it must say what it
+  could not close, by name — the same contract the row emitters have.
+* **Never across an interface boundary.** If closing a goal requires
+  inventing a lemma statement, refuse and report: that is the tier where
+  a human is deciding what the statement should be.
