@@ -39,7 +39,8 @@ module DirectedHoTT.Examples.Knot.Terms where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; RTm; El; Unit; Nat; Σ'; IMu
-        ; var; pair; fst; snd; unit; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝; idrefl; icon )
+        ; var; pair; fst; snd; unit; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝; idrefl; icon
+        ; Π; renTm )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv
@@ -227,3 +228,18 @@ kdcon = kdk kNat kdi
 
 ⊢kdcon : ◇ ⊢ kdcon ∷ K (pair sDCon nzero)
 ⊢kdcon = ⊢kdk ⊢kNat ⊢kdi
+
+------------------------------------------------------------------------
+-- ★★★ THE TYPE OF A SUBSTITUTION, at the object level.
+--
+--     SubTy d n = Π (Var d) (Tm n)
+--
+-- ⚠ IT LIVES HERE BECAUSE IT HAS TWO CUSTOMERS.  `Knot/SubMot` defined
+--   it for `subTm`'s motive and `Knot/Single` re-defined it,
+--   character for character, for `singleK`'s result — a duplicate born
+--   the same day, because neither module is below the other.
+--   `Knot/Terms` is, and it already carries the knot's small shapes.
+------------------------------------------------------------------------
+
+SubTy : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
+SubTy d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
