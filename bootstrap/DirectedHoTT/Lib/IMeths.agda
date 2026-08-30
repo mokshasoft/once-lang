@@ -27,7 +27,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.IMeths where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; ICon; IDesc; _◂_; inil )
+open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; RTm; pair; ICon; IDesc; _◂_; inil )
 
 data CDesc : IDesc → Set where
   cd-stop : (E : IDesc) → CDesc E
@@ -50,3 +50,18 @@ cdTake : ℕ → (E : IDesc) → CDesc E
 cdTake zero    E       = cd-stop E
 cdTake (suc n) inil    = cd-stop inil
 cdTake (suc n) (C ◂ E) = cd-cons (cdTake n E)
+
+------------------------------------------------------------------------
+-- ★★★ THE TUPLE ITSELF — one method repeated over the prefix, then a
+-- caller-supplied tail.
+--
+-- ⚠⚠ GENERIC IN THE METHOD, which `Knot/SubMot`'s version was not: it
+--   named `constMeth`, and `constMeth` names `extMotK`.  A second
+--   customer with a different motive could not reuse a line of it.
+--   ★ The walk never inspects the method, so there was never a reason
+--     for it to know which one.
+------------------------------------------------------------------------
+
+methsFrom : {Γ : Cx} {E : IDesc} → CDesc E → RTm Γ → RTm Γ → RTm Γ
+methsFrom (cd-stop E) m t = t
+methsFrom (cd-cons W) m t = pair m (methsFrom W m t)

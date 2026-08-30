@@ -666,3 +666,37 @@ hoist, against a blocked generalisation for not doing so.
 generalising `Lib/IPay` off `Nat`, which unblocks `constMeth` over an
 abstract motive — and only then is `singleK` a small job rather than a
 fourth copy.
+
+---
+
+# §8 — what the `NOT EMITTED` lines actually cover
+
+⚠⚠ **They under-report.** Each line counts what the generator SKIPPED in
+a file it attempted. `Canon`/`Prog` have **no line at all** — not because
+they are done, but because nothing tries them. **Absence of a warning is
+not evidence of completeness.**
+
+The 23 skips map to five jobs, not the four I listed:
+
+| job | rules | which |
+|---|---|---|
+| 1. object-level substitution (`singleK`) | **7** | `β`, `natrec-suc`, `⊢app`, `⊢pair`, `⊢snd`, `⊢jsub`, `⊢natrec` |
+| 2. boolean functions over syntax | **6** | `hrefl-pw`, `tr-pw`, `tr-J-Hom`, `ap-J`, `⊢tr`, `⊢ap` |
+| 3. the small judgements (`DescWf`, `∈D`, …) | **7** | `ty-Mu`, `ty-IMu`, `⊢⌜Mu⌝`, `⊢⌜IMu⌝`, `⊢con`, `⊢elim`, `⊢icon` |
+| **5. an object-level METHOD SELECTOR** | **2** | `ι-elim`, `ι-ielim` — they need `sel`/`fields`/`lookupD` |
+| 6. a motive annotation | **1** | `⊢ielim`, whose `M` the sort inference declines |
+
+★★ **Item 5 was missing from my list.** `ι-elim`/`ι-ielim` are the
+*eliminators'* reduction rules, and encoding them needs an object-level
+`sel k ms` — pick the k-th method out of a tuple — plus `fields`. That is
+the same machinery `Lib/IMeths` provides at the META level, now wanted
+INSIDE the language. It is not covered by `singleK` or by the boolean
+functions.
+
+⇒ **items 1–3 + 5 + 6 close all 23, and that IS step 3's remainder.**
+Item 4 (`Canon`/`Prog`) closes no warning — it *adds* a description, and
+it is needed because `prog`'s type mentions `Prog`.
+
+⇒ **step 4 closes none of them.** It *depends* on them: a judgement
+missing rows is a smaller language, so `prog` stated over it would not be
+`prog` for this kernel.
