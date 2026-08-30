@@ -9401,3 +9401,70 @@ lifting it cannot happen silently.
 
 **Relates**: D054, D055, D113, D116, D117, D118 (±∞ on overflow, which `x/0`
 now also produces)
+
+---
+
+## D129: WHICH Leaf a Load Reads Is a PROGRAM Fact — Typed Paths in the IR, a WF Relation Beside the ISA
+
+**Date**: 2026-08-30 · **Status**: Decided (plan 0.72 item 6) ·
+**Follows**: D112 (Float's representation is a parameter), D063 (realms)
+
+### The decision
+
+`ainput` in `MArithIR` carries a TYPED path — `Path sh n`, a witness that the
+shape `sh` really has a leaf of numeric kind `n` at that position — instead of
+an untyped `InputPath` that `project` might answer `nothing` for. The abstract
+ISA below it stays untyped: `compile-go` ERASES the witness through `⌊_⌋ᴾ`,
+and the fact travels beside the emitted program as a well-formedness relation
+(`LoadOK` / `LoadsWF`) that the compiler DISCHARGES by induction on the IR.
+
+### What was wrong
+
+`R-input` — the call-site's promise about how the argument is laid out — said
+
+    pl s-conc p ≡ fromℤ (maybe-zero (project sh p (input s-abs)))
+
+for EVERY `InputPath p`: the concrete load equals the INTEGER reading of the
+bytes there. A float leaf's bytes are a pattern, `project` answers `nothing`
+there, and the relation asserts the load reads `0`. So a block with a float
+PARAMETER could not satisfy its own precondition, and `Xmov-farg`'s step lemma
+was a postulate (`float-arg-sim`).
+
+That looked like a proof gap and was not one. The missing information — which
+leaf this load reads — is chosen by the PROGRAM. No relation between two
+STATES can recover it, so no amount of work on the state relation closes it.
+(The general form: a residual bounding something the program decides, from
+only a state correspondence, is refutable — the interface has to widen.)
+
+### Why not the two alternatives
+
+**Quantify `R-input` over untyped paths and make the ABSTRACT machine read the
+raw leaf word.** This does make `Xmov-arg` and `Xmov-farg` the same operation
+and needs no WF relation at all — but the premise then also constrains paths
+that no shape has, demanding the concrete load answer `0` there. An arch that
+cannot supply that makes the premise unsatisfiable and the whole correspondence
+VACUOUS, which is the failure this codebase has already paid for once.
+
+**Index the ISA by the shape.** Twenty instruction constructors would carry a
+parameter that two of them use. The type belongs where the type information
+is — in the IR — and the erasure boundary is exactly where it should stop.
+
+### Consequences
+
+- `R-input` quantifies over `Path sh n` only: true at BOTH leaf kinds, and
+  stated only about paths that exist. Not vacuous, and not a narrowing.
+- `R-step-arg` and `R-step-farg` are the SAME proof twice, and every arch
+  discharges the new `rt-farg` with the same lambda as `rt-arg` — a float
+  load is a load, and only the abstract reading of the bytes ever differed.
+- `compile-loads` proves `LoadsWF sh (emit-program (compile-abs e))` for every
+  `e`: `compile-go` emits `Xmov-arg`/`Xmov-farg` only from an `ainput`, so the
+  erased path is handed straight back as its own witness. The relation is
+  therefore invisible above `arith-block-correct` — no dispatch module, and no
+  arch, takes it as a new premise.
+- `project-path` / `projectF-path` replace the four leaf lemmas that used to
+  case-split the shape by hand; the recogniser refuses a wrong-kinded chain via
+  `typePath?` rather than by defaulting.
+- The residual is GONE, not narrowed: `float-arg-sim` and its `IsFloatArg`
+  guard are deleted.
+
+**Relates**: D112, D113, D054
