@@ -17,11 +17,11 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.IPay where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Unit; Σ'; El; IMu; Nat; Π
-        ; renTy; isingle; ipayTy-ren; ipayTy-cong
+        ; renTy; extR; isingle; ipayTy-ren; ipayTy-cong
         ; ICon; IDesc; iι; iρ; iκ; ipayTy; Sub; extS; subTm; subTy
         ; εwkTy; εwk-sub; εwk-ren; _◂_; inil
         ; ilookupD; _∈ID_; icon; subTy-renTy; subTy-cong )
@@ -33,7 +33,7 @@ open import DirectedHoTT.Spec.Typing
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTyFrom; ⊢icon; iconS; iatCon )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk
+  using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk; Ren⊢-ext
         ; isingle-Sub⊢; iihTy-wf )
 open import DirectedHoTT.Lib.Wk using ( ren-subTy )
 
@@ -226,3 +226,31 @@ iatCon-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) {i : RTm ⌊ Γ ⌋}
             ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
             (Γ ▹ ipayTy D I (isingle i) (ilookupD D k)) ⊢ty iatCon k i M
 iatCon-wf D I k wD mem di wM = sub-ty wM (iconS-Sub⊢ D I k wD mem di)
+
+------------------------------------------------------------------------
+-- ⬜ NEXT: `imethTy-wf` — the method type at an ABSTRACT motive.
+--
+-- ★ THE GATE IS OPEN: `iatCon-wf` above supplies the codomain, which is
+--   the thing that kept `imethTyNat-wf` pinned to `Nat`.  What remains
+--   is de Bruijn bookkeeping, and it is worth writing down exactly.
+--
+--     imethTy D I k C M =
+--       Π (εwkTy I)
+--         (Π (ipayTy D I (isingle (var vz)) C)
+--            (Π (iihTy … (renTy (extR (extR vs)) (renTy (extR (extR vs)) M)))
+--               (renTy vs (iatCon k (var vz) (renTy (extR (extR vs)) M)))))
+--
+--   ⇒ the motive appears at THREE different weakenings, and each needs a
+--     `Ren⊢` to move `wM` there.
+--
+-- ⚠ ATTEMPTED 2026-08-30 and backed out: `Ren⊢-ext (Ren⊢-ext there)` is
+--   NOT the right witness.  `Ren⊢-ext` renames the type it extends by,
+--   so its target context carries `renTy vs (εwkTy I)` where the goal
+--   has `εwkTy I` — equal only by `εwk-ren`, and `Ren⊢` is a FUNCTION
+--   type, so no `⊢-cast` reaches it.  It must be built POINTWISE, or a
+--   `Ren⊢`-level cast lemma written first.
+--
+-- ⇒ this is the same trap as everywhere else in this layer: the shape
+--   that looks right (`extR (extR vs)`) inserts ONE binder, and the two
+--   nested `renTy`s insert TWO.  Count them from the goal, do not guess.
+------------------------------------------------------------------------
