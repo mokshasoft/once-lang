@@ -615,3 +615,54 @@ wrong place.
 neither tier. They were the *generator* threading a wrong depth through
 global mutable state; the proofs were fine once the depth was right. The
 fix there is a parameter, not a search.
+
+---
+
+# §7 — is the complexity an abstraction problem? — **yes, and here is the tie**
+
+Asked while starting `singleK`. The answer turned out to be concrete, so
+it is recorded rather than argued.
+
+### The method-tuple shape has TWO axes, and only one is abstracted
+
+| axis | abstracted? | where |
+|---|---|---|
+| **which rows do real work** | ✅ yes | `Lib/IMeths`' prefix hatch, then `Lib/ISub`'s per-row MASK |
+| **which motive** | ❌ no | `constMeth` is hard-wired to `extMotK` |
+
+★ So "an `ielim` where two `Var` rows do the work and 51 are constant" is
+**already** a solved shape — that is exactly what the mask is. What is
+*not* solved is that a second customer with a *different motive* cannot
+reuse `constMeth`/`⊢constMeth`; it must copy them.
+
+⇒ **and that is precisely open piece #2 of the pending generalisation**
+(`HANDOFF-2026-08-27`): `imethTyNat-wf` is stuck at `Nat` because nobody
+has shown `Γ ⊢ty iatCon k ⟨-⟩ M` at an abstract `M`. All four existing
+customers dodge it differently. **Every new object-level function pays a
+fresh copy of the method machinery because of that one missing lemma.**
+
+### ★★★ And its missing hop was in a `where` clause
+
+`Lib/IPay`'s spike names what it lacks: *"substituting by a renaming IS
+renaming ⇒ look for that lemma before writing one."*
+
+It was three files away — `Lib/Wk`, inside `nrs-wTy`'s `where` block:
+
+    ren-subTy : renTy ρ T ≡ subTy (λ x → var (ρ x)) T
+
+The **term**-level twin (`ren-sub`) was top-level and findable; the
+**type**-level one, the one `iatCon-wf` needs, was one scope too deep.
+Now lifted.
+
+⚠⚠ **This is the fifth "the library already had it" of the session** —
+after `ξ-Πˡ`/`⟶ᵀ*-Πˡ`, `⟶*-⌜Id⌝ˡ`/`⟶ᵀ*-El`, `⊢Var-vzKt`, and
+`wkK`/`⊢wkK`. And it is a *new variant* of the where-clause lesson: the
+proof was not heavy, it was **invisible**. ⇒ a `where`-bound lemma cannot
+be found by grep or by a future search tactic. If it is general in its
+own right it belongs at top level even with one customer — a line to
+hoist, against a blocked generalisation for not doing so.
+
+⬜ **Next:** `iatCon-wf` case 3 now has its missing hop, which unblocks
+generalising `Lib/IPay` off `Nat`, which unblocks `constMeth` over an
+abstract motive — and only then is `singleK` a small job rather than a
+fourth copy.

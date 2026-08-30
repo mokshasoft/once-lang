@@ -133,13 +133,28 @@ nrs-w t = trans (subTm-renTm t) (sym (trans (renTm-renTm t) (ren-sub t)))
 wk-singleTy : {Γ : Cx} {v : RTm Γ} (T : RTy Γ) → subTy (single v) (renTy vs T) ≡ T
 wk-singleTy T = trans (subTy-renTy T) (subTy-id T)
 
+-- ★★★ SUBSTITUTING BY A RENAMING **IS** RENAMING — the type-level twin
+--   of `ren-sub`.
+--
+-- ⚠⚠ THIS WAS TRAPPED IN A `where` CLAUSE inside `nrs-wTy`, and
+--   `Lib/IPay`'s `iatCon-wf` spike stalled for want of exactly it —
+--   its note reads "what is missing is the last hop, «substituting by a
+--   renaming IS renaming» ⇒ look for that lemma before writing one."
+--   ★ It was three files away, one scope too deep to find.
+--
+-- ⇒ a `where`-bound lemma is INVISIBLE to search.  If it is general in
+--   its own right, it belongs at top level even when it has one
+--   customer — the cost of hoisting is a line, the cost of not doing so
+--   was a blocked generalisation.
+ren-subTy : {Γ Δ : Cx} {ρ : Ren Γ Δ} (T : RTy Γ) →
+            renTy ρ T ≡ subTy (λ x → var (ρ x)) T
+ren-subTy {ρ = ρ} T = trans (cong (renTy ρ) (sym (subTy-id T)))
+                            (renTy-subTy T)
+
 nrs-wTy : {Γ : Cx} (T : RTy Γ) → subTy nrs (renTy vs T) ≡ renTy vs (renTy vs T)
 nrs-wTy T =
   trans (subTy-renTy T)
         (sym (trans (renTy-renTy T) (ren-subTy T)))
-  where
-    ren-subTy : (T : RTy _) → renTy _ T ≡ subTy (λ x → var _) T
-    ren-subTy T = trans (cong (renTy _) (sym (subTy-id T))) (renTy-subTy T)
 
 ren-wTy : {Γ Δ : Cx} {ρ : Ren Γ Δ} (T : RTy Γ) →
           renTy (extR ρ) (renTy vs T) ≡ renTy vs (renTy ρ T)
