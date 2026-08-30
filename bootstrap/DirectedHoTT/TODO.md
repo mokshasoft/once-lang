@@ -84,14 +84,16 @@ Full state: `HANDOFF-2026-08-27` §"THE PENDING GENERALISATION".
 |---|---|
 | ✅ | `Lib/IMeths` — the walk, lifted out of `Examples` |
 | ⚠ | `Lib/ISub` reuses `Lib/IWk`'s classification for the TERM; the TYPING needs one more datum |
-| 🟡 | **`iatCon-wf`** — 2 of 3 cases proved; gates generalising `Lib/IPay` off `Nat` |
+| ✅ | **`iatCon-wf`** — PROVED 2026-08-30 via `iconS-Sub⊢`; the gate on `Lib/IPay` is OPEN |
 | ⬜ | `payStep` is MISFILED in `Lib/IWk` (both outside customers do substitution) |
 | ⬜ | `sub-w`/`²`/`³`/`⁴` want INDEXING not listing (26 customers) |
 | ⬜ | the assembly lemma itself |
 
 ⚠ **Open question marks**, in increasing severity:
-1. `iatCon-wf`'s last case needs "substituting by a renaming IS
-   renaming" — look for that lemma before writing one.
+1. ~~`iatCon-wf`'s last case needs "substituting by a renaming IS
+   renaming"~~ ✅ **DONE.** The lemma existed — `ren-subTy`, trapped in
+   `Lib/Wk.nrs-wTy`'s `where` block. Lifted; case 3 closed; `iatCon-wf`
+   is four lines. See `LIFTS.md` for the scan this prompted.
 2. The mask may not be the last shape needed; `subTm`'s 50 computed rows
    are not typed yet.
 3. ~~"`sub-w`ⁿ wants indexing" is `Lib/Wk`'s CLAIM, not a measurement~~

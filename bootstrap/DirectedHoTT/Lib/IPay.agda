@@ -17,23 +17,25 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.IPay where
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Unit; Σ'; El; IMu; Nat; Π
         ; renTy; isingle; ipayTy-ren; ipayTy-cong
         ; ICon; IDesc; iι; iρ; iκ; ipayTy; Sub; extS; subTm; subTy
-        ; εwkTy; εwk-sub; εwk-ren; _◂_; inil )
+        ; εwkTy; εwk-sub; εwk-ren; _◂_; inil
+        ; ilookupD; _∈ID_; icon; subTy-renTy; subTy-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; ⊢var; here; there
         ; _⊢ty_; ty-Unit; ty-Σ; ty-El; ty-IMu; ty-Π; ty-Nat
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
-        ; imethTy; imethsTyFrom )
+        ; imethTy; imethsTyFrom; ⊢icon; iconS; iatCon )
 open import DirectedHoTT.Metatheory.SubjectReduction
-  using ( Sub⊢; Sub⊢-ext; sub-lemma; ⊢-cast; ren-ty
+  using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk
         ; isingle-Sub⊢; iihTy-wf )
+open import DirectedHoTT.Lib.Wk using ( ren-subTy )
 
 ipayTy-wf : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε)
             (σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋) (C : ICon ⌊ Θ ⌋) →
@@ -145,3 +147,82 @@ imethsTyFromNat-wf D I j (C ◂ E) wD (idwf-cons wC wE) tI =
 --    renaming".  ⇒ look for that lemma before writing one.
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- ★★★ `iconS` IS A WELL-TYPED SUBSTITUTION — the lemma the spike above
+-- names, now that its missing hop exists.
+--
+-- ★ WHAT UNBLOCKED IT: `ren-subTy` — "substituting by a renaming IS
+--   renaming", at the TYPE level.  It was written long ago and trapped
+--   in `Lib/Wk.nrs-wTy`'s `where` block, one scope too deep to find.
+--   Its TERM-level twin `ren-sub` was top level all along.
+--
+-- ⚠ `iinst-wf` is the precedent and does NOT generalise to this:
+--   `iinst` substitutes a GIVEN term into the scrutinee slot, so its
+--   `Sub⊢` is `⊢single`.  `iconS` BUILDS one — `icon k (var vz)` — from
+--   the payload binder, so the payload must live in the TARGET context
+--   and `⊢single` cannot serve.
+--
+-- The three cases are the three clauses of `iconS`:
+--   `vz`        ↦ `icon k (var vz)`   — the SCRUTINEE slot
+--   `vs vz`     ↦ `renTm vs i`        — the INDEX slot, closed
+--   `vs (vs x)` ↦ `var (vs x)`        — everything else
+------------------------------------------------------------------------
+
+iconS-Sub⊢ : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) {i : RTm ⌊ Γ ⌋} →
+             IDescWf I D → k ∈ID D → Γ ⊢ i ∷ εwkTy I →
+             Sub⊢ ((Γ ▹ εwkTy I) ▹ IMu D I (var vz))
+                  (Γ ▹ ipayTy D I (isingle i) (ilookupD D k))
+                  (iconS k i)
+-- ★ CASE 1 — the scrutinee.  `⊢icon` at the WEAKENED index, with the
+--   payload retyped: the same `ipayTy-ren`/`ipayTy-cong` pair
+--   `Lib/IFold.⊢ifMethod` uses.
+iconS-Sub⊢ {Γ = Γ} D I k {i = i} wD mem di here =
+  ⊢icon wD mem
+        (⊢-cast (εwk-ren vs I) (⊢wk di))
+        (⊢-cast (trans (ipayTy-ren vs D I (isingle i) (ilookupD D k))
+                       (ipayTy-cong D I (ilookupD D k)
+                          (λ { vz → refl ; (vs ()) })))
+                (⊢var here))
+-- ★ CASE 2 — the index slot.  `εwkTy I` is CLOSED, so every action
+--   fixes it — ⚠ but only PROPOSITIONALLY: `εwkTy` is a defined
+--   function, so nothing computes and the chain is explicit.
+iconS-Sub⊢ D I k {i = i} wD mem di (there here) =
+  ⊢-cast (trans (εwk-ren vs I)
+                (sym (trans (cong (subTy (iconS k i))
+                                  (trans (cong (renTy vs) (εwk-ren vs I))
+                                         (εwk-ren vs I)))
+                            (εwk-sub (iconS k i) I))))
+         (⊢wk di)
+-- ★★ CASE 3 — everything else, and the one that was stuck.  Two
+--   `subTy-renTy` steps compose the renamings, `subTy-cong` identifies
+--   the result with `λ x → var (vs x)`, and `ren-subTy` closes it.
+iconS-Sub⊢ D I k {i = i} wD mem di (there (there {A = A₀} v)) =
+  ⊢-cast (sym (trans (subTy-renTy {σ = iconS k i} (renTy vs A₀))
+                     (trans (subTy-renTy A₀)
+                            (trans (subTy-cong (λ _ → refl) A₀)
+                                   (sym (ren-subTy {ρ = vs} A₀))))))
+         (⊢var (there v))
+
+------------------------------------------------------------------------
+-- ★★★ …AND THEREFORE `iatCon k ⟨-⟩ M` IS A TYPE, AT AN ABSTRACT `M`.
+--
+-- ⚠⚠ THIS IS THE LEMMA THAT WAS GATING `Lib/IPay` OFF `Nat`.  `imethTy`'s
+--   codomain is `renTy vs (iatCon k (var vz) M)`, and until now nobody
+--   had shown that is a TYPE unless `M` was concrete — so all four
+--   customers of the method-tuple shape dodged it differently
+--   (`Lib/IFold`: `M = Nat`; `Lib/IWk`: its own `…Mot-wf`;
+--   `Knot/SubMot`: a motive written to IGNORE the scrutinee so `iatCon`
+--   computes).  ⇒ every new object-level function paid a fresh COPY of
+--   the method machinery for want of these four lines.
+--
+-- ★ And it is four lines because `iatCon k i M` IS `subTy (iconS k i) M`
+--   by definition — so once `iconS` is known to be a well-typed
+--   substitution, `sub-ty` is the whole proof.
+------------------------------------------------------------------------
+
+iatCon-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) {i : RTm ⌊ Γ ⌋}
+            {M : RTy ((⌊ Γ ⌋ ∙) ∙)} →
+            IDescWf I D → k ∈ID D → Γ ⊢ i ∷ εwkTy I →
+            ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+            (Γ ▹ ipayTy D I (isingle i) (ilookupD D k)) ⊢ty iatCon k i M
+iatCon-wf D I k wD mem di wM = sub-ty wM (iconS-Sub⊢ D I k wD mem di)
