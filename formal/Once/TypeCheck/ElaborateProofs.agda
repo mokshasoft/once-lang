@@ -674,6 +674,14 @@ resolveExprWF polys pAcc imps userFns fresh (Surface.effApp f a) =
   Surface.effApp (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh a)
 resolveExprWF polys pAcc imps userFns fresh (Surface.pair a b) =
   Surface.pair (resolveExprWF polys pAcc imps userFns fresh a) (resolveExprWF polys pAcc imps userFns fresh b)
+-- D127: the combinators resolve componentwise, like `pair`.
+resolveExprWF polys pAcc imps userFns fresh (Surface.comp' f g) =
+  Surface.comp' (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh g)
+resolveExprWF polys pAcc imps userFns fresh (Surface.copair' f g) =
+  Surface.copair' (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh g)
+resolveExprWF polys pAcc imps userFns fresh (Surface.fork' f g) =
+  Surface.fork' (resolveExprWF polys pAcc imps userFns fresh f) (resolveExprWF polys pAcc imps userFns fresh g)
+resolveExprWF polys pAcc imps userFns fresh (Surface.curry' f) = Surface.curry' (resolveExprWF polys pAcc imps userFns fresh f)
 resolveExprWF polys pAcc imps userFns fresh (Surface.fst' p) = Surface.fst' (resolveExprWF polys pAcc imps userFns fresh p)
 resolveExprWF polys pAcc imps userFns fresh (Surface.snd' p) = Surface.snd' (resolveExprWF polys pAcc imps userFns fresh p)
 resolveExprWF polys pAcc imps userFns fresh (Surface.inl' e) = Surface.inl' (resolveExprWF polys pAcc imps userFns fresh e)
@@ -1396,12 +1404,11 @@ checkCataGoV-pure-J :
       ≡ checkCataGo ctx alg F A Once.Type.pure mw eq
 checkCataGoV-pure-J ctx alg F A .(wellFormedF? F) refl = refl
 
--- Plan 0.54 (cata-morph-strong): the GRADE-POLY, FULL-PAIR just-success lemma.
--- `checkCataGo` at grade π checks the algebra at
--- grade π; when the algebra elaborates to a morphism (its `⊢ᵐ` witness recovered
--- by `extractMorphWitness`), `checkCataGo` reduces to the `Surface.cata`/`m-cata`
--- success — DIRECTLY (both the result AND the witness), which the strong
--- elaboration needs (the eff helper only gives `proj₁`).
+-- Plan 0.54 (cata-morph-strong), D127-simplified: `checkCataGo` at grade π
+-- checks the algebra at grade π and reduces to the `Surface.cata`/`t-cata-check`
+-- success — DIRECTLY (both the result AND the witness). The `⊢ᵐ` witness and its
+-- `extractMorphWitness` premise are gone: the algebra's own check-derivation IS
+-- the rule's premise now, so there is nothing left to recover.
 checkCataGo-just-success :
   ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type) (π : Once.Type.Purity)
     (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
@@ -1411,20 +1418,16 @@ checkCataGo-just-success :
     {w : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
            ⊢ᶜ alg ∶ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
            ⨾ Surface.zeroUsage}
-    {mᵐ : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-            ⊢ᵐ alg ∶ (Once.Type.⟦ F ⟧T A) ⇨[ π ] A}
   → checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
               alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
       ≡ (success Surface.zeroUsage algE d fr , w)
-  → extractMorphWitness w ≡ just mᵐ
   → checkCataGo ctx alg F A π (just wfF) eqW
       ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
-          , t-morph-lift (m-cata eqW mᵐ))
-checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV eqExt
+          , t-cata-check eqW w)
+checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV
   with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
                   alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) | eqAlgV
-... | (success Surface.[] _ _ _ , w) | refl with extractMorphWitness w | eqExt
-...   | just mᵐ | refl = refl
+... | (success Surface.[] _ _ _ , w) | refl = refl
 
 -- Plan 0.54: cata at EFF with a GENUINELY-eff algebra. `checkCata`'s eff clause
 -- first tries the eff-Go and passes it through on success. Given the eff-Go IS the
@@ -1438,17 +1441,18 @@ checkCata-eff-strong-hlp :
     {algE : SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
                   Surface.zeroUsage (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)}
     {d : ℕ}
-    {mᵐ : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-            ⊢ᵐ alg ∶ (Once.Type.⟦ F ⟧T A) ⇨[ Once.Type.eff ] A}
+    {w : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+           ⊢ᶜ alg ∶ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
+           ⨾ Surface.zeroUsage}
     (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
            (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A))
   → checkCataGo ctx alg F A Once.Type.eff (wellFormedF? F) refl ≡ r
   → r ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
-          , t-morph-lift (m-cata eqW mᵐ))
+          , t-cata-check eqW w)
   → checkElabV ctx (Raw.RApp (Raw.RVar "cata") alg)
               (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
       ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
-          , t-morph-lift (m-cata eqW mᵐ))
+          , t-cata-check eqW w)
 checkCata-eff-strong-hlp ctx alg F A (success Ψ eE d fr , w) eqr eqStrong
   rewrite eqr = eqStrong
 checkCata-eff-strong-hlp ctx alg F A (failure err , _) eqr eqStrong

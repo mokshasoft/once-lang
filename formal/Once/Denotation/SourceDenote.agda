@@ -140,6 +140,18 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 ⟦ lam q _ e ⟧ˢ fmt    dγ = returnT (λ a → ⟦ e ⟧ˢ fmt (dγ , a))
 ⟦ app f x ⟧ˢ fmt      dγ = ⟦ f ⟧ˢ fmt dγ >>=T λ vf → ⟦ x ⟧ˢ fmt dγ >>=T λ vx → vf vx
 ⟦ pair a b ⟧ˢ fmt     dγ = ⟦ a ⟧ˢ fmt dγ >>=T λ va → ⟦ b ⟧ˢ fmt dγ >>=T λ vb → returnT (va , vb)
+-- D127: the combinators. These are the SAME four expressions as the
+-- corresponding `⟦_⟧ᶜ` clauses in `Once.Denotation.Meaning`, and that is not a
+-- coincidence to be maintained by hand — `realize-agrees` is what holds them
+-- together, and it now compares like with like at every combinator.
+⟦ comp' f g ⟧ˢ fmt    dγ = ⟦ f ⟧ˢ fmt dγ >>=T λ vf → ⟦ g ⟧ˢ fmt dγ >>=T λ vg →
+                           returnT (λ a → vg a >>=T vf)
+⟦ copair' f g ⟧ˢ fmt  dγ = ⟦ f ⟧ˢ fmt dγ >>=T λ vf → ⟦ g ⟧ˢ fmt dγ >>=T λ vg →
+                           returnT (λ ab → [ vf , vg ]′ ab)
+⟦ fork' f g ⟧ˢ fmt    dγ = ⟦ f ⟧ˢ fmt dγ >>=T λ vf → ⟦ g ⟧ˢ fmt dγ >>=T λ vg →
+                           returnT (λ a → vf a >>=T λ b → vg a >>=T λ c → returnT (b , c))
+⟦ curry' f ⟧ˢ fmt     dγ = ⟦ f ⟧ˢ fmt dγ >>=T λ vf →
+                           returnT (λ a → returnT (λ b → vf (a , b)))
 ⟦ fst' e ⟧ˢ fmt       dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (proj₁ v)
 ⟦ snd' e ⟧ˢ fmt       dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (proj₂ v)
 ⟦ inl' e ⟧ˢ fmt       dγ = ⟦ e ⟧ˢ fmt dγ >>=T λ v → returnT (inj₁ v)

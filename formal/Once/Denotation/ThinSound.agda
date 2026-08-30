@@ -168,6 +168,25 @@ thin-⟦⟧ θ (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) fmt dδ =
                    (pair (rename θ a) (rename θ b)) fmt dδ)
         (bind₂ (λ va vb → returnT (va , vb))
                (thin-⟦⟧ θ a fmt dδ) (thin-⟦⟧ θ b fmt dδ))
+-- D127: the combinators. Usage `Ψ₁ +ᵘ Ψ₂`, so they thin exactly as `pair`
+-- does; `curry'` leaves the usage alone and thins as `fst'` does.
+thin-⟦⟧ θ (comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) fmt dδ =
+  trans (⟦⟧-substΨ {eq = sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)}
+                   (comp' (rename θ f) (rename θ g)) fmt dδ)
+        (bind₂ (λ vf vg → returnT (λ a → vg a >>=T vf))
+               (thin-⟦⟧ θ f fmt dδ) (thin-⟦⟧ θ g fmt dδ))
+thin-⟦⟧ θ (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) fmt dδ =
+  trans (⟦⟧-substΨ {eq = sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)}
+                   (copair' (rename θ f) (rename θ g)) fmt dδ)
+        (bind₂ (λ vf vg → returnT (λ ab → [ vf , vg ]′ ab))
+               (thin-⟦⟧ θ f fmt dδ) (thin-⟦⟧ θ g fmt dδ))
+thin-⟦⟧ θ (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) fmt dδ =
+  trans (⟦⟧-substΨ {eq = sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)}
+                   (fork' (rename θ f) (rename θ g)) fmt dδ)
+        (bind₂ (λ vf vg → returnT (λ a → vf a >>=T λ b → vg a >>=T λ c → returnT (b , c)))
+               (thin-⟦⟧ θ f fmt dδ) (thin-⟦⟧ θ g fmt dδ))
+thin-⟦⟧ θ (curry' f) fmt dδ =
+  bind₁ (λ vf → returnT (λ a → returnT (λ b → vf (a , b)))) (thin-⟦⟧ θ f fmt dδ)
 thin-⟦⟧ θ (fst' p) fmt dδ = bind₁ (λ v → returnT (proj₁ v)) (thin-⟦⟧ θ p fmt dδ)
 thin-⟦⟧ θ (snd' p) fmt dδ = bind₁ (λ v → returnT (proj₂ v)) (thin-⟦⟧ θ p fmt dδ)
 thin-⟦⟧ θ (arr' f) fmt dδ = thin-⟦⟧ θ f fmt dδ
