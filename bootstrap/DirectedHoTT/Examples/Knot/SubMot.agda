@@ -74,7 +74,7 @@ open import DirectedHoTT.Lib.IPay
   using ( Split; spl-nil; spl-cons; spl-mem; spl-look; spl-step )
 open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; subTm; extS; extR )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
-open import DirectedHoTT.Lib.ArithMonus using ( pred* )
+open import DirectedHoTT.Lib.ArithMonus using ( pred*; pred-snd-pair )
 open import DirectedHoTT.Metatheory.Confluence
   using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-⌜Id⌝ˡ )
 open import DirectedHoTT.Metatheory.Injectivity
@@ -1069,9 +1069,12 @@ SubTy : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
 SubTy d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
 
 -- ★ the domain conversion needs: one `βsnd`, then one `pred-suc`.
+-- ⚠ LIFTED.  The body is `Lib/ArithMonus`'s `pred-snd-pair`, which takes
+--   the first component as a PARAMETER; this is the `sVar` instance and
+--   nothing more.  `Knot/Single` uses the general one.
 predSndPair : {Γ : Cx} (d : RTm Γ) →
               predTm (snd (pair sVar (nsuc d))) ⟶* d
-predSndPair d = ⟶*-trans (pred* (step (βsnd sVar (nsuc d)) done)) (pred-suc d)
+predSndPair d = pred-snd-pair sVar d
 
 -- ⚠ AND IT IS NEEDED UNDER A SUBSTITUTION, which is NOT the same
 --   statement.  `⊢extSK`'s domain is instantiated to `predTm (snd (w i))`

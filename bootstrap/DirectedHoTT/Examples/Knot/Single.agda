@@ -26,7 +26,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Single where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; app; pair; fst; snd; unit
@@ -54,6 +54,19 @@ open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
 open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
 open import DirectedHoTT.Spec.Typing using ( ⊢jsub; ⊢⌜IMu⌝ )
+open import DirectedHoTT.Spec.Typing
+  using ( ty-Σ; ty-Unit; imethsTyFrom; single; ⊢nsuc; wk-single; csymᵀ )
+open import DirectedHoTT.Spec.Syntax using ( subTm; Sub )
+open import DirectedHoTT.Lib.Wk using ( w; wk-singleTy; sub-w )
+open import DirectedHoTT.Lib.IMeths using ( cd-stop; cd-cons )
+open import DirectedHoTT.Lib.IPay using ( splTake; spl-step )
+open import DirectedHoTT.Lib.ArithMonus using ( pred-snd-pair )
+open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu )
+open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-pairʳ )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ren-ty; ⊢wk )
+open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz )
+open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf )
+open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
 
 ------------------------------------------------------------------------
 -- ★ THE MOTIVE.  At index `i` the answer is a function from a term at
@@ -162,3 +175,108 @@ singleSK i x = ielim KnotD i singleMethsK x
 singleK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 singleK n u = lam (app (singleSK (pair sVar (nsuc (renTm vs n))) (var vz))
                        (renTm vs u))
+
+------------------------------------------------------------------------
+-- ★ WHERE THE COMPUTED PREFIX STOPS.  `splTake` runs the SAME recursion
+--   `methsFrom` runs, so the position and the remaining rows are the
+--   walk's own output rather than 51 hand-written `spl-cons`.
+------------------------------------------------------------------------
+
+splK51 : Split KnotD 51 (cVar-vz ◂ (cVar-vs ◂ inil))
+splK51 = splTake spl-nil (cdTake 51 KnotD)
+
+------------------------------------------------------------------------
+-- ★★ THE TAIL — and `cVar-vz` TAKES THE IDENTITY TOO.  Its only field is
+--   the ford; there is no variable left under it to look up, so `λu.u`
+--   is exactly right: the substitution returns what it was handed.
+------------------------------------------------------------------------
+
+⊢singleTail : {Γ : Ctx} →
+              Γ ⊢ singleTail ∷ imethsTyFrom KnotD IPair singleMotK 51
+                                            (cVar-vz ◂ (cVar-vs ◂ inil))
+⊢singleTail =
+  ⊢pair (ren-ty (imethsTyFrom-wf KnotD IPair 52 (cVar-vs ◂ inil) KnotWf
+                                 (idwf-cons cVar-vsWf idwf-nil)
+                                 (spl-step splK51) ⊢IPair ⊢singleMotK) there)
+        (⊢singleId tagVar-vz cVar-vz cVar-vzWf)
+        (⊢-cast (sym (wk-singleTy {v = singleId}
+                        (imethsTyFrom KnotD IPair singleMotK 52 (cVar-vs ◂ inil))))
+          (⊢pair (ren-ty (imethsTyFrom-wf KnotD IPair 53 inil KnotWf idwf-nil
+                            (spl-step (spl-step splK51)) ⊢IPair ⊢singleMotK) there)
+                 ⊢singleVs
+                 (⊢-cast (sym (wk-singleTy {v = singleVs}
+                                 (imethsTyFrom KnotD IPair singleMotK 53 inil)))
+                         ⊢unit)))
+
+------------------------------------------------------------------------
+-- ★★★ THE WHOLE TUPLE, and the per-row method is a HYPOTHESIS.
+--
+-- ⚠ NOTHING HERE ENUMERATES A ROW.  `⊢methsFrom` walks the description
+--   and hands each row its own membership and lookup; all this file
+--   supplies is "at any row, `singleId` types" — which is `⊢singleId`
+--   with its `k` and `C` still abstract.
+------------------------------------------------------------------------
+
+⊢singleMethsK : {Γ : Ctx} → Γ ⊢ singleMethsK ∷ imethsTy KnotD IPair singleMotK KnotD
+⊢singleMethsK =
+  ⊢methsFrom KnotD IPair 0 (cdTake 51 KnotD) KnotWf KnotWf spl-nil
+             ⊢IPair ⊢singleMotK
+             (λ {k} {C} wC _ _ → ⊢singleId k C wC)
+             singleTail ⊢singleTail
+
+------------------------------------------------------------------------
+-- ★★ THE ELIMINATOR.  ⚠ ONE CAST, and it is the `wk-single` round trip:
+--   `iinst` leaves the index as `subTm (single x) (w i)` in BOTH slots,
+--   and collapsing it is an `≡`, so `⊢-cast` and not `⊢conv`.
+------------------------------------------------------------------------
+
+⊢singleSK : {Γ : Ctx} {i x : RTm ⌊ Γ ⌋} →
+            Γ ⊢ i ∷ εwkTy IPair → Γ ⊢ x ∷ K i →
+            Γ ⊢ singleSK i x ∷ Π (K (pair sTm (predTm (snd i))))
+                                 (K (pair sTm (predTm (snd (w i)))))
+⊢singleSK {i = i} {x = x} di dx =
+  ⊢-cast (cong₂ (λ z z' → Π (K (pair sTm (predTm (snd z))))
+                            (K (pair sTm (predTm (snd z')))))
+                (wk-single {v = x} i)
+                -- ⚠ THE TWO SLOTS COLLAPSE DIFFERENTLY.  `iinst` reaches
+                --   the codomain one binder deeper, so it arrives as
+                --   `subTm (extS (single x)) (w (w i))` — a `sub-w` rung
+                --   ABOVE the `wk-single` the domain needs.  Writing one
+                --   `cong` for both is what failed first.
+                (trans (sub-w {σ = single x} (w i))
+                       (cong w (wk-single {v = x} i))))
+         (⊢ielim KnotWf ⊢singleMotK di ⊢singleMethsK dx)
+
+------------------------------------------------------------------------
+-- ★★★ `singleK n u : SubTy (nsuc n) n` — THE SUBSTITUTION `β` NEEDS.
+--
+-- ⚠ AND THE ARGUMENT IS CONVERTED AT ITS SOURCE, not the result after —
+--   `build-dont-transport` again.  `singleSK`'s domain is
+--   `K (pair sTm (predTm (snd i)))` with `i` the CONCRETE index
+--   `pair sVar (nsuc (w n))`, so `pred-snd-pair` reduces it to `w n`;
+--   pushing that reduction onto `u` where its type is still concrete is
+--   one `⊢conv`, and the same reduction re-used FORWARD closes the
+--   result.
+--
+-- ★ THE `≡` AND THE `⟶*` STAY SEPARATE, as everywhere in this POC: the
+--   `wk-single` collapse is a cast, the `βsnd`/`pred-suc` pair is a
+--   conversion.  Mixing them is what made the four `⊢extNK` attempts
+--   fail; keeping them apart makes this eight lines.
+------------------------------------------------------------------------
+
+SubTyK : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
+SubTyK d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
+
+⊢singleK : {Γ : Ctx} {n u : RTm ⌊ Γ ⌋} →
+           Γ ⊢ n ∷ Nat → Γ ⊢ u ∷ K (pair sTm n) →
+           Γ ⊢ singleK n u ∷ SubTyK (nsuc n) n
+⊢singleK {n = n} {u = u} dn du =
+  ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc dn)))
+    (⊢conv (⊢-cast (cong (λ z → K (pair sTm (predTm (snd z))))
+                         (wk-single {v = w u} ix))
+              (⊢app (⊢singleSK (⊢ixP ⊢sVar (⊢nsuc (⊢wk dn))) (⊢var here))
+                    (⊢conv (⊢wk du) (csymᵀ red))))
+           red)
+  where
+    ix  = pair sVar (nsuc (w n))
+    red = red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairʳ (pred-snd-pair sVar (w n))))

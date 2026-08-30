@@ -32,13 +32,14 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; Hom; Nat; El; Π; base
         ; RTm; var; nzero; nsuc; natrec; ordtr; unit; lam; app; absurd
+        ; pair; snd
         ; renTm; subTy; subTm; Sub; extS )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢ordtr; ty-Nat; ty-Hom
         ; _≅ᵀ_; csymᵀ; Hom-Nat-ss; Hom-Nat-sz; ⊢absurd
-        ; _⟶_; _⟶*_; done; step; ξ-natrecⁿ; wk-single )
+        ; _⟶_; _⟶*_; done; step; ξ-natrecⁿ; wk-single; βsnd )
 open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; ⊢[] )
@@ -65,6 +66,21 @@ open import DirectedHoTT.Spec.Typing
 pred* : {Γ : Cx} {t t' : RTm Γ} → t ⟶* t' → predTm t ⟶* predTm t'
 pred* done       = done
 pred* (step r q) = step (ξ-natrecⁿ r) (pred* q)
+
+------------------------------------------------------------------------
+-- ★ `pred (snd (pair s (nsuc d)))` REDUCES TO `d` — one `βsnd`, then one
+--   `pred-suc`.  It is the shape every INDEXED object-level function
+--   meets when it reads the depth out of its own index.
+--
+-- ⚠ AND IT SAYS NOTHING ABOUT THE FIRST COMPONENT.  `Knot/SubMot` had it
+--   pinned to `sVar` under the name `predSndPair`, so `Knot/Single` —
+--   which needs exactly this reduction, at exactly this shape — could
+--   not reuse a line of it and would have copied it.  ⇒ the sort is a
+--   PARAMETER, and the lemma is arithmetic, not knot lore.
+------------------------------------------------------------------------
+
+pred-snd-pair : {Γ : Cx} (s d : RTm Γ) → predTm (snd (pair s (nsuc d))) ⟶* d
+pred-snd-pair s d = ⟶*-trans (pred* (step (βsnd s (nsuc d)) done)) (pred-suc d)
 
 ------------------------------------------------------------------------
 -- ★★ `suc a ∸ suc b ≤ a`, by induction on `b`.
