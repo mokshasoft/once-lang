@@ -87,7 +87,7 @@ open import DirectedHoTT.Lib.ICast
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk; iihTy-ren; iihTy-cong )
-open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
+open import DirectedHoTT.Lib.IPay using ( ipayTy-wf; ⊢methLam )
 open import DirectedHoTT.Examples.Knot.Tags
   using ( memTm-nzero; memTm-var; memVar-vz; tagVar-vz; tagVar-vs; tagTm-var )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nzeroK; Tm-varK )
@@ -172,28 +172,24 @@ extMotK =
 constMeth : {Γ : Cx} → RTm Γ
 constMeth = lam (lam (lam (lam (lam Tm-nzeroK))))
 
+-- ★★★ RE-EXPRESSED THROUGH `Lib/IPay.⊢methLam` 2026-08-30.  The three
+--   generic binders — index, payload, IH tuple — and their `ipayTy-wf`/
+--   `iihTy-wf`/retype obligations are the library's now; what is left
+--   here is exactly what is `extMotK`-SPECIFIC: its own two Π binders
+--   and the body that inhabits it.
+-- ⚠ That split is the point.  A "constant method at an abstract motive"
+--   cannot exist — an arbitrary motive may be uninhabited — so the
+--   library gives the PROLOGUE and the customer gives the BODY.
 ⊢constMeth : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
              IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
              Γ ⊢ constMeth ∷ imethTy KnotD IPair k C extMotK
-⊢constMeth {Γ = Γ} k C wC =
-  ⊢lam ⊢IPair
-    (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) C
-                     KnotWf wC
-                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
-      (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) C}
-                      KnotD IPair extMotK (isingle (var (vs vz))) C (var vz) wC
-                      (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
-                                                   (εwk-ren vs IPair))
-                                            (⊢var (there here))))
-                      ⊢extMotK
-                      (⊢-cast (trans (ipayTy-ren vs KnotD IPair (isingle (var vz)) C)
-                                     (ipayTy-cong KnotD IPair C
-                                       (λ { vz → refl ; (vs ()) })))
-                              (⊢var here)))
-        (⊢lam ty-Nat
-          (⊢lam (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
-                      (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
-            (⊢Tm-nzeroKv (⊢nsuc (⊢var (there here))))))))
+⊢constMeth k C wC =
+  ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢extMotK
+    (⊢lam ty-Nat
+      (⊢lam (ty-Π (ty-IMu KnotWf
+                     (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
+                  (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
+        (⊢Tm-nzeroKv (⊢nsuc (⊢var (there here))))))
 
 ------------------------------------------------------------------------
 -- THE METHOD **TYPE** IS WELL-FORMED — the same proof, one level up.
