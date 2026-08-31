@@ -587,3 +587,98 @@ Two concrete wins, both worth having:
 * **Never across an interface boundary.** If closing a goal requires
   inventing a lemma statement, refuse and report: that is the tier where
   a human is deciding what the statement should be.
+
+---
+
+## LIBRARIES: an INTERFACE / IMPLEMENTATION split, once the use sites settle
+
+A library module today exports its signatures **and** every proof behind
+them, and a client importing `Lib/IPay` gets all of it. The proposal is
+the same split the kernel already has: an interface naming what a client
+may rely on, an implementation holding the proofs.
+
+### ⚠ The obvious justification is NOT supported by our measurements
+
+"Clients pay to import the proofs" sounds right and this POC's own
+numbers do not back it:
+
+* interface **size** does not predict cost — `RedWfB` has a 2413 KB
+  `.agdai` and checks in 5s; `JudgeWfA` has ~955 KB and took 125s;
+* in the one usable profile, `Deserialization` was **3.7s of 99.6s**.
+
+So the split should not be sold as an import-cost win until somebody
+measures one. ⇒ do not cite this section as evidence that it is.
+
+### ★ The mechanism that WOULD pay is `abstract`, and it is a different one
+
+Agda will not unfold an `abstract` definition during conversion checking.
+Cost in this POC lives in elaboration and conversion, not in loading, so
+an interface whose bodies are `abstract` stops clients from unfolding
+proof terms they never needed to see. That is a real lever and it is
+about **unfolding**, not about bytes.
+
+⚠ It is also a semantic commitment, not a repackaging: anything a client
+proves by `refl` through a library definition breaks the moment that
+definition becomes `abstract`. The split therefore has to wait until the
+use sites say which equations clients actually depend on — which is
+exactly the sequencing already proposed: **do it when the interface is
+observed, not guessed.**
+
+### ★ And it is the prerequisite for the documentation loop below
+
+An interface is the surface a document can describe. Generating docs for
+a module that exports 60 lemmas, 45 of them internal, documents the wrong
+45.
+
+---
+
+## LIBRARIES: DOCUMENTATION CONVERGED BY AGENT EVALUATION
+
+Generate per-library documentation, then **test it** by giving it to an
+agent with a use site whose solution we already have, and comparing what
+the agent writes to what is in the repo. Failures become documentation
+deltas; iterate until they stop.
+
+### ★ Why this is worth doing: the failure it targets is our most frequent one
+
+Not "the proof was hard" — *"the library already had it and I rebuilt
+it."* Three instances in a single day (2026-08-31):
+
+* `⊢motAppK` — already exactly the `subAtK` wrapper; I began rebuilding
+  it from `βsnd`/`βfst`/`sortMap-red` before looking.
+* the emitter's `DD` role — already consumed the prepended depth; I added
+  a `DDEP` role that emitted it twice and silently dropped an argument.
+* `methsAt` — built for `pw?`, which turned out not to need it.
+
+⇒ the eval question is sharp and mechanical: **did the agent find the
+existing thing, or write a second one?** That is checkable without
+judging proof style.
+
+### ⚠ The experiment is only valid if the agent CANNOT read the answer
+
+The agent has a repo. If it can `grep` the library bodies or the existing
+call site, it will find the lemma and the documentation is never tested —
+the run measures the search, not the doc. So the harness must hand it
+**the document and the goal, and nothing else**: no `Lib/**` bodies, no
+the module that already solves it. Getting this isolation wrong produces
+a green result that means nothing — `verification-that-covers-less-than-
+it-claims`, in a new place.
+
+### Design notes
+
+* **Held-out use sites, rotated.** Iterating docs against one fixed site
+  converges to a doc that solves that site. Keep a pool; report per-site.
+* **Record the failure MODE, not just pass/fail.** "Rebuilt an existing
+  lemma", "found it but mis-instantiated", "could not state the goal" are
+  three different doc bugs — the first wants a discoverability index, the
+  second wants an example, the third wants the interface.
+* **Two audiences, and they want opposite documents.** A user needs "what
+  do I call and what does it cost me"; a library dev needs "why is the
+  premise shaped like this and what was tried instead". The attempts logs
+  (`SUBTM-ATTEMPTS.md`, `JUDGEMENT-ATTEMPTS.md`) are already the second
+  document — do not let the first swallow them.
+* **The cost model belongs in the doc.** Half this POC's dead ends were
+  cost, not correctness (`half-generalization-is-worst`,
+  `meta-standing-for-a-computation`). A signature that is cheap to *use*
+  and ruinous to *build* is exactly what `judge-abstractions-at-the-use-
+  site` says to record.

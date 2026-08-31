@@ -245,6 +245,7 @@ wkdRest : {E : IDesc} → WkDesc E → IDesc
 wkdRest (wkd-stop E)  = E
 wkdRest (wkd-cons _ W) = wkdRest W
 
+
 ------------------------------------------------------------------------
 -- 3. THE PAYLOAD, REBUILT.  ⚠ The two tuples are walked TOGETHER: `q` is
 --    the original payload and `ih` the IH tuple, and `iihTy` skips κ
@@ -448,6 +449,28 @@ decDesc : (E : IDesc) → WkDesc E
 decDesc inil = wkd-stop inil
 decDesc (C ◂ E) with decCon vz C
 ... | just w  = wkd-cons w (decDesc E)
+... | nothing = wkd-stop (C ◂ E)
+
+------------------------------------------------------------------------
+-- ★★★ THE CLASSIFIED PREFIX, **BOUNDED** — `decDesc` with a stop.
+--
+-- ⚠ `decDesc` CLASSIFIES AS FAR AS IT CAN, which is right for weakening
+--   itself (it wants every row it can get) and wrong for a customer that
+--   is weakening EXCEPT AT A FEW ROWS.  `Knot/Pw`'s `pwBody` is exactly
+--   that: `renTm vs` everywhere but `⌜Π⌝` (row 20) and `⌜Hom⌝` (row 22),
+--   and those two are perfectly classifiable — so `decDesc` walks
+--   straight past the place the customer needs to interrupt it.
+--
+-- ★ So the walk takes a BOUND, and the customer resumes with `decDesc`
+--   on the suffix.  Same shape as `Lib/IMeths.cdTake`, and for the same
+--   reason: where a computed run STOPS is the caller's business.
+------------------------------------------------------------------------
+
+wkdTake : ℕ → (E : IDesc) → WkDesc E
+wkdTake zero    E       = wkd-stop E
+wkdTake (suc n) inil    = wkd-stop inil
+wkdTake (suc n) (C ◂ E) with decCon vz C
+... | just w  = wkd-cons w (wkdTake n E)
 ... | nothing = wkd-stop (C ◂ E)
 
 ------------------------------------------------------------------------
