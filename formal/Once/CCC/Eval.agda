@@ -124,8 +124,13 @@ eval fmt (In {F} _ _) x =
   sem-In ⌈ F ⌉F (coerce-functor ⌈ F ⌉F ⌈ μ-type F ⌉ (subst (λ T → ⟦ T ⟧) (⌈⟧TI-commute F (μ-type F)) x))
 eval fmt (out-μ {F} wf) x =
   subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F))) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F ⌉ (sem-Out (wf-⌈⌉ wf) x))
-eval fmt (Cata {F} wf {A} alg) x =
-  sem-cata (wf-⌈⌉ wf) (λ fa → eval fmt alg (subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F A)) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ A ⌉ fa))) x
+-- D131: the fold's algebra reads a fixed environment. `x` is now the pair
+-- `(env , μ-value)`; the environment is projected ONCE, outside `sem-cata`, and
+-- closed over by the per-layer algebra — which is the whole point of the
+-- parameter.
+eval fmt (Cata {F} wf {E} {A} alg) (env , x) =
+  sem-cata (wf-⌈⌉ wf)
+    (λ fa → eval fmt alg (env , subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F A)) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ A ⌉ fa))) x
 eval fmt (Para {F} wf {A} alg) x =
   sem-para (wf-⌈⌉ wf) (λ fx → eval fmt alg (subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F * A))) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F * A ⌉ fx))) x
 eval fmt (Out {F} wf) x =

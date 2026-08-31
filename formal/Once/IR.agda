@@ -177,10 +177,22 @@ data IR where
   -- See OCP-0003 "Lambek Isomorphisms" section.
   out-μ : ∀ {F} → WellFormedFI F → IR (μ-type F) (⟦ F ⟧TI (μ-type F))
 
-  -- Cata: given IR morphism (F(A) → A), produce μF → A
-  -- This is the universal property of initial algebras.
+  -- Cata: the PARAMETERIZED fold (D131). Given an algebra that may read a
+  -- fixed environment `E` — `E * F(A) → A` — produce `E * μF → A`.
+  -- This is the universal property of initial algebras in the slice over E,
+  -- i.e. the parameterized initial algebra.
   -- Total by Lambek's Lemma: μF is well-founded.
-  Cata : ∀ {F} → WellFormedFI F → ∀ {A} → IR (⟦ F ⟧TI A) A → IR (μ-type F) A
+  --
+  -- WHY THE ENVIRONMENT. A source-level `cata alg` evaluates its algebra arm
+  -- ONCE and applies the resulting arrow per layer (D131) — the same rule
+  -- every other combinator arm follows (D130). Without an environment slot the
+  -- algebra had to be a fixed IR morphism inlined into the fold, so the
+  -- elaborator emitted `apply ∘ ⟨ ealg ∘ terminal , id ⟩` and the fold
+  -- REBUILT the algebra on every layer. With `E` the algebra closure is
+  -- computed once and carried, so `CataM` below is a closed morphism
+  -- `(F C ⇛ C) → (μF ⇛ C)` and the elaboration is `CataM ∘ ealg` — the same
+  -- shape as `compIR ∘ ⟨ ef , eg ⟩`.
+  Cata : ∀ {F} → WellFormedFI F → ∀ {E A} → IR (E * ⟦ F ⟧TI A) A → IR (E * μ-type F) A
 
   -- Para: paramorphism (fold with access to original substructure)
   -- Total by derivation from Cata (structural recursion on well-founded μF).
