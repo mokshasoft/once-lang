@@ -953,6 +953,23 @@ def _parse_spine(ts):
     e, _ = spine(0)
     return e
 
+# ★★★ A PREMISE THAT IS A **BOOLEAN FUNCTION OF THE SYNTAX**.
+#
+#     hrefl-pw : … → pw? C ≡ true → …
+#
+# ⚠ IT IS NOT A JUDGEMENT, so it is not an `iρ` and not a `FOREIGN_RELS`
+#   κ field.  It is a FORD: a κ field carrying `⌜Id⌝ ⌜Nat⌝ (fK ⟨i⟩ c) 1`,
+#   which is exactly the shape the row's own DEPTH ford already has —
+#   `icw-ford : (c a b : RTm Θ) → ICodeWf (⌜Id⌝ c a b)` is general, so
+#   nothing new is needed on the well-formedness side.
+#
+# ★ booleans are `0`/`1` at the object level, matching `Knot/Pw`'s
+#   constant-`Nat` motive.
+# name → (object-level function, its typing lemma, the argument's sort)
+BOOL_PREM = {"pw?": ("pwK", "⊢pwK", "sTm")}
+
+def TBOOL(app):    return ('tbool', app)
+
 def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
     """(name, binders, prems, lhs, rhs) or (name, None, reason).
 
@@ -963,7 +980,7 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
     name, ty = r.split(":", 1)
     name = name.strip()
     parts = _split_top(ty)
-    binders, prems, foreign = [], [], []
+    binders, prems, foreign, bools = [], [], [], []
     for p in parts[:-1]:
         gs = _groups(p)
         if gs is None:
@@ -973,6 +990,13 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
             # ⚠ LONGEST RELATION FIRST: `⟶ᵀ` contains `⟶`, so testing the
             #   short one first mis-reads a type-level premise as a
             #   term-level one — silently, and the row still typechecks.
+            # ★ a BOOLEAN premise, before the relation search: it
+            #   contains no relation symbol at all.
+            mb = re.match(r"^\s*([A-Za-z?]+)\s+(.+?)\s*≡\s*(true|false)\s*$", p)
+            if mb and mb.group(1) in BOOL_PREM:
+                bools.append((mb.group(1), mb.group(2),
+                              1 if mb.group(3) == "true" else 0))
+                continue
             hit = None
             for rel, comp in sorted(FOREIGN_RELS, key=lambda x: -len(x[0])):
                 if rel in p: hit = (rel, comp); break
@@ -1004,7 +1028,7 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
         for x in e[1]: walk(x)
     walk(_parse_spine(_tokens(lhs))); walk(_parse_spine(_tokens(rhs)))
     if unk: return (name, None, "unmapped %s" % sorted(set(unk)))
-    return (name, binders, prems, lhs, rhs, foreign)
+    return (name, binders, prems, lhs, rhs, foreign, bools)
 
 
 # ============================ SORT INFERENCE ==============================
@@ -1312,7 +1336,7 @@ def _jrows(J, CT):
     for r in rules_of(src, J.data):
         t = translate_rule(r, CT, J.rel, J.cites)
         if t[1] is None: skipped.append((t[0], t[2])); continue
-        nm, binders, prems, lhs, rhs, foreign = t
+        nm, binders, prems, lhs, rhs, foreign, bools = t
         bs, dep = [(_DEPTH, _code(TNAT(), None))], {}
         _BSORT.clear()
         for b, srt, dp in binders:
@@ -1959,6 +1983,7 @@ def TKNOT(sort):   return ('tknot', sort)
 def _code(comp, d):
     """the object-level code for telescope component `comp` at depth `d`.
     ⚠ For a `tj` component `d` is the WHOLE index tuple, not a depth."""
+    if comp[0] == 'tbool': return d
     if comp[0] == 'tj':    return AP("⌜IMu⌝", RAW(comp[1]), RAW(comp[2]), d)
     if comp[0] == 'tnat':  return RAW("⌜Nat⌝")
     if comp[0] == 'tctx':  return AP("⌜IMu⌝", RAW("CtxD"), RAW("INat"), d)
@@ -2111,6 +2136,9 @@ def _binder_comp(code):
     if code[0] == 'raw':                       # ⌜Nat⌝
         return TNAT(), None
     _, h, args = code
+    # ★ a BOOLEAN-PREMISE ford — `⌜Id⌝ ⌜Nat⌝ (fK ⟨i⟩ c) n`.  Carries the
+    #   APPLICATION so the wf emitter can re-derive it.
+    if h == "⌜Id⌝": return TBOOL(args[1]), None
     assert h == "⌜IMu⌝", code
     fam = args[0][1]
     if fam in FOREIGN: return FOREIGN[fam], args[2]
@@ -2799,13 +2827,30 @@ def gen_redrows():
                         os.path.abspath(__file__))), "Spec", "Typing.agda"), "_⟶_"):
         t = translate_rule(r, CT)
         if t[1] is None: skipped.append((t[0], t[2])); continue
-        nm, binders, prems, lhs, rhs, foreign = t
+        nm, binders, prems, lhs, rhs, foreign, bools = t
         bs = [(_DEPTH, _code(TNAT(), None))]
         dep = {}
         for b, srt, dp in binders:
             dep[b] = dp
             bs.append((b, _code(TNAT(), None) if srt == "nat"
                           else _code(TKNOT(srt), _depth_at(dp))))
+        # ★★★ A BOOLEAN premise is a κ BINDER carrying a FORD.
+        #
+        #   `pw? C ≡ true`  ↦  `⌜Id⌝ ⌜Nat⌝ (pwK (sTm , d) C) (num 1)`
+        #
+        # ⚠ THE FUNCTION NEEDS THE ARGUMENT'S **INDEX**, which the rule
+        #   does not write: `pwK` is an `ielim` and so takes `⟨i⟩` before
+        #   the term.  The binder's sort and depth supply it — the same
+        #   two facts `_binder_comp` recovers everywhere else.
+        for i, (fn, arg, val) in enumerate(bools):
+            fnK, _dfn, _srt = BOOL_PREM[fn]
+            _a = arg.strip()
+            _d = _depth_at(dep.get(_a, 0))
+            bs.append(("bp%d" % i,
+                       AP("⌜Id⌝", RAW("⌜Nat⌝"),
+                          AP(fnK, PAIR(RAW(_srt), _d),
+                             _val(_parse_spine(_tokens(_a)), CT, _d)),
+                          RAW("num %d" % val))))
         # ★ a FOREIGN premise is a κ BINDER, not an `iρ` field.
         for i, (a, b, fcomp) in enumerate(foreign):
             fdep = TUP(V(_DEPTH),

@@ -52,9 +52,9 @@ IRed = Σ' Nat (Σ' (IMu KnotD IPair (pair sTm (var vz)))
 
 
 -- ⚠ NOT EMITTED — 6 of 73 rules, in two classes:
---     hrefl-pw     premise 'pw? C ≡ true'
+--     hrefl-pw     unmapped ['pwBody']
 --     tr-J-Hom     premise 'stkA? c₁ ≡ true'
---     tr-pw        premise 'pw? c ≡ true'
+--     tr-pw        unmapped ['pwBody', 'pwShift']
 --     ap-J         premise 'stkC? c₁ ≡ true'
 --     ι-elim       unmapped ['fields', 'lookupD', 'sel']
 --     ι-ielim      unmapped ['ifields', 'ilookupD', 'isingle', 'sel']
