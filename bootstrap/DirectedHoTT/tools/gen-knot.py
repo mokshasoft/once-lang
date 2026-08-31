@@ -1487,10 +1487,60 @@ open import DirectedHoTT.Examples.Knot.Lookup using ( LkD; ILk; LkWf )
 open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
 open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )"""
 
+JWFTOP = """
+------------------------------------------------------------------------
+-- ★★★ THE SHARED TOP OF EVERY ROW'S `IConWf` CHAIN.
+--
+-- Every judgement row begins with the same two κ fields — the DEPTH and
+-- the CONTEXT — and so with the same two `iwf-κ` rungs.  They are the
+-- OUTERMOST rungs, so each row's copy wraps that row's own inner chain:
+-- unshareable as a VALUE, shareable as a FUNCTION over the tail.
+--
+-- ⚠ THAT DISTINCTION IS THE WHOLE POINT.  Hoisting the shared CONTEXTS
+--   and CODES (`JS0`, `kJS0`, …) saves nothing — they are shape, and
+--   `shape-is-free-payload-is-the-cost` measured shape at ZERO.  What
+--   this lemma moves is the PAYLOAD: the `⊢ty` obligations
+--   `⊢⌜Nat⌝` and `⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here)))` were
+--   re-discharged once per row, and are now discharged ONCE.
+------------------------------------------------------------------------
+
+JS0 : Ctx
+JS0 = ◇ ▹ εwkTy IJudge
+
+kJS0 : RTm ⌊ JS0 ⌋
+kJS0 = ⌜Nat⌝
+
+JS1 : Ctx
+JS1 = JS0 ▹ El kJS0
+
+kJS1 : RTm ⌊ JS1 ⌋
+kJS1 = ⌜IMu⌝ CtxD INat (var vz)
+
+JS2 : Ctx
+JS2 = JS1 ▹ El kJS1
+
+jwfTop : {C : ICon ⌊ JS2 ⌋} (D : IDesc) → IConWf D IJudge JS2 C →
+         IConWf D IJudge JS0 (iκ kJS0 (iκ kJS1 C))
+jwfTop D w =
+  iwf-κ kJS0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
+    (iwf-κ kJS1 (icw-imu (var vz) CtxWf)
+      (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here))))
+      w)
+
+"""
+
 def write_mutual(out, CT):
     """`_⊢ty_` + `_⊢_∷_`, ONE description over a TAGGED index."""
     TEL = [TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"), TNAT()]
     rows, skipped = _mutual_rows(CT, TEL, AP("Tm-unitK"))
+    # ⚠⚠ THE CAP MUST BITE **BEFORE** `JudgeD` IS BUILT.  Truncating only
+    #   the well-formedness rows leaves the DESCRIPTION at full length, so
+    #   the final `idwf-cons` chain ends in `idwf-nil` against a `JudgeD`
+    #   that still has rows left: `inil != (jd⊢snd ◂ …)`.  ⚠ That error
+    #   hides unless the LAST part is checked — the assembly lives only
+    #   there, and every earlier timing checked `JudgeWfA` alone.
+    _cap = os.environ.get("JUDGE_MAX_ROWS")
+    if _cap: rows = rows[:int(_cap)]
     L = [JHDR % dict(gc="", data="_⊢ty_ / _⊢_∷_", what=", ONE TAGGED DESCRIPTION.",
                      mod="JudgeRows", extra=MUT_EXTRA)]
     L += ["-- ★★★ THE INDEX IS TAGGED, and the tag is not decoration: a",
@@ -1530,23 +1580,67 @@ def write_mutual(out, CT):
     #   cost scales with the telescope's WIDTH as well as its length —
     #   each extra component is another ford, another transport, another
     #   `⊢pair` rung per premise.
-    half = (len(rows) + 1) // 2
-    for part, lo, hi in (("A", 0, half), ("B", half, len(rows))):
+    # ★★★ SPLIT BY **ROWS PER MODULE** — MEASURED AT FULL SIZE, 32 rows.
+    #
+    #       split      parts   total   slowest
+    #       2 × 16       2      265s     141s      ← was
+    #       4 ×  8       4      224s      77s
+    #       8 ×  4       8      232s      45s      ← is
+    #
+    # ⚠⚠ AND THE ROWS ARE NOT INTERCHANGEABLE.  At EIGHT rows each,
+    #   `JudgeWfA` costs 38s and `JudgeWfB` costs 77s — same count, double
+    #   the cost.  A per-row-count model projected 152s/168s for these two
+    #   splits; the truth is 224s/232s.  ⇒ row COUNT is a weak predictor
+    #   and the spread across equal-sized parts (17s … 45s, 2.6×) says a
+    #   HANDFUL OF ROWS dominate.
+    #
+    # ★ `JWF_ROWS = 4` is chosen for the SLOWEST module (45s vs 141s, a 3×
+    #   cut in what a developer waits on).  Total is a wash between the two
+    #   splits (224s vs 232s, inside the ±12% floor).
+    # ⚠ IT DOES NOT REACH 10–20s.  Splitting cannot: the intercept is ~7s
+    #   and the expensive rows stay expensive wherever they are put.
+    #
+    # ⬜ THE REMAINING LEVER IS **WHICH ROWS**, not how many — bisect the
+    #   2.6× spread.  ⬜ A hoist of the shared top rungs was tried first and
+    #   MEASURED AT ZERO (40s vs a 38s baseline); see `emit_jrowwf`'s call.
+    JWF_ROWS = 4
+    _n = len(rows)
+    _bounds = [(i, min(i + JWF_ROWS, _n)) for i in range(0, _n, JWF_ROWS)]
+    _parts = [chr(ord("A") + i) for i in range(len(_bounds))]
+    for _pi, (part, (lo, hi)) in enumerate(zip(_parts, _bounds)):
+        # ⚠ EACH PART IMPORTS EVERY EARLIER PART, not just its predecessor:
+        #   Agda's `open import` does not RE-EXPORT, so the final assembly
+        #   would not see the names of parts before the last one.
+        _prev = "".join("\nopen import DirectedHoTT.Examples.Knot.JudgeWf%s" % q
+                        for q in _parts[:_pi])
         W = [JHDR % dict(gc=GC_NOTE, data="_⊢ty_ / _⊢_∷_",
                          what=" IS A WELL-FORMED DESCRIPTION.",
                          mod="JudgeWf" + part,
                          extra=MUT_EXTRA
                          + "\nopen import DirectedHoTT.Examples.Knot.JudgeRows"
-                         + ("\nopen import DirectedHoTT.Examples.Knot.JudgeWfA"
-                            if part == "B" else ""))]
+                         + _prev)]
         for i in range(lo, hi):
             nm, row = rows[i]
             tag = "J" + _tagof(i)
             W.append("-- %s" % nm)
             W.append(emit_jrowwf(row, TEL, (tag, "k" + tag), "IJudge",
+                                 # ⚠⚠ `share=2, topname="jwfTop"` — TRIED AND
+                                 #   MEASURED AT ZERO, 2026-08-31.  Hoisting
+                                 #   the two identical top rungs into a lemma
+                                 #   over the tail (the `⊢methLam` move) gave
+                                 #   40s against a 38s baseline at cap=16 —
+                                 #   inside the ±12% noise floor.
+                                 #   ⇒ the `⊢ty` obligations in those rungs
+                                 #     (`⊢⌜Nat⌝`, `⊢⌜IMu⌝ CtxWf …`) are CHEAP;
+                                 #     discharging them once per row costs
+                                 #     nothing measurable.  This is
+                                 #     `shape-is-free-payload-is-the-cost`
+                                 #     again — the argument that these rungs
+                                 #     were payload rather than shape was
+                                 #     WRONG.  Mechanism kept, disabled.
                                  "jd%sWf" % nm, "JudgeD"))
             W.append("")
-        if part == "B":
+        if _pi == len(_bounds) - 1:
             W.append("-" * 72)
             W.append("-- ★★★ …AND IT IS WELL FORMED.")
             W.append("-" * 72)
@@ -2244,7 +2338,7 @@ def _tupderiv(comps, tel, k, vis, bty):
     DEPTHD[0] = _keep
     return body
 
-def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None):
+def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None):
     """the `IConWf` chain for one row — one lemma per field, innermost
     first, exactly as `Knot/Lookup` writes them by hand.
 
@@ -2281,6 +2375,8 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None):
             L.append("%s%d = %s%d ▹ %s" % (T, j + 1, T, j, ext))
         L.append("")
     for k in range(len(fs) - 1, -1, -1):
+        # ★★★ THE SHARED TOP RUNGS ARE NOT EMITTED — see `topname`.
+        if share and k < share: continue
         kind, e = fs[k]
         vis = {nm: j for nm, j in ix.items() if j < k or nm == '#depth'}
         damb = dbd(k)
@@ -2383,11 +2479,30 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None):
                      % (W, k, idesc, ity, T, k, C, k))
             L.append("%s%d =\n  %s\n    %s" % (W, k, rung, inner))
         L.append("")
-    if para:
+    if share:
+        # ★★★ THE TOP OF THE CHAIN IS A LEMMA, NOT A COPY.  Rungs 0..n-1
+        #   are identical in EVERY row — the depth binder and the context
+        #   binder — but they are the OUTERMOST rungs, so each row's copy
+        #   wraps that row's own inner chain and is a different TERM.
+        #   ⇒ unshareable as a VALUE, shareable as a FUNCTION over the
+        #     tail.  Same move as `Lib/IPay`'s `⊢methLam`.
+        # ★ AND THE POINT IS THE PAYLOAD, NOT THE SHAPE: the `⊢ty`
+        #   obligations in those rungs (`⊢⌜Nat⌝`, `⊢⌜IMu⌝ CtxWf …`) were
+        #   re-discharged once per row and are now discharged ONCE.
+        if para:
+            L.append("%s : (D : IDesc) → IConWf D %s %s0 %s"
+                     % (wfname, ity, T, row.name))
+            L.append("%s D = %s D (%s%d D)" % (wfname, topname, W, share))
+        else:
+            L.append("%s : IConWf %s %s %s0 %s"
+                     % (wfname, idesc, ity, T, row.name))
+            L.append("%s = %s %s (%s%d)" % (wfname, topname, idesc, W, share))
+    elif para:
         L.append("%s : (D : IDesc) → IConWf D %s %s0 %s" % (wfname, ity, T, row.name))
+        L.append("%s = %s0" % (wfname, W))
     else:
         L.append("%s : IConWf %s %s %s0 %s" % (wfname, idesc, ity, T, row.name))
-    L.append("%s = %s0" % (wfname, W))
+        L.append("%s = %s0" % (wfname, W))
     return "\n".join(reversed_blocks(L))
 
 def reversed_blocks(L):
@@ -2914,6 +3029,16 @@ if __name__ == "__main__":
     # ★ So it is asserted here, where it is computed.  Raising these
     #   numbers when rules land is the intended edit; seeing one FALL is
     #   the bug this exists to make loud.
+    # ⚠ MEASUREMENT KNOB, and it DISARMS THE RATCHET.  `JUDGE_MAX_ROWS=n`
+    #   truncates the judgement to `n` rows so its cost can be timed from
+    #   BELOW, without ever running the full module at the memory cap —
+    #   profiling the big one repeatedly is what OOMs a 7.7 GB box.
+    #   ⇒ output under this knob is FOR TIMING ONLY, never to commit.
+    if os.environ.get("JUDGE_MAX_ROWS"):
+        print("  ⚠ JUDGE_MAX_ROWS=%s — TRUNCATED OUTPUT, ratchet disarmed."
+              % os.environ["JUDGE_MAX_ROWS"])
+        print("    DO NOT COMMIT.  Re-run without it to restore.")
+        sys.exit(0)
     _FLOOR = {"Red": 66, "Judge": 32, "TyRed": 26, "Conv": 4}
     _got = {"Red": len(_ROWS), "Judge": _njudge,
             "TyRed": len(_JCACHE["TyRed"]), "Conv": len(_JCACHE["Conv"])}
