@@ -267,7 +267,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- (`flat-events(alg) ≡ otrace(alg)`), the algebra's OWN trace correctness.
   -- `ir-obs-correct` supplies it by recursing on `alg ⊂ Cata wf alg`.
   postulate
-    cata-correct : ∀ {F} (wf : WellFormedFI F) {A} (alg : IR (⟦ F ⟧TI A) A)
+    cata-correct : ∀ {F} (wf : WellFormedFI F) {E A} (alg : IR (E * ⟦ F ⟧TI A) A)
                  → IRObsCorrectF alg
                  → IRObsCorrectF (Cata wf alg)
 

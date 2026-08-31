@@ -106,13 +106,15 @@ evalᴰ-subst-dom refl m z = refl
 -- (`cata-ev-algᴰ-D`) over the embedded functor `⌈F⌉F`, fed the algebra
 -- `evalᴰ alg` pre-composed with the `⌈⟧TI-commute` re-embedding. Collapses the
 -- IR-vs-meaning fold asymmetry so both sides become uniform `cata-sem` folds.
-cata-ev-algᴰ-is-D : ∀ {F : IRFunctor} {C : IRTy} (n : ℕ)
-    (alg : IR.IR (⟦ F ⟧TI C) C)
+-- D131: the environment rides along as a value; the collapse is still `refl`,
+-- because the per-layer algebra is `evalᴰ alg` PARTIALLY APPLIED to it.
+cata-ev-algᴰ-is-D : ∀ {F : IRFunctor} {E C : IRTy} (n : ℕ)
+    (alg : IR.IR (E IR.* ⟦ F ⟧TI C) C) (env : ⟦ E ⟧ᴰᴵ)
     (fc : ⟦ ⌈ F ⌉F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰᴵ))
-  → cata-ev-algᴰ fmt {F} {C} n alg fc
+  → cata-ev-algᴰ fmt {F} {E} {C} n alg env fc
     ≡ cata-ev-algᴰ-D {⌈ F ⌉F} {⌈ C ⌉} n
-        (λ z → evalᴰ fmt alg (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute F C)) z)) fc
-cata-ev-algᴰ-is-D n alg fc = refl
+        (λ z → evalᴰ fmt alg (env , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute F C)) z)) fc
+cata-ev-algᴰ-is-D n alg env fc = refl
 
 ------------------------------------------------------------------------
 -- `subst`-push helpers: a functor transport `sym (cong₂ _S⊕_/_S⊗_ …)` over a
@@ -303,14 +305,22 @@ module _ {A' : Type} where
   -- `evalᴰ-subst-dom` + `subst-T-apply`).
   ------------------------------------------------------------------------
 
-  evalᴰ-Cata-erased : ∀ {F : Functor} (wfF : WellFormedF F)
-      (mir : IR.IR ⌊ ⟦ F ⟧T A' ⌋ ⌊ A' ⌋) (w : ⟦ μ-type F ⟧ᴰ)
-    → liftFn fmt (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR.IR o ⌊ A' ⌋) (⌊⟧T-commute F A') mir)) w
-      ≡ cata-sem wfF (liftFn fmt mir) w
-  evalᴰ-Cata-erased {F} wfF mir w = extensionality goal
+  -- D131: `mir` reads a fixed environment `E`, supplied ONCE as `env`. The
+  -- statement is otherwise unchanged — the fold still equals `cata-sem` of the
+  -- lifted algebra, now the algebra PARTIALLY APPLIED to the environment.
+  -- The environment is a SURFACE type erased (`⌊ Eˢ ⌋`): `liftFn` is stated
+  -- over erased surface types, and the only environment the elaborator ever
+  -- supplies is the algebra closure `⟦F⟧T C ⇒ C`, which is one.
+  evalᴰ-Cata-erased : ∀ {F : Functor} {Eˢ : Type} (wfF : WellFormedF F)
+      (mir : IR.IR (⌊ Eˢ ⌋ IR.* ⌊ ⟦ F ⟧T A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ) (w : ⟦ μ-type F ⟧ᴰ)
+    → liftFn fmt (IR.Cata (wf-⌊⌋ wfF)
+                    (subst (λ o → IR.IR (⌊ Eˢ ⌋ IR.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir))
+             (env , w)
+      ≡ cata-sem wfF (λ z → liftFn fmt mir (env , z)) w
+  evalᴰ-Cata-erased {F} {Eˢ} wfF mir env w = extensionality goal
     where
-      mir' : IR.IR (⟦ eraseF F ⟧TI ⌊ A' ⌋) ⌊ A' ⌋
-      mir' = subst (λ o → IR.IR o ⌊ A' ⌋) (⌊⟧T-commute F A') mir
+      mir' : IR.IR (⌊ Eˢ ⌋ IR.* ⟦ eraseF F ⟧TI ⌊ A' ⌋) ⌊ A' ⌋
+      mir' = subst (λ o → IR.IR (⌊ Eˢ ⌋ IR.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir
 
       w' : ⟦ ⌊ μ-type F ⌋ ⟧ᴰᴵ
       w' = subst (λ z → z) (sym (cohᴰ (μ-type F))) w
@@ -319,13 +329,17 @@ module _ {A' : Type} where
       seed-eq = trans (sym (subst-cong-μS (tF-coh F) w'))
                       (subst-subst-sym {P = λ z → z} (cong μS (tF-coh F)))
 
-      goal : ∀ n → liftFn fmt (IR.Cata (wf-⌊⌋ wfF) mir') w n ≡ cata-sem wfF (liftFn fmt mir) w n
-      goal n = trans (subst-T-apply (cohᴰ A') (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir') w') n)
+      goal : ∀ n → liftFn fmt (IR.Cata (wf-⌊⌋ wfF) mir') (env , w) n
+                 ≡ cata-sem wfF (λ z → liftFn fmt mir (env , z)) w n
+      goal n = trans (subst-T-apply (cohᴰ A')
+                        (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir')
+                               (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w')) n)
                      (trans (cong (λ L → (proj₁ L , subst (λ z → z) (cohᴰ A') (proj₂ L))) Lr≡)
                             (cong₂ _,_ (proj₁ rc) (proj₂ rc)))
         where
           dalg_L : ⟦ ⟦ ⌈ eraseF F ⌉F ⟧T ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ → T ⟦ ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ
-          dalg_L z = evalᴰ fmt mir' (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z)
+          dalg_L z = evalᴰ fmt mir' ( subst (λ t → t) (sym (cohᴰ Eˢ)) env
+                                     , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z )
 
           algL : ⟦ translateF Carrier Carrier (⌈ eraseF F ⌉F) ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
           algL y = cata-ev-algᴰ-D {⌈ eraseF F ⌉F} {⌈ ⌊ A' ⌋ ⌉} n dalg_L (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ y)
@@ -334,9 +348,10 @@ module _ {A' : Type} where
           algL' y = algL (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y)
 
           algM : ⟦ translateF Carrier Carrier F ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ) → (List SigOpEvent × ⟦ A' ⟧ᴰ)
-          algM y = cata-ev-algᴰ-D {F} {A'} n (liftFn fmt mir) (coerce-μ-out wfF _ y)
+          algM y = cata-ev-algᴰ-D {F} {A'} n (λ z → liftFn fmt mir (env , z)) (coerce-μ-out wfF _ y)
 
-          Lr≡ : evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir') w' n ≡ cataS {translateF Carrier Carrier F} algL' (forget w)
+          Lr≡ : evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir')
+                      (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w') n ≡ cataS {translateF Carrier Carrier F} algL' (forget w)
           Lr≡ = trans (cataS-subst-functor (tF-coh F) algL (forget w'))
                       (cong (cataS {translateF Carrier Carrier F} algL') seed-eq)
 
