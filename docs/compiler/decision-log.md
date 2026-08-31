@@ -9558,3 +9558,89 @@ annotation at all: it made a trace-level defect visible as a type error.
   composite called twice — the rule now says so.
 
 **Relates**: D018, D056, D063, D127, OCP-9
+
+---
+
+## D131: A Cata's Algebra Is OBTAINED Once and APPLIED Per Layer — the Fold Rebuilds It, and That Is a Codegen Gap
+
+**Date**: 2026-08-31 · **Status**: Decided (plan 0.76 Phase D) ·
+**Follows**: D130 (composition is linear), D127 (context-indexed composition)
+
+### The decision
+
+`cata`'s algebra arm is evaluated ONCE, like every other combinator arm:
+
+    ⟦ cata alg ⟧ᶜ dγ  =  ⟦alg⟧ᶜ dγ >>=T λ f → returnT (cata-sem f)
+
+No special restriction on the algebra, and no separate realm for it. The
+meaning is uniform with `comp'`/`copair'`/`fork'`/`curry'`.
+
+The COMPILER does not do this yet: `Surface.Elaborate` emits
+
+    Cata wfF (apply ∘ ⟨ elaborate alg ∘ terminal , id ⟩)
+
+and `Cata`'s algebra runs per layer, so `elaborate alg ∘ terminal` is
+re-entered on every layer of the fold. That agrees with the meaning only when
+the algebra's BUILD is effect-free. That premise is now a NAMED residual, and
+its removal is the parameterized-cata plan.
+
+### Two claims that look alike and are not
+
+1. **The algebra must be an arrow.** True — `cata-sem` consumes
+   `⟦F A⟧ᴰ → T ⟦A⟧ᴰ`, a Kleisli arrow. Effects DURING the fold are the
+   algebra's own and are legitimate; an effectful fold is a normal thing.
+2. **The algebra expression must be effect-free to build.** NOT a mathematical
+   requirement. It is a restriction.
+
+Binding supplies (1) on its own: run the arm's computation once, obtain the
+arrow, fold with it. An earlier draft of this decision required (2) — as a
+typing-level "morphism shape" premise — on the grounds that it was "the
+mathematically exact reading". It is not. It is the reading that makes the
+CURRENT codegen sound, which is a different thing, and adopting it would have
+let an implementation shape dictate the language definition (D057, D114).
+
+### What this says about O2
+
+Plan 0.76 owes O2: `⊢ᵐ`'s structural recursion forced facts that its deletion
+must re-establish. This is the first concrete instance, and it is worth
+naming precisely.
+
+`CataFold.cata-fold-eq` does not assume the algebra is well-behaved — it takes
+
+    ⟦ algE ⟧ˢ tt ≡ liftD m
+
+as a HYPOTHESIS, and today that hypothesis is discharged by
+`RealizeAgrees.extract-morph-eff-denotes`: the algebra EXTRACTS to an IR
+morphism. `extract-morph-eff` is exactly what D127 deleted. So one of the
+things `⊢ᵐ` was forcing is precisely "the algebra is a fixed morphism, not a
+computation that produces one" — and with the realm gone, the fact has to come
+from somewhere else. Under this decision it comes from the codegen actually
+building the algebra once (the plan), and meanwhile from a named premise.
+
+### Why not the alternatives
+
+**Thread the algebra per layer in the MEANING** (making `⟦_⟧ᶜ` match the
+emitter). Cheapest, and it destroys what `cata` means: with a re-derived,
+possibly-effectful algebra at each layer there is no algebra, only a family,
+and initiality no longer gives a unique mediating morphism. It would not be a
+catamorphism. Rejected.
+
+**Require the algebra to be morphism-shaped in the JUDGMENT.** Sound, no
+codegen change, and it makes the current emitter correct. But it restricts the
+language for the compiler's convenience, and it re-imposes on `cata` exactly
+the kind of realm restriction D127 removed everywhere else — for a reason that
+turned out not to be mathematical. Rejected as the primary answer; it remains
+the fallback if the parameterized cata proves infeasible.
+
+### Consequences
+
+- `IR.Cata`'s algebra has domain `⟦F⟧TI C` with no environment slot, so
+  hoisting needs a closed `CataM : IR (F C ⇛ C) (μF ⇛ C)` — the parameterized
+  catamorphism — making the elaboration `CataM wf ∘ elaborate alg`,
+  structurally identical to `compIR ∘ ⟨ ef , eg ⟩`.
+- That also removes a PER-LAYER CLOSURE ALLOCATION: `elaborate alg ∘ terminal`
+  is a `curry`, and heap-mode `curry` allocates (`CurryAllocWF.run-curry-heap`).
+- Until then the named premise stands, classified deferred-proof/model-gap —
+  not an axiom, and not a narrowing of the observable.
+
+**Relates**: D127, D130, D057, D114
