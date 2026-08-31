@@ -45,6 +45,7 @@ open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
 open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
+open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.ConvRows
 open import DirectedHoTT.Examples.Knot.TyRedRows using ( TyRedD; ITyRed )
 open import DirectedHoTT.Examples.Knot.TyRedWf using ( TyRedWf )

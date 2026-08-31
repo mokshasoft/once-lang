@@ -40,6 +40,7 @@ open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
 open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
+open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.RedRows
 
 
@@ -3179,4 +3180,107 @@ W_ΙΒ0 D =
 
 rdtr-tautWf : (D : IDesc) → IConWf D IRed ΙΒ0 rdtr-taut
 rdtr-tautWf = W_ΙΒ0
+
+-- ξ-⌜Hom⌝ᶜ
+-- ★ the telescope, back at `Ctx` level: `emit_jrow` had to
+--   drop to a bare `Cx` at the premise to stay writable
+--   before `RedD` existed.
+ΚΒ6 ΚΒ7 ΚΒ8 ΚΒ9 : Ctx
+ΚΒ6 = ΚΒ5 ▹ IMu RedD IRed kΚΒ5
+ΚΒ7 = ΚΒ6 ▹ El kΚΒ6
+ΚΒ8 = ΚΒ7 ▹ El kΚΒ7
+ΚΒ9 = ΚΒ8 ▹ El kΚΒ8
+
+aΚΒ8 : ΚΒ8 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) ∷ Nat
+aΚΒ8 = ⊢fst (⊢var (there (there (there (there (there (there (there (there here)))))))))
+CΚΒ8 : ICon ⌊ ΚΒ8 ⌋
+CΚΒ8 = iκ kΚΒ8 iι
+W_ΚΒ8 : IConWf RedD IRed ΚΒ8 CΚΒ8
+W_ΚΒ8 =
+  iwf-κ kΚΒ8 (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aΚΒ8))
+           (toMu (⊢snd (⊢snd (⊢var (there (there (there (there (there (there (there (there here))))))))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
+                  (toI (fromI (⊢var (there (there (there (there (there (there (there here))))))))))
+                  (toI aΚΒ8)
+                  (⊢symN aΚΒ8 (fromI (⊢var (there (there (there (there (there (there (there here)))))))))
+                         (fordAs (⊢var (there here))))
+                  (toMu (⊢Tm-cHomKv (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (fromI (⊢var (there (there (there (there (there (there (there here))))))))) (fromMu (⊢var (there (there (there (there (there here))))))) (fromMu (⊢var (there (there (there (there here)))))) (fromMu (⊢var (there (there (there here)))))))))
+    iwf-ι
+
+aΚΒ7 : ΚΒ7 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) ∷ Nat
+aΚΒ7 = ⊢fst (⊢var (there (there (there (there (there (there (there here))))))))
+CΚΒ7 : ICon ⌊ ΚΒ7 ⌋
+CΚΒ7 = iκ kΚΒ7 CΚΒ8
+W_ΚΒ7 : IConWf RedD IRed ΚΒ7 CΚΒ7
+W_ΚΒ7 =
+  iwf-κ kΚΒ7 (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aΚΒ7))
+           (toMu (⊢fst (⊢snd (⊢var (there (there (there (there (there (there (there here)))))))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
+                  (toI (fromI (⊢var (there (there (there (there (there (there here)))))))))
+                  (toI aΚΒ7)
+                  (⊢symN aΚΒ7 (fromI (⊢var (there (there (there (there (there (there here))))))))
+                         (fordAs (⊢var here)))
+                  (toMu (⊢Tm-cHomKv (var (vs (vs (vs (vs (vs (vs vz))))))) (fromI (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there (there (there here))))))) (fromMu (⊢var (there (there (there here))))) (fromMu (⊢var (there (there here))))))))
+    W_ΚΒ8
+
+CΚΒ6 : ICon ⌊ ΚΒ6 ⌋
+CΚΒ6 = iκ kΚΒ6 CΚΒ7
+W_ΚΒ6 : IConWf RedD IRed ΚΒ6 CΚΒ6
+W_ΚΒ6 =
+  iwf-κ kΚΒ6 (icw-ford _ _ _)
+    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there (there (there (there here))))))))) (toI (fromI (⊢var (there (there (there (there (there here)))))))))
+    W_ΚΒ7
+
+CΚΒ5 : ICon ⌊ ΚΒ5 ⌋
+CΚΒ5 = iρ kΚΒ5 CΚΒ6
+W_ΚΒ5 : IConWf RedD IRed ΚΒ5 CΚΒ5
+W_ΚΒ5 =
+  iwf-ρ kΚΒ5
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var here))) (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))) (fromI (⊢var (there (there (there (there here))))))
+      (⊢pair (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢wk (fromI (⊢var (there (there (there (there here))))))))) (fromMu (⊢var (there (there (there here))))) (fromMu (⊢var (there (there here))))))
+    W_ΚΒ6
+
+CΚΒ4 : ICon ⌊ ΚΒ4 ⌋
+CΚΒ4 = iκ kΚΒ4 CΚΒ5
+W_ΚΒ4 : IConWf RedD IRed ΚΒ4 CΚΒ4
+W_ΚΒ4 =
+  iwf-κ kΚΒ4 (icw-imu (pair sTm (var (vs (vs (vs vz))))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there here)))))))
+    W_ΚΒ5
+
+CΚΒ3 : ICon ⌊ ΚΒ3 ⌋
+CΚΒ3 = iκ kΚΒ3 CΚΒ4
+W_ΚΒ3 : IConWf RedD IRed ΚΒ3 CΚΒ3
+W_ΚΒ3 =
+  iwf-κ kΚΒ3 (icw-imu (pair sTm (var (vs (vs vz)))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there here))))))
+    W_ΚΒ4
+
+CΚΒ2 : ICon ⌊ ΚΒ2 ⌋
+CΚΒ2 = iκ kΚΒ2 CΚΒ3
+W_ΚΒ2 : IConWf RedD IRed ΚΒ2 CΚΒ2
+W_ΚΒ2 =
+  iwf-κ kΚΒ2 (icw-imu (pair sTm (var (vs vz))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there here)))))
+    W_ΚΒ3
+
+CΚΒ1 : ICon ⌊ ΚΒ1 ⌋
+CΚΒ1 = iκ kΚΒ1 CΚΒ2
+W_ΚΒ1 : IConWf RedD IRed ΚΒ1 CΚΒ1
+W_ΚΒ1 =
+  iwf-κ kΚΒ1 (icw-imu (pair sTm (var vz)) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
+    W_ΚΒ2
+
+CΚΒ0 : ICon ⌊ ΚΒ0 ⌋
+CΚΒ0 = iκ kΚΒ0 CΚΒ1
+W_ΚΒ0 : IConWf RedD IRed ΚΒ0 CΚΒ0
+W_ΚΒ0 =
+  iwf-κ kΚΒ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
+    W_ΚΒ1
+
+rdξ-⌜Hom⌝ᶜWf : IConWf RedD IRed ΚΒ0 rdξ-⌜Hom⌝ᶜ
+rdξ-⌜Hom⌝ᶜWf = W_ΚΒ0
 

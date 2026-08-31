@@ -1101,6 +1101,7 @@ FIELD_SORT.update({
     "singleK":  ["sTm"],
     "subTmAtK": [None, "sTm"],
     "subTyAtK": [None, "sTy"],
+    "extNK":    [None],
 })
 
 # ============================ THE MUTUAL PAIR =============================
@@ -1403,6 +1404,7 @@ open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
 open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
+open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 %(extra)s
 """
 
@@ -2075,6 +2077,8 @@ WF_CTOR.update({
     "singleK":  ("⊢singleK",  ["DD", "MU"],       None),
     "subTmAtK": ("⊢subTmAtK", ["DD", "IX", "MU"], None),
     "subTyAtK": ("⊢subTyAtK", ["DD", "IX", "MU"], None),
+    # ★ two depths consumed, then the substitution being extended.
+    "extNK":    ("⊢extNK",    ["DD", "DD", "IX"],  None),
 })
 
 def _telty(comp):
@@ -2156,6 +2160,9 @@ FIELD_DEPTH.update({
     "singleK":  [('D',)],
     "subTmAtK": [('D',), ('sucD', 1)],
     "subTyAtK": [('D',), ('sucD', 1)],
+    # ⚠ `extNK`'s substitution argument lives one binder SHALLOWER than
+    #   the position `extS` appears at — it is the σ being extended.
+    "extNK":    [('predD',)],
 })
 
 # ★★★ THE THREADED DEPTH IS STRUCTURED, NOT A STRING: `(base term, base
@@ -2178,6 +2185,7 @@ def _dep_pred(dep):
 
 def _deepen(dep, E):
     "the depth for a field whose index sits at `E`"
+    if E[0] == "predD": return _dep_pred(dep)
     if E[0] == "lit":  return ("num %d" % E[1], "⊢num %d" % E[1], 0)
     if E[0] == "D":    return dep
     if E[0] == "sucD": return (dep[0], dep[1], dep[2] + E[1])
@@ -2251,7 +2259,7 @@ def jd(e, k, ix, binders, tel):
                 # ★ descend at the field's OWN depth
                 # ★ `ai` counts EMITTED arguments; the table is indexed by
                 #   SOURCE position, so a prepended depth shifts it by one.
-                _si = ai - (1 if h in _DEPTH_PRE else 0)
+                _si = ai - _PRE_N.get(h, 0)
                 sub = _deepen(DEPTHD[0], FIELD_DEPTH[h][_si]) \
                       if h in FIELD_DEPTH and 0 <= _si < len(FIELD_DEPTH[h]) \
                       else DEPTHD[0]
@@ -2666,6 +2674,7 @@ open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subTmAtK; subTyAtK )
+open import DirectedHoTT.Examples.Knot.SubMot using ( extNK )
 
 -- ★ the judgement's index: a depth and two terms at it.
 IRed : RTy ε
@@ -2711,19 +2720,29 @@ _DEPTH_ARG = {"Var-vzK", "Var-vsK"}
 #   wrapper is named for where it LANDS, so `n` is the depth at the
 #   position, unshifted.  ⚠ `_DEPTH_ARG`'s rule is the opposite one and
 #   using it here silently builds a term one binder too shallow.
-_DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK"}
+_DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK", "extNK"}
+
+# ★★★ HOW MANY DEPTHS EACH WRAPPER TAKES BEFORE ITS SOURCE ARGUMENTS.
+#
+# ⚠ `extNK` TAKES **TWO**: `extNK d n σ : SubTy (nsuc d) (nsuc n)` with
+#   `σ : SubTy d n`.  At an ambient depth `d'` a rule's `extS σ` must land
+#   at `SubTy (nsuc d') d'`, so `d = d'` and `n = pred d'`.  The wrapper
+#   is named for its SOURCE and its TARGET and a rule writes neither.
+_PRE_N = {"singleK": 1, "subTmAtK": 1, "subTyAtK": 1, "extNK": 2}
 
 # ★ what a rule NAMES → what the object level CALLS it.  `single`,
 #   `subTm` and `subTy` are the three the judgement rules mention, and
 #   `Knot/SubApp` supplies all three with the index and target depth
 #   that the rule does not write down.
-_SUBST_CT = {"single": "singleK", "subTm": "subTmAtK", "subTy": "subTyAtK"}
+_SUBST_CT = {"single": "singleK", "subTm": "subTmAtK",
+             "subTy": "subTyAtK", "extS": "extNK"}
 
 def _pred(dep):
     if dep[0] == "nsuc": return dep[1]
     raise ValueError("a Var at a non-successor depth: %r" % (dep,))
 
 def _shift(dep, E):
+    if E[0] == "predD": return _pred(dep)
     if E[0] == "lit":  return RAW("num %d" % E[1])
     if E[0] == "sucD":
         e = dep
@@ -2761,10 +2780,13 @@ def _val(e, CT, dep):
     if h[1] in CT:
         c = CT[h[1]]
         fds = FIELD_DEPTH.get(c, [])
+        # ⚠ the table is indexed by SOURCE position; a prepended depth
+        #   does not occupy a slot in it.
         sub = [_val(x, CT, _shift(dep, fds[i]) if i < len(fds) else dep)
                for i, x in enumerate(args[1:])]
         if c in _DEPTH_ARG: return AP(c, *([_pred(dep)] + sub))
-        if c in _DEPTH_PRE: return AP(c, *([dep] + sub))
+        if _PRE_N.get(c) == 1: return AP(c, *([dep] + sub))
+        if _PRE_N.get(c) == 2: return AP(c, *([dep, _pred(dep)] + sub))
         return AP(c, *sub)
     return V(h[1])
 
@@ -2872,6 +2894,7 @@ open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
 open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
+open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.RedRows
 %s
 """
@@ -3039,7 +3062,7 @@ if __name__ == "__main__":
               % os.environ["JUDGE_MAX_ROWS"])
         print("    DO NOT COMMIT.  Re-run without it to restore.")
         sys.exit(0)
-    _FLOOR = {"Red": 66, "Judge": 32, "TyRed": 26, "Conv": 4}
+    _FLOOR = {"Red": 67, "Judge": 32, "TyRed": 26, "Conv": 4}
     _got = {"Red": len(_ROWS), "Judge": _njudge,
             "TyRed": len(_JCACHE["TyRed"]), "Conv": len(_JCACHE["Conv"])}
     _lost = {k: (v, _got[k]) for k, v in _FLOOR.items() if _got[k] < v}
