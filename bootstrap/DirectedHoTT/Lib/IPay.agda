@@ -36,7 +36,7 @@ open import DirectedHoTT.Metatheory.SubjectReduction
   using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk; Ren⊢-ext
         ; isingle-Sub⊢; iihTy-wf )
 open import DirectedHoTT.Lib.Wk using ( ren-subTy; Ren⊢-ins²; wk-singleTy )
-open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; methsFrom )
+open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; methsFrom; methsAt )
 
 ipayTy-wf : {Γ Θ : Ctx} (D : IDesc) (I : RTy ε)
             (σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋) (C : ICon ⌊ Θ ⌋) →
@@ -411,6 +411,51 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
 --   recursion the walk takes.  ⚠ Without this a caller needs `Split D 51
 --   …` as 51 nested `spl-cons` — a term the size of the description,
 --   written by hand, for something the walk already knows.
+------------------------------------------------------------------------
+-- ★★★ `methsAt`'s TYPING — the per-row method, typed AT its row.
+--
+-- ⚠ THE HYPOTHESIS IS QUANTIFIED OVER THE ROW, exactly as `⊢methsFrom`'s
+--   is, but it now also receives the row's POSITION `k` — which is what
+--   lets a caller case on the tag (`pw?` answers differently at
+--   `cTm-cPi`, at `cTm-cHom`, and everywhere else) without the walk
+--   knowing anything about it.
+--
+-- ★ `Split` still hands each row its MEMBERSHIP and its LOOKUP on the
+--   way past, so no row is enumerated here either.
+------------------------------------------------------------------------
+
+⊢methsAt : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) {E : IDesc}
+           (W : CDesc E) {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {mth : ℕ → RTm ⌊ Γ ⌋} →
+           IDescWf I D → IDescWfFrom D I E → Split D j E →
+           ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
+           ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+           ({k : ℕ} {C : ICon (ε ∙)} → IConWf D I (◇ ▹ εwkTy I) C →
+              k ∈ID D → ilookupD D k ≡ C → Γ ⊢ mth k ∷ imethTy D I k C M) →
+           (tl : RTm ⌊ Γ ⌋) →
+           Γ ⊢ tl ∷ imethsTyFrom D I M (cdPos W j) (cdRest W) →
+           Γ ⊢ methsAt W mth j tl ∷ imethsTyFrom D I M j E
+⊢methsAt D I j (cd-stop E) wD wE sp tI wM dm tl dtl = dtl
+⊢methsAt D I j (cd-cons {C = C} {E = E} W) {mth = mth}
+         wD (idwf-cons wC wE) sp tI wM dm tl dtl =
+  ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI wM) there)
+        (dm wC (spl-mem sp) (spl-look sp))
+        (⊢-cast (sym (wk-singleTy {v = mth j} _))
+                (⊢methsAt D I (suc j) W wD wE (spl-step sp) tI wM dm tl dtl))
+
+------------------------------------------------------------------------
+-- ★ THE WELL-FORMEDNESS OF A **SUFFIX**, taken off the whole one.
+--
+-- ⚠ A CALLER THAT STARTS ITS WALK PART-WAY IN needs `IDescWfFrom D I E`
+--   for the suffix `E`, and holds only `IDescWf I D` for the whole.  The
+--   `Split` that located `E` is exactly the evidence needed to strip the
+--   rows in front of it, one `idwf-cons` at a time.
+------------------------------------------------------------------------
+
+idwfDrop : {D : IDesc} {I : RTy ε} {j : ℕ} {E F : IDesc} →
+           Split F j E → IDescWfFrom D I F → IDescWfFrom D I E
+idwfDrop spl-nil      w                = w
+idwfDrop (spl-cons s) (idwf-cons _ w') = idwfDrop s w'
+
 splTake : {D : IDesc} {j : ℕ} {E : IDesc} →
           Split D j E → (W : CDesc E) → Split D (cdPos W j) (cdRest W)
 splTake sp (cd-stop _) = sp
