@@ -163,7 +163,7 @@ module FlatEventTrace {FS : FrameSemantics} where
   -- emitted events of a chain are `chain-events` — the concatenation of
   -- `event-of` at each link's start state. This lets the cata's
   -- per-iteration reasoning REUSE the `FlatSteps` chains already built in
-  -- CataNatDescend/CataNatAscend (descend-iter-flat etc.) for the trace,
+  -- the deleted CataNat* descend/ascend modules (D132) for the trace,
   -- not just the state. For a SILENT chain (control/reg/load/build-layer
   -- — no `instr-sigop`), `chain-events` reduces to `[]` definitionally,
   -- so `flat-events` simply skips it to the chain's end state.

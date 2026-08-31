@@ -281,12 +281,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- through unproven.
   --
   --   * `Cata` routes to `cata-correct` (the loop obligation, whose intended
-  --     discharge is the descend/base/ascend μ-induction — `CataNat*`).
+  --     discharge is the descend/base/ascend μ-induction. The `CataNat*`
+  --     attempt at it was NatF-only and is deleted (D132).
   --     NOT WIREABLE AS IT STANDS, and the reason is worth recording: this
   --     pointer was written 2026-06-13, and four days later `5088e571`
   --     deleted `CataNatAscend`/`CataNatValue`/`CataNatTrace` as "dead …
   --     no live importers". So of the three phases the induction composes,
-  --     only DESCEND survives (`CataNatDescend*`/`Chain`/`Heap*`/`Producer`/
+  --     only DESCEND survived, and it too is now deleted (D132) — it was
+  --     (`CataNatDescend*`/`Chain`/`Heap*`/`Producer`/
   --     `Seam` — kept, since they prove content this module only postulates).
   --     Closing `cata-correct` means REBUILDING base and ascend, not wiring
   --     up what is here.
@@ -1022,7 +1024,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- Its discharge needs FOUR pieces (all machinery identified, none yet written):
   --  (1) machine split — run `ft`, the mov, then `gt` AT A PC OFFSET. Template:
   --      `ComposeWF.exec-trace-compose-eq` (same thing for the straight machine);
-  --      relocation: `CataAtRelocate.{shift-pc, flat-relocate-straight/-label/-jmp}`.
+  --      relocation: was `CataAtRelocate` (deleted, D132).
   --  (2) event split — `flat-events` over the concatenation, the mov emitting
   --      nothing: `flat-events-steps`, `chain-events-++`, `chain-events-subst*`,
   --      `flat-events-settled`, `flat-events-reify` (Adequacy/FlatEvents).
