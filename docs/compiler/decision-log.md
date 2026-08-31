@@ -9644,3 +9644,61 @@ the fallback if the parameterized cata proves infeasible.
   not an axiom, and not a narrowing of the observable.
 
 **Relates**: D127, D130, D057, D114
+
+---
+
+## D132: Plan 0.36's Nat-Shape Attack on `cata-correct` Is DELETED — Per-Shape Witnesses Were Never Going to Be the Theorem
+
+**Date**: 2026-08-31 · **Status**: Decided (plan 0.76 / D131 migration) ·
+**Follows**: D131 (parameterized cata)
+
+### The decision
+
+Eleven modules are deleted: `CCC/Codegen/CataNat{BuildLayer,Chain,Descend,
+DescendComplete,DescendRun,Heap,HeapExtract,Producer,Seam}`,
+`CCC/Codegen/CataAtRelocate`, and `CCC/Machine/IR/NatCataProof` — 2189 lines.
+
+They were plan 0.36 task #8's attack on `IRObsCorrectFlat.cata-correct`,
+carried out for the SHAPE `NatF = K Unit ⊕ Id` and never generalized. All
+eleven are unreachable from every gate root (Compiler, Certified, the three
+Targets, Spec/Correct, ErrorProofs) and nothing outside the set imports them.
+
+`cata-correct` REMAINS a live named postulate in `IRObsCorrectFlat`. Deleting
+its abandoned partial attack does not change that, and does not change the
+residual count except downward: `NatCataProof` carried two postulates and a
+`{-# TERMINATING #-}` pragma, all of which go.
+
+### Why they were never going to work
+
+A per-shape witness is not a theorem. `cata-correct` quantifies over every
+well-formed functor; a proof for `NatF` discharges the `NatF` instance and
+tells you nothing about `F ⊗ G`. The general obligation needs a proof that
+case-splits the functor, and the Nat modules were a scaffold for reading off
+what such a proof would need — not a step toward it.
+
+Surfaced by D131's migration: they would each have needed the parameterized
+`Cata` threaded through, which is real work spent on a path that is already
+recorded as dead.
+
+### The two findings worth keeping
+
+1. **μ-values are NOT universally Heap.** `In-valid-bf` is mode-polymorphic —
+   a μ-value's mode is its layer's mode — so a cata descend needs a Heap-
+   UNIFORMITY precondition on its input, not an assumption. `CataNatProducer`
+   called it `AllHeap`: a mode-polymorphic recursive predicate over the
+   validity derivation asserting `mB ≡ Heap` at each cons. Anything that
+   later attacks `cata-correct` in heap mode needs that predicate or its
+   equivalent, and will otherwise get stuck at exactly the cons recursion.
+2. **The descend/ascend split was the right decomposition** (descend to the
+   base, then `build-layer` on the way up); what was wrong was fixing the
+   functor while doing it.
+
+### Not deleted
+
+The other nineteen islands stay. In particular `Once.Category.Laws` and
+`Once.Semantics.Value.Laws` — the categorical laws — are unreachable too, and
+that is a question about the correctness statement, not dead code. It is
+recorded against O2 rather than resolved by a deletion.
+
+**Relates**: D131, D102 (the dead path is the checklist — read it before
+deleting it; this entry is that reading)
