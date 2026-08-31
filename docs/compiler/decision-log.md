@@ -9658,10 +9658,25 @@ Eleven modules are deleted: `CCC/Codegen/CataNat{BuildLayer,Chain,Descend,
 DescendComplete,DescendRun,Heap,HeapExtract,Producer,Seam}`,
 `CCC/Codegen/CataAtRelocate`, and `CCC/Machine/IR/NatCataProof` — 2189 lines.
 
-They were plan 0.36 task #8's attack on `IRObsCorrectFlat.cata-correct`,
+TEN of them were plan 0.36 task #8's attack on `IRObsCorrectFlat.cata-correct`,
 carried out for the SHAPE `NatF = K Unit ⊕ Id` and never generalized. All
 eleven are unreachable from every gate root (Compiler, Certified, the three
 Targets, Spec/Correct, ErrorProofs) and nothing outside the set imports them.
+
+**`CataAtRelocate` is the exception and is recorded separately here, because
+an earlier draft of this entry wrongly lumped it in with the Nat attack.** It
+is FUNCTOR-GENERIC: per-instruction relocation for the flat machine, saying
+that running an instruction in a big program at a pc shifted by `k` equals
+running it standalone and shifting the result. Its design finding is worth
+keeping: the shift belongs on the RIGHT (`fpc fs + k`), and with that choice
+every case is `refl` or definitional with NO arithmetic lemmas — a straight
+step gives `suc (fpc fs) + k = suc (fpc fs + k)` definitionally, and a jump
+lands at `q + k`, matching `find-label-distrib`'s `p + length pre`. Jumps
+carry their relocation as a hypothesis; straight steps go through the
+`StraightStep` classifier, so the ~16 non-control constructors need no
+enumeration. ANY future attack on `cata-correct` — or on any embedded-
+subprogram correspondence — wants this module back; recover it from git
+rather than rederiving it.
 
 `cata-correct` REMAINS a live named postulate in `IRObsCorrectFlat`. Deleting
 its abandoned partial attack does not change that, and does not change the
