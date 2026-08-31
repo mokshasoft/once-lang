@@ -65,3 +65,26 @@ cdTake (suc n) (C ◂ E) = cd-cons (cdTake n E)
 methsFrom : {Γ : Cx} {E : IDesc} → CDesc E → RTm Γ → RTm Γ → RTm Γ
 methsFrom (cd-stop E) m t = t
 methsFrom (cd-cons W) m t = pair m (methsFrom W m t)
+
+------------------------------------------------------------------------
+-- ★★★ …AND THE SAME WALK WITH A **PER-ROW** METHOD.
+--
+-- ⚠ `methsFrom` GIVES EVERY ROW THE SAME TERM, which is right when the
+--   motive makes 52 of 53 rows do nothing (`Knot/Single`) and useless
+--   when the answer depends on the ROW: `pw? (⌜Π⌝ γ δ) = true`,
+--   `pw? (⌜Hom⌝ C a b) = pw? C`, everything else `false`.
+--
+-- ★ AND THE OVERRIDES ARE IN THE MIDDLE OF THE TABLE, not at its end, so
+--   the prefix-plus-tail split cannot reach them — `cTm-cPi` and
+--   `cTm-cHom` are rows 102 and 104 of `KNOT`.  A FUNCTION of the tag
+--   reaches any row without ordering the description around the
+--   customer.
+--
+-- ⚠ `methsFrom W m` is `methsAt W (λ _ → m)`; the constant case is kept
+--   because its TYPING is strictly simpler — one derivation, not one per
+--   tag — and `Knot/Single` wants exactly that.
+------------------------------------------------------------------------
+
+methsAt : {Γ : Cx} {E : IDesc} → CDesc E → (ℕ → RTm Γ) → ℕ → RTm Γ → RTm Γ
+methsAt (cd-stop E) mth j t = t
+methsAt (cd-cons W) mth j t = pair (mth j) (methsAt W mth (suc j) t)
