@@ -110,7 +110,9 @@ rec-trace-D  : (fmt : TargetNum) → ∀ {A B} → IR A B → Val.⟦ ⌈ A ⌉ 
 -- followed by this layer's algebra events (`evalᴰ fmt alg` on the rebuilt functor
 -- layer). Plan 0.58: value carried in the MONADIC domain `⟦C⟧ᴰ` (NOT forgotten
 -- to `Val.⟦C⟧`) so an effectful-arrow carrier keeps its apply-time effects.
-cata-ev-algᴰ : (fmt : TargetNum) → ∀ {F C} → ℕ → IR (⟦ F ⟧TI C) C
+-- D131: the algebra reads a fixed environment, so the trace algebra takes the
+-- environment VALUE — obtained once by the caller, outside the fold.
+cata-ev-algᴰ : (fmt : TargetNum) → ∀ {F E C} → ℕ → IR (E * ⟦ F ⟧TI C) C → ⟦ E ⟧ᴰᴵ
              → ⟦ ⌈ F ⌉F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰᴵ) → List SigOpEvent × ⟦ C ⟧ᴰᴵ
 -- `Para`'s trace algebra. `sem-para`'s algebra sees `⟦F⟧F (μF × A)` (each
 -- child: its substructure `μF` + its folded result `A`); we fold into
@@ -146,8 +148,10 @@ evalᴰ fmt (SigOp {A} {B} si) a   = λ n →
 -- algebras — the same category-error as the retired ℤ proof-model.) `Cata`'s
 -- value is `proj₂` of its post-order fold; `Ana`'s is `sem-ana` over the
 -- coalgebra's OWN (forgotten) trace-value. Structurally identical to `⟦_⟧ˢ`.
-evalᴰ fmt (Cata {F} wf {C} alg)  a = λ n →
-  let r = sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt {F} {C} n alg) (forget a)
+-- D131: `a` is the pair `(env , μ-value)`. The environment is projected ONCE,
+-- here, and closed over by the per-layer algebra — the fold never rebuilds it.
+evalᴰ fmt (Cata {F} wf {E} {C} alg)  a = λ n →
+  let r = sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt {F} {E} {C} n alg (proj₁ a)) (forget (proj₂ a))
   in (proj₁ r , proj₂ r)
 evalᴰ fmt (Ana {F} wf {A} coalg) a = λ n →
   ( ana-events fmt {F} {A} coalg (forget a) n
@@ -161,7 +165,7 @@ evalᴰ fmt ir            a        = λ n → (rec-trace-D fmt ir (forget a) n ,
 -- what makes Cata and Ana COMPOSE: a Cata nested in an Ana layer emits fully,
 -- matching the machine that runs that layer's fold to completion. The
 -- event-prefix `take` is applied once, at the observable (⟦_⟧IR / traces-agree).
-rec-trace-D fmt (Cata {F} wf {C} alg)   x n = proj₁ (sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt {F} {C} n alg) x)
+rec-trace-D fmt (Cata {F} wf {E} {C} alg)   x n = proj₁ (sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt {F} {E} {C} n alg (inject (proj₁ x))) (proj₂ x))
 rec-trace-D fmt (Ana {F} wf {A} coalg)  x n = ana-events fmt {F} {A} coalg x n
 rec-trace-D fmt (In wf m)               x n = []
 rec-trace-D fmt (Out wf)                x n = []
@@ -194,9 +198,9 @@ rec-trace-D fmt (const f v)         x n = []
 -- `evalᴰ` clauses), and emit no recursion-scheme events ⇒ `[]`.
 rec-trace-D fmt _                       x n = []
 
-cata-ev-algᴰ fmt {F} {C} n alg fc =
-  ( events-F ⌈ F ⌉F proj₁ fc ++ projTrace (evalᴰ fmt alg z) n
-  , valueT (evalᴰ fmt alg z) n )
+cata-ev-algᴰ fmt {F} {E} {C} n alg env fc =
+  ( events-F ⌈ F ⌉F proj₁ fc ++ projTrace (evalᴰ fmt alg (env , z)) n
+  , valueT (evalᴰ fmt alg (env , z)) n )
   where z = subst (λ T → ⟦ T ⟧ᴰ) (sym (⌈⟧TI-commute F C)) (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ C ⌉ (sem-fmap ⌈ F ⌉F proj₂ fc))
 
 -- `Para`'s fold. Children events come from each child's `List` part

@@ -196,7 +196,9 @@ ir-scratch-requirement = ir-stack-requirement
 -- where left child fully reclaims before right child starts. The current implementation
 -- does not enforce this invariant, so we use SUM to be sound.
 --
-layer-capacity : ∀ {F G A} → WellFormedFI F → WellFormedFI G → IR (⟦ G ⟧TI A) A → ℕ
+-- D131: the algebra carries an environment `E`; the capacity formulas are
+-- unchanged (the environment is a value the fold holds, not extra layer work).
+layer-capacity : ∀ {F G E A} → WellFormedFI F → WellFormedFI G → IR (E * ⟦ G ⟧TI A) A → ℕ
 layer-capacity wf-Id wfG alg = ir-stack-requirement (Cata wfG alg)
 layer-capacity (wf-K _) _ alg = ir-stack-requirement alg +ℕ pair-slots
 -- Sum: wrapper (2 slots) allocated AFTER child reclaims, so add 2 to max child capacity
@@ -268,9 +270,9 @@ open import Data.Nat using (s≤s)
 --   Given: slot + (1 + capL + capR) ≤ cap
 --   Need: suc slot + capL ≤ cap
 --   Since: capL ≤ capL + capR, this follows from monotonicity
-layer-capacity-prod-left : ∀ {FL FR G A}
+layer-capacity-prod-left : ∀ {FL FR G E A}
   (wfL : WellFormedFI FL) (wfR : WellFormedFI FR) (wfG : WellFormedFI G)
-  (alg : IR (⟦ G ⟧TI A) A) (slot cap : ℕ) →
+  (alg : IR (E * ⟦ G ⟧TI A) A) (slot cap : ℕ) →
   slot +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg ≤ cap →
   suc slot +ℕ layer-capacity wfL wfG alg ≤ cap
 layer-capacity-prod-left wfL wfR wfG alg slot cap pf =
@@ -298,9 +300,9 @@ layer-capacity-prod-left wfL wfR wfG alg slot cap pf =
 --   Given: slot + (1 + capL + capR) ≤ cap
 --   Need: suc slot + capR ≤ cap
 --   Since: capR ≤ capL + capR, this follows from monotonicity
-layer-capacity-prod-right : ∀ {FL FR G A}
+layer-capacity-prod-right : ∀ {FL FR G E A}
   (wfL : WellFormedFI FL) (wfR : WellFormedFI FR) (wfG : WellFormedFI G)
-  (alg : IR (⟦ G ⟧TI A) A) (slot cap : ℕ) →
+  (alg : IR (E * ⟦ G ⟧TI A) A) (slot cap : ℕ) →
   slot +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg ≤ cap →
   suc slot +ℕ layer-capacity wfR wfG alg ≤ cap
 layer-capacity-prod-right wfL wfR wfG alg slot cap pf =
@@ -325,9 +327,9 @@ layer-capacity-prod-right wfL wfR wfG alg slot cap pf =
 --   Given: slot + (2 + (capL ⊔ capR)) ≤ cap
 --   Need: slot + capL ≤ cap
 --   Since capL ≤ capL ⊔ capR ≤ 2 + (capL ⊔ capR), this follows from monotonicity
-layer-capacity-sum-left : ∀ {FL FR G A}
+layer-capacity-sum-left : ∀ {FL FR G E A}
   (wfL : WellFormedFI FL) (wfR : WellFormedFI FR) (wfG : WellFormedFI G)
-  (alg : IR (⟦ G ⟧TI A) A) (slot cap : ℕ) →
+  (alg : IR (E * ⟦ G ⟧TI A) A) (slot cap : ℕ) →
   slot +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg ≤ cap →
   slot +ℕ layer-capacity wfL wfG alg ≤ cap
 layer-capacity-sum-left wfL wfR wfG alg slot cap pf =
@@ -343,9 +345,9 @@ layer-capacity-sum-left wfL wfR wfG alg slot cap pf =
 
 -- | Layer capacity for Sum right component
 -- Symmetric to sum-left, using m≤n⊔m
-layer-capacity-sum-right : ∀ {FL FR G A}
+layer-capacity-sum-right : ∀ {FL FR G E A}
   (wfL : WellFormedFI FL) (wfR : WellFormedFI FR) (wfG : WellFormedFI G)
-  (alg : IR (⟦ G ⟧TI A) A) (slot cap : ℕ) →
+  (alg : IR (E * ⟦ G ⟧TI A) A) (slot cap : ℕ) →
   slot +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg ≤ cap →
   slot +ℕ layer-capacity wfR wfG alg ≤ cap
 layer-capacity-sum-right wfL wfR wfG alg slot cap pf =
@@ -377,9 +379,9 @@ layer-capacity-sum-right wfL wfR wfG alg slot cap pf =
 --
 -- capL + 2 ≤ 2 + (capL ⊔ capR)
 -- Since capL ≤ capL ⊔ capR, we have capL + 2 ≤ (capL ⊔ capR) + 2 = 2 + (capL ⊔ capR)
-sum-wrapper-fits-left : ∀ {FL FR G A}
+sum-wrapper-fits-left : ∀ {FL FR G E A}
   (wfL : WellFormedFI FL) (wfR : WellFormedFI FR) (wfG : WellFormedFI G)
-  (alg : IR (⟦ G ⟧TI A) A) →
+  (alg : IR (E * ⟦ G ⟧TI A) A) →
   layer-capacity wfL wfG alg +ℕ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
 sum-wrapper-fits-left wfL wfR wfG alg =
   let capL = layer-capacity wfL wfG alg
@@ -397,9 +399,9 @@ sum-wrapper-fits-left wfL wfR wfG alg =
 
 -- | Sum child capacity + wrapper ≤ Sum parent capacity (right child)
 -- Symmetric using m≤n⊔m
-sum-wrapper-fits-right : ∀ {FL FR G A}
+sum-wrapper-fits-right : ∀ {FL FR G E A}
   (wfL : WellFormedFI FL) (wfR : WellFormedFI FR) (wfG : WellFormedFI G)
-  (alg : IR (⟦ G ⟧TI A) A) →
+  (alg : IR (E * ⟦ G ⟧TI A) A) →
   layer-capacity wfR wfG alg +ℕ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
 sum-wrapper-fits-right wfL wfR wfG alg =
   let capL = layer-capacity wfL wfG alg
@@ -435,14 +437,14 @@ sum-wrapper-fits-right wfL wfR wfG alg =
 -- ir-stack-requirement (Cata wfG alg) = pd + sd*2 + alg + ps ≥ ps = 2
 -- Proof: n ≤ m + n for any m
 private
-  ir-req-geq-ps : ∀ {G A} (wfG : WellFormedFI G) (alg : IR (⟦ G ⟧TI A) A) →
+  ir-req-geq-ps : ∀ {G E A} (wfG : WellFormedFI G) (alg : IR (E * ⟦ G ⟧TI A) A) →
     pair-slots ≤ ir-stack-requirement (Cata wfG alg)
   ir-req-geq-ps wfG alg = m≤n+m pair-slots (product-depth wfG +ℕ sum-depth wfG *ℕ 2 +ℕ ir-stack-requirement alg)
 
 -- Core lemma: layer-capacity wfF wfG alg ≤ ir-stack-requirement (Cata wfG alg)
 -- for any sub-functor wfF of wfG
-layer-cap-bound : ∀ {F G A}
-  (wfF : WellFormedFI F) (wfG : WellFormedFI G) (alg : IR (⟦ G ⟧TI A) A) →
+layer-cap-bound : ∀ {F G E A}
+  (wfF : WellFormedFI F) (wfG : WellFormedFI G) (alg : IR (E * ⟦ G ⟧TI A) A) →
   layer-capacity wfF wfG alg ≤ ir-stack-requirement (Cata wfG alg)
 -- K case: alg + ps ≤ pd + sd*2 + alg + ps
 -- Proof: m≤n+m gives alg+ps ≤ (pd+sd*2) + (alg+ps)
@@ -494,9 +496,9 @@ layer-cap-bound (wf-Sum wfL wfR) wfG alg = SMP.!!
 layer-cap-bound (wf-Prod wfL wfR) wfG alg = SMP.!!
 
 -- Main conversion lemma
-ir-stack-req-geq-layer-cap : ∀ {G A}
+ir-stack-req-geq-layer-cap : ∀ {G E A}
   (wfG : WellFormedFI G)
-  (alg : IR (⟦ G ⟧TI A) A)
+  (alg : IR (E * ⟦ G ⟧TI A) A)
   (slot cap : ℕ) →
   slot +ℕ ir-stack-requirement (Cata wfG alg) ≤ cap →
   slot +ℕ layer-capacity wfG wfG alg ≤ cap
