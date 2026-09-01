@@ -1241,3 +1241,103 @@ contiguous tail (§10.7's fix would have missed the two-letter names).
 ⚠ 5.39 GB against a 5.5 GB cap, at ONE row per module. There is no
 granularity left below this: the next thing that crosses the cap needs a
 different lever, not a smaller split.
+
+---
+
+# §13 — WOULD `--safe` HAVE CAUGHT THEM? — **no, and the ones it misses are the dangerous ones**
+
+Asked after §12, and it is the right question. Answered by classifying
+the session's own defects rather than by assurance.
+
+## §13.1 the nine defects, by what could have caught them
+
+| | defect | caught by |
+|---|---|---|
+| 1 | `⊢nrsSubK` not imported | **Agda** (`NotInScope`) |
+| 2 | `⊢Ctx-extKv` pinned to `var x` | **Agda** (`UnequalTerms`) |
+| 3 | `⊢subAtK` pinned to `dd = nsuc m` | **Agda** |
+| 4 | `infer_depths` read `lit` as a shift | **Agda** |
+| 5 | a `wf` part contributed a depth it has none of | the generator's own conflict check |
+| 6 | `⊢ielim` refused for `unassigned ['M']` | ⚠ **nothing** — a REGEX, found by reading |
+| 7 | `dwf-cons` emitted `DescWf C` for `DescWf (C ◃ E)` | ⚠⚠ **nothing** — IT TYPECHECKED |
+| 8 | rows went 51 → 49 → 51 | ⚠ **nothing** — the ratchet's floor was 34 |
+| 9 | `JudgeWfJ`–`Q` left stale by a spike | ⚠ **nothing** — the sweep would have gone GREEN on them |
+
+⇒ **five of nine were type errors; four were not, and those four are the
+class that ships.**
+
+## §13.2 why `--safe` cannot, in principle, catch 7/8/9
+
+`--safe` + no postulates + no holes + no pragmas guarantees **that what
+is written is well-typed**. It says nothing about whether what is written
+is what was meant — and the knot is an **ENCODING**, i.e. a claim of
+CORRESPONDENCE between two artifacts:
+
+    Spec/Typing.agda   (the rules)   ⟷   Knot/JudgeRows.agda  (the rows)
+
+Nothing in the second file mentions the first. `DescWf C` is a perfectly
+good `ICon`; so is a row with a field missing; so is a stale module from
+a previous run. A type checker verifies ONE SIDE of a correspondence it
+cannot see.
+
+★ **And this cuts differently for `Lib/` and `Metatheory/`.** There a
+proof of `X` IS a proof of `X`, so type-checking really is most of the
+story; the residual risk is VACUITY — the right proof of the wrong
+statement — and the tree already has mechanisms aimed at it
+(`check-formers.sh` gates 4–6, the promissory-note scan, the
+conditional-lemmas-with-no-consumer list). ⇒ the worry belongs to
+`Examples/Knot`, not to the libraries.
+
+## §13.3 ⚠⚠ AND THE COVERAGE NUMBER IS THE HONEST ANSWER
+
+| | |
+|---|---|
+| generated judgement rows | `_⟶_` 71 · `_⟶ᵀ_` 26 · `_≅ᵀ_` 4 · `NoNatC` 7 · merged 51 = **159** |
+| rows with a control (generated ≡ hand-written, by `refl`) | `Knot/LookupGen` — **2** |
+
+**2 of 159.** `LookupGen`'s own header says why that matters: *"an `ICon`
+type-checks with ANY in-scope variable of the right type, so a field
+naming the wrong binder is well-typed"* — it was written because that
+error had already happened once, by hand. Defect 7 is the same error
+class, arriving through the generator instead, into the 157 rows the
+control does not reach.
+
+## §13.4 ⇒ SO WHEN IS THE ENCODING KNOWN CORRECT? — three tiers, and we have one and a half
+
+| tier | what it establishes | status |
+|---|---|---|
+| **type-checking** | the rows are well-formed descriptions | ✅ 159/159 |
+| **controls** | the emitter reproduces an independently-written row | 🟡 **2/159** |
+| **adequacy, mechanized** | every REAL derivation maps to an encoded inhabitant | ⛔ **absent for judgements** |
+
+★★★ **The third tier is the one that makes defect 7 IMPOSSIBLE rather
+than unlikely**, and the tree already has it FOR THE SYNTAX: `Knot/Map`'s
+`enTy`/`enTm`/`enDesc`, `Knot/CtxD`'s `enCtx`, and `Knot/SzAgree` proving
+`szsTm ⌈t⌉ ⟶* num (sz t)` at all 30 `RTm` rows. There is NO `enJudge`.
+
+An adequacy map is **type-checked correspondence**: a total function
+
+    enDeriv : Γ ⊢ t ∷ A → ⟨inhabitant of the encoded family at ⌈Γ⌉ ⌈t⌉ ⌈A⌉⟩
+
+cannot be written for a row that means something else, because the
+TARGET TYPE names the index. `enDeriv (dwf-cons c e) = …` would have had
+to land at `DescWf (C ◃ E)`, and the dropped `◃` would have been a type
+error in the one place Agda can see it.
+
+⇒ ⬜ **and it is not a detour: step 4 needs it anyway.** `prog`'s type
+mentions `_⊢_∷_`, so relating the encoded judgement to the real one is on
+the critical path to the dogfooding exhibit. Building it now buys the
+guarantee early rather than adding work.
+
+## §13.5 ⬜ what to do, cheapest first
+
+1. **Make the ratchet a DIFF, not a floor.** Defect 8 slipped because a
+   floor of 34 cannot see 51 → 49. Store the per-family counts in-repo
+   and fail on any DECREASE.
+2. **Make the value check total by CONSTRUCTION.** Defect 7 slipped
+   through `q[3:]` — a slice that silently means "no terms" for a part
+   shape added later. Every part should declare its terms, so a new
+   shape cannot default to unchecked.
+3. **`enDeriv`, one representative row per shape** — the tier-3 gap. Even
+   partial coverage removes the class, because the shapes are what the
+   emitter shares.
