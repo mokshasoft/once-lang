@@ -102,6 +102,21 @@ evalᴰ-subst-dom : ∀ {o₁ o₂ : IRTy} {B : IRTy} (eq : o₁ ≡ o₂)
   → evalᴰ fmt (subst (λ o → IR.IR o B) eq m) z ≡ evalᴰ fmt m (subst ⟦_⟧ᴰᴵ (sym eq) z)
 evalᴰ-subst-dom refl m z = refl
 
+-- D131: the same naturality with a PAIRED domain — the transport moves only
+-- the second component; the environment slot is untouched.
+evalᴰ-subst-dom-pair : ∀ {E o₁ o₂ : IRTy} {B : IRTy} (eq : o₁ ≡ o₂)
+    (m : IR.IR (E IR.* o₁) B) (env : ⟦ E ⟧ᴰᴵ) (z : ⟦ o₂ ⟧ᴰᴵ)
+  → evalᴰ fmt (subst (λ o → IR.IR (E IR.* o) B) eq m) (env , z)
+    ≡ evalᴰ fmt m (env , subst ⟦_⟧ᴰᴵ (sym eq) z)
+evalᴰ-subst-dom-pair refl m env z = refl
+
+-- …and the pair transport splits componentwise, so `liftFn` at a paired
+-- domain reaches the algebra with the environment already back-transported.
+pairᴰ-subst⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (a : A') (b : B')
+  → subst (λ z → z) (sym (cong₂ (λ x y → x × y) p q)) (a , b)
+    ≡ (subst (λ z → z) (sym p) a , subst (λ z → z) (sym q) b)
+pairᴰ-subst⁻ refl refl a b = refl
+
 -- The IR-carrier cata trace-algebra is DEFINITIONALLY the Type-carrier one
 -- (`cata-ev-algᴰ-D`) over the embedded functor `⌈F⌉F`, fed the algebra
 -- `evalᴰ alg` pre-composed with the `⌈⟧TI-commute` re-embedding. Collapses the
@@ -331,11 +346,14 @@ module _ {A' : Type} where
 
       goal : ∀ n → liftFn fmt (IR.Cata (wf-⌊⌋ wfF) mir') (env , w) n
                  ≡ cata-sem wfF (λ z → liftFn fmt mir (env , z)) w n
-      goal n = trans (subst-T-apply (cohᴰ A')
+      goal n = trans (cong (λ W → subst T (cohᴰ A')
+                              (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir') W) n)
+                           (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (μ-type F)) env w))
+               (trans (subst-T-apply (cohᴰ A')
                         (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir')
                                (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w')) n)
                      (trans (cong (λ L → (proj₁ L , subst (λ z → z) (cohᴰ A') (proj₂ L))) Lr≡)
-                            (cong₂ _,_ (proj₁ rc) (proj₂ rc)))
+                            (cong₂ _,_ (proj₁ rc) (proj₂ rc))))
         where
           dalg_L : ⟦ ⟦ ⌈ eraseF F ⌉F ⟧T ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ → T ⟦ ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ
           dalg_L z = evalᴰ fmt mir' ( subst (λ t → t) (sym (cohᴰ Eˢ)) env
@@ -359,9 +377,17 @@ module _ {A' : Type} where
           algR-full {y₁} {y₂} rsf = cong₂ _++_ (layer-events wfF rsf) trace-step , value-step
             where
               z_L = coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF F ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y₁)))
-              step-eq : subst T (cohᴰ A') (dalg_L z_L) ≡ liftFn fmt mir (coerce-functor⁻¹-D F A' (sem-fmap F proj₂ (coerce-μ-out wfF _ y₂)))
-              step-eq = trans (cong (subst T (cohᴰ A')) (evalᴰ-subst-dom (⌊⟧T-commute F A') mir (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z_L)))
-                              (cong (λ Z → subst T (cohᴰ A') (evalᴰ fmt mir Z)) (layer-z wfF rsf))
+              step-eq : subst T (cohᴰ A') (dalg_L z_L)
+                      ≡ liftFn fmt mir (env , coerce-functor⁻¹-D F A' (sem-fmap F proj₂ (coerce-μ-out wfF _ y₂)))
+              step-eq = trans (cong (subst T (cohᴰ A'))
+                                (evalᴰ-subst-dom-pair (⌊⟧T-commute F A') mir
+                                   (subst (λ t → t) (sym (cohᴰ Eˢ)) env)
+                                   (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z_L)))
+                              (trans (cong (λ Z → subst T (cohᴰ A')
+                                              (evalᴰ fmt mir (subst (λ t → t) (sym (cohᴰ Eˢ)) env , Z)))
+                                           (layer-z wfF rsf))
+                                     (cong (λ W → subst T (cohᴰ A') (evalᴰ fmt mir W))
+                                           (sym (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (⟦ F ⟧T A')) env _))))
               trace-step = trans (sym (subst-T-projTrace (cohᴰ A') (dalg_L z_L) n)) (cong (λ t → projTrace t n) step-eq)
               value-step = trans (sym (subst-T-valueT (cohᴰ A') (dalg_L z_L) n)) (cong (λ t → valueT t n) step-eq)
 
