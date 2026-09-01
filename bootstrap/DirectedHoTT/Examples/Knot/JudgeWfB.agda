@@ -66,6 +66,7 @@ open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK; ⊢pwK )
+open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKv )
 open import DirectedHoTT.Examples.Knot.Lookup using ( LkD; ILk; LkWf )

@@ -24,7 +24,7 @@ open import DirectedHoTT.Spec.Syntax
         ; renTy; extR; isingle; ipayTy-ren; ipayTy-cong
         ; ICon; IDesc; iι; iρ; iκ; ipayTy; Sub; extS; subTm; subTy
         ; εwkTy; εwk-sub; εwk-ren; _◂_; inil
-        ; ilookupD; _∈ID_; hereID; thereID; icon; lam; subTy-renTy; subTy-cong )
+        ; ilookupD; _∈ID_; hereID; thereID; icon; lam; subTy-renTy; subTy-cong; pair )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; ⊢var; here; there
@@ -450,6 +450,31 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
 --   `Split` that located `E` is exactly the evidence needed to strip the
 --   rows in front of it, one `idwf-cons` at a time.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★★ ONE RUNG OF A METHOD TUPLE — the `⊢pair` every caller spells out.
+--
+-- ⚠ THREE COPIES ALREADY: `Knot/Single`'s tail, `Knot/Pw`'s middle, and
+--   `Knot/Stk`'s four scattered overrides would have been a fourth.  The
+--   rung is always the same: the TAIL's `⊢ty`, the method, and the
+--   `wk-singleTy` cast that discharges the Σ-binder.
+--
+-- ⚠ AND THE CAST'S TYPE IS PINNED, not `_`.  Six such metas were a 5.5 GB
+--   OOM in `Knot/Pw` — see `meta-standing-for-a-computation`.
+------------------------------------------------------------------------
+
+⊢methsCons : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) {C : ICon (ε ∙)}
+             (E : IDesc) {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {m tl : RTm ⌊ Γ ⌋} →
+             IDescWf I D → IDescWfFrom D I E → Split D (suc j) E →
+             ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
+             ((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M →
+             Γ ⊢ m ∷ imethTy D I j C M →
+             Γ ⊢ tl ∷ imethsTyFrom D I M (suc j) E →
+             Γ ⊢ pair m tl ∷ imethsTyFrom D I M j (C ◂ E)
+⊢methsCons D I j E {M = M} {m = m} wD wE sp tI wM dm dtl =
+  ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE sp tI wM) there)
+        dm
+        (⊢-cast (sym (wk-singleTy {v = m} (imethsTyFrom D I M (suc j) E))) dtl)
 
 idwfDrop : {D : IDesc} {I : RTy ε} {j : ℕ} {E F : IDesc} →
            Split F j E → IDescWfFrom D I F → IDescWfFrom D I E

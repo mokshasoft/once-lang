@@ -42,6 +42,7 @@ open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK; ⊢pwK )
+open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Examples.Knot.RedRows
@@ -3261,55 +3262,87 @@ W_ΚΒ0 D =
 rdhrefl-pwWf : (D : IDesc) → IConWf D IRed ΚΒ0 rdhrefl-pw
 rdhrefl-pwWf = W_ΚΒ0
 
--- tr-pw
-aΛΒ8 : ΛΒ8 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) ∷ Nat
-aΛΒ8 = ⊢fst (⊢var (there (there (there (there (there (there (there (there here)))))))))
-CΛΒ8 : ICon ⌊ ΛΒ8 ⌋
-CΛΒ8 = iκ kΛΒ8 iι
-W_ΛΒ8 : (D : IDesc) → IConWf D IRed ΛΒ8 CΛΒ8
-W_ΛΒ8 D =
-  iwf-κ kΛΒ8 (icw-ford _ _ _)
-    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aΛΒ8))
-           (toMu (⊢snd (⊢snd (⊢var (there (there (there (there (there (there (there (there here))))))))))))
+-- tr-J-Hom
+aΛΒ12 : ΛΒ12 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) ∷ Nat
+aΛΒ12 = ⊢fst (⊢var (there (there (there (there (there (there (there (there (there (there (there (there here)))))))))))))
+CΛΒ12 : ICon ⌊ ΛΒ12 ⌋
+CΛΒ12 = iκ kΛΒ12 iι
+W_ΛΒ12 : (D : IDesc) → IConWf D IRed ΛΒ12 CΛΒ12
+W_ΛΒ12 D =
+  iwf-κ kΛΒ12 (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aΛΒ12))
+           (toMu (⊢snd (⊢snd (⊢var (there (there (there (there (there (there (there (there (there (there (there (there here))))))))))))))))
            (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
-                  (toI (fromI (⊢var (there (there (there (there (there (there (there here))))))))))
-                  (toI aΛΒ8)
-                  (⊢symN aΛΒ8 (fromI (⊢var (there (there (there (there (there (there (there here)))))))))
+                  (toI (fromI (⊢var (there (there (there (there (there (there (there (there (there (there (there here))))))))))))))
+                  (toI aΛΒ12)
+                  (⊢symN aΛΒ12 (fromI (⊢var (there (there (there (there (there (there (there (there (there (there (there here)))))))))))))
                          (fordAs (⊢var (there here))))
-                  (toMu (⊢Tm-lamKv (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (fromI (⊢var (there (there (there (there (there (there (there here))))))))) (⊢Tm-trKv (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Tm-cHomKv (nsuc (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (⊢nsuc (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (⊢subTmAtK (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢singleK (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Tm-varKv (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢pwBodyK (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (fromMu (⊢var (there (there (there (there (there (there here))))))))))))))) (⊢Tm-appKv (nsuc (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (⊢nsuc (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (fromMu (⊢var (there (there (there (there (there here)))))))))) (⊢Tm-varKv (nsuc (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (⊢nsuc (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (⊢Var-vsKt (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there (there here))))))))))))) (⊢Tm-varKv (nsuc (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (⊢nsuc (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (⊢Var-vzKt (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))))) (fromMu (⊢var (there (there (there (there here)))))) (⊢Tm-appKv (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (fromMu (⊢var (there (there (there here)))))))) (⊢Tm-varKv (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))))))))
+                  (toMu (fromMu (⊢var (there (there (there here))))))))
     (iwf-ι)
 
-aΛΒ7 : ΛΒ7 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) ∷ Nat
-aΛΒ7 = ⊢fst (⊢var (there (there (there (there (there (there (there here))))))))
+aΛΒ11 : ΛΒ11 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) ∷ Nat
+aΛΒ11 = ⊢fst (⊢var (there (there (there (there (there (there (there (there (there (there (there here))))))))))))
+CΛΒ11 : ICon ⌊ ΛΒ11 ⌋
+CΛΒ11 = iκ kΛΒ11 CΛΒ12
+W_ΛΒ11 : (D : IDesc) → IConWf D IRed ΛΒ11 CΛΒ11
+W_ΛΒ11 D =
+  iwf-κ kΛΒ11 (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aΛΒ11))
+           (toMu (⊢fst (⊢snd (⊢var (there (there (there (there (there (there (there (there (there (there (there here)))))))))))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
+                  (toI (fromI (⊢var (there (there (there (there (there (there (there (there (there (there here)))))))))))))
+                  (toI aΛΒ11)
+                  (⊢symN aΛΒ11 (fromI (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))))
+                         (fordAs (⊢var here)))
+                  (toMu (⊢Tm-trKv (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fromI (⊢var (there (there (there (there (there (there (there (there (there (there here)))))))))))) (⊢Tm-cHomKv (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))))) (fromMu (⊢var (there (there (there (there (there (there (there (there (there here))))))))))) (fromMu (⊢var (there (there (there (there (there (there (there (there here)))))))))) (fromMu (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Tm-hreflKv (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fromI (⊢var (there (there (there (there (there (there (there (there (there (there here)))))))))))) (⊢Tm-cHomKv (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fromI (⊢var (there (there (there (there (there (there (there (there (there (there here)))))))))))) (fromMu (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there (there (there here))))))) (fromMu (⊢var (there (there (there (there here))))))) (fromMu (⊢var (there (there (there here)))))) (fromMu (⊢var (there (there here))))))))
+    (W_ΛΒ12 D)
+
+CΛΒ10 : ICon ⌊ ΛΒ10 ⌋
+CΛΒ10 = iκ kΛΒ10 CΛΒ11
+W_ΛΒ10 : (D : IDesc) → IConWf D IRed ΛΒ10 CΛΒ10
+W_ΛΒ10 D =
+  iwf-κ kΛΒ10 (icw-ford _ _ _)
+    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there (there (there (there (there (there (there (there here))))))))))))) (toI (fromI (⊢var (there (there (there (there (there (there (there (there (there here)))))))))))))
+    (W_ΛΒ11 D)
+
+CΛΒ9 : ICon ⌊ ΛΒ9 ⌋
+CΛΒ9 = iκ kΛΒ9 CΛΒ10
+W_ΛΒ9 : (D : IDesc) → IConWf D IRed ΛΒ9 CΛΒ9
+W_ΛΒ9 D =
+  iwf-κ kΛΒ9 (icw-ford _ _ _)
+    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢stkAK (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there (there (there (there here))))))))))) (fromMu (⊢var (there (there (there (there here)))))))) (toI (⊢num 1)))
+    (W_ΛΒ10 D)
+
+CΛΒ8 : ICon ⌊ ΛΒ8 ⌋
+CΛΒ8 = iκ kΛΒ8 CΛΒ9
+W_ΛΒ8 : (D : IDesc) → IConWf D IRed ΛΒ8 CΛΒ8
+W_ΛΒ8 D =
+  iwf-κ kΛΒ8 (icw-imu (pair sTm (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))
+    (W_ΛΒ9 D)
+
 CΛΒ7 : ICon ⌊ ΛΒ7 ⌋
 CΛΒ7 = iκ kΛΒ7 CΛΒ8
 W_ΛΒ7 : (D : IDesc) → IConWf D IRed ΛΒ7 CΛΒ7
 W_ΛΒ7 D =
-  iwf-κ kΛΒ7 (icw-ford _ _ _)
-    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aΛΒ7))
-           (toMu (⊢fst (⊢snd (⊢var (there (there (there (there (there (there (there here)))))))))))
-           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
-                  (toI (fromI (⊢var (there (there (there (there (there (there here)))))))))
-                  (toI aΛΒ7)
-                  (⊢symN aΛΒ7 (fromI (⊢var (there (there (there (there (there (there here))))))))
-                         (fordAs (⊢var here)))
-                  (toMu (⊢Tm-trKv (var (vs (vs (vs (vs (vs (vs vz))))))) (fromI (⊢var (there (there (there (there (there (there here)))))))) (⊢Tm-cHomKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (fromMu (⊢var (there (there (there (there (there here))))))) (fromMu (⊢var (there (there (there (there here)))))) (⊢Tm-varKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there here))))))))))) (⊢Tm-lamKv (var (vs (vs (vs (vs (vs (vs vz))))))) (fromI (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there here)))))) (fromMu (⊢var (there (there here))))))))
+  iwf-κ kΛΒ7 (icw-imu (pair sTm (var (vs (vs (vs (vs (vs (vs vz)))))))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there (there here))))))))))
     (W_ΛΒ8 D)
 
 CΛΒ6 : ICon ⌊ ΛΒ6 ⌋
 CΛΒ6 = iκ kΛΒ6 CΛΒ7
 W_ΛΒ6 : (D : IDesc) → IConWf D IRed ΛΒ6 CΛΒ6
 W_ΛΒ6 D =
-  iwf-κ kΛΒ6 (icw-ford _ _ _)
-    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there (there (there (there here))))))))) (toI (fromI (⊢var (there (there (there (there (there here)))))))))
+  iwf-κ kΛΒ6 (icw-imu (pair sTm (var (vs (vs (vs (vs (vs vz))))))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there here)))))))))
     (W_ΛΒ7 D)
 
 CΛΒ5 : ICon ⌊ ΛΒ5 ⌋
 CΛΒ5 = iκ kΛΒ5 CΛΒ6
 W_ΛΒ5 : (D : IDesc) → IConWf D IRed ΛΒ5 CΛΒ5
 W_ΛΒ5 D =
-  iwf-κ kΛΒ5 (icw-ford _ _ _)
-    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢pwK (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there here))))))) (toI (⊢num 1)))
+  iwf-κ kΛΒ5 (icw-imu (pair sTm (var (vs (vs (vs (vs vz)))))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there here))))))))
     (W_ΛΒ6 D)
 
 CΛΒ4 : ICon ⌊ ΛΒ4 ⌋
@@ -3351,6 +3384,99 @@ W_ΛΒ0 D =
   iwf-κ kΛΒ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
     (W_ΛΒ1 D)
 
-rdtr-pwWf : (D : IDesc) → IConWf D IRed ΛΒ0 rdtr-pw
-rdtr-pwWf = W_ΛΒ0
+rdtr-J-HomWf : (D : IDesc) → IConWf D IRed ΛΒ0 rdtr-J-Hom
+rdtr-J-HomWf = W_ΛΒ0
+
+-- tr-pw
+aΜΒ8 : ΜΒ8 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) ∷ Nat
+aΜΒ8 = ⊢fst (⊢var (there (there (there (there (there (there (there (there here)))))))))
+CΜΒ8 : ICon ⌊ ΜΒ8 ⌋
+CΜΒ8 = iκ kΜΒ8 iι
+W_ΜΒ8 : (D : IDesc) → IConWf D IRed ΜΒ8 CΜΒ8
+W_ΜΒ8 D =
+  iwf-κ kΜΒ8 (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aΜΒ8))
+           (toMu (⊢snd (⊢snd (⊢var (there (there (there (there (there (there (there (there here))))))))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
+                  (toI (fromI (⊢var (there (there (there (there (there (there (there here))))))))))
+                  (toI aΜΒ8)
+                  (⊢symN aΜΒ8 (fromI (⊢var (there (there (there (there (there (there (there here)))))))))
+                         (fordAs (⊢var (there here))))
+                  (toMu (⊢Tm-lamKv (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (fromI (⊢var (there (there (there (there (there (there (there here))))))))) (⊢Tm-trKv (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Tm-cHomKv (nsuc (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (⊢nsuc (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (⊢subTmAtK (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢singleK (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Tm-varKv (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢pwBodyK (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (fromMu (⊢var (there (there (there (there (there (there here))))))))))))))) (⊢Tm-appKv (nsuc (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (⊢nsuc (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (fromMu (⊢var (there (there (there (there (there here)))))))))) (⊢Tm-varKv (nsuc (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (⊢nsuc (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (⊢Var-vsKt (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there (there here))))))))))))) (⊢Tm-varKv (nsuc (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (⊢nsuc (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))) (⊢Var-vzKt (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here))))))))))))) (fromMu (⊢var (there (there (there (there here)))))) (⊢Tm-appKv (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (fromMu (⊢var (there (there (there here)))))))) (⊢Tm-varKv (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there here)))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there (there here)))))))))))))))))
+    (iwf-ι)
+
+aΜΒ7 : ΜΒ7 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) ∷ Nat
+aΜΒ7 = ⊢fst (⊢var (there (there (there (there (there (there (there here))))))))
+CΜΒ7 : ICon ⌊ ΜΒ7 ⌋
+CΜΒ7 = iκ kΜΒ7 CΜΒ8
+W_ΜΒ7 : (D : IDesc) → IConWf D IRed ΜΒ7 CΜΒ7
+W_ΜΒ7 D =
+  iwf-κ kΜΒ7 (icw-ford _ _ _)
+    (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aΜΒ7))
+           (toMu (⊢fst (⊢snd (⊢var (there (there (there (there (there (there (there here)))))))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
+                  (toI (fromI (⊢var (there (there (there (there (there (there here)))))))))
+                  (toI aΜΒ7)
+                  (⊢symN aΜΒ7 (fromI (⊢var (there (there (there (there (there (there here))))))))
+                         (fordAs (⊢var here)))
+                  (toMu (⊢Tm-trKv (var (vs (vs (vs (vs (vs (vs vz))))))) (fromI (⊢var (there (there (there (there (there (there here)))))))) (⊢Tm-cHomKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (fromMu (⊢var (there (there (there (there (there here))))))) (fromMu (⊢var (there (there (there (there here)))))) (⊢Tm-varKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there here))))))))))) (⊢Tm-lamKv (var (vs (vs (vs (vs (vs (vs vz))))))) (fromI (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there here)))))) (fromMu (⊢var (there (there here))))))))
+    (W_ΜΒ8 D)
+
+CΜΒ6 : ICon ⌊ ΜΒ6 ⌋
+CΜΒ6 = iκ kΜΒ6 CΜΒ7
+W_ΜΒ6 : (D : IDesc) → IConWf D IRed ΜΒ6 CΜΒ6
+W_ΜΒ6 D =
+  iwf-κ kΜΒ6 (icw-ford _ _ _)
+    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there (there (there (there here))))))))) (toI (fromI (⊢var (there (there (there (there (there here)))))))))
+    (W_ΜΒ7 D)
+
+CΜΒ5 : ICon ⌊ ΜΒ5 ⌋
+CΜΒ5 = iκ kΜΒ5 CΜΒ6
+W_ΜΒ5 : (D : IDesc) → IConWf D IRed ΜΒ5 CΜΒ5
+W_ΜΒ5 D =
+  iwf-κ kΜΒ5 (icw-ford _ _ _)
+    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢pwK (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there here))))))) (toI (⊢num 1)))
+    (W_ΜΒ6 D)
+
+CΜΒ4 : ICon ⌊ ΜΒ4 ⌋
+CΜΒ4 = iκ kΜΒ4 CΜΒ5
+W_ΜΒ4 : (D : IDesc) → IConWf D IRed ΜΒ4 CΜΒ4
+W_ΜΒ4 D =
+  iwf-κ kΜΒ4 (icw-imu (pair sTm (var (vs (vs (vs vz))))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there here)))))))
+    (W_ΜΒ5 D)
+
+CΜΒ3 : ICon ⌊ ΜΒ3 ⌋
+CΜΒ3 = iκ kΜΒ3 CΜΒ4
+W_ΜΒ3 : (D : IDesc) → IConWf D IRed ΜΒ3 CΜΒ3
+W_ΜΒ3 D =
+  iwf-κ kΜΒ3 (icw-imu (pair sTm (nsuc (var (vs (vs vz))))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there here)))))))
+    (W_ΜΒ4 D)
+
+CΜΒ2 : ICon ⌊ ΜΒ2 ⌋
+CΜΒ2 = iκ kΜΒ2 CΜΒ3
+W_ΜΒ2 : (D : IDesc) → IConWf D IRed ΜΒ2 CΜΒ2
+W_ΜΒ2 D =
+  iwf-κ kΜΒ2 (icw-imu (pair sTm (nsuc (var (vs vz)))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there here))))))
+    (W_ΜΒ3 D)
+
+CΜΒ1 : ICon ⌊ ΜΒ1 ⌋
+CΜΒ1 = iκ kΜΒ1 CΜΒ2
+W_ΜΒ1 : (D : IDesc) → IConWf D IRed ΜΒ1 CΜΒ1
+W_ΜΒ1 D =
+  iwf-κ kΜΒ1 (icw-imu (pair sTm (nsuc (var vz))) KnotWf)
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var here)))))
+    (W_ΜΒ2 D)
+
+CΜΒ0 : ICon ⌊ ΜΒ0 ⌋
+CΜΒ0 = iκ kΜΒ0 CΜΒ1
+W_ΜΒ0 : (D : IDesc) → IConWf D IRed ΜΒ0 CΜΒ0
+W_ΜΒ0 D =
+  iwf-κ kΜΒ0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
+    (W_ΜΒ1 D)
+
+rdtr-pwWf : (D : IDesc) → IConWf D IRed ΜΒ0 rdtr-pw
+rdtr-pwWf = W_ΜΒ0
 

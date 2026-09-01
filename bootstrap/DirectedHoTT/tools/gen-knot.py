@@ -966,7 +966,9 @@ def _parse_spine(ts):
 # ★ booleans are `0`/`1` at the object level, matching `Knot/Pw`'s
 #   constant-`Nat` motive.
 # name → (object-level function, its typing lemma, the argument's sort)
-BOOL_PREM = {"pw?": ("pwK", "⊢pwK", "sTm")}
+BOOL_PREM = {"pw?":   ("pwK",   "⊢pwK",   "sTm"),
+             "stkA?": ("stkAK", "⊢stkAK", "sTm"),
+             "stkC?": ("stkCK", "⊢stkCK", "sTm")}
 
 def TBOOL(app, lit): return ('tbool', app, lit)
 
@@ -1439,6 +1441,7 @@ open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK; ⊢pwK )
+open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 %(extra)s
 """
@@ -2759,6 +2762,7 @@ open import DirectedHoTT.Examples.Knot.Single using ( singleK )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subTmAtK; subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK )
+open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; stkCK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
 
@@ -3042,6 +3046,7 @@ open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK; ⊢pwK )
+open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Examples.Knot.RedRows
@@ -3211,7 +3216,7 @@ if __name__ == "__main__":
               % os.environ["JUDGE_MAX_ROWS"])
         print("    DO NOT COMMIT.  Re-run without it to restore.")
         sys.exit(0)
-    _FLOOR = {"Red": 69, "Judge": 32, "TyRed": 26, "Conv": 4}
+    _FLOOR = {"Red": 71, "Judge": 32, "TyRed": 26, "Conv": 4}
     _got = {"Red": len(_ROWS), "Judge": _njudge,
             "TyRed": len(_JCACHE["TyRed"]), "Conv": len(_JCACHE["Conv"])}
     _lost = {k: (v, _got[k]) for k, v in _FLOOR.items() if _got[k] < v}
