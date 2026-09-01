@@ -773,3 +773,35 @@ we have not done (`enDeriv`), and TWO are build-system properties.** None
 of them is evidence that the checking is inherently manual. "Rely on
 inspection with scripts" was the wrong conclusion and this section is
 the retraction.
+
+### ⇒ SO WHICH OF THE CHECKING SCRIPTS CAN GO? — audited 2026-09-01, and mostly NOT
+
+Asked directly once `Knot/Census` landed. **One thing is subsumed. The
+rest check different properties, and two Agda facts had to be MEASURED
+before the answer was even stable — I had the first of them backwards.**
+
+    ✅ MEASURED: `--safe` BANS `postulate`          (`SafeFlagPostulate`)
+    ✅ MEASURED: `--safe` PROPAGATES through imports (`CoInfectiveImport`)
+
+| script | verdict |
+|---|---|
+| `gen-knot.py`'s `_FLOOR` ratchet | ✅ **SUBSUMED** by `Knot/Census` — and strictly improved: a floor cannot see 51 → 49, an equation can |
+| `poc/OCP0009/check-mf.sh`, `poc/OCP0009/check-formers.sh` | ⚪ **dead already** — `sweep.sh:24` never builds that tree. Deleting them is housekeeping, not a consequence of anything |
+| `tools/check-trust.sh` | 🟡 **its CONTENT checks are redundant with `--safe`** (postulates, `TERMINATING`, `NO_POSITIVITY_CHECK`, `primTrustMe` are all rejected outright; holes stop the check). What remains is ONE thing: **that every file declares `--safe` at all** |
+| `tools/check-formers.sh` gates 1–3 | 🟡 **encodable, not yet encoded** — "every `RTm` former appears in the SN layer" is a NAME-LEVEL correspondence between two datatypes, exactly what reflection does |
+| `tools/check-formers.sh` gates 4–6 | ⛔ **not propositions** — vacuous rows, promissory notes, and conditional lemmas with NO CONSUMER are statements about the ABSENCE of something across the whole program. A review list, honestly labelled as one |
+
+★★★ **AND THERE IS A REAL FIX AVAILABLE FOR `check-trust.sh`.** Because
+`--safe` is co-infective, a single `--safe` module importing the WHOLE
+tree makes Agda enforce the trust surface transitively. `Trust.agda`
+claims to be that module — *"it is not a promise, it is checked"* — and
+imports **zero** modules; the checking is entirely in the shell script.
+⇒ give it the full import list and the script shrinks to the one question
+that is genuinely a filesystem property: **does the import list name
+every `.agda` file?** That is a `find | diff`, not a 25-line scanner.
+
+⚠ The residue is real and worth naming: a module NOTHING imports is
+invisible to the language, whatever we do. It is the same class as the
+stale `JudgeWfJ`–`Q` files and a green `check.sh` off a cached `.agdai` —
+**coverage, not correctness.** Those three want a content-addressed
+build, and no in-language invariant reaches them.
