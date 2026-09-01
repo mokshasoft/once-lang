@@ -805,3 +805,109 @@ invisible to the language, whatever we do. It is the same class as the
 stale `JudgeWfJ`–`Q` files and a green `check.sh` off a cached `.agdai` —
 **coverage, not correctness.** Those three want a content-addressed
 build, and no in-language invariant reaches them.
+
+### ★★★ THE CATEGORIES — every defect class that survived `--safe`, audited from the git history
+
+Assembled 2026-09-01 by reading ~1000 commits for the ones whose subject
+admits a defect that TYPECHECKED. ⚠ The striking result is how many were
+called unencodable and are not: **A, E and most of F were closed within
+one session, once the question "why can't that be an invariant?" was
+asked instead of assumed.**
+
+| | category | it actually happened | Agda TODAY | Once |
+|---|---|---|---|---|
+| **A** | **DATATYPE COVERAGE** — a declaration missing a row. Agda's coverage checks FUNCTIONS, not datatypes | `ordtr` absent from the whole SN layer (2026-08-05→06); `icon`/`ielim`/`⌜IMu⌝` (2026-08-22) | ✅ **NOW CHECKED** — `Metatheory/FormerCensus`, by reflection, and it NAMES the orphans | §"a DATATYPE DECLARATION carries no totality obligation" opts 1–2: a derived-datatype obligation, or generate the layer FROM the description |
+| **B** | **A CATCH-ALL HIDING A MISSING CASE** — `_ = false` makes a function total, so coverage is satisfied and the omission is SILENT | `spine?`/`stablecd?` inherited `_ = false` for `icon`/`ielim` — THREE silently wrong answers, `--safe`, zero warnings (`25602107`) | 🟡 partial — reflection can find catch-all clauses; "should this former have its own row?" is semantic | option 2 again: a function generated from a `Desc` has no catch-all to inherit. This is the strongest argument for the dogfooding target |
+| **C** | **VACUITY** — a true theorem that says nothing | `subTI` quantified over an arbitrary env-top, so `consistency` was VACUOUS; `gcd-gt-gen`/`gcd-le-gen` premises uninhabitable at variables (`5edcde10`) | ⛔ not in general — an implication with an unsatisfiable premise is a fine proof | ★ **the real idea: a hypothesis OWES A NON-VACUITY WITNESS.** `∃ args. premise args` IS a proposition. Once could demand one per conditional lemma — `check-formers` gate 6 is the shadow of it |
+| **D** | **ENCODING CORRESPONDENCE** — a well-formed row that encodes the WRONG RULE | `dwf-cons` emitting `DescWf C` for `DescWf (C ◃ E)` (2026-09-01) | 🟡 COUNTS ✅ (`Knot/Census`), CONTENT ⛔ — needs the adequacy map `enDeriv` | make the declaration a VALUE, so the correspondence is an ordinary function rather than a reflection macro over a Python-parsed source |
+| **E** | **CLAIM / COMMENT DRIFT** — a header asserting "N of M" that is false | two stale census claims in `Knot/Terms`, 32 → **13** (`da699bd1`); stale ⬜/⛔ markers (`ef6e408b`, `cbb181cd`) | ✅ where NUMERIC — turn the claim into a `refl`; that is exactly what `Knot/Census` is | claims in the doc layer that are checked, not prose |
+| **F** | **BUILD COVERAGE** — a file the checker never reaches | stale `JudgeWfJ`–`Q` the sweep globbed GREEN; `check.sh` rc=0 off a cached `.agdai`; a module with no `--safe` line | 🟡 mostly — `--safe` is CO-INFECTIVE, so `Trust.agda` importing the tree enforces it; the residue is `find \| diff` | content-addressed build; a project manifest that is itself checked |
+
+⇒ ★ **the honest scoreboard: of six categories, ONE (A) was closed
+outright this session, TWO (E, F) were closed in the part that matters,
+ONE (D) is half-closed with the other half being ordinary work we have
+not done, and TWO (B, C) are genuinely open.** "Rely on inspection with
+scripts" was true of none of them by the end.
+
+⚠⚠ **And C is the one worth Once's attention**, because it is the only
+one where the obstacle is not tooling. `subTI` is the sharpest instance
+in this repo's history: `--safe`, zero holes, a green build, and
+`consistency` proved nothing at all. A language that made
+*"this hypothesis is inhabited somewhere"* an obligation would have
+caught it at the definition, not months later.
+
+### ★★★ CATEGORY C IN DETAIL — can VACUITY be checked automatically?
+
+Asked directly. The answer splits, and the split is the useful part.
+
+#### ⛔ In general: NO, and it is a THEOREM, not a tooling gap
+
+"Is this premise inhabited?" is inhabitation in a dependent type theory,
+i.e. **provability** — undecidable. There is no complete automatic
+vacuity checker for the same reason there is no complete prover. ⇒ any
+proposal that *decides* vacuity is wrong; the question is what to do
+instead.
+
+#### ★ The move that works: turn a DECISION into a CERTIFICATE
+
+Undecidable to decide, trivial to CHECK:
+
+    lemma   : (x : A) → P x → Q x
+    lemma-ne : Σ A P                  -- ⚠ OWED, and type-checked
+
+Exhibiting a witness is ordinary type-checking. This is the same trade
+the whole development already makes everywhere else — and it would have
+killed **both** of this repo's real instances outright.
+
+⚠⚠ **BUT A NAKED WITNESS IS NOT ENOUGH, and `gcd-gt-gen` is exactly why.**
+Its premise IS inhabitable — at LITERALS. The lemma was stated at
+VARIABLES, where `monusTm` is stuck and the premise is not. So "P is
+inhabited somewhere" would have been discharged and the lemma still
+proved nothing where it lived.
+
+⇒ ★★★ **the obligation has to be tied to a USE SITE, not to existence:**
+
+    a conditional lemma owes a CONSUMER, and the consumer must
+    DISCHARGE the premise at the arguments the lemma is stated for.
+
+That is decidable (a call-graph question) *plus* type-checked (the
+consumer must actually build the premise). `5edcde10`'s own diagnosis was
+literally *"asking what exercises these lemmas showed nothing does"* —
+the check is the question, mechanized. And `subTI` fails it for the other
+reason: its consumer could not supply the env-top.
+
+#### ✅ Sound-but-incomplete things that ARE automatic today
+
+* **structurally empty premises** — `⊥`, a datatype with no constructors,
+  or a constructor set empty at the given indices. Agda already decides
+  this: it is what an `()` pattern IS. `Examples/Vec.no-cons-at-zero` is
+  this repo's own instance.
+* **dead conditional lemmas** — `check-formers` gate 6. A graph property,
+  decidable, already implemented; what it lacks is teeth, being a review
+  list rather than a gate.
+
+#### ⇒ and the user's sharper version — "forget a use-site for all BRANCHES"
+
+★ **That one is not category C at all — it is category A pointed
+backwards, and it is mechanizable with the machinery just built.**
+
+    A  every constructor has a ROW        (production coverage)  ✅ FormerCensus
+    A′ every constructor has a CONSUMER   (consumption coverage) ⬜ same technique
+
+`Metatheory/FormerCensus` reflects over a datatype's constructors and
+checks each is MENTIONED across a set of layers. Pointed at consumers
+instead of producers, the identical macro answers "which branch does
+nothing ever use?". ⚠ Mentioning is still the cheap shadow of exercising
+— but it is exactly the shadow that caught `ordtr`, and the asymmetry is
+worth naming: **we check that everything is PRODUCED and never that
+anything is CONSUMED.**
+
+#### what Once should take from this
+
+1. **A conditional lemma owes a discharging consumer** — the strongest of
+   the three, and the only one that catches `gcd-gt-gen`.
+2. **Consumption coverage as a first-class obligation**, dual to the
+   totality obligation already proposed for datatype declarations.
+3. ⚠ **Do NOT promise a vacuity decision procedure.** It cannot exist;
+   promising it is how a checker ends up trusted for something it does
+   not do — which is the failure mode this whole section documents.
