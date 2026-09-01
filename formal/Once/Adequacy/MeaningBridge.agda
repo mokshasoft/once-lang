@@ -23,7 +23,7 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 module Once.Adequacy.MeaningBridge (fmt : TargetNum) where
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂; [_,_]′)
+open import Data.Sum using (inj₁; inj₂; [_,_]′; _⊎_)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
@@ -259,14 +259,17 @@ sd-fold-is-cata-sem : ∀ {F : Functor} {A : Type} (wf : WellFormedF F)
     ≡ cata-sem wf c x
 sd-fold-is-cata-sem wf c x = refl
 
-copair-rel : ∀ {A B C : Type} {vf vf' : ⟦ A ⟧ᴰ → T ⟦ C ⟧ᴰ} {vg vg' : ⟦ B ⟧ᴰ → T ⟦ C ⟧ᴰ} {k}
+-- The scrutinees are EXPLICIT: as a term of the arrow relation's Π type Agda
+-- cannot see which injection to split on, so the caller passes them.
+copair-rel : ∀ {A B C : Type} {vf vf' : ⟦ A ⟧ᴰ → T ⟦ C ⟧ᴰ} {vg vg' : ⟦ B ⟧ᴰ → T ⟦ C ⟧ᴰ}
            → (∀ {a b} → RelV A a b → RelT C (vf a) (vf' b))
            → (∀ {a b} → RelV B a b → RelT C (vg a) (vg' b))
-           → RelV ((A + B) ⇒[ k ] C) (λ ab → [ vf , vg ]′ ab) (λ ab → [ vf' , vg' ]′ ab)
-copair-rel rf rg {inj₁ _} {inj₁ _} rv = rf rv
-copair-rel rf rg {inj₂ _} {inj₂ _} rv = rg rv
-copair-rel rf rg {inj₁ _} {inj₂ _} ()
-copair-rel rf rg {inj₂ _} {inj₁ _} ()
+           → ∀ (ab ab' : ⟦ A ⟧ᴰ ⊎ ⟦ B ⟧ᴰ) → RelV (A + B) ab ab'
+           → RelT C ([ vf , vg ]′ ab) ([ vf' , vg' ]′ ab')
+copair-rel rf rg (inj₁ _) (inj₁ _) rv = rf rv
+copair-rel rf rg (inj₂ _) (inj₂ _) rv = rg rv
+copair-rel rf rg (inj₁ _) (inj₂ _) ()
+copair-rel rf rg (inj₂ _) (inj₁ _) ()
 
 ------------------------------------------------------------------------
 -- The CHECK / INFER realms, DISCHARGED — mutual structural induction on the
@@ -510,24 +513,24 @@ bridge-i (t-effApp _ df dx) re k = refl , λ {a} {b} _ k' →
 -- plain categorical generator, so these are the OLD `bridge-m` bodies verbatim,
 -- re-aimed at `⊢ᶜ` — the `subst` moves `liftFn`'s funext-reduction out of the
 -- way exactly as `wrapM` used to.
-bridge-c (t-id-check {T = T} _ _) re k =
-  refl , subst (RelV (T ⇒[ mk-kind Many _ ] T) (λ a → returnT a))
+bridge-c (t-id-check {T = T} {π = π} _ _) re k =
+  refl , subst (RelV (T ⇒[ mk-kind Many π ] T) (λ a → returnT a))
                (sym (liftFn-id {T})) (λ rv n → refl , rv)
-bridge-c (t-fst-check {A = A} {B = B} _ _) re k =
-  refl , subst (RelV ((A * B) ⇒[ mk-kind Many _ ] A) (λ ab → returnT (proj₁ ab)))
+bridge-c (t-fst-check {A = A} {B = B} {π = π} _ _) re k =
+  refl , subst (RelV ((A * B) ⇒[ mk-kind Many π ] A) (λ ab → returnT (proj₁ ab)))
                (sym (liftFn-fst {A} {B})) (λ rv n → refl , proj₁ rv)
-bridge-c (t-snd-check {A = A} {B = B} _ _) re k =
-  refl , subst (RelV ((A * B) ⇒[ mk-kind Many _ ] B) (λ ab → returnT (proj₂ ab)))
+bridge-c (t-snd-check {A = A} {B = B} {π = π} _ _) re k =
+  refl , subst (RelV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnT (proj₂ ab)))
                (sym (liftFn-snd {A} {B})) (λ rv n → refl , proj₂ rv)
-bridge-c (t-terminal-morph-check {A = A} _ _) re k =
-  refl , subst (RelV (A ⇒[ mk-kind Many _ ] Once.Type.Unit) (λ _ → returnT tt))
+bridge-c (t-terminal-morph-check {A = A} {π = π} _ _) re k =
+  refl , subst (RelV (A ⇒[ mk-kind Many π ] Once.Type.Unit) (λ _ → returnT tt))
                (sym (liftFn-terminal {A})) (λ _ n → refl , tt)
 bridge-c (t-initial-morph-check _ _) re k = refl , (λ { {a = ()} })
-bridge-c (t-inl-morph-check {A = A} {B = B} _ _) re k =
-  refl , subst (RelV (A ⇒[ mk-kind Many _ ] (A + B)) (λ a → returnT (inj₁ a)))
+bridge-c (t-inl-morph-check {A = A} {B = B} {π = π} _ _) re k =
+  refl , subst (RelV (A ⇒[ mk-kind Many π ] (A + B)) (λ a → returnT (inj₁ a)))
                (sym (liftFn-inl {A} {B})) (λ rv n → refl , rv)
-bridge-c (t-inr-morph-check {A = A} {B = B} _ _) re k =
-  refl , subst (RelV (B ⇒[ mk-kind Many _ ] (A + B)) (λ b → returnT (inj₂ b)))
+bridge-c (t-inr-morph-check {A = A} {B = B} {π = π} _ _) re k =
+  refl , subst (RelV (B ⇒[ mk-kind Many π ] (A + B)) (λ b → returnT (inj₂ b)))
                (sym (liftFn-inr {B} {A})) (λ rv n → refl , rv)
 
 -- D127: the COMBINATORS. Both sides now bind their arms and then build the
@@ -535,25 +538,35 @@ bridge-c (t-inr-morph-check {A = A} {B = B} _ _) re k =
 -- congruence — no realm, no extraction, no per-shape reasoning.
 bridge-c (t-compose-check {A = A} {B = B} {C = C} {π = π} _ df dg) re =
   RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = A ⇒[ mk-kind Many π ] C}
-            (bridge-c df re) (λ rf →
+            (bridge-c df re) (λ {f₁} {f₂} rf →
   RelT-bind {A = A ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] C}
-            (bridge-c dg re) (λ rg →
-  RelT-return (λ rv → RelT-bind {A = B} {B = C} (rg rv) rf)))
+            (bridge-c dg re) (λ {g₁} {g₂} rg →
+  RelT-return {A = A ⇒[ mk-kind Many π ] C}
+              {x = λ a → g₁ a >>=T f₁} {y = λ a → g₂ a >>=T f₂}
+              (λ rv → RelT-bind {A = B} {B = C} (rg rv) rf)))
 bridge-c (t-case-copair-check {A = A} {B = B} {C = C} {π = π} df dg) re =
   RelT-bind {A = A ⇒[ mk-kind Many π ] C} {B = (A + B) ⇒[ mk-kind Many π ] C}
-            (bridge-c df re) (λ rf →
+            (bridge-c df re) (λ {c₁} {c₂} rf →
   RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = (A + B) ⇒[ mk-kind Many π ] C}
-            (bridge-c dg re) (λ rg →
-  RelT-return (copair-rel rf rg)))
+            (bridge-c dg re) (λ {d₁} {d₂} rg →
+  RelT-return {A = (A + B) ⇒[ mk-kind Many π ] C}
+              {x = λ ab → [ c₁ , d₁ ]′ ab} {y = λ ab → [ c₂ , d₂ ]′ ab}
+              (λ {ab} {ab'} rv →
+                 copair-rel {A} {B} {C} {vf = c₁} {vf' = c₂} {vg = d₁} {vg' = d₂}
+                            rf rg ab ab' rv)))
 bridge-c (t-pair-morph-check {A = A} {B = B} {C = C} df dg) re =
   RelT-bind {A = A ⇒[ mk-kind Many Once.Type.pure ] B}
             {B = A ⇒[ mk-kind Many Once.Type.pure ] (B * C)}
-            (bridge-c df re) (λ rf →
+            (bridge-c df re) (λ {f₁} {f₂} rf →
   RelT-bind {A = A ⇒[ mk-kind Many Once.Type.pure ] C}
             {B = A ⇒[ mk-kind Many Once.Type.pure ] (B * C)}
-            (bridge-c dg re) (λ rg →
-  RelT-return (λ rv → RelT-bind {A = B} {B = B * C} (rf rv) (λ rb →
-               RelT-bind {A = C} {B = B * C} (rg rv) (λ rc → RelT-return (rb , rc))))))
+            (bridge-c dg re) (λ {g₁} {g₂} rg →
+  RelT-return {A = A ⇒[ mk-kind Many Once.Type.pure ] (B * C)}
+              {x = λ a → f₁ a >>=T λ b → g₁ a >>=T λ c → returnT (b , c)}
+              {y = λ a → f₂ a >>=T λ b → g₂ a >>=T λ c → returnT (b , c)}
+              (λ rv → RelT-bind {A = B} {B = B * C} (rf rv) (λ {b₁} {b₂} rb →
+                       RelT-bind {A = C} {B = B * C} (rg rv) (λ {e₁} {e₂} rc →
+                         RelT-return {A = B * C} {x = b₁ , e₁} {y = b₂ , e₂} (rb , rc))))))
 bridge-c (t-curry-check {A = A} {B = B} {C = C} df) re =
   RelT-bind {A = (A * B) ⇒[ mk-kind Many Once.Type.pure ] C}
             {B = A ⇒[ mk-kind Many Once.Type.pure ] (B ⇒[ mk-kind Many Once.Type.pure ] C)}
