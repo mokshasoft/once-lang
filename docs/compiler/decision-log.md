@@ -9993,10 +9993,40 @@ denotes at a use site. The rule:
 > **`fst@this`** — the existing `name@Alias` syntax, with `this` denoting the
 > current module.
 >
-> **Lexical binders are the exception and shadow normally**: in
+> **Lexical binders shadow normally, and this is DELIBERATE**: in
 > `\fst -> … fst …` the inner `fst` is the parameter. `@this` does not apply
 > there — a binder is not a module-level definition. The split is BINDING vs
-> DEFINITION, and it is the split every reader already has in their head.
+> DEFINITION.
+
+So a generator-named thing is reached three ways, and only the first is new:
+
+| written | denotes |
+|---|---|
+| `fst` | the GENERATOR, in every module, always |
+| `fst@this` | this module's own definition of `fst` |
+| `fst@M` | module `M`'s, where `import … as M` — the EXISTING qualified path, unchanged |
+
+**Why binder shadowing is allowed, and why it is NOT warned about.** The
+reason module-level definitions do not shadow is ACTION AT A DISTANCE: a
+definition two hundred lines up silently retargets every `fst` below it. A
+lambda or `let` binder has no distance — it is visible in the enclosing scope,
+at the use site. That is the whole difference, and it is why the argument
+against one does not transfer to the other.
+
+A warning would be a half-measure: warnings are for INVISIBLE capture, and
+there is none here. Warning on `\fst -> …` would also make the rule feel like
+a prohibition wearing a disguise. There is no warning.
+
+The cost of the alternative is concrete: `id` and `pair` are ordinary variable
+names — `let id = …` for an identifier, `let pair = …` — and forbidding the
+whole generator set as binder names to prevent `\fst -> …`, which nobody
+writes, is recurring friction for a stylistic gain. It would also reintroduce
+reserved words in binder position, which is the thing this entry exists to
+remove.
+
+(One generator name, `case`, is already a lexer keyword — with `as`, `import`,
+`in`, `let`, `of`, `type` — so it is unbindable for an unrelated reason. The
+other sixteen are ordinary identifiers.)
 
 **Why not the other way round** (a definition shadows, generator via
 `fst@Generators`) — which is what this entry said on first writing, and was
