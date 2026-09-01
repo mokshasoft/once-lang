@@ -1145,6 +1145,22 @@ mutual
   check-completeV {ctx} {e} {A} d with checkElabV ctx e A | check-complete d
   ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
 
+  -- D127: the witness-carrying form of `subsume-complete`, built the same way.
+  -- This is what lets a combinator's EFF case feed its own arms to the eff
+  -- `Go`: the arms at eff come from the RECURSIVE `subsume-complete`, so they
+  -- carry the PURE derivation's usages, and the eff branch fires with exactly
+  -- the `Ψ` the conclusion needs.
+  subsume-completeV : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        Σ-syntax (ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many T.eff ] B) ⨾ Ψ) (λ w →
+          checkElabV ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B)
+            ≡ (success Ψ eE d f , w))
+  subsume-completeV {ctx} {e} {A} {B} d
+    with checkElabV ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) | subsume-complete d
+  ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
+
   -- The bidirectional SWITCH lemma `infer ⊆ check`, by structural recursion on the
   -- INFER derivation (genuine subterms — NO `t-embed` re-wrap). `check-complete
   -- (t-embed d)` is now ONE clause delegating here, so this is the single, uniform
@@ -1612,6 +1628,28 @@ mutual
   -- the eff `Go` first and falls back to pure + `arr'`/`t-subsume`. The pure
   -- derivation only tells us the PURE `Go` succeeds, so each of these
   -- case-splits on the eff attempt and uses the fallback branch.
+  -- The eff arms come from the RECURSIVE `subsume-completeV`, so the eff `Go`
+  -- succeeds at the SAME usages and `checkCompose`/`checkCase`/`checkCata`'s
+  -- first branch fires. No usage-coincidence lemma is needed: the recursion
+  -- already carries it.
+  subsume-complete {ctx} (t-compose-check eqB df dg)
+    with subsume-completeV df | subsume-completeV dg
+  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
+        with composeGo-success eqB eqf eqg
+  ...     | (d , fr , eqGo) rewrite trans (sym (go-canonical eqB)) eqGo =
+            _ , _ , _ , refl
+  subsume-complete {ctx} (t-case-copair-check df dg)
+    with subsume-completeV df | subsume-completeV dg
+  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
+        with caseGo-success eqf eqg
+  ...     | (d , fr , eqGo) rewrite eqGo = _ , _ , _ , refl
+  subsume-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {wfF = wfF} eqW dalg)
+    with subsume-completeV dalg
+  ... | (_ , _ , _ , W , eqA)
+        with checkCataGo-just-success ctx alg F A T.eff wfF eqW eqA
+  ...     | eqGo
+            rewrite trans (checkCataGo-J ctx alg F A T.eff (just wfF) eqW) eqGo =
+            _ , _ , _ , refl
   subsume-complete {ctx} (t-pair-morph-check df dg)
     with check-completeV df | check-completeV dg
   ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
