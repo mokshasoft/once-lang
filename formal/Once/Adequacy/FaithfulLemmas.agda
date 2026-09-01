@@ -42,7 +42,8 @@ open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
-open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased; subst-T-apply; subst-T-projTrace)
+open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased; subst-T-apply; subst-T-projTrace; pairᴰ-subst⁻)
+open import Once.Adequacy.LiftFnReduce fmt using (liftFn-apply; liftFn-∘; liftFn-terminal)
 open import Once.Adequacy.AnaErased fmt using
   (events-F-erase; coerce-SFRel; coh-to-TRel; inject-coh-nat; forget-coh-gen;
    TRel; SFRel; sem-ana-erase-coh′; sem-ana-erase-full; coerce-νin-erase)
@@ -51,7 +52,7 @@ open import Once.Semantics.Machine using
 open import Once.Semantics.Functor using (νS; ⟦_⟧SF; SFunctor)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ)
-open import Once.Surface.Elaborate using (elaborate)
+open import Once.Surface.Elaborate using (elaborate; cataM)
 import Once.Compile as C
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceMonad using (T; returnT; valueT; projTrace; _>>=T_)
@@ -162,6 +163,52 @@ morph-app-bridge-fun morph ih w = extensionality (morph-app-bridge morph ih w)
 -- the case reduces to the algebra IH + monad reduction, NO `build-pure`.
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- D131: what `cataM` MEANS applied to an obtained algebra closure.
+--
+-- `cataM wf m = curry (Cata (wf-⌊⌋ wf) (subst … (apply ∘ ⟨ fst , snd ⟩)))`, so
+-- applying it to a closure `c` gives the fold whose per-layer algebra is
+-- "apply `c`". That is the whole content of the parameterized fold: the
+-- closure is obtained ONCE, by the caller, and the fold carries it. Same
+-- transport shape as the old `elab-cata-reduce`, with the closure as the
+-- environment instead of the algebra being inlined.
+------------------------------------------------------------------------
+cataM-fold : ∀ {F : Functor} {A : Type} {π : Purity} (wfF : WellFormedF F)
+               (c : ⟦ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⟧ᴰ)
+           → liftFn fmt {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {μ-type F ⇒[ mk-kind Many π ] A}
+                    (cataM {F} {A} wfF C.Heap) c
+             ≡ returnT (cata-sem wfF c)
+cataM-fold {F} {A} {π} wfF c =
+  trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ (μ-type F)) (cohᴰ A))
+                         (λ b → evalᴰ fmt (innerCata) (c' , b)))
+        (cong returnT
+          (trans (subst-arrow (cohᴰ (μ-type F)) (cohᴰ A) (λ b → evalᴰ fmt innerCata (c' , b)))
+                 (extensionality (λ x →
+                    trans (trans (cong (λ W → subst T (cohᴰ A) (evalᴰ fmt innerCata W))
+                                       (sym (pairᴰ-subst⁻ (cohᴰ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
+                                                          (cohᴰ (μ-type F)) c x)))
+                                 (evalᴰ-Cata-erased {A} {F} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} wfF applyIR c x))
+                          (cong (λ g → cata-sem wfF g x)
+                                (extensionality apply-closure))))))
+  where
+    c' = subst (λ z → z) (sym (cohᴰ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))) c
+    applyIR : IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ C.* ⌊ ⟦ F ⟧T A ⌋) ⌊ A ⌋
+    applyIR = C.apply C.∘ C.⟨ C.fst , C.snd ⟩ C.Heap
+    -- Applying the carried closure IS the algebra: `⟨fst,snd⟩` is pair-η and
+    -- `liftFn apply` is application, so the fold's per-layer algebra is `c`.
+    apply-closure : ∀ (z : ⟦ ⟦ F ⟧T A ⟧ᴰ)
+                  → liftFn fmt {(⟦ F ⟧T A ⇒[ mk-kind Many π ] A) Once.Type.* (⟦ F ⟧T A)} {A}
+                           applyIR (c , z)
+                    ≡ c z
+    apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {⟦ F ⟧T A} {A} {mk-kind Many π})
+    innerCata = C.Cata (wf-⌊⌋ wfF)
+                     (subst (λ o → IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ C.* o) ⌊ A ⌋)
+                            (⌊⟧T-commute F A) applyIR)
+
+-- D131: the elaboration is `cataM ∘ (ealg ∘ terminal)` and BOTH sides now bind
+-- the algebra once, so this is a bind-congruence over a shared computation
+-- plus one per-closure fold equality — structurally simpler than the old
+-- proof, which had to bridge a per-layer REBUILD against a bound closure.
 cata-body : ∀ {m} {Γ : Ctx m} {F : Functor} {A} {π : Purity}
               (wf : WellFormedF F)
               (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
@@ -170,36 +217,34 @@ cata-body : ∀ {m} {Γ : Ctx m} {F : Functor} {A} {π : Purity}
             → liftFn fmt {⟦ Γ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A} (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ k
               ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt dγ k
 cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ k =
-  trans elab-cata-reduce fold-eq
+  trans (cong (λ t → t k) split) (cong (λ t → t k) fold-step)
   where
-    algIR : IR ⌊ ⟦ F ⟧T A ⌋ ⌊ A ⌋
-    algIR = apply ∘ ⟨ elaborate C.Heap alg ∘ terminal , id ⟩ C.Heap
+    ealg   = elaborate C.Heap alg
+    cataM' = cataM {F} {A} wf C.Heap
+    -- `liftFn`'s surface implicits cannot be inferred through `⌊_⌋`, so pin
+    -- them once here rather than at each of the four occurrences.
+    liftCataM = liftFn fmt {⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
+                           {μ-type F ⇒[ mk-kind Many π ] A} cataM'
+    liftEalg  = liftFn fmt {⟦ ∅ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} ealg
 
-    Cata-IR : IR ⌊ μ-type F ⌋ ⌊ A ⌋
-    Cata-IR = Cata (wf-⌊⌋ wf) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) algIR)
+    -- The composition splits and `∘ terminal` feeds the algebra the empty
+    -- environment, so the left factor is the algebra's own denotation and the
+    -- IH applies to it directly.
+    split : liftFn fmt {⟦ Γ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
+                   (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ
+          ≡ (SD.⟦ alg ⟧ˢ fmt tt >>=T liftCataM)
+    split = trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ⟧ᶜ} cataM' (ealg C.∘ C.terminal)))
+                  (cong (λ t → t >>=T liftCataM)
+                        (trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ ∅ ⟧ᶜ} {C = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ⟧ᶜ} ealg C.terminal))
+                               (trans (cong (λ t → t >>=T liftEalg)
+                                            (cong (λ h → h dγ) (liftFn-terminal {⟦ Γ ⟧ᶜ})))
+                                      (extensionality ih))))
 
-    -- The elaborated `curry (Cata-IR ∘ snd)` closure `liftFn`-reduces (through the
-    -- `curry`/`snd`/transport) to `returnT (λ x → cata-sem wf (liftFn algIR) x)`
-    -- (via `evalᴰ-Cata-erased`).  [the transport-heavy reduction]
-    elab-cata-reduce : liftFn fmt {⟦ Γ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A} (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ k
-                       ≡ returnT (λ x → cata-sem wf (liftFn fmt algIR) x) k
-    elab-cata-reduce = cong (λ t → t k)
-      (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ (μ-type F)) (cohᴰ A)) (λ a → evalᴰ fmt Cata-IR a))
-             (cong returnT (trans (subst-arrow (cohᴰ (μ-type F)) (cohᴰ A) (λ a → evalᴰ fmt Cata-IR a))
-                                  (extensionality (λ x → evalᴰ-Cata-erased {A} wf algIR x)))))
-
-    -- Per layer the two algebras agree (`cata-ev-algᴰ-D (liftFn algIR)` vs
-    -- `cata-ev-algˢ (⟦alg⟧ˢ tt)`) by the closure bridge — the OLD `alg-eq`.
-    alg-eq : ∀ (n : ℕ)
-           → cata-ev-algᴰ-D {F} {A} n (liftFn fmt algIR)
-             ≡ SD.cata-ev-algˢ {F} {A} n (SD.⟦ alg ⟧ˢ fmt tt)
-    alg-eq n = extensionality (λ fc →
-      cong (λ s → (events-F F proj₁ fc ++ projTrace s n , valueT s n))
-           (morph-app-bridge-fun alg ih (coerce-functor⁻¹-D F A (sem-fmap F proj₂ fc))))
-
-    fold-eq : returnT (λ x → cata-sem wf (liftFn fmt algIR) x) k ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt dγ k
-    fold-eq = cong (_,_ []) (extensionality (λ x → extensionality (λ n →
-      cong (λ a → let r = sem-cata wf a x in (proj₁ r , proj₂ r)) (alg-eq n))))
+    -- Per obtained closure the fold agrees — `cataM-fold`.
+    fold-step : (SD.⟦ alg ⟧ˢ fmt tt >>=T liftCataM)
+              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt dγ
+    fold-step = cong (λ g → SD.⟦ alg ⟧ˢ fmt tt >>=T g)
+                     (extensionality (λ c → cataM-fold {F} {A} {π} wf c))
 
 ------------------------------------------------------------------------
 -- `ana`-faithfulness. Dual of `cata`. The TRACE side bridges
