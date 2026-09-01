@@ -533,6 +533,14 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 μ-inj : ∀ {F F'} → μ-type F ≡ μ-type F' → F ≡ F'
 μ-inj refl = refl
 
+-- D131: `Cata`'s domain is `E * μ-type F`, so the head comparison decomposes
+-- the product before it can reach the functor.
+*-injˡ : ∀ {A A' B B' : IRTy} → (A * B) ≡ (A' * B') → A ≡ A'
+*-injˡ refl = refl
+
+*-injʳ : ∀ {A A' B B' : IRTy} → (A * B) ≡ (A' * B') → B ≡ B'
+*-injʳ refl = refl
+
 ν-inj : ∀ {F F'} → ν-type F ≡ ν-type F' → F ≡ F'
 ν-inj refl = refl
 
@@ -668,10 +676,11 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ... | yes refl with eqA | eqB
 ...   | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 
--- Cata: eqA : μ-type F ≡ μ-type F', eqB : A ≡ A'
+-- Cata (D131): eqA : (E * μ-type F) ≡ (E' * μ-type F'), eqB : A ≡ A'.
+-- Decompose the product first, then compare the functor as before.
 ≟IRH-diag (Cata {F} wf₁ alg₁) (Cata {F'} wf₂ alg₂) _ eqA eqB
   with F ≟IRFun F'
-... | no fne = no (λ _ → fne (μ-inj eqA))
+... | no fne = no (λ _ → fne (μ-inj (*-injʳ eqA)))
 ... | yes refl with eqA | eqB
 ...   | refl | refl with ≟IRH alg₁ alg₂ refl refl
 ...     | yes refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
