@@ -55,9 +55,13 @@ bare s = canonical (s ∷ [])
 generatorNS : String
 generatorNS = "Generators"
 
--- | The canonical name of generator `g`.
-gen : String → CanonicalName
-gen g = canonical (generatorNS ∷ g ∷ [])
+-- | The canonical name of generator `g`. A PATTERN SYNONYM, not a function,
+-- because it has to work on BOTH sides: the judgment names it in rule indices
+-- (types) and the elaborator matches on it in left-hand sides. A function
+-- would be rejected in a pattern. The namespace is spelled literally here for
+-- the same reason — `generatorNS` is a definition, and a pattern synonym may
+-- only mention constructors and literals.
+pattern gen g = canonical ("Generators" ∷ g ∷ [])
 
 -- A user path can never BE a generator name: `bare x = canonical [x]` has one
 -- component and `gen g` has two, so the two families are disjoint by length —

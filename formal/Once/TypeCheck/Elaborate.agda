@@ -50,7 +50,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 -- not a value, so `Emits`/`Halts` drop it entirely.
 open import Once.Arith.SigOp.Builders using (generic-semM)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV; ffi-concrete)
-open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
+open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen)
 open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -1015,7 +1015,7 @@ mutual
   -- grades (try eff; else pure + arr'/t-subsume) without duplicating the body.
   checkCaseGo : (ctx : NamedCtx) (f g : RawExpr) (A B C : Type) (π : Once.Type.Purity)
               → VerifiedCheckResult ctx
-                  (Raw.RApp (Raw.RApp (Raw.RVar "case") f) g)
+                  (Raw.RApp (Raw.RApp (Raw.RResolved (gen "case")) f) g)
                   ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   -- Compose / curry / apply classifier helpers (plan 0.6 Phase C.7
   -- POC-3).
@@ -1027,30 +1027,30 @@ mutual
   checkComposeGo : (ctx : NamedCtx) (f g : RawExpr) (A C : Type) (π : Once.Type.Purity)
                  → (mid : Maybe Type) → composeMid ctx f g A ≡ mid
                  → VerifiedCheckResult ctx
-                     (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
+                     (Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f) g)
                      (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
-             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "curry") arg) T
+             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "curry")) arg) T
   checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
-             → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "apply") arg) T
+             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg) T
   -- Recursion-scheme generators (Plan 0.28 Commit 2). The `…Go`/`…A/B/C`
   -- helpers take each decidable result as an explicit argument with its
   -- `refl` witness (no `with … in`), so the completeness fallbacks
   -- reduce them with plain nested `with | eq` — like `checkPair`.
   checkIn : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
-          → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "In") arg) T
+          → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) T
   checkInGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
             → (mw : Maybe (Once.Functor.Translate.WellFormedF F))
             → wellFormedF? F ≡ mw
-            → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F)
+            → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) (Once.Type.μ-type F)
   checkCata : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
-            → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") arg) T
+            → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) arg) T
   -- Plan 0.36 Phase 2a: dispatch on `wellFormedF? F`; the algebra is
   -- elaborated as an ordinary function in the EMPTY context (see clause).
   checkCataGo : (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
                 (π : Once.Type.Purity)
               → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
-              → VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
+              → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
                                         (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
 
   -- Plan 0.4 T0 Option A: hoist the `ahv-other` (generic application)
@@ -1244,68 +1244,68 @@ mutual
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
     → LookupLocalView ctx "id"
     → LookupImportView ctx "id"
-    → VerifiedCheckResult ctx (Raw.RVar "id") T
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "id")) T
   checkElabV-RVar-bbc-fst-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
     → LookupLocalView ctx "fst"
     → LookupImportView ctx "fst"
-    → VerifiedCheckResult ctx (Raw.RVar "fst") T
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "fst")) T
   checkElabV-RVar-bbc-snd-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
     → LookupLocalView ctx "snd"
     → LookupImportView ctx "snd"
-    → VerifiedCheckResult ctx (Raw.RVar "snd") T
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "snd")) T
   checkElabV-RVar-bbc-terminal-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
     → LookupLocalView ctx "terminal"
     → LookupImportView ctx "terminal"
-    → VerifiedCheckResult ctx (Raw.RVar "terminal") T
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "terminal")) T
   checkElabV-RVar-bbc-initial-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
     → LookupLocalView ctx "initial"
     → LookupImportView ctx "initial"
-    → VerifiedCheckResult ctx (Raw.RVar "initial") T
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "initial")) T
   checkElabV-RVar-bbc-inl-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
     → LookupLocalView ctx "inl"
     → LookupImportView ctx "inl"
-    → VerifiedCheckResult ctx (Raw.RVar "inl") T
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "inl")) T
   checkElabV-RVar-bbc-inr-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
     → LookupLocalView ctx "inr"
     → LookupImportView ctx "inr"
-    → VerifiedCheckResult ctx (Raw.RVar "inr") T
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "inr")) T
   -- Per-bbc-X aux taking the inferElab result explicitly. Eliminates
   -- the inner with-helper opacity. Each bbc-X's success-via-infer path
   -- uses t-embed; the failure path delegates to bbc-X-failure-aux.
   checkElabV-RVar-bbc-id-aux :
     ∀ (ctx : NamedCtx) (T : Type)
-    → VerifiedInferResult ctx (Raw.RVar "id")
-    → VerifiedCheckResult ctx (Raw.RVar "id") T
+    → VerifiedInferResult ctx (Raw.RResolved (gen "id"))
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "id")) T
   checkElabV-RVar-bbc-fst-aux :
     ∀ (ctx : NamedCtx) (T : Type)
-    → VerifiedInferResult ctx (Raw.RVar "fst")
-    → VerifiedCheckResult ctx (Raw.RVar "fst") T
+    → VerifiedInferResult ctx (Raw.RResolved (gen "fst"))
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "fst")) T
   checkElabV-RVar-bbc-snd-aux :
     ∀ (ctx : NamedCtx) (T : Type)
-    → VerifiedInferResult ctx (Raw.RVar "snd")
-    → VerifiedCheckResult ctx (Raw.RVar "snd") T
+    → VerifiedInferResult ctx (Raw.RResolved (gen "snd"))
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "snd")) T
   checkElabV-RVar-bbc-terminal-aux :
     ∀ (ctx : NamedCtx) (T : Type)
-    → VerifiedInferResult ctx (Raw.RVar "terminal")
-    → VerifiedCheckResult ctx (Raw.RVar "terminal") T
+    → VerifiedInferResult ctx (Raw.RResolved (gen "terminal"))
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "terminal")) T
   checkElabV-RVar-bbc-initial-aux :
     ∀ (ctx : NamedCtx) (T : Type)
-    → VerifiedInferResult ctx (Raw.RVar "initial")
-    → VerifiedCheckResult ctx (Raw.RVar "initial") T
+    → VerifiedInferResult ctx (Raw.RResolved (gen "initial"))
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "initial")) T
   checkElabV-RVar-bbc-inl-aux :
     ∀ (ctx : NamedCtx) (T : Type)
-    → VerifiedInferResult ctx (Raw.RVar "inl")
-    → VerifiedCheckResult ctx (Raw.RVar "inl") T
+    → VerifiedInferResult ctx (Raw.RResolved (gen "inl"))
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "inl")) T
   checkElabV-RVar-bbc-inr-aux :
     ∀ (ctx : NamedCtx) (T : Type)
-    → VerifiedInferResult ctx (Raw.RVar "inr")
-    → VerifiedCheckResult ctx (Raw.RVar "inr") T
+    → VerifiedInferResult ctx (Raw.RResolved (gen "inr"))
+    → VerifiedCheckResult ctx (Raw.RResolved (gen "inr")) T
   checkElabV-RVar-bbc-other-aux :
     ∀ (ctx : NamedCtx) (x : String) (T : Type)
     → VerifiedInferResult ctx (Raw.RVar x)
@@ -1392,7 +1392,7 @@ mutual
   ... | just _ = success Surface.zeroUsage (Surface.poly x T)
                      0 (NamedCtx.freshCounter ctx)
   -- id : T → T
-  checkElab-RVar ctx _ T | bbc-id with inferElab ctx (Raw.RVar "id")
+  checkElab-RVar ctx _ T | bbc-id with inferElab ctx (Raw.RResolved (gen "id"))
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
@@ -1401,7 +1401,7 @@ mutual
   ... | no _ = failure (BuiltinTypeMismatch "id")
   checkElab-RVar ctx _ _ | bbc-id | failure err = failure err
   -- fst : (A * B) → A
-  checkElab-RVar ctx _ T | bbc-fst with inferElab ctx (Raw.RVar "fst")
+  checkElab-RVar ctx _ T | bbc-fst with inferElab ctx (Raw.RResolved (gen "fst"))
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
@@ -1410,7 +1410,7 @@ mutual
   ... | no _ = failure (BuiltinTypeMismatch "fst")
   checkElab-RVar ctx _ _ | bbc-fst | failure err = failure err
   -- snd : (A * B) → B
-  checkElab-RVar ctx _ T | bbc-snd with inferElab ctx (Raw.RVar "snd")
+  checkElab-RVar ctx _ T | bbc-snd with inferElab ctx (Raw.RResolved (gen "snd"))
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
@@ -1419,7 +1419,7 @@ mutual
   ... | no _ = failure (BuiltinTypeMismatch "snd")
   checkElab-RVar ctx _ _ | bbc-snd | failure err = failure err
   -- terminal : A → Unit
-  checkElab-RVar ctx _ T | bbc-terminal with inferElab ctx (Raw.RVar "terminal")
+  checkElab-RVar ctx _ T | bbc-terminal with inferElab ctx (Raw.RResolved (gen "terminal"))
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
@@ -1427,7 +1427,7 @@ mutual
     success _ (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx)
   checkElab-RVar ctx _ _ | bbc-terminal | failure err = failure err
   -- initial : Void → A
-  checkElab-RVar ctx _ T | bbc-initial with inferElab ctx (Raw.RVar "initial")
+  checkElab-RVar ctx _ T | bbc-initial with inferElab ctx (Raw.RResolved (gen "initial"))
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
@@ -1435,7 +1435,7 @@ mutual
     success _ (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx)
   checkElab-RVar ctx _ _ | bbc-initial | failure err = failure err
   -- inl : A → (A + B)
-  checkElab-RVar ctx _ T | bbc-inl with inferElab ctx (Raw.RVar "inl")
+  checkElab-RVar ctx _ T | bbc-inl with inferElab ctx (Raw.RResolved (gen "inl"))
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
@@ -1444,7 +1444,7 @@ mutual
   ... | no _ = failure (BuiltinTypeMismatch "inl")
   checkElab-RVar ctx _ _ | bbc-inl | failure err = failure err
   -- inr : B → (A + B)
-  checkElab-RVar ctx _ T | bbc-inr with inferElab ctx (Raw.RVar "inr")
+  checkElab-RVar ctx _ T | bbc-inr with inferElab ctx (Raw.RResolved (gen "inr"))
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
@@ -1460,7 +1460,7 @@ mutual
   -- classifier's `ahv-pair-applied` dispatch already establishes
   -- disjointness with `t-embed (t-app …)` — t-app's premise
   -- `classifyAppHead f ≡ nothing` fails for the pair-applied shape.
-  checkPair ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg
+  checkPair ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg
             (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.* C))
     with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
   ... | failure err , _ = failure err , tt
@@ -1473,7 +1473,7 @@ mutual
                 (suc (df Data.Nat.⊔ dg)) frg , t-pair-morph-check wF wG
   -- Plan 0.52 (pure⊑eff): the pair morphism is grade-poly, so at an EFF arrow it
   -- is the pure pair wrapped in arr'/t-subsume (the m-pair morphism stays pure).
-  checkPair ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg
+  checkPair ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg
             (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] (B Once.Type.* C))
     with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
   ... | failure err , _ = failure err , tt
@@ -1512,7 +1512,7 @@ mutual
   -- direct `lift-morphism (IR.case m_f m_g)`; no closure fallback.
   -- Plan 0.52 (pure⊑eff): case at an EFF outer arrow — mirror of the compose
   -- eff-clause. Try eff arms; else check the whole case at PURE and subsume.
-  checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg
+  checkCase ctx (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg
             ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
     with checkCaseGo ctx f_inner arg A B C Once.Type.eff
   ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
@@ -1520,7 +1520,7 @@ mutual
         with checkCaseGo ctx f_inner arg A B C Once.Type.pure
   ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
   ...     | (failure err , _) = failure err , tt
-  checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg
+  checkCase ctx (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg
             ((A Once.Type.+ B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
     checkCaseGo ctx f_inner arg A B C π
   checkCase _ _ _ _ = failure (BuiltinTypeMismatch "case") , tt
@@ -1556,7 +1556,7 @@ mutual
   -- `pair`/`curry`/a named import), check the whole compose at PURE and subsume
   -- via arr'/t-subsume. This makes `checkElab (compose f g) (…eff…)` ACCEPT a
   -- subsumed pure compose (soundness of the subsume-complete bridge).
-  checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
+  checkCompose ctx (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] C)
     with checkComposeGo ctx f_inner arg A C Once.Type.eff (composeMid ctx f_inner arg A) refl
   ... | (success Ψ eE d fr , w) = success Ψ eE d fr , w
@@ -1564,7 +1564,7 @@ mutual
         with checkComposeGo ctx f_inner arg A C Once.Type.pure (composeMid ctx f_inner arg A) refl
   ...     | (success Ψ eE d fr , w) = success Ψ (Surface.arr' eE) d fr , t-subsume w
   ...     | (failure err , _) = failure err , tt
-  checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
+  checkCompose ctx (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg
                (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) =
     checkComposeGo ctx f_inner arg A C π (composeMid ctx f_inner arg A) refl
   checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose") , tt
@@ -2723,31 +2723,31 @@ mutual
   -- Per-bbc-X auxes: pattern-match on the verified inferElabV result
   -- (Σ-pair). The success path uses t-embed of the witness; the
   -- failure path delegates to bbc-X-failure-aux.
-  checkElabV-RVar-bbc-id-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "id") T r
+  checkElabV-RVar-bbc-id-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "id")) T r
   checkElabV-RVar-bbc-id-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-id-failure-aux ctx T err (inspectLookupLocal ctx "id") (inspectLookupImport ctx "id")
 
-  checkElabV-RVar-bbc-fst-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "fst") T r
+  checkElabV-RVar-bbc-fst-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "fst")) T r
   checkElabV-RVar-bbc-fst-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-fst-failure-aux ctx T err (inspectLookupLocal ctx "fst") (inspectLookupImport ctx "fst")
 
-  checkElabV-RVar-bbc-snd-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "snd") T r
+  checkElabV-RVar-bbc-snd-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "snd")) T r
   checkElabV-RVar-bbc-snd-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-snd-failure-aux ctx T err (inspectLookupLocal ctx "snd") (inspectLookupImport ctx "snd")
 
-  checkElabV-RVar-bbc-terminal-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "terminal") T r
+  checkElabV-RVar-bbc-terminal-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "terminal")) T r
   checkElabV-RVar-bbc-terminal-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-terminal-failure-aux ctx T err (inspectLookupLocal ctx "terminal") (inspectLookupImport ctx "terminal")
 
-  checkElabV-RVar-bbc-initial-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "initial") T r
+  checkElabV-RVar-bbc-initial-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "initial")) T r
   checkElabV-RVar-bbc-initial-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-initial-failure-aux ctx T err (inspectLookupLocal ctx "initial") (inspectLookupImport ctx "initial")
 
-  checkElabV-RVar-bbc-inl-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "inl") T r
+  checkElabV-RVar-bbc-inl-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "inl")) T r
   checkElabV-RVar-bbc-inl-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-inl-failure-aux ctx T err (inspectLookupLocal ctx "inl") (inspectLookupImport ctx "inl")
 
-  checkElabV-RVar-bbc-inr-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar "inr") T r
+  checkElabV-RVar-bbc-inr-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "inr")) T r
   checkElabV-RVar-bbc-inr-aux ctx T (failure err , _) =
     checkElabV-RVar-bbc-inr-failure-aux ctx T err (inspectLookupLocal ctx "inr") (inspectLookupImport ctx "inr")
 

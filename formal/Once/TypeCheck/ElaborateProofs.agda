@@ -40,7 +40,7 @@ open import Once.IR as IR hiding (Unit; Void; _*_; _+_; μ-type; ν-type; Int; F
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Arith.SigOp.Builders using (generic-semM)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV; ffi-concrete)
-open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
+open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen)
 open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -279,7 +279,7 @@ checkElab-fallback-RUnaryOp {ctx} Raw.OpNeg e T eqInf
 checkElab-fallback-RVar-unit :
   ∀ {ctx : NamedCtx}
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "unit") Unit
+      checkElab ctx (Raw.RResolved (gen "unit")) Unit
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-unit {ctx} with Unit ≟T Unit
 ... | yes refl = _ , _ , _ , refl
@@ -419,10 +419,10 @@ checkElab-fallback-RVar-id :
   → lookupLocal ctx "id" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "id") (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] T)
+      checkElab ctx (Raw.RResolved (gen "id")) (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] T)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-id {ctx} T eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "id") | inferElabV-RVar-fail-bridge ctx "id" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "id")) | inferElabV-RVar-fail-bridge ctx "id" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "id" | inspectLookupImport ctx "id"
 ... | llv-not-found _ | liv-not-found _
@@ -448,10 +448,10 @@ checkElab-fallback-RVar-fst :
   → lookupLocal ctx "fst" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+      checkElab ctx (Raw.RResolved (gen "fst")) ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-fst {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "fst") | inferElabV-RVar-fail-bridge ctx "fst" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "fst")) | inferElabV-RVar-fail-bridge ctx "fst" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "fst" | inspectLookupImport ctx "fst"
 ... | llv-not-found _ | liv-not-found _
@@ -468,10 +468,10 @@ checkElab-fallback-RVar-snd :
   → lookupLocal ctx "snd" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+      checkElab ctx (Raw.RResolved (gen "snd")) ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-snd {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "snd") | inferElabV-RVar-fail-bridge ctx "snd" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "snd")) | inferElabV-RVar-fail-bridge ctx "snd" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "snd" | inspectLookupImport ctx "snd"
 ... | llv-not-found _ | liv-not-found _
@@ -488,10 +488,10 @@ checkElab-fallback-RVar-terminal :
   → lookupLocal ctx "terminal" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
+      checkElab ctx (Raw.RResolved (gen "terminal")) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-terminal {ctx} A eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "terminal")) | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
 ... | llv-not-found _ | liv-not-found _ = _ , _ , _ , refl
@@ -508,11 +508,11 @@ checkElab-fallback-RVar-terminalV :
   → lookupLocal ctx "terminal" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      Σ-syntax (ctx ⊢ᶜ Raw.RVar "terminal" ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) ⨾ Surface.zeroUsage) (λ w →
-        checkElabV ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
+      Σ-syntax (ctx ⊢ᶜ Raw.RResolved (gen "terminal") ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) ⨾ Surface.zeroUsage) (λ w →
+        checkElabV ctx (Raw.RResolved (gen "terminal")) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
           ≡ (success Surface.zeroUsage eE d f , w)))))
 checkElab-fallback-RVar-terminalV {ctx} A eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "terminal")) | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
 ... | llv-not-found _ | liv-not-found _ = _ , _ , _ , _ , refl
@@ -526,10 +526,10 @@ checkElab-fallback-RVar-initial :
   → lookupLocal ctx "initial" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "initial") (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+      checkElab ctx (Raw.RResolved (gen "initial")) (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-initial {ctx} A eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "initial") | inferElabV-RVar-fail-bridge ctx "initial" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "initial")) | inferElabV-RVar-fail-bridge ctx "initial" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "initial" | inspectLookupImport ctx "initial"
 ... | llv-not-found _ | liv-not-found _ = _ , _ , _ , refl
@@ -543,10 +543,10 @@ checkElab-fallback-RVar-inl :
   → lookupLocal ctx "inl" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "inl") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B))
+      checkElab ctx (Raw.RResolved (gen "inl")) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inl {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "inl") | inferElabV-RVar-fail-bridge ctx "inl" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "inl")) | inferElabV-RVar-fail-bridge ctx "inl" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "inl" | inspectLookupImport ctx "inl"
 ... | llv-not-found _ | liv-not-found _
@@ -563,10 +563,10 @@ checkElab-fallback-RVar-inr :
   → lookupLocal ctx "inr" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "inr") (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B))
+      checkElab ctx (Raw.RResolved (gen "inr")) (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inr {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RVar "inr") | inferElabV-RVar-fail-bridge ctx "inr" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "inr")) | inferElabV-RVar-fail-bridge ctx "inr" (λ ()) eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "inr" | inspectLookupImport ctx "inr"
 ... | llv-not-found _ | liv-not-found _
@@ -614,7 +614,7 @@ checkElab-fallback-RApp-In :
   → wellFormedF? F ≡ just wfF
   → checkElab ctx arg (Once.Type.⟦ F ⟧T (Once.Type.μ-type F)) ≡ success Ψ argE d fr
   → ∃-syntax (λ eE → ∃-syntax (λ d' → ∃-syntax (λ fr' →
-      checkElab ctx (Raw.RApp (Raw.RVar "In") arg) (Once.Type.μ-type F)
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) (Once.Type.μ-type F)
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d' fr')))
 checkElab-fallback-RApp-In {ctx} arg F {wfF} eqWF eqArg =
   let (_ , _ , _ , eqGo) = checkInGo-just-success ctx arg F wfF eqWF eqArg
@@ -637,7 +637,7 @@ checkElab-fallback-RApp-apply :
     {d fr : ℕ}
   → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) Ψ eE d fr
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "apply") p) B
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) B
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
 checkElab-fallback-RApp-apply {ctx} p A B eqInf
   with inferElabV ctx p | eqInf
@@ -1178,11 +1178,11 @@ checkElab-fallback-RApp-id :
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "id") arg) ≡ success T Ψ eE d f
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) ≡ success T Ψ eE d f
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "id") arg) T ≡ success Ψ eE' d' f')))
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) T ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-id {ctx} arg T eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RVar "id") arg) | eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) | eqInf
 ... | success T' _ _ _ _ , _ | refl with T ≟T T'
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
@@ -1191,11 +1191,11 @@ checkElab-fallback-RApp-fst :
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ success T Ψ eE d f
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ success T Ψ eE d f
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "fst") arg) T ≡ success Ψ eE' d' f')))
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) T ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-fst {ctx} arg T eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RVar "fst") arg) | eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) | eqInf
 ... | success T' _ _ _ _ , _ | refl with T ≟T T'
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
@@ -1204,11 +1204,11 @@ checkElab-fallback-RApp-snd :
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ success T Ψ eE d f
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ success T Ψ eE d f
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "snd") arg) T ≡ success Ψ eE' d' f')))
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) T ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-snd {ctx} arg T eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RVar "snd") arg) | eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) | eqInf
 ... | success T' _ _ _ _ , _ | refl with T ≟T T'
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
@@ -1270,12 +1270,12 @@ checkElab-fallback-RApp-id-eff :
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
     {d f' : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "id") arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RVar "id") arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
         ≡ success Ψ eE' d' f'')))
 checkElab-fallback-RApp-id-eff {ctx} arg A B eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RVar "id") arg) | eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "id")) arg) | eqInf
 ... | success _ _ _ _ _ , _ | refl
     with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
 ...   | yes ()
@@ -1289,12 +1289,12 @@ checkElab-fallback-RApp-fst-eff :
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
     {d f' : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RVar "fst") arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
         ≡ success Ψ eE' d' f'')))
 checkElab-fallback-RApp-fst-eff {ctx} arg A B eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RVar "fst") arg) | eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) | eqInf
 ... | success _ _ _ _ _ , _ | refl
     with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
 ...   | yes ()
@@ -1308,12 +1308,12 @@ checkElab-fallback-RApp-snd-eff :
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
     {d f' : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RVar "snd") arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
         ≡ success Ψ eE' d' f'')))
 checkElab-fallback-RApp-snd-eff {ctx} arg A B eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RVar "snd") arg) | eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) | eqInf
 ... | success _ _ _ _ _ , _ | refl
     with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
 ...   | yes ()
@@ -1353,7 +1353,7 @@ checkElab-fallback-RApp-initial-eff :
     {d fr : ℕ}
   → checkElab ctx arg Once.Type.Void ≡ success Ψ argE d fr
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RVar "initial") arg) T
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "initial")) arg) T
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f'')))
 checkElab-fallback-RApp-initial-eff {ctx} arg T eqArg
   with checkElabV ctx arg Once.Type.Void | eqArg
@@ -1366,12 +1366,12 @@ checkElab-fallback-RApp-apply-eff :
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
     {d f' : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "apply") p) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
-      checkElab ctx (Raw.RApp (Raw.RVar "apply") p) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
         ≡ success Ψ eE' d' f'')))
 checkElab-fallback-RApp-apply-eff {ctx} p A B eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RVar "apply") p) | eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "apply")) p) | eqInf
 ... | success _ _ _ _ _ , _ | refl
     with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
 ...   | yes ()
@@ -1410,7 +1410,7 @@ checkCataGo-J ctx alg F A π .(wellFormedF? F) refl = refl
 checkCataGoV-pure-J :
   ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
-  → checkElabV ctx (Raw.RApp (Raw.RVar "cata") alg)
+  → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
               (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
       ≡ checkCataGo ctx alg F A Once.Type.pure mw eq
 checkCataGoV-pure-J ctx alg F A .(wellFormedF? F) refl = refl
@@ -1455,12 +1455,12 @@ checkCata-eff-strong-hlp :
     {w : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
            ⊢ᶜ alg ∶ (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
            ⨾ Surface.zeroUsage}
-    (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RVar "cata") alg)
+    (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
            (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A))
   → checkCataGo ctx alg F A Once.Type.eff (wellFormedF? F) refl ≡ r
   → r ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
           , t-cata-check wfF w)
-  → checkElabV ctx (Raw.RApp (Raw.RVar "cata") alg)
+  → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
               (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
       ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
           , t-cata-check wfF w)
@@ -1481,11 +1481,11 @@ checkElab-fallback-RApp-terminal :
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
     {d f : ℕ}
-  → inferElab ctx (Raw.RApp (Raw.RVar "terminal") arg) ≡ success T Ψ eE d f
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg) ≡ success T Ψ eE d f
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
-      checkElab ctx (Raw.RApp (Raw.RVar "terminal") arg) T ≡ success Ψ eE' d' f')))
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg) T ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-terminal {ctx} arg T eqInf
-  with inferElabV ctx (Raw.RApp (Raw.RVar "terminal") arg) | eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "terminal")) arg) | eqInf
 ... | success T' _ _ _ _ , _ | refl with T ≟T T'
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
