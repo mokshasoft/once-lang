@@ -262,10 +262,34 @@ cata-body body-label end-label bb at =
 -- last. (Found by the exit tests: without this the descend loop read the
 -- record's tag cell, took the base branch immediately, and every cata
 -- returned the fold of zero layers.)
-cata-call-setup : ℕ → ℕ → ℕ → AbstractTrace
-cata-call-setup cl k body-label =
-  mov-to-output ∷
+-- D131: the fold's input is the PAIR `(env , μ-value)`, because `Cata` is the
+-- PARAMETERIZED catamorphism `IR (E * μF) A` and the elaboration is
+-- `curry (Cata …)` — so `fst` is the algebra CLOSURE the curry captured and
+-- `snd` is the value to fold. This prologue splits it: `ev` keeps the
+-- environment for every later `cata-call`, and `Input1` goes on holding the
+-- μ-value, which is exactly the contract the rest of the skeleton was written
+-- against before the environment existed.
+--
+-- `load-indirect` leaves `Input1` alone (only `Output` moves), so both
+-- projections read the same pair without restoring it.
+-- `pr` is the algebra's ARGUMENT PAIR, allocated ONCE here and reused by every
+-- `cata-call`: cell 0 is the environment (constant for the whole fold) and only
+-- cell 1 — the layer — changes per iteration. Reuse is sound because the pair's
+-- consumer is the FIXED wrapper `apply ∘ ⟨ fst , snd ⟩` that `cataM` generates,
+-- which projects both cells and applies immediately; the user's algebra is the
+-- closure in cell 0 and never sees the pair. Allocating per layer would work
+-- too, and would reintroduce exactly the per-layer allocation D131 removed.
+cata-call-setup : ℕ → ℕ → ℕ → ℕ → ℕ → AbstractTrace
+cata-call-setup cl k ev pr body-label =
+  load-indirect ∷
+  store-at-slot ev ∷
+  load-indirect-suc ∷
   store-at-slot k ∷
+  instr-alloc-heap 2 ∷
+  store-at-slot pr ∷
+  mov-to-input ∷
+  load-from-slot ev ∷
+  store-indirect ∷
   instr-alloc-heap 2 ∷
   store-at-slot cl ∷
   mov-to-input ∷
@@ -278,12 +302,20 @@ cata-call-setup cl k body-label =
 
 -- One application of the algebra. On entry `Input1` holds the layer; on return
 -- `Output` holds the algebra's result — the same contract the spliced copy had.
-cata-call : ℕ → ℕ → AbstractTrace
-cata-call cl k =
+-- D131: the algebra is `IR (E * ⟦F⟧TI A) A`, so its argument is the PAIR
+-- `(env , layer)` — the elaboration's algebra body is `apply ∘ ⟨ fst , snd ⟩`,
+-- which projects the closure out of `fst` and applies it to `snd`. Before
+-- D131 the layer was passed bare, so `fst` read whatever the layer's first
+-- cell happened to be; for a `Nat` base layer that is the tag `0`, and the
+-- apply dereferenced a null closure.
+cata-call : ℕ → ℕ → ℕ → AbstractTrace
+cata-call cl k pr =
   mov-to-output ∷ store-at-slot k ∷
+  load-from-slot pr ∷ mov-to-input ∷
+  load-from-slot k ∷ store-indirect-suc ∷
   load-from-slot cl ∷ mov-to-input ∷
   instr-save-closure-reg ∷
-  load-from-slot k ∷ mov-to-input ∷
+  load-from-slot pr ∷ mov-to-input ∷
   instr-call-closure ∷ []
 
 -- `bb` is the algebra body's own stack budget (it runs in its own frame).
@@ -291,18 +323,18 @@ cata-call cl k =
 -- Labels: `l1 … l1+5` the loop's, `l1+6` the body, `l1+7` the jump-over join.
 cata-trace-nat : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-nat bb n1 l1 at =
-  suc (suc (suc (suc n1))) , suc (suc (suc (suc (suc (suc (suc (suc l1))))))) ,
+  (suc (suc (suc (suc (suc (suc n1)))))) , suc (suc (suc (suc (suc (suc (suc (suc l1))))))) ,
   -- D099 / C1 (2026-08-10): the body bracket goes LAST, not first. That is not
   -- cosmetic — `segagree-curry` proves `SegAgree (H ++ c-thunk … ∷ (body ++
   -- c-ret … ∷ c-label e ∷ []))` for an arbitrary IDLE labelled prefix `H`, and
   -- the loop skeleton is exactly that. With the bracket last, `H` = the loop
   -- plus its jump-over and the existing combinator applies directly; with it
   -- first, the loop would be a SUFFIX, which nothing in `LabelScope` supports.
-  (cata-call-setup (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc (suc l1)))))) ++
+  (cata-call-setup (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc n1)))) (suc (suc (suc (suc (suc n1))))) (suc (suc (suc (suc (suc (suc l1)))))) ++
    (cata-nat-I₁ n1 l1 ++
-    (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
+    (cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1))))) ++
      (cata-nat-I₂ n1 l1 ++
-      (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
+      (cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1))))) ++
        (cata-nat-I₃ l1 ++
         cata-body (suc (suc (suc (suc (suc (suc l1))))))
                   (suc (suc (suc (suc (suc (suc (suc l1)))))) ) bb at))))))
@@ -376,13 +408,13 @@ cata-trace-linear : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × Abst
 -- `n1 … suc⁵ n1`: SegOK's bounds are `≤-step` chains, and mixing towers with
 -- `+` would need a transport at every one.
 cata-trace-linear bb n1 l1 at =
-  suc (suc (suc (suc (suc (suc (suc (suc n1))))))) , suc (suc (suc (suc (suc (suc l1))))) ,
-  (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1)))))))
+  (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))))) , suc (suc (suc (suc (suc (suc l1))))) ,
+  (cata-call-setup (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))))
                    (suc (suc (suc (suc l1)))) ++
    (cata-lin-I₁ n1 l1 ++
-    (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++
+    (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))) ++
      (cata-lin-I₂ n1 l1 ++
-      (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) ++
+      (cata-call (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))) ++
        (cata-lin-I₃ l1 ++ cata-body (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at))))))
 
 -- ────────────────────────────────────────────────────────────────────
@@ -542,13 +574,18 @@ cata-br-I₂ n1 l1 =
 -- The body/join labels and the call's two slots go above the existing ranges.
 cata-trace-branching : Functor → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-branching F bb n1 l1 at =
-  (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 2 , (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 2 ,
+  -- D131: two more slots above the existing range — `ev` for the fold's
+  -- environment and `pr` for the `(env , layer)` argument pair.
+  (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 4 , (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 2 ,
   (cata-call-setup (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
                    ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 1)
+                   ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 2)
+                   ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 3)
                    (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) ++
    (cata-br-I₁ F n1 l1 ++
     (cata-call (n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4)
-               ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 1) ++
+               ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 1)
+               ((n1 +ℕ 7 +ℕ (4 * fsize F) +ℕ 4) +ℕ 3) ++
      (cata-br-I₂ n1 l1 ++
       cata-body (l1 +ℕ 4 +ℕ lsize F +ℕ lsize F)
                 ((l1 +ℕ 4 +ℕ lsize F +ℕ lsize F) +ℕ 1) bb at))))
@@ -563,9 +600,9 @@ cata-trace-branching F bb n1 l1 at =
 -- i.e. two different generations of the same term.
 cata-trace-const : ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-trace-const bb n1 l1 at =
-  n1 +ℕ 2 , l1 +ℕ 2 ,
-  (cata-call-setup n1 (n1 +ℕ 1) l1 ++
-   (cata-call n1 (n1 +ℕ 1) ++ cata-body l1 (l1 +ℕ 1) bb at))
+  n1 +ℕ 4 , l1 +ℕ 2 ,
+  (cata-call-setup n1 (n1 +ℕ 1) (n1 +ℕ 2) (n1 +ℕ 3) l1 ++
+   (cata-call n1 (n1 +ℕ 1) (n1 +ℕ 3) ++ cata-body l1 (l1 +ℕ 1) bb at))
 
 cata-dispatch : CataStrategy → ℕ → ℕ → ℕ → AbstractTrace → ℕ × ℕ × AbstractTrace
 cata-dispatch strat-const         bb n1 l1 at = cata-trace-const bb n1 l1 at

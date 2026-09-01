@@ -75,7 +75,7 @@ d_ir'45'to'45'trace_20 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218]
 d_ir'45'to'45'trace_20 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_738
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrectFlat._.ClosureWellFormedDef.ResultPlace
 d_ResultPlace_120 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
@@ -474,7 +474,7 @@ du_flat'45'run_1070 v0 v1 v2 v3 v4 v5 v6 v7
       MAlonzo.Code.Once.CCC.Machine.Flat.d_exec'45'flat_1348 (coe v1)
       (coe v2)
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
+         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_738
          (coe v0) (coe v3) (coe v4) (coe v5))
       (coe
          MAlonzo.Code.Once.CCC.Machine.Flat.C_mkFlatFull_94 (coe v6)
@@ -2241,7 +2241,7 @@ du_fs'8321'_1772 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.CCC.Machine.Flat.d_flat'45'exec'45'instr_1080 v1
       (coe du_instr_1770 (coe v2))
-      (MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
+      (MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_738
          (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Int_30)
          (coe
@@ -2436,7 +2436,7 @@ du_fs'8321'_1844 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Once.CCC.Machine.Flat.d_flat'45'exec'45'instr_1080 v1
       (coe du_instr_1842 (coe v2))
-      (MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
+      (MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_738
          (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Float_32)
          (coe

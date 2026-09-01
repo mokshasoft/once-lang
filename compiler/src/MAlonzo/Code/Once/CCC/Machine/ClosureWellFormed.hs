@@ -49,7 +49,7 @@ d_ir'45'to'45'trace'45'at'45'frontier_12 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218]
 d_ir'45'to'45'trace'45'at'45'frontier_12 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'at'45'frontier_740
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'at'45'frontier_746
       (coe v0)
 -- Once.CCC.Machine.ClosureWellFormed.ClosureWellFormedDef.eval
 d_eval_24 ::

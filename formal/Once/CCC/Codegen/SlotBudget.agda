@@ -414,18 +414,21 @@ segok-thunk {B} ℓ bb e body bok = mkSegOK inner neu
 -- nothing — goes through the same call, so it reserves two as well.
 cata-mono : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
           → n1 ≤ cata-budget-of (cata-dispatch st bb n1 l1 at)
-cata-mono strat-const         bb n1 l1 at = m≤m+n n1 2
+cata-mono strat-const         bb n1 l1 at = m≤m+n n1 4
 cata-mono strat-nat           bb n1 l1 at =
   ≤-trans (n≤1+n n1)
     (≤-trans (n≤1+n (suc n1))
-      (≤-trans (n≤1+n (suc (suc n1))) (n≤1+n (suc (suc (suc n1))))))
+      (≤-trans (n≤1+n (suc (suc n1)))
+        (≤-trans (n≤1+n (suc (suc (suc n1))))
+          (≤-trans (n≤1+n (suc (suc (suc (suc n1)))))
+                   (n≤1+n (suc (suc (suc (suc (suc n1))))))))))
 cata-mono strat-linear        bb n1 l1 at =
-  ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))))
+  ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))))))
 cata-mono (strat-branching F) bb n1 l1 at =
   ≤-trans (m≤m+n n1 7)
     (≤-trans (m≤m+n (n1 + 7) (4 * fsize F))
       (≤-trans (m≤m+n ((n1 + 7) + 4 * fsize F) 4)
-               (m≤m+n (((n1 + 7) + 4 * fsize F) + 4) 2)))
+               (m≤m+n (((n1 + 7) + 4 * fsize F) + 4) 4)))
 
 frontier-mono : ∀ {A B} (ir : IR A B) (n l : ℕ) → n ≤ budget-of (ir-to-trace' n l ir)
 frontier-mono id       n l = ≤-refl
@@ -520,24 +523,32 @@ cata-const-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
                          (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
 cata-const-below bb n1 l1 at bok =
   segok-++ (segok-idle _ refl
-      (-- setup
+      (-- setup (18) then call (12), one flat list as before
+       sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
+       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pr<b (λ _ ()) ∷
+       sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
+       sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷
+       sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
+       sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
+       sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl pr<b (λ _ ()) ∷
        sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
        sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
-       sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-       sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-       -- call
-       sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl cl<b (λ _ ()) ∷
-       sb-none refl ∷ sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-       sb-none refl ∷ []))
+       sb-slot refl pr<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []))
     (cata-body-below _ _ bb at bok)
   where
-    -- `n1 + 2 ≡ suc (n1 + 1)` is `+-suc n1 1`; both bounds ride it.
-    n+2 : suc (n1 + 1) ≤ n1 + 2
-    n+2 = ≤-reflexive (sym (+-suc n1 1))
-    cl<b : n1 < n1 + 2
-    cl<b = ≤-trans (s≤s (m≤m+n n1 1)) n+2
-    k<b : n1 + 1 < n1 + 2
-    k<b = n+2
+    -- D131: four slots now — `cl`/`k` as before, plus `ev` (the fold's
+    -- environment) and `pr` (the reused argument pair). `suc (n1 + j) ≡
+    -- n1 + suc j` is `+-suc`, and the rest is monotonicity.
+    bnd : ∀ (j : ℕ) → suc j ≤ 4 → n1 + j < n1 + 4
+    bnd j p = ≤-trans (≤-reflexive (sym (+-suc n1 j))) (+-monoʳ-≤ n1 p)
+    cl<b : n1 < n1 + 4
+    cl<b = ≤-trans (s≤s (m≤m+n n1 0)) (bnd 0 (s≤s z≤n))
+    k<b : n1 + 1 < n1 + 4
+    k<b = bnd 1 (s≤s (s≤s z≤n))
+    ev<b : n1 + 2 < n1 + 4
+    ev<b = bnd 2 (s≤s (s≤s (s≤s z≤n)))
+    pr<b : n1 + 3 < n1 + 4
+    pr<b = bnd 3 (s≤s (s≤s (s≤s (s≤s z≤n))))
 
 cata-nat-below : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace) → SegOK bb at
                → SegOK (cata-budget-of (cata-dispatch strat-nat bb n1 l1 at))
@@ -553,24 +564,31 @@ cata-nat-below bb n1 l1 at bok =
       (segok-++ (segok-idle _ refl call)
        (segok-++ (segok-idle _ refl I₃) (cata-body-below _ _ bb at bok))))))
   where
-    b = suc (suc (suc (suc n1)))
+    b = suc (suc (suc (suc (suc (suc n1)))))
     p<b : n1 < b
-    p<b = ≤-step (≤-step (≤-step ≤-refl))
+    p<b = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl)))))
     s<b : suc n1 < b
-    s<b = ≤-step (≤-step ≤-refl)
+    s<b = ≤-step (≤-step (≤-step (≤-step (≤-refl))))
     cl<b : suc (suc n1) < b
-    cl<b = ≤-step ≤-refl
+    cl<b = ≤-step (≤-step (≤-step (≤-refl)))
     k<b : suc (suc (suc n1)) < b
-    k<b = ≤-refl
+    k<b = ≤-step (≤-step (≤-refl))
+    ev<b : suc (suc (suc (suc n1))) < b
+    ev<b = ≤-step (≤-refl)
+    pr<b : suc (suc (suc (suc (suc n1)))) < b
+    pr<b = ≤-refl
     setup : All (SlotBelow b) _
-    setup = sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-            sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
+    setup = sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
+            sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pr<b (λ _ ()) ∷
+            sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷
             sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-            sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ []
+            sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ []
     call : All (SlotBelow b) _
-    call = sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl cl<b (λ _ ()) ∷
-           sb-none refl ∷ sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-           sb-none refl ∷ []
+    call = sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl pr<b (λ _ ()) ∷
+           sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
+           sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
+           sb-slot refl pr<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []
     I₁ : All (SlotBelow b) _
     I₁ = sb-none refl ∷ sb-none refl ∷
          sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
@@ -601,32 +619,39 @@ cata-linear-below bb n1 l1 at bok =
       (segok-++ (segok-idle _ refl call)
        (segok-++ (segok-idle _ refl I₃) (cata-body-below _ _ bb at bok))))))
   where
-    b = suc (suc (suc (suc (suc (suc (suc (suc n1)))))))
+    b = (suc (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))))
     p0 : n1 < b
-    p0 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))))
+    p0 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl)))))))))
     p1 : suc n1 < b
-    p1 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl)))))
+    p1 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl))))))))
     p2 : suc (suc n1) < b
-    p2 = ≤-step (≤-step (≤-step (≤-step (≤-step ≤-refl))))
+    p2 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl)))))))
     p3 : suc (suc (suc n1)) < b
-    p3 = ≤-step (≤-step (≤-step (≤-step ≤-refl)))
+    p3 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl))))))
     p4 : suc (suc (suc (suc n1))) < b
-    p4 = ≤-step (≤-step (≤-step ≤-refl))
+    p4 = ≤-step (≤-step (≤-step (≤-step (≤-step (≤-refl)))))
     p5 : suc (suc (suc (suc (suc n1)))) < b
-    p5 = ≤-step (≤-step ≤-refl)
-    cl<b : suc (suc (suc (suc (suc (suc n1))))) < b
-    cl<b = ≤-step ≤-refl
-    k<b : suc (suc (suc (suc (suc (suc (suc n1)))))) < b
-    k<b = ≤-refl
+    p5 = ≤-step (≤-step (≤-step (≤-step (≤-refl))))
+    cl<b : (suc (suc (suc (suc (suc (suc n1)))))) < b
+    cl<b = ≤-step (≤-step (≤-step (≤-refl)))
+    k<b : (suc (suc (suc (suc (suc (suc (suc n1))))))) < b
+    k<b = ≤-step (≤-step (≤-refl))
+    ev<b : (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))) < b
+    ev<b = ≤-step (≤-refl)
+    pr<b : (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))) < b
+    pr<b = ≤-refl
     setup : All (SlotBelow b) _
-    setup = sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-            sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
+    setup = sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
+            sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pr<b (λ _ ()) ∷
+            sb-none refl ∷ sb-slot refl ev<b (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷
             sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-            sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ []
+            sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷ []
     call : All (SlotBelow b) _
-    call = sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl cl<b (λ _ ()) ∷
-           sb-none refl ∷ sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
-           sb-none refl ∷ []
+    call = sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-slot refl pr<b (λ _ ()) ∷
+           sb-none refl ∷ sb-slot refl k<b (λ _ ()) ∷ sb-none refl ∷
+           sb-slot refl cl<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
+           sb-slot refl pr<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []
     I₁ : All (SlotBelow b) _
     I₁ = sb-none refl ∷ sb-none refl ∷ sb-slot refl p3 (λ _ ()) ∷
          sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
@@ -842,23 +867,31 @@ cata-branching-below F bb n1 l1 at bok =
                (cata-body-below _ _ bb at bok))))
   where
     b = n1 + 7 + 4 * fsize F + 4
-    b≤b2 : b ≤ b + 2
-    b≤b2 = m≤m+n b 2
-    b+2 : suc (b + 1) ≤ b + 2
-    b+2 = ≤-reflexive (sym (+-suc b 1))
-    cl<b2 : b < b + 2
-    cl<b2 = ≤-trans (s≤s (m≤m+n b 1)) b+2
-    k<b2 : b + 1 < b + 2
-    k<b2 = b+2
-    setup : All (SlotBelow (b + 2)) _
-    setup = sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷
-            sb-slot refl cl<b2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
+    b≤b2 : b ≤ b + 4
+    b≤b2 = m≤m+n b 4
+    -- D131: `ev`/`pr` join `cl`/`k` above the skeleton's own range.
+    bnd : ∀ (j : ℕ) → suc j ≤ 4 → b + j < b + 4
+    bnd j p = ≤-trans (≤-reflexive (sym (+-suc b j))) (+-monoʳ-≤ b p)
+    cl<b2 : b < b + 4
+    cl<b2 = ≤-trans (s≤s (m≤m+n b 0)) (bnd 0 (s≤s z≤n))
+    k<b2 : b + 1 < b + 4
+    k<b2 = bnd 1 (s≤s (s≤s z≤n))
+    ev<b2 : b + 2 < b + 4
+    ev<b2 = bnd 2 (s≤s (s≤s (s≤s z≤n)))
+    pr<b2 : b + 3 < b + 4
+    pr<b2 = bnd 3 (s≤s (s≤s (s≤s (s≤s z≤n))))
+    setup : All (SlotBelow (b + 4)) _
+    setup = sb-none refl ∷ sb-slot refl ev<b2 (λ _ ()) ∷ sb-none refl ∷
+            sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ sb-slot refl pr<b2 (λ _ ()) ∷
+            sb-none refl ∷ sb-slot refl ev<b2 (λ _ ()) ∷ sb-none refl ∷
+            sb-none refl ∷ sb-slot refl cl<b2 (λ _ ()) ∷ sb-none refl ∷
             sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
-            sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ []
-    call : All (SlotBelow (b + 2)) _
-    call = sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-slot refl cl<b2 (λ _ ()) ∷
-           sb-none refl ∷ sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷
-           sb-none refl ∷ []
+            sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷ []
+    call : All (SlotBelow (b + 4)) _
+    call = sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-slot refl pr<b2 (λ _ ()) ∷
+           sb-none refl ∷ sb-slot refl k<b2 (λ _ ()) ∷ sb-none refl ∷
+           sb-slot refl cl<b2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷
+           sb-slot refl pr<b2 (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ []
     fixed7 : n1 + 7 ≤ b
     fixed7 = ≤-trans (m≤m+n (n1 + 7) (4 * fsize F)) (m≤m+n (n1 + 7 + 4 * fsize F) 4)
     fixed7' : 7 + n1 ≤ b

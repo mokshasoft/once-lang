@@ -273,14 +273,17 @@ cata-body-ls lo hi bl el bb at atls Lel Hel =
   li-lab refl Lel Hel ∷ li-none refl ∷
   ++⁺ atls (li-none refl ∷ li-lab refl Lel Hel ∷ [])
 
-cata-setup-ls : ∀ (lo hi cl k bl : ℕ) → LabelsIn lo hi (cata-call-setup cl k bl)
-cata-setup-ls lo hi cl k bl =
+cata-setup-ls : ∀ (lo hi cl k ev pr bl : ℕ) → LabelsIn lo hi (cata-call-setup cl k ev pr bl)
+cata-setup-ls lo hi cl k ev pr bl =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ []
 
-cata-call-ls : ∀ (lo hi cl k : ℕ) → LabelsIn lo hi (cata-call cl k)
-cata-call-ls lo hi cl k =
+cata-call-ls : ∀ (lo hi cl k pr : ℕ) → LabelsIn lo hi (cata-call cl k pr)
+cata-call-ls lo hi cl k pr =
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 
@@ -289,9 +292,9 @@ cata-nat-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → Lab
                        (cata-trace-of (cata-dispatch strat-nat bb n1 l1 at))
 -- C1: `cata-body ++ setup ++ I₁ ++ call ++ I₂ ++ call ++ I₃`.
 cata-nat-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi _ _ bodyL)
-   (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _)
-    (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _)
+  ++⁺ (cata-setup-ls lo hi _ _ _ _ bodyL)
+   (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _ _)
+    (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _ _)
      (++⁺ I₃ (cata-body-ls lo hi bodyL endL _ at at' L7 H7))))))
   where
     hi = suc (suc (suc (suc (suc (suc (suc (suc l1)))))))
@@ -370,9 +373,9 @@ cata-linear-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → 
 -- C1: same block order as nat. Linear's window grows from four labels to six
 -- (the body and its jump-over join).
 cata-linear-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi _ _ (suc (suc (suc (suc l1)))))
-   (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _)
-    (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _)
+  ++⁺ (cata-setup-ls lo hi _ _ _ _ (suc (suc (suc (suc l1)))))
+   (++⁺ I₁ (++⁺ (cata-call-ls lo hi _ _ _)
+    (++⁺ I₂ (++⁺ (cata-call-ls lo hi _ _ _)
      (++⁺ I₃ (cata-body-ls lo hi (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) _ at at' L5 H5))))))
   where
     hi = suc (suc (suc (suc (suc (suc l1)))))
@@ -439,9 +442,9 @@ cata-branching-ls : ∀ (F : Functor) (lo bb n1 l1 : ℕ) (at : AbstractTrace) �
 -- gets ONE call site. The two functor-walk windows are UNCHANGED; `ls-weaken`
 -- lifts them over the two labels the body bracket adds above them.
 cata-branching-ls F lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi2 _ _ hi)
+  ++⁺ (cata-setup-ls lo hi2 _ _ _ _ hi)
    (++⁺ (ls-weaken ≤-refl hi≤hi2 I₁-ls)
-    (++⁺ (cata-call-ls lo hi2 _ _)
+    (++⁺ (cata-call-ls lo hi2 _ _ _)
      (++⁺ (ls-weaken ≤-refl hi≤hi2 I₂-ls)
           (cata-body-ls lo hi2 hi (hi + 1) _ at at2 Lend Hend))))
   where
@@ -513,8 +516,8 @@ cata-const-ls : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace) → lo ≤ l1 → L
               → LabelsIn lo (cata-label-of (cata-dispatch strat-const bb n1 l1 at))
                          (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
 cata-const-ls lo bb n1 l1 at lo≤l1 atls =
-  ++⁺ (cata-setup-ls lo hi _ _ l1)
-   (++⁺ (cata-call-ls lo hi _ _) (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend))
+  ++⁺ (cata-setup-ls lo hi _ _ _ _ l1)
+   (++⁺ (cata-call-ls lo hi _ _ _) (cata-body-ls lo hi l1 (l1 + 1) _ at at' Lend Hend))
   where
     hi = l1 + 2
     Hend : l1 + 1 < hi
@@ -1251,11 +1254,11 @@ cata-nat-agree lo bb n1 l1 at natl saB lsB =
     hi    = suc (suc (suc (suc (suc (suc (suc (suc l1)))))))
     bodyL = suc (suc (suc (suc (suc (suc l1)))))
     endL  = suc (suc (suc (suc (suc (suc (suc l1))))))
-    H = cata-call-setup (suc (suc n1)) (suc (suc (suc n1))) bodyL ++
+    H = cata-call-setup (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc n1)))) (suc (suc (suc (suc (suc n1))))) bodyL ++
         (cata-nat-I₁ n1 l1 ++
-         (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
+         (cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1))))) ++
           (cata-nat-I₂ n1 l1 ++
-           (cata-call (suc (suc n1)) (suc (suc (suc n1))) ++
+           (cata-call (suc (suc n1)) (suc (suc (suc n1))) (suc (suc (suc (suc (suc n1))))) ++
             (cata-nat-I₃ l1 ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))))))
     L0 : l1 ≤ l1
     L0 = ≤-refl
@@ -1311,9 +1314,9 @@ cata-nat-agree lo bb n1 l1 at natl saB lsB =
     I₃ = li-none refl ∷ li-lab refl L4 H4 ∷ li-lab refl L5 H5 ∷ []
     H-ls : LabelsIn l1 hi H
     H-ls =
-      ++⁺ (cata-setup-ls l1 hi _ _ bodyL)
-       (++⁺ I₁ (++⁺ (cata-call-ls l1 hi _ _)
-        (++⁺ I₂ (++⁺ (cata-call-ls l1 hi _ _)
+      ++⁺ (cata-setup-ls l1 hi _ _ _ _ bodyL)
+       (++⁺ I₁ (++⁺ (cata-call-ls l1 hi _ _ _)
+        (++⁺ I₂ (++⁺ (cata-call-ls l1 hi _ _ _)
          (++⁺ I₃ (li-lab refl L7 H7 ∷ []))))))
 
 cata-lin-agree : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace)
@@ -1328,11 +1331,13 @@ cata-lin-agree lo bb n1 l1 at natl saB lsB =
     endL  = suc (suc (suc (suc (suc l1))))
     cl    = suc (suc (suc (suc (suc (suc n1)))))
     kk    = suc (suc (suc (suc (suc (suc (suc n1))))))
-    H = cata-call-setup cl kk bodyL ++
+    ev    = suc (suc (suc (suc (suc (suc (suc (suc n1)))))))
+    pr    = suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))
+    H = cata-call-setup cl kk ev pr bodyL ++
         (cata-lin-I₁ n1 l1 ++
-         (cata-call cl kk ++
+         (cata-call cl kk pr ++
           (cata-lin-I₂ n1 l1 ++
-           (cata-call cl kk ++
+           (cata-call cl kk pr ++
             (cata-lin-I₃ l1 ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))))))
     L0 : l1 ≤ l1
     L0 = ≤-refl
@@ -1377,9 +1382,9 @@ cata-lin-agree lo bb n1 l1 at natl saB lsB =
     I₃ = li-none refl ∷ li-lab refl L2 H2 ∷ li-lab refl L3 H3 ∷ []
     H-ls : LabelsIn l1 hi H
     H-ls =
-      ++⁺ (cata-setup-ls l1 hi _ _ bodyL)
-       (++⁺ I₁ (++⁺ (cata-call-ls l1 hi _ _)
-        (++⁺ I₂ (++⁺ (cata-call-ls l1 hi _ _)
+      ++⁺ (cata-setup-ls l1 hi _ _ _ _ bodyL)
+       (++⁺ I₁ (++⁺ (cata-call-ls l1 hi _ _ _)
+        (++⁺ I₂ (++⁺ (cata-call-ls l1 hi _ _ _)
          (++⁺ I₃ (li-lab refl L5 H5 ∷ []))))))
 
 -- Tier 2 calls the algebra ONCE, so its `H` has one call site. The functor
@@ -1400,8 +1405,8 @@ cata-br-agree F lo bb n1 l1 at natl saB lsB =
     bodyL = hi
     endL  = hi + 1
     cl = n1 + 7 + (4 * fsize F) + 4
-    setup = cata-call-setup cl (cl + 1) bodyL
-    call  = cata-call cl (cl + 1)
+    setup = cata-call-setup cl (cl + 1) (cl + 2) (cl + 3) bodyL
+    call  = cata-call cl (cl + 1) (cl + 3)
     jmp   = instr-ctrl (c-jmp (ℓ o endL)) ∷ []
     tailB = instr-ctrl (c-thunk (ℓ o bodyL) bb) ∷
             (at ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label (ℓ o endL)) ∷ [])
@@ -1473,9 +1478,9 @@ cata-br-agree F lo bb n1 l1 at natl saB lsB =
            li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
     H-ls : LabelsIn l1 hi2 H
     H-ls =
-      ++⁺ (cata-setup-ls l1 hi2 cl (cl + 1) bodyL)
+      ++⁺ (cata-setup-ls l1 hi2 cl (cl + 1) (cl + 2) (cl + 3) bodyL)
        (++⁺ (ls-weaken ≤-refl hi≤hi2 I₁-ls)
-        (++⁺ (cata-call-ls l1 hi2 cl (cl + 1))
+        (++⁺ (cata-call-ls l1 hi2 cl (cl + 1) (cl + 3))
          (++⁺ (ls-weaken ≤-refl hi≤hi2 I₂-ls)
               (li-lab refl Lend Hend ∷ []))))
 
@@ -1490,15 +1495,15 @@ cata-const-agree lo bb n1 l1 at natl saB lsB =
   where
     hi   = l1 + 2
     endL = l1 + 1
-    H = cata-call-setup n1 (n1 + 1) l1 ++
-        (cata-call n1 (n1 + 1) ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))
+    H = cata-call-setup n1 (n1 + 1) (n1 + 2) (n1 + 3) l1 ++
+        (cata-call n1 (n1 + 1) (n1 + 3) ++ (instr-ctrl (c-jmp (ℓ o endL)) ∷ []))
     Lend : l1 ≤ endL
     Lend = m≤m+n l1 1
     Hend : endL < hi
     Hend = ≤-reflexive (sym (+-suc l1 1))
     H-ls : LabelsIn l1 hi H
-    H-ls = ++⁺ (cata-setup-ls l1 hi n1 (n1 + 1) l1)
-               (++⁺ (cata-call-ls l1 hi n1 (n1 + 1))
+    H-ls = ++⁺ (cata-setup-ls l1 hi n1 (n1 + 1) (n1 + 2) (n1 + 3) l1)
+               (++⁺ (cata-call-ls l1 hi n1 (n1 + 1) (n1 + 3))
                     (li-lab refl Lend Hend ∷ []))
 
 cata-agree : ∀ (st : CataStrategy) (lo bb n1 l1 : ℕ) (at : AbstractTrace)

@@ -267,7 +267,7 @@ du_ir'45'stack'45'budget_478 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
 du_ir'45'stack'45'budget_478 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_750
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_756
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.ir-to-trace
 d_ir'45'to'45'trace_480 ::
@@ -289,7 +289,7 @@ du_ir'45'to'45'trace_480 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218]
 du_ir'45'to'45'trace_480 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_738
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.StackPtrOK
 d_StackPtrOK_526 ::
@@ -355,7 +355,7 @@ du_mention'45'at_910 ::
   Integer -> Maybe MAlonzo.Code.Once.CCC.Label.T_LabelId_6
 du_mention'45'at_910
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.LabelScope.du_mention'45'at_1194
+      MAlonzo.Code.Once.CCC.Codegen.LabelScope.du_mention'45'at_1206
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.once-label-of
 d_once'45'label'45'of_918 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -417,7 +417,7 @@ du_seg'45'at_1134 ::
   MAlonzo.Code.Once.CCC.Codegen.SlotBudget.T_SegState_222 ->
   MAlonzo.Code.Once.CCC.Codegen.SlotBudget.T_SegState_222
 du_seg'45'at_1134
-  = coe MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_seg'45'at_2154
+  = coe MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_seg'45'at_2222
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.seg-step
 d_seg'45'step_1154 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -450,7 +450,7 @@ du_trace'45'lookup_1174 ::
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218
 du_trace'45'lookup_1174
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_trace'45'lookup_2144
+      MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_trace'45'lookup_2212
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.SegState.cur
 d_cur_1218 ::
   MAlonzo.Code.Once.CCC.Codegen.SlotBudget.T_SegState_222 -> Integer
@@ -561,7 +561,7 @@ du_frame'45'op'45'absurd_1350 v0 v1 v2 v3
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
         -> coe
-             MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_fetch'45'frame'45'free_972
+             MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_fetch'45'frame'45'free_988
              v0 (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
              (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v4 v3
              (MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v1)) erased
@@ -597,7 +597,7 @@ du_emitted'45'slot'45'below'45'budget_1386 ::
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_emitted'45'slot'45'below'45'budget_1386 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_emitted'45'slot'45'seg_2444
+      MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_emitted'45'slot'45'seg_2512
       (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
       (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v1) (coe v2) (coe v3)
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF.ff→seg-id
@@ -1084,7 +1084,7 @@ du_B'8320'_1808 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Codegen.SlotBudget.C_mkSeg_232
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_750
+         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_756
          (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v1))
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
@@ -2839,7 +2839,7 @@ du_emitted'45'alloc'45'min_3156 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
         -> coe
-             MAlonzo.Code.Once.CCC.Codegen.AllocMin.du_fetch'45'alloc'45'min_906
+             MAlonzo.Code.Once.CCC.Codegen.AllocMin.du_fetch'45'alloc'45'min_922
              v0 (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
              (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v3
              (MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v1)) erased

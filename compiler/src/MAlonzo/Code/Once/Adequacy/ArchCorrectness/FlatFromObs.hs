@@ -106,7 +106,7 @@ du_ir'45'stack'45'budget_144 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
 du_ir'45'stack'45'budget_144 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_750
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_756
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatFromObs._.ClosureWellFormedDef.ValidAtWF
 d_ValidAtWF_202 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14
@@ -361,7 +361,7 @@ du_entry'45'witness_828 v0 v1 v2 v3 v4 v5 v6 v7
       (coe
          du_entry'45'alloc_798 (coe v3)
          (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_750
+            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_756
             (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
             (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v6)))
       erased
@@ -441,7 +441,7 @@ du_flat'45'trace'45'of_840 v0 v1 v2 v3 v4 v5 v6 v7 v8
                             (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v9))
                       v8))
                 (coe
-                   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_732
+                   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_738
                    (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                    (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v9))
                 (coe
@@ -450,7 +450,7 @@ du_flat'45'trace'45'of_840 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    (coe
                       du_entry'45'alloc_798 (coe v3)
                       (coe
-                         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_750
+                         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_756
                          (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                          (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v9)))
                    (coe (0 :: Integer))

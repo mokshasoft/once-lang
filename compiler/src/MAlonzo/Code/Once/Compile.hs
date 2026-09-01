@@ -1291,7 +1291,7 @@ d_funLabels'45'cons_714 v0 v1 v2 v3
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_766
+                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_772
                       (coe d_cfName_240 (coe v3))
                       (coe
                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38

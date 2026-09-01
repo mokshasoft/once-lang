@@ -123,17 +123,22 @@ rebuild-walk-am valSlot tv tb (F ⊗ G) s lb =
 ------------------------------------------------------------------------
 -- The three cata strategies (the algebra trace `at` is the caller's IH).
 ------------------------------------------------------------------------
--- D099 / C1: the three shared blocks. `cata-call-setup` allocates the algebra's
--- closure record — a 2-cell heap block, so `am2` sits at its head; nothing else
--- in the call path allocates.
+-- D099 / C1: the three shared blocks. D131: `cata-call-setup` now allocates
+-- TWO 2-cell heap blocks — the algebra's closure record, and the reusable
+-- `(env , layer)` argument pair — so `am2` appears twice. `cata-call` still
+-- allocates NOTHING: the pair is written in place, which is the point of
+-- hoisting it out of the loop.
 cata-body-am : ∀ b e bb at → AllocMinTrace at → AllocMinTrace (cata-body b e bb at)
 cata-body-am b e bb at am = tt ∷ tt ∷ ++⁺ am (tt ∷ tt ∷ [])
 
-cata-setup-am : ∀ cl k bl → AllocMinTrace (cata-call-setup cl k bl)
-cata-setup-am cl k bl = tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+cata-setup-am : ∀ cl k ev pr bl → AllocMinTrace (cata-call-setup cl k ev pr bl)
+cata-setup-am cl k ev pr bl =
+  tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷
+  am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
-cata-call-am : ∀ cl k → AllocMinTrace (cata-call cl k)
-cata-call-am cl k = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+cata-call-am : ∀ cl k pr → AllocMinTrace (cata-call cl k pr)
+cata-call-am cl k pr =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 
 nat-I₁-am : ∀ n1 l1 → AllocMinTrace (cata-nat-I₁ n1 l1)
 nat-I₁-am n1 l1 =
@@ -152,11 +157,11 @@ nat-I₃-am l1 = tt ∷ tt ∷ tt ∷ []
 cata-nat-am : ∀ bb n1 l1 at → AllocMinTrace at
             → AllocMinTrace (cata-trace-of (cata-trace-nat bb n1 l1 at))
 cata-nat-am bb n1 l1 at am =
-  ++⁺ (cata-setup-am cl k bodyL)
+  ++⁺ (cata-setup-am cl k ev pr bodyL)
       (++⁺ (nat-I₁-am n1 l1)
-           (++⁺ (cata-call-am cl k)
+           (++⁺ (cata-call-am cl k pr)
                 (++⁺ (nat-I₂-am n1 l1)
-                     (++⁺ (cata-call-am cl k)
+                     (++⁺ (cata-call-am cl k pr)
                           (++⁺ (nat-I₃-am l1)
                                (cata-body-am bodyL endL bb at am))))))
   where
@@ -164,22 +169,24 @@ cata-nat-am bb n1 l1 at am =
     endL  = suc (suc (suc (suc (suc (suc (suc l1))))))
     cl    = suc (suc n1)
     k     = suc (suc (suc n1))
+    ev    = suc (suc (suc (suc n1)))
+    pr    = suc (suc (suc (suc (suc n1))))
 
 cata-const-am : ∀ bb n1 l1 at → AllocMinTrace at
               → AllocMinTrace (cata-trace-of (cata-trace-const bb n1 l1 at))
 cata-const-am bb n1 l1 at am =
-  ++⁺ (cata-setup-am n1 (n1 + 1) l1)
-      (++⁺ (cata-call-am n1 (n1 + 1)) (cata-body-am l1 (l1 + 1) bb at am))
+  ++⁺ (cata-setup-am n1 (n1 + 1) (n1 + 2) (n1 + 3) l1)
+      (++⁺ (cata-call-am n1 (n1 + 1) (n1 + 3)) (cata-body-am l1 (l1 + 1) bb at am))
 
 cata-linear-am : ∀ bb n1 l1 at → AllocMinTrace at
                → AllocMinTrace (cata-trace-of (cata-trace-linear bb n1 l1 at))
 cata-linear-am bb n1 l1 at am =
-  ++⁺ (cata-setup-am (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1)))))))
+  ++⁺ (cata-setup-am (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1)))))))))
                      (suc (suc (suc (suc l1)))))
       (++⁺ lin-I₁
-           (++⁺ (cata-call-am (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))))
+           (++⁺ (cata-call-am (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))))
                 (++⁺ lin-I₂
-                     (++⁺ (cata-call-am (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))))
+                     (++⁺ (cata-call-am (suc (suc (suc (suc (suc (suc n1)))))) (suc (suc (suc (suc (suc (suc (suc n1))))))) (suc (suc (suc (suc (suc (suc (suc (suc (suc n1))))))))))
                           (++⁺ lin-I₃ (cata-body-am (suc (suc (suc (suc l1)))) (suc (suc (suc (suc (suc l1))))) bb at am))))))
   where
     lin-I₁ : AllocMinTrace _
@@ -194,8 +201,8 @@ cata-linear-am bb n1 l1 at am =
 cata-branching-am : ∀ F bb n1 l1 at → AllocMinTrace at
                   → AllocMinTrace (cata-trace-of (cata-trace-branching F bb n1 l1 at))
 cata-branching-am F bb n1 l1 at am =
-  ++⁺ (cata-setup-am cl (cl + 1) bodyL)
-      (++⁺ I₁ (++⁺ (cata-call-am cl (cl + 1))
+  ++⁺ (cata-setup-am cl (cl + 1) (cl + 2) (cl + 3) bodyL)
+      (++⁺ I₁ (++⁺ (cata-call-am cl (cl + 1) (cl + 3))
                    (++⁺ I₂ (cata-body-am bodyL (bodyL + 1) bb at am))))
   where
     bodyL = l1 + 4 + lsize F + lsize F
