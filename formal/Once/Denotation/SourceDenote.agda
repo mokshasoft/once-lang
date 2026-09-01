@@ -221,12 +221,16 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt ir)
 ⟦ arr' f ⟧ˢ fmt       dγ = ⟦ f ⟧ˢ fmt dγ
 ⟦ morph-app {A = A} {B = B} ir e ⟧ˢ fmt dγ =
   ⟦ e ⟧ˢ fmt dγ >>=T λ v → subst T (cohᴰ B) (evalᴰ fmt ir (subst (λ z → z) (sym (cohᴰ A)) v))
--- Cata: the structural fold. The algebra is CLOSED (∅), so `⟦alg⟧ˢ tt` is the
--- algebra closure; fold via `sem-cata` over `cata-ev-algˢ` (trace+value carrier),
--- mirroring `evalᴰ (Cata …)` but elaborate-free (uses `⟦alg⟧ˢ`, not `evalᴰ alg`).
+-- Cata: the structural fold. D131 — the algebra is OBTAINED ONCE, here, and
+-- the fold sees a PURE closure (`returnT valg`) at every layer. It used to
+-- pass `⟦ alg ⟧ˢ fmt tt` — a computation — straight into `cata-ev-algˢ`, which
+-- re-ran it per layer; an algebra that emits while being BUILT then emitted
+-- once per layer. Binding it here is the same rule every other combinator arm
+-- follows (D130) and matches both `⟦_⟧ᶜ` and the elaboration (`cataM ∘ ealg`).
 ⟦ cata {F = F} {A = A} wf alg ⟧ˢ fmt dγ =
+  ⟦ alg ⟧ˢ fmt tt >>=T λ valg →
   returnT (λ x → λ n →
-    let r = sem-cata wf (cata-ev-algˢ {F} {A} n (⟦ alg ⟧ˢ fmt tt)) x
+    let r = sem-cata wf (cata-ev-algˢ {F} {A} n (returnT valg)) x
     in (proj₁ r , proj₂ r))
 -- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
 -- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);
