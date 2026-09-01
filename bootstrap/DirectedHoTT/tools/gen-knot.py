@@ -968,7 +968,7 @@ def _parse_spine(ts):
 # name → (object-level function, its typing lemma, the argument's sort)
 BOOL_PREM = {"pw?": ("pwK", "⊢pwK", "sTm")}
 
-def TBOOL(app):    return ('tbool', app)
+def TBOOL(app, lit): return ('tbool', app, lit)
 
 def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
     """(name, binders, prems, lhs, rhs) or (name, None, reason).
@@ -1126,6 +1126,7 @@ FIELD_SORT.update({
     "subTmAtK": [None, "sTm"],
     "subTyAtK": [None, "sTy"],
     "extNK":    [None],
+    "pwBodyK":  ["sTm"],
 })
 
 # ============================ THE MUTUAL PAIR =============================
@@ -1429,6 +1430,8 @@ open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
 open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
+open import DirectedHoTT.Examples.Knot.Pw using ( pwK; ⊢pwK )
+open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 %(extra)s
 """
 
@@ -2104,6 +2107,9 @@ WF_CTOR.update({
     "subTyAtK": ("⊢subTyAtK", ["DD", "IX", "MU"], None),
     # ★ two depths consumed, then the substitution being extended.
     "extNK":    ("⊢extNK",    ["DD", "DD", "IX"],  None),
+    # ★ lands at `sh ⟨i⟩` exactly as `wkK` does, so it needs the same two
+    #   β-steps afterwards — the `WK` post.
+    "pwBodyK":  ("⊢pwBodyK",  ["IX", "MU"],        "WK"),
 })
 
 def _telty(comp):
@@ -2138,7 +2144,7 @@ def _binder_comp(code):
     _, h, args = code
     # ★ a BOOLEAN-PREMISE ford — `⌜Id⌝ ⌜Nat⌝ (fK ⟨i⟩ c) n`.  Carries the
     #   APPLICATION so the wf emitter can re-derive it.
-    if h == "⌜Id⌝": return TBOOL(args[1]), None
+    if h == "⌜Id⌝": return TBOOL(args[1], args[2]), None
     assert h == "⌜IMu⌝", code
     fam = args[0][1]
     if fam in FOREIGN: return FOREIGN[fam], args[2]
@@ -2447,6 +2453,28 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None):
                         % (F, k, par(rend(dep, k, vis)), _famwf(comp),
                            _famwf(comp),
                            par(_tupderiv(_tupcomps(dep), comp[4], k, vis, bty))))
+            elif comp[0] == 'tbool':
+                # ★★★ A BOOLEAN-PREMISE FORD.  The code is
+                #   `⌜Id⌝ ⌜Nat⌝ (fK ⟨i⟩ c) n`, so `icw-ford` discharges the
+                #   `ICodeWf` outright and the ⊢ty obligation is the
+                #   function's own typing lemma at the argument.
+                # ⚠ `bdep` HAS NO ENTRY for this binder — its depth is not
+                #   an index component — which is why the generic branch
+                #   below crashed on `None` before this case existed.
+                _app = comp[1]                      # AP(fnK, ix, arg)
+                _fn  = _app[1]
+                _dfn = next(d for (f, d, _sr) in BOOL_PREM.values() if f == _fn)
+                _ixe, _arge = _app[2][0], _app[2][1]
+                # ⚠ the LITERAL comes from the code, not from a constant
+                #   here: `≡ true` and `≡ false` are both legal premises
+                #   and they differ only in this numeral.
+                _lit = comp[2][1]                   # RAW("num n")
+                rung = ("iwf-κ %s%d (icw-ford _ _ _)\n"
+                        "    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (%s %s %s)) (toI (⊢%s)))"
+                        % (F, k, _dfn,
+                           par(jd(_ixe, k, vis, bty, tel)[0]),
+                           par(jdAt(_arge, k, vis, bty, tel, 'mu')),
+                           _lit))
             else:
                 dep = bdep[row.binders[k][0]]
                 dnat = jdAt(dep, k, vis, bty, tel, 'nat')
@@ -2703,6 +2731,9 @@ open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subTmAtK; subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK )
+open import DirectedHoTT.Examples.Knot.Pw using ( pwK )
+open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK )
+open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
 
 -- ★ the judgement's index: a depth and two terms at it.
 IRed : RTy ε
@@ -2763,7 +2794,16 @@ _PRE_N = {"singleK": 1, "subTmAtK": 1, "subTyAtK": 1, "extNK": 2}
 #   `Knot/SubApp` supplies all three with the index and target depth
 #   that the rule does not write down.
 _SUBST_CT = {"single": "singleK", "subTm": "subTmAtK",
-             "subTy": "subTyAtK", "extS": "extNK"}
+             "subTy": "subTyAtK", "extS": "extNK",
+             "pwBody": "pwBodyK"}
+
+# ★★★ WRAPPERS THAT TAKE THE ARGUMENT'S **INDEX**, not just its depth.
+#
+# ⚠ `pwBodyK i t` is an `ielim`, so it wants `⟨i⟩ = (sort , d)` — a PAIR,
+#   where `_PRE_N`'s entries take a bare depth.  Same shape `renTm`'s
+#   translation to `wkK` already builds by hand.
+# name → the argument's sort
+_IX_PRE = {"pwBodyK": "sTm"}
 
 def _pred(dep):
     if dep[0] == "nsuc": return dep[1]
@@ -2812,6 +2852,16 @@ def _val(e, CT, dep):
         #   does not occupy a slot in it.
         sub = [_val(x, CT, _shift(dep, fds[i]) if i < len(fds) else dep)
                for i, x in enumerate(args[1:])]
+        if c in _IX_PRE:
+            # ⚠ THE **SOURCE** INDEX, NOT THE AMBIENT ONE.  `pwBodyK i t`
+            #   takes `t` at `i` and lands at `sh i`, so where a term one
+            #   binder deeper is wanted the ARGUMENT still sits at the
+            #   predecessor — `hrefl-pw` puts `pwBody C` inside the new
+            #   `lam` while `C` itself never moves.  Same rule as
+            #   `_DEPTH_ARG` and as `renTm`'s translation to `wkK`.
+            _p = _pred(dep)
+            return AP(c, PAIR(RAW(_IX_PRE[c]), _p),
+                      *[_val(x, CT, _p) for x in args[1:]])
         if c in _DEPTH_ARG: return AP(c, *([_pred(dep)] + sub))
         if _PRE_N.get(c) == 1: return AP(c, *([dep] + sub))
         if _PRE_N.get(c) == 2: return AP(c, *([dep, _pred(dep)] + sub))
@@ -2940,6 +2990,9 @@ open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
 open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
+open import DirectedHoTT.Examples.Knot.Pw using ( pwK; ⊢pwK )
+open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
+open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Examples.Knot.RedRows
 %s
 """
@@ -3107,7 +3160,7 @@ if __name__ == "__main__":
               % os.environ["JUDGE_MAX_ROWS"])
         print("    DO NOT COMMIT.  Re-run without it to restore.")
         sys.exit(0)
-    _FLOOR = {"Red": 67, "Judge": 32, "TyRed": 26, "Conv": 4}
+    _FLOOR = {"Red": 68, "Judge": 32, "TyRed": 26, "Conv": 4}
     _got = {"Red": len(_ROWS), "Judge": _njudge,
             "TyRed": len(_JCACHE["TyRed"]), "Conv": len(_JCACHE["Conv"])}
     _lost = {k: (v, _got[k]) for k, v in _FLOOR.items() if _got[k] < v}
