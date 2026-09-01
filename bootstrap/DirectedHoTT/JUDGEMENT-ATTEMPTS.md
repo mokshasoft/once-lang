@@ -796,10 +796,17 @@ been checked. It has now, and one signature settles it:
 **The description argument is META-level.** For description `A` to cite
 `B` as a premise, `A` must contain the code `⌜IMu⌝ B I i` — so `B` is a
 proper subterm of `A`. Mutual citation needs `B ⊏ A` *and* `A ⊏ B`, and
-`IDesc` is an ordinary finite inductive type. ⇒ **proved impossible**,
-and it would stay impossible until the kernel gained an `IMu` over an
-*object-level* description with a fixpoint — full levitation, a kernel
-change far larger than the merge.
+`IDesc` is an ordinary finite inductive type. ⇒ **proved impossible.**
+
+⚠ **AND DO NOT READ THAT AS A MISSING KERNEL FEATURE** — an earlier
+wording here said it "would stay impossible until the kernel gained full
+levitation", which invites exactly the wrong inference. **Levitation
+would not remove the merge either**: mutual induction IS one fixpoint
+over a tagged sum, in Agda, Coq, Isabelle, HOL4 and in a levitating
+universe alike, and `PLAN-INDEXED` §13 already measured that here. The
+merge is the standard encoding, not a workaround. Full analysis —
+including why the metatheory has a specific reason NOT to close under
+levitation — is `PLAN-INDEXED` §15.
 
 ⇒ **the merge is forced.** So is its cause: the cycle is real, not an
 artefact of how `Spec/Typing` is laid out —

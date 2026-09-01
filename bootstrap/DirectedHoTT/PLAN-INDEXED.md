@@ -529,3 +529,112 @@ the real `RTm`, and defining `sz` over it by `ielim`. That is bulk, and
 the boilerplate cost flagged above says how much: every projection in
 an index is a conversion at every use site. A generator (cf.
 `tools/gen-clauses.py`) is the obvious answer if it gets tedious.
+
+--------------------------------------------------------------------------
+
+## 15. LEVITATION — what it would buy, and why NOT now — ⚠ ANALYSED 2026-09-01
+
+Asked while settling the merge (`JUDGEMENT-ATTEMPTS` §10): descriptions
+are META-level and CLOSED, so two descriptions cannot cite each other;
+does that impossibility point at a **feature lack in the kernel**, and
+would step 3 be simpler if `IMu` took an OBJECT-level description with a
+fixpoint?
+
+### 15.1 ★★★ IT DOES NOT — AND MY OWN §10.1 WORDING INVITED THE INFERENCE
+
+§10.1 proved mutual citation impossible and added "…and it would stay
+impossible until the kernel gained full levitation". True, and
+**misleading**: levitation would not remove the merge either.
+
+⇒ **Mutual induction IS one fixpoint over a tagged sum.** That is the
+construction in Agda, Coq, Isabelle and HOL4, and it is what a levitating
+universe would do too — you cannot write two mutually-referring
+fixpoints, you write ONE over a coproduct. §13 already measured exactly
+this here: `Examples/Mutual` encodes two mutually-recursive sorts as one
+description over a tag-extended index, and every cross-reference comes
+out as `iρ` at another tag.
+
+⇒ the merge is **not a workaround for a missing feature.** It is the
+standard encoding, and §13's title — "mutual families need NO kernel
+change" — was already the answer.
+
+### 15.2 would step 3 get simpler? — PARTLY, AND PROBABLY NOT NET
+
+| | effect |
+|---|---|
+| ✅ removes | **10 of 53** knot constructors and **4 of 7** sorts (`Desc`, `DCon`, `IDesc`, `ICon` become ordinary data) |
+| ✅ helps | `ι-elim`/`ι-ielim` — `sel`/`fields`/`lookupD` become ordinary functions instead of bespoke `ielim`s at the `sDesc`/`sDCon` sorts |
+| ❌ does NOT remove | **the merge** — §15.1 — which is the dominant remaining cost (8 of the 9 unemitted rules) |
+| ❌ does not touch | `occTm` (`⊢tr`), which is a traversal of the encoded syntax either way |
+| ⚠ ADDS | a fixpoint former and `Mu` at a term — **new syntax that step 3 must itself encode** |
+
+⚠ And the 10 constructors it removes are the CHEAP ones (`dι`, `dnil`,
+`iι`, `inil`, …), in a table that is GENERATED. Step 3's cost is driven
+by the judgements' telescopes, not by the syntax's constructor count.
+
+### 15.3 ⛔ WOULD THE METATHEORY CLOSE? — THERE IS A SPECIFIC REASON TO DOUBT, AND IT HAS ALREADY BEEN HIT TWICE
+
+Not a general worry — a named one, in the model's most delicate part:
+
+    ⊩₀IMu : A ⟶ᵀ* IMu D I i → IDInterp Γ D → ⊩₀ A     (LogicalRelation:4249)
+    data IDInterp (Γ : Cx) : IDesc → Set               (LogicalRelation:4182)
+
+**`IDInterp` is indexed by the description as a META-LEVEL FINITE VALUE**,
+and `idi-cons`/`iki-ρ`/`iki-κ` recurse structurally on it, as do
+`interpID`, `interpIK`, `ipayInterp`, `iliftPay` and `ipayLiftD`. A
+description that can REDUCE turns that structural recursion into one that
+must follow reduction.
+
+★★★ **AND THE PROJECT HAS ALREADY MET THE MILD FORM, TWICE:**
+
+1. §12: the `IDescWf` must be **carried** by `icw-imu`, though
+   `iwf-κ`'s own premise implies it, because "`interpIK` RECURSES on that
+   argument, and a witness produced by an inversion lemma is not a
+   structural subterm of anything, so `fund`'s termination check rejects
+   the recovering version."
+2. `Fundamental/Indexed.agda:124`: `iκW` is MUTUAL with `fund`, and "the
+   termination argument needs the `ICodeWf` to be a visible structural
+   subterm of the `IDescWf` the clause matched."
+
+⚠⚠ **A witness transported along a reduction of `D` is exactly the
+non-structural witness (1) already rejected.** So the fix used there —
+carry it — is the fix that stops working. That is the concrete reason to
+doubt, and it sits under `fund`, not at the edge.
+
+Three more, each real:
+
+* **A NEUTRAL description has no interpretation.** `⊩₀IMu` *demands* an
+  `IDInterp Γ D`; a stuck `D` cannot supply one. The relation would need
+  a stuck-`IMu` case analogous to `⊩₀ne` for `El c` — new, and it is the
+  universe that already makes normalization the research-scale piece
+  (`Algorithm/DecideConversion`'s "honest ceiling").
+* **Substitution would traverse descriptions.** `Spec/Syntax:87` states
+  the invariant closedness buys: `renTy ρ (IMu D I i) = IMu D I (renTm ρ
+  i)`. Every renaming/substitution lemma in the tree assumes it.
+* **`IDescWf` would become a judgement about a TERM**, so it would owe
+  stability under that term's reduction — a subject-reduction obligation
+  with no analogue today. Positivity is what `IDescWf` IS, and it would
+  have to survive computation.
+
+★ **In fairness, one stated reason does NOT argue against levitation.**
+`Spec/Syntax:226` warns that a FUNCTION field would put Agda functions in
+types and cost decidable equality on `RTy`. That is an argument for
+first-order `RTm` codes, which levitation keeps — it is not an argument
+against object-level descriptions.
+
+### 15.4 what the power WOULD be
+
+* **datatype-generic programming inside the object language** — one
+  `map`, `fold`, `≟` for every datatype, written once.
+* `ι-elim`/`ι-ielim` statable with ordinary functions.
+* **parameterised descriptions** (`List A` for a variable `A`) — §12
+  records these as a separate deferred item; this is the route to them.
+* descriptions as first-class data: a program could COMPUTE a datatype.
+
+⇒ ⬜ **VERDICT: not now, and the trade is lopsided.** Against the whole
+list, the only step-3 item levitation clearly buys is `ι-elim`/`ι-ielim`
+— **2 rules** — while adding an SN/canonicity obligation exactly where
+the termination argument is already the delicate part. ★ The honest
+trigger to revisit: **if object-level `sel`/`fields`/`lookupD` turns out
+to cost what `subTm` cost**, then 2 rules is no longer the measure and
+this should be re-opened with that number in hand.
