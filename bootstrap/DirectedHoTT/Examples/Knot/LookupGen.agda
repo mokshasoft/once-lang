@@ -46,7 +46,7 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( toI; fromI; ⊢ixP; ⊢sTy; ⊢sVar )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
-open import DirectedHoTT.Examples.Knot.CtxD using ( CtxWf; ⊢Ctx-extKv )
+open import DirectedHoTT.Examples.Knot.CtxD using ( CtxWf; ⊢Ctx-extKt )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Wk using ( ⊢wkK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
@@ -163,7 +163,7 @@ W_Θ4 D =
                   (toI aΘ4)
                   (⊢symN aΘ4 (⊢nsuc (fromI (⊢var (there (there (there here))))))
                          (fordAs (⊢var here)))
-                  (toMu (⊢Ctx-extKv (fromI (⊢var (there (there (there here))))) (fromMu (⊢var (there (there here)))) (fromMu (⊢var (there here)))))))
+                  (toMu (⊢Ctx-extKt (fromI (⊢var (there (there (there here))))) (fromMu (⊢var (there (there here)))) (fromMu (⊢var (there here)))))))
     (W_Θ5 D)
 
 CΘ3 : ICon ⌊ Θ3 ⌋
@@ -324,7 +324,7 @@ W_Ξ7 =
                   (toI aΞ7)
                   (⊢symN aΞ7 (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here)))))))))
                          (fordAs (⊢var here)))
-                  (toMu (⊢Ctx-extKv (fromI (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there (there (there here))))))) (fromMu (⊢var (there (there here))))))))
+                  (toMu (⊢Ctx-extKt (fromI (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there (there (there here))))))) (fromMu (⊢var (there (there here))))))))
     W_Ξ8
 
 CΞ6 : ICon ⌊ Ξ6 ⌋

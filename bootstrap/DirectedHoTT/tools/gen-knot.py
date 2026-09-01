@@ -1547,6 +1547,7 @@ open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK; ⊢pwK )
 open import DirectedHoTT.Examples.Knot.Stk
   using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK; flatK; ⊢flatK )
+open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK; ⊢nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 %(extra)s
 """
@@ -1646,7 +1647,7 @@ IJUDGE_DEF = """Σ' Nat
         (Σ' (IMu KnotD IPair (pair sTy (var (vs (vs vz)))))
             Nat)))"""
 
-MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKv )
+MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt )
 open import DirectedHoTT.Examples.Knot.Lookup using ( LkD; ILk; LkWf )
 open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
 open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )"""
@@ -2238,7 +2239,13 @@ WF_CTOR.update({
     #   The narrow twin was written first and shadowed the general one.
     "Var-vzK":  ("⊢Var-vzKt", ["DD"],       None),
     "Var-vsK":  ("⊢Var-vsKt", ["DD", "MU"], None),
-    "Ctx-extK": ("⊢Ctx-extKv", ["N", "MU", "MU"], None),
+    # ⚠ AND THE SAME NARROW-TWIN TRAP, a second time.  This pointed at
+    #   `⊢Ctx-extKv` (`var x`) until `⊢natrec`, whose premise extends the
+    #   context TWICE and so lands the outer `Ctx-extK` at `nsuc (var x)`
+    #   — neither a numeral nor a variable, and no emitted row had ever
+    #   needed one before.  `Knot/CtxD.⊢Ctx-extKt` is now the general
+    #   form and the two narrow twins are one-liners over it.
+    "Ctx-extK": ("⊢Ctx-extKt", ["N", "MU", "MU"], None),
     # ★ `wkK` lands at `sh (pair s m)` while the ford wants
     #   `pair s (nsuc m)` — the same two β-steps every time.
     "wkK":      ("⊢wkK",       ["IX", "MU"],      "WK"),
@@ -2249,13 +2256,16 @@ WF_CTOR.update({
     #   depth is `args[0]` — synthesising it again from `DEPTHD` emits
     #   it twice and drops the last real argument off the end.
     "singleK":  ("⊢singleK",  ["DD", "MU"],       None),
-    "subTmAtK": ("⊢subTmAtK", ["DD", "IX", "MU"], None),
-    "subTyAtK": ("⊢subTyAtK", ["DD", "IX", "MU"], None),
+    # ★ TWO depths — source then target.  `⊢subAtK` takes them apart
+    #   because `nrs` RAISES; see `Knot/SubApp`.
+    "subTmAtK": ("⊢subTmAtK", ["DD", "DD", "IX", "MU"], None),
+    "subTyAtK": ("⊢subTyAtK", ["DD", "DD", "IX", "MU"], None),
     # ★ two depths consumed, then the substitution being extended.
     "extNK":    ("⊢extNK",    ["DD", "DD", "IX"],  None),
     # ★ lands at `sh ⟨i⟩` exactly as `wkK` does, so it needs the same two
     #   β-steps afterwards — the `WK` post.
     "pwBodyK":  ("⊢pwBodyK",  ["IX", "MU"],        "WK"),
+    "nrsSubK":  ("⊢nrsSubK",  ["DD"],              None),
 })
 
 def _telty(comp):
@@ -2339,8 +2349,12 @@ FIELD_DEPTH = {
 FIELD_DEPTH.update({
     # ⚠ EMITTED positions: slot 0 is the prepended depth/index.
     "singleK":  [('D',), ('D',)],
-    "subTmAtK": [('D',), ('D',), ('sucD', 1)],
-    "subTyAtK": [('D',), ('D',), ('sucD', 1)],
+    # ⚠ FOUR emitted slots since the wrappers took their SOURCE depth
+    #   too: 0 source, 1 target, 2 the substitution, 3 the term.  The
+    #   term's entry here is the DEFAULT — `_argshift` overrides it
+    #   from the substitution, which is the only thing that knows.
+    "subTmAtK": [('D',), ('D',), ('D',), ('sucD', 1)],
+    "subTyAtK": [('D',), ('D',), ('D',), ('sucD', 1)],
     # ⚠ `extNK`'s substitution argument lives one binder SHALLOWER than
     #   the position `extS` appears at — it is the σ being extended.
     "extNK":    [('D',), ('D',), ('predD',)],
@@ -2459,7 +2473,11 @@ def jd(e, k, ix, binders, tel):
                 #   were written).  ⇒ the emitters agree by construction
                 #   now; `_val` adds the offset instead, once.
                 _si = ai
-                _sg = args[1] if len(args) > 1 else None
+                # ⚠ THE SUBSTITUTION MOVED.  It is at emitted slot
+                #   `_PRE_N[h]`, which stopped being 1 when the two
+                #   `subAtK` wrappers took their source depth as well.
+                _sgi = _PRE_N.get(h, 1)
+                _sg = args[_sgi] if len(args) > _sgi else None
                 sub = _deepen(DEPTHD[0], _argshift(h, _si, _sg))
                 ai += 1
                 keep = DEPTHD[0]; DEPTHD[0] = sub
@@ -2838,7 +2856,7 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( toI; fromI; ⊢ixP; ⊢sTy; ⊢sVar )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
-open import DirectedHoTT.Examples.Knot.CtxD using ( CtxWf; ⊢Ctx-extKv )
+open import DirectedHoTT.Examples.Knot.CtxD using ( CtxWf; ⊢Ctx-extKt )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Wk using ( ⊢wkK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
@@ -2897,6 +2915,7 @@ open import DirectedHoTT.Examples.Knot.SubApp using ( subTmAtK; subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK )
 open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; stkCK; flatK )
+open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
 
@@ -2937,7 +2956,10 @@ def _depth_at(dp):
 #   variable exist only at a SUCCESSOR depth.  So the value emitter must
 #   hand these the PREDECESSOR of the depth at that position, and a `vz`
 #   at a non-successor depth is ill-typed anyway.
-_DEPTH_ARG = {"Var-vzK", "Var-vsK"}
+# ⚠ `nrsSubK d : SubTy d (nsuc d)` — it RAISES, so where a substitution
+#   landing at depth `n` is wanted its own `d` is `pred n`.  Same rule as
+#   the `Var` constructors': the depth taken is the SOURCE.
+_DEPTH_ARG = {"Var-vzK", "Var-vsK", "nrsSubK"}
 
 # ★★★ …AND THE SUBSTITUTION WRAPPERS TAKE THE AMBIENT DEPTH, NOT ITS
 #   PREDECESSOR.  `subTmAtK n σ t : Tm n` with `t : Tm (nsuc n)` — the
@@ -2952,7 +2974,10 @@ _DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK", "extNK"}
 #   `σ : SubTy d n`.  At an ambient depth `d'` a rule's `extS σ` must land
 #   at `SubTy (nsuc d') d'`, so `d = d'` and `n = pred d'`.  The wrapper
 #   is named for its SOURCE and its TARGET and a rule writes neither.
-_PRE_N = {"singleK": 1, "subTmAtK": 1, "subTyAtK": 1, "extNK": 2}
+# ⚠ `subTmAtK`/`subTyAtK` TAKE TWO as well, and NOT `(d, pred d)` the
+#   way `extNK` does: their source is whatever the SUBSTITUTION takes
+#   its argument from, which `_argshift` is the one place that knows.
+_PRE_N = {"singleK": 1, "subTmAtK": 2, "subTyAtK": 2, "extNK": 2}
 
 # ★ what a rule NAMES → what the object level CALLS it.  `single`,
 #   `subTm` and `subTy` are the three the judgement rules mention, and
@@ -2960,7 +2985,7 @@ _PRE_N = {"singleK": 1, "subTmAtK": 1, "subTyAtK": 1, "extNK": 2}
 #   that the rule does not write down.
 _SUBST_CT = {"single": "singleK", "subTm": "subTmAtK",
              "subTy": "subTyAtK", "extS": "extNK",
-             "pwBody": "pwBodyK"}
+             "pwBody": "pwBodyK", "nrs": "nrsSubK"}
 
 # ★★★ WRAPPERS THAT TAKE THE ARGUMENT'S **INDEX**, not just its depth.
 #
@@ -2969,6 +2994,11 @@ _SUBST_CT = {"single": "singleK", "subTm": "subTmAtK",
 #   translation to `wkK` already builds by hand.
 # name → the argument's sort
 _IX_PRE = {"pwBodyK": "sTm"}
+
+# ⚠ `nrsK` IS NOT USED AS A FUNCTION APPLIED TO A TERM — it is a
+#   SUBSTITUTION, named where `subTy nrs M` expects one, so the emitter
+#   never applies it to an argument.  Its entry exists so the name maps;
+#   `_argshift` already knows `nrs` RAISES.
 
 def _pred(dep):
     if dep[0] == "nsuc": return dep[1]
@@ -3006,7 +3036,7 @@ def _headname(e):
 
 def _argshift(c, i, sub=None):
     """emitted argument `i` of wrapper `c`, as a shift from the result."""
-    if c in ("subTmAtK", "subTyAtK") and i == 2:
+    if c in ("subTmAtK", "subTyAtK") and i == 3:
         return SUBST_SHIFT.get(_headname(sub), ('sucD', 1))
     fds = FIELD_DEPTH.get(c, [])
     return fds[i] if i < len(fds) else ('D',)
@@ -3060,7 +3090,7 @@ def _val(e, CT, dep):
         #   `pred dep` and the weakening puts it back.
         if rho[0] == "a" and rho[1] == "pwShift":
             return AP("wkK", PAIR(RAW(srt), p),
-                      AP("subTmAtK", p,
+                      AP("subTmAtK", NSUC(p), p,
                          AP("singleK", p,
                             AP("Tm-varK", AP("Var-vzK", _pred(p)))),
                          _val(x, CT, dep)))
@@ -3089,6 +3119,11 @@ def _val(e, CT, dep):
             return AP(c, PAIR(RAW(_IX_PRE[c]), _p),
                       *[_val(x, CT, _p) for x in args[1:]])
         if c in _DEPTH_ARG: return AP(c, *([_pred(dep)] + sub))
+        if c in ("subTmAtK", "subTyAtK"):
+            # ★ SOURCE then TARGET.  The source is where the term being
+            #   substituted lives — `_argshift`'s answer for that very
+            #   argument, so the two cannot disagree.
+            return AP(c, _shift(dep, _argshift(c, 3, _sg)), dep, *sub)
         if _PRE_N.get(c) == 1: return AP(c, *([dep] + sub))
         if _PRE_N.get(c) == 2: return AP(c, *([dep, _pred(dep)] + sub))
         return AP(c, *sub)
@@ -3219,6 +3254,7 @@ open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK; ⊢pwK )
 open import DirectedHoTT.Examples.Knot.Stk
   using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK; flatK; ⊢flatK )
+open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK; ⊢nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Examples.Knot.RedRows
@@ -3388,7 +3424,7 @@ if __name__ == "__main__":
               % os.environ["JUDGE_MAX_ROWS"])
         print("    DO NOT COMMIT.  Re-run without it to restore.")
         sys.exit(0)
-    _FLOOR = {"Red": 71, "Judge": 33, "TyRed": 26, "Conv": 4}
+    _FLOOR = {"Red": 71, "Judge": 34, "TyRed": 26, "Conv": 4}
     _got = {"Red": len(_ROWS), "Judge": _njudge,
             "TyRed": len(_JCACHE["TyRed"]), "Conv": len(_JCACHE["Conv"])}
     _lost = {k: (v, _got[k]) for k, v in _FLOOR.items() if _got[k] < v}

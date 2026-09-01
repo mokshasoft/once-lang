@@ -2,7 +2,7 @@
 
 ⚠ **Tracking list.** The narrative lives in `PLAN-JUDGEMENT.md` and the
 dated `HANDOFF-2026-08-NN.md`; the rules in `LESSONS.md`. This file is
-just the checklist, newest state as of **2026-08-28**.
+just the checklist, newest state as of **2026-09-01**.
 
 Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜ not started
 
@@ -61,11 +61,24 @@ gated on `subTm`**.
 |---|---|---|
 | ✅ | the row emitter + its control | `tools/gen-knot.py`, `Knot/LookupGen` |
 | ✅ | **the `IConWf` emitter** | `emit_jrowwf`; both `_∋_∷_` rows generate + typecheck (`Knot/LookupGen`) |
-| ⬜ | `_⟶_` | 73 — prerequisite `Knot/CtorsV` (variable-depth ctors) ✅ DONE |
-| ⬜ | `_⟶ᵀ_` | 26 |
-| ⬜ | `_≅ᵀ_` | 4 |
-| ⬜ | `_⊢ty_` + `_⊢_∷_` (mutual) | 43 |
+| 🟡 | `_⟶_` | **71 of 73** — the 2 left are `ι-elim`/`ι-ielim`, which want an object-level METHOD SELECTOR (`sel`/`fields`/`lookupD`) |
+| ✅ | `_⟶ᵀ_` | **26 of 26** |
+| ✅ | `_≅ᵀ_` | **4 of 4** |
+| 🟡 | `_⊢ty_` + `_⊢_∷_` (mutual) | **34 of 43** — `⊢natrec` landed 2026-09-01, closing the `singleK` job (item 1) |
 | ⬜ | `Canon`, `Prog` | 20 |
+
+⚠ **The 9 still not emitted are three jobs, not nine problems** — the
+`NOT EMITTED` block at the head of `Knot/JudgeRows` names each:
+
+| job | rules |
+|---|---|
+| the small judgements (`DescWf`/`IDescWf` as premises) | `ty-Mu`, `ty-IMu`, `⊢⌜Mu⌝`, `⊢⌜IMu⌝`, `⊢con`, `⊢elim`, `⊢icon` — **7** |
+| a boolean function over syntax (`NoNatC`) | `⊢tr` — **1** |
+| a motive annotation the sort inference declines | `⊢ielim` — **1** |
+
+★ **The ratchet is the witness, not the verdict.** `_FLOOR` in
+`gen-knot.py` asserts these counts where they are computed; a row set
+that SHRINKS still typechecks and still sweeps green.
 
 ## E. Step 4 — the dogfooding exhibit
 

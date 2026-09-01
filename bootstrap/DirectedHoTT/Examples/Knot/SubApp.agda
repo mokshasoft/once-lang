@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — ★★★ APPLYING A SUBSTITUTION, OBJECT-LEVEL.
 --
---     subAtK s n σ t  =  app (app (subTmK (pair s (nsuc n)) t) n) σ
+--     subAtK s dd m σ t  =  app (app (subTmK (pair s dd) t) m) σ
 --
 -- ⚠ THIS IS THE SHAPE THE JUDGEMENT ROWS ACTUALLY NEED.  `subTmK` is an
 --   `ielim` and so takes an INDEX and an ELEMENT; a rule writes
@@ -32,9 +32,9 @@
 module DirectedHoTT.Examples.Knot.SubApp where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; RTm; app; pair; nsuc; Nat )
+  using ( Cx; RTm; app; pair; Nat )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢nsuc; ⊢conv )
+  using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv )
 open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
 open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-pairˡ )
@@ -45,25 +45,36 @@ open import DirectedHoTT.Examples.Knot.SubMot
   using ( subTmK; ⊢subTmK; ⊢motAppK; sortMap; sortMap-ty; sortMap-tm )
 
 ------------------------------------------------------------------------
--- ★ THE TERM.  `t` sits at `nsuc n` and the result at `n` — a
---   substitution CONSUMES one binder, which is why the index the
---   eliminator is run at is not the index of the answer.
+-- ★ THE TERM.  `t` sits at `dd`, the result at `m`, and the two are
+--   INDEPENDENT — the index the eliminator is run at is not the index of
+--   the answer, and which way they differ is the SUBSTITUTION's business.
+--
+-- ⚠⚠ IT USED TO READ `dd = nsuc m`, i.e. a substitution CONSUMES one
+--   binder.  That is true of `single` and of `extS` and false in
+--   general: `nrs : Sub (Γ ∙) ((Γ ∙) ∙)` RAISES, and `⊢natrec`'s
+--   successor premise — `subTy nrs M` — is the row that says so.
+--
+-- ★ THE UNDERLYING LEMMA WAS ALREADY GENERAL.  `⊢motAppK` takes `dd` and
+--   `m` as separate implicits; only this wrapper tied them together.
+--   ⇒ the THIRD narrow twin found in one sitting, after `⊢Var-vzKv` and
+--     `⊢Ctx-extKv`.  In each the general form cost nothing extra to
+--     state — what it cost was noticing.
 ------------------------------------------------------------------------
 
-subAtK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-subAtK s n σ t = app (app (subTmK (pair s (nsuc n)) t) n) σ
+subAtK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+subAtK s dd m σ t = app (app (subTmK (pair s dd) t) m) σ
 
-⊢subAtK : {Γ : Ctx} {s n σ t : RTm ⌊ Γ ⌋} →
+⊢subAtK : {Γ : Ctx} {s dd m σ t : RTm ⌊ Γ ⌋} →
           -- ⚠ NOT `{Δ : Cx} → sortMap {Δ} s ⟶* s`.  `s` is a term IN
           --   `⌊ Γ ⌋`, so it cannot be read at another context; only the
           --   CONCRETE instances below are context-generic, and they
           --   instantiate here.
           Γ ⊢ s ∷ Nat → sortMap s ⟶* s →
-          Γ ⊢ n ∷ Nat → Γ ⊢ σ ∷ SubTy (nsuc n) n →
-          Γ ⊢ t ∷ K (pair s (nsuc n)) →
-          Γ ⊢ subAtK s n σ t ∷ K (pair s n)
-⊢subAtK ds st dn dσ dt =
-  ⊢conv (⊢motAppK (⊢subTmK (⊢ixP ds (⊢nsuc dn)) dt) dn dσ)
+          Γ ⊢ dd ∷ Nat → Γ ⊢ m ∷ Nat → Γ ⊢ σ ∷ SubTy dd m →
+          Γ ⊢ t ∷ K (pair s dd) →
+          Γ ⊢ subAtK s dd m σ t ∷ K (pair s m)
+⊢subAtK ds st dd dm dσ dt =
+  ⊢conv (⊢motAppK (⊢subTmK (⊢ixP ds dd) dt) dm dσ)
         (red→≅ᵀ (⟶ᵀ*-IMu (⟶*-pairˡ st)))
 
 ------------------------------------------------------------------------
@@ -72,20 +83,20 @@ subAtK s n σ t = app (app (subTmK (pair s (nsuc n)) t) n) σ
 --   thing that does.
 ------------------------------------------------------------------------
 
-subTyAtK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-subTyAtK n σ A = subAtK sTy n σ A
+subTyAtK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+subTyAtK dd m σ A = subAtK sTy dd m σ A
 
-subTmAtK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-subTmAtK n σ t = subAtK sTm n σ t
+subTmAtK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+subTmAtK dd m σ t = subAtK sTm dd m σ t
 
-⊢subTyAtK : {Γ : Ctx} {n σ A : RTm ⌊ Γ ⌋} →
-            Γ ⊢ n ∷ Nat → Γ ⊢ σ ∷ SubTy (nsuc n) n →
-            Γ ⊢ A ∷ K (pair sTy (nsuc n)) →
-            Γ ⊢ subTyAtK n σ A ∷ K (pair sTy n)
+⊢subTyAtK : {Γ : Ctx} {dd m σ A : RTm ⌊ Γ ⌋} →
+            Γ ⊢ dd ∷ Nat → Γ ⊢ m ∷ Nat → Γ ⊢ σ ∷ SubTy dd m →
+            Γ ⊢ A ∷ K (pair sTy dd) →
+            Γ ⊢ subTyAtK dd m σ A ∷ K (pair sTy m)
 ⊢subTyAtK = ⊢subAtK ⊢sTy sortMap-ty
 
-⊢subTmAtK : {Γ : Ctx} {n σ t : RTm ⌊ Γ ⌋} →
-            Γ ⊢ n ∷ Nat → Γ ⊢ σ ∷ SubTy (nsuc n) n →
-            Γ ⊢ t ∷ K (pair sTm (nsuc n)) →
-            Γ ⊢ subTmAtK n σ t ∷ K (pair sTm n)
+⊢subTmAtK : {Γ : Ctx} {dd m σ t : RTm ⌊ Γ ⌋} →
+            Γ ⊢ dd ∷ Nat → Γ ⊢ m ∷ Nat → Γ ⊢ σ ∷ SubTy dd m →
+            Γ ⊢ t ∷ K (pair sTm dd) →
+            Γ ⊢ subTmAtK dd m σ t ∷ K (pair sTm m)
 ⊢subTmAtK = ⊢subAtK ⊢sTm sortMap-tm
