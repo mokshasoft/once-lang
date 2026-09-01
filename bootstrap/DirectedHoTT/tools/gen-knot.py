@@ -1442,7 +1442,11 @@ def _mutual_rows(CT, TEL, dummy):
                 #   former of each sort, which exists at every depth.
                 if SPIKE_WIDE:
                     _slots += [AP("IDesc-nilK"), AP("ICon-iK"), AP("DCon-iK")]
-                return TUP(*(_slots + [RAW("num %d" % tg)]))
+                _slots += [RAW("num %d" % tg)]
+                # ★ the per-tag payload, padded — one dummy, AFTER the tag,
+                #   because its type is what the tag would select.
+                if SPIKE_SUM: _slots += [AP("IxUnitK")]
+                return TUP(*_slots)
             # ★ a `∋` premise is foreign too, at `_∋_∷_` — the judgement
             #   `Knot/Lookup` built by hand, and the first one there was.
             ps = []
@@ -1706,6 +1710,28 @@ IJUDGE_WIDE = """Σ' Nat
               (Σ' (IMu KnotD IPair (pair sDCon (var (vs (vs (vs (vs (vs vz))))))))
                   Nat))))))"""
 
+# ★★★ THE PER-TAG-PAYLOAD SPIKE (`SPIKE_SUM=1`) — MEASUREMENT ONLY.
+#
+# `JUDGEMENT-ATTEMPTS` §10.5 recommends keeping the five slots consumers
+# PROJECT flat, and putting the merge-only subjects behind ONE per-tag
+# payload — width 5 → 6 rather than 5 → 11.  §10.6 left its cost
+# unmeasured; this emits the SAME 33 rules at width 6 with the payload
+# padded by `Knot/IxD`'s nullary dummy, which is exactly what the 43
+# typing rows would carry.
+#
+# ⚠ THE SPIKE INDEXES THE PAYLOAD BY THE **DEPTH**, not the tag.  In the
+#   real design it is indexed by the tag, which is a NUMERAL in every
+#   row; the depth is a VARIABLE, so this is the harder index and the
+#   measurement is an UPPER bound, not an under-estimate.
+IJUDGE_SUM = """Σ' Nat
+    (Σ' (IMu CtxD INat (var vz))
+      (Σ' (IMu KnotD IPair (pair sTm (var (vs vz))))
+        (Σ' (IMu KnotD IPair (pair sTy (var (vs (vs vz)))))
+          (Σ' Nat
+              (IMu IxD INat (var (vs (vs (vs (vs vz))))))))))"""
+
+SPIKE_SUM = bool(os.environ.get("SPIKE_SUM"))
+
 IJUDGE_DEF = """Σ' Nat
     (Σ' (IMu CtxD INat (var vz))
       (Σ' (IMu KnotD IPair (pair sTm (var (vs vz))))
@@ -1717,7 +1743,8 @@ open import DirectedHoTT.Examples.Knot.Lookup using ( LkD; ILk; LkWf )
 open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
 open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )
 open import DirectedHoTT.Examples.Knot.NoNatCRows using ( NoNatCD; INoNatC )
-open import DirectedHoTT.Examples.Knot.NoNatCWf using ( NoNatCWf )"""
+open import DirectedHoTT.Examples.Knot.NoNatCWf using ( NoNatCWf )
+open import DirectedHoTT.Examples.Knot.IxD using ( IxD; IxWf; IxUnitK; ⊢IxUnitK )"""
 
 JWFTOP = """
 ------------------------------------------------------------------------
@@ -1766,6 +1793,8 @@ def write_mutual(out, CT):
     TEL = ([TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"),
             TKNOT("sIDesc"), TKNOT("sICon"), TKNOT("sDCon"), TNAT()]
            if SPIKE_WIDE else
+           [TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"), TNAT(), TIX()]
+           if SPIKE_SUM else
            [TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"), TNAT()])
     rows, skipped = _mutual_rows(CT, TEL, AP("Tm-unitK"))
     # ⚠⚠ THE CAP MUST BITE **BEFORE** `JudgeD` IS BUILT.  Truncating only
@@ -1787,7 +1816,8 @@ def write_mutual(out, CT):
           "-- ⚠ AND THE PADDING IS WHAT A UNIFORM TELESCOPE COSTS: the slot",
           "--   cannot change SORT with the tag.",
           "IJudge : RTy ε", "IJudge =",
-          "  " + (IJUDGE_WIDE if SPIKE_WIDE else IJUDGE_DEF), ""]
+          "  " + (IJUDGE_WIDE if SPIKE_WIDE
+                  else IJUDGE_SUM if SPIKE_SUM else IJUDGE_DEF), ""]
     L.append("-- ⚠ NOT EMITTED — %d of %d rules:" % (len(skipped), len(skipped) + len(rows)))
     for n, w in skipped: L.append("--     %-10s %s" % (n, w))
     L.append("")
@@ -1839,7 +1869,9 @@ def write_mutual(out, CT):
     # ⬜ THE REMAINING LEVER IS **WHICH ROWS**, not how many — bisect the
     #   2.6× spread.  ⬜ A hoist of the shared top rungs was tried first and
     #   MEASURED AT ZERO (40s vs a 38s baseline); see `emit_jrowwf`'s call.
-    JWF_ROWS = 4
+    # ⚠ MEASUREMENT KNOB, same contract as `JUDGE_MAX_ROWS`: the spikes
+    #   vary rows-per-module to find where a width fits.
+    JWF_ROWS = int(os.environ.get("JWF_ROWS", 4))
     _n = len(rows)
     _bounds = [(i, min(i + JWF_ROWS, _n)) for i in range(0, _n, JWF_ROWS)]
     # ⚠ MORE THAN 26 PARTS RUNS PAST `Z` into `[`, `\\`, `]` — real files
@@ -1850,6 +1882,21 @@ def write_mutual(out, CT):
         sys.exit("  ⇒ %d parts: the A–Z naming is exhausted.  Raise "
                  "JWF_ROWS or widen the scheme." % len(_bounds))
     _parts = [chr(ord("A") + i) for i in range(len(_bounds))]
+    # ★★★ AND REMOVE THE PARTS A PREVIOUS RUN LEFT BEHIND.
+    #
+    # ⚠⚠ THE `>26` GUARD ABOVE DOES NOT COVER THIS, and I found out by
+    #   tripping it: `JWF_ROWS=2` writes A–Q, the next clean run writes
+    #   A–I, and J–Q survive as REAL FILES holding a stale index — which
+    #   `sweep.sh` then checks, because it globs `*.agda`.  It is the
+    #   same failure the `>26` guard exists for (files nothing rewrites),
+    #   arriving from the other direction: FEWER parts, not more.
+    # ★ `verification-that-covers-less-than-it-claims`: a sweep that
+    #   checks a stale module is not a weaker check, it is a WRONG one —
+    #   it would have gone green on a width the tree no longer uses.
+    for _q in (chr(ord("A") + i) for i in range(len(_bounds), 26)):
+        _stale = os.path.join(out, "JudgeWf%s.agda" % _q)
+        if os.path.exists(_stale):
+            os.remove(_stale); print("  removed stale", "JudgeWf" + _q)
     for _pi, (part, (lo, hi)) in enumerate(zip(_parts, _bounds)):
         # ⚠ EACH PART IMPORTS EVERY EARLIER PART, not just its predecessor:
         #   Agda's `open import` does not RE-EXPORT, so the final assembly
@@ -2196,6 +2243,9 @@ def TNAT():        return ('tnat',)
 def TJ(desc, ity, wf, tel): return ('tj', desc, ity, wf, tel)
 def TCTX():        return ('tctx',)
 def TKNOT(sort):   return ('tknot', sort)
+# ★ THE PER-TAG PAYLOAD SLOT (`SPIKE_SUM`) — an `IMu` over `Knot/IxD` at a
+#   Nat index, i.e. structurally the same shape as the `Ctx` slot.
+def TIX():         return ('tix',)
 
 def _code(comp, d):
     """the object-level code for telescope component `comp` at depth `d`.
@@ -2204,6 +2254,7 @@ def _code(comp, d):
     if comp[0] == 'tj':    return AP("⌜IMu⌝", RAW(comp[1]), RAW(comp[2]), d)
     if comp[0] == 'tnat':  return RAW("⌜Nat⌝")
     if comp[0] == 'tctx':  return AP("⌜IMu⌝", RAW("CtxD"), RAW("INat"), d)
+    if comp[0] == 'tix':   return AP("⌜IMu⌝", RAW("IxD"), RAW("INat"), d)
     return AP("⌜IMu⌝", RAW("KnotD"), RAW("IPair"), PAIR(RAW(comp[1]), d))
 
 def _proj(c, n, e):
@@ -2333,6 +2384,9 @@ WF_CTOR.update({
     #   β-steps afterwards — the `WK` post.
     "pwBodyK":  ("⊢pwBodyK",  ["IX", "MU"],        "WK"),
     "nrsSubK":  ("⊢nrsSubK",  ["DD"],              None),
+    # ★ the `SPIKE_SUM` payload dummy: `DX` hands it the index TERM and
+    #   then its derivation, the shape every nullary `…Kv` lemma takes.
+    "IxUnitK":  ("⊢IxUnitK",  ["DX"],              None),
 })
 
 def _telty(comp):
@@ -2340,6 +2394,7 @@ def _telty(comp):
 
 def _famwf(comp):
     if comp[0] == 'tj':   return comp[3]
+    if comp[0] == 'tix':  return "IxWf"
     return "CtxWf" if comp[0] == 'tctx' else "KnotWf"
 
 def _ixderiv(comp, dnat):
@@ -2347,7 +2402,9 @@ def _ixderiv(comp, dnat):
     ⚠ `CtxD`'s index is `INat` — already `El ⌜Nat⌝` — and `KnotD`'s is
       `Σ' Nat Nat`.  The two want OPPOSITE coercions, and this is the
       only place that difference is written down."""
-    if comp[0] == 'tctx': return "toI " + par(dnat)
+    # ⚠ `tix` INDEXES BY A BARE `Nat`, exactly as `tctx` does — so it
+    #   takes `toI`, and reading it as a knot sort emits `⊢ixP ⊢tix`.
+    if comp[0] in ('tctx', 'tix'): return "toI " + par(dnat)
     return "⊢ixP ⊢%s %s" % (comp[1], par(dnat))
 
 def _codewf(comp, dnat):
@@ -2372,6 +2429,7 @@ def _binder_comp(code):
     fam = args[0][1]
     if fam in FOREIGN: return FOREIGN[fam], args[2]
     if fam == "CtxD": return TCTX(), args[2]
+    if fam == "IxD":  return TIX(), args[2]
     return TKNOT(args[2][1][1]), args[2][2]    # PAIR(RAW(sort), depth)
 
 # ★★★ THE DEPTH IS THREADED THROUGH THE CONSTRUCTOR TREE, not guessed.
