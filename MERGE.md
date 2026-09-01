@@ -40,12 +40,40 @@ Special scrutiny, in order:
   judgment forms → 51 over two) and the path filter below printed nothing.
   Resolve the closure and diff THAT, not the directory:
 
-      git diff master..HEAD --stat -- \
-        formal/Once/Spec.agda formal/Once/Spec/ \
-        formal/Once/TypeCheck/Judgment.agda formal/Once/Denotation/Trace.agda
+      git diff master..HEAD --stat -- $(python3 formal/scripts/spec-closure.py)
 
-  and re-derive the list from `Once/Spec*.agda`'s imports whenever it changes
-  — a stale list is the same hole again.
+  `formal/scripts/spec-closure.py` resolves the transitive `open import …
+  public` closure of `Once.Spec` and prints it as paths, so the list is
+  GENERATED rather than maintained — a hand-written one goes stale and is the
+  same hole again. It is 16 modules today:
+
+      Once/Spec.agda + Once/Spec/{Type,Syntax,Typing,Meaning,Correct}.agda
+      Once/Type.agda            Once/TypeCheck/Raw.agda
+      Once/TypeCheck/Judgment.agda                       (= Once.Spec.Typing)
+      Once/Denotation/{Admissible,Trace,ValueDomain,Behavior,Meaning,MainMeaning}.agda
+      Once/Adequacy.agda                                 (= Once.Spec.Correct)
+
+  The list this file carried before named FOUR paths and omitted
+  `Once/Type.agda`, `Once/TypeCheck/Raw.agda`, `Once/Adequacy.agda` and five of
+  the six `Denotation` modules.
+
+- **The re-export closure is not the whole trust surface.** Two leaks the
+  closure does NOT show, found 2026-09-01 and recorded here so a reader does
+  not have to rediscover them:
+
+    * **Rule premises reach outside it.** `Once.TypeCheck.Judgment` calls
+      `composeMid`, `classifyAppHead` and the four lookups from
+      `Once.TypeCheck.Classify` — a module that is NOT in the closure and whose
+      names `Once.Spec` does not export. So which programs are well-typed can
+      be changed by editing a file the audit surface cannot see. Plan 0.80 /
+      D134 is removing these premises; until it finishes, **diff
+      `formal/Once/TypeCheck/Classify.agda` as part of the spec review.**
+    * **The meaning is indexed by the compiler.** `Denotation.MainMeaning`'s
+      `meaningᵈ` takes `C.Module` (`Once.Compile`), `AS.ModuleTyped`
+      (`Once.Adequacy.AcceptSound`) and `MC.HasValidMain-decl`
+      (`Once.Adequacy.ModuleComplete`) — two of them the compiler's own PROOF
+      modules — and dispatches on `C.extractFunctions`. Not a logical
+      circularity, but a trust one. Open; see plan 0.80's P3.
 - **Top-level module impact.** The analysis must STATE which top-level
   modules the diff touches, each with what changed and why — these are the
   trust anchors, so their diffs get read hunk by hunk, not skimmed:
