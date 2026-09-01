@@ -1013,30 +1013,6 @@ completeness-gap-initial-app-check-eq {ctx} arg T eqC
 
 -- (Plan 0.52 M1: `completeness-gap-arr-app-check-eq` retired with `t-arr-app-check`.)
 
--- D126: the closed-expression lift fires at BOTH arrow purities on the SAME two
--- decisions, so a pure success transfers to eff by SHARING them. This is why
--- `t-closed-lift` is grade-polymorphic: `embedOrSubsume-lifts` below says every
--- successful pure-arrow check also succeeds at the eff arrow, and a pure-only
--- lift would have made that false the moment a closed expression lifted.
-closed-lift-aux-lifts : ∀ (ctx : NamedCtx) (e : RawExpr) (T' A B : Type)
-    {Ψ' : Surface.Usage (NamedCtx.size ctx)}
-    (eE' : SExpr (NamedCtx.debruijn ctx) Ψ' T') (d' f' : ℕ)
-    (w : ctx ⊢ᵢ e ∶ T' ⨾ Ψ')
-    (mc : Maybe (ClosedLiftShape e))
-    (dB : Dec (T' ≡ B)) (dΨ : Maybe (Ψ' ≡ Surface.zeroUsage))
-    {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind T.Many T.pure ] B)} {d f : ℕ}
-  → proj₁ (closed-lift-aux ctx e T' A B T.pure eE' d' f' w mc dB dΨ) ≡ success Ψ eE d f
-  → ∃[ eE'' ] ∃[ d'' ] ∃[ f'' ]
-      proj₁ (closed-lift-aux ctx e T' A B T.eff eE' d' f' w mc dB dΨ) ≡ success Ψ eE'' d'' f''
--- Mirrors `closed-lift-aux`'s clause order exactly — each rejection leaves the
--- other columns unsplit, which is what lets these three reduce to `failure`.
-closed-lift-aux-lifts ctx e T' A B eE' d' f' w _        (no _)     _           ()
-closed-lift-aux-lifts ctx e T' A B eE' d' f' w _        (yes _)    nothing     ()
-closed-lift-aux-lifts ctx e T' A B eE' d' f' w nothing  (yes refl) (just refl) ()
-closed-lift-aux-lifts ctx e T' A B eE' d' f' w (just c) (yes refl) (just refl) refl =
-  _ , _ , _ , refl
-
 -- The ONE bridge for every infer-then-check site (the generic `checkElabV`
 -- catch-all is definitionally `embedOrSubsume … (inferElabV …)`): embed at the
 -- pure target, SUBSUME at the eff target. (eff side: eff-arrow ≠ inferred
@@ -1059,201 +1035,15 @@ embedOrSubsume-lifts ctx e A B (success T' Ψ' eE' d' f' , w) eqP
 ...       | yes refl | yes refl = _ , _ , _ , refl
 ...       | no ¬a    | _        = ⊥-elim (¬a refl)
 ...       | yes _     | no ¬b    = ⊥-elim (¬b refl)
--- D126 CHANGED THE GROUND UNDER THIS LEMMA. What used to stand here said the
--- PURE target "never subsumes, so it fails for every inferred T'" — and the
--- closed-expression lift is exactly what makes that false. So the `no` cases are
--- no longer absurd: they are the lift, at both arrows, on the same decisions.
--- Still case `T'`, because `embedOrSubsume-no` matches `T'` first.
-embedOrSubsume-lifts ctx e A B (success Unit Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e Unit A B eE' d' f' w
-    (Raw.closedLiftShape? e) (Unit ≟T B) (Surface.zeroUsage? Ψ') eqP'
-embedOrSubsume-lifts ctx e A B (success Void Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e Void A B eE' d' f' w
-    (Raw.closedLiftShape? e) (Void ≟T B) (Surface.zeroUsage? Ψ') eqP'
-embedOrSubsume-lifts ctx e A B (success Int Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e Int A B eE' d' f' w
-    (Raw.closedLiftShape? e) (Int ≟T B) (Surface.zeroUsage? Ψ') eqP'
-embedOrSubsume-lifts ctx e A B (success Float Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e Float A B eE' d' f' w
-    (Raw.closedLiftShape? e) (Float ≟T B) (Surface.zeroUsage? Ψ') eqP'
-embedOrSubsume-lifts ctx e A B (success Str Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e Str A B eE' d' f' w
-    (Raw.closedLiftShape? e) (Str ≟T B) (Surface.zeroUsage? Ψ') eqP'
-embedOrSubsume-lifts ctx e A B (success Buffer Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e Buffer A B eE' d' f' w
-    (Raw.closedLiftShape? e) (Buffer ≟T B) (Surface.zeroUsage? Ψ') eqP'
-embedOrSubsume-lifts ctx e A B (success (A₁ T.* B₁) Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e (A₁ T.* B₁) A B eE' d' f' w
-    (Raw.closedLiftShape? e) ((A₁ T.* B₁) ≟T B) (Surface.zeroUsage? Ψ') eqP'
-embedOrSubsume-lifts ctx e A B (success (A₁ T.+ B₁) Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e (A₁ T.+ B₁) A B eE' d' f' w
-    (Raw.closedLiftShape? e) ((A₁ T.+ B₁) ≟T B) (Surface.zeroUsage? Ψ') eqP'
-embedOrSubsume-lifts ctx e A B (success (T.μ-type F) Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e (T.μ-type F) A B eE' d' f' w
-    (Raw.closedLiftShape? e) ((T.μ-type F) ≟T B) (Surface.zeroUsage? Ψ') eqP'
-embedOrSubsume-lifts ctx e A B (success (T.ν-type F) Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e (T.ν-type F) A B eE' d' f' w
-    (Raw.closedLiftShape? e) ((T.ν-type F) ≟T B) (Surface.zeroUsage? Ψ') eqP'
--- The KIND-clashing arrow rows are as uniform as the non-arrows: the reordered
--- `≟T-⇒-aux` decides them on the kind alone, and `embedOrSubsume-no`'s
--- subsumption clause wants a MANY-PURE `T'`, which these are not.
-embedOrSubsume-lifts ctx e A B (success (A' T.⇒[ T.mk-kind T.One q ] B') Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e (A' T.⇒[ T.mk-kind T.One q ] B') A B eE' d' f' w
-    (Raw.closedLiftShape? e)
-    ((A' T.⇒[ T.mk-kind T.One q ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
-embedOrSubsume-lifts ctx e A B (success (A' T.⇒[ T.mk-kind T.Zero q ] B') Ψ' eE' d' f' , w) eqP | no _ | eqP' =
-  closed-lift-aux-lifts ctx e (A' T.⇒[ T.mk-kind T.Zero q ] B') A B eE' d' f' w
-    (Raw.closedLiftShape? e)
-    ((A' T.⇒[ T.mk-kind T.Zero q ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
--- A MANY-PURE `T'` at the eff target is the one row that meets SUBSUMPTION.
--- Split its two deciders: when both fit, the outer `≟T` would have fired
--- (hence `¬p refl`); otherwise the elaborator falls through to the same lift.
-embedOrSubsume-lifts ctx e A B
-  (success (A' T.⇒[ T.mk-kind T.Many T.pure ] B') Ψ' eE' d' f' , w) eqP | no ¬p | eqP'
-  with A ≟T A' | B ≟T B'
-... | yes refl | yes refl = ⊥-elim (¬p refl)
--- `yes refl`, not `yes _`: the subsumption clause matches `refl`, so an opaque
--- proof leaves it stuck and the fall-through never reduces.
-... | yes refl | no _     =
-      closed-lift-aux-lifts ctx e (A T.⇒[ T.mk-kind T.Many T.pure ] B') A B eE' d' f' w
-        (Raw.closedLiftShape? e)
-        ((A T.⇒[ T.mk-kind T.Many T.pure ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
-... | no _     | _        =
-      closed-lift-aux-lifts ctx e (A' T.⇒[ T.mk-kind T.Many T.pure ] B') A B eE' d' f' w
-        (Raw.closedLiftShape? e)
-        ((A' T.⇒[ T.mk-kind T.Many T.pure ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
+-- D127 PUTS THE GROUND BACK. D126's closed-expression lift made
+-- `embedOrSubsume-no` succeed at a PURE arrow target, so this lemma had to
+-- enumerate every inferred `T'` and route each through `closed-lift-aux-lifts`
+-- — sixteen rows. With the lift deleted, `embedOrSubsume-no` at a pure arrow
+-- target only ever FAILS, so the `no` case is absurd again and the enumeration
+-- collapses to this one clause.
+embedOrSubsume-lifts ctx e A B (success T' Ψ' eE' d' f' , w) eqP | no _ | ()
 
--- A MANY-EFF `T'` is the one row where the eff target can EMBED. Then the pure
--- side's own decision was cyclic, so it cannot have succeeded: nothing to
--- transfer. (Split one column at a time — that is all the decider needs.)
-embedOrSubsume-lifts ctx e A B
-  (success (A' T.⇒[ T.mk-kind T.Many T.eff ] B') Ψ' eE' d' f' , w) eqP | no _ | eqP'
-  with A ≟T A'
-... | no _ =
-      closed-lift-aux-lifts ctx e (A' T.⇒[ T.mk-kind T.Many T.eff ] B') A B eE' d' f' w
-        (Raw.closedLiftShape? e)
-        ((A' T.⇒[ T.mk-kind T.Many T.eff ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
-... | yes refl with B ≟T B'
-...   | no _ =
-        closed-lift-aux-lifts ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B') A B eE' d' f' w
-          (Raw.closedLiftShape? e)
-          ((A T.⇒[ T.mk-kind T.Many T.eff ] B') ≟T B) (Surface.zeroUsage? Ψ') eqP'
-...   | yes refl with (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≟T B | eqP'
-...     | yes () | _
-...     | no _   | ()
-
-------------------------------------------------------------------------
--- D126: the closed-expression lift's own reduction
-------------------------------------------------------------------------
-
--- At a PURE arrow the target can never BE the inferred type — `X ⇒ B ≡ B` is
--- cyclic — so `embedOrSubsume` always takes its `no` branch and lands in
--- `closed-lift-aux` with both of its decisions satisfied.
-embedOrSubsume-closed-pure : ∀ (ctx : NamedCtx) (e : RawExpr) (X B : Type)
-    (c : ClosedLiftShape e)
-    {eE₀ : SExpr (NamedCtx.debruijn ctx) Surface.zeroUsage B} {d₀ f₀ : ℕ}
-    {w : ctx ⊢ᵢ e ∶ B ⨾ Surface.zeroUsage}
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      proj₁ (embedOrSubsume ctx e (X T.⇒[ T.mk-kind T.Many T.pure ] B)
-               (success B Surface.zeroUsage eE₀ d₀ f₀ , w))
-        ≡ success Surface.zeroUsage eE d f
--- NESTED, not two columns: `B ≟T B` only APPEARS in the goal once the outer
--- decision has resolved and `embedOrSubsume-no` has reduced, so abstracting it
--- up front would abstract nothing.
-embedOrSubsume-closed-pure ctx e X B c
-  with (X T.⇒[ T.mk-kind T.Many T.pure ] B) ≟T B
-... | yes ()
-... | no _ with B ≟T B
-...   | no ¬q   = ⊥-elim (¬q refl)
-...   | yes refl
-        rewrite Raw.closedLiftShape?-just c
-              | Surface.zeroUsage?-just {NamedCtx.size ctx} = _ , _ , _ , refl
-
--- …and the eff arrow rides `embedOrSubsume-lifts`, which is the whole point of
--- making the rule grade-polymorphic.
-embedOrSubsume-closed : ∀ (ctx : NamedCtx) (e : RawExpr) (X B : Type) (π : T.Purity)
-    (c : ClosedLiftShape e)
-    {eE₀ : SExpr (NamedCtx.debruijn ctx) Surface.zeroUsage B} {d₀ f₀ : ℕ}
-    {w : ctx ⊢ᵢ e ∶ B ⨾ Surface.zeroUsage}
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      proj₁ (embedOrSubsume ctx e (X T.⇒[ T.mk-kind T.Many π ] B)
-               (success B Surface.zeroUsage eE₀ d₀ f₀ , w))
-        ≡ success Surface.zeroUsage eE d f
-embedOrSubsume-closed ctx e X B T.pure c = embedOrSubsume-closed-pure ctx e X B c
-embedOrSubsume-closed ctx e X B T.eff  c {eE₀} {d₀} {f₀} {w} =
-  embedOrSubsume-lifts ctx e X B (success B Surface.zeroUsage eE₀ d₀ f₀ , w)
-    (proj₂ (proj₂ (proj₂ (embedOrSubsume-closed-pure ctx e X B c {eE₀} {d₀} {f₀} {w}))))
-
--- The elaborator's check-mode dispatch is by expression SHAPE, so this splits on
--- the side condition — which is precisely the list of shapes that fall through
--- to `embedOrSubsume`. That is what the premise is FOR.
-checkElab-closed-lift : ∀ {ctx : NamedCtx} {e : RawExpr} {B : Type}
-    (X : Type) (π : T.Purity) (c : ClosedLiftShape e)
-    {eE₀ : SExpr (NamedCtx.debruijn ctx) Surface.zeroUsage B} {d₀ f₀ : ℕ}
-  → inferElab ctx e ≡ success B Surface.zeroUsage eE₀ d₀ f₀
-  → ∃[ eE ] ∃[ d ] ∃[ f ]
-      checkElab ctx e (X T.⇒[ T.mk-kind T.Many π ] B)
-        ≡ success Surface.zeroUsage eE d f
-checkElab-closed-lift {ctx} X π (cls-var {x = x}) eqInf with inferElabV ctx (Raw.RVar x)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-closed-lift {ctx} {B = B} X π (cls-var {x = x}) eqInf
-  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
-... | refl = embedOrSubsume-closed ctx (Raw.RVar x) X B π (cls-var {x = x})
-
-checkElab-closed-lift {ctx} X π (cls-qual {n = n} {a = a}) eqInf with inferElabV ctx (Raw.RQualified n a)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-closed-lift {ctx} {B = B} X π (cls-qual {n = n} {a = a}) eqInf
-  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
-... | refl = embedOrSubsume-closed ctx (Raw.RQualified n a) X B π (cls-qual {n = n} {a = a})
-
-checkElab-closed-lift {ctx} X π (cls-res {cn = cn}) eqInf with inferElabV ctx (Raw.RResolved cn)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-closed-lift {ctx} {B = B} X π (cls-res {cn = cn}) eqInf
-  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
-... | refl = embedOrSubsume-closed ctx (Raw.RResolved cn) X B π (cls-res {cn = cn})
-
-checkElab-closed-lift {ctx} X π (cls-let {x = x} {e₁ = e₁} {e₂ = e₂}) eqInf with inferElabV ctx (Raw.RLet x e₁ e₂)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-closed-lift {ctx} {B = B} X π (cls-let {x = x} {e₁ = e₁} {e₂ = e₂}) eqInf
-  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
-... | refl = embedOrSubsume-closed ctx (Raw.RLet x e₁ e₂) X B π (cls-let {x = x} {e₁ = e₁} {e₂ = e₂})
-
-checkElab-closed-lift {ctx} X π (cls-destr {s = sc} {x = xl} {eL = eL} {y = xr} {eR = eR}) eqInf with inferElabV ctx (Raw.RDestruct sc xl eL xr eR)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-closed-lift {ctx} {B = B} X π (cls-destr {s = sc} {x = xl} {eL = eL} {y = xr} {eR = eR}) eqInf
-  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
-... | refl = embedOrSubsume-closed ctx (Raw.RDestruct sc xl eL xr eR) X B π (cls-destr {s = sc} {x = xl} {eL = eL} {y = xr} {eR = eR})
-
--- No `with inferElabV` for the two literal infers: they REDUCE, so there is
--- nothing to abstract and the equation alone pins the type.
-checkElab-closed-lift {ctx} X π (cls-unit) eqInf with eqInf
-... | refl = embedOrSubsume-closed ctx (Raw.RUnit) X Unit π (cls-unit)
-
--- No `with inferElabV` for the two literal infers: they REDUCE, so there is
--- nothing to abstract and the equation alone pins the type.
-checkElab-closed-lift {ctx} X π (cls-str {s = str}) eqInf with eqInf
-... | refl = embedOrSubsume-closed ctx (Raw.RStringLit str) X Str π (cls-str {s = str})
-
-checkElab-closed-lift {ctx} X π (cls-annot {e = e₀} {T = T₀}) eqInf with inferElabV ctx (Raw.RAnnot e₀ T₀)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-closed-lift {ctx} {B = B} X π (cls-annot {e = e₀} {T = T₀}) eqInf
-  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
-... | refl = embedOrSubsume-closed ctx (Raw.RAnnot e₀ T₀) X B π (cls-annot {e = e₀} {T = T₀})
-
-checkElab-closed-lift {ctx} X π (cls-binop {op = op} {a = a₁} {b = b₁}) eqInf with inferElabV ctx (Raw.RBinOp op a₁ b₁)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-closed-lift {ctx} {B = B} X π (cls-binop {op = op} {a = a₁} {b = b₁}) eqInf
-  | success T'' Ψ'' eE'' d'' f'' , w with eqInf
-... | refl = embedOrSubsume-closed ctx (Raw.RBinOp op a₁ b₁) X B π (cls-binop {op = op} {a = a₁} {b = b₁})
-
-
+-- The two arg-driven-app completeness gaps (pre-existing, not D127's).
 postulate
   completeness-gap-arg-driven-app-check :
     ∀ {ctx : NamedCtx} {f arg : RawExpr} {X T : Type}
@@ -1279,60 +1069,6 @@ postulate
         checkElab ctx (Raw.RApp f arg) (A T.⇒[ T.mk-kind T.Many T.eff ] B)
           ≡ success (Ψ₁ +ᵘ (T.Many *ᵘ Ψ₂)) eE d fr
 
--- Regrade a morphism to `eff` (Plan 0.52). Grade-poly leaves and compose/case
--- rebuild directly; the pure-fixed (m-pair/m-curry) and import-grade-fixed
--- (m-named/m-named-resolved/m-cata) morphisms cannot, so the caller falls back
--- to subsumption-via-infer.
-regrade-eff : ∀ {ctx e A B π}
-            → ctx ⊢ᵐ e ∶ A ⇨[ π ] B
-            → Maybe (ctx ⊢ᵐ e ∶ A ⇨[ T.eff ] B)
-regrade-eff (m-id eqL eqI)       = just (m-id eqL eqI)
-regrade-eff (m-fst eqL eqI)      = just (m-fst eqL eqI)
-regrade-eff (m-snd eqL eqI)      = just (m-snd eqL eqI)
-regrade-eff (m-terminal eqL eqI) = just (m-terminal eqL eqI)
-regrade-eff (m-initial eqL eqI)  = just (m-initial eqL eqI)
-regrade-eff (m-inl eqL eqI)      = just (m-inl eqL eqI)
-regrade-eff (m-inr eqL eqI)      = just (m-inr eqL eqI)
-regrade-eff (m-const g)          = just (m-const g)
-regrade-eff (m-compose eqB f g)  with regrade-eff f | regrade-eff g
-... | just f' | just g' = just (m-compose eqB f' g')
-... | _       | _       = nothing
-regrade-eff (m-case f g)         with regrade-eff f | regrade-eff g
-... | just f' | just g' = just (m-case f' g')
-... | _       | _       = nothing
-regrade-eff _                    = nothing
-
--- Plan 0.52: the former `subsume-residual` postulate (the m-compose/m-case
--- pure⊑eff wrinkle) is now DISCHARGED — the elaborator's eff-clause
--- accepts a subsumed pure compose/case (checkCompose/checkCase try eff, else check
--- at pure and wrap in arr'/t-subsume), and compose/case-eff-complete (MorphComplete)
--- prove it. See subsume-complete below.
-
-
-------------------------------------------------------------------------
--- MERGED from Once.TypeCheck.MorphComplete (strong-completeness migration):
--- morph-elab/StrongElab/helpers/eff-complete now live here (before the mutual
--- block that consumes morph-complete), so the morph leaves can be discharged
--- via check-completeV/gd-completeV.
-------------------------------------------------------------------------
-
-private
-  just≢nothing : ∀ {A : Set} {x : A} → just x ≡ nothing → ⊥
-  just≢nothing ()
-
--- `checkElabV` on a morphism succeeds with an extractable result + witness.
-StrongElab : (ctx : NamedCtx) (e : RawExpr) (A B : Type) (π : T.Purity) → Set
-StrongElab ctx e A B π =
-  Σ-syntax (IR ⌊ A ⌋ ⌊ B ⌋) λ m →
-  Σ-syntax (ctx ⊢ᵐ e ∶ A ⇨[ π ] B) λ mᵐ →
-  Σ-syntax (Srf.Expr (NamedCtx.debruijn ctx) zeroUsage (A T.⇒[ T.mk-kind T.Many π ] B)) λ E →
-  Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
-  Σ-syntax (ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many π ] B) ⨾ zeroUsage) λ W →
-    (checkElabV ctx e (A T.⇒[ T.mk-kind T.Many π ] B) ≡ (success zeroUsage E d fr , W))
-  × (extract-morph-eff E ≡ just (m , refl))
-  × (extractMorphWitness W ≡ just mᵐ)
-  × (m ≡ realize-morph mᵐ)
-
 private
   -- `checkComposeGo` is called at the canonical `(composeMid …, refl)`; any
   -- `(mid, p)` collapses to it by J (singleton contractibility).
@@ -1342,66 +1078,30 @@ private
       ≡ checkComposeGo ctx f g A C π (composeMid ctx f g A) refl
   go-canonical refl = refl
 
-  -- The (just B) branch of checkComposeGo reduces to the compose success once
-  -- the two arm checks + their morphism/witness extractions are known.
+  -- D127: the (just B) branch of `checkComposeGo` reduces to the compose
+  -- success once the two ARM CHECKS are known — and that is all. The four
+  -- extraction premises are gone with the extractor, and so is the
+  -- `m ≡ mf ∘ mg` conclusion: the emitted term is `comp' Ef Eg`, built from the
+  -- arms themselves rather than from morphisms recovered out of them.
   composeGo-success : ∀ {ctx f g A C} {π : T.Purity} {B}
-    {mf : IR ⌊ B ⌋ ⌊ C ⌋} {mg : IR ⌊ A ⌋ ⌊ B ⌋} {Ef : _} {Eg : _} {Wf : _} {Wg : _} {mFᵐ : _} {mGᵐ : _}
-    {df ff dg fg : ℕ}
+    {Ψf Ψg : Surface.Usage (NamedCtx.size ctx)}
+    {Ef : _} {Eg : _} {Wf : _} {Wg : _} {df ff dg fg : ℕ}
     (eqB : composeMid ctx f g A ≡ just B)
     → checkElabV ctx f (B T.⇒[ T.mk-kind T.Many π ] C)
-        ≡ (success zeroUsage Ef df ff , Wf)
+        ≡ (success Ψf Ef df ff , Wf)
     → checkElabV ctx g (A T.⇒[ T.mk-kind T.Many π ] B)
-        ≡ (success zeroUsage Eg dg fg , Wg)
-    → extract-morph-eff Ef ≡ just (mf , refl)
-    → extract-morph-eff Eg ≡ just (mg , refl)
-    → extractMorphWitness Wf ≡ just mFᵐ
-    → extractMorphWitness Wg ≡ just mGᵐ
-    → Σ-syntax (IR ⌊ A ⌋ ⌊ C ⌋) λ m → Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
-        (checkComposeGo ctx f g A C π (just B) eqB
-          ≡ (success zeroUsage (lift-morphism m) d fr , t-morph-lift (m-compose eqB mFᵐ mGᵐ)))
-        × (m ≡ mf IR.∘ mg)
-  composeGo-success eqB eqf eqg exf exg exwf exwg
-    rewrite eqg | eqf | exf | exg | exwf | exwg = _ , _ , _ , refl , refl
+        ≡ (success Ψg Eg dg fg , Wg)
+    → Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
+        checkComposeGo ctx f g A C π (just B) eqB
+          ≡ (success (Ψf Surface.+ᵘ Ψg) (Srf.comp' Ef Eg) d fr
+            , t-compose-check eqB Wf Wg)
+  composeGo-success eqB eqf eqg rewrite eqg | eqf = _ , _ , refl
 
-  -- checkComposeGo/checkCaseGo emit `success Surface.zeroUsage …` on the sole
-  -- success leaf; recover that usage after a `with`-abstraction loses it (needed
-  -- for the eff-clause passthrough branch in compose/case-eff-complete).
-  cgo-usage : ∀ {ctx f g A C} {π : T.Purity} {mid} {eqB}
-    {Ψ : Srf.Usage (NamedCtx.size ctx)} {se d fr w}
-    → checkComposeGo ctx f g A C π mid eqB ≡ (success Ψ se d fr , w)
-    → Ψ ≡ zeroUsage
-  cgo-usage {mid = nothing} ()
-  cgo-usage {ctx} {f} {g} {A} {C} {π} {just B} eq
-    with checkElabV ctx g (A T.⇒[ T.mk-kind T.Many π ] B) | eq
-  ... | failure _ , _ | ()
-  ... | success Ψg gE dg frg , wG | eq₁
-      with checkElabV ctx f (B T.⇒[ T.mk-kind T.Many π ] C) | eq₁
-  ...   | failure _ , _ | ()
-  ...   | success Ψf fE df frf , wF | eq₂
-        with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG | eq₂
-  ...     | just _ | just _ | just _ | just _ | refl = refl
-  ...     | nothing | _ | _ | _ | ()
-  ...     | just _ | nothing | _ | _ | ()
-  ...     | just _ | just _ | nothing | _ | ()
-  ...     | just _ | just _ | just _ | nothing | ()
-
-  ccgo-usage : ∀ {ctx f g A B C} {π : T.Purity}
-    {Ψ : Srf.Usage (NamedCtx.size ctx)} {se d fr w}
-    → checkCaseGo ctx f g A B C π ≡ (success Ψ se d fr , w)
-    → Ψ ≡ zeroUsage
-  ccgo-usage {ctx} {f} {g} {A} {B} {C} {π} eq
-    with checkElabV ctx f (A T.⇒[ T.mk-kind T.Many π ] C) | eq
-  ... | failure _ , _ | ()
-  ... | success Ψf fE df frf , wF | eq₁
-      with checkElabV ctx g (B T.⇒[ T.mk-kind T.Many π ] C) | eq₁
-  ...   | failure _ , _ | ()
-  ...   | success Ψg gE dg frg , wG | eq₂
-        with extract-morph-eff fE | extract-morph-eff gE | extractMorphWitness wF | extractMorphWitness wG | eq₂
-  ...     | just _ | just _ | just _ | just _ | refl = refl
-  ...     | nothing | _ | _ | _ | ()
-  ...     | just _ | nothing | _ | _ | ()
-  ...     | just _ | just _ | nothing | _ | ()
-  ...     | just _ | just _ | just _ | nothing | ()
+  -- D127: `cgo-usage` / `ccgo-usage` DELETED. They said compose/case emit
+  -- `zeroUsage`, which was true only while the arms were closed. The usage is
+  -- now `Ψf +ᵘ Ψg` — that is the whole content of D130 — so the lemmas are not
+  -- weakened but FALSE, and their only consumers were the eff-complete family
+  -- that went with the realm.
 
   -- Plan 0.54: `checkCataGo` emits `success zeroUsage …` on its sole success leaf;
   -- recover that usage after a `with`-abstraction loses it (the eff-clause
@@ -1415,354 +1115,13 @@ private
     with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
                     alg (⟦ F ⟧T A T.⇒[ T.mk-kind T.Many π ] A) | eq
   ... | failure _ , _ | ()
-  ... | success [] algE d fr , wArg | eq₁ with extractMorphWitness wArg | eq₁
-  ...   | just _ | refl = refl
-  ...   | nothing | ()
+  ... | success [] algE d fr , wArg | refl = refl
 
--- Remaining scoped follow-ups (kept as StrongElab postulates so the recursive
--- cases can still take them as arms). They are NOT discharged here:
---   • m-named  — a bare import elaborates to a CLOSURE pre-plan-0.50 (D064); becomes a
---                direct `IR.SigOp` morphism in plan 0.50 milestone 1, when this is proven.
--- (m-const DISCHARGED via value-lift; m-cata DISCHARGED, Plan 0.54 — a cata is a
--- morphism whose grade follows its algebra, proven directly in `morph-elab` below.)
-postulate
-  named-morph-strong : ∀ {ctx : NamedCtx} {x : String} {A B : Type} {π : T.Purity}
-                     → ¬ (x ≡ "unit")
-                     → lookupLocal ctx x ≡ nothing
-                     → lookupImport (NamedCtx.imports ctx) x
-                         ≡ just (A T.⇒[ T.mk-kind T.Many π ] B)
-                     → StrongElab ctx (Raw.RVar x) A B π
-  -- Plan 0.50 Stage 2 (D064): the RESOLVED-name strong-elab leaf, at PARITY with
-  -- `named-morph-strong` (same scoped hole, for `RResolved cn`). Discharging both
-  -- is the milestone-1 follow-up; the constructor + this leaf make value-use of a
-  -- named function (`compose g g`) elaborate as a morphism.
-  named-morph-strong-resolved : ∀ {ctx : NamedCtx} {cn : CanonicalName} {A B : Type} {π : T.Purity}
-                              → lookupImport (NamedCtx.imports ctx) (showCanonical cn)
-                                  ≡ just (A T.⇒[ T.mk-kind T.Many π ] B)
-                              → StrongElab ctx (Raw.RResolved cn) A B π
-
--- `checkG` builds EXACTLY realize-global's IR (moved from RealizeAgrees so the
--- value-lift discharge of const-morph-strong can use it; self-contained).
-checkG-realize : ∀ {ctx : NamedCtx} {X : Type} {e : RawExpr} {A : Type} {m : IR ⌊ X ⌋ ⌊ A ⌋}
-  (gd : ctx ⊢ᵍ e ∶ A)
-  → checkG ctx X e A ≡ just (m , gd) → m ≡ realize-global gd
-checkG-realize (g-int n) refl = refl
--- PLAN 0.73 F3 / D120's other half: `checkG` hands back `intLit (- n)` /
--- `floatLit (negate …)` and `realize-global` reads the SAME folded payload off
--- the same witness, so the two are one term.
-checkG-realize (g-neg-int n) refl = refl
-checkG-realize (g-neg-float i f l p) refl = refl
--- `checkG`'s float clause hands back `floatLit d` and `realize-global` reads
--- the same `d` off the same witness, so the two are the same term.
--- Matching on `eq` after the rewrite gets stuck (the index mentions the
--- rewritten term), so read the component out with `maybe′` instead — the
--- rewrite has already made the left side reduce to `just (floatLit d , _)`.
--- K3: `checkG`'s float clause is TOTAL, so it reduces on the spot and the
--- `accept?-complete` rewrite that used to be needed here is gone with it.
-checkG-realize (g-float i f l p) refl = refl
-checkG-realize {ctx} {X} (g-terminal eqL eqI) eq
-  with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal" | eq
-... | llv-not-found _ | liv-not-found _ | refl = refl
-... | llv-not-found _ | liv-found _     | ()
-... | llv-found _     | _               | ()
-checkG-realize {ctx} {X} (g-pair {a = a} {b = b} {A = A} {B = B} ga gb) eq
-  with checkG ctx X a A in eqa | checkG ctx X b B in eqb | eq
-... | just (ma , _) | just (mb , _) | refl =
-      cong₂ (λ x y → IR.⟨ x , y ⟩ Heap) (checkG-realize ga eqa) (checkG-realize gb eqb)
-... | nothing       | _            | ()
-... | just _        | nothing      | ()
-checkG-realize {ctx} {X} (g-inl {arg = arg} {A = A} ga) eq
-  with checkG ctx X arg A in eqa | eq
-... | just (ma , _) | refl = cong (λ z → IR.inl Heap IR.∘ z) (checkG-realize ga eqa)
-... | nothing       | ()
-checkG-realize {ctx} {X} (g-inr {arg = arg} {B = B} gb) eq
-  with checkG ctx X arg B in eqb | eq
-... | just (mb , _) | refl = cong (λ z → IR.inr Heap IR.∘ z) (checkG-realize gb eqb)
-... | nothing       | ()
-checkG-realize {ctx} {X} (g-In {arg = arg} {F = F} {wfF = wfF} eqWF garg) eq
-  with inspectWellFormedF F | eq
-... | wfv-no _  | ()
-... | wfv-yes _ | eq'
-      with checkG ctx X arg (⟦ F ⟧T (μ-type F)) in eqarg | eq'
-...     | just (marg , _) | refl = cong (λ z → IR.In (wf-⌊⌋ wfF) Heap IR.∘ subst (λ o → IR ⌊ X ⌋ o) (⌊⟧T-commute F (μ-type F)) z) (checkG-realize garg eqarg)
-...     | nothing         | ()
-
+-- D127: the `StrongElab` postulate block that stood here is GONE with the
+-- realm. It held the `m-named` follow-up — a bare import elaborating to a
+-- closure rather than a direct `IR.SigOp` — which was a statement about
+-- morphism EXTRACTION and has no analogue once arms are ordinary terms.
 mutual
-  morph-elab : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
-             → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → StrongElab ctx e A B π
-  -- ---- bare point-free builtins (grade-poly) ----
-  morph-elab {ctx = ctx} (m-id {T = TT} eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "id") | inferElabV-RVar-fail-bridge ctx "id" (λ ()) eqLoc eqImp refl
-  ... | (failure _ , _) | refl
-    with inspectLookupLocal ctx "id" | inspectLookupImport ctx "id"
-  ... | llv-not-found eqL | liv-not-found eqI with TT ≟T TT
-  ...   | yes refl = IR.id , m-id eqL eqI , _ , _ , _ , t-morph-lift (m-id eqL eqI) , refl , refl , refl , refl
-  ...   | no ¬eq = ⊥-elim (¬eq refl)
-  morph-elab (m-id eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
-  morph-elab (m-id eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
-
-  morph-elab {ctx = ctx} (m-fst {A = A} {B = B} eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "fst") | inferElabV-RVar-fail-bridge ctx "fst" (λ ()) eqLoc eqImp refl
-  ... | (failure _ , _) | refl
-    with inspectLookupLocal ctx "fst" | inspectLookupImport ctx "fst"
-  ... | llv-not-found eqL | liv-not-found eqI with A ≟T A
-  ...   | yes refl = IR.fst , m-fst eqL eqI , _ , _ , _ , t-morph-lift (m-fst eqL eqI) , refl , refl , refl , refl
-  ...   | no ¬eq = ⊥-elim (¬eq refl)
-  morph-elab (m-fst eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
-  morph-elab (m-fst eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
-
-  morph-elab {ctx = ctx} (m-snd {A = A} {B = B} eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "snd") | inferElabV-RVar-fail-bridge ctx "snd" (λ ()) eqLoc eqImp refl
-  ... | (failure _ , _) | refl
-    with inspectLookupLocal ctx "snd" | inspectLookupImport ctx "snd"
-  ... | llv-not-found eqL | liv-not-found eqI with B ≟T B
-  ...   | yes refl = IR.snd , m-snd eqL eqI , _ , _ , _ , t-morph-lift (m-snd eqL eqI) , refl , refl , refl , refl
-  ...   | no ¬eq = ⊥-elim (¬eq refl)
-  morph-elab (m-snd eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
-  morph-elab (m-snd eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
-
-  morph-elab {ctx = ctx} (m-terminal eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp refl
-  ... | (failure _ , _) | refl
-    with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
-  ... | llv-not-found eqL | liv-not-found eqI = IR.terminal , m-terminal eqL eqI , _ , _ , _ , t-morph-lift (m-terminal eqL eqI) , refl , refl , refl , refl
-  morph-elab (m-terminal eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
-  morph-elab (m-terminal eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
-
-  morph-elab {ctx = ctx} (m-initial eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "initial") | inferElabV-RVar-fail-bridge ctx "initial" (λ ()) eqLoc eqImp refl
-  ... | (failure _ , _) | refl
-    with inspectLookupLocal ctx "initial" | inspectLookupImport ctx "initial"
-  ... | llv-not-found eqL | liv-not-found eqI = IR.initial , m-initial eqL eqI , _ , _ , _ , t-morph-lift (m-initial eqL eqI) , refl , refl , refl , refl
-  morph-elab (m-initial eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
-  morph-elab (m-initial eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
-
-  morph-elab {ctx = ctx} (m-inl {A = A} {B = B} eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "inl") | inferElabV-RVar-fail-bridge ctx "inl" (λ ()) eqLoc eqImp refl
-  ... | (failure _ , _) | refl
-    with inspectLookupLocal ctx "inl" | inspectLookupImport ctx "inl"
-  ... | llv-not-found eqL | liv-not-found eqI with A ≟T A
-  ...   | yes refl = IR.inl Heap , m-inl eqL eqI , _ , _ , _ , t-morph-lift (m-inl eqL eqI) , refl , refl , refl , refl
-  ...   | no ¬eq = ⊥-elim (¬eq refl)
-  morph-elab (m-inl eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
-  morph-elab (m-inl eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
-
-  morph-elab {ctx = ctx} (m-inr {A = A} {B = B} eqLoc eqImp)
-    with inferElabV ctx (Raw.RVar "inr") | inferElabV-RVar-fail-bridge ctx "inr" (λ ()) eqLoc eqImp refl
-  ... | (failure _ , _) | refl
-    with inspectLookupLocal ctx "inr" | inspectLookupImport ctx "inr"
-  ... | llv-not-found eqL | liv-not-found eqI with B ≟T B
-  ...   | yes refl = IR.inr Heap , m-inr eqL eqI , _ , _ , _ , t-morph-lift (m-inr eqL eqI) , refl , refl , refl , refl
-  ...   | no ¬eq = ⊥-elim (¬eq refl)
-  morph-elab (m-inr eqLoc eqImp) | (failure _ , _) | refl | llv-found imp | _ = ⊥-elim (just≢nothing (trans (sym imp) eqLoc))
-  morph-elab (m-inr eqLoc eqImp) | (failure _ , _) | refl | _ | liv-found imp = ⊥-elim (just≢nothing (trans (sym imp) eqImp))
-  -- ---- extensional leaves (HOLES) ----
-  morph-elab (m-const gd) = const-morph-strong gd
-  morph-elab (m-named ¬u eqL eqI _ _) = named-morph-strong ¬u eqL eqI
-  morph-elab (m-named-resolved eqI _ _) = named-morph-strong-resolved eqI
-  -- ---- recursive combinators ----
-  -- Plan 0.52 (pure⊑eff): compose/case are grade-poly, but `checkCompose`/`checkCase`
-  -- now have a SEPARATE eff-clause (the subsumption fallback), so they no longer
-  -- reduce at an ABSTRACT π. We therefore case π here. `pure` hits the generic
-  -- clause (proof unchanged); `eff` hits the eff-clause, whose genuinely-eff branch
-  -- passes `checkComposeGo/checkCaseGo (eff)` through unchanged — driven by the same
-  -- equations (a `rewrite` on the composeGo success for compose; the arm rewrites
-  -- already reduce checkCaseGo for case).
-  morph-elab (m-compose {B = Bmid} {π = T.pure} eqB df dg) with morph-elab df | morph-elab dg
-  ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
-        with composeGo-success eqB eqf eqg exEff-f exEff-g exW-f exW-g
-  ...     | (m , d , fr , eqGo , m≡fg) =
-          m , m-compose eqB mFᵐ mGᵐ , _ , d , fr , t-morph-lift (m-compose eqB mFᵐ mGᵐ) ,
-          trans (sym (go-canonical eqB)) eqGo , refl , refl ,
-          trans m≡fg (cong₂ IR._∘_ cons-f cons-g)
-  morph-elab (m-compose {B = Bmid} {π = T.eff} eqB df dg) with morph-elab df | morph-elab dg
-  ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
-        with composeGo-success eqB eqf eqg exEff-f exEff-g exW-f exW-g
-  ...     | (m , d , fr , eqGo , m≡fg) rewrite trans (sym (go-canonical eqB)) eqGo =
-          m , m-compose eqB mFᵐ mGᵐ , _ , d , fr , t-morph-lift (m-compose eqB mFᵐ mGᵐ) ,
-          refl , refl , refl ,
-          trans m≡fg (cong₂ IR._∘_ cons-f cons-g)
-  morph-elab (m-case {π = T.pure} df dg) with morph-elab df | morph-elab dg
-  ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
-        rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g =
-        _ , m-case mFᵐ mGᵐ , _ , _ , _ , _ , refl , refl , refl , cong₂ IR.case cons-f cons-g
-  morph-elab (m-case {π = T.eff} df dg) with morph-elab df | morph-elab dg
-  ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
-        rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g =
-        _ , m-case mFᵐ mGᵐ , _ , _ , _ , _ , refl , refl , refl , cong₂ IR.case cons-f cons-g
-  morph-elab (m-pair df dg) with morph-elab df | morph-elab dg
-  ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
-        rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g =
-        _ , m-pair mFᵐ mGᵐ , _ , _ , _ , _ , refl , refl , refl , cong₂ (λ x y → IR.⟨ x , y ⟩ Heap) cons-f cons-g
-  morph-elab (m-curry df) with morph-elab df
-  ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f)
-        rewrite eqf | exEff-f | exW-f = _ , _ , _ , _ , _ , _ , refl , refl , refl , cong (λ z → IR.curry z Heap) cons-f
-  -- Plan 0.54 (cata-morph-strong DISCHARGED): a cata is just another morphism;
-  -- its grade π FOLLOWS its algebra. The algebra `dalg : ⊢ᵐ alg ∶ ⟦F⟧T A ⇨[π] A`
-  -- strongly elaborates (recursively) at the SAME grade π; `checkCataGo` at π
-  -- checks the algebra at π, so `checkCataGoV-J` + `checkCataGo-just-success`
-  -- reduce the whole dispatch to the `Surface.cata`/`m-cata` success DIRECTLY
-  -- (no eff subsumption — that path is `subsume-complete`'s m-cata, below). The
-  -- realize field is `cong (IR.Cata wfF)` over the algebra's — `realize-morph
-  -- (m-cata) = IR.Cata wfF (realize-morph dalg)` is direct (Realize:124).
-  -- π = pure: `checkCata`'s generic clause fires (the eff clause needs π=eff), so
-  -- `checkElabV` reduces DIRECTLY to `checkCataGo … pure` (checkCataGoV-pure-J).
-  morph-elab {ctx = ctx} (m-cata {alg = alg} {F = F} {A = A} {π = T.pure} {wfF = wfF} eqWF dalg)
-    with morph-elab dalg
-  ... | (m-alg , mᵐ-alg , algE , d , fr , wArg , eqV , exEff , exW , cons) =
-        IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) m-alg)
-      , m-cata eqWF mᵐ-alg
-      , Surface.cata wfF algE
-      , suc d , NamedCtx.freshCounter ctx
-      , t-morph-lift (m-cata eqWF mᵐ-alg)
-      , trans (checkCataGoV-pure-J ctx alg F A (just wfF) eqWF)
-              (checkCataGo-just-success ctx alg F A T.pure wfF eqWF eqV exW)
-      , extract-morph-eff-cata {Γ = NamedCtx.debruijn ctx} {wfF = wfF} {algE = algE} exEff
-      , refl
-      , cong (λ z → IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) z)) cons
-  -- π = eff: a GENUINELY-eff algebra. `checkCata`'s eff clause tries the eff-Go
-  -- first; the algebra elaborates at eff with a morphism witness, so eff-Go IS the
-  -- `m-cata` success and the clause passes it through (checkCata-eff-strong-hlp).
-  morph-elab {ctx = ctx} (m-cata {alg = alg} {F = F} {A = A} {π = T.eff} {wfF = wfF} eqWF dalg)
-    with morph-elab dalg
-  ... | (m-alg , mᵐ-alg , algE , d , fr , wArg , eqV , exEff , exW , cons) =
-        IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) m-alg)
-      , m-cata eqWF mᵐ-alg
-      , Surface.cata wfF algE
-      , suc d , NamedCtx.freshCounter ctx
-      , t-morph-lift (m-cata eqWF mᵐ-alg)
-      , checkCata-eff-strong-hlp ctx alg F A
-          (checkCataGo ctx alg F A T.eff (wellFormedF? F) refl)
-          refl
-          (trans (sym (cata-go-canonical eqWF))
-                 (checkCataGo-just-success ctx alg F A T.eff wfF eqWF eqV exW))
-      , extract-morph-eff-cata {Γ = NamedCtx.debruijn ctx} {wfF = wfF} {algE = algE} exEff
-      , refl
-      , cong (λ z → IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) z)) cons
-
-  -- The weak (checkElab) morphism-completeness, derived from the strong form.
-  -- (`checkElab = proj₁ ∘ checkElabV`, Elaborate:1071.)
-  morph-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
-                 → ctx ⊢ᵐ e ∶ A ⇨[ π ] B
-                 → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-                     checkElab ctx e (A T.⇒[ T.mk-kind T.Many π ] B)
-                       ≡ success zeroUsage eE d f)))
-  morph-complete d with morph-elab d
-  ... | (_ , _ , E , d′ , fr , _ , eqV , _ , _ , _) = E , d′ , fr , cong proj₁ eqV
-
-  -- Plan 0.52 (pure⊑eff): the pair/curry morphisms are PURE-fixed, but their IR is
-  -- grade-poly, so at an EFF arrow they are the pure morphism wrapped in
-  -- arr'/t-subsume. Mirror morph-elab's m-pair/m-curry clauses at the eff clause.
-  pair-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
-                    → ctx ⊢ᵐ f ∶ A ⇨[ T.pure ] B
-                    → ctx ⊢ᵐ g ∶ A ⇨[ T.pure ] C
-                    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-                        checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "pair") f) g)
-                                  (A T.⇒[ T.mk-kind T.Many T.eff ] (B T.* C))
-                          ≡ success zeroUsage eE d fr)))
-  pair-eff-complete df dg with morph-elab df | morph-elab dg
-  ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
-        rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g = _ , _ , _ , refl
-
-  curry-eff-complete : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
-                     → ctx ⊢ᵐ f ∶ (A T.* B) ⇨[ T.pure ] C
-                     → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-                         checkElab ctx (Raw.RApp (Raw.RVar "curry") f)
-                                   (A T.⇒[ T.mk-kind T.Many T.eff ] (B T.⇒[ T.mk-kind T.Many T.pure ] C))
-                           ≡ success zeroUsage eE d fr)))
-  curry-eff-complete df with morph-elab df
-  ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f)
-        rewrite eqf | exEff-f | exW-f = _ , _ , _ , refl
-
-  -- Plan 0.52 (pure⊑eff): a PURE compose/case elaborates at an EFF arrow. The
-  -- elaborator's eff-clause first TRIES checkComposeGo/checkCaseGo (eff) [genuinely
-  -- eff-able arms], then falls back to the PURE Go + arr'/t-subsume. This lemma
-  -- discharges BOTH: case the eff-Go — on success provide it (passthrough), on
-  -- failure drive the PURE Go (which always succeeds, since the arms are the pure
-  -- morphisms `morph-elab` elaborates) so the fallback wraps it in arr'. Covers the
-  -- last subsume-complete residual (m-compose/m-case whose arm is a pure-fixed
-  -- builtin, so the eff-Go genuinely fails and the arr' fallback fires).
-  -- Helper: takes the eff `checkComposeGo` result as an EXPLICIT argument (so `mid`
-  -- is concrete at the call — dodges the `with … in` metavar on `composeMid`) plus
-  -- its `refl` equation, and the pure Go success. `rewrite eqr` drives the eff-clause
-  -- into its passthrough (success) or fallback (failure ⇒ pure Go + arr').
-  compose-eff-hlp : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
-      {sep dp frp wp}
-    → (eqB : composeMid ctx f g A ≡ just B)
-    → checkComposeGo ctx f g A C T.pure (just B) eqB ≡ (success zeroUsage sep dp frp , wp)
-    → (r : VerifiedCheckResult ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
-             (A T.⇒[ T.mk-kind T.Many T.eff ] C))
-    → checkComposeGo ctx f g A C T.eff (just B) eqB ≡ r
-    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-        checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
-                  (A T.⇒[ T.mk-kind T.Many T.eff ] C)
-          ≡ success zeroUsage eE d fr)))
-  compose-eff-hlp eqB eqGo (success Ψe eEe de fre , we) eqr with cgo-usage eqr
-  ... | refl rewrite trans (sym (go-canonical {π = T.eff} eqB)) eqr = eEe , de , fre , refl
-  compose-eff-hlp eqB eqGo (failure _ , _) eqr
-    rewrite trans (sym (go-canonical {π = T.eff} eqB)) eqr
-          | trans (sym (go-canonical {π = T.pure} eqB)) eqGo = _ , _ , _ , refl
-
-  compose-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
-                       → composeMid ctx f g A ≡ just B
-                       → ctx ⊢ᵐ f ∶ B ⇨[ T.pure ] C
-                       → ctx ⊢ᵐ g ∶ A ⇨[ T.pure ] B
-                       → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-                           checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
-                                     (A T.⇒[ T.mk-kind T.Many T.eff ] C)
-                             ≡ success zeroUsage eE d fr)))
-  compose-eff-complete {ctx} {f} {g} {A} {B} {C} eqB df dg
-    with morph-elab df | morph-elab dg
-  ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
-        with composeGo-success eqB eqf eqg exEff-f exEff-g exW-f exW-g
-  ...     | (m , d , fr , eqGo , m≡fg) =
-            compose-eff-hlp eqB eqGo
-              (checkComposeGo ctx f g A C T.eff (just B) eqB) refl
-
-  case-eff-complete : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
-                    → ctx ⊢ᵐ f ∶ A ⇨[ T.pure ] C
-                    → ctx ⊢ᵐ g ∶ B ⇨[ T.pure ] C
-                    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-                        checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "case") f) g)
-                                  ((A T.+ B) T.⇒[ T.mk-kind T.Many T.eff ] C)
-                          ≡ success zeroUsage eE d fr)))
-  case-eff-complete {ctx} {f} {g} {A} {B} {C} df dg
-    with morph-elab df | morph-elab dg
-  ... | (mf , mFᵐ , Ef , _ , _ , Wf , eqf , exEff-f , exW-f , cons-f) | (mg , mGᵐ , Eg , _ , _ , Wg , eqg , exEff-g , exW-g , cons-g)
-        with checkCaseGo ctx f g A B C T.eff in eqEff
-  ...     | failure _ , _ rewrite eqf | eqg | exEff-f | exEff-g | exW-f | exW-g = _ , _ , _ , refl
-  ...     | success Ψe eEe de fre , we with ccgo-usage eqEff
-  ...       | refl = eEe , de , fre , refl
-
-  -- Plan 0.54 (pure⊑eff): a cata with a PURE algebra elaborated at an EFF arrow.
-  -- Mirrors case-eff-complete (cata's eff clause also "tries eff, else pure +
-  -- arr'/t-subsume"): case the eff-Go — on FAILURE (the pure algebra can't yield
-  -- an eff morphism witness) the pure elaborations drive the pure Go, whose
-  -- success the eff clause wraps in arr'; on SUCCESS (a genuinely-eff algebra)
-  -- pass it through. The algebra lives in the imports/polys ctx (m-cata premise).
-  cata-eff-complete : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
-                        {wfF : WellFormedF F}
-                    → wellFormedF? F ≡ just wfF
-                    → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
-                        ⊢ᵐ alg ∶ (⟦ F ⟧T A) ⇨[ T.pure ] A
-                    → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
-                        checkElab ctx (Raw.RApp (Raw.RVar "cata") alg)
-                                  (μ-type F T.⇒[ T.mk-kind T.Many T.eff ] A)
-                          ≡ success zeroUsage eE d fr)))
-  cata-eff-complete {ctx} {alg} {F} {A} {wfF} eqWF dalg with morph-elab dalg
-  ... | (m-alg , mᵐ-alg , algE , d , fr , wArg , eqV , exEff , exW , cons)
-        with checkCataGo ctx alg F A T.eff (wellFormedF? F) refl in eqEff
-  -- eff-Go failed (pure algebra): drive the pure Go to its `m-cata` success (via
-  -- `checkCataGo-just-success` + `cata-go-canonical`, since `checkCataGo` gates on
-  -- the neutral `wellFormedF? F` before its elaboration scrutinee); the eff clause
-  -- wraps it in arr'/t-subsume.
-  ...     | failure _ , _
-            rewrite trans (sym (cata-go-canonical eqWF))
-                          (checkCataGo-just-success ctx alg F A T.pure wfF eqWF eqV exW)
-            = _ , _ , _ , refl
-  ...     | success Ψe eEe de fre , we with ccatago-usage (trans (cata-go-canonical eqWF) eqEff)
-  ...       | refl = eEe , de , fre , refl
-
   check-completeV : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
       {Ψ : Surface.Usage (NamedCtx.size ctx)}
     → ctx ⊢ᶜ e ∶ A ⨾ Ψ
@@ -1785,16 +1144,6 @@ mutual
     → ctx ⊢ᵢ e ∶ A ⨾ Ψ
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         checkElab ctx e A ≡ success Ψ eE d f
-
-  -- D126: the closed-expression lift is COMPLETE — the infer premise gives the
-  -- inferElab equation and the shape premise says the elaborator routes there.
-  closed-lift-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {B : Type} (X : Type)
-      {π : T.Purity}
-    → ClosedLiftShape e
-    → ctx ⊢ᵢ e ∶ B ⨾ Surface.zeroUsage
-    → ∃[ eE ] ∃[ d ] ∃[ f ]
-        checkElab ctx e (X T.⇒[ T.mk-kind T.Many π ] B)
-          ≡ success Surface.zeroUsage eE d f
 
   -- Strong (paired `checkElabV`) view of the switch — mirrors `check-completeV`
   -- over `check-complete`, but from the INFER derivation (so a pair's components
@@ -1822,10 +1171,6 @@ mutual
   check-completeV-from-infer {ctx} {e} {A} d
     with checkElabV ctx e A | iFromInfer d
   ... | r , w0 | eE , d' , f , eq rewrite eq = eE , d' , f , w0 , refl
-
-  closed-lift-complete X {π} c d =
-    let (_ , _ , _ , eqInf) = infer-complete d
-    in checkElab-closed-lift X π c eqInf
 
   pair-lit-reduce eqA eqB rewrite eqA | eqB = _ , _ , _ , refl
 
@@ -2096,135 +1441,6 @@ mutual
   nothing≢just : ∀ {ℓ} {A : Set ℓ} {x : A} {C : Set} → nothing ≡ just x → C
   nothing≢just ()
 
-  -- Plan 0.42: `checkG` succeeds on any closed global-element value. By
-  -- induction on the `⊢ᵍ` derivation: leaves reduce directly; structural cases
-  -- `rewrite` the recursive equations so `checkG`'s `with checkG …` reduces to
-  -- `just`. The extractable family is total under `checkG` — load-bearing for
-  -- `gd-complete`.
-  checkG-just : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} (X : Type)
-              → (gd : ctx ⊢ᵍ e ∶ A)
-              → ∃[ m ] ∃[ gd' ] checkG ctx X e A ≡ just (m , gd')
-  checkG-just X (g-int n) = _ , _ , refl
-  checkG-just X (g-float i f l p) = _ , _ , refl
-  checkG-just X (g-neg-int n) = _ , _ , refl
-  checkG-just X (g-neg-float i f l p) = _ , _ , refl
-  checkG-just {ctx = ctx} X (g-terminal eqL eqI)
-    with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
-  ... | llv-not-found _ | liv-not-found _ = _ , _ , refl
-  ... | llv-found eqL2  | _               = nothing≢just (trans (sym eqL) eqL2)
-  ... | llv-not-found _ | liv-found eqI2  = nothing≢just (trans (sym eqI) eqI2)
-  checkG-just X (g-pair ga gb) with checkG-just X ga | checkG-just X gb
-  ... | _ , _ , eqa | _ , _ , eqb rewrite eqa | eqb = _ , _ , refl
-  checkG-just X (g-inl ga) with checkG-just X ga
-  ... | _ , _ , eqa rewrite eqa = _ , _ , refl
-  checkG-just X (g-inr gb) with checkG-just X gb
-  ... | _ , _ , eqb rewrite eqb = _ , _ , refl
-  checkG-just X (g-In {F = F} eqWF garg) with inspectWellFormedF F | checkG-just X garg
-  ... | wfv-yes _   | _ , _ , eqarg rewrite eqarg = _ , _ , refl
-  ... | wfv-no eqNo | _                           = nothing≢just (trans (sym eqNo) eqWF)
-
-  -- Plan 0.42: the `⊢ᵍ` completeness — a closed global-element value elaborates
-  -- at a pure arrow, every clause discharged. `g-int` is the direct `RInt`
-  -- clause; `g-terminal` routes through the bare-`terminal` fallback; the
-  -- structural shapes (`g-pair`/`g-inl`/`g-inr`/`g-In`) scrutinise the SAME
-  -- `inspectCheckG` view as their value-lift `checkElabV` clauses, so the
-  -- elaborator reduces (no `with checkG` opacity). `checkG-just` rules out the
-  -- `cgv-nothing` branch (the value IS a `checkG`-success).
-  -- STRONG completeness for closed values (⊢ᵍ). Returns the full `checkElabV`
-  -- pair-equation + reconstructed ⊢ᶜ witness. The weak `gd-complete` is `cong
-  -- proj₁` of this (below). Most cases stay `refl` because `checkElabV` reduces
-  -- to `(success … , witness)` definitionally (via `checkIn`/`checkG` cgv-just).
-  -- STRONG-COMPLETENESS MIGRATION (branch): this is the value pillar of the one
-  -- mutual strong-completeness theorem. TODO: g-terminal needs a strong
-  -- checkElab-fallback-RVar-terminal (weak fallback returns proj₁ only).
-  gd-completeV : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {π : T.Purity} (X : Type)
-               → ctx ⊢ᵍ e ∶ A
-               → ∃[ eE ] ∃[ d ] ∃[ f' ]
-                   Σ[ w ∈ ctx ⊢ᶜ e ∶ (X T.⇒[ T.mk-kind T.Many π ] A) ⨾ Surface.zeroUsage ]
-                     checkElabV ctx e (X T.⇒[ T.mk-kind T.Many π ] A)
-                       ≡ (success Surface.zeroUsage eE d f' , w)
-  gd-completeV X (g-int n) = _ , _ , _ , _ , refl
-  gd-completeV X (g-float i f l p) = _ , _ , _ , _ , refl
-  -- The value-lift path: `checkElabV-neg-{int,float}-aux` on the `just` branch,
-  -- reached because the target IS the pure arrow the ∃ pins.
-  gd-completeV X (g-neg-int n) = _ , _ , _ , _ , refl
-  gd-completeV X (g-neg-float i f l p) = _ , _ , _ , _ , refl
-  gd-completeV {ctx = ctx} X (g-terminal eqL eqI) = checkElab-fallback-RVar-terminalV {ctx} X eqL eqI
-  gd-completeV {ctx = ctx} X (g-pair {a = a} {b = b} {A = A} {B = B} ga gb)
-    with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | checkG-just X (g-pair ga gb)
-  ... | cgv-just _      | _              = _ , _ , _ , _ , refl
-  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
-  gd-completeV {ctx = ctx} X (g-inl {arg = arg} {A = A} {B = B} ga)
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A T.+ B) | checkG-just X (g-inl ga)
-  ... | cgv-just _      | _              = _ , _ , _ , _ , refl
-  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
-  gd-completeV {ctx = ctx} X (g-inr {arg = arg} {A = A} {B = B} gb)
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A T.+ B) | checkG-just X (g-inr gb)
-  ... | cgv-just _      | _              = _ , _ , _ , _ , refl
-  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
-  gd-completeV {ctx = ctx} X (g-In {arg = arg} {F = F} eqWF garg)
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (T.μ-type F) | checkG-just X (g-In eqWF garg)
-  ... | cgv-just _      | _              = _ , _ , _ , _ , refl
-  ... | cgv-nothing eqN | _ , _ , eqJ    = nothing≢just (trans (sym eqN) eqJ)
-
-  -- Weak form, demoted to a projection of the strong one.
-  gd-complete : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {π : T.Purity} (X : Type)
-              → ctx ⊢ᵍ e ∶ A
-              → ∃[ eE ] ∃[ d ] ∃[ f' ]
-                  checkElab ctx e (X T.⇒[ T.mk-kind T.Many π ] A)
-                    ≡ success Surface.zeroUsage eE d f'
-  gd-complete {π = π} X gd with gd-completeV {π = π} X gd
-  ... | eE , d , f' , _ , eq = eE , d , f' , cong proj₁ eq
-
-  -- DISCHARGED (was const-morph-strong postulate): a value ⊢ᵍ e ∶ B elaborates
-  -- at X⇒B as a const morphism. The value-lift emits `success (lift-morphism m)
-  -- …, t-value-lift gd'` where (m, gd') = checkG; extract-morph-eff/extractMorph-
-  -- Witness are refl, and `m ≡ realize-morph (m-const gd') = realize-global gd'`
-  -- is exactly checkG-realize. (g-int uses the isRIntVliftTarget? path — refl.)
-  const-morph-strong : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type} {π : T.Purity}
-                     → ctx ⊢ᵍ e ∶ B → StrongElab ctx e A B π
-  const-morph-strong (g-int n) =
-    _ , m-const (g-int n) , _ , _ , _ , t-value-lift (g-int n) , refl , refl , refl , refl
-  const-morph-strong (g-float i f l p) =
-    _ , m-const (g-float i f l p) , _ , _ , _ , t-value-lift (g-float i f l p)
-    , refl , refl , refl , refl
-  const-morph-strong (g-neg-int n) =
-    _ , m-const (g-neg-int n) , _ , _ , _ , t-value-lift (g-neg-int n)
-    , refl , refl , refl , refl
-  const-morph-strong (g-neg-float i f l p) =
-    _ , m-const (g-neg-float i f l p) , _ , _ , _ , t-value-lift (g-neg-float i f l p)
-    , refl , refl , refl , refl
-  -- g-terminal elaborates as the terminal MORPHISM (t-morph-lift (m-terminal …)),
-  -- not a value-lift — mirror the RVar-terminal elaborator path directly.
-  const-morph-strong {ctx = ctx} {A = X} (g-terminal eqL eqI)
-    with inferElabV ctx (Raw.RVar "terminal") | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqL eqI refl
-  ... | (failure _ , _) | refl
-      with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
-  ...   | llv-not-found eqLoc' | liv-not-found eqImp' =
-          _ , m-terminal eqLoc' eqImp' , _ , _ , _ , t-morph-lift (m-terminal eqLoc' eqImp') , refl , refl , refl , refl
-  ...   | llv-found impossible | _ = nothing≢just (trans (sym eqL) impossible)
-  ...   | _ | liv-found impossible = nothing≢just (trans (sym eqI) impossible)
-  const-morph-strong {ctx = ctx} {A = X} (g-pair {a = a} {b = b} {A = A} {B = B} ga gb)
-    with inspectCheckG ctx X (Raw.RPair a b) (A T.* B) | checkG-just X (g-pair ga gb)
-  ... | cgv-just {m} {gd'} eqCG | _ =
-        m , m-const gd' , _ , _ , _ , t-value-lift gd' , refl , refl , refl , checkG-realize gd' eqCG
-  ... | cgv-nothing eqN | _ , _ , eqJ = nothing≢just (trans (sym eqN) eqJ)
-  const-morph-strong {ctx = ctx} {A = X} (g-inl {arg = arg} {A = A} {B = B} ga)
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inl") arg) (A T.+ B) | checkG-just X (g-inl ga)
-  ... | cgv-just {m} {gd'} eqCG | _ =
-        m , m-const gd' , _ , _ , _ , t-value-lift gd' , refl , refl , refl , checkG-realize gd' eqCG
-  ... | cgv-nothing eqN | _ , _ , eqJ = nothing≢just (trans (sym eqN) eqJ)
-  const-morph-strong {ctx = ctx} {A = X} (g-inr {arg = arg} {A = A} {B = B} gb)
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "inr") arg) (A T.+ B) | checkG-just X (g-inr gb)
-  ... | cgv-just {m} {gd'} eqCG | _ =
-        m , m-const gd' , _ , _ , _ , t-value-lift gd' , refl , refl , refl , checkG-realize gd' eqCG
-  ... | cgv-nothing eqN | _ , _ , eqJ = nothing≢just (trans (sym eqN) eqJ)
-  const-morph-strong {ctx = ctx} {A = X} (g-In {arg = arg} {F = F} eqWF garg)
-    with inspectCheckG ctx X (Raw.RApp (Raw.RVar "In") arg) (T.μ-type F) | checkG-just X (g-In eqWF garg)
-  ... | cgv-just {m} {gd'} eqCG | _ =
-        m , m-const gd' , _ , _ , _ , t-value-lift gd' , refl , refl , refl , checkG-realize gd' eqCG
-  ... | cgv-nothing eqN | _ , _ , eqJ = nothing≢just (trans (sym eqN) eqJ)
-
   -- Full ⊢ᶜ walk: handles t-lam recursively and delegates t-embed
   -- to the per-shape fallback lemma.
   check-complete :
@@ -2245,18 +1461,23 @@ mutual
   -- moved there). Discharges the old `pair-lit` re-wrap: the pair's components are
   -- reached via `iFromInfer`'s genuine sub-derivations, not a re-embedded grandchild.
   check-complete (t-embed d) = iFromInfer d
-  -- Plan 0.6 Phase C.7 POC-1: bare `id` check-mode. The derivation's
-  -- Plan 0.41: the value-lift bridge. A closed global-element value (`⊢ᵍ`)
-  -- elaborates at the pure arrow — recurses on the `⊢ᵍ` derivation via
-  -- `gd-complete` (the extractable family always elaborates).
-  check-complete {ctx} (t-value-lift {X = X} gd) = gd-complete X gd
-  -- Plan 0.49 / D063: the morphism bridge. A `⊢ᵐ` morphism check-elaborates at
-  -- its arrow type — by `morph-complete` (induction on `⊢ᵐ`). This ONE clause
-  -- subsumes the 13 deleted combinator clauses and REPLACES the two false
-  -- `*-eff-complete` postulates with a single TRUE one.
-  check-complete (t-morph-lift d) = morph-complete d
-  -- D126: the closed-expression lift (`compose exit@S (1 + 1)`).
-  check-complete (t-closed-lift {X = X} c d) = closed-lift-complete X c d
+  -- D127: the seven POINT-FREE LEAVES. Each is the elaborator's own
+  -- `RVar`-fallback lemma, which never depended on the purity — generalising
+  -- those to any `π` is what lets these rules stay grade-poly.
+  check-complete {ctx} (t-id-check {T = T} eqL eqI) =
+    checkElab-fallback-RVar-id {ctx} T eqL eqI
+  check-complete {ctx} (t-fst-check {A = A} {B = B} eqL eqI) =
+    checkElab-fallback-RVar-fst {ctx} A B eqL eqI
+  check-complete {ctx} (t-snd-check {A = A} {B = B} eqL eqI) =
+    checkElab-fallback-RVar-snd {ctx} A B eqL eqI
+  check-complete {ctx} (t-terminal-morph-check {A = A} eqL eqI) =
+    checkElab-fallback-RVar-terminal {ctx} A eqL eqI
+  check-complete {ctx} (t-initial-morph-check {A = A} eqL eqI) =
+    checkElab-fallback-RVar-initial {ctx} A eqL eqI
+  check-complete {ctx} (t-inl-morph-check {A = A} {B = B} eqL eqI) =
+    checkElab-fallback-RVar-inl {ctx} A B eqL eqI
+  check-complete {ctx} (t-inr-morph-check {A = A} {B = B} eqL eqI) =
+    checkElab-fallback-RVar-inr {ctx} A B eqL eqI
   check-complete (t-In-app-check {arg = arg} {F = F} eqWF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     in checkElab-fallback-RApp-In arg F eqWF eqA
@@ -2304,45 +1525,24 @@ mutual
     → ctx ⊢ᶜ e ∶ (A T.⇒[ T.mk-kind T.Many T.pure ] B) ⨾ Ψ
     → ∃[ eE ] ∃[ d ] ∃[ f ]
         checkElab ctx e (A T.⇒[ T.mk-kind T.Many T.eff ] B) ≡ success Ψ eE d f
-  -- m-named-resolved is import-grade-fixed (regrade → nothing) but RResolved is a
-  -- catch-all expr, so it subsumes via embedOrSubsume-lifts (like t-var-resolved).
-  subsume-complete {ctx} {_} {A} {B} (t-morph-lift dm@(m-named-resolved {cn = cn} eqImp _ _)) =
-    let (_ , _ , _ , eqC) = check-complete (t-morph-lift dm)
-    in embedOrSubsume-lifts ctx (Raw.RResolved cn) A B (inferElabV ctx (Raw.RResolved cn)) eqC
-  -- m-named (import var): import-grade-fixed (regrade → nothing), but the import
-  -- INFERS, so build t-var-import from its premises and reuse the RVar eff fallback.
-  subsume-complete {ctx} {_} {A} {B} (t-morph-lift (m-named {x = x} ¬u eqL eqI bA cB)) =
-    let (_ , _ , _ , eqInf) = infer-complete (t-var-import ¬u eqL eqI (con-fun bA cB))
-    in checkElab-fallback-RVar-eff x A B eqInf
-  -- m-cata: a cata is just another morphism whose grade FOLLOWS its algebra. At a
-  -- pure arrow the algebra `algD` is pure, so this mirrors m-pair/m-curry/m-case —
-  -- `cata-eff-complete` wraps the pure cata in arr'/t-subsume (via checkCata's eff
-  -- clause). NO recursion on the algebra grade (the grade "problem" dissolves).
-  subsume-complete {ctx} (t-morph-lift (m-cata {alg = alg} {F = F} {A = A} eqW algD)) =
-    cata-eff-complete eqW algD
-  -- m-pair / m-curry: pure-fixed morphisms whose IR is grade-poly — the eff
-  -- checkPair/checkCurry clauses wrap the pure morphism in arr'/t-subsume.
-  subsume-complete (t-morph-lift (m-pair mFᵐ mGᵐ)) = pair-eff-complete mFᵐ mGᵐ
-  subsume-complete (t-morph-lift (m-curry mFᵐ))    = curry-eff-complete mFᵐ
-  -- Plan 0.52: m-compose/m-case at eff — the elaborator's eff-clause tries eff
-  -- (genuinely-eff arms), else checks at pure and wraps in arr'/t-subsume. Both
-  -- discharged by compose/case-eff-complete, so subsume-residual
-  -- is RETIRED (the last unsound gap closed).
-  subsume-complete (t-morph-lift (m-compose eqB df dg)) = compose-eff-complete eqB df dg
-  subsume-complete (t-morph-lift (m-case df dg))        = case-eff-complete df dg
-  -- Grade-poly LEAVES: regrade to eff (same constructor) and reuse morph-complete.
-  subsume-complete {ctx} (t-morph-lift (m-id eqL eqI))       = morph-complete {ctx = ctx} (m-id eqL eqI)
-  subsume-complete {ctx} (t-morph-lift (m-fst eqL eqI))      = morph-complete {ctx = ctx} (m-fst eqL eqI)
-  subsume-complete {ctx} (t-morph-lift (m-snd eqL eqI))      = morph-complete {ctx = ctx} (m-snd eqL eqI)
-  subsume-complete {ctx} (t-morph-lift (m-terminal eqL eqI)) = morph-complete {ctx = ctx} (m-terminal eqL eqI)
-  subsume-complete {ctx} (t-morph-lift (m-initial eqL eqI))  = morph-complete {ctx = ctx} (m-initial eqL eqI)
-  subsume-complete {ctx} (t-morph-lift (m-inl eqL eqI))      = morph-complete {ctx = ctx} (m-inl eqL eqI)
-  subsume-complete {ctx} (t-morph-lift (m-inr eqL eqI))      = morph-complete {ctx = ctx} (m-inr eqL eqI)
-  subsume-complete {ctx} (t-morph-lift (m-const g))          = morph-complete {ctx = ctx} (m-const g)
-  subsume-complete {ctx} (t-value-lift {X = X} g) = gd-complete {π = T.eff} X g
-  -- D126 at the EFF arrow — the SAME lemma, instantiated at `eff`. That is what
-  -- grade-polymorphism buys: no separate eff bridge.
-  subsume-complete (t-closed-lift {X = X} c d) = closed-lift-complete X {T.eff} c d
+  -- D127: the seven GRADE-POLY LEAVES subsume by RE-INSTANTIATION. The rule is
+  -- `∀ {π}`, so the eff instance is the same rule and the same fallback lemma —
+  -- there is nothing to regrade. `regrade-eff` existed only because `⊢ᵐ` had to
+  -- rebuild a derivation at a new grade.
+  subsume-complete {ctx} (t-id-check {T = T} eqL eqI) =
+    checkElab-fallback-RVar-id {ctx} T eqL eqI
+  subsume-complete {ctx} (t-fst-check {A = A} {B = B} eqL eqI) =
+    checkElab-fallback-RVar-fst {ctx} A B eqL eqI
+  subsume-complete {ctx} (t-snd-check {A = A} {B = B} eqL eqI) =
+    checkElab-fallback-RVar-snd {ctx} A B eqL eqI
+  subsume-complete {ctx} (t-terminal-morph-check {A = A} eqL eqI) =
+    checkElab-fallback-RVar-terminal {ctx} A eqL eqI
+  subsume-complete {ctx} (t-initial-morph-check {A = A} eqL eqI) =
+    checkElab-fallback-RVar-initial {ctx} A eqL eqI
+  subsume-complete {ctx} (t-inl-morph-check {A = A} {B = B} eqL eqI) =
+    checkElab-fallback-RVar-inl {ctx} A B eqL eqI
+  subsume-complete {ctx} (t-inr-morph-check {A = A} {B = B} eqL eqI) =
+    checkElab-fallback-RVar-inr {ctx} A B eqL eqI
   subsume-complete {ctx} (t-lam {x = x} {body = body} {A = A} {B = B} {q' = q'} leqEq bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
     in check-complete-RLam-eff ctx x body A q' B leqEq eqBody

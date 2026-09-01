@@ -415,11 +415,11 @@ inferElabV-RVar-fail-bridge ctx x ¬unit eqLoc eqImp polyFail =
 -- previously-postulated lemmas: with-abstract over `inferElabV` and
 -- the inspect-views, then the elaborator's reduction is computational.
 checkElab-fallback-RVar-id :
-  ∀ {ctx : NamedCtx} (T : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (T : Type)
   → lookupLocal ctx "id" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "id") (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
+      checkElab ctx (Raw.RVar "id") (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] T)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-id {ctx} T eqLoc eqImp
   with inferElabV ctx (Raw.RVar "id") | inferElabV-RVar-fail-bridge ctx "id" (λ ()) eqLoc eqImp refl
@@ -444,11 +444,11 @@ just≢nothing-Maybe : ∀ {A : Set} {x : A} → just x ≡ nothing → Data.Emp
 just≢nothing-Maybe ()
 
 checkElab-fallback-RVar-fst :
-  ∀ {ctx : NamedCtx} (A B : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A B : Type)
   → lookupLocal ctx "fst" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+      checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-fst {ctx} A B eqLoc eqImp
   with inferElabV ctx (Raw.RVar "fst") | inferElabV-RVar-fail-bridge ctx "fst" (λ ()) eqLoc eqImp refl
@@ -464,11 +464,11 @@ checkElab-fallback-RVar-fst {ctx} A B eqLoc eqImp | (failure _ , _) | refl
   | _ | liv-found impossible = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqImp))
 
 checkElab-fallback-RVar-snd :
-  ∀ {ctx : NamedCtx} (A B : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A B : Type)
   → lookupLocal ctx "snd" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+      checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-snd {ctx} A B eqLoc eqImp
   with inferElabV ctx (Raw.RVar "snd") | inferElabV-RVar-fail-bridge ctx "snd" (λ ()) eqLoc eqImp refl
@@ -522,11 +522,11 @@ checkElab-fallback-RVar-terminalV {ctx} A eqLoc eqImp | (failure _ , _) | refl
   | _ | liv-found impossible = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqImp))
 
 checkElab-fallback-RVar-initial :
-  ∀ {ctx : NamedCtx} (A : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A : Type)
   → lookupLocal ctx "initial" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "initial") (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
+      checkElab ctx (Raw.RVar "initial") (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-initial {ctx} A eqLoc eqImp
   with inferElabV ctx (Raw.RVar "initial") | inferElabV-RVar-fail-bridge ctx "initial" (λ ()) eqLoc eqImp refl
@@ -539,11 +539,11 @@ checkElab-fallback-RVar-initial {ctx} A eqLoc eqImp | (failure _ , _) | refl
   | _ | liv-found impossible = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqImp))
 
 checkElab-fallback-RVar-inl :
-  ∀ {ctx : NamedCtx} (A B : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A B : Type)
   → lookupLocal ctx "inl" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "inl") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B))
+      checkElab ctx (Raw.RVar "inl") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inl {ctx} A B eqLoc eqImp
   with inferElabV ctx (Raw.RVar "inl") | inferElabV-RVar-fail-bridge ctx "inl" (λ ()) eqLoc eqImp refl
@@ -559,11 +559,11 @@ checkElab-fallback-RVar-inl {ctx} A B eqLoc eqImp | (failure _ , _) | refl
   | _ | liv-found impossible = ⊥-elim (just≢nothing-Maybe (trans (sym impossible) eqImp))
 
 checkElab-fallback-RVar-inr :
-  ∀ {ctx : NamedCtx} (A B : Type)
+  ∀ {ctx : NamedCtx} {π : Once.Type.Purity} (A B : Type)
   → lookupLocal ctx "inr" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "inr") (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B))
+      checkElab ctx (Raw.RVar "inr") (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inr {ctx} A B eqLoc eqImp
   with inferElabV ctx (Raw.RVar "inr") | inferElabV-RVar-fail-bridge ctx "inr" (λ ()) eqLoc eqImp refl
