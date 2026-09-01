@@ -44,7 +44,7 @@ open import Once.Type using (Type; Int)
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; inject; forget)
-open import Once.Denotation.TraceMonad using (T; _>>=T_; valueT)
+open import Once.Denotation.TraceMonad using (T; _>>=T_; valueT; returnT)
 open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; PolyCtx; Imports;
@@ -182,12 +182,15 @@ resolveExpr-faithful polys imps userFns fresh (Srf.effApp f x) dγ k =
                 (λ vx → vf vx) (λ vx → vf vx)
                 (λ j → resolveExpr-faithful polys imps userFns fresh x dγ j)
                 (λ vx j → refl)))))
--- cata: a closure folding `sem-cata` over the CLOSED algebra `⟦alg⟧ˢ tt`. One
--- `cong` over the algebra denotation (the IH at empty env tt, lifted to a full
--- T-value by funext over fuel); the fold structure is otherwise identical.
+-- cata: D131 — the algebra is BOUND, so both sides are `⟦alg⟧ˢ tt >>=T` the
+-- same continuation and the whole clause is ONE `cong` over the algebra
+-- denotation (the IH at empty env `tt`, lifted to a full T-value by funext
+-- over fuel). The bind is why the trace is no longer syntactically `[]`.
 resolveExpr-faithful polys imps userFns fresh (Srf.cata {F = F} {A = A} wf alg) dγ k =
-  cong (λ ac → [] , (λ x → λ n →
-         let r = sem-cata wf (SD.cata-ev-algˢ {F} {A} n ac) x in (proj₁ r , proj₂ r)))
+  cong (λ ac → (ac >>=T λ valg →
+                  returnT (λ x → λ n →
+                    let r = sem-cata wf (SD.cata-ev-algˢ {F} {A} n (returnT valg)) x
+                    in (proj₁ r , proj₂ r))) k)
        (extensionality (λ j → resolveExpr-faithful polys imps userFns fresh alg tt j))
 -- ana: dual of cata — a closure over the CLOSED coalgebra `⟦coalg⟧ˢ tt` (appears
 -- in both `ana-eventsˢ` and `sem-ana`). One `cong` over the coalgebra denotation.
