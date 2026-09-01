@@ -9980,35 +9980,55 @@ conditions: `t-app`, `t-effApp` and `t-arg-driven-app-check` each carry
 name collision became part of the language definition — the same defect D134
 removes elsewhere, and D127 removed from `⊢ᵍ`.
 
-### The bare-name resolution rule (the part D136 must STATE, not imply)
+### The bare-name resolution rule: GENERATORS WIN, the local is `name@this`
 
 Canonical names cannot collide — `Generators.fst` and `User.Module.fst` are
 different names, full stop. What still needs deciding is what the TOKEN `fst`
 denotes at a use site. The rule:
 
-> **A definition in scope — a local binder, or an own-module definition —
-> SHADOWS the implicitly-available generator for the bare name.** Inside a
-> module that defines `fst`, a bare `fst` is that module's `fst`.
+> **A bare generator name always denotes the GENERATOR.** `fst` is `fst`,
+> in every module, always.
+>
+> A module-level definition of a generator name is legal and is reached as
+> **`fst@this`** — the existing `name@Alias` syntax, with `this` denoting the
+> current module.
+>
+> **Lexical binders are the exception and shadow normally**: in
+> `\fst -> … fst …` the inner `fst` is the parameter. `@this` does not apply
+> there — a binder is not a module-level definition. The split is BINDING vs
+> DEFINITION, and it is the split every reader already has in their head.
 
-**Why it cannot be the other way round.** The alternative ("the generator
-always wins the bare name; call yours by qualifying it") is not available:
-aliases come only from `DImport … (just alias)`, so Once has NO own-module
-qualification syntax. A user's `fst` would be reachable by no syntax at all —
-they could write the definition and never call it, which is D001 again with
-extra steps.
+**Why not the other way round** (a definition shadows, generator via
+`fst@Generators`) — which is what this entry said on first writing, and was
+wrong:
 
-**Reaching the generator anyway: `fst@Generators`.** This needs no new syntax.
-`canonExpr` already resolves `RQualified name alias` through the alias map, so
-seeding that map with an implicit `Generators ↦ ["Generators"]` makes
-`fst@Generators` resolve to `canonical ["Generators","fst"]` — which IS
-`gen "fst"`. Shadowing therefore never traps: the generator stays reachable
-under its own namespace. An explicit user `import … as Generators` takes
-precedence over the implicit seed (or is rejected); it is not silently merged.
+  * **It annotates the wrong case.** Defining `fst` is rare; USING `fst` is
+    constant. Under shadowing, adding one definition silently retargets every
+    `fst` in the module — action at a distance, and a reader has to know a
+    module's definitions before they can read its expressions. Under this
+    rule the definition is inert until explicitly named.
+  * **It keeps the true half of D001.** D001's rationale — the generators are
+    the language's substrate, nearer to operators than to library functions —
+    was correct; what was wrong was enforcing it by FORBIDDING the name. D001
+    conflated "`fst` always means the generator" with "`fst` may not be
+    defined". This rule keeps the first and drops the second.
+  * The earlier draft claimed the converse was impossible because Once has no
+    own-module qualification. That was a failure of imagination, not an
+    argument: the grammar is already being changed, and `@this` is a
+    one-token addition to syntax that already exists.
 
-**Consequence for the implementation.** Because the rule is shadowing, the
-RESOLVER must know the own-module definition names — that is a bare-name
-LOOKUP question and it belongs there, not in the elaborator. Had "generator
-wins" been viable, the resolver would have needed no such set at all.
+**Consequences for the implementation** — and this is the reason the choice is
+cheap as well as right:
+
+  * The RESOLVER does not need the own-module definition names at all. It
+    reads: a lexical binder stays bare; a generator name becomes
+    `RResolved (gen x)`; anything else becomes `RResolved (canonical [x])`;
+    and `name@this` becomes `RResolved (canonical [name])`. Under the
+    shadowing rule it would have needed the module's whole definition set
+    threaded through `canonExpr` (219 occurrences).
+  * `this` must be RESERVED as an import alias — the parser does not require
+    module names to be capitalized, so `import Foo as this` is lexically legal
+    today and would otherwise collide.
 
 ### What it buys
 
@@ -10041,9 +10061,9 @@ than move ([[feedback_canonical_name_not_bare_bandaid]]).
     and `fst 5` means the user's `fst`.
   * Generators still need no import — they resolve to `Generators.*` when not
     shadowed, which is what makes them feel primitive without being reserved.
-  * A user who shadows a generator keeps it reachable as `fst@Generators` (see
-    the resolution rule above); the bare name is theirs. That is ordinary
-    scoping plus the qualified escape every language with a prelude provides.
+  * A module-level `fst` does not capture the bare name; it is reached as
+    `fst@this`. A lambda/let binder named `fst` does shadow, as in any
+    language. See the resolution rule above.
 
 **Relates**: D001 (superseded), D050, D064, D127, D134; plan
 `0.50-canonicalize-generators.md`
