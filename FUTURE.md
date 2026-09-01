@@ -817,7 +817,7 @@ asked instead of assumed.**
 | | category | it actually happened | Agda TODAY | Once |
 |---|---|---|---|---|
 | **A** | **DATATYPE COVERAGE** — a declaration missing a row. Agda's coverage checks FUNCTIONS, not datatypes | `ordtr` absent from the whole SN layer (2026-08-05→06); `icon`/`ielim`/`⌜IMu⌝` (2026-08-22) | ✅ **NOW CHECKED** — `Metatheory/FormerCensus`, by reflection, and it NAMES the orphans | §"a DATATYPE DECLARATION carries no totality obligation" opts 1–2: a derived-datatype obligation, or generate the layer FROM the description |
-| **B** | **A CATCH-ALL HIDING A MISSING CASE** — `_ = false` makes a function total, so coverage is satisfied and the omission is SILENT | `spine?`/`stablecd?` inherited `_ = false` for `icon`/`ielim` — THREE silently wrong answers, `--safe`, zero warnings (`25602107`) | 🟡 partial — reflection can find catch-all clauses; "should this former have its own row?" is semantic | option 2 again: a function generated from a `Desc` has no catch-all to inherit. This is the strongest argument for the dogfooding target |
+| **B** | **A CATCH-ALL HIDING A MISSING CASE** — `_ = false` makes a function total, so coverage is satisfied and the omission is SILENT | `spine?`/`stablecd?` inherited `_ = false` for `icon`/`ielim` — THREE silently wrong answers, `--safe`, zero warnings (`25602107`) | ✅ **NOW PINNED** — `FormerCensus` asserts the catch-all's EXTENT (`spine?` 12 of 30, `stablecd?` 7); adding a former moves the number and FAILS. ★ AND Agda has a native flag we were not using: `--exact-split -Werror` makes a catch-all a hard error, by clause — see below | option 2 again: a function generated from a `Desc` has no catch-all to inherit. This is the strongest argument for the dogfooding target |
 | **C** | **VACUITY** — a true theorem that says nothing | `subTI` quantified over an arbitrary env-top, so `consistency` was VACUOUS; `gcd-gt-gen`/`gcd-le-gen` premises uninhabitable at variables (`5edcde10`) | ⛔ not in general — an implication with an unsatisfiable premise is a fine proof | ★ **the real idea: a hypothesis OWES A NON-VACUITY WITNESS.** `∃ args. premise args` IS a proposition. Once could demand one per conditional lemma — `check-formers` gate 6 is the shadow of it |
 | **D** | **ENCODING CORRESPONDENCE** — a well-formed row that encodes the WRONG RULE | `dwf-cons` emitting `DescWf C` for `DescWf (C ◃ E)` (2026-09-01) | 🟡 COUNTS ✅ (`Knot/Census`), CONTENT ⛔ — needs the adequacy map `enDeriv` | make the declaration a VALUE, so the correspondence is an ordinary function rather than a reflection macro over a Python-parsed source |
 | **E** | **CLAIM / COMMENT DRIFT** — a header asserting "N of M" that is false | two stale census claims in `Knot/Terms`, 32 → **13** (`da699bd1`); stale ⬜/⛔ markers (`ef6e408b`, `cbb181cd`) | ✅ where NUMERIC — turn the claim into a `refl`; that is exactly what `Knot/Census` is | claims in the doc layer that are checked, not prose |
@@ -911,3 +911,96 @@ anything is CONSUMED.**
 3. ⚠ **Do NOT promise a vacuity decision procedure.** It cannot exist;
    promising it is how a checker ends up trusted for something it does
    not do — which is the failure mode this whole section documents.
+
+#### ⚠⚠ AND THE DECIDABILITY CLAIM ABOVE WAS TOO GLIB — the precise version
+
+"Inhabitation is provability, undecidable" is the right conclusion from
+the wrong premise, and the difference matters for Once.
+
+* **Strong normalization does NOT buy decidable inhabitation.** System F
+  is SN and its inhabitation problem is UNDECIDABLE (Löb 1976).
+  Conversely simply-typed λ-calculus HAS decidable inhabitation
+  (PSPACE-complete, Statman 1979). ⇒ totality of the TERM language is not
+  the deciding property, so "Once is total" buys nothing here.
+* **The deciding property is UNBOUNDED QUANTIFICATION OVER AN INFINITE
+  DOMAIN in the TYPE language.** In any total theory with `ℕ` and a
+  structurally-recursive step function you can write
+
+      Halts M = Σ ℕ (λ n → run M n ≡ halted)
+
+  — `run` structural on `n`, entirely total — and `Halts M` is inhabited
+  iff `M` halts. ⇒ inhabitation is undecidable **without any general
+  recursion anywhere**. Once inherits this the moment its types quantify
+  over `ℕ`.
+
+★★★ **AND THE ASYMMETRY IS THE ACTIONABLE PART.** Type-checking is
+decidable in a total theory, so enumerate-and-check is a genuine
+semi-decision procedure:
+
+    "NOT vacuous" (∃ a witness)   — r.e.:      a search FINDS it, eventually
+    "vacuous"     (∄ any witness) — co-r.e.:   NO procedure confirms it
+
+⇒ a complete vacuity checker is impossible, but a complete **non-vacuity
+finder** exists in the limit. That is the right shape to build: search
+for a witness, and treat *found* as definitive and *not found in budget*
+as a flag. It improves monotonically with compute, which "inspection"
+never does.
+
+#### ⇒ four SOUND partial vacuity checkers, in increasing order of reach
+
+1. **Structural emptiness** — `⊥`, a constructor-free datatype, or a
+   family with no constructor available at the given index. Agda already
+   decides this: it is what an `()` pattern IS. ⚠ For the ENCODED
+   families it is not free — `Examples/Vec.no-cons-at-zero` is a
+   hand-written proof, not a decided one.
+2. ★ **STUCK-INDEX emptiness — and this one would have caught the actual
+   instance.** `gcd-gt-gen`'s premise was uninhabitable because
+   `monusTm (nsuc A) B` with `B` a VARIABLE is stuck: it reaches neither
+   `nsuc d` nor `nzero`, so no constructor's index can match. In a total
+   theory normalization is DECIDABLE, so "normalize the premise's index;
+   if it is a stuck neutral and every constructor Fords its index to a
+   constructor-headed form, the family is empty" is a decidable check.
+3. **Bounded proof search** for the witness — the semi-decision procedure
+   above, i.e. Agsy. §6 of `JUDGEMENT-ATTEMPTS` already measured that
+   these goals are syntax-directed and exactly Agsy-shaped.
+4. **Consumer-discharge** — a conditional lemma owes a consumer that
+   builds the premise at the arguments the lemma is stated for.
+   Decidable (call graph) *plus* type-checked. Catches both real cases.
+
+★ **A fifth, for Once specifically: a DECIDABLY-INHABITED FRAGMENT.**
+Undecidability comes from unbounded quantification; types built only from
+finite domains and bounded quantifiers have decidable inhabitation. A
+language could mark that fragment and offer a COMPLETE vacuity check
+inside it, refusing to guess outside. That is a real design lever and it
+is honest at the boundary.
+
+#### ⚠ AND ARE CATCH-ALLS EVEN ALLOWED UNDER `--safe`? — MEASURED: yes, and Agda has a flag for them
+
+Asked directly, and worth testing rather than asserting.
+
+    {-# OPTIONS --safe #-}                        catch-all → rc=0   ✅ ALLOWED
+    {-# OPTIONS --safe --exact-split #-}          → CoverageNoExactSplit, NAMING the clause
+    {-# OPTIONS --safe --exact-split -Werror #-}  → rc=42, a HARD GATE
+
+★ So `--safe` says nothing about catch-alls — they are ordinary total
+code, and this repo relies on it: `Metatheory/LogicalRelation` is
+`--safe` and contains `spine? _ = false`.
+
+★★★ **BUT AGDA ALREADY HAS THE CHECK, AND WE WERE NOT USING IT.**
+`--exact-split` flags exactly the clauses that are not preserved as
+definitional equalities — i.e. the catch-alls — **by name**, and
+`-Werror` turns that into a failure. That is a NATIVE, per-clause answer
+to category B, strictly more precise than counting.
+
+⇒ two mechanisms, and they are complements, not rivals:
+
+| | catches | cost |
+|---|---|---|
+| `--exact-split -Werror`, per module | every catch-all, AT ITS CLAUSE | every legitimate one must be expanded into explicit clauses — a real rewrite, and often worse code |
+| `FormerCensus.catchAllN` (this repo) | a catch-all's EXTENT MOVING | none — the catch-alls stay; a new former joining one changes the number and fails |
+
+⇒ ⬜ **the pin is the right default and `--exact-split` the right tool for
+a module under suspicion.** Adopt the flag where a function is
+load-bearing and small (`spine?`, `stablecd?`, the classifiers); keep the
+pin everywhere, because it is the one that costs nothing and still makes
+a NEW former impossible to add silently — which is the actual bug.
