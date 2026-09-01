@@ -682,3 +682,94 @@ it-claims`, in a new place.
   `meta-standing-for-a-computation`). A signature that is cheap to *use*
   and ruinous to *build* is exactly what `judge-abstractions-at-the-use-
   site` says to record.
+
+## Once: THE BUGS AGDA CANNOT SEE — and how many of them are mechanizable ANYWAY
+
+⚠⚠ **This section starts by CORRECTING ITS OWN PREMISE.**
+`DirectedHoTT/JUDGEMENT-ATTEMPTS.md` §13 classified nine real defects
+from 2026-09-01 and concluded that a type checker "cannot see" the
+correspondence between `Spec/Typing.agda` and the emitted rows. The
+first half was measured; **the second half was wrong**, and the objection
+that broke it was one sentence long: *"it is just Agda that can't find
+it, right? Why can't `length X == length Y` be an invariant?"*
+
+★ It can. Agda cannot see a correspondence **nobody wrote down**. Written
+down, it checks it. `Examples/Knot/Census` is the demonstration and it is
+now in the sweep.
+
+### What was actually blocking it — and it was not Agda
+
+The rules live in `Spec/Typing.agda` as **datatype declarations**. The
+generator reads them by **parsing text in Python**, so the left-hand side
+of the correspondence lived outside the logic and every invariant about
+it had to be a script assertion. ⇒ the missing ingredient was never
+expressiveness; it was **reflection** — a way to make the declaration a
+value the logic can compute over.
+
+### ✅ What is mechanizable TODAY (and now mechanized)
+
+**Measured 2026-09-01: `Agda.Builtin.Reflection` works under `--safe`.**
+`getDefinition` on a `data-type` yields its constructor list at
+type-check time. So:
+
+| invariant | mechanism | status |
+|---|---|---|
+| how many rules the SOURCE has | reflection (`rules _⊢_∷_ ≡ 32`) | ✅ `Knot/Census` |
+| how many rows the ENCODING has | ordinary Agda — `IDesc` is a first-order list, so `ilen D` and `refl` | ✅ |
+| **the two, RELATED** — `ilen JudgeD + 5 ≡ srcJudge` | an equation, checked in the sweep | ✅ |
+| a rule ADDED to `Spec/Typing` with no row | falls out of the same equation | ✅ **new coverage** |
+
+⚠ And the control was run: a deliberately wrong count is a type error
+(`2 != 99 of type Nat`). An assertion that cannot fail proves nothing.
+
+★★★ **This replaces a Python ratchet with a THEOREM.** The ratchet was a
+FLOOR (`Judge ≥ 34`) and on 2026-09-01 the row count went 51 → 49 → 51
+while depth bugs were being fixed — **the floor saw nothing, because a
+floor only catches a fall below ITSELF.** The census is an exact
+equation; drift is a type error, in the sweep, for free.
+
+### ⬜ What is mechanizable but NOT YET done, in Agda as it is
+
+1. **NAME-level correspondence.** Reflection yields constructor NAMES,
+   not just their count, and the emitter derives each row's name from the
+   rule's. `primQNameToString` + the emitted names would check that every
+   constructor of `_⊢_∷_` has the row it should, not merely that the
+   totals agree. Counting is the cheap shadow; this is the next rung.
+2. ★★★ **The adequacy map, `enDeriv`.** THE tier that makes the
+   *dangerous* class impossible rather than unlikely — a well-formed row
+   that encodes the WRONG RULE (`dwf-cons` emitting `DescWf C` for
+   `DescWf (C ◃ E)`, which typechecked). A total function
+   `Γ ⊢ t ∷ A → ⟨inhabitant at ⌈Γ⌉ ⌈t⌉ ⌈A⌉⟩` cannot be written for such a
+   row, because its TARGET TYPE names the index. `Knot/Map`'s
+   `enTy`/`enTm` and `Knot/SzAgree` already do exactly this **for the
+   syntax**; there is no `enJudge`.
+   ⇒ and it is not extra work: `prog`'s type mentions `_⊢_∷_`, so step 4
+   needs this correspondence anyway.
+3. **Coverage, as opposed to correctness.** Two 2026-09-01 defects were
+   neither: a spike left `JudgeWfJ`–`Q` as real files the sweep would
+   have checked GREEN, and `check.sh` returning 0 off a cached `.agdai`
+   checks nothing. These are properties of the BUILD, not of any module,
+   and no in-language invariant reaches them. A content-addressed build
+   would; that is a tooling item, not a language one.
+
+### ★ What Once could do that Agda makes awkward
+
+* **Make the declaration a value.** Everything above is reflection
+  working around the fact that a datatype declaration is not data. The
+  knot exists to make `RTm` a kernel type; the same move applied to
+  JUDGEMENTS means the correspondence is stateable **without** a
+  reflection macro and without a Python parser — one language, one
+  artifact, `enDeriv` an ordinary function.
+* **Totality obligations on a declaration** — see the section above on
+  datatype declarations carrying none. A generated family whose row count
+  is part of its INTERFACE cannot drift.
+* **An adequacy obligation as a first-class notion.** "This encoding is
+  faithful to that declaration" is the proposition we keep re-proving by
+  hand (`LookupGen`, `SzAgree`, `WkRows`) and never state once.
+
+⇒ ⚠ **the honest summary: of the four defect classes Agda missed, ONE was
+never a language problem (counting — now checked), ONE is ordinary work
+we have not done (`enDeriv`), and TWO are build-system properties.** None
+of them is evidence that the checking is inherently manual. "Rely on
+inspection with scripts" was the wrong conclusion and this section is
+the retraction.
