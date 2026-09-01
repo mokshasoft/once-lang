@@ -7,7 +7,11 @@ Design decisions made during the implementation of the Once compiler.
 ## D001: Generators as Reserved Words
 
 **Date**: 2025-12-08
-**Status**: Accepted
+**Status**: **SUPERSEDED by D136 (2026-09-01)** — generators are identified by a
+reserved NAMESPACE (`Generators.*`), not by reserved bare names, and a user MAY
+define `fst`. The reservation below was never enforced at the parser; what it
+produced instead was a collision in which the builtin silently won. Read D136
+for what replaced it and why.
 
 ### Context
 The 12 categorical generators (`id`, `compose`, `fst`, `snd`, `pair`, `inl`, `inr`, `case`, `terminal`, `initial`, `curry`, `apply`) need to be represented in the surface syntax. Two approaches were considered:
@@ -9928,3 +9932,88 @@ set of well-typed programs — a language change, hence this entry. It is
 strictly a widening, and every program it admits was admitted on `master`.
 
 **Relates**: D018, D044, D045, D127, D134
+
+---
+
+## D136: A User MAY Define `fst` — Generators Get a Reserved NAMESPACE, Not Reserved WORDS
+
+**Date**: 2026-09-01 (decision taken 2026-06-26 in
+`plans/0.50-canonicalize-generators.md`; this entry is the record it owed) ·
+**Status**: Decided · **SUPERSEDES D001** ·
+**Follows**: D050 (canonical names), D064 (named defs are morphisms)
+
+### The decision
+
+The twelve categorical generators are identified by a CANONICAL NAME the
+compiler owns — `canonical ["Generators", g]` — not by a reserved bare string.
+A user may therefore define `fst`, `pair`, `case`, … in their own module: their
+`User.Module.fst` and the generator `Generators.fst` are DIFFERENT NAMES, and
+ordinary scoping resolves a reference to whichever is in scope.
+
+D001 said the opposite ("Generators are reserved words … users cannot define
+variables named `fst`"). D001 is superseded.
+
+### Why D001 was wrong, and how it showed
+
+D001's rationale was that reserving twelve names is a minor cost and makes
+elaboration simpler ("no need to check for shadowing"). Both halves failed.
+
+**It was not simpler — it was a collision.** `classifyBareBuiltin : String → …`
+and `classifyAppHead` dispatch on the bare string `"fst"`, so a user's `fst`
+and the generator share ONE IDENTITY SPACE. The reservation was never actually
+enforced at the parser (D001 assumed it would be); what happened instead is
+that the builtin silently wins:
+
+    fst : Int -> Int
+    fst x = x
+    test = fst 5        -- "fst requires a pair argument"
+
+The user's definition is unreachable and the error message is about a function
+they did not call. That is a bug, and it was recorded as one in plan 0.50 on
+2026-06-26 — this entry is that decision finally written down.
+
+**It was not minor, because the cost was paid in the SPEC.** The collision has
+to be excluded somewhere, so it leaked into the typing rules as side
+conditions: `t-app`, `t-effApp` and `t-arg-driven-app-check` each carry
+`classifyAppHead f ≡ nothing`, and the bare-builtin check rules each carry
+`lookupLocal ≡ nothing` / `lookupImport ≡ nothing`. A guard against a
+name collision became part of the language definition — the same defect D134
+removes elsewhere, and D127 removed from `⊢ᵍ`.
+
+### What it buys
+
+Four things, all the same root cause dissolving:
+
+  * the shadowing bug is fixed, and a user may name things what they like;
+  * `named-morph-strong` / `-resolved` become dischargeable — a user
+    `RResolved cn` provably has `cn ≠ Generators.*`, hence is not a builtin,
+    hence takes the morphism path (the `bbc-other` assumption becomes
+    type-enforced rather than postulated);
+  * `classifyAppHead f ≡ nothing` stops being load-bearing, so plan 0.80 can
+    remove it from the three application rules — it was only ever guarding the
+    collision (measured 2026-09-01: removing it before this lands breaks
+    `check-complete` on exactly the shadowing case);
+  * the CanonicalName migration finishes. The generators were its last holdout.
+
+### Why a reserved NAMESPACE rather than a reserved-name check
+
+Enforcing D001 in the parser was the other option and it is a band-aid: it
+keeps one identity space and adds a guard, so every downstream proof still has
+to carry "this name is not a builtin" as a side condition. Canonicalizing
+removes the ambiguity at the representation instead of forbidding half of it —
+after which there is nothing to guard, and the side conditions delete rather
+than move ([[feedback_canonical_name_not_bare_bandaid]]).
+
+### Consequences
+
+  * `compiler/test/TypeCheckSpec.hs`'s "user-defined 'fst' is shadowed by
+    builtin" pinned the OLD behaviour and flips: the program is now ACCEPTED,
+    and `fst 5` means the user's `fst`.
+  * Generators still need no import — they resolve to `Generators.*` when not
+    shadowed, which is what makes them feel primitive without being reserved.
+  * A user who shadows a generator loses access to it under that name in that
+    scope. That is ordinary scoping, and it is what every language with a
+    prelude does.
+
+**Relates**: D001 (superseded), D050, D064, D127, D134; plan
+`0.50-canonicalize-generators.md`
