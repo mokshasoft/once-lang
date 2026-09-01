@@ -1384,11 +1384,18 @@ def _mutual_rows(CT, TEL, dummy):
                     tm, ty, tg = dummy, q[3], 0
                 else:
                     tm, ty, tg = q[3], q[4], 1
-                return TUP(d, cx,
-                           _val(_parse_spine(_tokens(tm)), CT, d) if tm is not dummy
-                             else dummy,
-                           _val(_parse_spine(_tokens(ty)), CT, d),
-                           RAW("num %d" % tg))
+                _slots = [d, cx,
+                          _val(_parse_spine(_tokens(tm)), CT, d)
+                            if tm is not dummy else dummy,
+                          _val(_parse_spine(_tokens(ty)), CT, d)]
+                # ⚠ A PADDED SLOT NEEDS A DUMMY **AT ITS OWN SORT**.  The
+                #   first attempt padded all three with `Tm-unitK` — the
+                #   `sTm` dummy a `⊢ty` row uses — and every module failed
+                #   `nzero != nsuc …` on the sort ford.  ⇒ the nullary
+                #   former of each sort, which exists at every depth.
+                if SPIKE_WIDE:
+                    _slots += [AP("IDesc-nilK"), AP("ICon-iK"), AP("DCon-iK")]
+                return TUP(*(_slots + [RAW("num %d" % tg)]))
             # ★ a `∋` premise is foreign too, at `_∋_∷_` — the judgement
             #   `Knot/Lookup` built by hand, and the first one there was.
             ps = []
@@ -1614,6 +1621,25 @@ def write_judgement(J, out, CT):
         gen_j_wf(J, "B", h, n, True))
     return [J.mod + "WfA", J.mod + "WfB"]
 
+# ★★★ WIDTH SPIKE (`SPIKE_WIDE=1`) — MEASUREMENT ONLY, NEVER COMMITTED.
+#
+# The merge must carry `IConWf`'s subjects too — an `IDesc`, an `ICon`
+# and a `DCon` beyond what `IJudge` holds.  Before transcribing ~40 rows
+# against a wider index, measure what the WIDTH alone costs: re-emit the
+# SAME 33 rules with three extra slots, padded with the same dummy a
+# `⊢ty` row already uses for its `Tm`.  Any delta is attributable to
+# width, because nothing else changed.
+SPIKE_WIDE = bool(os.environ.get("SPIKE_WIDE"))
+
+IJUDGE_WIDE = """Σ' Nat
+    (Σ' (IMu CtxD INat (var vz))
+      (Σ' (IMu KnotD IPair (pair sTm (var (vs vz))))
+        (Σ' (IMu KnotD IPair (pair sTy (var (vs (vs vz)))))
+          (Σ' (IMu KnotD IPair (pair sIDesc (var (vs (vs (vs vz))))))
+            (Σ' (IMu KnotD IPair (pair sICon (var (vs (vs (vs (vs vz)))))))
+              (Σ' (IMu KnotD IPair (pair sDCon (var (vs (vs (vs (vs (vs vz))))))))
+                  Nat))))))"""
+
 IJUDGE_DEF = """Σ' Nat
     (Σ' (IMu CtxD INat (var vz))
       (Σ' (IMu KnotD IPair (pair sTm (var (vs vz))))
@@ -1669,7 +1695,10 @@ jwfTop D w =
 
 def write_mutual(out, CT):
     """`_⊢ty_` + `_⊢_∷_`, ONE description over a TAGGED index."""
-    TEL = [TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"), TNAT()]
+    TEL = ([TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"),
+            TKNOT("sIDesc"), TKNOT("sICon"), TKNOT("sDCon"), TNAT()]
+           if SPIKE_WIDE else
+           [TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"), TNAT()])
     rows, skipped = _mutual_rows(CT, TEL, AP("Tm-unitK"))
     # ⚠⚠ THE CAP MUST BITE **BEFORE** `JudgeD` IS BUILT.  Truncating only
     #   the well-formedness rows leaves the DESCRIPTION at full length, so
@@ -1689,7 +1718,8 @@ def write_mutual(out, CT):
           "--",
           "-- ⚠ AND THE PADDING IS WHAT A UNIFORM TELESCOPE COSTS: the slot",
           "--   cannot change SORT with the tag.",
-          "IJudge : RTy ε", "IJudge =", "  " + IJUDGE_DEF, ""]
+          "IJudge : RTy ε", "IJudge =",
+          "  " + (IJUDGE_WIDE if SPIKE_WIDE else IJUDGE_DEF), ""]
     L.append("-- ⚠ NOT EMITTED — %d of %d rules:" % (len(skipped), len(skipped) + len(rows)))
     for n, w in skipped: L.append("--     %-10s %s" % (n, w))
     L.append("")
@@ -1744,6 +1774,13 @@ def write_mutual(out, CT):
     JWF_ROWS = 4
     _n = len(rows)
     _bounds = [(i, min(i + JWF_ROWS, _n)) for i in range(0, _n, JWF_ROWS)]
+    # ⚠ MORE THAN 26 PARTS RUNS PAST `Z` into `[`, `\\`, `]` — real files
+    #   with those names, which the next run does not overwrite and the
+    #   sweep would then check as STALE.  The width spike at one row per
+    #   module produced 33 parts and 24 such strays.
+    if len(_bounds) > 26:
+        sys.exit("  ⇒ %d parts: the A–Z naming is exhausted.  Raise "
+                 "JWF_ROWS or widen the scheme." % len(_bounds))
     _parts = [chr(ord("A") + i) for i in range(len(_bounds))]
     for _pi, (part, (lo, hi)) in enumerate(zip(_parts, _bounds)):
         # ⚠ EACH PART IMPORTS EVERY EARLIER PART, not just its predecessor:
