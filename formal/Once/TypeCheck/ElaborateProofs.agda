@@ -158,15 +158,49 @@ checkElab-fallback-RResolved :
   → inferElab ctx (Raw.RResolved cn) ≡ success T Ψ eE d f
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RResolved cn) T ≡ success Ψ eE' d' f')))
+-- D136: the view has to be split before `checkElabV (RResolved cn)` reduces —
+-- the dispatch is a single clause now, so an abstract `cn` leaves it stuck.
+-- Every branch is then the SAME proof: on an infer SUCCESS the generator auxes
+-- route through `embedOrSubsume` exactly as the generic path does, so the
+-- conclusion never depended on which view it was.
 checkElab-fallback-RResolved {ctx} cn T eqInf
-  with inferElabV ctx (Raw.RResolved cn)
-... | failure _ , _ with eqInf
-...   | ()
-checkElab-fallback-RResolved {ctx} cn T eqInf
-  | success T' Ψ' eE' d' fr' , w with eqInf
-... | refl with T ≟T T
-...   | yes refl = _ , _ , _ , refl
-...   | no ¬eq   = ⊥-elim (¬eq refl)
+  with classifyGen cn | inferElabV ctx (Raw.RResolved cn) | eqInf
+... | gv-id | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-id | success T' Ψ' eE' d' fr' , w | refl with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-fst | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-fst | success T' Ψ' eE' d' fr' , w | refl with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-snd | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-snd | success T' Ψ' eE' d' fr' , w | refl with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-terminal | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-terminal | success T' Ψ' eE' d' fr' , w | refl with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-initial | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-initial | success T' Ψ' eE' d' fr' , w | refl with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-inl | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-inl | success T' Ψ' eE' d' fr' , w | refl with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-inr | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-inr | success T' Ψ' eE' d' fr' , w | refl with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-unit | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-unit | success T' Ψ' eE' d' fr' , w | refl with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-other | failure _ , _ | ()
+checkElab-fallback-RResolved {ctx} cn T eqInf | gv-other | success T' Ψ' eE' d' fr' , w | refl with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
 
 -- RAnnot T: check-mode check at T falls to generic fallback (no
 -- specialised RAnnot check clause). inferElab ctx (RAnnot e T) succeeds
@@ -296,28 +330,29 @@ checkElab-fallback-RVar-unit {ctx} with Unit ≟T Unit
 -- to reroute the actual `lookupLocal ctx x` / `lookupImport _ x` to
 -- `nothing` via the hypotheses.
 inferElabV-RVar-lookup-aux-fail :
-  ∀ (ctx : NamedCtx) (x : String) (¬unit : ¬ (x ≡ "unit"))
+  ∀ (ctx : NamedCtx) (x : String)
     (eq-loc : lookupLocal ctx x ≡ nothing)
     (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
-  → inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc nothing eq-imp
+  → inferElabV-RVar-lookup-aux ctx x nothing eq-loc nothing eq-imp
       ≡ inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
-inferElabV-RVar-lookup-aux-fail _ _ _ _ _ = refl
+inferElabV-RVar-lookup-aux-fail _ _ _ _ = refl
 
 -- Plan 0.58 / D071: reduce `inferElabV (RVar x)` (both lookups failed) to the
 -- POLY FALLBACK call. Callers compose with a per-outcome lemma (failure for
 -- builtins / lookupPoly-nothing / non-ground; success for ground).
 inferElabV-RVar-poly-bridge :
-  ∀ (ctx : NamedCtx) (x : String) (¬unit : ¬ (x ≡ "unit"))
+  ∀ (ctx : NamedCtx) (x : String)
   → (eqLoc : lookupLocal ctx x ≡ nothing)
   → (eqImp : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
   → inferElabV ctx (Raw.RVar x)
       ≡ inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
-inferElabV-RVar-poly-bridge ctx x ¬unit eqLoc eqImp
-  with StrProp._≟_ x "unit"
-... | yes eq-unit = ⊥-elim (¬unit eq-unit)
-... | no _ = trans bridge-eq (inferElabV-RVar-lookup-aux-fail ctx x ¬unit eqLoc eqImp)
+-- D136: no `"unit"` split any more. `inferElabV (RVar x)` goes straight to the
+-- lookup aux — `unit` is a generator and arrives as `RResolved (gen "unit")`,
+-- so a bare `RVar` never needs to be excluded from it.
+inferElabV-RVar-poly-bridge ctx x eqLoc eqImp =
+  trans bridge-eq (inferElabV-RVar-lookup-aux-fail ctx x eqLoc eqImp)
   where
-    -- Specialise `inferElabV-RVar-lookup-aux ctx x ¬unit ml ml-eq mi mi-eq`
+    -- Specialise `inferElabV-RVar-lookup-aux ctx x ml ml-eq mi mi-eq`
     -- to `(ml, ml-eq, mi, mi-eq) := (lookupLocal ctx x, refl, lookupImport _ x, refl)`
     -- and to `(nothing, eqLoc, nothing, eqImp)` and prove these equal.
     -- J-style: dep pattern-match on each pair to reduce both endpoints to
@@ -325,13 +360,13 @@ inferElabV-RVar-poly-bridge ctx x ¬unit eqLoc eqImp
     helper :
       ∀ ml (eml : lookupLocal ctx x ≡ ml)
         mi (emi : lookupImport (NamedCtx.imports ctx) x ≡ mi)
-      → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl (lookupImport (NamedCtx.imports ctx) x) refl
-        ≡ inferElabV-RVar-lookup-aux ctx x ¬unit ml eml mi emi
+      → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl (lookupImport (NamedCtx.imports ctx) x) refl
+        ≡ inferElabV-RVar-lookup-aux ctx x ml eml mi emi
     helper .(lookupLocal ctx x) refl .(lookupImport (NamedCtx.imports ctx) x) refl = refl
 
     bridge-eq :
-      inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl (lookupImport (NamedCtx.imports ctx) x) refl
-      ≡ inferElabV-RVar-lookup-aux ctx x ¬unit nothing eqLoc nothing eqImp
+      inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl (lookupImport (NamedCtx.imports ctx) x) refl
+      ≡ inferElabV-RVar-lookup-aux ctx x nothing eqLoc nothing eqImp
     bridge-eq = helper nothing eqLoc nothing eqImp
 
 -- J-style specialisation lemmas for the three de-withed poly-fallback stages.
@@ -400,14 +435,14 @@ inferElabV-RVar-poly-aux-success ctx x {schema} {g = g} eqCls eqLp eqG =
 -- poly-fallback-failure premise (`refl` for literal builtin names — the
 -- classifier and fallback reduce; a lemma above for abstract names).
 inferElabV-RVar-fail-bridge :
-  ∀ (ctx : NamedCtx) (x : String) (¬unit : ¬ (x ≡ "unit"))
+  ∀ (ctx : NamedCtx) (x : String)
   → (eqLoc : lookupLocal ctx x ≡ nothing)
   → (eqImp : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
   → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
       ≡ (failure (UnboundVariable x) , tt)
   → inferElabV ctx (Raw.RVar x) ≡ (failure (UnboundVariable x) , tt)
-inferElabV-RVar-fail-bridge ctx x ¬unit eqLoc eqImp polyFail =
-  trans (inferElabV-RVar-poly-bridge ctx x ¬unit eqLoc eqImp) polyFail
+inferElabV-RVar-fail-bridge ctx x eqLoc eqImp polyFail =
+  trans (inferElabV-RVar-poly-bridge ctx x eqLoc eqImp) polyFail
 
 -- Plan 0.4 T2 Phase 5: bbc-X RVar fallbacks. The aux extraction
 -- (Phase 3) plus the lookup-view refactor (Phase 4) plus the
@@ -422,7 +457,7 @@ checkElab-fallback-RVar-id :
       checkElab ctx (Raw.RResolved (gen "id")) (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] T)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-id {ctx} T eqLoc eqImp
-  with inferElabV ctx (Raw.RResolved (gen "id")) | inferElabV-RVar-fail-bridge ctx "id" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "id")) | inferElabV-RVar-fail-bridge ctx "id" eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "id" | inspectLookupImport ctx "id"
 ... | llv-not-found _ | liv-not-found _
@@ -451,7 +486,7 @@ checkElab-fallback-RVar-fst :
       checkElab ctx (Raw.RResolved (gen "fst")) ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-fst {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RResolved (gen "fst")) | inferElabV-RVar-fail-bridge ctx "fst" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "fst")) | inferElabV-RVar-fail-bridge ctx "fst" eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "fst" | inspectLookupImport ctx "fst"
 ... | llv-not-found _ | liv-not-found _
@@ -471,7 +506,7 @@ checkElab-fallback-RVar-snd :
       checkElab ctx (Raw.RResolved (gen "snd")) ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-snd {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RResolved (gen "snd")) | inferElabV-RVar-fail-bridge ctx "snd" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "snd")) | inferElabV-RVar-fail-bridge ctx "snd" eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "snd" | inspectLookupImport ctx "snd"
 ... | llv-not-found _ | liv-not-found _
@@ -491,7 +526,7 @@ checkElab-fallback-RVar-terminal :
       checkElab ctx (Raw.RResolved (gen "terminal")) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-terminal {ctx} A eqLoc eqImp
-  with inferElabV ctx (Raw.RResolved (gen "terminal")) | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "terminal")) | inferElabV-RVar-fail-bridge ctx "terminal" eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
 ... | llv-not-found _ | liv-not-found _ = _ , _ , _ , refl
@@ -512,7 +547,7 @@ checkElab-fallback-RVar-terminalV :
         checkElabV ctx (Raw.RResolved (gen "terminal")) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
           ≡ (success Surface.zeroUsage eE d f , w)))))
 checkElab-fallback-RVar-terminalV {ctx} A eqLoc eqImp
-  with inferElabV ctx (Raw.RResolved (gen "terminal")) | inferElabV-RVar-fail-bridge ctx "terminal" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "terminal")) | inferElabV-RVar-fail-bridge ctx "terminal" eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "terminal" | inspectLookupImport ctx "terminal"
 ... | llv-not-found _ | liv-not-found _ = _ , _ , _ , _ , refl
@@ -529,7 +564,7 @@ checkElab-fallback-RVar-initial :
       checkElab ctx (Raw.RResolved (gen "initial")) (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-initial {ctx} A eqLoc eqImp
-  with inferElabV ctx (Raw.RResolved (gen "initial")) | inferElabV-RVar-fail-bridge ctx "initial" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "initial")) | inferElabV-RVar-fail-bridge ctx "initial" eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "initial" | inspectLookupImport ctx "initial"
 ... | llv-not-found _ | liv-not-found _ = _ , _ , _ , refl
@@ -546,7 +581,7 @@ checkElab-fallback-RVar-inl :
       checkElab ctx (Raw.RResolved (gen "inl")) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inl {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RResolved (gen "inl")) | inferElabV-RVar-fail-bridge ctx "inl" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "inl")) | inferElabV-RVar-fail-bridge ctx "inl" eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "inl" | inspectLookupImport ctx "inl"
 ... | llv-not-found _ | liv-not-found _
@@ -566,7 +601,7 @@ checkElab-fallback-RVar-inr :
       checkElab ctx (Raw.RResolved (gen "inr")) (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inr {ctx} A B eqLoc eqImp
-  with inferElabV ctx (Raw.RResolved (gen "inr")) | inferElabV-RVar-fail-bridge ctx "inr" (λ ()) eqLoc eqImp refl
+  with inferElabV ctx (Raw.RResolved (gen "inr")) | inferElabV-RVar-fail-bridge ctx "inr" eqLoc eqImp refl
 ... | (failure _ , _) | refl
   with inspectLookupLocal ctx "inr" | inspectLookupImport ctx "inr"
 ... | llv-not-found _ | liv-not-found _
@@ -1126,7 +1161,6 @@ checkElab-fallback-RVar-poly :
     {eE_body : SExpr S∅ Surface.zeroUsage T}
     {d_body f_body : ℕ}
   → classifyBareBuiltin x ≡ bbc-other
-  → ¬ (x ≡ "unit")
   → lookupLocal ctx x ≡ nothing
   → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   -- The poly-node emission depends only on `lookupPoly` succeeding (checkElab
@@ -1143,9 +1177,9 @@ checkElab-fallback-RVar-poly :
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       checkElab ctx (Raw.RVar x) T
         ≡ success Surface.zeroUsage eE d fr)))
-checkElab-fallback-RVar-poly {ctx} x T eqCls ¬unit eqLoc eqImp eqPoly eqG _
+checkElab-fallback-RVar-poly {ctx} x T eqCls eqLoc eqImp eqPoly eqG _
   with inferElabV ctx (Raw.RVar x)
-     | inferElabV-RVar-fail-bridge ctx x ¬unit eqLoc eqImp
+     | inferElabV-RVar-fail-bridge ctx x eqLoc eqImp
          (inferElabV-RVar-poly-aux-fail-nonground ctx x eqCls eqPoly eqG)
 ... | (failure _ , _) | refl
   with classifyBareBuiltin x | eqCls
@@ -1159,7 +1193,6 @@ checkElab-fallback-RVar-poly-infer :
   ∀ {ctx : NamedCtx} (x : String)
     {schema : PolyType} {body : RawExpr} {g : Ground schema}
   → classifyBareBuiltin x ≡ bbc-other
-  → ¬ (x ≡ "unit")
   → lookupLocal ctx x ≡ nothing
   → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
@@ -1167,10 +1200,10 @@ checkElab-fallback-RVar-poly-infer :
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       inferElab ctx (Raw.RVar x)
         ≡ success (extractGround schema g) Surface.zeroUsage eE d fr)))
-checkElab-fallback-RVar-poly-infer {ctx} x eqCls ¬unit eqLoc eqImp eqPoly eqG =
+checkElab-fallback-RVar-poly-infer {ctx} x eqCls eqLoc eqImp eqPoly eqG =
   _ , _ , _ ,
   cong proj₁
-    (trans (inferElabV-RVar-poly-bridge ctx x ¬unit eqLoc eqImp)
+    (trans (inferElabV-RVar-poly-bridge ctx x eqLoc eqImp)
            (inferElabV-RVar-poly-aux-success ctx x eqCls eqPoly eqG))
   where open import Data.Product using (proj₁)
 checkElab-fallback-RApp-id :

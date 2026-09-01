@@ -1306,6 +1306,16 @@ mutual
     ∀ (ctx : NamedCtx) (T : Type)
     → VerifiedInferResult ctx (Raw.RResolved (gen "inr"))
     → VerifiedCheckResult ctx (Raw.RResolved (gen "inr")) T
+  -- D136 dispatchers. View + its defining equation, so a caller can recover
+  -- `classifyGen cn ≡ gv` after a `with`-match (the `viewBundle` idiom).
+  inferElabV-RResolved-dispatch :
+    ∀ (ctx : NamedCtx) (cn : CanonicalName) → GenView cn
+    → VerifiedInferResult ctx (Raw.RResolved cn)
+  checkElabV-RResolved-dispatch :
+    ∀ (ctx : NamedCtx) (cn : CanonicalName) (T : Type) → GenView cn
+    → VerifiedInferResult ctx (Raw.RResolved cn)
+    → VerifiedCheckResult ctx (Raw.RResolved cn) T
+
   checkElabV-RVar-bbc-other-aux :
     ∀ (ctx : NamedCtx) (x : String) (T : Type)
     → VerifiedInferResult ctx (Raw.RVar x)
@@ -1772,13 +1782,12 @@ mutual
   inferElabV ctx (Raw.RQualified name alias) =
     inferElabV-RQualified-aux ctx name alias _ refl
 
-  -- D136: `unit` is a generator, so it arrives resolved. This clause is what
-  -- the bare-`RVar` `"unit"` special case became.
-  inferElabV ctx (Raw.RResolved (gen "unit")) =
-    success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
-
+  -- D136: ONE clause, routed through the `GenView`. Concrete
+  -- `RResolved (gen "g")` clauses here would stop `checkElabV`/`inferElabV`
+  -- reducing for an ABSTRACT `cn`, which the downstream proofs depend on —
+  -- the same reason `checkElabV-RApp-dispatch` takes its view as a parameter.
   inferElabV ctx (Raw.RResolved cn) =
-    inferElabV-RResolved-aux ctx cn _ refl
+    inferElabV-RResolved-dispatch ctx cn (classifyGen cn)
 
   -- D136: a bare `RVar` is NEVER a generator — the resolver has already turned
   -- an unshadowed generator into `RResolved (gen g)`. So this path is ordinary
@@ -1872,23 +1881,14 @@ mutual
   ... | rInfV@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar x) T rInfV
   ... | rInfV@(failure _ , _) = checkElabV-RVar-bbc-other-aux ctx x T rInfV
 
-  -- D136: the point-free generator leaves, keyed on the canonical name. No
-  -- `classifyBareBuiltin` guess and no shadowing check — a user's `fst` never
-  -- reaches these clauses, because the resolver never gave it this name.
-  checkElabV-wf ctx ac (Raw.RResolved (gen "id")) T =
-    checkElabV-RVar-bbc-id-aux ctx T (inferElabV ctx (Raw.RResolved (gen "id")))
-  checkElabV-wf ctx ac (Raw.RResolved (gen "fst")) T =
-    checkElabV-RVar-bbc-fst-aux ctx T (inferElabV ctx (Raw.RResolved (gen "fst")))
-  checkElabV-wf ctx ac (Raw.RResolved (gen "snd")) T =
-    checkElabV-RVar-bbc-snd-aux ctx T (inferElabV ctx (Raw.RResolved (gen "snd")))
-  checkElabV-wf ctx ac (Raw.RResolved (gen "terminal")) T =
-    checkElabV-RVar-bbc-terminal-aux ctx T (inferElabV ctx (Raw.RResolved (gen "terminal")))
-  checkElabV-wf ctx ac (Raw.RResolved (gen "initial")) T =
-    checkElabV-RVar-bbc-initial-aux ctx T (inferElabV ctx (Raw.RResolved (gen "initial")))
-  checkElabV-wf ctx ac (Raw.RResolved (gen "inl")) T =
-    checkElabV-RVar-bbc-inl-aux ctx T (inferElabV ctx (Raw.RResolved (gen "inl")))
-  checkElabV-wf ctx ac (Raw.RResolved (gen "inr")) T =
-    checkElabV-RVar-bbc-inr-aux ctx T (inferElabV ctx (Raw.RResolved (gen "inr")))
+  -- D136: the point-free generator leaves, routed through the `GenView` so the
+  -- clause stays SINGLE and `checkElabV (RResolved cn)` keeps reducing for an
+  -- abstract `cn`. No `classifyBareBuiltin` guess and no shadowing check — a
+  -- user's `fst` never reaches a generator branch, because the resolver never
+  -- gave it this name.
+  checkElabV-wf ctx ac (Raw.RResolved cn) T =
+    checkElabV-RResolved-dispatch ctx cn T (classifyGen cn)
+      (inferElabV ctx (Raw.RResolved cn))
 
   -- Plan 0.36 Phase 2a follow-up: pair literal `(a , b)` at a product
   -- type — check components bidirectionally so check-only constructs
@@ -1919,6 +1919,38 @@ mutual
   -- is accepted by the foetus checker only as a `with`-scrutinee; extracting it
   -- to an explicit-arg aux breaks termination. NOT every `with` is removable.
   checkElabV-wf ctx ac e T = embedOrSubsume ctx e T (inferElabV ctx e)
+
+  -- `unit` is the one generator that INFERS; the rest are polymorphic and only
+  -- check, so they fall to the ordinary resolved path (which reports the right
+  -- error for a bare use).
+  inferElabV-RResolved-dispatch ctx _ gv-unit =
+    success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
+  inferElabV-RResolved-dispatch ctx cn gv-id = inferElabV-RResolved-aux ctx cn _ refl
+  inferElabV-RResolved-dispatch ctx cn gv-fst = inferElabV-RResolved-aux ctx cn _ refl
+  inferElabV-RResolved-dispatch ctx cn gv-snd = inferElabV-RResolved-aux ctx cn _ refl
+  inferElabV-RResolved-dispatch ctx cn gv-terminal = inferElabV-RResolved-aux ctx cn _ refl
+  inferElabV-RResolved-dispatch ctx cn gv-initial = inferElabV-RResolved-aux ctx cn _ refl
+  inferElabV-RResolved-dispatch ctx cn gv-inl = inferElabV-RResolved-aux ctx cn _ refl
+  inferElabV-RResolved-dispatch ctx cn gv-inr = inferElabV-RResolved-aux ctx cn _ refl
+  inferElabV-RResolved-dispatch ctx cn gv-other = inferElabV-RResolved-aux ctx cn _ refl
+
+  checkElabV-RResolved-dispatch ctx _ T gv-id rInfV =
+    checkElabV-RVar-bbc-id-aux ctx T rInfV
+  checkElabV-RResolved-dispatch ctx _ T gv-fst rInfV =
+    checkElabV-RVar-bbc-fst-aux ctx T rInfV
+  checkElabV-RResolved-dispatch ctx _ T gv-snd rInfV =
+    checkElabV-RVar-bbc-snd-aux ctx T rInfV
+  checkElabV-RResolved-dispatch ctx _ T gv-terminal rInfV =
+    checkElabV-RVar-bbc-terminal-aux ctx T rInfV
+  checkElabV-RResolved-dispatch ctx _ T gv-initial rInfV =
+    checkElabV-RVar-bbc-initial-aux ctx T rInfV
+  checkElabV-RResolved-dispatch ctx _ T gv-inl rInfV =
+    checkElabV-RVar-bbc-inl-aux ctx T rInfV
+  checkElabV-RResolved-dispatch ctx _ T gv-inr rInfV =
+    checkElabV-RVar-bbc-inr-aux ctx T rInfV
+  checkElabV-RResolved-dispatch ctx cn T gv-unit  rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
+  checkElabV-RResolved-dispatch ctx cn T gv-other rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
+
 
   -- Acc-free wrapper (Plan 0.58 E1-full): re-derive a fresh well-founded Acc.
   -- Sound per POC-B — the poly-resolution recursion uses the RECEIVED Acc's `rec`;
