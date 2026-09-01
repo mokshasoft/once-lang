@@ -74,6 +74,8 @@ open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; CtxWf; Ctx-extK;
 open import DirectedHoTT.Examples.Knot.Lookup using ( LkD; ILk; LkWf )
 open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
 open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )
+open import DirectedHoTT.Examples.Knot.NoNatCRows using ( NoNatCD; INoNatC )
+open import DirectedHoTT.Examples.Knot.NoNatCWf using ( NoNatCWf )
 open import DirectedHoTT.Examples.Knot.JudgeRows
 
 -- ty-base
