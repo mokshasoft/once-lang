@@ -9980,6 +9980,36 @@ conditions: `t-app`, `t-effApp` and `t-arg-driven-app-check` each carry
 name collision became part of the language definition — the same defect D134
 removes elsewhere, and D127 removed from `⊢ᵍ`.
 
+### The bare-name resolution rule (the part D136 must STATE, not imply)
+
+Canonical names cannot collide — `Generators.fst` and `User.Module.fst` are
+different names, full stop. What still needs deciding is what the TOKEN `fst`
+denotes at a use site. The rule:
+
+> **A definition in scope — a local binder, or an own-module definition —
+> SHADOWS the implicitly-available generator for the bare name.** Inside a
+> module that defines `fst`, a bare `fst` is that module's `fst`.
+
+**Why it cannot be the other way round.** The alternative ("the generator
+always wins the bare name; call yours by qualifying it") is not available:
+aliases come only from `DImport … (just alias)`, so Once has NO own-module
+qualification syntax. A user's `fst` would be reachable by no syntax at all —
+they could write the definition and never call it, which is D001 again with
+extra steps.
+
+**Reaching the generator anyway: `fst@Generators`.** This needs no new syntax.
+`canonExpr` already resolves `RQualified name alias` through the alias map, so
+seeding that map with an implicit `Generators ↦ ["Generators"]` makes
+`fst@Generators` resolve to `canonical ["Generators","fst"]` — which IS
+`gen "fst"`. Shadowing therefore never traps: the generator stays reachable
+under its own namespace. An explicit user `import … as Generators` takes
+precedence over the implicit seed (or is rejected); it is not silently merged.
+
+**Consequence for the implementation.** Because the rule is shadowing, the
+RESOLVER must know the own-module definition names — that is a bare-name
+LOOKUP question and it belongs there, not in the elaborator. Had "generator
+wins" been viable, the resolver would have needed no such set at all.
+
 ### What it buys
 
 Four things, all the same root cause dissolving:
@@ -10011,9 +10041,9 @@ than move ([[feedback_canonical_name_not_bare_bandaid]]).
     and `fst 5` means the user's `fst`.
   * Generators still need no import — they resolve to `Generators.*` when not
     shadowed, which is what makes them feel primitive without being reserved.
-  * A user who shadows a generator loses access to it under that name in that
-    scope. That is ordinary scoping, and it is what every language with a
-    prelude does.
+  * A user who shadows a generator keeps it reachable as `fst@Generators` (see
+    the resolution rule above); the bare name is theirs. That is ordinary
+    scoping plus the qualified escape every language with a prelude provides.
 
 **Relates**: D001 (superseded), D050, D064, D127, D134; plan
 `0.50-canonicalize-generators.md`
