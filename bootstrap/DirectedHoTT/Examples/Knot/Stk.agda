@@ -257,3 +257,49 @@ stkCK i t = ielim KnotD i stkCMeths t
 ⊢stkCK : {Γ : Ctx} {i t : RTm ⌊ Γ ⌋} →
          Γ ⊢ i ∷ Σ' Nat Nat → Γ ⊢ t ∷ K i → Γ ⊢ stkCK i t ∷ Nat
 ⊢stkCK di dt = ⊢ielim KnotWf ty-Nat di ⊢stkCMeths dt
+
+------------------------------------------------------------------------
+-- ★★★ `flat?` — TWO OVERRIDES, and the third customer of the scaffolding.
+--
+--     flat? ⌜base⌝        = true
+--     flat? (⌜Hom⌝ c a b) = stkC? c
+--     flat? _             = false
+--
+-- ⚠ `⊢ap` reads `flat? cA ≡ true`.  Its `⌜Hom⌝ row is the SAME cross-call
+--   shape as `stkC?`'s — one function calling another at a payload field,
+--   which no plain fold expresses.
+------------------------------------------------------------------------
+
+flatHom : {Γ : Cx} → RTm Γ
+flatHom = lam (lam (lam (stkCK (pair sTm (snd (var (vs (vs vz)))))
+                               (fst (var (vs vz))))))
+
+⊢flatHom : {Γ : Ctx} →
+           Γ ⊢ flatHom ∷ imethTy KnotD IPair tagTm-cHom cTm-cHom Nat
+⊢flatHom =
+  ⊢methLam KnotD IPair tagTm-cHom cTm-cHom KnotWf cTm-cHomWf ⊢IPair ty-Nat
+    (⊢stkCK (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
+            (⊢fst (⊢var (there here))))
+
+flatMeths : {Γ : Cx} → RTm Γ
+flatMeths =
+  methsFrom (cdTake 19 KnotD) pwZero
+    (pair stkOne
+      (methsFrom (cdTake 2 D20) pwZero
+        (pair flatHom
+          (methsFrom (cdTake 30 D23) pwZero unit))))
+
+⊢flatMeths : {Γ : Ctx} → Γ ⊢ flatMeths ∷ imethsTy KnotD IPair Nat KnotD
+⊢flatMeths =
+  run 0 19 KnotD spl-nil (λ {k} {C} wC _ _ → ⊢pwZero k C wC) _
+   (cons 19 cTm-cbase D20 sp20 (⊢stkOne 19 cTm-cbase cTm-cbaseWf)
+    (run 20 2 D20 sp20 (λ {k} {C} wC _ _ → ⊢pwZero k C wC) _
+     (cons 22 cTm-cHom D23 sp23 ⊢flatHom
+      (run 23 30 D23 sp23 (λ {k} {C} wC _ _ → ⊢pwZero k C wC) unit ⊢unit))))
+
+flatK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+flatK i t = ielim KnotD i flatMeths t
+
+⊢flatK : {Γ : Ctx} {i t : RTm ⌊ Γ ⌋} →
+         Γ ⊢ i ∷ Σ' Nat Nat → Γ ⊢ t ∷ K i → Γ ⊢ flatK i t ∷ Nat
+⊢flatK di dt = ⊢ielim KnotWf ty-Nat di ⊢flatMeths dt

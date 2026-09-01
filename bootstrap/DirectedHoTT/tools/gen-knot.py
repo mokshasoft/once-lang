@@ -968,7 +968,8 @@ def _parse_spine(ts):
 # name → (object-level function, its typing lemma, the argument's sort)
 BOOL_PREM = {"pw?":   ("pwK",   "⊢pwK",   "sTm"),
              "stkA?": ("stkAK", "⊢stkAK", "sTm"),
-             "stkC?": ("stkCK", "⊢stkCK", "sTm")}
+             "stkC?": ("stkCK", "⊢stkCK", "sTm"),
+             "flat?": ("flatK", "⊢flatK", "sTm")}
 
 def TBOOL(app, lit): return ('tbool', app, lit)
 
@@ -1163,6 +1164,20 @@ def _parse_jpart(p):
     if mm: return ("tm", mm.group(1).strip(), mm.group(2), mm.group(3), mm.group(4))
     mm = re.match(r"^\(?\s*([^()⊢∋▹]+?)\s*\)?\s*∋\s+(.*?)\s*∷\s*(.*)$", p)
     if mm: return ("lk", mm.group(1).strip(), mm.group(2), mm.group(3))
+    # ★★★ A BOOLEAN PREMISE, here too.
+    #
+    # ⚠⚠ I BUILT THIS MECHANISM ON THE **REDUCTION** PATH and said it was
+    #   general — "those premises will parse the moment their functions
+    #   exist, without touching the emitter again".  True for `tr-J-Hom`
+    #   and `ap-J`, which are `_⟶_` rules; FALSE for `⊢ap`, which is a
+    #   judgement rule and comes through here.  The mutual path has its
+    #   own premise parser and had never heard of `BOOL_PREM`.
+    #   ⇒ "the mechanism is general" is a claim about EVERY caller, and
+    #     this one had exactly one.
+    mm = re.match(r"^\s*([A-Za-z?]+)\s+(.+?)\s*≡\s*(true|false)\s*$", p)
+    if mm and mm.group(1) in BOOL_PREM:
+        return ("bool", mm.group(1), mm.group(2).strip(),
+                1 if mm.group(3) == "true" else 0)
     return None
 
 def infer_depths(rule, names, CT):
@@ -1213,6 +1228,10 @@ def infer_depths(rule, names, CT):
         # ⚠ ONLY `ty`/`tm` PARTS CARRY A CONTEXT EXTENSION AT SLOT 2.
         #   For a `∋` part slot 2 is the VARIABLE, and reading it as an
         #   extension puts every lookup premise one binder too deep.
+        # ★ a `bool` part binds nothing and carries an INT literal — its
+        #   only term is the ARGUMENT, at the ambient depth.
+        if q[0] == "bool":
+            scan(_parse_spine(_tokens(q[2])), 0); continue
         ext = q[2] if q[0] in ("ty", "tm") else None
         deep = 1 if ext else 0
         put(q[1], 0)
@@ -1258,7 +1277,15 @@ def _mutual_rows(CT, TEL, dummy):
                     fconv.append((a, b)); continue
                 parts.append(None)
             if any(q is None for q in parts):
-                skipped.append((nm, "unparsed premise")); continue
+                # ★ NAME THE PREMISE.  "unparsed premise" was the reason on
+                #   TEN rules and told nobody which one — a report that
+                #   cannot be acted on.  The reduction path has always
+                #   named it (`premise %r`); this path did not, and I read
+                #   "10 rules, one cause" off it twice and was wrong both
+                #   times.  ⇒ same contract as the emitters: say what you
+                #   could not do, BY NAME.
+                _bad = [x for x, q in zip(raw, parts) if q is None]
+                skipped.append((nm, "premise %r" % _bad[0].strip())); continue
             # ⚠ A RULE CAN FAIL IN ITS VALUES, NOT ONLY ITS PREMISES.
             #   `⊢app`'s conclusion is `subTy (single u) B`; the premises
             #   all parse, and without this the emitter dies with a
@@ -1273,7 +1300,12 @@ def _mutual_rows(CT, TEL, dummy):
                     return
                 for x in e[1]: chk(x)
             for q in parts:
-                for t in (q[3:] if q[0] != "lk" else q[2:]):
+                # ⚠ a `bool` part's last component is an INT (the literal),
+                #   not a term — tokenising it is a `TypeError` deep in the
+                #   parser rather than an honest skip.
+                _ts = (q[2:3] if q[0] == "bool"
+                       else (q[2:] if q[0] == "lk" else q[3:]))
+                for t in _ts:
                     chk(_parse_spine(_tokens(t)))
                 if q[0] in ("ty", "tm") and q[2]:
                     chk(_parse_spine(_tokens(q[2])))
@@ -1310,6 +1342,20 @@ def _mutual_rows(CT, TEL, dummy):
             #   `Knot/Lookup` built by hand, and the first one there was.
             ps = []
             for i, q in enumerate(parts[:-1]):
+                if q[0] == "bool":
+                    # ★★★ THE SAME FORD the reduction path emits —
+                    #   `⌜Id⌝ ⌜Nat⌝ (fK ⟨i⟩ c) n`.  A boolean premise is
+                    #   not a judgement, so it is a κ field and not an
+                    #   `ih`; `icw-ford` discharges its `ICodeWf`.
+                    _fn, _arg, _lit = q[1], q[2], q[3]
+                    _fnK, _dfn, _srt = BOOL_PREM[_fn]
+                    _bd = _depth_at(deps.get(_arg, 0))
+                    bs.append(("bp%d" % i,
+                               AP("⌜Id⌝", RAW("⌜Nat⌝"),
+                                  AP(_fnK, PAIR(RAW(_srt), _bd),
+                                     _val(_parse_spine(_tokens(_arg)), CT, _bd)),
+                                  RAW("num %d" % _lit))))
+                    continue
                 if q[0] == "lk":
                     bs.append(("lk%d" % i, _code(FOREIGN["LkD"],
                         TUP(V(_DEPTH), V(q[1]),
@@ -1441,7 +1487,8 @@ open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK; ⊢pwK )
-open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK )
+open import DirectedHoTT.Examples.Knot.Stk
+  using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK; flatK; ⊢flatK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 %(extra)s
 """
@@ -2762,7 +2809,7 @@ open import DirectedHoTT.Examples.Knot.Single using ( singleK )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subTmAtK; subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK )
-open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; stkCK )
+open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; stkCK; flatK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
 
@@ -3046,7 +3093,8 @@ open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Examples.Knot.Pw using ( pwK; ⊢pwK )
-open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK )
+open import DirectedHoTT.Examples.Knot.Stk
+  using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK; flatK; ⊢flatK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Examples.Knot.RedRows
@@ -3216,7 +3264,7 @@ if __name__ == "__main__":
               % os.environ["JUDGE_MAX_ROWS"])
         print("    DO NOT COMMIT.  Re-run without it to restore.")
         sys.exit(0)
-    _FLOOR = {"Red": 71, "Judge": 32, "TyRed": 26, "Conv": 4}
+    _FLOOR = {"Red": 71, "Judge": 33, "TyRed": 26, "Conv": 4}
     _got = {"Red": len(_ROWS), "Judge": _njudge,
             "TyRed": len(_JCACHE["TyRed"]), "Conv": len(_JCACHE["Conv"])}
     _lost = {k: (v, _got[k]) for k, v in _FLOOR.items() if _got[k] < v}
