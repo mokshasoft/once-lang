@@ -1445,7 +1445,7 @@ def _mutual_rows(CT, TEL, dummy):
                 _slots += [RAW("num %d" % tg)]
                 # ★ the per-tag payload, padded — one dummy, AFTER the tag,
                 #   because its type is what the tag would select.
-                if SPIKE_SUM: _slots += [AP("IxUnitK")]
+                if SPIKE_SUM: _slots += [AP("IxNoneK")]
                 return TUP(*_slots)
             # ★ a `∋` premise is foreign too, at `_∋_∷_` — the judgement
             #   `Knot/Lookup` built by hand, and the first one there was.
@@ -1744,7 +1744,9 @@ open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
 open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )
 open import DirectedHoTT.Examples.Knot.NoNatCRows using ( NoNatCD; INoNatC )
 open import DirectedHoTT.Examples.Knot.NoNatCWf using ( NoNatCWf )
-open import DirectedHoTT.Examples.Knot.IxD using ( IxD; IxWf; IxUnitK; ⊢IxUnitK )"""
+open import DirectedHoTT.Examples.Knot.IxD
+  using ( IxD; IxWf; IxNoneK; ⊢IxNoneK; IxDConK; ⊢IxDConK; IxDescK; ⊢IxDescK
+        ; IxIConK; ⊢IxIConK; IxIDescK; ⊢IxIDescK )"""
 
 JWFTOP = """
 ------------------------------------------------------------------------
@@ -2384,9 +2386,17 @@ WF_CTOR.update({
     #   β-steps afterwards — the `WK` post.
     "pwBodyK":  ("⊢pwBodyK",  ["IX", "MU"],        "WK"),
     "nrsSubK":  ("⊢nrsSubK",  ["DD"],              None),
-    # ★ the `SPIKE_SUM` payload dummy: `DX` hands it the index TERM and
-    #   then its derivation, the shape every nullary `…Kv` lemma takes.
-    "IxUnitK":  ("⊢IxUnitK",  ["DX"],              None),
+    # ★★★ THE PER-TAG PAYLOAD (`Knot/IxD`).  `DX` hands each one the
+    #   index TERM and then its derivation — the shape every nullary
+    #   `…Kv` lemma takes — and the `MU`s are the merge-only subjects.
+    # ⚠ `IxIConK`'s LAST subject is the only one at the row's depth; the
+    #   rest are CLOSED, at absolute 0.  See `Knot/IxD`'s header for why
+    #   that direction and not the ambient one.
+    "IxNoneK":  ("⊢IxNoneK",  ["DX"],                    None),
+    "IxDConK":  ("⊢IxDConK",  ["DX", "MU"],              None),
+    "IxDescK":  ("⊢IxDescK",  ["DX", "MU"],              None),
+    "IxIConK":  ("⊢IxIConK",  ["DX", "MU", "MU", "MU"],  None),
+    "IxIDescK": ("⊢IxIDescK", ["DX", "MU", "MU", "MU"],  None),
 })
 
 def _telty(comp):

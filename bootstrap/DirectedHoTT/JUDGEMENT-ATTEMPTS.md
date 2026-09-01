@@ -1094,7 +1094,61 @@ THIS MODULE.** It needs two things, neither done for it:
 ⇒ ★ the `narrow-twin` lesson paid for itself inside one day, in a place
 that had nothing to do with `⊢natrec`.
 
-## §11.5 ⬜ what the merge still owes
+## §11.5 ✅ `IxD` IS BUILT — five constructors, well formed, all five typed
+
+`Knot/IxD`, green: `cIxNone`/`cIxDCon`/`cIxDesc`/`cIxICon`/`cIxIDesc`,
+`IxWf : IDescWf INat IxD`, and a smart constructor + typing lemma each.
+Every rung is `icw-imu` — PLAN-INDEXED §12's row, which is what lets a
+payload carry knot terms at all.
+
+★★★ **AND THE CLOSED-VS-AMBIENT FORK WAS DECIDED BY AN ASYMMETRY, not a
+preference.** `KNOT` carries `Desc`/`DCon`/`IDesc` fields at the AMBIENT
+depth and `RTy ε` at `lit 0`; both were available for the payload.
+
+| | `idwf-cons` | `⊢icon`/`⊢elim` |
+|---|---|---|
+| AMBIENT | reads `D` at its premise's depth **1** AND at the row's `n` ⇒ needs `n → 1`, a **STRENGTHENING** | agree with the knot's own fields |
+| **CLOSED** | one field, at 0, in both places ✅ | recover the ambient copy with `εwkK sIDesc n` — **`0 → n`** ✅ |
+
+⇒ CLOSED, **because the reindexing it needs exists (`Knot/EWk`, §11.4)
+and the other's does not.** ⚠ "Closed things belong at 0" on its own
+would have been a preference; the asymmetry is the argument.
+
+⚠ Only ONE payload field is depth-dependent (`IxIConK`'s `C`), and it
+cost exactly the descent `⊢Ctx-extKt`/`⊢Var-vsKt` pay — `sub-w-single`
+for the middle rung, then `wk-single` composed for the last. Two casts
+in the whole module; the other four constructors need none, because
+their fields are closed and substitution on them is the identity.
+
+## §11.6 ✅ SIX SLOTS IS FINAL — it does not grow with more judgements
+
+Asked directly: the block has SEVEN judgements, so does the index end at
+seven slots? **No — counted from every conclusion in the block:**
+
+| judgement | flat slots | payload |
+|---|---|---|
+| `_⊢ty_ Γ A` | depth, Ctx, Ty | — |
+| `_⊢_∷_ Γ t A` | depth, Ctx, Tm, Ty | — |
+| `ICodeWf {Θ} c` | depth, Tm | — |
+| `IConWf D I Θ C` | depth, Ctx | IDesc, Ty@ε, ICon |
+| `DConWf C` | depth | DCon |
+| `DescWf D` | depth | Desc |
+| `IDescWfFrom D I E` | depth | IDesc, Ty@ε, IDesc |
+
+⇒ **depth · Ctx · Tm · Ty · tag · payload = 6**, and no judgement in the
+block wants a slot outside that list.
+
+★★★ **AND THAT IS THE POINT OF THE DESIGN: a new judgement adds an `IxD`
+CONSTRUCTOR, not a SLOT.** Under the flat union every judgement's
+subjects widen the telescope for every OTHER row; here they widen only
+their own constructor. The width-6 cost is paid ONCE, not per judgement.
+
+⚠ And the block is CLOSED at seven — checked, not assumed:
+`_∋_∷_`'s two rows cite only themselves, and `⊢ctx_` is defined AFTER
+the block (`Spec/Typing:1044`) with nothing inside citing it. Both stay
+separate families, as `LkD` already is.
+
+## §11.7 ⬜ what the merge still owes
 
 * the real `IxD` — 5 constructors (`ixNone`, `ixDCon`, `ixDesc`,
   `ixICon`, `ixIDesc`) with `IDescWf INat IxD` and their smart
