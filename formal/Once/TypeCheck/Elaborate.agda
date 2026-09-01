@@ -1201,7 +1201,7 @@ mutual
     → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
     → VerifiedInferResult ctx (Raw.RResolved cn)
   inferElabV-RVar-lookup-aux :
-    ∀ (ctx : NamedCtx) (x : String) → ¬ (x ≡ "unit")
+    ∀ (ctx : NamedCtx) (x : String)
     → (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A)))
     → lookupLocal ctx x ≡ locLhs
     → (impLhs : Maybe Type)
@@ -1209,7 +1209,7 @@ mutual
     → VerifiedInferResult ctx (Raw.RVar x)
   -- Plan 0.58: DE-WITH the import-value concreteness decision.
   inferElabV-RVar-import-value-aux :
-    ∀ (ctx : NamedCtx) (x : String) → ¬ (x ≡ "unit")
+    ∀ (ctx : NamedCtx) (x : String)
     → lookupLocal ctx x ≡ nothing
     → (ty : Type) → lookupImport (NamedCtx.imports ctx) x ≡ just ty
     → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
@@ -1772,6 +1772,11 @@ mutual
   inferElabV ctx (Raw.RQualified name alias) =
     inferElabV-RQualified-aux ctx name alias _ refl
 
+  -- D136: `unit` is a generator, so it arrives resolved. This clause is what
+  -- the bare-`RVar` `"unit"` special case became.
+  inferElabV ctx (Raw.RResolved (gen "unit")) =
+    success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
+
   inferElabV ctx (Raw.RResolved cn) =
     inferElabV-RResolved-aux ctx cn _ refl
 
@@ -1779,8 +1784,7 @@ mutual
   -- an unshadowed generator into `RResolved (gen g)`. So this path is ordinary
   -- variables only, and the `"unit"` special case moved to `RResolved` below.
   inferElabV ctx (Raw.RVar x) =
-    inferElabV-RVar-lookup-aux ctx x ¬unit-bare _ refl _ refl
-    where postulate ¬unit-bare : _
+    inferElabV-RVar-lookup-aux ctx x _ refl _ refl
 
   inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) = inferElabV-neg-dispatch ctx e
 
@@ -1861,17 +1865,30 @@ mutual
   -- Plan 0.52 (OCP-0008): route the infer-SUCCESS path through the NAMED
   -- embedOrSubsume (uniform, x-agnostic); only the infer-FAILURE path needs the
   -- per-builtin failure-aux dispatch (and bbc-other's lookupPoly fallback).
+  -- D136: a bare `RVar` is an ORDINARY VARIABLE and nothing else. The
+  -- generator dispatch moved to the `RResolved` clauses below, where the
+  -- resolver's decision is already recorded in the name.
   checkElabV-wf ctx ac (Raw.RVar x) T with inferElabV ctx (Raw.RVar x)
   ... | rInfV@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RVar x) T rInfV
-  ... | rInfV@(failure _ , _) with classifyBareBuiltin x
-  ...   | bbc-id       = checkElabV-RVar-bbc-id-aux ctx T rInfV
-  ...   | bbc-fst      = checkElabV-RVar-bbc-fst-aux ctx T rInfV
-  ...   | bbc-snd      = checkElabV-RVar-bbc-snd-aux ctx T rInfV
-  ...   | bbc-terminal = checkElabV-RVar-bbc-terminal-aux ctx T rInfV
-  ...   | bbc-initial  = checkElabV-RVar-bbc-initial-aux ctx T rInfV
-  ...   | bbc-inl      = checkElabV-RVar-bbc-inl-aux ctx T rInfV
-  ...   | bbc-inr      = checkElabV-RVar-bbc-inr-aux ctx T rInfV
-  ...   | bbc-other    = checkElabV-RVar-bbc-other-aux ctx x T rInfV
+  ... | rInfV@(failure _ , _) = checkElabV-RVar-bbc-other-aux ctx x T rInfV
+
+  -- D136: the point-free generator leaves, keyed on the canonical name. No
+  -- `classifyBareBuiltin` guess and no shadowing check — a user's `fst` never
+  -- reaches these clauses, because the resolver never gave it this name.
+  checkElabV-wf ctx ac (Raw.RResolved (gen "id")) T =
+    checkElabV-RVar-bbc-id-aux ctx T (inferElabV ctx (Raw.RResolved (gen "id")))
+  checkElabV-wf ctx ac (Raw.RResolved (gen "fst")) T =
+    checkElabV-RVar-bbc-fst-aux ctx T (inferElabV ctx (Raw.RResolved (gen "fst")))
+  checkElabV-wf ctx ac (Raw.RResolved (gen "snd")) T =
+    checkElabV-RVar-bbc-snd-aux ctx T (inferElabV ctx (Raw.RResolved (gen "snd")))
+  checkElabV-wf ctx ac (Raw.RResolved (gen "terminal")) T =
+    checkElabV-RVar-bbc-terminal-aux ctx T (inferElabV ctx (Raw.RResolved (gen "terminal")))
+  checkElabV-wf ctx ac (Raw.RResolved (gen "initial")) T =
+    checkElabV-RVar-bbc-initial-aux ctx T (inferElabV ctx (Raw.RResolved (gen "initial")))
+  checkElabV-wf ctx ac (Raw.RResolved (gen "inl")) T =
+    checkElabV-RVar-bbc-inl-aux ctx T (inferElabV ctx (Raw.RResolved (gen "inl")))
+  checkElabV-wf ctx ac (Raw.RResolved (gen "inr")) T =
+    checkElabV-RVar-bbc-inr-aux ctx T (inferElabV ctx (Raw.RResolved (gen "inr")))
 
   -- Plan 0.36 Phase 2a follow-up: pair literal `(a , b)` at a product
   -- type — check components bidirectionally so check-only constructs
@@ -2260,18 +2277,18 @@ mutual
   ... | yes refl = success C₁ _ (Surface.case' scrutE eLE eRE) (ds ⊔ suc dL ⊔ suc dR) fR , t-case wS wL wR
   ... | no _     = failure CaseBranchMismatch , tt
 
-  inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , eV)) eq-loc _ _ =
+  inferElabV-RVar-lookup-aux ctx x (just (A , Ψ , eV)) eq-loc _ _ =
     success A Ψ (Surface.svar→expr eV) 0 (NamedCtx.freshCounter ctx) , t-var-local eq-loc
-  inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc (just ty) eq-imp =
-    inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp (isConcrete? ty) refl
+  inferElabV-RVar-lookup-aux ctx x nothing eq-loc (just ty) eq-imp =
+    inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (isConcrete? ty) refl
   -- Plan 0.58 / D071: both lookups failed — try the telescope (poly) fallback:
   -- a GROUND own-module def infers at its declared type; otherwise fail.
-  inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc nothing eq-imp =
+  inferElabV-RVar-lookup-aux ctx x nothing eq-loc nothing eq-imp =
     inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
 
-  inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp (just conc) _ =
+  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (just conc) _ =
     success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx) , t-var-import eq-loc eq-imp conc
-  inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp nothing _ =
+  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp nothing _ =
     failure (NonConcreteSigOpType x ty) , tt
 
   inferElabV-RApp-other-aux ctx f x (just _) _ =
