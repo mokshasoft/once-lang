@@ -1017,3 +1017,92 @@ owes a deletion pass**, and "the guard exists" is not the same claim as
   subjects, so it costs 3 subject + 3 sort slots = 6 against the
   payload's 1. ⇒ recorded as considered and rejected on the count, and
   it is the obvious alternative anyone will ask about.
+
+---
+
+# §11 — STARTING THE MERGE: the 13 rows probed, and ONE prerequisite found and closed
+
+Not "the merge landed". This is what the first pass over the 13 `Wf`
+rows established, and it changed the plan twice.
+
+## §11.1 ✅ ALL 13 ROWS PARSE — nothing exotic in them
+
+A probe ran `_rule_lines` + `_groups` + `_parse_jpart` over `DConWf`,
+`DescWf`, `IConWf`, `ICodeWf`, `IDescWfFrom`. Every part came back as a
+binder group, a known `⊢ty`/`⊢_∷_` part, or a citation of another
+judgement in the block. **One exception**, and it is small: `icw-imu`'s
+premise reads `IDescWf I' D'`, the DEFINED ALIAS — `IDescWf I D =
+IDescWfFrom D I D` — so it needs unfolding, **with the arguments
+swapped**. ⚠ A reader that matched the alias positionally would silently
+build the wrong row.
+
+## §11.2 ✅ THE PAYLOAD NEEDS ONLY THE **DEPTH** — the measurement was on the right shape
+
+Counted from the conclusions rather than guessed:
+
+| tag | flat slots it uses | payload |
+|---|---|---|
+| `_⊢ty_` | depth, Ctx, Ty | — |
+| `_⊢_∷_` | depth, Ctx, Tm, Ty | — |
+| `ICodeWf {Θ} c` | depth, Tm | — |
+| `IConWf D I Θ C` | depth, Ctx | IDesc, Ty@ε, **ICon@depth** |
+| `DConWf C` | — | DCon |
+| `DescWf D` | — | Desc |
+| `IDescWfFrom D I E` | — | IDesc, Ty@ε, IDesc |
+
+⇒ **at most 3 payload fields, and exactly ONE of them is
+depth-dependent** (`IConWf`'s `ICon ⌊ Θ ⌋`). So the payload is indexed by
+the DEPTH alone — a bare `Nat` — which is exactly the index §10.6
+measured. ★ The `(tag, depth)` pair index I had assumed would be needed
+is NOT: a row Fords its payload slot to a specific `icon k …` anyway, so
+the tag is already pinned where it matters.
+
+## §11.3 ⚠⚠ AND THE REAL FIND: THE MERGE NEEDS OBJECT-LEVEL `εwkTm`
+
+Two independent reasons, and the second is the one that would have been
+discovered late:
+
+1. **`icw-clo`'s subject IS `εwkTm {Θ} c`** (`Spec/Typing:1007`). The
+   rule cannot be encoded without it.
+2. **The block reads one CLOSED description at two depths.** The knot
+   carries `Desc`/`DCon`/`IDesc` fields at the AMBIENT depth (`KNOT`'s
+   `rec("sDesc", D)`), and `RTy ε` at absolute 0 (`rec("sTy", lit 0)`).
+   Under the ambient convention `⊢icon`/`⊢elim` are consistent — the Wf
+   premise and the description inside the term sit at the same depth —
+   but `idwf-cons`'s premise `IConWf D I (◇ ▹ εwkTy I) C` has depth **1**
+   (forced: the Ctx slot's type reads the depth component) while its
+   conclusion's depth is the row's variable. Same `D`, two depths.
+   Under the closed convention the two swap places. ⇒ **either way, one
+   reindexing**, and it is the same function.
+
+## §11.4 ✅ …AND IT IS FIFTEEN LINES — `Knot/EWk`, green first try
+
+    εsubK  = lam Tm-nzeroK
+    εwkK s n t = subAtK s (num 0) n εsubK t
+
+★★★ **AND THAT IS A MEASUREMENT OF THIS MORNING'S GENERALISATION, NOT OF
+THIS MODULE.** It needs two things, neither done for it:
+
+1. `⊢subAtK` takes its SOURCE and TARGET depths **independently**. It was
+   widened for `nrs`, which RAISES. The narrow twin (`dd = nsuc m`) could
+   not state `SubTy 0 n` at all — so under yesterday's `SubApp` this
+   prerequisite would have looked like a second `subTm`-sized job.
+2. **`Var 0` is EMPTY**, so the substitution itself is trivial: a
+   `SubTy 0 n` is a function nothing can call, and any body of the right
+   type inhabits it. `Tm-nzeroK` exists at every depth.
+
+⇒ ★ the `narrow-twin` lesson paid for itself inside one day, in a place
+that had nothing to do with `⊢natrec`.
+
+## §11.5 ⬜ what the merge still owes
+
+* the real `IxD` — 5 constructors (`ixNone`, `ixDCon`, `ixDesc`,
+  `ixICon`, `ixIDesc`) with `IDescWf INat IxD` and their smart
+  constructors. `Knot/IxD` today holds only the nullary one the width
+  spike padded with.
+* the index widened to 6 slots, permanently, and `JWF_ROWS` 4 → 2.
+* the emitter reading the 5 `Wf` judgements: their binders are TYPED
+  groups (`{C : DCon}`), the `_⊢_∷_` style is an untyped `∀`-telescope,
+  so `_mutual_rows` must accept both.
+* `DCon` in `BINDER_SORT`, and the `IDescWf` alias unfolded with its
+  argument swap.
