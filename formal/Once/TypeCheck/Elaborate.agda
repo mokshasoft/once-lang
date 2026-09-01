@@ -672,42 +672,14 @@ extract-morph : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
               → Maybe (∃-syntax (λ (m : IR ⌊ A ⌋ ⌊ B ⌋) → Ψ ≡ Surface.zeroUsage))
 extract-morph e = extract-morph-aux e refl
 
--- Plan 0.36 Phase 1: effectful morphism extraction. An eff point-free morphism
--- has more surface forms than a pure `lift-morphism`: `arr' e` (a pure morphism
--- lifted to eff) and a bare `sigOp name` (an effectful primitive used as a
--- morphism — which otherwise elaborates to a closure `curry (SigOp ∘ snd)`).
--- This recovers the underlying grade-erased `IR A B` from all of them, so the
--- eff `case`/`compose` clauses can fuse to `lift-morphism {eff} (IR.case / ∘)`
--- exactly like the pure path. Faithful extensionally (arr' is identity on the
--- morphism; `SigOp si` is what the closure form applies); the residual
--- semantic equality is discharged in the scaffolded eff completeness bridges.
-extract-morph-eff-aux : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {T : Type} {A B : Type}
-                        {π : Once.Type.Purity}
-                      → SExpr Γ Ψ T
-                      → T ≡ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
-                      → Maybe (∃-syntax (λ (m : IR ⌊ A ⌋ ⌊ B ⌋) → Ψ ≡ Surface.zeroUsage))
-extract-morph-eff-aux (Surface.lift-morphism m) refl = just (m , refl)
--- NOTE (Plan 0.36): NO `sigOp name → IR.SigOp (generic-info name)` clause.
--- That would launder an INTERNAL user function (which pre-resolve is also a
--- `Surface.sigOp "name"`) through the POSTULATED `generic-semI/semM`, claiming
--- it denotes an opaque external SigOp — typechecks but miscompiles (e.g.
--- `once_seven` is a closure-returner, not that SigOp). Extraction stays
--- faithful: only genuine `lift-morphism`s (and `arr'`/`cata` over them).
-extract-morph-eff-aux (Surface.arr' e)          refl = extract-morph-eff-aux e refl
--- A `cata` IS a direct morphism `μF → A`. Plan 0.54: the algebra is itself a
--- morphism, so recover ITS `IR (⟦F⟧T A) A` and wrap in `IR.Cata` directly —
--- no `apply/⟨⟩/terminal` wrapper. Fuses into an effectful compose/case like any
--- other morphism.
-extract-morph-eff-aux {B = B} (Surface.cata {F = F} wfF algE) refl with extract-morph-eff-aux algE refl
-... | just (m-alg , _) = just (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ B ⌋) (⌊⟧T-commute F B) m-alg) , refl)
-... | nothing          = nothing
-extract-morph-eff-aux _ _ = nothing
+-- D127/D131: `extract-morph-eff` and `extract-morph-eff-aux` are DELETED.
+-- They recovered a closed `IR` morphism out of an already-elaborated term, so
+-- that a `compose`/`case`/`cata` arm could be re-read as a morphism. Both
+-- reasons are gone: arms are ordinary context-indexed terms (D127), and the
+-- cata algebra is a closure the fold carries rather than a morphism inlined
+-- into it (D131). `Once.TypeCheck.Completeness` still names them and loses
+-- them with its own D127 rework.
 
-extract-morph-eff : ∀ {n} {Γ : SCtx n} {Ψ : Surface.Usage n} {A B : Type}
-                    {π : Once.Type.Purity}
-                  → SExpr Γ Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
-                  → Maybe (∃-syntax (λ (m : IR ⌊ A ⌋ ⌊ B ⌋) → Ψ ≡ Surface.zeroUsage))
-extract-morph-eff e = extract-morph-eff-aux e refl
 
 -- View bundling `wellFormedF? F`'s outcome with its equation (mirrors
 -- `inspectLookupLocal`) so proofs sidestep the `with … in` opacity.
