@@ -40,7 +40,7 @@ open import Once.Type
 open import Once.SigEffect using (SigEffect)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
-open import Once.CanonicalName using (CanonicalName; showCanonical)
+open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS)
 open import Once.TypeCheck.Context using (Ctx; ∅; name)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 -- Plan 0.58 (OCP-0006): import the IR-FREE `Once.Surface.Context` (not
@@ -451,55 +451,75 @@ data PolyBuiltinApp : Set where
 -- when a proof is fighting `rewrite` against an internal `with`-
 -- dispatch, the fix is to refactor the function to return a datatype
 -- carrying the proof, not to layer more proof tactics.
+-- D136: the view is indexed by the CANONICAL head. A generator reaches the
+-- elaborator as `RResolved (gen g)` — the resolver decided, once, whether the
+-- token was the generator or the user's own definition — so this dispatch no
+-- longer has to guess from a bare string, and a user's `fst` simply never
+-- produces a generator view.
 data AppHeadView : RawExpr → Set where
-  ahv-id       : AppHeadView (Raw.RVar "id")
-  ahv-fst      : AppHeadView (Raw.RVar "fst")
-  ahv-snd      : AppHeadView (Raw.RVar "snd")
-  ahv-terminal : AppHeadView (Raw.RVar "terminal")
-  ahv-inl      : AppHeadView (Raw.RVar "inl")
-  ahv-inr      : AppHeadView (Raw.RVar "inr")
-  ahv-initial  : AppHeadView (Raw.RVar "initial")
-  ahv-curry    : AppHeadView (Raw.RVar "curry")
-  ahv-apply    : AppHeadView (Raw.RVar "apply")
-  ahv-In       : AppHeadView (Raw.RVar "In")
-  ahv-cata     : AppHeadView (Raw.RVar "cata")
-  ahv-pair-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "pair") f')
-  ahv-compose-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "compose") f')
-  ahv-case-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "case") f')
+  ahv-id       : AppHeadView (Raw.RResolved (gen "id"))
+  ahv-fst      : AppHeadView (Raw.RResolved (gen "fst"))
+  ahv-snd      : AppHeadView (Raw.RResolved (gen "snd"))
+  ahv-terminal : AppHeadView (Raw.RResolved (gen "terminal"))
+  ahv-inl      : AppHeadView (Raw.RResolved (gen "inl"))
+  ahv-inr      : AppHeadView (Raw.RResolved (gen "inr"))
+  ahv-initial  : AppHeadView (Raw.RResolved (gen "initial"))
+  ahv-curry    : AppHeadView (Raw.RResolved (gen "curry"))
+  ahv-apply    : AppHeadView (Raw.RResolved (gen "apply"))
+  ahv-In       : AppHeadView (Raw.RResolved (gen "In"))
+  ahv-cata     : AppHeadView (Raw.RResolved (gen "cata"))
+  ahv-pair-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "pair")) f')
+  ahv-compose-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "compose")) f')
+  ahv-case-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "case")) f')
   ahv-other    : ∀ {f} → AppHeadView f
 
+-- Dispatch: a generator name is `canonical ("Generators" ∷ g ∷ [])`, so peel
+-- the two components and check the namespace once, then the generator. Every
+-- other shape — a bare `RVar`, a user path (ONE component), a deeper path — is
+-- `ahv-other` by construction.
 classifyAppHeadView : (f : RawExpr) → AppHeadView f
-classifyAppHeadView (Raw.RVar x) with StrProp._≟_ x "id"
-... | yes refl = ahv-id
-... | no  _ with StrProp._≟_ x "fst"
-...   | yes refl = ahv-fst
-...   | no  _ with StrProp._≟_ x "snd"
-...     | yes refl = ahv-snd
-...     | no  _ with StrProp._≟_ x "terminal"
-...       | yes refl = ahv-terminal
-...       | no  _ with StrProp._≟_ x "inl"
-...         | yes refl = ahv-inl
-...         | no  _ with StrProp._≟_ x "inr"
-...           | yes refl = ahv-inr
-...           | no  _ with StrProp._≟_ x "initial"
-...             | yes refl = ahv-initial
-...             | no  _ with StrProp._≟_ x "curry"
-...               | yes refl = ahv-curry
-...               | no  _ with StrProp._≟_ x "apply"
-...                 | yes refl = ahv-apply
-...                 | no  _ with StrProp._≟_ x "In"
-...                   | yes refl = ahv-In
-...                   | no  _ with StrProp._≟_ x "cata"
-...                     | yes refl = ahv-cata
-...                     | no  _ = ahv-other
-classifyAppHeadView (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
-... | yes refl = ahv-pair-applied
-... | no  _    with StrProp._≟_ x "compose"
-...   | yes refl = ahv-compose-applied
-...   | no  _    with StrProp._≟_ x "case"
-...     | yes refl = ahv-case-applied
-...     | no  _    = ahv-other
--- RApp with non-RVar head: ahv-other.
+classifyAppHeadView (Raw.RResolved (canonical (ns ∷ g ∷ []))) with ns ≟ generatorNS
+... | no _ = ahv-other
+... | yes refl with g ≟ "id"
+...   | yes refl = ahv-id
+...   | no  _ with g ≟ "fst"
+...     | yes refl = ahv-fst
+...     | no  _ with g ≟ "snd"
+...       | yes refl = ahv-snd
+...       | no  _ with g ≟ "terminal"
+...         | yes refl = ahv-terminal
+...         | no  _ with g ≟ "inl"
+...           | yes refl = ahv-inl
+...           | no  _ with g ≟ "inr"
+...             | yes refl = ahv-inr
+...             | no  _ with g ≟ "initial"
+...               | yes refl = ahv-initial
+...               | no  _ with g ≟ "curry"
+...                 | yes refl = ahv-curry
+...                 | no  _ with g ≟ "apply"
+...                   | yes refl = ahv-apply
+...                   | no  _ with g ≟ "In"
+...                     | yes refl = ahv-In
+...                     | no  _ with g ≟ "cata"
+...                       | yes refl = ahv-cata
+...                       | no  _ = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (ns ∷ g ∷ []))) _) with ns ≟ generatorNS
+... | no _ = ahv-other
+... | yes refl with g ≟ "pair"
+...   | yes refl = ahv-pair-applied
+...   | no  _ with g ≟ "compose"
+...     | yes refl = ahv-compose-applied
+...     | no  _ with g ≟ "case"
+...       | yes refl = ahv-case-applied
+...       | no  _ = ahv-other
+classifyAppHeadView (Raw.RResolved (canonical []))            = ahv-other
+classifyAppHeadView (Raw.RResolved (canonical (_ ∷ [])))      = ahv-other
+classifyAppHeadView (Raw.RResolved (canonical (_ ∷ _ ∷ _ ∷ _))) = ahv-other
+classifyAppHeadView (Raw.RVar _)                        = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical [])) _)       = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (_ ∷ []))) _) = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (_ ∷ _ ∷ _ ∷ _))) _) = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RVar _) _)           = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RApp _ _) _)         = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RQualified _ _) _)   = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RResolved _) _)      = ahv-other
