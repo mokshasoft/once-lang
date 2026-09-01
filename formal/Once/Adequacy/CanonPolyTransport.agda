@@ -7,9 +7,9 @@
 -- `canonModule` canonicalizes poly-DEF bodies too, so `ModuleTyped mR` lives at
 -- the canonExpr'd poly context `canonPolysCtx b p`, not `p`. This module:
 --   * foundational commutes (`lookupPoly-canon`, `removePoly-canon`),
---   * `polys-transport-{ᵢ,ᵐ,ᶜ}`: a `⊢ᶜ` derivation at a poly context `p` lifts to
+--   * `polys-transport-{ᵢ,ᶜ}`: a `⊢ᶜ` derivation at a poly context `p` lifts to
 --     the canonExpr'd context `canonPolysCtx b p` (the expression is UNCHANGED;
---     only the t-var-poly-instantiate body and the m-cata sub-context read polys,
+--     only the t-var-poly-instantiate body and the cata sub-context read polys,
 --     and they re-derive via `canon-pres-ᶜ` + recursion).
 ------------------------------------------------------------------------
 
@@ -28,7 +28,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Type using (Type; PolyType; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; Str; Buffer)
 open import Once.CanonicalName using (showCanonical)
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
 open import Once.Parser.Module.Resolve using (canonExpr; elemStr)
 open import Once.TypeCheck.Classify using (PolyCtx; lookupPoly; removePoly; removePoly-decreases;
   lookupPolyPrefix; lookupPolyPrefix-decreases)
@@ -209,86 +209,93 @@ composeArgB-rvar-polys-canon b ctx name A with StrProp._≟_ name "fst"
 ...       | yes _ = refl
 ...       | no  _ = composeArgB-lookup-polys-canon b ctx name A
 
-composeArgB-polys-canon : ∀ (b : List String) (ctx : NamedCtx) {g A′ π B′} (A : Type)
-  → ctx ⊢ᵐ g ∶ A′ ⇨[ π ] B′
+-- D127: like `CanonComposeMid`, these two are PREMISE-FREE structural
+-- inductions on the raw arm. `cpc` touches only the `polys` field, and the only
+-- polys-dependence in `composeArgB` is `composeArgB-lookup`; `domainOfHead`
+-- reads `imports` alone, so every one of its clauses is `refl` — but the split
+-- is still needed, since `cpc b ctx` and `ctx` differ syntactically and neither
+-- side reduces while the arm is abstract.
+composeArgB-polys-canon : ∀ (b : List String) (ctx : NamedCtx) (A : Type) (g : RawExpr)
   → composeArgB (cpc b ctx) g A ≡ composeArgB ctx g A
-composeArgB-polys-canon b ctx A (m-id _ _)       = composeArgB-rvar-polys-canon b ctx "id" A
-composeArgB-polys-canon b ctx A (m-fst _ _)      = composeArgB-rvar-polys-canon b ctx "fst" A
-composeArgB-polys-canon b ctx A (m-snd _ _)      = composeArgB-rvar-polys-canon b ctx "snd" A
-composeArgB-polys-canon b ctx A (m-terminal _ _) = composeArgB-rvar-polys-canon b ctx "terminal" A
-composeArgB-polys-canon b ctx A (m-initial _ _)  = composeArgB-rvar-polys-canon b ctx "initial" A
-composeArgB-polys-canon b ctx A (m-inl _ _)      = composeArgB-rvar-polys-canon b ctx "inl" A
-composeArgB-polys-canon b ctx A (m-inr _ _)      = composeArgB-rvar-polys-canon b ctx "inr" A
-composeArgB-polys-canon b ctx A (m-compose {f = f} {g = g} cm df dg)
-  rewrite composeArgB-polys-canon b ctx A dg with composeArgB ctx g A
-... | nothing  = refl
-... | just B′ rewrite composeArgB-polys-canon b ctx B′ df = refl
-composeArgB-polys-canon b ctx A (m-case _ _)  = refl
-composeArgB-polys-canon b ctx A (m-pair _ _)  = refl
-composeArgB-polys-canon b ctx A (m-curry _)   = refl
-composeArgB-polys-canon b ctx A (m-cata _ _)  = refl
-composeArgB-polys-canon b ctx A (m-const (g-int n))       = refl
--- PLAN 0.73 F3 / D120's other half: negated literals are closed values too.
-composeArgB-polys-canon b ctx A (m-const (g-neg-int n))   = refl
-composeArgB-polys-canon b ctx A (m-const (g-neg-float i f l p)) = refl
-composeArgB-polys-canon b ctx A (m-const (g-float i f l p)) = refl
-composeArgB-polys-canon b ctx A (m-const (g-terminal _ _)) = composeArgB-rvar-polys-canon b ctx "terminal" A
-composeArgB-polys-canon b ctx A (m-const (g-pair _ _))    = refl
-composeArgB-polys-canon b ctx A (m-const (g-inl _))       = refl
-composeArgB-polys-canon b ctx A (m-const (g-inr _))       = refl
-composeArgB-polys-canon b ctx A (m-const (g-In _ _))      = refl
-composeArgB-polys-canon b ctx A (m-named {x = x} _ _ _ _ _)   = composeArgB-rvar-polys-canon b ctx x A
-composeArgB-polys-canon b ctx A (m-named-resolved {cn = cn} _ _ _) = composeArgB-lookup-polys-canon b ctx (showCanonical cn) A
+composeArgB-polys-canon b ctx A (RVar name)     = composeArgB-rvar-polys-canon b ctx name A
+composeArgB-polys-canon b ctx A (RResolved cn)  = composeArgB-lookup-polys-canon b ctx (showCanonical cn) A
+composeArgB-polys-canon b ctx A (RQualified n al) = refl
+-- The nested-compose head: recurse into `g'` then `f'`. A head that is NOT
+-- `compose` is `nothing` on both sides — and reduces there because the `with`
+-- abstracts exactly the `≟` that `Classify.composeArgB` dispatches on.
+composeArgB-polys-canon b ctx A (RApp (RApp (RVar x) f') g') with StrProp._≟_ x "compose"
+... | yes refl rewrite composeArgB-polys-canon b ctx A g' with composeArgB ctx g' A
+...   | nothing = refl
+...   | just B′ rewrite composeArgB-polys-canon b ctx B′ f' = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RVar x) f') g')
+    | no ¬p = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RApp a c) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RQualified n al) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RResolved cn) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RLam y c) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RLet y e₁ e₂) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RPair a c) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RDestruct sc xl el xr er) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp RUnit f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RInt n) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RFloat i fp l q) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RStringLit str) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RAnnot e t) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RBinOp op a c) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RUnaryOp op e) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RAna F c) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RVar x) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RQualified n al) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RResolved cn) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RLam y c) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RLet y e₁ e₂) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RPair a c) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RDestruct sc xl el xr er) g') = refl
+composeArgB-polys-canon b ctx A (RApp RUnit g') = refl
+composeArgB-polys-canon b ctx A (RApp (RInt n) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RFloat i fp l q) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RStringLit str) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RAnnot e t) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RBinOp op a c) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RUnaryOp op e) g') = refl
+composeArgB-polys-canon b ctx A (RApp (RAna F c) g') = refl
+composeArgB-polys-canon b ctx A (RLam y c) = refl
+composeArgB-polys-canon b ctx A (RLet y e₁ e₂) = refl
+composeArgB-polys-canon b ctx A (RPair a c) = refl
+composeArgB-polys-canon b ctx A (RDestruct sc xl el xr er) = refl
+composeArgB-polys-canon b ctx A RUnit = refl
+composeArgB-polys-canon b ctx A (RInt n) = refl
+composeArgB-polys-canon b ctx A (RFloat i fp l q) = refl
+composeArgB-polys-canon b ctx A (RStringLit str) = refl
+composeArgB-polys-canon b ctx A (RAnnot e t) = refl
+composeArgB-polys-canon b ctx A (RBinOp op a c) = refl
+composeArgB-polys-canon b ctx A (RUnaryOp op e) = refl
+composeArgB-polys-canon b ctx A (RAna F c) = refl
 
-domainOfHead-polys-canon : ∀ (b : List String) (ctx : NamedCtx) {fa A′ π B′}
-  → ctx ⊢ᵐ fa ∶ A′ ⇨[ π ] B′
+domainOfHead-polys-canon : ∀ (b : List String) (ctx : NamedCtx) (fa : RawExpr)
   → domainOfHead (cpc b ctx) fa ≡ domainOfHead ctx fa
-domainOfHead-polys-canon b ctx (m-id _ _)        = refl
-domainOfHead-polys-canon b ctx (m-fst _ _)       = refl
-domainOfHead-polys-canon b ctx (m-snd _ _)       = refl
-domainOfHead-polys-canon b ctx (m-terminal _ _)  = refl
-domainOfHead-polys-canon b ctx (m-initial _ _)   = refl
-domainOfHead-polys-canon b ctx (m-inl _ _)       = refl
-domainOfHead-polys-canon b ctx (m-inr _ _)       = refl
-domainOfHead-polys-canon b ctx (m-compose _ _ _) = refl
-domainOfHead-polys-canon b ctx (m-case _ _)      = refl
-domainOfHead-polys-canon b ctx (m-pair _ _)      = refl
-domainOfHead-polys-canon b ctx (m-curry _)       = refl
-domainOfHead-polys-canon b ctx (m-cata _ _)      = refl
-domainOfHead-polys-canon b ctx (m-const (g-int n))        = refl
-domainOfHead-polys-canon b ctx (m-const (g-neg-int n))    = refl
-domainOfHead-polys-canon b ctx (m-const (g-neg-float i f l p)) = refl
-domainOfHead-polys-canon b ctx (m-const (g-float i f l p)) = refl
-domainOfHead-polys-canon b ctx (m-const (g-terminal _ _)) = refl
-domainOfHead-polys-canon b ctx (m-const (g-pair _ _))     = refl
-domainOfHead-polys-canon b ctx (m-const (g-inl _))        = refl
-domainOfHead-polys-canon b ctx (m-const (g-inr _))        = refl
-domainOfHead-polys-canon b ctx (m-const (g-In _ _))       = refl
-domainOfHead-polys-canon b ctx (m-named _ _ _ _ _)            = refl
-domainOfHead-polys-canon b ctx (m-named-resolved _ _ _)       = refl
+domainOfHead-polys-canon b ctx (RVar name)      = refl
+domainOfHead-polys-canon b ctx (RQualified n al) = refl
+domainOfHead-polys-canon b ctx (RResolved cn)   = refl
+domainOfHead-polys-canon b ctx (RApp f x)       = refl
+domainOfHead-polys-canon b ctx (RLam y c)       = refl
+domainOfHead-polys-canon b ctx (RLet y e₁ e₂)   = refl
+domainOfHead-polys-canon b ctx (RPair a c)      = refl
+domainOfHead-polys-canon b ctx (RDestruct sc xl el xr er) = refl
+domainOfHead-polys-canon b ctx RUnit            = refl
+domainOfHead-polys-canon b ctx (RInt n)         = refl
+domainOfHead-polys-canon b ctx (RFloat i fp l q) = refl
+domainOfHead-polys-canon b ctx (RStringLit str) = refl
+domainOfHead-polys-canon b ctx (RAnnot e t)     = refl
+domainOfHead-polys-canon b ctx (RBinOp op a c)  = refl
+domainOfHead-polys-canon b ctx (RUnaryOp op e)  = refl
+domainOfHead-polys-canon b ctx (RAna F c)       = refl
 
-composeMid-polys-canon : ∀ (b : List String) (ctx : NamedCtx) {fa g A′ π B′ A″ π′ B″} {A B}
-  → ctx ⊢ᵐ fa ∶ A″ ⇨[ π′ ] B″
-  → ctx ⊢ᵐ g ∶ A′ ⇨[ π ] B′
+composeMid-polys-canon : ∀ (b : List String) (ctx : NamedCtx) (fa g : RawExpr) {A B}
   → composeMid ctx fa g A ≡ just B
   → composeMid (cpc b ctx) fa g A ≡ just B
-composeMid-polys-canon b ctx {A = A} df dg cm
-  rewrite composeArgB-polys-canon b ctx A dg | domainOfHead-polys-canon b ctx df = cm
-
--- ⊢ᵍ is polys-INDEPENDENT (g-rules read only lookupLocal/lookupImport), so its
--- derivations transport by re-applying each rule (premises transfer verbatim).
-polys-transport-ᵍ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) {e A}
-  → mkCtx n Γ Δ f i p s ⊢ᵍ e ∶ A
-  → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵍ e ∶ A
-polys-transport-ᵍ b p (g-int n)          = g-int n
-polys-transport-ᵍ b p (g-neg-int n)      = g-neg-int n
-polys-transport-ᵍ b p (g-neg-float i f l q) = g-neg-float i f l q
-polys-transport-ᵍ b p (g-float i f l pos) = g-float i f l pos
-polys-transport-ᵍ b p (g-terminal lL lI) = g-terminal lL lI
-polys-transport-ᵍ b p (g-pair d₁ d₂)     = g-pair (polys-transport-ᵍ b p d₁) (polys-transport-ᵍ b p d₂)
-polys-transport-ᵍ b p (g-inl d)          = g-inl (polys-transport-ᵍ b p d)
-polys-transport-ᵍ b p (g-inr d)          = g-inr (polys-transport-ᵍ b p d)
-polys-transport-ᵍ b p (g-In wf d)        = g-In wf (polys-transport-ᵍ b p d)
+composeMid-polys-canon b ctx fa g {A = A} cm
+  rewrite composeArgB-polys-canon b ctx A g | domainOfHead-polys-canon b ctx fa = cm
 
 -- The `t-var-poly-instantiate` case recurses on `canon-pres-ᶜ d` (the inlined poly
 -- body) at `removePoly x p` — genuinely WELL-FOUNDED (the poly context strictly
@@ -342,38 +349,34 @@ mutual
   polys-transport-ᵢ b p pib ac (t-app cls df dx) = t-app cls (polys-transport-ᵢ b p pib ac df) (polys-transport-ᶜ b p pib ac dx)
   polys-transport-ᵢ b p pib ac (t-effApp cls df dx) = t-effApp cls (polys-transport-ᵢ b p pib ac df) (polys-transport-ᶜ b p pib ac dx)
 
-  polys-transport-ᵐ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → Acc _<_ (length p) → ∀ {e A π B}
-    → mkCtx n Γ Δ f i p s ⊢ᵐ e ∶ A ⇨[ π ] B
-    → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵐ e ∶ A ⇨[ π ] B
-  polys-transport-ᵐ b p pib ac (m-id ll li) = m-id ll li
-  polys-transport-ᵐ b p pib ac (m-fst ll li) = m-fst ll li
-  polys-transport-ᵐ b p pib ac (m-snd ll li) = m-snd ll li
-  polys-transport-ᵐ b p pib ac (m-terminal ll li) = m-terminal ll li
-  polys-transport-ᵐ b p pib ac (m-initial ll li) = m-initial ll li
-  polys-transport-ᵐ b p pib ac (m-inl ll li) = m-inl ll li
-  polys-transport-ᵐ b p pib ac (m-inr ll li) = m-inr ll li
-  polys-transport-ᵐ b {n = n} {Γ = Γ} {Δ = Δ} {f = fr} {i = i} {s = s} p pib ac
-    (m-compose cm df dg) =
-    m-compose (composeMid-polys-canon b (mkCtx n Γ Δ fr i p s) df dg cm)
-              (polys-transport-ᵐ b p pib ac df) (polys-transport-ᵐ b p pib ac dg)
-  polys-transport-ᵐ b p pib ac (m-case df dg) = m-case (polys-transport-ᵐ b p pib ac df) (polys-transport-ᵐ b p pib ac dg)
-  polys-transport-ᵐ b p pib ac (m-pair df dg) = m-pair (polys-transport-ᵐ b p pib ac df) (polys-transport-ᵐ b p pib ac dg)
-  polys-transport-ᵐ b p pib ac (m-curry df) = m-curry (polys-transport-ᵐ b p pib ac df)
-  polys-transport-ᵐ b p pib ac (m-cata wf d) = m-cata wf (polys-transport-ᵐ b p pib ac d)
-  polys-transport-ᵐ b p pib ac (m-const d) = m-const (polys-transport-ᵍ b p d)
-  polys-transport-ᵐ b p pib ac (m-named ¬u lln imp bA cB) = m-named ¬u lln imp bA cB
-  polys-transport-ᵐ b p pib ac (m-named-resolved imp bA cB) = m-named-resolved imp bA cB
-
   polys-transport-ᶜ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → Acc _<_ (length p) → ∀ {e A Ψ}
     → mkCtx n Γ Δ f i p s ⊢ᶜ e ∶ A ⨾ Ψ
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᶜ e ∶ A ⨾ Ψ
-  polys-transport-ᶜ b p pib ac (t-morph-lift d) = t-morph-lift (polys-transport-ᵐ b p pib ac d)
+  -- D127: what was `polys-transport-ᵐ` is these clauses. The seven leaves have
+  -- no premise that reads `polys`; the combinators recurse.
+  polys-transport-ᶜ b p pib ac (t-id-check ll li) = t-id-check ll li
+  polys-transport-ᶜ b p pib ac (t-fst-check ll li) = t-fst-check ll li
+  polys-transport-ᶜ b p pib ac (t-snd-check ll li) = t-snd-check ll li
+  polys-transport-ᶜ b p pib ac (t-terminal-morph-check ll li) = t-terminal-morph-check ll li
+  polys-transport-ᶜ b p pib ac (t-initial-morph-check ll li) = t-initial-morph-check ll li
+  polys-transport-ᶜ b p pib ac (t-inl-morph-check ll li) = t-inl-morph-check ll li
+  polys-transport-ᶜ b p pib ac (t-inr-morph-check ll li) = t-inr-morph-check ll li
+  polys-transport-ᶜ b {n = n} {Γ = Γ} {Δ = Δ} {f = fr} {i = i} {s = s} p pib ac
+    (t-compose-check {f = fa} {g = g} cm df dg) =
+    t-compose-check (composeMid-polys-canon b (mkCtx n Γ Δ fr i p s) fa g cm)
+                    (polys-transport-ᶜ b p pib ac df) (polys-transport-ᶜ b p pib ac dg)
+  polys-transport-ᶜ b p pib ac (t-case-copair-check df dg) =
+    t-case-copair-check (polys-transport-ᶜ b p pib ac df) (polys-transport-ᶜ b p pib ac dg)
+  polys-transport-ᶜ b p pib ac (t-pair-morph-check df dg) =
+    t-pair-morph-check (polys-transport-ᶜ b p pib ac df) (polys-transport-ᶜ b p pib ac dg)
+  polys-transport-ᶜ b p pib ac (t-curry-check df) = t-curry-check (polys-transport-ᶜ b p pib ac df)
+  -- The algebra sits at `ctxWithImportsAndPolys i p`, which IS a `mkCtx` with
+  -- the same poly context, so the recursion applies to it unchanged.
+  polys-transport-ᶜ b p pib ac (t-cata-check eqW dalg) =
+    t-cata-check eqW (polys-transport-ᶜ b p pib ac dalg)
   polys-transport-ᶜ b p pib ac (t-embed d) = t-embed (polys-transport-ᵢ b p pib ac d)
   polys-transport-ᶜ b p pib ac (t-subsume d) = t-subsume (polys-transport-ᶜ b p pib ac d)
   polys-transport-ᶜ b p pib ac (t-lam le d) = t-lam le (polys-transport-ᶜ b p pib ac d)
-  polys-transport-ᶜ b p pib ac (t-value-lift d) = t-value-lift (polys-transport-ᵍ b p d)
-  -- D126: structural, on the INFER sub-derivation rather than a `⊢ᵍ` one.
-  polys-transport-ᶜ b p pib ac (t-closed-lift cls d) = t-closed-lift cls (polys-transport-ᵢ b p pib ac d)
   polys-transport-ᶜ b p pib ac (t-pair-lit-check d₁ d₂) = t-pair-lit-check (polys-transport-ᶜ b p pib ac d₁) (polys-transport-ᶜ b p pib ac d₂)
   polys-transport-ᶜ b p pib ac (t-In-app-check wf d) = t-In-app-check wf (polys-transport-ᶜ b p pib ac d)
   polys-transport-ᶜ b p pib ac (t-apply-check d) = t-apply-check (polys-transport-ᵢ b p pib ac d)
