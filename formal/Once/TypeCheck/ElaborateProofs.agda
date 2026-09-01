@@ -1434,7 +1434,7 @@ checkCataGo-just-success :
       ≡ (success Surface.zeroUsage algE d fr , w)
   → checkCataGo ctx alg F A π (just wfF) eqW
       ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
-          , t-cata-check eqW w)
+          , t-cata-check wfF w)
 checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV
   with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
                   alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) | eqAlgV
@@ -1459,11 +1459,11 @@ checkCata-eff-strong-hlp :
            (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A))
   → checkCataGo ctx alg F A Once.Type.eff (wellFormedF? F) refl ≡ r
   → r ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
-          , t-cata-check eqW w)
+          , t-cata-check wfF w)
   → checkElabV ctx (Raw.RApp (Raw.RVar "cata") alg)
               (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] A)
       ≡ (success Surface.zeroUsage (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
-          , t-cata-check eqW w)
+          , t-cata-check wfF w)
 checkCata-eff-strong-hlp ctx alg F A (success Ψ eE d fr , w) eqr eqStrong
   rewrite eqr = eqStrong
 checkCata-eff-strong-hlp ctx alg F A (failure err , _) eqr eqStrong

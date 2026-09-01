@@ -110,11 +110,11 @@ realize (t-compose-check _ df dg)    = comp'   (realize df) (realize dg)
 realize (t-case-copair-check df dg)  = copair' (realize df) (realize dg)
 realize (t-pair-morph-check df dg)   = fork'   (realize df) (realize dg)
 realize (t-curry-check df)           = curry'  (realize df)
-realize (t-cata-check {wfF = wfF} _ dalg) = cata wfF (realize dalg)
+realize (t-cata-check wfF dalg) = cata wfF (realize dalg)
 realize (t-embed d)             = realize-infer d
 realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)
 realize (t-pair-lit-check da db) = pair (realize da) (realize db)
-realize (t-In-app-check {F = F} {wfF = wfF} _ d) =
+realize (t-In-app-check {F = F} wfF d) =
   morph-app (subst (λ o → IR o ⌊ μ-type F ⌋) (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)) (realize d)
 realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
 realize (t-inl-app-check d)     = morph-app (IR.inl IR.Heap) (realize d)

@@ -185,7 +185,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 -- The algebra is typed in the CLEARED context (plan 0.76 holds the widening
 -- back for its own decision), so it runs on the empty environment — the same
 -- `tt` the telescope rules use.
-⟦ t-cata-check {wfF = wfF} _ dalg ⟧ᶜ fmt dγ =
+⟦ t-cata-check wfF dalg ⟧ᶜ fmt dγ =
   (⟦ dalg ⟧ᶜ fmt) tt >>=T λ valg → returnT (cata-sem wfF valg)
 ⟦ t-embed d ⟧ᶜ fmt              dγ = (⟦ d ⟧ᵢ fmt) dγ
 ⟦ t-lam _ d ⟧ᶜ fmt              dγ = returnT (λ a → (⟦ d ⟧ᶜ fmt) (dγ , a))

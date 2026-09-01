@@ -59,6 +59,10 @@ open import Once.TypeCheck.ElaborateProofs
 
 open import Once.TypeCheck.Judgment
 open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
+-- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
+-- decider's answer from the property here rather than reading it off a premise.
+open import Once.TypeCheck.DeciderComplete
+  using (isGround-complete-at; ¬Ground-isGround-inj₂; wellFormedF?-complete-at)
 open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
   isConcrete?-complete; isBaseType?-complete)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; composeArgB; composeMid;
@@ -1370,9 +1374,11 @@ mutual
   -- type-pin equation as `refl` aligns the conclusion `T` with the declared
   -- `extractGround schema g`, so the elaborator's poly-fallback success
   -- equation IS the obligation.
-  infer-complete {ctx} (t-var-poly-instantiate-infer {x = x} eqCls x≢unit eqLoc eqImp polyE eqG refl _) =
+  infer-complete {ctx} (t-var-poly-instantiate-infer {x = x} {schema = schema} {g = g}
+                        eqCls x≢unit eqLoc eqImp polyE eqG refl _) =
     checkElab-fallback-RVar-poly-infer {ctx} x eqCls x≢unit eqLoc eqImp
-      (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE) eqG
+      (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
+      (isGround-complete-at schema g)
   infer-complete (t-annot {e = e} {T = T} d) =
     let (_ , _ , _ , eqC) = check-complete d
     in infer-complete-RAnnot e T eqC
@@ -1546,22 +1552,31 @@ mutual
   -- cata: split on π like compose/case. `checkCataGoV-pure-J` is the dispatch
   -- bridge at pure; at eff the algebra IS an eff derivation so the eff `Go`
   -- succeeds and the first branch fires.
-  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.pure} {wfF = wfF} eqW dalg)
+  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.pure} wfF dalg)
+    -- PLAN 0.80 A1: the rule hands over the WITNESS; the elaborator still
+    -- dispatches on the decider, so recover its equation here.
+    with wellFormedF?-complete-at wfF
+  ... | eqW
     with check-completeV dalg
   ... | (_ , _ , _ , W , eqA)
         with checkCataGo-just-success ctx alg F A T.pure wfF eqW eqA
   ...     | eqGo = _ , _ , _ ,
             cong proj₁ (trans (checkCataGoV-pure-J ctx alg F A (just wfF) eqW) eqGo)
-  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.eff} {wfF = wfF} eqW dalg)
+  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.eff} wfF dalg)
+    -- PLAN 0.80 A1: the rule hands over the WITNESS; the elaborator still
+    -- dispatches on the decider, so recover its equation here.
+    with wellFormedF?-complete-at wfF
+  ... | eqW
     with check-completeV dalg
   ... | (_ , _ , _ , W , eqA)
         with checkCataGo-just-success ctx alg F A T.eff wfF eqW eqA
   ...     | eqGo
             rewrite trans (checkCataGo-J ctx alg F A T.eff (just wfF) eqW) eqGo =
             _ , _ , _ , refl
-  check-complete (t-In-app-check {arg = arg} {F = F} eqWF dArg) =
+  check-complete (t-In-app-check {arg = arg} {F = F} wfF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
-    in checkElab-fallback-RApp-In arg F eqWF eqA
+    -- PLAN 0.80 A1: witness in, decider equation recovered (as for cata).
+    in checkElab-fallback-RApp-In arg F (wellFormedF?-complete-at wfF) eqA
   -- Direct (bidirectional) pair check: components carry ⊢ᶜ derivations, so recurse
   -- the STRONG `check-completeV` on the genuine subterms dA/dB (no switch needed).
   check-complete (t-pair-lit-check {a = a} {b = b} {A = A} {B = B} dA dB)
@@ -1593,10 +1608,12 @@ mutual
   -- the body's check-mode derivation through `check-complete`,
   -- then composes with the lookup premises via the helper.
   check-complete {ctx}
-    (t-var-poly-instantiate {x = x} {T = T} bbcOther x≢unit localN importN polyE eqG bodyD) =
+    (t-var-poly-instantiate {x = x} {T = T} {schema = schema}
+                            bbcOther x≢unit localN importN polyE eqG bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
     in checkElab-fallback-RVar-poly {ctx} x T bbcOther x≢unit localN importN
-         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE) eqG eqBody
+         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
+         (¬Ground-isGround-inj₂ schema eqG) eqBody
 
   -- pure-arrow derivation ⇒ the eff-arrow checkElab also succeeds (same usage).
   -- BY INDUCTION ON THE DERIVATION (OCP-0008): morphisms regrade to eff and go
@@ -1643,7 +1660,9 @@ mutual
   ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
         with caseGo-success eqf eqg
   ...     | (d , fr , eqGo) rewrite eqGo = _ , _ , _ , refl
-  subsume-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {wfF = wfF} eqW dalg)
+  subsume-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} wfF dalg)
+    with wellFormedF?-complete-at wfF
+  ... | eqW
     with subsume-completeV dalg
   ... | (_ , _ , _ , W , eqA)
         with checkCataGo-just-success ctx alg F A T.eff wfF eqW eqA
@@ -1679,11 +1698,13 @@ mutual
   -- t-var-poly-instantiate: the poly path is T-agnostic (instantiates at T via
   -- lookupPoly); recurse subsume-complete on the body for the eff target type.
   subsume-complete {ctx} {_} {A} {B}
-    (t-var-poly-instantiate {x = x} bbcOther x≢unit localN importN polyE eqG bodyD) =
+    (t-var-poly-instantiate {x = x} {schema = schema}
+                            bbcOther x≢unit localN importN polyE eqG bodyD) =
     let (_ , _ , _ , eqBodyEff) = subsume-complete bodyD
     in checkElab-fallback-RVar-poly {ctx} x (A T.⇒[ T.mk-kind T.Many T.eff ] B)
          bbcOther x≢unit localN importN
-         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE) eqG eqBodyEff
+         (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
+         (¬Ground-isGround-inj₂ schema eqG) eqBodyEff
 
 -- STRONG check-complete: a trivial VIEW of the weak `check-complete`, not a
 -- per-case rewrite. Abstract `checkElabV`, take the weak proj₁ equation, and

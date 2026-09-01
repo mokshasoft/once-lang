@@ -183,7 +183,11 @@ mutual
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
       → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
-      → Once.Type.isGround schema ≡ inj₁ g
+      -- PLAN 0.80 A2: the schema IS ground — the property, not `isGround
+      -- schema ≡ inj₁ g`, an equation about the decider. `g` stays a witness
+      -- because `extractGround` consumes it; what goes is the claim that this
+      -- particular `g` is the one a decision procedure returns.
+      → Once.Type.Ground schema
       → T ≡ Once.Type.extractGround schema g
       → (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
           ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
@@ -552,9 +556,15 @@ mutual
     -- The algebra's usage is `zeroUsage`, STATED rather than quantified: the
     -- cleared context has no locals, so there is nothing for it to use. This
     -- is the same closedness `Surface.cata` demands of the algebra it carries.
+    -- PLAN 0.80 A1: the premise is `WellFormedF F`, the PROPERTY — not
+    -- `wellFormedF? F ≡ just wfF`, an equation about the DECIDER. The decider
+    -- is sound and complete for the property, so the same judgments are
+    -- derivable; what changes is that the language definition no longer names
+    -- a decision procedure. The elaborator still uses `wellFormedF?` — that is
+    -- where an algorithm belongs — and hands its output over as the witness.
     t-cata-check : ∀ {ctx : NamedCtx} {alg : RawExpr} {F : Functor} {A : Type}
-                   {π : Once.Type.Purity} {wfF : WellFormedF F}
-                 → wellFormedF? F ≡ just wfF
+                   {π : Once.Type.Purity}
+                 → WellFormedF F
                  → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
                      ⊢ᶜ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                      ⨾ Surface.zeroUsage
@@ -589,10 +599,10 @@ mutual
     -- the argument at the functor layer `⟦F⟧T (μ-type F)`, and gates on
     -- the well-formedness decider (so the rule fires iff `IR.In` does).
     -- Emits `morph-app (IR.In wfF Heap) argE` — usage as `inl`-app.
+    -- PLAN 0.80 A1: the property, not the decider (see `t-cata-check`).
     t-In-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {F : Functor}
-                     {wfF : WellFormedF F}
                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                   → wellFormedF? F ≡ just wfF
+                   → WellFormedF F
                    → ctx ⊢ᶜ arg ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ
                    → ctx ⊢ᶜ RApp (RVar "In") arg ∶ μ-type F
                            ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
@@ -695,7 +705,11 @@ mutual
       -- mode). The split keeps both rules syntax-directed and completeness
       -- honest (a ground body may happen to re-check at other types, but the
       -- reference's type is its declaration).
-      → Once.Type.isGround schema ≡ inj₂ tt
+      -- PLAN 0.80 A3: "the schema is NOT ground", stated as the negation of
+      -- the property rather than as the decider's `inj₂` branch. `isGround` is
+      -- a decision procedure and belongs to the elaborator, not to the
+      -- language definition.
+      → ¬ (Once.Type.Ground schema)
       → (ctxWithImportsAndPolys (NamedCtx.imports ctx) prefix)
           ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
       -- Plan 0.58 / D071: NO `IsConcrete T`. A same-module def reference is a

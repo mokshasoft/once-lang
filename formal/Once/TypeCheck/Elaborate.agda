@@ -1645,7 +1645,7 @@ mutual
   checkInGo ctx arg F (just wfF) eqW with checkElabV ctx arg (⟦ F ⟧T (Once.Type.μ-type F))
   ... | failure err , _ = failure err , tt
   ... | success Ψ argE d fr , wArg =
-        success _ (Surface.morph-app (subst (λ o → IR o ⌊ Once.Type.μ-type F ⌋) (sym (⌊⟧T-commute F (Once.Type.μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)) argE) (suc d) fr , t-In-app-check eqW wArg
+        success _ (Surface.morph-app (subst (λ o → IR o ⌊ Once.Type.μ-type F ⌋) (sym (⌊⟧T-commute F (Once.Type.μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)) argE) (suc d) fr , t-In-app-check wfF wArg
 
   -- Plan 0.28 Commit 2: `cata alg` (catamorphism) check-mode at
   -- `μ-type F ⇒[Many] A`. The algebra is compiled by the self-contained
@@ -1690,7 +1690,12 @@ mutual
   -- always was, not by a realm.
   ... | success Surface.[] algE d fr , wArg =
           success _ (Surface.cata wfF algE) (suc d) (NamedCtx.freshCounter ctx)
-            , t-cata-check eqW wArg
+            -- PLAN 0.80 A1: the rule takes the WITNESS, not the decider
+            -- equation. `wfF` is the decider's own output, bound by the
+            -- `just wfF` pattern above — so the elaborator hands over exactly
+            -- what it computed, and `eqW` is now only bookkeeping for the
+            -- completeness proof's `J`-style helpers.
+            , t-cata-check wfF wArg
 
   -- Body for the hoisted `ahv-other` (generic application) branch.
   inferElab-RApp-other ctx f x with asFun (inferElab ctx f)

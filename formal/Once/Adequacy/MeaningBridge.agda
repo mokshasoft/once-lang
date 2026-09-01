@@ -581,7 +581,7 @@ bridge-c (t-curry-check {A = A} {B = B} {C = C} df) re =
 -- The cata: the algebra is BOUND on both sides (D131), so this is a bind over
 -- the algebra followed by the fold congruence `cata-bridge` — which is exactly
 -- why that lemma is now stated over two ALGEBRAS.
-bridge-c (t-cata-check {F = F} {A = A} {π = π} {wfF = wfF} _ dalg) re =
+bridge-c (t-cata-check {F = F} {A = A} {π = π} wfF dalg) re =
   RelT-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
             {B = μ-type F ⇒[ mk-kind Many π ] A}
             (bridge-c dalg tt) (λ {c₁} {c₂} ralg →
@@ -595,7 +595,7 @@ bridge-c (t-lam _ d) re k = refl , λ {a} {b} rv → bridge-c d (re , rv)
 bridge-c (t-pair-lit-check da db) re k =
     cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-c da re k)) (proj₁ (bridge-c db re k))
   , (proj₂ (bridge-c da re k) , proj₂ (bridge-c db re k))
-bridge-c (t-In-app-check {wfF = wfF} _ d) re k =
+bridge-c (t-In-app-check wfF d) re k =
   let bd = bridge-c d re k
       bi = in-app-bridge {wfF = wfF} (proj₂ bd) k
   in cong₂ _++_ (proj₁ bd) (proj₁ bi) , proj₂ bi
