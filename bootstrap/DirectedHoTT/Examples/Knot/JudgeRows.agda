@@ -77,7 +77,7 @@ IJudge =
 --     ⊢tr        premise 'NoNatC c'
 --     ⊢⌜Mu⌝      premise 'DescWf D'
 --     ⊢⌜IMu⌝     premise 'IDescWf I D'
---     ⊢natrec    premise '((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M'
+--     ⊢natrec    unmapped ['nrs']
 --     ⊢con       premise 'DescWf D'
 --     ⊢elim      premise 'DescWf D'
 --     ⊢icon      premise 'IDescWf I D'
