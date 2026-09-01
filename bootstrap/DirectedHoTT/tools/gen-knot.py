@@ -973,7 +973,19 @@ BOOL_PREM = {"pw?":   ("pwK",   "⊢pwK",   "sTm"),
 
 def TBOOL(app, lit): return ('tbool', app, lit)
 
-def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
+# ★★★ A PREMISE THAT IS A **UNARY FOREIGN JUDGEMENT**.
+#
+#     ⊢tr : … → NoNatC c → …
+#
+# ⚠ AND IT IS NOT A `BOOL_PREM`.  `NoNatC` looks like `pw?` at the call
+#   site — one argument, no relation symbol — but it is an inductive
+#   PREDICATE, so it is an `iκ` carrying a `⌜IMu⌝` of its OWN
+#   description, exactly as a `≅ᵀ` premise is.  Reading it as a boolean
+#   would owe a proof that the two agree, which the rule never asked for.
+# Agda name → its description in `FOREIGN`
+UNARY_PREM = {"NoNatC": "NoNatCD"}
+
+def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=(), arity=2):
     """(name, binders, prems, lhs, rhs) or (name, None, reason).
 
     ⚠ THE RELATION SYMBOL IS A PARAMETER.  Splitting on `⟶` when the
@@ -984,10 +996,26 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
     name = name.strip()
     parts = _split_top(ty)
     binders, prems, foreign, bools = [], [], [], []
+
+    # ★★★ A UNARY JUDGEMENT IS WRITTEN PREFIX, NOT INFIX.  `NoNatC c` has
+    #   no relation symbol BETWEEN two subjects — the name IS the head.
+    #   ⚠ Everything downstream is arity-agnostic already (the index is a
+    #     telescope, and `_jrows` builds it from a list), so this is the
+    #     only place that had to learn the difference.
+    def _un(p):
+        "the single subject of `REL t`, or None"
+        q = p.strip()
+        if arity != 1 or not q.startswith(REL): return None
+        r_ = q[len(REL):]
+        return r_.strip() if (r_ == "" or r_[0].isspace()) else None
+
     for p in parts[:-1]:
         gs = _groups(p)
         if gs is None:
-            if REL in p:
+            if arity == 1:
+                u = _un(p)
+                if u is not None: prems.append((u,)); continue
+            elif REL in p:
                 a, b = [x.strip() for x in p.split(REL)]
                 prems.append((a, b)); continue
             # ⚠ LONGEST RELATION FIRST: `⟶ᵀ` contains `⟶`, so testing the
@@ -1019,8 +1047,12 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
             else:
                 return (name, None, "binder type %r" % t)
     concl = parts[-1]
-    if REL not in concl: return (name, None, "conclusion %r" % concl)
-    lhs, rhs = [x.strip() for x in concl.split(REL)]
+    if arity == 1:
+        lhs, rhs = _un(concl), None
+        if lhs is None: return (name, None, "conclusion %r" % concl)
+    else:
+        if REL not in concl: return (name, None, "conclusion %r" % concl)
+        lhs, rhs = [x.strip() for x in concl.split(REL)]
     known = {b[0] for b in binders}
     unk = []
     def walk(e):
@@ -1029,7 +1061,8 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
                 unk.append(e[1])
             return
         for x in e[1]: walk(x)
-    walk(_parse_spine(_tokens(lhs))); walk(_parse_spine(_tokens(rhs)))
+    walk(_parse_spine(_tokens(lhs)))
+    if rhs is not None: walk(_parse_spine(_tokens(rhs)))
     if unk: return (name, None, "unmapped %s" % sorted(set(unk)))
     return (name, binders, prems, lhs, rhs, foreign, bools)
 
@@ -1093,23 +1126,32 @@ def infer_sorts(rule, CT, FSORT):
                 scan(x, fs[i] if i < len(fs) else None)
         else:
             for x in e[1][1:]: scan(x, None)
+    # ★★★ ONE PARSER FOR THE PARTS, shared with the emitter.
+    #
+    # ⚠⚠ THIS HELD ITS OWN REGEXES AND THEY TOOK ONE `▹` AND NO NESTING
+    #   — `[^()⊢∋]+?` for the context stops at the first paren.  So
+    #   `⊢ielim`'s `((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M` matched
+    #   NOTHING, the part contributed no sort, and the rule was refused
+    #   as `unassigned ['M']` — which named the SYMPTOM and hid the real
+    #   blocker (`IDescWf I D`, the same one seven other rules have).
+    #   `_parse_jpart`/`_splitctx` already did nesting properly.
+    #   ⇒ the fourth time two readers of the same shape drifted here.
     for part in _split_top(body):
-        p = part.strip()
-        mm = re.match(r"^\(?\s*([^()⊢∋]+?)\s*(?:▹\s*([^()]+?))?\s*\)?\s*⊢ty\s+(.*)$", p)
-        if mm:
-            put(mm.group(1), "ctx")
-            if mm.group(2): put(mm.group(2), "sTy")
-            scan(_parse_spine(_tokens(mm.group(3))), "sTy"); continue
-        mm = re.match(r"^\(?\s*([^()⊢∋]+?)\s*(?:▹\s*([^()]+?))?\s*\)?\s*⊢\s+(.*?)\s*∷\s*(.*)$", p)
-        if mm:
-            put(mm.group(1), "ctx")
-            if mm.group(2): put(mm.group(2), "sTy")
-            scan(_parse_spine(_tokens(mm.group(3))), "sTm")
-            scan(_parse_spine(_tokens(mm.group(4))), "sTy"); continue
-        mm = re.match(r"^\(?\s*([^()⊢∋]+?)\s*\)?\s*∋\s+(.*?)\s*∷\s*(.*)$", p)
-        if mm:
-            put(mm.group(1), "ctx"); put(mm.group(2), "sVar")
-            scan(_parse_spine(_tokens(mm.group(3))), "sTy"); continue
+        q = _parse_jpart(part.strip())
+        if q is None: continue
+        if q[0] in ("ty", "tm"):
+            put(q[1], "ctx")
+            for e in (q[2] or []): scan(_parse_spine(_tokens(e)), "sTy")
+            if q[0] == "tm": scan(_parse_spine(_tokens(q[3])), "sTm")
+            scan(_parse_spine(_tokens(q[-1])), "sTy"); continue
+        if q[0] == "lk":
+            put(q[1], "ctx"); put(q[2], "sVar")
+            scan(_parse_spine(_tokens(q[3])), "sTy"); continue
+        # ★ a `bool`/`fu` premise contributes NOTHING, by the same rule
+        #   an unknown head does: its argument's sort is already fixed by
+        #   the typing premise that binds it, and guessing here is how a
+        #   wrong sort gets in.
+        continue
     if conflict: return (name.strip(), None, "conflicting sorts %s" % conflict)
     miss = [n for n in names if n not in sorts]
     if miss: return (name.strip(), None, "unassigned %s" % miss)
@@ -1216,6 +1258,11 @@ def _parse_jpart(p):
     if mm and mm.group(1) in BOOL_PREM:
         return ("bool", mm.group(1), mm.group(2).strip(),
                 1 if mm.group(3) == "true" else 0)
+    # ★ a UNARY foreign judgement — `NoNatC c`.  Last, because it is the
+    #   loosest pattern here and would otherwise swallow the others.
+    mm = re.match(r"^\s*([A-Za-z?]+)\s+(.+?)\s*$", p)
+    if mm and mm.group(1) in UNARY_PREM:
+        return ("fu", mm.group(1), mm.group(2).strip())
     return None
 
 def infer_depths(rule, names, CT):
@@ -1354,7 +1401,7 @@ def _mutual_rows(CT, TEL, dummy):
                 # ⚠ a `bool` part's last component is an INT (the literal),
                 #   not a term — tokenising it is a `TypeError` deep in the
                 #   parser rather than an honest skip.
-                _ts = (q[2:3] if q[0] == "bool"
+                _ts = (q[2:3] if q[0] in ("bool", "fu")
                        else (q[2:] if q[0] == "lk" else q[3:]))
                 for t in _ts:
                     chk(_parse_spine(_tokens(t)))
@@ -1414,6 +1461,16 @@ def _mutual_rows(CT, TEL, dummy):
                                      _val(_parse_spine(_tokens(_arg)), CT, _bd)),
                                   RAW("num %d" % _lit))))
                     continue
+                if q[0] == "fu":
+                    # ★ THE PREMISE'S OWN DEPTH, not the row's: `⊢tr`
+                    #   binds `c : RTm (Γ ∙)`, so `NoNatC c` is a fact
+                    #   about a code ONE BINDER IN.
+                    _fd = _depth_at(deps.get(q[2], 0))
+                    bs.append(("fu%d" % i,
+                               _code(FOREIGN[UNARY_PREM[q[1]]],
+                                     TUP(_fd, _val(_parse_spine(_tokens(q[2])),
+                                                   CT, _fd)))))
+                    continue
                 if q[0] == "lk":
                     bs.append(("lk%d" % i, _code(FOREIGN["LkD"],
                         TUP(V(_DEPTH), V(q[1]),
@@ -1438,18 +1495,24 @@ def _mutual_rows(CT, TEL, dummy):
 SPLIT_AT = 34
 
 class Judgement:
-    def __init__(self, data, rel, tel, ity, ixdef, desc, mod, wf, cites=(), extra=""):
+    def __init__(self, data, rel, tel, ity, ixdef, desc, mod, wf, cites=(), extra="",
+                 arity=2, src="Typing"):
         self.data, self.rel, self.tel, self.ity = data, rel, tel, ity
         self.ixdef, self.desc, self.mod, self.wf = ixdef, desc, mod, wf
         self.cites, self.extra = cites, extra
+        # ⚠ NOT EVERY JUDGEMENT LIVES IN `Spec/Typing`.  `NoNatC` is in
+        #   `Spec/Variance` — it is a property of CODES, not a typing
+        #   rule, and `⊢tr` imports it as a premise.
+        self.arity, self.src = arity, src
 
 def _jrows(J, CT):
     "the translated rows, and the rules that did not translate"
     rows, skipped = [], []
     src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "Spec", "Typing.agda")
+    src = os.path.join(os.path.dirname(src), J.src + ".agda")
     for r in rules_of(src, J.data):
-        t = translate_rule(r, CT, J.rel, J.cites)
+        t = translate_rule(r, CT, J.rel, J.cites, J.arity)
         if t[1] is None: skipped.append((t[0], t[2])); continue
         nm, binders, prems, lhs, rhs, foreign, bools = t
         bs, dep = [(_DEPTH, _code(TNAT(), None))], {}
@@ -1465,14 +1528,16 @@ def _jrows(J, CT):
                              _val(_parse_spine(_tokens(a)), CT, V(_DEPTH)),
                              _val(_parse_spine(_tokens(b)), CT, V(_DEPTH))))))
         ps = []
-        for i, (a, b) in enumerate(prems):
+        for i, pr in enumerate(prems):
+            a = pr[0]
             d = dep.get(a.strip(), 0)
             ps.append(("ih%d" % i, TUP(_depth_at(d),
-                       _val(_parse_spine(_tokens(a)), CT, _depth_at(d)),
-                       _val(_parse_spine(_tokens(b)), CT, _depth_at(d)))))
+                       *[_val(_parse_spine(_tokens(x)), CT, _depth_at(d))
+                         for x in pr])))
         rows.append((nm, JRow("rd" + nm, bs, ps,
-                     [V(_DEPTH), _val(_parse_spine(_tokens(lhs)), CT, V(_DEPTH)),
-                                 _val(_parse_spine(_tokens(rhs)), CT, V(_DEPTH))])))
+                     [V(_DEPTH)] + [_val(_parse_spine(_tokens(x)), CT, V(_DEPTH))
+                                    for x in ((lhs,) if rhs is None
+                                              else (lhs, rhs))])))
     return rows, skipped
 
 GC_NOTE = """-- ⚠⚠ THIS MODULE NEEDS THE **COMPACTING COLLECTOR**.
@@ -1650,7 +1715,9 @@ IJUDGE_DEF = """Σ' Nat
 MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt )
 open import DirectedHoTT.Examples.Knot.Lookup using ( LkD; ILk; LkWf )
 open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
-open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )"""
+open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )
+open import DirectedHoTT.Examples.Knot.NoNatCRows using ( NoNatCD; INoNatC )
+open import DirectedHoTT.Examples.Knot.NoNatCWf using ( NoNatCWf )"""
 
 JWFTOP = """
 ------------------------------------------------------------------------
@@ -3367,6 +3434,27 @@ J_CONV = Judgement(
            "open import DirectedHoTT.Examples.Knot.TyRedWf using ( TyRedWf )"))
 
 
+TEL_NNC = [TNAT(), TKNOT("sTm")]
+
+# ★★★ `NoNatC` — THE FIRST **UNARY** JUDGEMENT, and the first parsed out
+#   of a file other than `Spec/Typing`.
+#
+# ⚠ IT IS NOT A BOOLEAN PREMISE, which is what `pw?`/`stkA?`/`flat?` are.
+#   `NoNatC` is an inductive PREDICATE with seven rows, two of them
+#   recursive (`nnc-Π` descends UNDER A BINDER, `nnc-Hom` does not) — so
+#   it is a description like `_⟶ᵀ_`, cited by `⊢tr` the way `⊢conv`
+#   cites `_≅ᵀ_`.  Encoding it as a boolean would have meant proving the
+#   boolean AGREES with the predicate, which is a second obligation the
+#   rule never asked for.
+#
+# ★ ITS INDEX IS TWO COMPONENTS, not three: a depth and the CODE.
+J_NONATC = Judgement(
+    "NoNatC", "NoNatC", TEL_NNC, "INoNatC",
+    "Σ' Nat (IMu KnotD IPair (pair sTm (var vz)))",
+    "NoNatCD", "NoNatC", "NoNatCWf",
+    arity=1, src="Variance")
+
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out = os.path.join(root, "Examples", "Knot")
@@ -3391,10 +3479,11 @@ if __name__ == "__main__":
     open(os.path.join(out, "RedWfB.agda"), "w").write(gen_redwf("B", _half, len(_ROWS)))
     _CT = {d.split(":")[0].strip(): n[1:] + "K" for n, d, _ in KNOT}
     _CT.update(_SUBST_CT)
-    for _J in (J_TYRED, J_CONV):
+    for _J in (J_NONATC, J_TYRED, J_CONV):
         for _m in write_judgement(_J, out, _CT):
             print("  wrote", _m)
     FOREIGN["ConvD"] = TJ("ConvD", "IConv", "ConvWf", TEL_TYR)
+    FOREIGN["NoNatCD"] = TJ("NoNatCD", "INoNatC", "NoNatCWf", TEL_NNC)
     FOREIGN["LkD"] = TJ("LkD", "ILk", "LkWf",
                         [TNAT(), TCTX(), TKNOT("sVar"), TKNOT("sTy")])
     _njudge = len(write_mutual(out, _CT))
