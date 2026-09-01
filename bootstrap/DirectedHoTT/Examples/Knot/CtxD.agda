@@ -52,7 +52,7 @@ open import DirectedHoTT.Spec.Syntax
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_; _∈ID_; hereID; thereID
         ; Ren; Sub; renTm; subTm; extS )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ◇; _▹_; ⌊_⌋; single
+  using ( Ctx; ◇; _▹_; ⌊_⌋; single; wk-single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv
         ; ⊢pair; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢⌜IMu⌝; ⊢idrefl; ⊢icon
         ; ty-El; ty-Unit; ty-Σ; ty-IMu
@@ -62,13 +62,14 @@ open import DirectedHoTT.Spec.Typing
         ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜Id⌝; El-⌜IMu⌝ )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ⊢wk )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTy; ⊢sTy; toI; fromI; ⊢ixP; num; ⊢num; num-ren; num-sub )
+  using ( IPair; sTy; ⊢sTy; toI; fromI; ⊢ixP; num; ⊢num )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Ty-NatK; ⊢Ty-NatK )
 open import DirectedHoTT.Examples.Knot.Map using ( enTy; ⊢enTy )
 open import DirectedHoTT.Examples.Knot.Sorts using ( len )
-open import DirectedHoTT.Examples.Knot.Build using ( ⊢numAt; kCast )
+open import DirectedHoTT.Examples.Knot.Build using ( kCast; tmCast )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w²; sub-w-single )
 
 ------------------------------------------------------------------------
 -- 0. THE INDEX — a bare DEPTH.  `El ⌜Nat⌝` and not `Nat`, for
@@ -152,7 +153,7 @@ reflId {t = t} d =
         (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝ t t)))
 
 ------------------------------------------------------------------------
--- 4. THE SMART CONSTRUCTORS, at an abstract depth `num n`.
+-- 4. THE SMART CONSTRUCTORS, at an ARBITRARY depth TERM.
 ------------------------------------------------------------------------
 
 Ctx-empK : {Γ : Cx} → RTm Γ
@@ -167,61 +168,101 @@ Ctx-extK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
 Ctx-extK m g a =
   icon (suc zero) (pair m (pair g (pair a (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))))
 
+-- ★★★ `_▹_` AT AN ARBITRARY DEPTH — the ONE proof of this row.
+--
+-- ⚠⚠ IT REPLACES TWO SIBLINGS, and the note that said it could not.
+--   §7 used to argue that the `num n` form and the `var x` form were
+--   siblings "neither subsuming the other", because renaming and
+--   substitution COMPUTE on a variable and are the IDENTITY on a
+--   numeral — two different reasons the four field-substitutions
+--   vanish, neither covering the other.  That is true about the
+--   REASONS and false about the LEMMA: at an arbitrary `d` the
+--   substitutions do not vanish, they DESCEND, and the descent is
+--   `Knot/Build`'s rung 5 (`⊢Var-vsKt`) — the same four rungs over a
+--   four-field telescope.  Both siblings are then instances.
+--
+-- ★ AND `⊢natrec` IS WHAT FORCED IT.  Its premise extends the context
+--   TWICE — `(Γ ▹ Nat) ▹ M` — so the outer extension sits at
+--   `nsuc (var x)`, which is neither a numeral nor a variable.  ONE
+--   generated call site in the whole judgement family needs this; the
+--   other nine are at a variable.
+--
+-- ★ `rtA` IS GENERIC IN BOTH TERMS, per `abstract-the-substituted-terms`
+--   — one lemma reused at three different pairs, not one per position.
+------------------------------------------------------------------------
+
+⊢Ctx-extKt : {Δ : Ctx} {d : RTm ⌊ Δ ⌋} {g a : RTm ⌊ Δ ⌋} →
+             Δ ⊢ d ∷ Nat →
+             Δ ⊢ g ∷ CtxK d →
+             Δ ⊢ a ∷ K (pair sTy d) →
+             Δ ⊢ Ctx-extK d g a ∷ CtxK (nsuc d)
+⊢Ctx-extKt {Δ = Δ} {d = d} {g = g} {a = a} dx dg da =
+  ⊢icon CtxWf (thereID hereID) (toI (⊢nsuc dx))
+    (⊢pair (ty-Σ (ty-IMu CtxWf (⊢var here))
+             (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here))))))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢nsuc (⊢wk (⊢wk (⊢wk dx)))))
+                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                     ty-Unit)))
+           (toI dx)
+      (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy dw1)))
+               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢nsuc dw2))
+                              (toI (⊢nsuc dw2'))))
+                     ty-Unit))
+             dg
+        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
+                              (toI (⊢nsuc dw3))
+                              (toI (⊢nsuc dw3'))))
+                     ty-Unit)
+               (toKn (kCast (sym (wk-single {v = g} d)) da))
+          (⊢pair ty-Unit (⊢-cast eqFord (reflId (⊢nsuc dx))) ⊢unit))))
+  where
+    rtA : (v X : RTm ⌊ Δ ⌋) → subTm (extS (single v)) (w (w X)) ≡ w X
+    rtA v X = sub-w-single X
+
+    rt₂ : (X : RTm ⌊ Δ ⌋) →
+          subTm (extS (extS (single d))) (w (w (w X))) ≡ w (w X)
+    rt₂ X = trans (sub-w² {σ = single d} (w X))
+                  (cong (λ z → w (w z)) (wk-single {v = d} X))
+
+    dw1 : _
+    dw1 = ⊢wk dx
+    dw2 : _
+    dw2 = tmCast (sym (rt₂ d)) (⊢wk (⊢wk dx))
+    dw2' : _
+    dw2' = ⊢wk (⊢wk dx)
+    rt₃ : (X : RTm ⌊ Δ ⌋) →
+          subTm (extS (single g)) (subTm (extS (extS (single d))) (w (w (w X))))
+            ≡ w X
+    rt₃ X = trans (cong (subTm (extS (single g))) (rt₂ X)) (rtA g X)
+
+    dw3 : _
+    dw3 = tmCast (sym (rt₃ d)) (⊢wk dx)
+    dw3' : _
+    dw3' = tmCast (sym (rtA g d)) (⊢wk dx)
+
+    rt₄ : (X : RTm ⌊ Δ ⌋) →
+          subTm (single a)
+                (subTm (extS (single g))
+                       (subTm (extS (extS (single d))) (w (w (w X)))))
+            ≡ X
+    rt₄ X = trans (cong (subTm (single a)) (rt₃ X)) (wk-single {v = a} X)
+
+    rt₄ᵣ : (X : RTm ⌊ Δ ⌋) →
+           subTm (single a) (subTm (extS (single g)) (w (w X))) ≡ X
+    rt₄ᵣ X = trans (cong (subTm (single a)) (rtA g X)) (wk-single {v = a} X)
+
+    eqFord : _
+    eqFord = cong₂ (λ z₁ z₂ → El (⌜Id⌝ ⌜Nat⌝ z₁ (nsuc z₂)))
+                   (sym (rt₄ (nsuc d))) (sym (rt₄ᵣ d))
+
+
 ⊢Ctx-extK : {Δ : Ctx} (n : ℕ) {g a : RTm ⌊ Δ ⌋} →
             Δ ⊢ g ∷ CtxK (num n) →
             Δ ⊢ a ∷ K (pair sTy (num n)) →
             Δ ⊢ Ctx-extK (num n) g a ∷ CtxK (num (suc n))
-⊢Ctx-extK n {g = g} {a = a} dg da =
-  ⊢icon CtxWf (thereID hereID) (toI (⊢num (suc n)))
-    -- level 0 — the bound depth `m`
-    (⊢pair (ty-Σ (ty-IMu CtxWf (⊢var here))
-             (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here))))))
-               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                              (toI (⊢numAt (suc n) r3))
-                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
-                     ty-Unit)))
-           (toI (⊢num n))
-    -- level 1 — the `Ctx` child.  Its index COMPUTES to `num n`.
-      (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (⊢numAt n q1))))
-               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                              (toI (⊢numAt (suc n) s31))
-                              (toI (⊢nsuc (⊢numAt n w2)))))
-                     ty-Unit))
-             dg
-    -- level 2 — ★ THE FOREIGN `IMu` FIELD.  One `kCast`, as sort 7's
-    --   `RTy` field also cost; the `toKn` is the κ-code conversion.
-        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                              (toI (⊢numAt (suc n) s32))
-                              (toI (⊢nsuc (⊢numAt n f32)))))
-                     ty-Unit)
-               (toKn (kCast (sym q2) da))
-    -- level 3 — the DEPTH ford, THE ONLY FORD THIS ROW HAS
-          (⊢pair ty-Unit
-                 (⊢-cast (cong₂ (λ z w → El (⌜Id⌝ ⌜Nat⌝ z (nsuc w)))
-                                (sym s33) (sym f33))
-                         (reflId (⊢nsuc (⊢num n))))
-                 ⊢unit))))
-  where
-    r3 : renTm vs (renTm vs (renTm vs (num (suc n)))) ≡ num (suc n)
-    r3 = trans (cong (renTm vs) (trans (cong (renTm vs) (num-ren vs (suc n))) (num-ren vs (suc n)))) (num-ren vs (suc n))
-    s31 : subTm (extS (extS (single (num n)))) (renTm vs (renTm vs (renTm vs (num (suc n))))) ≡ num (suc n)
-    s31 = trans (cong (subTm (extS (extS (single (num n))))) r3) (num-sub (extS (extS (single (num n)))) (suc n))
-    s32 : subTm (extS (single g)) (subTm (extS (extS (single (num n)))) (renTm vs (renTm vs (renTm vs (num (suc n)))))) ≡ num (suc n)
-    s32 = trans (cong (subTm (extS (single g))) s31) (num-sub (extS (single g)) (suc n))
-    s33 : subTm (single a) (subTm (extS (single g)) (subTm (extS (extS (single (num n)))) (renTm vs (renTm vs (renTm vs (num (suc n))))))) ≡ num (suc n)
-    s33 = trans (cong (subTm (single a)) s32) (num-sub (single a) (suc n))
-
-    q1 : renTm vs (num n) ≡ num n
-    q1 = num-ren vs n
-    q2 : subTm (single g) (renTm vs (num n)) ≡ num n
-    q2 = trans (cong (subTm (single g)) q1) (num-sub (single g) n)
-
-    w2 : renTm vs (renTm vs (num n)) ≡ num n
-    w2 = trans (cong (renTm vs) (num-ren vs n)) (num-ren vs n)
-    f32 : subTm (extS (single g)) (renTm vs (renTm vs (num n))) ≡ num n
-    f32 = trans (cong (subTm (extS (single g))) w2) (num-sub (extS (single g)) n)
-    f33 : subTm (single a) (subTm (extS (single g)) (renTm vs (renTm vs (num n)))) ≡ num n
-    f33 = trans (cong (subTm (single a)) f32) (num-sub (single a) n)
+⊢Ctx-extK n = ⊢Ctx-extKt (⊢num n)
 
 ------------------------------------------------------------------------
 -- 5. ★★ AND IT IS INHABITED — `◇ ▹ Nat`, encoded, at depth 1.
@@ -265,18 +306,14 @@ enCtx (Γ ▹ A) = Ctx-extK (num (len ⌊ Γ ⌋)) (enCtx Γ) (enTy A)
 ⊢enCtx (Γ ▹ A) = ⊢Ctx-extK (len ⌊ Γ ⌋) (⊢enCtx Γ) (⊢enTy A)
 
 ------------------------------------------------------------------------
--- 7. ★★ `_▹_` AT A **VARIABLE** DEPTH.
+-- 7. `_▹_` AT A **VARIABLE** DEPTH — kept as a NAME, not a proof.
 --
--- ⚠ §4's smart constructors are at `num n` — a NUMERAL — because their
---   customer is the adequacy map, whose depths are `len ⌊ Γ ⌋`.  A
---   JUDGEMENT's constructor telescope is the other case: its depth is a
---   bound `iκ ⌜Nat⌝` field, i.e. a VARIABLE.
---
--- ★ AND IT IS THE CHEAP CASE.  Renaming and substitution COMPUTE on a
---   variable, so every `num-ren`/`num-sub` chain §4 needed collapses to
---   `refl`: the nine equations vanish, the `kCast` vanishes, and the
---   `⊢-cast` on the depth ford vanishes with them.  `Knot/Build`'s route
---   (c), and the two forms are siblings — neither subsumes the other.
+-- ⚠ §4's `⊢Ctx-extK` is at `num n` because its customer is the adequacy
+--   map, whose depths are `len ⌊ Γ ⌋`.  A JUDGEMENT's constructor
+--   telescope is the other case: its depth is a bound `iκ ⌜Nat⌝` field,
+--   i.e. a VARIABLE.  Both are now one line over `⊢Ctx-extKt`; the two
+--   signatures survive because ten call sites read better at them and
+--   because they say which shape their caller is in.
 ------------------------------------------------------------------------
 
 ⊢Ctx-extKv : {Δ : Ctx} {x : Var ⌊ Δ ⌋} {g a : RTm ⌊ Δ ⌋} →
@@ -284,24 +321,4 @@ enCtx (Γ ▹ A) = Ctx-extK (num (len ⌊ Γ ⌋)) (enCtx Γ) (enTy A)
              Δ ⊢ g ∷ CtxK (var x) →
              Δ ⊢ a ∷ K (pair sTy (var x)) →
              Δ ⊢ Ctx-extK (var x) g a ∷ CtxK (nsuc (var x))
-⊢Ctx-extKv {x = x} {g = g} {a = a} dx dg da =
-  ⊢icon CtxWf (thereID hereID) (toI (⊢nsuc dx))
-    (⊢pair (ty-Σ (ty-IMu CtxWf (⊢var here))
-             (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here))))))
-               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                              (toI (⊢nsuc (⊢wk (⊢wk (⊢wk dx)))))
-                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
-                     ty-Unit)))
-           (toI dx)
-      (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (⊢wk dx))))
-               (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                              (toI (⊢nsuc (⊢wk (⊢wk dx))))
-                              (toI (⊢nsuc (⊢wk (⊢wk dx))))))
-                     ty-Unit))
-             dg
-        (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                              (toI (⊢nsuc (⊢wk dx)))
-                              (toI (⊢nsuc (⊢wk dx)))))
-                     ty-Unit)
-               (toKn da)
-          (⊢pair ty-Unit (reflId (⊢nsuc dx)) ⊢unit))))
+⊢Ctx-extKv = ⊢Ctx-extKt

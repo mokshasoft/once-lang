@@ -700,3 +700,62 @@ it is needed because `prog`'s type mentions `Prog`.
 ⇒ **step 4 closes none of them.** It *depends* on them: a judgement
 missing rows is a smaller language, so `prog` stated over it would not be
 `prog` for this kernel.
+
+---
+
+# §9 — `⊢natrec`, and the **narrow twin**: one class, three instances, one sitting
+
+`⊢natrec` was the last of §8's item 1 (`singleK`). Its object-level
+prerequisite — `nrs`, the substitution its successor premise names — was
+already built and type-checking (`Knot/Nrs`). What it cost was **not the
+new function**. It was three *existing* lemmas, each stated at the only
+shape that had ever had a customer.
+
+| | the lemma | stated at | what `⊢natrec` needs | how it was found |
+|---|---|---|---|---|
+| 1 | `⊢Var-vzKv` / `⊢Var-vsKv` | `var x` | any depth term | ⚠ **an earlier sitting**; `gen-knot.py` records it — the table pointed at `⊢Var-vzKv` *"for two commits. The narrow twin was written first and shadowed the general one"* |
+| 2 | `⊢Ctx-extKv` | `var x` | `nsuc (var x)` | ✅ this sitting — `Ctx-extK (var _x) != Ctx-extK (nsuc (var …))` |
+| 3 | `⊢subAtK` | `dd = nsuc m` | `dd = pred m` (`nrs` RAISES) | ✅ this sitting — `SubTy (nsuc n) n` vs `SubTy n (nsuc n)` |
+
+⚠⚠ **AND IN NONE OF THE THREE WAS THE GENERAL FORM HARDER TO *STATE*.**
+That is the whole finding. In (3) the underlying lemma `⊢motAppK` was
+**already** general — it takes the source `dd` and the target `m` as
+separate implicits — and only the wrapper tied them together. In (2) the
+general proof is `Knot/Build`'s rung 5 (`⊢Var-vsKt`) transcribed onto a
+second four-field telescope: four descent lemmas, `rtA` generic in *both*
+substituted terms, and the two narrow siblings become
+
+    ⊢Ctx-extK n = ⊢Ctx-extKt (⊢num n)
+    ⊢Ctx-extKv  = ⊢Ctx-extKt
+
+⚠ **AND IT IS NOT A LINE-COUNT WIN**: `CtxD` is +97/−80, net **+17**.
+Two proof bodies (80 lines, most of them `num-ren`/`num-sub` chains)
+become one body plus four descent lemmas plus the note above. What is
+bought is that there is now ONE place where this row's four field
+substitutions are discharged, and it answers at every depth.
+
+★★★ **WHY THE TWIN GETS WRITTEN FIRST, AND IT IS NOT LAZINESS.** At a
+`var x` renaming and substitution *compute*; at a `num n` they are the
+*identity*. Both make the field-substitution obligations vanish — for
+**different reasons**, neither of which covers the other. So the file's
+own note concluded "the two forms are siblings — neither subsumes the
+other", which is TRUE ABOUT THE REASONS and FALSE ABOUT THE LEMMA: at an
+arbitrary `d` the obligations do not vanish, they **descend**, and the
+descent already existed one module away.
+
+⇒ ★ **THE TEST, and it is cheap.** Before writing a smart constructor at
+`var x` or at `num n`, state it at an arbitrary term and check. Either it
+goes through (it did, for `⊢subAtK`) or the errors name the descent
+lemmas — which `Lib/Wk` already indexes (`sub-w`, `sub-w²`,
+`sub-w-single`, `wk-single`). `Knot/CtxD`'s general form took four
+3-second iterations to close.
+
+⚠ **THE COST OF NOT DOING SO IS PAID AT THE WORST MOMENT.** Each of these
+surfaced as a `UnequalTerms` error inside a **generated** module — 8m32s
+and 4.9 GB per iteration for `JudgeWfI` — where the deep de Bruijn
+telescopes make it read as a *generator* bug. It is not: the emitter had
+the depths right in all three cases. ⇒ when a generated row fails on a
+depth, **check the lemma's statement before the emitter's arithmetic.**
+
+★ Measured, once the three were general: `JudgeWfI` 512s-failing → **34s
+green**, and the whole sweep 164/164 at 948s.
