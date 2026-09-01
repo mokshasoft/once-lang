@@ -1277,8 +1277,27 @@ CORRESPONDENCE between two artifacts:
 
 Nothing in the second file mentions the first. `DescWf C` is a perfectly
 good `ICon`; so is a row with a field missing; so is a stale module from
-a previous run. A type checker verifies ONE SIDE of a correspondence it
-cannot see.
+a previous run.
+
+⚠⚠ **AND THE NEXT SENTENCE HERE USED TO READ "a type checker verifies ONE
+SIDE of a correspondence it cannot see". THAT IS TOO STRONG, and it was
+retracted the same day.** Agda cannot see a correspondence **nobody wrote
+down** — written down, it checks it. `Examples/Knot/Census` now does
+exactly that: `Agda.Builtin.Reflection` reads a datatype's constructor
+list at type-check time **under `--safe`** (measured), `ilen` counts the
+emitted rows because `IDesc` is a first-order list, and
+
+    ilen JudgeD + 5 ≡ rules _⊢ty_ + rules _⊢_∷_ + … ≡ 56
+
+is an EQUATION the sweep checks. ⇒ defect 8 becomes a type error, and so
+does a rule ADDED to `Spec/Typing` with no row — coverage nothing had.
+The control was run: a wrong count fails (`2 != 99 of type Nat`).
+
+★ What survives the retraction is narrower and still true: **counting is
+the cheap SHADOW of the correspondence, not the correspondence.** Defect
+7 — a well-formed row encoding the WRONG RULE — is still invisible, and
+only tier 3 (`enDeriv`) closes it. See `FUTURE.md`, "the bugs Agda cannot
+see".
 
 ★ **And this cuts differently for `Lib/` and `Metatheory/`.** There a
 proof of `X` IS a proof of `X`, so type-checking really is most of the
