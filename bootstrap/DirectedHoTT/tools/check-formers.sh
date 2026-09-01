@@ -43,6 +43,17 @@
 #   IMu/icon/ielim produced a GREEN `Spec/Typing` containing ZERO rules
 #   for them. Exactly the hazard this file was written for.
 # Exit:   0 = all FAIL-checks pass;  1 = at least one orphan.
+# ⚠⚠ CHECK 1 IS NOW REDUNDANT — it is enforced IN AGDA.
+#   `Metatheory/FormerCensus` states "every `RTm` former is homed in
+#   `SNe`/`SN`/`SNRed`/`Ne`" as a type-checked obligation, by reflection,
+#   under `--safe`, and NAMES the orphans when it fails.  Measured
+#   2026-09-01: `Agda.Builtin.Reflection` works under `--safe`, so the
+#   thing this script was written to do out-of-band is a proposition.
+#   ⇒ check 1 is kept here only as an independent cross-check; the
+#     obligation that BLOCKS the sweep is the Agda one.
+# ⚠ Checks 2–6 are NOT redundant and are different in kind: 2 rests on a
+#   HAND-MAINTAINED map (`LRMAP`), 3 is the catch-all audit, and 4–6 are
+#   review lists about the ABSENCE of something program-wide.
 # ============================================================================
 set -uo pipefail
 cd "$(dirname "$0")"
