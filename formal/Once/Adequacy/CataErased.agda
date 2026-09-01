@@ -12,7 +12,7 @@
 -- SET-level functor round-trip `tF-coh : translateF ⌈eraseF F⌉F ≡ translateF F`.
 --
 -- The single export `evalᴰ-Cata-erased` lets the relational fold congruences
--- (`CataBridge.cata-bridge`, `CataFold.cata-fold-eq`) stay at the SAME functor
+-- (`CataBridge.cata-bridge`, `FaithfulLemmas.cataM-fold`) stay at the SAME functor
 -- `F` and SAME carrier `⟦A⟧ᴰ` — their original proofs are reused unchanged,
 -- with this lemma discharging the erasure round-trip up front.
 --

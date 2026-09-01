@@ -113,19 +113,56 @@ loop (`CataNat*`) and the three arch cata paths are the substantial part; the
 rest is mechanical.
 
 **WORKLIST IS THE 53 REACHABLE MODULES, NOT 83.** `/tmp/cata_reach.txt` holds
-them; `$SCRATCH/catasweep.sh` sweeps exactly that set. Rebuild the list with
-the import-closure script over the seven gate roots (Compiler, Certified, the
-three Targets, Spec/Correct, ErrorProofs) if it goes stale.
+them; `$SCRATCH/catasweep.sh` sweeps exactly that set. Rebuild the list with an
+import-closure walk over the seven gate roots if it goes stale.
 
-**Done, green**: `IR`, `CCC/Eval`, `CCC/IR/Stack`, `Denotation/DenotTrace`.
+**GREEN so far**: `IR`, `CCC/Eval`, `CCC/IR/Stack`, `Denotation/DenotTrace`,
+`Adequacy/CataErased`, `Surface/Elaborate`, `TypeCheck/Elaborate`,
+`TypeCheck/ElaborateProofs`, `Optimize`, `Denotation/SourceDenote`.
 
-**In flight**: `Adequacy/CataErased`. `evalᴰ-Cata-erased` is generalized with
-the environment as an ERASED SURFACE type `⌊ Eˢ ⌋` — `liftFn` is stated over
-erased surface types, and the only environment the elaborator ever supplies is
-the algebra closure `⟦F⟧T C ⇒ C`, which is one. The env is transported at each
-use with `subst (λ t → t) (sym (cohᴰ Eˢ))`. REMAINING: `step-eq` compares
-against `liftFn fmt mir`, which now takes a pair, so `evalᴰ-subst-dom` needs a
-paired-motive variant (`λ o → IR (⌊Eˢ⌋ * o) B` instead of `λ o → IR o B`).
+**ALL THREE LAYERS NOW AGREE ON BUILD-ONCE** — this was the point of D131:
+  * `⟦_⟧ᶜ` (spec) binds the algebra,
+  * `⟦_⟧ˢ` (surface denotation) binds it and hands the fold `returnT valg`,
+  * the elaboration is `cataM ∘ (ealg ∘ terminal)`, with `cataM` CLOSED.
+
+**NEXT: `FaithfulLemmas.cata-body`, and it gets SIMPLER.** Do this before
+`CataFold`, whose shape it dictates.
+
+Under D131 both sides bind the algebra once, so `cata-body` becomes a
+bind-congruence over a shared computation plus ONE per-closure fold equality —
+instead of the old proof, which had to bridge a per-layer REBUILD against a
+bound closure. Structure (attempted, reverted only because `cataM-fold` does
+not exist yet — the rest typechecked as far as that reference):
+
+    cata-body … = trans (cong (λ t → t k) split)
+                        (cong (λ t → t k)
+                          (cong (_>>=T_ (SD.⟦ alg ⟧ˢ fmt tt))
+                                (extensionality per-closure)))
+      where
+        split : liftFn (cataM ∘ (ealg ∘ terminal)) dγ
+              ≡ (SD.⟦ alg ⟧ˢ fmt tt >>=T liftFn cataM)
+        -- = liftFn-∘ twice + liftFn-terminal + the IH
+
+        per-closure : ∀ c → liftFn cataM c ≡ returnT (fold-with c)
+
+**`cataM-fold` is the one lemma to write** (put it beside
+`evalᴰ-Cata-erased`, which it uses):
+
+    liftFn fmt (cataM wf Heap) c
+      ≡ returnT (λ x n → let r = sem-cata wf (cata-ev-algˢ n (returnT c)) x
+                         in (proj₁ r , proj₂ r))
+
+Proof = the `curry` reduction (as in the old `elab-cata-reduce`) + the
+generalized `evalᴰ-Cata-erased` with `env := c` + the fact that
+`liftFn (apply ∘ ⟨fst,snd⟩) (c , z) = c z`.
+
+**THEN `CataFold.cata-fold-eq`.** Its `feq` hypothesis
+(`⟦algE⟧ˢ tt ≡ liftD m-alg`) should DISAPPEAR — it was supplied by
+`RealizeAgrees.extract-morph-eff-denotes`, i.e. by the `⊢ᵐ` realm, and binding
+the algebra makes it unnecessary. **Write that up as O2's first concrete
+answer when it lands.** Its only consumers are two `RealizeAgrees` sites, both
+inside the D127 rework, so its final form can wait for that rework rather than
+being guessed now.
 
 **THE 30 ISLANDS — a separate delete-or-justify pass.** Not on the migration
 worklist. The whole `CataNat*` family (9 modules) is the cata codegen path the

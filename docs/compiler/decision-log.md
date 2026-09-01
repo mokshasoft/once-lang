@@ -9717,3 +9717,70 @@ recorded against O2 rather than resolved by a deletion.
 
 **Relates**: D131, D102 (the dead path is the checklist — read it before
 deleting it; this entry is that reading)
+
+---
+
+## D133: O2 ANSWERED — What `⊢ᵐ` Was Forcing Was a HYPOTHESIS, and Binding the Arm Removes It
+
+**Date**: 2026-09-01 · **Status**: Decided (plan 0.76, O2) ·
+**Follows**: D127 (context-indexed composition), D130, D131
+
+### O2 as posed, and why the premise was wrong
+
+Plan 0.76 owed O2: `⊢ᵐ`'s structural recursion over the combinators "forces the
+categorical LAWS through the agreement bridge", so deleting the realm must
+re-establish that forcing.
+
+**The premise does not survive the evidence.** `Once.Category.Laws` — the CCC
+laws — has been imported exactly ONCE in the repo's history, by the 2025-12-13
+verified-optimizer commit, whose correctness module is itself an island and
+whose optimizer D039 found unsound. The agreement bridge (`faithful`,
+`realize-agrees`) never imported it, in any commit, and proves every case
+COMPUTATIONALLY. Nothing was forcing the laws, because nothing consumed them.
+
+So O2's real question is **"what did `⊢ᵐ` actually buy?"**, answered case by
+case rather than in one stroke.
+
+### The answer, for the case that mattered
+
+`⊢ᵐ` was supplying a HYPOTHESIS: **the arm is a fixed morphism, not a
+computation that produces one.**
+
+Concretely, `CataFold.cata-fold-eq` took
+
+    ⟦ algE ⟧ˢ tt ≡ liftD m-alg
+
+as a premise, and it was discharged by `RealizeAgrees.extract-morph-eff-denotes`
+— i.e. by the algebra EXTRACTING to an IR morphism, which is exactly what the
+realm guaranteed. Delete the realm and the premise has no supplier.
+
+**D131 removes the need for it rather than re-supplying it.** With the algebra
+BOUND (obtained once, carried by the parameterized fold), the replacement
+lemma is
+
+    cataM-fold : liftFn (cataM wf Heap) c ≡ returnT (cata-sem wf c)
+
+which takes **no hypothesis at all**. `Once.Adequacy.CataFold` is deleted; its
+one export existed only to serve the extraction path.
+
+### The same phenomenon, one module earlier
+
+`FaithfulLemmas.cata-body` used to need `alg-eq`, a per-layer agreement
+between the IR algebra and the surface one, because the elaborated fold
+REBUILT the algebra each layer while the denotation bound it. With both sides
+binding, `cata-body` is a bind-congruence over a shared computation plus one
+per-closure equality, and `alg-eq` is gone.
+
+**Two proofs got SMALLER.** That is the strongest evidence available that the
+model change was right rather than merely defensible: a change that only
+relocated a difficulty would have moved the work, not removed it.
+
+### The rule this yields
+
+When a typing realm is deleted, do not ask where its THEOREMS are re-proved.
+Ask which PREMISES it was silently discharging, and for each one decide
+whether to re-supply it or to change the model so it is not needed. Here the
+second was available, and it was also the mathematically correct reading
+(D131) — the two coincided, which is usually the sign of a real fix.
+
+**Relates**: D039, D127, D130, D131, D132; plan 0.79 §4 carries the laws half.
