@@ -99,13 +99,13 @@ realize-infer : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
 -- D127: the combinators realize to the SURFACE term formers, not to a
 -- separate morphism realm. The point-free leaves are still the plain
 -- categorical generators — those were always closed and still are.
-realize (t-id-check _ _)             = lift-morphism IR.id
-realize (t-fst-check _ _)            = lift-morphism IR.fst
-realize (t-snd-check _ _)            = lift-morphism IR.snd
-realize (t-terminal-morph-check _ _) = lift-morphism IR.terminal
-realize (t-initial-morph-check _ _)  = lift-morphism IR.initial
-realize (t-inl-morph-check _ _)      = lift-morphism (IR.inl IR.Heap)
-realize (t-inr-morph-check _ _)      = lift-morphism (IR.inr IR.Heap)
+realize (t-id-check)             = lift-morphism IR.id
+realize (t-fst-check)            = lift-morphism IR.fst
+realize (t-snd-check)            = lift-morphism IR.snd
+realize (t-terminal-morph-check) = lift-morphism IR.terminal
+realize (t-initial-morph-check)  = lift-morphism IR.initial
+realize (t-inl-morph-check)      = lift-morphism (IR.inl IR.Heap)
+realize (t-inr-morph-check)      = lift-morphism (IR.inr IR.Heap)
 realize (t-compose-check _ df dg)    = comp'   (realize df) (realize dg)
 realize (t-case-copair-check df dg)  = copair' (realize df) (realize dg)
 realize (t-pair-morph-check df dg)   = fork'   (realize df) (realize dg)

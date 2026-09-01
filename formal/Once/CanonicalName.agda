@@ -28,6 +28,7 @@ open import Data.String using (String) renaming (_≟_ to _≟ˢ_; _++_ to _++ˢ
 open import Relation.Binary using (DecidableEquality)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Relation.Nullary using (yes; no)
+open import Relation.Binary.PropositionalEquality using (_≢_)
 
 record CanonicalName : Set where
   constructor canonical
@@ -39,6 +40,31 @@ open CanonicalName public
 -- block). Qualified refs build `canonical (path ++ [name])` at resolution.
 bare : String → CanonicalName
 bare s = canonical (s ∷ [])
+
+-- D136: THE GENERATOR NAMESPACE. The twelve categorical generators are
+-- identified by a canonical name the COMPILER owns, not by a reserved bare
+-- string — so a user's `fst` (`User.Module.fst`) and the generator
+-- (`Generators.fst`) are different names and cannot collide. D001 reserved the
+-- bare names instead; that was never enforced at the parser and produced a
+-- collision in which the builtin silently won.
+--
+-- Here rather than in `Classify` because BOTH sides need it: the resolver
+-- (`Once.Parser.Module.Resolve`, which emits it) and the elaborator
+-- (`Once.TypeCheck.*`, which dispatches on it) — and this module is already
+-- below both.
+generatorNS : String
+generatorNS = "Generators"
+
+-- | The canonical name of generator `g`.
+gen : String → CanonicalName
+gen g = canonical (generatorNS ∷ g ∷ [])
+
+-- A user path can never BE a generator name: `bare x = canonical [x]` has one
+-- component and `gen g` has two, so the two families are disjoint by length —
+-- which is the property that replaces every "this name is not a builtin" side
+-- condition once the migration lands.
+gen≢bare : ∀ (g x : String) → gen g ≢ bare x
+gen≢bare g x ()
 
 -- Decidable equality — the trace's `ev-name` comparison needs it.
 _≟ᶜ_ : DecidableEquality CanonicalName

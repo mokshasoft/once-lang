@@ -1500,19 +1500,19 @@ mutual
   -- D127: the seven POINT-FREE LEAVES. Each is the elaborator's own
   -- `RVar`-fallback lemma, which never depended on the purity — generalising
   -- those to any `π` is what lets these rules stay grade-poly.
-  check-complete {ctx} (t-id-check {T = T} eqL eqI) =
+  check-complete {ctx} (t-id-check {T = T}) =
     checkElab-fallback-RVar-id {ctx} T eqL eqI
-  check-complete {ctx} (t-fst-check {A = A} {B = B} eqL eqI) =
+  check-complete {ctx} (t-fst-check {A = A} {B = B}) =
     checkElab-fallback-RVar-fst {ctx} A B eqL eqI
-  check-complete {ctx} (t-snd-check {A = A} {B = B} eqL eqI) =
+  check-complete {ctx} (t-snd-check {A = A} {B = B}) =
     checkElab-fallback-RVar-snd {ctx} A B eqL eqI
-  check-complete {ctx} (t-terminal-morph-check {A = A} eqL eqI) =
+  check-complete {ctx} (t-terminal-morph-check {A = A}) =
     checkElab-fallback-RVar-terminal {ctx} A eqL eqI
-  check-complete {ctx} (t-initial-morph-check {A = A} eqL eqI) =
+  check-complete {ctx} (t-initial-morph-check {A = A}) =
     checkElab-fallback-RVar-initial {ctx} A eqL eqI
-  check-complete {ctx} (t-inl-morph-check {A = A} {B = B} eqL eqI) =
+  check-complete {ctx} (t-inl-morph-check {A = A} {B = B}) =
     checkElab-fallback-RVar-inl {ctx} A B eqL eqI
-  check-complete {ctx} (t-inr-morph-check {A = A} {B = B} eqL eqI) =
+  check-complete {ctx} (t-inr-morph-check {A = A} {B = B}) =
     checkElab-fallback-RVar-inr {ctx} A B eqL eqI
   -- SPLIT ON π: `checkCompose`'s EFF clause comes first and `with`s on the eff
   -- `checkComposeGo`, so an abstract π is stuck. At `pure` the second clause
@@ -1627,19 +1627,19 @@ mutual
   -- `∀ {π}`, so the eff instance is the same rule and the same fallback lemma —
   -- there is nothing to regrade. `regrade-eff` existed only because `⊢ᵐ` had to
   -- rebuild a derivation at a new grade.
-  subsume-complete {ctx} (t-id-check {T = T} eqL eqI) =
+  subsume-complete {ctx} (t-id-check {T = T}) =
     checkElab-fallback-RVar-id {ctx} T eqL eqI
-  subsume-complete {ctx} (t-fst-check {A = A} {B = B} eqL eqI) =
+  subsume-complete {ctx} (t-fst-check {A = A} {B = B}) =
     checkElab-fallback-RVar-fst {ctx} A B eqL eqI
-  subsume-complete {ctx} (t-snd-check {A = A} {B = B} eqL eqI) =
+  subsume-complete {ctx} (t-snd-check {A = A} {B = B}) =
     checkElab-fallback-RVar-snd {ctx} A B eqL eqI
-  subsume-complete {ctx} (t-terminal-morph-check {A = A} eqL eqI) =
+  subsume-complete {ctx} (t-terminal-morph-check {A = A}) =
     checkElab-fallback-RVar-terminal {ctx} A eqL eqI
-  subsume-complete {ctx} (t-initial-morph-check {A = A} eqL eqI) =
+  subsume-complete {ctx} (t-initial-morph-check {A = A}) =
     checkElab-fallback-RVar-initial {ctx} A eqL eqI
-  subsume-complete {ctx} (t-inl-morph-check {A = A} {B = B} eqL eqI) =
+  subsume-complete {ctx} (t-inl-morph-check {A = A} {B = B}) =
     checkElab-fallback-RVar-inl {ctx} A B eqL eqI
-  subsume-complete {ctx} (t-inr-morph-check {A = A} {B = B} eqL eqI) =
+  subsume-complete {ctx} (t-inr-morph-check {A = A} {B = B}) =
     checkElab-fallback-RVar-inr {ctx} A B eqL eqI
   -- D127: the COMBINATORS at the eff arrow. The elaborator's eff clause TRIES
   -- the eff `Go` first and falls back to pure + `arr'`/`t-subsume`. The pure

@@ -164,13 +164,13 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 --
 -- The leaves are `returnT` of the plain categorical generator, as they were.
 ------------------------------------------------------------------------
-⟦ t-id-check _ _              ⟧ᶜ fmt dγ = returnT (λ a  → returnT a)
-⟦ t-fst-check _ _             ⟧ᶜ fmt dγ = returnT (λ ab → returnT (proj₁ ab))
-⟦ t-snd-check _ _             ⟧ᶜ fmt dγ = returnT (λ ab → returnT (proj₂ ab))
-⟦ t-terminal-morph-check _ _  ⟧ᶜ fmt dγ = returnT (λ _  → returnT tt)
-⟦ t-initial-morph-check _ _   ⟧ᶜ fmt dγ = returnT (λ v  → ⊥-elim v)
-⟦ t-inl-morph-check _ _       ⟧ᶜ fmt dγ = returnT (λ a  → returnT (inj₁ a))
-⟦ t-inr-morph-check _ _       ⟧ᶜ fmt dγ = returnT (λ b  → returnT (inj₂ b))
+⟦ t-id-check              ⟧ᶜ fmt dγ = returnT (λ a  → returnT a)
+⟦ t-fst-check             ⟧ᶜ fmt dγ = returnT (λ ab → returnT (proj₁ ab))
+⟦ t-snd-check             ⟧ᶜ fmt dγ = returnT (λ ab → returnT (proj₂ ab))
+⟦ t-terminal-morph-check  ⟧ᶜ fmt dγ = returnT (λ _  → returnT tt)
+⟦ t-initial-morph-check   ⟧ᶜ fmt dγ = returnT (λ v  → ⊥-elim v)
+⟦ t-inl-morph-check       ⟧ᶜ fmt dγ = returnT (λ a  → returnT (inj₁ a))
+⟦ t-inr-morph-check       ⟧ᶜ fmt dγ = returnT (λ b  → returnT (inj₂ b))
 ⟦ t-compose-check _ df dg ⟧ᶜ fmt dγ =
   (⟦ df ⟧ᶜ fmt) dγ >>=T λ vf → (⟦ dg ⟧ᶜ fmt) dγ >>=T λ vg →
   returnT (λ a → vg a >>=T vf)

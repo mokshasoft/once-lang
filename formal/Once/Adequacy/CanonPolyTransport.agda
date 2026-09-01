@@ -371,13 +371,13 @@ mutual
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᶜ e ∶ A ⨾ Ψ
   -- D127: what was `polys-transport-ᵐ` is these clauses. The seven leaves have
   -- no premise that reads `polys`; the combinators recurse.
-  polys-transport-ᶜ b p pib ac (t-id-check ll li) = t-id-check ll li
-  polys-transport-ᶜ b p pib ac (t-fst-check ll li) = t-fst-check ll li
-  polys-transport-ᶜ b p pib ac (t-snd-check ll li) = t-snd-check ll li
-  polys-transport-ᶜ b p pib ac (t-terminal-morph-check ll li) = t-terminal-morph-check ll li
-  polys-transport-ᶜ b p pib ac (t-initial-morph-check ll li) = t-initial-morph-check ll li
-  polys-transport-ᶜ b p pib ac (t-inl-morph-check ll li) = t-inl-morph-check ll li
-  polys-transport-ᶜ b p pib ac (t-inr-morph-check ll li) = t-inr-morph-check ll li
+  polys-transport-ᶜ b p pib ac (t-id-check) = t-id-check
+  polys-transport-ᶜ b p pib ac (t-fst-check) = t-fst-check
+  polys-transport-ᶜ b p pib ac (t-snd-check) = t-snd-check
+  polys-transport-ᶜ b p pib ac (t-terminal-morph-check) = t-terminal-morph-check
+  polys-transport-ᶜ b p pib ac (t-initial-morph-check) = t-initial-morph-check
+  polys-transport-ᶜ b p pib ac (t-inl-morph-check) = t-inl-morph-check
+  polys-transport-ᶜ b p pib ac (t-inr-morph-check) = t-inr-morph-check
   polys-transport-ᶜ b {n = n} {Γ = Γ} {Δ = Δ} {f = fr} {i = i} {s = s} p pib ac
     (t-compose-check {f = fa} {g = g} cm df dg) =
     t-compose-check (composeMid-polys-canon b (mkCtx n Γ Δ fr i p s) fa g cm)

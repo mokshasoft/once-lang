@@ -2482,7 +2482,7 @@ mutual
   -- T = canonical & both lookups nothing & inner type-checks pass.
   checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Y) err (llv-not-found eqLoc) (liv-not-found eqImp) with X ≟T Y
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , t-id-check eqLoc eqImp
+        success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , t-id-check
   ... | no _ = failure (BuiltinTypeMismatch "id") , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "id") , tt
   checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "id") , tt
@@ -2501,7 +2501,7 @@ mutual
 
   checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A') err (llv-not-found eqLoc) (liv-not-found eqImp) with A ≟T A'
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , t-fst-check eqLoc eqImp
+        success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , t-fst-check
   ... | no _ = failure (BuiltinTypeMismatch "fst") , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "fst") , tt
   checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "fst") , tt
@@ -2531,7 +2531,7 @@ mutual
   -- bbc-snd: canonical T = (A * B) ⇒[Many,pure] B'
   checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B') err (llv-not-found eqLoc) (liv-not-found eqImp) with B ≟T B'
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , t-snd-check eqLoc eqImp
+        success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , t-snd-check
   ... | no _ = failure (BuiltinTypeMismatch "snd") , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "snd") , tt
   checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "snd") , tt
@@ -2560,7 +2560,7 @@ mutual
 
   -- bbc-terminal: canonical T = A ⇒[Many,pure] Unit
   checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-not-found eqLoc) (liv-not-found eqImp) =
-    success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , t-terminal-morph-check eqLoc eqImp
+    success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , t-terminal-morph-check
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "terminal") , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-found _) _ = failure (BuiltinTypeMismatch "terminal") , tt
   checkElabV-RVar-bbc-terminal-failure-aux ctx Unit err _ _ = failure err , tt
@@ -2588,7 +2588,7 @@ mutual
 
   -- bbc-initial: canonical T = Void ⇒[Many,pure] A
   checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) err (llv-not-found eqLoc) (liv-not-found eqImp) =
-    success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , t-initial-morph-check eqLoc eqImp
+    success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , t-initial-morph-check
   checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "initial") , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "initial") , tt
   checkElabV-RVar-bbc-initial-failure-aux ctx Unit err _ _ = failure err , tt
@@ -2617,7 +2617,7 @@ mutual
   -- bbc-inl: canonical T = A ⇒[Many,pure] (A' + B)
   checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A' Once.Type.+ B)) err (llv-not-found eqLoc) (liv-not-found eqImp) with A ≟T A'
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism (IR.inl IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-inl-morph-check eqLoc eqImp
+        success Surface.zeroUsage (Surface.lift-morphism (IR.inl IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-inl-morph-check
   ... | no _ = failure (BuiltinTypeMismatch "inl") , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "inl") , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-found _) _ = failure (BuiltinTypeMismatch "inl") , tt
@@ -2647,7 +2647,7 @@ mutual
   -- bbc-inr: canonical T = B ⇒[Many,pure] (A + B')
   checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B')) err (llv-not-found eqLoc) (liv-not-found eqImp) with B ≟T B'
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism (IR.inr IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-inr-morph-check eqLoc eqImp
+        success Surface.zeroUsage (Surface.lift-morphism (IR.inr IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-inr-morph-check
   ... | no _ = failure (BuiltinTypeMismatch "inr") , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "inr") , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-found _) _ = failure (BuiltinTypeMismatch "inr") , tt

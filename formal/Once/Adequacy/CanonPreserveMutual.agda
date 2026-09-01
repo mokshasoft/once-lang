@@ -157,20 +157,20 @@ mutual
   -- the separate `canon-pres-ᵐ` induction is these clauses. The point-free
   -- leaves are builtin heads (kept by `canon-builtin`); the combinators recurse
   -- into `canon-pres-ᶜ` on arms that are ordinary terms in the ambient context.
-  canon-pres-ᶜ bound sub pib (t-id-check ll li)
-    rewrite canon-builtin bound "id" refl = t-id-check ll li
-  canon-pres-ᶜ bound sub pib (t-fst-check ll li)
-    rewrite canon-builtin bound "fst" refl = t-fst-check ll li
-  canon-pres-ᶜ bound sub pib (t-snd-check ll li)
-    rewrite canon-builtin bound "snd" refl = t-snd-check ll li
-  canon-pres-ᶜ bound sub pib (t-terminal-morph-check ll li)
-    rewrite canon-builtin bound "terminal" refl = t-terminal-morph-check ll li
-  canon-pres-ᶜ bound sub pib (t-initial-morph-check ll li)
-    rewrite canon-builtin bound "initial" refl = t-initial-morph-check ll li
-  canon-pres-ᶜ bound sub pib (t-inl-morph-check ll li)
-    rewrite canon-builtin bound "inl" refl = t-inl-morph-check ll li
-  canon-pres-ᶜ bound sub pib (t-inr-morph-check ll li)
-    rewrite canon-builtin bound "inr" refl = t-inr-morph-check ll li
+  canon-pres-ᶜ bound sub pib (t-id-check)
+    rewrite canon-builtin bound "id" refl = t-id-check
+  canon-pres-ᶜ bound sub pib (t-fst-check)
+    rewrite canon-builtin bound "fst" refl = t-fst-check
+  canon-pres-ᶜ bound sub pib (t-snd-check)
+    rewrite canon-builtin bound "snd" refl = t-snd-check
+  canon-pres-ᶜ bound sub pib (t-terminal-morph-check)
+    rewrite canon-builtin bound "terminal" refl = t-terminal-morph-check
+  canon-pres-ᶜ bound sub pib (t-initial-morph-check)
+    rewrite canon-builtin bound "initial" refl = t-initial-morph-check
+  canon-pres-ᶜ bound sub pib (t-inl-morph-check)
+    rewrite canon-builtin bound "inl" refl = t-inl-morph-check
+  canon-pres-ᶜ bound sub pib (t-inr-morph-check)
+    rewrite canon-builtin bound "inr" refl = t-inr-morph-check
   canon-pres-ᶜ bound sub pib (t-compose-check {f = f} {g = g} cm df dg)
     rewrite canon-builtin bound "compose" refl =
       t-compose-check (composeMid-canon bound f g cm)

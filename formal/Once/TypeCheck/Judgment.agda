@@ -56,7 +56,7 @@ open import Once.TypeCheck.Raw as Raw
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
          BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp;
          ClosedLiftShape)
-open import Once.CanonicalName using (CanonicalName; showCanonical)
+open import Once.CanonicalName using (CanonicalName; showCanonical; gen)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; lookupPolyPrefix;
          removePoly;
@@ -124,7 +124,7 @@ mutual
            → ctx ⊢ᵢ RUnit ∶ Unit ⨾ zeroUsage
 
     t-unit-var : ∀ {ctx : NamedCtx}
-               → ctx ⊢ᵢ RVar "unit" ∶ Unit ⨾ zeroUsage
+               → ctx ⊢ᵢ RResolved (gen "unit") ∶ Unit ⨾ zeroUsage
 
     ----------------------------------------------------------------
     -- Variable lookup (local / qualified / import)
@@ -368,22 +368,22 @@ mutual
     t-id-app : ∀ {ctx : NamedCtx} {e : RawExpr} {T : Type}
                {Ψ : Surface.Usage (NamedCtx.size ctx)}
              → ctx ⊢ᵢ e ∶ T ⨾ Ψ
-             → ctx ⊢ᵢ RApp (RVar "id") e ∶ T ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+             → ctx ⊢ᵢ RApp (RResolved (gen "id")) e ∶ T ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
     t-fst-app : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
                 {Ψ : Surface.Usage (NamedCtx.size ctx)}
               → ctx ⊢ᵢ e ∶ (A Once.Type.* B) ⨾ Ψ
-              → ctx ⊢ᵢ RApp (RVar "fst") e ∶ A ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+              → ctx ⊢ᵢ RApp (RResolved (gen "fst")) e ∶ A ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
     t-snd-app : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
                 {Ψ : Surface.Usage (NamedCtx.size ctx)}
               → ctx ⊢ᵢ e ∶ (A Once.Type.* B) ⨾ Ψ
-              → ctx ⊢ᵢ RApp (RVar "snd") e ∶ B ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+              → ctx ⊢ᵢ RApp (RResolved (gen "snd")) e ∶ B ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
     t-terminal-app : ∀ {ctx : NamedCtx} {e : RawExpr} {T : Type}
                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
                    → ctx ⊢ᵢ e ∶ T ⨾ Ψ
-                   → ctx ⊢ᵢ RApp (RVar "terminal") e ∶ Unit ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+                   → ctx ⊢ᵢ RApp (RResolved (gen "terminal")) e ∶ Unit ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
     -- (Plan 0.52 M1: `t-arr-app-infer` retired — pure⊑eff is now `t-subsume`.)
 
@@ -393,7 +393,7 @@ mutual
     t-apply-app-infer : ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
                         {Ψ : Surface.Usage (NamedCtx.size ctx)}
                       → ctx ⊢ᵢ p ∶ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) ⨾ Ψ
-                      → ctx ⊢ᵢ RApp (RVar "apply") p ∶ B ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+                      → ctx ⊢ᵢ RApp (RResolved (gen "apply")) p ∶ B ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
     ----------------------------------------------------------------
     -- Generic function application.
@@ -463,51 +463,41 @@ mutual
     -- `5` is not an arrow and the lift is now WRITTEN (`\_ -> 5`).
     --
     -- The point-free leaves below are the ordinary typing of the generators
-    -- they always were; the lookup premises keep user shadowing winning.
+    -- they always were. D136: keyed on the CANONICAL name `Generators.g`, so
+    -- the lookup premises are GONE — the resolver already decided whether a
+    -- reference is the generator or the user's own `fst`, and a user path
+    -- (`canonical [x]`, one component) can never equal `gen g` (two). The side
+    -- conditions do not move to the elaborator; they cease to exist.
     ----------------------------------------------------------------
 
     t-id-check : ∀ {ctx : NamedCtx} {T : Type} {π : Once.Type.Purity}
-               → lookupLocal ctx "id" ≡ nothing
-               → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
-               → ctx ⊢ᶜ RVar "id" ∶ (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] T)
+               → ctx ⊢ᶜ RResolved (gen "id") ∶ (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] T)
                        ⨾ Surface.zeroUsage
 
     t-fst-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
-                → lookupLocal ctx "fst" ≡ nothing
-                → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
-                → ctx ⊢ᶜ RVar "fst" ∶ ((A * B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
+                → ctx ⊢ᶜ RResolved (gen "fst") ∶ ((A * B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                         ⨾ Surface.zeroUsage
 
     t-snd-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
-                → lookupLocal ctx "snd" ≡ nothing
-                → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
-                → ctx ⊢ᶜ RVar "snd" ∶ ((A * B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
+                → ctx ⊢ᶜ RResolved (gen "snd") ∶ ((A * B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
                         ⨾ Surface.zeroUsage
 
     t-terminal-morph-check : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
-                           → lookupLocal ctx "terminal" ≡ nothing
-                           → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
-                           → ctx ⊢ᶜ RVar "terminal"
+                           → ctx ⊢ᶜ RResolved (gen "terminal")
                                    ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit)
                                    ⨾ Surface.zeroUsage
 
     t-initial-morph-check : ∀ {ctx : NamedCtx} {A : Type} {π : Once.Type.Purity}
-                          → lookupLocal ctx "initial" ≡ nothing
-                          → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
-                          → ctx ⊢ᶜ RVar "initial"
+                          → ctx ⊢ᶜ RResolved (gen "initial")
                                   ∶ (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                                   ⨾ Surface.zeroUsage
 
     t-inl-morph-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
-                      → lookupLocal ctx "inl" ≡ nothing
-                      → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
-                      → ctx ⊢ᶜ RVar "inl" ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A + B))
+                      → ctx ⊢ᶜ RResolved (gen "inl") ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A + B))
                               ⨾ Surface.zeroUsage
 
     t-inr-morph-check : ∀ {ctx : NamedCtx} {A B : Type} {π : Once.Type.Purity}
-                      → lookupLocal ctx "inr" ≡ nothing
-                      → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
-                      → ctx ⊢ᶜ RVar "inr" ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A + B))
+                      → ctx ⊢ᶜ RResolved (gen "inr") ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A + B))
                               ⨾ Surface.zeroUsage
 
     -- `composeMid` SURVIVES (plan 0.76 A3): D044/D045 chose a locally
@@ -519,7 +509,7 @@ mutual
                     → composeMid ctx f g A ≡ just B
                     → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₁
                     → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ₂
-                    → ctx ⊢ᶜ RApp (RApp (RVar "compose") f) g
+                    → ctx ⊢ᶜ RApp (RApp (RResolved (gen "compose")) f) g
                             ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
                             ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
 
@@ -528,7 +518,7 @@ mutual
                           {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
                         → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₁
                         → ctx ⊢ᶜ g ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₂
-                        → ctx ⊢ᶜ RApp (RApp (RVar "case") f) g
+                        → ctx ⊢ᶜ RApp (RApp (RResolved (gen "case")) f) g
                                 ∶ ((A + B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
                                 ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
 
@@ -537,14 +527,14 @@ mutual
                          {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
                        → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ₁
                        → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₂
-                       → ctx ⊢ᶜ RApp (RApp (RVar "pair") f) g
+                       → ctx ⊢ᶜ RApp (RApp (RResolved (gen "pair")) f) g
                                ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B * C))
                                ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
 
     t-curry-check : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
                     {Ψ : Surface.Usage (NamedCtx.size ctx)}
                   → ctx ⊢ᶜ f ∶ ((A * B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ
-                  → ctx ⊢ᶜ RApp (RVar "curry") f
+                  → ctx ⊢ᶜ RApp (RResolved (gen "curry")) f
                           ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ]
                              (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
                           ⨾ Ψ
@@ -568,7 +558,7 @@ mutual
                  → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
                      ⊢ᶜ alg ∶ ((⟦ F ⟧T A) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                      ⨾ Surface.zeroUsage
-                 → ctx ⊢ᶜ RApp (RVar "cata") alg
+                 → ctx ⊢ᶜ RApp (RResolved (gen "cata")) alg
                          ∶ ((μ-type F) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                          ⨾ Surface.zeroUsage
 
@@ -604,7 +594,7 @@ mutual
                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
                    → WellFormedF F
                    → ctx ⊢ᶜ arg ∶ ⟦ F ⟧T (μ-type F) ⨾ Ψ
-                   → ctx ⊢ᶜ RApp (RVar "In") arg ∶ μ-type F
+                   → ctx ⊢ᶜ RApp (RResolved (gen "In")) arg ∶ μ-type F
                            ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
 
     -- | Applied `apply p` at result type B; p must be inferable as
@@ -612,7 +602,7 @@ mutual
     t-apply-check : ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
                     {Ψ : Surface.Usage (NamedCtx.size ctx)}
                   → ctx ⊢ᵢ p ∶ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) ⨾ Ψ
-                  → ctx ⊢ᶜ RApp (RVar "apply") p
+                  → ctx ⊢ᶜ RApp (RResolved (gen "apply")) p
                            ∶ B
                            ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
 
@@ -624,7 +614,7 @@ mutual
     t-inl-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
                       {Ψ : Surface.Usage (NamedCtx.size ctx)}
                     → ctx ⊢ᶜ arg ∶ A ⨾ Ψ
-                    → ctx ⊢ᶜ RApp (RVar "inl") arg
+                    → ctx ⊢ᶜ RApp (RResolved (gen "inl")) arg
                              ∶ (A Once.Type.+ B)
                              ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
 
@@ -632,7 +622,7 @@ mutual
     t-inr-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {A B : Type}
                       {Ψ : Surface.Usage (NamedCtx.size ctx)}
                     → ctx ⊢ᶜ arg ∶ B ⨾ Ψ
-                    → ctx ⊢ᶜ RApp (RVar "inr") arg
+                    → ctx ⊢ᶜ RApp (RResolved (gen "inr")) arg
                              ∶ (A Once.Type.+ B)
                              ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
 
@@ -642,7 +632,7 @@ mutual
     t-initial-app-check : ∀ {ctx : NamedCtx} {arg : RawExpr} {T : Type}
                           {Ψ : Surface.Usage (NamedCtx.size ctx)}
                         → ctx ⊢ᶜ arg ∶ Once.Type.Void ⨾ Ψ
-                        → ctx ⊢ᶜ RApp (RVar "initial") arg
+                        → ctx ⊢ᶜ RApp (RResolved (gen "initial")) arg
                                  ∶ T
                                  ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
 

@@ -128,13 +128,13 @@ mutual
     → mkCtx n Γ Δ f i p s ⊢ᶜ e ∶ A ⨾ Ψ
   -- D127: what was `polys-reflect-ᵐ` is these clauses (the dual of
   -- `CanonPolyTransport.polys-transport-ᶜ`).
-  polys-reflect-ᶜ b p pib ac (t-id-check ll li) = t-id-check ll li
-  polys-reflect-ᶜ b p pib ac (t-fst-check ll li) = t-fst-check ll li
-  polys-reflect-ᶜ b p pib ac (t-snd-check ll li) = t-snd-check ll li
-  polys-reflect-ᶜ b p pib ac (t-terminal-morph-check ll li) = t-terminal-morph-check ll li
-  polys-reflect-ᶜ b p pib ac (t-initial-morph-check ll li) = t-initial-morph-check ll li
-  polys-reflect-ᶜ b p pib ac (t-inl-morph-check ll li) = t-inl-morph-check ll li
-  polys-reflect-ᶜ b p pib ac (t-inr-morph-check ll li) = t-inr-morph-check ll li
+  polys-reflect-ᶜ b p pib ac (t-id-check) = t-id-check
+  polys-reflect-ᶜ b p pib ac (t-fst-check) = t-fst-check
+  polys-reflect-ᶜ b p pib ac (t-snd-check) = t-snd-check
+  polys-reflect-ᶜ b p pib ac (t-terminal-morph-check) = t-terminal-morph-check
+  polys-reflect-ᶜ b p pib ac (t-initial-morph-check) = t-initial-morph-check
+  polys-reflect-ᶜ b p pib ac (t-inl-morph-check) = t-inl-morph-check
+  polys-reflect-ᶜ b p pib ac (t-inr-morph-check) = t-inr-morph-check
   polys-reflect-ᶜ b {n = n} {Γ = Γ} {Δ = Δ} {f = fr} {i = i} {s = s} p pib ac
     (t-compose-check {f = fa} {g = g} cm df dg) =
     t-compose-check (composeMid-polys-decanon b (mkCtx n Γ Δ fr i p s) fa g cm)

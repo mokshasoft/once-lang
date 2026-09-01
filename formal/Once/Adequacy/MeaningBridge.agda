@@ -513,23 +513,23 @@ bridge-i (t-effApp _ df dx) re k = refl , λ {a} {b} _ k' →
 -- plain categorical generator, so these are the OLD `bridge-m` bodies verbatim,
 -- re-aimed at `⊢ᶜ` — the `subst` moves `liftFn`'s funext-reduction out of the
 -- way exactly as `wrapM` used to.
-bridge-c (t-id-check {T = T} {π = π} _ _) re k =
+bridge-c (t-id-check {T = T} {π = π}) re k =
   refl , subst (RelV (T ⇒[ mk-kind Many π ] T) (λ a → returnT a))
                (sym (liftFn-id {T})) (λ rv n → refl , rv)
-bridge-c (t-fst-check {A = A} {B = B} {π = π} _ _) re k =
+bridge-c (t-fst-check {A = A} {B = B} {π = π}) re k =
   refl , subst (RelV ((A * B) ⇒[ mk-kind Many π ] A) (λ ab → returnT (proj₁ ab)))
                (sym (liftFn-fst {A} {B})) (λ rv n → refl , proj₁ rv)
-bridge-c (t-snd-check {A = A} {B = B} {π = π} _ _) re k =
+bridge-c (t-snd-check {A = A} {B = B} {π = π}) re k =
   refl , subst (RelV ((A * B) ⇒[ mk-kind Many π ] B) (λ ab → returnT (proj₂ ab)))
                (sym (liftFn-snd {A} {B})) (λ rv n → refl , proj₂ rv)
-bridge-c (t-terminal-morph-check {A = A} {π = π} _ _) re k =
+bridge-c (t-terminal-morph-check {A = A} {π = π}) re k =
   refl , subst (RelV (A ⇒[ mk-kind Many π ] Once.Type.Unit) (λ _ → returnT tt))
                (sym (liftFn-terminal {A})) (λ _ n → refl , tt)
-bridge-c (t-initial-morph-check _ _) re k = refl , (λ { {a = ()} })
-bridge-c (t-inl-morph-check {A = A} {B = B} {π = π} _ _) re k =
+bridge-c (t-initial-morph-check) re k = refl , (λ { {a = ()} })
+bridge-c (t-inl-morph-check {A = A} {B = B} {π = π}) re k =
   refl , subst (RelV (A ⇒[ mk-kind Many π ] (A + B)) (λ a → returnT (inj₁ a)))
                (sym (liftFn-inl {A} {B})) (λ rv n → refl , rv)
-bridge-c (t-inr-morph-check {A = A} {B = B} {π = π} _ _) re k =
+bridge-c (t-inr-morph-check {A = A} {B = B} {π = π}) re k =
   refl , subst (RelV (B ⇒[ mk-kind Many π ] (A + B)) (λ b → returnT (inj₂ b)))
                (sym (liftFn-inr {B} {A})) (λ rv n → refl , rv)
 
