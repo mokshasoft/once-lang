@@ -168,44 +168,49 @@ IxWf =
 --    mention `n` except `IxIConK`'s third.
 ------------------------------------------------------------------------
 
-IxNoneK : {Γ : Cx} → RTm Γ
-IxNoneK = icon zero unit
+-- ⚠ EVERY ONE TAKES THE INDEX AS ITS FIRST ARGUMENT AND IGNORES IT.
+--   `icon k p` does not mention the index, but the EMITTER threads the
+--   term and its derivation together (`DD`), so naming it here keeps the
+--   two in step — and the emitted `RTm` is unchanged, the argument being
+--   discarded.
+IxNoneK : {Γ : Cx} → RTm Γ → RTm Γ
+IxNoneK _ = icon zero unit
 
-⊢IxNoneK : {Δ : Ctx} (n : RTm ⌊ Δ ⌋) →
-           Δ ⊢ n ∷ Nat → Δ ⊢ IxNoneK ∷ IMu IxD INat n
-⊢IxNoneK _ dn = ⊢icon IxWf hereID (toI dn) ⊢unit
+⊢IxNoneK : {Δ : Ctx} {n : RTm ⌊ Δ ⌋} →
+           Δ ⊢ n ∷ Nat → Δ ⊢ IxNoneK n ∷ IMu IxD INat n
+⊢IxNoneK dn = ⊢icon IxWf hereID (toI dn) ⊢unit
 
-IxDConK : {Γ : Cx} → RTm Γ → RTm Γ
-IxDConK c = icon (suc zero) (pair c unit)
+IxDConK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+IxDConK _ c = icon (suc zero) (pair c unit)
 
-⊢IxDConK : {Δ : Ctx} (n : RTm ⌊ Δ ⌋) {c : RTm ⌊ Δ ⌋} →
+⊢IxDConK : {Δ : Ctx} {n c : RTm ⌊ Δ ⌋} →
            Δ ⊢ n ∷ Nat → Δ ⊢ c ∷ K (pair sDCon nzero) →
-           Δ ⊢ IxDConK c ∷ IMu IxD INat n
-⊢IxDConK _ dn dc =
+           Δ ⊢ IxDConK n c ∷ IMu IxD INat n
+⊢IxDConK dn dc =
   ⊢icon IxWf (thereID hereID) (toI dn)
     (⊢pair ty-Unit (toKn dc) ⊢unit)
 
-IxDescK : {Γ : Cx} → RTm Γ → RTm Γ
-IxDescK d = icon (suc (suc zero)) (pair d unit)
+IxDescK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+IxDescK _ d = icon (suc (suc zero)) (pair d unit)
 
-⊢IxDescK : {Δ : Ctx} (n : RTm ⌊ Δ ⌋) {d : RTm ⌊ Δ ⌋} →
+⊢IxDescK : {Δ : Ctx} {n d : RTm ⌊ Δ ⌋} →
            Δ ⊢ n ∷ Nat → Δ ⊢ d ∷ K (pair sDesc nzero) →
-           Δ ⊢ IxDescK d ∷ IMu IxD INat n
-⊢IxDescK _ dn dd =
+           Δ ⊢ IxDescK n d ∷ IMu IxD INat n
+⊢IxDescK dn dd =
   ⊢icon IxWf (thereID (thereID hereID)) (toI dn)
     (⊢pair ty-Unit (toKn dd) ⊢unit)
 
 -- ★ the ONE constructor whose last field reads the index
-IxIConK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-IxIConK d i c = icon (suc (suc (suc zero))) (pair d (pair i (pair c unit)))
+IxIConK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+IxIConK _ d i c = icon (suc (suc (suc zero))) (pair d (pair i (pair c unit)))
 
-⊢IxIConK : {Δ : Ctx} (n : RTm ⌊ Δ ⌋) {d i c : RTm ⌊ Δ ⌋} →
+⊢IxIConK : {Δ : Ctx} {n d i c : RTm ⌊ Δ ⌋} →
            Δ ⊢ n ∷ Nat →
            Δ ⊢ d ∷ K (pair sIDesc nzero) →
            Δ ⊢ i ∷ K (pair sTy nzero) →
            Δ ⊢ c ∷ K (pair sICon n) →
-           Δ ⊢ IxIConK d i c ∷ IMu IxD INat n
-⊢IxIConK n {d = d} {i = i} dn dd di dc =
+           Δ ⊢ IxIConK n d i c ∷ IMu IxD INat n
+⊢IxIConK {n = n} {d = d} {i = i} dn dd di dc =
   ⊢icon IxWf (thereID (thereID (thereID hereID))) (toI dn)
     (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy ⊢nzero)))
              (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sICon (⊢wk (⊢wk dn)))))
@@ -226,16 +231,16 @@ IxIConK d i c = icon (suc (suc (suc zero))) (pair d (pair i (pair c unit)))
                             dc))
                ⊢unit)))
 
-IxIDescK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
-IxIDescK d i e = icon (suc (suc (suc (suc zero)))) (pair d (pair i (pair e unit)))
+IxIDescK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+IxIDescK _ d i e = icon (suc (suc (suc (suc zero)))) (pair d (pair i (pair e unit)))
 
-⊢IxIDescK : {Δ : Ctx} (n : RTm ⌊ Δ ⌋) {d i e : RTm ⌊ Δ ⌋} →
+⊢IxIDescK : {Δ : Ctx} {n d i e : RTm ⌊ Δ ⌋} →
             Δ ⊢ n ∷ Nat →
             Δ ⊢ d ∷ K (pair sIDesc nzero) →
             Δ ⊢ i ∷ K (pair sTy nzero) →
             Δ ⊢ e ∷ K (pair sIDesc nzero) →
-            Δ ⊢ IxIDescK d i e ∷ IMu IxD INat n
-⊢IxIDescK _ dn dd di de =
+            Δ ⊢ IxIDescK n d i e ∷ IMu IxD INat n
+⊢IxIDescK dn dd di de =
   ⊢icon IxWf (thereID (thereID (thereID (thereID hereID)))) (toI dn)
     (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy ⊢nzero)))
              (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc ⊢nzero)))

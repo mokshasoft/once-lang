@@ -1160,3 +1160,84 @@ separate families, as `LkD` already is.
   so `_mutual_rows` must accept both.
 * `DCon` in `BINDER_SORT`, and the `IDescWf` alias unfolded with its
   argument swap.
+
+---
+
+# §12 — ★★★ THE MERGE LANDED — **51 of 56 rows**, sweep 210/210 green
+
+The seven-judgement mutual block is ONE description over the six-slot
+index. `Judge` 34 → **51**; the ratchet is raised.
+
+    ty-Mu · ty-IMu · ⊢⌜Mu⌝ · ⊢⌜IMu⌝      ← unblocked by the merge
+    dwf-ι · dwf-ρ · dwf-κ                 ← DConWf,      3 rows
+    dwf-nil · dwf-cons                    ← DescWf,      2
+    iwf-ι · iwf-ρ · iwf-κ                 ← IConWf,      3
+    icw-clo · icw-ford · icw-imu          ← ICodeWf,     3
+    idwf-nil · idwf-cons                  ← IDescWfFrom, 2
+
+⬜ The 5 left are named, and none is the merge: `⊢tr` (`occTm`), `⊢con`
+(`k ∈D D`), `⊢icon` (`k ∈ID D`), `⊢elim` (`methsTy`), `⊢ielim`
+(`iinst`/`imethsTy`).
+
+## §12.1 ⚠⚠ ONE ROW SHIPPED A **SILENTLY DIFFERENT JUDGEMENT**
+
+`dwf-cons`'s conclusion is `DescWf (C ◃ E)`. The emitter produced
+`DescWf C` — and it TYPECHECKED.
+
+`_parse_spine` makes the LEFT operand of an infix application the head,
+so `C ◃ E` parsed with head `C`; `_val`'s fallback returns an unknown
+head as a bare binder; and the `◃` vanished. ⇒ **a well-formed row for a
+judgement that is not the one in `Spec/Typing`.**
+
+★★★ **AND THE CHECK THAT EXISTS FOR EXACTLY THIS DID NOT RUN.** The
+unknown-head scan slices a part's terms as `q[3:]`, which for a `wf` part
+is EMPTY — its subjects were never looked at. The generator's own
+discipline ("a rule can fail in its VALUES, not only its premises",
+§4.2's attempt 33) was written for `⊢app` and never extended to the
+shape added on top of it.
+
+⇒ fixed both ways: `_infix` rewrites `a ⊕ b` to `_⊕_ a b` when `_⊕_` is a
+knot constructor, and the scan now checks a `wf` part's subjects — its
+CONTEXT argument through its extensions, not as a term.
+⚠ **Every new part shape owes the value check a case.** It is the third
+time in this layer that a mechanism was described as general and had
+exactly one caller.
+
+## §12.2 the depth convention, decided TWICE and in opposite directions
+
+§11.5 chose CLOSED for the payload from an asymmetry. Landing it forced
+the same choice on the ⊢-rules, from the mirror image:
+
+* `ty-Mu`'s `D` was inferred AMBIENT (from `Mu D`'s knot field) while its
+  `DescWf D` premise carries `D` at 0 — and ambient → 0 is a
+  STRENGTHENING. ⇒ description-sorted binders are CLOSED **throughout the
+  block**, and `εwkK` (0 → n) puts the ambient copy back where the knot
+  term wants it.
+* ⚠⚠ **`lit` IS AN ABSOLUTE DEPTH AND `infer_depths` READ IT AS A
+  SHIFT.** `KNOT` writes `rec("sTy", lit 0)` for exactly the fields whose
+  Agda type names `ε`; the scan added 0 to the ambient instead. That is
+  what made `ty-IMu`'s `I : RTy ε` come out at the row's depth.
+* a `wf` part contributes NO depth information — the same rule an unknown
+  head follows. Scanning its subjects at 0 conflicted with the `lit 0`
+  the knot gives them, and cost two rows before it was seen.
+
+⚠ The row count went 51 → 49 → 51 across those fixes. **The ratchet did
+not catch the dip** — its floor was 34. A floor only catches a fall below
+ITSELF; it is not a diff against the previous run.
+
+## §12.3 ⛔ AND IT DOES NOT FIT AT TWO ROWS PER MODULE
+
+§10.6 measured the six-slot index at 2 rows/module as green "but the
+worst is 170.8s at 5.59 GB — fits, not fits comfortably". Twelve more
+rows crossed it: `JudgeWfM`–`P` were SIGTERM-killed under `-c`.
+
+⇒ **`JWF_ROWS = 1`, and 51 parts is past `Z`** — so the naming is now
+A–Z then AA–ZZ, and the stale-part guard GLOBS rather than enumerating a
+contiguous tail (§10.7's fix would have missed the two-letter names).
+
+    sweep   210 modules   1121s   ALL GREEN
+    worst   `JudgeWfY` 339s · 3.8 GB   ·   `JudgeWfZ` 85s · 5.39 GB
+
+⚠ 5.39 GB against a 5.5 GB cap, at ONE row per module. There is no
+granularity left below this: the next thing that crosses the cap needs a
+different lever, not a smaller split.

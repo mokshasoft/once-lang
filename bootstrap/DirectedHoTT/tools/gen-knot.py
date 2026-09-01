@@ -973,6 +973,101 @@ BOOL_PREM = {"pw?":   ("pwK",   "⊢pwK",   "sTm"),
 
 def TBOOL(app, lit): return ('tbool', app, lit)
 
+# ★★★ THE MERGED BLOCK — seven judgements, ONE description.  `Spec/Typing`
+#   forward-declares all of them together (663–712) and defines them at
+#   714–1031; the cycle is real (`⊢con → DescWf → dwf-κ → ◇ ⊢ c ∷ U`), so
+#   this is not a choice.  See JUDGEMENT-ATTEMPTS §10.1.
+# tag → (Agda name, arity of its SUBJECT list)
+MERGED = [(0, "_⊢ty_", None), (1, "_⊢_∷_", None),
+          (2, "DConWf", 1), (3, "DescWf", 1), (4, "IConWf", 4),
+          (5, "ICodeWf", 1), (6, "IDescWfFrom", 3)]
+WF_HEADS = {n: a for _, n, a in MERGED if a is not None}
+WF_TAG   = {n: t for t, n, _ in MERGED}
+
+# ★★★ AND THE `Wf` JUDGEMENTS BIND DESCRIPTIONS **CLOSED**, at absolute 0.
+#
+# ⚠⚠ `KNOT` carries `Desc`/`DCon`/`IDesc` FIELDS at the AMBIENT depth, so
+#   the two conventions collide and they are NOT symmetric — `Knot/IxD`'s
+#   header has the table.  Short version: under the ambient convention
+#   `idwf-cons` reads one `D` at its premise's depth 1 AND at the row's
+#   variable, needing a STRENGTHENING that does not exist; under this one
+#   the knot's ambient copy is recovered by `εwkK` (`0 → n`), which does.
+# ⚠ SCOPED TO THIS BLOCK.  `BINDER_SORT`'s ambient entries stay, because
+#   the `_⟶_` family's 71 green rows are written against them.
+WF_BINDER_SORT = {
+    "DCon":           ("sDCon",  "closed"),
+    "Desc":           ("sDesc",  "closed"),
+    "IDesc":          ("sIDesc", "closed"),
+    "RTy ε":          ("sTy",    "closed"),
+    "RTm ε":          ("sTm",    "closed"),
+    "Ctx":            ("ctx",    0),
+    "ICon (⌊ Θ ⌋ ∙)": ("sICon",  1),
+    "ICon (ε ∙)":     ("sICon",  ("abs", 1)),
+    "RTm ⌊ Θ ⌋":      ("sTm",    0),
+    "RTm Θ":          ("sTm",    0),
+    "Cx":             ("ctx",    0),
+}
+# ★ `{Θ : Cx}` — `ICodeWf`'s ambient SCOPE — becomes the flat `Ctx` slot.
+#
+# ⚠ THAT IS A STRENGTHENING, AND IT IS DELIBERATE.  The rule is indexed by
+#   an ERASED scope; the encoding indexes it by a TYPED context whose
+#   erasure is that scope.  Nothing in `ICodeWf`'s three rows reads the
+#   types, so the family is UNIFORM in them and inhabitation is unchanged
+#   — and it is what lets `iwf-κ`'s premise `ICodeWf κ` hand over the very
+#   `Θ` it already has in scope, instead of inventing one.
+WF_SKIP = set()
+
+# ⚠⚠ WHICH `Wf` ARGUMENT IS A **CONTEXT** and not a term.  Reading
+#   `IConWf`'s `Θ` as a term emits `▹` as an unmapped head — and, before
+#   the `chk` fix below, emitted NOTHING and said nothing.
+WF_CTXARG = {"IConWf": 2}
+
+def _infix(args, CT):
+    """`a ⊕ b` → `_⊕_ a b` when `_⊕_` is a knot constructor.
+
+    ⚠⚠ WITHOUT THIS `dwf-cons` EMITTED `DescWf C` FOR `DescWf (C ◃ E)`.
+      `_parse_spine` makes the LEFT operand the head, `_val`'s fallback
+      returned it as a bare binder, and the row TYPECHECKED — a different
+      judgement, silently.  The `chk` walk did not catch it because it
+      never looked at a `wf` part's subjects at all."""
+    if len(args) == 3 and args[1][0] == "a":
+        nm = "_%s_" % args[1][1]
+        if nm in CT: return [("a", nm), args[0], args[2]]
+    return args
+
+def _argsplit(p):
+    "a spine at TOP-LEVEL whitespace, respecting (…) and {…}"
+    out, cur, d = [], "", 0
+    for ch in p.strip():
+        if ch in "({": d += 1
+        elif ch in ")}": d -= 1
+        if ch.isspace() and d == 0:
+            if cur: out.append(cur); cur = ""
+        else: cur += ch
+    if cur: out.append(cur)
+    return out
+
+def _wf_rule(r):
+    """a `Wf` rule → (name, sorts, deps, body-parts).
+
+    ★ Unlike `_⊢_∷_`, these judgements TYPE their binders (`{C : DCon}`),
+      so nothing has to be inferred — and nothing may be guessed."""
+    name, ty = r.split(":", 1)
+    sorts, deps, body = {}, {}, []
+    for part in _split_top(ty):
+        g = _groups(part.strip())
+        if g is None:
+            body.append(part.strip()); continue
+        for grp in g:
+            if ":" not in grp: return (name.strip(), None, "binder %r" % grp)
+            nms, t = grp.split(":", 1); t = t.strip()
+            if t in WF_SKIP: continue
+            if t not in WF_BINDER_SORT:
+                return (name.strip(), None, "binder type %r" % t)
+            srt, dp = WF_BINDER_SORT[t]
+            for nm in nms.split(): sorts[nm], deps[nm] = srt, dp
+    return (name.strip(), sorts, deps, body)
+
 # ★★★ A PREMISE THAT IS A **UNARY FOREIGN JUDGEMENT**.
 #
 #     ⊢tr : … → NoNatC c → …
@@ -1258,12 +1353,31 @@ def _parse_jpart(p):
     if mm and mm.group(1) in BOOL_PREM:
         return ("bool", mm.group(1), mm.group(2).strip(),
                 1 if mm.group(3) == "true" else 0)
+    # ★★★ A JUDGEMENT OF THE MERGED BLOCK, applied PREFIX.
+    #
+    # ⚠ `IDescWf I D` IS AN ALIAS — `IDescWf I D = IDescWfFrom D I D`
+    #   (`Spec/Typing:711`) — and its arguments are SWAPPED.  A reader
+    #   that matched it positionally would build a row meaning something
+    #   else, and it would typecheck.
+    _as = _argsplit(p)
+    if _as and _as[0] == "IDescWf" and len(_as) == 3:
+        return ("wf", "IDescWfFrom", _as[2], _as[1], _as[2])
+    if _as and _as[0] in WF_HEADS and len(_as) - 1 == WF_HEADS[_as[0]]:
+        return ("wf",) + tuple(_as)
     # ★ a UNARY foreign judgement — `NoNatC c`.  Last, because it is the
     #   loosest pattern here and would otherwise swallow the others.
     mm = re.match(r"^\s*([A-Za-z?]+)\s+(.+?)\s*$", p)
     if mm and mm.group(1) in UNARY_PREM:
         return ("fu", mm.group(1), mm.group(2).strip())
     return None
+
+def _shiftk(k, E):
+    "a child's depth from its parent's, through one `FIELD_DEPTH` entry"
+    if E[0] == "lit": return "closed" if E[1] == 0 else ("abs", E[1])
+    if not isinstance(k, int): return None      # already absolute: says nothing
+    if E[0] == "sucD":  return k + E[1]
+    if E[0] == "predD": return k - 1
+    return k
 
 def infer_depths(rule, names, CT):
     """{binder: k} — how many binders deep each one lives.
@@ -1308,9 +1422,12 @@ def infer_depths(rule, names, CT):
                 #   `sucD` and `+0` for everything else, so a RAISING
                 #   substitution (`nrs`) read as depth-neutral and
                 #   `⊢natrec`'s `M` came out a binder too deep.
-                scan(x, None if k is None
-                        else k + (E[1] if E[0] == "sucD"
-                                  else (-1 if E[0] == "predD" else 0)))
+                # ⚠⚠ `lit` IS AN **ABSOLUTE** DEPTH, and reading it as a
+                #   shift of the ambient one is why `ty-IMu`'s `I : RTy ε`
+                #   came out at the row's depth.  `KNOT` writes
+                #   `rec("sTy", lit(0))` for exactly the fields whose Agda
+                #   type names `ε`; those binders are CLOSED.
+                scan(x, _shiftk(k, E))
         else:
             for x in e[1][1:]: scan(x, None)
     for part in _split_top(body):
@@ -1323,6 +1440,12 @@ def infer_depths(rule, names, CT):
         #   only term is the ARGUMENT, at the ambient depth.
         if q[0] == "bool":
             scan(_parse_spine(_tokens(q[2])), 0); continue
+        # ★★★ A `wf` PART CARRIES NO DEPTH INFORMATION — the same rule an
+        #   unknown head follows.  Its subjects' depths are dictated by
+        #   `IxD`'s FIELD CODES (closed, or the row's), not by where they
+        #   appear here; scanning them at 0 claimed `ty-IMu`'s `I : RTy ε`
+        #   was ambient and conflicted with the `lit 0` the knot gives it.
+        if q[0] == "wf": continue
         ext = q[2] if q[0] in ("ty", "tm") else None
         deep = len(ext) if ext else 0
         put(q[1], 0)
@@ -1337,6 +1460,23 @@ def infer_depths(rule, names, CT):
     if miss: return None, "unassigned depths %s" % miss
     return d, None
 
+
+def _wfctx(t, CT):
+    """a `Wf` rule's context argument → (its DEPTH, its value).
+    ★ `◇` pins the depth to a NUMERAL — `idwf-cons`'s premise is at 1,
+      not at the row's variable, and the `Ctx` slot's type reads it."""
+    b, ext = _splitctx(t)
+    if b.strip() == "◇":
+        e = AP("Ctx-empK")
+        for i, x in enumerate(ext):
+            d = RAW("num %d" % i)
+            e = AP("Ctx-extK", d, e, _val(_parse_spine(_tokens(x)), CT, d))
+        return RAW("num %d" % len(ext)), e
+    e = V(b)
+    for i, x in enumerate(ext):
+        d = _depth_at(i)
+        e = AP("Ctx-extK", d, e, _val(_parse_spine(_tokens(x)), CT, d))
+    return _depth_at(len(ext)), e
 
 def _ctxval(ctxname, ext, dep, CT):
     """the premise's `Ctx` component: `Γ`, or `Ctx-extK m Γ A`.
@@ -1357,14 +1497,29 @@ def _mutual_rows(CT, TEL, dummy):
     src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "Spec", "Typing.agda")
     rows, skipped = [], []
-    for tag, dn in ((0, "_⊢ty_"), (1, "_⊢_∷_")):
+    for tag, dn, _ar in MERGED:
         for r in _rule_lines(src, dn):
-            nm, sorts, why = infer_sorts(r, CT, FIELD_SORT)
-            if sorts is None: skipped.append((nm, why)); continue
-            deps, why = infer_depths(r, list(sorts), CT)
-            if deps is None: skipped.append((nm, why)); continue
-            body = re.match(r"\s*∀\s*\{[^}]*\}\s*→(.*)", r.split(":", 1)[1], re.S).group(1)
-            raw = [x.strip() for x in _split_top(body)]
+            if _ar is None:
+                nm, sorts, why = infer_sorts(r, CT, FIELD_SORT)
+                if sorts is None: skipped.append((nm, why)); continue
+                deps, why = infer_depths(r, list(sorts), CT)
+                if deps is None: skipped.append((nm, why)); continue
+                body = re.match(r"\s*∀\s*\{[^}]*\}\s*→(.*)",
+                                r.split(":", 1)[1], re.S).group(1)
+                raw = [x.strip() for x in _split_top(body)]
+                # ★★★ A DESCRIPTION SUBJECT IS **CLOSED**, in the ⊢-rules
+                #   too — `infer_depths` reads `Mu D`'s field, which the
+                #   knot puts at the AMBIENT depth, but a `DescWf D`
+                #   premise carries `D` at 0 and the two must be one
+                #   binder.  ⚠ `sICon` is NOT in this list: an `ICon ⌊Θ⌋`
+                #   genuinely lives at the scope's depth.
+                for _b, _s in sorts.items():
+                    if _s in ("sDesc", "sDCon", "sIDesc"): deps[_b] = "closed"
+            else:
+                # ★ the `Wf` rules TYPE their binders, so nothing is inferred
+                _t = _wf_rule(r)
+                if _t[1] is None: skipped.append((_t[0], _t[2])); continue
+                nm, sorts, deps, raw = _t
             parts, fconv = [], []
             for x in raw:
                 q = _parse_jpart(x)
@@ -1393,14 +1548,26 @@ def _mutual_rows(CT, TEL, dummy):
             def chk(e):
                 if e[0] == "a":
                     if (e[1] not in CT and e[1] not in sorts
-                            and e[1] not in ("renTm", "vs")):
+                            and e[1] not in ("renTm", "vs", "εwkTm", "εwkTy")):
                         unk.append(e[1])
                     return
-                for x in e[1]: chk(x)
+                for x in _infix(e[1], CT): chk(x)
             for q in parts:
                 # ⚠ a `bool` part's last component is an INT (the literal),
                 #   not a term — tokenising it is a `TypeError` deep in the
                 #   parser rather than an honest skip.
+                # ⚠⚠ A `wf` PART'S SUBJECTS WERE NOT CHECKED AT ALL — the
+                #   slice `q[3:]` skipped them, which is how `dwf-cons`
+                #   shipped a dropped `◃`.  Its CONTEXT argument is checked
+                #   through its EXTENSIONS, not as a term.
+                if q[0] == "wf":
+                    _ci = WF_CTXARG.get(q[1])
+                    for _i, _t in enumerate(q[2:]):
+                        if _i == _ci:
+                            for _x in _splitctx(_t)[1]:
+                                chk(_parse_spine(_tokens(_x)))
+                        else: chk(_parse_spine(_tokens(_t)))
+                    continue
                 _ts = (q[2:3] if q[0] in ("bool", "fu")
                        else (q[2:] if q[0] == "lk" else q[3:]))
                 for t in _ts:
@@ -1411,8 +1578,10 @@ def _mutual_rows(CT, TEL, dummy):
                 skipped.append((nm, "unmapped %s" % sorted(set(unk)))); continue
             _BSORT.clear()
             bs = [(_DEPTH, _code(TNAT(), None))]
+            _BDEP.clear()
             for b, srt in sorts.items():
                 _BSORT[b] = srt
+                _BDEP[b] = deps[b]
                 if srt == "ctx":
                     bs.append((b, _code(TCTX(), _depth_at(deps[b]))))
                 else:
@@ -1423,10 +1592,43 @@ def _mutual_rows(CT, TEL, dummy):
                         _val(_parse_spine(_tokens(a)), CT, V(_DEPTH)),
                         _val(_parse_spine(_tokens(b)), CT, V(_DEPTH))))))
             def ix_of(q):
-                "the (depth, Ctx, Tm, Ty, tag) tuple a part denotes"
+                "the (depth, Ctx, Tm, Ty, tag, payload) tuple a part denotes"
+                # ★★★ THE FIVE `Wf` JUDGEMENTS.  Each uses the flat slots
+                #   its subjects actually need and puts the rest — never
+                #   more than three fields — in ONE payload.  §11.6.
+                _z, _e = RAW("num 0"), AP("Ctx-empK")
+                if q[0] == "wf":
+                    j, a = q[1], q[2:]
+                    def _v(x, dp): return _val(_parse_spine(_tokens(x)), CT, dp)
+                    if j == "DConWf":
+                        return TUP(_z, _e, dummy, AP("Ty-NatK"), RAW("num 2"),
+                                   AP("IxDConK", _z, _v(a[0], _z)))
+                    if j == "DescWf":
+                        return TUP(_z, _e, dummy, AP("Ty-NatK"), RAW("num 3"),
+                                   AP("IxDescK", _z, _v(a[0], _z)))
+                    if j == "IConWf":
+                        # ⚠ the DEPTH IS `Θ`'s — the `Ctx` slot's type reads
+                        #   it, so it is not free.
+                        _d, _cx = _wfctx(a[2], CT)
+                        return TUP(_d, _cx, dummy, AP("Ty-NatK"),
+                                   RAW("num 4"),
+                                   AP("IxIConK", _d, _v(a[0], _z), _v(a[1], _z),
+                                      _v(a[3], _d)))
+                    if j == "ICodeWf":
+                        _d = V(_DEPTH)
+                        return TUP(_d, V("Θ"), _v(a[0], _d), AP("Ty-NatK"),
+                                   RAW("num 5"), AP("IxNoneK", _d))
+                    if j == "IDescWfFrom":
+                        return TUP(_z, _e, dummy, AP("Ty-NatK"), RAW("num 6"),
+                                   AP("IxIDescK", _z, _v(a[0], _z), _v(a[1], _z),
+                                      _v(a[2], _z)))
+                    raise ValueError("no index shape for %r" % (j,))
                 ext = q[2] if q[0] in ("ty", "tm") else None
-                d = _depth_at(len(ext) if ext else 0)
-                cx = _ctxval(q[1], ext, V(_DEPTH), CT)
+                # ★ `◇` is a LITERAL context, at depth 0 — `dwf-κ`'s premise
+                #   `◇ ⊢ c ∷ U` is the only place a rule names one.
+                _emp = q[1].strip() == "◇" and not ext
+                d = _z if _emp else _depth_at(len(ext) if ext else 0)
+                cx = _e if _emp else _ctxval(q[1], ext, V(_DEPTH), CT)
                 if q[0] == "ty":
                     tm, ty, tg = dummy, q[3], 0
                 else:
@@ -1442,11 +1644,10 @@ def _mutual_rows(CT, TEL, dummy):
                 #   former of each sort, which exists at every depth.
                 if SPIKE_WIDE:
                     _slots += [AP("IDesc-nilK"), AP("ICon-iK"), AP("DCon-iK")]
-                _slots += [RAW("num %d" % tg)]
-                # ★ the per-tag payload, padded — one dummy, AFTER the tag,
-                #   because its type is what the tag would select.
-                if SPIKE_SUM: _slots += [AP("IxNoneK")]
-                return TUP(*_slots)
+                # ★ the per-tag payload, AFTER the tag.  A `⊢ty`/`⊢_∷_`
+                #   row carries the nullary one — ONE dummy, where the flat
+                #   union would have wanted six at six different sorts.
+                return TUP(*(_slots + [RAW("num %d" % tg), AP("IxNoneK", d)]))
             # ★ a `∋` premise is foreign too, at `_∋_∷_` — the judgement
             #   `Knot/Lookup` built by hand, and the first one there was.
             ps = []
@@ -1732,13 +1933,23 @@ IJUDGE_SUM = """Σ' Nat
 
 SPIKE_SUM = bool(os.environ.get("SPIKE_SUM"))
 
+# ★★★ SIX SLOTS, AND THE SIXTH IS THE PER-TAG PAYLOAD.  §10.5/§11.6:
+# five slots consumers PROJECT, then everything a merged judgement needs
+# that they do not.  ⚠ A NEW JUDGEMENT ADDS AN `IxD` CONSTRUCTOR, NOT A
+# SLOT — that is the whole reason this shape and not the flat union.
 IJUDGE_DEF = """Σ' Nat
     (Σ' (IMu CtxD INat (var vz))
       (Σ' (IMu KnotD IPair (pair sTm (var (vs vz))))
         (Σ' (IMu KnotD IPair (pair sTy (var (vs (vs vz)))))
-            Nat)))"""
+          (Σ' Nat
+              (IMu IxD INat (var (vs (vs (vs (vs vz))))))))))"""
 
-MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt )
+MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.CtxD
+  using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt; Ctx-empK; ⊢Ctx-empK )
+open import DirectedHoTT.Examples.Knot.EWk using ( εwkK; ⊢εwkK )
+open import DirectedHoTT.Examples.Knot.SubMot
+  using ( sortMap-ty; sortMap-tm; sortMap-desc; sortMap-dcon
+        ; sortMap-idesc; sortMap-icon; sortMap-var )
 open import DirectedHoTT.Examples.Knot.Lookup using ( LkD; ILk; LkWf )
 open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
 open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )
@@ -1795,9 +2006,7 @@ def write_mutual(out, CT):
     TEL = ([TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"),
             TKNOT("sIDesc"), TKNOT("sICon"), TKNOT("sDCon"), TNAT()]
            if SPIKE_WIDE else
-           [TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"), TNAT(), TIX()]
-           if SPIKE_SUM else
-           [TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"), TNAT()])
+           [TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"), TNAT(), TIX()])
     rows, skipped = _mutual_rows(CT, TEL, AP("Tm-unitK"))
     # ⚠⚠ THE CAP MUST BITE **BEFORE** `JudgeD` IS BUILT.  Truncating only
     #   the well-formedness rows leaves the DESCRIPTION at full length, so
@@ -1818,8 +2027,7 @@ def write_mutual(out, CT):
           "-- ⚠ AND THE PADDING IS WHAT A UNIFORM TELESCOPE COSTS: the slot",
           "--   cannot change SORT with the tag.",
           "IJudge : RTy ε", "IJudge =",
-          "  " + (IJUDGE_WIDE if SPIKE_WIDE
-                  else IJUDGE_SUM if SPIKE_SUM else IJUDGE_DEF), ""]
+          "  " + (IJUDGE_WIDE if SPIKE_WIDE else IJUDGE_DEF), ""]
     L.append("-- ⚠ NOT EMITTED — %d of %d rules:" % (len(skipped), len(skipped) + len(rows)))
     for n, w in skipped: L.append("--     %-10s %s" % (n, w))
     L.append("")
@@ -1873,17 +2081,33 @@ def write_mutual(out, CT):
     #   MEASURED AT ZERO (40s vs a 38s baseline); see `emit_jrowwf`'s call.
     # ⚠ MEASUREMENT KNOB, same contract as `JUDGE_MAX_ROWS`: the spikes
     #   vary rows-per-module to find where a width fits.
-    JWF_ROWS = int(os.environ.get("JWF_ROWS", 4))
+    # ★★★ TWO, NOT FOUR — MEASURED (§10.6).  At the six-slot index
+    #   `JudgeWfD` reaches 5.60 GB against a 5.5 GB cap and `JudgeWfF` is
+    #   SIGTERM-killed at 338s under `-c`; at two rows all 17 are green.
+    #   ⚠ The worst is still 170.8s at 5.59 GB — "fits", not "fits
+    #     comfortably".
+    # ⚠⚠ ONE, NOT TWO — MEASURED AGAIN once the `Wf` rows landed.  At two
+    #   rows `JudgeWfM`–`P` were SIGTERM-killed under `-c` and `JudgeWfQ`
+    #   took 439s.  §10.6 had already said the six-slot index "fits, not
+    #   fits comfortably" at 5.59 GB against a 5.5 GB cap; twelve more rows
+    #   is what crossed it.
+    JWF_ROWS = int(os.environ.get("JWF_ROWS", 1))
     _n = len(rows)
     _bounds = [(i, min(i + JWF_ROWS, _n)) for i in range(0, _n, JWF_ROWS)]
     # ⚠ MORE THAN 26 PARTS RUNS PAST `Z` into `[`, `\\`, `]` — real files
     #   with those names, which the next run does not overwrite and the
     #   sweep would then check as STALE.  The width spike at one row per
     #   module produced 33 parts and 24 such strays.
-    if len(_bounds) > 26:
-        sys.exit("  ⇒ %d parts: the A–Z naming is exhausted.  Raise "
-                 "JWF_ROWS or widen the scheme." % len(_bounds))
-    _parts = [chr(ord("A") + i) for i in range(len(_bounds))]
+    # ★★★ A–Z, THEN AA–ZZ.  The merged judgement does not fit at two rows
+    #   per module (four OOM-killed under `-c`), and one row per module is
+    #   51 parts — past `Z`.  ⚠ The first 26 keep their single letters, so
+    #   only the tail churns.
+    def _pn(i):
+        return (chr(ord("A") + i) if i < 26
+                else chr(ord("A") + i // 26 - 1) + chr(ord("A") + i % 26))
+    if len(_bounds) > 26 * 27:
+        sys.exit("  ⇒ %d parts: even AA–ZZ is exhausted." % len(_bounds))
+    _parts = [_pn(i) for i in range(len(_bounds))]
     # ★★★ AND REMOVE THE PARTS A PREVIOUS RUN LEFT BEHIND.
     #
     # ⚠⚠ THE `>26` GUARD ABOVE DOES NOT COVER THIS, and I found out by
@@ -1895,10 +2119,12 @@ def write_mutual(out, CT):
     # ★ `verification-that-covers-less-than-it-claims`: a sweep that
     #   checks a stale module is not a weaker check, it is a WRONG one —
     #   it would have gone green on a width the tree no longer uses.
-    for _q in (chr(ord("A") + i) for i in range(len(_bounds), 26)):
-        _stale = os.path.join(out, "JudgeWf%s.agda" % _q)
-        if os.path.exists(_stale):
-            os.remove(_stale); print("  removed stale", "JudgeWf" + _q)
+    # ⚠ GLOB, don't enumerate: with two-letter parts the unused names are
+    #   no longer a contiguous tail of the alphabet.
+    _keep = set("JudgeWf%s.agda" % q for q in _parts)
+    for _f in sorted(os.listdir(out)):
+        if _f.startswith("JudgeWf") and _f.endswith(".agda") and _f not in _keep:
+            os.remove(os.path.join(out, _f)); print("  removed stale", _f[:-5])
     for _pi, (part, (lo, hi)) in enumerate(zip(_parts, _bounds)):
         # ⚠ EACH PART IMPORTS EVERY EARLIER PART, not just its predecessor:
         #   Agda's `open import` does not RE-EXPORT, so the final assembly
@@ -2392,11 +2618,18 @@ WF_CTOR.update({
     # ⚠ `IxIConK`'s LAST subject is the only one at the row's depth; the
     #   rest are CLOSED, at absolute 0.  See `Knot/IxD`'s header for why
     #   that direction and not the ambient one.
-    "IxNoneK":  ("⊢IxNoneK",  ["DX"],                    None),
-    "IxDConK":  ("⊢IxDConK",  ["DX", "MU"],              None),
-    "IxDescK":  ("⊢IxDescK",  ["DX", "MU"],              None),
-    "IxIConK":  ("⊢IxIConK",  ["DX", "MU", "MU", "MU"],  None),
-    "IxIDescK": ("⊢IxIDescK", ["DX", "MU", "MU", "MU"],  None),
+    # ★ the empty context — `dwf-κ`'s `◇ ⊢ c ∷ U`, and the `Ctx` slot of
+    #   every judgement that HAS no context.
+    "Ctx-empK": ("⊢Ctx-empK", [],                        None),
+    # ★★★ OBJECT-LEVEL `εwkTm` (`Knot/EWk`).  `SORT` is two arguments in
+    #   one role: the sort's own derivation and the `sortMap s ⟶* s` that
+    #   `⊢subAtK` asks for — both determined by the literal sort.
+    "εwkK":     ("⊢εwkK",     ["SORT", "DD", "MU"],      None),
+    "IxNoneK":  ("⊢IxNoneK",  ["DD"],                    None),
+    "IxDConK":  ("⊢IxDConK",  ["DD", "MU"],              None),
+    "IxDescK":  ("⊢IxDescK",  ["DD", "MU"],              None),
+    "IxIConK":  ("⊢IxIConK",  ["DD", "MU", "MU", "MU"],  None),
+    "IxIDescK": ("⊢IxIDescK", ["DD", "MU", "MU", "MU"],  None),
 })
 
 def _telty(comp):
@@ -2590,6 +2823,11 @@ def jd(e, k, ix, binders, tel):
                     #   row was hand-written or parsed.
                     a = args[ai]; ai += 1
                     ds.append(par(jdAt(a, k, ix, binders, tel, 'nat')))
+                    continue
+                if r == 'SORT':
+                    a = args[ai]; ai += 1
+                    _s = a[1]
+                    ds.append("⊢" + _s); ds.append(SORTMAP_LEM[_s])
                     continue
                 if r == 'DX':
                     # ★ the ROW's depth — the TERM and then its
@@ -3077,6 +3315,8 @@ _DEPTH = "#m"
 
 def _depth_at(dp):
     if dp == "closed": return RAW("nzero")
+    # ★ an ABSOLUTE depth — `ICon (ε ∙)` is at 1 whatever the row's is.
+    if isinstance(dp, tuple) and dp[0] == "abs": return RAW("num %d" % dp[1])
     e = V(_DEPTH)
     for _ in range(dp): e = NSUC(e)
     return e
@@ -3187,6 +3427,20 @@ def _shift(dep, E):
 
 # ★ the SORT of each binder, for `renTm`'s translation.  Set per row.
 _BSORT = {}
+# ★ …and its DECLARED DEPTH, which `_val` needs for exactly one thing:
+#   spotting a CLOSED binder used where the knot's field wants the
+#   AMBIENT depth, and inserting the object-level `εwkTm` (`Knot/EWk`).
+_BDEP = {}
+
+def _iszero(d):
+    return d[0] == 'raw' and d[1] in ("nzero", "num 0")
+
+# sort → the `sortMap s ⟶* s` lemma `⊢subAtK` asks for.  ⚠ Only the
+#   CONCRETE instances are context-generic; `Knot/SubMot` proves all seven.
+SORTMAP_LEM = {"sTy": "sortMap-ty", "sTm": "sortMap-tm",
+               "sDesc": "sortMap-desc", "sDCon": "sortMap-dcon",
+               "sIDesc": "sortMap-idesc", "sICon": "sortMap-icon",
+               "sVar": "sortMap-var"}
 
 def _val(e, CT, dep):
     """a parsed Agda spine → the row description's value language.
@@ -3203,10 +3457,25 @@ def _val(e, CT, dep):
         if h in CT:
             c = CT[h]
             return AP(c, _pred(dep)) if c in _DEPTH_ARG else AP(c)
+        # ★★★ A CLOSED BINDER, USED AT THE AMBIENT DEPTH.  `iwf-ρ`'s
+        #   premise extends by `IMu D I j` and `icw-imu` concludes at
+        #   `⌜IMu⌝ D' I' i`; both are knot constructors whose description
+        #   field sits at the AMBIENT depth, while the `Wf` rules bind
+        #   `D` CLOSED.  `εwkK` is that `0 → n`, and it is the direction
+        #   that decided the convention (`Knot/IxD`'s header).
+        if _BDEP.get(h) == "closed" and not _iszero(dep):
+            return AP("εwkK", RAW(_BSORT[h]), dep, V(h))
         return V(h)
-    args = e[1]
+    args = _infix(e[1], CT)
     h = args[0]
     assert h[0] == "a", h
+    # ★ `εwkTm {Θ} c` — `icw-clo`'s SUBJECT.  Its argument is closed, so
+    #   the object-level form takes it at 0 and lands at `dep`.
+    if h[1] in ("εwkTm", "εwkTy") and len(args) == 2:
+        _x = args[1]
+        _srt = ("sTy" if h[1] == "εwkTy"
+                else _BSORT.get(_x[1] if _x[0] == "a" else None, "sTm"))
+        return AP("εwkK", RAW(_srt), dep, _val(_x, CT, RAW("nzero")))
     if h[1] == "renTm" and len(args) == 3:
         x, rho = args[2], args[1]
         srt = _BSORT.get(x[1] if x[0] == "a" else None, "sTm")
@@ -3581,7 +3850,7 @@ if __name__ == "__main__":
               % os.environ["JUDGE_MAX_ROWS"])
         print("    DO NOT COMMIT.  Re-run without it to restore.")
         sys.exit(0)
-    _FLOOR = {"Red": 71, "Judge": 34, "TyRed": 26, "Conv": 4}
+    _FLOOR = {"Red": 71, "Judge": 51, "TyRed": 26, "Conv": 4}
     _got = {"Red": len(_ROWS), "Judge": _njudge,
             "TyRed": len(_JCACHE["TyRed"]), "Conv": len(_JCACHE["Conv"])}
     _lost = {k: (v, _got[k]) for k, v in _FLOOR.items() if _got[k] < v}
