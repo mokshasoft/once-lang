@@ -3,7 +3,7 @@
 
 ------------------------------------------------------------------------
 -- Once.Adequacy.CanonReflectPolyTransport — Plan 0.51 reverse poly-context
--- transport. The mirror of `CanonPolyTransport.polys-transport-{ᵢ,ᵐ,ᶜ}`: a `⊢ᶜ`
+-- transport. The mirror of `CanonPolyTransport.polys-transport-{ᵢ,ᶜ}`: a `⊢ᶜ`
 -- derivation at the canonExpr'd poly context `canonPolysCtx b p` REFLECTS back to
 -- one at `p` (the expression is UNCHANGED — only the context's poly bodies move).
 -- The foundational commutes (`lookupPoly-canon`, `removePoly-canon`,
@@ -42,14 +42,12 @@ open import Once.Adequacy.CanonReflectMutual using (canon-reflects-ᶜ)
 -- component equalities + sym, applied to the REFLECTED arms).
 ------------------------------------------------------------------------
 
-composeMid-polys-decanon : ∀ (b : List String) (ctx : NamedCtx) {fa g A′ π′ B″ A″ π B′} {A B}
-  → ctx ⊢ᵐ fa ∶ A″ ⇨[ π′ ] B″
-  → ctx ⊢ᵐ g ∶ A′ ⇨[ π ] B′
+composeMid-polys-decanon : ∀ (b : List String) (ctx : NamedCtx) (fa g : RawExpr) {A B}
   → composeMid (cpc b ctx) fa g A ≡ just B
   → composeMid ctx fa g A ≡ just B
-composeMid-polys-decanon b ctx {A = A} df dg cm
-  rewrite sym (composeArgB-polys-canon b ctx A dg)
-        | sym (domainOfHead-polys-canon b ctx df) = cm
+composeMid-polys-decanon b ctx fa g {A = A} cm
+  rewrite sym (composeArgB-polys-canon b ctx A g)
+        | sym (domainOfHead-polys-canon b ctx fa) = cm
 
 -- just-injection for the poly lookup recovery.
 just-inj : ∀ {A : Set} {x y : A} → (just x ≡ just y) → x ≡ y
@@ -59,22 +57,8 @@ n≢j : ∀ {A : Set} {y : A} → nothing ≡ just y → ⊥
 n≢j ()
 
 ------------------------------------------------------------------------
--- The reverse mutual transport. `⊢ᵍ` is poly-independent.
+-- The reverse mutual transport.
 ------------------------------------------------------------------------
-
-polys-reflect-ᵍ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) {e A}
-  → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵍ e ∶ A
-  → mkCtx n Γ Δ f i p s ⊢ᵍ e ∶ A
-polys-reflect-ᵍ b p (g-int n)          = g-int n
--- PLAN 0.73 F3 / D120's other half.
-polys-reflect-ᵍ b p (g-neg-int n)      = g-neg-int n
-polys-reflect-ᵍ b p (g-neg-float i f l q) = g-neg-float i f l q
-polys-reflect-ᵍ b p (g-float i f l pos) = g-float i f l pos
-polys-reflect-ᵍ b p (g-terminal lL lI) = g-terminal lL lI
-polys-reflect-ᵍ b p (g-pair d₁ d₂)     = g-pair (polys-reflect-ᵍ b p d₁) (polys-reflect-ᵍ b p d₂)
-polys-reflect-ᵍ b p (g-inl d)          = g-inl (polys-reflect-ᵍ b p d)
-polys-reflect-ᵍ b p (g-inr d)          = g-inr (polys-reflect-ᵍ b p d)
-polys-reflect-ᵍ b p (g-In wf d)        = g-In wf (polys-reflect-ᵍ b p d)
 
 -- Formerly `{-# TERMINATING #-}`; now PROVEN by well-founded recursion on
 -- `Acc _<_ (length p)` (the poly-context descent `removePoly-decreases` supplies),
@@ -139,38 +123,32 @@ mutual
   polys-reflect-ᵢ b p pib ac (t-app cls df dx) = t-app cls (polys-reflect-ᵢ b p pib ac df) (polys-reflect-ᶜ b p pib ac dx)
   polys-reflect-ᵢ b p pib ac (t-effApp cls df dx) = t-effApp cls (polys-reflect-ᵢ b p pib ac df) (polys-reflect-ᶜ b p pib ac dx)
 
-  polys-reflect-ᵐ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → Acc _<_ (length p) → ∀ {e A π B}
-    → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᵐ e ∶ A ⇨[ π ] B
-    → mkCtx n Γ Δ f i p s ⊢ᵐ e ∶ A ⇨[ π ] B
-  polys-reflect-ᵐ b p pib ac (m-id ll li) = m-id ll li
-  polys-reflect-ᵐ b p pib ac (m-fst ll li) = m-fst ll li
-  polys-reflect-ᵐ b p pib ac (m-snd ll li) = m-snd ll li
-  polys-reflect-ᵐ b p pib ac (m-terminal ll li) = m-terminal ll li
-  polys-reflect-ᵐ b p pib ac (m-initial ll li) = m-initial ll li
-  polys-reflect-ᵐ b p pib ac (m-inl ll li) = m-inl ll li
-  polys-reflect-ᵐ b p pib ac (m-inr ll li) = m-inr ll li
-  polys-reflect-ᵐ b {n = n} {Γ = Γ} {Δ = Δ} {f = fr} {i = i} {s = s} p pib ac (m-compose cm df dg) =
-    m-compose (composeMid-polys-decanon b (mkCtx n Γ Δ fr i p s)
-                (polys-reflect-ᵐ b p pib ac df) (polys-reflect-ᵐ b p pib ac dg) cm)
-              (polys-reflect-ᵐ b p pib ac df) (polys-reflect-ᵐ b p pib ac dg)
-  polys-reflect-ᵐ b p pib ac (m-case df dg) = m-case (polys-reflect-ᵐ b p pib ac df) (polys-reflect-ᵐ b p pib ac dg)
-  polys-reflect-ᵐ b p pib ac (m-pair df dg) = m-pair (polys-reflect-ᵐ b p pib ac df) (polys-reflect-ᵐ b p pib ac dg)
-  polys-reflect-ᵐ b p pib ac (m-curry df) = m-curry (polys-reflect-ᵐ b p pib ac df)
-  polys-reflect-ᵐ b p pib ac (m-cata wf d) = m-cata wf (polys-reflect-ᵐ b p pib ac d)
-  polys-reflect-ᵐ b p pib ac (m-const d) = m-const (polys-reflect-ᵍ b p d)
-  polys-reflect-ᵐ b p pib ac (m-named ¬u lln imp bA cB) = m-named ¬u lln imp bA cB
-  polys-reflect-ᵐ b p pib ac (m-named-resolved imp bA cB) = m-named-resolved imp bA cB
-
   polys-reflect-ᶜ : ∀ (b : List String) {n Γ Δ f i s} (p : PolyCtx) → PInB p b → Acc _<_ (length p) → ∀ {e A Ψ}
     → mkCtx n Γ Δ f i (canonPolysCtx b p) s ⊢ᶜ e ∶ A ⨾ Ψ
     → mkCtx n Γ Δ f i p s ⊢ᶜ e ∶ A ⨾ Ψ
-  polys-reflect-ᶜ b p pib ac (t-morph-lift d) = t-morph-lift (polys-reflect-ᵐ b p pib ac d)
+  -- D127: what was `polys-reflect-ᵐ` is these clauses (the dual of
+  -- `CanonPolyTransport.polys-transport-ᶜ`).
+  polys-reflect-ᶜ b p pib ac (t-id-check ll li) = t-id-check ll li
+  polys-reflect-ᶜ b p pib ac (t-fst-check ll li) = t-fst-check ll li
+  polys-reflect-ᶜ b p pib ac (t-snd-check ll li) = t-snd-check ll li
+  polys-reflect-ᶜ b p pib ac (t-terminal-morph-check ll li) = t-terminal-morph-check ll li
+  polys-reflect-ᶜ b p pib ac (t-initial-morph-check ll li) = t-initial-morph-check ll li
+  polys-reflect-ᶜ b p pib ac (t-inl-morph-check ll li) = t-inl-morph-check ll li
+  polys-reflect-ᶜ b p pib ac (t-inr-morph-check ll li) = t-inr-morph-check ll li
+  polys-reflect-ᶜ b {n = n} {Γ = Γ} {Δ = Δ} {f = fr} {i = i} {s = s} p pib ac
+    (t-compose-check {f = fa} {g = g} cm df dg) =
+    t-compose-check (composeMid-polys-decanon b (mkCtx n Γ Δ fr i p s) fa g cm)
+                    (polys-reflect-ᶜ b p pib ac df) (polys-reflect-ᶜ b p pib ac dg)
+  polys-reflect-ᶜ b p pib ac (t-case-copair-check df dg) =
+    t-case-copair-check (polys-reflect-ᶜ b p pib ac df) (polys-reflect-ᶜ b p pib ac dg)
+  polys-reflect-ᶜ b p pib ac (t-pair-morph-check df dg) =
+    t-pair-morph-check (polys-reflect-ᶜ b p pib ac df) (polys-reflect-ᶜ b p pib ac dg)
+  polys-reflect-ᶜ b p pib ac (t-curry-check df) = t-curry-check (polys-reflect-ᶜ b p pib ac df)
+  polys-reflect-ᶜ b p pib ac (t-cata-check eqW dalg) =
+    t-cata-check eqW (polys-reflect-ᶜ b p pib ac dalg)
   polys-reflect-ᶜ b p pib ac (t-embed d) = t-embed (polys-reflect-ᵢ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-subsume d) = t-subsume (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-lam le d) = t-lam le (polys-reflect-ᶜ b p pib ac d)
-  polys-reflect-ᶜ b p pib ac (t-value-lift d) = t-value-lift (polys-reflect-ᵍ b p d)
-  -- D126: structural, on the INFER sub-derivation rather than a `⊢ᵍ` one.
-  polys-reflect-ᶜ b p pib ac (t-closed-lift cls d) = t-closed-lift cls (polys-reflect-ᵢ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-pair-lit-check d₁ d₂) = t-pair-lit-check (polys-reflect-ᶜ b p pib ac d₁) (polys-reflect-ᶜ b p pib ac d₂)
   polys-reflect-ᶜ b p pib ac (t-In-app-check wf d) = t-In-app-check wf (polys-reflect-ᶜ b p pib ac d)
   polys-reflect-ᶜ b p pib ac (t-apply-check d) = t-apply-check (polys-reflect-ᵢ b p pib ac d)
