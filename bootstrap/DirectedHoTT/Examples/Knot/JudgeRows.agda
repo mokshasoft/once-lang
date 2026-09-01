@@ -57,6 +57,7 @@ open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
 open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )
 open import DirectedHoTT.Examples.Knot.NoNatCRows using ( NoNatCD; INoNatC )
 open import DirectedHoTT.Examples.Knot.NoNatCWf using ( NoNatCWf )
+open import DirectedHoTT.Examples.Knot.IxD using ( IxD; IxWf; IxUnitK; ⊢IxUnitK )
 
 -- ★★★ THE INDEX IS TAGGED, and the tag is not decoration: a
 --   `⊢ty` row PADS its `Tm` slot with a dummy, and `⊢unit :`

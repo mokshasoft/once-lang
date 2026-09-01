@@ -922,19 +922,98 @@ payload. Then:
 * **no consumer changes** — every projection `prog` needs is still a
   projection.
 
-## §10.6 — ⬜ what is NOT settled, and the experiment that would settle it
+## §10.6 — ✅ MEASURED 2026-09-01 — width 6 costs **2×**, and it does NOT fit at 4 rows
 
-**Unmeasured:** the per-row cost of a payload ford at an `IMu` versus
-`N` component fords. Everything above says the *shape* is right; none of
-it says what width 6 costs.
+The experiment §10.5 called for, run: the SAME 34 rules re-emitted at
+width 6 with the sixth slot padded by `Knot/IxD`'s nullary dummy —
+exactly what the 43 typing rows would carry. Baseline is the same tree,
+same machine, same day, dependencies already built.
 
-⇒ the experiment, and it is the spike's own method: re-emit the SAME 33
-rules at width 6 with a dummy payload, against the measured points
+| module | width 5 | width 6, 4 rows/mod | width 6, 2 rows/mod |
+|---|---|---|---|
+| `JudgeRows` | 5s | 12.6s | — |
+| A | 23s | 37.3s · 2.5 GB | 13.2s |
+| B | 18s | 37.8s · 2.3 GB | 29.2s |
+| C | 32s | 63.4s · 5.1 GB | 30.1s |
+| D | 45s | 110.7s · **5.60 GB** | 10.6s |
+| E | 22s | 43.5s · 3.2 GB | 30.5s |
+| F | 72s | ⛔ **SIGTERM at 338s** | 37.1s |
+| G–I | 23/40/30s | ⛔ killed | … |
+| **worst** | **72s** | — | **170.8s · 5.59 GB** (L) |
+| **total** | **305s / 9 mods** | ⛔ 4 of 9 OOM | **694s / 17 mods** ✅ |
 
-    width 5 (narrow)   4 rows/module   51s   (~13s/row)
-    width 8 (wide)     4 rows/module   OOM at 279s under `-c`
-    width 8 (wide)     1 row/module    27s
+★★★ **THREE THINGS, AND THE SECOND IS THE ONE THAT MATTERS.**
 
-If width 6 holds ~2 rows/module at ≲30s, the merge is ~28 modules rather
-than the wide design's ~56, and the recommendation stands on measurement
-rather than on the shape argument alone.
+1. **ONE extra component costs ~2×.** Five clean same-granularity pairs —
+   1.6× 2.1× 2.0× 2.5× 2.0×. The width spike's "width roughly DOUBLES
+   per-row cost" was measured 5→8; it is confirmed at 5→6, so the curve
+   is steep from the very first slot, not a threshold effect.
+2. ⛔ **WIDTH 6 DOES NOT FIT AT TODAY'S GRANULARITY.** `JudgeWfD` reaches
+   **5.60 GB** against a 5.5 GB cap and `JudgeWfF` is SIGTERM-killed at
+   338s under `-c`. ⇒ the merge forces `JWF_ROWS` 4 → **2**, and that is
+   a real consequence of the recommendation, not a footnote.
+3. ✅ **At 2 rows/module it is GREEN**, all 17 — but the worst module is
+   **170.8s at 5.59 GB**, still at the cap. There is no headroom, and
+   the recommendation should be read as "fits", not "fits comfortably".
+
+### the projection for the real merge
+
+56 rows (43 typing + 13 `Wf`) at 2 rows/module ⇒ **28 modules**, and at
+the measured ~20.4 s/row ⇒ **≈ 19 minutes** for the judgement family
+alone, against 305s today. ⇒ the sweep grows by roughly **14 minutes**.
+
+⚠ **AND THIS IS STILL A LOWER BOUND, for the same reason the width spike
+gave**: every row here pads the sixth slot with a nullary dummy. The 13
+`Wf` rows will put REAL `IDesc`/`ICon`/`DCon` terms there.
+
+### does the recommendation survive its own measurement? — YES, narrowly
+
+The flat alternative is **width 11**, and the width spike already measured
+width 8 as OOM at 4 rows and 27s at **1** row. Width 11 is past that. So:
+
+| design | width | rows/module | modules for 56 rows |
+|---|---|---|---|
+| §10.5 split index | 6 | 2 | **28** |
+| flat padded union | 11 | 1 (at best) | **56** |
+
+⇒ **the split index halves the module count and is the only one measured
+to fit at more than one row per module.** It is not a large time win —
+both land near 20 minutes — and that should be said plainly: what it buys
+is that it FITS, that consumers keep their projections (§10.5), and that
+the 43 typing rows carry one dummy instead of six.
+
+⬜ **Still unmeasured:** the 13 `Wf` rows with real payloads, and whether
+`JWF_ROWS = 1` is needed for the widest of them.
+
+## §10.7 — ⚠ AND THE SPIKE LEFT STALE MODULES — the guard was incomplete
+
+`JWF_ROWS=2` writes `JudgeWfA`–`Q`; the next clean run writes `A`–`I`,
+and **J–Q survive as real files** holding a width-6 index that nothing
+rewrites. `sweep.sh` globs `*.agda`, so it would have checked them —
+and gone GREEN on a width the tree no longer uses.
+
+⚠⚠ **The `>26 parts` guard added by the width spike does not cover
+this.** It guards the naming running past `Z`, i.e. TOO MANY parts. This
+is the same failure from the other direction: TOO FEW. ⇒ `write_mutual`
+now deletes `JudgeWf<letter>` for every letter past the last part it
+wrote, and says so.
+
+★ Third time this class has bitten in this tree — after
+`appends-need-absolute-paths` (a stray file at the repo root made
+`check.sh` re-check a stale module and pass) and the width spike's
+`[`/`\`/`]` files. **A generator that writes a variable number of files
+owes a deletion pass**, and "the guard exists" is not the same claim as
+"the guard covers this."
+
+## §10.8 — ⬜ what is still NOT settled
+
+* the 13 `Wf` rows carrying **real** payloads rather than the dummy —
+  §10.6's numbers are a lower bound;
+* whether the widest of them force `JWF_ROWS = 1`;
+* whether a **variable sort component** beats the payload: the knot's
+  sort lives in the INDEX (`pair s d`), so one knot-sorted slot could
+  carry a `Desc`, `DCon`, `IDesc` or `ICon` if `s` were a component the
+  row Fords. Counted, not measured: `IDescWfFrom` needs three such
+  subjects, so it costs 3 subject + 3 sort slots = 6 against the
+  payload's 1. ⇒ recorded as considered and rejected on the count, and
+  it is the obvious alternative anyone will ask about.
