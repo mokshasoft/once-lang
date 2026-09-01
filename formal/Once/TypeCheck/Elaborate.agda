@@ -50,7 +50,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 -- not a value, so `Emits`/`Halts` drop it entirely.
 open import Once.Arith.SigOp.Builders using (generic-semM)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV; ffi-concrete)
-open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen)
+open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen; NotGenerator; bare-NotGenerator)
 open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -1168,7 +1168,7 @@ mutual
     → VerifiedInferResult ctx (Raw.RQualified name alias)
   -- Plan 0.50: resolved-ref lookup, keyed by the canonical dotted path.
   inferElabV-RResolved-aux :
-    ∀ (ctx : NamedCtx) (cn : CanonicalName) (lhs : Maybe Type)
+    ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → (lhs : Maybe Type)
     → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs
     → VerifiedInferResult ctx (Raw.RResolved cn)
   -- Plan 0.58: the arrow-value case DE-WITHES the concreteness decision
@@ -1183,7 +1183,7 @@ mutual
     → (mcB : Maybe (IsConcrete B)) → isConcrete? B ≡ mcB
     → VerifiedInferResult ctx (Raw.RQualified name alias)
   inferElabV-RResolved-arrow-aux :
-    ∀ (ctx : NamedCtx) (cn : CanonicalName) {A B : Type} {π : Once.Type.Purity}
+    ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → ∀ {A B : Type} {π : Once.Type.Purity}
     → lookupImport (NamedCtx.imports ctx) (showCanonical cn)
         ≡ just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
     → (mbA : Maybe (IsBaseType A)) → isBaseType? A ≡ mbA
@@ -1196,7 +1196,7 @@ mutual
     → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
     → VerifiedInferResult ctx (Raw.RQualified name alias)
   inferElabV-RResolved-value-aux :
-    ∀ (ctx : NamedCtx) (cn : CanonicalName) (ty : Type)
+    ∀ (ctx : NamedCtx) (cn : CanonicalName) → NotGenerator cn → ∀ (ty : Type)
     → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just ty
     → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
     → VerifiedInferResult ctx (Raw.RResolved cn)
@@ -1242,38 +1242,24 @@ mutual
   -- match, failure otherwise.
   checkElabV-RVar-bbc-id-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
-    → LookupLocalView ctx "id"
-    → LookupImportView ctx "id"
     → VerifiedCheckResult ctx (Raw.RResolved (gen "id")) T
   checkElabV-RVar-bbc-fst-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
-    → LookupLocalView ctx "fst"
-    → LookupImportView ctx "fst"
     → VerifiedCheckResult ctx (Raw.RResolved (gen "fst")) T
   checkElabV-RVar-bbc-snd-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
-    → LookupLocalView ctx "snd"
-    → LookupImportView ctx "snd"
     → VerifiedCheckResult ctx (Raw.RResolved (gen "snd")) T
   checkElabV-RVar-bbc-terminal-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
-    → LookupLocalView ctx "terminal"
-    → LookupImportView ctx "terminal"
     → VerifiedCheckResult ctx (Raw.RResolved (gen "terminal")) T
   checkElabV-RVar-bbc-initial-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
-    → LookupLocalView ctx "initial"
-    → LookupImportView ctx "initial"
     → VerifiedCheckResult ctx (Raw.RResolved (gen "initial")) T
   checkElabV-RVar-bbc-inl-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
-    → LookupLocalView ctx "inl"
-    → LookupImportView ctx "inl"
     → VerifiedCheckResult ctx (Raw.RResolved (gen "inl")) T
   checkElabV-RVar-bbc-inr-failure-aux :
     ∀ (ctx : NamedCtx) (T : Type) (err : TypeError)
-    → LookupLocalView ctx "inr"
-    → LookupImportView ctx "inr"
     → VerifiedCheckResult ctx (Raw.RResolved (gen "inr")) T
   -- Per-bbc-X aux taking the inferElab result explicitly. Eliminates
   -- the inner with-helper opacity. Each bbc-X's success-via-infer path
@@ -1925,14 +1911,21 @@ mutual
   -- error for a bare use).
   inferElabV-RResolved-dispatch ctx _ gv-unit =
     success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
-  inferElabV-RResolved-dispatch ctx cn gv-id = inferElabV-RResolved-aux ctx cn _ refl
-  inferElabV-RResolved-dispatch ctx cn gv-fst = inferElabV-RResolved-aux ctx cn _ refl
-  inferElabV-RResolved-dispatch ctx cn gv-snd = inferElabV-RResolved-aux ctx cn _ refl
-  inferElabV-RResolved-dispatch ctx cn gv-terminal = inferElabV-RResolved-aux ctx cn _ refl
-  inferElabV-RResolved-dispatch ctx cn gv-initial = inferElabV-RResolved-aux ctx cn _ refl
-  inferElabV-RResolved-dispatch ctx cn gv-inl = inferElabV-RResolved-aux ctx cn _ refl
-  inferElabV-RResolved-dispatch ctx cn gv-inr = inferElabV-RResolved-aux ctx cn _ refl
-  inferElabV-RResolved-dispatch ctx cn gv-other = inferElabV-RResolved-aux ctx cn _ refl
+  -- D136: a generator's canonical name is COMPILER-OWNED, so looking it up in
+  -- the user's import table is meaningless — these fail directly rather than
+  -- routing through `inferElabV-RResolved-aux`. The seven point-free
+  -- generators are polymorphic and do not infer; they must appear applied or
+  -- in check mode, which is what `UnboundVariable` has always reported here.
+  -- Failing directly is also what lets the `checkElab-fallback-RVar-*` lemmas
+  -- reduce without a "Generators.* is not imported" premise nobody could supply.
+  inferElabV-RResolved-dispatch ctx cn gv-id       = failure (UnboundVariable "id") , tt
+  inferElabV-RResolved-dispatch ctx cn gv-fst      = failure (UnboundVariable "fst") , tt
+  inferElabV-RResolved-dispatch ctx cn gv-snd      = failure (UnboundVariable "snd") , tt
+  inferElabV-RResolved-dispatch ctx cn gv-terminal = failure (UnboundVariable "terminal") , tt
+  inferElabV-RResolved-dispatch ctx cn gv-initial  = failure (UnboundVariable "initial") , tt
+  inferElabV-RResolved-dispatch ctx cn gv-inl      = failure (UnboundVariable "inl") , tt
+  inferElabV-RResolved-dispatch ctx cn gv-inr      = failure (UnboundVariable "inr") , tt
+  inferElabV-RResolved-dispatch ctx cn (gv-other ng) = inferElabV-RResolved-aux ctx cn ng _ refl
 
   checkElabV-RResolved-dispatch ctx _ T gv-id rInfV =
     checkElabV-RVar-bbc-id-aux ctx T rInfV
@@ -1949,7 +1942,7 @@ mutual
   checkElabV-RResolved-dispatch ctx _ T gv-inr rInfV =
     checkElabV-RVar-bbc-inr-aux ctx T rInfV
   checkElabV-RResolved-dispatch ctx cn T gv-unit  rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
-  checkElabV-RResolved-dispatch ctx cn T gv-other rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
+  checkElabV-RResolved-dispatch ctx cn T (gv-other _) rInfV = embedOrSubsume ctx (Raw.RResolved cn) T rInfV
 
 
   -- Acc-free wrapper (Plan 0.58 E1-full): re-derive a fresh well-founded Acc.
@@ -2050,30 +2043,30 @@ mutual
     -- the realize-agrees masquerade folds both with one case-split.
     ext-resolved-info-aux cn π (Once.Type.isUnit? B) (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) bA cB
 
-  inferElabV-RResolved-aux ctx cn
+  inferElabV-RResolved-aux ctx cn ng
     (just (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) eq =
-    inferElabV-RResolved-arrow-aux ctx cn eq (isBaseType? A) refl (isConcrete? B) refl
-  inferElabV-RResolved-aux ctx cn (just ty) eq =
-    inferElabV-RResolved-value-aux ctx cn ty eq (isConcrete? ty) refl
-  inferElabV-RResolved-aux ctx cn nothing _ =
+    inferElabV-RResolved-arrow-aux ctx cn ng eq (isBaseType? A) refl (isConcrete? B) refl
+  inferElabV-RResolved-aux ctx cn ng (just ty) eq =
+    inferElabV-RResolved-value-aux ctx cn ng ty eq (isConcrete? ty) refl
+  inferElabV-RResolved-aux ctx cn ng nothing _ =
     failure (UnboundVariable (showCanonical cn)) , tt
 
   -- Concreteness-driven arrow value emission (de-withed for Completeness).
-  inferElabV-RResolved-arrow-aux ctx cn {A} {B} {π} eq (just bA) _ (just cB) _ =
+  inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just bA) _ (just cB) _ =
     success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) _
       (Surface.lift-morphism {π = π} (IR.SigOp (ext-resolved-info ctx cn π bA cB)))
       0 (NamedCtx.freshCounter ctx)
-    , t-var-resolved eq (con-fun bA cB)
-  inferElabV-RResolved-arrow-aux ctx cn {A} {B} {π} eq nothing _ _ _ =
+    , t-var-resolved ng eq (con-fun bA cB)
+  inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq nothing _ _ _ =
     failure (NonConcreteSigOpType (showCanonical cn)
               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
-  inferElabV-RResolved-arrow-aux ctx cn {A} {B} {π} eq (just _) _ nothing _ =
+  inferElabV-RResolved-arrow-aux ctx cn ng {A} {B} {π} eq (just _) _ nothing _ =
     failure (NonConcreteSigOpType (showCanonical cn)
               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)) , tt
 
-  inferElabV-RResolved-value-aux ctx cn ty eq (just conc) _ =
-    success ty _ (Surface.sigOp cn conc) 0 (NamedCtx.freshCounter ctx) , t-var-resolved eq conc
-  inferElabV-RResolved-value-aux ctx cn ty eq nothing _ =
+  inferElabV-RResolved-value-aux ctx cn ng ty eq (just conc) _ =
+    success ty _ (Surface.sigOp cn conc) 0 (NamedCtx.freshCounter ctx) , t-var-resolved ng eq conc
+  inferElabV-RResolved-value-aux ctx cn ng ty eq nothing _ =
     failure (NonConcreteSigOpType (showCanonical cn) ty) , tt
 
   -- RPair: pair the two sub-results (a-failure short-circuits without forcing
@@ -2532,199 +2525,185 @@ mutual
   -- bbc-X failure-branch aux bodies. Each pattern-matches on T to the
   -- canonical builtin shape and on the lookup results. Success iff
   -- T = canonical & both lookups nothing & inner type-checks pass.
-  checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Y) err (llv-not-found eqLoc) (liv-not-found eqImp) with X ≟T Y
+  checkElabV-RVar-bbc-id-failure-aux ctx (X Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Y) err with X ≟T Y
   ... | yes refl =
         success Surface.zeroUsage (Surface.lift-morphism IR.id) 0 (NamedCtx.freshCounter ctx) , t-id-check
   ... | no _ = failure (BuiltinTypeMismatch "id") , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "id") , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "id") , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx Unit err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx Void err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx Int err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx Float err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx Str err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx Buffer err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.* _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.+ _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Unit err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Void err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Int err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Float err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Str err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
+  checkElabV-RVar-bbc-id-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
 
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A') err (llv-not-found eqLoc) (liv-not-found eqImp) with A ≟T A'
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A') err with A ≟T A'
   ... | yes refl =
         success Surface.zeroUsage (Surface.lift-morphism IR.fst) 0 (NamedCtx.freshCounter ctx) , t-fst-check
   ... | no _ = failure (BuiltinTypeMismatch "fst") , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "fst") , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "fst") , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx Unit err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx Void err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx Int err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx Float err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx Str err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx Buffer err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (Void Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (_ Once.Type.* _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (_ Once.Type.+ _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Unit err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Void err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Int err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Float err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Str err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Void Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
+  checkElabV-RVar-bbc-fst-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
 
   -- bbc-snd: canonical T = (A * B) ⇒[Many,pure] B'
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B') err (llv-not-found eqLoc) (liv-not-found eqImp) with B ≟T B'
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B') err with B ≟T B'
   ... | yes refl =
         success Surface.zeroUsage (Surface.lift-morphism IR.snd) 0 (NamedCtx.freshCounter ctx) , t-snd-check
   ... | no _ = failure (BuiltinTypeMismatch "snd") , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "snd") , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "snd") , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx Unit err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx Void err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx Int err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx Float err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx Str err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx Buffer err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (Void Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (_ Once.Type.* _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (_ Once.Type.+ _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Unit err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Void err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Int err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Float err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Str err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Void Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
+  checkElabV-RVar-bbc-snd-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
 
   -- bbc-terminal: canonical T = A ⇒[Many,pure] Unit
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-not-found eqLoc) (liv-not-found eqImp) =
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err =
     success Surface.zeroUsage (Surface.lift-morphism IR.terminal) 0 (NamedCtx.freshCounter ctx) , t-terminal-morph-check
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "terminal") , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Unit) err (llv-found _) _ = failure (BuiltinTypeMismatch "terminal") , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx Unit err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx Void err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx Int err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx Float err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx Str err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx Buffer err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.* _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.+ _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.+ _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] Unit) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] Unit) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Unit err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Void err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Int err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Float err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Str err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.+ _)) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] Unit) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] Unit) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
+  checkElabV-RVar-bbc-terminal-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
 
   -- bbc-initial: canonical T = Void ⇒[Many,pure] A
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) err (llv-not-found eqLoc) (liv-not-found eqImp) =
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) err =
     success Surface.zeroUsage (Surface.lift-morphism IR.initial) 0 (NamedCtx.freshCounter ctx) , t-initial-morph-check
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "initial") , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] _) err (llv-found _) _ = failure (BuiltinTypeMismatch "initial") , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx Unit err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx Void err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx Int err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx Float err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx Str err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx Buffer err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (_ Once.Type.* _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (_ Once.Type.+ _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Unit err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Void err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Int err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Float err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Str err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Unit Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Int Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Float Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Str Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Buffer Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.* _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.+ _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((_ Once.Type.⇒[ _ ] _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.μ-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx ((Once.Type.ν-type _) Once.Type.⇒[ _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
+  checkElabV-RVar-bbc-initial-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
 
   -- bbc-inl: canonical T = A ⇒[Many,pure] (A' + B)
-  checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A' Once.Type.+ B)) err (llv-not-found eqLoc) (liv-not-found eqImp) with A ≟T A'
+  checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A' Once.Type.+ B)) err with A ≟T A'
   ... | yes refl =
         success Surface.zeroUsage (Surface.lift-morphism (IR.inl IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-inl-morph-check
   ... | no _ = failure (BuiltinTypeMismatch "inl") , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "inl") , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-found _) _ = failure (BuiltinTypeMismatch "inl") , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx Unit err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx Void err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx Int err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx Float err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx Str err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx Buffer err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.* _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.+ _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Unit) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] (_ Once.Type.+ _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] (_ Once.Type.+ _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Unit err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Void err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Int err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Float err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Str err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Unit) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] (_ Once.Type.+ _)) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] (_ Once.Type.+ _)) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
+  checkElabV-RVar-bbc-inl-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
 
   -- bbc-inr: canonical T = B ⇒[Many,pure] (A + B')
-  checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B')) err (llv-not-found eqLoc) (liv-not-found eqImp) with B ≟T B'
+  checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B')) err with B ≟T B'
   ... | yes refl =
         success Surface.zeroUsage (Surface.lift-morphism (IR.inr IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-inr-morph-check
   ... | no _ = failure (BuiltinTypeMismatch "inr") , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-not-found _) (liv-found _) = failure (BuiltinTypeMismatch "inr") , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (_ Once.Type.+ _)) err (llv-found _) _ = failure (BuiltinTypeMismatch "inr") , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx Unit err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx Void err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx Int err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx Float err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx Str err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx Buffer err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.* _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.+ _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Unit) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] (_ Once.Type.+ _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] (_ Once.Type.+ _)) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.μ-type _) err _ _ = failure err , tt
-  checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.ν-type _) err _ _ = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Unit err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Void err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Int err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Float err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Str err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx Buffer err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.* _) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.+ _) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Unit) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Void) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Int) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Float) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Str) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] Buffer) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.* _)) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (_ Once.Type.⇒[ _ ] _)) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.μ-type _)) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ _ ] (Once.Type.ν-type _)) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero _ ] (_ Once.Type.+ _)) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One _ ] (_ Once.Type.+ _)) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.μ-type _) err = failure err , tt
+  checkElabV-RVar-bbc-inr-failure-aux ctx (Once.Type.ν-type _) err = failure err , tt
 
   -- RFloat: F4's decision, made once and passed in.
   --
@@ -2777,31 +2756,31 @@ mutual
   -- failure path delegates to bbc-X-failure-aux.
   checkElabV-RVar-bbc-id-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "id")) T r
   checkElabV-RVar-bbc-id-aux ctx T (failure err , _) =
-    checkElabV-RVar-bbc-id-failure-aux ctx T err (inspectLookupLocal ctx "id") (inspectLookupImport ctx "id")
+    checkElabV-RVar-bbc-id-failure-aux ctx T err
 
   checkElabV-RVar-bbc-fst-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "fst")) T r
   checkElabV-RVar-bbc-fst-aux ctx T (failure err , _) =
-    checkElabV-RVar-bbc-fst-failure-aux ctx T err (inspectLookupLocal ctx "fst") (inspectLookupImport ctx "fst")
+    checkElabV-RVar-bbc-fst-failure-aux ctx T err
 
   checkElabV-RVar-bbc-snd-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "snd")) T r
   checkElabV-RVar-bbc-snd-aux ctx T (failure err , _) =
-    checkElabV-RVar-bbc-snd-failure-aux ctx T err (inspectLookupLocal ctx "snd") (inspectLookupImport ctx "snd")
+    checkElabV-RVar-bbc-snd-failure-aux ctx T err
 
   checkElabV-RVar-bbc-terminal-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "terminal")) T r
   checkElabV-RVar-bbc-terminal-aux ctx T (failure err , _) =
-    checkElabV-RVar-bbc-terminal-failure-aux ctx T err (inspectLookupLocal ctx "terminal") (inspectLookupImport ctx "terminal")
+    checkElabV-RVar-bbc-terminal-failure-aux ctx T err
 
   checkElabV-RVar-bbc-initial-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "initial")) T r
   checkElabV-RVar-bbc-initial-aux ctx T (failure err , _) =
-    checkElabV-RVar-bbc-initial-failure-aux ctx T err (inspectLookupLocal ctx "initial") (inspectLookupImport ctx "initial")
+    checkElabV-RVar-bbc-initial-failure-aux ctx T err
 
   checkElabV-RVar-bbc-inl-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "inl")) T r
   checkElabV-RVar-bbc-inl-aux ctx T (failure err , _) =
-    checkElabV-RVar-bbc-inl-failure-aux ctx T err (inspectLookupLocal ctx "inl") (inspectLookupImport ctx "inl")
+    checkElabV-RVar-bbc-inl-failure-aux ctx T err
 
   checkElabV-RVar-bbc-inr-aux ctx T r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RResolved (gen "inr")) T r
   checkElabV-RVar-bbc-inr-aux ctx T (failure err , _) =
-    checkElabV-RVar-bbc-inr-failure-aux ctx T err (inspectLookupLocal ctx "inr") (inspectLookupImport ctx "inr")
+    checkElabV-RVar-bbc-inr-failure-aux ctx T err
 
   -- bbc-other: success-via-infer mirrors the others; failure goes
   -- through lookupPoly fallback (still postulate-witnessed).

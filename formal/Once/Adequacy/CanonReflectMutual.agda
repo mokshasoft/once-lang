@@ -224,7 +224,7 @@ reflect-var-ᵢ : ∀ {ctx A Ψ} (b : Bool) (bound : List String) (x : String)
   → Names⊆ ctx bound → (elemStr x bound ∨ isBuiltinName x) ≡ b
   → ctx ⊢ᵢ canonVar b nothing x ∶ A ⨾ Ψ → ctx ⊢ᵢ Raw.RVar x ∶ A ⨾ Ψ
 reflect-var-ᵢ true  bound x sub eb D = D
-reflect-var-ᵢ {ctx} false bound x sub eb (t-var-resolved imp conc) =
+reflect-var-ᵢ {ctx} false bound x sub eb (t-var-resolved _ imp conc) =
   t-var-import (¬unit-from-false {x} {bound} eb)
                (not-local {ctx} {x} {bound} sub (∨-false-l eb)) imp conc
 

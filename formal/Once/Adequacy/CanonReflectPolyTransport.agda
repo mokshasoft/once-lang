@@ -75,7 +75,7 @@ mutual
   polys-reflect-ᵢ b p pib ac t-unit-var = t-unit-var
   polys-reflect-ᵢ b p pib ac (t-var-local lk) = t-var-local lk
   polys-reflect-ᵢ b p pib ac (t-var-qualified imp conc) = t-var-qualified imp conc
-  polys-reflect-ᵢ b p pib ac (t-var-resolved imp conc) = t-var-resolved imp conc
+  polys-reflect-ᵢ b p pib ac (t-var-resolved ng imp conc) = t-var-resolved ng imp conc
   polys-reflect-ᵢ b p pib ac (t-var-import lkn imp conc) = t-var-import lkn imp conc
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same reflect
   -- descent as the check-mode `t-var-poly-instantiate` case below (schema is

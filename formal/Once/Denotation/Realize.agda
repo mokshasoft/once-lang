@@ -143,7 +143,7 @@ realize-infer (t-var-qualified {name = name} {alias = alias} _ conc) = sigOp (ba
 -- Plan 0.50: a resolved ref carries its canonical identity directly — the
 -- reference elaboration reads it with NO String render, so it agrees with
 -- the elaborator's `SigOpInfo.name` by construction.
-realize-infer (t-var-resolved {cn = cn} _ conc) = sigOp cn conc
+realize-infer (t-var-resolved {cn = cn} _ _ conc) = sigOp cn conc
 realize-infer (t-var-import {x = x} _ _ conc) = sigOp (bare x) conc
 -- Plan 0.58 / D071: infer-mode ground telescope reference — same closed-body
 -- inline as the check-mode `t-var-poly-instantiate` clause above.

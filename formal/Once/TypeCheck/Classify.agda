@@ -32,15 +32,17 @@ open import Data.Nat.Show renaming (show to showℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; ¬_)
 open import Data.Product using (_×_; _,_; ∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
 
 open import Once.Type
 open import Once.SigEffect using (SigEffect)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
-open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS)
+open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS;
+  NotGenerator; gen-inj)
+open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
 open import Once.TypeCheck.Context using (Ctx; ∅; name)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
 -- Plan 0.58 (OCP-0006): import the IR-FREE `Once.Surface.Context` (not
@@ -624,31 +626,57 @@ data GenView : CanonicalName → Set where
   gv-inl      : GenView (gen "inl")
   gv-inr      : GenView (gen "inr")
   gv-unit     : GenView (gen "unit")
-  gv-other  : ∀ {cn} → GenView cn
+  -- D134/D136: `gv-other` CARRIES the property it decides. Without this the
+  -- constructor is uninformative (`∀ {cn}`), so the elaborator's own dispatch
+  -- could not discharge `t-var-resolved`'s side condition — the analogue of
+  -- `isGround-inj₂-¬Ground`, which works only because `inj₂` is informative.
+  gv-other  : ∀ {cn} → NotGenerator cn → GenView cn
+
+-- A two-component name whose namespace is NOT `Generators` is no generator:
+-- one `refl`-match recovers the namespace, so a single polymorphic refutation
+-- fills all eight slots.
+notGen-ns : ∀ {ns g} → ¬ (ns ≡ generatorNS) → NotGenerator (canonical (ns ∷ g ∷ []))
+notGen-ns {ns} {g} ¬ns = f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ []ᴬ
+  where
+    f : ∀ {h} → canonical (ns ∷ g ∷ []) ≢ gen h
+    f refl = ¬ns refl
+
+-- Any other component count is disjoint from `gen _` by LENGTH.
+notGen-shape : ∀ {ps} → (∀ {h : String} → canonical ps ≢ gen h) → NotGenerator (canonical ps)
+notGen-shape f = f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ f ∷ᴬ []ᴬ
 
 classifyGen : (cn : CanonicalName) → GenView cn
 classifyGen (canonical (ns ∷ g ∷ [])) with ns ≟ generatorNS
-... | no _ = gv-other
+... | no ¬ns = gv-other (notGen-ns ¬ns)
 ... | yes refl with g ≟ "id"
 ...   | yes refl = gv-id
-...   | no  _ with g ≟ "fst"
+...   | no  ¬id with g ≟ "fst"
 ...     | yes refl = gv-fst
-...     | no  _ with g ≟ "snd"
+...     | no  ¬fs with g ≟ "snd"
 ...       | yes refl = gv-snd
-...       | no  _ with g ≟ "terminal"
+...       | no  ¬sn with g ≟ "terminal"
 ...         | yes refl = gv-terminal
-...         | no  _ with g ≟ "initial"
+...         | no  ¬te with g ≟ "initial"
 ...           | yes refl = gv-initial
-...           | no  _ with g ≟ "inl"
+...           | no  ¬in with g ≟ "inl"
 ...             | yes refl = gv-inl
-...             | no  _ with g ≟ "inr"
+...             | no  ¬il with g ≟ "inr"
 ...               | yes refl = gv-inr
-...               | no  _ with g ≟ "unit"
+...               | no  ¬ir with g ≟ "unit"
 ...                 | yes refl = gv-unit
-...                 | no  _ = gv-other
-classifyGen (canonical [])              = gv-other
-classifyGen (canonical (_ ∷ []))        = gv-other
-classifyGen (canonical (_ ∷ _ ∷ _ ∷ _)) = gv-other
+...                 | no  ¬un = gv-other
+                                 ( (λ e → ¬id (gen-inj e))
+                                 ∷ᴬ (λ e → ¬fs (gen-inj e))
+                                 ∷ᴬ (λ e → ¬sn (gen-inj e))
+                                 ∷ᴬ (λ e → ¬te (gen-inj e))
+                                 ∷ᴬ (λ e → ¬in (gen-inj e))
+                                 ∷ᴬ (λ e → ¬il (gen-inj e))
+                                 ∷ᴬ (λ e → ¬ir (gen-inj e))
+                                 ∷ᴬ (λ e → ¬un (gen-inj e))
+                                 ∷ᴬ []ᴬ )
+classifyGen (canonical [])              = gv-other (notGen-shape λ ())
+classifyGen (canonical (_ ∷ []))        = gv-other (notGen-shape λ ())
+classifyGen (canonical (_ ∷ _ ∷ _ ∷ _)) = gv-other (notGen-shape λ ())
 
 data BareBuiltinClass : String → Set where
   bbc-id       : BareBuiltinClass "id"

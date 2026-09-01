@@ -29,6 +29,7 @@ open import Data.String using (String) renaming (_≟_ to _≟s_)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
+open import Once.CanonicalName using (bare-NotGenerator)
 open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.Parser.Module.Resolve using (canonExpr; isBuiltinName; elemStr)
@@ -95,11 +96,11 @@ mutual
     rewrite canon-RVar-keep bound x (or-l (sub x (lookup-just→elem ctx x lk))) =
       t-var-local lk
   canon-pres-ᵢ bound sub pib (t-var-qualified imp conc) = t-var-qualified imp conc
-  canon-pres-ᵢ bound sub pib (t-var-resolved imp conc) = t-var-resolved imp conc
+  canon-pres-ᵢ bound sub pib (t-var-resolved ng imp conc) = t-var-resolved ng imp conc
   canon-pres-ᵢ bound sub pib (t-var-import {x = x} lkn imp conc)
     with elemStr x bound ∨ isBuiltinName x in eb
   ... | true  rewrite canon-RVar-keep    bound x eb = t-var-import lkn imp conc
-  ... | false rewrite canon-RVar-resolve bound x eb = t-var-resolved imp conc
+  ... | false rewrite canon-RVar-resolve bound x eb = t-var-resolved (bare-NotGenerator x) imp conc
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same keep-bare
   -- rewrite as the check-mode `t-var-poly-instantiate` case (a telescope name
   -- is in `bound`, so canonExpr keeps the bare RVar; premises are ctx-side).

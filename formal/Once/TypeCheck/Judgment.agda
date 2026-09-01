@@ -56,7 +56,7 @@ open import Once.TypeCheck.Raw as Raw
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
          BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp;
          ClosedLiftShape)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen)
+open import Once.CanonicalName using (CanonicalName; showCanonical; gen; NotGenerator)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; lookupPolyPrefix;
          removePoly;
@@ -154,7 +154,14 @@ mutual
     -- canonical dotted path (`showCanonical cn`). So the lookup here uses
     -- `showCanonical cn` directly — agreement with realize/codegen holds by
     -- construction, not by two String renders coinciding.
+    -- D136: `NotGenerator cn` keeps this rule DISJOINT from the generator
+    -- rules, which also conclude at `RResolved`. It is the generalisation of
+    -- the `¬ (x ≡ "unit")` premise the bare-`RVar` rules used to carry: the
+    -- `Generators` namespace is compiler-owned, so a resolved reference into
+    -- it is never a user import. Stated as a PROPERTY of the name (D134), not
+    -- as `classifyGen cn ≡ gv-other`.
     t-var-resolved : ∀ {ctx : NamedCtx} {cn : CanonicalName} {T : Type}
+                   → NotGenerator cn
                    → lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just T
                    → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
                    → ctx ⊢ᵢ RResolved cn ∶ T ⨾ zeroUsage

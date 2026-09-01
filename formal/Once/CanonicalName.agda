@@ -26,7 +26,8 @@ open import Data.List using (List; []; _∷_)
 open import Data.List.Properties using (≡-dec)
 open import Data.String using (String) renaming (_≟_ to _≟ˢ_; _++_ to _++ˢ_)
 open import Relation.Binary using (DecidableEquality)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 
@@ -69,6 +70,37 @@ pattern gen g = canonical ("Generators" ∷ g ∷ [])
 -- condition once the migration lands.
 gen≢bare : ∀ (g x : String) → gen g ≢ bare x
 gen≢bare g x ()
+
+gen-inj : ∀ {g h : String} → gen g ≡ gen h → g ≡ h
+gen-inj refl = refl
+
+-- | The EIGHT compiler-owned generator names. D136: the namespace is
+-- reserved, so these eight canonical names are not addressable by user code —
+-- a def named `fst` resolves to `bare "fst"`, never to `gen "fst"`.
+genNames : List String
+genNames = "id" ∷ "fst" ∷ "snd" ∷ "terminal" ∷ "initial" ∷ "inl" ∷ "inr" ∷ "unit" ∷ []
+
+-- | `cn` is none of the eight generators. This is a PROPERTY of the name
+-- (D134), not a decision procedure's answer; `Classify.classifyGen` is the
+-- decider and its `gv-other` branch CARRIES this witness, which is what lets
+-- the elaborator discharge the side condition on `t-var-resolved` from its
+-- own dispatch.
+NotGenerator : CanonicalName → Set
+NotGenerator cn = All (λ g → cn ≢ gen g) genNames
+
+-- A bare name is never a generator — the disjointness `gen≢bare` gives, packed
+-- into the shape the rules want.
+bare-NotGenerator : ∀ (x : String) → NotGenerator (bare x)
+bare-NotGenerator x =
+    (λ eq → gen≢bare "id" x (sym eq))
+  ∷ (λ eq → gen≢bare "fst" x (sym eq))
+  ∷ (λ eq → gen≢bare "snd" x (sym eq))
+  ∷ (λ eq → gen≢bare "terminal" x (sym eq))
+  ∷ (λ eq → gen≢bare "initial" x (sym eq))
+  ∷ (λ eq → gen≢bare "inl" x (sym eq))
+  ∷ (λ eq → gen≢bare "inr" x (sym eq))
+  ∷ (λ eq → gen≢bare "unit" x (sym eq))
+  ∷ []
 
 -- Decidable equality — the trace's `ev-name` comparison needs it.
 _≟ᶜ_ : DecidableEquality CanonicalName
