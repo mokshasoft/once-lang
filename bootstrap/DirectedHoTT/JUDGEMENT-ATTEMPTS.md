@@ -482,10 +482,25 @@ in this log.
 this layer that was my own tool.** 31/73, 0/26, 36/43 — and each time
 the first instinct was to go looking for a missing mechanism.
 
-✅ The one refusal is real: `⊢ielim`'s motive `M` gets no sort from any
-occurrence, so the inference **declines** rather than guessing. Spot-
-checked by hand against the source: `⊢var` → `x:sVar, A:sTy`;
-`⊢lam` → `A:sTy, t:sTm, B:sTy`; `⊢fst` → `p:sTm, A:sTy, B:sTy`.
+~~✅ The one refusal is real: `⊢ielim`'s motive `M` gets no sort from any
+occurrence, so the inference **declines** rather than guessing.~~
+⚠⚠ **REFUTED 2026-09-01 — IT WAS THE TOOL, THE FIFTH TIME.** `infer_sorts`
+kept its *own* context regex (`[^()⊢∋]+?`: one `▹`, no nesting), so
+`⊢ielim`'s `((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M` matched **nothing**
+and `M` got no sort from a premise that names it. Sharing
+`_parse_jpart`/`_splitctx` — which had handled nesting since `⊢natrec` —
+makes the sort inference **43/43**, and `⊢ielim`'s real blocker is
+`IDescWf I D`, the same one seven other rules have.
+
+★★ **AND READ WHAT THIS PARAGRAPH SAT NEXT TO.** Three lines above, the
+log had just observed that *four* coverage numbers in this layer had been
+my own tool. I then wrote "the one refusal is real" and **spot-checked it
+by hand** — against `⊢var`, `⊢lam`, `⊢fst`, three rules that were already
+passing. ⇒ **a spot check drawn from the cases the tool already accepts is
+not independent of the tool.** The check that would have caught it is the
+one the sweep uses everywhere else: exhibit the input that fails.
+(Spot-checked, still valid: `⊢var` → `x:sVar, A:sTy`; `⊢lam` →
+`A:sTy, t:sTm, B:sTy`; `⊢fst` → `p:sTm, A:sTy, B:sTy`.)
 
 ⬜ **Next:** the tagged index and the padded telescope, then emission.
 
@@ -759,3 +774,160 @@ depth, **check the lemma's statement before the emitter's arithmetic.**
 
 ★ Measured, once the three were general: `JudgeWfI` 512s-failing → **34s
 green**, and the whole sweep 164/164 at 948s.
+
+---
+
+# §10 — THE MERGE: the design question, SETTLED
+
+`HANDOFF`'s width spike ended on an open question — *"eight components
+where no single row uses more than five … is the right shape a per-TAG
+index rather than one union? I do not know whether `IDesc` supports
+that, and I am not inventing a mechanism before checking."* This is the
+check. Each claim below is marked **proved** / **measured** / **argued**.
+
+## §10.1 — "two mutually citing descriptions" is **IMPOSSIBLE**, not untried
+
+§4(iii) declined to call it impossible, correctly, because it had not
+been checked. It has now, and one signature settles it:
+
+    IMu    : ∀ {Γ} → IDesc → RTy ε → RTm Γ → RTy Γ
+    ⌜IMu⌝  : ∀ {Γ} → IDesc → RTy ε → RTm Γ → RTm Γ
+
+**The description argument is META-level.** For description `A` to cite
+`B` as a premise, `A` must contain the code `⌜IMu⌝ B I i` — so `B` is a
+proper subterm of `A`. Mutual citation needs `B ⊏ A` *and* `A ⊏ B`, and
+`IDesc` is an ordinary finite inductive type. ⇒ **proved impossible**,
+and it would stay impossible until the kernel gained an `IMu` over an
+*object-level* description with a fixpoint — full levitation, a kernel
+change far larger than the merge.
+
+⇒ **the merge is forced.** So is its cause: the cycle is real, not an
+artefact of how `Spec/Typing` is laid out —
+
+    _⊢_∷_  ⊢con/⊢elim/⊢⌜Mu⌝   →  DescWf
+    DescWf → DConWf → dwf-κ    →  ◇ ⊢ c ∷ U
+    IConWf iwf-ρ / iwf-κ       →  Θ ⊢ j ∷ εwkTy I  /  Θ ⊢ κ ∷ U
+    ICodeWf icw-clo            →  ◇ ⊢ c ∷ U
+
+All seven are forward-declared together (`Spec/Typing.agda:663–712`) and
+defined at `714–1031`: **one mutual block, 43 + 13 = 56 rows.**
+
+## §10.2 — the union is WIDER than the spike measured — **counted**
+
+The spike padded with three slots and called it eight. The real merge
+needs more, because a telescope component's **sort AND index depth** are
+both fixed:
+
+| judgement | subjects |
+|---|---|
+| `_⊢_∷_` | depth, Ctx, Tm, Ty@n |
+| `_⊢ty_` | depth, Ctx, Ty@n |
+| `DConWf` | DCon |
+| `DescWf` | Desc |
+| `IConWf` | IDesc, **Ty@ε**, Ctx, ICon |
+| `IDescWfFrom` | IDesc, **Ty@ε**, **IDesc again** |
+| `ICodeWf` | depth, Tm |
+
+⇒ depth · Ctx · Tm · Ty@n · **Ty@ε** · Desc · DCon · **IDesc₁** ·
+**IDesc₂** · ICon · tag = **11 components, and no judgement uses more
+than 6.**
+
+⚠ Two of those are easy to miss and neither is optional: `IDescWfFrom`
+carries **two** `IDesc`s (the whole description and the suffix still to
+check), and `IConWf`/`IDescWfFrom` carry an index type `I : RTy ε` —
+**closed**, so it cannot share the `Ty@n` slot whose code reads the row's
+depth. ⇒ the spike's 8 was a lower bound in a second way it did not name.
+
+## §10.3 — what the literature does, and it is NOT a padded product
+
+**Argued, with precedent.** Every mutual-inductive package builds the
+**disjoint sum**, never a product with dummies: Isabelle/HOL's
+`inductive … and …` and HOL4's `Hol_reln` compile `n` relations into one
+predicate over `I₁ + … + Iₙ`. `.refs/cogent/cogent/isa/Cogent.thy:707`
+is a live instance with *different arities* —
+
+    inductive typing     :: … ⇒ 'f expr      ⇒ type      ⇒ bool
+          and typing_all :: … ⇒ 'f expr list ⇒ type list ⇒ bool
+
+— and nothing there pads `expr` to `expr list`. The dependently-typed
+elaboration is the same shape: `n` families `Fₖ : Iₖ → Set` become one
+family over `Σ (k : Tag) Iₖ`, a **dependent sum whose second component's
+TYPE depends on the tag**.
+
+⇒ **the padding is not a cost of tagging; it is the cost of flattening a
+coproduct into a product.** That is the honest answer to "should these
+interdependencies point at a better abstraction": yes, and the better
+abstraction is the one every other system already uses.
+
+## §10.4 — and this kernel CAN express it — **checked, no kernel change**
+
+`Σ' A B` already has `B : RTy (Γ ∙)`, so the tail may read the tag. The
+per-tag payload wants to be an indexed inductive:
+
+    IJudge = Σ' Nat (IMu IxD INat (var vz))
+
+where `IxD`'s constructor `k` carries exactly judgement `k`'s subjects.
+Both mechanisms it needs already exist and are **general in the index**:
+
+    icw-imu : {Θ}{D' I'} (i : RTm Θ) → IDescWf I' D' → ICodeWf (⌜IMu⌝ D' I' i)
+    icw-ford : {Θ} (c a b : RTm Θ) → ICodeWf (⌜Id⌝ c a b)
+
+`i` is an arbitrary `RTm Θ`, so it may mention earlier telescope fields —
+which is what a dependent per-tag telescope needs. And there is **no new
+cycle**: `IxD` holds only SUBJECTS, never derivations, so `IDescWf INat
+IxD` is proved from `KnotWf`/`CtxWf` before `JudgeD` mentions it.
+
+Each row then Fords the tag as now, plus **one** payload ford
+`snd ⟨i⟩ ≡ icon k (…)`, transported along the tag ford by the same
+`jsub (⌜IMu⌝ …) (symN …)` idiom every component ford already uses.
+
+## §10.5 — ⚠ BUT THE CONSUMER PAYS, AND THAT IS THE REAL FORK
+
+**This is where the naive answer is wrong**, and `judge-abstractions-at-
+the-use-site` is the reason to look:
+
+| | build | use |
+|---|---|---|
+| flat padded product | 11 slots, dummies at 6 sorts, width dominates the cost | subjects are `fst`/`snd` **projections** |
+| full coproduct | 2 slots for every one of the 56 rows | subjects need the payload **ELIMINATED** |
+
+An `ielim` motive over `JudgeD` lives in
+`(◇ ▹ εwkTy IJudge) ▹ IMu JudgeD IJudge (var vz)` and must MENTION the
+subjects. With a flat index they are projections. With a full coproduct
+the motive would need `El (ielim …)` — an eliminator *inside a motive* —
+to get at `t` and `T`. ⇒ **step 4 (`prog`, the dogfooding target, the
+reason all of this exists) is exactly the consumer that would pay.**
+
+⇒ ★★★ **THE RECOMMENDATION — SPLIT THE INDEX BY WHO READS IT:**
+
+    IJudge = Σ' Nat (Σ' Ctx (Σ' Tm (Σ' Ty (Σ' Nat  (IMu IxD INat <tag>)))))
+             └──────────── projected by consumers ────────────┘ └ per-tag ┘
+
+Keep flat and projectable exactly the five slots `prog` and the existing
+43 rows already read (depth, Ctx, Tm, Ty, tag). Put the **merge-only**
+subjects — Desc, DCon, IDesc₁, IDesc₂, ICon, Ty@ε — behind ONE per-tag
+payload. Then:
+
+* index width goes **5 → 6**, not 5 → 11;
+* the 43 typing rows carry **one** dummy payload (a nullary `IxD`
+  constructor), not six dummies at six sorts;
+* the 13 `Wf` rows carry their own subjects at their own arity;
+* **no consumer changes** — every projection `prog` needs is still a
+  projection.
+
+## §10.6 — ⬜ what is NOT settled, and the experiment that would settle it
+
+**Unmeasured:** the per-row cost of a payload ford at an `IMu` versus
+`N` component fords. Everything above says the *shape* is right; none of
+it says what width 6 costs.
+
+⇒ the experiment, and it is the spike's own method: re-emit the SAME 33
+rules at width 6 with a dummy payload, against the measured points
+
+    width 5 (narrow)   4 rows/module   51s   (~13s/row)
+    width 8 (wide)     4 rows/module   OOM at 279s under `-c`
+    width 8 (wide)     1 row/module    27s
+
+If width 6 holds ~2 rows/module at ≲30s, the merge is ~28 modules rather
+than the wide design's ~56, and the recommendation stands on measurement
+rather than on the shape argument alone.
