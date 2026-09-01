@@ -127,13 +127,19 @@ mutual
                → ctx ⊢ᵢ RResolved (gen "unit") ∶ Unit ⨾ zeroUsage
 
     ----------------------------------------------------------------
-    -- Variable lookup (local / qualified / import)
+    -- Variable lookup (local / qualified / import).
+    --
+    -- D136: the `¬ (x ≡ "unit")` premise these rules carried is GONE. It kept
+    -- them disjoint from `t-unit-var`, which used to conclude at `RVar "unit"`.
+    -- `t-unit-var` now concludes at `RResolved (gen "unit")`, so there is
+    -- nothing to be disjoint from — and keeping the premise would have been
+    -- WRONG, not merely redundant: it forbade a local binder named `unit`,
+    -- which D136 explicitly allows (lexical binders shadow).
     ----------------------------------------------------------------
 
     t-var-local : ∀ {ctx : NamedCtx} {x : String} {A : Type}
                   {Ψ : Surface.Usage (NamedCtx.size ctx)}
                   {eV : Surface.SVar (NamedCtx.debruijn ctx) Ψ A}
-                → ¬ (x ≡ "unit")
                 → lookupLocal ctx x ≡ just (A , Ψ , eV)
                 → ctx ⊢ᵢ RVar x ∶ A ⨾ Ψ
 
@@ -154,8 +160,7 @@ mutual
                    → ctx ⊢ᵢ RResolved cn ∶ T ⨾ zeroUsage
 
     t-var-import : ∀ {ctx : NamedCtx} {x : String} {T : Type}
-                 → ¬ (x ≡ "unit")
-                 → lookupLocal ctx x ≡ nothing
+                  → lookupLocal ctx x ≡ nothing
                  → lookupImport (NamedCtx.imports ctx) x ≡ just T
                  → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
                  → ctx ⊢ᵢ RVar x ∶ T ⨾ zeroUsage
@@ -179,7 +184,6 @@ mutual
         {body : RawExpr} {prefix : Once.TypeCheck.Classify.PolyCtx}
         {g : Once.Type.Ground schema}
       → Once.TypeCheck.Classify.classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
-      → ¬ (x ≡ "unit")
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
       → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
@@ -680,7 +684,6 @@ mutual
       ∀ {ctx : NamedCtx} {x : String} {T : Type} {schema : Once.Type.PolyType} {body : RawExpr}
         {prefix : Once.TypeCheck.Classify.PolyCtx}
       → Once.TypeCheck.Classify.classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
-      → ¬ (x ≡ "unit")
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
       -- Plan 0.58 (telescope): the lookup returns the def's PREFIX (a

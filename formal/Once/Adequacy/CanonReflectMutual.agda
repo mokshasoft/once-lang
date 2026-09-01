@@ -23,8 +23,9 @@
 -- RResolved (canonical [x])`, so the only `⊢ᵢ` rule is `t-var-resolved imp` with
 -- `imp : lookupImport … (showCanonical (canonical [x])) ≡ just T`. Since
 -- `showCanonical (canonical [x]) = x` DEFINITIONALLY, `imp : lookupImport … x ≡
--- just T`, and we rebuild `t-var-import ¬unit lkn imp`, recovering `¬unit` from
--- `isBuiltinName "unit" = true` and `lkn` from `Names⊆ + elemStr x bound = false`.
+-- just T`, and we rebuild `t-var-import lkn imp`, recovering `lkn` from
+-- `Names⊆ + elemStr x bound = false`. (D136 removed the rule's `¬unit`
+-- premise, so there is no longer a third thing to recover.)
 ------------------------------------------------------------------------
 
 module Once.Adequacy.CanonReflectMutual where

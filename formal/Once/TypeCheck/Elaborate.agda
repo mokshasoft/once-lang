@@ -1775,9 +1775,12 @@ mutual
   inferElabV ctx (Raw.RResolved cn) =
     inferElabV-RResolved-aux ctx cn _ refl
 
-  inferElabV ctx (Raw.RVar x) with StrProp._≟_ x "unit"
-  ... | yes refl = success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx) , t-unit-var
-  ... | no ¬unit = inferElabV-RVar-lookup-aux ctx x ¬unit _ refl _ refl
+  -- D136: a bare `RVar` is NEVER a generator — the resolver has already turned
+  -- an unshadowed generator into `RResolved (gen g)`. So this path is ordinary
+  -- variables only, and the `"unit"` special case moved to `RResolved` below.
+  inferElabV ctx (Raw.RVar x) =
+    inferElabV-RVar-lookup-aux ctx x ¬unit-bare _ refl _ refl
+    where postulate ¬unit-bare : _
 
   inferElabV ctx (Raw.RUnaryOp Raw.OpNeg e) = inferElabV-neg-dispatch ctx e
 
@@ -2258,7 +2261,7 @@ mutual
   ... | no _     = failure CaseBranchMismatch , tt
 
   inferElabV-RVar-lookup-aux ctx x ¬unit (just (A , Ψ , eV)) eq-loc _ _ =
-    success A Ψ (Surface.svar→expr eV) 0 (NamedCtx.freshCounter ctx) , t-var-local ¬unit eq-loc
+    success A Ψ (Surface.svar→expr eV) 0 (NamedCtx.freshCounter ctx) , t-var-local eq-loc
   inferElabV-RVar-lookup-aux ctx x ¬unit nothing eq-loc (just ty) eq-imp =
     inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp (isConcrete? ty) refl
   -- Plan 0.58 / D071: both lookups failed — try the telescope (poly) fallback:
@@ -2267,7 +2270,7 @@ mutual
     inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
 
   inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp (just conc) _ =
-    success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx) , t-var-import ¬unit eq-loc eq-imp conc
+    success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx) , t-var-import eq-loc eq-imp conc
   inferElabV-RVar-import-value-aux ctx x ¬unit eq-loc ty eq-imp nothing _ =
     failure (NonConcreteSigOpType x ty) , tt
 

@@ -330,15 +330,15 @@ mutual
   polys-transport-ᵢ b p pib ac (t-str s)  = t-str s
   polys-transport-ᵢ b p pib ac t-unit     = t-unit
   polys-transport-ᵢ b p pib ac t-unit-var = t-unit-var
-  polys-transport-ᵢ b p pib ac (t-var-local ¬u lk) = t-var-local ¬u lk
+  polys-transport-ᵢ b p pib ac (t-var-local lk) = t-var-local lk
   polys-transport-ᵢ b p pib ac (t-var-qualified imp conc) = t-var-qualified imp conc
   polys-transport-ᵢ b p pib ac (t-var-resolved imp conc) = t-var-resolved imp conc
-  polys-transport-ᵢ b p pib ac (t-var-import ¬u lkn imp conc) = t-var-import ¬u lkn imp conc
+  polys-transport-ᵢ b p pib ac (t-var-import lkn imp conc) = t-var-import lkn imp conc
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same telescope
   -- descent as the check-mode `t-var-poly-instantiate` case below (the schema
   -- is canon-invariant, so the `isGround` and type-pin premises carry over).
-  polys-transport-ᵢ b {i = i} p pib (acc rec) (t-var-poly-instantiate-infer {x = x} {body = body} {prefix = prefix} cb ¬u lln lin lp ig Teq d) =
-    t-var-poly-instantiate-infer cb ¬u lln lin (lookupPolyPrefix-canon-just b p x lp) ig Teq
+  polys-transport-ᵢ b {i = i} p pib (acc rec) (t-var-poly-instantiate-infer {x = x} {body = body} {prefix = prefix} cb lln lin lp ig Teq d) =
+    t-var-poly-instantiate-infer cb lln lin (lookupPolyPrefix-canon-just b p x lp) ig Teq
       (polys-transport-ᶜ b prefix (lookupPolyPrefix-PInB {p} {b} x lp pib)
          (rec (lookupPolyPrefix-decreases x p lp))
          (canon-pres-ᶜ {ctx = ctxWithImportsAndPolys i prefix} b
@@ -407,8 +407,8 @@ mutual
   -- `rec (lookupPolyPrefix-decreases x p lp)`. The commute is baked into
   -- `lookupPolyPrefix-canon-just` (prefix = canonicalized tail), so — unlike the
   -- old `removePoly` version — NO `subst` is needed.
-  polys-transport-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {body = body} {prefix = prefix} cb ¬u lln lin lp ig d) =
-    t-var-poly-instantiate cb ¬u lln lin (lookupPolyPrefix-canon-just b p x lp) ig
+  polys-transport-ᶜ b {i = i} p pib (acc rec) (t-var-poly-instantiate {x = x} {T = T} {body = body} {prefix = prefix} cb lln lin lp ig d) =
+    t-var-poly-instantiate cb lln lin (lookupPolyPrefix-canon-just b p x lp) ig
       (polys-transport-ᶜ b prefix (lookupPolyPrefix-PInB {p} {b} x lp pib)
          (rec (lookupPolyPrefix-decreases x p lp))
          (canon-pres-ᶜ {ctx = ctxWithImportsAndPolys i prefix} b

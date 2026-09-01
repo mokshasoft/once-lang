@@ -610,6 +610,46 @@ view-other⇒classifyAppHead-nothing :
 -- rewrite the view to ahv-other; classifyAppHead reduces to viewToPba ahv-other = nothing.
 view-other⇒classifyAppHead-nothing {f} p rewrite p = refl
 
+-- D136: the BARE-name view, on the CANONICAL name. This replaces
+-- `BareBuiltinClass`/`classifyBareBuiltin`, which dispatched on a bare
+-- string and so could not tell the generator `fst` from a user's. After the
+-- resolver runs, a generator IS `RResolved (gen g)` and nothing else is, so
+-- this view is exact rather than a guess.
+data GenView : CanonicalName → Set where
+  gv-id       : GenView (gen "id")
+  gv-fst      : GenView (gen "fst")
+  gv-snd      : GenView (gen "snd")
+  gv-terminal : GenView (gen "terminal")
+  gv-initial  : GenView (gen "initial")
+  gv-inl      : GenView (gen "inl")
+  gv-inr      : GenView (gen "inr")
+  gv-unit     : GenView (gen "unit")
+  gv-other  : ∀ {cn} → GenView cn
+
+classifyGen : (cn : CanonicalName) → GenView cn
+classifyGen (canonical (ns ∷ g ∷ [])) with ns ≟ generatorNS
+... | no _ = gv-other
+... | yes refl with g ≟ "id"
+...   | yes refl = gv-id
+...   | no  _ with g ≟ "fst"
+...     | yes refl = gv-fst
+...     | no  _ with g ≟ "snd"
+...       | yes refl = gv-snd
+...       | no  _ with g ≟ "terminal"
+...         | yes refl = gv-terminal
+...         | no  _ with g ≟ "initial"
+...           | yes refl = gv-initial
+...           | no  _ with g ≟ "inl"
+...             | yes refl = gv-inl
+...             | no  _ with g ≟ "inr"
+...               | yes refl = gv-inr
+...               | no  _ with g ≟ "unit"
+...                 | yes refl = gv-unit
+...                 | no  _ = gv-other
+classifyGen (canonical [])              = gv-other
+classifyGen (canonical (_ ∷ []))        = gv-other
+classifyGen (canonical (_ ∷ _ ∷ _ ∷ _)) = gv-other
+
 data BareBuiltinClass : String → Set where
   bbc-id       : BareBuiltinClass "id"
   bbc-fst      : BareBuiltinClass "fst"

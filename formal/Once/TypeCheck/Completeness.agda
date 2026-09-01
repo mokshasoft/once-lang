@@ -1214,8 +1214,8 @@ mutual
   iFromInfer {ctx} (t-str s)   = checkElab-fallback-RStringLit {ctx} s
   iFromInfer {ctx} t-unit      = checkElab-fallback-RUnit {ctx}
   iFromInfer {ctx} t-unit-var  = checkElab-fallback-RVar-unit {ctx}
-  iFromInfer (t-var-local {x = x} {A = T} x≢unit eqLocal) =
-    let (_ , _ , _ , eqI) = infer-complete (t-var-local x≢unit eqLocal)
+  iFromInfer (t-var-local {x = x} {A = T} eqLocal) =
+    let (_ , _ , _ , eqI) = infer-complete (t-var-local eqLocal)
     in checkElab-fallback-RVar x T eqI
   iFromInfer {ctx} (t-var-qualified {name = n} {alias = a} {T = T} eqImp conc) =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-qualified eqImp conc)
@@ -1223,12 +1223,12 @@ mutual
   iFromInfer {ctx} (t-var-resolved {cn = cn} {T = T} eqImp conc) =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved eqImp conc)
     in checkElab-fallback-RResolved {ctx} cn T eqI
-  iFromInfer (t-var-import {x = x} {T = T} x≢unit eqLoc eqImp conc) =
-    let (_ , _ , _ , eqI) = infer-complete (t-var-import x≢unit eqLoc eqImp conc)
+  iFromInfer (t-var-import {x = x} {T = T} eqLoc eqImp conc) =
+    let (_ , _ , _ , eqI) = infer-complete (t-var-import eqLoc eqImp conc)
     in checkElab-fallback-RVar x T eqI
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as
   -- t-var-import (infer at the declared type, embed at the same type).
-  iFromInfer dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _ _ _ _) =
+  iFromInfer dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _ _ _) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar x T eqI
   iFromInfer (t-annot {e = e} {T = T} d) =
@@ -1335,15 +1335,15 @@ mutual
   iFromInferEff {ctx} {_} {A} {B} dd@(t-snd-app {e = e} d) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RApp-snd-eff e A B eqI
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-local {x = x} _ _) =
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-local {x = x} _) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar-eff x A B eqI
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-import {x = x} _ _ _ _) =
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-import {x = x} _ _ _) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar-eff x A B eqI
   -- Plan 0.58 / D071: infer-mode ground telescope reference at a pure arrow —
   -- same eff fallback as t-var-import (infer, then arr'/t-subsume lift).
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-poly-instantiate-infer {x = x} _ _ _ _ _ _ _ _) =
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-poly-instantiate-infer {x = x} _ _ _ _ _ _ _) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar-eff x A B eqI
   iFromInferEff {ctx} {_} {A} {B} dd@(t-apply-app-infer {p = p} d) =
@@ -1362,20 +1362,20 @@ mutual
   infer-complete {ctx} (t-str s)   = infer-complete-RStringLit {ctx} s
   infer-complete {ctx} t-unit      = infer-complete-RUnit {ctx}
   infer-complete {ctx} t-unit-var  = infer-complete-RVar-unit {ctx}
-  infer-complete (t-var-local {x = x} x≢unit eqLocal) =
+  infer-complete (t-var-local {x = x} eqLocal) =
     infer-complete-RVar-local x x≢unit eqLocal
   infer-complete {ctx} (t-var-qualified {name = name} {alias = alias} eqImp conc) =
     infer-complete-RQualified {ctx} {name} {alias} eqImp conc
   infer-complete {ctx} (t-var-resolved {cn = cn} eqImp conc) =
     infer-complete-RResolved {ctx} {cn} eqImp conc
-  infer-complete (t-var-import {x = x} x≢unit eqLoc eqImp conc) =
+  infer-complete (t-var-import {x = x} eqLoc eqImp conc) =
     infer-complete-RVar-import x x≢unit eqLoc eqImp conc
   -- Plan 0.58 / D071: infer-mode ground telescope reference — matching the
   -- type-pin equation as `refl` aligns the conclusion `T` with the declared
   -- `extractGround schema g`, so the elaborator's poly-fallback success
   -- equation IS the obligation.
   infer-complete {ctx} (t-var-poly-instantiate-infer {x = x} {schema = schema} {g = g}
-                        eqCls x≢unit eqLoc eqImp polyE eqG refl _) =
+                        eqCls eqLoc eqImp polyE eqG refl _) =
     checkElab-fallback-RVar-poly-infer {ctx} x eqCls x≢unit eqLoc eqImp
       (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
       (isGround-complete-at schema g)
@@ -1609,7 +1609,7 @@ mutual
   -- then composes with the lookup premises via the helper.
   check-complete {ctx}
     (t-var-poly-instantiate {x = x} {T = T} {schema = schema}
-                            bbcOther x≢unit localN importN polyE eqG bodyD) =
+                            bbcOther localN importN polyE eqG bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
     in checkElab-fallback-RVar-poly {ctx} x T bbcOther x≢unit localN importN
          (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
@@ -1699,7 +1699,7 @@ mutual
   -- lookupPoly); recurse subsume-complete on the body for the eff target type.
   subsume-complete {ctx} {_} {A} {B}
     (t-var-poly-instantiate {x = x} {schema = schema}
-                            bbcOther x≢unit localN importN polyE eqG bodyD) =
+                            bbcOther localN importN polyE eqG bodyD) =
     let (_ , _ , _ , eqBodyEff) = subsume-complete bodyD
     in checkElab-fallback-RVar-poly {ctx} x (A T.⇒[ T.mk-kind T.Many T.eff ] B)
          bbcOther x≢unit localN importN

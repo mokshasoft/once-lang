@@ -314,19 +314,19 @@ bridge-i t-unit-var  re k = refl , tt
 
 -- Local variable — `svarᴰ (svar i)` (LHS) and `SD.⟦ var i ⟧ˢ` (RHS) both peel to
 -- the positional lookup; `rel-lookup` relates the two envs at position `i`.
-bridge-i (t-var-local {eV = svar i} _ _) re k = refl , rel-lookup _ i re
+bridge-i (t-var-local {eV = svar i} _) re k = refl , rel-lookup _ i re
 
 -- Named value references — the sigop-reference leaf (dispatch on result type).
 bridge-i {ctx = ctx} (t-var-qualified {T = A} _ conc)   {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
 bridge-i {ctx = ctx} (t-var-resolved {T = A} _ conc)    {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
-bridge-i {ctx = ctx} (t-var-import {T = A} _ _ _ conc)  {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
+bridge-i {ctx = ctx} (t-var-import {T = A} _ _ conc)  {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
 
 -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as the
 -- check-mode `t-var-poly-instantiate` case of `bridge-c` (below): both sides
 -- δ-reduce to the closed body (⟦_⟧ᵢ = ⟦ bodyD ⟧ᶜ tt; realize-infer inlines
 -- `morph-app (elaborate (realize bodyD)) unit`), so RECURSE on the body with
 -- the empty related env; `faithful` closes the evalᴰ↔SD gap.
-bridge-i {ctx = ctx} (t-var-poly-instantiate-infer _ _ _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
+bridge-i {ctx = ctx} (t-var-poly-instantiate-infer _ _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
   rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {eq = poly-usage-eq}
                          {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} {dγ = dγ₂}
   rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} tt k
@@ -621,7 +621,7 @@ bridge-c (t-arg-driven-app-check _ darg df) re k =
 -- SD.⟦ realize d ⟧ˢ dγ₂ = evalᴰ (elaborate Heap (realize bodyD)) tt (morph-app+unit,
 -- env-independent by def). So the bridge RECURSES on the body (bodyD is closed ⇒
 -- empty RelEnv `tt`); `faithful (realize bodyD)` closes the evalᴰ↔SD gap.
-bridge-c {ctx = ctx} (t-var-poly-instantiate _ _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
+bridge-c {ctx = ctx} (t-var-poly-instantiate _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
   rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {eq = poly-usage-eq}
                          {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} {dγ = dγ₂}
   rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} tt k
