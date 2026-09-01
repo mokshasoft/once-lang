@@ -34,8 +34,10 @@ open import Agda.Builtin.List
 open import Agda.Builtin.Bool
 open import Agda.Builtin.Unit
 open import Agda.Builtin.Nat
+open import Agda.Builtin.Equality
 open import DirectedHoTT.Spec.Syntax using ( RTm )
-open import DirectedHoTT.Metatheory.LogicalRelation using ( SNe; SN; SNRed; Ne )
+open import DirectedHoTT.Metatheory.LogicalRelation
+  using ( SNe; SN; SNRed; Ne; spine?; stablecd? )
 
 _++_ : {A : Set} → List A → List A → List A
 []       ++ ys = ys
@@ -120,3 +122,67 @@ macro
 
 _ : ⊤
 _ = snCoversRTm
+
+------------------------------------------------------------------------
+-- ★★★ GATE 3, AS AN OBLIGATION — PINNING A CATCH-ALL'S **EXTENT**.
+--
+-- ⚠⚠ THE BUG (`25602107`): `spine?` and `stablecd?` had explicit
+--   `con`/`elim` rows and inherited `_ = false` for `icon`/`ielim`.
+--   THREE silently wrong answers; `--safe`, zero warnings, Agda's
+--   coverage checker perfectly happy — a catch-all IS total.
+--
+-- ★ THE FIX IS NOT "BAN CATCH-ALLS".  Most are right: `spine?` genuinely
+--   answers `false` for most formers.  The fix is to make the catch-all's
+--   EXTENT a number that cannot move quietly — add a former to `RTm` and
+--   it silently joins the catch-all, the count changes, and THIS FAILS.
+--   Bumping it is then a deliberate act taken with the list in view,
+--   which is precisely the decision that was skipped.
+------------------------------------------------------------------------
+
+patHeads : Pattern → List Name
+patNames : List (Arg Pattern) → List Name
+
+patHeads (con c ps) = c ∷ patNames ps
+patHeads _          = []
+
+patNames []             = []
+patNames (arg _ p ∷ ps) = patHeads p ++ patNames ps
+
+clauseNames : List Clause → List Name
+clauseNames []                        = []
+clauseNames (clause _ ps _ ∷ cs)      = patNames ps ++ clauseNames cs
+clauseNames (absurd-clause _ ps ∷ cs) = patNames ps ++ clauseNames cs
+
+matchedBy : Name → TC (List Name)
+matchedBy f = bindTC (getDefinition f) λ where
+  (function cs) → returnTC (clauseNames cs)
+  _             → returnTC []
+
+count : List Name → Nat
+count []       = 0
+count (_ ∷ ns) = suc (count ns)
+
+macro
+  -- how many constructors of `T` reach `f` ONLY through its catch-all
+  catchAllN : Name → Name → Term → TC ⊤
+  catchAllN f T hole =
+    bindTC (consOf T)    λ cs →
+    bindTC (matchedBy f) λ ms →
+    unify hole (lit (nat (count (orphans cs ms))))
+
+  -- …the same, but NAMING them, for when the number moves
+  catchAllList : Name → Name → Term → TC ⊤
+  catchAllList f T _ =
+    bindTC (consOf T)    λ cs →
+    bindTC (matchedBy f) λ ms →
+    typeError (strErr "reached only by the catch-all:" ∷ errs (orphans cs ms))
+
+-- ⚠ THESE NUMBERS ARE A DECISION, NOT AN OBSERVATION.  Each asserts
+--   "every other `RTm` former was considered, and `false` is right".
+--   ⇒ if one moves, do NOT just bump it — swap in `catchAllList`, read
+--     the names, decide, and put the number back.
+_ : catchAllN spine? RTm ≡ 12
+_ = refl
+
+_ : catchAllN stablecd? RTm ≡ 7
+_ = refl
