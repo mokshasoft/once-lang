@@ -45,7 +45,7 @@ open import Once.CanonicalName using (bare)
          fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
          neg-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info;
          generic-info; value-info; arrow-info)
-open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit)
+open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit; WellFormedF)
 
 -- Literals: constant morphisms that ignore input environment.
 --
@@ -238,6 +238,15 @@ forkIR m = curry (⟨ apply ∘ ⟨ fst ∘ fst , snd ⟩ m
 curryIR : ∀ {A B C} → (m : AllocMode) → IR ((A * B) ⇛ C) (A ⇛ (B ⇛ C))
 curryIR m = curry (curry (apply ∘ ⟨ fst ∘ fst , ⟨ snd ∘ fst , snd ⟩ m ⟩ m) m) m
 
+cataM : ∀ {F : Functor} {A : Type} → WellFormedF F → AllocMode
+      → IR (⌊ ⟦ F ⟧T A ⌋ ⇛ ⌊ A ⌋) (⌊ μ-type F ⌋ ⇛ ⌊ A ⌋)
+cataM {F} {A} wfF m =
+  curry (Cata (wf-⌊⌋ wfF)
+              (subst (λ o → IR ((⌊ ⟦ F ⟧T A ⌋ ⇛ ⌊ A ⌋) * o) ⌊ A ⌋)
+                     (⌊⟧T-commute F A)
+                     (apply ∘ ⟨ fst , snd ⟩ m))) m
+
+
 elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
 
 -- Variable: project from environment
@@ -415,17 +424,23 @@ elaborate m (lift-morphism morph) = curry (morph ∘ snd) m
 -- compose chains, primitives). See `plans/0.2.4.5-morphism-realm-split.md`.
 elaborate m (morph-app morph x) = morph ∘ elaborate m x
 
--- Plan 0.36 Phase 2a: catamorphism with an ARBITRARY closed algebra.
--- The algebra `alg` lives in the empty context, so `elaborate m alg :
--- IR ⟦ ∅ ⟧ᶜ (⟦F⟧T A ⇒ A) = IR Unit (⟦F⟧T A ⇒ A)`. Extract the closed
--- algebra morphism `IR (⟦F⟧T A) A` by feeding a `terminal` env and
--- applying:  `apply ∘ ⟨ algClosure ∘ terminal , id ⟩`. Then build the
--- closed `Cata`, lifted to the surrounding realm exactly like
--- `lift-morphism` (`curry (· ∘ snd) m`). No morphism vocabulary, no
--- parallel lowering — `elaborate` already handles arith/SigOps inside
--- `alg`. See plans/0.36 "two axes of generality".
+-- D131: the catamorphism, with the algebra OBTAINED ONCE.
+--
+-- The algebra `alg` lives in the empty context, so
+-- `elaborate m alg ∘ terminal : IR ⌊⟦Γ⟧ᶜ⌋ (⌊⟦F⟧T A⌋ ⇛ ⌊A⌋)` — a computation
+-- producing the algebra CLOSURE. `cataM` is a CLOSED morphism from that
+-- closure to the fold, so the whole clause is `cataM ∘ ealg`: the algebra is
+-- built where the cata term is evaluated, exactly once, and the fold carries
+-- the closure in its environment.
+--
+-- It used to be `Cata wfF (apply ∘ ⟨ elaborate m alg ∘ terminal , id ⟩)` —
+-- with the algebra INSIDE the fold's own morphism, so `Cata` re-entered
+-- `elaborate m alg ∘ terminal` on EVERY LAYER. That rebuilt the closure per
+-- layer (a heap-mode `curry` allocates) and, for an algebra whose build
+-- emits, re-emitted per layer — disagreeing with `⟦ cata alg ⟧ᶜ`, which binds
+-- the algebra once like every other combinator arm (D130).
 elaborate m (cata {F = F} {A = A} wfF alg) =
-  curry (Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) (apply ∘ ⟨ elaborate m alg ∘ terminal , id ⟩ m)) ∘ snd) m
+  cataM wfF m ∘ (elaborate m alg ∘ terminal)
 
 -- Anamorphism (dual of cata): a closed `Ana`, lifted to the surrounding realm
 -- exactly like `cata`. Coalgebra `A → ⟦F⟧T A` built from the closed `coalg`;
