@@ -1155,13 +1155,51 @@ FIELD_SORT.update({
 #   read off the premise's shape.
 TEL_JUDGE = None          # built in the main block, once `TCTX` exists
 
+def _splitctx(c):
+    """`((Γ ▹ Nat) ▹ M)` → ("Γ", ["Nat", "M"]), outermost extension LAST.
+
+    ⚠ THE REGEXES TOOK EXACTLY ONE `▹`, and the nesting parens defeated
+      them anyway.  `⊢natrec`'s middle premise has TWO —
+      `((Γ ▹ Nat) ▹ M) ⊢ s ∷ …` — and the whole rule was skipped for it.
+      A depth-counting split handles any number."""
+    c = c.strip()
+    while c.startswith("(") and c.endswith(")"):
+        d, ok = 0, True
+        for i, ch in enumerate(c):
+            if ch == "(": d += 1
+            elif ch == ")":
+                d -= 1
+                if d == 0 and i != len(c) - 1: ok = False; break
+        if not ok: break
+        c = c[1:-1].strip()
+    parts, d, cur = [], 0, ""
+    for ch in c:
+        if ch == "(": d += 1
+        elif ch == ")": d -= 1
+        if ch == "▹" and d == 0: parts.append(cur); cur = ""
+        else: cur += ch
+    parts.append(cur)
+    # ⚠ THE BASE MAY ITSELF BE A CONTEXT.  Stripping the outer parens of
+    #   `((Γ ▹ Nat) ▹ M)` leaves `(Γ ▹ Nat) ▹ M`, whose first part is
+    #   `(Γ ▹ Nat)` — a context, not a name.  Without recursing this
+    #   reports ONE extension where there are two, and `⊢natrec`'s `M`
+    #   lands a binder too shallow.
+    if "▹" in parts[0]:
+        _b, _e = _splitctx(parts[0])
+        return _b, _e + [x.strip() for x in parts[1:]]
+    return parts[0].strip(), [x.strip() for x in parts[1:]]
+
 def _parse_jpart(p):
     """one premise or conclusion of the mutual pair.
     → ('ty', ctx, ext, A) | ('tm', ctx, ext, t, A) | ('lk', ctx, x, A) | None"""
-    mm = re.match(r"^\(?\s*([^()⊢∋▹]+?)\s*(?:▹\s*([^()]+?))?\s*\)?\s*⊢ty\s+(.*)$", p)
-    if mm: return ("ty", mm.group(1).strip(), mm.group(2), mm.group(3))
-    mm = re.match(r"^\(?\s*([^()⊢∋▹]+?)\s*(?:▹\s*([^()]+?))?\s*\)?\s*⊢\s+(.*?)\s*∷\s*(.*)$", p)
-    if mm: return ("tm", mm.group(1).strip(), mm.group(2), mm.group(3), mm.group(4))
+    mm = re.match(r"^([^⊢∋]*?)\s*⊢ty\s+(.*)$", p)
+    if mm:
+        _c, _x = _splitctx(mm.group(1))
+        return ("ty", _c, _x, mm.group(2))
+    mm = re.match(r"^([^⊢∋]*?)\s*⊢\s+(.*?)\s*∷\s*(.*)$", p)
+    if mm:
+        _c, _x = _splitctx(mm.group(1))
+        return ("tm", _c, _x, mm.group(2), mm.group(3))
     mm = re.match(r"^\(?\s*([^()⊢∋▹]+?)\s*\)?\s*∋\s+(.*?)\s*∷\s*(.*)$", p)
     if mm: return ("lk", mm.group(1).strip(), mm.group(2), mm.group(3))
     # ★★★ A BOOLEAN PREMISE, here too.
@@ -1216,10 +1254,16 @@ def infer_depths(rule, names, CT):
             #   `⊢snd`/`⊢jsub` back to `conflicting depths`, which is the
             #   EXACT regression of 2026-08-31.
             _o = (1 if (_c in _DEPTH_ARG or _c in _IX_PRE) else _PRE_N.get(_c, 0))
+            _sg = e[1][1] if len(e[1]) > 1 else None
             for i, x in enumerate(e[1][1:]):
-                E = fds[i + _o] if i + _o < len(fds) else ("D",)
+                E = _argshift(_c, i + _o, _sg)
+                # ⚠ `predD` IS A DECREMENT.  This computed `k + n` for
+                #   `sucD` and `+0` for everything else, so a RAISING
+                #   substitution (`nrs`) read as depth-neutral and
+                #   `⊢natrec`'s `M` came out a binder too deep.
                 scan(x, None if k is None
-                        else k + (E[1] if E[0] == "sucD" else 0))
+                        else k + (E[1] if E[0] == "sucD"
+                                  else (-1 if E[0] == "predD" else 0)))
         else:
             for x in e[1][1:]: scan(x, None)
     for part in _split_top(body):
@@ -1233,9 +1277,12 @@ def infer_depths(rule, names, CT):
         if q[0] == "bool":
             scan(_parse_spine(_tokens(q[2])), 0); continue
         ext = q[2] if q[0] in ("ty", "tm") else None
-        deep = 1 if ext else 0
+        deep = len(ext) if ext else 0
         put(q[1], 0)
-        if ext: put(ext, 0)
+        # ⚠ THE i-TH EXTENSION IS i BINDERS DEEP.  Recording them all at 0
+        #   was right while there was only ever one; with two it claims
+        #   `⊢natrec`'s `M` lives at 0 when `(Γ ▹ Nat) ⊢ty M` says 1.
+        for _i, _e in enumerate(ext or []): put(_e, _i)
         for t in (q[3:] if q[0] != "lk" else q[2:]):
             scan(_parse_spine(_tokens(t)), deep)
     if bad: return None, "conflicting depths %s" % bad
@@ -1250,9 +1297,13 @@ def _ctxval(ctxname, ext, dep, CT):
     ⚠ THE EXTENSION IS AN EXPRESSION, not a binder name.  `⊢lam`'s is
       `(Γ ▹ A)` but `ty-El`'s is `(Γ ▹ El c)` — treating it as a name
       dies with a `KeyError` on the string `"El c"`."""
-    if not ext: return V(ctxname)
-    return AP("Ctx-extK", dep, V(ctxname),
-              _val(_parse_spine(_tokens(ext)), CT, dep))
+    # ⚠ `ext` IS A LIST NOW, innermost first.  Each extension sits one
+    #   binder deeper than the last, so the depth climbs with it.
+    e = V(ctxname)
+    for i, x in enumerate(ext or []):
+        d = _depth_at(i) if i else dep
+        e = AP("Ctx-extK", d, e, _val(_parse_spine(_tokens(x)), CT, d))
+    return e
 
 def _mutual_rows(CT, TEL, dummy):
     """the 43 rules of `_⊢ty_` + `_⊢_∷_`, as ONE tagged description."""
@@ -1308,7 +1359,7 @@ def _mutual_rows(CT, TEL, dummy):
                 for t in _ts:
                     chk(_parse_spine(_tokens(t)))
                 if q[0] in ("ty", "tm") and q[2]:
-                    chk(_parse_spine(_tokens(q[2])))
+                    for _e in q[2]: chk(_parse_spine(_tokens(_e)))
             if unk:
                 skipped.append((nm, "unmapped %s" % sorted(set(unk)))); continue
             _BSORT.clear()
@@ -1327,7 +1378,7 @@ def _mutual_rows(CT, TEL, dummy):
             def ix_of(q):
                 "the (depth, Ctx, Tm, Ty, tag) tuple a part denotes"
                 ext = q[2] if q[0] in ("ty", "tm") else None
-                d = _depth_at(1 if ext else 0)
+                d = _depth_at(len(ext) if ext else 0)
                 cx = _ctxval(q[1], ext, V(_DEPTH), CT)
                 if q[0] == "ty":
                     tm, ty, tg = dummy, q[3], 0
@@ -2371,9 +2422,8 @@ def jd(e, k, ix, binders, tel):
                 #   were written).  ⇒ the emitters agree by construction
                 #   now; `_val` adds the offset instead, once.
                 _si = ai
-                sub = _deepen(DEPTHD[0], FIELD_DEPTH[h][_si]) \
-                      if h in FIELD_DEPTH and 0 <= _si < len(FIELD_DEPTH[h]) \
-                      else DEPTHD[0]
+                _sg = args[1] if len(args) > 1 else None
+                sub = _deepen(DEPTHD[0], _argshift(h, _si, _sg))
                 ai += 1
                 keep = DEPTHD[0]; DEPTHD[0] = sub
                 ds.append(par(jd(a, k, ix, binders, tel)[0]) if r == 'IX'
@@ -2887,6 +2937,43 @@ def _pred(dep):
     if dep[0] == "nsuc": return dep[1]
     raise ValueError("a Var at a non-successor depth: %r" % (dep,))
 
+# ★★★ THE DEPTH OF AN ARGUMENT, RELATIVE TO THE RESULT — ONE FUNCTION,
+#   THREE READERS (`_val`, `infer_depths`, `jd`).
+#
+# ⚠⚠ `FIELD_DEPTH` RECORDS A SHIFT PER FUNCTION NAME, and for the
+#   substitution wrappers that is WRONG: the shift belongs to the
+#   SUBSTITUTION, not to `subTy`/`subTm`.
+#
+#     subTy (single u) M   `single u : Sub (Γ ∙) Γ`         LOWERS
+#                          ⇒ `M` sits one deeper than the result
+#     subTy nrs M          `nrs : Sub (Γ ∙) ((Γ ∙) ∙)`      RAISES
+#                          ⇒ `M` sits one SHALLOWER
+#
+#   `⊢natrec` uses BOTH and the single-entry table reported it as
+#   `conflicting depths` — a real disagreement the table could not
+#   express.  ⇒ dispatch on the substitution's head.
+#
+# ★ This is the fix for the class that produced four bugs in three days
+#   (`FIELD_DEPTH` vs `infer_depths`, `DDEP`, `_IX_PRE`, `wkK`/`Var-vsK`):
+#   the shift is READ OFF what the wrapper does, in ONE place, instead of
+#   being restated per table and per reader.
+SUBST_SHIFT = {"single": ('sucD', 1), "extS": ('sucD', 1),
+               "nrs": ('predD',)}
+
+def _headname(e):
+    "the head symbol of a parsed spine, or None"
+    if e is None: return None
+    if e[0] == 'a':  return e[1]
+    if e[0] == 'ap': return e[1][0][1] if e[1][0][0] == 'a' else None
+    return None
+
+def _argshift(c, i, sub=None):
+    """emitted argument `i` of wrapper `c`, as a shift from the result."""
+    if c in ("subTmAtK", "subTyAtK") and i == 2:
+        return SUBST_SHIFT.get(_headname(sub), ('sucD', 1))
+    fds = FIELD_DEPTH.get(c, [])
+    return fds[i] if i < len(fds) else ('D',)
+
 def _shift(dep, E):
     if E[0] == "predD": return _pred(dep)
     if E[0] == "lit":  return RAW("num %d" % E[1])
@@ -2948,11 +3035,11 @@ def _val(e, CT, dep):
         return AP("wkK", PAIR(RAW(srt), p), _val(x, CT, p))
     if h[1] in CT:
         c = CT[h[1]]
-        fds = FIELD_DEPTH.get(c, [])
         # ★ how many arguments this wrapper PREPENDS, so a source
         #   position maps to its emitted one.
         _off = (1 if (c in _DEPTH_ARG or c in _IX_PRE) else _PRE_N.get(c, 0))
-        sub = [_val(x, CT, _shift(dep, fds[i + _off]) if i + _off < len(fds) else dep)
+        _sg = args[1] if len(args) > 1 else None      # the substitution
+        sub = [_val(x, CT, _shift(dep, _argshift(c, i + _off, _sg)))
                for i, x in enumerate(args[1:])]
         if c in _IX_PRE:
             # ⚠ THE **SOURCE** INDEX, NOT THE AMBIENT ONE.  `pwBodyK i t`
