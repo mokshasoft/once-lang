@@ -1459,17 +1459,11 @@ checkCata-eff-strong-hlp ctx alg F A (failure err , _) eqr eqStrong
   with cong checkProj₁ eqStrong
 ... | ()
 
--- Plan 0.54: `extract-morph-eff` on a `Surface.cata` node recovers `IR.Cata wfF m`
--- directly from the algebra's own extraction (mirrors the compose/pair fusions).
-extract-morph-eff-cata :
-  ∀ {n} {Γ : SCtx n} {F : Once.Type.Functor} {A : Type} {π : Once.Type.Purity}
-    {wfF : Once.Functor.Translate.WellFormedF F}
-    {algE : SExpr S∅ Surface.zeroUsage (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)}
-    {m-alg : IR ⌊ Once.Type.⟦ F ⟧T A ⌋ ⌊ A ⌋}
-  → extract-morph-eff algE ≡ just (m-alg , refl)
-  → extract-morph-eff {Γ = Γ} (Surface.cata {A = A} wfF algE) ≡ just (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR o ⌊ A ⌋) (⌊⟧T-commute F A) m-alg) , refl)
-extract-morph-eff-cata {algE = algE} eq with extract-morph-eff-aux algE refl | eq
-... | just (_ , refl) | refl = refl
+-- D127/D131: `extract-morph-eff-cata` is DELETED with the extractor it was
+-- about. It said that extracting a `Surface.cata` recovers `IR.Cata wfF m`
+-- from the algebra's own extraction — which presumed the algebra IS an
+-- inlined morphism. Under D131 it is a closure the fold carries, so there is
+-- nothing to recover and nothing to state.
 
 checkElab-fallback-RApp-terminal :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
