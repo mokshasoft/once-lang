@@ -9870,3 +9870,61 @@ is a completeness question about the elaborator: improve the search, reach more
 programs, no spec change. Which is the whole reason to do Phase B.
 
 **Relates**: D018, D044, D045, D127, OCP-0006
+
+---
+
+## D135: A Constant-Function Arm's Codomain Is Its Body's Type — D018, Re-Spelled for D127
+
+**Date**: 2026-09-01 · **Status**: Decided (restores a D127 regression) ·
+**Follows**: D018 (global elements), D127 (the lift is written), D044/D045
+
+### The decision
+
+`Classify.composeArgB` recovers a `compose` arm's codomain from a WRITTEN
+constant function, not only from a bare literal:
+
+    composeArgB ctx (RLam _ (RInt _))   _ = just Int
+    composeArgB ctx (RLam _ (RFloat …)) _ = just Float
+    composeArgB ctx (RLam _ (RStringLit _)) _ = just Str
+    composeArgB ctx (RLam _ RUnit)      _ = just Unit
+
+### Why: this is a REGRESSION FIX, not a new capability
+
+D018 gave `composeArgB` the clause `RInt _ → just Int`, on the grounds that a
+literal arm IS the constant morphism and its codomain is therefore known. D127
+then removed the implicit value-lift, so that same constant morphism is now
+SPELLED `\_ -> 42` — and the D018 clause stopped firing. The rule did not
+change; the syntax it keys on moved out from under it.
+
+The visible effect was that programs which compiled on `master` stopped
+compiling, in a shape with no working rewrite:
+
+    main = compose exit@S (compose 0 (compose emit@E 42))          -- master: OK
+    main = compose exit@S (compose (\_ -> 0) (compose emit@E (\_ -> 42)))
+                                                                   -- D127: rejected
+
+The nested case is the one that breaks: `composeMid` recovers the middle type
+from the second arm's codomain or the first arm's domain, and after the rewrite
+BOTH are lambdas, which revealed nothing. Three `TraceSpec` cases caught it.
+
+### Why it stays a literal enumeration
+
+Because `composeArgB` cannot consult inference. `t-compose-check` names
+`composeMid`, so `Once.TypeCheck.Classify` sits BELOW the judgment and calling
+the typechecker from it would be circular. It is therefore a hand-rolled
+partial synthesizer, and this entry extends it by exactly the cases D018
+already covered.
+
+That is a symptom, not a design: plan 0.80 Phase B takes `composeMid` out of
+the rule, after which `composeArgB` is purely the elaborator's search and
+improving it is a COMPLETENESS result rather than a language change. D134
+records why that is right; this entry is what the language needs until it
+happens.
+
+### The honest cost
+
+While `composeMid` remains a premise of `t-compose-check`, this changes the
+set of well-typed programs — a language change, hence this entry. It is
+strictly a widening, and every program it admits was admitted on `master`.
+
+**Relates**: D018, D044, D045, D127, D134

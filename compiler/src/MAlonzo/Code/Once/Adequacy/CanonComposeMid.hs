@@ -71,7 +71,7 @@ d_composeArgB'45'canon_338 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_composeArgB'45'canon_338 = erased
 -- Once.Adequacy.CanonComposeMid.composeMid-canon
-d_composeMid'45'canon_1090 ::
+d_composeMid'45'canon_1308 ::
   MAlonzo.Code.Once.TypeCheck.Classify.T_NamedCtx_338 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -80,4 +80,4 @@ d_composeMid'45'canon_1090 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_composeMid'45'canon_1090 = erased
+d_composeMid'45'canon_1308 = erased

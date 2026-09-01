@@ -352,6 +352,22 @@ composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar name) f') g') A with name ≟ "com
 -- Plan 0.41 / D018: an integer literal is the const morphism `_ → Int`
 -- (a global element), so as a `compose`-arm its codomain is `Int`.
 composeArgB ctx (Raw.RInt _) _ = just Int
+-- D135: the SAME rule, after D127 moved how a constant function is spelled.
+-- D018 read a bare literal arm's codomain off the literal; D127 removed the
+-- implicit value-lift, so that arm is now WRITTEN `\_ -> 42` and the clause
+-- above stopped firing — which silently un-typed programs that used to
+-- compile (`compose (\_ -> 0) (compose emit@E (\_ -> 42))`). A constant
+-- function's codomain is its body's type, and for a literal body that type is
+-- immediate, so this is D018 re-spelled rather than a new capability.
+--
+-- It stays a LITERAL enumeration for the reason `composeArgB` is a syntactic
+-- partial synthesizer at all: it sits below the judgment (`t-compose-check`
+-- names `composeMid`), so it cannot consult inference. Plan 0.80 Phase B is
+-- what would let this be a real synthesis question instead.
+composeArgB ctx (Raw.RLam _ (Raw.RInt _)) _        = just Int
+composeArgB ctx (Raw.RLam _ (Raw.RFloat _ _ _ _)) _ = just Once.Type.Float
+composeArgB ctx (Raw.RLam _ (Raw.RStringLit _)) _   = just Once.Type.Str
+composeArgB ctx (Raw.RLam _ Raw.RUnit) _            = just Once.Type.Unit
 -- Other shapes: compose can't proceed.
 composeArgB _ _ _ = nothing
 

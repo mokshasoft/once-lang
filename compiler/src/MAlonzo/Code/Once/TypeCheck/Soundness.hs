@@ -151,7 +151,7 @@ d_viewBundle_132 v0
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
       (coe
-         MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_1096
+         MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_1104
          (coe v0))
       erased
 -- Once.TypeCheck.Soundness.check-soundV
@@ -586,10 +586,10 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                = seq
                                                    (coe v9)
                                                    (coe
-                                                      MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'id_1308) in
+                                                      MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'id_1316) in
                                          coe
                                            (case coe v10 of
-                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'id_1308
+                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'id_1316
                                                 -> let v11
                                                          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'id'45'aux_1880
                                                              (coe v0) (coe v1) (coe v3) in
@@ -598,7 +598,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                           -> coe seq (coe v12) (coe v13)
                                                         _ -> MAlonzo.RTE.mazUnreachableError)
-                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'fst_1310
+                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'fst_1318
                                                 -> let v11
                                                          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'fst'45'aux_1886
                                                              (coe v0) (coe v1) (coe v3) in
@@ -607,7 +607,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                           -> coe seq (coe v12) (coe v13)
                                                         _ -> MAlonzo.RTE.mazUnreachableError)
-                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'snd_1312
+                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'snd_1320
                                                 -> let v11
                                                          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'snd'45'aux_1892
                                                              (coe v0) (coe v1) (coe v3) in
@@ -616,7 +616,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                           -> coe seq (coe v12) (coe v13)
                                                         _ -> MAlonzo.RTE.mazUnreachableError)
-                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'terminal_1314
+                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'terminal_1322
                                                 -> let v11
                                                          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'terminal'45'aux_1898
                                                              (coe v0) (coe v1) (coe v3) in
@@ -625,7 +625,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                           -> coe seq (coe v12) (coe v13)
                                                         _ -> MAlonzo.RTE.mazUnreachableError)
-                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'initial_1316
+                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'initial_1324
                                                 -> let v11
                                                          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'initial'45'aux_1904
                                                              (coe v0) (coe v1) (coe v3) in
@@ -634,7 +634,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                           -> coe seq (coe v12) (coe v13)
                                                         _ -> MAlonzo.RTE.mazUnreachableError)
-                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inl_1318
+                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inl_1326
                                                 -> let v11
                                                          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'inl'45'aux_1910
                                                              (coe v0) (coe v1) (coe v3) in
@@ -643,7 +643,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                           -> coe seq (coe v12) (coe v13)
                                                         _ -> MAlonzo.RTE.mazUnreachableError)
-                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inr_1320
+                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inr_1328
                                                 -> let v11
                                                          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'inr'45'aux_1916
                                                              (coe v0) (coe v1) (coe v3) in
@@ -652,7 +652,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                           -> coe seq (coe v12) (coe v13)
                                                         _ -> MAlonzo.RTE.mazUnreachableError)
-                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'other_1324
+                                              MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'other_1332
                                                 -> let v12
                                                          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'other'45'aux_1924
                                                              (coe v0) (coe v2) (coe v1) (coe v3) in
@@ -685,7 +685,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                                  then coe
                                                                         seq (coe v12)
                                                                         (coe
-                                                                           MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'fst_1310)
+                                                                           MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'fst_1318)
                                                                  else coe
                                                                         seq (coe v12)
                                                                         (let v13
@@ -712,7 +712,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                                                             (coe
                                                                                                v15)
                                                                                             (coe
-                                                                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'snd_1312)
+                                                                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'snd_1320)
                                                                                      else coe
                                                                                             seq
                                                                                             (coe
@@ -745,7 +745,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                                                                                 (coe
                                                                                                                    v18)
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'terminal_1314)
+                                                                                                                   MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'terminal_1322)
                                                                                                          else coe
                                                                                                                 seq
                                                                                                                 (coe
@@ -778,7 +778,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                                                                                                     (coe
                                                                                                                                        v21)
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'initial_1316)
+                                                                                                                                       MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'initial_1324)
                                                                                                                              else coe
                                                                                                                                     seq
                                                                                                                                     (coe
@@ -811,7 +811,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                                                                                                                         (coe
                                                                                                                                                            v24)
                                                                                                                                                         (coe
-                                                                                                                                                           MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inl_1318)
+                                                                                                                                                           MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inl_1326)
                                                                                                                                                  else coe
                                                                                                                                                         seq
                                                                                                                                                         (coe
@@ -844,13 +844,13 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                                                                                                                                             (coe
                                                                                                                                                                                v27)
                                                                                                                                                                             (coe
-                                                                                                                                                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inr_1320)
+                                                                                                                                                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inr_1328)
                                                                                                                                                                      else coe
                                                                                                                                                                             seq
                                                                                                                                                                             (coe
                                                                                                                                                                                v27)
                                                                                                                                                                             (coe
-                                                                                                                                                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'other_1324)
+                                                                                                                                                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'other_1332)
                                                                                                                                                               _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                                           _ -> MAlonzo.RTE.mazUnreachableError))
                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError))
@@ -859,7 +859,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                           _ -> MAlonzo.RTE.mazUnreachableError)) in
                                           coe
                                             (case coe v10 of
-                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'id_1308
+                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'id_1316
                                                  -> let v11
                                                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'id'45'aux_1880
                                                               (coe v0) (coe v1) (coe v3) in
@@ -868,7 +868,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                            -> coe seq (coe v12) (coe v13)
                                                          _ -> MAlonzo.RTE.mazUnreachableError)
-                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'fst_1310
+                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'fst_1318
                                                  -> let v11
                                                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'fst'45'aux_1886
                                                               (coe v0) (coe v1) (coe v3) in
@@ -877,7 +877,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                            -> coe seq (coe v12) (coe v13)
                                                          _ -> MAlonzo.RTE.mazUnreachableError)
-                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'snd_1312
+                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'snd_1320
                                                  -> let v11
                                                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'snd'45'aux_1892
                                                               (coe v0) (coe v1) (coe v3) in
@@ -886,7 +886,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                            -> coe seq (coe v12) (coe v13)
                                                          _ -> MAlonzo.RTE.mazUnreachableError)
-                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'terminal_1314
+                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'terminal_1322
                                                  -> let v11
                                                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'terminal'45'aux_1898
                                                               (coe v0) (coe v1) (coe v3) in
@@ -895,7 +895,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                            -> coe seq (coe v12) (coe v13)
                                                          _ -> MAlonzo.RTE.mazUnreachableError)
-                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'initial_1316
+                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'initial_1324
                                                  -> let v11
                                                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'initial'45'aux_1904
                                                               (coe v0) (coe v1) (coe v3) in
@@ -904,7 +904,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                            -> coe seq (coe v12) (coe v13)
                                                          _ -> MAlonzo.RTE.mazUnreachableError)
-                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inl_1318
+                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inl_1326
                                                  -> let v11
                                                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'inl'45'aux_1910
                                                               (coe v0) (coe v1) (coe v3) in
@@ -913,7 +913,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                            -> coe seq (coe v12) (coe v13)
                                                          _ -> MAlonzo.RTE.mazUnreachableError)
-                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inr_1320
+                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'inr_1328
                                                  -> let v11
                                                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'inr'45'aux_1916
                                                               (coe v0) (coe v1) (coe v3) in
@@ -922,7 +922,7 @@ du_sound'45'check'45'RVar'45'id_934 v0 v1
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                            -> coe seq (coe v12) (coe v13)
                                                          _ -> MAlonzo.RTE.mazUnreachableError)
-                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'other_1324
+                                               MAlonzo.Code.Once.TypeCheck.Classify.C_bbc'45'other_1332
                                                  -> let v12
                                                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElabV'45'RVar'45'bbc'45'other'45'aux_1924
                                                               (coe v0) (coe v2) (coe v1) (coe v3) in
@@ -1842,7 +1842,7 @@ du_sound'45'RApp'45'generic_2386 v0 v1 v2
               MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RApp'45'dispatch_1792
               (coe v0) (coe v1) (coe v2)
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_1096
+                 MAlonzo.Code.Once.TypeCheck.Classify.d_classifyAppHeadView_1104
                  (coe v1)) in
     coe
       (case coe v3 of

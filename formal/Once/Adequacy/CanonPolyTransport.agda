@@ -259,7 +259,24 @@ composeArgB-polys-canon b ctx A (RApp (RAnnot e t) g') = refl
 composeArgB-polys-canon b ctx A (RApp (RBinOp op a c) g') = refl
 composeArgB-polys-canon b ctx A (RApp (RUnaryOp op e) g') = refl
 composeArgB-polys-canon b ctx A (RApp (RAna F c) g') = refl
-composeArgB-polys-canon b ctx A (RLam y c) = refl
+-- D135: the body must be exposed (see `CanonComposeMid`). `cpc` does not
+-- touch the expression at all, so every case is `refl`.
+composeArgB-polys-canon b ctx A (RLam y (RQualified n al)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RResolved cn)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RApp a c)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RLam z c)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RLet z e₁ e₂)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RPair a c)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RDestruct sc xl el xr er)) = refl
+composeArgB-polys-canon b ctx A (RLam y RUnit) = refl
+composeArgB-polys-canon b ctx A (RLam y (RInt n)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RFloat i fp l q)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RStringLit str)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RAnnot e t)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RBinOp op a c)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RUnaryOp op e)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RAna F c)) = refl
+composeArgB-polys-canon b ctx A (RLam y (RVar x)) = refl
 composeArgB-polys-canon b ctx A (RLet y e₁ e₂) = refl
 composeArgB-polys-canon b ctx A (RPair a c) = refl
 composeArgB-polys-canon b ctx A (RDestruct sc xl el xr er) = refl

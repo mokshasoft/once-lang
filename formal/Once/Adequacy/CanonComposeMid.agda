@@ -190,7 +190,31 @@ composeArgB-canon ctx bound A (Raw.RApp (Raw.RAnnot e t) g') = refl
 composeArgB-canon ctx bound A (Raw.RApp (Raw.RBinOp op a b) g') = refl
 composeArgB-canon ctx bound A (Raw.RApp (Raw.RUnaryOp op e) g') = refl
 composeArgB-canon ctx bound A (Raw.RApp (Raw.RAna F c) g') = refl
-composeArgB-canon ctx bound A (Raw.RLam y b) = refl
+-- D135: `composeArgB` now looks INSIDE a `RLam` (a written constant function's
+-- codomain is its body's type), so the body has to be exposed for either side
+-- to reduce. `canonExpr` preserves the body's head constructor, so every case
+-- is `refl` — except a bare `RVar` body, which stays stuck until the
+-- keep/resolve dispatch, and is `nothing` either way (neither an `RVar` nor an
+-- `RResolved` body is a literal).
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RVar x))
+  with elemStr x (y ∷ bound) ∨ isBuiltinName x in eb
+... | true  rewrite canon-RVar-keep    (y ∷ bound) x eb = refl
+... | false rewrite canon-RVar-resolve (y ∷ bound) x eb = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RQualified n al)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RResolved cn)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RApp a c)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RLam z c)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RLet z e₁ e₂)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RPair a c)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RDestruct sc xl el xr er)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y Raw.RUnit) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RInt n)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RFloat i fp l q)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RStringLit str)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RAnnot e t)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RBinOp op a c)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RUnaryOp op e)) = refl
+composeArgB-canon ctx bound A (Raw.RLam y (Raw.RAna F c)) = refl
 composeArgB-canon ctx bound A (Raw.RLet y e₁ e₂) = refl
 composeArgB-canon ctx bound A (Raw.RPair a b) = refl
 composeArgB-canon ctx bound A (Raw.RDestruct s xl el xr er) = refl
