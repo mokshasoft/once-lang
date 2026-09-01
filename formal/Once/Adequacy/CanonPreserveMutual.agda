@@ -5,16 +5,18 @@
 -- Once.Adequacy.CanonPreserveMutual — Plan 0.51 Step 2 (mutual preservation).
 -- The resolver's own-module canonicalization `canonExpr bound [] []` (RVar x →
 -- RResolved (canonical [x]) for a FREE, non-builtin, non-bound, non-poly x)
--- PRESERVES the three mutual declarative judgments `⊢ᵢ` / `⊢ᵐ` / `⊢ᶜ`, given:
+-- PRESERVES the two mutual declarative judgments `⊢ᵢ` / `⊢ᶜ`, given:
 --   * `Names⊆ ctx bound` — the context's locals are all in `bound`, AND
 --   * `PolyInB ctx bound` — every own-module poly-def name is in `bound`
 --     (true by construction: `canonDecl` seeds `bound := polyDefNames ds`, the
 --     SAME source the `polys` context is built from — see Resolve.polyDefNames).
--- `⊢ᵍ` preservation (`pres-ᵍ`) is in `Once.Adequacy.CanonPreserve` (independent).
+-- D127: the `⊢ᵐ` and `⊢ᵍ` realms are gone, and with them `canon-pres-ᵐ` and
+-- `pres-ᵍ`. The combinator rules they carried are now ordinary `⊢ᶜ` rules and
+-- live in `canon-pres-ᶜ` below.
 --
--- Single deferred hole: `composeMid-canon`, the `m-compose` middle-type premise
--- transfer — TRUE but provable only by casing the `⊢ᵐ` sub-derivations (the
--- `domainOfHead`/`composeArgB` literal patterns are stuck for an abstract head).
+-- `composeMid-canon` (the `t-compose-check` middle-type premise transfer) is
+-- discharged in `Once.Adequacy.CanonComposeMid`, now WITHOUT any typing
+-- premise: it is a fact about raw syntax.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.CanonPreserveMutual where
@@ -29,7 +31,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.Parser.Module.Resolve using (canonExpr; isBuiltinName; elemStr; cls-canon)
+open import Once.Parser.Module.Resolve using (canonExpr; isBuiltinName; elemStr)
 open import Once.TypeCheck.Classify
   using (NamedCtx; composeMid; lookupPoly; lookupPolyPrefix⇒lookupPoly; extendNamedCtx; ctxWithImportsAndPolys)
 open import Once.TypeCheck.Context using (names)
@@ -68,8 +70,8 @@ poly-ext x A pib = mkPIB (λ {x'} h → ⊆ᵇ-weaken x x' (app pib {x'} h))
 
 ------------------------------------------------------------------------
 -- `composeMid` is invariant under canonExpr on the compose ARMS — DISCHARGED in
--- `Once.Adequacy.CanonComposeMid` by casing the `⊢ᵐ` derivations (one residual
--- there: `composeArgB-RVar-resolved`, an Agda literal-pattern limitation).
+-- `Once.Adequacy.CanonComposeMid` by structural induction on the RAW ARMS (no
+-- typing premise; see that module's header).
 ------------------------------------------------------------------------
 
 open import Once.Adequacy.CanonComposeMid using (composeMid-canon)
@@ -148,57 +150,51 @@ mutual
     t-effApp (classify-canon bound f cls)
              (canon-pres-ᵢ bound sub pib df) (canon-pres-ᶜ bound sub pib dx)
 
-  canon-pres-ᵐ : ∀ {ctx e A π B} (bound : List String)
-    → Names⊆ ctx bound → PolyInB ctx bound
-    → ctx ⊢ᵐ e ∶ A ⇨[ π ] B → ctx ⊢ᵐ canonExpr bound [] [] e ∶ A ⇨[ π ] B
-  canon-pres-ᵐ bound sub pib (m-id ll li)
-    rewrite canon-builtin bound "id" refl = m-id ll li
-  canon-pres-ᵐ bound sub pib (m-fst ll li)
-    rewrite canon-builtin bound "fst" refl = m-fst ll li
-  canon-pres-ᵐ bound sub pib (m-snd ll li)
-    rewrite canon-builtin bound "snd" refl = m-snd ll li
-  canon-pres-ᵐ bound sub pib (m-terminal ll li)
-    rewrite canon-builtin bound "terminal" refl = m-terminal ll li
-  canon-pres-ᵐ bound sub pib (m-initial ll li)
-    rewrite canon-builtin bound "initial" refl = m-initial ll li
-  canon-pres-ᵐ bound sub pib (m-inl ll li)
-    rewrite canon-builtin bound "inl" refl = m-inl ll li
-  canon-pres-ᵐ bound sub pib (m-inr ll li)
-    rewrite canon-builtin bound "inr" refl = m-inr ll li
-  canon-pres-ᵐ bound sub pib (m-compose {f = f} {g = g} cm df dg)
-    rewrite canon-builtin bound "compose" refl =
-      m-compose (composeMid-canon bound df dg cm)
-                (canon-pres-ᵐ bound sub pib df) (canon-pres-ᵐ bound sub pib dg)
-  canon-pres-ᵐ bound sub pib (m-case df dg)
-    rewrite canon-builtin bound "case" refl =
-      m-case (canon-pres-ᵐ bound sub pib df) (canon-pres-ᵐ bound sub pib dg)
-  canon-pres-ᵐ bound sub pib (m-pair df dg)
-    rewrite canon-builtin bound "pair" refl =
-      m-pair (canon-pres-ᵐ bound sub pib df) (canon-pres-ᵐ bound sub pib dg)
-  canon-pres-ᵐ bound sub pib (m-curry df)
-    rewrite canon-builtin bound "curry" refl = m-curry (canon-pres-ᵐ bound sub pib df)
-  canon-pres-ᵐ bound sub pib (m-cata wf d)
-    rewrite canon-builtin bound "cata" refl =
-      m-cata wf (canon-pres-ᵐ bound (⊆ᵇ-nil {bound}) (mkPIB (λ {x'} h → app pib {x'} h)) d)
-  canon-pres-ᵐ bound sub pib (m-const d) = m-const (pres-ᵍ bound d)
-  canon-pres-ᵐ bound sub pib (m-named {x = x} ¬u lln imp bA cB)
-    with elemStr x bound ∨ isBuiltinName x in eb
-  ... | true  rewrite canon-RVar-keep    bound x eb = m-named ¬u lln imp bA cB
-  ... | false rewrite canon-RVar-resolve bound x eb = m-named-resolved imp bA cB
-  canon-pres-ᵐ bound sub pib (m-named-resolved imp bA cB) = m-named-resolved imp bA cB
-
   canon-pres-ᶜ : ∀ {ctx e A Ψ} (bound : List String)
     → Names⊆ ctx bound → PolyInB ctx bound
     → ctx ⊢ᶜ e ∶ A ⨾ Ψ → ctx ⊢ᶜ canonExpr bound [] [] e ∶ A ⨾ Ψ
-  canon-pres-ᶜ bound sub pib (t-morph-lift d) = t-morph-lift (canon-pres-ᵐ bound sub pib d)
+  -- D127: the categorical combinators are ORDINARY `⊢ᶜ` rules now, so what was
+  -- the separate `canon-pres-ᵐ` induction is these clauses. The point-free
+  -- leaves are builtin heads (kept by `canon-builtin`); the combinators recurse
+  -- into `canon-pres-ᶜ` on arms that are ordinary terms in the ambient context.
+  canon-pres-ᶜ bound sub pib (t-id-check ll li)
+    rewrite canon-builtin bound "id" refl = t-id-check ll li
+  canon-pres-ᶜ bound sub pib (t-fst-check ll li)
+    rewrite canon-builtin bound "fst" refl = t-fst-check ll li
+  canon-pres-ᶜ bound sub pib (t-snd-check ll li)
+    rewrite canon-builtin bound "snd" refl = t-snd-check ll li
+  canon-pres-ᶜ bound sub pib (t-terminal-morph-check ll li)
+    rewrite canon-builtin bound "terminal" refl = t-terminal-morph-check ll li
+  canon-pres-ᶜ bound sub pib (t-initial-morph-check ll li)
+    rewrite canon-builtin bound "initial" refl = t-initial-morph-check ll li
+  canon-pres-ᶜ bound sub pib (t-inl-morph-check ll li)
+    rewrite canon-builtin bound "inl" refl = t-inl-morph-check ll li
+  canon-pres-ᶜ bound sub pib (t-inr-morph-check ll li)
+    rewrite canon-builtin bound "inr" refl = t-inr-morph-check ll li
+  canon-pres-ᶜ bound sub pib (t-compose-check {f = f} {g = g} cm df dg)
+    rewrite canon-builtin bound "compose" refl =
+      t-compose-check (composeMid-canon bound f g cm)
+                      (canon-pres-ᶜ bound sub pib df) (canon-pres-ᶜ bound sub pib dg)
+  canon-pres-ᶜ bound sub pib (t-case-copair-check df dg)
+    rewrite canon-builtin bound "case" refl =
+      t-case-copair-check (canon-pres-ᶜ bound sub pib df) (canon-pres-ᶜ bound sub pib dg)
+  canon-pres-ᶜ bound sub pib (t-pair-morph-check df dg)
+    rewrite canon-builtin bound "pair" refl =
+      t-pair-morph-check (canon-pres-ᶜ bound sub pib df) (canon-pres-ᶜ bound sub pib dg)
+  canon-pres-ᶜ bound sub pib (t-curry-check df)
+    rewrite canon-builtin bound "curry" refl =
+      t-curry-check (canon-pres-ᶜ bound sub pib df)
+  -- The algebra is checked in the CLEARED context (`ctxWithImportsAndPolys`),
+  -- whose `named` is empty — so `Names⊆` is the vacuous `⊆ᵇ-nil` — while its
+  -- `polys` are the ambient ones, so `PolyInB` transports unchanged.
+  canon-pres-ᶜ bound sub pib (t-cata-check eqW dalg)
+    rewrite canon-builtin bound "cata" refl =
+      t-cata-check eqW
+        (canon-pres-ᶜ bound (⊆ᵇ-nil {bound}) (mkPIB (λ {x'} h → app pib {x'} h)) dalg)
   canon-pres-ᶜ bound sub pib (t-embed d) = t-embed (canon-pres-ᵢ bound sub pib d)
   canon-pres-ᶜ bound sub pib (t-subsume d) = t-subsume (canon-pres-ᶜ bound sub pib d)
   canon-pres-ᶜ bound sub pib (t-lam {x = x} {A = A} le d) =
     t-lam le (canon-pres-ᶜ (x ∷ bound) (⊆ᵇ-cons x sub) (poly-ext x A pib) d)
-  canon-pres-ᶜ bound sub pib (t-value-lift d) = t-value-lift (pres-ᵍ bound d)
-  -- D126: structural, on the INFER sub-derivation rather than a `⊢ᵍ` one.
-  canon-pres-ᶜ bound sub pib (t-closed-lift cls d) =
-    t-closed-lift (cls-canon bound [] [] cls) (canon-pres-ᵢ bound sub pib d)
   canon-pres-ᶜ bound sub pib (t-pair-lit-check d₁ d₂) =
     t-pair-lit-check (canon-pres-ᶜ bound sub pib d₁) (canon-pres-ᶜ bound sub pib d₂)
   canon-pres-ᶜ bound sub pib (t-In-app-check wf d)

@@ -337,12 +337,18 @@ composeArgB-rvar ctx name A with name ≟ "fst"
 composeArgB : NamedCtx → RawExpr → Type → Maybe Type
 composeArgB ctx (Raw.RVar name) A   = composeArgB-rvar ctx name A
 composeArgB ctx (Raw.RResolved cn) A = composeArgB-lookup ctx (showCanonical cn) A
--- Nested compose: recurse.
-composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f') g') A with composeArgB ctx g' A
-... | nothing = nothing
-... | just B' with composeArgB ctx f' B'
+-- Nested compose: recurse. The head is dispatched by an explicit `≟` rather
+-- than a literal pattern, for the SAME reason `composeArgB-rvar` above is —
+-- a literal pattern is stuck on an ABSTRACT head name, so a proof that only
+-- knows `name ≢ "compose"` could not reduce this clause. Behaviour is
+-- unchanged: every non-`compose` head still falls to `nothing`.
+composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar name) f') g') A with name ≟ "compose"
+... | no _ = nothing
+... | yes _ with composeArgB ctx g' A
 ...   | nothing = nothing
-...   | just C  = just C
+...   | just B' with composeArgB ctx f' B'
+...     | nothing = nothing
+...     | just C  = just C
 -- Plan 0.41 / D018: an integer literal is the const morphism `_ → Int`
 -- (a global element), so as a `compose`-arm its codomain is `Int`.
 composeArgB ctx (Raw.RInt _) _ = just Int
