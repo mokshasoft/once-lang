@@ -1022,7 +1022,7 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=()):
     unk = []
     def walk(e):
         if e[0] == "a":
-            if e[1] not in CT and e[1] not in known and e[1] not in ("renTm", "vs"):
+            if e[1] not in CT and e[1] not in known and e[1] not in ("renTm", "vs", "pwShift"):
                 unk.append(e[1])
             return
         for x in e[1]: walk(x)
@@ -1190,9 +1190,17 @@ def infer_depths(rule, names, CT):
         if e[0] == "a": put(e[1], k) if k is not None else None; return
         h = e[1][0]
         if h[0] == "a" and h[1] in CT:
-            fds = FIELD_DEPTH.get(CT[h[1]], [])
+            _c = CT[h[1]]
+            fds = FIELD_DEPTH.get(_c, [])
+            # ★ THE THIRD READER of this table, and it walks SOURCE spines
+            #   like `_val` — so it needs the same prepend offset.  ⚠ The
+            #   ratchet caught this one: making the table emitted-indexed
+            #   without adjusting here silently dropped `⊢app`/`⊢pair`/
+            #   `⊢snd`/`⊢jsub` back to `conflicting depths`, which is the
+            #   EXACT regression of 2026-08-31.
+            _o = (1 if (_c in _DEPTH_ARG or _c in _IX_PRE) else _PRE_N.get(_c, 0))
             for i, x in enumerate(e[1][1:]):
-                E = fds[i] if i < len(fds) else ("D",)
+                E = fds[i + _o] if i + _o < len(fds) else ("D",)
                 scan(x, None if k is None
                         else k + (E[1] if E[0] == "sucD" else 0))
         else:
@@ -2191,12 +2199,25 @@ FIELD_DEPTH = {
 #     sits one binder deeper and inferred depth 0.  ⇒ the offset belongs
 #     at the ONE reader that is different, not in the shared table.
 FIELD_DEPTH.update({
-    "singleK":  [('D',)],
-    "subTmAtK": [('D',), ('sucD', 1)],
-    "subTyAtK": [('D',), ('sucD', 1)],
+    # ⚠ EMITTED positions: slot 0 is the prepended depth/index.
+    "singleK":  [('D',), ('D',)],
+    "subTmAtK": [('D',), ('D',), ('sucD', 1)],
+    "subTyAtK": [('D',), ('D',), ('sucD', 1)],
     # ⚠ `extNK`'s substitution argument lives one binder SHALLOWER than
     #   the position `extS` appears at — it is the σ being extended.
-    "extNK":    [('predD',)],
+    "extNK":    [('D',), ('D',), ('predD',)],
+    # ★ `Var-vsK d x : K (sVar , nsuc d)` with `x` at `d` — its argument
+    #   is one BELOW it.  Never stated before because no rule nested two
+    #   variable constructors until `tr-pw`'s `var (vs vz)`.
+    "Var-vsK":  [('D',), ('predD',)],
+    # ⚠⚠ `wkK`'s BOTH arguments sit at the SOURCE depth — `wkK i t : K (sh i)`
+    #   — so the derivation emitter must descend at `pred` of the ambient
+    #   one.  Without this it read them at the RESULT depth, which was
+    #   invisible while every `renTm vs X` had a bare binder for `X`
+    #   (a binder's derivation ignores the threaded depth) and surfaced
+    #   the moment `tr-pw` put a CONSTRUCTOR there.
+    "wkK":      [('predD',), ('predD',)],
+    "pwBodyK":  [('predD',), ('predD',)],
 })
 
 # ★★★ THE THREADED DEPTH IS STRUCTURED, NOT A STRING: `(base term, base
@@ -2291,9 +2312,15 @@ def jd(e, k, ix, binders, tel):
                     continue
                 a = args[ai]
                 # ★ descend at the field's OWN depth
-                # ★ `ai` counts EMITTED arguments; the table is indexed by
-                #   SOURCE position, so a prepended depth shifts it by one.
-                _si = ai - _PRE_N.get(h, 0)
+                # ★★★ ONE CONVENTION: `FIELD_DEPTH` is indexed by the
+                #   EMITTED position, which is what `ai` counts.  ⚠ It used
+                #   to be SOURCE-indexed with the offset applied here, and
+                #   the two readers drifted FOUR times in two days
+                #   (`FIELD_DEPTH` vs `infer_depths`, `DDEP`, `_IX_PRE`,
+                #   and `wkK`/`Var-vsK` which had been wrong since they
+                #   were written).  ⇒ the emitters agree by construction
+                #   now; `_val` adds the offset instead, once.
+                _si = ai
                 sub = _deepen(DEPTHD[0], FIELD_DEPTH[h][_si]) \
                       if h in FIELD_DEPTH and 0 <= _si < len(FIELD_DEPTH[h]) \
                       else DEPTHD[0]
@@ -2841,16 +2868,40 @@ def _val(e, CT, dep):
     h = args[0]
     assert h[0] == "a", h
     if h[1] == "renTm" and len(args) == 3:
-        x = args[2]
+        x, rho = args[2], args[1]
         srt = _BSORT.get(x[1] if x[0] == "a" else None, "sTm")
         p = _pred(dep)
+        # ★★★ `renTm pwShift` — AND IT NEEDS NO NEW OBJECT-LEVEL FUNCTION.
+        #
+        #   pwShift vz = vs vz · pwShift (vs y) = vs y
+        #
+        # sends BOTH top variables to `vs vz`, which factors as
+        #
+        #   renTm pwShift  ≡  renTm vs ∘ subTm (single (var vz))
+        #
+        # — the substitution identifies the two, the weakening re-opens
+        # the slot.  Both halves already exist as `wkK` and `singleK`.
+        # ⚠ It is DEPTH-PRESERVING, so the inner substitution lands at
+        #   `pred dep` and the weakening puts it back.
+        if rho[0] == "a" and rho[1] == "pwShift":
+            return AP("wkK", PAIR(RAW(srt), p),
+                      AP("subTmAtK", p,
+                         AP("singleK", p,
+                            AP("Tm-varK", AP("Var-vzK", _pred(p)))),
+                         _val(x, CT, dep)))
+        # ⚠ THE RENAMING ARGUMENT WAS BEING IGNORED.  Every `renTm ρ x`
+        #   translated to `wkK` whatever `ρ` was; only the `unmapped`
+        #   check kept a non-`vs` renaming from being emitted as a
+        #   weakening SILENTLY.  Now it is the branch's condition.
+        assert rho[0] == "a" and rho[1] == "vs", ("renTm at %r" % (rho,))
         return AP("wkK", PAIR(RAW(srt), p), _val(x, CT, p))
     if h[1] in CT:
         c = CT[h[1]]
         fds = FIELD_DEPTH.get(c, [])
-        # ⚠ the table is indexed by SOURCE position; a prepended depth
-        #   does not occupy a slot in it.
-        sub = [_val(x, CT, _shift(dep, fds[i]) if i < len(fds) else dep)
+        # ★ how many arguments this wrapper PREPENDS, so a source
+        #   position maps to its emitted one.
+        _off = (1 if (c in _DEPTH_ARG or c in _IX_PRE) else _PRE_N.get(c, 0))
+        sub = [_val(x, CT, _shift(dep, fds[i + _off]) if i + _off < len(fds) else dep)
                for i, x in enumerate(args[1:])]
         if c in _IX_PRE:
             # ⚠ THE **SOURCE** INDEX, NOT THE AMBIENT ONE.  `pwBodyK i t`
@@ -3160,7 +3211,7 @@ if __name__ == "__main__":
               % os.environ["JUDGE_MAX_ROWS"])
         print("    DO NOT COMMIT.  Re-run without it to restore.")
         sys.exit(0)
-    _FLOOR = {"Red": 68, "Judge": 32, "TyRed": 26, "Conv": 4}
+    _FLOOR = {"Red": 69, "Judge": 32, "TyRed": 26, "Conv": 4}
     _got = {"Red": len(_ROWS), "Judge": _njudge,
             "TyRed": len(_JCACHE["TyRed"]), "Conv": len(_JCACHE["Conv"])}
     _lost = {k: (v, _got[k]) for k, v in _FLOOR.items() if _got[k] < v}
