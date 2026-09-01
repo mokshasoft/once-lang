@@ -85,14 +85,17 @@ base-refl (base-Sum ibA ibB) (inj₂ b) = base-refl ibB b
 -- by the caller (`MeaningBridge`), so no mutual recursion is needed here.
 ------------------------------------------------------------------------
 
+-- D131: stated over TWO ALGEBRAS, not "an algebra and an IR morphism".
+-- The proof body only ever used `liftFn fmt mir` as the second algebra, so
+-- generalising it DROPS `mir` and the `evalᴰ-Cata-erased` rewrite — the
+-- IR-specific half was never doing any work here. What remains is the honest
+-- content: related algebras give related folds.
 cata-bridge : ∀ {F} {A'} {wfF : WellFormedF F}
-              (dalg : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T ⟦ A' ⟧ᴰ) (mir : IR.IR ⌊ ⟦ F ⟧T A' ⌋ ⌊ A' ⌋)
-              (algR : ∀ {x y} → RelV (⟦ F ⟧T A') x y → RelT A' (dalg x) (liftFn fmt mir y))
+              (dalg₁ dalg₂ : ⟦ ⟦ F ⟧T A' ⟧ᴰ → T ⟦ A' ⟧ᴰ)
+              (algR : ∀ {x y} → RelV (⟦ F ⟧T A') x y → RelT A' (dalg₁ x) (dalg₂ y))
               {a b : ⟦ μ-type F ⟧ᴰ} → RelV (μ-type F) a b
-            → RelT A' (cata-sem wfF dalg a)
-                      (liftFn fmt (IR.Cata (wf-⌊⌋ wfF) (subst (λ o → IR.IR o ⌊ A' ⌋) (⌊⟧T-commute F A') mir)) b)
-cata-bridge {F} {A'} {wfF} dalg mir algR {a} {.a} refl n
-  rewrite evalᴰ-Cata-erased {A'} wfF mir a =
+            → RelT A' (cata-sem wfF dalg₁ a) (cata-sem wfF dalg₂ b)
+cata-bridge {F} {A'} {wfF} dalg₁ dalg₂ algR {a} {.a} refl n =
   cataS-rel RelC algR-full (forget a)
   where
     -- The product relation the fold threads: equal traces + related values.
@@ -123,8 +126,8 @@ cata-bridge {F} {A'} {wfF} dalg mir algR {a} {.a} refl n
     -- outputs — child events equal (`layer-lemma`) and the algebra step bridged
     -- by `algR` (= `bridge-m alg`) on the `RelV`-related folded argument.
     algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) RelC y₁ y₂
-              → RelC (cata-ev-algᴰ-D {F} {A'} n dalg (coerce-μ-out wfF _ y₁))
-                     (cata-ev-algᴰ-D {F} {A'} n (liftFn fmt mir) (coerce-μ-out wfF _ y₂))
+              → RelC (cata-ev-algᴰ-D {F} {A'} n dalg₁ (coerce-μ-out wfF _ y₁))
+                     (cata-ev-algᴰ-D {F} {A'} n dalg₂ (coerce-μ-out wfF _ y₂))
     algR-full rsf =
       let (ev-eq , z-rel) = layer-lemma wfF rsf
           (tr-eq , v-rel) = algR z-rel n
