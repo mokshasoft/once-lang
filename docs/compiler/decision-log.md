@@ -9784,3 +9784,89 @@ second was available, and it was also the mathematically correct reading
 (D131) — the two coincided, which is usually the sign of a real fix.
 
 **Relates**: D039, D127, D130, D131, D132; plan 0.79 §4 carries the laws half.
+
+---
+
+## D134: A DECISION PROCEDURE Is Not a Typing Rule — the Spec Names Properties, the Elaborator Names Deciders
+
+**Date**: 2026-09-01 · **Status**: Decided; plan `0.80-declarative-typing-rules.md` ·
+**Phase A landed**; Phase B is the same principle at a real cost, deferred
+**Follows**: D044, D045 (locally-decidable bidirectional typing), OCP-0006
+
+### The decision
+
+A typing rule states a PROPERTY. It does not state that a particular decision
+procedure returned a particular answer.
+
+`Once.Spec.Typing` IS `Once.TypeCheck.Judgment`, re-exported verbatim — so the
+declarative judgment is the language definition. Eight of its premises were
+calls to the elaborator's own deciders. Phase A removes four:
+
+    wellFormedF? F ≡ just wfF   ⟹   WellFormedF F        (t-cata-check, t-In-app-check)
+    isGround schema ≡ inj₁ g    ⟹   Ground schema        (t-var-poly-instantiate-infer)
+    isGround schema ≡ inj₂ tt   ⟹   ¬ (Ground schema)    (t-var-poly-instantiate)
+
+### Why this is not a matter of taste
+
+**An algorithm in the denotational spec makes the correctness theorem
+circular.** Correctness must reference the spec — that is what it means to
+prove a compiler correct. If the spec in turn references the compiler's search
+strategy, "the compiler agrees with the specification" degenerates toward "the
+compiler agrees with itself". The mechanical symptom is that a change to
+`Once.Functor.Decide` silently changes the set of well-typed programs, and no
+file under `formal/Once/Spec/` moves.
+
+It is the same defect D127 removed one level up: `⊢ᵍ` approximated "is a
+global element" by ENUMERATING syntactic forms, and the list kept growing.
+Here the rules approximated "is well-formed" / "is ground" by naming the
+procedure that checks it.
+
+### What it costs, and where the cost went
+
+Nothing, in extension: the deciders are sound and complete for their
+properties, so exactly the same judgments are derivable. What was ASSUMED by
+putting the decider in the rule is now PROVEN once, in
+`Once.TypeCheck.DeciderComplete`:
+
+  * `wellFormedF?-complete`, `isGround-complete` — property ⟹ the decider's
+    answer (what the completeness proof needs);
+  * `isGround-inj₂-¬Ground` — the decider's `inj₂` refutes the property (what
+    the elaborator needs, having only its own dispatch);
+  * `Ground-irrelevant`, and the pre-existing `WellFormedF-irrelevant` — the
+    rule's witness is no longer pinned to the decider's output, so the two must
+    be identified. Both properties are propositions, so this is available.
+
+That trade is the point: the obligation was always there; the decider premise
+was hiding it inside the language definition.
+
+### Why Phase B is separate and NOT decided here
+
+The other four premises — `classifyAppHead f ≡ nothing` on
+`t-app`/`t-effApp`/`t-arg-driven-app-check`, and `composeMid ctx f g A ≡ just B`
+on `t-compose-check` — do a DIFFERENT job. They are not deciders standing in
+for properties; they make derivations essentially unique. And this system
+defines the MEANING by recursion on the derivation (`⟦_⟧ᶜ`, by direct induction
+on `_⊢ᶜ_`), so uniqueness is currently what makes the denotation well-defined
+without a coherence theorem, and what makes `check-complete` hold by
+construction.
+
+Removing them is still right — compose denoted correctly is
+
+    Γ ⊢ f ⇐ B ⇒ C    Γ ⊢ g ⇐ A ⇒ B   ⟹   Γ ⊢ compose f g ⇐ A ⇒ C
+
+with `B` existential, which is what the rule already says once the premise is
+deleted — but it owes coherence of `⟦_⟧ᶜ` over the ambiguity introduced, and a
+restated completeness. That is the trade D044/D045 made deliberately, and it
+is re-opened by plan 0.80 Phase B rather than by this entry.
+
+### A consequence worth naming
+
+Plan 0.76 Phase E left three `TraceSpec` programs unwritable:
+`compose (\_ -> 0) (compose emit@E (\_ -> 42))` has no derivation, because
+`composeArgB` cannot recover a constant-function arm's codomain — the D018
+clause that used to do it keyed on the literal spelling D127 moved. TODAY that
+is a LANGUAGE question, because `composeMid` is in the rule. AFTER Phase B it
+is a completeness question about the elaborator: improve the search, reach more
+programs, no spec change. Which is the whole reason to do Phase B.
+
+**Relates**: D018, D044, D045, D127, OCP-0006
