@@ -86,7 +86,7 @@ open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPoly
 open import Once.TypeCheck.ElaborateProofs using (extract-morph-eff; extractMorphWitness;
   checkComposeGo; checkCaseGo; VerifiedCheckResult; inferElabV-RVar-fail-bridge;
   checkG; inspectWellFormedF; wfv-no; wfv-yes;
-  checkCataGo; cata-go-canonical; checkCataGoV-pure-J; checkCataGo-just-success;
+  checkCataGo; cata-go-canonical; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success;
   checkCata-eff-strong-hlp; extract-morph-eff-cata;
   -- the literal view the negation dispatch takes (plan 0.74 J6 step 3 for
   -- `RInt`, plan 0.73 F3 for `RFloat`)
@@ -1097,6 +1097,20 @@ private
             , t-compose-check eqB Wf Wg)
   composeGo-success eqB eqf eqg rewrite eqg | eqf = _ , _ , refl
 
+  -- The `case` twin. No `mid` argument, so no `-J` bridge is needed.
+  caseGo-success : ∀ {ctx f g A B C} {π : T.Purity}
+    {Ψf Ψg : Surface.Usage (NamedCtx.size ctx)}
+    {Ef : _} {Eg : _} {Wf : _} {Wg : _} {df ff dg fg : ℕ}
+    → checkElabV ctx f (A T.⇒[ T.mk-kind T.Many π ] C)
+        ≡ (success Ψf Ef df ff , Wf)
+    → checkElabV ctx g (B T.⇒[ T.mk-kind T.Many π ] C)
+        ≡ (success Ψg Eg dg fg , Wg)
+    → Σ-syntax ℕ λ d → Σ-syntax ℕ λ fr →
+        checkCaseGo ctx f g A B C π
+          ≡ (success (Ψf Surface.+ᵘ Ψg) (Srf.copair' Ef Eg) d fr
+            , t-case-copair-check Wf Wg)
+  caseGo-success eqf eqg rewrite eqf | eqg = _ , _ , refl
+
   -- D127: `cgo-usage` / `ccgo-usage` DELETED. They said compose/case emit
   -- `zeroUsage`, which was true only while the arms were closed. The usage is
   -- now `Ψf +ᵘ Ψg` — that is the whole content of D130 — so the lemmas are not
@@ -1478,6 +1492,57 @@ mutual
     checkElab-fallback-RVar-inl {ctx} A B eqL eqI
   check-complete {ctx} (t-inr-morph-check {A = A} {B = B} eqL eqI) =
     checkElab-fallback-RVar-inr {ctx} A B eqL eqI
+  -- SPLIT ON π: `checkCompose`'s EFF clause comes first and `with`s on the eff
+  -- `checkComposeGo`, so an abstract π is stuck. At `pure` the second clause
+  -- applies directly; at `eff` the arms ARE eff derivations, so the eff `Go`
+  -- succeeds and the first branch fires — no arr'/subsume fallback needed.
+  check-complete (t-compose-check {π = T.pure} eqB df dg) =
+    let (_ , _ , _ , Wf , eqf) = check-completeV df
+        (_ , _ , _ , Wg , eqg) = check-completeV dg
+        (d , fr , eqGo) = composeGo-success eqB eqf eqg
+    in _ , _ , _ , cong proj₁ (trans (sym (go-canonical eqB)) eqGo)
+  check-complete (t-compose-check {π = T.eff} eqB df dg)
+    with check-completeV df | check-completeV dg
+  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
+        with composeGo-success eqB eqf eqg
+  ...     | (d , fr , eqGo) rewrite trans (sym (go-canonical eqB)) eqGo =
+            _ , _ , _ , refl
+  check-complete (t-case-copair-check {π = T.pure} df dg) =
+    let (_ , _ , _ , Wf , eqf) = check-completeV df
+        (_ , _ , _ , Wg , eqg) = check-completeV dg
+        (d , fr , eqGo) = caseGo-success eqf eqg
+    in _ , _ , _ , cong proj₁ eqGo
+  check-complete (t-case-copair-check {π = T.eff} df dg)
+    with check-completeV df | check-completeV dg
+  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
+        with caseGo-success eqf eqg
+  ...     | (d , fr , eqGo) rewrite eqGo = _ , _ , _ , refl
+  -- `pair`/`curry` are PURE-FIXED, so no π split: only the pure clause of
+  -- `checkPair`/`checkCurry` can apply, and rewriting by the arms' results
+  -- reduces its `with`-tree to the success.
+  check-complete (t-pair-morph-check df dg)
+    with check-completeV df | check-completeV dg
+  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
+        rewrite eqf | eqg = _ , _ , _ , refl
+  check-complete (t-curry-check df)
+    with check-completeV df
+  ... | (_ , _ , _ , Wf , eqf) rewrite eqf = _ , _ , _ , refl
+  -- cata: split on π like compose/case. `checkCataGoV-pure-J` is the dispatch
+  -- bridge at pure; at eff the algebra IS an eff derivation so the eff `Go`
+  -- succeeds and the first branch fires.
+  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.pure} {wfF = wfF} eqW dalg)
+    with check-completeV dalg
+  ... | (_ , _ , _ , W , eqA)
+        with checkCataGo-just-success ctx alg F A T.pure wfF eqW eqA
+  ...     | eqGo = _ , _ , _ ,
+            cong proj₁ (trans (checkCataGoV-pure-J ctx alg F A (just wfF) eqW) eqGo)
+  check-complete {ctx} (t-cata-check {alg = alg} {F = F} {A = A} {π = T.eff} {wfF = wfF} eqW dalg)
+    with check-completeV dalg
+  ... | (_ , _ , _ , W , eqA)
+        with checkCataGo-just-success ctx alg F A T.eff wfF eqW eqA
+  ...     | eqGo
+            rewrite trans (checkCataGo-J ctx alg F A T.eff (just wfF) eqW) eqGo =
+            _ , _ , _ , refl
   check-complete (t-In-app-check {arg = arg} {F = F} eqWF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     in checkElab-fallback-RApp-In arg F eqWF eqA
@@ -1543,6 +1608,17 @@ mutual
     checkElab-fallback-RVar-inl {ctx} A B eqL eqI
   subsume-complete {ctx} (t-inr-morph-check {A = A} {B = B} eqL eqI) =
     checkElab-fallback-RVar-inr {ctx} A B eqL eqI
+  -- D127: the COMBINATORS at the eff arrow. The elaborator's eff clause TRIES
+  -- the eff `Go` first and falls back to pure + `arr'`/`t-subsume`. The pure
+  -- derivation only tells us the PURE `Go` succeeds, so each of these
+  -- case-splits on the eff attempt and uses the fallback branch.
+  subsume-complete {ctx} (t-pair-morph-check df dg)
+    with check-completeV df | check-completeV dg
+  ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
+        rewrite eqf | eqg = _ , _ , _ , refl
+  subsume-complete {ctx} (t-curry-check df)
+    with check-completeV df
+  ... | (_ , _ , _ , Wf , eqf) rewrite eqf = _ , _ , _ , refl
   subsume-complete {ctx} (t-lam {x = x} {body = body} {A = A} {B = B} {q' = q'} leqEq bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
     in check-complete-RLam-eff ctx x body A q' B leqEq eqBody

@@ -1396,6 +1396,17 @@ cata-go-canonical refl = refl
 -- `checkElabV` reduces DIRECTLY to `checkCataGo … pure`. Generalize over `(mw, eq)`
 -- with the `.(wellFormedF? F)` dot pattern (a direct `≟ just wfF` split gets stuck
 -- on the neutral `wellFormedF? F`); the caller instantiates at `(just wfF) eqW`.
+-- D127: the grade-agnostic J bridge for `checkCataGo`'s decision argument,
+-- the `checkInGo-J` analogue. `checkCataGoV-pure-J` bridges the DISPATCH at
+-- pure; this bridges the decision at any grade, which the eff clause needs
+-- because it `with`s on the go rather than returning it.
+checkCataGo-J :
+  ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    (π : Once.Type.Purity)
+    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+  → checkCataGo ctx alg F A π (wellFormedF? F) refl ≡ checkCataGo ctx alg F A π mw eq
+checkCataGo-J ctx alg F A π .(wellFormedF? F) refl = refl
+
 checkCataGoV-pure-J :
   ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Once.Type.Functor) (A : Type)
     (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
