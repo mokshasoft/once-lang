@@ -23,7 +23,7 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 module Once.Adequacy.MeaningBridge (fmt : TargetNum) where
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (inj₁; inj₂)
+open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin; zero; suc)
@@ -40,7 +40,7 @@ open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-P
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
   IsConcrete; con-base; con-fun)
 open import Once.Functor.Decide using (wellFormedF?)
-open import Once.Semantics.Machine using (sem-In; coerce-functor)
+open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata)
 open import Once.IRTy using (eraseF; ⌊⟧T-commute; IRTy)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Adequacy.InErased fmt using (In-ir; liftFn-In)
@@ -55,19 +55,20 @@ open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (BinOp;
   OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.SigOp.Info using (semM)
-open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᵍ_∶_; _⊢ᵐ_∶_⇨[_]_;
-  m-id; m-fst; m-snd; m-terminal; m-initial; m-inl; m-inr; m-compose; m-case;
-  m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
-  g-int; g-float; g-neg-int; g-neg-float; g-terminal; g-pair; g-inl; g-inr; g-In;
+open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
+  t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
+  t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
+  t-compose-check; t-case-copair-check; t-pair-morph-check;
+  t-curry-check; t-cata-check;
   t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
   t-terminal-app; t-apply-app-infer; t-app; t-effApp;
-  t-morph-lift; t-value-lift; t-closed-lift; t-embed; t-lam; t-pair-lit-check;
+  t-embed; t-lam; t-pair-lit-check;
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
   t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
   t-var-poly-instantiate-infer)
-open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ; ⟦_⟧ᵍ; ⟦_⟧ᵐ;
+open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ;
   lookupᴰ; Env; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt using
@@ -240,126 +241,32 @@ in-app-bridge {F} {wfF} rv =
   subst (RelT (μ-type F) (returnT (in-value _))) (sym (liftFn-In wfF _))
         (λ k → refl , cong in-value (wfF-layer-eq wfF (λ r → r) rv))
 
--- `int-bridge` DISCHARGED: `realize-global (g-int n) = const fits-int ∣n∣ ∘ terminal`,
--- whose `evalᴰ` reduces (via the catch-all + `eval (const …) = ∣n∣`, `inject{Int}=id`,
--- `[]++[]=[]`) to `λ _ → ([] , ∣n∣) = returnT (absℤ n)` — definitionally the LHS.
-int-bridge : ∀ {ctx : NamedCtx} {X : Type} (n : ℤ) (y : ⟦ X ⟧ᴰ)
-           → RelT Int (returnT (⟦ g-int {ctx} n ⟧ᵍ fmt)) (liftFn fmt (realize-global {X = X} (g-int {ctx} n)) y)
-int-bridge n y k = refl , refl
+-- D127: `int-bridge`, `bridge-g`, `wrapM` and `bridge-m` are DELETED with the
+-- two realms they bridged. Their content did not vanish — it moved into
+-- `bridge-c`'s new clauses below, which relate the SAME meanings; the point-free
+-- leaves reuse the old `bridge-m` bodies verbatim, and the combinators become
+-- `RelT-bind`/`RelT-return` congruences now that both sides bind their arms.
 
--- The VALUE realm, DISCHARGED — structural (`RelT-bind`/`RelT-return`, using
--- `returnT x >>=T f ≡ f x` definitionally) + the two leaf facts above.
-bridge-g : ∀ {ctx : NamedCtx} {e A} {X : Type} (d : ctx ⊢ᵍ e ∶ A) (y : ⟦ X ⟧ᴰ)
-         → RelT A (returnT (⟦ d ⟧ᵍ fmt)) (liftFn fmt (realize-global {X = X} d) y)
-bridge-g {ctx = ctx} {X = X} (g-int n) y = int-bridge {ctx = ctx} {X = X} n y
--- The float leaf reduces the same way and even more directly: `⟦ g-float … ⟧ᵍ`
--- IS `d`, and `realize-global (g-float … d …) fits-float d ∘ terminal`,
--- whose `evalᴰ` is `d` — so both sides are `([] , d)` definitionally.
-bridge-g (g-float i f l p) y k = refl , refl
--- PLAN 0.73 F3 / D120's other half. Both leaves reduce exactly as their
--- unnegated twins do — `⟦_⟧ᵍ` and `realize-global` name the SAME folded
--- payload (`- n`, `negate (decimalOf i f l)`), so neither side has anything
--- the other lacks and both are `([] , v)` definitionally.
-bridge-g (g-neg-int n) y k = refl , refl
-bridge-g (g-neg-float i f l p) y k = refl , refl
--- `liftFn (realize-global d) y` is APPLIED to `y`, so `liftFn` unfolds and a
--- `rewrite` of the (funext) reduction can't fire; convert with `subst (RelT …)`
--- over the reduction applied at `y` (`cong (λ h → h y)`).
-bridge-g {X = X} (g-terminal a b) y =
-  subst (RelT Unit (returnT tt))
-        (cong (λ h → h y) (sym (liftFn-terminal {X})))
-        (λ n → refl , tt)
--- Compound cases: the pure side's trace is `[]`, the `liftFn` side's is
--- `projTrace (sub) n ++ …`, equal by the sub-relation's trace half; the value
--- follows from the sub-relation's value half.
-bridge-g {X = X} (g-pair {A = A₁} {B = A₂} ga gb) y =
-  subst (RelT (A₁ * A₂) (returnT ((⟦ ga ⟧ᵍ fmt) , (⟦ gb ⟧ᵍ fmt))))
-        (cong (λ h → h y) (sym (liftFn-pair {X} {A₁} {A₂} (realize-global ga) (realize-global gb))))
-        (λ n → cong₂ (λ x z → x ++ (z ++ [])) (proj₁ (bridge-g ga y n)) (proj₁ (bridge-g gb y n))
-             , (proj₂ (bridge-g ga y n) , proj₂ (bridge-g gb y n)))
-bridge-g {X = X} (g-inl {A = A₁} {B = A₂} ga) y =
-  subst (RelT (A₁ + A₂) (returnT (inj₁ (⟦ ga ⟧ᵍ fmt))))
-        (cong (λ h → h y)
-          (sym (trans (liftFn-∘ {A₁} {A₁ + A₂} {X} (IR.inl IR.Heap) (realize-global ga))
-                      (cong (λ hh → λ a → liftFn fmt {X} {A₁} (realize-global ga) a >>=T hh) (liftFn-inl {A₁} {A₂})))))
-        (λ n → cong (_++ []) (proj₁ (bridge-g ga y n)) , proj₂ (bridge-g ga y n))
-bridge-g {X = X} (g-inr {A = A₁} {B = A₂} gb) y =
-  subst (RelT (A₁ + A₂) (returnT (inj₂ (⟦ gb ⟧ᵍ fmt))))
-        (cong (λ h → h y)
-          (sym (trans (liftFn-∘ {A₂} {A₁ + A₂} {X} (IR.inr IR.Heap) (realize-global gb))
-                      (cong (λ hh → λ a → liftFn fmt {X} {A₂} (realize-global gb) a >>=T hh) (liftFn-inr {A₂} {A₁})))))
-        (λ n → cong (_++ []) (proj₁ (bridge-g gb y n)) , proj₂ (bridge-g gb y n))
--- g-In: `realize-global (g-In dec garg) = In wfF Heap ∘ realize-global garg`,
--- so the RHS binds the (recursively bridged) `garg` then applies the pure `In`.
--- Value via `wfF-layer-eq`+`cong` (as `in-app-bridge`); trace = the sub-trace
--- (`In` adds none) modulo `++ []`.
-bridge-g {X = X} (g-In {F = F} {wfF = wfF} dec garg) y =
-  subst (RelT (μ-type F) (returnT (in-value (⟦ garg ⟧ᵍ fmt))))
-        (cong (λ h → h y) (sym g-In-reduce))
-        (λ k → trans (proj₁ (bridge-g garg y k)) (sym (++-identityʳ _))
-             , cong in-value (wfF-layer-eq wfF (λ r → r) (proj₂ (bridge-g garg y k))))
-  where
-    g-In-reduce : liftFn fmt {X} {μ-type F} (realize-global (g-In dec garg))
-                ≡ (λ a → liftFn fmt {X} {⟦ F ⟧T (μ-type F)} (realize-global garg) a >>=T (λ w → returnT (in-value w)))
-    g-In-reduce =
-      trans (cong (liftFn fmt {X} {μ-type F}) (subst-∘-move (⌊⟧T-commute F (μ-type F))
-                            (IR.In (wf-⌊⌋ wfF) IR.Heap) (realize-global garg)))
-      (trans (liftFn-∘ {⟦ F ⟧T (μ-type F)} {μ-type F} {X} (In-ir wfF) (realize-global garg))
-             (cong (λ h → λ a → liftFn fmt {X} {⟦ F ⟧T (μ-type F)} (realize-global garg) a >>=T h)
-                   (extensionality (liftFn-In wfF))))
+-- D127: `case`'s value relation. `RelV (A + B)` is `⊥` on mismatched
+-- injections, so the two absurd clauses are the whole of the disjointness.
+-- D131: SD's cata fold IS `cata-sem` of the bound closure. `cata-ev-algˢ n
+-- (returnT c)` collapses to `cata-ev-algᴰ-D n c` by the monad's left identity,
+-- which is definitional here.
+sd-fold-is-cata-sem : ∀ {F : Functor} {A : Type} (wf : WellFormedF F)
+    (c : ⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) (x : ⟦ μ-type F ⟧ᴰ)
+  → (λ n → let r = sem-cata wf (SD.cata-ev-algˢ {F} {A} n (returnT c)) x
+           in (proj₁ r , proj₂ r))
+    ≡ cata-sem wf c x
+sd-fold-is-cata-sem wf c x = refl
 
-------------------------------------------------------------------------
--- The MORPHISM realm, DISCHARGED — structural (`RelT-return`/`RelT-bind` +
--- direct `∀ n` for the constructor-wrapping cases); `m-const` routes to
--- `bridge-g`; `m-cata`/`m-named` via the leaves above.
-------------------------------------------------------------------------
-
--- `liftFn (realize-morph d)` is applied to `b` when `RelV (A⇒B) f g` unfolds
--- (`g b`), so `liftFn` reduces and a `rewrite` can't fire; convert with `subst`
--- over the (funext) reduction at the RelV level.
-wrapM : ∀ {ctx : NamedCtx} {e A B} {π : Purity} (d : ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
-          {g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
-      → liftFn fmt (realize-morph d) ≡ g
-      → RelV (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵐ fmt)) g
-      → RelV (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵐ fmt)) (liftFn fmt (realize-morph d))
-wrapM {A = A} {B = B} {π = π} d eq body =
-  subst (RelV (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵐ fmt))) (sym eq) body
-
-bridge-m : ∀ {ctx : NamedCtx} {e A B} {π : Purity} (d : ctx ⊢ᵐ e ∶ A ⇨[ π ] B)
-         → RelV (A ⇒[ mk-kind Many π ] B) ((⟦ d ⟧ᵐ fmt)) (liftFn fmt (realize-morph d))
-bridge-m d@(m-id {T = T} _ _)          = wrapM d (liftFn-id {T})       (λ rv n → refl , rv)
-bridge-m d@(m-fst {A = A} {B = B} _ _) = wrapM d (liftFn-fst {A} {B})  (λ rv n → refl , proj₁ rv)
-bridge-m d@(m-snd {A = A} {B = B} _ _) = wrapM d (liftFn-snd {A} {B})  (λ rv n → refl , proj₂ rv)
-bridge-m d@(m-terminal {A = A} _ _)    = wrapM d (liftFn-terminal {A}) (λ _ n → refl , tt)
-bridge-m (m-initial _ _) {a = ()}
-bridge-m d@(m-inl {A = A} {B = B} _ _) = wrapM d (liftFn-inl {A} {B})  (λ rv n → refl , rv)
-bridge-m d@(m-inr {A = A} {B = B} _ _) = wrapM d (liftFn-inr {B} {A})  (λ rv n → refl , rv)
-bridge-m d@(m-compose {A = A} {B = B} {C = C} _ df dg) =
-  wrapM d (liftFn-∘ {B} {C} {A} (realize-morph df) (realize-morph dg)) (λ rv n →
-    cong₂ _++_ (proj₁ (bridge-m dg rv n)) (proj₁ (bridge-m df (proj₂ (bridge-m dg rv n)) n))
-  , proj₂ (bridge-m df (proj₂ (bridge-m dg rv n)) n))
-bridge-m (m-case {A = A} {B = B} {C = C} df dg) {a = inj₁ a} {b = inj₁ b} rv =
-  subst (RelT C ((⟦ df ⟧ᵐ fmt) a))
-        (sym (liftFn-case-inj₁ {A} {B} {C} (realize-morph df) (realize-morph dg) b)) (bridge-m df rv)
-bridge-m (m-case {A = A} {B = B} {C = C} df dg) {a = inj₂ a} {b = inj₂ b} rv =
-  subst (RelT C ((⟦ dg ⟧ᵐ fmt) a))
-        (sym (liftFn-case-inj₂ {A} {B} {C} (realize-morph df) (realize-morph dg) b)) (bridge-m dg rv)
-bridge-m (m-case df dg) {a = inj₁ _} {b = inj₂ _} ()
-bridge-m (m-case df dg) {a = inj₂ _} {b = inj₁ _} ()
-bridge-m d@(m-pair {A = A} {B = B} {C = C} df dg) =
-  wrapM d (liftFn-pair {A} {B} {C} (realize-morph df) (realize-morph dg)) (λ rv n →
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-m df rv n)) (proj₁ (bridge-m dg rv n))
-  , (proj₂ (bridge-m df rv n) , proj₂ (bridge-m dg rv n)))
-bridge-m d@(m-curry {A = A} {B = B} {C = C} df) =
-  wrapM d (liftFn-curry {A} {B} {C} {mk-kind Many pure} (realize-morph df))
-          (λ rv n → refl , (λ rb → bridge-m df (rv , rb)))
-bridge-m (m-const gd) {b = b} _ = bridge-g gd b
-bridge-m (m-cata {wfF = wfF} _ alg) {a = a} {b = b} rv =
-  cata-bridge {wfF = wfF} (⟦ alg ⟧ᵐ fmt) (realize-morph alg) (bridge-m alg) {a = a} {b = b} rv
-bridge-m {A = A} {B = B} (m-named {x = x} _ _ _ bA cB) {a = a} {b = b} rv =
-  sigop-bridge {A = A} {B = B} {cn = bare x} bA cB {a = a} {b = b} rv
-bridge-m {A = A} {B = B} (m-named-resolved {cn = cn} _ bA cB) {a = a} {b = b} rv =
-  sigop-bridge {A = A} {B = B} {cn = cn} bA cB {a = a} {b = b} rv
+copair-rel : ∀ {A B C : Type} {vf vf' : ⟦ A ⟧ᴰ → T ⟦ C ⟧ᴰ} {vg vg' : ⟦ B ⟧ᴰ → T ⟦ C ⟧ᴰ} {k}
+           → (∀ {a b} → RelV A a b → RelT C (vf a) (vf' b))
+           → (∀ {a b} → RelV B a b → RelT C (vg a) (vg' b))
+           → RelV ((A + B) ⇒[ k ] C) (λ ab → [ vf , vg ]′ ab) (λ ab → [ vf' , vg' ]′ ab)
+copair-rel rf rg {inj₁ _} {inj₁ _} rv = rf rv
+copair-rel rf rg {inj₂ _} {inj₂ _} rv = rg rv
+copair-rel rf rg {inj₁ _} {inj₂ _} ()
+copair-rel rf rg {inj₂ _} {inj₁ _} ()
 
 ------------------------------------------------------------------------
 -- The CHECK / INFER realms, DISCHARGED — mutual structural induction on the
@@ -599,26 +506,77 @@ bridge-i (t-effApp _ df dx) re k = refl , λ {a} {b} _ k' →
       inner = proj₂ bf (proj₂ bx) k'
   in cong₂ _++_ (proj₁ bf) (cong₂ _++_ (proj₁ bx) (proj₁ inner)) , proj₂ inner
 
--- Morphism / value lift — `returnT` of the (bridge-m / bridge-g)-related arrow.
-bridge-c (t-morph-lift d) re k = refl , bridge-m d
-bridge-c (t-value-lift g) re k = refl , λ {a} {b} _ → bridge-g g b
--- D126's closed lift. Both sides are the CONSTANT arrow: the meaning ignores
--- its argument outright, the realization ignores it by weakening. So the pair's
--- value half discards the argument relation and hands back the INFER bridge,
--- transported across `weaken-⟦⟧` (weakening does not change a meaning).
--- Split on π: `realize` does (the eff arrow wraps the same lambda in `arr'`),
--- so neither side reduces until it is known. `⟦arr' f⟧ = ⟦f⟧`, so both clauses
--- are the same proof.
-bridge-c (t-closed-lift {A = A} {π = pure} _ d) {dγ₂ = dγ₂} re k =
-  refl , λ {a} {b} _ →
-    subst (λ y → RelT A ((⟦ d ⟧ᵢ fmt) _) y)
-          (sym (weaken-⟦⟧ (realize-infer d) fmt dγ₂ b))
-          (bridge-i d re)
-bridge-c (t-closed-lift {A = A} {π = eff} _ d) {dγ₂ = dγ₂} re k =
-  refl , λ {a} {b} _ →
-    subst (λ y → RelT A ((⟦ d ⟧ᵢ fmt) _) y)
-          (sym (weaken-⟦⟧ (realize-infer d) fmt dγ₂ b))
-          (bridge-i d re)
+-- D127: the POINT-FREE LEAVES. `realize` sends each to `lift-morphism` of the
+-- plain categorical generator, so these are the OLD `bridge-m` bodies verbatim,
+-- re-aimed at `⊢ᶜ` — the `subst` moves `liftFn`'s funext-reduction out of the
+-- way exactly as `wrapM` used to.
+bridge-c (t-id-check {T = T} _ _) re k =
+  refl , subst (RelV (T ⇒[ mk-kind Many _ ] T) (λ a → returnT a))
+               (sym (liftFn-id {T})) (λ rv n → refl , rv)
+bridge-c (t-fst-check {A = A} {B = B} _ _) re k =
+  refl , subst (RelV ((A * B) ⇒[ mk-kind Many _ ] A) (λ ab → returnT (proj₁ ab)))
+               (sym (liftFn-fst {A} {B})) (λ rv n → refl , proj₁ rv)
+bridge-c (t-snd-check {A = A} {B = B} _ _) re k =
+  refl , subst (RelV ((A * B) ⇒[ mk-kind Many _ ] B) (λ ab → returnT (proj₂ ab)))
+               (sym (liftFn-snd {A} {B})) (λ rv n → refl , proj₂ rv)
+bridge-c (t-terminal-morph-check {A = A} _ _) re k =
+  refl , subst (RelV (A ⇒[ mk-kind Many _ ] Once.Type.Unit) (λ _ → returnT tt))
+               (sym (liftFn-terminal {A})) (λ _ n → refl , tt)
+bridge-c (t-initial-morph-check _ _) re k = refl , (λ { {a = ()} })
+bridge-c (t-inl-morph-check {A = A} {B = B} _ _) re k =
+  refl , subst (RelV (A ⇒[ mk-kind Many _ ] (A + B)) (λ a → returnT (inj₁ a)))
+               (sym (liftFn-inl {A} {B})) (λ rv n → refl , rv)
+bridge-c (t-inr-morph-check {A = A} {B = B} _ _) re k =
+  refl , subst (RelV (B ⇒[ mk-kind Many _ ] (A + B)) (λ b → returnT (inj₂ b)))
+               (sym (liftFn-inr {B} {A})) (λ rv n → refl , rv)
+
+-- D127: the COMBINATORS. Both sides now bind their arms and then build the
+-- same function from the results, so each is a `RelT-bind`/`RelT-return`
+-- congruence — no realm, no extraction, no per-shape reasoning.
+bridge-c (t-compose-check {A = A} {B = B} {C = C} {π = π} _ df dg) re =
+  RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = A ⇒[ mk-kind Many π ] C}
+            (bridge-c df re) (λ rf →
+  RelT-bind {A = A ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] C}
+            (bridge-c dg re) (λ rg →
+  RelT-return (λ rv → RelT-bind {A = B} {B = C} (rg rv) rf)))
+bridge-c (t-case-copair-check {A = A} {B = B} {C = C} {π = π} df dg) re =
+  RelT-bind {A = A ⇒[ mk-kind Many π ] C} {B = (A + B) ⇒[ mk-kind Many π ] C}
+            (bridge-c df re) (λ rf →
+  RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = (A + B) ⇒[ mk-kind Many π ] C}
+            (bridge-c dg re) (λ rg →
+  RelT-return (copair-rel rf rg)))
+bridge-c (t-pair-morph-check {A = A} {B = B} {C = C} df dg) re =
+  RelT-bind {A = A ⇒[ mk-kind Many Once.Type.pure ] B}
+            {B = A ⇒[ mk-kind Many Once.Type.pure ] (B * C)}
+            (bridge-c df re) (λ rf →
+  RelT-bind {A = A ⇒[ mk-kind Many Once.Type.pure ] C}
+            {B = A ⇒[ mk-kind Many Once.Type.pure ] (B * C)}
+            (bridge-c dg re) (λ rg →
+  RelT-return (λ rv → RelT-bind {A = B} {B = B * C} (rf rv) (λ rb →
+               RelT-bind {A = C} {B = B * C} (rg rv) (λ rc → RelT-return (rb , rc))))))
+bridge-c (t-curry-check {A = A} {B = B} {C = C} df) re =
+  RelT-bind {A = (A * B) ⇒[ mk-kind Many Once.Type.pure ] C}
+            {B = A ⇒[ mk-kind Many Once.Type.pure ] (B ⇒[ mk-kind Many Once.Type.pure ] C)}
+            (bridge-c df re) (λ {c₁} {c₂} rf →
+  RelT-return {A = A ⇒[ mk-kind Many Once.Type.pure ] (B ⇒[ mk-kind Many Once.Type.pure ] C)}
+              {x = λ a → returnT (λ b → c₁ (a , b))}
+              {y = λ a → returnT (λ b → c₂ (a , b))}
+              (λ {a} {b} rv →
+                 RelT-return {A = B ⇒[ mk-kind Many Once.Type.pure ] C}
+                             {x = λ z → c₁ (a , z)} {y = λ z → c₂ (b , z)}
+                             (λ rv' → rf (rv , rv'))))
+-- The cata: the algebra is BOUND on both sides (D131), so this is a bind over
+-- the algebra followed by the fold congruence `cata-bridge` — which is exactly
+-- why that lemma is now stated over two ALGEBRAS.
+bridge-c (t-cata-check {F = F} {A = A} {π = π} {wfF = wfF} _ dalg) re =
+  RelT-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
+            {B = μ-type F ⇒[ mk-kind Many π ] A}
+            (bridge-c dalg tt) (λ {c₁} {c₂} ralg →
+  RelT-return {A = μ-type F ⇒[ mk-kind Many π ] A}
+              {x = cata-sem wfF c₁}
+              {y = λ x → λ n → let r = sem-cata wfF (SD.cata-ev-algˢ {F} {A} n (returnT c₂)) x
+                               in (proj₁ r , proj₂ r)}
+              (λ {a} {b} rv → cata-bridge {A' = A} {wfF = wfF} c₁ c₂ ralg rv))
 bridge-c (t-embed d) re = bridge-i d re
 bridge-c (t-lam _ d) re k = refl , λ {a} {b} rv → bridge-c d (re , rv)
 bridge-c (t-pair-lit-check da db) re k =
