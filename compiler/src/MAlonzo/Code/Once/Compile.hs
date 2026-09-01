@@ -251,17 +251,17 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
              (coe
                 MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v3)
                 (coe
-                   MAlonzo.Code.Once.Optimize.d_optimize_4296
+                   MAlonzo.Code.Once.Optimize.d_optimize_4316
                    (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
                       (coe
                          MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
                          (coe v1)))
                    (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v7))
                    (coe
-                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_124 (coe v1)
+                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_208 (coe v1)
                       (coe v7) (coe v2)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3000
+                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3066
                          (coe v0) (coe v1) (coe v7) (coe v5)
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -273,10 +273,10 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                             (coe v4))
                          (coe (0 :: Integer)) (coe v10))))
                 (coe
-                   MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_124 (coe v1)
+                   MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_208 (coe v1)
                    (coe v7) (coe v2)
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3000
+                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3066
                       (coe v0) (coe v1) (coe v7) (coe v5)
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -317,7 +317,7 @@ d_compileFunBody_112 v0 v1 v2 v3 v4 v5 v6 v7
       (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v0)
       (coe v1) (coe v2) (coe v3) (coe v5) (coe v6)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1872
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1308
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
             (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
@@ -462,7 +462,7 @@ d_inferType'45'validate_276 v0 v1 v2 v3
         -> let v5
                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_2040
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
                         (coe v0) (coe v1) (coe v4)) in
            coe
              (case coe v5 of
@@ -484,7 +484,7 @@ d_inferType_312 v0 v1 v2
   = let v3
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_2024
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
                  (coe
                     MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
                     (coe v0) (coe v1))
@@ -818,7 +818,7 @@ d_pipeline_614 v0 v1 v2 v3
       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v0))
       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
       (coe
-         MAlonzo.Code.Once.Optimize.d_optimize_4296
+         MAlonzo.Code.Once.Optimize.d_optimize_4316
          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v0))
          (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
          (MAlonzo.Code.Once.Surface.Desugar.d_desugar_22
@@ -842,7 +842,7 @@ d_pipeline'45'no'45'escape_630 ::
   MAlonzo.Code.Once.IR.T_IR_16
 d_pipeline'45'no'45'escape_630 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Optimize.d_optimize_4296
+      MAlonzo.Code.Once.Optimize.d_optimize_4316
       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v0))
       (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38 (coe v1))
       (MAlonzo.Code.Once.Surface.Desugar.d_desugar_22

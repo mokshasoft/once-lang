@@ -99,7 +99,7 @@ du_compileFunBody'45'sound_90 v0 v1 v2 v3 v4 v5
          (coe
             du_compileFunBody'45'aux'45'success_34
             (coe
-               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1872
+               MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1308
                (coe
                   MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                   (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
@@ -116,7 +116,7 @@ data T_AllFunsTyped_124
   = C_tnil_132 |
     C_tcons_144 MAlonzo.Code.Once.Type.T_Type_108
                 MAlonzo.Code.Once.Surface.Context.T_Usage_60
-                MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24
+                MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
                 T_AllFunsTyped_124
 -- Once.Adequacy.AcceptSound.compileFun-main-aux-sound
 d_compileFun'45'main'45'aux'45'sound_166 ::

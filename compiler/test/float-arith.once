@@ -32,4 +32,4 @@ emitLit : IO Unit
 emitLit = emitF@E (1.5 + 2.25 * 2.0 - 0.5)
 
 main : IO Unit
-main = compose exit@S (compose 23 emitLit)
+main = compose exit@S (compose (\_ -> 23) emitLit)

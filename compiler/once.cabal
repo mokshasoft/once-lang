@@ -472,7 +472,6 @@ library
       MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport
       MAlonzo.Code.Once.Adequacy.CanonResolve
       MAlonzo.Code.Once.Adequacy.CataBridge
-      MAlonzo.Code.Once.Adequacy.CataFold
       MAlonzo.Code.Once.Adequacy.CataRel
       MAlonzo.Code.Once.Adequacy.FunBundle
       MAlonzo.Code.Once.Adequacy.MainForm

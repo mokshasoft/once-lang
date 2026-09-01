@@ -253,8 +253,8 @@ d_body'45'reflect_356 ::
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
 d_body'45'reflect_356 v0 v1 v2 v3 ~v4 v5 v6 v7 v8
   = du_body'45'reflect_356 v0 v1 v2 v3 v5 v6 v7 v8
 du_body'45'reflect_356 ::
@@ -265,15 +265,15 @@ du_body'45'reflect_356 ::
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24 ->
-  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__24
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
+  MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16
 du_body'45'reflect_356 v0 v1 v2 v3 v4 v5 v6 v7
   = let v8
           = MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v4) in
     coe
       (if coe v8
          then coe
-                MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport.du_polys'45'reflect'45''7580'_232
+                MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport.du_polys'45'reflect'45''7580'_100
                 (coe v0) (coe (0 :: Integer))
                 (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                 (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
@@ -289,7 +289,7 @@ du_body'45'reflect_356 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4)) (coe v5)
                 (coe v6) (coe v7)
          else coe
-                MAlonzo.Code.Once.Adequacy.CanonReflectMutual.du_canon'45'reflects'45''7580'_1386
+                MAlonzo.Code.Once.Adequacy.CanonReflectMutual.du_canon'45'reflects'45''7580'_832
                 (coe
                    MAlonzo.Code.Once.TypeCheck.Classify.C_mkCtx_368
                    (coe (0 :: Integer))
@@ -307,7 +307,7 @@ du_body'45'reflect_356 v0 v1 v2 v3 v4 v5 v6 v7
                 (coe v5) (coe v6) (coe v0)
                 (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v4))
                 (coe
-                   MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport.du_polys'45'reflect'45''7580'_232
+                   MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport.du_polys'45'reflect'45''7580'_100
                    (coe v0) (coe (0 :: Integer))
                    (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
                    (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)

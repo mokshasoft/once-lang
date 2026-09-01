@@ -112,7 +112,7 @@ program lit = T.unlines
   , T.pack ("emitLit = emit@E " ++ lit)
   , ""
   , "main : IO Unit"
-  , "main = compose exit@S (compose 7 emitLit)"
+  , "main = compose exit@S (compose (\\_ -> 7) emitLit)"
   ]
 
 ------------------------------------------------------------------------
@@ -219,7 +219,7 @@ checkWrap arch = do
       , T.pack ("emitSum = emit@E (" ++ show a ++ " + " ++ show b ++ ")")
       , ""
       , "main : IO Unit"
-      , "main = compose exit@S (compose 7 emitSum)"
+      , "main = compose exit@S (compose (\\_ -> 7) emitSum)"
       ]
 
 -- | A filesystem-safe per-case build directory name.

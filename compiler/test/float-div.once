@@ -30,4 +30,4 @@ emitQuot : IO Unit
 emitQuot = emitF@E (1.0 / 3.0 + 7.0 / 11.0)
 
 main : IO Unit
-main = compose exit@S (compose 29 emitQuot)
+main = compose exit@S (compose (\_ -> 29) emitQuot)

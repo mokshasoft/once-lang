@@ -107,22 +107,25 @@ literals =
 --     matter. (The shipped `test/float-emit-*.once` exit tests use the `let`
 --     shape and therefore never invoke `emitF` at runtime; they only show the
 --     program builds and exits.)
---   * The literal needs a SIGNATURE-CARRYING binding. `compose emitF@E 0.5`
---     checks fine against a declared `IO Unit`, but nested inside another
---     `compose` it lands in an INFERENCE position and a float literal has no
---     inferable type — a pre-existing frontend gap, not something this branch
---     introduced. Hoisting it into `emitLit : IO Unit` restores a checking
---     position.
+--   * The literal needs a SIGNATURE-CARRYING binding. `compose emitF@E
+--     (\\_ -> 0.5)` checks fine against a declared `IO Unit`, but nested inside
+--     another `compose` it lands in an INFERENCE position and a float literal
+--     has no inferable type — a pre-existing frontend gap, not something this
+--     branch introduced. Hoisting it into `emitLit : IO Unit` restores a
+--     checking position.
+--   * D127: the arm is a WRITTEN constant function `\\_ -> 0.5`, not a bare
+--     literal. There is no implicit value-lift any more: `compose`'s arms are
+--     ordinary terms of arrow type, so the lift is spelled.
 program :: String -> T.Text
 program lit = T.unlines
   [ "import I.Linux.Syscalls as S"
   , "import I.Test.Emit as E"
   , ""
   , "emitLit : IO Unit"
-  , T.pack ("emitLit = compose emitF@E " ++ paren lit)
+  , T.pack ("emitLit = compose emitF@E (\\_ -> " ++ lit ++ ")")
   , ""
   , "main : IO Unit"
-  , "main = compose exit@S (compose 7 emitLit)"
+  , "main = compose exit@S (compose (\\_ -> 7) emitLit)"
   ]
 
 ------------------------------------------------------------------------
@@ -220,20 +223,19 @@ checkOne arch lit v = do
     others = filter (/= archFloatFormat arch)
                     (nub (map archFloatFormat backendArches))
 
--- | A NEGATIVE literal needs parentheses, and the reason is the grammar, not
--- the type checker. `-` is both a prefix and an infix operator, and the
--- application `compose emitF@E` ends at the first token that cannot start an
--- atom — which `-` cannot. So `compose emitF@E -3.14` parses as the
--- SUBTRACTION `(compose emitF@E) - 3.14`. Parenthesising puts the minus back
--- in prefix position, where `parseUnaryWF` reads it.
+-- | `paren` survives for the ARITHMETIC program below, whose expression is
+-- still spliced into an application position. The literal program above no
+-- longer needs it: D127 wraps the literal in `\\_ -> …`, and the lambda body is
+-- already a prefix position, so `-3.14` reads as a negation there rather than
+-- as the SUBTRACTION `(compose emitF@E) - 3.14` a bare arm used to parse as.
 -- | The ARITHMETIC program. Note the shape: `emitF@E <expr>` APPLIED, not
 -- `compose emitF@E <expr>`.
 --
 -- That distinction cost a wrong conclusion once and is worth writing down.
--- `compose`'s second argument must be a MORPHISM `Unit ⇒ Float`, so a literal
--- gets there by the value-lift (`⊢ᵍ`, closed values) and an EXPRESSION has no
--- route — `compose emit@E (1 + 2)` fails identically for `Int`, so it is not a
--- float limitation and not an `emitF` limitation. Applying the SigOp directly
+-- `compose`'s second argument must be a MORPHISM `Unit ⇒ Float`. D127 removed
+-- the implicit value-lift, so a literal gets there only by being WRITTEN as
+-- one (`\\_ -> 0.5`) — and so does an expression (`\\_ -> 1 + 2`), which is the
+-- point: the two shapes stopped differing. Applying the SigOp directly
 -- has no such requirement, and the effect IS entered: what is never entered is
 -- a `let _ = … in` binding, which is a different shape again.
 arithProgram :: String -> T.Text
@@ -245,7 +247,7 @@ arithProgram expr = T.unlines
   , T.pack ("emitExpr = emitF@E (" ++ expr ++ ")")
   , ""
   , "main : IO Unit"
-  , "main = compose exit@S (compose 7 emitExpr)"
+  , "main = compose exit@S (compose (\\_ -> 7) emitExpr)"
   ]
 
 -- | The expressions under test. Each carries its value at both precisions;

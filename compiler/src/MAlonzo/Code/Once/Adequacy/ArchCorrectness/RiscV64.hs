@@ -237,7 +237,7 @@ du_ir'45'obs'45'correct_72 ::
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.T_MachineRefinesObsF_1138
 du_ir'45'obs'45'correct_72 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_2742
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_2744
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.RiscV64._.ir-to-trace
 d_ir'45'to'45'trace_154 ::
@@ -408,7 +408,7 @@ du_ir'45'obs'45'correct_162 ::
   MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.T_MachineRefinesObsF_1138
 du_ir'45'obs'45'correct_162 v0 v1
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_2742
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_2744
       (coe v0)
       (coe
          MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation.d_rv64'45'frame'45'semantics_308)
@@ -3019,7 +3019,7 @@ d_Nof_450 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
                (coe MAlonzo.Code.Once.Target.Arch.C_riscv64_12))
             (coe v1) (coe v10)
             (coe
-               MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_2742
+               MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_2744
                (coe v0)
                (coe
                   MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation.d_rv64'45'frame'45'semantics_308)
@@ -3442,7 +3442,7 @@ d_riscv64'45'correct_508 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9
          (coe MAlonzo.Code.Once.Target.Arch.C_riscv64_12))
       (coe v1)
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_2742
+         MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat.d_ir'45'obs'45'correct_2744
          (coe v0)
          (coe
             MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation.d_rv64'45'frame'45'semantics_308)

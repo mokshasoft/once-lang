@@ -34,18 +34,19 @@ import qualified Data.Text as T
 import Backend.Common (BackendArch (X86_64), buildAndRunTrace, decodeTrace, signedAt)
 
 traceTests :: TestTree
--- Plan 0.52 retired `arr`; the const morphisms are written as integer
--- literals directly (global elements — the same denotation as `arr cN`).
--- Effect ordering + exit code are unchanged; the compose chains are identical.
+-- Plan 0.52 retired `arr`. D127 then retired the implicit value-lift that had
+-- replaced it, so a const morphism in a `compose` arm is WRITTEN as one:
+-- `\\_ -> 7`, not the bare literal `7`. Effect ordering and exit codes are
+-- unchanged — only the spelling of the arms moved.
 traceTests = testGroup "Effect traces (observable)"
   [ traceTest "exit only is an empty emit trace"
       []
-      [ "main = compose exit@S 5" ]
+      [ "main = compose exit@S (\\_ -> 5)" ]
       [] 5
 
   , traceTest "single emit then exit"
       []
-      [ "main = compose exit@S (compose 0 (compose emit@E 42))" ]
+      [ "main = compose exit@S (compose (\\_ -> 0) (compose emit@E (\\_ -> 42)))" ]
       [42] 0
 
   -- NEGATIVE ARGUMENTS. Once's integers are SIGNED, so these pin down that a
@@ -59,14 +60,14 @@ traceTests = testGroup "Effect traces (observable)"
       [ "emitNeg : IO Unit"
       , "emitNeg = emit@E (-5)"
       ]
-      [ "main = compose exit@S (compose 7 emitNeg)" ]
+      [ "main = compose exit@S (compose (\\_ -> 7) emitNeg)" ]
       [-5] 7
 
   , traceTest "subtraction below zero emits a negative, not zero"
       [ "emitNeg : IO Unit"
       , "emitNeg = emit@E (3 - 8)"
       ]
-      [ "main = compose exit@S (compose 7 emitNeg)" ]
+      [ "main = compose exit@S (compose (\\_ -> 7) emitNeg)" ]
       [-5] 7
 
   , traceTest "negative and positive arguments keep their order and signs"
@@ -76,30 +77,50 @@ traceTests = testGroup "Effect traces (observable)"
       , "emitB : IO Unit"
       , "emitB = emit@E 2"
       ]
-      [ "main = compose exit@S (compose 7 (compose emitB emitA))" ]
+      [ "main = compose exit@S (compose (\\_ -> 7) (compose emitB emitA))" ]
       [-1, 2] 7
 
   , traceTest "two emits preserve order (emit 5 before emit 3)"
       []
       [ "main = compose exit@S"
-      , "         (compose 7"
+      , "         (compose (\\_ -> 7)"
       , "           (compose emit@E"
-      , "             (compose 3"
-      , "               (compose emit@E 5))))"
+      , "             (compose (\\_ -> 3)"
+      , "               (compose emit@E (\\_ -> 5)))))"
       ]
       [5, 3] 7
 
   , traceTest "three emits preserve order and arguments"
       []
       [ "main = compose exit@S"
-      , "         (compose 9"
+      , "         (compose (\\_ -> 9)"
       , "           (compose emit@E"
-      , "             (compose 3"
+      , "             (compose (\\_ -> 3)"
       , "               (compose emit@E"
-      , "                 (compose 2"
-      , "                   (compose emit@E 1))))))"
+      , "                 (compose (\\_ -> 2)"
+      , "                   (compose emit@E (\\_ -> 1)))))))"
       ]
       [1, 2, 3] 9
+
+  -- THE TEST PLAN 0.76 / D127 EXISTS FOR. The `compose` arm `\_ -> x` mentions
+  -- the ENCLOSING binder `x`. Under D126 a combinator arm was CLOSED BY
+  -- CONSTRUCTION — that closedness is what made `realize-morph` total and what
+  -- forced the categorical laws — so this program had no typing at all, in any
+  -- spelling. Context-indexed composition is precisely the change that admits
+  -- it.
+  --
+  -- The TRACE is what makes the test load-bearing rather than a compile check:
+  -- the emitted word is the ARGUMENT `5`, so the arm genuinely read the binder
+  -- rather than closing over a constant baked in at the arm.
+  , traceTest "a compose arm captures an enclosing binder (D127)"
+      [ "emitCaptured : Int -> IO Unit"
+      , "emitCaptured = \\x -> compose emit@E (\\_ -> x)"
+      , ""
+      , "emitFive : IO Unit"
+      , "emitFive = emitCaptured 5"
+      ]
+      [ "main = compose exit@S (compose (\\_ -> 7) emitFive)" ]
+      [5] 7
   ]
 
 -- | Build a trace program (helper definitions + a `main`), run it, and assert

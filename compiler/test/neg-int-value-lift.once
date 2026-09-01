@@ -27,7 +27,7 @@ import I.Linux.Syscalls as S
 import I.Test.Emit as E
 
 emitLit : IO Unit
-emitLit = compose emit@E (-5)
+emitLit = compose emit@E (\_ -> -5)
 
 main : IO Unit
-main = compose exit@S (compose 17 emitLit)
+main = compose exit@S (compose (\_ -> 17) emitLit)

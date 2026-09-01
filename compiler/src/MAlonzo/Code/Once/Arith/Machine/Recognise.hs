@@ -130,7 +130,7 @@ du_recognise'45'body_44 v0 v1 v2
       (case coe v2 of
          MAlonzo.Code.Once.IR.C__'8728'__30 v5 v7 v8
            -> case coe v7 of
-                MAlonzo.Code.Once.IR.C_const_148 v10 v11
+                MAlonzo.Code.Once.IR.C_const_150 v10 v11
                   -> case coe v10 of
                        MAlonzo.Code.Once.IRTy.C_fits'45'int_512
                          -> let v12 = coe du_is'45'terminal'63'_316 (coe v8) in
@@ -143,7 +143,7 @@ du_recognise'45'body_44 v0 v1 v2
                        MAlonzo.Code.Once.IRTy.C_fits'45'float_514
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                        _ -> MAlonzo.RTE.mazUnreachableError
-                MAlonzo.Code.Once.IR.C_SigOp_154 v9 v10 v11
+                MAlonzo.Code.Once.IR.C_SigOp_156 v9 v10 v11
                   -> let v12
                            = coe
                                MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
@@ -8481,7 +8481,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
       (case coe v2 of
          MAlonzo.Code.Once.IR.C__'8728'__30 v5 v7 v8
            -> case coe v7 of
-                MAlonzo.Code.Once.IR.C_const_148 v10 v11
+                MAlonzo.Code.Once.IR.C_const_150 v10 v11
                   -> case coe v10 of
                        MAlonzo.Code.Once.IRTy.C_fits'45'int_512
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -8495,7 +8495,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                            MAlonzo.Code.Once.Arith.Machine.IR.C_aflit_16 (coe v11))
                                  else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
                        _ -> MAlonzo.RTE.mazUnreachableError
-                MAlonzo.Code.Once.IR.C_SigOp_154 v9 v10 v11
+                MAlonzo.Code.Once.IR.C_SigOp_156 v9 v10 v11
                   -> let v12
                            = coe
                                MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60

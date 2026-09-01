@@ -1859,40 +1859,52 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v2))
                           (coe v5) (coe v6) (coe MAlonzo.Code.Once.IR.C_out'45'μ_100 v8)))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_Cata_106 v8 v10
+      MAlonzo.Code.Once.IR.C_Cata_108 v8 v11
         -> case coe v2 of
-             MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v11
-               -> coe
-                    du_cata'45'dispatch'45'slot'45'stable_464 (coe v0) (coe v1)
-                    (coe
-                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
-                       (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590 (coe v11)))
-                    (coe v5)
-                    (coe
-                       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                       (coe
-                          MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe
-                             MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
-                             (coe v0)
-                             (coe
-                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v11) (coe v3))
-                             (coe v3) (coe (0 :: Integer)) (coe v6) (coe v10))))
-                    (coe
-                       du_trc_94
-                       (coe
-                          MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
-                          (coe v0)
-                          (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v11) (coe v3))
-                          (coe v3) (coe (0 :: Integer)) (coe v6) (coe v10)))
-                    (coe
-                       d_ir'45'stable_518 (coe v0) (coe v1)
-                       (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v11) (coe v3))
-                       (coe v3) (coe v10) (coe (0 :: Integer)) (coe v6))
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v12 v13
+               -> case coe v13 of
+                    MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v14
+                      -> coe
+                           du_cata'45'dispatch'45'slot'45'stable_464 (coe v0) (coe v1)
+                           (coe
+                              MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
+                              (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590 (coe v14)))
+                           (coe v5)
+                           (coe
+                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                              (coe
+                                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                 (coe
+                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
+                                    (coe v0)
+                                    (coe
+                                       MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v12)
+                                       (coe
+                                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v14)
+                                          (coe v3)))
+                                    (coe v3) (coe (0 :: Integer)) (coe v6) (coe v11))))
+                           (coe
+                              du_trc_94
+                              (coe
+                                 MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
+                                 (coe v0)
+                                 (coe
+                                    MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v12)
+                                    (coe
+                                       MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v14)
+                                       (coe v3)))
+                                 (coe v3) (coe (0 :: Integer)) (coe v6) (coe v11)))
+                           (coe
+                              d_ir'45'stable_518 (coe v0) (coe v1)
+                              (coe
+                                 MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v12)
+                                 (coe
+                                    MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v14)
+                                    (coe v3)))
+                              (coe v3) (coe v11) (coe (0 :: Integer)) (coe v6))
+                    _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_Para_112 v8 v10
+      MAlonzo.Code.Once.IR.C_Para_114 v8 v10
         -> coe
              du_all'45'stable'63''45'sound_130 (coe v0) (coe v1)
              (coe
@@ -1900,8 +1912,8 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                 (coe
                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                    (coe v0) (coe v2) (coe v3) (coe v5) (coe v6)
-                   (coe MAlonzo.Code.Once.IR.C_Para_112 v8 v10)))
-      MAlonzo.Code.Once.IR.C_Out_116 v8
+                   (coe MAlonzo.Code.Once.IR.C_Para_114 v8 v10)))
+      MAlonzo.Code.Once.IR.C_Out_118 v8
         -> case coe v2 of
              MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v9
                -> coe
@@ -1913,9 +1925,9 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                           (coe v0) (coe v2)
                           (coe
                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v9) (coe v2))
-                          (coe v5) (coe v6) (coe MAlonzo.Code.Once.IR.C_Out_116 v8)))
+                          (coe v5) (coe v6) (coe MAlonzo.Code.Once.IR.C_Out_118 v8)))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_in'45'ν_120 v8 v9
+      MAlonzo.Code.Once.IR.C_in'45'ν_122 v8 v9
         -> case coe v3 of
              MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v10
                -> coe
@@ -1928,9 +1940,9 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                           (coe
                              MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v10) (coe v3))
                           (coe v3) (coe v5) (coe v6)
-                          (coe MAlonzo.Code.Once.IR.C_in'45'ν_120 v8 v9)))
+                          (coe MAlonzo.Code.Once.IR.C_in'45'ν_122 v8 v9)))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_Ana_126 v8 v10
+      MAlonzo.Code.Once.IR.C_Ana_128 v8 v10
         -> coe
              du_all'45'stable'63''45'sound_130 (coe v0) (coe v1)
              (coe
@@ -1938,8 +1950,8 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                 (coe
                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                    (coe v0) (coe v2) (coe v3) (coe v5) (coe v6)
-                   (coe MAlonzo.Code.Once.IR.C_Ana_126 v8 v10)))
-      MAlonzo.Code.Once.IR.C_Hylo_134 v7 v9 v10 v12 v13
+                   (coe MAlonzo.Code.Once.IR.C_Ana_128 v8 v10)))
+      MAlonzo.Code.Once.IR.C_Hylo_136 v7 v9 v10 v12 v13
         -> coe
              du_all'45'stable'63''45'sound_130 (coe v0) (coe v1)
              (coe
@@ -1947,8 +1959,8 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                 (coe
                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                    (coe v0) (coe v2) (coe v3) (coe v5) (coe v6)
-                   (coe MAlonzo.Code.Once.IR.C_Hylo_134 v7 v9 v10 v12 v13)))
-      MAlonzo.Code.Once.IR.C_Fuse_142 v7 v9 v10 v12 v13
+                   (coe MAlonzo.Code.Once.IR.C_Hylo_136 v7 v9 v10 v12 v13)))
+      MAlonzo.Code.Once.IR.C_Fuse_144 v7 v9 v10 v12 v13
         -> coe
              du_all'45'stable'63''45'sound_130 (coe v0) (coe v1)
              (coe
@@ -1956,8 +1968,8 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                 (coe
                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                    (coe v0) (coe v2) (coe v3) (coe v5) (coe v6)
-                   (coe MAlonzo.Code.Once.IR.C_Fuse_142 v7 v9 v10 v12 v13)))
-      MAlonzo.Code.Once.IR.C_free'45'heap_144 v7
+                   (coe MAlonzo.Code.Once.IR.C_Fuse_144 v7 v9 v10 v12 v13)))
+      MAlonzo.Code.Once.IR.C_free'45'heap_146 v7
         -> coe
              du_all'45'stable'63''45'sound_130 (coe v0) (coe v1)
              (coe
@@ -1966,7 +1978,7 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                    (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                    (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v5) (coe v6) (coe v4)))
-      MAlonzo.Code.Once.IR.C_const_148 v8 v9
+      MAlonzo.Code.Once.IR.C_const_150 v8 v9
         -> case coe v8 of
              MAlonzo.Code.Once.IRTy.C_fits'45'int_512
                -> coe
@@ -1977,7 +1989,7 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                           MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                           (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                           (coe MAlonzo.Code.Once.IRTy.C_Int_30) (coe v5) (coe v6)
-                          (coe MAlonzo.Code.Once.IR.C_const_148 v8 v9)))
+                          (coe MAlonzo.Code.Once.IR.C_const_150 v8 v9)))
              MAlonzo.Code.Once.IRTy.C_fits'45'float_514
                -> coe
                     du_all'45'stable'63''45'sound_130 (coe v0) (coe v1)
@@ -1987,9 +1999,9 @@ d_ir'45'stable_518 v0 v1 v2 v3 v4 v5 v6
                           MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_396
                           (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
                           (coe MAlonzo.Code.Once.IRTy.C_Float_32) (coe v5) (coe v6)
-                          (coe MAlonzo.Code.Once.IR.C_const_148 v8 v9)))
+                          (coe MAlonzo.Code.Once.IR.C_const_150 v8 v9)))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_SigOp_154 v7 v8 v9
+      MAlonzo.Code.Once.IR.C_SigOp_156 v7 v8 v9
         -> coe
              du_all'45'stable'63''45'sound_130 (coe v0) (coe v1)
              (coe

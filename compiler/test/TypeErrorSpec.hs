@@ -34,24 +34,32 @@ typeErrorTests = testGroup "Type Errors"
 
 typeMismatchTests :: TestTree
 typeMismatchTests = testGroup "Type mismatches"
-  [ testCase "value body at function type lifts to a constant function" $ do
-      -- `f : Int -> Int; f = 42` is ACCEPTED: a value body `b : B` at type
-      -- `A -> B` lifts to the constant function `const b = b ∘ terminal`
-      -- (here `42 : Unit -> Int` precomposed with `terminal : Int -> Unit`).
-      -- This is the same value-lifting the language applies elsewhere, so it
-      -- is allowed rather than special-cased. The body must still match the
-      -- RESULT type: `f : Int -> String; f = 42` and `f : Int -> Int; f = unit`
-      -- are both rejected (see below), as are multi-argument arrows.
+  [ testCase "value body at function type is REJECTED (D127)" $ do
+      -- `f : Int -> Int; f = 42` is now a TYPE ERROR. D126 accepted it by
+      -- lifting a value body `b : B` at `A -> B` to the constant function
+      -- `const b = b ∘ terminal`; D127 removed that implicit lift, because the
+      -- lift is what forced a combinator arm to be CLOSED, and a closed arm
+      -- cannot mention an enclosing binder. The constant function is still
+      -- expressible — it is now WRITTEN, as `f = \\_ -> 42`.
       let source = T.unlines
             [ "f : Int -> Int"
             , "f = 42"
             ]
       result <- typeCheckSource source
+      assertBool "Should reject a bare value body at an arrow type" (isLeft result)
+
+  , testCase "the written constant function is accepted" $ do
+      -- …and this is what replaces it. Same denotation, spelled.
+      let source = T.unlines
+            [ "f : Int -> Int"
+            , "f = \\_ -> 42"
+            ]
+      result <- typeCheckSource source
       result @?= Right ()
 
   , testCase "value body must match the function's result type" $ do
-      -- The constant-function lifting is not a blanket escape hatch: the body
-      -- type must equal the arrow's result type.
+      -- Rejected before D127 by the lift's codomain check, and after it by the
+      -- absence of any lift at all — either way, not an escape hatch.
       let source = T.unlines
             [ "f : Int -> String"
             , "f = 42"

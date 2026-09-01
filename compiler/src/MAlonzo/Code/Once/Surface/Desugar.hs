@@ -36,7 +36,7 @@ d_sigOp'45'desugar_10 ::
   MAlonzo.Code.Once.IR.T_IR_16
 d_sigOp'45'desugar_10 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.IR.C_SigOp_154 (coe v0) (coe v1)
+      MAlonzo.Code.Once.IR.C_SigOp_156 (coe v0) (coe v1)
       (coe
          MAlonzo.Code.Once.Arith.SigOp.Builders.d_generic'45'info_440 v0 v1
          (MAlonzo.Code.Once.CanonicalName.d_bare_12 (coe v4)) v2 v3)

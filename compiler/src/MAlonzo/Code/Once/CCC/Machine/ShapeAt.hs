@@ -219,7 +219,7 @@ du_valid'8594'shape_326 v0 v1 v2 v3
                        (coe
                           MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.du_eval_24 v0 v1
                           (MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v12) (coe v1))
-                          (coe MAlonzo.Code.Once.IR.C_Out_116 v9) v2)
+                          (coe MAlonzo.Code.Once.IR.C_Out_118 v9) v2)
                        (coe v11))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.C_valid'45'int'45'wf_922 v9
