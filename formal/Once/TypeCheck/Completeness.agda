@@ -24,9 +24,7 @@
 --
 -- Reference: plans/0.3-frontend-verification-gaps.md, gap G2.
 ------------------------------------------------------------------------
-
 module Once.TypeCheck.Completeness where
-
 open import Data.Nat using (ℕ; zero; suc; _⊔_)
 open import Data.String using (String; _++_)
 open import Data.Integer using (ℤ)
@@ -36,7 +34,6 @@ open import Data.Product using (∃; ∃-syntax; Σ-syntax; _×_; _,_; proj₁; 
 open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 open import Data.String.Properties as StrProp using (_≟_)
-
 open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
                                   _*_; _+_; _⇒[_]_; Quantity; _≤q_;
                                   Zero; One; Many)
@@ -48,15 +45,12 @@ open import Once.CanonicalName using (CanonicalName; showCanonical; gen; gen≢b
 open import Once.TypeCheck.ElaborateProofs
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
-         inferElabV; checkElabV; _≟T_; embedOrSubsume; closed-lift-aux; VerifiedInferResult; isRIntVliftTarget?;
+         inferElabV; checkElabV; _≟T_; embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
          classifyAppHead; classifyAppHeadView; ahv-other;
          classifyAppHead-nothing⇒view-other; AppHeadView;
-         classifyBareBuiltin; checkG; inspectWellFormedF; wfv-yes; wfv-no;
-         inspectCheckG; cgv-just; cgv-nothing;
+         inspectWellFormedF; wfv-yes; wfv-no;
          classifyRPairTarget; rpt-vlift; rpt-other;
-         bbc-id; bbc-fst; bbc-snd; bbc-terminal; bbc-initial;
-         bbc-inl; bbc-inr; bbc-other)
-
+         bbc-other)
 open import Once.TypeCheck.Judgment
 open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
@@ -67,11 +61,10 @@ open import Once.Functor.Decide using (wellFormedF?; isConcrete?; isBaseType?;
   isConcrete?-complete; isBaseType?-complete)
 open import Once.TypeCheck.Classify using (ctxWithImportsAndPolys; composeArgB; composeMid;
   inspectLookupLocal; inspectLookupImport; llv-found; llv-not-found; liv-found; liv-not-found)
-
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; [])
   renaming (Expr to SExpr)
 -- Plan 0.49 / D063: morphism-completeness, proven by induction on ⊢ᵐ
--- (12/15 cases; m-const/m-cata/m-named are scoped postulates there).
+-- (12/15 cases/m-cata/m-named are scoped postulates there).
 open import Data.Bool using (Bool; true; false)
 open import Relation.Nullary using (¬_)
 open import Data.Empty using (⊥-elim)
