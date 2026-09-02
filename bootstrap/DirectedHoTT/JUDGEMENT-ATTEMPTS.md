@@ -1360,3 +1360,66 @@ guarantee early rather than adding work.
 3. **`enDeriv`, one representative row per shape** — the tier-3 gap. Even
    partial coverage removes the class, because the shapes are what the
    emitter shares.
+
+---
+
+# §14 — CATEGORY D, CLOSED FOR THE VALUES — `Knot/Adequacy`, and the control that matters
+
+§13.4 named three tiers and said tier 3 (`enDeriv`) is what makes a
+well-formed-but-WRONG row impossible rather than unlikely. That tier is
+now in the tree **for the value translation**, generated, 32 checks.
+
+## §14.1 the shape, and why it is `refl`
+
+`Knot/Map`'s `enTy`/`enTm`/`enDesc`/`enDCon`/`enIDesc`/`enICon`/`enVar`
+are the adequacy map from REAL syntax to encoded terms — and crucially
+they are produced by a **different emitter** (`gen_map`) than the one
+that builds judgement rows (`_val`). So for a rule subject `e` with
+meta-level binders `b`,
+
+    _val(e)[ b := en b ]   ≡   en (e)
+
+is a proposition relating **what the generator chose** to **what the
+adequacy map says the answer is**, and it holds definitionally when the
+translation is right.
+
+    -- dwf-cons
+    _ : {Γ Δ : Cx} {C : DCon} {E : Desc} →
+        Desc-consK (enDCon C) (enDesc E) ≡ enDesc (C ◃ E)
+    _ = refl
+
+## §14.2 ★★★ THE CONTROL — it catches the ACTUAL bug
+
+Not "it would have"; run. The `_infix` fix was REMOVED from `_val`,
+reintroducing the 2026-09-01 defect verbatim, and the module was checked:
+
+    enDCon C != icon tagDesc-cons (pair (enDCon C) (pair (enDesc E) …))
+
+⇒ a hard type error, in the one place nothing could see before. **The
+row that shipped `DescWf C` for `DescWf (C ◃ E)` is now unshippable.**
+
+## §14.3 ⚠ WHAT IT DOES NOT COVER — 11 subjects, named in the module
+
+* **substitution wrappers** (`subTyAtK`, `singleK`, `extNK`, `εwkK`,
+  `wkK`, `pwBodyK`). ⚠ AND THE REASON MATTERS: `enTy (subTy σ B)` is the
+  encoding of the SUBSTITUTED type; relating it to
+  `subTyAtK … (enTy B)` is a **commutation lemma, not `refl`**. Emitting
+  it as an assertion would have been a FALSE claim about the right
+  subject — worse than no claim. The generator refuses instead.
+* **depth-taking constructors** (`Var-vzK`/`Var-vsK`/`nrsSubK`).
+  `enVar vz = Var-vzK (num (len Γ))` — a META-level length — where `_val`
+  writes the row's schematic depth. They agree only under an
+  instantiation this check does not make.
+* **`ICon` binders** (`iwf-ρ`, `iwf-κ`, `idwf-cons`): the rule does not
+  name the scope their meta-level type needs.
+
+⇒ so tier 3 is closed for **32 of 43** translated subjects, and the
+remaining 11 are three NAMED families rather than an unknown remainder.
+
+## §14.4 ⬜ what a full `enDeriv` would still add
+
+This checks each SUBJECT a row builds. It does not check the row's FIELD
+STRUCTURE, its FORDS, or that premises are wired to the right slots — a
+row could name the right terms in the wrong places. `enDeriv` — a total
+map from real DERIVATIONS to encoded inhabitants — subsumes it, and step
+4 needs it anyway (`prog`'s type mentions `_⊢_∷_`).
