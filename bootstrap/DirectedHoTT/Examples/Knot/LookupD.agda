@@ -35,16 +35,23 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
         ; ICon; IDesc; εwkTy; IMu; natrec; app; fst; iρ; iκ; iι
-        ; ⌜Id⌝; ⌜Nat⌝; isingle; iext )
+        ; ⌜Id⌝; ⌜Nat⌝; isingle; iext; unit; _◂_; ielim; subTm )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢lam; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
-        ; ⊢natrec; ⊢app; ⊢fst; ξ-pairʳ; βsnd )
-open import DirectedHoTT.Lib.IPay using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ )
+        ; ⊢natrec; ⊢app; ⊢fst; ξ-pairʳ; βsnd; ⊢unit
+        ; imethsTy; imethsTyFrom; IDescWfFrom; ⊢ielim; single; wk-single )
+open import DirectedHoTT.Lib.IPay
+  using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ; ⊢methsFrom; ⊢methsCons
+        ; idwfDrop; splTake; Split; spl-nil; spl-step )
+open import DirectedHoTT.Lib.IMeths using ( cdTake; cdRest; methsFrom )
+open import DirectedHoTT.Lib.Wk using ( sub-w-single )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast )
+open import normalizer.Syntax.Types using ( cong; trans )
 open import DirectedHoTT.Lib.ICast using ( muFwd )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; ⊢IPair; sDCon; ⊢sDCon; sDesc; ⊢ixP )
-open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
+  using ( IPair; ⊢IPair; sDCon; ⊢sDCon; sDesc; ⊢sDesc; ⊢ixP )
+open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf; cDesc-consWf )
 open import DirectedHoTT.Examples.Knot.Desc using ( cDesc-cons )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagDesc-cons )
@@ -193,3 +200,92 @@ lookupCons =
                            (⊢var (there (there (there here))))))
                      (⊢var (there here))))
                (⊢var here)))
+
+------------------------------------------------------------------------
+-- ★★★ THE TUPLE — SEGMENTED, `Knot/Pw`'s shape but through the LIBRARY.
+--
+-- Row 42 (`tagDesc-cons`) is the only real one, so the tuple is
+--   rows 0–41 junk · row 42 · rows 43–52 junk.
+--
+-- ⚠⚠ EVERY SEGMENT IS A **NAMED** DESCRIPTION.  `Knot/Pw`'s header
+--   records why: left as `_` for `imethsTyFrom-wf` to solve, this
+--   OOM-KILLED — with `-c` too, so it was volume, not the collector.
+--   Each meta makes Agda re-normalise a `cdTake`/`cdRest` against a
+--   53-row description, once per occurrence.
+--
+-- ★ AND THE MIDDLE ROW GOES THROUGH `⊢methsCons`, not a hand-rolled
+--   `⊢pair`/`⊢-cast` pair.  `Knot/Pw` spells that chain out three times —
+--   it predates the lemma — and `Lib/IPay.⊢methsCons` is exactly it.
+--   ⬜ `Knot/Pw` could be shortened the same way.
+------------------------------------------------------------------------
+
+D43 : IDesc
+D43 = cdRest (cdTake 43 KnotD)
+
+D42' : IDesc
+D42' = cDesc-cons ◂ D43
+
+spl42 : Split KnotD 42 D42'
+spl42 = splTake spl-nil (cdTake 42 KnotD)
+
+wf43 : IDescWfFrom KnotD IPair D43
+wf43 = idwfDrop (spl-step spl42) KnotWf
+
+-- ★ the last ten rows, all `dι`.
+lookupTail : {Γ : Cx} → RTm Γ
+lookupTail = methsFrom (cdTake 10 D43) lookupJunk unit
+
+⊢lookupTail : {Γ : Ctx} →
+              Γ ⊢ lookupTail ∷ imethsTyFrom KnotD IPair lookupMotK 43 D43
+⊢lookupTail =
+  ⊢methsFrom KnotD IPair 43 (cdTake 10 D43) KnotWf wf43 (spl-step spl42)
+             ⊢IPair ⊢lookupMotK (λ {k} {C} wC _ _ → ⊢lookupJunk k C wC)
+             unit ⊢unit
+
+-- ★ row 42 in front of them
+lookupMid : {Γ : Cx} → RTm Γ
+lookupMid = pair lookupCons lookupTail
+
+⊢lookupMid : {Γ : Ctx} →
+             Γ ⊢ lookupMid ∷ imethsTyFrom KnotD IPair lookupMotK 42 D42'
+⊢lookupMid =
+  ⊢methsCons KnotD IPair 42 {C = cDesc-cons} D43 KnotWf wf43
+             (spl-step spl42) ⊢IPair ⊢lookupMotK ⊢lookupCons ⊢lookupTail
+
+-- ★ …and the leading run of 42
+lookupMethsK : {Γ : Cx} → RTm Γ
+lookupMethsK = methsFrom (cdTake 42 KnotD) lookupJunk lookupMid
+
+⊢lookupMethsK : {Γ : Ctx} →
+                Γ ⊢ lookupMethsK ∷ imethsTy KnotD IPair lookupMotK KnotD
+⊢lookupMethsK =
+  ⊢methsFrom KnotD IPair 0 (cdTake 42 KnotD) KnotWf KnotWf spl-nil
+             ⊢IPair ⊢lookupMotK (λ {k} {C} wC _ _ → ⊢lookupJunk k C wC)
+             lookupMid ⊢lookupMid
+
+------------------------------------------------------------------------
+-- ★★★ `lookupD`, AS A FUNCTION.  ⚠ The `ielim` lands at the motive, a
+--   `Π Nat …`, so the ℕ is APPLIED afterwards — the number rides in the
+--   motive precisely so the recursion can be on the description.
+------------------------------------------------------------------------
+
+lookupDK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+lookupDK n d k = app (ielim KnotD (pair sDesc n) lookupMethsK d) k
+
+⊢lookupDK : {Γ : Ctx} {n d k : RTm ⌊ Γ ⌋} →
+            Γ ⊢ n ∷ Nat → Γ ⊢ d ∷ K (pair sDesc n) → Γ ⊢ k ∷ Nat →
+            Γ ⊢ lookupDK n d k ∷ K (pair sDCon n)
+⊢lookupDK {n = n} {d = d} {k = k} dn dd dk =
+  -- ⚠ THE SAME `βsnd` AS IN THE METHOD: `iinst` puts `pair sDesc n` into
+  --   the motive's `⟨i⟩` slot, so the codomain reads `snd (pair sDesc n)`
+  --   where the caller says `n`.  A `⟶` step, so a CONVERSION.
+  muFwd (ξ-pairʳ (βsnd sDesc n))
+    -- ⚠ AND ONE CAST BEFORE IT: `iinst` weakens the index TWICE past the
+    --   motive's two binders and the `⊢app` instantiates them back, so
+    --   `n` arrives as `subTm (single k) (subTm (extS (single d)) (w (w n)))`.
+    --   `sub-w-single` clears the inner pair, `wk-single` the outer —
+    --   the same two-rung descent `⊢Var-vsKt` pays.
+    (⊢-cast (cong (λ z → K (pair sDCon (snd (pair sDesc z))))
+                  (trans (cong (subTm (single k)) (sub-w-single {v = d} n))
+                         (wk-single {v = k} n)))
+      (⊢app (⊢ielim KnotWf ⊢lookupMotK (⊢ixP ⊢sDesc dn) ⊢lookupMethsK dd) dk))
