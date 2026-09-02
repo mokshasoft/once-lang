@@ -34,14 +34,16 @@ module DirectedHoTT.Examples.Knot.LookupD where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
-        ; ICon; IDesc; εwkTy; IMu; natrec; app; fst )
+        ; ICon; IDesc; εwkTy; IMu; natrec; app; fst; iρ; iκ; iι
+        ; ⌜Id⌝; ⌜Nat⌝; isingle; iext )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢lam; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
-        ; ⊢natrec; ⊢app; ⊢fst )
-open import DirectedHoTT.Lib.IPay using ( ⊢methLam )
+        ; ⊢natrec; ⊢app; ⊢fst; ξ-pairʳ; βsnd )
+open import DirectedHoTT.Lib.IPay using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ )
+open import DirectedHoTT.Lib.ICast using ( muFwd )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; ⊢IPair; sDCon; ⊢sDCon; ⊢ixP )
+  using ( IPair; ⊢IPair; sDCon; ⊢sDCon; sDesc; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf; cDesc-consWf )
 open import DirectedHoTT.Examples.Knot.Desc using ( cDesc-cons )
@@ -111,56 +113,39 @@ lookupCons =
             (app (fst (snd (var (vs (vs (vs vz)))))) (var (vs vz)))
             (var vz)))))                                       -- on k
 
--- ⬜ `⊢lookupCons` — NEXT, and the obstacle is now SOLVED IN `Lib/`;
---   what is left is this call site's plumbing.
+-- ★★★ THE IH TRANSPORT, DISCHARGED — and the recipe below is what the
+--   remaining four `ielim`s will reuse verbatim.
 --
--- ★★★ THE TRANSPORT IS LIFTED: `Lib/IPay.⊢ihHere`/`⊢ihSkipρ`/`⊢ihSkipκ`
---   reach any `iρ` field's IH in any constructor.  `⊢ihSkipκ` is the
---   IDENTITY (a κ field contributes no IH, so `iihTy` skips it
---   definitionally) and `⊢ihSkipρ` costs the single `wk-singleTy` that
---   cancels the tail's weakening.  Every remaining `ielim` over the knot
---   needs exactly these.
+-- ★ `Lib/IPay.⊢ihHere`/`⊢ihSkipρ`/`⊢ihSkipκ` reach any `iρ` field's IH.
+--   Here: one `⊢ihSkipρ` past the head `DCon`, then `⊢ihHere`.
 --
--- ⚠⚠ AND THE CALL SITE MUST PIN THREE THINGS, because `iihTy` IS A
---   FUNCTION AND CANNOT BE INVERTED — a `_` in any of them leaves a
---   stuck constraint, never an error you can read:
---     · the `ICon` at each step   ✅ done below in the parked block
---     · `q`, the payload variable ✅ `var (vs (vs (vs (vs vz))))`
---     · `M`, the motive           ⬜ THE ONE REMAINING — it is
---       `lookupMotK` weakened as `⊢methLam` weakens it
---       (`renTy (extR (extR vs))`, twice) and then once more per binder
---       the `natrec` branch adds.
---   ⇒ `pin-implicits-on-defined-set-types`, third instance in this tree.
+-- ⚠⚠ FIVE PINS AND ONE CONVERSION, measured by working it — and NONE of
+--   them is optional, because `iihTy` is a FUNCTION and cannot be
+--   inverted.  Every missing pin surfaces as `UnsolvedConstraints`, which
+--   names nothing:
 --
--- ★ Everything else in the row is settled: the term type-checks, the de
---   Bruijn positions are confirmed, and the `natrec` motive is constant.
+--     {D} {I}   the description and its index type
+--     {σ}       the environment — and it STEPS with each skip:
+--               `isingle ⟨i⟩` becomes `iext (isingle ⟨i⟩) (fst q)`
+--     {j}       the field's own index, from the `ICon`
+--     (C)       the telescope, explicit — this is the one that unfolds
+--     {q}       the payload — ⚠ IT STEPS TOO: `q` becomes `snd q`.
+--               σ and q move together, one field at a time; getting only
+--               σ right type-checks nothing and reads as a mismatch deep
+--               inside a substitution chain.
+--     {M}       the motive, passed UNWEAKENED — `lookupMotK` mentions
+--               only `var (vs (vs vz))`, which every `extR` fixes, so
+--               the five weakenings `⊢methLam` and the `natrec` branch
+--               impose all COMPUTE AWAY.
 --
--- The term above type-checks and the derivation is written; what it
--- still owes is ONE transport, and it is the one every real method in
--- this family pays:
---
---   `⊢app`'s function argument is the IH for the TAIL field, whose type
---   is the motive at that field's index — i.e. `iatCon` applied, which
---   presents as
---
---       pair (subTm (single ⟨k⟩) (subTm (extS (single (fst p))) (renTm … )))
---
---   where the motive wants `pair sDCon (snd ⟨i⟩)`.  ⇒ the same
---   `iatCon`-shaped retype `Knot/Nrs`'s `⊢nrsVz`/`⊢nrsVs` and
---   `Knot/Single`'s `⊢singleVs` discharge, and `Lib/ISub`'s
---   `⊢fordMapK`/`⊢motAppK` are what they use.
---
--- ⚠ THE de BRUIJN POSITIONS ARE SETTLED and cost one round: `⊢methLam`'s
---   body sits at THREE binders (index · payload · IH), the motive's `Π`
---   adds a fourth (`k`), and `natrec`'s successor branch adds TWO more
---   (the predecessor and `natrec`'s own IH) — so inside `s` the method's
---   IH tuple is THREE back, not four.  That is written down here because
---   it is the part that is easy to get wrong twice.
---
--- ★ AND THE MOTIVE IS CONSTANT, so none of `⊢natrec`'s three
---   substitutions needs a ford — only the IH's index does.
+-- ★★★ AND THE LAST STEP IS A REDUCTION, NOT A PIN.  `iinst` puts the
+--   field's own index into the motive's `⟨i⟩` slot, so the codomain
+--   arrives as `pair sDCon (snd (pair sDesc (snd ⟨i⟩)))` where the target
+--   says `pair sDCon (snd ⟨i⟩)`.  `snd (pair a b)` is a `βsnd` STEP in
+--   this kernel — a `⟶`, not definitional equality — so it must be
+--   CONVERTED.  The same `muFwd (ξ-pairʳ …)` `Knot/Nrs` pays, and it is
+--   why chasing it as a unification problem never converges.
 
-{- TODO — see the note above.
 ⊢lookupCons : {Γ : Ctx} →
               Γ ⊢ lookupCons
                 ∷ imethTy KnotD IPair tagDesc-cons cDesc-cons lookupMotK
@@ -174,7 +159,37 @@ lookupCons =
                -- ⚠ `s` lives under TWO more binders (the predecessor and
                --   `natrec`'s own IH), so the method's IH tuple is THREE
                --   back, not four.
-               (⊢app (⊢fst (⊢snd (⊢var (there (there (there here))))))
-                     (⊢var (there here)))
+               -- ★ THE TAIL'S IH, via `Lib/IPay`'s pickers: one
+               --   `⊢ihSkipρ` past the head `DCon` field, then `⊢ihHere`.
+               -- ⚠ THREE PINS, and each is forced — `iihTy` cannot be
+               --   inverted, so a `_` leaves a stuck constraint.
+               -- ★ `M` is passed UNWEAKENED: `lookupMotK` mentions only
+               --   `var (vs (vs vz))`, which every `extR` fixes, so the
+               --   five weakenings `⊢methLam` and the `natrec` branch
+               --   impose all COMPUTE AWAY.
+               -- ★★★ AND ONE CONVERSION, NOT A PIN.  `iinst` puts the
+               --   field's own index into the motive's `⟨i⟩` slot, so the
+               --   codomain arrives as `pair sDCon (snd (pair sDesc
+               --   (snd ⟨i⟩)))` where the target says `pair sDCon
+               --   (snd ⟨i⟩)`.  `snd (pair a b)` is a `βsnd` STEP in this
+               --   kernel — a `⟶`, not definitional — so it must be
+               --   converted.  Same `muFwd (ξ-pairʳ …)` `Knot/Nrs` pays.
+               (muFwd (ξ-pairʳ (βsnd sDesc (snd (var (vs (vs (vs (vs (vs vz)))))))))
+                 (⊢app (⊢ihHere
+                        {D = KnotD} {I = IPair}
+                        {σ = iext (isingle (var (vs (vs (vs (vs (vs vz)))))))
+                                  (fst (var (vs (vs (vs (vs vz))))))}
+                        {j = pair sDesc (snd (var (vs vz)))}
+                        (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDesc) iι)
+                        -- ⚠ AFTER A SKIP THE PAYLOAD STEPS TOO: `iihTy`
+                        --   recurses at `snd q`, not `q`.  σ and q move
+                        --   together, one field at a time.
+                        {q = snd (var (vs (vs (vs (vs vz)))))} {M = lookupMotK}
+                        (⊢ihSkipρ {D = KnotD} {I = IPair} {σ = isingle (var (vs (vs (vs (vs (vs vz))))))}
+                                   {j = pair sDCon (snd (var vz))} (iρ (pair sDesc (snd (var (vs vz))))
+                                    (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDesc)
+                                     iι))
+                           {q = var (vs (vs (vs (vs vz))))} {M = lookupMotK}
+                           (⊢var (there (there (there here))))))
+                     (⊢var (there here))))
                (⊢var here)))
--}
