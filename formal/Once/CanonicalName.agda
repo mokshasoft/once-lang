@@ -27,8 +27,9 @@ open import Data.List.Properties using (≡-dec)
 open import Data.String using (String) renaming (_≟_ to _≟ˢ_; _++_ to _++ˢ_)
 open import Relation.Binary using (DecidableEquality)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.Any using (Any; any?)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; Dec)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 
 record CanonicalName : Set where
@@ -73,6 +74,25 @@ gen≢bare g x ()
 
 gen-inj : ∀ {g h : String} → gen g ≡ gen h → g ≡ h
 gen-inj refl = refl
+
+-- | The RESERVED WORDS — every compiler-owned generator name, including the
+-- ones that only ever appear APPLIED. D136: these are not available as bare
+-- variable names; a definition whose name is one of them is reached as
+-- `name@this`. This is the language-level list; `Resolve.isBuiltinName` is its
+-- DECIDER (D134: the property here, the procedure there).
+genWords : List String
+genWords = "id" ∷ "fst" ∷ "snd" ∷ "inl" ∷ "inr" ∷ "unit" ∷ "pair" ∷ "terminal"
+         ∷ "initial" ∷ "curry" ∷ "apply" ∷ "compose" ∷ "case" ∷ "cata" ∷ "ana"
+         ∷ "In" ∷ "Out" ∷ []
+
+-- | `x` is a reserved word.
+GenWord : String → Set
+GenWord x = Any (x ≡_) genWords
+
+-- | Its decider. `Resolve.isBuiltinName` is the BOOLEAN form the resolver
+-- computes with; this is the form that discharges the rule's premise.
+genWord? : (x : String) → Dec (GenWord x)
+genWord? x = any? (λ g → x ≟ˢ g) genWords
 
 -- | The EIGHT compiler-owned generator names. D136: the namespace is
 -- reserved, so these eight canonical names are not addressable by user code —

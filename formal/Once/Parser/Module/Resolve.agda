@@ -30,20 +30,24 @@
 
 module Once.Parser.Module.Resolve where
 
-open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Bool using (Bool; true; false; _∨_; not; T)
 open import Data.List using (List; []; _∷_; map) renaming (_++_ to _++L_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _≟_; _++_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Nullary using (yes; no)
+open import Relation.Nullary using (yes; no; ¬_)
+open import Relation.Nullary.Decidable using (toWitness; toWitnessFalse; isYes)
+open import Data.Unit using (tt)
+open import Data.Empty using (⊥-elim)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 open import Once.Parser.Module.Core
 open import Once.Type using (isGround; extractGround)
 open import Once.Functor.Decide using (isConcrete?)
 -- D072 M3: the oracle's sig-less schema criterion (shared with Parser).
 open import Once.TypeCheck.Principal using (siglessSchema)
-open import Once.CanonicalName using (CanonicalName; canonical)
+open import Once.CanonicalName using (CanonicalName; canonical; gen; GenWord; genWord?)
 open import Once.TypeCheck.Raw
   using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair;
          RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna;
@@ -149,25 +153,25 @@ lookupUnaliased ((n , p) ∷ rest) x with x ≟ n
 -- typing rules fire — never canonicalize them to `RResolved`. Mirrors
 -- `Elaborate.isPolyBuiltin` (+ `cata`/`ana`/`In`/`Out`); kept local to avoid a
 -- Parser→TypeCheck import.
+-- D134/D136: ONE definition. The RESERVED WORDS are the language-level
+-- property `GenWord` (Once.CanonicalName); this is its boolean form, so the
+-- resolver's decision and the typing rule's premise cannot drift apart.
 isBuiltinName : String → Bool
-isBuiltinName "id"       = true
-isBuiltinName "fst"      = true
-isBuiltinName "snd"      = true
-isBuiltinName "inl"      = true
-isBuiltinName "inr"      = true
-isBuiltinName "unit"     = true
-isBuiltinName "pair"     = true
-isBuiltinName "terminal" = true
-isBuiltinName "initial"  = true
-isBuiltinName "curry"    = true
-isBuiltinName "apply"    = true
-isBuiltinName "compose"  = true
-isBuiltinName "case"     = true
-isBuiltinName "cata"     = true
-isBuiltinName "ana"      = true
-isBuiltinName "In"       = true
-isBuiltinName "Out"      = true
-isBuiltinName _          = false
+isBuiltinName x = isYes (genWord? x)
+
+-- The two bridges the canon proofs need: preservation refutes the generator
+-- branch from the rule's `¬ GenWord x`, reflection supplies that premise from
+-- the resolver's `false`.
+isBuiltinName-sound : ∀ (x : String) → isBuiltinName x ≡ true → GenWord x
+isBuiltinName-sound x eq = toWitness (subst T (sym eq) tt)
+
+isBuiltinName-false : ∀ (x : String) → isBuiltinName x ≡ false → ¬ GenWord x
+isBuiltinName-false x eq = toWitnessFalse (subst (λ b → T (not b)) (sym eq) tt)
+
+¬GenWord-isBuiltinName : ∀ (x : String) → ¬ GenWord x → isBuiltinName x ≡ false
+¬GenWord-isBuiltinName x ¬gw with genWord? x
+... | yes gw = ⊥-elim (¬gw gw)
+... | no  _  = refl
 
 elemStr : String → List String → Bool
 elemStr _ []       = false
@@ -240,10 +244,16 @@ expandPath (c ∷ rest) with c ≟ "I"
 ... | yes _ = "Interpretations" ∷ rest
 ... | no  _ = c ∷ rest
 
-canonVar : Bool → Maybe (List String) → String → RawExpr
-canonVar true  _           x = RVar x                                             -- local or builtin
-canonVar false (just path) x = RResolved (canonical (expandPath path ++L (x ∷ []))) -- unaliased import: full path
-canonVar false nothing     x = RResolved (canonical (x ∷ []))                     -- own-module ref
+-- | D136: resolving a bare name is a THREE-way decision, so this takes the two
+-- decisions rather than their disjunction. A lexical binder shadows; otherwise
+-- a GENERATOR name is the generator, whatever else is in scope; and only a
+-- non-generator falls through to import / own-module resolution. A definition
+-- whose name a generator has taken is reached as `name@this`.
+canonVar : Bool → Bool → Maybe (List String) → String → RawExpr
+canonVar true  _     _           x = RVar x                                             -- lexical binder shadows
+canonVar false true  _           x = RResolved (gen x)                                  -- a GENERATOR
+canonVar false false (just path) x = RResolved (canonical (expandPath path ++L (x ∷ []))) -- unaliased import: full path
+canonVar false false nothing     x = RResolved (canonical (x ∷ []))                     -- own-module ref
 
 -- | Rewrite `RQualified` (via alias map) and bare top-level `RVar` refs to
 -- `RResolved`; recurse structurally, threading the bound-variable set `bound`
@@ -253,7 +263,7 @@ canonExpr : List String → UnaliasedMap → AliasMap → RawExpr → RawExpr
 canonExpr bound um am (RQualified name alias) with lookupImportAlias am alias
 ... | just path = RResolved (canonical (expandPath path ++L (name ∷ [])))
 ... | nothing   = RQualified name alias
-canonExpr bound um am (RVar x)            = canonVar (elemStr x bound ∨ isBuiltinName x) (lookupUnaliased um x) x
+canonExpr bound um am (RVar x)            = canonVar (elemStr x bound) (isBuiltinName x) (lookupUnaliased um x) x
 canonExpr bound um am (RResolved cn)      = RResolved cn
 canonExpr bound um am (RApp f x)          = RApp (canonExpr bound um am f) (canonExpr bound um am x)
 canonExpr bound um am (RLam x b)          = RLam x (canonExpr (x ∷ bound) um am b)
@@ -279,10 +289,11 @@ cls-canon : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap)
               {e : RawExpr}
           → ClosedLiftShape e → ClosedLiftShape (canonExpr bound um am e)
 cls-canon bound um am (cls-var {x = x})
-  with elemStr x bound ∨ isBuiltinName x | lookupUnaliased um x
-... | true  | _      = cls-var
-... | false | just _ = cls-res
-... | false | nothing = cls-res
+  with elemStr x bound | isBuiltinName x | lookupUnaliased um x
+... | true  | _     | _       = cls-var
+... | false | true  | _       = cls-res
+... | false | false | just _  = cls-res
+... | false | false | nothing = cls-res
 cls-canon bound um am (cls-qual {a = alias}) with lookupImportAlias am alias
 ... | just _  = cls-res
 ... | nothing = cls-qual

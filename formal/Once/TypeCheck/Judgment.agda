@@ -56,7 +56,7 @@ open import Once.TypeCheck.Raw as Raw
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
          BinOp; isArithmeticOp; isFloatArithmeticOp; isComparisonOp;
          ClosedLiftShape)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen; NotGenerator)
+open import Once.CanonicalName using (CanonicalName; showCanonical; gen; NotGenerator; GenWord)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupImport; lookupPoly; lookupPolyPrefix;
          removePoly;
@@ -166,7 +166,13 @@ mutual
                    → IsConcrete T  -- Plan 0.58: FFI value reference is concrete
                    → ctx ⊢ᵢ RResolved cn ∶ T ⨾ zeroUsage
 
+    -- D136: a RESERVED WORD is never a bare reference to an import or an
+    -- own-module definition — it is the generator. This is the one rule that
+    -- did name resolution on a String inside the judgment, and `¬ GenWord x`
+    -- is what stops it resolving a name the resolver has already claimed.
+    -- Stated as a PROPERTY (D134); `Resolve.isBuiltinName` is the decider.
     t-var-import : ∀ {ctx : NamedCtx} {x : String} {T : Type}
+                  → ¬ GenWord x
                   → lookupLocal ctx x ≡ nothing
                  → lookupImport (NamedCtx.imports ctx) x ≡ just T
                  → IsConcrete T  -- Plan 0.58: FFI value reference is concrete

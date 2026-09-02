@@ -14,14 +14,16 @@ module Once.Adequacy.CanonPreserve where
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing; is-just)
-open import Data.Product using (_,_)
+open import Data.Product using (_,_; _×_)
 open import Data.String using (String) renaming (_≟_ to _≟s_)
 open import Data.Empty using (⊥-elim)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Type using (Type)
-open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; generatorNS)
+open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; generatorNS; gen)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
 open import Once.Parser.Module.Resolve
   using (canonExpr; canonVar; isBuiltinName; elemStr; lookupUnaliased)
@@ -35,17 +37,24 @@ open import Once.Surface.Syntax
 -- canonExpr-RVar dispatch (import-free: um = am = []).
 ------------------------------------------------------------------------
 
--- canonExpr bound [] [] (RVar x) = canonVar (elemStr x bound ∨ isBuiltinName x)
---   (lookupUnaliased [] x = nothing) x  — so it dispatches on the head Bool.
+-- D136: `canonExpr bound [] [] (RVar x) = canonVar (elemStr x bound)
+-- (isBuiltinName x) nothing x` — a THREE-way decision on two booleans, so
+-- three bridge lemmas rather than two. Only a LEXICAL BINDER keeps the bare
+-- name now; a reserved word resolves into the generator namespace.
 canon-RVar-keep : ∀ (bound : List String) (x : String) →
-  (elemStr x bound ∨ isBuiltinName x) ≡ true →
+  elemStr x bound ≡ true →
   canonExpr bound [] [] (Raw.RVar x) ≡ Raw.RVar x
 canon-RVar-keep bound x eq rewrite eq = refl
 
+canon-RVar-gen : ∀ (bound : List String) (x : String) →
+  elemStr x bound ≡ false → isBuiltinName x ≡ true →
+  canonExpr bound [] [] (Raw.RVar x) ≡ Raw.RResolved (gen x)
+canon-RVar-gen bound x eb eg rewrite eb rewrite eg = refl
+
 canon-RVar-resolve : ∀ (bound : List String) (x : String) →
-  (elemStr x bound ∨ isBuiltinName x) ≡ false →
+  elemStr x bound ≡ false → isBuiltinName x ≡ false →
   canonExpr bound [] [] (Raw.RVar x) ≡ Raw.RResolved (canonical (x ∷ []))
-canon-RVar-resolve bound x eq rewrite eq = refl
+canon-RVar-resolve bound x eb eg rewrite eb rewrite eg = refl
 
 ------------------------------------------------------------------------
 -- `bound` is taken to be `names (named ctx)` everywhere (so binder cases are
@@ -74,15 +83,10 @@ lookup-just→elem ctx x h = llg-just→elem x (NamedCtx.named ctx) (NamedCtx.de
 -- canonExpr keeps every builtin head, so classifyAppHead is preserved.
 ------------------------------------------------------------------------
 
-∨-true : ∀ (b : Bool) → b ∨ true ≡ true
-∨-true true  = refl
-∨-true false = refl
-
-canon-builtin : ∀ (bound : List String) (s : String) → isBuiltinName s ≡ true →
-  canonExpr bound [] [] (Raw.RVar s) ≡ Raw.RVar s
-canon-builtin bound s eq = canon-RVar-keep bound s lem
-  where lem : (elemStr s bound ∨ isBuiltinName s) ≡ true
-        lem rewrite eq = ∨-true (elemStr s bound)
+-- D136: `canon-builtin` is GONE. It said a builtin head SURVIVES `canonExpr`
+-- as a bare name; the resolver now sends it to `RResolved (gen s)`, and the
+-- rules that used it already conclude at that canonical head, so every use of
+-- it was a no-op rewrite that simply deletes.
 
 -- Plan 0.52 (OCP-0008 classifier flatten): `classifyAppHead` is now
 -- `viewToPba ∘ classifyAppHeadView`, so for an `RApp (RVar x) _` head its stuck
@@ -118,44 +122,63 @@ caHead-RApp-resolved-arg-irr (canonical (ns ∷ n ∷ [])) g g' with ns ≟s gen
 ...       | yes refl = refl
 ...       | no _ = refl
 
-classify-canon : ∀ (bound : List String) (f : RawExpr) →
+-- D136: `classifyAppHead` survives resolution only for a head the resolver
+-- does not CLAIM. A bare reserved word IS claimed — it becomes
+-- `RResolved (gen x)`, which classifies — so preservation needs to know the
+-- head is either a lexical binder or not a reserved word. That is exactly what
+-- a derivation of the head supplies (`t-var-local` ⇒ bound, `t-var-import` ⇒
+-- `¬ GenWord x` by its own premise), and `head-unclaimed` extracts it.
+-- The two alternatives are MUTUALLY EXCLUSIVE on purpose: each one names the
+-- decision `canonVar` makes, so the bridge lemmas rewrite without a `with`
+-- (a `with` here abstracts `elemStr x bound` in the goal but not in the
+-- lemma's statement, and the rewrite then fails to fire).
+HeadUnclaimed : List String → RawExpr → Set
+HeadUnclaimed bound (Raw.RVar x) =
+  (elemStr x bound ≡ true) ⊎ (elemStr x bound ≡ false × isBuiltinName x ≡ false)
+HeadUnclaimed bound (Raw.RApp (Raw.RVar x) _) =
+  (elemStr x bound ≡ true) ⊎ (elemStr x bound ≡ false × isBuiltinName x ≡ false)
+HeadUnclaimed bound _ = ⊤
+
+classify-canon : ∀ (bound : List String) (f : RawExpr) → HeadUnclaimed bound f →
   classifyAppHead f ≡ nothing → classifyAppHead (canonExpr bound [] [] f) ≡ nothing
-classify-canon bound (Raw.RVar x) h with elemStr x bound ∨ isBuiltinName x in eb
-... | true  rewrite canon-RVar-keep bound x eb = h
-... | false rewrite canon-RVar-resolve bound x eb = refl
-classify-canon bound (Raw.RApp (Raw.RVar x) g) h with elemStr x bound ∨ isBuiltinName x in eb
-... | true  rewrite canon-RVar-keep bound x eb = trans (caHead-RApp-arg-irr x (canonExpr bound [] [] g) g) h
-... | false rewrite canon-RVar-resolve bound x eb = refl
-classify-canon bound (Raw.RApp (Raw.RApp a b) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RQualified n al) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RResolved cn) g) h =
+classify-canon bound (Raw.RVar x) (inj₁ eb) h
+  rewrite canon-RVar-keep bound x eb = h
+classify-canon bound (Raw.RVar x) (inj₂ (eb , eg)) h
+  rewrite canon-RVar-resolve bound x eb eg = refl
+classify-canon bound (Raw.RApp (Raw.RVar x) g) (inj₁ eb) h
+  rewrite canon-RVar-keep bound x eb = trans (caHead-RApp-arg-irr x (canonExpr bound [] [] g) g) h
+classify-canon bound (Raw.RApp (Raw.RVar x) g) (inj₂ (eb , eg)) h
+  rewrite canon-RVar-resolve bound x eb eg = refl
+classify-canon bound (Raw.RApp (Raw.RApp a b) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RQualified n al) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RResolved cn) g) _ h =
   trans (caHead-RApp-resolved-arg-irr cn (canonExpr bound [] [] g) g) h
-classify-canon bound (Raw.RApp (Raw.RLam y b) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RLet y e₁ e₂) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RPair a b) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RDestruct s xl el xr er) g) h = refl
-classify-canon bound (Raw.RApp Raw.RUnit g) h = refl
-classify-canon bound (Raw.RApp (Raw.RInt n) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RFloat i f l _) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RStringLit s) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RAnnot e t) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RBinOp op a b) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RUnaryOp op e) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RAna F c) g) h = refl
-classify-canon bound (Raw.RQualified n al) h = refl
-classify-canon bound (Raw.RResolved cn) h = h
-classify-canon bound (Raw.RLam y b) h = refl
-classify-canon bound (Raw.RLet y e₁ e₂) h = refl
-classify-canon bound (Raw.RPair a b) h = refl
-classify-canon bound (Raw.RDestruct s xl el xr er) h = refl
-classify-canon bound Raw.RUnit h = refl
-classify-canon bound (Raw.RInt n) h = refl
-classify-canon bound (Raw.RFloat i f l _) h = refl
-classify-canon bound (Raw.RStringLit s) h = refl
-classify-canon bound (Raw.RAnnot e t) h = refl
-classify-canon bound (Raw.RBinOp op a b) h = refl
-classify-canon bound (Raw.RUnaryOp op e) h = refl
-classify-canon bound (Raw.RAna F c) h = refl
+classify-canon bound (Raw.RApp (Raw.RLam y b) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RLet y e₁ e₂) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RPair a b) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RDestruct s xl el xr er) g) _ h = refl
+classify-canon bound (Raw.RApp Raw.RUnit g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RInt n) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RFloat i f l _) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RStringLit s) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RAnnot e t) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RBinOp op a b) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RUnaryOp op e) g) _ h = refl
+classify-canon bound (Raw.RApp (Raw.RAna F c) g) _ h = refl
+classify-canon bound (Raw.RQualified n al) _ h = refl
+classify-canon bound (Raw.RResolved cn) _ h = h
+classify-canon bound (Raw.RLam y b) _ h = refl
+classify-canon bound (Raw.RLet y e₁ e₂) _ h = refl
+classify-canon bound (Raw.RPair a b) _ h = refl
+classify-canon bound (Raw.RDestruct s xl el xr er) _ h = refl
+classify-canon bound Raw.RUnit _ h = refl
+classify-canon bound (Raw.RInt n) _ h = refl
+classify-canon bound (Raw.RFloat i f l _) _ h = refl
+classify-canon bound (Raw.RStringLit s) _ h = refl
+classify-canon bound (Raw.RAnnot e t) _ h = refl
+classify-canon bound (Raw.RBinOp op a b) _ h = refl
+classify-canon bound (Raw.RUnaryOp op e) _ h = refl
+classify-canon bound (Raw.RAna F c) _ h = refl
 
 ------------------------------------------------------------------------
 -- Bound subset (a binder list grown by the resolver covers the context's

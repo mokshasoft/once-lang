@@ -50,7 +50,7 @@ open import Once.IRTy.WF using (wf-⌊⌋)
 -- not a value, so `Emits`/`Halts` drop it entirely.
 open import Once.Arith.SigOp.Builders using (generic-semM)
 open import Once.SigOp.Info using (SigOpInfo; mk-info'; pureV; emitsV; haltsV; ffi-concrete)
-open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen; NotGenerator; bare-NotGenerator)
+open import Once.CanonicalName using (CanonicalName; bare; showCanonical; gen; NotGenerator; bare-NotGenerator; GenWord; genWord?)
 open import Once.SigEffect using (SigEffect) renaming (halts to se-halts; emits to se-emits)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -1208,10 +1208,15 @@ mutual
     → lookupImport (NamedCtx.imports ctx) x ≡ impLhs
     → VerifiedInferResult ctx (Raw.RVar x)
   -- Plan 0.58: DE-WITH the import-value concreteness decision.
+  -- D136: the reserved-word decision is DE-WITHED like the concreteness one,
+  -- because it is what discharges `t-var-import`'s `¬ GenWord x`. A reserved
+  -- word in the import table is unreachable bare (write `x@this`), so it
+  -- reports the same `UnboundVariable` a missing name would.
   inferElabV-RVar-import-value-aux :
     ∀ (ctx : NamedCtx) (x : String)
     → lookupLocal ctx x ≡ nothing
     → (ty : Type) → lookupImport (NamedCtx.imports ctx) x ≡ just ty
+    → (gw : Dec (GenWord x)) → genWord? x ≡ gw
     → (mc : Maybe (IsConcrete ty)) → isConcrete? ty ≡ mc
     → VerifiedInferResult ctx (Raw.RVar x)
   inferElabV-RApp-other-aux :
@@ -2305,16 +2310,19 @@ mutual
   inferElabV-RVar-lookup-aux ctx x (just (A , Ψ , eV)) eq-loc _ _ =
     success A Ψ (Surface.svar→expr eV) 0 (NamedCtx.freshCounter ctx) , t-var-local eq-loc
   inferElabV-RVar-lookup-aux ctx x nothing eq-loc (just ty) eq-imp =
-    inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (isConcrete? ty) refl
+    inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (genWord? x) refl (isConcrete? ty) refl
   -- Plan 0.58 / D071: both lookups failed — try the telescope (poly) fallback:
   -- a GROUND own-module def infers at its declared type; otherwise fail.
   inferElabV-RVar-lookup-aux ctx x nothing eq-loc nothing eq-imp =
     inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
 
-  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (just conc) _ =
-    success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx) , t-var-import eq-loc eq-imp conc
-  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp nothing _ =
+  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no ¬gw) _ (just conc) _ =
+    success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx)
+    , t-var-import ¬gw eq-loc eq-imp conc
+  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no _) _ nothing _ =
     failure (NonConcreteSigOpType x ty) , tt
+  inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (yes _) _ _ _ =
+    failure (UnboundVariable x) , tt
 
   inferElabV-RApp-other-aux ctx f x (just _) _ =
     failure (BuiltinTypeMismatch "unreachable: ahv-other ⇒ classifyAppHead nothing") , tt
