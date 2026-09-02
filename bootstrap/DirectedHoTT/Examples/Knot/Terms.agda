@@ -46,10 +46,11 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv
         ; ⊢pair; ⊢fst; ⊢snd; ⊢unit; ⊢nzero; ⊢nsuc; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢idrefl
         ; ⊢icon
-        ; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-IMu
+        ; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-IMu; ty-Π
         ; _⟶_; βfst; βsnd; ξ-pairʳ; ξ-nsuc
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ
-        ; El-⌜Id⌝; ξ-El; ξ-IMu; ξ-⌜Id⌝ˡ )
+        ; El-⌜Id⌝; ξ-El; ξ-IMu; ξ-⌜Id⌝ˡ; ξ-Πˡ )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDCon; sVar; ⊢sTy; ⊢sTm; ⊢sDCon; ⊢sVar
         ; toI; fromI; ⊢ixP )
@@ -243,3 +244,28 @@ kdcon = kdk kNat kdi
 
 SubTy : {Γ : Cx} → RTm Γ → RTm Γ → RTy Γ
 SubTy d n = Π (K (pair sVar d)) (K (pair sTm (renTm vs n)))
+
+------------------------------------------------------------------------
+-- ★★★ AND ITS TWO SERVICE LEMMAS, for the same reason `SubTy` is here.
+--
+-- ⚠ `ty-SubTy` DID NOT EXIST, and `Knot/SubMot` worked around it by
+--   spelling the `Π` out inside `subMotK` rather than naming the type it
+--   was building.  A second motive (`Knot/IPayTy`) wanting the same
+--   domain is what made the omission visible.
+--
+-- ★★ `subBwd` IS THE FORD TAX ON A SUBSTITUTION.  A row's index arrives
+--   as `pair sICon d`, so a `σ` built at source depth `d` has to be read
+--   at `snd (pair sICon d)` — a `βsnd` STEP, not a definitional equality.
+--   `muFwd` cannot do it: the mismatch is inside a `Π`'s DOMAIN, so it
+--   takes `ξ-Πˡ` as well.  ⇒ stated for an arbitrary reduction and an
+--   arbitrary sort, because nothing here cares which.
+------------------------------------------------------------------------
+
+ty-SubTy : {Γ : Ctx} {d n : RTm ⌊ Γ ⌋} →
+           Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ty SubTy d n
+ty-SubTy dd dn = ty-Π (ty-IMu KnotWf (⊢ixP ⊢sVar dd))
+                      (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢wk dn)))
+
+subBwd : {Γ : Ctx} {d d' n sb : RTm ⌊ Γ ⌋} →
+         d ⟶ d' → Γ ⊢ sb ∷ SubTy d' n → Γ ⊢ sb ∷ SubTy d n
+subBwd r dsb = ⊢conv dsb (csymᵀ (credᵀ (ξ-Πˡ (ξ-IMu (ξ-pairʳ r)))))
