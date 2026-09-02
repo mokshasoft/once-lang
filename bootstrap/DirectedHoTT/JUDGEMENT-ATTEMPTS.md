@@ -677,10 +677,37 @@ be found by grep or by a future search tactic. If it is general in its
 own right it belongs at top level even with one customer — a line to
 hoist, against a blocked generalisation for not doing so.
 
-⬜ **Next:** `iatCon-wf` case 3 now has its missing hop, which unblocks
+~~⬜ **Next:** `iatCon-wf` case 3 now has its missing hop, which unblocks
 generalising `Lib/IPay` off `Nat`, which unblocks `constMeth` over an
 abstract motive — and only then is `singleK` a small job rather than a
-fourth copy.
+fourth copy.~~
+
+✅⛔ **RESOLVED 2026-09-02, AND IN BOTH DIRECTIONS AT ONCE.**
+
+* ✅ **The PROLOGUE is lifted, and it was the bulk.** `Lib/IPay.⊢methLam`
+  takes the motive ABSTRACTLY — `{M : RTy ((⌊ Γ ⌋ ∙) ∙)}` plus its `⊢ty`
+  as a premise — and discharges the index binder, the payload binder and
+  the IH binder with `ipayTy-wf`/`iihTy-wf`. **Five customers use it**
+  (`SubMot`, `Single`, `Pw`, `Stk`, `Nrs`). ⇒ the claim above — *"every
+  new object-level function pays a fresh copy of the method machinery"* —
+  **is no longer true**, and §7's table should be read with that
+  correction.
+* ⛔ **And `constMeth` over an abstract motive CANNOT EXIST**, which is
+  not a deferral but a proof. `Lib/IPay`'s own header: *"an arbitrary `M`
+  may be UNINHABITED, so nothing can produce its codomain in general."*
+  `constMeth` works for `extMotK` only because that codomain happens to
+  be a `Tm` and `Tm-nzeroK` inhabits it.
+
+★★★ **SO THE LIMIT OF THIS ABSTRACTION IS AN INHABITATION QUESTION** —
+the same undecidable thing as `FUTURE.md`'s category C. "Generalise it
+fully" has won repeatedly in this tree (`⊢Ctx-extKt`, `⊢subAtK`,
+`⊢Var-vsKt`); here it wins for the prologue and provably loses for the
+constant method, and the boundary between them is exactly *"is this type
+inhabited?"*
+
+⇒ a new `ielim` therefore costs THREE things and reuses the rest: the
+MOTIVE, the JUNK BODY (a closed inhabitant of the motive's codomain at
+every index — `DCon-iK`/`Tm-nzeroK` serve), and the REAL methods.
 
 ---
 
