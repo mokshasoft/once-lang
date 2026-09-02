@@ -126,6 +126,10 @@ import DirectedHoTT.Examples.Knot.InDRows
 import DirectedHoTT.Examples.Knot.InDWf
 import DirectedHoTT.Examples.Knot.InIDRows
 import DirectedHoTT.Examples.Knot.InIDWf
+import DirectedHoTT.Examples.Knot.IPayTy
+import DirectedHoTT.Examples.Knot.IPayTyKap
+import DirectedHoTT.Examples.Knot.IPayTyMot
+import DirectedHoTT.Examples.Knot.IPayTyRho
 import DirectedHoTT.Examples.Knot.IxD
 import DirectedHoTT.Examples.Knot.JudgeRows
 import DirectedHoTT.Examples.Knot.JudgeWfA
