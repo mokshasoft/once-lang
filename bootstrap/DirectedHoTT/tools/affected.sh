@@ -81,11 +81,24 @@ while [ "${#QUEUE[@]}" -gt 0 ]; do
 done
 
 # ---- order: dependencies before dependents, cheaply (by import count) ----
+# ⚠⚠ TWO BUGS LIVED HERE, AND BOTH MADE THE SCRIPT UNUSABLE ON `Trust`:
+#
+#   1. `Trust.agda` uses `import`, NOT `open import`, so its count was 0
+#      and it sorted FIRST — before all 219 of its dependencies.  One
+#      agda process then had to elaborate the whole tree and was
+#      OOM-KILLED by the cgroup cap (143).  ⇒ the pattern must match
+#      BOTH forms, which puts the trust root last, where it belongs.
+#   2. `grep -c` prints `0` AND exits 1, so `|| echo 0` appended a
+#      SECOND zero; `printf` then emitted two lines and `awk` produced
+#      an EMPTY module name, checked as `""` and reported `FAIL(42)`.
+#      ⇒ drop the `||`; `grep -c` already prints the count it needs.
 declare -a TOBUILD=()
-while IFS= read -r rel; do TOBUILD+=("$rel"); done < <(
+while IFS= read -r rel; do
+  [ -n "$rel" ] && TOBUILD+=("$rel")
+done < <(
   for rel in "${!HIT[@]}"; do
-    printf '%s %s\n' "$(grep -c '^open import DirectedHoTT' "$BOOT/$rel" 2>/dev/null || echo 0)" "$rel"
-  done | sort -n | awk '{print $2}')
+    printf '%s %s\n' "$(grep -cE '^(open )?import DirectedHoTT' "$BOOT/$rel" 2>/dev/null)" "$rel"
+  done | sort -n | awk 'NF==2 {print $2}')
 
 echo "-- ${#TOBUILD[@]} module(s) affected (of $(find "$ROOT" -name '*.agda' | wc -l) total)"
 if [ "$LIST" -eq 1 ]; then printf '     %s\n' "${TOBUILD[@]}"; exit 0; fi

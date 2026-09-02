@@ -28,11 +28,12 @@ module DirectedHoTT.Examples.Knot.Wk where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Nat; Σ'; IMu; pair; unit
-        ; ielim; renTm; subTm; renTy; εwkTy; εwk-ren; IDesc; ICon; _◂_ )
+        ; ielim; renTm; subTm; renTy; εwkTy; εwk-ren; IDesc; ICon; _◂_; nsuc )
+open import DirectedHoTT.Lib.ICast using ( muFwd )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; wk-single
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢pair; ⊢unit; ⊢fst; ⊢snd; ⊢nsuc
-        ; IDescWfFrom; idwf-cons
+        ; IDescWfFrom; idwf-cons; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd
         ; ty-IMu; imethsTy; imethsTyFrom; ⊢ielim )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ren-ty )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
@@ -128,3 +129,26 @@ wkK i t = ielim KnotD i wkMethsK t
 ⊢wkK {i = i} di dt =
   ⊢-cast (cong (λ z → K (sh z)) (wk-single i))
          (⊢ielim KnotWf ⊢MotK di ⊢wkMethsK dt)
+
+------------------------------------------------------------------------
+-- ★★★ `wkK` AT AN EXPLICIT `(sort , depth)` — the two β-steps, once.
+--
+-- ⚠⚠ `⊢wkK` lands at `sh i`, and `sh i = pair (fst i) (nsuc (snd i))`
+--   (`Lib/IWk`).  At a concrete `i = pair s n` that is
+--   `pair (fst (pair s n)) (nsuc (snd (pair s n)))` — two `⟶` STEPS
+--   away from `pair s (nsuc n)`, not definitionally equal to it.  Every
+--   caller therefore pays the SAME pair of conversions.
+--
+-- ★ THREE CUSTOMERS ALREADY: `tools/gen-knot.py` hard-codes it as the
+--   `WK` post (`muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ
+--   (βfst _ _)) …)`), `Knot/Nrs` writes it out, and `Knot/PayTy` needs
+--   it for `Σ'`'s second component.  ⇒ lifted here, beside `wkK`, rather
+--   than copied a fourth time.
+------------------------------------------------------------------------
+
+⊢wkKat : {Γ : Ctx} {s n t : RTm ⌊ Γ ⌋} →
+         Γ ⊢ s ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ t ∷ K (pair s n) →
+         Γ ⊢ wkK (pair s n) t ∷ K (pair s (nsuc n))
+⊢wkKat ds dn dt =
+  muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _)))
+    (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ds dn) dt))
