@@ -63,7 +63,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶*_; done; step; natrec-suc; natrec-zero; csymᵀ; iinst; iihTy
         ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-El; ⊢ielim; imethsTy
         ; IDescWfFrom; idwf-nil; idwf-cons )
-open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w; ren-w; sub-w-single )
+open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w; ren-w; sub-w-single; towerA; towerJ )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; cdTake )
 open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
@@ -1161,35 +1161,12 @@ sortMap-red r =
   ⟶*-trans (⟶*-natrecᶻ r)
            (⟶*-natrecⁿ (pred* (pred* (pred* (pred* (pred* r))))))
 
--- ★ THE THREE RUNGS, and each is `sub-w` then the next one down.  The
---   innermost `subTm (extS³ (single J)) (var (vs³ vz))` computes to
---   `w³ J` on its own — variables are where substitution still reduces.
-towerJ : {Γ : Cx} (sb m u J : RTm Γ) →
-         subTm (single sb)
-           (subTm (extS (single m))
-             (subTm (extS (extS (single u)))
-               (subTm (extS (extS (extS (single J)))) (var (vs (vs (vs vz)))))))
-           ≡ J
-towerJ sb m u J = trans (cong (λ z → subTm (single sb) (subTm (extS (single m)) z)) rA)
-                   (trans (cong (subTm (single sb)) rB) rC)
-  where
-    rB' : subTm (extS (single u)) (w (w J)) ≡ w J
-    rB' = trans (sub-w {σ = single u} (w J)) (cong w (wk-single {v = u} J))
-    rA : subTm (extS (extS (single u))) (w (w (w J))) ≡ w (w J)
-    rA = trans (sub-w {σ = extS (single u)} (w (w J))) (cong w rB')
-    rB : subTm (extS (single m)) (w (w J)) ≡ w J
-    rB = trans (sub-w {σ = single m} (w J)) (cong w (wk-single {v = m} J))
-    rC : subTm (single sb) (w J) ≡ J
-    rC = wk-single {v = sb} J
-
--- ⚠ AND THE ARGUMENT'S TOWER IS ONE RUNG SHORTER — it is read under the
---   Π, so `iinst`'s outermost substitution has not reached it.
-towerA : {Γ : Cx} (m u J : RTm Γ) →
-         subTm (single m)
-           (subTm (extS (single u))
-             (subTm (extS (extS (single J))) (var (vs (vs vz))))) ≡ J
-towerA m u J =
-  trans (cong (subTm (single m)) (sub-w-single J)) (wk-single {v = m} J)
+-- ★★★ `towerA`/`towerJ` MOVED TO `Lib/Wk` 2026-09-02, at their THIRD
+--   customer (`subMotK`, `ipayTyMotK`, `ihTyMotK`).  They mention nothing
+--   of any motive: they are statements about `subTm`/`extS`/`single` and
+--   a de Bruijn index, so a motive whose `⟨i⟩` sits in the SECOND domain
+--   and whose payload sits three binders up in the result uses them
+--   UNCHANGED.  ⇒ the `Lib`/`Examples` inversion, once more.
 
 -- ⚠ `⟶*-castₗ` comes from `Lib/ICast` now.  It had been written THREE
 --   times independently — here, in `Lib/ISub`, and (as `⟶*-castᵣ`) once
