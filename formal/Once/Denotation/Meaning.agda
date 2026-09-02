@@ -201,7 +201,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 -- (the body derivation is the rule's premise). Env-independent — the body is
 -- typed in the empty local context (the prefix env), so discard `dγ` and feed
 -- `tt`. Structural recursion (bodyD is a premise ⇒ a subterm).
-⟦ t-var-poly-instantiate _ _ _ _ _ bodyD ⟧ᶜ fmt dγ = (⟦ bodyD ⟧ᶜ fmt) tt
+⟦ t-var-poly-instantiate _ _ _ _ bodyD ⟧ᶜ fmt dγ = (⟦ bodyD ⟧ᶜ fmt) tt
 
 ⟦ t-int n ⟧ᵢ fmt                dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)
 -- D113, in the INFER realm: same clause, same reason as `g-float` above.
@@ -217,7 +217,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 -- the context projection Γ(x). The body is closed (typed in the telescope
 -- prefix over the empty local env), so its meaning runs on `tt`. Structural
 -- recursion (bodyD is a premise ⇒ a subterm) — same as the check-mode rule.
-⟦ t-var-poly-instantiate-infer _ _ _ _ _ _ bodyD ⟧ᵢ fmt dγ = (⟦ bodyD ⟧ᶜ fmt) tt
+⟦ t-var-poly-instantiate-infer _ _ _ _ _ bodyD ⟧ᵢ fmt dγ = (⟦ bodyD ⟧ᶜ fmt) tt
 ⟦ t-annot d ⟧ᵢ fmt              dγ = (⟦ d ⟧ᶜ fmt) dγ
 ⟦ t-pair da db ⟧ᵢ fmt           dγ = (⟦ da ⟧ᵢ fmt) dγ >>=T λ a → (⟦ db ⟧ᵢ fmt) dγ >>=T λ b → returnT (a , b)
 ⟦ t-neg d ⟧ᵢ fmt                dγ = (⟦ d ⟧ᵢ fmt) dγ >>=T λ v → returnT (semM neg-info fmt v)

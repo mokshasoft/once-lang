@@ -690,32 +690,12 @@ classifyGen (canonical [])              = gv-other (notGen-shape λ ())
 classifyGen (canonical (_ ∷ []))        = gv-other (notGen-shape λ ())
 classifyGen (canonical (_ ∷ _ ∷ _ ∷ _)) = gv-other (notGen-shape λ ())
 
-data BareBuiltinClass : String → Set where
-  bbc-id       : BareBuiltinClass "id"
-  bbc-fst      : BareBuiltinClass "fst"
-  bbc-snd      : BareBuiltinClass "snd"
-  bbc-terminal : BareBuiltinClass "terminal"
-  bbc-initial  : BareBuiltinClass "initial"
-  bbc-inl      : BareBuiltinClass "inl"
-  bbc-inr      : BareBuiltinClass "inr"
-  bbc-other    : ∀ {x} → BareBuiltinClass x
-
-classifyBareBuiltin : (x : String) → BareBuiltinClass x
-classifyBareBuiltin x with StrProp._≟_ x "id"
-... | yes refl = bbc-id
-... | no  _ with StrProp._≟_ x "fst"
-...   | yes refl = bbc-fst
-...   | no  _ with StrProp._≟_ x "snd"
-...     | yes refl = bbc-snd
-...     | no  _ with StrProp._≟_ x "terminal"
-...       | yes refl = bbc-terminal
-...       | no  _ with StrProp._≟_ x "initial"
-...         | yes refl = bbc-initial
-...         | no  _ with StrProp._≟_ x "inl"
-...           | yes refl = bbc-inl
-...           | no  _ with StrProp._≟_ x "inr"
-...             | yes refl = bbc-inr
-...             | no  _ = bbc-other
+-- D136: `BareBuiltinClass` / `classifyBareBuiltin` are DELETED. They asked
+-- "does this bare STRING name a generator?" — the collision this plan removes.
+-- A generator is `RResolved (gen g)` and is classified by `GenView` above; a
+-- bare name is a lexical binder or an ordinary reference, and asking the old
+-- question of it was actively WRONG: it rejected a user's own polymorphic `id`
+-- (which D136 allows) and would have read a generator off a shadowing binder.
 
 -- Bundle for AppHeadView: pairs the view with its defining equation.
 -- Lets callers recover a term-level witness `classifyAppHeadView f ≡ v`

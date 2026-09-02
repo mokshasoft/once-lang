@@ -126,7 +126,7 @@ realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer dar
 -- closed body's IR, wrapped as a closed morphism applied to `unit` — so its
 -- denotation is env-independent BY DEFINITION (`⟦ morph-app ir unit ⟧ˢ dγ =
 -- evalᴰ ir tt`), reusing existing combinators. No `poly` surface node (E1).
-realize {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ _ bodyD) =
+realize {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ bodyD) =
   subst (λ u → Expr (NamedCtx.debruijn ctx) u A) poly-usage-eq
         (morph-app {Ψ = zeroUsage} (elaborate IR.Heap (realize bodyD)) unit)
 
@@ -147,7 +147,7 @@ realize-infer (t-var-resolved {cn = cn} _ _ conc) = sigOp cn conc
 realize-infer (t-var-import {x = x} _ _ _ conc) = sigOp (bare x) conc
 -- Plan 0.58 / D071: infer-mode ground telescope reference — same closed-body
 -- inline as the check-mode `t-var-poly-instantiate` clause above.
-realize-infer {ctx = ctx} {A = A} (t-var-poly-instantiate-infer _ _ _ _ _ _ bodyD) =
+realize-infer {ctx = ctx} {A = A} (t-var-poly-instantiate-infer _ _ _ _ _ bodyD) =
   subst (λ u → Expr (NamedCtx.debruijn ctx) u A) poly-usage-eq
         (morph-app {Ψ = zeroUsage} (elaborate IR.Heap (realize bodyD)) unit)
 realize-infer (t-annot d)       = realize d

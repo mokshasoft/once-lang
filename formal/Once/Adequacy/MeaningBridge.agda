@@ -326,7 +326,7 @@ bridge-i {ctx = ctx} (t-var-import {T = A} _ _ _ conc)  {dγ₂ = dγ₂} re = s
 -- δ-reduce to the closed body (⟦_⟧ᵢ = ⟦ bodyD ⟧ᶜ tt; realize-infer inlines
 -- `morph-app (elaborate (realize bodyD)) unit`), so RECURSE on the body with
 -- the empty related env; `faithful` closes the evalᴰ↔SD gap.
-bridge-i {ctx = ctx} (t-var-poly-instantiate-infer _ _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
+bridge-i {ctx = ctx} (t-var-poly-instantiate-infer _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
   rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {eq = poly-usage-eq}
                          {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} {dγ = dγ₂}
   rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} tt k
@@ -621,7 +621,7 @@ bridge-c (t-arg-driven-app-check _ darg df) re k =
 -- SD.⟦ realize d ⟧ˢ dγ₂ = evalᴰ (elaborate Heap (realize bodyD)) tt (morph-app+unit,
 -- env-independent by def). So the bridge RECURSES on the body (bodyD is closed ⇒
 -- empty RelEnv `tt`); `faithful (realize bodyD)` closes the evalᴰ↔SD gap.
-bridge-c {ctx = ctx} (t-var-poly-instantiate _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
+bridge-c {ctx = ctx} (t-var-poly-instantiate _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
   rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {eq = poly-usage-eq}
                          {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} {dγ = dγ₂}
   rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} tt k

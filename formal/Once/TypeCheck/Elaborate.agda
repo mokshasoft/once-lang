@@ -890,7 +890,7 @@ decideLeq Many Many = just refl
 ------------------------------------------------------------------------
 -- Bare polymorphic-builtin classifier (plan 0.6 Phase C.7)
 ------------------------------------------------------------------------
--- Used by `checkElab-RVar` to dispatch specialised check-mode clauses
+-- (Was used by the deleted `checkElab-RVar`; see D136.)
 -- per builtin name. The view-constructor index exposes the concrete
 -- string in each case, so Agda reductions proceed cleanly and proof
 -- `with classifyBareBuiltin x` mirrors the elaborator's dispatch.
@@ -974,19 +974,16 @@ inferElabV-RVar-poly-lookup-aux ctx x nothing _ = failure (UnboundVariable x) , 
 inferElabV-RVar-poly-lookup-aux ctx x (just (schema , body)) _ =
   inferElabV-RVar-poly-ground-aux ctx x schema (isGround schema) refl
 
+-- D136: no `classifyBareBuiltin` dispatch. A bare name that survived the local
+-- and import lookups goes straight to the poly telescope. The seven
+-- `bbc-*` arms that failed with `UnboundVariable` were reading a GENERATOR off
+-- a bare string — so a user's own polymorphic `id` was rejected, which D136
+-- explicitly allows. A generator arrives as `RResolved (gen g)` and never
+-- reaches here.
 inferElabV-RVar-poly-aux :
-  ∀ (ctx : NamedCtx) (x : String)
-  → (cls : BareBuiltinClass x) → classifyBareBuiltin x ≡ cls
-  → VerifiedInferResult ctx (Raw.RVar x)
-inferElabV-RVar-poly-aux ctx x bbc-other    _ =
+  ∀ (ctx : NamedCtx) (x : String) → VerifiedInferResult ctx (Raw.RVar x)
+inferElabV-RVar-poly-aux ctx x =
   inferElabV-RVar-poly-lookup-aux ctx x (lookupPoly (NamedCtx.polys ctx) x) refl
-inferElabV-RVar-poly-aux ctx x bbc-id       _ = failure (UnboundVariable x) , tt
-inferElabV-RVar-poly-aux ctx x bbc-fst      _ = failure (UnboundVariable x) , tt
-inferElabV-RVar-poly-aux ctx x bbc-snd      _ = failure (UnboundVariable x) , tt
-inferElabV-RVar-poly-aux ctx x bbc-terminal _ = failure (UnboundVariable x) , tt
-inferElabV-RVar-poly-aux ctx x bbc-initial  _ = failure (UnboundVariable x) , tt
-inferElabV-RVar-poly-aux ctx x bbc-inl      _ = failure (UnboundVariable x) , tt
-inferElabV-RVar-poly-aux ctx x bbc-inr      _ = failure (UnboundVariable x) , tt
 
 
 mutual
@@ -994,7 +991,6 @@ mutual
   checkElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
   -- RVar dispatch helper (plan 0.6 Phase C.7 POC-1). Separates
   -- specialised bare-builtin handling from the generic lookup path.
-  checkElab-RVar : (ctx : NamedCtx) → (x : String) → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
   -- Pair classifier helper (plan 0.6 Phase C.7 POC-2). Checks a
   -- 2-arg `pair f g` expression in check mode against the canonical
   -- `A ⇒[Many] (B * C)` shape.
@@ -1355,104 +1351,10 @@ mutual
   checkElab ctx e T = proj₁ (checkElabV ctx e T)
     where open import Data.Product using (proj₁)
 
-  -- | Check-mode dispatch for bare `RVar` names (plan 0.6 Phase C.7).
-  -- Each bare polymorphic builtin has a specialised clause that:
-  --   1. Tries lookup first. On success, uses the bound definition —
-  --      matches `t-embed (t-var-local/import …)` with the correct
-  --      non-zero Ψ.
-  --   2. On lookup failure at the canonical type shape, emits the
-  --      `spec*` Surface IR with `zeroUsage` — matches the new
-  --      `t-X-check` judgment rule.
-  -- The two paths are disjoint by construction: each derivation
-  -- uniquely identifies which elab path fires.
-  --
-  -- Dispatches on `classifyBareBuiltin x` so abstract `x` in
-  -- downstream proofs reduces correctly (same idiom used by
-  -- `classifyAppHeadView`).
-  checkElab-RVar ctx x T with classifyBareBuiltin x
-  -- Non-specialised names: lookup-then-match. On inferElab failure,
-  -- try the polymorphic context (plan 0.6.2 Phase 3): if `x` is a
-  -- user poly def, specialise it by check-mode-typechecking its
-  -- body at the expected type `T`. Body is typechecked in a clean
-  -- context (no user locals) because poly defs are top-level and
-  -- can't reference user locals; the resulting SExpr is weakened
-  -- from the empty-local context into the caller's ctx.
-  ... | bbc-other with inferElab ctx (Raw.RVar x)
-  ...   | success T' Ψ eE d f with T ≟T T'
-  ...     | yes refl = success _ eE d f
-  ...     | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx x T | bbc-other | failure err with lookupPoly (NamedCtx.polys ctx) x
-  ... | nothing = failure err
-  -- Plan 0.6.2 Phase 4: emit a proper `poly` placeholder constructor.
-  -- Phase 2's `resolveExpr` pattern-matches on this constructor directly
-  -- — no string encoding, no prefix check. Keeps Phase 1 structural (no
-  -- TERMINATING pragma) and gives downstream consumers type-level
-  -- visibility: an Expr with `poly` nodes hasn't been through Phase 2.
-  -- Plan 0.58 / D071: NO concreteness gate — a same-module def reference is a
-  -- context projection, not an FFI value, so it is emitted at ANY type `T`.
-  ... | just _ = success Surface.zeroUsage (Surface.poly x T)
-                     0 (NamedCtx.freshCounter ctx)
-  -- id : T → T
-  checkElab-RVar ctx _ T | bbc-id with inferElab ctx (Raw.RResolved (gen "id"))
-  ... | success T' Ψ eE d f with T ≟T T'
-  ...   | yes refl = success _ eE d f
-  ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) | bbc-id | failure _ with A ≟T B
-  ... | yes refl = success _ (weakenFromEmpty (specId A)) 0 (NamedCtx.freshCounter ctx)
-  ... | no _ = failure (BuiltinTypeMismatch "id")
-  checkElab-RVar ctx _ _ | bbc-id | failure err = failure err
-  -- fst : (A * B) → A
-  checkElab-RVar ctx _ T | bbc-fst with inferElab ctx (Raw.RResolved (gen "fst"))
-  ... | success T' Ψ eE d f with T ≟T T'
-  ...   | yes refl = success _ eE d f
-  ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A') | bbc-fst | failure _ with A ≟T A'
-  ... | yes refl = success _ (weakenFromEmpty (specFst A B)) 0 (NamedCtx.freshCounter ctx)
-  ... | no _ = failure (BuiltinTypeMismatch "fst")
-  checkElab-RVar ctx _ _ | bbc-fst | failure err = failure err
-  -- snd : (A * B) → B
-  checkElab-RVar ctx _ T | bbc-snd with inferElab ctx (Raw.RResolved (gen "snd"))
-  ... | success T' Ψ eE d f with T ≟T T'
-  ...   | yes refl = success _ eE d f
-  ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B') | bbc-snd | failure _ with B ≟T B'
-  ... | yes refl = success _ (weakenFromEmpty (specSnd A B)) 0 (NamedCtx.freshCounter ctx)
-  ... | no _ = failure (BuiltinTypeMismatch "snd")
-  checkElab-RVar ctx _ _ | bbc-snd | failure err = failure err
-  -- terminal : A → Unit
-  checkElab-RVar ctx _ T | bbc-terminal with inferElab ctx (Raw.RResolved (gen "terminal"))
-  ... | success T' Ψ eE d f with T ≟T T'
-  ...   | yes refl = success _ eE d f
-  ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Unit) | bbc-terminal | failure _ =
-    success _ (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx)
-  checkElab-RVar ctx _ _ | bbc-terminal | failure err = failure err
-  -- initial : Void → A
-  checkElab-RVar ctx _ T | bbc-initial with inferElab ctx (Raw.RResolved (gen "initial"))
-  ... | success T' Ψ eE d f with T ≟T T'
-  ...   | yes refl = success _ eE d f
-  ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) | bbc-initial | failure _ =
-    success _ (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx)
-  checkElab-RVar ctx _ _ | bbc-initial | failure err = failure err
-  -- inl : A → (A + B)
-  checkElab-RVar ctx _ T | bbc-inl with inferElab ctx (Raw.RResolved (gen "inl"))
-  ... | success T' Ψ eE d f with T ≟T T'
-  ...   | yes refl = success _ eE d f
-  ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A' Once.Type.+ B)) | bbc-inl | failure _ with A ≟T A'
-  ... | yes refl = success _ (weakenFromEmpty (specInl A B)) 0 (NamedCtx.freshCounter ctx)
-  ... | no _ = failure (BuiltinTypeMismatch "inl")
-  checkElab-RVar ctx _ _ | bbc-inl | failure err = failure err
-  -- inr : B → (A + B)
-  checkElab-RVar ctx _ T | bbc-inr with inferElab ctx (Raw.RResolved (gen "inr"))
-  ... | success T' Ψ eE d f with T ≟T T'
-  ...   | yes refl = success _ eE d f
-  ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B')) | bbc-inr | failure _ with B ≟T B'
-  ... | yes refl = success _ (weakenFromEmpty (specInr A B)) 0 (NamedCtx.freshCounter ctx)
-  ... | no _ = failure (BuiltinTypeMismatch "inr")
-  checkElab-RVar ctx _ _ | bbc-inr | failure err = failure err
+  -- D136: `checkElab-RVar` DELETED. It dispatched a bare `RVar` on
+  -- `classifyBareBuiltin`, i.e. it decided "is this name a generator?" from the
+  -- string — which is the collision this plan removes. It was also dead: the
+  -- mutual block declared it and nothing ever called it.
 
   -- Plan 0.6 Phase C.7 POC-2: bare `pair f g` check-mode.
   -- Expected type must be `A ⇒[Many] (B * C)`. Checks each
@@ -2314,7 +2216,7 @@ mutual
   -- Plan 0.58 / D071: both lookups failed — try the telescope (poly) fallback:
   -- a GROUND own-module def infers at its declared type; otherwise fail.
   inferElabV-RVar-lookup-aux ctx x nothing eq-loc nothing eq-imp =
-    inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+    inferElabV-RVar-poly-aux ctx x
 
   inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp (no ¬gw) _ (just conc) _ =
     success ty _ (Surface.sigOp (bare x) conc) 0 (NamedCtx.freshCounter ctx)

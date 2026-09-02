@@ -197,7 +197,11 @@ mutual
       ∀ {ctx : NamedCtx} {x : String} {T : Type} {schema : Once.Type.PolyType}
         {body : RawExpr} {prefix : Once.TypeCheck.Classify.PolyCtx}
         {g : Once.Type.Ground schema}
-      → Once.TypeCheck.Classify.classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
+      -- D136: the `classifyBareBuiltin x ≡ bbc-other` premise is GONE. It was
+      -- a decider's answer standing in for "x is not a generator" (D134), and
+      -- under D136 it is WRONG, not merely redundant: a generator arrives as
+      -- `RResolved (gen g)`, so a bare `x` never is one — while the premise
+      -- would have rejected a user's own POLYMORPHIC `id`, which D136 allows.
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
       → lookupPolyPrefix (NamedCtx.polys ctx) x ≡ just (schema , body , prefix)
@@ -697,7 +701,11 @@ mutual
     t-var-poly-instantiate :
       ∀ {ctx : NamedCtx} {x : String} {T : Type} {schema : Once.Type.PolyType} {body : RawExpr}
         {prefix : Once.TypeCheck.Classify.PolyCtx}
-      → Once.TypeCheck.Classify.classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
+      -- D136: the `classifyBareBuiltin x ≡ bbc-other` premise is GONE. It was
+      -- a decider's answer standing in for "x is not a generator" (D134), and
+      -- under D136 it is WRONG, not merely redundant: a generator arrives as
+      -- `RResolved (gen g)`, so a bare `x` never is one — while the premise
+      -- would have rejected a user's own POLYMORPHIC `id`, which D136 allows.
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
       -- Plan 0.58 (telescope): the lookup returns the def's PREFIX (a

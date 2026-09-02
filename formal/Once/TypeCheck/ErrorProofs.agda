@@ -51,8 +51,7 @@ open import Once.TypeCheck.Elaborate
          NegOperandView; nov-int; nov-float; nov-other; negOperandView;
          -- Plan 0.58 / D071: the infer-mode poly-fallback stages (for the
          -- unbound-error normalization proof below).
-         lookupPoly; classifyBareBuiltin; BareBuiltinClass;
-         bbc-id; bbc-fst; bbc-snd; bbc-terminal; bbc-initial; bbc-inl; bbc-inr; bbc-other;
+         lookupPoly;
          inferElabV-RVar-poly-aux; inferElabV-RVar-poly-lookup-aux;
          inferElabV-RVar-poly-ground-aux)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -275,7 +274,7 @@ var-unbound-is-UnboundVariable :
 -- D136: the `¬ (x ≡ "unit")` premise is gone — `unit` is `RResolved (gen
 -- "unit")` now, so a bare `unit` is an ordinary variable that CAN be unbound.
 var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
-  = goPolyCls (classifyBareBuiltin x) refl
+  = goPolyLp (lookupPoly (NamedCtx.polys ctx) x) refl
       (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
@@ -308,17 +307,8 @@ var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
              → err' ≡ UnboundVariable x
     goPolyLp nothing _ eqF = go eqF
     goPolyLp (just (schema , body)) _ eqF = goPolyIg schema (T.isGround schema) refl eqF
-    goPolyCls : ∀ (cls : BareBuiltinClass x) (eqCls : classifyBareBuiltin x ≡ cls) {err'}
-              → proj₁ (inferElabV-RVar-poly-aux ctx x cls eqCls) ≡ failure err'
-              → err' ≡ UnboundVariable x
-    goPolyCls bbc-other    _ eqF = goPolyLp (lookupPoly (NamedCtx.polys ctx) x) refl eqF
-    goPolyCls bbc-id       _ eqF = go eqF
-    goPolyCls bbc-fst      _ eqF = go eqF
-    goPolyCls bbc-snd      _ eqF = go eqF
-    goPolyCls bbc-terminal _ eqF = go eqF
-    goPolyCls bbc-initial  _ eqF = go eqF
-    goPolyCls bbc-inl      _ eqF = go eqF
-    goPolyCls bbc-inr      _ eqF = go eqF
+    -- D136: `goPolyCls` is GONE. The fallback no longer splits on
+    -- `classifyBareBuiltin`, so the poly LOOKUP is the whole dispatch.
 check-RInt-type-mismatch :
   ∀ (ctx : NamedCtx) (n : _) (T : Type) {err : TypeError}
   → ¬ (T ≡ Int)

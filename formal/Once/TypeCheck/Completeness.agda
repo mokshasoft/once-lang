@@ -1298,7 +1298,7 @@ mutual
     in checkElab-fallback-RVar {ctx} x T eqI
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as
   -- t-var-import (infer at the declared type, embed at the same type).
-  iFromInfer {ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _ _ _) =
+  iFromInfer {ctx} dd@(t-var-poly-instantiate-infer {x = x} {T = T} _ _ _ _ _ _) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar {ctx} x T eqI
   iFromInfer (t-annot {e = e} {T = T} d) =
@@ -1413,7 +1413,7 @@ mutual
     in checkElab-fallback-RVar-eff {ctx} x A B eqI
   -- Plan 0.58 / D071: infer-mode ground telescope reference at a pure arrow —
   -- same eff fallback as t-var-import (infer, then arr'/t-subsume lift).
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-poly-instantiate-infer {x = x} _ _ _ _ _ _ _) =
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-poly-instantiate-infer {x = x} _ _ _ _ _ _) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar-eff {ctx} x A B eqI
   iFromInferEff {ctx} {_} {A} {B} dd@(t-apply-app-infer {p = p} d) =
@@ -1445,8 +1445,8 @@ mutual
   -- `extractGround schema g`, so the elaborator's poly-fallback success
   -- equation IS the obligation.
   infer-complete {ctx} (t-var-poly-instantiate-infer {x = x} {schema = schema} {g = g}
-                        eqCls eqLoc eqImp polyE eqG refl _) =
-    checkElab-fallback-RVar-poly-infer {ctx} x eqCls eqLoc eqImp
+                        eqLoc eqImp polyE eqG refl _) =
+    checkElab-fallback-RVar-poly-infer {ctx} x eqLoc eqImp
       (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
       (isGround-complete-at schema g)
   infer-complete (t-annot {e = e} {T = T} d) =
@@ -1679,9 +1679,9 @@ mutual
   -- then composes with the lookup premises via the helper.
   check-complete {ctx}
     (t-var-poly-instantiate {x = x} {T = T} {schema = schema}
-                            bbcOther localN importN polyE eqG bodyD) =
+                            localN importN polyE eqG bodyD) =
     let (_ , _ , _ , eqBody) = check-complete bodyD
-    in checkElab-fallback-RVar-poly {ctx} x T bbcOther localN importN
+    in checkElab-fallback-RVar-poly {ctx} x T localN importN
          (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
          (¬Ground-isGround-inj₂ schema eqG) eqBody
 
@@ -1769,10 +1769,10 @@ mutual
   -- lookupPoly); recurse subsume-complete on the body for the eff target type.
   subsume-complete {ctx} {_} {A} {B}
     (t-var-poly-instantiate {x = x} {schema = schema}
-                            bbcOther localN importN polyE eqG bodyD) =
+                            localN importN polyE eqG bodyD) =
     let (_ , _ , _ , eqBodyEff) = subsume-complete bodyD
     in checkElab-fallback-RVar-poly {ctx} x (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-         bbcOther localN importN
+         localN importN
          (lookupPolyPrefix⇒lookupPoly (NamedCtx.polys ctx) x polyE)
          (¬Ground-isGround-inj₂ schema eqG) eqBodyEff
 

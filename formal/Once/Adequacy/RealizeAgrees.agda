@@ -154,7 +154,7 @@ postulate
   -- Plan 0.58 / D071: the INFER-mode twin — the ground telescope reference's
   -- `poly` emission rides the `bbc-other-poly-infer-witness` gap the same way.
   infer-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) {A Ψ se d f w}
-    → E.inferElabV-RVar-poly-aux ctx x (E.classifyBareBuiltin x) refl ≡ (success A Ψ se d f , w)
+    → E.inferElabV-RVar-poly-aux ctx x ≡ (success A Ψ se d f , w)
     → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
   -- (Plan 0.55 D#2: `check-RApp-todo` ELIMINATED — all RApp check views discharged
   -- by explicit `agree-check-RApp` clauses; the residual is the narrow

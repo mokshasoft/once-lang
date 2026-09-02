@@ -334,7 +334,7 @@ inferElabV-RVar-lookup-aux-fail :
     (eq-loc : lookupLocal ctx x ≡ nothing)
     (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
   → inferElabV-RVar-lookup-aux ctx x nothing eq-loc nothing eq-imp
-      ≡ inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+      ≡ inferElabV-RVar-poly-aux ctx x
 inferElabV-RVar-lookup-aux-fail _ _ _ _ = refl
 
 -- Plan 0.58 / D071: reduce `inferElabV (RVar x)` (both lookups failed) to the
@@ -345,7 +345,7 @@ inferElabV-RVar-poly-bridge :
   → (eqLoc : lookupLocal ctx x ≡ nothing)
   → (eqImp : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
   → inferElabV ctx (Raw.RVar x)
-      ≡ inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+      ≡ inferElabV-RVar-poly-aux ctx x
 -- D136: no `"unit"` split any more. `inferElabV (RVar x)` goes straight to the
 -- lookup aux — `unit` is a generator and arrives as `RResolved (gen "unit")`,
 -- so a bare `RVar` never needs to be excluded from it.
@@ -369,14 +369,10 @@ inferElabV-RVar-poly-bridge ctx x eqLoc eqImp =
       ≡ inferElabV-RVar-lookup-aux ctx x nothing eqLoc nothing eqImp
     bridge-eq = helper nothing eqLoc nothing eqImp
 
--- J-style specialisation lemmas for the three de-withed poly-fallback stages.
-inferElabV-RVar-poly-aux-eq :
-  ∀ (ctx : NamedCtx) (x : String) (cls : BareBuiltinClass x)
-    (eqCls : classifyBareBuiltin x ≡ cls)
-  → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
-      ≡ inferElabV-RVar-poly-aux ctx x cls eqCls
-inferElabV-RVar-poly-aux-eq ctx x .(classifyBareBuiltin x) refl = refl
-
+-- J-style specialisation lemmas for the two remaining de-withed poly-fallback
+-- stages. D136 deleted a third (`inferElabV-RVar-poly-aux-eq`): the fallback no
+-- longer dispatches on `classifyBareBuiltin`, so there is no classifier answer
+-- left to specialise.
 inferElabV-RVar-poly-lookup-eq :
   ∀ (ctx : NamedCtx) (x : String) (lp : Maybe (PolyType × RawExpr))
     (eqLp : lookupPoly (NamedCtx.polys ctx) x ≡ lp)
@@ -394,42 +390,36 @@ inferElabV-RVar-poly-ground-eq ctx x schema .(isGround schema) refl = refl
 -- The poly fallback FAILS when the name isn't in the telescope.
 inferElabV-RVar-poly-aux-fail-nothing :
   ∀ (ctx : NamedCtx) (x : String)
-  → classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
   → lookupPoly (NamedCtx.polys ctx) x ≡ nothing
-  → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+  → inferElabV-RVar-poly-aux ctx x
       ≡ (failure (UnboundVariable x) , tt)
-inferElabV-RVar-poly-aux-fail-nothing ctx x eqCls eqLp =
-  trans (inferElabV-RVar-poly-aux-eq ctx x _ eqCls)
-        (inferElabV-RVar-poly-lookup-eq ctx x nothing eqLp)
+inferElabV-RVar-poly-aux-fail-nothing ctx x eqLp =
+  inferElabV-RVar-poly-lookup-eq ctx x nothing eqLp
 
 -- The poly fallback FAILS for a NON-ground schema (check-mode-only).
 inferElabV-RVar-poly-aux-fail-nonground :
   ∀ (ctx : NamedCtx) (x : String) {schema : PolyType} {body : RawExpr}
-  → classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
   → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
   → isGround schema ≡ inj₂ tt
-  → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+  → inferElabV-RVar-poly-aux ctx x
       ≡ (failure (UnboundVariable x) , tt)
-inferElabV-RVar-poly-aux-fail-nonground ctx x {schema} eqCls eqLp eqG =
-  trans (inferElabV-RVar-poly-aux-eq ctx x _ eqCls)
-    (trans (inferElabV-RVar-poly-lookup-eq ctx x _ eqLp)
-           (inferElabV-RVar-poly-ground-eq ctx x schema (inj₂ tt) eqG))
+inferElabV-RVar-poly-aux-fail-nonground ctx x {schema} eqLp eqG =
+  trans (inferElabV-RVar-poly-lookup-eq ctx x _ eqLp)
+        (inferElabV-RVar-poly-ground-eq ctx x schema (inj₂ tt) eqG)
 
 -- The poly fallback SUCCEEDS at the declared ground type.
 inferElabV-RVar-poly-aux-success :
   ∀ (ctx : NamedCtx) (x : String) {schema : PolyType} {body : RawExpr}
     {g : Ground schema}
-  → classifyBareBuiltin x ≡ Once.TypeCheck.Classify.bbc-other
   → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
   → isGround schema ≡ inj₁ g
-  → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+  → inferElabV-RVar-poly-aux ctx x
       ≡ (success (extractGround schema g) Surface.zeroUsage
                  (Surface.poly x (extractGround schema g)) 0 (NamedCtx.freshCounter ctx)
          , bbc-other-poly-infer-witness ctx x (extractGround schema g))
-inferElabV-RVar-poly-aux-success ctx x {schema} {g = g} eqCls eqLp eqG =
-  trans (inferElabV-RVar-poly-aux-eq ctx x _ eqCls)
-    (trans (inferElabV-RVar-poly-lookup-eq ctx x _ eqLp)
-           (inferElabV-RVar-poly-ground-eq ctx x schema (inj₁ g) eqG))
+inferElabV-RVar-poly-aux-success ctx x {schema} {g = g} eqLp eqG =
+  trans (inferElabV-RVar-poly-lookup-eq ctx x _ eqLp)
+        (inferElabV-RVar-poly-ground-eq ctx x schema (inj₁ g) eqG)
 
 -- Backward-compatible failure bridge: same statement as before PLUS the
 -- poly-fallback-failure premise (`refl` for literal builtin names — the
@@ -438,7 +428,7 @@ inferElabV-RVar-fail-bridge :
   ∀ (ctx : NamedCtx) (x : String)
   → (eqLoc : lookupLocal ctx x ≡ nothing)
   → (eqImp : lookupImport (NamedCtx.imports ctx) x ≡ nothing)
-  → inferElabV-RVar-poly-aux ctx x (classifyBareBuiltin x) refl
+  → inferElabV-RVar-poly-aux ctx x
       ≡ (failure (UnboundVariable x) , tt)
   → inferElabV ctx (Raw.RVar x) ≡ (failure (UnboundVariable x) , tt)
 inferElabV-RVar-fail-bridge ctx x eqLoc eqImp polyFail =
@@ -1074,7 +1064,6 @@ checkElab-fallback-RVar-poly :
     {schema : PolyType} {body : RawExpr} {prefix : PolyCtx}
     {eE_body : SExpr S∅ Surface.zeroUsage T}
     {d_body f_body : ℕ}
-  → classifyBareBuiltin x ≡ bbc-other
   → lookupLocal ctx x ≡ nothing
   → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   -- The poly-node emission depends only on `lookupPoly` succeeding (checkElab
@@ -1091,13 +1080,13 @@ checkElab-fallback-RVar-poly :
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       checkElab ctx (Raw.RVar x) T
         ≡ success Surface.zeroUsage eE d fr)))
-checkElab-fallback-RVar-poly {ctx} x T eqCls eqLoc eqImp eqPoly eqG _
+-- D136: the `classifyBareBuiltin` column is gone with the premise — the
+-- fallback no longer asks whether a bare name looks like a generator.
+checkElab-fallback-RVar-poly {ctx} x T eqLoc eqImp eqPoly eqG _
   with inferElabV ctx (Raw.RVar x)
      | inferElabV-RVar-fail-bridge ctx x eqLoc eqImp
-         (inferElabV-RVar-poly-aux-fail-nonground ctx x eqCls eqPoly eqG)
+         (inferElabV-RVar-poly-aux-fail-nonground ctx x eqPoly eqG)
 ... | (failure _ , _) | refl
-  with classifyBareBuiltin x | eqCls
-... | bbc-other | refl
   with lookupPoly (NamedCtx.polys ctx) x | eqPoly
 ... | just _ | refl = _ , _ , _ , refl
 
@@ -1106,7 +1095,6 @@ checkElab-fallback-RVar-poly {ctx} x T eqCls eqLoc eqImp eqPoly eqG _
 checkElab-fallback-RVar-poly-infer :
   ∀ {ctx : NamedCtx} (x : String)
     {schema : PolyType} {body : RawExpr} {g : Ground schema}
-  → classifyBareBuiltin x ≡ bbc-other
   → lookupLocal ctx x ≡ nothing
   → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
@@ -1114,11 +1102,11 @@ checkElab-fallback-RVar-poly-infer :
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       inferElab ctx (Raw.RVar x)
         ≡ success (extractGround schema g) Surface.zeroUsage eE d fr)))
-checkElab-fallback-RVar-poly-infer {ctx} x eqCls eqLoc eqImp eqPoly eqG =
+checkElab-fallback-RVar-poly-infer {ctx} x eqLoc eqImp eqPoly eqG =
   _ , _ , _ ,
   cong proj₁
     (trans (inferElabV-RVar-poly-bridge ctx x eqLoc eqImp)
-           (inferElabV-RVar-poly-aux-success ctx x eqCls eqPoly eqG))
+           (inferElabV-RVar-poly-aux-success ctx x eqPoly eqG))
   where open import Data.Product using (proj₁)
 checkElab-fallback-RApp-id :
   ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
