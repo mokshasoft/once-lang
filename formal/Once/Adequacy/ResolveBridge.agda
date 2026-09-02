@@ -48,11 +48,12 @@ open import Once.Parser.Module.Resolve
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
 open import Once.Spec.Resolution
 open import Data.List using (map)
-open import Data.Sum using (inj₂)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Once.Parser.Module.Core using (Module; mkModule; Import)
 open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports; polyDefNames;
-  resolveDecls; lookupModule; _path≟_; signaturesWithOwner; ownerOf;
+  resolveDecls; resolveDecls-import-aux; resolveDecls-cons-aux;
+  lookupModule; _path≟_; signaturesWithOwner; ownerOf;
   collectAliases; collectUnaliased)
 import Once.Adequacy.CanonResolve as CR
 
@@ -336,6 +337,26 @@ lookupMod-complete ((p , q) ∷ rest) path m (fa-there p≢ fa) with p path≟ p
 ... | true  = ⊥-elim (p≢ (path≟-sound p path ep))
 ... | false = lookupMod-complete rest path m fa
 
+-- The aux CARRIES its equations, so a plain `rewrite` on the lookup cannot fire
+-- (it would have to rewrite the `refl` proof alongside). Generalise over both
+-- (scrutinee, equation) pairs and match — the J-style bridge the codebase uses
+-- wherever a de-withed aux has to be driven from outside.
+import-red : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
+               (mm : ModuleMap) (imp : Import) (rest : List Decl)
+               (impDs tailDs : List Decl)
+           → lookupModule mm (Import.path imp) ≡ just (mkModule impDs)
+           → resolveDecls polys um am mm rest ≡ inj₂ tailDs
+           → resolveDecls polys um am mm (DImport imp ∷ rest)
+               ≡ inj₂ (signaturesWithOwner (ownerOf imp) impDs ++ tailDs)
+import-red polys um am mm imp rest impDs tailDs elm err = go _ refl _ refl
+  where
+    go : ∀ (lm : Maybe Module) (e1 : lookupModule mm (Import.path imp) ≡ lm)
+           (rr : String ⊎ List Decl) (e2 : resolveDecls polys um am mm rest ≡ rr)
+       → resolveDecls-import-aux polys um am mm imp rest lm e1 rr e2
+           ≡ inj₂ (signaturesWithOwner (ownerOf imp) impDs ++ tailDs)
+    go lm e1 rr e2 with trans (sym e1) elm | trans (sym e2) err
+    ... | refl | refl = refl
+
 resolvesDecls-sound : ∀ (mm : ModuleMap) (polys : List String)
                       (um : UnaliasedMap) (am : AliasMap) (ds ds' : List Decl)
                     → ResolvesDecls mm polys um am ds ds'
@@ -353,9 +374,11 @@ resolvesDecls-sound mm polys um am _ _ (rds-cons nim-sig rd rds)
 resolvesDecls-sound mm polys um am _ _ (rds-cons nim-alias rd rds)
   rewrite resolvesDecls-sound mm polys um am _ _ rds
         | resolvesDecl-sound polys um am _ _ rd = refl
-resolvesDecls-sound mm polys um am _ _ (rds-import {imp = imp} fa rds)
-  rewrite lookupMod-complete mm (Import.path imp) _ fa
-        | resolvesDecls-sound mm polys um am _ _ rds = refl
+resolvesDecls-sound mm polys um am _ _
+  (rds-import {imp = imp} {impDs = impDs} {ds = ds} {ds' = ds'} fa rds) =
+  import-red polys um am mm imp ds impDs ds'
+    (lookupMod-complete mm (Import.path imp) (mkModule impDs) fa)
+    (resolvesDecls-sound mm polys um am ds ds' rds)
 
 -- The scope premise is a BRIDGE fact, not a spec one: `ResolvesModule` is
 -- parameterised by the scope precisely so the SPEC never has to decide which
@@ -382,19 +405,83 @@ lookupMod-sound ((p , q) ∷ rest) path .q refl | true
   rewrite path≟-sound p path ep = fa-here
 ... | false = fa-there (path≟-false⇒≢ p path ep) (lookupMod-sound rest path m eq)
 
--- THE ONE RESIDUAL. `resolveDecls` dispatches on `lookupModule` and on its own
--- recursive call, and the success equation's type does not mention either
--- scrutinee — so no `with` abstracts it and no `rewrite` fires. De-withing
--- `resolveDecls` itself would fix it, but that function is used throughout the
--- driver; doing it is a contained follow-up, not a reason to hold this plan.
---
--- Note what it is and is NOT. It says the resolver's OUTPUT satisfies the
--- relation — a statement about a total function, checkable by testing and
--- falsified by any resolver bug. It replaces `resolver-preserves-typing-imports`
--- and `resolver-reflects-typing-imports`, which assumed that DERIVATIONS
--- transport across resolution. One residual in, two out, and the survivor is
--- the tractable one.
-postulate
-  resolvesModule-complete : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Module)
-                          → resolveImports mm (mkModule ds) ≡ inj₂ mR
-                          → ResolvesModule mm (polyDefNames ds) (mkModule ds) mR
+-- The completeness direction, now PROVEN. `resolveDecls` was de-withed in plan
+-- 0.81 for exactly this: with the module-table lookup and the recursive call as
+-- explicit PARAMETERS carrying their equations, the hypothesis
+-- `resolveDecls … ≡ inj₂ ds'` reduces as soon as those two are matched. A
+-- `with` could never make that happen — the hypothesis mentions neither
+-- scrutinee, so nothing abstracts it and no `rewrite` fires.
+mutual
+  resolvesDecls-complete : ∀ (mm : ModuleMap) (polys : List String)
+                           (um : UnaliasedMap) (am : AliasMap) (ds ds' : List Decl)
+                         → resolveDecls polys um am mm ds ≡ inj₂ ds'
+                         → ResolvesDecls mm polys um am ds ds'
+  resolvesDecls-complete mm polys um am [] _ refl = rds-nil
+  resolvesDecls-complete mm polys um am (DImport imp ∷ rest) ds' eq =
+    rdc-import mm polys um am imp rest ds'
+      (lookupModule mm (Import.path imp)) refl
+      (resolveDecls polys um am mm rest) refl eq
+  resolvesDecls-complete mm polys um am (DTypeSig n t ∷ rest) ds' eq =
+    rdc-cons mm polys um am (DTypeSig n t) nim-typesig rest ds'
+      (resolveDecls polys um am mm rest) refl eq
+  resolvesDecls-complete mm polys um am (DFunDef n a b ∷ rest) ds' eq =
+    rdc-cons mm polys um am (DFunDef n a b) nim-fundef rest ds'
+      (resolveDecls polys um am mm rest) refl eq
+  resolvesDecls-complete mm polys um am (DSignature n o t e ∷ rest) ds' eq =
+    rdc-cons mm polys um am (DSignature n o t e) nim-sig rest ds'
+      (resolveDecls polys um am mm rest) refl eq
+  resolvesDecls-complete mm polys um am (DTypeAlias n ps t ∷ rest) ds' eq =
+    rdc-cons mm polys um am (DTypeAlias n ps t) nim-alias rest ds'
+      (resolveDecls polys um am mm rest) refl eq
+
+  rdc-import : ∀ (mm : ModuleMap) (polys : List String) (um : UnaliasedMap)
+                 (am : AliasMap) (imp : Import) (rest : List Decl) (ds' : List Decl)
+             → (lm : Maybe Module) (elm : lookupModule mm (Import.path imp) ≡ lm)
+             → (rr : String ⊎ List Decl) (err : resolveDecls polys um am mm rest ≡ rr)
+             → resolveDecls-import-aux polys um am mm imp rest lm elm rr err ≡ inj₂ ds'
+             → ResolvesDecls mm polys um am (DImport imp ∷ rest) ds'
+  rdc-import mm polys um am imp rest ds' nothing elm rr err ()
+  rdc-import mm polys um am imp rest ds' (just (mkModule impDs)) elm (inj₁ e) err ()
+  rdc-import mm polys um am imp rest _ (just (mkModule impDs)) elm (inj₂ tailDs) err refl =
+    rds-import (lookupMod-sound mm (Import.path imp) (mkModule impDs) elm)
+               (resolvesDecls-complete mm polys um am rest tailDs err)
+
+  rdc-cons : ∀ (mm : ModuleMap) (polys : List String) (um : UnaliasedMap)
+               (am : AliasMap) (d : Decl) → NotImport d
+           → ∀ (rest : List Decl) (ds' : List Decl)
+           → (rr : String ⊎ List Decl) (err : resolveDecls polys um am mm rest ≡ rr)
+           → resolveDecls-cons-aux polys um am d rr ≡ inj₂ ds'
+           → ResolvesDecls mm polys um am (d ∷ rest) ds'
+  rdc-cons mm polys um am d nim rest ds' (inj₁ e) err ()
+  rdc-cons mm polys um am d nim rest _ (inj₂ tailDs) err refl =
+    rds-cons nim (resolvesDecl-complete polys um am d)
+             (resolvesDecls-complete mm polys um am rest tailDs err)
+
+resolveImports-ok : ∀ (mm : ModuleMap) (ds ds' : List Decl)
+                  → resolveDecls (polyDefNames ds) (collectUnaliased mm ds)
+                                 (collectAliases ds) mm ds ≡ inj₂ ds'
+                  → resolveImports mm (mkModule ds) ≡ inj₂ (mkModule ds')
+resolveImports-ok mm ds ds' err rewrite err = refl
+
+resolveImports-bad : ∀ (mm : ModuleMap) (ds : List Decl) (e : String)
+                   → resolveDecls (polyDefNames ds) (collectUnaliased mm ds)
+                                  (collectAliases ds) mm ds ≡ inj₁ e
+                   → resolveImports mm (mkModule ds) ≡ inj₁ e
+resolveImports-bad mm ds e err rewrite err = refl
+
+resolvesModule-complete : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Module)
+                        → resolveImports mm (mkModule ds) ≡ inj₂ mR
+                        → ResolvesModule mm (polyDefNames ds) (mkModule ds) mR
+resolvesModule-complete mm ds mR eqR =
+  go (resolveDecls (polyDefNames ds) (collectUnaliased mm ds) (collectAliases ds) mm ds) refl
+  where
+    go : ∀ (rr : String ⊎ List Decl)
+       → resolveDecls (polyDefNames ds) (collectUnaliased mm ds)
+                      (collectAliases ds) mm ds ≡ rr
+       → ResolvesModule mm (polyDefNames ds) (mkModule ds) mR
+    go (inj₁ e)   err with trans (sym eqR) (resolveImports-bad mm ds e err)
+    ...               | ()
+    go (inj₂ ds') err with trans (sym eqR) (resolveImports-ok mm ds ds' err)
+    ...               | refl =
+      rm (resolvesDecls-complete mm (polyDefNames ds) (collectUnaliased mm ds)
+                                 (collectAliases ds) ds ds' err)

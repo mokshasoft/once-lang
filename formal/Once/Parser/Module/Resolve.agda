@@ -40,7 +40,7 @@ open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Nullary.Decidable using (toWitness; toWitnessFalse; isYes)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (subst; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; sym)
 
 open import Once.Parser.Module.Core
 open import Once.Type using (isGround; extractGround)
@@ -373,18 +373,40 @@ ownerOf (mkImport path nothing)  = just (showPath (expandPath path))
 -- Returns `inj₁ err` only if a referenced module path is missing from
 -- the map — a Haskell-layer bug, since the map should contain every
 -- transitive dependency.
+-- DE-WITHED (plan 0.81). Both decisions — the module-table lookup and the
+-- recursive call — are explicit PARAMETERS with their equations, instead of
+-- `with` scrutinees. A `with` here is opaque to any proof whose hypothesis is
+-- `resolveDecls … ≡ inj₂ ds'`: that type does not mention either scrutinee, so
+-- nothing abstracts it and no `rewrite` fires. Same reason `inferElabV`'s
+-- lookups were de-withed for Completeness.
 resolveDecls : List String → UnaliasedMap → AliasMap → ModuleMap → List Decl → String ⊎ List Decl
-resolveDecls _     _  _  _      []                             = inj₂ []
-resolveDecls polys um am modMap (DImport imp ∷ rest) with lookupModule modMap (Import.path imp)
-... | nothing =
-        inj₁ ("Internal error: import path not in ModuleMap: " ++ showPath (Import.path imp))
-... | just (mkModule impDs) with resolveDecls polys um am modMap rest
-...   | inj₁ err = inj₁ err
-...   | inj₂ tailDs =
-        inj₂ (signaturesWithOwner (ownerOf imp) impDs ++L tailDs)
-resolveDecls polys um am modMap (d ∷ rest) with resolveDecls polys um am modMap rest
-... | inj₁ err = inj₁ err
-... | inj₂ tailDs = inj₂ (canonDecl polys um am d ∷ tailDs)
+resolveDecls-import-aux :
+  ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap) (mm : ModuleMap)
+    (imp : Import) (rest : List Decl)
+  → (lm : Maybe Module) → lookupModule mm (Import.path imp) ≡ lm
+  → (rr : String ⊎ List Decl) → resolveDecls polys um am mm rest ≡ rr
+  → String ⊎ List Decl
+resolveDecls-cons-aux :
+  ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap) (d : Decl)
+  → (rr : String ⊎ List Decl) → String ⊎ List Decl
+
+resolveDecls _     _  _  _      []                   = inj₂ []
+resolveDecls polys um am modMap (DImport imp ∷ rest) =
+  resolveDecls-import-aux polys um am modMap imp rest
+    (lookupModule modMap (Import.path imp)) refl
+    (resolveDecls polys um am modMap rest) refl
+resolveDecls polys um am modMap (d ∷ rest) =
+  resolveDecls-cons-aux polys um am d (resolveDecls polys um am modMap rest)
+
+resolveDecls-import-aux polys um am mm imp rest nothing _ _ _ =
+  inj₁ ("Internal error: import path not in ModuleMap: " ++ showPath (Import.path imp))
+resolveDecls-import-aux polys um am mm imp rest (just (mkModule impDs)) _ (inj₁ err) _ =
+  inj₁ err
+resolveDecls-import-aux polys um am mm imp rest (just (mkModule impDs)) _ (inj₂ tailDs) _ =
+  inj₂ (signaturesWithOwner (ownerOf imp) impDs ++L tailDs)
+
+resolveDecls-cons-aux polys um am d (inj₁ err)    = inj₁ err
+resolveDecls-cons-aux polys um am d (inj₂ tailDs) = inj₂ (canonDecl polys um am d ∷ tailDs)
 
 -- | Public entry. Haskell populates the map, calls this, and feeds
 -- the resolved module to `compileResolved`.
