@@ -339,7 +339,7 @@ du_go_130 v0 v1 v2 v3 v4
                                      (coe
                                         MAlonzo.Code.Once.IR.C_SigOp_156 (coe v5) (coe v7)
                                         (coe
-                                           MAlonzo.Code.Once.TypeCheck.Elaborate.d_ext'45'arrow'45'info_1994
+                                           MAlonzo.Code.Once.TypeCheck.Elaborate.d_ext'45'arrow'45'info_1956
                                            (coe v5) (coe v7) (coe v0) (coe v2) (coe v1) (coe v9)
                                            (coe
                                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -806,7 +806,7 @@ du_go_322 v0 v1 v2 v3
                                      (coe
                                         MAlonzo.Code.Once.IR.C_SigOp_156 (coe v4) (coe v6)
                                         (coe
-                                           MAlonzo.Code.Once.TypeCheck.Elaborate.d_ext'45'resolved'45'info_2006
+                                           MAlonzo.Code.Once.TypeCheck.Elaborate.d_ext'45'resolved'45'info_1968
                                            (coe v4) (coe v6) (coe v0) (coe v1) (coe v8)
                                            (coe
                                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
@@ -919,7 +919,7 @@ du_infer'45'complete'45'RPair_436 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RPair_436 v0 v1 v2
   = let v3
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
               (coe v0) (coe v1) in
     coe
       (case coe v3 of
@@ -927,7 +927,7 @@ du_infer'45'complete'45'RPair_436 v0 v1 v2
            -> case coe v4 of
                 MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_300 v6 v7 v8 v9 v10
                   -> let v11
-                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                (coe v0) (coe v2) in
                      coe
                        (case coe v11 of
@@ -991,7 +991,7 @@ du_infer'45'complete'45'RUnaryOp'45'neg_494 v0 v1
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Once.TypeCheck.Elaborate.C_nov'45'other_346
            -> let v4
-                    = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                    = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                         (coe v0) (coe v1) in
               coe
                 (case coe v4 of
@@ -1033,7 +1033,7 @@ du_infer'45'complete'45'RAnnot_564 ::
 du_infer'45'complete'45'RAnnot_564 v0 v1 v2
   = let v3
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
               (coe v0) (coe v1) (coe v2) in
     coe
       (case coe v3 of
@@ -1078,7 +1078,7 @@ du_infer'45'complete'45'RLet_622 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RLet_622 v0 v1 v2 v3
   = let v4
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
               (coe v0) (coe v2) in
     coe
       (case coe v4 of
@@ -1086,7 +1086,7 @@ du_infer'45'complete'45'RLet_622 v0 v1 v2 v3
            -> case coe v5 of
                 MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_300 v7 v8 v9 v10 v11
                   -> let v12
-                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                           = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                (coe
                                   MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_402 (coe v0)
                                   (coe v1) (coe v7))
@@ -1136,7 +1136,7 @@ du_infer'45'complete'45'RApp'45'id_694 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RApp'45'id_694 v0 v1
   = let v2
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
               (coe v0) (coe v1) in
     coe
       (case coe v2 of
@@ -1174,7 +1174,7 @@ du_infer'45'complete'45'RApp'45'terminal_732 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RApp'45'terminal_732 v0 v1
   = let v2
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
               (coe v0) (coe v1) in
     coe
       (case coe v2 of
@@ -1213,7 +1213,7 @@ du_infer'45'complete'45'RApp'45'fst_772 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RApp'45'fst_772 v0 v1
   = let v2
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
               (coe v0) (coe v1) in
     coe
       (case coe v2 of
@@ -1254,7 +1254,7 @@ du_infer'45'complete'45'RApp'45'snd_812 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RApp'45'snd_812 v0 v1
   = let v2
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
               (coe v0) (coe v1) in
     coe
       (case coe v2 of
@@ -1296,7 +1296,7 @@ du_infer'45'complete'45'RApp'45'apply_852 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RApp'45'apply_852 v0 v1 v2
   = let v3
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
               (coe v0) (coe v1) in
     coe
       (case coe v3 of
@@ -1515,7 +1515,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'il_1036 v0 v1
   = case coe v1 of
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpAdd_8
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1525,7 +1525,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'il_1036 v0 v1
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -1557,7 +1557,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'il_1036 v0 v1
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpSub_10
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1567,7 +1567,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'il_1036 v0 v1
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -1599,7 +1599,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'il_1036 v0 v1
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpMul_12
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1609,7 +1609,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'il_1036 v0 v1
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -1641,7 +1641,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'il_1036 v0 v1
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpDiv_14
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1651,7 +1651,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'il_1036 v0 v1
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -1716,7 +1716,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'ir_1222 v0 v1
   = case coe v1 of
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpAdd_8
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1726,7 +1726,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'ir_1222 v0 v1
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -1757,7 +1757,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'ir_1222 v0 v1
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpSub_10
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1767,7 +1767,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'ir_1222 v0 v1
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -1798,7 +1798,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'ir_1222 v0 v1
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpMul_12
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1808,7 +1808,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'ir_1222 v0 v1
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -1839,7 +1839,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'ir_1222 v0 v1
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpDiv_14
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1849,7 +1849,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float'45'ir_1222 v0 v1
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -1910,7 +1910,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float_1408 v0 v1 v2 v3
   = case coe v1 of
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpAdd_8
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1920,7 +1920,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float_1408 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -1948,7 +1948,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float_1408 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpSub_10
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1958,7 +1958,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float_1408 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -1986,7 +1986,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float_1408 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpMul_12
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -1996,7 +1996,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float_1408 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2024,7 +2024,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float_1408 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpDiv_14
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2034,7 +2034,7 @@ du_infer'45'complete'45'RBinOp'45'arith'45'float_1408 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2092,7 +2092,7 @@ du_infer'45'complete'45'RBinOp'45'arith_1594 v0 v1 v2 v3
   = case coe v1 of
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpAdd_8
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2102,7 +2102,7 @@ du_infer'45'complete'45'RBinOp'45'arith_1594 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2130,7 +2130,7 @@ du_infer'45'complete'45'RBinOp'45'arith_1594 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpSub_10
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2140,7 +2140,7 @@ du_infer'45'complete'45'RBinOp'45'arith_1594 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2168,7 +2168,7 @@ du_infer'45'complete'45'RBinOp'45'arith_1594 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpMul_12
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2178,7 +2178,7 @@ du_infer'45'complete'45'RBinOp'45'arith_1594 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2206,7 +2206,7 @@ du_infer'45'complete'45'RBinOp'45'arith_1594 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpDiv_14
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2216,7 +2216,7 @@ du_infer'45'complete'45'RBinOp'45'arith_1594 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2244,7 +2244,7 @@ du_infer'45'complete'45'RBinOp'45'arith_1594 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpMod_16
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2254,7 +2254,7 @@ du_infer'45'complete'45'RBinOp'45'arith_1594 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2312,7 +2312,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
   = case coe v1 of
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpLt_18
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2322,7 +2322,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2350,7 +2350,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpLe_20
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2360,7 +2360,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2388,7 +2388,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpGt_22
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2398,7 +2398,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2426,7 +2426,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpGe_24
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2436,7 +2436,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2464,7 +2464,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpEq_26
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2474,7 +2474,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2502,7 +2502,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_OpNe_28
         -> let v4
-                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                      (coe v0) (coe v2) in
            coe
              (case coe v4 of
@@ -2512,7 +2512,7 @@ du_infer'45'complete'45'RBinOp'45'cmp_1818 v0 v1 v2 v3
                          -> coe
                               seq (coe v7)
                               (let v12
-                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                     = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                          (coe v0) (coe v3) in
                                coe
                                  (case coe v12 of
@@ -2588,7 +2588,7 @@ du_check'45'complete'45'RLam_2084 ::
 du_check'45'complete'45'RLam_2084 v0 v1 v2 v3 v4 v5 v6
   = let v7
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
               (coe
                  MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_402 (coe v0)
                  (coe v1) (coe v3))
@@ -2650,7 +2650,7 @@ du_check'45'complete'45'RLam'45'eff_2174 ::
 du_check'45'complete'45'RLam'45'eff_2174 v0 v1 v2 v3 v4 v5
   = let v6
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
               (coe
                  MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_402 (coe v0)
                  (coe v1) (coe v3))
@@ -2732,7 +2732,7 @@ du_infer'45'complete'45'RDestruct_2284 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RDestruct_2284 v0 v1 v2 v3 v4 v5 v6
   = let v7
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
               (coe v0) (coe v1) in
     coe
       (case coe v7 of
@@ -2742,7 +2742,7 @@ du_infer'45'complete'45'RDestruct_2284 v0 v1 v2 v3 v4 v5 v6
                   -> case coe v10 of
                        MAlonzo.Code.Once.Type.C__'43'__124 v15 v16
                          -> let v17
-                                  = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                  = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                       (coe
                                          MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_402
                                          (coe v0) (coe v2) (coe v15))
@@ -2755,7 +2755,7 @@ du_infer'45'complete'45'RDestruct_2284 v0 v1 v2 v3 v4 v5 v6
                                           -> case coe v21 of
                                                MAlonzo.Code.Once.Surface.Context.C__'8759'__66 v26 v27
                                                  -> let v28
-                                                          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                                                          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                                                               (coe
                                                                  MAlonzo.Code.Once.TypeCheck.Classify.d_extendNamedCtx_402
                                                                  (coe v0) (coe v4) (coe v16))
@@ -2868,7 +2868,7 @@ du_infer'45'complete'45'RApp'45'generic_2482 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RApp'45'generic_2482 v0 v1 v2 v3 v4
   = let v5
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
               (coe v0) (coe v1) in
     coe
       (case coe v5 of
@@ -2877,7 +2877,7 @@ du_infer'45'complete'45'RApp'45'generic_2482 v0 v1 v2 v3 v4
                 MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_300 v8 v9 v10 v11 v12
                   -> let v13
                            = coe
-                               MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+                               MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
                                (coe v0) (coe v2) (coe v3) in
                      coe
                        (case coe v13 of
@@ -2949,7 +2949,7 @@ du_infer'45'complete'45'RApp'45'eff_2610 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_infer'45'complete'45'RApp'45'eff_2610 v0 v1 v2 v3
   = let v4
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
               (coe v0) (coe v1) in
     coe
       (case coe v4 of
@@ -2958,7 +2958,7 @@ du_infer'45'complete'45'RApp'45'eff_2610 v0 v1 v2 v3
                 MAlonzo.Code.Once.TypeCheck.Elaborate.C_success_300 v7 v8 v9 v10 v11
                   -> let v12
                            = coe
-                               MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+                               MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
                                (coe v0) (coe v2) (coe v3) in
                      coe
                        (case coe v12 of
@@ -3003,7 +3003,7 @@ du_checkElab'45'fallback'45'RVar_2696 ::
 du_checkElab'45'fallback'45'RVar_2696 v0 v1 v2
   = let v3
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RVar'45'lookup'45'aux_1762
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_inferElabV'45'RVar'45'lookup'45'aux_1724
               (coe v0) (coe v1)
               (coe
                  MAlonzo.Code.Once.TypeCheck.Classify.d_lookupLocal'45'go_484
@@ -3065,7 +3065,7 @@ du_completeness'45'gap'45'inl'45'app'45'check'45'eq_2762 ::
 du_completeness'45'gap'45'inl'45'app'45'check'45'eq_2762 v0 v1 v2
   = let v3
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
               (coe v0) (coe v1) (coe v2) in
     coe
       (case coe v3 of
@@ -3108,7 +3108,7 @@ du_completeness'45'gap'45'inr'45'app'45'check'45'eq_2810 ::
 du_completeness'45'gap'45'inr'45'app'45'check'45'eq_2810 v0 v1 v2
   = let v3
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
               (coe v0) (coe v1) (coe v2) in
     coe
       (case coe v3 of
@@ -3150,7 +3150,7 @@ du_completeness'45'gap'45'initial'45'app'45'check'45'eq_2856 ::
 du_completeness'45'gap'45'initial'45'app'45'check'45'eq_2856 v0 v1
   = let v2
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
               (coe v0) (coe v1) (coe MAlonzo.Code.Once.Type.C_Void_120) in
     coe
       (case coe v2 of
@@ -3427,7 +3427,7 @@ du_resolved'45'eff'45'lift_3144 v0 v1 v2 v3 v4 v5
                 (coe
                    du_embedOrSubsume'45'lifts_2918 (coe v2) (coe v3)
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460 (coe v0)
+                      MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422 (coe v0)
                       (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RResolved_40 (coe v1)))))
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -3438,7 +3438,7 @@ du_resolved'45'eff'45'lift_3144 v0 v1 v2 v3 v4 v5
                       (coe
                          du_embedOrSubsume'45'lifts_2918 (coe v2) (coe v3)
                          (coe
-                            MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460 (coe v0)
+                            MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422 (coe v0)
                             (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RResolved_40 (coe v1))))))
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
@@ -3451,7 +3451,7 @@ du_resolved'45'eff'45'lift_3144 v0 v1 v2 v3 v4 v5
                             (coe
                                du_embedOrSubsume'45'lifts_2918 (coe v2) (coe v3)
                                (coe
-                                  MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460 (coe v0)
+                                  MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422 (coe v0)
                                   (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RResolved_40 (coe v1)))))))
                    erased))
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -3557,7 +3557,7 @@ d_check'45'completeV_3508 ::
 d_check'45'completeV_3508 v0 v1 v2 v3 v4
   = let v5
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
               (coe v0) (coe v1) (coe v2) in
     coe
       (let v6
@@ -3597,7 +3597,7 @@ d_subsume'45'completeV_3528 ::
 d_subsume'45'completeV_3528 v0 v1 v2 v3 v4 v5
   = let v6
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
               (coe v0) (coe v1)
               (coe
                  MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 (coe v2)
@@ -3704,11 +3704,11 @@ du_iFromInfer_3544 v0 v1 v2 v3
                -> coe
                     du_checkElab'45'fallback'45'RVar_2696 (coe v0) (coe v11) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_102 v7 v8 v9 v10 v15 v17
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_102 v7 v8 v9 v10 v14 v16
         -> case coe v1 of
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v18
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v17
                -> coe
-                    du_checkElab'45'fallback'45'RVar_2696 (coe v0) (coe v18) (coe v2)
+                    du_checkElab'45'fallback'45'RVar_2696 (coe v0) (coe v17) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'annot_112 v8
         -> case coe v1 of
@@ -3791,77 +3791,77 @@ du_iFromInfer_3544 v0 v1 v2 v3
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_62 v13 v14 v15
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RBinOp_5394
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RBinOp_5346
                     (coe v0) (coe v13) (coe v14) (coe v15)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'arith'45'float_226 v8 v9 v11 v12
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_62 v13 v14 v15
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RBinOp_5394
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RBinOp_5346
                     (coe v0) (coe v13) (coe v14) (coe v15)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'arith'45'float'45'il_240 v8 v9 v11 v12
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_62 v13 v14 v15
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RBinOp_5394
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RBinOp_5346
                     (coe v0) (coe v13) (coe v14) (coe v15)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'arith'45'float'45'ir_254 v8 v9 v11 v12
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_62 v13 v14 v15
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RBinOp_5394
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RBinOp_5346
                     (coe v0) (coe v13) (coe v14) (coe v15)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'binop'45'cmp_268 v8 v9 v11 v12
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_62 v13 v14 v15
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RBinOp_5394
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RBinOp_5346
                     (coe v0) (coe v13) (coe v14) (coe v15)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'id'45'app_278 v7 v8
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v9 v10
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'id_4068
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'id_4020
                     (coe v0) (coe v10) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'fst'45'app_290 v7 v8 v9
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v10 v11
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'fst_4138
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'fst_4090
                     (coe v0) (coe v11) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'snd'45'app_302 v6 v8 v9
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v10 v11
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'snd_4208
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'snd_4160
                     (coe v0) (coe v11) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'terminal'45'app_312 v6 v7 v8
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v9 v10
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'terminal_5320
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'terminal_5272
                     (coe v0) (coe v10) (coe MAlonzo.Code.Once.Type.C_Unit_118)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'apply'45'app'45'infer_324 v6 v8 v9
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v10 v11
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'apply_2332
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'apply_2312
                     (coe v0) (coe v11) (coe v6) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'app_342 v7 v9 v10 v11 v13 v14
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v15 v16
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'generic_4294
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'generic_4246
                     (coe v0) (coe v15) (coe v16) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'effApp_358 v7 v9 v10 v12 v13
@@ -3870,7 +3870,7 @@ du_iFromInfer_3544 v0 v1 v2 v3
                -> case coe v2 of
                     MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v16 v17 v18
                       -> coe
-                           MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'generic_4294
+                           MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'generic_4246
                            (coe v0) (coe v14) (coe v15)
                            (coe
                               MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126
@@ -3902,7 +3902,7 @@ du_check'45'completeV'45'from'45'infer_3562 ::
 du_check'45'completeV'45'from'45'infer_3562 v0 v1 v2 v3
   = let v4
           = coe
-              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+              MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
               (coe v0) (coe v1) (coe v2) in
     coe
       (let v5
@@ -3991,14 +3991,14 @@ du_iFromInferEff_3618 v0 v1 v2 v3 v4
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v11
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'eff_4854
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'eff_4806
                     (coe v0) (coe v11) (coe v2) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'qualified_70 v10
         -> coe
              du_embedOrSubsume'45'lifts_2918 (coe v2) (coe v3)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422 (coe v0)
                 (coe v1))
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'resolved_78 v8 v10
         -> case coe v1 of
@@ -4014,15 +4014,15 @@ du_iFromInferEff_3618 v0 v1 v2 v3 v4
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v12
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'eff_4854
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'eff_4806
                     (coe v0) (coe v12) (coe v2) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_102 v8 v9 v10 v11 v16 v18
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_102 v8 v9 v10 v11 v15 v17
         -> case coe v1 of
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v19
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v18
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'eff_4854
-                    (coe v0) (coe v19) (coe v2) (coe v3)
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'eff_4806
+                    (coe v0) (coe v18) (coe v2) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'annot_112 v9
         -> case coe v1 of
@@ -4030,7 +4030,7 @@ du_iFromInferEff_3618 v0 v1 v2 v3 v4
                -> coe
                     du_embedOrSubsume'45'lifts_2918 (coe v2) (coe v3)
                     (coe
-                       MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460 (coe v0)
+                       MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422 (coe v0)
                        (coe
                           MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_60 (coe v10)
                           (coe
@@ -4045,47 +4045,47 @@ du_iFromInferEff_3618 v0 v1 v2 v3 v4
         -> coe
              du_embedOrSubsume'45'lifts_2918 (coe v2) (coe v3)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422 (coe v0)
                 (coe v1))
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'case_198 v11 v12 v14 v15 v16 v17 v18 v19 v20 v21
         -> coe
              du_embedOrSubsume'45'lifts_2918 (coe v2) (coe v3)
              (coe
-                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460 (coe v0)
+                MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422 (coe v0)
                 (coe v1))
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'id'45'app_278 v8 v9
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v10 v11
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'id'45'eff_4524
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'id'45'eff_4476
                     (coe v0) (coe v11) (coe v2) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'fst'45'app_290 v8 v9 v10
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v11 v12
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'fst'45'eff_4634
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'fst'45'eff_4586
                     (coe v0) (coe v12) (coe v2) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'snd'45'app_302 v7 v9 v10
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v11 v12
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'snd'45'eff_4744
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'snd'45'eff_4696
                     (coe v0) (coe v12) (coe v2) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'apply'45'app'45'infer_324 v7 v9 v10
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v11 v12
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'apply'45'eff_5006
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'apply'45'eff_4958
                     (coe v0) (coe v12) (coe v2) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'app_342 v8 v10 v11 v12 v14 v15
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v16 v17
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'generic'45'eff_4382
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'generic'45'eff_4334
                     (coe v0) (coe v16) (coe v17) (coe v2) (coe v3)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -4161,12 +4161,12 @@ du_infer'45'complete_3634 v0 v1 v2 v3
                     du_infer'45'complete'45'RVar'45'import_958 (coe v0) (coe v11)
                     (coe v2) (coe v10)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_102 v7 v8 v9 v10 v15 v17
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_102 v7 v8 v9 v10 v14 v16
         -> case coe v1 of
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v18
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v17
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'poly'45'infer_4028
-                    (coe v0) (coe v18)
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'poly'45'infer_3982
+                    (coe v0) (coe v17)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'annot_112 v8
         -> case coe v1 of
@@ -4325,7 +4325,7 @@ d_check'45'complete_3660 v0 v1 v2 v3 v4
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v8 v9 v10
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'id_1958
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'id_1938
                     (coe v0) (coe v8)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'fst'45'check_376
@@ -4334,7 +4334,7 @@ d_check'45'complete_3660 v0 v1 v2 v3 v4
                -> case coe v9 of
                     MAlonzo.Code.Once.Type.C__'42'__122 v12 v13
                       -> coe
-                           MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'fst_1998
+                           MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'fst_1978
                            (coe v0) (coe v12)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -4344,30 +4344,30 @@ d_check'45'complete_3660 v0 v1 v2 v3 v4
                -> case coe v9 of
                     MAlonzo.Code.Once.Type.C__'42'__122 v12 v13
                       -> coe
-                           MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'snd_2038
+                           MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'snd_2018
                            (coe v0) (coe v13)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'terminal'45'morph'45'check_394
         -> coe
-             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'terminal_2076
+             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'terminal_2056
              (coe v0)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'initial'45'morph'45'check_402
         -> coe
-             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'initial_2114
+             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'initial_2094
              (coe v0)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'inl'45'morph'45'check_412
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v9 v10 v11
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'inl_2134
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'inl_2114
                     (coe v0) (coe v9)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'inr'45'morph'45'check_422
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126 v9 v10 v11
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'inr_2174
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'inr_2154
                     (coe v0) (coe v9)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'compose'45'check_442 v9 v12 v13 v15 v16
@@ -5272,7 +5272,7 @@ d_check'45'complete_3660 v0 v1 v2 v3 v4
                -> case coe v2 of
                     MAlonzo.Code.Once.Type.C_μ'45'type_128 v13
                       -> coe
-                           MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'In_2294
+                           MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'In_2274
                            (coe v0) (coe v12) (coe v13) (coe v9)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -5280,7 +5280,7 @@ d_check'45'complete_3660 v0 v1 v2 v3 v4
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v11 v12
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'apply_2332
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'apply_2312
                     (coe v0) (coe v12) (coe v7) (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'inl'45'app'45'check_584 v9 v10
@@ -5324,12 +5324,12 @@ d_check'45'complete_3660 v0 v1 v2 v3 v4
                     d_completeness'45'gap'45'arg'45'driven'45'app'45'check_3266 v0 v15
                     v16 v8 v2 v10 v11 erased v13 v14
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate_648 v8 v9 v10 v16
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate_648 v8 v9 v10 v15
         -> case coe v1 of
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v17
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v16
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'poly_3934
-                    (coe v0) (coe v17)
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'poly_3914
+                    (coe v0) (coe v16)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Completeness.subsume-complete
@@ -5345,31 +5345,31 @@ d_subsume'45'complete_3678 v0 v1 v2 v3 v4 v5
   = case coe v5 of
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'id'45'check_366
         -> coe
-             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'id_1958
+             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'id_1938
              (coe v0) (coe v2)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'fst'45'check_376
         -> coe
-             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'fst_1998
+             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'fst_1978
              (coe v0) (coe v3)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'snd'45'check_386
         -> coe
-             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'snd_2038
+             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'snd_2018
              (coe v0) (coe v3)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'terminal'45'morph'45'check_394
         -> coe
-             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'terminal_2076
+             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'terminal_2056
              (coe v0)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'initial'45'morph'45'check_402
         -> coe
-             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'initial_2114
+             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'initial_2094
              (coe v0)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'inl'45'morph'45'check_412
         -> coe
-             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'inl_2134
+             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'inl_2114
              (coe v0) (coe v2)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'inr'45'morph'45'check_422
         -> coe
-             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'inr_2174
+             MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'inr_2154
              (coe v0) (coe v2)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'compose'45'check_442 v10 v13 v14 v16 v17
         -> case coe v1 of
@@ -5773,7 +5773,7 @@ d_subsume'45'complete_3678 v0 v1 v2 v3 v4 v5
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_42 v11 v12
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'initial'45'eff_4962
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RApp'45'initial'45'eff_4914
                     (coe v0) (coe v12)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'arg'45'driven'45'app'45'check_634 v9 v11 v12 v14 v15
@@ -5783,11 +5783,11 @@ d_subsume'45'complete_3678 v0 v1 v2 v3 v4 v5
                     d_completeness'45'gap'45'arg'45'driven'45'app'45'check'45'eff_3290
                     v0 v16 v17 v9 v2 v3 v11 v12 erased v14 v15
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate_648 v9 v10 v11 v17
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate_648 v9 v10 v11 v16
         -> case coe v1 of
-             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v18
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v17
                -> coe
-                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'poly_3934
-                    (coe v0) (coe v18)
+                    MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_checkElab'45'fallback'45'RVar'45'poly_3914
+                    (coe v0) (coe v17)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

@@ -261,7 +261,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_208 (coe v1)
                       (coe v7) (coe v2)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3110
+                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
                          (coe v0) (coe v1) (coe v7) (coe v5)
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -276,7 +276,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_208 (coe v1)
                    (coe v7) (coe v2)
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3110
+                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
                       (coe v0) (coe v1) (coe v7) (coe v5)
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -317,7 +317,7 @@ d_compileFunBody_112 v0 v1 v2 v3 v4 v5 v6 v7
       (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v0)
       (coe v1) (coe v2) (coe v3) (coe v5) (coe v6)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1308
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1278
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
             (coe v2) (coe v3) (coe v4) (coe v5) (coe v6))
@@ -462,7 +462,7 @@ d_inferType'45'validate_276 v0 v1 v2 v3
         -> let v5
                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1476
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
                         (coe v0) (coe v1) (coe v4)) in
            coe
              (case coe v5 of
@@ -484,7 +484,7 @@ d_inferType_312 v0 v1 v2
   = let v3
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1460
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
                  (coe
                     MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
                     (coe v0) (coe v1))

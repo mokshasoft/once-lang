@@ -790,7 +790,7 @@ d_'10214'_'10215''7580'_176 v0 v1 v2 v3 v4 v5 v6
                        MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
                        (coe d_'10214'_'10215''7522'_186 v0 v18 v10 v13 v15 v5 v6))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate_648 v10 v11 v12 v18
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate_648 v10 v11 v12 v17
         -> coe
              d_'10214'_'10215''7580'_176
              (coe
@@ -806,7 +806,7 @@ d_'10214'_'10215''7580'_176 v0 v1 v2 v3 v4 v5 v6
                       MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
                       (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_362 (coe v0))
                       (coe v12))))
-             (coe v18) (coe v5) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+             (coe v17) (coe v5) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Meaning.⟦_⟧ᵢ
 d_'10214'_'10215''7522'_186 ::
@@ -912,9 +912,9 @@ d_'10214'_'10215''7522'_186 v0 v1 v2 v3 v4
                          (coe MAlonzo.Code.Once.CanonicalName.d_bare_12 (coe v12))
                          (coe v11))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_102 v8 v9 v10 v11 v16 v18
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_102 v8 v9 v10 v11 v15 v17
         -> coe
-             (\ v19 v20 ->
+             (\ v18 v19 ->
                 d_'10214'_'10215''7580'_176
                   (coe
                      MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
@@ -929,7 +929,7 @@ d_'10214'_'10215''7522'_186 v0 v1 v2 v3 v4
                            MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
                            (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_362 (coe v0))
                            (coe v10))))
-                  (coe v18) (coe v19) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
+                  (coe v17) (coe v18) (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'annot_112 v9
         -> case coe v1 of
              MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_60 v10 v11

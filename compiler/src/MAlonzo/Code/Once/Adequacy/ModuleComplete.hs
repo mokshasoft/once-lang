@@ -77,7 +77,7 @@ d_compileFunBody'45'complete_24 v0 v1 v2 v3 v4 v5 v6 v7
          (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v4)
          (coe MAlonzo.Code.Once.IR.C_Heap_8)
          (coe
-            MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3110
+            MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
             (coe (0 :: Integer))
             (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v4)
             (coe v1)
@@ -298,7 +298,7 @@ d_caf'45'go'45'find'45'complete_286 v0 v1 v2 v3 v4 v5 v6
                                                                (coe d_EffUU_6)
                                                                (coe MAlonzo.Code.Once.IR.C_Heap_8)
                                                                (coe
-                                                                  MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3110
+                                                                  MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
                                                                   (coe (0 :: Integer))
                                                                   (coe
                                                                      MAlonzo.Code.Once.Surface.Context.C_'8709'_8)

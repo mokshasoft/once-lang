@@ -179,7 +179,7 @@ recursionTests = testGroup "Recursion"
 ------------------------------------------------------------------------
 
 builtinShadowingTests :: TestTree
-builtinShadowingTests = testGroup "Builtin names"
+builtinShadowingTests = testGroup "Generator names (D136)"
   -- NOTE: a "user-defined 'id' is shadowed by builtin" test was removed here.
   -- It expected `id : Int -> Int; id x = x; test = id 5` to be REJECTED, but
   -- it can't be: whether the builtin `id : α → α` or the user binding is used,
@@ -199,7 +199,20 @@ builtinShadowingTests = testGroup "Builtin names"
       result <- typeCheckSource source
       result @?= Right ()
 
-  , testCase "user-defined 'fst' is shadowed by builtin" $ do
+  , testCase "D136: 'fst@this' reaches the user's own definition" $ do
+      let source = T.unlines
+            [ "fst : Int -> Int"
+            , "fst x = x"
+            , ""
+            , "test : Int"
+            , "test = fst@this 5"
+            ]
+      result <- typeCheckSource source
+      -- `this` is the reserved alias for the own module, so this is the
+      -- USER's `fst : Int -> Int` and `fst@this 5` is well-typed.
+      result @?= Right ()
+
+  , testCase "D136: bare 'fst' is the GENERATOR, not the user's def" $ do
       let source = T.unlines
             [ "fst : Int -> Int"
             , "fst x = x"
@@ -208,10 +221,12 @@ builtinShadowingTests = testGroup "Builtin names"
             , "test = fst 5"
             ]
       result <- typeCheckSource source
-      -- Builtin fst : (A * B) → A doesn't match Int argument
-      assertBool "Should fail due to builtin shadowing" (isLeft result)
+      -- Not shadowing: `fst` NAMES the generator (D136), whose type is
+      -- (A * B) → A, so an Int argument is a type error. The user's own `fst`
+      -- is still reachable — as `fst@this`, tested above.
+      assertBool "bare fst must be the generator" (isLeft result)
 
-  , testCase "user-defined 'snd' is shadowed by builtin" $ do
+  , testCase "D136: bare 'snd' is the GENERATOR, not the user's def" $ do
       let source = T.unlines
             [ "snd : Int -> Int"
             , "snd x = x"
@@ -220,7 +235,7 @@ builtinShadowingTests = testGroup "Builtin names"
             , "test = snd 5"
             ]
       result <- typeCheckSource source
-      assertBool "Should fail due to builtin shadowing" (isLeft result)
+      assertBool "bare snd must be the generator" (isLeft result)
   ]
 
 ------------------------------------------------------------------------

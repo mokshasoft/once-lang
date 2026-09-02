@@ -419,7 +419,7 @@ d_realize_20 v0 v1 v2 v3 v4
                     (d_realize'45'infer_30
                        (coe v0) (coe v16) (coe v8) (coe v11) (coe v13))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate_648 v8 v9 v10 v16
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate_648 v8 v9 v10 v15
         -> coe
              MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
              (MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
@@ -449,7 +449,7 @@ d_realize_20 v0 v1 v2 v3 v4
                             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
                             (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_362 (coe v0))
                             (coe v10))))
-                   (coe v16)))
+                   (coe v15)))
              (coe MAlonzo.Code.Once.Surface.Syntax.C_unit_152)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Denotation.Realize.realize-infer
@@ -512,7 +512,7 @@ d_realize'45'infer_30 v0 v1 v2 v3 v4
                     MAlonzo.Code.Once.Surface.Syntax.C_sigOp_384
                     (MAlonzo.Code.Once.CanonicalName.d_bare_12 (coe v12)) v11
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_102 v8 v9 v10 v11 v16 v18
+      MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'var'45'poly'45'instantiate'45'infer_102 v8 v9 v10 v11 v15 v17
         -> coe
              MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426
              (MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
@@ -542,7 +542,7 @@ d_realize'45'infer_30 v0 v1 v2 v3 v4
                             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
                             (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_362 (coe v0))
                             (coe v10))))
-                   (coe v18)))
+                   (coe v17)))
              (coe MAlonzo.Code.Once.Surface.Syntax.C_unit_152)
       MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'annot_112 v9
         -> case coe v1 of

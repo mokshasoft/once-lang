@@ -220,10 +220,15 @@ resolves-sound : ∀ (um : UnaliasedMap) (am : AliasMap) (bound : List String)
                  (e e' : RawExpr)
                → ResolvesExpr um am bound e e' → canonExpr bound um am e ≡ e'
 resolves-sound um am bound _ _ (re-var rv) = resolvesVar-sound bound um _ _ rv
-resolves-sound um am bound _ _ (re-qual {alias = a} fa ex)
-  rewrite lookupAl-complete am a _ fa | expandPath-complete _ _ ex = refl
-resolves-sound um am bound _ _ (re-qual-unknown {alias = a} ab)
-  rewrite lookupAl-absent am a ab = refl
+resolves-sound um am bound _ _ (re-this {name = n}) with "this" ≟ "this"
+... | yes _ = refl
+... | no ¬e = ⊥-elim (¬e refl)
+resolves-sound um am bound _ _ (re-qual {alias = a} a≢ fa ex) with a ≟ "this"
+... | yes e = ⊥-elim (a≢ e)
+... | no  _ rewrite lookupAl-complete am a _ fa | expandPath-complete _ _ ex = refl
+resolves-sound um am bound _ _ (re-qual-unknown {alias = a} a≢ ab) with a ≟ "this"
+... | yes e = ⊥-elim (a≢ e)
+... | no  _ rewrite lookupAl-absent am a ab = refl
 resolves-sound um am bound _ _ re-res = refl
 resolves-sound um am bound _ _ (re-app rf ra) =
   cong₂ RApp (resolves-sound um am bound _ _ rf) (resolves-sound um am bound _ _ ra)
@@ -260,9 +265,11 @@ resolves-complete : ∀ (um : UnaliasedMap) (am : AliasMap) (bound : List String
                     (e : RawExpr)
                   → ResolvesExpr um am bound e (canonExpr bound um am e)
 resolves-complete um am bound (RVar x) = re-var (resolvesVar-complete bound um x)
-resolves-complete um am bound (RQualified n a) with lookupImportAlias am a in ea
-... | just p  = re-qual (lookupAl-sound am a p ea) (expandPath-sound p)
-... | nothing = re-qual-unknown (lookupAl-nothing am a ea)
+resolves-complete um am bound (RQualified n a) with a ≟ "this"
+... | yes refl = re-this
+... | no a≢ with lookupImportAlias am a in ea
+...   | just p  = re-qual a≢ (lookupAl-sound am a p ea) (expandPath-sound p)
+...   | nothing = re-qual-unknown a≢ (lookupAl-nothing am a ea)
 resolves-complete um am bound (RResolved cn) = re-res
 resolves-complete um am bound (RApp f a) =
   re-app (resolves-complete um am bound f) (resolves-complete um am bound a)

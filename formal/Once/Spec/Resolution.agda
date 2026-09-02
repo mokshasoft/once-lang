@@ -124,13 +124,23 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
          → ResolvesVar bound um x e
          → ResolvesExpr um am bound (RVar x) e
 
+  -- D136: `name@this` is the OWN-MODULE escape hatch — how a definition whose
+  -- name a generator has taken is reached. `this` is a RESERVED alias, decided
+  -- before the alias table is consulted, so the other two rules must exclude
+  -- it or the three would overlap.
+  re-this : ∀ {bound name}
+          → ResolvesExpr um am bound (RQualified name "this")
+                                     (RResolved (canonical (name ∷ [])))
+
   -- `name@A` at a known alias is that module's path; at an unknown alias it is
   -- left alone (the typing rules then have nothing to look it up by).
   re-qual : ∀ {bound name alias path path'}
+          → alias ≢ "this"
           → FirstAt alias path am → ExpandsTo path path'
           → ResolvesExpr um am bound (RQualified name alias)
                                      (RResolved (canonical (path' ++ (name ∷ []))))
   re-qual-unknown : ∀ {bound name alias}
+                  → alias ≢ "this"
                   → Absent alias am
                   → ResolvesExpr um am bound (RQualified name alias)
                                              (RQualified name alias)

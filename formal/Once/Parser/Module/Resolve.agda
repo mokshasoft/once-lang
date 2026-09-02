@@ -260,9 +260,14 @@ canonVar false false nothing     x = RResolved (canonical (x ∷ []))           
 -- (lambda/let/destruct binders) so LOCALS are never canonicalized. `um` carries
 -- unaliased-import name→path for full-path resolution.
 canonExpr : List String → UnaliasedMap → AliasMap → RawExpr → RawExpr
-canonExpr bound um am (RQualified name alias) with lookupImportAlias am alias
-... | just path = RResolved (canonical (expandPath path ++L (name ∷ [])))
-... | nothing   = RQualified name alias
+-- D136: `name@this` reaches the OWN module — the escape hatch for a definition
+-- whose name a generator has taken. `this` is a RESERVED alias and is decided
+-- BEFORE the alias table, so an `import … as this` cannot capture it.
+canonExpr bound um am (RQualified name alias) with alias ≟ "this"
+... | yes _ = RResolved (canonical (name ∷ []))
+... | no  _ with lookupImportAlias am alias
+...   | just path = RResolved (canonical (expandPath path ++L (name ∷ [])))
+...   | nothing   = RQualified name alias
 canonExpr bound um am (RVar x)            = canonVar (elemStr x bound) (isBuiltinName x) (lookupUnaliased um x) x
 canonExpr bound um am (RResolved cn)      = RResolved cn
 canonExpr bound um am (RApp f x)          = RApp (canonExpr bound um am f) (canonExpr bound um am x)
@@ -294,9 +299,11 @@ cls-canon bound um am (cls-var {x = x})
 ... | false | true  | _       = cls-res
 ... | false | false | just _  = cls-res
 ... | false | false | nothing = cls-res
-cls-canon bound um am (cls-qual {a = alias}) with lookupImportAlias am alias
-... | just _  = cls-res
-... | nothing = cls-qual
+cls-canon bound um am (cls-qual {a = alias}) with alias ≟ "this"
+... | yes _ = cls-res
+... | no  _ with lookupImportAlias am alias
+...   | just _  = cls-res
+...   | nothing = cls-qual
 cls-canon bound um am cls-res   = cls-res
 cls-canon bound um am cls-let   = cls-let
 cls-canon bound um am cls-destr = cls-destr

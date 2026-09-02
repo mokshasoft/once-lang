@@ -93,7 +93,7 @@ du_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 v7
                       MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_208 (coe v1)
                       (coe v6) (coe MAlonzo.Code.Once.IR.C_Heap_8)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3110
+                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
                          (coe v0) (coe v1) (coe v6) (coe v4)
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -108,7 +108,7 @@ du_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 v7
                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_208 (coe v1)
                    (coe v6) (coe MAlonzo.Code.Once.IR.C_Heap_8)
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3110
+                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
                       (coe v0) (coe v1) (coe v6) (coe v4)
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -150,7 +150,7 @@ du_cfb'45'doOpt_78 v0 v1 v2 v3 v4 v5 v6
       (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v0)
       (coe v1) (coe v2) (coe v4) (coe v5)
       (coe
-         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1308
+         MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1278
          (coe
             MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
             (coe v1) (coe v2) (coe v3) (coe v4) (coe v5))

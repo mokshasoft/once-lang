@@ -59,42 +59,42 @@ data T_ResolvesVar_68
 -- Once.Spec.Resolution.ResolvesExpr
 d_ResolvesExpr_98 a0 a1 a2 a3 a4 = ()
 data T_ResolvesExpr_98
-  = C_re'45'var_110 T_ResolvesVar_68 |
-    C_re'45'qual_122 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+  = C_re'45'var_110 T_ResolvesVar_68 | C_re'45'this_116 |
+    C_re'45'qual_128 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                      [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_FirstAt_18
                      T_ExpandsTo_50 |
-    C_re'45'qual'45'unknown_130 MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 |
-    C_re'45'res_136 |
-    C_re'45'app_148 T_ResolvesExpr_98 T_ResolvesExpr_98 |
-    C_re'45'lam_158 T_ResolvesExpr_98 |
-    C_re'45'let_172 T_ResolvesExpr_98 T_ResolvesExpr_98 |
-    C_re'45'pair_184 T_ResolvesExpr_98 T_ResolvesExpr_98 |
-    C_re'45'destruct_204 T_ResolvesExpr_98 T_ResolvesExpr_98
+    C_re'45'qual'45'unknown_136 MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44 |
+    C_re'45'res_142 |
+    C_re'45'app_154 T_ResolvesExpr_98 T_ResolvesExpr_98 |
+    C_re'45'lam_164 T_ResolvesExpr_98 |
+    C_re'45'let_178 T_ResolvesExpr_98 T_ResolvesExpr_98 |
+    C_re'45'pair_190 T_ResolvesExpr_98 T_ResolvesExpr_98 |
+    C_re'45'destruct_210 T_ResolvesExpr_98 T_ResolvesExpr_98
                          T_ResolvesExpr_98 |
-    C_re'45'annot_214 T_ResolvesExpr_98 |
-    C_re'45'binop_228 T_ResolvesExpr_98 T_ResolvesExpr_98 |
-    C_re'45'unop_238 T_ResolvesExpr_98 |
-    C_re'45'ana_248 T_ResolvesExpr_98 | C_re'45'unit_252 |
-    C_re'45'int_258 | C_re'45'float_270 | C_re'45'str_276
+    C_re'45'annot_220 T_ResolvesExpr_98 |
+    C_re'45'binop_234 T_ResolvesExpr_98 T_ResolvesExpr_98 |
+    C_re'45'unop_244 T_ResolvesExpr_98 |
+    C_re'45'ana_254 T_ResolvesExpr_98 | C_re'45'unit_258 |
+    C_re'45'int_264 | C_re'45'float_276 | C_re'45'str_282
 -- Once.Spec.Resolution.ResolvesDecl
-d_ResolvesDecl_284 a0 a1 a2 a3 a4 = ()
-data T_ResolvesDecl_284
-  = C_rd'45'fundef_300 T_ResolvesExpr_98 | C_rd'45'typesig_306 |
-    C_rd'45'signature_316 | C_rd'45'typealias_324 | C_rd'45'import_328
+d_ResolvesDecl_290 a0 a1 a2 a3 a4 = ()
+data T_ResolvesDecl_290
+  = C_rd'45'fundef_306 T_ResolvesExpr_98 | C_rd'45'typesig_312 |
+    C_rd'45'signature_322 | C_rd'45'typealias_330 | C_rd'45'import_334
 -- Once.Spec.Resolution.NotImport
-d_NotImport_330 a0 = ()
-data T_NotImport_330
-  = C_nim'45'typesig_336 | C_nim'45'fundef_344 | C_nim'45'sig_354 |
-    C_nim'45'alias_362
+d_NotImport_336 a0 = ()
+data T_NotImport_336
+  = C_nim'45'typesig_342 | C_nim'45'fundef_350 | C_nim'45'sig_360 |
+    C_nim'45'alias_368
 -- Once.Spec.Resolution.ResolvesDecls
-d_ResolvesDecls_372 a0 a1 a2 a3 a4 a5 = ()
-data T_ResolvesDecls_372
-  = C_rds'45'nil_382 |
-    C_rds'45'cons_392 T_NotImport_330 T_ResolvesDecl_284
-                      T_ResolvesDecls_372 |
-    C_rds'45'import_402 [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32]
+d_ResolvesDecls_378 a0 a1 a2 a3 a4 a5 = ()
+data T_ResolvesDecls_378
+  = C_rds'45'nil_388 |
+    C_rds'45'cons_398 T_NotImport_336 T_ResolvesDecl_290
+                      T_ResolvesDecls_378 |
+    C_rds'45'import_408 [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32]
                         [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] T_FirstAt_18
-                        T_ResolvesDecls_372
+                        T_ResolvesDecls_378
 -- Once.Spec.Resolution.ResolvesModule
-d_ResolvesModule_408 a0 a1 a2 a3 = ()
-newtype T_ResolvesModule_408 = C_rm_418 T_ResolvesDecls_372
+d_ResolvesModule_414 a0 a1 a2 a3 = ()
+newtype T_ResolvesModule_414 = C_rm_424 T_ResolvesDecls_378
