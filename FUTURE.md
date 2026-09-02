@@ -820,6 +820,7 @@ asked instead of assumed.**
 | **B** | **A CATCH-ALL HIDING A MISSING CASE** — `_ = false` makes a function total, so coverage is satisfied and the omission is SILENT | `spine?`/`stablecd?` inherited `_ = false` for `icon`/`ielim` — THREE silently wrong answers, `--safe`, zero warnings (`25602107`) | ✅ **NOW PINNED** — `FormerCensus` asserts the catch-all's EXTENT (`spine?` 12 of 30, `stablecd?` 7); adding a former moves the number and FAILS. ★ AND Agda has a native flag we were not using: `--exact-split -Werror` makes a catch-all a hard error, by clause — see below | option 2 again: a function generated from a `Desc` has no catch-all to inherit. This is the strongest argument for the dogfooding target |
 | **C** | **VACUITY** — a true theorem that says nothing | `subTI` quantified over an arbitrary env-top, so `consistency` was VACUOUS; `gcd-gt-gen`/`gcd-le-gen` premises uninhabitable at variables (`5edcde10`) | ⛔ not in general — an implication with an unsatisfiable premise is a fine proof | ★ **the real idea: a hypothesis OWES A NON-VACUITY WITNESS.** `∃ args. premise args` IS a proposition. Once could demand one per conditional lemma — `check-formers` gate 6 is the shadow of it |
 | **D** | **ENCODING CORRESPONDENCE** — a well-formed row that encodes the WRONG RULE | `dwf-cons` emitting `DescWf C` for `DescWf (C ◃ E)` (2026-09-01) | ✅ **COUNTS** (`Knot/Census`) **AND VALUES** (`Knot/Adequacy`, 32 checks against `Knot/Map`, generated) — CONTROLLED: reintroducing the `◃` bug makes it a type error. ⬜ Row STRUCTURE/fords still want a full `enDeriv` | make the declaration a VALUE, so the correspondence is an ordinary function rather than a reflection macro over a Python-parsed source |
+| **D′** | **WRAPPER ADEQUACY** — an object-level FUNCTION that is well-typed and denotes a DIFFERENT function. The index records a DEPTH, so two different renamings have the SAME TYPE | `wkK` is not `renTm vs` — it keeps the de Bruijn index where `renTm vs` shifts it (2026-09-02). Sound where the argument is closed (`payTy`), wrong where it is open (`ihTy`) | 🟡 **the encoding EXISTS and was written once** — `Knot/SzAgree` proves `szsTm i ⌈t⌉ ⟶* num (sz t)` for all 30 rows, GENERATED. That is exactly the statement `wkK` fails. It was never instantiated for any other wrapper. ✅ **the OBLIGATION is now forced** — `gen-knot.py`'s `_WRAP_LEDGER`, checked both ways against a scan of the EMITTED rows: 19 wrappers, 11 still owed, and a new wrapper with no entry fails generation | make the renaming a VALUE. `subTmK` takes `σ : SubTy d n` as an argument and so cannot be silently wrong about which substitution it is; `wkK` bakes its renaming into `Lib/IWk`'s fold. ★ **a function whose behaviour depends on a parameter absent from its type will be silently wrong** |
 | **E** | **CLAIM / COMMENT DRIFT** — a header asserting "N of M" that is false | two stale census claims in `Knot/Terms`, 32 → **13** (`da699bd1`); stale ⬜/⛔ markers (`ef6e408b`, `cbb181cd`) | ✅ where NUMERIC — turn the claim into a `refl`; that is exactly what `Knot/Census` is | claims in the doc layer that are checked, not prose |
 | **F** | **BUILD COVERAGE** — a file the checker never reaches | stale `JudgeWfJ`–`Q` the sweep globbed GREEN; `check.sh` rc=0 off a cached `.agdai`; a module with no `--safe` line | 🟡 mostly — `--safe` is CO-INFECTIVE, so `Trust.agda` importing the tree enforces it; the residue is `find \| diff` | content-addressed build; a project manifest that is itself checked |
 
@@ -835,6 +836,120 @@ in this repo's history: `--safe`, zero holes, a green build, and
 `consistency` proved nothing at all. A language that made
 *"this hypothesis is inhabited somewhere"* an obligation would have
 caught it at the definition, not months later.
+
+### ★★★ CATEGORY D′ IN DETAIL — the check existed, in one place, and the gap was CORRELATED with the bug
+
+Added 2026-09-02, after `wkK` turned out not to be `renTm vs`.
+
+**The defect.** `Knot/Wk.wkK : K (s,d) → K (s,suc d)` is derived by
+`Lib/IWk` as a generic depth-bumping fold. Its two `Var` rows rebuild
+`cVar-vz` at `m' = nsuc m`, i.e.
+
+    wkK (var vz)     = var vz          not  var (vs vz)
+    wkK (var (vs x)) = var (vs (wkK x))
+
+— the identity on de Bruijn INDICES. `renTm vs` shifts them. Both are
+well-typed at `K (s,d) → K (s,suc d)`, because the index records only a
+DEPTH; nothing in the type distinguishes two renamings between the same
+two lengths.
+
+**★★★ And it could not have been `renTm vs`.** A tag-preserving fold can
+only implement a renaming that is stable under going through a binder —
+`extR ρ ≡ ρ` one depth up. The outermost insertion is the only weakening
+that is; `renTm vs` becomes `renTm (extR vs)` under a `lam`. ⇒ this was
+not a slip in two rows, it is a statement about what `Lib/IWk` CAN
+produce, and the same argument applies to any future generic fold.
+
+**⇒ the two agree on CLOSED terms and only there.** `payTy D C` is
+closed, so `Knot/PayTy`'s use is sound; `ipayTy` weakens nothing;
+`Knot/IhTyRho` weakened an open answer and was wrong. That is the
+practical rule: **an adequacy suite whose witnesses are all closed cannot
+see a renaming bug.**
+
+### The encoding was already in the repo — once
+
+| tier | what it checks | covers `wkK`? |
+|---|---|---|
+| `Knot/Census` | row COUNTS, per family, by reflection | no — no count changes |
+| `…Wf` modules | each row is well-formed | no — both renamings are well-typed |
+| `Knot/Adequacy` | a rule's CONCLUSION SUBJECTS are the ones the rule names, by `refl` | no — `wkK`'s three uses are all in PREMISES and INDEX components, which no tier scans |
+| `Knot/SzAgree` | `szsTm i ⌈t⌉ ⟶* num (sz t)`, **all 30 rows, GENERATED** | ★ **this is the shape that catches it** — and it exists for `sz` and for nothing else |
+
+So the answer to "is this a new class needing new machinery" is **no**:
+`SzAgree` is a generated, full-induction proof that an encoded FUNCTION
+agrees with the meta-level function it names. `wk-agree : wkK ⌈t⌉ ⟶*
+⌈renTm vs t⌉` is the same statement and is FALSE at the `var` row — it
+would have failed the day `wkK` was written. The machinery was built and
+instantiated once.
+
+### ⚠⚠ AND THE COVERAGE GAP HAD THE SAME CAUSE AS THE BUG
+
+`gen_adequacy` refuses any subject applying a wrapper, and it is RIGHT
+to: `enTy (subTy σ B) ≡ subTyAtK … (enTy B)` is a commutation lemma, not
+`refl`, and asserting it would be a false claim about the right subject.
+The generator says so, in a comment, at the refusal.
+
+What it could not do is notice that the lemma was never written. And
+every such refusal was reported as `_Undepthed` — which reads as depth
+bookkeeping, not as *"this row applies an unchecked function"*. `wkK`
+takes a depth; that is simultaneously (a) why the depth-only index loses
+the information that would have distinguished the two renamings and (b)
+why every rule using it lands in the skip list. **The hole and the bug
+were not independent; they had one cause.** Cf. the standing note that a
+verification can cover less than it claims — this is the sharpest
+instance: the skips were exactly complementary to the bug.
+
+### ✅ What is mechanized now, and what is script-only and why
+
+**Encoded (Agda):** nothing new is needed — `SzAgree`'s shape is the
+statement. Writing it per wrapper is ordinary work, not research.
+
+**Forced (generator, 2026-09-02):** `_WRAP_LEDGER` in `tools/gen-knot.py`.
+Every non-constructor `…K` head appearing in an EMITTED row must carry an
+entry saying what discharges its adequacy obligation or why it is not
+owed. Checked BOTH WAYS — a wrapper with no entry fails generation, an
+entry no row uses is a stale claim and fails too. Currently **19
+wrappers, 11 still OWED**, and `wkK`'s entry records that its statement
+is not merely unproved but FALSE.
+
+⚠ Two refinements the first attempt got wrong, both worth keeping:
+
+1. **Scanning the checkable subjects finds nothing.** The adequacy loop
+   builds a rule's telescope first and abandons the rule if a binder's
+   meta-level type is unpinned, so for `⊢ap` it never reaches the subject
+   at all. A scan that runs only where the check succeeds cannot see what
+   the check is missing.
+2. **Even scanning every subject finds the wrong set.** Adequacy is about
+   CONCLUSION SUBJECTS; `wkK` is used in premises and index components.
+   ⇒ the ledger is fed by scanning the **emitted files**, which is the
+   only view that sees every use.
+
+**★ Why the ledger is a SCRIPT and not a reflection macro.** Categories A
+and B were closable in Agda because `getDefinition` enumerates a
+DATATYPE's constructors. There is no primitive that enumerates a
+MODULE's definitions: Agda 2.8.0's TC monad has `getType`/`getDefinition`
+**by name** and nothing that lists names (checked against
+`lib/prim/Agda/Builtin/Reflection.agda`). So *"every wrapper owes an
+`agree`"* cannot be stated in Agda at all — the set to quantify over is
+not reachable. ⇒ **this is the first defect class in the table whose
+obstacle is a genuine reflection limit rather than our not having tried.**
+
+### ⇒ For Once
+
+Two obligations, and the first is the cheap one:
+
+* **A module-level census.** If a module's definitions were enumerable —
+  as a datatype's constructors are — the ledger is an ordinary
+  proposition and needs no script. This is the same request as
+  §"a DATATYPE DECLARATION carries no totality obligation", one level up:
+  *a MODULE should be able to carry an obligation over its own
+  definitions.*
+* **Make the parameter appear in the type.** `wkK` is "the weakening",
+  singular, with the renaming baked into its derivation; `subTmK` takes
+  `σ` and cannot be wrong in the same way. A language that made a
+  derived function name its own specification — or a depth index that
+  recorded the SCOPE rather than its LENGTH — removes the class rather
+  than checking for it.
 
 ### ★★★ CATEGORY C IN DETAIL — can VACUITY be checked automatically?
 

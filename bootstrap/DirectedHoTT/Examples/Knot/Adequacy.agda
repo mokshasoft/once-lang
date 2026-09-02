@@ -27,16 +27,52 @@
 --   instantiated at, and an `ICon` binder's scope is not named by its
 --   rule:
 --     ⊢var         _Undepthed
---     ⊢app         _Undepthed
---     ⊢snd         _Undepthed
---     ⊢trU         _Undepthed
---     ⊢ap          _Undepthed
---     ⊢jsub        _Undepthed
---     ⊢natrec      _Undepthed
+--     ⊢app         applies subTyAtK
+--     ⊢snd         applies subTyAtK
+--     ⊢trU         applies Var-vzK
+--     ⊢ap          applies subTmAtK
+--     ⊢jsub        applies subTmAtK
+--     ⊢natrec      applies subTyAtK
 --     iwf-ρ        _Undepthed
 --     iwf-κ        _Undepthed
---     icw-clo      _Undepthed
+--     icw-clo      applies εwkK
 --     idwf-cons    _Undepthed
+--
+-- ★★★ AND A SKIP THAT SAYS `applies X` OWES SOMETHING.  For a WRAPPER,
+--   `enTy (subTy σ B) ≡ subTyAtK … (enTy B)` is a COMMUTATION LEMMA and
+--   not `refl`, so refusing it here is correct — but the obligation it
+--   creates was never anything's job.  `Knot/SzAgree` is one such lemma,
+--   written for `sz` and for nothing else.
+--
+-- ⚠⚠ THAT IS EXACTLY WHERE `wkK` HID.  It is not `renTm vs` — it keeps
+--   the de Bruijn index where `renTm vs` shifts it — and every rule
+--   applying it was reported as `_Undepthed`, which reads like depth
+--   bookkeeping.  The coverage gap and the bug had the SAME CAUSE: a
+--   depth argument.  ⇒ the ledger below, checked BOTH WAYS at generation
+--   time, so a new wrapper cannot arrive without an entry:
+--     Ctx-empK   ✅ not owed — a CONSTRUCTOR of `CtxD`, not a wrapper.
+--     Ctx-extK   ✅ not owed — a constructor of `CtxD`.
+--     IxDConK    ✅ not owed — a constructor of `IxD`.
+--     IxDescK    ✅ not owed — a constructor of `IxD`.
+--     IxIConK    ✅ not owed — a constructor of `IxD`.
+--     IxIDescK   ✅ not owed — a constructor of `IxD`.
+--     IxNoneK    ✅ not owed — a constructor of `IxD`.
+--     extNK      ⬜ OWED — `extS`'s half.
+--     flatK      ⬜ OWED — agreement with `flat?`.
+--     nrsSubK    ⬜ OWED — `nrs`'s half.
+--     pwBodyK    ⬜ OWED — agreement with `pw?`'s body case.
+--     pwK        ⬜ OWED — agreement with `pw?`.
+--     singleK    ⬜ OWED — `single`'s half of the substitution agreement.
+--     stkAK      ⬜ OWED — agreement with `stkA?`.
+--     stkCK      ⬜ OWED — agreement with `stkC?`.
+--     subTmAtK   ⬜ OWED — `enTm (subTm σ t) ≡ subTmAtK … (enTm t)`.
+--     subTyAtK   ⬜ OWED — `enTy (subTy σ A) ≡ subTyAtK … (enTy A)`.
+--     wkK        ⬜ OWED, AND FALSE AS STATED — `wkK` is NOT `renTm vs`; it keeps
+--                the de Bruijn index.  `Knot/WkSub.wkTmK`/`wkTyK` are the
+--                correct translation and the emitter must move to them.
+--     εwkK       ✅ not owed — its argument is CLOSED, and every weakening
+--                agrees on a closed term.  This is exactly why `Knot/PayTy`
+--                may use `wkK` and `Knot/IhTyRho` may not.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
