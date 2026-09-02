@@ -90,9 +90,9 @@ IJudge =
 -- ⚠ NOT EMITTED — 5 of 56 rules:
 --     ⊢tr        premise 'occTm vz c ≡ false'
 --     ⊢con       unmapped ['lookupD', 'payTy']
---     ⊢elim      unmapped ['methsTy']
+--     ⊢elim      unmapped ['methsTyFrom']
 --     ⊢icon      unmapped ['ilookupD', 'ipayTy', 'isingle']
---     ⊢ielim     unmapped ['iinst', 'imethsTy']
+--     ⊢ielim     unmapped ['imethsTy']
 
 -- ty-base
 JΑ0 : Ctx

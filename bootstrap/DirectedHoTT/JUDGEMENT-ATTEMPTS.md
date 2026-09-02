@@ -1423,3 +1423,62 @@ STRUCTURE, its FORDS, or that premises are wired to the right slots — a
 row could name the right terms in the wrong places. `enDeriv` — a total
 map from real DERIVATIONS to encoded inhabitants — subsumes it, and step
 4 needs it anyway (`prog`'s type mentions `_⊢_∷_`).
+
+---
+
+# §15 — STEP 3's REMAINDER, SIZED — 7 functions and one traversal, and TWO were free
+
+`∈D`/`∈ID` landed (four modules, green first try) and the alias
+expansions went in. What is left is now known by NAME and by SHAPE, and
+two of the things it looked like it needed turned out not to be needed at
+all.
+
+## §15.1 the blockers, after the aliases
+
+    ⊢tr      occTm
+    ⊢con     lookupD · payTy
+    ⊢elim    methsTyFrom
+    ⊢icon    ilookupD · ipayTy · isingle
+    ⊢ielim   imethsTy
+    ι-elim   fields · lookupD · sel          (Red)
+    ι-ielim  ifields · ilookupD · isingle · sel
+
+⇒ **7 object-level functions close 5 Judge rules AND both Red rules**,
+and `occTm` closes the sixth. Two jobs, not seven.
+
+## §15.2 ★ TWO WERE ALIASES, NOT FUNCTIONS
+
+`iinst j t M = subTy (single t) (subTy (extS (single j)) M)`
+(`Spec/Typing:155`) — **two substitutions, and the object level already
+has all three pieces** (`subTyAtK`, `singleK`, `extNK`). Reading it as an
+unmapped head made `⊢ielim` look like it needed a NEW function when it
+needed a LOOKUP. `methsTy D M E = methsTyFrom D M zero E` is the same.
+
+⇒ both now expand in `_ALIAS`, one table, spelled out — the same
+mechanism `IDescWf I D = IDescWfFrom D I D` needed, and that one cost a
+silent argument SWAP when it was read positionally.
+★ **Before assuming a premise names a missing function, check whether it
+names a DEFINITION.** Two of the five did.
+
+## §15.3 ⬜ and `isingle` should be cheap for the same reason `εwkK` was
+
+`isingle i vz = i · isingle i (vs ())` — a substitution out of a
+ONE-VARIABLE scope. Its object-level form is a `lam` whose body ignores
+its argument, exactly as `Knot/EWk`'s `εsubK` is, and for the same
+reason: **nothing well-typed can reach the impossible case.** ⇒ expect
+`Knot/EWk`-sized, not `Knot/Nrs`-sized.
+
+## §15.4 the shape of what actually remains
+
+| | function | shape | scale |
+|---|---|---|---|
+| ⬜ | `isingle` | a `lam` over an uninhabitable domain | `EWk`-sized (≈15 lines) |
+| ⬜ | `lookupD` / `ilookupD` | `ielim` at `sDesc`/`sIDesc`, motive `Π Nat …` | `Nrs`-sized each |
+| ⬜ | `payTy` / `ipayTy` | `ielim` at `sDCon`/`sICon`, returns a TYPE | `Nrs`-sized each |
+| ⬜ | `methsTyFrom` / `imethsTy` | `ielim` at `sDesc`/`sIDesc`, carries a motive | `Nrs`-sized each |
+| ⬜ | `sel` / `fields` / `ifields` | Red-only; `sel` is a `natrec` of `fst`/`snd` | small / medium |
+| ⛔ | `occTm` | 30-row traversal, variable argument CHANGING under binders, needs `eqv`, 53 REAL methods | `subTm`-sized |
+
+⚠ `occTm` remains the outlier and `§8`'s table still under-sizes it: it
+sits with `pw?` under "boolean functions over syntax", but `pw?` reads a
+HEAD. ⇒ it is the last thing to attempt, not the first.
