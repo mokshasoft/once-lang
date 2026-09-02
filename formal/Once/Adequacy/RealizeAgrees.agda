@@ -47,7 +47,8 @@ import Once.Type
 open import Once.Type using (Type; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
                              Purity; pure; eff; mk-kind; Many; One; Zero; _⇒[_]_; isUnit?; ⟦_⟧T; Functor)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
-open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport; lookupLocal; composeMid; ctxWithImportsAndPolys)
+open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport; lookupLocal; composeMid; ctxWithImportsAndPolys;
+  GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other)
 open import Once.TypeCheck.Elaborate using (success; failure; VerifiedInferResult; VerifiedCheckResult)
 import Once.TypeCheck.Elaborate as E
 open import Once.IR as IR using (IR)
@@ -73,7 +74,7 @@ open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; ffi-concrete
 open import Once.Arith.SigOp.Builders using (generic-semM)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.ThinSound using (weaken-⟦⟧)
-open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
+open import Once.CanonicalName using (CanonicalName; showCanonical; bare; NotGenerator; gen)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-base; con-fun; base-Unit)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?; isConcrete?)
 
@@ -166,14 +167,9 @@ check-agreeV-RVar-id : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
   → E.checkElabV-RVar-bbc-id-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 check-agreeV-RVar-id ctx (X ⇒[ mk-kind Many π ] Y) eq
-  with E.inspectLookupLocal ctx "id" | E.inspectLookupImport ctx "id" | eq
-... | E.llv-not-found _ | E.liv-not-found _ | eq' with X E.≟T Y | eq'
-...   | yes refl | refl = λ dγ k → refl
-...   | no _     | ()
-check-agreeV-RVar-id ctx (X ⇒[ mk-kind Many π ] Y) eq
-  | E.llv-not-found _ | E.liv-found _ | ()
-check-agreeV-RVar-id ctx (X ⇒[ mk-kind Many π ] Y) eq
-  | E.llv-found _ | _ | ()
+  with X E.≟T Y | eq
+... | yes refl | refl = λ dγ k → refl
+... | no _     | ()
 check-agreeV-RVar-id ctx Unit ()
 check-agreeV-RVar-id ctx Void ()
 check-agreeV-RVar-id ctx Int ()
@@ -195,28 +191,18 @@ check-agreeV-RVar-fst : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
   → E.checkElabV-RVar-bbc-fst-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 check-agreeV-RVar-fst ctx ((A * B) ⇒[ mk-kind Many π ] A') eq
-  with E.inspectLookupLocal ctx "fst" | E.inspectLookupImport ctx "fst" | eq
-... | E.llv-not-found _ | E.liv-not-found _ | eq' with A E.≟T A' | eq'
-...   | yes refl | refl = λ dγ k → refl
-...   | no _     | ()
-check-agreeV-RVar-fst ctx ((A * B) ⇒[ mk-kind Many π ] A') eq
-  | E.llv-not-found _ | E.liv-found _ | ()
-check-agreeV-RVar-fst ctx ((A * B) ⇒[ mk-kind Many π ] A') eq
-  | E.llv-found _ | _ | ()
+  with A E.≟T A' | eq
+... | yes refl | refl = λ dγ k → refl
+... | no _     | ()
 
 -- DISCHARGED bbc-snd (as fst, success at `(A * B) ⇒[Many π] B'` with B≟B').
 check-agreeV-RVar-snd : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
   → E.checkElabV-RVar-bbc-snd-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 check-agreeV-RVar-snd ctx ((A * B) ⇒[ mk-kind Many π ] B') eq
-  with E.inspectLookupLocal ctx "snd" | E.inspectLookupImport ctx "snd" | eq
-... | E.llv-not-found _ | E.liv-not-found _ | eq' with B E.≟T B' | eq'
-...   | yes refl | refl = λ dγ k → refl
-...   | no _     | ()
-check-agreeV-RVar-snd ctx ((A * B) ⇒[ mk-kind Many π ] B') eq
-  | E.llv-not-found _ | E.liv-found _ | ()
-check-agreeV-RVar-snd ctx ((A * B) ⇒[ mk-kind Many π ] B') eq
-  | E.llv-found _ | _ | ()
+  with B E.≟T B' | eq
+... | yes refl | refl = λ dγ k → refl
+... | no _     | ()
 
 -- DISCHARGED bbc-terminal: success at the canonical target; every other target makes
 -- the elaborator dispatch fail (absurd success-eq). Codomain-fixed ⇒ quantity must
@@ -225,11 +211,7 @@ check-agreeV-RVar-snd ctx ((A * B) ⇒[ mk-kind Many π ] B') eq
 check-agreeV-RVar-terminal : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
   → E.checkElabV-RVar-bbc-terminal-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
-check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many π ] Unit) eq
-  with E.inspectLookupLocal ctx "terminal" | E.inspectLookupImport ctx "terminal" | eq
-... | E.llv-not-found _ | E.liv-not-found _ | refl = λ dγ k → refl
-... | E.llv-not-found _ | E.liv-found _ | ()
-... | E.llv-found _ | _ | ()
+check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many π ] Unit) refl = λ dγ k → refl
 check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind One _ ] Unit) ()
 check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] Unit) ()
 check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Many _ ] Void) ()
@@ -267,11 +249,7 @@ check-agreeV-RVar-terminal ctx (A ⇒[ mk-kind Zero _ ] (ν-type _)) ()
 check-agreeV-RVar-initial : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
   → E.checkElabV-RVar-bbc-initial-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
-check-agreeV-RVar-initial ctx (Void ⇒[ mk-kind Many π ] A) eq
-  with E.inspectLookupLocal ctx "initial" | E.inspectLookupImport ctx "initial" | eq
-... | E.llv-not-found _ | E.liv-not-found _ | refl = λ dγ k → refl
-... | E.llv-not-found _ | E.liv-found _ | ()
-... | E.llv-found _ | _ | ()
+check-agreeV-RVar-initial ctx (Void ⇒[ mk-kind Many π ] A) refl = λ dγ k → refl
 
 -- DISCHARGED bbc-inl: success at the canonical target; every other target makes
 -- the elaborator dispatch fail (absurd success-eq). Codomain-fixed ⇒ quantity must
@@ -281,14 +259,9 @@ check-agreeV-RVar-inl : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
   → E.checkElabV-RVar-bbc-inl-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many π ] (A' + B)) eq
-  with E.inspectLookupLocal ctx "inl" | E.inspectLookupImport ctx "inl" | eq
-... | E.llv-not-found _ | E.liv-not-found _ | eq' with A E.≟T A' | eq'
-...   | yes refl | refl = λ dγ k → refl
-...   | no _     | ()
-check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many π ] (A' + B)) eq
-  | E.llv-not-found _ | E.liv-found _ | ()
-check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many π ] (A' + B)) eq
-  | E.llv-found _ | _ | ()
+  with A E.≟T A' | eq
+... | yes refl | refl = λ dγ k → refl
+... | no _     | ()
 check-agreeV-RVar-inl ctx (A ⇒[ mk-kind One _ ] (_ + _)) ()
 check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Zero _ ] (_ + _)) ()
 check-agreeV-RVar-inl ctx (A ⇒[ mk-kind Many _ ] Unit) ()
@@ -330,14 +303,9 @@ check-agreeV-RVar-inr : ∀ (ctx : NamedCtx) (T : Type) {fe snd Ψ se d f w}
   → E.checkElabV-RVar-bbc-inr-aux ctx T (failure fe , snd) ≡ (success Ψ se d f , w)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many π ] (A + B')) eq
-  with E.inspectLookupLocal ctx "inr" | E.inspectLookupImport ctx "inr" | eq
-... | E.llv-not-found _ | E.liv-not-found _ | eq' with B E.≟T B' | eq'
-...   | yes refl | refl = λ dγ k → refl
-...   | no _     | ()
-check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many π ] (A + B')) eq
-  | E.llv-not-found _ | E.liv-found _ | ()
-check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many π ] (A + B')) eq
-  | E.llv-found _ | _ | ()
+  with B E.≟T B' | eq
+... | yes refl | refl = λ dγ k → refl
+... | no _     | ()
 check-agreeV-RVar-inr ctx (B ⇒[ mk-kind One _ ] (_ + _)) ()
 check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Zero _ ] (_ + _)) ()
 check-agreeV-RVar-inr ctx (B ⇒[ mk-kind Many _ ] Unit) ()
@@ -659,77 +627,96 @@ fail≢succ ()
 -- (as helper params), so the arrow/value aux commits to a `success`/`failure`
 -- clause. The caller passes `(isBaseType? A) refl`/`(isConcrete? ty) refl`; the
 -- application stays well-typed at the goal even when those are stuck.
-agree-RResolved-arrowᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) {A B : Type} (π : Purity)
+agree-RResolved-arrowᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGenerator cn) {A B : Type} (π : Purity)
   (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just (A ⇒[ mk-kind Many π ] B))
   (mbA : Maybe (IsBaseType A)) (eqbA : isBaseType? A ≡ mbA)
   (mcB : Maybe (IsConcrete B)) (eqcB : isConcrete? B ≡ mcB)
   {A' Ψ se d f w}
-  → E.inferElabV-RResolved-arrow-aux ctx cn lkup mbA eqbA mcB eqcB ≡ (success A' Ψ se d f , w)
+  → E.inferElabV-RResolved-arrow-aux ctx cn ng lkup mbA eqbA mcB eqcB ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
-agree-RResolved-arrowᴴ ctx cn {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ k = masq {ctx} {A} {B} cn π bA cB dγ k
-agree-RResolved-arrowᴴ ctx cn π lkup nothing eqbA _ eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
-agree-RResolved-arrowᴴ ctx cn π lkup (just _) eqbA nothing eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RResolved-arrowᴴ ctx cn ng {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ k = masq {ctx} {A} {B} cn π bA cB dγ k
+agree-RResolved-arrowᴴ ctx cn ng π lkup nothing eqbA _ eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RResolved-arrowᴴ ctx cn ng π lkup (just _) eqbA nothing eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
-agree-RResolved-valueᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ty : Type)
+agree-RResolved-valueᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGenerator cn) (ty : Type)
   (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ just ty)
   (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
   {A' Ψ se d f w}
-  → E.inferElabV-RResolved-value-aux ctx cn ty lkup mc eqc ≡ (success A' Ψ se d f , w)
+  → E.inferElabV-RResolved-value-aux ctx cn ng ty lkup mc eqc ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
-agree-RResolved-valueᴴ ctx cn ty lkup (just conc) eqc refl dγ k = refl
-agree-RResolved-valueᴴ ctx cn ty lkup nothing eqc eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RResolved-valueᴴ ctx cn ng ty lkup (just conc) eqc refl dγ k = refl
+agree-RResolved-valueᴴ ctx cn ng ty lkup nothing eqc eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
-agree-RResolved : ∀ (ctx : NamedCtx) (cn : CanonicalName) (lhs : Maybe Type)
+agree-RResolved : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGenerator cn) (lhs : Maybe Type)
   (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs)
   {A Ψ se d f w}
-  → E.inferElabV-RResolved-aux ctx cn lhs lkup ≡ (success A Ψ se d f , w)
+  → E.inferElabV-RResolved-aux ctx cn ng lhs lkup ≡ (success A Ψ se d f , w)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
-agree-RResolved ctx cn (just (A ⇒[ mk-kind Many π ] B)) lkup eqS dγ k =
-  agree-RResolved-arrowᴴ ctx cn π lkup (isBaseType? A) refl (isConcrete? B) refl eqS dγ k
-agree-RResolved ctx cn (just (A ⇒[ mk-kind One  π ] B)) lkup eqS dγ k =
-  agree-RResolved-valueᴴ ctx cn (A ⇒[ mk-kind One π ] B) lkup (isConcrete? (A ⇒[ mk-kind One π ] B)) refl eqS dγ k
-agree-RResolved ctx cn (just (A ⇒[ mk-kind Zero π ] B)) lkup eqS dγ k =
-  agree-RResolved-valueᴴ ctx cn (A ⇒[ mk-kind Zero π ] B) lkup (isConcrete? (A ⇒[ mk-kind Zero π ] B)) refl eqS dγ k
-agree-RResolved ctx cn (just Unit)        lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Unit   lkup (isConcrete? Unit)   refl eqS dγ k
-agree-RResolved ctx cn (just Void)        lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Void   lkup (isConcrete? Void)   refl eqS dγ k
-agree-RResolved ctx cn (just Int)         lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Int    lkup (isConcrete? Int)    refl eqS dγ k
-agree-RResolved ctx cn (just Float)       lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Float  lkup (isConcrete? Float)  refl eqS dγ k
-agree-RResolved ctx cn (just Str)         lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Str    lkup (isConcrete? Str)    refl eqS dγ k
-agree-RResolved ctx cn (just Buffer)      lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn Buffer lkup (isConcrete? Buffer) refl eqS dγ k
-agree-RResolved ctx cn (just (A * B))     lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn (A * B) lkup (isConcrete? (A * B)) refl eqS dγ k
-agree-RResolved ctx cn (just (A + B))     lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn (A + B) lkup (isConcrete? (A + B)) refl eqS dγ k
-agree-RResolved ctx cn (just (μ-type F))  lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn (μ-type F) lkup (isConcrete? (μ-type F)) refl eqS dγ k
-agree-RResolved ctx cn (just (ν-type F))  lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn (ν-type F) lkup (isConcrete? (ν-type F)) refl eqS dγ k
-agree-RResolved ctx cn nothing lkup eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RResolved ctx cn ng (just (A ⇒[ mk-kind Many π ] B)) lkup eqS dγ k =
+  agree-RResolved-arrowᴴ ctx cn ng π lkup (isBaseType? A) refl (isConcrete? B) refl eqS dγ k
+agree-RResolved ctx cn ng (just (A ⇒[ mk-kind One  π ] B)) lkup eqS dγ k =
+  agree-RResolved-valueᴴ ctx cn ng (A ⇒[ mk-kind One π ] B) lkup (isConcrete? (A ⇒[ mk-kind One π ] B)) refl eqS dγ k
+agree-RResolved ctx cn ng (just (A ⇒[ mk-kind Zero π ] B)) lkup eqS dγ k =
+  agree-RResolved-valueᴴ ctx cn ng (A ⇒[ mk-kind Zero π ] B) lkup (isConcrete? (A ⇒[ mk-kind Zero π ] B)) refl eqS dγ k
+agree-RResolved ctx cn ng (just Unit)        lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn ng Unit   lkup (isConcrete? Unit)   refl eqS dγ k
+agree-RResolved ctx cn ng (just Void)        lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn ng Void   lkup (isConcrete? Void)   refl eqS dγ k
+agree-RResolved ctx cn ng (just Int)         lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn ng Int    lkup (isConcrete? Int)    refl eqS dγ k
+agree-RResolved ctx cn ng (just Float)       lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn ng Float  lkup (isConcrete? Float)  refl eqS dγ k
+agree-RResolved ctx cn ng (just Str)         lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn ng Str    lkup (isConcrete? Str)    refl eqS dγ k
+agree-RResolved ctx cn ng (just Buffer)      lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn ng Buffer lkup (isConcrete? Buffer) refl eqS dγ k
+agree-RResolved ctx cn ng (just (A * B))     lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn ng (A * B) lkup (isConcrete? (A * B)) refl eqS dγ k
+agree-RResolved ctx cn ng (just (A + B))     lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn ng (A + B) lkup (isConcrete? (A + B)) refl eqS dγ k
+agree-RResolved ctx cn ng (just (μ-type F))  lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn ng (μ-type F) lkup (isConcrete? (μ-type F)) refl eqS dγ k
+agree-RResolved ctx cn ng (just (ν-type F))  lkup eqS dγ k = agree-RResolved-valueᴴ ctx cn ng (ν-type F) lkup (isConcrete? (ν-type F)) refl eqS dγ k
+agree-RResolved ctx cn ng nothing lkup eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+
+-- D136: the elaborator dispatches `RResolved` on `classifyGen cn` first, so
+-- agreement has to name the VIEW to reduce. Seven generators fail infer (the
+-- success equation is absurd), `unit` infers the literal, and only `gv-other`
+-- reaches the import lookup — carrying the witness the aux now takes.
+agree-RResolved-view : ∀ (ctx : NamedCtx) (cn : CanonicalName) (gv : GenView cn)
+  {A Ψ se d f w}
+  → E.inferElabV-RResolved-dispatch ctx cn gv ≡ (success A Ψ se d f , w)
+  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+agree-RResolved-view ctx cn gv-unit refl dγ k = refl
+agree-RResolved-view ctx cn gv-id       eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RResolved-view ctx cn gv-fst      eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RResolved-view ctx cn gv-snd      eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RResolved-view ctx cn gv-terminal eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RResolved-view ctx cn gv-initial  eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RResolved-view ctx cn gv-inl      eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RResolved-view ctx cn gv-inr      eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
+agree-RResolved-view ctx cn (gv-other ng) eq dγ k =
+  agree-RResolved ctx cn ng (lookupImport (NamedCtx.imports ctx) (showCanonical cn)) refl eq dγ k
 
 -- RVar (non-unit): cases the lookup-aux. Local → the bound SExpr IS realize's
 -- `eE`; import → both elaborator and `realize-infer` emit `sigOp (bare x)`;
 -- neither-found → the success equation is absurd. No `masq` (unlike RResolved,
 -- whose aux emits a `lift-morphism` for arrows).
-agree-RVar-importᴴ : ∀ (ctx : NamedCtx) (x : String) (¬u : ¬ (x ≡ "unit"))
+agree-RVar-importᴴ : ∀ (ctx : NamedCtx) (x : String)
   (eq-loc : lookupLocal ctx x ≡ nothing) (ty : Type)
   (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ just ty)
   (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
   {A' Ψ se d f w}
-  → E.inferElabV-RVar-import-value-aux ctx x ¬u eq-loc ty eq-imp mc eqc ≡ (success A' Ψ se d f , w)
+  → E.inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp mc eqc ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
-agree-RVar-importᴴ ctx x ¬u eq-loc ty eq-imp (just conc) eqc refl dγ k = refl
-agree-RVar-importᴴ ctx x ¬u eq-loc ty eq-imp nothing eqc eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RVar-importᴴ ctx x eq-loc ty eq-imp (just conc) eqc refl dγ k = refl
+agree-RVar-importᴴ ctx x eq-loc ty eq-imp nothing eqc eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
-agree-RVar : ∀ (ctx : NamedCtx) (x : String) (¬u : ¬ (x ≡ "unit"))
+agree-RVar : ∀ (ctx : NamedCtx) (x : String)
   (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A)))
   (eq-loc : lookupLocal ctx x ≡ locLhs)
   (impLhs : Maybe Type) (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ impLhs)
   {A Ψ se d f w}
-  → E.inferElabV-RVar-lookup-aux ctx x ¬u locLhs eq-loc impLhs eq-imp ≡ (success A Ψ se d f , w)
+  → E.inferElabV-RVar-lookup-aux ctx x locLhs eq-loc impLhs eq-imp ≡ (success A Ψ se d f , w)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
-agree-RVar ctx x ¬u (just (A , Ψ , se)) eq-loc impLhs eq-imp refl dγ k = refl
-agree-RVar ctx x ¬u nothing eq-loc (just ty) eq-imp eqS dγ k =
-  agree-RVar-importᴴ ctx x ¬u eq-loc ty eq-imp (isConcrete? ty) refl eqS dγ k
+agree-RVar ctx x (just (A , Ψ , se)) eq-loc impLhs eq-imp refl dγ k = refl
+agree-RVar ctx x nothing eq-loc (just ty) eq-imp eqS dγ k =
+  agree-RVar-importᴴ ctx x eq-loc ty eq-imp (isConcrete? ty) refl eqS dγ k
 -- Plan 0.58 / D071: both lookups failed → the POLY FALLBACK (a ground
 -- telescope name infers at its declared type). Its success rides the
 -- premise-erased witness, so agreement is the narrow infer-poly residual.
-agree-RVar ctx x ¬u nothing eq-loc nothing eq-imp eq dγ k =
+agree-RVar ctx x nothing eq-loc nothing eq-imp eq dγ k =
   infer-agreeV-RVar-poly-todo ctx x eq dγ k
 
 -- RQualified agreement, dispatched on the import-lookup of the dotted path,
@@ -1007,7 +994,7 @@ SubCheckIH n = ∀ (ctx' : NamedCtx) (e' : RawExpr) → μ e' < n
 agree-compose : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A C : Type) (π : Purity)
   (mid : Maybe Type) (eqB : composeMid ctx f_inner arg A ≡ mid)
   {Ψ : Usage (NamedCtx.size ctx)} {se : Expr (NamedCtx.debruijn ctx) Ψ (A ⇒[ mk-kind Many π ] C)}
-  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RVar "compose") f_inner) arg ∶ (A ⇒[ mk-kind Many π ] C) ⨾ Ψ}
+  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg ∶ (A ⇒[ mk-kind Many π ] C) ⨾ Ψ}
   → E.checkComposeGo ctx f_inner arg A C π mid eqB ≡ (success Ψ se d fr , w)
   → (fIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ f_inner ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx f_inner T' ≡ (success Ψ' eE' d' fr' , w')
@@ -1031,7 +1018,7 @@ agree-compose ctx f_inner arg A C π (just B) eqB disp fIH gIH dγ k
 -- D127: `copair'` on both sides — the same congruence as compose.
 agree-caseGo : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A B C : Type) (π : Purity)
   {Ψ : Usage (NamedCtx.size ctx)} {se : Expr (NamedCtx.debruijn ctx) Ψ ((A + B) ⇒[ mk-kind Many π ] C)}
-  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RVar "case") f_inner) arg ∶ ((A + B) ⇒[ mk-kind Many π ] C) ⨾ Ψ}
+  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg ∶ ((A + B) ⇒[ mk-kind Many π ] C) ⨾ Ψ}
   → E.checkCaseGo ctx f_inner arg A B C π ≡ (success Ψ se d fr , w)
   → (fIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ f_inner ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx f_inner T' ≡ (success Ψ' eE' d' fr' , w')
@@ -1056,8 +1043,8 @@ agree-caseGo ctx f_inner arg A B C π disp fIH gIH dγ k
 -- reduces to the pure Go agreement.
 agree-compose-eff : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A C : Type)
   {Ψ : Usage (NamedCtx.size ctx)} {se : Expr (NamedCtx.debruijn ctx) Ψ (A ⇒[ mk-kind Many eff ] C)}
-  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RVar "compose") f_inner) arg ∶ (A ⇒[ mk-kind Many eff ] C) ⨾ Ψ}
-  → E.checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind Many eff ] C)
+  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg ∶ (A ⇒[ mk-kind Many eff ] C) ⨾ Ψ}
+  → E.checkCompose ctx (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg (A ⇒[ mk-kind Many eff ] C)
       ≡ (success Ψ se d fr , w)
   → (fIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ f_inner ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx f_inner T' ≡ (success Ψ' eE' d' fr' , w')
@@ -1078,8 +1065,8 @@ agree-compose-eff ctx f_inner arg A C disp fIH gIH dγ k
 
 agree-caseGo-eff : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A B C : Type)
   {Ψ : Usage (NamedCtx.size ctx)} {se : Expr (NamedCtx.debruijn ctx) Ψ ((A + B) ⇒[ mk-kind Many eff ] C)}
-  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RVar "case") f_inner) arg ∶ ((A + B) ⇒[ mk-kind Many eff ] C) ⨾ Ψ}
-  → E.checkCase ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-kind Many eff ] C)
+  {d fr : ℕ} {w : ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg ∶ ((A + B) ⇒[ mk-kind Many eff ] C) ⨾ Ψ}
+  → E.checkCase ctx (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg ((A + B) ⇒[ mk-kind Many eff ] C)
       ≡ (success Ψ se d fr , w)
   → (fIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ f_inner ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx f_inner T' ≡ (success Ψ' eE' d' fr' , w')
@@ -1257,6 +1244,29 @@ agree-embedOrSubsume : ∀ {ctx : NamedCtx} {e : RawExpr} (T : Type)
 agree-embedOrSubsume {ctx = ctx} {e = e} T eq inferIH dγ k =
   agree-embedOrSubsume-at T (E.inferElabV ctx e) eq inferIH dγ k
 
+-- D136: CHECK-mode `RResolved` dispatches on `classifyGen cn`, so agreement
+-- names the view. The seven point-free generators land in their own
+-- `bbc-*-aux` (their infer FAILS, which is exactly the shape those lemmas are
+-- stated at); `unit` and every other canonical name go through the ordinary
+-- embed/subsume route.
+check-agree-RResolved-view : ∀ (ctx : NamedCtx) (cn : CanonicalName) (T : Type)
+    (gv : GenView cn) {Ψ se d f} {w : ctx ⊢ᶜ Raw.RResolved cn ∶ T ⨾ Ψ}
+  → E.checkElabV-RResolved-dispatch ctx cn T gv (E.inferElabV ctx (Raw.RResolved cn))
+      ≡ (success Ψ se d f , w)
+  → (inferIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᵢ Raw.RResolved cn ∶ T' ⨾ Ψ'}
+       → E.inferElabV ctx (Raw.RResolved cn) ≡ (success T' Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ fmt dγ k)
+  → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+check-agree-RResolved-view ctx cn T gv-id       eq IH dγ k = check-agreeV-RVar-id       ctx T eq dγ k
+check-agree-RResolved-view ctx cn T gv-fst      eq IH dγ k = check-agreeV-RVar-fst      ctx T eq dγ k
+check-agree-RResolved-view ctx cn T gv-snd      eq IH dγ k = check-agreeV-RVar-snd      ctx T eq dγ k
+check-agree-RResolved-view ctx cn T gv-terminal eq IH dγ k = check-agreeV-RVar-terminal ctx T eq dγ k
+check-agree-RResolved-view ctx cn T gv-initial  eq IH dγ k = check-agreeV-RVar-initial  ctx T eq dγ k
+check-agree-RResolved-view ctx cn T gv-inl      eq IH dγ k = check-agreeV-RVar-inl      ctx T eq dγ k
+check-agree-RResolved-view ctx cn T gv-inr      eq IH dγ k = check-agreeV-RVar-inr      ctx T eq dγ k
+check-agree-RResolved-view ctx cn T gv-unit     eq IH dγ k = agree-embedOrSubsume T eq IH dγ k
+check-agree-RResolved-view ctx cn T (gv-other _) eq IH dγ k = agree-embedOrSubsume T eq IH dγ k
+
 ------------------------------------------------------------------------
 -- D127/D131: the cata denotational bridge is GONE.
 --
@@ -1279,7 +1289,7 @@ agree-checkInGo : ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Functor)
     {Ψ : Usage (NamedCtx.size ctx)}
     {se : Expr (NamedCtx.debruijn ctx) Ψ (μ-type F)}
     {d fr : ℕ}
-    {w : ctx ⊢ᶜ Raw.RApp (Raw.RVar "In") arg ∶ μ-type F ⨾ Ψ}
+    {w : ctx ⊢ᶜ Raw.RApp (Raw.RResolved (gen "In")) arg ∶ μ-type F ⨾ Ψ}
   → E.checkInGo ctx arg F mw eqW ≡ (success Ψ se d fr , w)
   → (argCheckIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
@@ -1305,7 +1315,7 @@ agree-checkCataGo : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Functor) (A : Type
     {Ψ : Usage (NamedCtx.size ctx)}
     {se : Expr (NamedCtx.debruijn ctx) Ψ (μ-type F ⇒[ mk-kind Many π ] A)}
     {d fr : ℕ}
-    {w : ctx ⊢ᶜ Raw.RApp (Raw.RVar "cata") alg ∶ (μ-type F ⇒[ mk-kind Many π ] A) ⨾ Ψ}
+    {w : ctx ⊢ᶜ Raw.RApp (Raw.RResolved (gen "cata")) alg ∶ (μ-type F ⇒[ mk-kind Many π ] A) ⨾ Ψ}
   → E.checkCataGo ctx alg F A π mw eqW ≡ (success Ψ se d fr , w)
   → (algIH : ∀ {T' Ψ' eE' d' fr'}
        {w' : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx) ⊢ᶜ alg ∶ T' ⨾ Ψ'}
@@ -1411,47 +1421,47 @@ agree-check-RApp ctx f arg (A ⇒[ mk-kind Many eff ] (B ⇒[ mk-kind Many pure 
 -- `realize (t-pair-morph-check wF wG) = fork' (realize wF) (realize wG)`. The
 -- FIRST arm is `f_inner`, a sub-expression of the head, so its IH comes from
 -- `subIH` (`argCheckIH` only covers `arg`).
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg (A ⇒[ mk-kind Many pure ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
+agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg (A ⇒[ mk-kind Many pure ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
   with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many pure ] B) in eqf | disp
 ... | failure _ , _ | ()
 ... | success Ψf fE df frf , wF | disp'
       with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] C) in eqg | disp'
 ...   | failure _ , _ | ()
 ...   | success Ψg gE dg frg , wG | refl
-        rewrite subIH ctx f_inner (inner-arm-< (Raw.RVar "pair") f_inner arg) eqf dγ k
+        rewrite subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "pair")) f_inner arg) eqf dγ k
               | argCheckIH eqg dγ k = refl
 -- ahv-pair-applied at an EFF outer arrow (Plan 0.55 D#2): checkPair subsumes the
 -- pure pair via `arr'`/`t-subsume` (both transparent) — SAME rewrite.
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg (A ⇒[ mk-kind Many eff ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
+agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg (A ⇒[ mk-kind Many eff ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
   with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many pure ] B) in eqf | disp
 ... | failure _ , _ | ()
 ... | success Ψf fE df frf , wF | disp'
       with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] C) in eqg | disp'
 ...   | failure _ , _ | ()
 ...   | success Ψg gE dg frg , wG | refl
-        rewrite subIH ctx f_inner (inner-arm-< (Raw.RVar "pair") f_inner arg) eqf dγ k
+        rewrite subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "pair")) f_inner arg) eqf dγ k
               | argCheckIH eqg dγ k = refl
 -- ahv-case-applied: checkCase emits `lift-morphism (case m_f m_g)`, witness
 -- `t-morph-lift (m-case mFᵐ mGᵐ)`; rewrite both components.
 -- Plan 0.52: case π (checkCase now has a separate eff-clause, so it no longer
 -- reduces at abstract π). pure → checkCaseGo directly (agree-caseGo); eff → the
 -- eff-clause (agree-caseGo-eff: passthrough or subsumed-pure).
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-kind Many pure ] C) E.ahv-case-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
+agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg ((A + B) ⇒[ mk-kind Many pure ] C) E.ahv-case-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
   agree-caseGo ctx f_inner arg A B C pure disp
-    (subIH ctx f_inner (inner-arm-< (Raw.RVar "case") f_inner arg)) argCheckIH dγ k
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "case") f_inner) arg ((A + B) ⇒[ mk-kind Many eff ] C) E.ahv-case-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
+    (subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "case")) f_inner arg)) argCheckIH dγ k
+agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "case")) f_inner) arg ((A + B) ⇒[ mk-kind Many eff ] C) E.ahv-case-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
   agree-caseGo-eff ctx f_inner arg A B C disp
-    (subIH ctx f_inner (inner-arm-< (Raw.RVar "case") f_inner arg)) argCheckIH dγ k
+    (subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "case")) f_inner arg)) argCheckIH dγ k
 -- ahv-compose-applied: delegate to agree-compose (mirrors checkCompose →
 -- checkComposeGo with composeMid + eqB explicit).
 -- Plan 0.52: case π (as for `case`). pure → agree-compose over checkComposeGo;
 -- eff → agree-compose-eff (the eff-clause: passthrough or subsumed-pure).
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind Many pure ] C) E.ahv-compose-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
+agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg (A ⇒[ mk-kind Many pure ] C) E.ahv-compose-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
   agree-compose ctx f_inner arg A C pure (composeMid ctx f_inner arg A) refl disp
-    (subIH ctx f_inner (inner-arm-< (Raw.RVar "compose") f_inner arg)) argCheckIH dγ k
-agree-check-RApp ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg (A ⇒[ mk-kind Many eff ] C) E.ahv-compose-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
+    (subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "compose")) f_inner arg)) argCheckIH dγ k
+agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "compose")) f_inner) arg (A ⇒[ mk-kind Many eff ] C) E.ahv-compose-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
   agree-compose-eff ctx f_inner arg A C disp
-    (subIH ctx f_inner (inner-arm-< (Raw.RVar "compose") f_inner arg)) argCheckIH dγ k
+    (subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "compose")) f_inner arg)) argCheckIH dγ k
 -- ahv-apply (check): checkApply infers the arg; se = morph-app apply argE,
 -- witness t-apply-check w, realize = morph-app apply (realize-infer w) ⇒ plain
 -- morph-app congruence via the inferred-arg IH. Non-`(Many-pure-arrow * A)` args fail.
@@ -1604,14 +1614,12 @@ mutual
       (λ p → infer-agreeV ctx e₁ (rec (dbl-< (μ<-l (μ e₁) (μ e₂)))) p)
       (λ {A} rE2 eqRE2 p → infer-agreeV (extendNamedCtx ctx x A) e₂ (rec (dbl-< (μ<-r (μ e₁) (μ e₂)))) (trans eqRE2 p)) dγ k
   infer-agreeV ctx (Raw.RResolved cn) _ eq dγ k =
-    agree-RResolved ctx cn (lookupImport (NamedCtx.imports ctx) (showCanonical cn)) refl eq dγ k
-  -- RVar: mirror inferElabV's `x ≟ "unit"` dispatch (bring `eq` into the `with`
-  -- so it specialises); unit → `unit`, else the lookup-aux via `agree-RVar`.
-  infer-agreeV ctx (Raw.RVar x) _ eq dγ k with StrProp._≟_ x "unit" | eq
-  ... | yes refl | refl = refl
-  ... | no ¬unit | eq' =
-        agree-RVar ctx x ¬unit (lookupLocal ctx x) refl
-                   (lookupImport (NamedCtx.imports ctx) x) refl eq' dγ k
+    agree-RResolved-view ctx cn (classifyGen cn) eq dγ k
+  -- D136: no `x ≟ "unit"` dispatch left — a bare `RVar` goes straight to the
+  -- lookup-aux.
+  infer-agreeV ctx (Raw.RVar x) _ eq dγ k =
+    agree-RVar ctx x (lookupLocal ctx x) refl
+               (lookupImport (NamedCtx.imports ctx) x) refl eq dγ k
   -- RLam / RAna: `inferElabV` always fails (no infer rule), so the success
   -- equation is absurd.
   infer-agreeV ctx (Raw.RLam _ _) _ ()
@@ -1730,7 +1738,8 @@ mutual
   check-agreeV ctx (Raw.RQualified name alias) T (acc rec) eq dγ k =
     agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RQualified name alias) (rec (infer<check (Raw.RQualified name alias))) p) dγ k
   check-agreeV ctx (Raw.RResolved cn) T (acc rec) eq dγ k =
-    agree-embedOrSubsume T eq (λ p → infer-agreeV ctx (Raw.RResolved cn) (rec (infer<check (Raw.RResolved cn))) p) dγ k
+    check-agree-RResolved-view ctx cn T (classifyGen cn) eq
+      (λ p → infer-agreeV ctx (Raw.RResolved cn) (rec (infer<check (Raw.RResolved cn))) p) dγ k
   -- RUnit / RStringLit: generic fallback over a literal whose inferred type is
   -- fixed (Unit / Str); case `T ≟T <that>` (the fallback's `T ≟T T'`), so `eq`
   -- reduces. `yes refl` delegates to `infer-agreeV` of the literal.
@@ -1839,6 +1848,9 @@ mutual
   -- through embed (t-embed ⇒ infer-agreeV) or subsume (agree-embedOrSubsume-no),
   -- exactly like `ahv-apply`. Infer-failure dispatches the bare builtins / poly to
   -- their PRECISE named obligations (each `refl` once navigated; poly = the gap).
+  -- D136: a bare `RVar` has no builtin dispatch left. The eight-way
+  -- `classifyBareBuiltin` split is gone; on infer-failure the elaborator goes
+  -- straight to the poly fallback, which is the one residual that remains.
   check-agreeV ctx (Raw.RVar x) T (acc rec) eq dγ k
     with E.inferElabV ctx (Raw.RVar x) in ieq | eq
   ... | success T' Ψ' eE' d' f' , wi | eq'
@@ -1849,15 +1861,7 @@ mutual
             agree-embedOrSubsume-no T' T eE' d' f' wi eq₂
               (λ dγ' k' → infer-agreeV ctx (Raw.RVar x) (rec (infer<check (Raw.RVar x))) ieq dγ' k') dγ k
   check-agreeV ctx (Raw.RVar x) T (acc rec) eq dγ k
-    | failure fe , snd | eq' with E.classifyBareBuiltin x | eq'
-  ...   | E.bbc-id       | eq'' = check-agreeV-RVar-id            ctx T eq'' dγ k
-  ...   | E.bbc-fst      | eq'' = check-agreeV-RVar-fst           ctx T eq'' dγ k
-  ...   | E.bbc-snd      | eq'' = check-agreeV-RVar-snd           ctx T eq'' dγ k
-  ...   | E.bbc-terminal | eq'' = check-agreeV-RVar-terminal      ctx T eq'' dγ k
-  ...   | E.bbc-initial  | eq'' = check-agreeV-RVar-initial       ctx T eq'' dγ k
-  ...   | E.bbc-inl      | eq'' = check-agreeV-RVar-inl           ctx T eq'' dγ k
-  ...   | E.bbc-inr      | eq'' = check-agreeV-RVar-inr           ctx T eq'' dγ k
-  ...   | E.bbc-other    | eq'' = check-agreeV-RVar-poly-todo     ctx x T eq'' dγ k
+    | failure fe , snd | eq' = check-agreeV-RVar-poly-todo ctx x T eq' dγ k
 
 ------------------------------------------------------------------------
 -- THE BRIDGE (Plan 0.50: de-island). `realize-agrees` of the EXACT type
