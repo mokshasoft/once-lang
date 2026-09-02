@@ -441,3 +441,52 @@ Ren⊢-ins² eqA (there (there {A = A₀} v)) =
   ∋-cast (sym (trans (ren-wTy {ρ = extR vs} (renTy vs A₀))
                      (cong (renTy vs) (ren-wTy {ρ = vs} A₀))))
          (there (there (there v)))
+
+------------------------------------------------------------------------
+-- ★★★ THE DESCENT THROUGH AN `iinst`ed MOTIVE'S Π-TOWER.
+--
+-- A two-slot motive reaches its own binders as `var (vs^k vz)`, and
+-- `iinst` plus each `⊢app` wraps ONE more substitution around it.  These
+-- two peel the resulting tower for the two positions that actually
+-- occur: a variable at de Bruijn 2 under three substitutions, and one at
+-- de Bruijn 3 under four.
+--
+-- ⚠ THEY MENTION NO MOTIVE.  Written for `Knot/SubMot`'s `subMotK` and
+--   moved here at the THIRD customer (`ipayTyMotK`, `ihTyMotK` — both of
+--   which chose their passenger ORDER so as to land on these shapes).
+--   ★ Ordering a motive's passengers to make the tower SHORT is the same
+--     act as making it a REUSE.
+--
+-- ⭐ `sub-w`'s note applies: these are iterates of one lemma and want
+--   INDEXING, not listing.  Two rungs is where it stops being worth it.
+------------------------------------------------------------------------
+
+-- ★ THE THREE RUNGS, and each is `sub-w` then the next one down.  The
+--   innermost `subTm (extS³ (single J)) (var (vs³ vz))` computes to
+--   `w³ J` on its own — variables are where substitution still reduces.
+towerJ : {Γ : Cx} (sb m u J : RTm Γ) →
+         subTm (single sb)
+           (subTm (extS (single m))
+             (subTm (extS (extS (single u)))
+               (subTm (extS (extS (extS (single J)))) (var (vs (vs (vs vz)))))))
+           ≡ J
+towerJ sb m u J = trans (cong (λ z → subTm (single sb) (subTm (extS (single m)) z)) rA)
+                   (trans (cong (subTm (single sb)) rB) rC)
+  where
+    rB' : subTm (extS (single u)) (w (w J)) ≡ w J
+    rB' = trans (sub-w {σ = single u} (w J)) (cong w (wk-single {v = u} J))
+    rA : subTm (extS (extS (single u))) (w (w (w J))) ≡ w (w J)
+    rA = trans (sub-w {σ = extS (single u)} (w (w J))) (cong w rB')
+    rB : subTm (extS (single m)) (w (w J)) ≡ w J
+    rB = trans (sub-w {σ = single m} (w J)) (cong w (wk-single {v = m} J))
+    rC : subTm (single sb) (w J) ≡ J
+    rC = wk-single {v = sb} J
+
+-- ⚠ AND THE ARGUMENT'S TOWER IS ONE RUNG SHORTER — it is read under the
+--   Π, so `iinst`'s outermost substitution has not reached it.
+towerA : {Γ : Cx} (m u J : RTm Γ) →
+         subTm (single m)
+           (subTm (extS (single u))
+             (subTm (extS (extS (single J))) (var (vs (vs vz))))) ≡ J
+towerA m u J =
+  trans (cong (subTm (single m)) (sub-w-single J)) (wk-single {v = m} J)

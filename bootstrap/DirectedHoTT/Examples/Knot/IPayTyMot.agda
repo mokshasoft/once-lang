@@ -21,7 +21,7 @@
 --
 -- ⚠ AND THE ORDER OF THE FOUR IS NOT FREE.  `σ`'s type mentions `⟨i⟩`,
 --   and every Π binder BEFORE it adds one rung to the descent tower the
---   wrapper must climb (`Knot/SubMot`'s `towerA`/`towerJ`).  ⇒ put `σ`
+--   wrapper must climb (`Lib/Wk`'s `towerA`/`towerJ`).  ⇒ put `σ`
 --   as early as its dependency on `n` allows — SECOND — and the tower is
 --   two rungs instead of four.  `D` and `I` mention no `⟨i⟩`, so they
 --   cost nothing wherever they sit.
@@ -65,8 +65,8 @@ open import DirectedHoTT.Examples.Knot.CtorsV
   using ( ⊢Ty-UnitKv; ⊢Ty-SgKv; ⊢Ty-IMuKv; ⊢Ty-ElKv )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy; ty-SubTy; subBwd )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkKat )
-open import DirectedHoTT.Examples.Knot.SubMot
-  using ( extNK; ⊢extNK; towerA; towerJ )
+open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
+open import DirectedHoTT.Lib.Wk using ( towerA; towerJ )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subTmAtK; ⊢subTmAtK )
 
 ------------------------------------------------------------------------
