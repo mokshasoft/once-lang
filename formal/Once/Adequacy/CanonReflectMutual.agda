@@ -52,7 +52,7 @@ open import Once.TypeCheck.Context using (names)
 open import Once.TypeCheck.Judgment
 open import Once.Adequacy.CanonPreserve
   using (lookup-just→elem; canon-RVar-keep; canon-RVar-resolve; _⊆ᵇ_; ⊆ᵇ-cons; ⊆ᵇ-nil;
-         caHead-RApp-arg-irr)
+         caHead-RApp-arg-irr; caHead-RApp-resolved-arg-irr)
 
 ------------------------------------------------------------------------
 -- Boolean / bookkeeping lemmas.
@@ -79,11 +79,6 @@ not-local : ∀ {ctx : NamedCtx} {x : String} {bound : List String}
 not-local {ctx} {x} sub ef with lookupLocal ctx x in eq
 ... | nothing = refl
 ... | just r  = ⊥-elim (t≢f (trans (sym (sub x (lookup-just→elem ctx x eq))) ef))
-
--- A resolved (`b = false`) name is not the unit builtin.
-¬unit-from-false : ∀ {x : String} {bound : List String}
-                 → (elemStr x bound ∨ isBuiltinName x) ≡ false → ¬ (x ≡ "unit")
-¬unit-from-false ef refl = t≢f (∨-false-r ef)
 
 ------------------------------------------------------------------------
 -- `classifyAppHead` reflects `nothing` through `canonExpr` (the reverse of
@@ -158,7 +153,11 @@ classify-decanon bound (Raw.RApp (Raw.RVar z) g) h =
 -- Every other head: `classifyAppHead f` is `nothing` definitionally.
 classify-decanon bound (Raw.RApp (Raw.RApp a b) g) h = refl
 classify-decanon bound (Raw.RApp (Raw.RQualified n al) g) h = refl
-classify-decanon bound (Raw.RApp (Raw.RResolved cn) g) h = refl
+-- D136: an `RResolved` head can now classify, so this is the mirror of the
+-- applied-RVar case — `canonExpr` moved only the argument, which the view
+-- ignores.
+classify-decanon bound (Raw.RApp (Raw.RResolved cn) g) h =
+  trans (caHead-RApp-resolved-arg-irr cn g (canonExpr bound [] [] g)) h
 classify-decanon bound (Raw.RApp (Raw.RLam y b) g) h = refl
 classify-decanon bound (Raw.RApp (Raw.RLet y e₁ e₂) g) h = refl
 classify-decanon bound (Raw.RApp (Raw.RPair a b) g) h = refl
@@ -174,7 +173,7 @@ classify-decanon bound (Raw.RApp (Raw.RAna F c) g) h = refl
 classify-decanon bound (Raw.RVar x) h =
   classify-decanon-bare-rvar (elemStr x bound ∨ isBuiltinName x) bound x refl h
 classify-decanon bound (Raw.RQualified n al) h = refl
-classify-decanon bound (Raw.RResolved cn) h = refl
+classify-decanon bound (Raw.RResolved cn) h = h
 classify-decanon bound (Raw.RLam y b) h = refl
 classify-decanon bound (Raw.RLet y e₁ e₂) h = refl
 classify-decanon bound (Raw.RPair a b) h = refl
@@ -225,8 +224,7 @@ reflect-var-ᵢ : ∀ {ctx A Ψ} (b : Bool) (bound : List String) (x : String)
   → ctx ⊢ᵢ canonVar b nothing x ∶ A ⨾ Ψ → ctx ⊢ᵢ Raw.RVar x ∶ A ⨾ Ψ
 reflect-var-ᵢ true  bound x sub eb D = D
 reflect-var-ᵢ {ctx} false bound x sub eb (t-var-resolved _ imp conc) =
-  t-var-import (¬unit-from-false {x} {bound} eb)
-               (not-local {ctx} {x} {bound} sub (∨-false-l eb)) imp conc
+  t-var-import (not-local {ctx} {x} {bound} sub (∨-false-l eb)) imp conc
 
 ------------------------------------------------------------------------
 -- Bare-variable reflection for `⊢ᶜ` (non-recursive). The kept branch returns the
@@ -341,6 +339,20 @@ mutual
   -- Application: RVar head via helper; concrete heads via t-app/t-effApp.
   canon-reflects-ᵢ bound (Raw.RApp (Raw.RVar y) X) sub D =
     reflect-app-var-ᵢ (elemStr y bound ∨ isBuiltinName y) bound y X sub refl D
+  -- D136: the applied generators now conclude at a CANONICAL head, so they
+  -- reach this function directly instead of through `reflect-app-var-ᵢ`.
+  -- `canonExpr` is the identity on `RResolved`, so only the argument moved —
+  -- structural recursion on it is the whole proof.
+  canon-reflects-ᵢ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-id-app d) =
+    t-id-app (canon-reflects-ᵢ bound X sub d)
+  canon-reflects-ᵢ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-fst-app d) =
+    t-fst-app (canon-reflects-ᵢ bound X sub d)
+  canon-reflects-ᵢ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-snd-app d) =
+    t-snd-app (canon-reflects-ᵢ bound X sub d)
+  canon-reflects-ᵢ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-terminal-app d) =
+    t-terminal-app (canon-reflects-ᵢ bound X sub d)
+  canon-reflects-ᵢ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-apply-app-infer d) =
+    t-apply-app-infer (canon-reflects-ᵢ bound X sub d)
   -- Non-RVar heads (RVar handled above): ONE clause per app rule. `hd` abstract —
   -- `classify-decanon bound hd cls` is well-typed for any head, so the 28 unrolled
   -- per-head clauses collapse to 2 (t-app / t-effApp).
@@ -356,11 +368,8 @@ mutual
     → Names⊆ ctx bound → (elemStr y bound ∨ isBuiltinName y) ≡ b
     → ctx ⊢ᵢ Raw.RApp (canonVar b nothing y) (canonExpr bound [] [] X) ∶ A ⨾ Ψ
     → ctx ⊢ᵢ Raw.RApp (Raw.RVar y) X ∶ A ⨾ Ψ
-  reflect-app-var-ᵢ true bound y X sub eb (t-id-app d)        = t-id-app (canon-reflects-ᵢ bound X sub d)
-  reflect-app-var-ᵢ true bound y X sub eb (t-fst-app d)       = t-fst-app (canon-reflects-ᵢ bound X sub d)
-  reflect-app-var-ᵢ true bound y X sub eb (t-snd-app d)       = t-snd-app (canon-reflects-ᵢ bound X sub d)
-  reflect-app-var-ᵢ true bound y X sub eb (t-terminal-app d)  = t-terminal-app (canon-reflects-ᵢ bound X sub d)
-  reflect-app-var-ᵢ true bound y X sub eb (t-apply-app-infer d) = t-apply-app-infer (canon-reflects-ᵢ bound X sub d)
+  -- D136: no applied-generator clauses here any more — at `b = true` the head
+  -- is `RVar y`, and every applied generator concludes at `RResolved (gen g)`.
   reflect-app-var-ᵢ true bound y X sub eb (t-app cls df dx)   = t-app cls df (canon-reflects-ᶜ bound X sub dx)
   reflect-app-var-ᵢ true bound y X sub eb (t-effApp cls df dx) = t-effApp cls df (canon-reflects-ᶜ bound X sub dx)
   reflect-app-var-ᵢ false bound y X sub eb (t-app cls df dx) =
@@ -387,6 +396,31 @@ mutual
   -- for this shape (so it carries their rules too).
   canon-reflects-ᶜ bound (Raw.RApp (Raw.RApp (Raw.RVar z) f) g) sub D =
     reflect-app2-var-ᶜ (elemStr z bound ∨ isBuiltinName z) bound z f g sub refl D
+  -- D136: the generator rules, now at a CANONICAL head. `canonExpr` is the
+  -- identity on `RResolved`, so each is structural recursion on the argument —
+  -- the clauses `reflect-app-var-ᶜ`/`reflect-app2-var-ᶜ` used to carry.
+  canon-reflects-ᶜ bound (Raw.RResolved cn) sub D = D
+  canon-reflects-ᶜ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-curry-check df) =
+    t-curry-check (canon-reflects-ᶜ bound X sub df)
+  canon-reflects-ᶜ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-cata-check eqW dalg) =
+    t-cata-check eqW (canon-reflects-ᶜ bound X (⊆ᵇ-nil {bound}) dalg)
+  canon-reflects-ᶜ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-In-app-check wf d) =
+    t-In-app-check wf (canon-reflects-ᶜ bound X sub d)
+  canon-reflects-ᶜ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-apply-check d) =
+    t-apply-check (canon-reflects-ᵢ bound X sub d)
+  canon-reflects-ᶜ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-inl-app-check d) =
+    t-inl-app-check (canon-reflects-ᶜ bound X sub d)
+  canon-reflects-ᶜ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-inr-app-check d) =
+    t-inr-app-check (canon-reflects-ᶜ bound X sub d)
+  canon-reflects-ᶜ bound (Raw.RApp (Raw.RResolved cn) X) sub (t-initial-app-check d) =
+    t-initial-app-check (canon-reflects-ᶜ bound X sub d)
+  canon-reflects-ᶜ bound (Raw.RApp (Raw.RApp (Raw.RResolved cn) f) g) sub (t-compose-check cm df dg) =
+    t-compose-check (composeMid-decanon bound f g cm)
+                    (canon-reflects-ᶜ bound f sub df) (canon-reflects-ᶜ bound g sub dg)
+  canon-reflects-ᶜ bound (Raw.RApp (Raw.RApp (Raw.RResolved cn) f) g) sub (t-case-copair-check df dg) =
+    t-case-copair-check (canon-reflects-ᶜ bound f sub df) (canon-reflects-ᶜ bound g sub dg)
+  canon-reflects-ᶜ bound (Raw.RApp (Raw.RApp (Raw.RResolved cn) f) g) sub (t-pair-morph-check df dg) =
+    t-pair-morph-check (canon-reflects-ᶜ bound f sub df) (canon-reflects-ᶜ bound g sub dg)
   -- Non-RVar heads (RVar handled above): ONE clause — `hd` abstract, mirroring the
   -- `canon-reflects-ᵢ` collapse (14 unrolled per-head clauses → 1).
   canon-reflects-ᶜ bound (Raw.RApp hd X) sub (t-arg-driven-app-check cls darg df) =
@@ -400,18 +434,7 @@ mutual
     → ctx ⊢ᶜ Raw.RApp (canonVar b nothing y) (canonExpr bound [] [] X) ∶ A ⨾ Ψ
     → ctx ⊢ᶜ Raw.RApp (Raw.RVar y) X ∶ A ⨾ Ψ
   reflect-app-var-ᶜ true bound y X sub eb (t-embed d)      = t-embed (reflect-app-var-ᵢ true bound y X sub eb d)
-  -- D127: the ONE-argument combinators. `curry`'s arm is an ordinary term in
-  -- the ambient context; `cata`'s algebra keeps the CLEARED context, whose
-  -- `Names⊆` is the vacuous `⊆ᵇ-nil` (as in the forward direction).
-  reflect-app-var-ᶜ true bound y X sub eb (t-curry-check df) =
-    t-curry-check (canon-reflects-ᶜ bound X sub df)
-  reflect-app-var-ᶜ true bound y X sub eb (t-cata-check eqW dalg) =
-    t-cata-check eqW (canon-reflects-ᶜ bound X (⊆ᵇ-nil {bound}) dalg)
-  reflect-app-var-ᶜ true bound y X sub eb (t-In-app-check wf d) = t-In-app-check wf (canon-reflects-ᶜ bound X sub d)
-  reflect-app-var-ᶜ true bound y X sub eb (t-apply-check d)     = t-apply-check (canon-reflects-ᵢ bound X sub d)
-  reflect-app-var-ᶜ true bound y X sub eb (t-inl-app-check d)   = t-inl-app-check (canon-reflects-ᶜ bound X sub d)
-  reflect-app-var-ᶜ true bound y X sub eb (t-inr-app-check d)   = t-inr-app-check (canon-reflects-ᶜ bound X sub d)
-  reflect-app-var-ᶜ true bound y X sub eb (t-initial-app-check d) = t-initial-app-check (canon-reflects-ᶜ bound X sub d)
+  -- D136: no applied-generator clauses here any more — see the ⊢ᵢ twin.
   reflect-app-var-ᶜ true bound y X sub eb (t-arg-driven-app-check cls darg df) =
     t-arg-driven-app-check cls (canon-reflects-ᵢ bound X sub darg) df
   reflect-app-var-ᶜ true bound y X sub eb (t-subsume d) = t-subsume (reflect-app-var-ᶜ true bound y X sub eb d)
@@ -450,18 +473,25 @@ mutual
     → ctx ⊢ᶜ Raw.RApp (Raw.RApp (canonVar bz nothing z) (canonExpr bound [] [] f))
                       (canonExpr bound [] [] g) ∶ A ⨾ Ψ
     → ctx ⊢ᶜ Raw.RApp (Raw.RApp (Raw.RVar z) f) g ∶ A ⨾ Ψ
-  reflect-app2-var-ᶜ true bound z f g sub eb (t-compose-check cm df dg) =
-    t-compose-check (composeMid-decanon bound f g cm)
-                    (canon-reflects-ᶜ bound f sub df) (canon-reflects-ᶜ bound g sub dg)
-  reflect-app2-var-ᶜ true bound z f g sub eb (t-case-copair-check df dg) =
-    t-case-copair-check (canon-reflects-ᶜ bound f sub df) (canon-reflects-ᶜ bound g sub dg)
-  reflect-app2-var-ᶜ true bound z f g sub eb (t-pair-morph-check df dg) =
-    t-pair-morph-check (canon-reflects-ᶜ bound f sub df) (canon-reflects-ᶜ bound g sub dg)
-  reflect-app2-var-ᶜ bz bound z f g sub eb (t-embed d) =
-    t-embed (reflect-app2-var-ᵢ bz bound z f g sub eb d)
-  reflect-app2-var-ᶜ bz bound z f g sub eb (t-subsume d) =
-    t-subsume (reflect-app2-var-ᶜ bz bound z f g sub eb d)
-  reflect-app2-var-ᶜ bz bound z f g sub eb (t-arg-driven-app-check cls darg df) =
-    t-arg-driven-app-check (decanon-cls-app2 bz bound z f eb cls)
+  -- D136: `compose`/`case`/`pair` conclude at `RResolved (gen g)` now, so at
+  -- BOTH booleans the head here clashes with them and only the three universal
+  -- rules remain.
+  -- The boolean must be SPLIT even though both branches are the same proof:
+  -- with `bz` abstract, `canonVar bz nothing z` is stuck, so the coverage
+  -- checker cannot see that `t-compose-check` and friends clash.
+  reflect-app2-var-ᶜ true bound z f g sub eb (t-embed d) =
+    t-embed (reflect-app2-var-ᵢ true bound z f g sub eb d)
+  reflect-app2-var-ᶜ true bound z f g sub eb (t-subsume d) =
+    t-subsume (reflect-app2-var-ᶜ true bound z f g sub eb d)
+  reflect-app2-var-ᶜ true bound z f g sub eb (t-arg-driven-app-check cls darg df) =
+    t-arg-driven-app-check (decanon-cls-app2 true bound z f eb cls)
                            (canon-reflects-ᵢ bound g sub darg)
-                           (reflect-app-var-ᶜ bz bound z f sub eb df)
+                           (reflect-app-var-ᶜ true bound z f sub eb df)
+  reflect-app2-var-ᶜ false bound z f g sub eb (t-embed d) =
+    t-embed (reflect-app2-var-ᵢ false bound z f g sub eb d)
+  reflect-app2-var-ᶜ false bound z f g sub eb (t-subsume d) =
+    t-subsume (reflect-app2-var-ᶜ false bound z f g sub eb d)
+  reflect-app2-var-ᶜ false bound z f g sub eb (t-arg-driven-app-check cls darg df) =
+    t-arg-driven-app-check (decanon-cls-app2 false bound z f eb cls)
+                           (canon-reflects-ᵢ bound g sub darg)
+                           (reflect-app-var-ᶜ false bound z f sub eb df)

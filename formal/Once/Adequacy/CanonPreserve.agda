@@ -21,7 +21,7 @@ open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Type using (Type)
-open import Once.CanonicalName using (CanonicalName; canonical; showCanonical)
+open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; generatorNS)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
 open import Once.Parser.Module.Resolve
   using (canonExpr; canonVar; isBuiltinName; elemStr; lookupUnaliased)
@@ -99,6 +99,25 @@ caHead-RApp-arg-irr x g g' with x ≟s "pair"
 ...     | yes refl = refl
 ...     | no _ = refl
 
+-- D136: the same argument-irrelevance, for a CANONICAL head. `canonExpr` is
+-- the identity on `RResolved`, so only the argument moves — and the view's
+-- applied-generator dispatch never reads it.
+caHead-RApp-resolved-arg-irr : ∀ (cn : CanonicalName) (g g' : RawExpr)
+  → classifyAppHead (Raw.RApp (Raw.RResolved cn) g)
+    ≡ classifyAppHead (Raw.RApp (Raw.RResolved cn) g')
+caHead-RApp-resolved-arg-irr (canonical [])                g g' = refl
+caHead-RApp-resolved-arg-irr (canonical (_ ∷ []))          g g' = refl
+caHead-RApp-resolved-arg-irr (canonical (_ ∷ _ ∷ _ ∷ _))   g g' = refl
+caHead-RApp-resolved-arg-irr (canonical (ns ∷ n ∷ [])) g g' with ns ≟s generatorNS
+... | no _ = refl
+... | yes refl with n ≟s "pair"
+...   | yes refl = refl
+...   | no _ with n ≟s "compose"
+...     | yes refl = refl
+...     | no _ with n ≟s "case"
+...       | yes refl = refl
+...       | no _ = refl
+
 classify-canon : ∀ (bound : List String) (f : RawExpr) →
   classifyAppHead f ≡ nothing → classifyAppHead (canonExpr bound [] [] f) ≡ nothing
 classify-canon bound (Raw.RVar x) h with elemStr x bound ∨ isBuiltinName x in eb
@@ -109,7 +128,8 @@ classify-canon bound (Raw.RApp (Raw.RVar x) g) h with elemStr x bound ∨ isBuil
 ... | false rewrite canon-RVar-resolve bound x eb = refl
 classify-canon bound (Raw.RApp (Raw.RApp a b) g) h = refl
 classify-canon bound (Raw.RApp (Raw.RQualified n al) g) h = refl
-classify-canon bound (Raw.RApp (Raw.RResolved cn) g) h = refl
+classify-canon bound (Raw.RApp (Raw.RResolved cn) g) h =
+  trans (caHead-RApp-resolved-arg-irr cn (canonExpr bound [] [] g) g) h
 classify-canon bound (Raw.RApp (Raw.RLam y b) g) h = refl
 classify-canon bound (Raw.RApp (Raw.RLet y e₁ e₂) g) h = refl
 classify-canon bound (Raw.RApp (Raw.RPair a b) g) h = refl
@@ -123,7 +143,7 @@ classify-canon bound (Raw.RApp (Raw.RBinOp op a b) g) h = refl
 classify-canon bound (Raw.RApp (Raw.RUnaryOp op e) g) h = refl
 classify-canon bound (Raw.RApp (Raw.RAna F c) g) h = refl
 classify-canon bound (Raw.RQualified n al) h = refl
-classify-canon bound (Raw.RResolved cn) h = refl
+classify-canon bound (Raw.RResolved cn) h = h
 classify-canon bound (Raw.RLam y b) h = refl
 classify-canon bound (Raw.RLet y e₁ e₂) h = refl
 classify-canon bound (Raw.RPair a b) h = refl
