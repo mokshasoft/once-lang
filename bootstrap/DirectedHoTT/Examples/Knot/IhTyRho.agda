@@ -1,7 +1,14 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — ★★★ `ihTy`'s `dρ` ROW, ALONE IN A MODULE.
 --   `Knot/IPayTyRho`'s header measures why: a concrete row with a real
---   body runs to ~4 GB, so two of them do not fit one process.
+--   body runs to ~4 GB, so two of them do not fit one process.--
+-- ⚠⚠ IT WEAKENS WITH `Knot/WkSub.wkTyK`, NOT `Knot/Wk.wkK`.  The `Σ'`'s
+--   second component is `renTy vs (ihTy D C (snd q) M)` and that answer
+--   is OPEN — it mentions `q` and `M` — so the two weakenings differ.
+--   `wkK` is the identity on de Bruijn indices; `renTm vs` shifts them.
+--   See `Knot/WkSub`'s header: `Knot/PayTy` may use `wkK` because its
+--   answers are CLOSED, and this row may not.
+
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -33,7 +40,7 @@ open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
   using ( ⊢Ty-UnitKv; ⊢Ty-SgKv; ⊢Tm-fstKv; ⊢Tm-sndKv )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkKat )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTyK; ⊢wkTyK )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subTyAtK; ⊢subTyAtK )
 
@@ -48,9 +55,9 @@ ihTyRho =
                       (singleK (snd (var (vs (vs (vs (vs vz))))))
                                (Tm-fstK (var (vs vz))))
                       (var vz))
-            (wkK (pair sTy (snd (var (vs (vs (vs (vs vz))))))) 
-                 (app (app (fst (var (vs (vs vz)))) (Tm-sndK (var (vs vz))))
-                      (var vz))))))))
+            (wkTyK (snd (var (vs (vs (vs (vs vz))))))
+                   (app (app (fst (var (vs (vs vz)))) (Tm-sndK (var (vs vz))))
+                        (var vz))))))))
 
 ⊢ihTyRho : {Γ : Ctx} →
            Γ ⊢ ihTyRho ∷ imethTy KnotD IPair tagDCon-rho cDCon-rho ihTyMotK
@@ -61,7 +68,7 @@ ihTyRho =
       (⊢lam (ty-IMu KnotWf
                (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))
         (⊢ihRowρ dn dq dM
-          (⊢wkKat ⊢sTy dn
+          (⊢wkTyK dn
             (⊢ihAppK {dd = snd (var (vs (vs (vs (vs vz))))) }
                      {u = fst (var (vs (vs (vs vz)))) }
                      dIH (⊢Tm-sndKv _ dn dq) dM)))))
