@@ -1091,6 +1091,31 @@ UNARY_PREM = {"NoNatC": "NoNatCD"}
 # Agda symbol → its description in `FOREIGN`
 BINARY_PREM = {"∈D": "InDD", "∈ID": "InIDD"}
 
+# ★★★ DEFINED ALIASES, EXPANDED BEFORE TRANSLATION.
+#
+# ⚠ `iinst` is not a primitive — `Spec/Typing:155` defines it as TWO
+#   substitutions, and the object level already has all three pieces
+#   (`subTyAtK`, `singleK`, `extNK`).  Reading it as an unmapped head made
+#   `⊢ielim` look like it needed a NEW function when it needed a LOOKUP.
+# ⚠ Same shape as `IDescWf I D = IDescWfFrom D I D`, which cost a silent
+#   argument SWAP when it was read positionally.  ⇒ expansions live here,
+#   spelled out, so the definition is written down once.
+# name → (arity, template over %s)
+_ALIAS = {
+    "iinst":   (3, "subTy (single %s) (subTy (extS (single %s)) %s)",
+                (1, 0, 2)),          # iinst j t M
+    "methsTy": (3, "methsTyFrom %s %s zero %s", (0, 1, 2)),
+}
+
+def _expand(txt):
+    """expand a defined alias at the HEAD of an expression, once."""
+    a = _argsplit(txt)
+    if not a or a[0] not in _ALIAS: return txt
+    n, tpl, order = _ALIAS[a[0]]
+    if len(a) - 1 != n: return txt
+    args = ["(%s)" % x for x in a[1:]]
+    return tpl % tuple(args[i] for i in order)
+
 def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=(), arity=2):
     """(name, binders, prems, lhs, rhs) or (name, None, reason).
 
@@ -1586,7 +1611,8 @@ def _mutual_rows(CT, TEL, dummy):
             def chk(e):
                 if e[0] == "a":
                     if (e[1] not in CT and e[1] not in sorts
-                            and e[1] not in ("renTm", "vs", "εwkTm", "εwkTy")):
+                            and e[1] not in ("renTm", "vs", "εwkTm", "εwkTy",
+                                             "zero", "suc")):
                         unk.append(e[1])
                     return
                 for x in _infix(e[1], CT): chk(x)
@@ -1612,7 +1638,7 @@ def _mutual_rows(CT, TEL, dummy):
                 _ts = (q[2:3] if q[0] in ("bool", "fu")
                        else (q[2:] if q[0] == "lk" else q[3:]))
                 for t in _ts:
-                    chk(_parse_spine(_tokens(t)))
+                    chk(_parse_spine(_tokens(_expand(t))))
                 if q[0] in ("ty", "tm") and q[2]:
                     for _e in q[2]: chk(_parse_spine(_tokens(_e)))
             if unk:
@@ -1638,7 +1664,7 @@ def _mutual_rows(CT, TEL, dummy):
                         _val(_parse_spine(_tokens(a)), CT, V(_DEPTH)),
                         _val(_parse_spine(_tokens(b)), CT, V(_DEPTH))))))
             def _v0(x):
-                return _val(_parse_spine(_tokens(x)), CT, RAW("num 0"))
+                return _val(_parse_spine(_tokens(_expand(x))), CT, RAW("num 0"))
 
             def ix_of(q):
                 "the (depth, Ctx, Tm, Ty, tag, payload) tuple a part denotes"
@@ -1683,9 +1709,9 @@ def _mutual_rows(CT, TEL, dummy):
                 else:
                     tm, ty, tg = q[3], q[4], 1
                 _slots = [d, cx,
-                          _val(_parse_spine(_tokens(tm)), CT, d)
+                          _val(_parse_spine(_tokens(_expand(tm))), CT, d)
                             if tm is not dummy else dummy,
-                          _val(_parse_spine(_tokens(ty)), CT, d)]
+                          _val(_parse_spine(_tokens(_expand(ty))), CT, d)]
                 # ⚠ A PADDED SLOT NEEDS A DUMMY **AT ITS OWN SORT**.  The
                 #   first attempt padded all three with `Tm-unitK` — the
                 #   `sTm` dummy a `⊢ty` row uses — and every module failed
