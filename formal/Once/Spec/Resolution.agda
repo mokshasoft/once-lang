@@ -17,7 +17,7 @@
 -- WRITTEN AS RULES, DELIBERATELY. It is the counterpart of the grammar
 -- relation for the parser, and it earns its keep only by being an INDEPENDENT
 -- statement: every side condition here is a PROPERTY (`x ∈ bound`,
--- `GenWord x`, `(a , p) ∈ am`), never a call to the decider the resolver
+-- `GenWord x`, `FirstAt a p am`), never a call to the decider the resolver
 -- happens to use (`elemStr`, `isBuiltinName`, `lookupImportAlias`). Reading it
 -- off `canonExpr` would make the bridge lemmas tautologies (D134).
 --
@@ -29,8 +29,8 @@
 module Once.Spec.Resolution where
 
 open import Data.List using (List; []; _∷_; _++_)
-open import Data.List.Membership.Propositional using (_∈_)
 open import Data.List.Relation.Unary.All using (All)
+open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String)
@@ -58,7 +58,16 @@ AliasMap = List (String × List String)
 UnaliasedMap : Set
 UnaliasedMap = List (String × List String)
 
--- `x` is bound by no entry of the table.
+-- Association-list lookup is FIRST-MATCH, and the relation has to say so:
+-- `(x , p) ∈ um` would also hold for a LATER duplicate, and then the resolver
+-- (which takes the first) would not implement the relation. Found by trying to
+-- prove `resolves-sound` — the permissive version is unprovable, which is
+-- exactly the kind of thing an independent relation is for.
+data FirstAt {A : Set} (x : String) (p : A) : List (String × A) → Set where
+  fa-here  : ∀ {rest} → FirstAt x p ((x , p) ∷ rest)
+  fa-there : ∀ {y q rest} → y ≢ x → FirstAt x p rest → FirstAt x p ((y , q) ∷ rest)
+
+-- `x` names no entry of the table.
 Absent : {A : Set} → String → List (String × A) → Set
 Absent x = All (λ e → proj₁ e ≢ x)
 
@@ -93,7 +102,7 @@ data ResolvesVar (bound : List String) (um : UnaliasedMap) : String → RawExpr 
   -- Neither: an unaliased import that exports it, at that module's full path.
   rv-import : ∀ {x path path'}
             → ¬ (x ∈ bound) → ¬ GenWord x
-            → (x , path) ∈ um → ExpandsTo path path'
+            → FirstAt x path um → ExpandsTo path path'
             → ResolvesVar bound um x (RResolved (canonical (path' ++ (x ∷ []))))
 
   -- Neither, and no import claims it: the OWN module.
@@ -116,7 +125,7 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
   -- `name@A` at a known alias is that module's path; at an unknown alias it is
   -- left alone (the typing rules then have nothing to look it up by).
   re-qual : ∀ {bound name alias path path'}
-          → (alias , path) ∈ am → ExpandsTo path path'
+          → FirstAt alias path am → ExpandsTo path path'
           → ResolvesExpr um am bound (RQualified name alias)
                                      (RResolved (canonical (path' ++ (name ∷ []))))
   re-qual-unknown : ∀ {bound name alias}
