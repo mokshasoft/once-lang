@@ -27,7 +27,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Type using (Type; PolyType; Unit; Void; _*_; _+_; _⇒[_]_; μ-type; ν-type; Int; Float; Str; Buffer)
-open import Once.CanonicalName using (showCanonical)
+open import Once.CanonicalName using (showCanonical; CanonicalName; canonical; gen; generatorNS; _≟ᶜ_)
 open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna)
 open import Once.Parser.Module.Resolve using (canonExpr; elemStr)
 open import Once.TypeCheck.Classify using (PolyCtx; lookupPoly; removePoly; removePoly-decreases;
@@ -149,7 +149,7 @@ open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.Surface.Syntax using (zeroUsage)
 open import Once.TypeCheck.Classify
   using (NamedCtx; mkCtx; ctxWithImportsAndPolys; composeMid
-        ; composeArgB; composeArgB-rvar; composeArgB-lookup; composeArgB-fst; composeArgB-snd; domainOfHead)
+        ; composeArgB; composeArgB-res; composeArgB-lookup; composeArgB-fst; composeArgB-snd; domainOfHead)
 open import Once.TypeCheck.Judgment
 open import Once.Adequacy.CanonPreserve using (⊆ᵇ-nil)
 open import Once.Adequacy.CanonPreserveMutual using (canon-pres-ᶜ; mkPIB)
@@ -197,17 +197,27 @@ composeArgB-snd-polys-canon b ctx Float        = composeArgB-lookup-polys-canon 
 composeArgB-snd-polys-canon b ctx Str          = composeArgB-lookup-polys-canon b ctx "snd" Str
 composeArgB-snd-polys-canon b ctx Buffer       = composeArgB-lookup-polys-canon b ctx "snd" Buffer
 
-composeArgB-rvar-polys-canon : ∀ (b : List String) (ctx : NamedCtx) (name : String) (A : Type)
-  → composeArgB-rvar (cpc b ctx) name A ≡ composeArgB-rvar ctx name A
-composeArgB-rvar-polys-canon b ctx name A with StrProp._≟_ name "fst"
-... | yes _ = composeArgB-fst-polys-canon b ctx A
-... | no  _ with StrProp._≟_ name "snd"
-...   | yes _ = composeArgB-snd-polys-canon b ctx A
-...   | no  _ with StrProp._≟_ name "id"
-...     | yes _ = refl
-...     | no  _ with StrProp._≟_ name "terminal"
+-- D136: the four generator arms read off the CANONICAL head now, so this is
+-- the `composeArgB-res` twin; a bare name is a plain lookup (below).
+composeArgB-res-polys-canon : ∀ (b : List String) (ctx : NamedCtx) (cn : CanonicalName) (A : Type)
+  → composeArgB-res (cpc b ctx) cn A ≡ composeArgB-res ctx cn A
+composeArgB-res-polys-canon b ctx (canonical (ns ∷ g ∷ [])) A with StrProp._≟_ ns generatorNS
+... | no  _ = composeArgB-lookup-polys-canon b ctx (showCanonical (canonical (ns ∷ g ∷ []))) A
+... | yes refl with StrProp._≟_ g "fst"
+...   | yes _ = composeArgB-fst-polys-canon b ctx A
+...   | no  _ with StrProp._≟_ g "snd"
+...     | yes _ = composeArgB-snd-polys-canon b ctx A
+...     | no  _ with StrProp._≟_ g "id"
 ...       | yes _ = refl
-...       | no  _ = composeArgB-lookup-polys-canon b ctx name A
+...       | no  _ with StrProp._≟_ g "terminal"
+...         | yes _ = refl
+...         | no  _ = composeArgB-lookup-polys-canon b ctx (showCanonical (canonical (generatorNS ∷ g ∷ []))) A
+composeArgB-res-polys-canon b ctx (canonical []) A =
+  composeArgB-lookup-polys-canon b ctx (showCanonical (canonical [])) A
+composeArgB-res-polys-canon b ctx (canonical (n ∷ [])) A =
+  composeArgB-lookup-polys-canon b ctx (showCanonical (canonical (n ∷ []))) A
+composeArgB-res-polys-canon b ctx (canonical (p ∷ q ∷ r ∷ rest)) A =
+  composeArgB-lookup-polys-canon b ctx (showCanonical (canonical (p ∷ q ∷ r ∷ rest))) A
 
 -- D127: like `CanonComposeMid`, these two are PREMISE-FREE structural
 -- inductions on the raw arm. `cpc` touches only the `polys` field, and the only
@@ -217,21 +227,23 @@ composeArgB-rvar-polys-canon b ctx name A with StrProp._≟_ name "fst"
 -- side reduces while the arm is abstract.
 composeArgB-polys-canon : ∀ (b : List String) (ctx : NamedCtx) (A : Type) (g : RawExpr)
   → composeArgB (cpc b ctx) g A ≡ composeArgB ctx g A
-composeArgB-polys-canon b ctx A (RVar name)     = composeArgB-rvar-polys-canon b ctx name A
-composeArgB-polys-canon b ctx A (RResolved cn)  = composeArgB-lookup-polys-canon b ctx (showCanonical cn) A
+composeArgB-polys-canon b ctx A (RVar name)     = composeArgB-lookup-polys-canon b ctx name A
+composeArgB-polys-canon b ctx A (RResolved cn)  = composeArgB-res-polys-canon b ctx cn A
 composeArgB-polys-canon b ctx A (RQualified n al) = refl
 -- The nested-compose head: recurse into `g'` then `f'`. A head that is NOT
 -- `compose` is `nothing` on both sides — and reduces there because the `with`
 -- abstracts exactly the `≟` that `Classify.composeArgB` dispatches on.
-composeArgB-polys-canon b ctx A (RApp (RApp (RVar x) f') g') with StrProp._≟_ x "compose"
-... | yes refl rewrite composeArgB-polys-canon b ctx A g' with composeArgB ctx g' A
+-- D136: a BARE two-argument head is no longer a nested compose (that clause was
+-- deleted — post-resolution it could only fire on a shadowing binder), so both
+-- sides are `nothing`. The CANONICAL head is where the recursion lives.
+composeArgB-polys-canon b ctx A (RApp (RApp (RVar x) f') g') = refl
+composeArgB-polys-canon b ctx A (RApp (RApp (RResolved cn) f') g') with cn ≟ᶜ gen "compose"
+... | no  _ = refl
+... | yes _ rewrite composeArgB-polys-canon b ctx A g' with composeArgB ctx g' A
 ...   | nothing = refl
 ...   | just B′ rewrite composeArgB-polys-canon b ctx B′ f' = refl
-composeArgB-polys-canon b ctx A (RApp (RApp (RVar x) f') g')
-    | no ¬p = refl
 composeArgB-polys-canon b ctx A (RApp (RApp (RApp a c) f') g') = refl
 composeArgB-polys-canon b ctx A (RApp (RApp (RQualified n al) f') g') = refl
-composeArgB-polys-canon b ctx A (RApp (RApp (RResolved cn) f') g') = refl
 composeArgB-polys-canon b ctx A (RApp (RApp (RLam y c) f') g') = refl
 composeArgB-polys-canon b ctx A (RApp (RApp (RLet y e₁ e₂) f') g') = refl
 composeArgB-polys-canon b ctx A (RApp (RApp (RPair a c) f') g') = refl

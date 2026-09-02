@@ -268,6 +268,7 @@ import Once.Adequacy.ResolverBridge as RB
 -- Plan 0.52: the NAMED front-end (lexer+parser) obligations. `_⊢R_` anchors on
 -- the INDEPENDENT `ParsesText` (the grammar/relational spec), so completeness is
 -- not front-end-vacuous; `compile` runs the executable `parseStrict`.
+import Once.Spec.Program
 import Once.Adequacy.FrontEndBridge as FB
 
 ------------------------------------------------------------------------
@@ -661,20 +662,13 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- is DERIVED from these by `MC.moduleToIR-complete` (which routes through the
   -- proven `check-complete` — so completeness now forces row-1b), and the
   -- predicate is PRODUCED for soundness by `MC.moduleToIR-sound`.
-  Typed : Set
-  Typed = Σ-syntax P.Module (λ m →
-            Σ-syntax (ModuleTyped m) (λ mt → MC.HasValidMain-decl m mt))
+  -- Plan 0.81: `Typed` and `_⊢R_` MOVED to `Once.Spec.Program`. They fill
+  -- `CorrectCompiler`'s abstract `Typed`/`_⊢_`, so they ARE the statement of
+  -- the theorem and belong inside the trust boundary, not in a proof module.
+  -- Neither mentions the architecture, so neither belonged in `WithCPU`
+  -- either — re-exported here so the instance still reaches them as `VC.Typed`.
+  open Once.Spec.Program public using (Typed; _⊢R_)
 
-  -- Declarative link: `src`'s TEXT denotes `tp`'s module, by the INDEPENDENT
-  -- grammar/relational parse spec `FB.ParsesText` — NOT the executable
-  -- `parseStrict`, NOT the typechecker/elaborator, and NOT the import resolver.
-  -- Plan 0.52 / THE TRAP: anchoring on the executable front-end (or the resolver)
-  -- would put it symmetrically on both sides of `correctR` and cancel —
-  -- completeness would be front-end/resolver-vacuous. The gaps to the executable
-  -- front-end and the resolved compilation are the named `FrontEndBridge` /
-  -- `ResolverBridge`. `m` here is the UN-resolved parsed module.
-  _⊢R_ : Source → Typed → Set
-  src ⊢R (m , _ , _) = FB.ParsesText (Source.srcText src) m
 
   -- The INDEPENDENT surface meaning of `tp`'s `main`: `SD.⟦ main ⟧ˢ` run to a
   -- trace (via `Once.Adequacy.MainExtract`). The compiled-main IR `(ir, mi)` is

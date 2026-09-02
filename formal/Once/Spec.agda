@@ -34,3 +34,7 @@ open import Once.Spec.Resolution public -- what each written reference DENOTES
         ; AliasMap ; UnaliasedMap ; Absent )
 open import Once.Spec.Meaning public   -- the denotation (source meaning)
 open import Once.Spec.Correct public   -- the CorrectCompiler criterion
+open import Once.Spec.Program public   -- WHAT a typed program is, and WHEN a
+  using ( Typed ; _⊢R_               -- source denotes one: the criterion's own
+        ; ParsesText ; ModuleTyped   -- `Typed`/`_⊢_`, which used to live in a
+        ; HasValidMain-decl )        -- PROOF module, outside this boundary

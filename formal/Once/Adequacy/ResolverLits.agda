@@ -58,11 +58,15 @@ open import Once.Denotation.Admissible using
 -- `canonVar` produces an `RVar` or an `RResolved` — a leaf either way, so no
 -- literal can appear or vanish. Enumerated, so a new form of reference would
 -- have to be confronted here rather than silently returning `[]`.
-canonVar-lits : ∀ (b : Bool) (mp : Maybe (List String)) (x : String)
-              → rawIntLits (canonVar b mp x) ≡ []
-canonVar-lits true  _          x = refl
-canonVar-lits false (just _)   x = refl
-canonVar-lits false nothing    x = refl
+-- D136: `canonVar` takes the two decisions (lexical binder / reserved word)
+-- rather than their disjunction, so this cases four ways. Every arm is still a
+-- LEAF — `RVar` or `RResolved` — so every arm is still `refl`.
+canonVar-lits : ∀ (bnd gw : Bool) (mp : Maybe (List String)) (x : String)
+              → rawIntLits (canonVar bnd gw mp x) ≡ []
+canonVar-lits true  _     _          x = refl
+canonVar-lits false true  _          x = refl
+canonVar-lits false false (just _)   x = refl
+canonVar-lits false false nothing    x = refl
 
 -- The same at the operand of a unary minus. It is a SEPARATE lemma and not a
 -- corollary because `negLits` asks a question `rawIntLits` does not: is this
@@ -72,11 +76,12 @@ canonVar-lits false nothing    x = refl
 -- It does preserve it, and for a blunt reason: `canonExpr` only ever rewrites
 -- names (`RVar`/`RQualified` → `RResolved`) and rebuilds every other node with
 -- its own head. It cannot manufacture an `RInt`, and it cannot destroy one.
-negLits-canonVar : ∀ (b : Bool) (mp : Maybe (List String)) (x : String)
-                 → negLits (canonVar b mp x) ≡ []
-negLits-canonVar true  _        x = refl
-negLits-canonVar false (just _) x = refl
-negLits-canonVar false nothing  x = refl
+negLits-canonVar : ∀ (bnd gw : Bool) (mp : Maybe (List String)) (x : String)
+                 → negLits (canonVar bnd gw mp x) ≡ []
+negLits-canonVar true  _     _        x = refl
+negLits-canonVar false true  _        x = refl
+negLits-canonVar false false (just _) x = refl
+negLits-canonVar false false nothing  x = refl
 
 canonExpr-lits : ∀ (bound : List String) (um : UnaliasedMap) (am : AliasMap) (e : RawExpr)
                → rawIntLits (canonExpr bound um am e) ≡ rawIntLits e
@@ -86,7 +91,7 @@ canonExpr-lits bound um am (RQualified name alias) with lookupImportAlias am ali
 ... | just _  = refl
 ... | nothing = refl
 canonExpr-lits bound um am (RVar x)  =
-  canonVar-lits (elemStr x bound ∨ isBuiltinName x) (lookupUnaliased um x) x
+  canonVar-lits (elemStr x bound) (isBuiltinName x) (lookupUnaliased um x) x
 canonExpr-lits bound um am (RResolved _) = refl
 canonExpr-lits bound um am RUnit         = refl
 canonExpr-lits bound um am (RInt n)      = refl
@@ -117,7 +122,7 @@ canonExpr-lits bound um am (RAna _ c)       = canonExpr-lits bound um am c
 -- `canonExpr` keeps the head.
 negLits-lits bound um am (RInt n)      = refl
 negLits-lits bound um am (RVar x)      =
-  negLits-canonVar (elemStr x bound ∨ isBuiltinName x) (lookupUnaliased um x) x
+  negLits-canonVar (elemStr x bound) (isBuiltinName x) (lookupUnaliased um x) x
 negLits-lits bound um am (RQualified name alias) with lookupImportAlias am alias
 ... | just _  = refl
 ... | nothing = refl

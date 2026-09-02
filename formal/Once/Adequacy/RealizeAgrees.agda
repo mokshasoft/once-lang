@@ -74,7 +74,7 @@ open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; ffi-concrete
 open import Once.Arith.SigOp.Builders using (generic-semM)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.ThinSound using (weaken-⟦⟧)
-open import Once.CanonicalName using (CanonicalName; showCanonical; bare; NotGenerator; gen)
+open import Once.CanonicalName using (CanonicalName; showCanonical; bare; NotGenerator; gen; GenWord; genWord?)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-base; con-fun; base-Unit)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?; isConcrete?)
 
@@ -693,15 +693,22 @@ agree-RResolved-view ctx cn (gv-other ng) eq dγ k =
 -- `eE`; import → both elaborator and `realize-infer` emit `sigOp (bare x)`;
 -- neither-found → the success equation is absurd. No `masq` (unlike RResolved,
 -- whose aux emits a `lift-morphism` for arrows).
+-- D136: the aux also de-withes the RESERVED-WORD decision, so this cases on it
+-- too. A reserved word in the import table is unreachable bare, so that arm
+-- FAILS and its success equation is absurd.
 agree-RVar-importᴴ : ∀ (ctx : NamedCtx) (x : String)
   (eq-loc : lookupLocal ctx x ≡ nothing) (ty : Type)
   (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ just ty)
+  (gw : Dec (GenWord x)) (eqg : genWord? x ≡ gw)
   (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
   {A' Ψ se d f w}
-  → E.inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp mc eqc ≡ (success A' Ψ se d f , w)
+  → E.inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp gw eqg mc eqc ≡ (success A' Ψ se d f , w)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
-agree-RVar-importᴴ ctx x eq-loc ty eq-imp (just conc) eqc refl dγ k = refl
-agree-RVar-importᴴ ctx x eq-loc ty eq-imp nothing eqc eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RVar-importᴴ ctx x eq-loc ty eq-imp (no _) eqg (just conc) eqc refl dγ k = refl
+agree-RVar-importᴴ ctx x eq-loc ty eq-imp (no _) eqg nothing eqc eqS dγ k =
+  ⊥-elim (fail≢succ (cong proj₁ eqS))
+agree-RVar-importᴴ ctx x eq-loc ty eq-imp (yes _) eqg _ eqc eqS dγ k =
+  ⊥-elim (fail≢succ (cong proj₁ eqS))
 
 agree-RVar : ∀ (ctx : NamedCtx) (x : String)
   (locLhs : Maybe (∃[ A ] ∃[ Ψ ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ A)))
@@ -712,7 +719,7 @@ agree-RVar : ∀ (ctx : NamedCtx) (x : String)
   → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RVar ctx x (just (A , Ψ , se)) eq-loc impLhs eq-imp refl dγ k = refl
 agree-RVar ctx x nothing eq-loc (just ty) eq-imp eqS dγ k =
-  agree-RVar-importᴴ ctx x eq-loc ty eq-imp (isConcrete? ty) refl eqS dγ k
+  agree-RVar-importᴴ ctx x eq-loc ty eq-imp (genWord? x) refl (isConcrete? ty) refl eqS dγ k
 -- Plan 0.58 / D071: both lookups failed → the POLY FALLBACK (a ground
 -- telescope name infers at its declared type). Its success rides the
 -- premise-erased witness, so agreement is the narrow infer-poly residual.

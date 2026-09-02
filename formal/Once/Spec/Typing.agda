@@ -17,7 +17,11 @@ module Once.Spec.Typing where
 -- EXPLICIT re-export. Every rule is named, so ADDING A TYPING RULE requires
 -- touching this list — the language definition cannot grow by accident.
 open import Once.TypeCheck.Judgment public
-  using ( _⊢ᵢ_∶_⨾_ ; _⊢ᶜ_∶_⨾_ ; _⊢_∶_⨾_ ; Typed
+-- `Judgment.Typed` is NOT re-exported: it is a nullary alias for
+-- `_⊢_∶_⨾_` that nothing uses, and its name collides with the PROGRAM-level
+-- `Typed` in `Once.Spec.Program` — two different notions, one word. The
+-- judgment is the one a reader needs; the alias adds nothing.
+  using ( _⊢ᵢ_∶_⨾_ ; _⊢ᶜ_∶_⨾_ ; _⊢_∶_⨾_
         -- ⊢ᵢ — synthesis
         ; t-int ; t-float ; t-str ; t-unit ; t-unit-var
         ; t-var-local ; t-var-qualified ; t-var-resolved ; t-var-import
