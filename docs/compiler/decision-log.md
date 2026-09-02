@@ -10187,3 +10187,95 @@ statements. The sibling case is `ParsesText`, whose leaves still mention
 
 **Relates**: D134, D136, D072; plans `0.50-canonicalize-generators.md`,
 `0.59-oracle-principality.md`
+
+---
+
+## D138: The Generator Migration, Landed — What `RResolved (gen g)` Cost and Bought
+
+**Date**: 2026-09-02 · **Status**: LANDED; plan `0.50-canonicalize-generators.md`
+(complete, deleted) · **Implements**: D136 · **Follows**: D127, D134 ·
+**Unblocked by**: D137
+
+### What landed
+
+Every generator is `RResolved (gen g)` — `gen` a PATTERN SYNONYM over
+`canonical ("Generators" ∷ g ∷ [])`, because it must work on both sides (rule
+indices in types, elaborator left-hand sides) and a function is rejected in a
+pattern. All 23 judgment rules, the classifier, the elaborator, the oracle and
+the resolver are keyed on it. `name@this` reaches a definition whose name a
+generator has taken.
+
+    fst : Int -> Int
+    fst x = x
+    test = fst@this 5     -- Typecheck OK        (the user's fst)
+    test = fst 5          -- Error: requires a pair (the generator)
+
+### What it bought, beyond D136's rule
+
+**Premises disappeared rather than moving.** The seven point-free leaves
+(`checkElab-fallback-RVar-*`) had two lookup premises each asking "is this name
+shadowed?"; a generator is now a canonical name, so there is nothing to ask and
+they are premise-free. `¬ (x ≡ "unit")` is gone from every rule, lemma and
+record field. `checkElab-fallback-RVar`'s nine-way `classifyBareBuiltin` split
+collapsed to one clause.
+
+**Deleting the classifier was a BUG FIX, not cleanup.** Every surviving use of
+`classifyBareBuiltin` was a live defect:
+
+  * `t-var-poly-instantiate`/`-infer` carried `classifyBareBuiltin x ≡
+    bbc-other` as a premise — a decider's answer standing in for a property
+    (D134) — which REJECTED a user's own polymorphic `id`, the very thing D136
+    allows;
+  * `inferElabV-RVar-poly-aux` failed with `UnboundVariable` on seven arms, so
+    a poly def named `id` never reached the telescope lookup;
+  * `checkElab-RVar` dispatched a bare `RVar` on it, and was also 98 lines of
+    dead code the mutual block declared and nothing called.
+
+### Techniques this migration forced, worth reusing
+
+**Route dispatch through a VIEW PARAMETER, never a concrete clause.** Concrete
+`RResolved (gen "g")` clauses stop `checkElabV`/`inferElabV` reducing for an
+abstract `cn`, which the proofs depend on. The dispatch must also TAKE the
+infer result rather than recompute it, or a proof's `with inferElabV …` does
+not catch the inner call.
+
+**A `with` cannot pin `classifyGen cn`** — it reaches the goal only through
+unfolding, so there is nothing to generalise. Use a J-style bridge:
+`f ctx cn .(classifyGen cn) refl = refl`. Four exist
+(`inferElabV-RResolved-J`, `checkElabV-RResolved-J`, `agree-RResolved-view`,
+`check-agree-RResolved-view`); any new consumer of the dispatch needs one.
+
+**Make the VIEW carry its evidence.** `t-var-resolved` needs
+`NotGenerator cn` for disjointness, and the elaborator can only discharge it
+because `GenView`'s `gv-other` CARRIES the witness. An uninformative
+`gv-other : ∀ {cn} → GenView cn` discharges nothing — this is the analogue of
+`isGround-inj₂-¬Ground`, which works only because `inj₂` is informative.
+
+### The one that nearly escaped
+
+The apex was green while `f = id` had stopped compiling. The D072 oracle still
+keyed generator schemas on the canonical path, so `pInfer (RResolved cn)` asked
+`lookupName` for `"Generators.id"` while `builtinSchema` is keyed on `"id"`.
+**Only the behavioural tests caught it.** When a migration touches the front
+end, a green apex is not evidence.
+
+### Where `name@this` belongs, and why not the parser
+
+`@alias` is ALREADY a general parser form. Putting `this` there would give BOTH
+the concrete grammar and the parser special knowledge of the string (~8 modules:
+`ParsesAtomExpr` + `shrinks` + `opFails` + `complete` + `ConcreteExpr` and its
+four consumers). Reserving it as an alias and interpreting it in the resolver
+gives exactly ONE level that knowledge — and since D137 the resolver is under
+specification, so it is not an unverified level. The rule
+(`Once.Spec.Resolution.re-this`) is decided BEFORE the alias table, so an
+`import … as this` cannot capture it, and `re-qual`/`re-qual-unknown` carry
+`alias ≢ "this"` to keep the three disjoint.
+
+This CORRECTS an earlier reading of "convert as early as possible": the metric
+is how many levels deal with the String, not how early the conversion happens.
+Generators still resolve in the resolver — the first level that knows binders.
+
+**Verified**: `Once.Certified` green; 680/680 tests; exit tests 62/0/0 on
+x86-64, x86-32/qemu, riscv64/qemu.
+
+**Relates**: D001 (superseded), D127, D134, D136, D137, D072
