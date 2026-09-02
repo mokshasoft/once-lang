@@ -50,8 +50,10 @@ open import Once.Spec.Resolution
 open import Data.List using (map)
 open import Data.Sum using (inj₂)
 open import Data.Unit using (tt)
-open import Once.Parser.Module.Core using (Module; mkModule)
-open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports; polyDefNames)
+open import Once.Parser.Module.Core using (Module; mkModule; Import)
+open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports; polyDefNames;
+  resolveDecls; lookupModule; _path≟_; signaturesWithOwner; ownerOf;
+  collectAliases; collectUnaliased)
 import Once.Adequacy.CanonResolve as CR
 
 ------------------------------------------------------------------------
@@ -307,51 +309,92 @@ resolvesDecl-complete polys um am (DTypeAlias n ps t) = rd-typealias
 resolvesDecl-complete polys um am (DImport imp)       = rd-import
 
 ------------------------------------------------------------------------
--- THE BRIDGE, at a module — the IMPORT-FREE fragment.
---
--- `Once.Adequacy.CanonResolve` already reduces `resolveImports` on an
--- import-free module (both name tables collapse to `[]`, and `resolveDecls`
--- becomes a `map`). Note it is about `resolveImports` ALONE — no typing
--- transport — so unlike the rest of the Canon family it SURVIVES plan 0.81.
+-- THE BRIDGE, at a module. Covers IMPORTS: `resolveDecls` replaces a
+-- `DImport` by the imported module's signatures, or FAILS when the module map
+-- has no entry for the path — and `FirstAt` is exactly "the map has one, at
+-- first match", so the two agree without a residual.
 ------------------------------------------------------------------------
 
-ni⇒ : ∀ {ds} → NoImports ds → CR.NoImports ds
-ni⇒ ni-nil            = tt
-ni⇒ (ni-typesig ni)   = tt , ni⇒ ni
-ni⇒ (ni-fundef ni)    = tt , ni⇒ ni
-ni⇒ (ni-sig ni)       = tt , ni⇒ ni
-ni⇒ (ni-alias ni)     = tt , ni⇒ ni
+-- Decider bridge 5: the module table. Keyed by PATH, so it needs the list
+-- equality test bridged the same way the string one was.
+path≟-refl : ∀ (p : List String) → (p path≟ p) ≡ true
+path≟-refl []       = refl
+path≟-refl (x ∷ xs) with x ≟ x
+... | yes _ = path≟-refl xs
+... | no ¬e = ⊥-elim (¬e refl)
 
-resolvesDecls-sound : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
-                      (ds ds' : List Decl)
-                    → ResolvesDecls polys um am ds ds'
-                    → map (canonDecl polys um am) ds ≡ ds'
-resolvesDecls-sound polys um am _ _ rds-nil = refl
-resolvesDecls-sound polys um am _ _ (rds-cons rd rds) =
-  cong₂ _∷_ (resolvesDecl-sound polys um am _ _ rd)
-            (resolvesDecls-sound polys um am _ _ rds)
+path≟-sound : ∀ (p q : List String) → (p path≟ q) ≡ true → p ≡ q
+path≟-sound []       []       _  = refl
+path≟-sound (x ∷ xs) (y ∷ ys) eq with x ≟ y
+... | yes refl = cong (x ∷_) (path≟-sound xs ys eq)
+path≟-sound (x ∷ xs) (y ∷ ys) () | no _
 
-resolvesDecls-complete : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
-                         (ds : List Decl)
-                       → ResolvesDecls polys um am ds (map (canonDecl polys um am) ds)
-resolvesDecls-complete polys um am []       = rds-nil
-resolvesDecls-complete polys um am (d ∷ ds) =
-  rds-cons (resolvesDecl-complete polys um am d) (resolvesDecls-complete polys um am ds)
+lookupMod-complete : ∀ (mm : ModuleMap) (path : List String) (m : Module)
+                   → FirstAt path m mm → lookupModule mm path ≡ just m
+lookupMod-complete ((p , q) ∷ rest) path m fa-here rewrite path≟-refl path = refl
+lookupMod-complete ((p , q) ∷ rest) path m (fa-there p≢ fa) with p path≟ path in ep
+... | true  = ⊥-elim (p≢ (path≟-sound p path ep))
+... | false = lookupMod-complete rest path m fa
+
+resolvesDecls-sound : ∀ (mm : ModuleMap) (polys : List String)
+                      (um : UnaliasedMap) (am : AliasMap) (ds ds' : List Decl)
+                    → ResolvesDecls mm polys um am ds ds'
+                    → resolveDecls polys um am mm ds ≡ inj₂ ds'
+resolvesDecls-sound mm polys um am _ _ rds-nil = refl
+resolvesDecls-sound mm polys um am _ _ (rds-cons nim-typesig rd rds)
+  rewrite resolvesDecls-sound mm polys um am _ _ rds
+        | resolvesDecl-sound polys um am _ _ rd = refl
+resolvesDecls-sound mm polys um am _ _ (rds-cons nim-fundef rd rds)
+  rewrite resolvesDecls-sound mm polys um am _ _ rds
+        | resolvesDecl-sound polys um am _ _ rd = refl
+resolvesDecls-sound mm polys um am _ _ (rds-cons nim-sig rd rds)
+  rewrite resolvesDecls-sound mm polys um am _ _ rds
+        | resolvesDecl-sound polys um am _ _ rd = refl
+resolvesDecls-sound mm polys um am _ _ (rds-cons nim-alias rd rds)
+  rewrite resolvesDecls-sound mm polys um am _ _ rds
+        | resolvesDecl-sound polys um am _ _ rd = refl
+resolvesDecls-sound mm polys um am _ _ (rds-import {imp = imp} fa rds)
+  rewrite lookupMod-complete mm (Import.path imp) _ fa
+        | resolvesDecls-sound mm polys um am _ _ rds = refl
 
 -- The scope premise is a BRIDGE fact, not a spec one: `ResolvesModule` is
--- parameterised by the scope precisely so the SPEC never names `polyDefNames`
--- (which calls the principality oracle). Here, on the implementation side,
--- saying that the resolver used its own scope is exactly right.
+-- parameterised by the scope precisely so the SPEC never has to decide which
+-- definitions are polymorphic (that question bottoms out in the principality
+-- oracle — plan 0.59). Saying HERE that the resolver used its own scope is
+-- exactly right, and `_⊢R_` uses the same `polyDefNames` that `ModuleTyped`
+-- already reaches through `extractFunctions`, so the oracle enters the
+-- boundary ONCE rather than twice.
 resolvesModule-sound : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Module)
-                     → ResolvesModule (polyDefNames ds) (mkModule ds) mR
+                     → ResolvesModule mm (polyDefNames ds) (mkModule ds) mR
                      → resolveImports mm (mkModule ds) ≡ inj₂ mR
-resolvesModule-sound mm ds _ (rm-import-free {ds = ds'} ni rds) =
-  trans (CR.resolveImports-ni mm ds' (ni⇒ ni))
-        (cong (λ z → inj₂ (mkModule z))
-              (resolvesDecls-sound (polyDefNames ds') [] [] ds' _ rds))
+resolvesModule-sound mm ds _ (rm rds)
+  rewrite resolvesDecls-sound mm (polyDefNames ds) (collectUnaliased mm ds)
+                              (collectAliases ds) ds _ rds = refl
 
-resolvesModule-complete : ∀ (mm : ModuleMap) (ds : List Decl) (ni : NoImports ds)
-                        → ResolvesModule (polyDefNames ds) (mkModule ds)
-                            (mkModule (map (canonDecl (polyDefNames ds) [] []) ds))
-resolvesModule-complete mm ds ni =
-  rm-import-free ni (resolvesDecls-complete (polyDefNames ds) [] [] ds)
+path≟-false⇒≢ : ∀ (p q : List String) → (p path≟ q) ≡ false → p ≢ q
+path≟-false⇒≢ p .p eq refl with trans (sym (path≟-refl p)) eq
+... | ()
+
+lookupMod-sound : ∀ (mm : ModuleMap) (path : List String) (m : Module)
+                → lookupModule mm path ≡ just m → FirstAt path m mm
+lookupMod-sound ((p , q) ∷ rest) path m eq with p path≟ path in ep
+lookupMod-sound ((p , q) ∷ rest) path .q refl | true
+  rewrite path≟-sound p path ep = fa-here
+... | false = fa-there (path≟-false⇒≢ p path ep) (lookupMod-sound rest path m eq)
+
+-- THE ONE RESIDUAL. `resolveDecls` dispatches on `lookupModule` and on its own
+-- recursive call, and the success equation's type does not mention either
+-- scrutinee — so no `with` abstracts it and no `rewrite` fires. De-withing
+-- `resolveDecls` itself would fix it, but that function is used throughout the
+-- driver; doing it is a contained follow-up, not a reason to hold this plan.
+--
+-- Note what it is and is NOT. It says the resolver's OUTPUT satisfies the
+-- relation — a statement about a total function, checkable by testing and
+-- falsified by any resolver bug. It replaces `resolver-preserves-typing-imports`
+-- and `resolver-reflects-typing-imports`, which assumed that DERIVATIONS
+-- transport across resolution. One residual in, two out, and the survivor is
+-- the tractable one.
+postulate
+  resolvesModule-complete : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Module)
+                          → resolveImports mm (mkModule ds) ≡ inj₂ mR
+                          → ResolvesModule mm (polyDefNames ds) (mkModule ds) mR

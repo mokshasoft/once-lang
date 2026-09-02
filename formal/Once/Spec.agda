@@ -30,8 +30,11 @@ open import Once.Spec.Resolution public -- what each written reference DENOTES
         ; re-binop ; re-unop ; re-ana ; re-unit ; re-int ; re-float ; re-str
         ; ResolvesDecl ; rd-fundef ; rd-typesig ; rd-signature
         ; rd-typealias ; rd-import
+        ; ResolvesDecls ; rds-nil ; rds-cons ; rds-import
+        ; ResolvesModule ; rm ; NotImport
+        ; nim-typesig ; nim-fundef ; nim-sig ; nim-alias
         ; ExpandsTo ; ex-nil ; ex-I ; ex-other
-        ; AliasMap ; UnaliasedMap ; Absent )
+        ; AliasMap ; UnaliasedMap ; Absent ; FirstAt ; fa-here ; fa-there )
 open import Once.Spec.Meaning public   -- the denotation (source meaning)
 open import Once.Spec.Correct public   -- the CorrectCompiler criterion
 open import Once.Spec.Program public   -- WHAT a typed program is, and WHEN a

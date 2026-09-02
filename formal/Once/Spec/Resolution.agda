@@ -42,7 +42,9 @@ open import Once.Spec.Syntax using (RawExpr; RVar; RQualified; RResolved; RApp;
   RLam; RLet; RPair; RDestruct; RUnit; RInt; RFloat; RStringLit; RAnnot;
   RBinOp; RUnaryOp; RAna)
 open import Once.Parser.Module.Core using (Module; mkModule; Decl;
-  DTypeSig; DFunDef; DSignature; DTypeAlias; DImport)
+  DTypeSig; DFunDef; DSignature; DTypeAlias; DImport; Import)
+open import Once.Parser.Module.Resolve using (ModuleMap;
+  signaturesWithOwner; ownerOf; collectAliases; collectUnaliased)
 
 ------------------------------------------------------------------------
 -- Environments, as DATA (they are tables, not procedures).
@@ -63,12 +65,12 @@ UnaliasedMap = List (String × List String)
 -- (which takes the first) would not implement the relation. Found by trying to
 -- prove `resolves-sound` — the permissive version is unprovable, which is
 -- exactly the kind of thing an independent relation is for.
-data FirstAt {A : Set} (x : String) (p : A) : List (String × A) → Set where
+data FirstAt {K A : Set} (x : K) (p : A) : List (K × A) → Set where
   fa-here  : ∀ {rest} → FirstAt x p ((x , p) ∷ rest)
   fa-there : ∀ {y q rest} → y ≢ x → FirstAt x p rest → FirstAt x p ((y , q) ∷ rest)
 
 -- `x` names no entry of the table.
-Absent : {A : Set} → String → List (String × A) → Set
+Absent : {K A : Set} → K → List (K × A) → Set
 Absent x = All (λ e → proj₁ e ≢ x)
 
 ------------------------------------------------------------------------
@@ -215,26 +217,42 @@ data ResolvesDecl (polys : List String) (um : UnaliasedMap) (am : AliasMap)
 -- given the scope, WHICH CANONICAL NAME each reference denotes.
 ------------------------------------------------------------------------
 
-data ResolvesDecls (polys : List String) (um : UnaliasedMap) (am : AliasMap)
+-- WHERE THE LINE IS. This plan specifies the NAME MAP — which canonical name a
+-- written reference denotes. It does NOT relationalise every helper: the module
+-- table lookup is `FirstAt` (a real relation, because first-match matters), but
+-- `signaturesWithOwner`, `ownerOf`, `collectAliases` and `collectUnaliased` are
+-- structural projections and pure renderers, and are named directly — the same
+-- status `showCanonical` already has inside the typing rules. Nothing here
+-- names a DECIDER about what a name means, which is the property that makes the
+-- bridge lemmas non-trivial.
+-- A declaration that is not an import. `resolveDecls` REPLACES an import and
+-- maps `canonDecl` over everything else, so the two cases must be kept apart:
+-- without this, `rds-cons` could also derive "a `DImport` survives", which is
+-- not what the resolver does.
+data NotImport : Decl → Set where
+  nim-typesig : ∀ {n t}     → NotImport (DTypeSig n t)
+  nim-fundef  : ∀ {n a b}   → NotImport (DFunDef n a b)
+  nim-sig     : ∀ {n o t e} → NotImport (DSignature n o t e)
+  nim-alias   : ∀ {n ps t}  → NotImport (DTypeAlias n ps t)
+
+data ResolvesDecls (mm : ModuleMap) (polys : List String)
+                   (um : UnaliasedMap) (am : AliasMap)
                    : List Decl → List Decl → Set where
-  rds-nil  : ResolvesDecls polys um am [] []
+  rds-nil  : ResolvesDecls mm polys um am [] []
   rds-cons : ∀ {d d' ds ds'}
+           → NotImport d
            → ResolvesDecl polys um am d d'
-           → ResolvesDecls polys um am ds ds'
-           → ResolvesDecls polys um am (d ∷ ds) (d' ∷ ds')
+           → ResolvesDecls mm polys um am ds ds'
+           → ResolvesDecls mm polys um am (d ∷ ds) (d' ∷ ds')
+  -- An import is REPLACED by the imported module's signatures, owned by the
+  -- importing site. The module table is consulted by first match.
+  rds-import : ∀ {imp impDs ds ds'}
+             → FirstAt (Import.path imp) (mkModule impDs) mm
+             → ResolvesDecls mm polys um am ds ds'
+             → ResolvesDecls mm polys um am (DImport imp ∷ ds)
+                             (signaturesWithOwner (ownerOf imp) impDs ++ ds')
 
--- An import-free module: no `DImport`, so there is nothing to inline and both
--- name tables are empty. The IMPORT case — where a `DImport` is replaced by the
--- imported module's signatures — is the residual, exactly as it is today.
-data NoImports : List Decl → Set where
-  ni-nil      : NoImports []
-  ni-typesig  : ∀ {n t ds}     → NoImports ds → NoImports (DTypeSig n t ∷ ds)
-  ni-fundef   : ∀ {n a b ds}   → NoImports ds → NoImports (DFunDef n a b ∷ ds)
-  ni-sig      : ∀ {n o t e ds} → NoImports ds → NoImports (DSignature n o t e ∷ ds)
-  ni-alias    : ∀ {n ps t ds}  → NoImports ds → NoImports (DTypeAlias n ps t ∷ ds)
-
-data ResolvesModule (polys : List String) : Module → Module → Set where
-  rm-import-free : ∀ {ds ds'}
-                 → NoImports ds
-                 → ResolvesDecls polys [] [] ds ds'
-                 → ResolvesModule polys (mkModule ds) (mkModule ds')
+data ResolvesModule (mm : ModuleMap) (polys : List String) : Module → Module → Set where
+  rm : ∀ {ds ds'}
+     → ResolvesDecls mm polys (collectUnaliased mm ds) (collectAliases ds) ds ds'
+     → ResolvesModule mm polys (mkModule ds) (mkModule ds')
