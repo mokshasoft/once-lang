@@ -201,3 +201,40 @@ data ResolvesDecl (polys : List String) (um : UnaliasedMap) (am : AliasMap)
   rd-signature : ∀ {n o t e} → ResolvesDecl polys um am (DSignature n o t e) (DSignature n o t e)
   rd-typealias : ∀ {n ps t}  → ResolvesDecl polys um am (DTypeAlias n ps t) (DTypeAlias n ps t)
   rd-import    : ∀ {imp}     → ResolvesDecl polys um am (DImport imp) (DImport imp)
+
+------------------------------------------------------------------------
+-- Declaration lists, and modules.
+--
+-- SCOPE-PARAMETERISED, deliberately. The initial scope is the module's
+-- POLYMORPHIC definitions (they stay bare, so the poly telescope can δ-reduce
+-- at the use site), and the resolver computes it with `polyDefNames`, which
+-- calls `siglessSchema` — i.e. the PRINCIPALITY ORACLE. Specifying which
+-- definitions are polymorphic therefore means specifying the oracle, which is
+-- plan 0.59's subject, not this one. Taking the scope as a parameter keeps the
+-- two questions separate and keeps this relation honest about what it pins:
+-- given the scope, WHICH CANONICAL NAME each reference denotes.
+------------------------------------------------------------------------
+
+data ResolvesDecls (polys : List String) (um : UnaliasedMap) (am : AliasMap)
+                   : List Decl → List Decl → Set where
+  rds-nil  : ResolvesDecls polys um am [] []
+  rds-cons : ∀ {d d' ds ds'}
+           → ResolvesDecl polys um am d d'
+           → ResolvesDecls polys um am ds ds'
+           → ResolvesDecls polys um am (d ∷ ds) (d' ∷ ds')
+
+-- An import-free module: no `DImport`, so there is nothing to inline and both
+-- name tables are empty. The IMPORT case — where a `DImport` is replaced by the
+-- imported module's signatures — is the residual, exactly as it is today.
+data NoImports : List Decl → Set where
+  ni-nil      : NoImports []
+  ni-typesig  : ∀ {n t ds}     → NoImports ds → NoImports (DTypeSig n t ∷ ds)
+  ni-fundef   : ∀ {n a b ds}   → NoImports ds → NoImports (DFunDef n a b ∷ ds)
+  ni-sig      : ∀ {n o t e ds} → NoImports ds → NoImports (DSignature n o t e ∷ ds)
+  ni-alias    : ∀ {n ps t ds}  → NoImports ds → NoImports (DTypeAlias n ps t ∷ ds)
+
+data ResolvesModule (polys : List String) : Module → Module → Set where
+  rm-import-free : ∀ {ds ds'}
+                 → NoImports ds
+                 → ResolvesDecls polys [] [] ds ds'
+                 → ResolvesModule polys (mkModule ds) (mkModule ds')

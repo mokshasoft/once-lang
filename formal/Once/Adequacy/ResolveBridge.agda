@@ -34,7 +34,7 @@ open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String; _≟_)
 open import Data.Empty using (⊥-elim)
 open import Relation.Nullary using (yes; no; ¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂)
 
 open import Once.CanonicalName using (CanonicalName; canonical; gen; GenWord)
 open import Once.TypeCheck.Raw
@@ -47,6 +47,12 @@ open import Once.Parser.Module.Resolve
          lookupUnaliased; lookupImportAlias;
          isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
 open import Once.Spec.Resolution
+open import Data.List using (map)
+open import Data.Sum using (inj₂)
+open import Data.Unit using (tt)
+open import Once.Parser.Module.Core using (Module; mkModule)
+open import Once.Parser.Module.Resolve using (ModuleMap; resolveImports; polyDefNames)
+import Once.Adequacy.CanonResolve as CR
 
 ------------------------------------------------------------------------
 -- Decider bridge 1: binder scope. `elemStr` vs `_∈_`.
@@ -299,3 +305,53 @@ resolvesDecl-complete polys um am (DTypeSig n t)      = rd-typesig
 resolvesDecl-complete polys um am (DSignature n o t e) = rd-signature
 resolvesDecl-complete polys um am (DTypeAlias n ps t) = rd-typealias
 resolvesDecl-complete polys um am (DImport imp)       = rd-import
+
+------------------------------------------------------------------------
+-- THE BRIDGE, at a module — the IMPORT-FREE fragment.
+--
+-- `Once.Adequacy.CanonResolve` already reduces `resolveImports` on an
+-- import-free module (both name tables collapse to `[]`, and `resolveDecls`
+-- becomes a `map`). Note it is about `resolveImports` ALONE — no typing
+-- transport — so unlike the rest of the Canon family it SURVIVES plan 0.81.
+------------------------------------------------------------------------
+
+ni⇒ : ∀ {ds} → NoImports ds → CR.NoImports ds
+ni⇒ ni-nil            = tt
+ni⇒ (ni-typesig ni)   = tt , ni⇒ ni
+ni⇒ (ni-fundef ni)    = tt , ni⇒ ni
+ni⇒ (ni-sig ni)       = tt , ni⇒ ni
+ni⇒ (ni-alias ni)     = tt , ni⇒ ni
+
+resolvesDecls-sound : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
+                      (ds ds' : List Decl)
+                    → ResolvesDecls polys um am ds ds'
+                    → map (canonDecl polys um am) ds ≡ ds'
+resolvesDecls-sound polys um am _ _ rds-nil = refl
+resolvesDecls-sound polys um am _ _ (rds-cons rd rds) =
+  cong₂ _∷_ (resolvesDecl-sound polys um am _ _ rd)
+            (resolvesDecls-sound polys um am _ _ rds)
+
+resolvesDecls-complete : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
+                         (ds : List Decl)
+                       → ResolvesDecls polys um am ds (map (canonDecl polys um am) ds)
+resolvesDecls-complete polys um am []       = rds-nil
+resolvesDecls-complete polys um am (d ∷ ds) =
+  rds-cons (resolvesDecl-complete polys um am d) (resolvesDecls-complete polys um am ds)
+
+-- The scope premise is a BRIDGE fact, not a spec one: `ResolvesModule` is
+-- parameterised by the scope precisely so the SPEC never names `polyDefNames`
+-- (which calls the principality oracle). Here, on the implementation side,
+-- saying that the resolver used its own scope is exactly right.
+resolvesModule-sound : ∀ (mm : ModuleMap) (ds : List Decl) (mR : Module)
+                     → ResolvesModule (polyDefNames ds) (mkModule ds) mR
+                     → resolveImports mm (mkModule ds) ≡ inj₂ mR
+resolvesModule-sound mm ds _ (rm-import-free {ds = ds'} ni rds) =
+  trans (CR.resolveImports-ni mm ds' (ni⇒ ni))
+        (cong (λ z → inj₂ (mkModule z))
+              (resolvesDecls-sound (polyDefNames ds') [] [] ds' _ rds))
+
+resolvesModule-complete : ∀ (mm : ModuleMap) (ds : List Decl) (ni : NoImports ds)
+                        → ResolvesModule (polyDefNames ds) (mkModule ds)
+                            (mkModule (map (canonDecl (polyDefNames ds) [] []) ds))
+resolvesModule-complete mm ds ni =
+  rm-import-free ni (resolvesDecls-complete (polyDefNames ds) [] [] ds)
