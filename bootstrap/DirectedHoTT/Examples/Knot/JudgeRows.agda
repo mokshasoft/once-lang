@@ -62,6 +62,10 @@ open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
 open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )
 open import DirectedHoTT.Examples.Knot.NoNatCRows using ( NoNatCD; INoNatC )
 open import DirectedHoTT.Examples.Knot.NoNatCWf using ( NoNatCWf )
+open import DirectedHoTT.Examples.Knot.InDRows using ( InDD; IInD )
+open import DirectedHoTT.Examples.Knot.InDWf using ( InDWf )
+open import DirectedHoTT.Examples.Knot.InIDRows using ( InIDD; IInID )
+open import DirectedHoTT.Examples.Knot.InIDWf using ( InIDWf )
 open import DirectedHoTT.Examples.Knot.IxD
   using ( IxD; IxWf; IxNoneK; ⊢IxNoneK; IxDConK; ⊢IxDConK; IxDescK; ⊢IxDescK
         ; IxIConK; ⊢IxIConK; IxIDescK; ⊢IxIDescK )
@@ -85,9 +89,9 @@ IJudge =
 
 -- ⚠ NOT EMITTED — 5 of 56 rules:
 --     ⊢tr        premise 'occTm vz c ≡ false'
---     ⊢con       premise 'k ∈D D'
+--     ⊢con       unmapped ['lookupD', 'payTy']
 --     ⊢elim      unmapped ['methsTy']
---     ⊢icon      premise 'k ∈ID D'
+--     ⊢icon      unmapped ['ilookupD', 'ipayTy', 'isingle']
 --     ⊢ielim     unmapped ['iinst', 'imethsTy']
 
 -- ty-base
