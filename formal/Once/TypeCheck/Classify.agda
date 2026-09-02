@@ -40,7 +40,7 @@ open import Once.Type
 open import Once.SigEffect using (SigEffect)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
-open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS;
+open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS; _≟ᶜ_;
   NotGenerator; gen-inj)
 open import Data.List.Relation.Unary.All using () renaming ([] to []ᴬ; _∷_ to _∷ᴬ_)
 open import Once.TypeCheck.Context using (Ctx; ∅; name)
@@ -323,28 +323,40 @@ composeArgB-snd : NamedCtx → Type → Maybe Type
 composeArgB-snd ctx (_ * Y) = just Y
 composeArgB-snd ctx A       = composeArgB-lookup ctx "snd" A
 
--- RVar dispatch via explicit `≟` (not literal patterns) so the builtins are
--- distinguished from an ABSTRACT name in proofs (the literal-pattern opacity fix).
-composeArgB-rvar : NamedCtx → String → Type → Maybe Type
-composeArgB-rvar ctx name A with name ≟ "fst"
-... | yes _ = composeArgB-fst ctx A
-... | no  _ with name ≟ "snd"
-...   | yes _ = composeArgB-snd ctx A
-...   | no  _ with name ≟ "id"
-...     | yes _ = just A
-...     | no  _ with name ≟ "terminal"
-...       | yes _ = just Unit
-...       | no  _ = composeArgB-lookup ctx name A
+-- D136: the four GENERATOR arms moved off the bare name and onto the canonical
+-- one — a bare `fst` is a lexical binder or an ordinary reference, never the
+-- generator, so reading `composeArgB-fst` off it was the collision this plan
+-- removes. Dispatch is still an explicit `≟` rather than literal patterns, so
+-- an ABSTRACT name reduces in proofs (the literal-pattern opacity fix).
+composeArgB-res : NamedCtx → CanonicalName → Type → Maybe Type
+composeArgB-res ctx (canonical (ns ∷ g ∷ [])) A with ns ≟ generatorNS
+... | no _ = composeArgB-lookup ctx (showCanonical (canonical (ns ∷ g ∷ []))) A
+... | yes refl with g ≟ "fst"
+...   | yes _ = composeArgB-fst ctx A
+...   | no  _ with g ≟ "snd"
+...     | yes _ = composeArgB-snd ctx A
+...     | no  _ with g ≟ "id"
+...       | yes _ = just A
+...       | no  _ with g ≟ "terminal"
+...         | yes _ = just Unit
+...         | no  _ = composeArgB-lookup ctx (showCanonical (canonical (ns ∷ g ∷ []))) A
+composeArgB-res ctx (canonical [])              A = composeArgB-lookup ctx (showCanonical (canonical [])) A
+composeArgB-res ctx (canonical (n ∷ []))        A = composeArgB-lookup ctx (showCanonical (canonical (n ∷ []))) A
+composeArgB-res ctx (canonical (a ∷ b ∷ c ∷ d)) A = composeArgB-lookup ctx (showCanonical (canonical (a ∷ b ∷ c ∷ d))) A
 
 composeArgB : NamedCtx → RawExpr → Type → Maybe Type
-composeArgB ctx (Raw.RVar name) A   = composeArgB-rvar ctx name A
-composeArgB ctx (Raw.RResolved cn) A = composeArgB-lookup ctx (showCanonical cn) A
+composeArgB ctx (Raw.RVar name) A   = composeArgB-lookup ctx name A
+composeArgB ctx (Raw.RResolved cn) A = composeArgB-res ctx cn A
 -- Nested compose: recurse. The head is dispatched by an explicit `≟` rather
 -- than a literal pattern, for the SAME reason `composeArgB-rvar` above is —
 -- a literal pattern is stuck on an ABSTRACT head name, so a proof that only
 -- knows `name ≢ "compose"` could not reduce this clause. Behaviour is
 -- unchanged: every non-`compose` head still falls to `nothing`.
-composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RVar name) f') g') A with name ≟ "compose"
+-- D136: a nested compose is recognised at the CANONICAL head only. The old
+-- clause matched a bare `RVar "compose"`, which post-resolution can only be a
+-- lexical binder shadowing the generator — precisely the case where recursing
+-- would be wrong. It falls to the `nothing` catch-all with every other head.
+composeArgB ctx (Raw.RApp (Raw.RApp (Raw.RResolved cn) f') g') A with cn ≟ᶜ gen "compose"
 ... | no _ = nothing
 ... | yes _ with composeArgB ctx g' A
 ...   | nothing = nothing
