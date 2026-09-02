@@ -179,6 +179,7 @@ import DirectedHoTT.Examples.Knot.JudgeWfX
 import DirectedHoTT.Examples.Knot.JudgeWfY
 import DirectedHoTT.Examples.Knot.JudgeWfZ
 import DirectedHoTT.Examples.Knot.Lookup
+import DirectedHoTT.Examples.Knot.LookupD
 import DirectedHoTT.Examples.Knot.LookupGen
 import DirectedHoTT.Examples.Knot.Map
 import DirectedHoTT.Examples.Knot.NoNatCRows
