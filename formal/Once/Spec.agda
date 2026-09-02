@@ -23,5 +23,14 @@ module Once.Spec where
 open import Once.Spec.Type    public   -- the type / functor-type grammar
 open import Once.Spec.Syntax  public   -- Raw (written) + Surface (denoted) terms
 open import Once.Spec.Typing  public   -- the declarative typing judgment
+open import Once.Spec.Resolution public -- what each written reference DENOTES
+  using ( ResolvesVar ; rv-binder ; rv-gen ; rv-import ; rv-own
+        ; ResolvesExpr ; re-var ; re-qual ; re-qual-unknown ; re-res
+        ; re-app ; re-lam ; re-let ; re-pair ; re-destruct ; re-annot
+        ; re-binop ; re-unop ; re-ana ; re-unit ; re-int ; re-float ; re-str
+        ; ResolvesDecl ; rd-fundef ; rd-typesig ; rd-signature
+        ; rd-typealias ; rd-import
+        ; ExpandsTo ; ex-nil ; ex-I ; ex-other
+        ; AliasMap ; UnaliasedMap ; Absent )
 open import Once.Spec.Meaning public   -- the denotation (source meaning)
 open import Once.Spec.Correct public   -- the CorrectCompiler criterion
