@@ -111,6 +111,7 @@ import DirectedHoTT.Examples.Gcd.StepExtLs
 import DirectedHoTT.Examples.IHCallAgree
 import DirectedHoTT.Examples.Id
 import DirectedHoTT.Examples.IrrProbe
+import DirectedHoTT.Examples.Knot.Adequacy
 import DirectedHoTT.Examples.Knot.Build
 import DirectedHoTT.Examples.Knot.Census
 import DirectedHoTT.Examples.Knot.ConvRows
