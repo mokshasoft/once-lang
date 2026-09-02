@@ -37,7 +37,8 @@ open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
                                        OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;
                                        isArithmeticOp; isComparisonOp;
-                                       RawExpr; RVar)
+                                       RawExpr; RVar; RResolved)
+open import Once.CanonicalName using (gen)
 open import Once.TypeCheck.Elaborate
   using (decideLeq; classifyAppHead;
          PolyBuiltinApp; pba-id; pba-fst; pba-snd; pba-terminal;
@@ -155,35 +156,36 @@ binop-classification-exclusive OpEq  () _
 binop-classification-exclusive OpNe  () _
 
 ------------------------------------------------------------------------
--- `classifyAppHead`: structural identities on polymorphic-builtin names
+-- `classifyAppHead`: structural identities on the GENERATORS (D136: a
+-- generator is a canonical name, never a bare one)
 ------------------------------------------------------------------------
 
 classifyAppHead-id :
-  classifyAppHead (RVar "id") ≡ just pba-id
+  classifyAppHead (RResolved (gen "id")) ≡ just pba-id
 classifyAppHead-id = refl
 
 classifyAppHead-fst :
-  classifyAppHead (RVar "fst") ≡ just pba-fst
+  classifyAppHead (RResolved (gen "fst")) ≡ just pba-fst
 classifyAppHead-fst = refl
 
 classifyAppHead-snd :
-  classifyAppHead (RVar "snd") ≡ just pba-snd
+  classifyAppHead (RResolved (gen "snd")) ≡ just pba-snd
 classifyAppHead-snd = refl
 
 classifyAppHead-terminal :
-  classifyAppHead (RVar "terminal") ≡ just pba-terminal
+  classifyAppHead (RResolved (gen "terminal")) ≡ just pba-terminal
 classifyAppHead-terminal = refl
 
 classifyAppHead-inl :
-  classifyAppHead (RVar "inl") ≡ just pba-inl
+  classifyAppHead (RResolved (gen "inl")) ≡ just pba-inl
 classifyAppHead-inl = refl
 
 classifyAppHead-inr :
-  classifyAppHead (RVar "inr") ≡ just pba-inr
+  classifyAppHead (RResolved (gen "inr")) ≡ just pba-inr
 classifyAppHead-inr = refl
 
 classifyAppHead-initial :
-  classifyAppHead (RVar "initial") ≡ just pba-initial
+  classifyAppHead (RResolved (gen "initial")) ≡ just pba-initial
 classifyAppHead-initial = refl
 
 ------------------------------------------------------------------------

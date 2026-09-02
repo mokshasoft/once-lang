@@ -69,7 +69,8 @@ open import Once.TypeCheck.Error using (TypeError; renderError;
   ApplicationTypeMismatch; TypeMismatch; UsageViolation;
   BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
-open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
+open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
+open import Once.CanonicalName using (gen)
 open import Data.String using (String)
 import Once.Grammar.Convert       as Conv
 open import Once.Grammar using (GType)
@@ -183,8 +184,8 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx)
         {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
         {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
-      → tcInfer ctx (RVar "unit") ≡ success A Ψ eE d f
-      → ctx ⊢ RVar "unit" ∶ A ⨾ Ψ
+      → tcInfer ctx (RResolved (gen "unit")) ≡ success A Ψ eE d f
+      → ctx ⊢ RResolved (gen "unit") ∶ A ⨾ Ψ
 
     -- Full RVar soundness: covers the `"unit"` builtin path, local
     -- bindings, and import lookup — unblocked by refactoring the
@@ -258,17 +259,17 @@ record VerifiedTypeChecker : Set₁ where
 
     tc-err-inl-infer :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-      → tcInfer ctx (RApp (RVar "inl") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "inl")) arg) ≡ failure err
       → err ≡ InlInInferMode
 
     tc-err-inr-infer :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-      → tcInfer ctx (RApp (RVar "inr") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "inr")) arg) ≡ failure err
       → err ≡ InrInInferMode
 
     tc-err-initial-infer :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-      → tcInfer ctx (RApp (RVar "initial") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "initial")) arg) ≡ failure err
       → err ≡ InitialInInferMode
 
     tc-err-qualified-unbound :
@@ -282,14 +283,14 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Unit Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     tc-err-fst-non-pair-Int :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Int Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     -- Negation with non-Int argument → TypeMismatch Int <type>
@@ -307,10 +308,11 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
       → err ≡ TypeMismatch Once.Type.Int Once.Type.Str
 
-    -- Bare-name variable that is not "unit" and not in local/import scope.
+    -- D136: a bare name not in local/import scope. No `unit` exception any
+    -- more — `unit` is `RResolved (gen "unit")`, so a bare `unit` is an
+    -- ordinary variable and CAN be unbound.
     tc-err-var-unbound :
       ∀ (ctx : NamedCtx) (x : String) {err : TypeError}
-      → ¬ (x ≡ "unit")
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
       → tcInfer ctx (RVar x) ≡ failure err
@@ -321,14 +323,14 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Unit Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     tc-err-snd-non-pair-Int :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Int Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     -- Case scrutinee non-sum → CaseScrutineeNotSum
@@ -436,28 +438,28 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Void Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     tc-err-fst-non-pair-Str :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Str Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     tc-err-snd-non-pair-Void :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Void Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     tc-err-snd-non-pair-Str :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
         {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Str Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     tc-err-neg-non-Int-Void :
@@ -487,13 +489,13 @@ record VerifiedTypeChecker : Set₁ where
     tc-err-fst-non-pair-Float :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Float Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ failure err
       → err ≡ FstNeedsPair
 
     tc-err-snd-non-pair-Float :
       ∀ (ctx : NamedCtx) (arg : RawExpr) {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Float Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure err
+      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ failure err
       → err ≡ SndNeedsPair
 
     tc-err-neg-non-Int-Float :
@@ -521,8 +523,8 @@ record VerifiedTypeChecker : Set₁ where
       → (IH : ∀ {A' Ψ' eE' d' f'}
             → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
             → ctx ⊢ arg ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RApp (RVar "id") arg) ≡ success A Ψ eE d f
-      → ctx ⊢ RApp (RVar "id") arg ∶ A ⨾ Ψ
+      → tcInfer ctx (RApp (RResolved (gen "id")) arg) ≡ success A Ψ eE d f
+      → ctx ⊢ RApp (RResolved (gen "id")) arg ∶ A ⨾ Ψ
 
     tcInfer-sound-RApp-fst :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
@@ -531,8 +533,8 @@ record VerifiedTypeChecker : Set₁ where
       → (IH : ∀ {A' Ψ' eE' d' f'}
             → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
             → ctx ⊢ arg ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RApp (RVar "fst") arg) ≡ success A Ψ eE d f
-      → ctx ⊢ RApp (RVar "fst") arg ∶ A ⨾ Ψ
+      → tcInfer ctx (RApp (RResolved (gen "fst")) arg) ≡ success A Ψ eE d f
+      → ctx ⊢ RApp (RResolved (gen "fst")) arg ∶ A ⨾ Ψ
 
     tcInfer-sound-RApp-snd :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
@@ -541,8 +543,8 @@ record VerifiedTypeChecker : Set₁ where
       → (IH : ∀ {A' Ψ' eE' d' f'}
             → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
             → ctx ⊢ arg ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RApp (RVar "snd") arg) ≡ success A Ψ eE d f
-      → ctx ⊢ RApp (RVar "snd") arg ∶ A ⨾ Ψ
+      → tcInfer ctx (RApp (RResolved (gen "snd")) arg) ≡ success A Ψ eE d f
+      → ctx ⊢ RApp (RResolved (gen "snd")) arg ∶ A ⨾ Ψ
 
     tcInfer-sound-RApp-terminal :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
@@ -551,8 +553,8 @@ record VerifiedTypeChecker : Set₁ where
       → (IH : ∀ {A' Ψ' eE' d' f'}
             → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
             → ctx ⊢ arg ∶ A' ⨾ Ψ')
-      → tcInfer ctx (RApp (RVar "terminal") arg) ≡ success A Ψ eE d f
-      → ctx ⊢ RApp (RVar "terminal") arg ∶ A ⨾ Ψ
+      → tcInfer ctx (RApp (RResolved (gen "terminal")) arg) ≡ success A Ψ eE d f
+      → ctx ⊢ RApp (RResolved (gen "terminal")) arg ∶ A ⨾ Ψ
 
     -- Generic function application. Premise:
     -- `classifyAppHead f ≡ nothing`, i.e. `f` is not one of the
@@ -658,7 +660,7 @@ record VerifiedTypeChecker : Set₁ where
     tcInfer-complete-RVar-unit :
       ∀ (ctx : NamedCtx)
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RVar "unit") ≡ success Once.Type.Unit Surface.zeroUsage eE d f
+          tcInfer ctx (RResolved (gen "unit")) ≡ success Once.Type.Unit Surface.zeroUsage eE d f
 
     tcInfer-complete-RQualified :
       ∀ (ctx : NamedCtx) (name alias : String) (T : Type)
@@ -723,7 +725,7 @@ record VerifiedTypeChecker : Set₁ where
         {d' f' : _}
       → tcInfer ctx arg ≡ success T Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RApp (RVar "id") arg)
+          tcInfer ctx (RApp (RResolved (gen "id")) arg)
             ≡ success T (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-fst :
@@ -733,7 +735,7 @@ record VerifiedTypeChecker : Set₁ where
         {d' f' : _}
       → tcInfer ctx arg ≡ success (A Once.Type.* B) Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RApp (RVar "fst") arg)
+          tcInfer ctx (RApp (RResolved (gen "fst")) arg)
             ≡ success A (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-snd :
@@ -743,7 +745,7 @@ record VerifiedTypeChecker : Set₁ where
         {d' f' : _}
       → tcInfer ctx arg ≡ success (A Once.Type.* B) Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RApp (RVar "snd") arg)
+          tcInfer ctx (RApp (RResolved (gen "snd")) arg)
             ≡ success B (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
 
     tcInfer-complete-RApp-terminal :
@@ -753,7 +755,7 @@ record VerifiedTypeChecker : Set₁ where
         {d' f' : _}
       → tcInfer ctx arg ≡ success T Ψ argE d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcInfer ctx (RApp (RVar "terminal") arg)
+          tcInfer ctx (RApp (RResolved (gen "terminal")) arg)
             ≡ success Once.Type.Unit (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
 
     -- RVar local and import
@@ -761,14 +763,12 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (x : String) {A : Type}
         {Ψ : Surface.Usage (NamedCtx.size ctx)}
         {eE' : Surface.SVar (NamedCtx.debruijn ctx) Ψ A}
-      → ¬ (x ≡ "unit")
       → lookupLocal ctx x ≡ just (A , Ψ , eE')
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RVar x) ≡ success A Ψ eE d f
 
     tcInfer-complete-RVar-import :
       ∀ (ctx : NamedCtx) (x : String) {T : Type}
-      → ¬ (x ≡ "unit")
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ just T
       → IsConcrete T
@@ -1016,8 +1016,8 @@ verifiedTypeChecker = record
   ; tcInfer-complete-RApp-fst     = λ ctx → Cmp.infer-complete-RApp-fst
   ; tcInfer-complete-RApp-snd     = λ ctx → Cmp.infer-complete-RApp-snd
   ; tcInfer-complete-RApp-terminal = λ ctx → Cmp.infer-complete-RApp-terminal
-  ; tcInfer-complete-RVar-local   = λ ctx → Cmp.infer-complete-RVar-local
-  ; tcInfer-complete-RVar-import  = λ ctx → Cmp.infer-complete-RVar-import
+  ; tcInfer-complete-RVar-local   = λ ctx → Cmp.infer-complete-RVar-local {ctx}
+  ; tcInfer-complete-RVar-import  = λ ctx → Cmp.infer-complete-RVar-import {ctx}
   ; tcInfer-complete-RBinOp-arith = λ ctx → Cmp.infer-complete-RBinOp-arith
   ; tcInfer-complete-RBinOp-cmp   = λ ctx → Cmp.infer-complete-RBinOp-cmp
   ; tcInfer-complete-RDestruct    = λ ctx → Cmp.infer-complete-RDestruct

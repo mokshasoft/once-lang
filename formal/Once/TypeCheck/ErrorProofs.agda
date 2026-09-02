@@ -35,6 +35,7 @@ open import Data.Product using (∃; ∃-syntax; _×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Type using (Type; Unit; Void; Int; Str)
+open import Once.CanonicalName using (gen)
 import Once.Type as T
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RLam; RQualified)
@@ -80,33 +81,33 @@ lam-infer-is-LambdaInInferMode ctx x body refl = refl
 
 inl-app-infer-is-InlInInferMode :
   ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-  → inferElab ctx (Raw.RApp (RVar "inl") arg) ≡ failure err
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) ≡ failure err
   → err ≡ InlInInferMode
 inl-app-infer-is-InlInInferMode ctx arg refl = refl
 
 inr-app-infer-is-InrInInferMode :
   ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-  → inferElab ctx (Raw.RApp (RVar "inr") arg) ≡ failure err
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "inr")) arg) ≡ failure err
   → err ≡ InrInInferMode
 inr-app-infer-is-InrInInferMode ctx arg refl = refl
 
 initial-app-infer-is-InitialInInferMode :
   ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-  → inferElab ctx (Raw.RApp (RVar "initial") arg) ≡ failure err
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "initial")) arg) ≡ failure err
   → err ≡ InitialInInferMode
 initial-app-infer-is-InitialInInferMode ctx arg refl = refl
 inl-check-Unit : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-               → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Unit ≡ failure err
+               → checkElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) Unit ≡ failure err
                → err ≡ InlNeedsSumType
 inl-check-Unit ctx arg refl = refl
 
 inl-check-Void : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-               → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Void ≡ failure err
+               → checkElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) Void ≡ failure err
                → err ≡ InlNeedsSumType
 inl-check-Void ctx arg refl = refl
 
 inl-check-Int : ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
-               → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Int ≡ failure err
+               → checkElab ctx (Raw.RApp (Raw.RResolved (gen "inl")) arg) Int ≡ failure err
                → err ≡ InlNeedsSumType
 inl-check-Int ctx arg refl = refl
 qualified-not-found-is-UnboundQualified :
@@ -130,7 +131,7 @@ qualified-not-found-is-UnboundQualified ctx name alias eqLookup eqOuter =
 fst-non-pair-Unit : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success Unit Ψ' eE' d' f'
-                    → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                    → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                     → err ≡ FstNeedsPair
 fst-non-pair-Unit ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -139,7 +140,7 @@ fst-non-pair-Unit ctx arg eqInner eqOuter
 fst-non-pair-Int : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Int Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                    → err ≡ FstNeedsPair
 fst-non-pair-Int ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -148,7 +149,7 @@ fst-non-pair-Int ctx arg eqInner eqOuter
 snd-non-pair-Unit : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success Unit Ψ' eE' d' f'
-                    → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                    → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                     → err ≡ SndNeedsPair
 snd-non-pair-Unit ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -157,7 +158,7 @@ snd-non-pair-Unit ctx arg eqInner eqOuter
 snd-non-pair-Int : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Int Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                    → err ≡ SndNeedsPair
 snd-non-pair-Int ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -267,27 +268,26 @@ case-branch-mismatch-is-CaseBranchMismatch ctx scrut xL eL xR eR A B C₁ C₂ e
 var-unbound-is-UnboundVariable :
   ∀ (ctx : NamedCtx) (x : String)
     {err : TypeError}
-  → ¬ (x ≡ "unit")
   → lookupLocal ctx x ≡ nothing
   → lookupImport (NamedCtx.imports ctx) x ≡ nothing
   → inferElab ctx (Raw.RVar x) ≡ failure err
   → err ≡ UnboundVariable x
-var-unbound-is-UnboundVariable ctx x ¬unit eqLoc eqImp eqOuter
-  with StrProp._≟_ x "unit"
-... | yes refl = ⊥-elim (¬unit refl)
-... | no _     = goPolyCls (classifyBareBuiltin x) refl
-                   (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
+-- D136: the `¬ (x ≡ "unit")` premise is gone — `unit` is `RResolved (gen
+-- "unit")` now, so a bare `unit` is an ordinary variable that CAN be unbound.
+var-unbound-is-UnboundVariable ctx x eqLoc eqImp eqOuter
+  = goPolyCls (classifyBareBuiltin x) refl
+      (trans (sym (cong proj₁ (trans (helperLoc _ eqLoc) (helperImp _ eqImp)))) eqOuter)
   where
     open Once.TypeCheck.Elaborate using (inferElabV-RVar-lookup-aux)
     helperLoc : ∀ (lhs : Maybe (∃[ A' ] ∃[ Ψ' ] (Surface.SVar (NamedCtx.debruijn ctx) Ψ' A')))
               → (eq' : lookupLocal ctx x ≡ lhs)
-              → inferElabV-RVar-lookup-aux ctx x ¬unit (lookupLocal ctx x) refl _ refl
-                ≡ inferElabV-RVar-lookup-aux ctx x ¬unit lhs eq' _ refl
+              → inferElabV-RVar-lookup-aux ctx x (lookupLocal ctx x) refl _ refl
+                ≡ inferElabV-RVar-lookup-aux ctx x lhs eq' _ refl
     helperLoc _ refl = refl
     helperImp : ∀ (lhs : Maybe Type)
               → (eq' : lookupImport (NamedCtx.imports ctx) x ≡ lhs)
-              → inferElabV-RVar-lookup-aux ctx x ¬unit nothing eqLoc (lookupImport (NamedCtx.imports ctx) x) refl
-                ≡ inferElabV-RVar-lookup-aux ctx x ¬unit nothing eqLoc lhs eq'
+              → inferElabV-RVar-lookup-aux ctx x nothing eqLoc (lookupImport (NamedCtx.imports ctx) x) refl
+                ≡ inferElabV-RVar-lookup-aux ctx x nothing eqLoc lhs eq'
     helperImp _ refl = refl
     go : ∀ {err} → failure (UnboundVariable x) ≡ failure err
        → err ≡ UnboundVariable x
@@ -640,7 +640,7 @@ binop-right-err-wraps ctx op e₁ e₂ eqAsInt₁ eqAsInt₂ eqOuter
 fst-non-pair-Void : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Void Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                    → err ≡ FstNeedsPair
 fst-non-pair-Void ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -649,7 +649,7 @@ fst-non-pair-Void ctx arg eqInner eqOuter
 fst-non-pair-Str : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success Str Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                   → err ≡ FstNeedsPair
 fst-non-pair-Str ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -658,7 +658,7 @@ fst-non-pair-Str ctx arg eqInner eqOuter
 snd-non-pair-Void : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success Void Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                    → err ≡ SndNeedsPair
 snd-non-pair-Void ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -667,7 +667,7 @@ snd-non-pair-Void ctx arg eqInner eqOuter
 snd-non-pair-Str : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success Str Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                   → err ≡ SndNeedsPair
 snd-non-pair-Str ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -714,7 +714,7 @@ case-scrut-Str ctx scrut xL eL xR eR eqInner eqOuter
 fst-non-pair-Float : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
-                    → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                    → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                     → err ≡ FstNeedsPair
 fst-non-pair-Float ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -723,7 +723,7 @@ fst-non-pair-Float ctx arg eqInner eqOuter
 fst-non-pair-Buffer : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                        {Ψ' eE' d' f' err}
                      → inferElab ctx arg ≡ success T.Buffer Ψ' eE' d' f'
-                     → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                     → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                      → err ≡ FstNeedsPair
 fst-non-pair-Buffer ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -732,7 +732,7 @@ fst-non-pair-Buffer ctx arg eqInner eqOuter
 fst-non-pair-Sum : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.+ B) Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                   → err ≡ FstNeedsPair
 fst-non-pair-Sum ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -741,7 +741,7 @@ fst-non-pair-Sum ctx arg eqInner eqOuter
 fst-non-pair-Fun : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type} {q : _}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                   → err ≡ FstNeedsPair
 fst-non-pair-Fun ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -826,7 +826,7 @@ neg-non-Int-Sum ctx e eqInner eqOuter
 snd-non-pair-Float : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                       {Ψ' eE' d' f' err}
                     → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
-                    → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                    → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                     → err ≡ SndNeedsPair
 snd-non-pair-Float ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -835,7 +835,7 @@ snd-non-pair-Float ctx arg eqInner eqOuter
 snd-non-pair-Buffer : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
                        {Ψ' eE' d' f' err}
                      → inferElab ctx arg ≡ success T.Buffer Ψ' eE' d' f'
-                     → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                     → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                      → err ≡ SndNeedsPair
 snd-non-pair-Buffer ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -844,7 +844,7 @@ snd-non-pair-Buffer ctx arg eqInner eqOuter
 snd-non-pair-Sum : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.+ B) Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                   → err ≡ SndNeedsPair
 snd-non-pair-Sum ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -853,7 +853,7 @@ snd-non-pair-Sum ctx arg eqInner eqOuter
 snd-non-pair-Fun : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type} {q : _}
                     {Ψ' eE' d' f' err}
                   → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψ' eE' d' f'
-                  → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                   → err ≡ SndNeedsPair
 snd-non-pair-Fun ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -906,7 +906,7 @@ case-scrut-Fun ctx scrut xL eL xR eR eqInner eqOuter
 fst-non-pair-Eff : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                    → err ≡ FstNeedsPair
 fst-non-pair-Eff ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -915,7 +915,7 @@ fst-non-pair-Eff ctx arg eqInner eqOuter
 fst-non-pair-μ : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.μ-type F) Ψ' eE' d' f'
-                → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                 → err ≡ FstNeedsPair
 fst-non-pair-μ ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -924,7 +924,7 @@ fst-non-pair-μ ctx arg eqInner eqOuter
 fst-non-pair-ν : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.ν-type F) Ψ' eE' d' f'
-                → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                → inferElab ctx (Raw.RApp (Raw.RResolved (gen "fst")) arg) ≡ failure err
                 → err ≡ FstNeedsPair
 fst-non-pair-ν ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -933,7 +933,7 @@ fst-non-pair-ν ctx arg eqInner eqOuter
 snd-non-pair-Eff : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
                      {Ψ' eE' d' f' err}
                    → inferElab ctx arg ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψ' eE' d' f'
-                   → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                   → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                    → err ≡ SndNeedsPair
 snd-non-pair-Eff ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -942,7 +942,7 @@ snd-non-pair-Eff ctx arg eqInner eqOuter
 snd-non-pair-μ : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.μ-type F) Ψ' eE' d' f'
-                → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                 → err ≡ SndNeedsPair
 snd-non-pair-μ ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner
@@ -951,7 +951,7 @@ snd-non-pair-μ ctx arg eqInner eqOuter
 snd-non-pair-ν : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {F}
                   {Ψ' eE' d' f' err}
                 → inferElab ctx arg ≡ success (T.ν-type F) Ψ' eE' d' f'
-                → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                → inferElab ctx (Raw.RApp (Raw.RResolved (gen "snd")) arg) ≡ failure err
                 → err ≡ SndNeedsPair
 snd-non-pair-ν ctx arg eqInner eqOuter
   with inferElabV ctx arg | eqInner

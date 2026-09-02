@@ -37,6 +37,7 @@ open import Relation.Binary.PropositionalEquality
 open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
                                   _*_; _+_; _⇒[_]_; Quantity)
 open import Data.Bool using (Bool; true; false)
+open import Once.CanonicalName using (gen; NotGenerator; bare-NotGenerator)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
@@ -94,8 +95,8 @@ sound-RUnit ctx refl = t-unit
 sound-RVar-unit : ∀ (ctx : NamedCtx)
                   {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
                   {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-                → inferElab ctx (RVar "unit") ≡ success A Ψ eE d f
-                → ctx ⊢ RVar "unit" ∶ A ⨾ Ψ
+                → inferElab ctx (Raw.RResolved (gen "unit")) ≡ success A Ψ eE d f
+                → ctx ⊢ Raw.RResolved (gen "unit") ∶ A ⨾ Ψ
 sound-RVar-unit ctx refl = t-unit-var
 
 ------------------------------------------------------------------------
@@ -345,10 +346,10 @@ sound-check-RVar-id :
   ∀ (ctx : NamedCtx) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ}
-  → checkElab ctx (Raw.RVar "id") T ≡ success Ψ eE d f
-  → ctx ⊢ᶜ Raw.RVar "id" ∶ T ⨾ Ψ
+  → checkElab ctx (Raw.RResolved (gen "id")) T ≡ success Ψ eE d f
+  → ctx ⊢ᶜ Raw.RResolved (gen "id") ∶ T ⨾ Ψ
 sound-check-RVar-id ctx T eq
-  with Once.TypeCheck.Elaborate.checkElabV ctx (Raw.RVar "id") T
+  with Once.TypeCheck.Elaborate.checkElabV ctx (Raw.RResolved (gen "id")) T
 ... | success Ψ' eE' d' fr' , w with eq
 ...   | refl = w
 sound-check-RVar-id ctx T eq | failure _ , _ with eq
@@ -360,9 +361,9 @@ sound-RVar-unit-generic :
   ∀ (ctx : NamedCtx)
     {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
     {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
-  → inferElab ctx (RVar "unit") ≡ success A Ψ eE d f
-  → ctx ⊢ RVar "unit" ∶ A ⨾ Ψ
-sound-RVar-unit-generic ctx = sound-RVar ctx "unit"
+  → inferElab ctx (Raw.RResolved (gen "unit")) ≡ success A Ψ eE d f
+  → ctx ⊢ Raw.RResolved (gen "unit") ∶ A ⨾ Ψ
+sound-RVar-unit-generic ctx = sound-RVar-unit ctx
 
 ------------------------------------------------------------------------
 -- Soundness for RBinOp (binary operators)
@@ -547,7 +548,7 @@ sound-check-RLam ctx x body A q B IH eq | failure _ , _ with eq
 ------------------------------------------------------------------------
 -- Soundness for RApp polymorphic-builtin specialisations
 --
--- The elaborator matches `RApp (RVar "id") arg`, `RApp (RVar "fst") arg`,
+-- The elaborator matches `RApp (Raw.RResolved (gen "id")) arg`, `RApp (Raw.RResolved (gen "fst")) arg`,
 -- etc. as concrete syntactic patterns before the generic application
 -- rule. Soundness for each is structurally similar: infer the argument,
 -- then apply the specialised builtin rule. `fst` / `snd` additionally
@@ -563,10 +564,10 @@ sound-RApp-id :
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ arg ∶ A' ⨾ Ψ')
-  → inferElab ctx (RApp (RVar "id") arg) ≡ success A Ψ eE d f
-  → ctx ⊢ RApp (RVar "id") arg ∶ A ⨾ Ψ
+  → inferElab ctx (RApp (Raw.RResolved (gen "id")) arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (Raw.RResolved (gen "id")) arg ∶ A ⨾ Ψ
 sound-RApp-id ctx arg IH eq
-  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "id") arg)
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (Raw.RResolved (gen "id")) arg)
 ... | success A' Ψ' eE' d' f' , w with eq
 ...   | refl = w
 sound-RApp-id ctx arg IH eq | failure _ , _ with eq
@@ -580,10 +581,10 @@ sound-RApp-terminal :
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ arg ∶ A' ⨾ Ψ')
-  → inferElab ctx (RApp (RVar "terminal") arg) ≡ success A Ψ eE d f
-  → ctx ⊢ RApp (RVar "terminal") arg ∶ A ⨾ Ψ
+  → inferElab ctx (RApp (Raw.RResolved (gen "terminal")) arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (Raw.RResolved (gen "terminal")) arg ∶ A ⨾ Ψ
 sound-RApp-terminal ctx arg IH eq
-  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "terminal") arg)
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (Raw.RResolved (gen "terminal")) arg)
 ... | success A' Ψ' eE' d' f' , w with eq
 ...   | refl = w
 sound-RApp-terminal ctx arg IH eq | failure _ , _ with eq
@@ -597,10 +598,10 @@ sound-RApp-fst :
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ arg ∶ A' ⨾ Ψ')
-  → inferElab ctx (RApp (RVar "fst") arg) ≡ success A Ψ eE d f
-  → ctx ⊢ RApp (RVar "fst") arg ∶ A ⨾ Ψ
+  → inferElab ctx (RApp (Raw.RResolved (gen "fst")) arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (Raw.RResolved (gen "fst")) arg ∶ A ⨾ Ψ
 sound-RApp-fst ctx arg IH eq
-  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "fst") arg)
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (Raw.RResolved (gen "fst")) arg)
 ... | success A' Ψ' eE' d' f' , w with eq
 ...   | refl = w
 sound-RApp-fst ctx arg IH eq | failure _ , _ with eq
@@ -614,10 +615,10 @@ sound-RApp-snd :
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ arg ∶ A' ⨾ Ψ')
-  → inferElab ctx (RApp (RVar "snd") arg) ≡ success A Ψ eE d f
-  → ctx ⊢ RApp (RVar "snd") arg ∶ A ⨾ Ψ
+  → inferElab ctx (RApp (Raw.RResolved (gen "snd")) arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (Raw.RResolved (gen "snd")) arg ∶ A ⨾ Ψ
 sound-RApp-snd ctx arg IH eq
-  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "snd") arg)
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (Raw.RResolved (gen "snd")) arg)
 ... | success A' Ψ' eE' d' f' , w with eq
 ...   | refl = w
 sound-RApp-snd ctx arg IH eq | failure _ , _ with eq
@@ -634,10 +635,10 @@ sound-RApp-apply :
   → (IH : ∀ {A' Ψ' eE' d' f'}
         → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
         → ctx ⊢ arg ∶ A' ⨾ Ψ')
-  → inferElab ctx (RApp (RVar "apply") arg) ≡ success A Ψ eE d f
-  → ctx ⊢ RApp (RVar "apply") arg ∶ A ⨾ Ψ
+  → inferElab ctx (RApp (Raw.RResolved (gen "apply")) arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (Raw.RResolved (gen "apply")) arg ∶ A ⨾ Ψ
 sound-RApp-apply ctx arg IH eq
-  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (RVar "apply") arg)
+  with Once.TypeCheck.Elaborate.inferElabV ctx (RApp (Raw.RResolved (gen "apply")) arg)
 ... | success A' Ψ' eE' d' f' , w with eq
 ...   | refl = w
 sound-RApp-apply ctx arg IH eq | failure _ , _ with eq
@@ -714,36 +715,36 @@ import Data.String.Properties as StrProp
 -- internal `with StrProp._≟_` chain. Rewrites with these in the
 -- top-level helper `infer-sound-RApp` force the elaborator's eq
 -- type to match the per-shape lemma's expected shape.
-classifyAppHeadView-RVar-id : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "id")
+classifyAppHeadView-RVar-id : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "id"))
   ≡ Once.TypeCheck.Elaborate.ahv-id
 classifyAppHeadView-RVar-id = refl
-classifyAppHeadView-RVar-fst : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "fst")
+classifyAppHeadView-RVar-fst : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "fst"))
   ≡ Once.TypeCheck.Elaborate.ahv-fst
 classifyAppHeadView-RVar-fst = refl
-classifyAppHeadView-RVar-snd : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "snd")
+classifyAppHeadView-RVar-snd : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "snd"))
   ≡ Once.TypeCheck.Elaborate.ahv-snd
 classifyAppHeadView-RVar-snd = refl
-classifyAppHeadView-RVar-terminal : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "terminal")
+classifyAppHeadView-RVar-terminal : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "terminal"))
   ≡ Once.TypeCheck.Elaborate.ahv-terminal
 classifyAppHeadView-RVar-terminal = refl
-classifyAppHeadView-RVar-apply : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "apply")
+classifyAppHeadView-RVar-apply : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "apply"))
   ≡ Once.TypeCheck.Elaborate.ahv-apply
 classifyAppHeadView-RVar-apply = refl
-classifyAppHeadView-RVar-inl : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "inl")
+classifyAppHeadView-RVar-inl : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "inl"))
   ≡ Once.TypeCheck.Elaborate.ahv-inl
 classifyAppHeadView-RVar-inl = refl
-classifyAppHeadView-RVar-inr : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "inr")
+classifyAppHeadView-RVar-inr : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "inr"))
   ≡ Once.TypeCheck.Elaborate.ahv-inr
 classifyAppHeadView-RVar-inr = refl
-classifyAppHeadView-RVar-initial : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "initial")
+classifyAppHeadView-RVar-initial : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "initial"))
   ≡ Once.TypeCheck.Elaborate.ahv-initial
 classifyAppHeadView-RVar-initial = refl
-classifyAppHeadView-RVar-curry : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RVar "curry")
+classifyAppHeadView-RVar-curry : Once.TypeCheck.Elaborate.classifyAppHeadView (Raw.RResolved (gen "curry"))
   ≡ Once.TypeCheck.Elaborate.ahv-curry
 classifyAppHeadView-RVar-curry = refl
 -- Note: `pair` and `compose` are pba-pair-applied / pba-compose-applied
--- which require the head to be RApp (RVar "pair" / "compose") _ — not
--- RApp (RVar "pair") arg directly. Their bridge lemmas live at the
+-- which require the head to be RApp (Raw.RResolved (gen "pair") / "compose") _ — not
+-- RApp (Raw.RResolved (gen "pair")) arg directly. Their bridge lemmas live at the
 -- nested-RApp level and aren't needed for the bare-RVar dispatch.
 
 -- Plan 0.4 T0 Option A: post-merge, infer-sound and check-sound are
