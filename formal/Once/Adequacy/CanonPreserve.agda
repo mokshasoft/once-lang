@@ -23,10 +23,11 @@ open import Relation.Nullary using (yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Type using (Type)
-open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; generatorNS; gen)
+open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; generatorNS; gen; GenWord)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
 open import Once.Parser.Module.Resolve
-  using (canonExpr; canonVar; isBuiltinName; elemStr; lookupUnaliased)
+  using (canonExpr; canonVar; isBuiltinName; elemStr; lookupUnaliased;
+         isBuiltinName-sound; isBuiltinName-false; ¬GenWord-isBuiltinName)
 open import Once.TypeCheck.Classify
   using (NamedCtx; lookupLocal; lookupLocal-go; extendNamedCtx; classifyAppHead)
 open import Once.TypeCheck.Context using (Ctx; names; name)
@@ -128,15 +129,31 @@ caHead-RApp-resolved-arg-irr (canonical (ns ∷ n ∷ [])) g g' with ns ≟s gen
 -- head is either a lexical binder or not a reserved word. That is exactly what
 -- a derivation of the head supplies (`t-var-local` ⇒ bound, `t-var-import` ⇒
 -- `¬ GenWord x` by its own premise), and `head-unclaimed` extracts it.
+-- D136: "the resolver does not CLAIM this name" — either a lexical binder
+-- keeps it bare, or it is not a reserved word. Shared by every lemma that has
+-- to know which of `canonVar`'s three arms fires.
+NameOK : List String → String → Set
+NameOK bound x =
+  (elemStr x bound ≡ true) ⊎ (elemStr x bound ≡ false × isBuiltinName x ≡ false)
+
+-- The rule premise `¬ GenWord x` gives it, whatever `bound` says. Written with
+-- an explicit boolean parameter rather than a `with`: a `with` would abstract
+-- `elemStr x bound` in the RESULT type too, and `inj₁ eb` would then be asked
+-- for `true ≡ true`.
+nameOK-of : ∀ (bound : List String) (x : String) → ¬ GenWord x → NameOK bound x
+nameOK-of bound x ¬gw = go (elemStr x bound) refl
+  where
+    go : ∀ (b : Bool) → elemStr x bound ≡ b → NameOK bound x
+    go true  eb = inj₁ eb
+    go false eb = inj₂ (eb , ¬GenWord-isBuiltinName x ¬gw)
+
 -- The two alternatives are MUTUALLY EXCLUSIVE on purpose: each one names the
 -- decision `canonVar` makes, so the bridge lemmas rewrite without a `with`
 -- (a `with` here abstracts `elemStr x bound` in the goal but not in the
 -- lemma's statement, and the rewrite then fails to fire).
 HeadUnclaimed : List String → RawExpr → Set
-HeadUnclaimed bound (Raw.RVar x) =
-  (elemStr x bound ≡ true) ⊎ (elemStr x bound ≡ false × isBuiltinName x ≡ false)
-HeadUnclaimed bound (Raw.RApp (Raw.RVar x) _) =
-  (elemStr x bound ≡ true) ⊎ (elemStr x bound ≡ false × isBuiltinName x ≡ false)
+HeadUnclaimed bound (Raw.RVar x) = NameOK bound x
+HeadUnclaimed bound (Raw.RApp (Raw.RVar x) _) = NameOK bound x
 HeadUnclaimed bound _ = ⊤
 
 classify-canon : ∀ (bound : List String) (f : RawExpr) → HeadUnclaimed bound f →

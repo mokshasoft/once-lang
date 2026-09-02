@@ -49,7 +49,7 @@ open import Once.Parser.Module.Resolve using (canonExpr; isBuiltinName; elemStr)
 open import Once.TypeCheck.Classify
   using (NamedCtx; composeArgB; domainOfHead; composeMid; composeMid-pick)
 open import Once.Adequacy.CanonPreserve
-  using (canon-RVar-keep; canon-RVar-gen; canon-RVar-resolve)
+  using (canon-RVar-keep; canon-RVar-gen; canon-RVar-resolve; NameOK; nameOK-of)
 
 ------------------------------------------------------------------------
 -- domainOfHead is canonExpr-invariant on ANY head.
@@ -66,10 +66,6 @@ open import Once.Adequacy.CanonPreserve
 -- the decision `canonVar` makes (a `with` here would abstract `elemStr x
 -- bound` in the goal but not in the bridge lemma, and the rewrite would not
 -- fire).
-NameOK : List String → String → Set
-NameOK bound x =
-  (elemStr x bound ≡ true) ⊎ (elemStr x bound ≡ false × isBuiltinName x ≡ false)
-
 DohOK : List String → RawExpr → Set
 DohOK bound (Raw.RVar x) = NameOK bound x
 DohOK bound _ = ⊤
