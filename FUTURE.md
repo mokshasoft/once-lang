@@ -904,13 +904,45 @@ instance: the skips were exactly complementary to the bug.
 **Encoded (Agda):** nothing new is needed — `SzAgree`'s shape is the
 statement. Writing it per wrapper is ordinary work, not research.
 
-**Forced (generator, 2026-09-02):** `_WRAP_LEDGER` in `tools/gen-knot.py`.
-Every non-constructor `…K` head appearing in an EMITTED row must carry an
-entry saying what discharges its adequacy obligation or why it is not
-owed. Checked BOTH WAYS — a wrapper with no entry fails generation, an
-entry no row uses is a stale claim and fails too. Currently **19
-wrappers, 11 still OWED**, and `wkK`'s entry records that its statement
-is not merely unproved but FALSE.
+**Forced (generator, 2026-09-02):** `_WRAP_LEDGER` in `tools/gen-knot.py`,
+fed by TWO scans — the wrappers an EMITTED row applies, and the
+eliminators the hand-written `Examples/Knot` modules DEFINE (a top-level
+definition whose body applies `ielim KnotD`). Each must carry an entry
+saying what discharges its adequacy obligation or why it is not owed.
+Checked BOTH WAYS, and both directions were controlled by deleting an
+entry and by adding an unused one: **32 object-level programs, 21 still
+OWED.** `wkK`'s entry records that its statement is not merely unproved
+but FALSE.
+
+### ⇒ SO WHERE ELSE IS THIS OWED? — audited 2026-09-02
+
+Seventeen object-level programs over the knot. **`sz` is the only one
+with an agreement, and it has two** (`Knot/SzAgree` for `szsTm`, all 30
+rows and generated; `Knot/SzProbe` for `szTm`'s row counts).
+
+| owes an `agree` | meta-level counterpart |
+|---|---|
+| `wkK` | `renTm vs` — ⚠ **FALSE as stated**; use `Knot/WkSub` |
+| `subTmK`, `extSK`, `singleSK`, `nrsK`, `conSSK` | `subTm`, `extS`, `single`, `nrs`, `conS` |
+| `lookupDK`, `ilookupDK` | `lookupD`, `ilookupD` |
+| `payTyK`, `ihTyK`, `ipayTyK` | `payTy`, `ihTy`, `ipayTy` |
+| `pwK`, `pwBodyK`, `flatK`, `stkAK`, `stkCK` | `pw?`, `flat?`, `stkA?`, `stkC?` |
+
+**★★★ AND THE DISCRIMINATOR IS NOT "syntax vs arithmetic" — it is
+whether a caller needs the function to COMPUTE.** The arithmetic library
+has its agreements (`Lib/NatNum.plus-num : plusTm (num a) (num b) ⟶*
+num (a + b)`, and the same for `mulTm`, `monusTm`, `predTm`) because its
+callers reduce them. `szsTm` has one because canonicity needs the NUMBER.
+Every function in the table above is used only to TYPE a row — a term of
+the right index is all any caller ever asked for — so nothing ever forced
+the question of what it computes. ⇒ **a function that is only ever
+type-checked and never reduced has no evidence behind its name.**
+
+⚠⚠ **`wkK` even had a probe, and the probe checked the wrong thing.**
+`Knot/WkProbe` asks whether `Lib/IWk`'s classifier CLASSIFIES the knot's
+rows — i.e. whether the derivation applies — not whether its result means
+what the name says. So the most-checked of the unchecked wrappers was
+checked orthogonally to its defect.
 
 ⚠ Two refinements the first attempt got wrong, both worth keeping:
 

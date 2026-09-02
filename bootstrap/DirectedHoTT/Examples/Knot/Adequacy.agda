@@ -49,7 +49,18 @@
 --   applying it was reported as `_Undepthed`, which reads like depth
 --   bookkeeping.  The coverage gap and the bug had the SAME CAUSE: a
 --   depth argument.  ⇒ the ledger below, checked BOTH WAYS at generation
---   time, so a new wrapper cannot arrive without an entry:
+--   time, so a new wrapper cannot arrive without an entry.
+--
+-- ⚠⚠ AND IT COVERS THE HAND-WRITTEN ELIMINATORS TOO, which the
+--   emitted-row scan cannot see: `payTyK`, `ihTyK`, `ipayTyK`,
+--   `lookupDK`, `subTmK`, … are DEFINED in `Examples/Knot` and mostly
+--   used by no emitted row yet.  ★ `sz` is the ONLY one discharged, and
+--   the reason is worth stating: a wrapper gets an agreement exactly
+--   when some caller needs it to COMPUTE.  Canonicity needs `sz`'s
+--   NUMBER; the judgement rows need only a term of the right INDEX.
+--   That is why the arithmetic library (`plus-num : plusTm (num a)
+--   (num b) ⟶* num (a + b)`) has its agreements and the syntax layer
+--   does not.
 --     Ctx-empK   ✅ not owed — a CONSTRUCTOR of `CtxD`, not a wrapper.
 --     Ctx-extK   ✅ not owed — a constructor of `CtxD`.
 --     IxDConK    ✅ not owed — a constructor of `IxD`.
@@ -57,16 +68,30 @@
 --     IxIConK    ✅ not owed — a constructor of `IxD`.
 --     IxIDescK   ✅ not owed — a constructor of `IxD`.
 --     IxNoneK    ✅ not owed — a constructor of `IxD`.
+--     conSSK     ⬜ OWED — `conSK`/`atConK`'s core.
 --     extNK      ⬜ OWED — `extS`'s half.
+--     extSK      ⬜ OWED — with `subTmK`.
 --     flatK      ⬜ OWED — agreement with `flat?`.
+--     head-red   ✅ not owed — a lemma INSIDE `Knot/SzAgree`, not a program.
+--     ihTyK      ⬜ OWED — agreement with `ihTy`.
+--     ilookupDK  ⬜ OWED — agreement with `ilookupD`.
+--     ipayTyK    ⬜ OWED — agreement with `ipayTy`.
+--     lookupDK   ⬜ OWED — agreement with `lookupD`.
+--     nrsK       ⬜ OWED — `nrsSubK`'s core.
 --     nrsSubK    ⬜ OWED — `nrs`'s half.
+--     payTyK     ⬜ OWED — agreement with `payTy`.
 --     pwBodyK    ⬜ OWED — agreement with `pw?`'s body case.
 --     pwK        ⬜ OWED — agreement with `pw?`.
 --     singleK    ⬜ OWED — `single`'s half of the substitution agreement.
+--     singleSK   ⬜ OWED — `singleK`'s core.
 --     stkAK      ⬜ OWED — agreement with `stkA?`.
 --     stkCK      ⬜ OWED — agreement with `stkC?`.
 --     subTmAtK   ⬜ OWED — `enTm (subTm σ t) ≡ subTmAtK … (enTm t)`.
+--     subTmK     ⬜ OWED — `subTmK`'s agreement with `subTm`; `subTmAtK`'s core.
 --     subTyAtK   ⬜ OWED — `enTy (subTy σ A) ≡ subTyAtK … (enTy A)`.
+--     szTm       ✅ `Knot/SzProbe` — same-sort counts, per row, by `refl`.
+--     szsTm      ✅ `Knot/SzAgree` — `szsTm i ⌈t⌉ ⟶* num (sz t)`, all 30 rows,
+--                GENERATED.  THE model for every ⬜ below.
 --     wkK        ⬜ OWED, AND FALSE AS STATED — `wkK` is NOT `renTm vs`; it keeps
 --                the de Bruijn index.  `Knot/WkSub.wkTmK`/`wkTyK` are the
 --                correct translation and the emitter must move to them.
