@@ -70,7 +70,7 @@ open import Once.TypeCheck.Error using (TypeError; renderError;
   BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RResolved; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
-open import Once.CanonicalName using (gen)
+open import Once.CanonicalName using (gen; GenWord)
 open import Data.String using (String)
 import Once.Grammar.Convert       as Conv
 open import Once.Grammar using (GType)
@@ -767,8 +767,11 @@ record VerifiedTypeChecker : Set₁ where
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RVar x) ≡ success A Ψ eE d f
 
+    -- D136: a reserved word is never a bare import reference — it is the
+    -- generator — so completeness only speaks about names that are not.
     tcInfer-complete-RVar-import :
       ∀ (ctx : NamedCtx) (x : String) {T : Type}
+      → ¬ GenWord x
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ just T
       → IsConcrete T

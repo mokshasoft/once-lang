@@ -116,7 +116,7 @@ Behavior = ℕ → List SigOpEvent
 -- (`Once.Adequacy.SourceTrace.srcToModule` = `parseStrict` then `resolveImports`),
 -- so lexer/parser correctness becomes part of the apex
 -- (`Once.Adequacy.FrontEndBridge`) rather than a trusted step. Likewise the
--- import resolver (`Once.Adequacy.ResolverBridge`). Both are the spec-anticipated
+-- import resolver (`Once.Spec.Resolution`). Both are the spec-anticipated
 -- "separate compilation" / complete-program absorption, leaving
 -- `Once.Adequacy`'s `compile`/`correct` arity untouched. (Text-anchoring also
 -- matches what the binary actually has — raw source — so the apex `compile` is

@@ -78,7 +78,6 @@ open import Function using (case_of_)
 -- (`Once.Compiler`) supplies `Once.Adequacy.CPU.arch-semantics`.
 open import Once.Adequacy.CPU.Interface using (Arch; Byte; ArchSemantics)
 open import Once.Denotation.Admissible using (AdmissibleM; admissibleM?)
-import Once.Adequacy.ResolverLits as RL
 open import Data.List.Relation.Unary.All using (All)
 import Once.Word as OnceWord
 open import Relation.Nullary using (Dec; yes; no; ¬_)
@@ -264,11 +263,11 @@ import Once.Adequacy.MainRealizeAgrees as MRA
 -- Plan 0.51: the NAMED resolver-correctness obligations bridging the
 -- un-resolved independent meaning to the resolved compilation. The resolver is
 -- now in the verified loop (`srcToModule`); these are the explicit gaps.
-import Once.Adequacy.ResolverBridge as RB
 -- Plan 0.52: the NAMED front-end (lexer+parser) obligations. `_⊢R_` anchors on
 -- the INDEPENDENT `ParsesText` (the grammar/relational spec), so completeness is
 -- not front-end-vacuous; `compile` runs the executable `parseStrict`.
 import Once.Spec.Program
+import Once.Adequacy.ResolveBridge as RBR
 import Once.Adequacy.FrontEndBridge as FB
 
 ------------------------------------------------------------------------
@@ -751,38 +750,17 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
       go (yes _)   _ = refl
       go (no ¬adm) a = ⊥-elim (¬adm a)
 
-  -- J4: ADMISSIBILITY SURVIVES RESOLUTION — a theorem now, not a residual.
-  --
-  -- `Admissible` is stated over the UN-resolved module (that is what
-  -- `src ⊢R tp` gives) while the compiler gates on the RESOLVED one, so the
-  -- two must agree. `RL.resolver-preserves-intLits` says they do, and the
-  -- reason is structural: `canonDecl` only turns `RQualified`/`RVar` into
-  -- `RResolved` and never touches `RInt`, and imports are inlined by
-  -- `signaturesWithOwner`, which keeps ONLY `DSignature` decls — so no
-  -- imported function body, and hence no imported literal, is ever added.
-  admissible-resolve : ∀ (arch : Arch) (mm : C.ModuleMap) (mU mR : P.Module)
-                     → C.resolveImports mm mU ≡ inj₂ mR
-                     → AdmissibleM arch mU → AdmissibleM arch mR
-  admissible-resolve arch mm mU mR res-eq adm =
-    subst (All (OnceWord.Width.InRange (C.arch-int-bits arch)))
-          (RL.resolver-preserves-intLits mm mU mR res-eq) adm
-
-  -- ...and the same equation read backwards. This is the direction J4 needs:
-  -- the GATE sees `mR`, the SPEC speaks about `mU`, so acceptance of the
-  -- resolved module has to hand admissibility back to the un-resolved one.
-  admissible-unresolve : ∀ (arch : Arch) (mm : C.ModuleMap) (mU mR : P.Module)
-                       → C.resolveImports mm mU ≡ inj₂ mR
-                       → AdmissibleM arch mR → AdmissibleM arch mU
-  admissible-unresolve arch mm mU mR res-eq adm =
-    subst (All (OnceWord.Width.InRange (C.arch-int-bits arch)))
-          (sym (RL.resolver-preserves-intLits mm mU mR res-eq)) adm
-
-  -- SOUNDNESS + TRACE conjunct — `accept-sound` (front-end soundness over the
-  -- RESOLVED module `mR`) gives `ModuleTyped mR`; `RB.resolver-reflects-typing (arch-numerics arch)`
-  -- recovers the UN-resolved typed program `mU` so `tp`/`_⊢R_` stay parse-based
-  -- (non-vacuous). The trace chain: bytes ≋ `⟦ moduleToIR mR ⟧IR` (existing
-  -- codegen `correct`), ≋ `⟦ moduleToIR mU ⟧IR` (`RB.resolver-preserves-trace (arch-numerics arch)`),
-  -- ≋ `⟦ tp ⟧ˢ` (`sd-bridge` over the un-resolved `tp`).
+  -- Plan 0.81: `admissible-resolve` / `admissible-unresolve` are GONE.
+  -- `Admissible` used to be stated over the UN-resolved module while the
+  -- compiler gates on the resolved one, so the two had to be transported back
+  -- and forth. `Typed` now holds the RESOLVED module, so the spec and the gate
+  -- talk about the same thing and there is nothing to transport.
+  -- SOUNDNESS + TRACE conjunct. `accept-sound` gives `ModuleTyped mR`, and
+  -- since plan 0.81 that IS `tp`'s typing — no reverse transport. `⊢R` is
+  -- assembled instead: the grammar parse of `mU`, plus `ResolvesModule`
+  -- obtained from the executable resolution fact. The trace chain loses a
+  -- link: bytes ≋ `⟦ moduleToIR mR ⟧IR` (codegen `correct`) ≋ `⟦ tp ⟧ˢ`
+  -- (`sd-bridge`), with no `mU`/`mR` trace step in between.
   correctR-sound : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (bytes : List Byte) →
     compile arch doOpt src ≡ just bytes →
     Σ-syntax Typed (λ tp → (src ⊢R tp) × AdmissibleM arch (proj₁ tp)
@@ -790,10 +768,17 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correctR-sound arch doOpt src bytes pf with accept-sound arch doOpt src bytes pf
   ... | (mR , stm-eq , MT) with compile-just-ir arch doOpt src mR bytes stm-eq pf
   ...   | (ir , mi) with srcToModule-inv src mR stm-eq
-  ...     | (mU , p-eq , res-eq) with RB.resolver-reflects-typing (arch-numerics arch) (Source.srcImports src) mU mR res-eq MT (MC.moduleToIR-sound mR MT mi)
-  ...       | (mt , hvm) =
-              let tp  = (mU , mt , hvm)
-                  ⊢R  = FB.parseStrict-sound (Source.srcText src) mU p-eq   -- ParsesText … mU = src ⊢R tp
+  ...     | (mU , p-eq , res-eq) =
+              let hvm = MC.moduleToIR-sound mR MT mi
+                  tp  = (mR , MT , hvm)
+                  -- Plan 0.81: `tp` is the RESOLVED module, so `accept-sound`
+                  -- already gives its typing — the reverse transport
+                  -- (`resolver-reflects-typing`) is GONE, and with it the last
+                  -- thing that forced the judgment onto un-resolved syntax.
+                  ⊢R  = mU
+                      , FB.parseStrict-sound (Source.srcText src) mU p-eq
+                      , RBR.resolvesModule-complete (Source.srcImports src)
+                          (P.Module.decls mU) mR res-eq
                   p   = subst (λ c → Pointwise _≋_ (map (exec arch) c) (⟦ src ⟧⊥ arch)) pf
                               (correct arch doOpt src)
                   -- J4, THE LOOP-CLOSING STEP. `pf` says bytes came out; the
@@ -802,17 +787,17 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
                   -- No assumption: acceptance is now evidence.
                   admR = accept-gm arch doOpt mR
                            (trans (sym (cong (compile-gm arch doOpt) stm-eq)) pf)
-                  admU = admissible-unresolve arch (Source.srcImports src) mU mR res-eq admR
                   p'  = subst (λ b → Pointwise _≋_ (just (exec arch bytes)) b)
                               (⟦⟧⊥-just src arch mR ir admR stm-eq mi) p
-                  e≋  = pw-just-rel p'                                        -- exec bytes ≋ ⟦ moduleToIR mR ⟧IR
-              in tp , ⊢R , admU , (λ n → trans (e≋ n)
-                                (trans (RB.resolver-preserves-trace (arch-numerics arch) (Source.srcImports src) mU mR res-eq mt hvm mi n)
-                                       (sd-bridge arch tp n)))
+                  e≋  = pw-just-rel p'                    -- exec bytes ≋ ⟦ moduleToIR mR ⟧IR
+              -- The trace chain is one step SHORTER: admissibility and the
+              -- meaning are both over `mR` now, so `admissible-unresolve` and
+              -- `resolver-preserves-trace` are no longer in it.
+              in tp , ⊢R , admR , (λ n → trans (e≋ n) (sd-bridge arch tp n))
 
   -- COMPLETENESS conjunct — `src ⊢R tp` is `FB.ParsesText text mU` (independent
   -- parse); `FB.parseStrict-complete` turns it into the executable
-  -- `parseStrict text ≡ inj₂ mU`; `RB.resolver-preserves-typing (arch-numerics arch)` resolves `mU`
+  -- `parseStrict text ≡ inj₂ mU`; `resolvesModule-sound` turns `⊢R`s resolution
   -- to a well-typed `mR` (with valid main), which `moduleToIR-complete` compiles
   -- and `main⇒built` Builds. `srcToModule-just` ties the resolved module back to
   -- `compile src` (= `parseStrict` then `resolveImports`).
@@ -823,14 +808,20 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correctR-complete : ∀ (arch : Arch) (doOpt : Bool) (src : Source) (tp : Typed) →
     src ⊢R tp → AdmissibleM arch (proj₁ tp) →
     Σ-syntax (List Byte) (λ bytes → compile arch doOpt src ≡ just bytes)
-  correctR-complete arch doOpt src (mU , mt , hvm) ⊢R adm
-    with RB.resolver-preserves-typing (arch-numerics arch) (Source.srcImports src) mU mt hvm
-  ... | (mR , res-eq , mt' , hvm') with MC.moduleToIR-complete mR mt' hvm'
-  ...   | (ir , mi) with main⇒built arch doOpt mR ir
-                           (admissible-resolve arch (Source.srcImports src) mU mR res-eq adm) mi
-  ...     | (asm , built-eq) = string-to-bytes arch asm , c≡j
+  -- Plan 0.81: `tp` IS the resolved module, so its typing is in hand and the
+  -- forward transport (`resolver-preserves-typing`) is gone too. `⊢R` now hands
+  -- over the un-resolved `mU`, its grammar parse, and the resolution relation;
+  -- `resolvesModule-sound` turns the last of those into the executable
+  -- `resolveImports` fact that `srcToModule-just` needs.
+  correctR-complete arch doOpt src (mR , mt , hvm) (mU , pt , rmR) adm
+    with MC.moduleToIR-complete mR mt hvm
+  ... | (ir , mi) with main⇒built arch doOpt mR ir adm mi
+  ...   | (asm , built-eq) = string-to-bytes arch asm , c≡j
     where p-eq : parseStrict (Source.srcText src) ≡ inj₂ mU
-          p-eq = FB.parseStrict-complete (Source.srcText src) mU ⊢R
+          p-eq = FB.parseStrict-complete (Source.srcText src) mU pt
+          res-eq : C.resolveImports (Source.srcImports src) mU ≡ inj₂ mR
+          res-eq = RBR.resolvesModule-sound (Source.srcImports src)
+                     (P.Module.decls mU) mR rmR
           stm-eq : srcToModule src ≡ just mR
           stm-eq = srcToModule-just src mU mR p-eq res-eq
           c≡j : compile arch doOpt src ≡ just (string-to-bytes arch asm)

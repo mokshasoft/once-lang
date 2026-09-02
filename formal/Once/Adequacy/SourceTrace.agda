@@ -136,10 +136,10 @@ moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
 -- The verified front-end (Plan 0.51): parse the user's grammar module,
 -- THEN resolve its imports against the in-`Source` `ModuleMap`. This is the
 -- resolution step the binary runs — now INSIDE the verified pipeline, so a
--- resolver bug is the apex's concern (`Once.Adequacy.ResolverBridge`), not a
+-- resolver bug is the apex's concern (`Once.Spec.Resolution` + its bridge), not a
 -- trusted-I/O step. The INDEPENDENT meaning (`_⊢R_`/`⟦_⟧ˢ`) instead anchors on
 -- the UN-resolved `gmoduleToModule (Source.srcModule src)`, so completeness is
--- not resolver-vacuous; the bridge between them is the named ResolverBridge.
+-- not resolver-vacuous; `Once.Adequacy.ResolveBridge` proves the resolver right.
 ------------------------------------------------------------------------
 
 eitherToMaybe : String ⊎ P.Module → Maybe P.Module
@@ -153,7 +153,7 @@ srcToModule-aux mm (just m) = eitherToMaybe (resolveImports mm m)
 -- The verified front-end: lex+parse the source TEXT (`parseStrict`), then resolve
 -- imports. Both the lexer and parser now run INSIDE `compile`; their correctness
 -- is the apex's concern (`Once.Adequacy.FrontEndBridge`), as the resolver's is
--- (`Once.Adequacy.ResolverBridge`).
+-- (`Once.Adequacy.ResolveBridge`).
 srcToModule : Source → Maybe P.Module
 srcToModule src =
   srcToModule-aux (Source.srcImports src) (eitherToMaybe (parseStrict (Source.srcText src)))
