@@ -46,11 +46,24 @@ module Once.Spec.Meaning where
 -- D115/D116: which programs a target owes an answer for. In the spec for the
 -- same reason the observable is: without it, a compiler that rejects every
 -- program satisfies soundness vacuously.
-open import Once.Denotation.Admissible  public
+-- EXPLICIT re-exports throughout: `admissibleM?` is the DECIDER and
+-- `outOfRange`/`firstBadLit` are error reporting — neither is part of what
+-- admissibility MEANS (D115/D134).
+open import Once.Denotation.Admissible public
+  using ( AdmissibleM
+        ; rawIntLits ; negLits ; declIntLits ; moduleIntLits )
 
-open import Once.Denotation.Trace       public
+open import Once.Denotation.Trace public
+  using ( SigOpEvent ; ev-name ; ev-dom ; ev-arg ; mkEvent )
 
 open import Once.Denotation.ValueDomain public
-open import Once.Denotation.Behavior    public
-open import Once.Denotation.Meaning     public
+  using ( ⟦_⟧ᴰ ; ⟦_⟧ᴰᴵ ; cohᴰ ; forget ; inject ; emit-D
+        ; coerce-functor⁻¹-D )
+open import Once.Denotation.Behavior public
+  using ( Behavior ; Source ; srcImports ; srcText )
+open import Once.Denotation.Meaning public
+  using ( ⟦_⟧ᵢ ; ⟦_⟧ᶜ ; Env ; lookupᴰ ; svarᴰ ; sigOpValᴰ ; sigOpRefᴰ
+        ; in-value ; named-sem ; cata-sem ; cata-ev-algᴰ-D )
 open import Once.Denotation.MainMeaning public
+  using ( meaningᵈ ; runMainᵈ ; mainMeaningᵈ ; mainMeaningᵈ-go
+        ; mainMeaningᵈ-ef ; mmd-dispatch ; MClo )

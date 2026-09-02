@@ -333,7 +333,7 @@ mutual
   polys-transport-ᵢ b p pib ac (t-var-local lk) = t-var-local lk
   polys-transport-ᵢ b p pib ac (t-var-qualified imp conc) = t-var-qualified imp conc
   polys-transport-ᵢ b p pib ac (t-var-resolved ng imp conc) = t-var-resolved ng imp conc
-  polys-transport-ᵢ b p pib ac (t-var-import lkn imp conc) = t-var-import lkn imp conc
+  polys-transport-ᵢ b p pib ac (t-var-import ¬gw lkn imp conc) = t-var-import ¬gw lkn imp conc
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same telescope
   -- descent as the check-mode `t-var-poly-instantiate` case below (the schema
   -- is canon-invariant, so the `isGround` and type-pin premises carry over).

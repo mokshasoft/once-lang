@@ -14,4 +14,19 @@ module Once.Spec.Syntax where
 
 -- P5: `RawExpr` ONLY — what you may WRITE. The elaborated `Surface.Expr`
 -- family is elaborator OUTPUT (implementation), not spec.
-open import Once.TypeCheck.Raw    public
+-- EXPLICIT re-export: the WRITTEN grammar, and the two operator predicates the
+-- arithmetic/comparison rules name. The `closedLiftShape?` DECIDER is
+-- implementation and stays out (D134: the spec names properties).
+open import Once.TypeCheck.Raw public
+  using ( RawExpr ; RVar ; RQualified ; RResolved ; RApp ; RLam ; RLet
+        ; RPair ; RDestruct ; RUnit ; RInt ; RFloat ; RStringLit ; RAnnot
+        ; RBinOp ; RUnaryOp ; RAna
+        ; RawType ; RTVar ; RTUnit ; RTVoid ; RTInt ; RTFloat ; RTBuffer
+        ; RTStr ; RTProduct ; RTSum ; RTArrow ; RTEff ; RTFix
+        ; BinOp ; OpAdd ; OpSub ; OpMul ; OpDiv ; OpMod
+        ; OpLt ; OpLe ; OpGt ; OpGe ; OpEq ; OpNe
+        ; UnaryOp ; OpNeg
+        ; isArithmeticOp ; isFloatArithmeticOp ; isComparisonOp
+        ; ClosedLiftShape ; cls-var ; cls-qual ; cls-res ; cls-let
+        ; cls-destr ; cls-unit ; cls-str ; cls-annot ; cls-binop
+        )

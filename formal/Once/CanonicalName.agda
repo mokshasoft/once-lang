@@ -29,7 +29,9 @@ open import Relation.Binary using (DecidableEquality)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.Any using (Any; any?)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
-open import Relation.Nullary using (yes; no; Dec)
+open import Relation.Nullary using (yes; no; Dec; ¬_)
+open import Data.Product using (∃-syntax; _,_)
+open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 
 record CanonicalName : Set where
@@ -93,6 +95,13 @@ GenWord x = Any (x ≡_) genWords
 -- computes with; this is the form that discharges the rule's premise.
 genWord? : (x : String) → Dec (GenWord x)
 genWord? x = any? (λ g → x ≟ˢ g) genWords
+
+-- | Drive the decider to its `no` branch from the PROPERTY. The elaborator
+-- de-withes `genWord? x`, so completeness has to name the reduced form.
+genWord?-no : ∀ (x : String) → ¬ GenWord x → ∃[ ¬p ] (genWord? x ≡ no ¬p)
+genWord?-no x ¬gw with genWord? x
+... | yes gw = ⊥-elim (¬gw gw)
+... | no ¬p  = ¬p , refl
 
 -- | The EIGHT compiler-owned generator names. D136: the namespace is
 -- reserved, so these eight canonical names are not addressable by user code —

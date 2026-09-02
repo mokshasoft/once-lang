@@ -45,9 +45,10 @@ open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
 open import Once.Float.Dyadic using (Dyadic)
 
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-fun)
-open import Once.Functor.Decide using (wellFormedF?)
-open import Once.IR using (IR)
-open import Once.TypeCheck.Morph using (MorphRaw; morphRaw?; morphToIR)
+-- D134 Phase A removed the decider premises, and with them the last uses of
+-- `Once.Functor.Decide`, `Once.IR` and `Once.TypeCheck.Morph` from the RULES.
+-- The imports outlived them; deleting them shrinks what a reader of the spec
+-- has to follow — the judgment no longer reaches into the IR or the elaborator.
 open import Data.Bool using (true)
 open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw

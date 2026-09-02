@@ -44,7 +44,7 @@ open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RResolved; RInt; RStringLit; RUnit; RAnnot; RPair;
          ClosedLiftShape; cls-var; cls-qual; cls-res; cls-let; cls-destr;
          cls-unit; cls-str; cls-annot; cls-binop)
-open import Once.CanonicalName using (CanonicalName; showCanonical; gen; gen≢bare; NotGenerator)
+open import Once.CanonicalName using (CanonicalName; showCanonical; gen; gen≢bare; NotGenerator; GenWord; genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport;
@@ -519,17 +519,22 @@ infer-complete-RVar-local {ctx} x {A} {Ψ} {eE'} eqLoc
              ≡ inferElabV-RVar-lookup-aux ctx x lhs eq' _ refl
     helper _ refl = refl
 
+-- D136: the elaborator de-withes the reserved-word decision alongside the
+-- concreteness one, so completeness drives BOTH — `genWord?-no` turns the
+-- rule's `¬ GenWord x` premise into the decider's reduced `no` form.
 infer-complete-RVar-import :
   ∀ {ctx : NamedCtx} (x : String) {T : Type}
+  → ¬ GenWord x
   → lookupLocal ctx x ≡ nothing
   → lookupImport (NamedCtx.imports ctx) x ≡ just T
   → IsConcrete T  -- Plan 0.58: FFI reference is concrete
   → ∃[ eE ] ∃[ d ] ∃[ f ]
       inferElab ctx (RVar x) ≡ success T zeroUsage eE d f
-infer-complete-RVar-import {ctx} x {T} eqLoc eqImp conc
+infer-complete-RVar-import {ctx} x {T} ¬gw eqLoc eqImp conc
              = _ , _ , _ , cong proj₁
                  (trans (trans (helperLoc _ eqLoc) (helperImp _ eqImp))
-                        (helperImpVal _ (proj₂ (isConcrete?-complete conc))))
+                        (helperImpVal _ (proj₂ (genWord?-no x ¬gw))
+                                     _ (proj₂ (isConcrete?-complete conc))))
   where
     open Once.TypeCheck.ElaborateProofs using (inferElabV-RVar-lookup-aux;
       inferElabV-RVar-import-value-aux)
@@ -543,10 +548,12 @@ infer-complete-RVar-import {ctx} x {T} eqLoc eqImp conc
               → inferElabV-RVar-lookup-aux ctx x nothing eqLoc (lookupImport (NamedCtx.imports ctx) x) refl
                 ≡ inferElabV-RVar-lookup-aux ctx x nothing eqLoc lhs eq'
     helperImp _ refl = refl
-    helperImpVal : (mc : Maybe (IsConcrete T)) (eqc : isConcrete? T ≡ mc)
-                 → inferElabV-RVar-import-value-aux ctx x eqLoc T eqImp (isConcrete? T) refl
-                   ≡ inferElabV-RVar-import-value-aux ctx x eqLoc T eqImp mc eqc
-    helperImpVal _ refl = refl
+    helperImpVal : (gw : Dec (GenWord x)) (eqg : genWord? x ≡ gw)
+                   (mc : Maybe (IsConcrete T)) (eqc : isConcrete? T ≡ mc)
+                 → inferElabV-RVar-import-value-aux ctx x eqLoc T eqImp
+                     (genWord? x) refl (isConcrete? T) refl
+                   ≡ inferElabV-RVar-import-value-aux ctx x eqLoc T eqImp gw eqg mc eqc
+    helperImpVal _ refl _ refl = refl
 
 ------------------------------------------------------------------------
 -- RBinOp (arithmetic and comparison)
@@ -1286,8 +1293,8 @@ mutual
   iFromInfer {ctx} (t-var-resolved {cn = cn} {T = T} ng eqImp conc) =
     let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-resolved ng eqImp conc)
     in checkElab-fallback-RResolved {ctx} cn T eqI
-  iFromInfer {ctx} (t-var-import {x = x} {T = T} eqLoc eqImp conc) =
-    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-import eqLoc eqImp conc)
+  iFromInfer {ctx} (t-var-import {x = x} {T = T} ¬gw eqLoc eqImp conc) =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-import ¬gw eqLoc eqImp conc)
     in checkElab-fallback-RVar {ctx} x T eqI
   -- Plan 0.58 / D071: infer-mode ground telescope reference — same shape as
   -- t-var-import (infer at the declared type, embed at the same type).
@@ -1401,7 +1408,7 @@ mutual
   iFromInferEff {ctx} {_} {A} {B} dd@(t-var-local {x = x} _) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar-eff {ctx} x A B eqI
-  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-import {x = x} _ _ _) =
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-var-import {x = x} _ _ _ _) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar-eff {ctx} x A B eqI
   -- Plan 0.58 / D071: infer-mode ground telescope reference at a pure arrow —
@@ -1431,8 +1438,8 @@ mutual
     infer-complete-RQualified {ctx} {name} {alias} eqImp conc
   infer-complete {ctx} (t-var-resolved {cn = cn} ng eqImp conc) =
     infer-complete-RResolved {ctx} {cn} ng eqImp conc
-  infer-complete {ctx} (t-var-import {x = x} eqLoc eqImp conc) =
-    infer-complete-RVar-import {ctx} x eqLoc eqImp conc
+  infer-complete {ctx} (t-var-import {x = x} ¬gw eqLoc eqImp conc) =
+    infer-complete-RVar-import {ctx} x ¬gw eqLoc eqImp conc
   -- Plan 0.58 / D071: infer-mode ground telescope reference — matching the
   -- type-pin equation as `refl` aligns the conclusion `T` with the declared
   -- `extractGround schema g`, so the elaborator's poly-fallback success

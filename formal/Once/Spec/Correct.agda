@@ -19,4 +19,7 @@
 
 module Once.Spec.Correct where
 
-open import Once.Adequacy public
+-- EXPLICIT re-export: the trust boundary is a DECISION, not whatever happens to
+-- be in `Once.Adequacy`. Adding a definition there must not silently make it
+-- part of the criterion a reader is asked to trust.
+open import Once.Adequacy public using (CorrectCompiler)

@@ -212,7 +212,7 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-var-local {eV = eV} _ ⟧ᵢ fmt dγ = returnT (svarᴰ eV dγ)
 ⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt (bare (alias ++ "." ++ name)) conc
 ⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt cn conc
-⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt (bare x) conc
+⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt (bare x) conc
 -- Plan 0.58 / D071: an infer-mode ground telescope reference MEANS its body —
 -- the context projection Γ(x). The body is closed (typed in the telescope
 -- prefix over the empty local env), so its meaning runs on `tt`. Structural

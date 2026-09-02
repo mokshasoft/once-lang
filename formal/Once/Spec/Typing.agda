@@ -14,4 +14,27 @@
 
 module Once.Spec.Typing where
 
+-- EXPLICIT re-export. Every rule is named, so ADDING A TYPING RULE requires
+-- touching this list — the language definition cannot grow by accident.
 open import Once.TypeCheck.Judgment public
+  using ( _⊢ᵢ_∶_⨾_ ; _⊢ᶜ_∶_⨾_ ; _⊢_∶_⨾_ ; Typed
+        -- ⊢ᵢ — synthesis
+        ; t-int ; t-float ; t-str ; t-unit ; t-unit-var
+        ; t-var-local ; t-var-qualified ; t-var-resolved ; t-var-import
+        ; t-var-poly-instantiate-infer
+        ; t-annot ; t-pair ; t-neg ; t-neg-float ; t-let ; t-case
+        ; t-binop-arith ; t-binop-arith-float
+        ; t-binop-arith-float-il ; t-binop-arith-float-ir ; t-binop-cmp
+        ; t-id-app ; t-fst-app ; t-snd-app ; t-terminal-app ; t-apply-app-infer
+        ; t-app ; t-effApp
+        -- ⊢ᶜ — checking (D127: the categorical combinators live here)
+        ; t-id-check ; t-fst-check ; t-snd-check
+        ; t-terminal-morph-check ; t-initial-morph-check
+        ; t-inl-morph-check ; t-inr-morph-check
+        ; t-compose-check ; t-case-copair-check ; t-pair-morph-check
+        ; t-curry-check ; t-cata-check
+        ; t-embed ; t-lam ; t-pair-lit-check
+        ; t-In-app-check ; t-apply-check
+        ; t-inl-app-check ; t-inr-app-check ; t-initial-app-check
+        ; t-subsume ; t-arg-driven-app-check ; t-var-poly-instantiate
+        )
