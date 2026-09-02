@@ -393,8 +393,6 @@ library
       MAlonzo.Code.Once.Adequacy.FrontEndBridge
       MAlonzo.Code.Once.Adequacy.LexerBridge
       MAlonzo.Code.Once.Adequacy.NameClash
-      MAlonzo.Code.Once.Adequacy.ResolverBridge
-      MAlonzo.Code.Once.Adequacy.ResolverLits
       MAlonzo.Code.Once.Grammar.DeclBridge
       MAlonzo.Code.Once.Grammar.FunDefBridge
       MAlonzo.Code.Once.Grammar.ImportBridge
@@ -455,21 +453,6 @@ library
       MAlonzo.Code.Once.CCC.Machine.NoNested
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32
-      MAlonzo.Code.Once.Adequacy.CanonAllFuns
-      MAlonzo.Code.Once.Adequacy.CanonComposeMid
-      MAlonzo.Code.Once.Adequacy.CanonExtract
-      MAlonzo.Code.Once.Adequacy.CanonModule
-      MAlonzo.Code.Once.Adequacy.CanonModuleTyped
-      MAlonzo.Code.Once.Adequacy.CanonPolyNames
-      MAlonzo.Code.Once.Adequacy.CanonPolyTransport
-      MAlonzo.Code.Once.Adequacy.CanonPrincipal
-      MAlonzo.Code.Once.Adequacy.CanonPreserve
-      MAlonzo.Code.Once.Adequacy.CanonPreserveMutual
-      MAlonzo.Code.Once.Adequacy.CanonReflectAllFuns
-      MAlonzo.Code.Once.Adequacy.CanonReflectExtract
-      MAlonzo.Code.Once.Adequacy.CanonReflectModule
-      MAlonzo.Code.Once.Adequacy.CanonReflectMutual
-      MAlonzo.Code.Once.Adequacy.CanonReflectPolyTransport
       MAlonzo.Code.Once.Adequacy.CanonResolve
       MAlonzo.Code.Once.Adequacy.CataBridge
       MAlonzo.Code.Once.Adequacy.CataRel
@@ -481,7 +464,6 @@ library
       MAlonzo.Code.Once.Adequacy.MtIndep
       MAlonzo.Code.Once.Adequacy.RealizeInvariant
       MAlonzo.Code.Once.Adequacy.ResolveFaithful
-      MAlonzo.Code.Once.Adequacy.ResolverTrace
       MAlonzo.Code.Once.CCC.Target.RiscV64.FrameInstantiation
       MAlonzo.Code.Once.CCC.Target.RiscV64.Layout
       MAlonzo.Code.Once.CCC.Target.RiscV64.RuntimeParams
@@ -518,6 +500,11 @@ library
       MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64
       MAlonzo.Code.Once.Denotation.Behavior
       MAlonzo.Code.Once.Adequacy.Compile
+      MAlonzo.Code.Once.Adequacy.ResolveBridge
+      MAlonzo.Code.Once.Spec.Program
+      MAlonzo.Code.Once.Spec.Resolution
+      MAlonzo.Code.Once.Spec.Syntax
+      MAlonzo.Code.Once.TypeCheck.DeciderComplete
       MAlonzo.Code.Once.Adequacy.LabelClash
       MAlonzo.Code.Once.Adequacy.CPU
       MAlonzo.Code.Once.Adequacy.CPU.Interface

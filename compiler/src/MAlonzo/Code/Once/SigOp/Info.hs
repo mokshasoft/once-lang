@@ -586,7 +586,7 @@ d__'8799'SigOpInfo'45'name__276 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20
 d__'8799'SigOpInfo'45'name__276 v0 v1
   = coe
-      MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__16
+      MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__110
       (coe d_name_174 (coe v0)) (coe d_name_174 (coe v1))
 -- Once.SigOp.Info.sigOpInfo-name-coherence
 d_sigOpInfo'45'name'45'coherence_290

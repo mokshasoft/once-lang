@@ -43,7 +43,7 @@ open import Relation.Nullary using (yes; no)
 import Relation.Nullary
 
 open import Once.Type
-open import Once.CanonicalName using (CanonicalName; showCanonical)
+open import Once.CanonicalName using (CanonicalName; canonical; showCanonical; gen; generatorNS; _≟ᶜ_)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; BinOp; UnaryOp; isComparisonOp)
 open import Once.TypeCheck.Classify
@@ -386,6 +386,16 @@ lookupSchema ((y , sc) ∷ rest) x with x ≟ y
 ... | yes _ = just sc
 ... | no _  = lookupSchema rest x
 
+-- | D136: a GENERATOR's schema is keyed on its bare name (`builtinSchema "id"`),
+-- so the canonical form has to be peeled before lookup — otherwise the oracle
+-- asks for `"Generators.id"`, finds nothing, and a sig-less `f = id` stops
+-- inferring. Every other canonical name keys on the dotted path, as before.
+canonKey : CanonicalName → String
+canonKey (canonical (ns ∷ g ∷ [])) with ns ≟ generatorNS
+... | yes _ = g
+... | no  _ = showCanonical (canonical (ns ∷ g ∷ []))
+canonKey cn = showCanonical cn
+
 -- | Name-keyed leaf lookup, shared by `RVar` and `RResolved` so the two
 -- coincide (canon-invariance by construction). Order matches the
 -- kernel's dispatch: builtin, then user poly def, then import.
@@ -448,7 +458,7 @@ mutual
   ... | just t  = just (t , n , s)
   ... | nothing = liftName (lookupName imps sch x n) s
   pInfer imps sch env (Raw.RResolved cn) n s =
-    liftName (lookupName imps sch (showCanonical cn) n) s
+    liftName (lookupName imps sch (canonKey cn) n) s
   pInfer imps sch env (Raw.RApp f x) n s = pInferApp imps sch env f x n s
   pInfer imps sch env (Raw.RLam x body) n s =
     pInfer imps sch ((x , PTVar (mv n)) ∷ env) body (suc n) s >>=R λ { (tb , n₁ , s₁) →
@@ -489,8 +499,11 @@ mutual
   -- string-literal pattern), so proofs can case on abstract head names
   -- (the literal-pattern-opacity fix, same as `classifyAppHeadView`).
   pInferApp : Imports → SchemaCtx → Env → RawExpr → RawExpr → ℕ → PSubst → Result
-  pInferApp imps sch env f@(Raw.RApp (Raw.RVar y) f') g n s =
-    pInferAppB imps sch env f f' g n s (isYes (y ≟ "compose"))
+  -- D136: `compose` arrives as `RResolved (gen "compose")` now. The bare-`RVar`
+  -- head is kept for a lexical binder named `compose`, where the special
+  -- treatment must NOT fire — hence `false` rather than a `≟` on the name.
+  pInferApp imps sch env f@(Raw.RApp (Raw.RResolved cn) f') g n s =
+    pInferAppB imps sch env f f' g n s (isYes (cn ≟ᶜ gen "compose"))
   pInferApp imps sch env f x n s = pAppGen imps sch env f x n s
 
   -- | Bool-dispatched continuation of `pInferApp` (with-free so the

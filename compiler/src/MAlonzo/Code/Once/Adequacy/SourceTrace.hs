@@ -167,7 +167,7 @@ d_findMain_42 v0
              d_findMain'45'here_12 (coe v1)
              (coe MAlonzo.Code.Once.Compile.d_cfIsPrimitive_246 (coe v1))
              (coe
-                MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__16
+                MAlonzo.Code.Once.CanonicalName.d__'8799''7580'__110
                 (coe MAlonzo.Code.Once.Compile.d_cfName_240 (coe v1))
                 (coe
                    MAlonzo.Code.Once.CanonicalName.d_bare_12
@@ -248,7 +248,7 @@ d_srcToModule'45'aux_70 v0 v1
         -> coe
              d_eitherToMaybe_66
              (coe
-                MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_926
+                MAlonzo.Code.Once.Parser.Module.Resolve.d_resolveImports_974
                 (coe v0) (coe v2))
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError

@@ -1448,7 +1448,7 @@ d_value'45'info_422 v0 v1 v2 v3 v4
       MAlonzo.Code.Once.SigOp.Info.du_mk'45'info_238 (coe v2)
       (coe
          d_generic'45'semM_416 v0 v1
-         (MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v2)))
+         (MAlonzo.Code.Once.CanonicalName.d_showCanonical_134 (coe v2)))
       (coe MAlonzo.Code.Once.SigOp.Info.C_Pure_124) (coe v3) (coe v4)
 -- Once.Arith.SigOp.Builders.internal-info
 d_internal'45'info_432 ::
@@ -1462,7 +1462,7 @@ d_internal'45'info_432 v0 v1
          MAlonzo.Code.Once.SigOp.Info.C_pureV_140
          (coe
             d_generic'45'semM_416 (coe MAlonzo.Code.Once.Type.C_Unit_118) v0
-            (MAlonzo.Code.Once.CanonicalName.d_showCanonical_40 (coe v1))))
+            (MAlonzo.Code.Once.CanonicalName.d_showCanonical_134 (coe v1))))
       (coe MAlonzo.Code.Once.Functor.Translate.C_base'45'Unit_202)
       (coe MAlonzo.Code.Once.SigOp.Info.C_internal'45'ref_154)
 -- Once.Arith.SigOp.Builders.generic-info

@@ -21,6 +21,8 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Irrelevant
+import qualified MAlonzo.Code.Data.List.Relation.Unary.All
+import qualified MAlonzo.Code.Data.List.Relation.Unary.Any
 import qualified MAlonzo.Code.Once.CanonicalName
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Surface.Context
@@ -35,7 +37,8 @@ data T__'8866''7522'_'8758'_'10814'__10
     C_t'45'unit_44 | C_t'45'unit'45'var_48 |
     C_t'45'var'45'local_60 MAlonzo.Code.Once.Surface.Context.T_SVar_210 |
     C_t'45'var'45'qualified_70 MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_226 |
-    C_t'45'var'45'resolved_78 MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_226 |
+    C_t'45'var'45'resolved_78 MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
+                              MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_226 |
     C_t'45'var'45'import_86 MAlonzo.Code.Once.Functor.Translate.T_IsConcrete_226 |
     C_t'45'var'45'poly'45'instantiate'45'infer_102 MAlonzo.Code.Once.Type.T_PolyType_240
                                                    MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34

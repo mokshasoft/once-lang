@@ -261,7 +261,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                       MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_208 (coe v1)
                       (coe v7) (coe v2)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3066
+                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3110
                          (coe v0) (coe v1) (coe v7) (coe v5)
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -276,7 +276,7 @@ du_compileFunBody'45'aux_66 v0 v1 v2 v3 v4 v5 v6 v7 v8
                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_208 (coe v1)
                    (coe v7) (coe v2)
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3066
+                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3110
                       (coe v0) (coe v1) (coe v7) (coe v5)
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -505,7 +505,7 @@ d_inferType_312 v0 v1 v2
                    ("Cannot infer type: " :: Data.Text.Text)
                    (MAlonzo.Code.Once.TypeCheck.Error.d_renderError_84 (coe v4)))
                 (coe
-                   MAlonzo.Code.Once.TypeCheck.Principal.d_principalGround_2106
+                   MAlonzo.Code.Once.TypeCheck.Principal.d_principalGround_2126
                    (coe
                       MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
                       (coe v0) (coe v1))

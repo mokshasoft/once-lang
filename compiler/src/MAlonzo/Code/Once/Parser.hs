@@ -639,11 +639,11 @@ d_extractFunctions'45'go_190 v0 v1 v2
                               _ -> MAlonzo.RTE.mazUnreachableError
                        MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                          -> let v9
-                                  = MAlonzo.Code.Once.TypeCheck.Principal.d_pgSchema_2112
+                                  = MAlonzo.Code.Once.TypeCheck.Principal.d_pgSchema_2132
                                       (coe
-                                         MAlonzo.Code.Once.TypeCheck.Principal.d_finishP_2090
+                                         MAlonzo.Code.Once.TypeCheck.Principal.d_finishP_2110
                                          (coe
-                                            MAlonzo.Code.Once.TypeCheck.Principal.d_pInfer_1352
+                                            MAlonzo.Code.Once.TypeCheck.Principal.d_pInfer_1372
                                             (coe
                                                MAlonzo.Code.Once.TypeCheck.Classify.d_imports_362
                                                (coe
