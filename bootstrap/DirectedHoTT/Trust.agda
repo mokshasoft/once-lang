@@ -216,6 +216,7 @@ import DirectedHoTT.Examples.Knot.TyRedRows
 import DirectedHoTT.Examples.Knot.TyRedWf
 import DirectedHoTT.Examples.Knot.Wf
 import DirectedHoTT.Examples.Knot.Wk
+import DirectedHoTT.Examples.Knot.WkSub
 import DirectedHoTT.Examples.Knot.WkProbe
 import DirectedHoTT.Examples.Knot.WkRows
 import DirectedHoTT.Examples.KripkeIx
