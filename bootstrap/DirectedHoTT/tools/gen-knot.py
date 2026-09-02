@@ -873,11 +873,17 @@ BINDER_SORT = {
     "RTy (Γ ∙)":      ("sTy", 1),
     "RTy ((Γ ∙) ∙)":  ("sTy", 2),
     "Desc":           ("sDesc", 0),
+    "DCon":           ("sDCon", 0),
     "IDesc":          ("sIDesc", 0),
     # ⚠ `RTy ε` is a CLOSED type — sort `sTy` at depth ZERO, not at the
     #   row's depth.  Typing it as the row's depth compiles and means
     #   something else.
     "RTy ε":          ("sTy", "closed"),
+    # ⚠ `ICon (ε ∙)` is at an ABSOLUTE depth 1, not one deeper than the
+    #   row.  Without it `_∈ID_`'s two rows silently did not translate and
+    #   `InIDD` shipped as `inil` — a WELL-FORMED EMPTY DESCRIPTION, which
+    #   is exactly the hazard `⊢lkVz`'s note names.
+    "ICon (ε ∙)":     ("sICon", ("abs", 1)),
 }
 NAT_BINDER = {"ℕ"}
 
@@ -1080,6 +1086,11 @@ def _wf_rule(r):
 # Agda name → its description in `FOREIGN`
 UNARY_PREM = {"NoNatC": "NoNatCD"}
 
+# ★ A BINARY foreign judgement written INFIX — `k ∈D D`.  Its subjects are
+#   CLOSED (a numeral and a description), so the citation is at depth 0.
+# Agda symbol → its description in `FOREIGN`
+BINARY_PREM = {"∈D": "InDD", "∈ID": "InIDD"}
+
 def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=(), arity=2):
     """(name, binders, prems, lhs, rhs) or (name, None, reason).
 
@@ -1152,10 +1163,14 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=(), arity=2):
     unk = []
     def walk(e):
         if e[0] == "a":
-            if e[1] not in CT and e[1] not in known and e[1] not in ("renTm", "vs", "pwShift"):
+            if (e[1] not in CT and e[1] not in known
+                    and e[1] not in ("renTm", "vs", "pwShift", "zero", "suc")):
                 unk.append(e[1])
             return
-        for x in e[1]: walk(x)
+        # ⚠ THE SAME INFIX BLIND SPOT the `wf` parts had — `C ◃ E` parses
+        #   with the LEFT OPERAND as head, so `◃` reads as unmapped here
+        #   and as a dropped constructor there.  One rewrite, both readers.
+        for x in _infix(e[1], CT): walk(x)
     walk(_parse_spine(_tokens(lhs)))
     if rhs is not None: walk(_parse_spine(_tokens(rhs)))
     if unk: return (name, None, "unmapped %s" % sorted(set(unk)))
@@ -1359,6 +1374,12 @@ def _parse_jpart(p):
     #   (`Spec/Typing:711`) — and its arguments are SWAPPED.  A reader
     #   that matched it positionally would build a row meaning something
     #   else, and it would typecheck.
+    # ⚠ LONGEST FIRST: `∈ID` contains `∈D`, and testing the short one
+    #   first reads `k ∈ID D` as a `∈D` premise about `I D` — silently.
+    for _r in sorted(BINARY_PREM, key=lambda x: -len(x)):
+        if _r in p:
+            _a, _b = [x.strip() for x in p.split(_r)]
+            return ("fb", _r, _a, _b)
     _as = _argsplit(p)
     if _as and _as[0] == "IDescWf" and len(_as) == 3:
         return ("wf", "IDescWfFrom", _as[2], _as[1], _as[2])
@@ -1445,7 +1466,7 @@ def infer_depths(rule, names, CT):
         #   `IxD`'s FIELD CODES (closed, or the row's), not by where they
         #   appear here; scanning them at 0 claimed `ty-IMu`'s `I : RTy ε`
         #   was ambient and conflicted with the `lit 0` the knot gives it.
-        if q[0] == "wf": continue
+        if q[0] in ("wf", "fb"): continue
         ext = q[2] if q[0] in ("ty", "tm") else None
         deep = len(ext) if ext else 0
         put(q[1], 0)
@@ -1577,6 +1598,9 @@ def _mutual_rows(CT, TEL, dummy):
                 #   slice `q[3:]` skipped them, which is how `dwf-cons`
                 #   shipped a dropped `◃`.  Its CONTEXT argument is checked
                 #   through its EXTENSIONS, not as a term.
+                if q[0] == "fb":
+                    for _t in q[2:]: chk(_parse_spine(_tokens(_t)))
+                    continue
                 if q[0] == "wf":
                     _ci = WF_CTXARG.get(q[1])
                     for _i, _t in enumerate(q[2:]):
@@ -1601,6 +1625,11 @@ def _mutual_rows(CT, TEL, dummy):
                 _BDEP[b] = deps[b]
                 if srt == "ctx":
                     bs.append((b, _code(TCTX(), _depth_at(deps[b]))))
+                elif srt == "nat":
+                    # ⚠ `⊢con`'s `k` is a ℕ FIELD of the knot's `con`, so
+                    #   `infer_sorts` gives it the sort "nat" — a bare
+                    #   `Nat` slot, not `⌜IMu⌝ … (pair nat …)`.
+                    bs.append((b, _code(TNAT(), None)))
                 else:
                     bs.append((b, _code(TKNOT(srt), _depth_at(deps[b]))))
             for i, (a, b) in enumerate(fconv):
@@ -1608,6 +1637,9 @@ def _mutual_rows(CT, TEL, dummy):
                     TUP(V(_DEPTH),
                         _val(_parse_spine(_tokens(a)), CT, V(_DEPTH)),
                         _val(_parse_spine(_tokens(b)), CT, V(_DEPTH))))))
+            def _v0(x):
+                return _val(_parse_spine(_tokens(x)), CT, RAW("num 0"))
+
             def ix_of(q):
                 "the (depth, Ctx, Tm, Ty, tag, payload) tuple a part denotes"
                 # ★★★ THE FIVE `Wf` JUDGEMENTS.  Each uses the flat slots
@@ -1682,6 +1714,13 @@ def _mutual_rows(CT, TEL, dummy):
                                   AP(_fnK, PAIR(RAW(_srt), _bd),
                                      _val(_parse_spine(_tokens(_arg)), CT, _bd)),
                                   RAW("num %d" % _lit))))
+                    continue
+                if q[0] == "fb":
+                    # ★ closed subjects ⇒ the citation sits at depth 0
+                    bs.append(("fb%d" % i,
+                               _code(FOREIGN[BINARY_PREM[q[1]]],
+                                     TUP(RAW("num 0"),
+                                         _v0(q[2]), _v0(q[3])))))
                     continue
                 if q[0] == "fu":
                     # ★ THE PREMISE'S OWN DEPTH, not the row's: `⊢tr`
@@ -1847,6 +1886,7 @@ open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 def gen_j_rows(J, CT):
     rows, skipped = _jrows(J, CT)
     _JCACHE[J.mod] = rows
+    _CENSUS.append((J.desc, [J.data], len(skipped), J.src))
     L = [JHDR % dict(gc="", data=J.data, what=", THE ROWS.", mod=J.mod + "Rows",
                      extra=J.extra)]
     L.append("%s : RTy ε" % J.ity)
@@ -1874,6 +1914,19 @@ def gen_j_rows(J, CT):
     return "\n".join(L) + "\n"
 
 _JCACHE = {}
+
+# ★★★ EVERY FAMILY REGISTERS ITSELF WHERE IT IS BUILT, and `Knot/Census`
+#   is GENERATED from this list.
+#
+# ⚠⚠ THE REASON: `InIDD` shipped as `inil` — a WELL-FORMED EMPTY
+#   DESCRIPTION — because a binder type was missing and both its rows
+#   silently failed to translate.  `Census` would have caught it the same
+#   day, and did not, because the family had been ADDED WITHOUT ADDING ITS
+#   CENSUS ROW.  A hand-maintained list of invariants rots exactly like
+#   any other parallel list.
+# ⇒ so there is now ONE place to add a family, and the check follows.
+#   (entry: description name · the Agda datatypes it encodes · skips · src)
+_CENSUS = []
 
 def gen_j_wf(J, part, lo, hi, last):
     rows = _JCACHE[J.mod]
@@ -1977,6 +2030,10 @@ open import DirectedHoTT.Examples.Knot.ConvRows using ( ConvD; IConv )
 open import DirectedHoTT.Examples.Knot.ConvWf using ( ConvWf )
 open import DirectedHoTT.Examples.Knot.NoNatCRows using ( NoNatCD; INoNatC )
 open import DirectedHoTT.Examples.Knot.NoNatCWf using ( NoNatCWf )
+open import DirectedHoTT.Examples.Knot.InDRows using ( InDD; IInD )
+open import DirectedHoTT.Examples.Knot.InDWf using ( InDWf )
+open import DirectedHoTT.Examples.Knot.InIDRows using ( InIDD; IInID )
+open import DirectedHoTT.Examples.Knot.InIDWf using ( InIDWf )
 open import DirectedHoTT.Examples.Knot.IxD
   using ( IxD; IxWf; IxNoneK; ⊢IxNoneK; IxDConK; ⊢IxDConK; IxDescK; ⊢IxDescK
         ; IxIConK; ⊢IxIConK; IxIDescK; ⊢IxIDescK )"""
@@ -2030,6 +2087,7 @@ def write_mutual(out, CT):
            if SPIKE_WIDE else
            [TNAT(), TCTX(), TKNOT("sTm"), TKNOT("sTy"), TNAT(), TIX()])
     rows, skipped = _mutual_rows(CT, TEL, AP("Tm-unitK"))
+    _CENSUS.append(("JudgeD", [d for _, d, _ in MERGED], len(skipped), "Typing"))
     # ⚠⚠ THE CAP MUST BITE **BEFORE** `JudgeD` IS BUILT.  Truncating only
     #   the well-formedness rows leaves the DESCRIPTION at full length, so
     #   the final `idwf-cons` chain ends in `idwf-nil` against a `JudgeD`
@@ -3476,6 +3534,10 @@ def _val(e, CT, dep):
       of the depth at that position — the same rule as `Var-vzK`."""
     if e[0] == "a":
         h = e[1]
+        # ★ `zero`/`suc` are ℕ CONSTRUCTORS, not `RTm` formers — `_∈D_`'s
+        #   index carries a bare `Nat`, so they translate to the object
+        #   level's own `nzero`/`nsuc` and NOT to `Tm-nzeroK`/`Tm-nsucK`.
+        if h == "zero": return RAW("nzero")
         if h in CT:
             c = CT[h]
             return AP(c, _pred(dep)) if c in _DEPTH_ARG else AP(c)
@@ -3491,6 +3553,8 @@ def _val(e, CT, dep):
     args = _infix(e[1], CT)
     h = args[0]
     assert h[0] == "a", h
+    if h[1] == "suc" and len(args) == 2:
+        return NSUC(_val(args[1], CT, dep))
     # ★ `εwkTm {Θ} c` — `icw-clo`'s SUBJECT.  Its argument is closed, so
     #   the object-level form takes it at 0 and lands at `dep`.
     if h[1] in ("εwkTm", "εwkTy") and len(args) == 2:
@@ -3848,6 +3912,24 @@ TEL_NNC = [TNAT(), TKNOT("sTm")]
 #   rule never asked for.
 #
 # ★ ITS INDEX IS TWO COMPONENTS, not three: a depth and the CODE.
+# ★★★ THE MEMBERSHIP JUDGEMENTS — `⊢con`'s and `⊢icon`'s last blockers.
+#
+# ⚠ They live in `Spec/Syntax`, NOT in the mutual block: `_∈D_` mentions
+#   only `Desc`, so nothing in it cites the typing judgements and it needs
+#   no merge.  Same standing as `ConvD`/`NoNatCD`.
+# ★ TWO rows each, and the `k` slot is a BARE `Nat` — the rules say
+#   `zero`/`suc k`, ℕ constructors, which the object level spells
+#   `nzero`/`nsuc`.
+J_IND = Judgement(
+    "_∈D_", "∈D", [TNAT(), TNAT(), TKNOT("sDesc")], "IInD",
+    "Σ' Nat (Σ' Nat (IMu KnotD IPair (pair sDesc (var (vs vz)))))",
+    "InDD", "InD", "InDWf", src="Syntax")
+
+J_IIND = Judgement(
+    "_∈ID_", "∈ID", [TNAT(), TNAT(), TKNOT("sIDesc")], "IInID",
+    "Σ' Nat (Σ' Nat (IMu KnotD IPair (pair sIDesc (var (vs vz)))))",
+    "InIDD", "InID", "InIDWf", src="Syntax")
+
 J_NONATC = Judgement(
     "NoNatC", "NoNatC", TEL_NNC, "INoNatC",
     "Σ' Nat (IMu KnotD IPair (pair sTm (var vz)))",
@@ -3962,6 +4044,124 @@ def gen_adequacy(rows, CT):
     return L, ok, skipped
 
 
+CENSUS_HDR = """--- GENERATED by tools/gen-knot.py — do not edit.
+------------------------------------------------------------------------
+-- OCP-0009 · EXAMPLES — ★★★ THE ROW CENSUS, AS A **TYPE-CHECKED**
+--                       INVARIANT, AND IT IS GENERATED.
+--
+-- ① HOW MANY RULES THE SOURCE HAS is read at TYPE-CHECK TIME by
+--   REFLECTION — `getDefinition` on a `data-type` yields its constructor
+--   list, and `Agda.Builtin.Reflection` works under `--safe` (measured
+--   2026-09-01).  Nothing here is a script.
+-- ② HOW MANY ROWS THE ENCODING HAS is ordinary Agda: `IDesc` is a
+--   first-order list, so `ilen` is three lines and `refl` decides it.
+-- ③ …and the two are RELATED by an equation, per family, with the
+--   generator's OWN skip count in the middle.  ⚠ That is what makes it
+--   test something: `rules` counts the DATATYPE, independently of the
+--   generator, so a rule the text parser never SAW makes the sum fall
+--   short — which is the `⊢ielim` regex class, caught arithmetically.
+--
+-- ★★★ AND IT IS GENERATED FROM THE FAMILY TABLE, which is the point.
+--   `InIDD` once shipped as `inil` — a WELL-FORMED EMPTY DESCRIPTION —
+--   because a binder type was missing and both its rows silently failed
+--   to translate.  The census would have caught it that day and did not,
+--   because the family had been ADDED WITHOUT ADDING ITS CENSUS ROW.
+--   ⇒ a hand-maintained list of invariants rots exactly like any other
+--     parallel list.  There is now ONE place to add a family.
+--
+-- ⚠ WHAT THIS DOES NOT CATCH: a row that is well-formed but encodes the
+--   WRONG RULE.  Counting is the cheap SHADOW of the correspondence;
+--   `Knot/Adequacy` checks the values and a full `enDeriv` would subsume
+--   both.  See JUDGEMENT-ATTEMPTS §13.4.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.Census where
+open import Agda.Builtin.Reflection
+open import Agda.Builtin.List
+open import Agda.Builtin.Unit
+open import Agda.Builtin.Nat renaming ( Nat to ℕ )
+open import Agda.Builtin.Equality
+open import DirectedHoTT.Spec.Syntax using ( IDesc; inil; _◂_ )
+%(imports)s
+
+len : {A : Set} → List A → ℕ
+len []       = 0
+len (_ ∷ xs) = suc (len xs)
+
+conList : Name → TC (List Name)
+conList n = bindTC (getDefinition n) λ where
+  (data-type _ cs) → returnTC cs
+  _                → returnTC []
+
+macro
+  rules : Name → Term → TC ⊤
+  rules n hole = bindTC (conList n) λ cs → unify hole (lit (nat (len cs)))
+
+ilen : IDesc → ℕ
+ilen inil    = 0
+ilen (_ ◂ D) = suc (ilen D)
+
+"""
+
+# where each judgement's Agda datatype lives
+_SRCMOD = {"Typing": "DirectedHoTT.Spec.Typing",
+           "Syntax": "DirectedHoTT.Spec.Syntax",
+           "Variance": "DirectedHoTT.Spec.Variance"}
+
+# ★★★ HOW MANY RULES EACH FAMILY IS ALLOWED NOT TO TRANSLATE.
+#
+# ⚠⚠ THIS MUST BE HAND-MAINTAINED, AND THE FIRST VERSION OF THE GENERATED
+#   CENSUS WAS WEAKER THAN THE HAND-WRITTEN ONE IT REPLACED BECAUSE IT WAS
+#   NOT.  Emitting the generator's OWN skip count makes the equation
+#   `ilen D + skips ≡ rules X` true BY CONSTRUCTION: when both `_∈ID_`
+#   rows silently failed to translate, `skips` became 2, `ilen InIDD`
+#   became 0, and `0 + 2 ≡ 2` PASSED.  The check was insensitive to
+#   exactly the failure it exists for.  ⇒ CONTROL RUN, and it did not fire.
+#
+# ★ So the number below is a CLAIM, checked against reality here, and the
+#   Agda equation then pins it exactly.  Raising one is a deliberate act,
+#   the same contract as `_FLOOR`.
+_SKIP_EXPECT = {"RedD": 2, "TyRedD": 0, "ConvD": 0, "NoNatCD": 0,
+                "InDD": 0, "InIDD": 0, "JudgeD": 5}
+
+def gen_census(out):
+    """one equation per family, from `_CENSUS` — so a family cannot be
+    added without its check."""
+    for desc, _, nskip, _ in _CENSUS:
+        want = _SKIP_EXPECT.get(desc)
+        if want is None:
+            sys.exit("  ⇒ %s has no `_SKIP_EXPECT` entry.  Add one — a family "
+                     "without a claimed skip count is unchecked." % desc)
+        if nskip != want:
+            sys.exit("  ⇒ %s: %d rule(s) did not translate, expected %d.  "
+                     "If that is intended, change `_SKIP_EXPECT`; if not, a "
+                     "rule just went silently missing." % (desc, nskip, want))
+    bymod, descs, L = {}, [], []
+    for desc, datas, nskip, src in _CENSUS:
+        bymod.setdefault(_SRCMOD[src], []).extend(datas)
+        descs.append(desc)
+    imp = ["open import %s using ( %s )" % (m, "; ".join(sorted(set(ds))))
+           for m, ds in sorted(bymod.items())]
+    # the description of each family comes from its Rows module
+    _ROWMOD = {"JudgeD": "JudgeRows", "RedD": "RedRows"}
+    for desc, _, _, _ in _CENSUS:
+        m = _ROWMOD.get(desc, desc[:-1] + "Rows")
+        imp.append("open import DirectedHoTT.Examples.Knot.%s using ( %s )" % (m, desc))
+    for desc, datas, nskip, _ in _CENSUS:
+        rhs = " + ".join("rules %s" % d for d in datas)
+        nskip = _SKIP_EXPECT[desc]      # the CLAIM, not the observation
+        lhs = "ilen %s" % desc if not nskip else "ilen %s + %d" % (desc, nskip)
+        L.append("-- %s  (%d rule%s the generator could not translate)"
+                 % (desc, nskip, "" if nskip == 1 else "s"))
+        L.append("_ : %s ≡ %s" % (lhs, rhs))
+        L.append("_ = refl")
+        L.append("")
+    open(os.path.join(out, "Census.agda"), "w").write(
+        CENSUS_HDR % dict(imports="\n".join(imp)) + "\n".join(L) + "\n")
+    return len(_CENSUS)
+
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out = os.path.join(root, "Examples", "Knot")
@@ -3981,16 +4181,19 @@ if __name__ == "__main__":
     open(os.path.join(out, "SzAgree.agda"), "w").write(gen_szagree())
     open(os.path.join(out, "LookupGen.agda"), "w").write(gen_lookupgen())
     open(os.path.join(out, "RedRows.agda"), "w").write(gen_redrows())
+    _CENSUS.append(("RedD", ["_⟶_"], len(_SKIP), "Typing"))
     _half = (len(_ROWS) + 1) // 2
     open(os.path.join(out, "RedWfA.agda"), "w").write(gen_redwf("A", 0, _half))
     open(os.path.join(out, "RedWfB.agda"), "w").write(gen_redwf("B", _half, len(_ROWS)))
     _CT = {d.split(":")[0].strip(): n[1:] + "K" for n, d, _ in KNOT}
     _CT.update(_SUBST_CT)
-    for _J in (J_NONATC, J_TYRED, J_CONV):
+    for _J in (J_IND, J_IIND, J_NONATC, J_TYRED, J_CONV):
         for _m in write_judgement(_J, out, _CT):
             print("  wrote", _m)
     FOREIGN["ConvD"] = TJ("ConvD", "IConv", "ConvWf", TEL_TYR)
     FOREIGN["NoNatCD"] = TJ("NoNatCD", "INoNatC", "NoNatCWf", TEL_NNC)
+    FOREIGN["InDD"]  = TJ("InDD",  "IInD",  "InDWf",  J_IND.tel)
+    FOREIGN["InIDD"] = TJ("InIDD", "IInID", "InIDWf", J_IIND.tel)
     FOREIGN["LkD"] = TJ("LkD", "ILk", "LkWf",
                         [TNAT(), TCTX(), TKNOT("sVar"), TKNOT("sTy")])
     _njudge = len(write_mutual(out, _CT))
@@ -4001,6 +4204,7 @@ if __name__ == "__main__":
                        named="\n".join("--     %-12s %s" % t for t in _askip))
         + "\n".join(_al) + "\n")
     print("  wrote Adequacy (%d checks, %d subjects skipped)" % (_aok, len(_askip)))
+    print("  wrote Census (%d families)" % gen_census(out))
     print("  wrote JudgeRows (%d rows)" % _njudge)
 
     # ★★★ THE EMITTED COUNT IS A RATCHET.

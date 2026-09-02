@@ -1004,3 +1004,79 @@ a module under suspicion.** Adopt the flag where a function is
 load-bearing and small (`spine?`, `stablecd?`, the classifiers); keep the
 pin everywhere, because it is the one that costs nothing and still makes
 a NEW former impossible to add silently — which is the actual bug.
+
+### ⇒ WHAT TO CALL THESE — four levels, and "metatheory" is only one of them
+
+Asked once `FormerCensus`/`Census`/`Adequacy` existed: *is this a
+metatheory of the libraries?* Nearly, and the distinction earns its keep.
+
+| | what it establishes | needs reflection? | where |
+|---|---|---|---|
+| **METATHEORY** | properties of the OBJECT LANGUAGE — SN, canonicity, subject reduction | no | `Metatheory/` |
+| **ADEQUACY** | the encoding is FAITHFUL to what it encodes | no — an ordinary theorem | `Knot/Adequacy`, `SzAgree`, `LookupGen`; ⬜ `enDeriv` |
+| **COHERENCE** | parallel artifacts stay IN STEP — former ↔ SN row, rule ↔ emitted row, header claim ↔ fact | **yes**, when one side is a DECLARATION | `Metatheory/FormerCensus`, `Knot/Census` |
+| **COVERAGE** | the checker REACHED everything | no — a build property | `Trust.agda` + `check-trust.sh` |
+
+★ Metatheory is about the system the development is ABOUT; the other
+three are about the development itself. Adequacy is the bridge: it is an
+ordinary theorem whose CONTENT is a claim about our encoding. Coherence
+is the one that genuinely needs reflection, because its left-hand side is
+a `data` declaration rather than a definition. ⇒ **the unifying idea is
+that coherence conditions are CODING CONVENTIONS MADE INTO PROPOSITIONS.**
+
+### ★★★ AND CAN THE COHERENCE ROW BE FORCED? — yes, and the first attempt was WEAKER than what it replaced
+
+`InIDD` shipped as `inil` — a WELL-FORMED EMPTY DESCRIPTION — because
+`ICon (ε ∙)` was missing from the binder table and both `_∈ID_` rows
+silently failed to translate. `Census` would have caught it and did not,
+because the family had been **added without adding its census row**.
+
+⇒ **the fix is to make the single source of truth actually single:**
+`Census.agda` is now GENERATED from the generator's own family table, so
+adding a family and adding its check are one act. `gen_census` refuses a
+family with no entry.
+
+⚠⚠ **BUT THE FIRST GENERATED VERSION WAS WEAKER THAN THE HAND-WRITTEN ONE,
+AND ONLY THE CONTROL SHOWED IT.** It emitted the generator's OWN skip
+count, which makes
+
+    ilen D + skips ≡ rules X
+
+true *by construction*: with both `_∈ID_` rows gone, `skips` became 2,
+`ilen InIDD` became 0, and `0 + 2 ≡ 2` **passed**. The check had become
+insensitive to precisely the failure it exists for.
+
+⇒ ★ so the skip count is now a HAND-MAINTAINED CLAIM (`_SKIP_EXPECT`),
+checked against reality in the generator and pinned exactly in Agda.
+Control re-run: the generator refuses with
+*"InIDD: 2 rule(s) did not translate, expected 0 … a rule just went
+silently missing."*
+
+★★ **THE LESSON GENERALISES AND IS THE SHARPEST ONE HERE: a check whose
+EXPECTED VALUE is computed by the thing being checked is not a check.**
+`_FLOOR` had this shape too (a floor cannot see a fall to itself); so did
+the "N of M" prose claims. **The expected side must come from somewhere
+the producer does not control** — reflection over the SOURCE datatype, or
+a human-written constant.
+
+### ⬜ SHOULD `Examples/` GET THE SAME TREATMENT? — yes, three obligations, each from a real bug
+
+`Examples/` is where descriptions are BUILT, so it is where the
+"well-formed but empty" hazard lives — the exact thing `⊢lkVz`'s note
+names: *"a well-formed description with no closed inhabitant is
+indistinguishable from a good one."* `InIDD` is that hazard, realised.
+
+1. **INHABITATION** — every demonstration family exhibits a closed
+   inhabitant. `⊢lkVz` and `ctx1` do it by hand; nothing forces it, and
+   `Negative/WkEmp` plus `Vec.no-cons-at-zero` are the record of what
+   goes wrong.
+2. **CENSUS CLAIMS** — 10 files under `Examples/` carry prose `N of M`
+   claims, and category E bit exactly there (`Knot/Terms`, 32 → **13**).
+   Each should be a `refl`, the way `Knot/Census` now is.
+3. **`Comparison/`'s REDUNDANCY claim** — it asserts two routes compute
+   the same thing, in prose. That is a coherence claim and could be
+   `refl`.
+
+⇒ ★ i.e. **turn every prose claim in an `Examples/` header into a
+proposition.** The technique is the one already built; what is missing is
+the pass.
