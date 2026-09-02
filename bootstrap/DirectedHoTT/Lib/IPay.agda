@@ -24,14 +24,16 @@ open import DirectedHoTT.Spec.Syntax
         ; renTy; extR; isingle; ipayTy-ren; ipayTy-cong
         ; ICon; IDesc; iι; iρ; iκ; ipayTy; Sub; extS; subTm; subTy
         ; εwkTy; εwk-sub; εwk-ren; _◂_; inil
-        ; ilookupD; _∈ID_; hereID; thereID; icon; lam; subTy-renTy; subTy-cong; pair )
+        ; ilookupD; _∈ID_; hereID; thereID; icon; lam; subTy-renTy; subTy-cong; pair
+        ; fst; snd; iext )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; ⊢var; here; there
         ; _⊢ty_; ty-Unit; ty-Σ; ty-El; ty-IMu; ty-Π; ty-Nat
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
-        ; imethTy; imethsTyFrom; ⊢icon; iconS; iatCon; iihTy; ⊢lam; ⊢pair )
+        ; imethTy; imethsTyFrom; ⊢icon; iconS; iatCon; iihTy; ⊢lam; ⊢pair
+        ; ⊢fst; ⊢snd; iinst )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk; Ren⊢-ext
         ; isingle-Sub⊢; iihTy-wf )
@@ -485,3 +487,66 @@ splTake : {D : IDesc} {j : ℕ} {E : IDesc} →
           Split D j E → (W : CDesc E) → Split D (cdPos W j) (cdRest W)
 splTake sp (cd-stop _) = sp
 splTake sp (cd-cons W) = splTake (spl-step sp) W
+
+------------------------------------------------------------------------
+-- ★★★ REACHING AN INDUCTION HYPOTHESIS — three steps, and they compose
+--   to ANY `iρ` field of ANY constructor.
+--
+-- ⚠⚠ WHY THIS IS A LIBRARY AND NOT A LINE IN A METHOD.  `iihTy` walks the
+--   constructor's telescope and does THREE different things:
+--
+--     iihTy D I σ iι       q M = Unit
+--     iihTy D I σ (iρ j C) q M =
+--       Σ' (iinst (subTm σ j) (fst q) M)                       ← an IH
+--          (renTy vs (iihTy D I (iext σ (fst q)) C (snd q) M))
+--     iihTy D I σ (iκ κ C) q M = iihTy D I (iext σ (fst q)) C (snd q) M
+--
+--   so a method that wants the n-th IH must project past a MIXTURE of
+--   `iρ`s and `iκ`s, and the two steps are not the same: an `iρ` costs a
+--   `⊢snd` AND the `wk-singleTy` that cancels the tail's weakening, while
+--   an `iκ` costs NOTHING AT ALL — `iihTy` skips it definitionally.
+--
+-- ★ Writing that per method is where the de Bruijn and the cast both go
+--   wrong.  Every remaining object-level function over the knot
+--   (`lookupD`, `ilookupD`, `payTy`, `ipayTy`, `methsTyFrom`, `imethsTy`)
+--   needs exactly these three, so they are lifted here — the same move
+--   `⊢methLam` made for the prologue.
+------------------------------------------------------------------------
+
+-- ⚠⚠ ONLY THE `ICon` IS EXPLICIT, and that is forced, not a taste.
+--   `iihTy` is a FUNCTION, so unifying its application against a
+--   concrete IH type cannot invert it: with the telescope a meta,
+--   `iihTy D I σ _C q M` is STUCK and the constraint never solves.  Pin
+--   the `ICon` and it unfolds, which solves `σ`, `q` and `M` positionally
+--   for free.  ⇒ `pin-implicits-on-defined-set-types`, third instance.
+
+-- ★ THE IH ITSELF, at the head `iρ` field.
+⊢ihHere : {Γ : Ctx} {D : IDesc} {I : RTy ε} {Δ : Cx} {σ : Sub Δ ⌊ Γ ⌋}
+          {j : RTm Δ} (C : ICon (Δ ∙)) {q : RTm ⌊ Γ ⌋}
+          {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {h : RTm ⌊ Γ ⌋} →
+          Γ ⊢ h ∷ iihTy D I σ (iρ j C) q M →
+          Γ ⊢ fst h ∷ iinst (subTm σ j) (fst q) M
+⊢ihHere C dh = ⊢fst dh
+
+-- ★ PAST an `iρ`.  ⚠ ONE CAST: the tail is stored WEAKENED past the Σ's
+--   own binder, and `⊢snd` instantiates it at `fst h`; `wk-singleTy`
+--   cancels the round trip.  Same shape `sortConv` and `⊢wkK` both pay.
+⊢ihSkipρ : {Γ : Ctx} {D : IDesc} {I : RTy ε} {Δ : Cx} {σ : Sub Δ ⌊ Γ ⌋}
+           {j : RTm Δ} (C : ICon (Δ ∙)) {q : RTm ⌊ Γ ⌋}
+           {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {h : RTm ⌊ Γ ⌋} →
+           Γ ⊢ h ∷ iihTy D I σ (iρ j C) q M →
+           Γ ⊢ snd h ∷ iihTy D I (iext σ (fst q)) C (snd q) M
+⊢ihSkipρ {D = D} {I = I} {σ = σ} C {q = q} {M = M} dh =
+  ⊢-cast (wk-singleTy (iihTy D I (iext σ (fst q)) C (snd q) M)) (⊢snd dh)
+
+-- ★★ PAST an `iκ` — and it is the IDENTITY.  `iihTy` contributes nothing
+--   for a non-recursive field, so the SAME term is already the tail's IH
+--   tuple.  ⚠ Worth a named lemma anyway: without it a method counts
+--   `iκ` fields into its projection chain, which type-checks at the
+--   WRONG IH whenever a constructor mixes the two.
+⊢ihSkipκ : {Γ : Ctx} {D : IDesc} {I : RTy ε} {Δ : Cx} {σ : Sub Δ ⌊ Γ ⌋}
+           {κ : RTm Δ} (C : ICon (Δ ∙)) {q : RTm ⌊ Γ ⌋}
+           {M : RTy ((⌊ Γ ⌋ ∙) ∙)} {h : RTm ⌊ Γ ⌋} →
+           Γ ⊢ h ∷ iihTy D I σ (iκ κ C) q M →
+           Γ ⊢ h ∷ iihTy D I (iext σ (fst q)) C (snd q) M
+⊢ihSkipκ C dh = dh

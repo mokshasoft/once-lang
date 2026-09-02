@@ -111,7 +111,29 @@ lookupCons =
             (app (fst (snd (var (vs (vs (vs vz)))))) (var (vs vz)))
             (var vz)))))                                       -- on k
 
--- ⬜ `⊢lookupCons` — NEXT, and the remaining obstacle is NAMED.
+-- ⬜ `⊢lookupCons` — NEXT, and the obstacle is now SOLVED IN `Lib/`;
+--   what is left is this call site's plumbing.
+--
+-- ★★★ THE TRANSPORT IS LIFTED: `Lib/IPay.⊢ihHere`/`⊢ihSkipρ`/`⊢ihSkipκ`
+--   reach any `iρ` field's IH in any constructor.  `⊢ihSkipκ` is the
+--   IDENTITY (a κ field contributes no IH, so `iihTy` skips it
+--   definitionally) and `⊢ihSkipρ` costs the single `wk-singleTy` that
+--   cancels the tail's weakening.  Every remaining `ielim` over the knot
+--   needs exactly these.
+--
+-- ⚠⚠ AND THE CALL SITE MUST PIN THREE THINGS, because `iihTy` IS A
+--   FUNCTION AND CANNOT BE INVERTED — a `_` in any of them leaves a
+--   stuck constraint, never an error you can read:
+--     · the `ICon` at each step   ✅ done below in the parked block
+--     · `q`, the payload variable ✅ `var (vs (vs (vs (vs vz))))`
+--     · `M`, the motive           ⬜ THE ONE REMAINING — it is
+--       `lookupMotK` weakened as `⊢methLam` weakens it
+--       (`renTy (extR (extR vs))`, twice) and then once more per binder
+--       the `natrec` branch adds.
+--   ⇒ `pin-implicits-on-defined-set-types`, third instance in this tree.
+--
+-- ★ Everything else in the row is settled: the term type-checks, the de
+--   Bruijn positions are confirmed, and the `natrec` motive is constant.
 --
 -- The term above type-checks and the derivation is written; what it
 -- still owes is ONE transport, and it is the one every real method in
