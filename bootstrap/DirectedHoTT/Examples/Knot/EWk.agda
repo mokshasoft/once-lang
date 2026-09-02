@@ -34,7 +34,7 @@ open import DirectedHoTT.Spec.Typing using ( Ctx; ⌊_⌋; _⊢_∷_; _⟶*_; �
 open import DirectedHoTT.Examples.Knot.Desc using ( K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( ⊢ixP; sVar; ⊢sVar; num; ⊢num )
+  using ( ⊢ixP; sVar; ⊢sVar; sTm; ⊢sTm; num; ⊢num )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nzeroK )
 open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Tm-nzeroKv )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
@@ -71,3 +71,34 @@ open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
         Γ ⊢ t ∷ K (pair s (num 0)) →
         Γ ⊢ εwkK s n t ∷ K (pair s n)
 ⊢εwkK ds st dn dt = ⊢subAtK ds st (⊢num 0) dn (⊢εsubK dn) dt
+
+------------------------------------------------------------------------
+-- ★★ `isingle`, OBJECT-LEVEL — and it is `εsubK`'s sibling.
+--
+--     isingle : RTm Γ → Sub (ε ∙) Γ        `Spec/Syntax:1122`
+--     isingle i vz     = i
+--     isingle i (vs ())
+--
+-- ⚠ `⊢icon`'s payload premise names it, and so does `ι-ielim`.
+--
+-- ★ THE SAME REASON IT IS SMALL: a substitution out of a ONE-VARIABLE
+--   scope is a function whose answer does not depend on its argument —
+--   `Var 1` has exactly one inhabitant and the `vs` case is refuted.  So
+--   the object-level form is a `lam` that IGNORES its variable, and the
+--   only work is weakening `i` past the binder.
+-- ⚠ It is NOT `εsubK`'s reason, though the shape matches: there the
+--   domain is EMPTY, here it is a singleton.  Both make the body free;
+--   only one of them makes it unreachable.
+------------------------------------------------------------------------
+
+isingleK : {Γ : Cx} → RTm Γ → RTm Γ
+isingleK i = lam (renTm vs i)
+
+-- ⚠ `n` EXPLICIT: the emitted TERM does not mention the depth (a `lam`
+--   ignoring its variable needs none), so the emitter hands it over
+--   through the `DX` role — the index term, then its derivation.
+⊢isingleK : {Γ : Ctx} (n : RTm ⌊ Γ ⌋) {i : RTm ⌊ Γ ⌋} →
+            Γ ⊢ n ∷ Nat → Γ ⊢ i ∷ K (pair sTm n) →
+            Γ ⊢ isingleK i ∷ SubTy (num 1) n
+⊢isingleK _ dn di =
+  ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢num 1))) (⊢wk di)

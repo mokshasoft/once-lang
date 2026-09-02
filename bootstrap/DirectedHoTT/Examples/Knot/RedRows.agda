@@ -58,7 +58,7 @@ IRed = Σ' Nat (Σ' (IMu KnotD IPair (pair sTm (var vz)))
 
 -- ⚠ NOT EMITTED — 2 of 73 rules, in two classes:
 --     ι-elim       unmapped ['fields', 'lookupD', 'sel']
---     ι-ielim      unmapped ['ifields', 'ilookupD', 'isingle', 'sel']
+--     ι-ielim      unmapped ['ifields', 'ilookupD', 'sel']
 
 -- β
 Α0 : Ctx

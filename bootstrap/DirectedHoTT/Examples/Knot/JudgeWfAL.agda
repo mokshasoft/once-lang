@@ -72,7 +72,7 @@ open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK; ⊢nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.CtxD
   using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt; Ctx-empK; ⊢Ctx-empK )
-open import DirectedHoTT.Examples.Knot.EWk using ( εwkK; ⊢εwkK )
+open import DirectedHoTT.Examples.Knot.EWk using ( εwkK; ⊢εwkK; isingleK; ⊢isingleK )
 open import DirectedHoTT.Examples.Knot.SubMot
   using ( sortMap-ty; sortMap-tm; sortMap-desc; sortMap-dcon
         ; sortMap-idesc; sortMap-icon; sortMap-var )

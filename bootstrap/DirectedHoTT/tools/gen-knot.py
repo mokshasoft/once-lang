@@ -1302,6 +1302,8 @@ FIELD_SORT = {("%sK" % n[1:]): [(f[1] if f[0] == "rec" else "nat")
 #   SUBSTITUTED term's, and it is the whole difference between
 #   `subTmAtK` and `subTyAtK`.
 FIELD_SORT.update({
+    # ★ `isingleK i` — its one argument is the AMBIENT INDEX, a `Tm`.
+    "isingleK": ["sTm"],
     "singleK":  ["sTm"],
     "subTmAtK": [None, "sTm"],
     "subTyAtK": [None, "sTy"],
@@ -2047,7 +2049,7 @@ IJUDGE_DEF = """Σ' Nat
 
 MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.CtxD
   using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt; Ctx-empK; ⊢Ctx-empK )
-open import DirectedHoTT.Examples.Knot.EWk using ( εwkK; ⊢εwkK )
+open import DirectedHoTT.Examples.Knot.EWk using ( εwkK; ⊢εwkK; isingleK; ⊢isingleK )
 open import DirectedHoTT.Examples.Knot.SubMot
   using ( sortMap-ty; sortMap-tm; sortMap-desc; sortMap-dcon
         ; sortMap-idesc; sortMap-icon; sortMap-var )
@@ -2718,6 +2720,7 @@ WF_CTOR.update({
     #   β-steps afterwards — the `WK` post.
     "pwBodyK":  ("⊢pwBodyK",  ["IX", "MU"],        "WK"),
     "nrsSubK":  ("⊢nrsSubK",  ["DD"],              None),
+    "isingleK": ("⊢isingleK", ["DX", "MU"],        None),
     # ★★★ THE PER-TAG PAYLOAD (`Knot/IxD`).  `DX` hands each one the
     #   index TERM and then its derivation — the shape every nullary
     #   `…Kv` lemma takes — and the `MU`s are the merge-only subjects.
@@ -2822,6 +2825,7 @@ FIELD_DEPTH = {
 #     at the ONE reader that is different, not in the shared table.
 FIELD_DEPTH.update({
     # ⚠ EMITTED positions: slot 0 is the prepended depth/index.
+    "isingleK": [('D',)],
     "singleK":  [('D',), ('D',)],
     # ⚠ FOUR emitted slots since the wrappers took their SOURCE depth
     #   too: 0 source, 1 target, 2 the substitution, 3 the term.  The
@@ -3466,7 +3470,10 @@ _PRE_N = {"singleK": 1, "subTmAtK": 2, "subTyAtK": 2, "extNK": 2}
 #   that the rule does not write down.
 _SUBST_CT = {"single": "singleK", "subTm": "subTmAtK",
              "subTy": "subTyAtK", "extS": "extNK",
-             "pwBody": "pwBodyK", "nrs": "nrsSubK"}
+             "pwBody": "pwBodyK", "nrs": "nrsSubK",
+             # ★ `isingle i : Sub (ε ∙) Γ` — a `lam` ignoring its
+             #   variable; `Knot/EWk` builds it in three lines.
+             "isingle": "isingleK"}
 
 # ★★★ WRAPPERS THAT TAKE THE ARGUMENT'S **INDEX**, not just its depth.
 #
