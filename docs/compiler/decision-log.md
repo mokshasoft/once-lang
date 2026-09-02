@@ -10097,3 +10097,93 @@ than move ([[feedback_canonical_name_not_bare_bandaid]]).
 
 **Relates**: D001 (superseded), D050, D064, D127, D134; plan
 `0.50-canonicalize-generators.md`
+
+---
+
+## D137: Resolution Is Part of the Front End — `⊢R` Covers Parse AND Resolve
+
+**Date**: 2026-09-02 · **Status**: LANDED; plan `0.81-resolution-under-specification.md`
+(complete, deleted) · **Follows**: D134, D136 · **Supersedes**: the
+"KEEP `ModuleTyped` over the UN-RESOLVED source" directive of plan 0.51
+
+### The decision
+
+`src ⊢R tp` means *"the text parses, by the grammar, to a module that resolves,
+by the resolution rule, to `tp`"*, and `Typed` holds the **resolved** module.
+
+`Once.Spec.Resolution` states the resolution rule as inference rules over
+PROPERTIES — `x ∈ bound`, `GenWord x`, `FirstAt a p am` — never a call to the
+decider the resolver uses. `Once.Adequacy.ResolveBridge` proves
+`resolveImports` computes exactly that, both directions, imports included,
+postulate-free.
+
+### Why: two independent reasons, one of them urgent
+
+**The resolver was unconstrained.** Its three obligations
+(`resolver-preserves-typing`, `-reflects-typing`, `-preserves-trace`) all said
+only that SOMETHING SURVIVES resolution. A resolver that resolved `foo` to the
+WRONG module, while keeping the program well-typed and behaviour-preserving,
+satisfied all three. Nothing pinned the name → `CanonicalName` map.
+
+**D136 had made the old shape vacuous.** With bare `fst` meaning
+`Generators.fst`, `ModuleTyped` over the UN-resolved module is underivable for
+any program that names a generator — so with `Typed` holding `mU`, both
+conjuncts of the criterion were going silent about essentially every real Once
+program. And `resolver-reflects-typing` became outright FALSE: its var case
+would need `⊢ᵢ RResolved (gen "fst") → ⊢ᵢ RVar "fst"`, and D136 deleted every
+bare-`RVar` generator rule by design.
+
+### Reconciling the 2026-06-26 directive
+
+Plan 0.51 closed with "KEEP `ModuleTyped` over the UN-RESOLVED source … if it
+is moved to the RESOLVED form it goes vacuous again — so DON'T". That warning
+is CORRECT for moving `Typed` alone: `⊢R` would read `ParsesText text mR`,
+which is false for every `tp`. Its unstated assumption was that
+typing-transport is the only way to keep the resolver inside the theorem. An
+independent `Resolves` relation in `⊢R` is the other way.
+
+### What it bought
+
+18 files / 4425 lines deleted (the whole Canon preserve/reflect family,
+`ResolverBridge`, `ResolverLits`, `ResolverTrace`). Three residuals removed
+(`resolver-preserves-typing-imports`, `resolver-reflects-typing-imports`,
+`resolved-main-agrees`), none added. Both conjuncts of `correctR` got SHORTER,
+and `admissible-resolve`/`-unresolve` disappeared — spec and gate now speak
+about the same module. `CanonResolve` survives; it is about `resolveImports`
+alone.
+
+### Three things learned, worth keeping
+
+**An independent relation earns its keep by failing.** Two spec defects were
+found only by attempting the bridge: `(x , p) ∈ um` was too permissive (it also
+holds for a LATER duplicate, while the resolver takes the FIRST), and
+`rds-cons` could derive "a `DImport` survives". Had the relation been read off
+`canonExpr`, both would have been invisible and every bridge lemma a tautology.
+
+**De-with instead of postulating.** `resolvesModule-complete` was briefly a
+named residual because `resolveDecls` dispatched with `with`, and the
+hypothesis `resolveDecls … ≡ inj₂ ds'` mentions neither scrutinee. De-withing
+it turned the residual into a proof. Cost: once an aux CARRIES its equations, a
+plain `rewrite` cannot fire, so the producer side needs one J-style bridge.
+
+**A green apex does not mean a working compiler.** Six `cabal test` failures
+after the gate were a MISSED D136 migration in the D072 oracle — `pInfer
+(RResolved cn)` asked for `"Generators.id"` while `builtinSchema` is keyed on
+`"id"`, so sig-less `f = id` stopped inferring. Only the behavioural tests
+could catch it.
+
+### The hole this exposed, left for plan 0.59
+
+    ModuleTyped m = ModuleTyped-ef m (extractFunctions (extractAliases m) m)
+
+The spec's notion of "well-typed" is defined by RUNNING the front end, and
+`extractFunctions` calls the principality oracle. That is why `_⊢R_` may name
+`polyDefNames` — the two share `siglessSchema` by construction, so the oracle
+enters the boundary ONCE, not twice — and why specifying the scope separately
+would have added residuals to protect `⊢R` from a dependency its sibling
+conjunct already has. It is the last executable inside the boundary's own
+statements. The sibling case is `ParsesText`, whose leaves still mention
+`skipNewlines`/`headK`.
+
+**Relates**: D134, D136, D072; plans `0.50-canonicalize-generators.md`,
+`0.59-oracle-principality.md`
