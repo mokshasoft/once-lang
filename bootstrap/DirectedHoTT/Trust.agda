@@ -116,6 +116,7 @@ import DirectedHoTT.Examples.Knot.Build
 import DirectedHoTT.Examples.Knot.Census
 import DirectedHoTT.Examples.Knot.ConvRows
 import DirectedHoTT.Examples.Knot.ConvWf
+import DirectedHoTT.Examples.Knot.ConS
 import DirectedHoTT.Examples.Knot.Ctors
 import DirectedHoTT.Examples.Knot.CtorsV
 import DirectedHoTT.Examples.Knot.CtxD
