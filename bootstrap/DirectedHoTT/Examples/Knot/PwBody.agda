@@ -41,6 +41,7 @@ open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf; cTm-cPiWf; cTm-cHomWf 
 open import DirectedHoTT.Examples.Knot.Tags using ( tagTm-cPi; tagTm-cHom )
 open import DirectedHoTT.Examples.Knot.Wk
   using ( ⊢MotK; wkK; ⊢wkK; wkTail; ⊢wkTail; ⊢shIPair )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK )
 open import DirectedHoTT.Examples.Knot.Pw
   using ( D20; D21; D22; D23; spl20; spl21; spl22; spl23 )
 open import DirectedHoTT.Lib.IPay using ( idwfDrop; Split; spl-nil )
@@ -124,8 +125,14 @@ pwIH  = var vz
 pwDep : {Γ : Cx} → RTm (Γ ∙ ∙ ∙)
 pwDep = snd pwIx
 
+-- ⚠⚠ `wkTmK`, NOT `wkK`.  The rule is `app (renTm vs s) (var vz)`
+--   (`Spec/Typing:359`) — `s` is a rule VARIABLE, so it is OPEN, and the
+--   two weakenings differ on exactly those.  `Knot/Wk.wkK` is the
+--   identity on de Bruijn indices; see `PLAN-RENAMING.md` §0.
+-- ★ AND IT DROPS THE `shred`.  `wkK` lands at `sh (pair sTm d)` and owes
+--   two β-steps; `wkTmK d` lands at `pair sTm (nsuc d)` on the nose.
 pwApp : {Γ : Cx} → RTm (Γ ∙ ∙ ∙) → RTm (Γ ∙ ∙ ∙)
-pwApp x = Tm-appK (wkK (pair sTm pwDep) x) (Tm-varK (Var-vzK pwDep))
+pwApp x = Tm-appK (wkTmK pwDep x) (Tm-varK (Var-vzK pwDep))
 
 pwHom : {Γ : Cx} → RTm Γ
 pwHom =
@@ -159,9 +166,9 @@ pwHom =
     -- ⚠ INLINED, NOT A LOCAL `dap`.  A `where`-bound helper with an
     --   implicit term argument left `_t` unsolved at both call sites —
     --   the payload projection is not determined by the RESULT type.
-    dapa = ⊢Tm-appKv _ (⊢nsuc dd) (shred (⊢wkK (⊢ixP ⊢sTm dd) da))
+    dapa = ⊢Tm-appKv _ (⊢nsuc dd) (⊢wkTmK dd da)
                      (⊢Tm-varKv _ (⊢nsuc dd) (⊢Var-vzKt dd))
-    dapb = ⊢Tm-appKv _ (⊢nsuc dd) (shred (⊢wkK (⊢ixP ⊢sTm dd) db))
+    dapb = ⊢Tm-appKv _ (⊢nsuc dd) (⊢wkTmK dd db)
                      (⊢Tm-varKv _ (⊢nsuc dd) (⊢Var-vzKt dd))
     dmot = ⊢⌜IMu⌝ KnotWf (⊢ixP (elAsNat (⊢var here))
                                (⊢nsuc (⊢snd (⊢var (there (there (there here)))))))

@@ -3859,7 +3859,11 @@ def gen_lookupgen():
       [NSUC(V("m")),
        AP("Ctx-extK", V("m"), V("G"), V("A")),
        AP("Var-vzK", V("m")),
-       AP("wkK", PAIR(RAW("sTy"), V("m")), V("A"))])
+       # ⚠⚠ `wkTyK`, NOT `wkK`.  `_∋_∷_`'s type component is `renTy vs A`
+       #   with `A` a bound FIELD — an arbitrary type, hence OPEN — and
+       #   `Knot/Wk.wkK` is the identity on de Bruijn indices, not
+       #   `renTy vs`.  See `PLAN-RENAMING.md` §0.
+       AP("wkTyK", V("m"), V("A"))])
     there = JRow("lkThereG",
       [("m", _code(TNAT(), None)),
        ("G", _code(TCTX(), V("m"))),
@@ -3870,7 +3874,11 @@ def gen_lookupgen():
       [NSUC(V("m")),
        AP("Ctx-extK", V("m"), V("G"), V("B")),
        AP("Var-vsK", V("m"), V("x")),
-       AP("wkK", PAIR(RAW("sTy"), V("m")), V("A"))])
+       # ⚠⚠ `wkTyK`, NOT `wkK`.  `_∋_∷_`'s type component is `renTy vs A`
+       #   with `A` a bound FIELD — an arbitrary type, hence OPEN — and
+       #   `Knot/Wk.wkK` is the identity on de Bruijn indices, not
+       #   `renTy vs`.  See `PLAN-RENAMING.md` §0.
+       AP("wkTyK", V("m"), V("A"))])
     L = [LOOKUPGEN_HDR,
          emit_jrow(here, TEL, ("Θ", "κ"), "ILk", "LkD"), "",
          "-" * 72,

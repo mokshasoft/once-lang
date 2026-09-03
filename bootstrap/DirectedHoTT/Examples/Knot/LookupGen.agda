@@ -98,7 +98,7 @@ open import DirectedHoTT.Examples.Knot.Lookup
 Θ6 = Θ5 ▹ El κ5
 
 κ6 : RTm ⌊ Θ6 ⌋
-κ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs vz)))) (wkK (pair sTy (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz))))))
+κ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs vz)))) (wkTyK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))))
 
 Θ7 : Ctx
 Θ7 = Θ6 ▹ El κ6
@@ -131,7 +131,7 @@ W_Θ6 D =
                   (toI aΘ6)
                   (⊢symN aΘ6 (⊢nsuc (fromI (⊢var (there (there (there (there (there here))))))))
                          (fordAs (⊢var (there (there here)))))
-                  (toMu (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTy (fromI (⊢var (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there here)))))))))))
+                  (toMu (⊢wkTyK (fromI (⊢var (there (there (there (there (there here))))))) (fromMu (⊢var (there (there (there here)))))))))
     (iwf-ι)
 
 aΘ5 : Θ5 ⊢ fst (var (vs (vs (vs (vs (vs vz)))))) ∷ Nat
@@ -260,7 +260,7 @@ XΞ9 : Cx
 XΞ9 = XΞ8 ∙
 
 λ9 : RTm XΞ9
-λ9 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))) (wkK (pair sTy (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs vz))))))))
+λ9 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))) (wkTyK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs vz))))))))
 
 XΞ10 : Cx
 XΞ10 = XΞ9 ∙
@@ -292,7 +292,7 @@ W_Ξ9 =
                   (toI aΞ9)
                   (⊢symN aΞ9 (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there (there here)))))))))))
                          (fordAs (⊢var (there (there here)))))
-                  (toMu (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTy (fromI (⊢var (there (there (there (there (there (there (there (there here))))))))))) (fromMu (⊢var (there (there (there (there (there here)))))))))))))
+                  (toMu (⊢wkTyK (fromI (⊢var (there (there (there (there (there (there (there (there here)))))))))) (fromMu (⊢var (there (there (there (there (there here)))))))))))
     iwf-ι
 
 aΞ8 : Ξ8 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) ∷ Nat
