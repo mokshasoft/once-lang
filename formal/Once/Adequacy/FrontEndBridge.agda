@@ -60,7 +60,8 @@ open import Once.Parser
 -- module — the three opaque postulates that were here are now retired.
 ------------------------------------------------------------------------
 
-open import Once.Adequacy.LexerBridge using (Lexes; lexer-sound; lexer-complete) public
+open import Once.Spec.Lexing public using (Lexes)
+open import Once.Adequacy.LexerBridge using (lexer-sound; lexer-complete)
 
 ------------------------------------------------------------------------
 -- PER-DECL parser obligation — now DISCHARGED (was postulated). The relation
