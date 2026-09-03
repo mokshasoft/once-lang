@@ -191,13 +191,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- addresses are categorically distinct from data pointers
       -- (StoredValue already reflects this via SV-Code). This change
       -- removes the lying `SV-Ptr code-loc` invariant — the self-
-      -- reference "fiction" CurryStackWF and CurryAllocWF used to invent
+      -- reference "fiction" the stack/heap curry producers used to invent
       -- a `code-loc` to satisfy the type. Runtime emits
       -- `instr-load-code-addr this-label` which produces SV-Code.
       -- Plan 0.17.2 follow-up (2026-05-23): made mode-polymorphic.
       -- Closures live on both stack and heap per ARCHITECTURE.md —
       -- the m index now tracks the closure-loc's storage class.
-      -- CurryStackWF uses m = Stack; CurryAllocWF uses m = Heap.
+      -- the stack producer uses m = Stack; the heap one m = Heap.
       valid-closure-wf : ∀ {m EnvType A B}
         {body : IR (EnvType * A) B}
         {env : ⟦ EnvType ⟧}
@@ -671,7 +671,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- Plan 0.17: smart constructor for producers.
     --
     -- Captures the cascade pattern that every compositional producer
-    -- (PairAllocWF, ApplyWF, ComposeWF, ...) hits: the producer has a
+    -- (pair / apply / compose, ...) hits: the producer has a
     -- natural `alloc-final-local` (computed from sub-IR results or
     -- scratch budgets) and constructs all its proofs (alloc-correct,
     -- result-place, stack-inv, heap-inv) typed against that local

@@ -10482,3 +10482,117 @@ D134 (the spec names properties, the elaborator names deciders); D139 (the
 other silent-rot channel in import directives); plan 0.59; plan 0.85 (the same
 disease in `Once.Type`, deliberately deferred — its deciders are already
 `using`-restricted out, so nothing actually leaks).
+
+---
+
+## D141: The `*WF` Cluster Was the OLD Machine's Per-Case Attack — Deleted, and the Backstop Is Back
+
+**Date**: 2026-09-03 · **Status**: Decided and landed (plan 0.83) ·
+**Same species as**: D132
+
+### The decision
+
+Thirteen modules deleted (7,549 lines). The nine plan 0.83 named:
+
+    Once/CCC/Machine/IR/{ApplyWF, ComposeWF, CurryStackWF, LambekValidity,
+                         RecSchemeProof, RecSchemePostulates, SimpleWF,
+                         SumRecWF}.agda
+    Once/CCC/SigOp/Helper.agda
+
+They were red, they blocked `make check-all`, and plan 0.83 posed the fork
+honestly: migrate them, or delete them. **They are superseded, not parked.**
+
+### Why: the general theorem already exists, on the machine that is the semantics
+
+`Once.CCC.Codegen.IRObsCorrectFlat.ir-obs-correct` is a TOTAL dispatch over all
+25 IR constructors — `id`, `∘`, `⟨,⟩`, `fst`, `snd`, `inl`, `inr`, `case`,
+`terminal`, `initial`, `curry`, `apply`, `In`, `out-μ`, `Cata`, `Para`, `Out`,
+`in-ν`, `Ana`, `Hylo`, `Fuse`, `free-heap`, `const`, `SigOp` — and it is
+apex-reachable and green. The cluster attacked the SAME cases, one module at a
+time, on `exec-abstract`:
+
+    ApplyWF       apply-full-trace              ->  obs-correct-apply
+    ComposeWF     compose-trace                 ->  comp-obs-correct
+    CurryStackWF  curry-trace                   ->  obs-correct-curry
+    SumRecWF      inl-inr-trace-…, case-trace-… ->  obs-correct-inl/inr/case
+
+Every one of them references `exec-abstract` and NONE references the flat
+machine, which D-series work made THE semantics.
+
+### The gap check, which is what the decision turned on
+
+The one thing that would have justified migrating them: trace-level lemmas
+feeding an account the flat path does not have. Their `alloc-correct-*` family
+(`alloc-correct-compose`, `curry-trace-alloc-correct`,
+`case-inl-alloc-correct`, …) was the candidate.
+
+**No gap. The flat path's allocation account strictly subsumes it and goes
+further:**
+
+  * slot stability across the WHOLE execution rather than per IR case —
+    `exec-flat-keeps-next-slot`, `flat-run-keeps-next-slot`,
+    `trace-keeps-next-slot`, `abstract-keeps-next-slot`;
+  * minimality — `ir-to-trace-alloc-min`, `fetch-alloc-min`,
+    `emitted-alloc-min`; budget — `emitted-slot-below-budget`;
+  * and, which the cluster never reached, per-instruction allocation at the
+    CONCRETE machine on three arches — `sim-alloc-heap`, `sim-alloc-stack`,
+    `sim-dealloc-stack`, in the apex-reachable arch correspondence.
+
+### Corroborating evidence
+
+  * **Zero external importers.** The nine import only each other. In fact
+    NOTHING outside `Once/CCC/Machine/IR/` imports ANY of that directory's 15
+    modules — see the open item below.
+  * **No substantive commit since 2026-08-11.** Everything after is sweeps:
+    copyright headers, float parameterisation, import stripping, pragma-comment
+    hygiene. Two migrations (the CanonName def-side parameter, plan 0.52 M2's
+    `IRTy`) passed them by and broke them, and nobody noticed — because an
+    island produces no red at the apex.
+  * **63 holes and 3 postulates** across the cluster. Migrating them was
+    content work toward a theorem that already exists.
+
+### Why deleting is the honest answer rather than the lazy one
+
+This is D132's judgment, applied again: **a per-shape/per-case attack is not
+the theorem.** D132 deleted plan 0.36's Nat-shape attack on `cata-correct` for
+exactly this reason three days earlier. Keeping 5,427 lines of superseded
+proof, red, in the tree does not preserve value — it hides the gate.
+
+**The value here is the GATE, not the nine modules.** `make check-all` is the
+only check that sees a module no apex reaches. While it was red for these,
+it reported nothing about anything else, so a NEW island would have hidden
+behind them. That is the whole argument.
+
+### The count was wrong, and the reason is the point
+
+This entry first said nine, taking plan 0.83's list as the extent of the rot.
+Running the gate proved otherwise: `check-all` came back red on
+`CurryAllocWF.agda:128`, one of the modules the plan had not listed. **Those
+modules were not "green" — they had never been typechecked by anything.**
+Nothing imports them, so no gate had ever built them, and plan 0.83's list was
+whatever its diagnosis happened to reach first.
+
+Checking each of the remaining seven individually gave a clean split:
+
+    RED    CurryAllocWF, PairAllocWF, SumInlAllocWF, SumInrAllocWF
+    GREEN  FunctorDispatch, MuSize, MuValidity
+
+The four red ones are the SAME species as the nine — per-case allocation
+lemmas (`closure-cont-alloc`, `pair-trace-after-setup-alloc-eq`,
+`sum-cont-alloc`) over the old trace/abstract machine, covered by the same gap
+analysis above. **Deleted too: 13 modules, 7,549 lines in total.**
+
+The three survivors are genuinely different: zero `exec-abstract` references,
+and `MuSize` is plan 0.27 Option B's reified measure — a live technique, not an
+old-machine artefact. They remain islands (nothing outside the directory
+imports them) and should be decided on their own merits, but they are not this
+entry's species.
+
+**The lesson is the gate's, not the cluster's.** An island is not merely
+unreachable — it is UNCHECKED, so "it still typechecks" cannot be assumed
+about one. The only way to know a module's status is to build it, which is
+exactly what `check-all` is for, and exactly what could not happen while it
+was red.
+
+**Relates**: D132 (per-shape witnesses are not the theorem); plan 0.83
+(closed by this entry); MERGE.md's no-islands rule.

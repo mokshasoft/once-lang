@@ -34,17 +34,19 @@
 -- Coverage (Plan 0.10 Phase B)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 --
--- Implemented (emit a real trace, mirroring the corresponding *WF module):
---   id           — SimpleWF
---   _∘_          — ComposeWF
---   fst, snd     — SimpleWF
---   terminal     — SimpleWF
---   initial      — SimpleWF
---   arr          — SimpleWF
---   ⟨_,_⟩        — PairStackWF.pair-trace
---   curry        — CurryStackWF.curry-trace
---   apply        — ApplyWF.apply-setup-trace + instr-call-closure
+-- Implemented (emit a real trace):
+--   id, fst, snd, terminal, initial, arr, _∘_, ⟨_,_⟩, curry
+--   apply        — setup chain + instr-call-closure
 --   SigOp        — `instr-sigop name` (per-arch decode)
+--
+-- D141: this table used to name a `*WF` module per case (`id — SimpleWF`,
+-- `curry — CurryStackWF.curry-trace`, `apply — ApplyWF.apply-setup-trace`, …).
+-- Those modules were an ISLAND cluster over the STRUCTURED machine and are
+-- deleted; they never justified these shapes formally — nothing here imported
+-- them, so the pointers were documentation, not dependency. What actually
+-- certifies these traces is `Once.CCC.Codegen.IRObsCorrectFlat.ir-obs-correct`
+-- (a total dispatch over every IR constructor at the FLAT machine) together
+-- with the per-arch correspondence in `Once.Adequacy.ArchCorrectness.*`.
 --
 -- Stubbed (emit `[]` — Layer 0 doesn't need these):
 --   inl, inr, case
@@ -614,7 +616,7 @@ ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
 
 -- ────────────────────────────────────────────────────────────────────
--- Trivial morphisms (no slots needed; mirror SimpleWF.run-*-trace).
+-- Trivial morphisms (no slots needed).
 -- ────────────────────────────────────────────────────────────────────
 
 ir-to-trace' n l id        = n , l , (mov-to-output ∷ []) , []
@@ -638,7 +640,7 @@ ir-to-trace' n l initial   = n , l , (mov-to-output ∷ []) , []
 
 -- ────────────────────────────────────────────────────────────────────
 -- Compose: thread output of f into input of g via the abstract bridge.
--- Mirror ComposeWF.compose-trace = f-trace ++ mov-to-input ∷ g-trace.
+-- Composite trace = f-trace ++ mov-to-input ∷ g-trace.
 -- ────────────────────────────────────────────────────────────────────
 
 ir-to-trace' n l (g ∘ f)   =
@@ -677,7 +679,7 @@ ir-to-trace' n l (⟨ f , g ⟩ Stack) =
      (fb ++ gb)
 
 -- Heap mode: pair lives on the heap (2 cells). Mirrors
--- PairAllocWF setup + mid + post. Uses 4 scratch slots:
+-- Pair: setup + mid + post. Uses 4 scratch slots:
 -- backup-slot (input ptr), fst-stash (f-result), snd-stash (g-result),
 -- pair-stash (heap ptr). f starts at n+4.
 ir-to-trace' n l (⟨ f , g ⟩ Heap) =
@@ -706,7 +708,7 @@ ir-to-trace' n l (⟨ f , g ⟩ Heap) =
 
 -- ────────────────────────────────────────────────────────────────────
 -- curry — closure construction.
--- Mirror CurryStackWF.curry-trace closure-slot:
+-- Curry trace, closure-slot:
 --   mov-to-output ∷                       -- Output := Input1 (env ptr)
 --   store-at-slot closure-slot ∷          -- closure[0] := env
 --   lea-slot (suc closure-slot) ∷         -- Output := &closure[1]
@@ -774,7 +776,7 @@ ir-to-trace' n l (curry body Stack) =
 
 -- Heap mode: closure record bump-allocated on the heap (2 cells:
 -- env-ptr at offset 0, code-address at offset 8). Mirrors
--- CurryAllocWF.curry-heap-trace. Uses 2 scratch slots
+-- The heap-mode curry trace. Uses 2 scratch slots
 -- (env-stash, closure-stash).
 ir-to-trace' n l (curry body Heap) =
   let this-label    = l
@@ -804,7 +806,7 @@ ir-to-trace' n l (curry body Heap) =
 
 -- ────────────────────────────────────────────────────────────────────
 -- apply — runtime closure call.
--- Mirror ApplyWF.apply-setup-trace + instr-call-closure:
+-- Apply: setup chain + instr-call-closure:
 --   pair-slot = next-slot   (used for env+arg backup)
 --   apply-setup-trace pair-slot ++ instr-call-closure ∷ []
 --
@@ -871,7 +873,7 @@ ir-to-trace' n l (const fits-float v) = n , l , (instr-load-const Ty.fits-float 
 --   slot[N]   := SV-Tag t            (t = 0 for inl, 1 for inr)
 --   slot[N+1] := payload pointer (Input1)
 --   Output    := &slot[N]
--- Mirrors SumRecWF.run-inl / run-inr's expected trace shape (Phase 3).
+-- The inl / inr trace shape (Phase 3).
 -- ────────────────────────────────────────────────────────────────────
 
 -- Stack mode: 5-instruction stack lowering at slots [n, n+1].
@@ -898,7 +900,7 @@ ir-to-trace' n l (inr Stack) =
      []
 
 -- Heap mode: bump-allocate a 2-cell heap block, write [tag, payload-ptr].
--- Mirrors SumInlAllocWF.inl-heap-trace / SumInrAllocWF.inr-heap-trace.
+-- The heap-mode inl / inr trace shape.
 -- Uses 2 scratch slots for stashing: payload-stash = n, sum-stash = n+1.
 ir-to-trace' n l (inl Heap) =
   let payload-stash = n
@@ -971,7 +973,7 @@ ir-to-trace' n l (case f g) =
 -- In: μ Lambek constructor. Heap-identity — the F-layer node IS the
 -- μ-value (same pointer). `mov-to-output` (Output := Input1) passes the
 -- pointer through, matching `out-μ` (its inverse) and the heap-identity
--- `run-In` (SumRecWF). Plan 0.27 Phase B: was `[]` (a stub correct only
+-- `In`. Plan 0.27 Phase B: was `[]` (a stub correct only
 -- when Output happened to be pre-loaded by a preceding sub-IR).
 ir-to-trace' n l (In _ _)       = n , l , (mov-to-output ∷ []) , []
 -- out-μ and Out: ν/μ Lambek inverses; semantically Output := Input1.

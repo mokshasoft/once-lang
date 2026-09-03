@@ -260,14 +260,16 @@ eval-bicase-id m (inj₂ b) = refl
 --
 ------------------------------------------------------------------------
 
--- | arr is semantically identity
+-- | `arr` is RETIRED (plan 0.52 M2). With ungraded `IRTy`, `A ⇒[pure] B` and
+-- `A ⇛ B` are the SAME object, so the lift was the identity morphism and the
+-- constructor was removed from `Once.IR`.
 --
--- Lifting a pure function just returns it unchanged, since Eff A B
--- is semantically the same as A ⇒ B.
---
-eval-arr-identity : ∀ {A B} (f : ⟦ A ⇒ B ⟧)
-                  → eval (arr {q = Many}) f ≡ f
-eval-arr-identity f = refl
+-- The lemma that stood here — `eval (arr {q = Many}) f ≡ f` — is therefore not
+-- merely unprovable but unstatable, and it is subsumed by `eval-id` above:
+-- what `arr` denoted, `id` denotes. Deleted rather than adapted; there is no
+-- content to carry over. (D141 / the plan-0.64 audit found it, three months
+-- after M2 retired the constructor, because this module is an ISLAND that no
+-- gate builds.)
 
 -- | arr ∘ curry ≡ curry with effectful codomain (conceptually)
 --
