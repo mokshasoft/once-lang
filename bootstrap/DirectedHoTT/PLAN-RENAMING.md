@@ -162,10 +162,10 @@ Format: site · what the wrong weakening did · how it was caught.
 | 2 | `Knot/IhTyRho` | **BUG** — `Σ'`'s 2nd component weakens an OPEN answer (`q`, `M`) | same reading, same day |
 | 3 | `Knot/PwBody.pwApp` | **BUG** — rule is `app (renTm vs s) (var vz)` (`Spec/Typing:359`), `s` a rule variable | step 1, ✅ FIXED |
 | 4 | `Knot/PwBody` — `pwBodyK`'s **51 DEFAULT rows** | **BUG, STRUCTURAL** — meta `pwBody t = renTm vs t` is the default clause, and the encoding takes `Lib/IWk`'s methods for all 51 | step 1, ⬜ OPEN |
-| 5 | `Knot/SubMot.extVs` | **BUG, BLOCKED** — `extS σ (vs x) = renTm vs (σ x)` (`Spec/Syntax:335`) | step 1, ⬜ see §8 |
+| 5 | `Knot/SubMot.extVs` | **BUG** — `extS σ (vs x) = renTm vs (σ x)` (`Spec/Syntax:335`) | step 1c, ✅ **FIXED** — needed `Knot/RenTm` first |
 | 6 | `Knot/Lookup` ×2 rows + `gen_lookupgen` ×2 | **BUG** — `_∋_∷_`'s type is `renTy vs A`, `A` a bound FIELD | step 1, ✅ FIXED |
 
-**Running: 6 sites, 4 fixed, 2 open.** Every one is `renTm vs`/`renTy vs`
+**Running: 6 sites, 5 fixed, 1 open.** Every one is `renTm vs`/`renTy vs`
 in the source with `wkK` in the encoding — a single class, not six.
 
 ★ **AND TWO CHECKS FIRED ON THEIR OWN**, which is the first time anything

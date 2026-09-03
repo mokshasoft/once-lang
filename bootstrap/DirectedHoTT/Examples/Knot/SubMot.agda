@@ -102,6 +102,7 @@ open import DirectedHoTT.Examples.Knot.Sorts
         ; ⊢sTm; ⊢sVar; ⊢ixP; toI; fromI; num; ⊢num )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK )
 
 ------------------------------------------------------------------------
 -- Binder layout.  The motive is checked at
@@ -374,7 +375,7 @@ extVz = lam (lam (lam (lam (lam (Tm-varK (Var-vzK (var (vs vz))))))))
 extVs : {Γ : Cx} → RTm Γ
 extVs =
   lam (lam (lam (lam (lam
-    (wkK (pair sTm (var (vs vz)))
+    (wkTmK (var (vs vz))
          (app (var vz)
               (jsub (⌜IMu⌝ KnotD IPair (pair sVar (var vz)))
                     (symN (predTm (snd (var (vs (vs (vs (vs vz)))))))
@@ -402,10 +403,17 @@ extVs =
                       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here)))))
             -- ⚠ TWO β STEPS, INNERMOST FIRST: `sh i` projects `i` twice
             --   and both projections are redexes at `pair sTm n`.
-            (muFwd (ξ-pairʳ (ξ-nsuc (βsnd sTm (var (vs vz)))))
-              (muFwd (ξ-pairˡ (βfst sTm (var (vs vz))))
-                (⊢wkK (⊢ixP ⊢sTm (⊢var (there here)))
-                      (⊢app (⊢var here) tx))))))))
+            -- ⚠⚠ `wkTmK`, NOT `wkK`.  `extS σ (vs x) = renTm vs (σ x)`
+            --   (`Spec/Syntax:335`) and `σ x` is an arbitrary TERM, so
+            --   this is exactly the case where the two weakenings differ.
+            --   ★ THE FIX WAS BLOCKED UNTIL `Knot/RenTm` EXISTED: the
+            --     first attempt expressed `renTm vs` as `subTm`, which
+            --     put `Knot/WkSub` above this module and closed a cycle.
+            --     Renaming had to be built BEFORE substitution, as it is
+            --     in `Spec`.  `PLAN-RENAMING.md` §8.
+            -- ★ And it drops the two β-steps: `wkK` lands at `sh (pair
+            --   sTm n)`, `wkTmK n` lands at `pair sTm (nsuc n)`.
+            (⊢wkTmK (⊢var (there here)) (⊢app (⊢var here) tx))))))
   where
     -- the payload binder, and the two components the method needs
     dp = ⊢var (there (there (there here)))

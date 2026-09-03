@@ -500,3 +500,37 @@ renTmK i x = ielim KnotD i renMethsK x
           Γ ⊢ i ∷ Σ' Nat Nat → Γ ⊢ x ∷ K i →
           Γ ⊢ renTmK i x ∷ iinst i x renMotK
 ⊢renTmK di dx = ⊢ielim KnotWf ⊢renMotK di ⊢renMethsK dx
+
+------------------------------------------------------------------------
+-- ★★★ `renTm ρ t` AT A SORT AND A DEPTH — `Knot/SubApp`'s `⊢subAtK`,
+--   MINUS ITS STABILITY PREMISE.
+--
+-- ⚠ `⊢subAtK` takes `sortMap s ⟶* s` because its result lands at
+--   `pair (sortMap s) m` and the caller wants `pair s m`.  With
+--   `smap = id` there is nothing to move: `⊢renAppK` already concludes
+--   at `pair s m`, so this is one application and no conversion.
+------------------------------------------------------------------------
+
+renTmAtK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+renTmAtK s dd m rn t = app (app (renTmK (pair s dd) t) m) rn
+
+⊢renTmAtK : {Γ : Ctx} {s dd m rn t : RTm ⌊ Γ ⌋} →
+            Γ ⊢ s ∷ Nat → Γ ⊢ dd ∷ Nat → Γ ⊢ m ∷ Nat →
+            Γ ⊢ rn ∷ RenTy dd m → Γ ⊢ t ∷ K (pair s dd) →
+            Γ ⊢ renTmAtK s dd m rn t ∷ K (pair s m)
+⊢renTmAtK ds dd dm drn dt = ⊢renAppK (⊢renTmK (⊢ixP ds dd) dt) dm drn
+
+------------------------------------------------------------------------
+-- ★★★ AND `vs` ITSELF, AS A VALUE.  ⚠⚠ THIS IS THE POINT OF THE WHOLE
+--   ARC.  `Knot/Wk.wkK` is a weakening whose renaming lives inside
+--   `Lib/IWk`'s fold, unnamed and unrecoverable; here it is a `lam` you
+--   can read, apply, and test pointwise.
+------------------------------------------------------------------------
+
+vsRenK : {Γ : Cx} → RTm Γ → RTm Γ
+vsRenK n = lam (Var-vsK (renTm vs n) (var vz))
+
+⊢vsRenK : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} →
+          Γ ⊢ n ∷ Nat → Γ ⊢ vsRenK n ∷ RenTy n (nsuc n)
+⊢vsRenK dn =
+  ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar dn)) (⊢Var-vsKt (⊢wk dn) (⊢var here))
