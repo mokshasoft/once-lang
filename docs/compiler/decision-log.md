@@ -9233,7 +9233,9 @@ D124 (the negated-literal lift), D058 (IR-free judgment)
 
 ## D127: Composition Is Context-Indexed — One Lift, Written, and No Global-Element Realm
 
-**Date**: 2026-08-29 · **Status**: Decided (design); plan `0.76-context-indexed-composition.md` ·
+**Date**: 2026-08-29 · **Status**: LANDED 2026-09-03; plan
+`0.76-context-indexed-composition.md` CLOSED and deleted (see "Where the plan
+landed" at the end of this entry) ·
 **Supersedes**: D018's lifting rule, D056 point 2, **D126 in full** ·
 **Retires the TYPING half of**: D063's `⊢ᵐ` realm ·
 **Reasoned from**: the CCC, and the OCP-0009 directed kernel's shape
@@ -9341,6 +9343,32 @@ the fast path must be proved, not optimized), D126 (retired), OCP-0006 (source
 is spec), OCP-0009 (the kernel whose shape this follows)
 
 ---
+
+### Where the plan landed (closure note, 2026-09-03)
+
+Plan 0.76's phases are all done and the file is deleted; this is its record.
+
+* **Phase A** (judgment) — `⊢ᵍ` and `⊢ᵐ` deleted; 4 judgment forms -> 2,
+  62 rules -> 51. `composeMid` survived as A3 required.
+* **Phase B** (elaboration) — arms check with `checkElabV` at the arrow type;
+  `extract-morph-eff` / `extractMorphWitness` died with the realm; the
+  target-driven literal dispatch is gone.
+* **Phase C** — **O1 discharged**: closed arms still emit `IR.∘`, as a PROVED
+  equation used in codegen only, never as a typing-side premise.
+* **Phase D** — **O2 ANSWERED in D133**, which is the load-bearing result: the
+  question's premise was wrong. `⊢ᵐ` was buying a HYPOTHESIS, and binding the
+  arm removes the need for it. The plan named "O2 unanswered" as its honest
+  failure condition, so D133 is what let this close rather than re-open D127.
+  `StrongElab` and `morph-elab` disappeared with it.
+* **Phase E1/E2** — the five literal-arm surface sites rewritten to `\_ -> …`;
+  `closed-expr-lift.once` retired (it tested D126); the test D127 is FOR — an
+  arm capturing an enclosing binder — added.
+* **Phase E3** — the gate ran green EXCEPT the island backstop, which cannot
+  pass for reasons predating this branch. **That is plan 0.83's**, not an
+  unfinished part of 0.76.
+
+Risk 3 of the plan (the cata algebra widening to admit a CAPTURING algebra)
+was taken deliberately as its own decision — see D131.
 
 ## D128: Float `/` Is Correctly Rounded and TOTAL; Float `%` Has No Lowering
 
@@ -10354,3 +10382,103 @@ per-file scanning — 50 + 8 across 24 files, not 944 across 95.
 
 **Relates**: D137; plan `0.83-parked-wf-island-cluster.md` (the other gate that
 does not currently run)
+
+---
+
+## D140: A Bridge Proof Is Not Part of the Claim — the Spec Closure Holds Relations Only
+
+**Date**: 2026-09-03 · **Status**: Decided and landed (plan 0.84) ·
+**Supersedes nothing; refines D137**
+
+### The rule
+
+`Once.Spec` re-exports exactly what a reviewer must read to know WHAT IS
+CLAIMED. A `-sound` / `-complete` proof is evidence that the implementation
+meets the claim. It is never part of the claim, and it must not be inside the
+re-export closure.
+
+Stated as a check: **every module `spec-closure.py` prints is proof-free.**
+
+### What was wrong
+
+Five modules each defined a relation AND proved its bridge to the executable in
+the same file, so re-exporting the relation dragged the proofs in:
+
+    Once/Adequacy/LexerBridge.agda      304 lines   2 relations  14 proofs
+    Once/Adequacy/FrontEndBridge.agda   219          4            8
+    Once/Adequacy/AcceptSound.agda      208          3            6
+    Once/Adequacy/ModuleComplete.agda   362          4            2
+    Once/Grammar/DeclBridge.agda        108          1            2
+
+1,201 lines, 14 relations, 32 proofs. The closure was majority proof by line
+count. An audit instruction that says "read 1,201 lines, most of which you do
+not have to trust" is one nobody executes — which is how an audit surface rots.
+
+### The second defect: the report under-reported too
+
+`spec-closure.py` follows a re-export only when the `open import` carries
+`public`. `Once/Grammar/DeclBridge.agda` imported its six sub-relations WITHOUT
+it, yet `ParsesDecl`'s constructors MENTION them — a reviewer reading
+`ParsesDecl` must read `ParsesImport`, `ParsesTypeAliasDecl`, `ParsesSignature`,
+`ParsesFunDef`, `ParsesOpDecl` and `ParsesPolyType` to know what it says.
+
+So the closure **over-reported** (module granularity dragged proofs in) and
+**under-reported** (only `public` propagates) simultaneously. Fixing one alone
+would have produced a smaller number that was still wrong. This is why the
+count RISING is the plan working:
+
+    before   23 modules, 4,864 lines, 32 sound/complete proofs
+    after    27 modules, 4,467 lines,  0 sound/complete proofs
+
+**Treat a falling closure count with suspicion.** It usually means a re-export
+lost its `public` and part of the surface went dark, not that the spec shrank.
+
+### The rule is proof-freeness, NOT location
+
+`Once/Parser/TypeRelation.agda` (323 lines, 0 proofs) and
+`Once.Parser.Generic.Relation` (598 lines, 0 proofs) already comply and are NOT
+moved: they live in the parser hierarchy by design, because the parser's own
+return type mentions them, and moving them would create a Spec -> Parser ->
+Spec cycle. New modules under `Once/Spec/` are only for relations that are
+currently co-located with proofs and have nowhere else to go.
+
+`Once/Parser/Generic/` — `Relation.agda` beside `Sound.agda`/`Complete.agda` —
+was the in-tree precedent this plan generalised, not a new idea.
+
+### A relation must never import a proof module
+
+`wordHead := is-just ∘ anyWordB`, an executable parser helper, lived in
+`Once.Grammar.ImportBridge`, and three grammar RELATIONS named it. The fix is
+to move the HELPER to where its `anyWordB` already lives
+(`Once.Parser.Module.Core`), not to bend the rule for the relation.
+
+### What the split makes visible, and deliberately does not fix
+
+`Once/Spec/Module.agda` is ugly, and its header says so:
+
+  * `ModuleTyped m = ModuleTyped-ef m (extractFunctions (extractAliases m) m)`
+    — the spec's notion of "well-typed" is defined by RUNNING the front end.
+  * `AllFunsTyped` names `ctxWithImportsAndSelfAndPolys` from the ELABORATOR,
+    plus `resolveFunType` / `extendFunCtx` / `buildPolyCtx` /
+    `collectSigEffects` from `Once.Compile`.
+  * Only its BODY premise is honest: `_⊢ᶜ_∶_⨾_`, with no elaborator function.
+
+Likewise `Once.Spec.Parsing`'s relations are phrased against `skipNewlines`,
+`parseDeclB`, `allTrailing` and the lexer's classifiers.
+
+D137 recorded this hole and **plan 0.59 owns closing it.** The split relocates
+the dirt into files whose names promise spec, so a reviewer trips over it,
+rather than leaving it hidden behind a proof module. Expect
+`Spec/Grammar/*.agda` to read clean and `Spec/Module.agda` to read badly; that
+asymmetry is honest reporting, not a defect in the split.
+
+### Cost
+
+No executable code moved — relations are types — so no re-extraction was
+needed. Apex (`Once.Certified`) green.
+
+**Relates**: D137 (`Typed`/`_⊢R_` into the boundary; the `ModuleTyped` hole);
+D134 (the spec names properties, the elaborator names deciders); D139 (the
+other silent-rot channel in import directives); plan 0.59; plan 0.85 (the same
+disease in `Once.Type`, deliberately deferred — its deciders are already
+`using`-restricted out, so nothing actually leaks).
