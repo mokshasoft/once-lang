@@ -124,7 +124,7 @@ readable line, and that line is pointwise testable.
 | 1a | `Knot/RenMot` — the object-level `Ren` layer (`RenTy`, `extRK`, `extRNK`) | ✅ **done** — breaks the cycle |
 | 1b | `renTmK ρ` over the 53 rows (`Knot/RenTm`) | ✅ **done** |
 | 1c | `extVs` (#5), `pwBodyK`'s 51 defaults (#4), `wkTmK = renTmK vsRen` | ✅ **done** |
-| 2 | pointwise specs for `vsRenK`/`singleK`/`extRNK`/`nrsSubK` | ⬜ **NEXT** |
+| 2 | pointwise specs — `vsRenK` ✅, and `Lib/IMeths` gained the SELECTION lemma the rest need | 🟡 |
 | 3 | `sub-agree` — the ONE induction, discharges the family | ⬜ |
 | 4 | retire `wkK` for open terms; keep it only where CLOSED, stated | ⬜ |
 | 5 | then `methsTyFrom` (unblocked, mechanical) | ⬜ |
@@ -464,4 +464,59 @@ carried the bug no longer contains the mechanism that caused it.**
 type is stuck, so the weakenings past the payload and IH binders must be
 pushed through by hand; `Knot/PayTy` and friends skip this because
 `ipayTy` COMPUTES at their concrete rows.
+
+---
+
+## §15 STEP 2 — `vsRenK`'s LAW, AND THE LEMMA THAT UNBLOCKS THE REST
+
+### §15.1 ✅ `vsRenK` — ONE β-STEP, AND ONE LAW NOT TWO
+
+    vsRenK-app : (n x : RTm Γ) → app (vsRenK n) x ⟶* Var-vsK n x
+
+`Knot/RenSpec`, three lines. ⚠ **One law, not two**: `vsRenK` does not
+CASE on its argument — it is `x ↦ vs x`, uniformly — so `vz` and `vs y`
+are the same clause. `single`/`extR`/`nrs` all case, and owe two each.
+
+★★★ **AND THIS IS PRECISELY WHAT `Knot/Wk.wkK` CANNOT SAY.** There is no
+`app wkK x` to reduce: `wkK` is an `ielim`, and its renaming exists only
+as the SHAPE of `Lib/IWk`'s 53 derived methods. ⇒ the defect was never
+that the law went unproved — **the law was UNSTATABLE**, and that is the
+sharpest form of the whole finding.
+
+### §15.2 ★★★ AND THE REST NEEDED A LEMMA THAT WAS LOCKED IN A MODULE
+
+`single`/`extR`/`nrs` all case on the variable, so each law needs the
+`ι-ielim` head reduction plus **method selection out of the 53-tuple**.
+That lemma existed — `Lib/IFold.Fold.ifMeths-sel` — **inside a
+parameterised module, for `ifMeths` only**. `Knot/SzAgree` is the only
+customer it can ever have.
+
+⇒ **`Lib/IMeths` now has it generically**, for the tuples everything else
+actually uses:
+
+    selCong       : ms ⟶ ms' → sel k ms ⟶ sel k ms'
+    InCD          : row `k` of the WALK exists  (the premise is the walk,
+                    not the description — `methsAt` recurses on `W`)
+    methsAt-sel   : InCD W k → sel k (methsAt W mth j tl) ⟶* mth (k + j)
+    methsFrom-sel : InCD W k → sel k (methsFrom W m tl)   ⟶* m
+
+⚠ **`methsFrom-sel` is PROVED, not derived.** This module's header says
+`methsFrom W m` *is* `methsAt W (λ _ → m)`, but `methsFrom` carries no
+position counter, so that is not `refl` and the derivation does not
+typecheck. The direct proof is SHORTER — no arithmetic, because there is
+no `j` to move.
+
+★ AND THE STATEMENT WAS CHOSEN TO NEED ONE ARITHMETIC FACT, NOT TWO:
+`mth (k + j)` rather than `mth (j + k)`, because `_+_` recurses on its
+FIRST argument — so the zero case is definitional and only the successor
+moves a `suc`.
+
+⇒ **this is the missing plumbing behind `FUTURE.md` D′.** *"A law you
+cannot state is a law you will not prove"* had a second half: a law you
+cannot REDUCE THROUGH is one you cannot prove either, and until now
+nothing could reduce through a `methsAt`/`methsFrom` tuple.
+
+⬜ NEXT: `singleK`/`extRNK`/`nrsSubK`'s two laws each, now that the head
+reduction is available; then step 3's `sub-agree`, which needs the same
+lemma at all 53 rows.
 
