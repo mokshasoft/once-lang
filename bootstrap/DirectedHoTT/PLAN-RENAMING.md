@@ -157,5 +157,54 @@ Format: site · what the wrong weakening did · how it was caught.
 |---|---|---|---|
 | 1 | `gen-knot.py:_val` → `⊢ap`, `hrefl-pw`, `tr-pw` | **BUG** — `renTm vs` emitted as `wkK` | reading `WkRows` §5/§7 against `renTm vs` |
 | 2 | `Knot/IhTyRho` | **BUG** — `Σ'`'s 2nd component weakens an OPEN answer (`q`, `M`) | same reading, same day |
+| 3 | `Knot/PwBody.pwApp` | **BUG** — rule is `app (renTm vs s) (var vz)` (`Spec/Typing:359`), `s` a rule variable | step 1, ✅ FIXED |
+| 4 | `Knot/PwBody` — `pwBodyK`'s **51 DEFAULT rows** | **BUG, STRUCTURAL** — meta `pwBody t = renTm vs t` is the default clause, and the encoding takes `Lib/IWk`'s methods for all 51 | step 1, ⬜ OPEN |
+| 5 | `Knot/SubMot.extVs` | **BUG, BLOCKED** — `extS σ (vs x) = renTm vs (σ x)` (`Spec/Syntax:335`) | step 1, ⬜ see §8 |
+| 6 | `Knot/Lookup` ×2 rows + `gen_lookupgen` ×2 | **BUG** — `_∋_∷_`'s type is `renTy vs A`, `A` a bound FIELD | step 1, ✅ FIXED |
 
-*(rows appended below as step 1 proceeds)*
+**Running: 6 sites, 4 fixed, 2 open.** Every one is `renTm vs`/`renTy vs`
+in the source with `wkK` in the encoding — a single class, not six.
+
+★ **AND TWO CHECKS FIRED ON THEIR OWN**, which is the first time anything
+has caught this class without being told to look:
+
+* `Knot/Lookup`'s **example instantiation** rejected the converted row
+  until the example was converted too. The row and its consumer must name
+  the same weakening. (`libraries-exercised-by-examples`, again.)
+* `Knot/LookupGen`, the **generated control**, went red the moment the
+  hand-written row moved and the generator had not. That is exactly what
+  a control is for — and note it only works because the two sides are
+  written by different emitters.
+
+⚠ Not caught by either: #4 and #5, which are the two that are structural.
+
+## §8 ⚠⚠ THE BLOCKER — RENAMING IS PRIOR TO SUBSTITUTION
+
+`Knot/SubMot.extVs` cannot use `wkTmK`: `Knot/WkSub` imports `SubMot`.
+That is not an accident of module layout — it is the kernel's own
+layering:
+
+    Ren Γ Δ = Var Γ → Var Δ          Spec/Syntax:273   ← FIRST
+    renTm   : Ren Γ Δ → RTm Γ → RTm Δ            :281
+    Sub Γ Δ = Var Γ → RTm Δ                      :330   ← SECOND
+    extS σ (vs x) = renTm vs (σ x)               :335   ← uses renTm
+
+**Renaming is defined BEFORE substitution and `extS` is defined in terms
+of it.** Expressing `renTm vs` as `subTm wkSub` inverts that and closes a
+cycle exactly at `extS`.
+
+⇒ **the Sub-based fix cannot cover the whole family.** What is needed is
+the layer the kernel already has and the encoding never built: an
+object-level **`Ren`**, i.e. `renTmK ρ` parameterised by an
+`ρ : Π (Var d) (Var m)` — `SubTy`'s twin, one level down. Then
+
+    wkTmK   = renTmK vsRen          (and the cycle disappears)
+    extSK   uses renTmK, not subTmK
+    Lib/IWk = renTmK at ONE ρ, with the ρ finally named
+
+★ That is the same conclusion as §4 — *pass the renaming* — arrived at a
+second time, from the module graph instead of from the criterion.
+
+⬜ **DECISION NEEDED before step 2:** build `renTmK ρ` (faithful to the
+kernel, unblocks #4 and #5, subsumes `Lib/IWk`), or leave `extVs`/
+`pwBodyK` on `wkK` with the defect recorded.

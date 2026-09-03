@@ -53,6 +53,14 @@ open import DirectedHoTT.Examples.Knot.CtxD
 open import DirectedHoTT.Examples.Knot.Build
   using ( Var-vzK; ⊢Var-vzK; ⊢Var-vzKv; Var-vsK; ⊢Var-vsKv )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
+-- ⚠⚠ `wkTyK`, NOT `wkK`, FOR THE ROW'S `renTy vs A`.  `A` is a bound
+--   FIELD standing for an arbitrary type, hence OPEN, and the two
+--   weakenings differ on exactly those (`PLAN-RENAMING.md` §0).  The
+--   ★ AND THE EXAMPLE INSTANTIATION FORCED THE ISSUE: the row and its
+--   consumer must name the SAME weakening, so converting the row made
+--   the example fail until it was converted too.  Libraries exercised by
+--   examples, paying again.
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTyK; ⊢wkTyK )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Ty-NatK; ⊢Ty-NatK )
 
 ------------------------------------------------------------------------
@@ -197,8 +205,8 @@ open import DirectedHoTT.Lib.ICast public
           (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))) 
           (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz)))
                 (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs vz))))
-                (wkK (pair sTy (var (vs (vs (vs (vs (vs vz)))))))
-                     (var (vs (vs (vs vz))))))
+                (wkTyK (var (vs (vs (vs (vs (vs vz))))))
+                       (var (vs (vs (vs vz))))))
 
 C₆ : ICon ⌊ Θ6 ⌋
 C₆ = iκ κ₆ iι
@@ -237,11 +245,8 @@ W₆ D =
                   (⊢symN (⊢fst (⊢var (there (there (there (there (there (there here))))))))
                          (⊢nsuc (fromI (⊢var (there (there (there (there (there here))))))))
                          (fordAs (⊢var (there (there here)))))
-                  (toMu (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _)))
-                          (muFwd (ξ-pairˡ (βfst _ _))
-                            (⊢wkK (⊢ixP ⊢sTy
-                                     (fromI (⊢var (there (there (there (there (there here))))))))
-                                  (fromMu (⊢var (there (there (there here)))))))))))
+                  (toMu (⊢wkTyK (fromI (⊢var (there (there (there (there (there here)))))))
+                                (fromMu (⊢var (there (there (there here)))))))))
     iwf-ι
 
 W₅ : (D : IDesc) → IConWf D ILk Θ5 C₅
@@ -397,8 +402,8 @@ X9 = X8 ∙
           (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz)))
                 (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
                       (var (vs (vs vz))))
-                (wkK (pair sTy (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))
-                     (var (vs (vs (vs (vs (vs vz))))))))
+                (wkTyK (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))
+                       (var (vs (vs (vs (vs (vs vz))))))))
 
 lkThere : ICon (ε ∙)
 lkThere =
@@ -439,11 +444,8 @@ V₉ =
                   (⊢symN (⊢fst (⊢var (there (there (there (there (there (there (there (there (there here)))))))))))
                          (⊢nsuc (fromI (⊢var (there (there (there (there (there (there (there (there here))))))))))) 
                          (fordAs (⊢var (there (there here)))))
-                  (toMu (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _)))
-                          (muFwd (ξ-pairˡ (βfst _ _))
-                            (⊢wkK (⊢ixP ⊢sTy
-                                     (fromI (⊢var (there (there (there (there (there (there (there (there here)))))))))))
-                                  (fromMu (⊢var (there (there (there (there (there here)))))))))))))
+                  (toMu (⊢wkTyK (fromI (⊢var (there (there (there (there (there (there (there (there here))))))))))
+                                (fromMu (⊢var (there (there (there (there (there here)))))))))))
     iwf-ι
 
 V₈ : IConWf LkD ILk Ξ8 (iκ λ₈ (iκ λ₉ iι))
@@ -611,7 +613,7 @@ reflAt {c = c} {v = v} dc dv =
 i₀ : {Γ : Cx} → RTm Γ
 i₀ = pair (nsuc nzero)
        (pair (Ctx-extK nzero Ctx-empK Ty-NatK)
-         (pair (Var-vzK nzero) (wkK (pair sTy nzero) Ty-NatK)))
+         (pair (Var-vzK nzero) (wkTyK nzero Ty-NatK)))
 
 -- ⚠ RESTATED, not `∷ ILk`: `ILk` is pinned at `RTy ε` because that is
 --   what `IMu` takes, and a derivation needs it at an arbitrary `Δ`.
@@ -631,9 +633,7 @@ i₀ = pair (nsuc nzero)
            (⊢Ctx-extK 0 ⊢Ctx-empK (⊢Ty-NatK 0))
       (⊢pair (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc ⊢nzero)))
              (⊢Var-vzK 0)
-             (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _)))
-               (muFwd (ξ-pairˡ (βfst _ _))
-                 (⊢wkK (⊢ixP ⊢sTy ⊢nzero) (⊢Ty-NatK 0))))))
+             (⊢wkTyK ⊢nzero (⊢Ty-NatK 0))))
 
 
 lkVz : {Γ : Cx} → RTm Γ
@@ -647,7 +647,7 @@ lkVz = icon zero
             (pair (idrefl (⌜IMu⌝ KnotD IPair (pair sVar (nsuc nzero)))
                           (Var-vzK nzero))
               (pair (idrefl (⌜IMu⌝ KnotD IPair (pair sTy (nsuc nzero)))
-                            (wkK (pair sTy nzero) Ty-NatK))
+                            (wkTyK nzero Ty-NatK))
                     unit)))))))
 
 -- ⚠ AND `ipayTy-wf`'s `Θ` IS PINNED.  It is a `Ctx` reached only through
@@ -693,7 +693,7 @@ lkVz = icon zero
     σ₅ = iext σ₄ v₄
     σ₆ = iext σ₅ v₅
     v₆ = idrefl (⌜IMu⌝ KnotD IPair (pair sTy (nsuc nzero)))
-                (wkK (pair sTy nzero) Ty-NatK)
+                (wkTyK nzero Ty-NatK)
     -- ⚠ `{I = ILk}` PINNED: `isingle-Sub⊢`'s conclusion mentions `I` only
     --   under `εwkTy`, a DEFINED function, so it never solves on its own.
     h0 : Sub⊢ Θ0 Δ σ₀
@@ -728,6 +728,4 @@ lkVz = icon zero
                    (step (ξ-snd (βsnd _ _)) (step (βsnd _ _) done)))
             (idCʳ* (transport-fires _ _ _ _)
               (reflAt (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (⊢nsuc ⊢nzero)))
-                      (toMu (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _)))
-                              (muFwd (ξ-pairˡ (βfst _ _))
-                                (⊢wkK (⊢ixP ⊢sTy ⊢nzero) (⊢Ty-NatK 0))))))))
+                      (toMu (⊢wkTyK ⊢nzero (⊢Ty-NatK 0))))))
