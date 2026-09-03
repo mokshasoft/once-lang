@@ -10279,3 +10279,78 @@ Generators still resolve in the resolver — the first level that knows binders.
 x86-64, x86-32/qemu, riscv64/qemu.
 
 **Relates**: D001 (superseded), D127, D134, D136, D137, D072
+
+---
+
+## D139: Stale Import Directives Are a Silent-Rot Channel — `make lint-imports`
+
+**Date**: 2026-09-03 · **Status**: LANDED; plan `0.82-import-hygiene.md`
+(complete, deleted) · **Follows**: D137 (found the problem while enumerating
+the spec)
+
+### The defect
+
+**Agda only WARNS when a `using (…)` directive names something the module does
+not export.** Nothing fails. So every deletion or rename leaves every import
+list that mentioned it stale, silently and permanently.
+
+That is not untidiness. A stale list makes a genuinely wrong import
+indistinguishable from noise, and it defeats the one mechanism that otherwise
+makes a rename safe: delete a definition and Agda reports every USE — but not
+one mention in an import list.
+
+### The gate
+
+`formal/scripts/lint-imports.sh`, wired as `make lint-imports`. Two findings
+shaped it:
+
+  * `-W error=ModuleDoesntExport` does NOT escalate on Agda 2.8.0 — the flag is
+    accepted and the warning still exits 0. Blanket `-W error` is unusable
+    (2241 `CoverageNoExactSplit`, several deliberate). Hence grep-the-log.
+  * `ModuleDoesntExport`, `DuplicateUsing` and `UselessPublic` are all SCOPE
+    warnings, so `--only-scope-checking` suffices: ~10s per module, no
+    type-checking. Crucially it reports EVERY module, where a normal build
+    reports only the ones it happened to re-check.
+
+### What it found
+
+Four files had a `using (…)` block whose `open import` line had been DELETED,
+leaving the block glued to the import above — so the names were being asked of
+the WRONG module (`AbstractToX86` asked `Once.CCC.Label` for `AbstractInstr`;
+`Adequacy/CPU/X86-64` asked `Once.Float.Dyadic` for `XInstr`; two asked
+`Once.CanonicalName` for the `*-info` family). They compiled only because each
+file ALSO imported the real module wholesale. **The import structure was lying
+and nothing failed** — the thesis, in its strongest form.
+
+Plus 222 dead names, a duplicated `CompiledCorr`, and a comment in `ConcFlatSim`
+asserting that `HeapView` came from `FlatSimulation` when `FlatSimulation` does
+not export it.
+
+Final state: **0 / 0 / 0 across all 402 modules.**
+
+### Two lessons that cost real time
+
+**Do not convert a wholesale `open import M` into `using (…)` as part of a
+hygiene pass.** Reattaching the four orphaned blocks did exactly that, and it
+CHANGED BEHAVIOUR: `AbstractToX86` still type-checked, but `compile-abstract
+(instr-reg-op scratch-zero)` began emitting `imm 1` instead of `imm 0`, because
+restricting the import re-resolved an ambiguous name to a different module's
+constructor. Only `X86-64/FlatSimulation`, further down the build, caught it.
+The safe fix is to DELETE the orphaned block and keep the wholesale import;
+making such an import explicit is a separate change with its own gate.
+
+**Scripted edits to import lists need the type-checker after every pass.** The
+stripper damaged files three times — it reflowed a list containing a `--`
+comment and commented out the rest; it edited a LATER directive that happened
+to mention the same name, deleting a `HeapView` in use; and it mangled a
+four-name list to `using (e`. Each was caught by re-running the apex
+immediately. A five-name edit does not need a script.
+
+### Measurement note
+
+Aggregated build logs over-count these warnings by ~19x: a warning in module M
+is re-emitted for every module that imports M. The true figure came only from
+per-file scanning — 50 + 8 across 24 files, not 944 across 95.
+
+**Relates**: D137; plan `0.83-parked-wf-island-cluster.md` (the other gate that
+does not currently run)

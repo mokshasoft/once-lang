@@ -96,6 +96,11 @@ Special scrutiny, in order:
   state/program-fact class.
 - **`{-# TERMINATING #-}` / `--allow-unsolved` pragmas.** None may enter the
   correspondence cone (Machine / Codegen / Adequacy).
+- **`make -C formal lint-imports` is clean.** Agda only WARNS when a `using
+  (…)` names something a module does not export, so a rename or deletion
+  leaves stale import lists behind silently and forever (D139). The lint is a
+  full-tree scope-only pass; it is fast (no type-checking) and it is the only
+  check that sees a directive naming a symbol that no longer exists.
 - **No islands — every change must be load-bearing on the apex proof path.**
   For every new module/lemma the branch adds, deleting it must break the
   build of `certified` (or the three-arch cluster) — an unwired supporting
