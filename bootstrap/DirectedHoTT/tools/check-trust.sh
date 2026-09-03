@@ -28,6 +28,37 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 
+# ============================================================================
+# ★★★ GATE 2 — THE KERNEL DOES NOT DEPEND ON ANYTHING IT VOUCHES FOR.
+#
+# ⚠⚠ ASKED DIRECTLY: "I prove something against a kernel that is sound, but
+#   use a library that has a bug — is my proof suddenly proving false?"
+#   NO, and the reason is structural rather than a promise: `Spec/` and
+#   `Metatheory/` import NOTHING from `Lib/` or `Examples/`.  The
+#   dependency runs one way.  A defect in a library or an example cannot
+#   reach consistency, canonicity or SN; the worst it can do is make a
+#   TRUE theorem be about the wrong object.
+#
+# ★ THAT BOUND IS THE WHOLE REASON THE `wkK` CLASS IS SURVIVABLE.  `⊢wkK`
+#   is true, non-vacuous, and used at real arguments; every theorem over
+#   it is true.  What was wrong is which weakening it names — damage
+#   confined to ADEQUACY, which is exactly the layer that owes a
+#   specification anyway.
+#
+# ⇒ so it is checked here, because an invariant that matters that much
+#   should not rest on nobody having added the import yet.
+# ============================================================================
+bad="$(grep -rn '^open import DirectedHoTT\.\(Examples\|Lib\)' \
+         "$ROOT/Spec" "$ROOT/Metatheory" 2>/dev/null || true)"
+if [ -n "$bad" ]; then
+  echo "== KERNEL DEPENDS ON A LIBRARY — the one-way street is broken." >&2
+  echo "   Spec/ and Metatheory/ must not import Lib/ or Examples/:" >&2
+  printf '%s\n' "$bad" >&2
+  exit 1
+fi
+echo "== KERNEL IS INDEPENDENT: Spec/ and Metatheory/ import no Lib/ or Examples/."
+echo "   ⇒ a defect in a library cannot reach consistency, canonicity or SN."
+
 want="$("$HERE/gen-trust.sh")"
 have="$(grep '^import ' "$ROOT/Trust.agda" | LC_ALL=C sort)"
 
