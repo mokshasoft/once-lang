@@ -81,11 +81,11 @@ open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPoly
   GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr;
   gv-unit; gv-other)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_)
-open import Once.TypeCheck.ElaborateProofs using (extract-morph-eff; extractMorphWitness;
+open import Once.TypeCheck.ElaborateProofs using (
   checkComposeGo; checkCaseGo; VerifiedCheckResult; inferElabV-RVar-fail-bridge;
-  checkG; inspectWellFormedF; wfv-no; wfv-yes;
+  inspectWellFormedF; wfv-no; wfv-yes;
   checkCataGo; cata-go-canonical; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success;
-  checkCata-eff-strong-hlp; extract-morph-eff-cata;
+  checkCata-eff-strong-hlp;
   -- the literal view the negation dispatch takes (plan 0.74 J6 step 3 for
   -- `RInt`, plan 0.73 F3 for `RFloat`)
   NegOperandView; nov-int; nov-float; nov-other; negOperandView)

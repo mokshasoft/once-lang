@@ -356,7 +356,7 @@ open import Once.Adequacy.ArchCorrectness.FlatCore.FlatComposition FS Instr
 -- Stated at exactly the field's type, so `Supply`'s `bs-lea-slot` is this.
 ------------------------------------------------------------------------
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fmt-eq using
-  (block-step-lea-slot; CompiledCorr; BlockStep; BlockSteps
+  (block-step-lea-slot; BlockStep; BlockSteps
   ; block-step-mov-to-output; block-step-mov-to-input
   ; block-step-scratch-one; block-step-scratch-zero; block-step-count-zero
   ; block-step-scratch-load-count; block-step-c-label; block-step-reclaim-to
@@ -375,11 +375,15 @@ open import Once.Adequacy.ArchCorrectness.RiscV64.FlatSimulation o FS word-eq fm
   ; block-step-load-const; block-step-load-const-float
   ; block-step-load-code-addr; block-step-call; block-step-alloc-heap
   ; load-indirect-heap-empty-stuck; load-indirect-suc-heap-empty-stuck
-  -- RE-EXPORTED (`public`): the APEX names `CompiledCorr`/`HeapView` when it
-  -- exhibits the entry correspondence. They come from here rather than from
-  -- `EE`'s public open — listing them in both makes every use ambiguous, and
-  -- this is the binding that already existed.
-  ; dataCorr; pc-off; HeapView; CompiledCorr) public
+  -- RE-EXPORTED (`public`): the APEX name `CompiledCorr`, when it exhibits the
+  -- entry correspondence. It comes from here rather than from `EE`'s public
+  -- open — listing it in both makes every use ambiguous, and this is the
+  -- binding that already existed.
+  --
+  -- `HeapView` is NOT here: it is not exported by `FlatSimulation` at all, and
+  -- naming it in this list was a no-op that Agda only warned about. Its real
+  -- source is the `FlatCorrespondence` import just below.
+  ; dataCorr; pc-off; CompiledCorr) public
 open import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence FS word-eq using
   (HeapView)
 
