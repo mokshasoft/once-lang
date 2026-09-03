@@ -5,16 +5,31 @@
 --     pwBody (⌜Hom⌝ C a b) = ⌜Hom⌝ (pwBody C) (app (w a) vz) (app (w b) vz)
 --     pwBody t             = renTm vs t
 --
--- ★★★ IT IS **WEAKENING WITH TWO ROWS OVERRIDDEN**, and that is the whole
---   design.  The eliminator runs over all 53 rows — `Ty` and `Var` ones
---   too — so the motive must be SORT-PRESERVING, which is `Lib/IWk`'s
---   `Mot D I = IMu D I (sh ⟨i⟩)` exactly; and the default clause
---   `renTm vs t` IS `wkK`'s method.  ⇒ only `⌜Π⌝` (row 20) and `⌜Hom⌝`
---   (row 22) are this module's own work.
+-- ★★★ IT IS `renTm vs` WITH TWO ROWS OVERRIDDEN.
 --
--- ⚠ WHICH IS WHY `Lib/IWk` GREW `wkdTake`.  `decDesc` classifies as far
---   as it can and walks straight past row 20; a customer that is
---   weakening EXCEPT somewhere needs to stop the walk where IT says.
+--     pwBody (⌜Π⌝ γ δ)     = δ
+--     pwBody (⌜Hom⌝ C a b) = ⌜Hom⌝ (pwBody C) (app (w a) vz) (app (w b) vz)
+--     pwBody t             = renTm vs t          ← the DEFAULT clause
+--
+-- ⚠⚠ AND FOR MONTHS THIS HEADER SAID *"the default clause `renTm vs t`
+--   IS `wkK`'s method"* — WHICH IS FALSE, and is bug #4 of
+--   `PLAN-RENAMING.md`.  `Knot/Wk.wkK` is derived by `Lib/IWk` as a
+--   generic depth-bumping fold; a tag-preserving fold can only implement
+--   the renaming that is STABLE UNDER `extR`, which is the outermost
+--   insertion, not `renTm vs`.  The two agree on CLOSED terms and only
+--   there — so 51 of the 53 rows computed the wrong function on any code
+--   with a free variable, which is every code `⊢tr`'s premises admit.
+--
+-- ★★★ THE FIX IS TO WRITE THE CLAUSE DOWN.  A method receives the row's
+--   PAYLOAD, so it can rebuild `icon k p` — the very term the clause is
+--   about — and rename it with `Knot/RenTm`'s `renTmK` at `vsRenK`.  No
+--   induction, no IH, no classification, and SORT-GENERIC because the
+--   renaming takes its sort as an argument.
+--
+-- ⇒ `Lib/IWk`'s methods and its `WkIx` (`rides`/`pinned`) decoding are
+--   GONE from this module.  That decoding existed to reverse-engineer
+--   binding structure out of index arithmetic, and it is exactly where
+--   the wrong renaming got chosen.  Only `Mot`/`sh` remain.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -29,7 +44,10 @@ open import DirectedHoTT.Spec.Typing
         ; βfst; βsnd; ξ-nsuc; ξ-pairˡ; ξ-pairʳ )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam )
 open import DirectedHoTT.Lib.IWk
-  using ( Mot; iwkMethsFrom; ⊢iwkMethsFrom; wkdTake; decDesc; wkdRest
+-- ★ ONLY `Mot`/`sh` NOW.  The weakening METHODS and the `WkIx`
+--   classification are gone: `pwDefault` rebuilds and renames, so
+--   nothing here decodes binding out of index arithmetic.
+  using ( Mot; wkdRest
         ; imethsTyFromMot-wf; wfDrop; splDrop )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
@@ -40,15 +58,24 @@ open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K; cTm-cPi; cTm-cHom 
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf; cTm-cPiWf; cTm-cHomWf )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagTm-cPi; tagTm-cHom )
 open import DirectedHoTT.Examples.Knot.Wk
-  using ( ⊢MotK; wkK; ⊢wkK; wkTail; ⊢wkTail; ⊢shIPair )
+  using ( ⊢MotK; ⊢shIPair )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK )
+open import DirectedHoTT.Examples.Knot.RenTm
+  using ( renTmK; ⊢renTmK; ⊢renAppAt; vsRenK; ⊢vsRenK; payRenR )
+open import DirectedHoTT.Lib.IPay
+  using ( ⊢methLam; ⊢methsAt; ⊢methsCons; idwfDrop; splTake; spl-step; Split )
+open import DirectedHoTT.Lib.IMeths using ( methsAt; cdTake; cdRest )
+open import DirectedHoTT.Spec.Syntax using ( icon; ipayTy; isingle; app; renTy; unit; IDesc )
+open import DirectedHoTT.Spec.Typing using ( ⊢unit )
+open import DirectedHoTT.Spec.Typing using ( ⊢icon; IConWf; imethTy; ◇ )
+open import DirectedHoTT.Spec.Syntax using ( _∈ID_; ilookupD )
 open import DirectedHoTT.Examples.Knot.Pw
   using ( D20; D21; D22; D23; spl20; spl21; spl22; spl23 )
 open import DirectedHoTT.Lib.IPay using ( idwfDrop; Split; spl-nil )
 open import DirectedHoTT.Spec.Typing using ( imethsTy; imethsTyFrom; ⊢pair; ⊢ielim )
 open import DirectedHoTT.Spec.Syntax using ( ielim )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ren-ty )
-open import normalizer.Syntax.Types using ( sym )
+open import normalizer.Syntax.Types using ( sym; _≡_; cong; trans )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Lib.IWk using ( sh )
 open import DirectedHoTT.Spec.Typing using ( wk-single )
@@ -188,35 +215,146 @@ pwHom =
 --   ONE-ROW bounded walk (`wkdTake 1 D21`) computes the very same method
 --   and needs no such thing.
 ------------------------------------------------------------------------
+-- ★★★ THE DEFAULT ROW, REBUILT — AND IT IS THE META-LEVEL CLAUSE.
+--
+--     pwBody t = renTm vs t            (Spec/Variance:1006)
+--
+-- ⚠⚠ THE 51 DEFAULT ROWS USED `Lib/IWk`'s METHODS, AND `Lib/IWk` IS NOT
+--   `renTm vs` (`PLAN-RENAMING.md` §0, bug #4).  It is the identity on
+--   de Bruijn indices, so `pwBodyK` computed the wrong function on any
+--   code containing a free variable — which is every code `⊢tr`'s
+--   premises admit.
+--
+-- ★★★ AND THE FIX IS TO WRITE THE CLAUSE DOWN.  A method receives the
+--   row's PAYLOAD, so it can REBUILD `icon k p` — that is the very term
+--   the clause is about — and apply `renTmAtK` at `vsRenK`.  ⇒ no
+--   induction, no IH, no classification.
+--
+-- ★★ WHICH DELETES `Lib/IWk` FROM THIS MODULE.  `WkIx`'s `rides`/
+--   `pinned` decoding existed to reverse-engineer binding structure out
+--   of index arithmetic, and it is exactly where the wrong renaming got
+--   chosen.  Rebuilding needs none of it: the method is SORT-GENERIC
+--   because `renTmAtK` takes the sort as an argument.
+------------------------------------------------------------------------
+
+pwDefault : {Γ : Cx} → ℕ → RTm Γ
+pwDefault k =
+  lam (lam (lam
+    (app (app (renTmK (var (vs (vs vz))) (icon k (var (vs vz))))
+              (nsuc (snd (var (vs (vs vz))))))
+         (vsRenK (snd (var (vs (vs vz))))))))
+
+⊢pwDefault : {Γ : Ctx} (k : ℕ) (C : ICon (ε ∙)) →
+             IConWf KnotD IPair (◇ ▹ εwkTy IPair) C →
+             k ∈ID KnotD → ilookupD KnotD k ≡ C →
+             Γ ⊢ pwDefault k ∷ imethTy KnotD IPair k C (Mot KnotD IPair)
+⊢pwDefault k C wC mem look =
+  ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢MotK
+    -- ⚠ `{i}`/`{u}` PINNED: they sit under `iinst`, which is two
+    --   `subTy`s and so not injective (`pin-implicits-on-defined-set-types`).
+    (⊢renAppAt {i = var (vs (vs vz))} {u = icon k (var (vs vz))}
+               (⊢renTmK (⊢var (there (there here)))
+                        (⊢icon KnotWf mem (⊢var (there (there here)))
+                               -- ⚠ TWO CASTS, AND THE FIRST IS THE ONE
+                               --   a CONCRETE row never needs: at an
+                               --   abstract `C` the payload type is
+                               --   stuck, so the weakening past the IH
+                               --   binder must be pushed through by
+                               --   hand (`payRenR`).  `Knot/PayTy` and
+                               --   friends skip it because `ipayTy`
+                               --   COMPUTES at their concrete rows.
+                               (⊢-cast (trans (trans (cong (renTy vs)
+                                                           (payRenR (var vz) C))
+                                                     (payRenR (var (vs vz)) C))
+                                              (cong (ipayTy KnotD IPair
+                                                       (isingle (var (vs (vs vz)))))
+                                                    (sym look)))
+                                       (⊢var (there here)))))
+               (⊢nsuc (⊢snd (⊢var (there (there here)))))
+               (⊢vsRenK (⊢snd (⊢var (there (there here))))))
+
+------------------------------------------------------------------------
+
+-- ⚠⚠ REBUILT 2026-09-03 (`PLAN-RENAMING.md` bug #4).  The 51 default
+--   rows were `Lib/IWk`'s methods, i.e. the WRONG WEAKENING; they are
+--   now `pwDefault`, which is the meta-level clause written out.  The
+--   two overrides are unchanged — the motive did not move.
+--
+-- ★ AND THE WALK IS `methsAt`, NOT `iwkMethsFrom`.  The default depends
+--   on the ROW (it rebuilds `icon k p`), which is exactly what
+--   `Lib/IMeths.methsAt` is for; `Lib/IWk`'s classification apparatus
+--   drops out of this module entirely.
+
+PD21 : IDesc
+PD21 = cdRest (cdTake 21 KnotD)
+
+PD22 : IDesc
+PD22 = cdRest (cdTake 22 KnotD)
+
+PD23 : IDesc
+PD23 = cdRest (cdTake 23 KnotD)
+
+pspl20 : Split KnotD 20 (cdRest (cdTake 20 KnotD))
+pspl20 = splTake spl-nil (cdTake 20 KnotD)
+
+pspl21 : Split KnotD 21 PD21
+pspl21 = spl-step pspl20
+
+pspl22 : Split KnotD 22 PD22
+pspl22 = spl-step pspl21
+
+pspl23 : Split KnotD 23 PD23
+pspl23 = spl-step pspl22
+
+pwTail : {Γ : Cx} → RTm Γ
+pwTail = methsAt (cdTake 30 PD23) pwDefault 23 unit
+
+⊢pwTail : {Γ : Ctx} →
+          Γ ⊢ pwTail ∷ imethsTyFrom KnotD IPair (Mot KnotD IPair) 23 PD23
+⊢pwTail =
+  ⊢methsAt KnotD IPair 23 (cdTake 30 PD23) KnotWf (idwfDrop pspl23 KnotWf)
+           pspl23 ⊢IPair ⊢MotK
+           (λ {k} {C} wC mem look → ⊢pwDefault k C wC mem look) unit ⊢unit
+
+pwMid22 : {Γ : Cx} → RTm Γ
+pwMid22 = pair pwHom pwTail
+
+⊢pwMid22 : {Γ : Ctx} →
+           Γ ⊢ pwMid22 ∷ imethsTyFrom KnotD IPair (Mot KnotD IPair) 22 PD22
+⊢pwMid22 =
+  ⊢methsCons KnotD IPair 22 {C = cTm-cHom} PD23 KnotWf
+             (idwfDrop pspl23 KnotWf) pspl23 ⊢IPair ⊢MotK ⊢pwHom ⊢pwTail
+
+pwMid21 : {Γ : Cx} → RTm Γ
+pwMid21 = methsAt (cdTake 1 PD21) pwDefault 21 pwMid22
+
+⊢pwMid21 : {Γ : Ctx} →
+           Γ ⊢ pwMid21 ∷ imethsTyFrom KnotD IPair (Mot KnotD IPair) 21 PD21
+⊢pwMid21 =
+  ⊢methsAt KnotD IPair 21 (cdTake 1 PD21) KnotWf (idwfDrop pspl21 KnotWf)
+           pspl21 ⊢IPair ⊢MotK
+           (λ {k} {C} wC mem look → ⊢pwDefault k C wC mem look)
+           pwMid22 ⊢pwMid22
+
+pwMid20 : {Γ : Cx} → RTm Γ
+pwMid20 = pair pwPi pwMid21
+
+⊢pwMid20 : {Γ : Ctx} →
+           Γ ⊢ pwMid20 ∷ imethsTyFrom KnotD IPair (Mot KnotD IPair) 20
+                                      (cdRest (cdTake 20 KnotD))
+⊢pwMid20 =
+  ⊢methsCons KnotD IPair 20 {C = cTm-cPi} PD21 KnotWf
+             (idwfDrop pspl21 KnotWf) pspl21 ⊢IPair ⊢MotK ⊢pwPi ⊢pwMid21
 
 pwBodyMethsK : {Γ : Cx} → RTm Γ
-pwBodyMethsK =
-  iwkMethsFrom 0 (wkdTake 20 KnotD)
-    (pair pwPi
-      (iwkMethsFrom 21 (wkdTake 1 D21)
-        (pair pwHom
-          (iwkMethsFrom 23 (decDesc D23) wkTail))))
+pwBodyMethsK = methsAt (cdTake 20 KnotD) pwDefault 0 pwMid20
 
 ⊢pwBodyMethsK : {Γ : Ctx} →
                 Γ ⊢ pwBodyMethsK ∷ imethsTy KnotD IPair (Mot KnotD IPair) KnotD
 ⊢pwBodyMethsK =
-  ⊢iwkMethsFrom KnotD IPair (wkdTake 20 KnotD) spl-nil KnotWf KnotWf
-                ⊢IPair ⊢shIPair _
-    (⊢pair (ren-ty (imethsTyFromMot-wf KnotD IPair 21 D21 KnotWf
-                      (idwfDrop spl21 KnotWf) ⊢IPair ⊢shIPair) there)
-           ⊢pwPi
-           (⊢-cast (sym (wk-singleTy {v = pwPi}
-                           (imethsTyFrom KnotD IPair (Mot KnotD IPair) 21 D21)))
-             (⊢iwkMethsFrom KnotD IPair (wkdTake 1 D21) spl21 KnotWf
-                            (idwfDrop spl21 KnotWf) ⊢IPair ⊢shIPair _
-               (⊢pair (ren-ty (imethsTyFromMot-wf KnotD IPair 23 D23 KnotWf
-                                 (idwfDrop spl23 KnotWf) ⊢IPair ⊢shIPair) there)
-                      ⊢pwHom
-                      (⊢-cast (sym (wk-singleTy {v = pwHom}
-                                      (imethsTyFrom KnotD IPair (Mot KnotD IPair) 23 D23)))
-                        (⊢iwkMethsFrom KnotD IPair (decDesc D23) spl23 KnotWf
-                                       (idwfDrop spl23 KnotWf) ⊢IPair ⊢shIPair
-                                       wkTail ⊢wkTail))))))
+  ⊢methsAt KnotD IPair 0 (cdTake 20 KnotD) KnotWf KnotWf spl-nil ⊢IPair ⊢MotK
+           (λ {k} {C} wC mem look → ⊢pwDefault k C wC mem look)
+           pwMid20 ⊢pwMid20
 
 ------------------------------------------------------------------------
 -- ★★ `pwBody`, AS AN ELIMINATOR.  Same shape as `wkK` — the motive is
@@ -233,3 +371,4 @@ pwBodyK i t = ielim KnotD i pwBodyMethsK t
 ⊢pwBodyK {i = i} di dt =
   ⊢-cast (cong (λ z → K (sh z)) (wk-single i))
          (⊢ielim KnotWf ⊢MotK di ⊢pwBodyMethsK dt)
+

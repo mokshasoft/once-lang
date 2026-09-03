@@ -120,11 +120,11 @@ readable line, and that line is pointwise testable.
 | 0 | emitter: `renTm vs` → `wkTmK` (`⊢ap`, `hrefl-pw`, `tr-pw`) | ✅ done |
 | 0 | `Knot/IhTyRho` converted | ✅ done |
 | 0 | `_WRAP_LEDGER`, both-ways, 39 programs / 25 owed | ✅ done |
-| **1** | **convert the remaining suspect sites** | 🟡 4 of 6 done |
+| **1** | **convert the remaining suspect sites** | ✅ **6 of 6** |
 | 1a | `Knot/RenMot` — the object-level `Ren` layer (`RenTy`, `extRK`, `extRNK`) | ✅ **done** — breaks the cycle |
 | 1b | `renTmK ρ` over the 53 rows (`Knot/RenTm`) | ✅ **done** |
-| 1c | `extVs` (#5), `pwBodyK`'s 51 defaults (#4), `wkTmK = renTmK vsRen` | ⬜ **HERE** |
-| 2 | pointwise specs for `wkSubK`/`singleK`/`extNK`/`nrsSubK` | ⬜ |
+| 1c | `extVs` (#5), `pwBodyK`'s 51 defaults (#4), `wkTmK = renTmK vsRen` | ✅ **done** |
+| 2 | pointwise specs for `vsRenK`/`singleK`/`extRNK`/`nrsSubK` | ⬜ **NEXT** |
 | 3 | `sub-agree` — the ONE induction, discharges the family | ⬜ |
 | 4 | retire `wkK` for open terms; keep it only where CLOSED, stated | ⬜ |
 | 5 | then `methsTyFrom` (unblocked, mechanical) | ⬜ |
@@ -161,11 +161,11 @@ Format: site · what the wrong weakening did · how it was caught.
 | 1 | `gen-knot.py:_val` → `⊢ap`, `hrefl-pw`, `tr-pw` | **BUG** — `renTm vs` emitted as `wkK` | reading `WkRows` §5/§7 against `renTm vs` |
 | 2 | `Knot/IhTyRho` | **BUG** — `Σ'`'s 2nd component weakens an OPEN answer (`q`, `M`) | same reading, same day |
 | 3 | `Knot/PwBody.pwApp` | **BUG** — rule is `app (renTm vs s) (var vz)` (`Spec/Typing:359`), `s` a rule variable | step 1, ✅ FIXED |
-| 4 | `Knot/PwBody` — `pwBodyK`'s **51 DEFAULT rows** | **BUG, STRUCTURAL** — meta `pwBody t = renTm vs t` is the default clause, and the encoding takes `Lib/IWk`'s methods for all 51 | step 1, ⬜ OPEN |
+| 4 | `Knot/PwBody` — `pwBodyK`'s **51 DEFAULT rows** | **BUG** — meta `pwBody t = renTm vs t` is the default clause, and the encoding took `Lib/IWk`'s methods for all 51 | step 1c, ✅ **FIXED** — `pwDefault` rebuilds and renames |
 | 5 | `Knot/SubMot.extVs` | **BUG** — `extS σ (vs x) = renTm vs (σ x)` (`Spec/Syntax:335`) | step 1c, ✅ **FIXED** — needed `Knot/RenTm` first |
 | 6 | `Knot/Lookup` ×2 rows + `gen_lookupgen` ×2 | **BUG** — `_∋_∷_`'s type is `renTy vs A`, `A` a bound FIELD | step 1, ✅ FIXED |
 
-**Running: 6 sites, 5 fixed, 1 open.** Every one is `renTm vs`/`renTy vs`
+**Running: 6 sites, 6 FIXED, 0 open.** Every one is `renTm vs`/`renTy vs`
 in the source with `wkK` in the encoding — a single class, not six.
 
 ★ **AND TWO CHECKS FIRED ON THEIR OWN**, which is the first time anything
@@ -426,4 +426,42 @@ exactly one `Tm-varK`.
 third customer: `⊢isubMethodK`, `⊢isubMethsK`, `GiveOK`/`Pr`/`OKg`,
 `imethTySubK-wf`, `imethsTyFromSubK-wf`, `payRenK`, `ihRenK` — all
 `Knot/SubMot`-local and hard-wired to `subMotK`.
+
+---
+
+## §14 STEP 1c COMPLETE — ALL SIX SITES CLOSED
+
+★★★ **`pwBodyK` was the big one, and the fix was to WRITE THE CLAUSE
+DOWN.** Its header had claimed for months that *"the default clause
+`renTm vs t` IS `wkK`'s method"*. A method receives the row's PAYLOAD, so
+it can rebuild `icon k p` — the very term the clause is about — and rename
+it with `renTmK` at `vsRenK`:
+
+    pwDefault k = λ i p h → renTmK ⟨i⟩ (icon k p) ⟨nsuc (snd ⟨i⟩)⟩ (vsRenK (snd ⟨i⟩))
+
+No induction, no IH, no classification — and SORT-GENERIC, because the
+renaming takes its sort as an argument.
+
+⇒ **`Lib/IWk`'s methods and its `WkIx` (`rides`/`pinned`) decoding are
+GONE from `Knot/PwBody`.** Only `Mot`/`sh` remain. That decoding existed
+to reverse-engineer binding structure out of index arithmetic (§11.1), and
+it is exactly where the wrong renaming got chosen. **The module that
+carried the bug no longer contains the mechanism that caused it.**
+
+⚠ TWO THINGS THE FIX NEEDED, both worth keeping:
+
+* **`⊢renAppAt`** — the motive application at an ARBITRARY index, not a
+  pair. `⊢renAppK` needs `i = pair s dd` to simplify `fst i`/`snd i` by
+  `βfst`/`βsnd`, and a method's index is a BOUND VARIABLE with no `Σ'` η
+  in this kernel (gate 5c). At a variable the projections are simply
+  STUCK, which is fine — and `K (pair (fst i) m)` at `m = nsuc (snd i)`
+  IS `Mot`'s `sh i` on the nose.
+* **`⊢renAppAt` OOM-KILLED at `-A64m` and checks with `-c`.** Third
+  confirmation of `agda-oom-is-a-gc-choice`: try the compacting collector
+  BEFORE splitting. `tools/affected.sh` already retries with `-c`.
+
+⚠ AND THE PAYLOAD NEEDED `payRenR` TWICE. At an ABSTRACT `C` the payload
+type is stuck, so the weakenings past the payload and IH binders must be
+pushed through by hand; `Knot/PayTy` and friends skip this because
+`ipayTy` COMPUTES at their concrete rows.
 

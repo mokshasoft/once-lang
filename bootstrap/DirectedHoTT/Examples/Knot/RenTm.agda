@@ -534,3 +534,31 @@ vsRenK n = lam (Var-vsK (renTm vs n) (var vz))
           Γ ⊢ n ∷ Nat → Γ ⊢ vsRenK n ∷ RenTy n (nsuc n)
 ⊢vsRenK dn =
   ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar dn)) (⊢Var-vsKt (⊢wk dn) (⊢var here))
+
+------------------------------------------------------------------------
+-- ★★★ THE SAME APPLICATION AT AN **ARBITRARY** INDEX, not a pair.
+--
+-- ⚠⚠ `⊢renAppK` needs `i = pair s dd` because it simplifies `fst i`/
+--   `snd i` by `βfst`/`βsnd`.  A METHOD's index is a BOUND VARIABLE, and
+--   `Σ'` has no η in this kernel (gate 5c: tupled methods type WITHOUT
+--   it), so the pair form is unreachable there — and the payload, bound
+--   at `isingle (var i)`, cannot be moved to `isingle (pair (fst i)
+--   (snd i))` either.
+--
+-- ★ AND IT IS NOT NEEDED.  At a variable `i` the projections are simply
+--   STUCK, which is fine: drop the two β-steps and the conclusion reads
+--   `K (pair (fst i) m)` — which at `m = nsuc (snd i)` is `Mot`'s `sh i`
+--   on the nose.  ⇒ `⊢renAppK` is this at `i = pair s dd`.
+------------------------------------------------------------------------
+
+⊢renAppAt : {Γ : Ctx} {i u h m rn : RTm ⌊ Γ ⌋} →
+            Γ ⊢ h ∷ iinst i u renMotK → Γ ⊢ m ∷ Nat →
+            Γ ⊢ rn ∷ RenTy (snd i) m →
+            Γ ⊢ app (app h m) rn ∷ IMu KnotD IPair (pair (fst i) m)
+⊢renAppAt {i = i} {u = u} {m = m} {rn = rn} dh dm drn =
+  ⊢-cast (cong₂ (λ a b → K (pair (fst a) b))
+                (towerJ rn m u i) (wk-single {v = rn} m))
+         (⊢app (⊢app dh dm)
+           (⊢conv drn
+             (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-IMu
+               (⟶*-pairʳ (⟶*-castₗ (cong snd (towerA m u i)) done))))))))
