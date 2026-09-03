@@ -208,3 +208,45 @@ second time, from the module graph instead of from the criterion.
 ⬜ **DECISION NEEDED before step 2:** build `renTmK ρ` (faithful to the
 kernel, unblocks #4 and #5, subsumes `Lib/IWk`), or leave `extVs`/
 `pwBodyK` on `wkK` with the defect recorded.
+
+---
+
+## §9 ARE THERE MORE LIBRARIES LIKE THIS? — audited 2026-09-03
+
+Of the `Lib/` modules that DERIVE an object-level program, which ship
+reduction lemmas about what they derive?
+
+| library | derives | ships laws about it |
+|---|---|---|
+| `ISzRed` (+`ISz`/`ISzSort`/`IFold`) | the `sz` fold | ✅ `szsStep-red`, `szsTail-red` — and `Knot/SzAgree` is built on them |
+| `ISub` | substitution's apparatus | 🟡 TAKES a reduction witness as a parameter (`decStable`); proves no agreement of its own |
+| **`IWk`** | **the weakening fold** | ⛔ **none** — its ONLY `⟶*` is inside a comment |
+| `IPay` / `IMeths` | method-tuple apparatus | n/a — these build TYPES, not programs |
+
+★★★ **The correlation is exact, both ways.** The library that ships
+reduction lemmas is the one whose encoding is the only PROVED agreement
+in the development (`sz`). The library that ships none is the one that
+produced the bug. One data point each way — but the mechanism is not
+mysterious: **a law you cannot state is a law you will not prove.**
+
+⇒ answer to "are there more of these?": **one**, and it is the one found.
+
+## §10 WHERE THE LAW CAN AND CANNOT LIVE
+
+⛔ **NOT in `Spec`.** The law is `⌈ renTm ρ t ⌉ ⟶* iwk ρ ⌈ t ⌉` — it
+mentions `enTm`, the adequacy map. `Spec` does not know the Knot exists.
+
+⛔ **NOT generically in `Lib/IWk`.** For an arbitrary `IDesc D` there is
+nothing to be faithful TO: `D` *is* the syntax. The laws that ARE
+statable generically — it is a fold, it preserves tags, it commutes with
+constructors — are all satisfied by the buggy version.
+
+✅ **At the Knot**, where both languages are in scope. The kernel/library
+can host the SHAPE (a record whose fields are ρ, the operation, and the
+law); only the Knot can fill it.
+
+⚠ **AND YOU CANNOT ENFORCE "USE MY PRIMITIVE" FROM INSIDE THE PRIMITIVE.**
+`Lib/IWk` did not misuse `renTm` — it declined to use it and wrote a new
+function. The only enforcement that works is to make the thing the caller
+NEEDS obtainable only in a form that carries its law.
+
