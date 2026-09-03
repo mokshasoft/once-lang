@@ -22,3 +22,6 @@ formal/_build/
 .do-not-commit/
 compiler/qemu_*.core
 qemu_*.core
+
+# Per-branch working notes — never tracked (see MERGE.md step 5)
+HANDOFF.md
