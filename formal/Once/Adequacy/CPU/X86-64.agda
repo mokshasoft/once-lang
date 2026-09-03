@@ -42,10 +42,10 @@ import Once.CCC.Target.X86-64.Syntax    as X64S
 -- the arch-generic `Arith.Backend.RunTraceCore`. This DERIVES `run-trace` from
 -- `X64.run`'s step semantics, replacing the old opaque observable postulate.
 open import Once.Arith.Backend.XInstr.Syntax as XI
+  using (XInstr; XReg; XScratch)
 import Once.Float.Arith as FA
 open import Once.Float.Decimal using (round)
 open import Once.Float.Dyadic using (binary32; binary64)
-  using (XInstr; XReg; XScratch)
 open import Once.Target.X86-64.PhysReg using (Reg; rsp; rdi)
 open import Once.Arith.Backend.X86-64.Emit using (arith-reg)
 open import Once.Arith.Machine.Shape using (InputPath; Side; Fst; Snd)

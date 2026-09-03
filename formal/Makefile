@@ -79,6 +79,10 @@ certified:
 # Island-rot backstop: type-check EVERY module (not just the apex closure), so an
 # off-apex proof can never rot silently again (as ErrorProofs did). Generates a
 # transient Everything module importing the whole tree. Heavy — CI / on demand.
+.PHONY: lint-imports
+lint-imports:
+	@./scripts/lint-imports.sh
+
 .PHONY: check-all
 check-all:
 	@echo "module Everything where" > Everything.agda

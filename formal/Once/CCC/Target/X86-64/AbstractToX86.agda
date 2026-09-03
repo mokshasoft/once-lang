@@ -38,12 +38,6 @@ open import Once.CCC.Target.X86-64.Syntax
 
 -- Import AbstractInstr from SMCore
 open import Once.CCC.Machine.SMCore
-open import Once.CCC.Machine.FrameFree using (FrameFreeI; EmittableI)
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
-open import Once.CanonicalName using (CanonicalName)
-open import Once.CCC.Label using (ℓ)
-open import Once.SigOp.Info using (SigOpInfo)
-open import Once.CCC.Label using (Label; once; thunk)
   using (AbstractInstr; AbstractTrace; Slot;
          mov-to-output; mov-to-input;
          load-indirect; load-indirect-suc;
@@ -53,7 +47,14 @@ open import Once.CCC.Label using (Label; once; thunk)
          instr-push-frame; instr-pop-frame; instr-call-closure;
          worklist-init; worklist-push; worklist-pop; worklist-check;
          instr-reclaim-to; instr-sigop; instr-save-closure-reg;
-         instr-load-tag-lit)
+         instr-load-tag-lit; lea-indexed;
+         c-branch-scratch-zero; c-branch-tag-zero; c-jmp; c-label; c-ret; c-thunk; instr-case-on-tag; instr-ctrl; instr-load-code-addr; instr-load-const; instr-loop; instr-reg-op; sucLoc)
+open import Once.CCC.Machine.FrameFree using (FrameFreeI; EmittableI)
+open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Once.CanonicalName using (CanonicalName)
+open import Once.CCC.Label using (ℓ)
+open import Once.SigOp.Info using (SigOpInfo)
+open import Once.CCC.Label using (Label; once; thunk)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
