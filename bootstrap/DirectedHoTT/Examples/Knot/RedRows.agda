@@ -49,6 +49,7 @@ open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; stkCK; flatK )
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; wkTyK )
 
 -- ★ the judgement's index: a depth and two terms at it.
 IRed : RTy ε
@@ -2030,7 +2031,7 @@ kΚΒ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs
 ΚΒ6 = ΚΒ5 ▹ El kΚΒ5
 
 kΚΒ6 : RTm ⌊ ΚΒ6 ⌋
-kΚΒ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz))) (Tm-lamK (Tm-hreflK (pwBodyK (pair sTm (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz)))))) (Tm-appK (wkK (pair sTm (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz))))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs vz))))))))))))
+kΚΒ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz))) (Tm-lamK (Tm-hreflK (pwBodyK (pair sTm (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz)))))) (Tm-appK (wkTmK (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs vz))))))))))))
 
 ΚΒ7 : Ctx
 ΚΒ7 = ΚΒ6 ▹ El kΚΒ6
@@ -2176,7 +2177,7 @@ kΜΒ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs
 ΜΒ8 = ΜΒ7 ▹ El kΜΒ7
 
 kΜΒ8 : RTm ⌊ ΜΒ8 ⌋
-kΜΒ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Tm-lamK (Tm-trK (Tm-cHomK (wkK (pair sTm (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (subTmAtK (nsuc (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (singleK (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (pwBodyK (pair sTm (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs (vs vz)))))))))) (Tm-appK (wkK (pair sTm (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs vz))))))) (Tm-varK (Var-vsK (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (Var-vzK (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (Tm-varK (Var-vzK (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs vz))))) (Tm-appK (wkK (pair sTm (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs vz))))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))
+kΜΒ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Tm-lamK (Tm-trK (Tm-cHomK (wkTmK (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (subTmAtK (nsuc (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (singleK (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (pwBodyK (pair sTm (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs (vs vz)))))))))) (Tm-appK (wkTmK (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs vz))))))) (Tm-varK (Var-vsK (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (Var-vzK (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (Tm-varK (Var-vzK (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs vz))))) (Tm-appK (wkTmK (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs vz))))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))
 
 ΜΒ9 : Ctx
 ΜΒ9 = ΜΒ8 ▹ El kΜΒ8

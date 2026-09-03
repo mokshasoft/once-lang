@@ -39,6 +39,7 @@ open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -1308,7 +1309,7 @@ W_TyRedΣ5 D =
                   (toI aTyRedΣ5)
                   (⊢symN aTyRedΣ5 (fromI (⊢var (there (there (there (there here))))))
                          (fordAs (⊢var (there here))))
-                  (toMu (⊢Ty-PiKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (there (there (there (there here)))))) (⊢Ty-ElKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (there (there (there (there here)))))) (fromMu (⊢var (there (there (there here)))))) (⊢Ty-ElKv (nsuc (var (vs (vs (vs (vs vz)))))) (⊢nsuc (fromI (⊢var (there (there (there (there here))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there here))))))) (fromMu (⊢var (there (there here))))))))))))
+                  (toMu (⊢Ty-PiKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (there (there (there (there here)))))) (⊢Ty-ElKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (there (there (there (there here)))))) (fromMu (⊢var (there (there (there here)))))) (⊢Ty-ElKv (nsuc (var (vs (vs (vs (vs vz)))))) (⊢nsuc (fromI (⊢var (there (there (there (there here))))))) (⊢wkTmK (fromI (⊢var (there (there (there (there here)))))) (fromMu (⊢var (there (there here))))))))))
     (iwf-ι)
 
 aTyRedΣ4 : TyRedΣ4 ⊢ fst (var (vs (vs (vs (vs vz))))) ∷ Nat
@@ -1377,7 +1378,7 @@ W_TyRedΤ7 D =
                   (toI aTyRedΤ7)
                   (⊢symN aTyRedΤ7 (fromI (⊢var (there (there (there (there (there (there here))))))))
                          (fordAs (⊢var (there here))))
-                  (toMu (⊢Ty-PiKv (var (vs (vs (vs (vs (vs (vs vz))))))) (fromI (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there (there (there here))))))) (⊢Ty-HomKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (fromMu (⊢var (there (there (there (there here)))))) (⊢Tm-appKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there (there here))))))))) (fromMu (⊢var (there (there (there here)))))))) (⊢Tm-varKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there here))))))))))) (⊢Tm-appKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there (there here))))))))) (fromMu (⊢var (there (there here))))))) (⊢Tm-varKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there here))))))))))))))))
+                  (toMu (⊢Ty-PiKv (var (vs (vs (vs (vs (vs (vs vz))))))) (fromI (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there (there (there here))))))) (⊢Ty-HomKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (fromMu (⊢var (there (there (there (there here)))))) (⊢Tm-appKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (⊢wkTmK (fromI (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there here)))))) (⊢Tm-varKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there here))))))))))) (⊢Tm-appKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (⊢wkTmK (fromI (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there here))))) (⊢Tm-varKv (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (⊢nsuc (fromI (⊢var (there (there (there (there (there (there here))))))))) (⊢Var-vzKt (fromI (⊢var (there (there (there (there (there (there here))))))))))))))))
     (iwf-ι)
 
 aTyRedΤ6 : TyRedΤ6 ⊢ fst (var (vs (vs (vs (vs (vs (vs vz))))))) ∷ Nat

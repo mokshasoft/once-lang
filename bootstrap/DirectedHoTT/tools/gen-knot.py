@@ -1896,6 +1896,7 @@ open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -2703,6 +2704,12 @@ WF_CTOR.update({
     # ★ `wkK` lands at `sh (pair s m)` while the ford wants
     #   `pair s (nsuc m)` — the same two β-steps every time.
     "wkK":      ("⊢wkK",       ["IX", "MU"],      "WK"),
+    # ★ `Knot/WkSub`'s pair — and they need NO post-conversion.  `wkK`
+    #   lands at `sh (pair s m)` and owes two β-steps; these land at
+    #   `pair s (nsuc m)` on the nose, because a `subTyAtK` result is
+    #   already indexed by its TARGET depth.
+    "wkTmK":    ("⊢wkTmK",     ["N", "MU"],       None),
+    "wkTyK":    ("⊢wkTyK",     ["N", "MU"],       None),
     # ★★★ THE SUBSTITUTION WRAPPERS.  `Knot/SubApp` proved these; the
     #   roles say only WHERE each argument comes from.
     # ⚠ `DD`, NOT a fresh "current depth" role.  `_val` PREPENDS the
@@ -2847,6 +2854,15 @@ FIELD_DEPTH.update({
     #   (a binder's derivation ignores the threaded depth) and surfaced
     #   the moment `tr-pw` put a CONSTRUCTOR there.
     "wkK":      [('predD',), ('predD',)],
+    # ★ the same two slots, and the same source depth — only the first
+    #   argument changed shape, from a PAIR index to a bare depth.
+    # ⚠ NOT `wkK`'s SHIFTS, though the two differ by one argument only.
+    #   `wkK`'s slot 0 is a PAIR whose depth component is read at
+    #   `pred dep`; `wkTmK`'s is that depth ITSELF, so it takes no shift —
+    #   `singleK`/`subTmAtK` spell their depth arguments the same way.
+    #   Only the weakened TERM sits at the source depth.
+    "wkTmK":    [('D',), ('D',)],
+    "wkTyK":    [('D',), ('D',)],
     "pwBodyK":  [('predD',), ('predD',)],
 })
 
@@ -3329,6 +3345,7 @@ open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; Ctx-extK )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; wkTyK )
 open import DirectedHoTT.Lib.ArithComm using ( symN )
 open import DirectedHoTT.Spec.Typing
   using ( IConWf; iwf-ι; iwf-κ; iwf-ρ; ICodeWf; icw-clo; icw-ford; icw-imu
@@ -3342,6 +3359,7 @@ open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.CtxD using ( CtxWf; ⊢Ctx-extKt )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Wk using ( ⊢wkK )
+open import DirectedHoTT.Examples.Knot.WkSub using ( ⊢wkTmK; ⊢wkTyK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -3401,6 +3419,7 @@ open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; stkCK; flatK )
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; wkTyK )
 
 -- ★ the judgement's index: a depth and two terms at it.
 IRed : RTy ε
@@ -3462,7 +3481,8 @@ _DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK", "extNK"}
 # ⚠ `subTmAtK`/`subTyAtK` TAKE TWO as well, and NOT `(d, pred d)` the
 #   way `extNK` does: their source is whatever the SUBSTITUTION takes
 #   its argument from, which `_argshift` is the one place that knows.
-_PRE_N = {"singleK": 1, "subTmAtK": 2, "subTyAtK": 2, "extNK": 2}
+_PRE_N = {"singleK": 1, "subTmAtK": 2, "subTyAtK": 2, "extNK": 2,
+          "wkTmK": 1, "wkTyK": 1}
 
 # ★ what a rule NAMES → what the object level CALLS it.  `single`,
 #   `subTm` and `subTy` are the three the judgement rules mention, and
@@ -3612,7 +3632,7 @@ def _val(e, CT, dep):
         # ⚠ It is DEPTH-PRESERVING, so the inner substitution lands at
         #   `pred dep` and the weakening puts it back.
         if rho[0] == "a" and rho[1] == "pwShift":
-            return AP("wkK", PAIR(RAW(srt), p),
+            return AP("wkTyK" if srt == "sTy" else "wkTmK", p,
                       AP("subTmAtK", NSUC(p), p,
                          AP("singleK", p,
                             AP("Tm-varK", AP("Var-vzK", _pred(p)))),
@@ -3622,7 +3642,17 @@ def _val(e, CT, dep):
         #   check kept a non-`vs` renaming from being emitted as a
         #   weakening SILENTLY.  Now it is the branch's condition.
         assert rho[0] == "a" and rho[1] == "vs", ("renTm at %r" % (rho,))
-        return AP("wkK", PAIR(RAW(srt), p), _val(x, CT, p))
+        # ★★★ `wkTmK`/`wkTyK`, NOT `wkK`.  ⚠⚠ THIS LINE SAID `wkK` AND WAS
+        #   WRONG.  `Knot/Wk.wkK` is derived by `Lib/IWk` as a generic
+        #   depth-bumping fold, and such a fold keeps each row's TAG — so
+        #   it maps `var vz` to `var vz`, the IDENTITY on de Bruijn
+        #   indices, which is the weakening that appends at the OUTERMOST
+        #   end.  `renTm vs` appends at the innermost and shifts.  The two
+        #   agree on CLOSED terms and only there, which is why this stood
+        #   for as long as every `renTm vs X` had a closed or bare `X`.
+        # ★ `Knot/WkSub` is the correct translation: `subTm` already
+        #   handles binders, so `renTm vs` is `subTm` at `x ↦ var (vs x)`.
+        return AP("wkTyK" if srt == "sTy" else "wkTmK", p, _val(x, CT, p))
     if h[1] in CT:
         c = CT[h[1]]
         # ★ how many arguments this wrapper PREPENDS, so a source
@@ -3780,6 +3810,7 @@ open import DirectedHoTT.Examples.Knot.Stk
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK; ⊢nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
 open import DirectedHoTT.Examples.Knot.RedRows
 %s
 """
@@ -4067,6 +4098,8 @@ def _wrap_heads(v, acc):
 _WRAP_LEDGER = {
     # ⬜ OWED — a commutation lemma, `Knot/SzAgree`'s shape.
     "wkK":      "⬜ OWED, AND FALSE AS STATED — `wkK` is NOT `renTm vs`; it keeps\n--                the de Bruijn index.  `Knot/WkSub.wkTmK`/`wkTyK` are the\n--                correct translation and the emitter must move to them.",
+    "wkTmK":    "⬜ OWED — `renTm vs`, done PROPERLY (`Knot/WkSub`): `subTm` at\n--                the substitution `x ↦ var (vs x)`.  Replaces `wkK` here.",
+    "wkTyK":    "⬜ OWED — `renTy vs`, likewise.  ⚠ DEFINED but not yet\n--                EMITTED: no rule so far weakens a TYPE.",
     "subTmAtK": "⬜ OWED — `enTm (subTm σ t) ≡ subTmAtK … (enTm t)`.",
     "subTyAtK": "⬜ OWED — `enTy (subTy σ A) ≡ subTyAtK … (enTy A)`.",
     "singleK":  "⬜ OWED — `single`'s half of the substitution agreement.",
@@ -4094,6 +4127,13 @@ _WRAP_LEDGER = {
     "szsTm":     "✅ `Knot/SzAgree` — `szsTm i ⌈t⌉ ⟶* num (sz t)`, all 30 rows,\n--                GENERATED.  THE model for every ⬜ below.",
     "szTm":      "✅ `Knot/SzProbe` — same-sort counts, per row, by `refl`.",
     "head-red":  "✅ not owed — a lemma INSIDE `Knot/SzAgree`, not a program.",
+    # ✅ METHOD ROWS of a program above: covered by that program's own
+    #   agreement, not owed one each.
+    "ihTyRho":   "✅ not owed — a method row of `ihTyK`.",
+    "ipayTyRho": "✅ not owed — a method row of `ipayTyK`.",
+    "ipayTyKap": "✅ not owed — a method row of `ipayTyK`.",
+    "atConK":    "⬜ OWED — agreement with `atCon`.",
+    "wkTyUnderK":"⬜ OWED — agreement with `renTy (extR vs)`.",
     # ⬜ the eliminators the wrappers above are built from.
     "subTmK":    "⬜ OWED — `subTmK`'s agreement with `subTm`; `subTmAtK`'s core.",
     "extSK":     "⬜ OWED — with `subTmK`.",
@@ -4130,7 +4170,12 @@ def scan_object_programs(out):
             nm, start = m.group(1), m.end()
             nxt = re.search(r"(?m)^\S", t[start:])
             body = m.group(2) + "\n" + t[start:start + (nxt.start() if nxt else 0)]
-            if "ielim KnotD" in body: progs.setdefault(nm, set()).add(f)
+            # ⚠ NOT JUST `ielim KnotD`.  `Knot/WkSub`'s programs and
+            #   `atConK` are built from `subTyAtK`, not from a bare
+            #   eliminator, and a scan keyed on `ielim` alone misses
+            #   exactly the module written to FIX this bug class.
+            if re.search(r"\bielim KnotD\b|\bsub(Ty|Tm)?AtK\b", body):
+                progs.setdefault(nm, set()).add(f)
     return progs
 
 

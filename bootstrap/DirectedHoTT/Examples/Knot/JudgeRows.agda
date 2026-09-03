@@ -39,6 +39,7 @@ open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -2128,7 +2129,7 @@ XJΒΒ11 : Cx
 XJΒΒ11 = XJΒΒ10 ∙
 
 kJΒΒ11 : RTm XJΒΒ11
-kJΒΒ11 = pair (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (pair (Ctx-extK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (Ty-ElK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (pair (var (vs (vs (vs (vs (vs (vs vz))))))) (pair (Ty-ElK (wkK (pair sTm (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (pair (num 1) (IxNoneK (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))
+kJΒΒ11 = pair (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (pair (Ctx-extK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (Ty-ElK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (pair (var (vs (vs (vs (vs (vs (vs vz))))))) (pair (Ty-ElK (wkTmK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (pair (num 1) (IxNoneK (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))
 
 XJΒΒ12 : Cx
 XJΒΒ12 = XJΒΒ11 ∙
