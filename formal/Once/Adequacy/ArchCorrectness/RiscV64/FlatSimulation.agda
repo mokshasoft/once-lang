@@ -62,7 +62,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.CCC.Machine.SMCore
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
 open import Once.CCC.Machine.Flat
-open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; halted; flat-exec-instr; fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero; sv-as-loc; flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc; enter-call; do-call-sv; do-call-code; do-call-at; find-thunk)
+open FlatMachine {FS} using (FlatState; fpc; fret; flink; falloc; floc; fclosure; flat-exec-instr;
+                             fetch; find-label; tag-zf; flat-read-tag; flat-read-at; sv-is-zero;
+                             flink-do-ret; leave-frame; do-ret-pc-∷; do-ret-fret-∷; do-ret-alloc;
+                             enter-call; do-call-sv; do-call-code; do-call-at; find-thunk)
 open import Once.CCC.Label using (once; thunk; LabelId)
 
 import Once.CCC.Target.RiscV64.Semantics as R

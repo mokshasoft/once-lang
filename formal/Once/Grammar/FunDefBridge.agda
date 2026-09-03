@@ -31,7 +31,7 @@ open import Once.Parser.Module.FunDef.Params
 open import Once.Parser.Module.FunDef.Body
   using (parseFunBodyB; pfb-eq; pfb-body; eqHead; drop1; drop1-≤)
 open import Once.Parser.ExprRelation using (ParsesExpr)
-open import Once.Parser.Expr using (parseExprWF; ParsesExpr-shrinks)
+open import Once.Parser.Expr using (parseExprWF)
 open import Once.Grammar.ExprBridge using (complete-exprWFraw)
 open import Once.Parser.Module.Alloc using (tryAllocB; allocStrat; drop2; drop2-≤)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB; pfd-alloc; pfd-params; pfd-body)

@@ -27,7 +27,7 @@ open import Once.Parser.Module.DeclTail
   using (goTypeAliasB; goTypeAliasWF; gta-aw; gta-eq; gta-type; gta-sub;
          parseTypeAliasB; pta-aw; pta-go; taEqHead; taDrop1; taDrop1-≤)
 open import Once.Parser.TypeRelation using (ParsesType)
-open import Once.Parser.Type using (parseTypeWF; ParsesType-shrinks)
+open import Once.Parser.Type using (parseTypeWF)
 open import Once.Grammar.ParserBridge using (complete-typeWFraw)
 open import Once.Grammar.ImportBridge using (wordHead; anyWordB-inv; ij-false)
 

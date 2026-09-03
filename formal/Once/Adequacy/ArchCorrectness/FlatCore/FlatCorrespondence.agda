@@ -101,12 +101,10 @@ slot-size>0 : 0 < slot-size
 slot-size>0 = nz⇒pos slot-size
 
 open import Data.Nat using (zero; suc; _+_; _∸_; _*_; _≡ᵇ_; _≟_; _<_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (+-comm; +-assoc; +-cancelˡ-≡; *-cancelʳ-≡; n∸n≡0
-                                      ; m≤m+n; <-irrefl; <-trans; <-transʳ; <-transˡ
-                                      ; +-monoʳ-<; *-monoˡ-<; ≤-refl; ≤-trans; m<n⇒m<1+n
-                                      ; m+n≤o⇒m≤o∸n; <⇒≢; m∸n+n≡m; ≤-reflexive; m<m+n
-                                      ; +-monoʳ-≤; s≤s; z≤n; +-identityʳ; m∸n≤m; *-identityˡ
-                                      ; <⇒≤)
+open import Data.Nat.Properties using (+-comm; +-assoc; +-cancelˡ-≡; *-cancelʳ-≡; n∸n≡0; m≤m+n; <-irrefl;
+                                       <-trans; <-transʳ; <-transˡ; +-monoʳ-<; *-monoˡ-<; ≤-refl; ≤-trans;
+                                       m<n⇒m<1+n; m+n≤o⇒m≤o∸n; <⇒≢; m∸n+n≡m; ≤-reflexive; m<m+n; +-monoʳ-≤;
+                                       +-identityʳ; m∸n≤m; *-identityˡ; <⇒≤)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)

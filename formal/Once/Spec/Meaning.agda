@@ -60,7 +60,7 @@ open import Once.Denotation.ValueDomain public
   using ( ⟦_⟧ᴰ ; ⟦_⟧ᴰᴵ ; cohᴰ ; forget ; inject ; emit-D
         ; coerce-functor⁻¹-D )
 open import Once.Denotation.Behavior public
-  using ( Behavior ; Source ; srcImports ; srcText )
+  using (Behavior; Source)
 open import Once.Denotation.Meaning public
   using ( ⟦_⟧ᵢ ; ⟦_⟧ᶜ ; Env ; lookupᴰ ; svarᴰ ; sigOpValᴰ ; sigOpRefᴰ
         ; in-value ; named-sem ; cata-sem ; cata-ev-algᴰ-D )

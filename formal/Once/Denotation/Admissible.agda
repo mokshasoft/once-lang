@@ -57,8 +57,8 @@ open import Once.TypeCheck.Raw using
   ; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna
   ; OpNeg )
 open import Once.Parser.Module.Core using
-  ( Module; mkModule; decls; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias
-  ; DImport )
+  (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
+   DImport)
 
 ------------------------------------------------------------------------
 -- The literals a program contains

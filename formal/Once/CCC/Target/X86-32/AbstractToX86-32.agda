@@ -29,7 +29,7 @@ open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
-open import Once.Target.Symbol using (once-symbol; once-symbol-path)
+open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import x86-32 syntax
 open import Once.CCC.Target.X86-32.Syntax

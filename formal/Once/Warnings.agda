@@ -63,8 +63,8 @@ open import Once.TypeCheck.Raw using
   ( RawExpr; RVar; RQualified; RResolved; RApp; RLam; RLet; RPair; RDestruct
   ; RUnit; RInt; RFloat; RStringLit; RAnnot; RBinOp; RUnaryOp; RAna )
 open import Once.Parser.Module.Core using
-  ( Module; mkModule; decls; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias
-  ; DImport )
+  (Module; mkModule; Decl; DTypeSig; DFunDef; DSignature; DTypeAlias;
+   DImport)
 
 ------------------------------------------------------------------------
 -- An exact rational, unnormalised

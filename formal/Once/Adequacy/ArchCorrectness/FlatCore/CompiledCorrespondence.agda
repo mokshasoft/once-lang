@@ -97,7 +97,7 @@ module Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open FlatMachine {FS} using (FlatState; fpc; fret; falloc; fclosure; flink)
 open MemOps {FS} using (writeLoc; writeLocToHeap; readLoc)
-open FlatMachine {FS} using (floc; halted; fetch)
+open FlatMachine {FS} using (floc; fetch)
 open import Once.Memory.HeapAddress using (HeapLocation; sucHL; heap-ref; ref-id)
 open import Data.Nat using (zero; suc; _+_; _*_; _∸_; _≤_; _<_)
 open import Data.Nat.Properties using (<-irrefl; <-transˡ; ≤-trans; m≤m+n)

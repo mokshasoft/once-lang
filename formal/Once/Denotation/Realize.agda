@@ -41,19 +41,18 @@ open import Once.TypeCheck.Raw using (RawExpr;
   OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Judgment
-  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
-         t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
-         t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
-         t-compose-check; t-case-copair-check; t-pair-morph-check;
-         t-curry-check; t-cata-check;
-         m-compose; m-case; m-pair; m-curry; m-cata; m-const; m-named; m-named-resolved;
-         t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved; t-var-import;
-         t-annot; t-pair; t-neg; t-neg-float; t-let; t-case; t-binop-arith; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-binop-cmp;
-         t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-apply-app-infer;
-         t-app; t-effApp;
-         t-embed; t-lam; t-value-lift; t-closed-lift; t-morph-lift; t-pair-lit-check; t-In-app-check;
-         t-apply-check; t-inl-app-check; t-inr-app-check; t-initial-app-check;
-         t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
+  using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; t-id-check; t-fst-check; t-snd-check;
+         t-terminal-morph-check; t-initial-morph-check; t-inl-morph-check;
+         t-inr-morph-check; t-compose-check; t-case-copair-check;
+         t-pair-morph-check; t-curry-check; t-cata-check; t-int; t-float; t-str;
+         t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved;
+         t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
+         t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
+         t-binop-arith-float-ir; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
+         t-terminal-app; t-apply-app-infer; t-app; t-effApp; t-embed; t-lam;
+         t-pair-lit-check; t-In-app-check; t-apply-check; t-inl-app-check;
+         t-inr-app-check; t-initial-app-check; t-subsume;
+         t-arg-driven-app-check; t-var-poly-instantiate;
          t-var-poly-instantiate-infer)
 open import Once.Float.Decimal using (Decimal; decimalOf; negate)
 open import Once.Surface.Thinning using (weaken)

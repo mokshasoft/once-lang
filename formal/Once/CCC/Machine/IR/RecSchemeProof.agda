@@ -38,7 +38,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.IR using (IR; Cata; ⟦_⟧T)
+open import Once.IR using (IR; Cata)
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
 import Once.CCC.Eval as Ev

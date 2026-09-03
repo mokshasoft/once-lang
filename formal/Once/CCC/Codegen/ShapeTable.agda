@@ -49,13 +49,13 @@ open import Once.IR using (⟦_⟧TI; IR; AllocMode; Heap; Stack;
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; CtrlInstr;
-   mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
-   store-indirect; store-indirect-suc; lea-slot; restore-input; lea-indexed;
-   instr-alloc-stack; instr-dealloc-stack; instr-push-frame; instr-pop-frame;
-   instr-reclaim-to; instr-call-closure;
-   worklist-init; worklist-push; worklist-pop; worklist-check;
-   instr-sigop; instr-load-const; instr-load-code-addr; instr-save-closure-reg;
+  (AbstractInstr; AbstractTrace; mov-to-output; mov-to-input;
+   load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
+   store-indirect; store-indirect-suc; lea-slot; restore-input;
+   lea-indexed; instr-alloc-stack; instr-dealloc-stack; instr-push-frame;
+   instr-pop-frame; instr-reclaim-to; instr-call-closure; worklist-init;
+   worklist-push; worklist-pop; worklist-check; instr-sigop;
+   instr-load-const; instr-load-code-addr; instr-save-closure-reg;
    instr-load-tag-lit; instr-alloc-heap; instr-loop; instr-case-on-tag;
    instr-reg-op; instr-ctrl; c-label; c-jmp; c-branch-scratch-zero;
    c-branch-tag-zero; c-thunk; c-ret)

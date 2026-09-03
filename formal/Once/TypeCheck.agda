@@ -44,7 +44,7 @@ open import Once.TypeCheck.Elaborate as Elaborate public
   renaming (success to elab-success; failure to elab-failure)
   using (NamedCtx; emptyCtx; extendNamedCtx)
   using (inferElab; checkElab)
-  using (compileExpr; compileExprTyped)
+  using ()
 
 -- Thinning operations (weaken, exchange)
 open import Once.Surface.Thinning public

@@ -23,7 +23,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Parser.Module.Core
-  using (Decl; DTypeSig; DFunDef; DSignature; DImport; DTypeAlias; Module; mkModule; decls)
+  using (Decl; DTypeSig; DFunDef; DSignature; DImport; DTypeAlias; Module;
+         mkModule)
 open import Once.Parser.Module.Resolve
   using (ModuleMap; resolveImports; resolveDecls; canonDecl; collectAliases; collectUnaliased; polyDefNames)
 

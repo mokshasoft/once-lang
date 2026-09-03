@@ -60,12 +60,10 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF;
-           ResultPlace; unit-result; at-loc;
-           valid-unit-wf; valid-coerce-kind-wf;
-           mk-IRResultAWF-via-bump;
-           validityWF-mem-only; validityWF-frontier-advance;
-           decomposePairWF; PairValidWF; mem-preserved-from-tnhw)
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
+           valid-unit-wf; mk-IRResultAWF-via-bump; validityWF-mem-only;
+           validityWF-frontier-advance; decomposePairWF; PairValidWF;
+           mem-preserved-from-tnhw)
 
   open import Once.CCC.Machine.FrontierLemma using (module FrontierLemmas)
   open FrontierLemmas {FS}

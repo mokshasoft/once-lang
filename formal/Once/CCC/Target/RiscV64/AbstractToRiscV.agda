@@ -38,7 +38,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Data.Integer using (+_)
 open import Data.List using (List; []; _∷_; _++_)
-open import Once.Target.Symbol using (once-symbol; once-symbol-path)
+open import Once.Target.Symbol using (once-symbol-path)
 
 -- Import RISC-V syntax
 open import Once.Float.Dyadic using (binary32; binary64)

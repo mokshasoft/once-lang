@@ -44,13 +44,11 @@ open import Once.TypeCheck.Raw as Raw
 open import Once.CanonicalName using (CanonicalName; showCanonical; gen; gen≢bare; NotGenerator; GenWord; genWord?; genWord?-no)
 open import Once.TypeCheck.ElaborateProofs
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure; lookupLocal; lookupImport;
-         inferElabV; checkElabV; _≟T_; embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
+         success; failure; lookupLocal; lookupImport; inferElabV; checkElabV;
+         _≟T_; embedOrSubsume; VerifiedInferResult; isRIntVliftTarget?;
          classifyAppHead; classifyAppHeadView; ahv-other;
-         classifyAppHead-nothing⇒view-other; AppHeadView;
-         inspectWellFormedF; wfv-yes; wfv-no;
-         classifyRPairTarget; rpt-vlift; rpt-other;
-         bbc-other)
+         classifyAppHead-nothing⇒view-other; AppHeadView; inspectWellFormedF;
+         wfv-yes; wfv-no; classifyRPairTarget; rpt-vlift; rpt-other)
 open import Once.TypeCheck.Judgment
 open import Once.Functor.Translate using (WellFormedF; IsConcrete; con-base; con-fun; IsBaseType)
 -- PLAN 0.80 A: the rules carry PROPERTIES now, so completeness recovers the
@@ -75,7 +73,7 @@ open import Data.Empty using (⊥)
 open import Once.IR using (IR; Heap)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Once.Denotation.Realize using (realize-morph; realize-global)
+open import Once.Denotation.Realize using ()
 open import Once.Surface.Syntax as Srf using (Expr; lift-morphism)
 open import Once.Type using (Functor; μ-type; ⟦_⟧T)
 open import Once.TypeCheck.Classify using (lookupLocal; lookupImport; lookupPolyPrefix⇒lookupPoly;

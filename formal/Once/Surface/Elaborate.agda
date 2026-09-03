@@ -40,10 +40,6 @@ open import Data.String using (String; _++_)
 --   `Once.Arith.SigOp.Builders` — other arithmetic SigOpInfos
 open import Once.Arith.SigOp.IntLit using (lit-int-info)
 open import Once.Arith.SigOp.Builders
-  using (str-lit-info; add-info; sub-info; mul-info; div-info; mod-info;
-         fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
-         neg-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info;
-         generic-info; value-info; arrow-info; internal-info)
 open import Once.CanonicalName using (bare)
 open import Once.Functor.Translate using (IsConcrete; con-base; con-fun; base-Unit; WellFormedF)
 

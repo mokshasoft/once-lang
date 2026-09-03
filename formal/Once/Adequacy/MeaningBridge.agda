@@ -80,7 +80,7 @@ open import Once.Arith.SigOp.Builders using (value-info;
   fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
   lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 open import Once.CanonicalName using (CanonicalName; bare)
-open import Once.Denotation.Realize using (realize; realize-infer; realize-morph; realize-global; poly-usage-eq)
+open import Once.Denotation.Realize using (realize; realize-infer; poly-usage-eq)
 open import Once.Adequacy.SourceFaithful fmt using (faithful)
 open import Once.Surface.Elaborate using (elaborate)
 import Once.Denotation.SourceDenote as SD

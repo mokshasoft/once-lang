@@ -51,9 +51,6 @@ open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
-  using (add-info; sub-info; mul-info; div-info; mod-info; neg-info;
-         fadd-info; fsub-info; fmul-info; fdiv-info; i2f-info;
-         lt-info; le-info; gt-info; ge-info; eq-info; ne-info; generic-info; value-info; arrow-info; str-lit-info; internal-info)
 open import Once.CanonicalName using (bare)
 
 open Once.Surface.Syntax.Expr
