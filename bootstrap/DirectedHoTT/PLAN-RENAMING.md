@@ -122,8 +122,8 @@ readable line, and that line is pointwise testable.
 | 0 | `_WRAP_LEDGER`, both-ways, 39 programs / 25 owed | ✅ done |
 | **1** | **convert the remaining suspect sites** | 🟡 4 of 6 done |
 | 1a | `Knot/RenMot` — the object-level `Ren` layer (`RenTy`, `extRK`, `extRNK`) | ✅ **done** — breaks the cycle |
-| 1b | `renTmK ρ` over the 53 rows; `wkTmK = renTmK vsRen` | ⬜ **HERE** |
-| 1c | then `extVs` (#5) and `pwBodyK`'s 51 defaults (#4) | ⬜ |
+| 1b | `renTmK ρ` over the 53 rows (`Knot/RenTm`) | ✅ **done** |
+| 1c | `extVs` (#5), `pwBodyK`'s 51 defaults (#4), `wkTmK = renTmK vsRen` | ⬜ **HERE** |
 | 2 | pointwise specs for `wkSubK`/`singleK`/`extNK`/`nrsSubK` | ⬜ |
 | 3 | `sub-agree` — the ONE induction, discharges the family | ⬜ |
 | 4 | retire `wkK` for open terms; keep it only where CLOSED, stated | ⬜ |
@@ -381,4 +381,49 @@ substitution TYPE and the motive), so this should be that library at
 `extN = extRNK` and `smap = id` — renaming preserves sort where
 substitution maps `sVar ↦ sTm`. The `var` row differs (`Tm-varK (ρ x)`
 against `σ x`) and is one of the three GIVEN methods.
+
+---
+
+## §13 STEP 1b LANDED — `Knot/RenTm`, and `Lib/ISub` took it unchanged
+
+**502 lines against `Knot/SubMot`'s 1439**, green, and it imports
+`Build`/`Ctors`/`CtorsV`/`Desc`/`RenMot`/`Sorts`/`Tags`/`Terms`/`Wf`/`Wk`
+— **not `SubMot`**. `renTmK i x = ielim KnotD i renMethsK x`, and `ρ` is
+an ARGUMENT.
+
+★★★ **THE LIBRARY INSTANTIATED WITHOUT CHANGE.** `Lib/ISub.Sub` at
+
+    extN      = extRNK          (Knot/RenMot — and it needs no renTm)
+    smap      = λ s → s         renaming PRESERVES the sort
+    decStable = λ _ → just done
+    fordMap   = the witness, COPIED
+
+and `Lib/ISub.Typing` at `RenTy`/`renMotK`/`⊢extRNK`/`⊢renAppK`/
+`⊢renFordMap`. Both `open`s were accepted on the first attempt. ⇒ the
+library really was generic in the thing that differs, which is the first
+time that has been true of a `Lib` module at a SECOND customer.
+
+★★ **AND `smap = id` COLLAPSES EVERYTHING `sortMap` COSTS.** Measured
+against `Knot/SubMot`:
+
+| | substitution | renaming |
+|---|---|---|
+| stability chains | six (`sortMap-ty` … `sortMap-icon`), ~40 lines | `done` |
+| `decStable` | a 7-clause decision procedure | `λ _ → just done` |
+| the ford action | `fordMapK`, a `jsub`, + a 15-line typing | the witness, copied |
+| `sortConv` | takes `s'` and `sortMap s ⟶* s'` | `renConv`, neither |
+
+⚠ **AND THE `Var` ROWS DIFFER IN KIND, WHICH IS THE POINT.**
+`Knot/SubMot`'s own header says that at sort `sVar` its motive targets
+`K (pair (sortMap (fst ⟨i⟩)) n)` and `sortMap sVar ⟶* sTm`, so its `Var`
+methods build a TERM — what substituting a variable does. A renaming
+sends a variable to a VARIABLE, so here the target really is
+`K (pair sVar n)`. ⇒ the ONE place the two functions genuinely differ,
+and the motive is where it shows. `renVarM` differs from `subVarM` by
+exactly one `Tm-varK`.
+
+⬜ WHAT WAS COPIED RATHER THAN REUSED, and should be parameterised at a
+third customer: `⊢isubMethodK`, `⊢isubMethsK`, `GiveOK`/`Pr`/`OKg`,
+`imethTySubK-wf`, `imethsTyFromSubK-wf`, `payRenK`, `ihRenK` — all
+`Knot/SubMot`-local and hard-wired to `subMotK`.
 
