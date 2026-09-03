@@ -250,3 +250,99 @@ law); only the Knot can fill it.
 function. The only enforcement that works is to make the thing the caller
 NEEDS obtainable only in a form that carries its law.
 
+---
+
+## §11 THE KERNEL-LEVEL ROOT CAUSE, AND WHAT THE NORMALIZER ALREADY DOES
+
+### §11.1 ★★★ THE DESCRIPTION LANGUAGE HAS NO BINDERS AND NO VARIABLES
+
+    data ICon where
+      iι : ICon Δ
+      iρ : RTm Δ → ICon (Δ ∙) → ICon Δ    -- recursive field at index j
+      iκ : RTm Δ → ICon (Δ ∙) → ICon Δ    -- non-recursive, type `El κ`
+
+There is **no binder former and no variable position**. Binding is
+encoded as DEPTH ARITHMETIC INSIDE THE INDEX TERM — `iρ (pair sTy (nsuc
+(snd ⟨i⟩)))` is how the knot says *"a type one binder deeper"*. And
+`Lib/IWk`'s `WkIx` classification (`rides` / `pinned`) exists solely to
+**reverse-engineer that arithmetic back into binding structure**.
+
+⇒ **that decoding step is where the choice of renaming lives, and it is
+where the bug came from.** A generic fold over a description that cannot
+say which fields are under binders cannot know which renaming it is
+implementing — so it implements the only one that is stable under
+`extR`, which is the outermost insertion, not `renTm vs`.
+
+### §11.2 ⇒ THE KERNEL CHANGE THAT MAKES THE CLASS UNSTATABLE
+
+Add a binder former and a variable position to the description language.
+Then `renTm`/`subTm` over `IMu D I` are DERIVED ONCE, generically, in the
+kernel, with their laws proved once — the scope-safe universe-of-syntaxes
+result. `Lib/IWk` stops being a user-written fold, `wkK` stops being a
+user function, and `WkIx` has nothing to decode, hence nothing to decode
+wrongly.
+
+⚠ COST: it changes `ICon`, therefore every row of the 53-row knot,
+therefore `Lib/IWk`/`ISub`/`IPay`, therefore the generator. That is the
+whole POC — a PLAN, not a patch. ★ And it is the same request as
+`FUTURE.md`'s dogfooding option 2 (*generate the layer FROM the
+description*), one level deeper.
+
+### §11.3 ✅ THE CHEAP SPEC-LEVEL PIECE, worth doing regardless
+
+`Spec` can prove what PINS a renaming: `renTm ρ` is the unique structural
+map with `f ρ (var x) = var (ρ x)`. That mentions only `Spec`'s own
+notions, so it belongs in `Spec` — and with it, a library claiming to
+implement a renaming owes **the VARIABLE rows only**; the other 29 are
+forced. This is the mechanism that keeps the law cheap.
+
+### §11.4 ★★★ THE NORMALIZER ALREADY SOLVED THIS, ONE DIRECTORY OVER
+
+On `origin/plan-0.76-context-indexed-composition`:
+
+    Theory/Spec/AlgebraSpec.agda      record AlgebraSpec (alg : …) : Set₁
+                                        field alg-at-id, alg-at-comp, …
+    TCB0/Compiler/SatisfiesSpec.agda  the concrete algebra INHABITS it
+    Theory/GeneralCorrectness/Record  record CorrectNormalizer
+                                        field terminates, produces-betanf,
+                                              preserves
+
+A record whose fields are LAWS, a proof the instance satisfies them, and
+the theorem derived generically from the record. **That is `RawMonad` vs
+`Monad`, and it is already house style in this repository.**
+
+★★ AND THE LAW SHAPE MATCHES WHAT THIS PLAN ARRIVED AT INDEPENDENTLY:
+
+    alg ∘ inj-N  ⟶*  In ∘ inj-N          per position, pointwise, a REDUCTION
+    app ⌈σ⌉ ⌈vz⌉ ⟶*  ⌈ σ vz ⌉            §5, the same shape
+
+### §11.5 ⚠ DOES THE LAW-RECORD BLOW UP THE PROOF SPACE? — MEASURED: NO
+
+`AlgebraSpec` has **15 law fields**. `SatisfiesSpec` discharges all
+fifteen in **78 lines** — 5 lines each, except `alg-at-comp` at 11. Its
+header says why: 14 of 15 are trivial *because the handlers ARE*
+`In ∘ inj-N`. ⇒ **the cost concentrates in the positions with real
+behaviour, and there are few of those.** That is the whole point of the
+per-constructor pointwise shape.
+
+### §11.6 WHAT TO CALL IT
+
+House style already exists: a `…Spec` RECORD plus a `Satisfies…` proof.
+For the discipline: **NO RAW EXPORTS** — a library may not export a
+DERIVED OPERATION except through a spec record. (`Raw…` vs bundled, in
+agda-stdlib's own vocabulary.)
+
+⚠ AND IT APPLIES TO FUNCTIONS, NOT CONSTRUCTORS. A constructor is DATA:
+no behaviour, nothing to get wrong, and its adequacy is `refl` — which is
+exactly what `Knot/Adequacy`'s 32 checks are. The bugs live in DERIVED
+FUNCTIONS. ⇒ **`Adequacy` covers the constructors, a spec record covers
+the functions, and together they are everything.**
+
+### §11.7 THE THREE HORIZONS
+
+| | | |
+|---|---|---|
+| **now** | `renTmK` + the pointwise specs — closes #4 and #5 | §6 steps 1–2 |
+| **small** | `renTm` uniqueness in `Spec` — future claims cost the var rows only | §11.3 |
+| **large** | binders as STRUCTURE in `ICon` — the only change that removes the class | §11.2 |
+
