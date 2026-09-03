@@ -24,14 +24,13 @@ import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Adequacy.AcceptSound
-import qualified MAlonzo.Code.Once.Adequacy.ModuleComplete
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.Meaning
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.Spec.Module
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
@@ -52,11 +51,11 @@ d_mainMeaning'7496''45'go_22 ::
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
+  MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10 ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_mainMeaning'7496''45'go_22 v0 v1 v2 v3 v4 v5 v6
   = case coe v5 of
-      MAlonzo.Code.Once.Adequacy.AcceptSound.C_tcons_144 v10 v11 v13 v14
+      MAlonzo.Code.Once.Spec.Module.C_tcons_30 v10 v11 v13 v14
         -> case coe v2 of
              (:) v15 v16
                -> case coe v6 of
@@ -82,13 +81,12 @@ d_mainMeaning'7496''45'go_22 v0 v1 v2 v3 v4 v5 v6
                                                  (coe
                                                     MAlonzo.Code.Once.Parser.d_funName_108
                                                     (coe v15))
-                                                 (coe
-                                                    MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
+                                                 (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_46))
                                               (coe v3))
                                            (coe v0) (coe v1))
                                         (coe MAlonzo.Code.Once.Parser.d_funBody_114 (coe v15))
-                                        (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6)
-                                        (coe v11) (coe v13) (coe v4)))
+                                        (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_46) (coe v11)
+                                        (coe v13) (coe v4)))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v17
                       -> coe
@@ -102,7 +100,7 @@ d_mainMeaning'7496''45'go_22 v0 v1 v2 v3 v4 v5 v6
                               (coe ("main" :: Data.Text.Text)))
                            (coe
                               MAlonzo.Code.Once.TypeCheck.Elaborate.d__'8799'T__224 (coe v10)
-                              (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
+                              (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_46))
                            (coe MAlonzo.Code.Once.Parser.d_funIsPrimitive_116 (coe v15))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -119,7 +117,7 @@ d_mmd'45'dispatch_50 ::
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
+  MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10 ->
   AgdaAny ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
@@ -162,12 +160,11 @@ d_mmd'45'dispatch_50 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                            (coe v2)
                                                            (coe
-                                                              MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
+                                                              MAlonzo.Code.Once.Spec.Module.d_EffUU_46))
                                                         (coe v5))
                                                      (coe v0) (coe v1))
                                                   (coe v3)
-                                                  (coe
-                                                     MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6)
+                                                  (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_46)
                                                   (coe v7) (coe v9) (coe v8)))
                               else coe
                                      seq (coe v18)

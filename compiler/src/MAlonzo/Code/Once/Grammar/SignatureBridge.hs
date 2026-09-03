@@ -20,66 +20,64 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
-import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.Grammar.PolyTypeBridge
 import qualified MAlonzo.Code.Once.Parser.Generic.Parser
 import qualified MAlonzo.Code.Once.Parser.Generic.PolyInst
-import qualified MAlonzo.Code.Once.Parser.Generic.Relation
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Module.DeclTail
 import qualified MAlonzo.Code.Once.Parser.PolyType
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.SigEffect
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Grammar.Signature
 
--- Once.Grammar.SignatureBridge.ParsesEffAnnot
-d_ParsesEffAnnot_6 a0 a1 a2 = ()
-data T_ParsesEffAnnot_6 = C_pea'45'some_12 | C_pea'45'none_16
 -- Once.Grammar.SignatureBridge.sound-effAnnot-go
-d_sound'45'effAnnot'45'go_22 ::
+d_sound'45'effAnnot'45'go_10 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  T_ParsesEffAnnot_6
-d_sound'45'effAnnot'45'go_22 ~v0 v1 ~v2
-  = du_sound'45'effAnnot'45'go_22 v1
-du_sound'45'effAnnot'45'go_22 ::
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesEffAnnot_8
+d_sound'45'effAnnot'45'go_10 ~v0 v1 ~v2
+  = du_sound'45'effAnnot'45'go_10 v1
+du_sound'45'effAnnot'45'go_10 ::
   Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4 ->
-  T_ParsesEffAnnot_6
-du_sound'45'effAnnot'45'go_22 v0
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesEffAnnot_8
+du_sound'45'effAnnot'45'go_10 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
-        -> coe C_pea'45'some_12
+        -> coe MAlonzo.Code.Once.Spec.Grammar.Signature.C_pea'45'some_14
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe C_pea'45'none_16
+        -> coe MAlonzo.Code.Once.Spec.Grammar.Signature.C_pea'45'none_18
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.SignatureBridge.sound-effAnnot
-d_sound'45'effAnnot_36 ::
-  [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> T_ParsesEffAnnot_6
-d_sound'45'effAnnot_36 v0
+d_sound'45'effAnnot_24 ::
+  [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesEffAnnot_8
+d_sound'45'effAnnot_24 v0
   = coe
-      du_sound'45'effAnnot'45'go_22
+      du_sound'45'effAnnot'45'go_10
       (coe
          MAlonzo.Code.Once.Parser.Module.DeclTail.d_effAnnotShape_264
          (coe v0))
 -- Once.Grammar.SignatureBridge.complete-effAnnot-go
-d_complete'45'effAnnot'45'go_50 ::
+d_complete'45'effAnnot'45'go_38 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  T_ParsesEffAnnot_6 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_complete'45'effAnnot'45'go_50 v0 ~v1 ~v2 v3 ~v4 v5
-  = du_complete'45'effAnnot'45'go_50 v0 v3 v5
-du_complete'45'effAnnot'45'go_50 ::
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesEffAnnot_8 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_complete'45'effAnnot'45'go_38 v0 ~v1 ~v2 v3 ~v4 v5
+  = du_complete'45'effAnnot'45'go_38 v0 v3 v5
+du_complete'45'effAnnot'45'go_38 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4 ->
-  T_ParsesEffAnnot_6 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_complete'45'effAnnot'45'go_50 v0 v1 v2
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesEffAnnot_8 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_complete'45'effAnnot'45'go_38 v0 v1 v2
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
         -> coe
@@ -101,42 +99,39 @@ du_complete'45'effAnnot'45'go_50 v0 v1 v2
                 erased)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.SignatureBridge.complete-effAnnot
-d_complete'45'effAnnot_102 ::
+d_complete'45'effAnnot_90 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesEffAnnot_6 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_complete'45'effAnnot_102 v0 ~v1 ~v2 v3
-  = du_complete'45'effAnnot_102 v0 v3
-du_complete'45'effAnnot_102 ::
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesEffAnnot_8 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_complete'45'effAnnot_90 v0 ~v1 ~v2 v3
+  = du_complete'45'effAnnot_90 v0 v3
+du_complete'45'effAnnot_90 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesEffAnnot_6 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_complete'45'effAnnot_102 v0 v1
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesEffAnnot_8 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_complete'45'effAnnot_90 v0 v1
   = coe
-      du_complete'45'effAnnot'45'go_50 (coe v0)
+      du_complete'45'effAnnot'45'go_38 (coe v0)
       (coe
          MAlonzo.Code.Once.Parser.Module.DeclTail.d_effAnnotShape_264
          (coe v0))
       (coe v1)
--- Once.Grammar.SignatureBridge.ParsesSignature
-d_ParsesSignature_108 a0 a1 a2 = ()
-data T_ParsesSignature_108
-  = C_psig'45'mk_122 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                     MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_374
-                     T_ParsesEffAnnot_6
 -- Once.Grammar.SignatureBridge.sound-signature
-d_sound'45'signature_132 ::
+d_sound'45'signature_104 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  T_ParsesSignature_108
-d_sound'45'signature_132 v0 ~v1 ~v2 ~v3 ~v4
-  = du_sound'45'signature_132 v0
-du_sound'45'signature_132 ::
-  [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> T_ParsesSignature_108
-du_sound'45'signature_132 v0
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesSignature_20
+d_sound'45'signature_104 v0 ~v1 ~v2 ~v3 ~v4
+  = du_sound'45'signature_104 v0
+du_sound'45'signature_104 ::
+  [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesSignature_20
+du_sound'45'signature_104 v0
   = let v1
           = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0) in
     coe
@@ -395,13 +390,14 @@ du_sound'45'signature_132 v0
                                                 -> case coe v11 of
                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                        -> coe
-                                                            C_psig'45'mk_122 v12
+                                                            MAlonzo.Code.Once.Spec.Grammar.Signature.C_psig'45'mk_34
+                                                            v12
                                                             (coe
                                                                MAlonzo.Code.Once.Grammar.PolyTypeBridge.du_parsePolyTypeB'45'sound_42
                                                                (coe
                                                                   MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302
                                                                   (coe v5)))
-                                                            (d_sound'45'effAnnot_36 (coe v12))
+                                                            (d_sound'45'effAnnot_24 (coe v12))
                                                      _ -> MAlonzo.RTE.mazUnreachableError
                                               _ -> MAlonzo.RTE.mazUnreachableError
                                        _ -> MAlonzo.RTE.mazUnreachableError)))
@@ -409,19 +405,21 @@ du_sound'45'signature_132 v0
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Grammar.SignatureBridge.complete-signature
-d_complete'45'signature_218 ::
+d_complete'45'signature_190 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesSignature_108 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_complete'45'signature_218 v0 ~v1 ~v2 v3
-  = du_complete'45'signature_218 v0 v3
-du_complete'45'signature_218 ::
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesSignature_20 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_complete'45'signature_190 v0 ~v1 ~v2 v3
+  = du_complete'45'signature_190 v0 v3
+du_complete'45'signature_190 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesSignature_108 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_complete'45'signature_218 v0 v1
+  MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesSignature_20 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_complete'45'signature_190 v0 v1
   = case coe v1 of
-      C_psig'45'mk_122 v5 v9 v10
+      MAlonzo.Code.Once.Spec.Grammar.Signature.C_psig'45'mk_34 v5 v9 v10
         -> case coe v0 of
              (:) v11 v12
                -> let v13
@@ -633,7 +631,7 @@ du_complete'45'signature_218 v0 v1
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                          -> let v16
                                   = coe
-                                      du_complete'45'effAnnot'45'go_50 (coe v5)
+                                      du_complete'45'effAnnot'45'go_38 (coe v5)
                                       (coe
                                          MAlonzo.Code.Once.Parser.Module.DeclTail.d_effAnnotShape_264
                                          (coe v5))

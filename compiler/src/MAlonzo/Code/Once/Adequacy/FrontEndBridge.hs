@@ -31,34 +31,28 @@ import qualified MAlonzo.Code.Once.Parser.Lexer
 import qualified MAlonzo.Code.Once.Parser.Module
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Token
+import qualified MAlonzo.Code.Once.Spec.Parsing
 
--- Once.Adequacy.FrontEndBridge.ParsesDecls
-d_ParsesDecls_6 a0 a1 a2 = ()
-data T_ParsesDecls_6
-  = C_pds'45'noskip_10 |
-    C_pds'45'stop_18 [MAlonzo.Code.Once.Parser.Token.T_Token_6] |
-    C_pds'45'cons_34 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                     [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                     [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                     MAlonzo.Code.Once.Grammar.DeclBridge.T_ParsesDecl_6 T_ParsesDecls_6
 -- Once.Adequacy.FrontEndBridge.SkBnd
-d_SkBnd_40 ::
+d_SkBnd_10 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> ()
-d_SkBnd_40 = erased
+d_SkBnd_10 = erased
 -- Once.Adequacy.FrontEndBridge.sound-declsWF
-d_sound'45'declsWF_54 ::
+d_sound'45'declsWF_24 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Induction.WellFounded.T_Acc_42 -> T_ParsesDecls_6
-d_sound'45'declsWF_54 v0 ~v1 = du_sound'45'declsWF_54 v0
-du_sound'45'declsWF_54 ::
-  [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> T_ParsesDecls_6
-du_sound'45'declsWF_54 v0
+  MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6
+d_sound'45'declsWF_24 v0 ~v1 = du_sound'45'declsWF_24 v0
+du_sound'45'declsWF_24 ::
+  [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6
+du_sound'45'declsWF_24 v0
   = coe
-      du_sound'45'pdwf'45'sk_68
+      du_sound'45'pdwf'45'sk_38
       (coe MAlonzo.Code.Once.Parser.Core.d_skipNewlines_278 (coe v0))
 -- Once.Adequacy.FrontEndBridge.sound-pdwf-sk
-d_sound'45'pdwf'45'sk_68 ::
+d_sound'45'pdwf'45'sk_38 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -68,26 +62,28 @@ d_sound'45'pdwf'45'sk_68 ::
    [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
    MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22) ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_ParsesDecls_6
-d_sound'45'pdwf'45'sk_68 ~v0 ~v1 v2 ~v3 ~v4
-  = du_sound'45'pdwf'45'sk_68 v2
-du_sound'45'pdwf'45'sk_68 ::
-  Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> T_ParsesDecls_6
-du_sound'45'pdwf'45'sk_68 v0
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6
+d_sound'45'pdwf'45'sk_38 ~v0 ~v1 v2 ~v3 ~v4
+  = du_sound'45'pdwf'45'sk_38 v2
+du_sound'45'pdwf'45'sk_38 ::
+  Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6
+du_sound'45'pdwf'45'sk_38 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v1
         -> case coe v1 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v2 v3
                -> coe
-                    du_sound'45'pdwf'45'dc_88 (coe v3)
+                    du_sound'45'pdwf'45'dc_58 (coe v3)
                     (coe MAlonzo.Code.Once.Parser.Module.d_parseDeclB_146 (coe v3))
                     (coe v2)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe C_pds'45'noskip_10
+        -> coe MAlonzo.Code.Once.Spec.Parsing.C_pds'45'noskip_10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.FrontEndBridge.sound-pdwf-dc
-d_sound'45'pdwf'45'dc_88 ::
+d_sound'45'pdwf'45'dc_58 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -97,14 +93,16 @@ d_sound'45'pdwf'45'dc_88 ::
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_ParsesDecls_6
-d_sound'45'pdwf'45'dc_88 ~v0 ~v1 v2 ~v3 v4 ~v5 v6 ~v7
-  = du_sound'45'pdwf'45'dc_88 v2 v4 v6
-du_sound'45'pdwf'45'dc_88 ::
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6
+d_sound'45'pdwf'45'dc_58 ~v0 ~v1 v2 ~v3 v4 ~v5 v6 ~v7
+  = du_sound'45'pdwf'45'dc_58 v2 v4 v6
+du_sound'45'pdwf'45'dc_58 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> T_ParsesDecls_6
-du_sound'45'pdwf'45'dc_88 v0 v1 v2
+  [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6
+du_sound'45'pdwf'45'dc_58 v0 v1 v2
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
         -> case coe v3 of
@@ -112,42 +110,46 @@ du_sound'45'pdwf'45'dc_88 v0 v1 v2
                -> case coe v5 of
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                       -> coe
-                           C_pds'45'cons_34 v2 v0 v6
+                           MAlonzo.Code.Once.Spec.Parsing.C_pds'45'cons_34 v2 v0 v6
                            (coe
-                              MAlonzo.Code.Once.Grammar.DeclBridge.du_sound'45'decl_68 (coe v0))
-                           (coe du_sound'45'declsWF_54 (coe v6))
+                              MAlonzo.Code.Once.Grammar.DeclBridge.du_sound'45'decl_14 (coe v0))
+                           (coe du_sound'45'declsWF_24 (coe v6))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-        -> coe C_pds'45'stop_18 v2
+        -> coe MAlonzo.Code.Once.Spec.Parsing.C_pds'45'stop_18 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.FrontEndBridge.sound-decls
-d_sound'45'decls_154 ::
+d_sound'45'decls_124 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_ParsesDecls_6
-d_sound'45'decls_154 v0 ~v1 ~v2 ~v3 = du_sound'45'decls_154 v0
-du_sound'45'decls_154 ::
-  [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> T_ParsesDecls_6
-du_sound'45'decls_154 v0 = coe du_sound'45'declsWF_54 (coe v0)
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6
+d_sound'45'decls_124 v0 ~v1 ~v2 ~v3 = du_sound'45'decls_124 v0
+du_sound'45'decls_124 ::
+  [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6
+du_sound'45'decls_124 v0 = coe du_sound'45'declsWF_24 (coe v0)
 -- Once.Adequacy.FrontEndBridge.complete-declsWF
-d_complete'45'declsWF_174 ::
+d_complete'45'declsWF_144 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  T_ParsesDecls_6 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_complete'45'declsWF_174 ~v0 v1 v2 ~v3 v4
-  = du_complete'45'declsWF_174 v1 v2 v4
-du_complete'45'declsWF_174 ::
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_complete'45'declsWF_144 ~v0 v1 v2 ~v3 v4
+  = du_complete'45'declsWF_144 v1 v2 v4
+du_complete'45'declsWF_144 ::
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesDecls_6 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_complete'45'declsWF_174 v0 v1 v2
-  = coe du_complete'45'pdwf'45'sk_192 (coe v0) (coe v1) (coe v2)
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_complete'45'declsWF_144 v0 v1 v2
+  = coe du_complete'45'pdwf'45'sk_162 (coe v0) (coe v1) (coe v2)
 -- Once.Adequacy.FrontEndBridge.complete-pdwf-sk
-d_complete'45'pdwf'45'sk_192 ::
+d_complete'45'pdwf'45'sk_162 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   (Integer ->
    MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
@@ -160,49 +162,46 @@ d_complete'45'pdwf'45'sk_192 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesDecls_6 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_complete'45'pdwf'45'sk_192 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7
-  = du_complete'45'pdwf'45'sk_192 v5 v6 v7
-du_complete'45'pdwf'45'sk_192 ::
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_complete'45'pdwf'45'sk_162 ~v0 ~v1 ~v2 ~v3 ~v4 v5 v6 v7
+  = du_complete'45'pdwf'45'sk_162 v5 v6 v7
+du_complete'45'pdwf'45'sk_162 ::
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesDecls_6 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_complete'45'pdwf'45'sk_192 v0 v1 v2
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_complete'45'pdwf'45'sk_162 v0 v1 v2
   = case coe v2 of
-      C_pds'45'noskip_10
+      MAlonzo.Code.Once.Spec.Parsing.C_pds'45'noskip_10
         -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased
-      C_pds'45'stop_18 v4
+      MAlonzo.Code.Once.Spec.Parsing.C_pds'45'stop_18 v4
         -> coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased erased
-      C_pds'45'cons_34 v4 v5 v7 v11 v12
+      MAlonzo.Code.Once.Spec.Parsing.C_pds'45'cons_34 v4 v5 v7 v11 v12
         -> case coe v0 of
              (:) v13 v14
                -> let v15
-                        = MAlonzo.Code.Once.Grammar.DeclBridge.d_complete'45'decl_312
+                        = MAlonzo.Code.Once.Grammar.DeclBridge.d_complete'45'decl_258
                             (coe v5) (coe v13) (coe v7) (coe v11) in
                   coe
                     (coe
                        seq (coe v15)
-                       (coe du_complete'45'declsWF_174 (coe v14) (coe v1) (coe v12)))
+                       (coe du_complete'45'declsWF_144 (coe v14) (coe v1) (coe v12)))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.FrontEndBridge.complete-decls
-d_complete'45'decls_322 ::
+d_complete'45'decls_292 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesDecls_6 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_complete'45'decls_322 = erased
--- Once.Adequacy.FrontEndBridge.ParsesModule
-d_ParsesModule_352 ::
-  [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
-  [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
-d_ParsesModule_352 = erased
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_complete'45'decls_292 = erased
 -- Once.Adequacy.FrontEndBridge.parseDecls-total
-d_parseDecls'45'total_366 ::
+d_parseDecls'45'total_328 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseDecls'45'total_366 v0
+d_parseDecls'45'total_328 v0
   = let v1
           = coe
               MAlonzo.Code.Once.Parser.Module.du_pdwf'45'sk_308 (coe v0)
@@ -222,39 +221,37 @@ d_parseDecls'45'total_366 v0
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Adequacy.FrontEndBridge.complete-module
-d_complete'45'module_386 ::
+d_complete'45'module_348 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesDecls_6 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_complete'45'module_386 = erased
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_complete'45'module_348 = erased
 -- Once.Adequacy.FrontEndBridge.sound-module
-d_sound'45'module_404 ::
+d_sound'45'module_366 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_ParsesDecls_6
-d_sound'45'module_404 v0 ~v1 ~v2 ~v3 = du_sound'45'module_404 v0
-du_sound'45'module_404 ::
-  [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> T_ParsesDecls_6
-du_sound'45'module_404 v0 = coe du_sound'45'decls_154 (coe v0)
--- Once.Adequacy.FrontEndBridge.ParsesText
-d_ParsesText_436 ::
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 -> ()
-d_ParsesText_436 = erased
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6
+d_sound'45'module_366 v0 ~v1 ~v2 ~v3 = du_sound'45'module_366 v0
+du_sound'45'module_366 ::
+  [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
+  MAlonzo.Code.Once.Spec.Parsing.T_ParsesDecls_6
+du_sound'45'module_366 v0 = coe du_sound'45'decls_124 (coe v0)
 -- Once.Adequacy.FrontEndBridge.parseStrict-complete
-d_parseStrict'45'complete_450 ::
+d_parseStrict'45'complete_402 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_parseStrict'45'complete_450 = erased
+d_parseStrict'45'complete_402 = erased
 -- Once.Adequacy.FrontEndBridge.parseModule-total-at
-d_parseModule'45'total'45'at_474 ::
+d_parseModule'45'total'45'at_426 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseModule'45'total'45'at_474 v0
+d_parseModule'45'total'45'at_426 v0
   = let v1
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
@@ -293,17 +290,17 @@ d_parseModule'45'total'45'at_474 v0
             (coe MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50 (coe v1))
             (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2) erased)))
 -- Once.Adequacy.FrontEndBridge.parseStrict-sound
-d_parseStrict'45'sound_496 ::
+d_parseStrict'45'sound_448 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseStrict'45'sound_496 v0 ~v1 ~v2
-  = du_parseStrict'45'sound_496 v0
-du_parseStrict'45'sound_496 ::
+d_parseStrict'45'sound_448 v0 ~v1 ~v2
+  = du_parseStrict'45'sound_448 v0
+du_parseStrict'45'sound_448 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_parseStrict'45'sound_496 v0
+du_parseStrict'45'sound_448 v0
   = let v1
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
@@ -323,10 +320,10 @@ du_parseStrict'45'sound_496 v0
                             (coe v0))))) in
     coe
       (coe
-         du_go_530 (coe v0) (coe v1)
+         du_go_482 (coe v0) (coe v1)
          (coe MAlonzo.Code.Once.Parser.d_allTrailing_18 (coe v1)))
 -- Once.Adequacy.FrontEndBridge._.eqAt
-d_eqAt_524 ::
+d_eqAt_476 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
@@ -334,9 +331,9 @@ d_eqAt_524 ::
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_eqAt_524 = erased
+d_eqAt_476 = erased
 -- Once.Adequacy.FrontEndBridge._.go
-d_go_530 ::
+d_go_482 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
@@ -346,15 +343,15 @@ d_go_530 ::
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_go_530 v0 ~v1 v2 ~v3 ~v4 ~v5 v6 ~v7 = du_go_530 v0 v2 v6
-du_go_530 ::
+d_go_482 v0 ~v1 v2 ~v3 ~v4 ~v5 v6 ~v7 = du_go_482 v0 v2 v6
+du_go_482 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Bool -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_go_530 v0 v1 v2
-  = coe du_goB_542 (coe v0) (coe v1) (coe v2) erased
+du_go_482 v0 v1 v2
+  = coe du_goB_494 (coe v0) (coe v1) (coe v2) erased
 -- Once.Adequacy.FrontEndBridge._._.goB
-d_goB_542 ::
+d_goB_494 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
@@ -367,15 +364,15 @@ d_goB_542 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_goB_542 v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 ~v9 v10
-  = du_goB_542 v0 v2 v8 v10
-du_goB_542 ::
+d_goB_494 v0 ~v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 ~v9 v10
+  = du_goB_494 v0 v2 v8 v10
+du_goB_494 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_goB_542 v0 v1 v2 v3
+du_goB_494 v0 v1 v2 v3
   = coe
       seq (coe v2)
       (coe
@@ -386,12 +383,12 @@ du_goB_542 v0 v1 v2 v3
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                (coe
-                  MAlonzo.Code.Once.Adequacy.LexerBridge.d_lexer'45'sound_1134
+                  MAlonzo.Code.Once.Adequacy.LexerBridge.d_lexer'45'sound_702
                   (coe v0))
                (coe
                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                   (coe
-                     du_sound'45'module_404
+                     du_sound'45'module_366
                      (coe
                         MAlonzo.Code.Once.Parser.Lexer.d_tokenizeString_1038 (coe v0)))
                   (coe v3)))))

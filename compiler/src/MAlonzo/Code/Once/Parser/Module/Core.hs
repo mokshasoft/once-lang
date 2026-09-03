@@ -21,6 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.List.Base
+import qualified MAlonzo.Code.Data.Maybe.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
 import qualified MAlonzo.Code.Once.Parser.Expr
@@ -181,3 +182,10 @@ d_anyWordB_118 v0
                                       (coe (0 :: Integer)) (coe v3))))))
                 _ -> coe v1
          _ -> coe v1)
+-- Once.Parser.Module.Core.wordHead
+d_wordHead_124 ::
+  [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> Bool
+d_wordHead_124 v0
+  = coe
+      MAlonzo.Code.Data.Maybe.Base.du_is'45'just_20
+      (coe d_anyWordB_118 (coe v0))

@@ -22,8 +22,8 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Adequacy.AcceptSound
 import qualified MAlonzo.Code.Once.Parser
+import qualified MAlonzo.Code.Once.Spec.Module
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
@@ -62,7 +62,7 @@ d_head'45'main'45'realize_90 ::
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
+  MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -75,8 +75,8 @@ d_mt'45'den'45'indep_202 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
+  MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10 ->
+  MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10 ->
   AgdaAny ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
@@ -95,10 +95,10 @@ d_dispatch2_286 ::
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
+  MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
+  MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
@@ -119,10 +119,10 @@ d_dispatch_316 ::
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
+  MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10 ->
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
   MAlonzo.Code.Once.TypeCheck.Judgment.T__'8866''7580'_'8758'_'10814'__16 ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124 ->
+  MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->

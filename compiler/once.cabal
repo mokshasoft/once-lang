@@ -501,6 +501,15 @@ library
       MAlonzo.Code.Once.Denotation.Behavior
       MAlonzo.Code.Once.Adequacy.Compile
       MAlonzo.Code.Once.Adequacy.ResolveBridge
+      MAlonzo.Code.Once.Spec.Lexing
+      MAlonzo.Code.Once.Spec.Grammar.Import
+      MAlonzo.Code.Once.Spec.Grammar.TypeAlias
+      MAlonzo.Code.Once.Spec.Grammar.Signature
+      MAlonzo.Code.Once.Spec.Grammar.FunDef
+      MAlonzo.Code.Once.Spec.Grammar.OpDecl
+      MAlonzo.Code.Once.Spec.Grammar.Decl
+      MAlonzo.Code.Once.Spec.Parsing
+      MAlonzo.Code.Once.Spec.Module
       MAlonzo.Code.Once.Spec.Program
       MAlonzo.Code.Once.Spec.Resolution
       MAlonzo.Code.Once.Spec.Syntax

@@ -32,6 +32,7 @@ import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.Realize
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser
+import qualified MAlonzo.Code.Once.Spec.Module
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
@@ -190,16 +191,15 @@ d_bundle'8594'typed_254 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Once.Parser.T_FunInfo_96] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  T_FunBundle_12 ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124
+  T_FunBundle_12 -> MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10
 d_bundle'8594'typed_254 v0 v1 v2 v3 v4
   = case coe v4 of
-      C_bnil_20 -> coe MAlonzo.Code.Once.Adequacy.AcceptSound.C_tnil_132
+      C_bnil_20 -> coe MAlonzo.Code.Once.Spec.Module.C_tnil_18
       C_bcons_46 v8 v9 v10 v11 v12 v13 v17
         -> case coe v2 of
              (:) v18 v19
                -> coe
-                    MAlonzo.Code.Once.Adequacy.AcceptSound.C_tcons_144 v8 v9
+                    MAlonzo.Code.Once.Spec.Module.C_tcons_30 v8 v9
                     (coe
                        MAlonzo.Code.Once.TypeCheck.Soundness.du_check'45'sound_2532
                        (coe

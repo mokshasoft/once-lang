@@ -32,15 +32,10 @@ import qualified MAlonzo.Code.Once.Parser.Module.DeclTail
 import qualified MAlonzo.Code.Once.Parser.Token
 import qualified MAlonzo.Code.Once.Parser.Type
 import qualified MAlonzo.Code.Once.Parser.TypeRelation
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Grammar.TypeAlias
 
--- Once.Grammar.TypeAliasBridge.ParsesTypeAlias
-d_ParsesTypeAlias_8 a0 a1 a2 a3 a4 = ()
-data T_ParsesTypeAlias_8
-  = C_gta'45'eq'45'r_20 MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesType_106 |
-    C_gta'45'word'45'r_32 T_ParsesTypeAlias_8
 -- Once.Grammar.TypeAliasBridge.sound-gtaWF
-d_sound'45'gtaWF_48 ::
+d_sound'45'gtaWF_20 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -49,15 +44,15 @@ d_sound'45'gtaWF_48 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  T_ParsesTypeAlias_8
-d_sound'45'gtaWF_48 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7
-  = du_sound'45'gtaWF_48 v0 v1 v2
-du_sound'45'gtaWF_48 ::
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAlias_10
+d_sound'45'gtaWF_20 v0 v1 v2 ~v3 ~v4 ~v5 ~v6 ~v7
+  = du_sound'45'gtaWF_20 v0 v1 v2
+du_sound'45'gtaWF_20 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
-  T_ParsesTypeAlias_8
-du_sound'45'gtaWF_48 v0 v1 v2
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAlias_10
+du_sound'45'gtaWF_20 v0 v1 v2
   = let v3
           = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v1) in
     coe
@@ -82,9 +77,9 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                           -> coe
                                                seq (coe v12)
                                                (coe
-                                                  C_gta'45'word'45'r_32
+                                                  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'word'45'r_34
                                                   (coe
-                                                     du_sound'45'gtaWF_48 (coe v0) (coe v7)
+                                                     du_sound'45'gtaWF_20 (coe v0) (coe v7)
                                                      (coe
                                                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                                                         (coe v5) (coe v2))))
@@ -173,7 +168,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                                     v30 in
                                                                                                                           coe
                                                                                                                             (coe
-                                                                                                                               C_gta'45'eq'45'r_20
+                                                                                                                               MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                                v31)
                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                               _ -> MAlonzo.RTE.mazUnreachableError
@@ -188,7 +183,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                                  v28 of
                                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v29 v30
                                                                                                                               -> coe
-                                                                                                                                   C_gta'45'eq'45'r_20
+                                                                                                                                   MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                                    v30
                                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
@@ -231,7 +226,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                                         v29 in
                                                                                                                               coe
                                                                                                                                 (coe
-                                                                                                                                   C_gta'45'eq'45'r_20
+                                                                                                                                   MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                                    v30)
                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
@@ -246,7 +241,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                                      v27 of
                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                   -> coe
-                                                                                                                                       C_gta'45'eq'45'r_20
+                                                                                                                                       MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                                        v29
                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
@@ -265,7 +260,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                              v21 of
                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                           -> coe
-                                                                                                               C_gta'45'eq'45'r_20
+                                                                                                               MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                v23
                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
@@ -328,7 +323,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                                         v29 in
                                                                                                                               coe
                                                                                                                                 (coe
-                                                                                                                                   C_gta'45'eq'45'r_20
+                                                                                                                                   MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                                    v30)
                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                   _ -> MAlonzo.RTE.mazUnreachableError
@@ -343,7 +338,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                                      v27 of
                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                   -> coe
-                                                                                                                                       C_gta'45'eq'45'r_20
+                                                                                                                                       MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                                        v29
                                                                                                                                 _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                          _ -> MAlonzo.RTE.mazUnreachableError
@@ -386,7 +381,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                                             v28 in
                                                                                                                                   coe
                                                                                                                                     (coe
-                                                                                                                                       C_gta'45'eq'45'r_20
+                                                                                                                                       MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                                        v29)
                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                       _ -> MAlonzo.RTE.mazUnreachableError
@@ -401,7 +396,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                                          v26 of
                                                                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                       -> coe
-                                                                                                                                           C_gta'45'eq'45'r_20
+                                                                                                                                           MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                                            v28
                                                                                                                                     _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                                              _ -> MAlonzo.RTE.mazUnreachableError
@@ -420,7 +415,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                  v20 of
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                               -> coe
-                                                                                                                   C_gta'45'eq'45'r_20
+                                                                                                                   MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                    v22
                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
@@ -461,7 +456,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                     v22 in
                                                                                                           coe
                                                                                                             (coe
-                                                                                                               C_gta'45'eq'45'r_20
+                                                                                                               MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                v23)
                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
                                                                                               _ -> MAlonzo.RTE.mazUnreachableError
@@ -476,7 +471,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                  v20 of
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                               -> coe
-                                                                                                                   C_gta'45'eq'45'r_20
+                                                                                                                   MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                    v22
                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
@@ -492,7 +487,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                -> case coe v14 of
                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                       -> coe
-                                                                                           C_gta'45'eq'45'r_20
+                                                                                           MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                            v16
                                                                                     _ -> MAlonzo.RTE.mazUnreachableError
                                                                              _ -> MAlonzo.RTE.mazUnreachableError
@@ -549,7 +544,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                 v23 in
                                                                                                       coe
                                                                                                         (coe
-                                                                                                           C_gta'45'eq'45'r_20
+                                                                                                           MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                            v24)
                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
                                                                                           _ -> MAlonzo.RTE.mazUnreachableError
@@ -564,7 +559,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                              v21 of
                                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                           -> coe
-                                                                                                               C_gta'45'eq'45'r_20
+                                                                                                               MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                v23
                                                                                                         _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                  _ -> MAlonzo.RTE.mazUnreachableError
@@ -604,7 +599,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                     v22 in
                                                                                                           coe
                                                                                                             (coe
-                                                                                                               C_gta'45'eq'45'r_20
+                                                                                                               MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                v23)
                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
                                                                                               _ -> MAlonzo.RTE.mazUnreachableError
@@ -619,7 +614,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                                                  v20 of
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                               -> coe
-                                                                                                                   C_gta'45'eq'45'r_20
+                                                                                                                   MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                                                    v22
                                                                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                                                                      _ -> MAlonzo.RTE.mazUnreachableError
@@ -635,7 +630,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                -> case coe v14 of
                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                       -> coe
-                                                                                           C_gta'45'eq'45'r_20
+                                                                                           MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                            v16
                                                                                     _ -> MAlonzo.RTE.mazUnreachableError
                                                                              _ -> MAlonzo.RTE.mazUnreachableError
@@ -670,7 +665,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                             v16 in
                                                                                   coe
                                                                                     (coe
-                                                                                       C_gta'45'eq'45'r_20
+                                                                                       MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                        v17)
                                                                              _ -> MAlonzo.RTE.mazUnreachableError
                                                                       _ -> MAlonzo.RTE.mazUnreachableError
@@ -682,7 +677,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                                                -> case coe v14 of
                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                       -> coe
-                                                                                           C_gta'45'eq'45'r_20
+                                                                                           MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
                                                                                            v16
                                                                                     _ -> MAlonzo.RTE.mazUnreachableError
                                                                              _ -> MAlonzo.RTE.mazUnreachableError
@@ -697,7 +692,9 @@ du_sound'45'gtaWF_48 v0 v1 v2
                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                                                        -> case coe v8 of
                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
-                                                              -> coe C_gta'45'eq'45'r_20 v10
+                                                              -> coe
+                                                                   MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22
+                                                                   v10
                                                             _ -> MAlonzo.RTE.mazUnreachableError
                                                      _ -> MAlonzo.RTE.mazUnreachableError
                                               _ -> MAlonzo.RTE.mazUnreachableError
@@ -706,7 +703,7 @@ du_sound'45'gtaWF_48 v0 v1 v2
                          _ -> MAlonzo.RTE.mazUnreachableError)))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Grammar.TypeAliasBridge.sound-gta
-d_sound'45'gta_246 ::
+d_sound'45'gta_218 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -714,35 +711,37 @@ d_sound'45'gta_246 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  T_ParsesTypeAlias_8
-d_sound'45'gta_246 v0 v1 v2 ~v3 ~v4 ~v5 ~v6
-  = du_sound'45'gta_246 v0 v1 v2
-du_sound'45'gta_246 ::
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAlias_10
+d_sound'45'gta_218 v0 v1 v2 ~v3 ~v4 ~v5 ~v6
+  = du_sound'45'gta_218 v0 v1 v2
+du_sound'45'gta_218 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
-  T_ParsesTypeAlias_8
-du_sound'45'gta_246 v0 v1 v2
-  = coe du_sound'45'gtaWF_48 (coe v0) (coe v1) (coe v2)
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAlias_10
+du_sound'45'gta_218 v0 v1 v2
+  = coe du_sound'45'gtaWF_20 (coe v0) (coe v1) (coe v2)
 -- Once.Grammar.TypeAliasBridge.complete-gtaWF
-d_complete'45'gtaWF_270 ::
+d_complete'45'gtaWF_242 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Induction.WellFounded.T_Acc_42 ->
-  T_ParsesTypeAlias_8 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_complete'45'gtaWF_270 ~v0 ~v1 v2 v3 v4 ~v5 v6
-  = du_complete'45'gtaWF_270 v2 v3 v4 v6
-du_complete'45'gtaWF_270 ::
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAlias_10 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_complete'45'gtaWF_242 ~v0 ~v1 v2 v3 v4 ~v5 v6
+  = du_complete'45'gtaWF_242 v2 v3 v4 v6
+du_complete'45'gtaWF_242 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesTypeAlias_8 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_complete'45'gtaWF_270 v0 v1 v2 v3
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAlias_10 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_complete'45'gtaWF_242 v0 v1 v2 v3
   = case coe v3 of
-      C_gta'45'eq'45'r_20 v10
+      MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'eq'45'r_22 v10
         -> case coe v1 of
              MAlonzo.Code.Once.Parser.Module.Core.C_DTypeAlias_40 v11 v12 v13
                -> let v14
@@ -770,12 +769,12 @@ du_complete'45'gtaWF_270 v0 v1 v2 v3
                               erased
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_gta'45'word'45'r_32 v9
+      MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_gta'45'word'45'r_34 v9
         -> case coe v0 of
              (:) v10 v11
                -> let v12
                         = coe
-                            du_complete'45'gtaWF_270 (coe v11) (coe v1) (coe v2) (coe v9) in
+                            du_complete'45'gtaWF_242 (coe v11) (coe v1) (coe v2) (coe v9) in
                   coe
                     (case coe v12 of
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
@@ -797,40 +796,38 @@ du_complete'45'gtaWF_270 v0 v1 v2 v3
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.TypeAliasBridge.complete-gta
-d_complete'45'gta_360 ::
+d_complete'45'gta_332 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesTypeAlias_8 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_complete'45'gta_360 ~v0 ~v1 v2 v3 v4 v5
-  = du_complete'45'gta_360 v2 v3 v4 v5
-du_complete'45'gta_360 ::
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAlias_10 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_complete'45'gta_332 ~v0 ~v1 v2 v3 v4 v5
+  = du_complete'45'gta_332 v2 v3 v4 v5
+du_complete'45'gta_332 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesTypeAlias_8 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_complete'45'gta_360 v0 v1 v2 v3
-  = coe du_complete'45'gtaWF_270 (coe v0) (coe v1) (coe v2) (coe v3)
--- Once.Grammar.TypeAliasBridge.ParsesTypeAliasDecl
-d_ParsesTypeAliasDecl_366 a0 a1 a2 = ()
-newtype T_ParsesTypeAliasDecl_366
-  = C_pta'45'mk_376 T_ParsesTypeAlias_8
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAlias_10 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_complete'45'gta_332 v0 v1 v2 v3
+  = coe du_complete'45'gtaWF_242 (coe v0) (coe v1) (coe v2) (coe v3)
 -- Once.Grammar.TypeAliasBridge.sound-typealias
-d_sound'45'typealias_386 ::
+d_sound'45'typealias_346 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  T_ParsesTypeAliasDecl_366
-d_sound'45'typealias_386 v0 ~v1 ~v2 ~v3 ~v4
-  = du_sound'45'typealias_386 v0
-du_sound'45'typealias_386 ::
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAliasDecl_36
+d_sound'45'typealias_346 v0 ~v1 ~v2 ~v3 ~v4
+  = du_sound'45'typealias_346 v0
+du_sound'45'typealias_346 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesTypeAliasDecl_366
-du_sound'45'typealias_386 v0
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAliasDecl_36
+du_sound'45'typealias_346 v0
   = let v1
           = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0) in
     coe
@@ -856,9 +853,9 @@ du_sound'45'typealias_386 v0
                                           -> coe
                                                seq (coe v10)
                                                (coe
-                                                  C_pta'45'mk_376
+                                                  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_pta'45'mk_46
                                                   (coe
-                                                     du_sound'45'gta_246 (coe v3) (coe v5)
+                                                     du_sound'45'gta_218 (coe v3) (coe v5)
                                                      (coe
                                                         MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)))
                                         _ -> MAlonzo.RTE.mazUnreachableError
@@ -867,19 +864,20 @@ du_sound'45'typealias_386 v0
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Grammar.TypeAliasBridge.complete-typealias
-d_complete'45'typealias_478 ::
+d_complete'45'typealias_438 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesTypeAliasDecl_366 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_complete'45'typealias_478 v0 v1 v2 v3
+  MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAliasDecl_36 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_complete'45'typealias_438 v0 v1 v2 v3
   = case coe v3 of
-      C_pta'45'mk_376 v8
+      MAlonzo.Code.Once.Spec.Grammar.TypeAlias.C_pta'45'mk_46 v8
         -> case coe v0 of
              (:) v9 v10
                -> let v11
                         = coe
-                            du_complete'45'gtaWF_270 (coe v10) (coe v1) (coe v2) (coe v8) in
+                            du_complete'45'gtaWF_242 (coe v10) (coe v1) (coe v2) (coe v8) in
                   coe
                     (case coe v11 of
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13

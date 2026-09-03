@@ -23,11 +23,11 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
 import qualified MAlonzo.Code.Once.Adequacy.MainExtract
 import qualified MAlonzo.Code.Once.Adequacy.MainForm
-import qualified MAlonzo.Code.Once.Adequacy.ModuleComplete
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.Spec.Module
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Target.Arch
@@ -108,7 +108,7 @@ du_main'45'extract_96 v0
             MAlonzo.Code.Once.Compile.d_collectSigEffects_498
             (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
          (coe ("main" :: Data.Text.Text))
-         (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
+         (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_46))
       (coe
          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
          (coe
@@ -261,7 +261,7 @@ du_main'45'extract_96 v0
                                     MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                                     (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
                                  (coe ("main" :: Data.Text.Text))
-                                 (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
+                                 (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_46))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                  (coe
@@ -279,7 +279,7 @@ du_main'45'extract_96 v0
                                                    (coe
                                                       MAlonzo.Code.Once.Adequacy.MainForm.du_main'45'node'45'of_170
                                                       (coe v0)))))))))
-                              (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
+                              (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_46))
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
@@ -327,7 +327,7 @@ du_main'45'extract_96 v0
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                           (coe ("main" :: Data.Text.Text))
-                                          (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
+                                          (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_46))
                                        (coe
                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                           (coe
@@ -350,8 +350,7 @@ du_main'45'extract_96 v0
                                           (coe
                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                              (coe ("main" :: Data.Text.Text))
-                                             (coe
-                                                MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6))
+                                             (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_46))
                                           (coe
                                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                              (coe
@@ -418,7 +417,7 @@ du_main'45'checkElab'45'coherence_172 v0
                  MAlonzo.Code.Once.Compile.d_collectSigEffects_498
                  (coe MAlonzo.Code.Once.Parser.Module.Core.d_decls_48 (coe v0)))
               (coe ("main" :: Data.Text.Text))
-              (coe MAlonzo.Code.Once.Adequacy.ModuleComplete.d_EffUU_6) in
+              (coe MAlonzo.Code.Once.Spec.Module.d_EffUU_46) in
     coe
       (let v2
              = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28

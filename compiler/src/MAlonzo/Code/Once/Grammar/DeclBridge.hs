@@ -21,9 +21,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
-import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Empty
-import qualified MAlonzo.Code.Data.Irrelevant
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
@@ -36,7 +34,6 @@ import qualified MAlonzo.Code.Once.Grammar.SignatureBridge
 import qualified MAlonzo.Code.Once.Grammar.TypeAliasBridge
 import qualified MAlonzo.Code.Once.Parser.Generic.Parser
 import qualified MAlonzo.Code.Once.Parser.Generic.PolyInst
-import qualified MAlonzo.Code.Once.Parser.Generic.Relation
 import qualified MAlonzo.Code.Once.Parser.Module.Alloc
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Module.DeclTail
@@ -46,29 +43,22 @@ import qualified MAlonzo.Code.Once.Parser.Module.FunDef.Params
 import qualified MAlonzo.Code.Once.Parser.Module.Import
 import qualified MAlonzo.Code.Once.Parser.PolyType
 import qualified MAlonzo.Code.Once.Parser.Token
-import qualified MAlonzo.Code.Once.Type
+import qualified MAlonzo.Code.Once.Spec.Grammar.Decl
 import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
--- Once.Grammar.DeclBridge.ParsesDecl
-d_ParsesDecl_6 a0 a1 a2 = ()
-data T_ParsesDecl_6
-  = C_pd'45'import_14 MAlonzo.Code.Once.Grammar.ImportBridge.T_ParsesImport_690 |
-    C_pd'45'typealias_22 MAlonzo.Code.Once.Grammar.TypeAliasBridge.T_ParsesTypeAliasDecl_366 |
-    C_pd'45'signature_30 MAlonzo.Code.Once.Grammar.SignatureBridge.T_ParsesSignature_108 |
-    C_pd'45'typesig_40 MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_374 |
-    C_pd'45'fundef_50 MAlonzo.Code.Once.Grammar.FunDefBridge.T_ParsesFunDef_436 |
-    C_pd'45'opdecl_58 MAlonzo.Code.Once.Grammar.OpDeclBridge.T_ParsesOpDecl_378
 -- Once.Grammar.DeclBridge.sound-decl
-d_sound'45'decl_68 ::
+d_sound'45'decl_14 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
-  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> T_ParsesDecl_6
-d_sound'45'decl_68 v0 ~v1 ~v2 ~v3 ~v4 = du_sound'45'decl_68 v0
-du_sound'45'decl_68 ::
-  [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> T_ParsesDecl_6
-du_sound'45'decl_68 v0
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Once.Spec.Grammar.Decl.T_ParsesDecl_8
+d_sound'45'decl_14 v0 ~v1 ~v2 ~v3 ~v4 = du_sound'45'decl_14 v0
+du_sound'45'decl_14 ::
+  [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
+  MAlonzo.Code.Once.Spec.Grammar.Decl.T_ParsesDecl_8
+du_sound'45'decl_14 v0
   = case coe v0 of
       (:) v1 v2
         -> case coe v1 of
@@ -102,9 +92,9 @@ du_sound'45'decl_68 v0
                                         (coe
                                            seq (coe v7)
                                            (coe
-                                              C_pd'45'import_14
+                                              MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'import_16
                                               (coe
-                                                 MAlonzo.Code.Once.Grammar.ImportBridge.du_sound'45'import_712
+                                                 MAlonzo.Code.Once.Grammar.ImportBridge.du_sound'45'import_648
                                                  (coe v2)))))
                               else coe
                                      seq (coe v6)
@@ -135,9 +125,9 @@ du_sound'45'decl_68 v0
                                                             (coe
                                                                seq (coe v10)
                                                                (coe
-                                                                  C_pd'45'typealias_22
+                                                                  MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'typealias_24
                                                                   (coe
-                                                                     MAlonzo.Code.Once.Grammar.TypeAliasBridge.du_sound'45'typealias_386
+                                                                     MAlonzo.Code.Once.Grammar.TypeAliasBridge.du_sound'45'typealias_346
                                                                      (coe v2)))))
                                                   else coe
                                                          seq (coe v9)
@@ -199,9 +189,9 @@ du_sound'45'decl_68 v0
                                                                                 (coe
                                                                                    seq (coe v13)
                                                                                    (coe
-                                                                                      C_pd'45'signature_30
+                                                                                      MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'signature_32
                                                                                       (coe
-                                                                                         MAlonzo.Code.Once.Grammar.SignatureBridge.du_sound'45'signature_132
+                                                                                         MAlonzo.Code.Once.Grammar.SignatureBridge.du_sound'45'signature_104
                                                                                          (coe
                                                                                             v2)))))
                                                                       else coe
@@ -477,7 +467,7 @@ du_sound'45'decl_68 v0
                                                                                                                      (coe
                                                                                                                         v20)
                                                                                                                      (coe
-                                                                                                                        C_pd'45'typesig_40
+                                                                                                                        MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'typesig_42
                                                                                                                         (coe
                                                                                                                            MAlonzo.Code.Once.Grammar.PolyTypeBridge.du_parsePolyTypeB'45'sound_42
                                                                                                                            (coe
@@ -692,9 +682,9 @@ du_sound'45'decl_68 v0
                                                                                               (coe
                                                                                                  v14)
                                                                                               (coe
-                                                                                                 C_pd'45'fundef_50
+                                                                                                 MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'fundef_52
                                                                                                  (coe
-                                                                                                    MAlonzo.Code.Once.Grammar.FunDefBridge.du_sound'45'fundef_466
+                                                                                                    MAlonzo.Code.Once.Grammar.FunDefBridge.du_sound'45'fundef_382
                                                                                                     (coe
                                                                                                        v3)
                                                                                                     (coe
@@ -704,26 +694,27 @@ du_sound'45'decl_68 v0
                        _ -> MAlonzo.RTE.mazUnreachableError)
              MAlonzo.Code.Once.Parser.Token.C_TLParen_16
                -> coe
-                    C_pd'45'opdecl_58
+                    MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'opdecl_60
                     (coe
-                       MAlonzo.Code.Once.Grammar.OpDeclBridge.du_sound'45'opDecl_400
+                       MAlonzo.Code.Once.Grammar.OpDeclBridge.du_sound'45'opDecl_338
                        (coe v0))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.DeclBridge.complete-decl
-d_complete'45'decl_312 ::
+d_complete'45'decl_258 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  T_ParsesDecl_6 -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_complete'45'decl_312 v0 v1 v2 v3
+  MAlonzo.Code.Once.Spec.Grammar.Decl.T_ParsesDecl_8 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_complete'45'decl_258 v0 v1 v2 v3
   = case coe v3 of
-      C_pd'45'import_14 v7
+      MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'import_16 v7
         -> case coe v0 of
              (:) v8 v9
                -> let v10
                         = coe
-                            MAlonzo.Code.Once.Grammar.ImportBridge.du_complete'45'import_790
+                            MAlonzo.Code.Once.Grammar.ImportBridge.du_complete'45'import_726
                             (coe v9) (coe v2) (coe v7) in
                   coe
                     (case coe v10 of
@@ -745,11 +736,11 @@ d_complete'45'decl_312 v0 v1 v2 v3
                               erased
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_pd'45'typealias_22 v7
+      MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'typealias_24 v7
         -> case coe v0 of
              (:) v8 v9
                -> let v10
-                        = MAlonzo.Code.Once.Grammar.TypeAliasBridge.d_complete'45'typealias_478
+                        = MAlonzo.Code.Once.Grammar.TypeAliasBridge.d_complete'45'typealias_438
                             (coe v9) (coe v1) (coe v2) (coe v7) in
                   coe
                     (case coe v10 of
@@ -771,12 +762,12 @@ d_complete'45'decl_312 v0 v1 v2 v3
                               erased
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_pd'45'signature_30 v7
+      MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'signature_32 v7
         -> case coe v0 of
              (:) v8 v9
                -> let v10
                         = coe
-                            MAlonzo.Code.Once.Grammar.SignatureBridge.du_complete'45'signature_218
+                            MAlonzo.Code.Once.Grammar.SignatureBridge.du_complete'45'signature_190
                             (coe v9) (coe v7) in
                   coe
                     (case coe v10 of
@@ -798,7 +789,7 @@ d_complete'45'decl_312 v0 v1 v2 v3
                               erased
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_pd'45'typesig_40 v12
+      MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'typesig_42 v12
         -> case coe v0 of
              (:) v14 v15
                -> case coe v14 of
@@ -1141,7 +1132,7 @@ d_complete'45'decl_312 v0 v1 v2 v3
                               _ -> MAlonzo.RTE.mazUnreachableError)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_pd'45'fundef_50 v12
+      MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'fundef_52 v12
         -> case coe v0 of
              (:) v13 v14
                -> case coe v13 of
@@ -1215,7 +1206,7 @@ d_complete'45'decl_312 v0 v1 v2 v3
                                                                                     seq (coe v24)
                                                                                     (let v25
                                                                                            = coe
-                                                                                               MAlonzo.Code.Once.Grammar.FunDefBridge.du_complete'45'fundef_586
+                                                                                               MAlonzo.Code.Once.Grammar.FunDefBridge.du_complete'45'fundef_502
                                                                                                (coe
                                                                                                   v14)
                                                                                                (coe
@@ -1262,11 +1253,11 @@ d_complete'45'decl_312 v0 v1 v2 v3
                               _ -> MAlonzo.RTE.mazUnreachableError)
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      C_pd'45'opdecl_58 v7
+      MAlonzo.Code.Once.Spec.Grammar.Decl.C_pd'45'opdecl_60 v7
         -> case coe v0 of
              (:) v8 v9
                -> coe
-                    MAlonzo.Code.Once.Grammar.OpDeclBridge.du_complete'45'opDecl_456
+                    MAlonzo.Code.Once.Grammar.OpDeclBridge.du_complete'45'opDecl_394
                     (coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.Parser.Token.C_TLParen_16) (coe v9))

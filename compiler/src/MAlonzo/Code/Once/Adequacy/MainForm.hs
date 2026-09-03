@@ -22,13 +22,13 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Sum.Base
-import qualified MAlonzo.Code.Once.Adequacy.AcceptSound
 import qualified MAlonzo.Code.Once.Adequacy.FunBundle
 import qualified MAlonzo.Code.Once.Adequacy.ModuleComplete
 import qualified MAlonzo.Code.Once.Compile
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Module.Core
+import qualified MAlonzo.Code.Once.Spec.Module
 import qualified MAlonzo.Code.Once.Surface.Context
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Target.Arch
@@ -543,7 +543,7 @@ du_F_376 v0 v1 v2
         -> case coe v4 of
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
                -> coe
-                    MAlonzo.Code.Once.Adequacy.ModuleComplete.du_mainRealized'45'ef_654
+                    MAlonzo.Code.Once.Adequacy.ModuleComplete.du_mainRealized'45'ef_592
                     (coe v0) (coe v1) (coe v3) (coe v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
@@ -595,14 +595,13 @@ d_mt''_390 ::
   MAlonzo.Code.Once.Adequacy.FunBundle.T_FunBundle_12 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  Integer ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124
+  Integer -> MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10
 d_mt''_390 ~v0 ~v1 v2 v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
   = du_mt''_390 v2 v3
 du_mt''_390 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Once.Adequacy.AcceptSound.T_AllFunsTyped_124
+  MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10
 du_mt''_390 v0 v1
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
