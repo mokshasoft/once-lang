@@ -40,59 +40,64 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢var; here; ⊢lam; ⊢nsuc; ty-IMu )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Sorts
-  using ( IPair; sTy; sTm; ⊢sTm; sVar; ⊢sVar; ⊢ixP )
+  using ( IPair; sTy; ⊢sTy; sTm; ⊢sTm; sVar; ⊢sVar; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-varK )
 open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Tm-varKv )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vsK; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
-open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
-open import DirectedHoTT.Examples.Knot.SubApp
-  using ( subTyAtK; ⊢subTyAtK; subTmAtK; ⊢subTmAtK )
+open import DirectedHoTT.Examples.Knot.RenMot using ( extRNK; ⊢extRNK )
+open import DirectedHoTT.Examples.Knot.RenTm
+  using ( renTmAtK; ⊢renTmAtK; vsRenK; ⊢vsRenK )
 
 ------------------------------------------------------------------------
--- ★ `vs`, AS A SUBSTITUTION.  ⚠ It RAISES, like `nrs` and unlike
---   `single`/`extS` — and unlike `nrs` it does not step the variable.
+-- ★★★ `renTy vs` AND `renTm vs` — AND THEY ARE ONE FUNCTION NOW.
+--
+-- ⚠⚠ REWRITTEN 2026-09-03 ON `Knot/RenTm` (`PLAN-RENAMING.md` §6 step
+--   1c).  The first version expressed `renTm vs` as `subTm` at the
+--   substitution `x ↦ var (vs x)`, which is CORRECT but CANNOT COVER THE
+--   FAMILY: `extS σ (vs x) = renTm vs (σ x)`, so `Knot/SubMot` needs
+--   `renTm vs` and this module imported `Knot/SubMot`.  The kernel
+--   defines renaming BEFORE substitution precisely so that cycle does
+--   not arise, and now so does the encoding.
+--
+-- ★ WHAT THAT BUYS, beyond the cycle: `wkTmK` and `wkTyK` are now THE
+--   SAME function at two sorts — `renTmAtK` at `sTm` and at `sTy` —
+--   where before they were separate `subTmAtK`/`subTyAtK` calls, and
+--   neither needs a `sortMap` stability premise.
 ------------------------------------------------------------------------
 
-wkSubK : {Γ : Cx} → RTm Γ → RTm Γ
-wkSubK n = lam (Tm-varK (Var-vsK (renTm vs n) (var vz)))
-
-⊢wkSubK : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} →
-          Γ ⊢ n ∷ Nat → Γ ⊢ wkSubK n ∷ SubTy n (nsuc n)
-⊢wkSubK dn =
-  ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar dn))
-       (⊢Tm-varKv _ (⊢nsuc (⊢wk dn)) (⊢Var-vsKt (⊢wk dn) (⊢var here)))
-
-------------------------------------------------------------------------
--- ★★ `renTy vs` AND `renTy (extR vs)`, THE TWO THE RULES ACTUALLY NAME.
---   ⚠ `extR vs` is `extS` of `vs`, so it is `extNK` of `wkSubK` — the
---   same relationship the kernel's two renamings have.
-------------------------------------------------------------------------
+-- ★ `vs`, as a RENAMING value.  ⚠ `Knot/RenTm.vsRenK` is the thing
+--   `Knot/Wk.wkK` never had: the renaming, NAMED.
 
 wkTyK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-wkTyK n A = subTyAtK n (nsuc n) (wkSubK n) A
+wkTyK n A = renTmAtK sTy n (nsuc n) (vsRenK n) A
 
 ⊢wkTyK : {Γ : Ctx} {n A : RTm ⌊ Γ ⌋} →
          Γ ⊢ n ∷ Nat → Γ ⊢ A ∷ K (pair sTy n) →
          Γ ⊢ wkTyK n A ∷ K (pair sTy (nsuc n))
-⊢wkTyK dn dA = ⊢subTyAtK dn (⊢nsuc dn) (⊢wkSubK dn) dA
+⊢wkTyK dn dA = ⊢renTmAtK ⊢sTy dn (⊢nsuc dn) (⊢vsRenK dn) dA
 
 wkTmK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-wkTmK n t = subTmAtK n (nsuc n) (wkSubK n) t
+wkTmK n t = renTmAtK sTm n (nsuc n) (vsRenK n) t
 
 ⊢wkTmK : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} →
          Γ ⊢ n ∷ Nat → Γ ⊢ t ∷ K (pair sTm n) →
          Γ ⊢ wkTmK n t ∷ K (pair sTm (nsuc n))
-⊢wkTmK dn dt = ⊢subTmAtK dn (⊢nsuc dn) (⊢wkSubK dn) dt
+⊢wkTmK dn dt = ⊢renTmAtK ⊢sTm dn (⊢nsuc dn) (⊢vsRenK dn) dt
 
--- ★ `renTy (extR vs)` — weakening UNDER one binder.
+-- ★ `renTy (extR vs)` — weakening UNDER one binder, which is `extRNK`
+--   of the same renaming.  ⚠ `extR` is where the kernel's layering shows
+--   itself: extending a RENAMING needs no `renTm`, which is why
+--   `Knot/RenMot` can sit below `Knot/SubMot`.
 wkTyUnderK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-wkTyUnderK n A = subTyAtK (nsuc n) (nsuc (nsuc n)) (extNK n (nsuc n) (wkSubK n)) A
+wkTyUnderK n A =
+  renTmAtK sTy (nsuc n) (nsuc (nsuc n)) (extRNK n (nsuc n) (vsRenK n)) A
 
 ⊢wkTyUnderK : {Γ : Ctx} {n A : RTm ⌊ Γ ⌋} →
               Γ ⊢ n ∷ Nat → Γ ⊢ A ∷ K (pair sTy (nsuc n)) →
               Γ ⊢ wkTyUnderK n A ∷ K (pair sTy (nsuc (nsuc n)))
 ⊢wkTyUnderK dn dA =
-  ⊢subTyAtK (⊢nsuc dn) (⊢nsuc (⊢nsuc dn)) (⊢extNK dn (⊢nsuc dn) (⊢wkSubK dn)) dA
+  ⊢renTmAtK ⊢sTy (⊢nsuc dn) (⊢nsuc (⊢nsuc dn))
+            (⊢extRNK dn (⊢nsuc dn) (⊢vsRenK dn)) dA
