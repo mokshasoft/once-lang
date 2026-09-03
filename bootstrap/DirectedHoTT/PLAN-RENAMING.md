@@ -120,7 +120,10 @@ readable line, and that line is pointwise testable.
 | 0 | emitter: `renTm vs` → `wkTmK` (`⊢ap`, `hrefl-pw`, `tr-pw`) | ✅ done |
 | 0 | `Knot/IhTyRho` converted | ✅ done |
 | 0 | `_WRAP_LEDGER`, both-ways, 39 programs / 25 owed | ✅ done |
-| **1** | **convert the remaining suspect sites** | ⬜ **HERE** |
+| **1** | **convert the remaining suspect sites** | 🟡 4 of 6 done |
+| 1a | `Knot/RenMot` — the object-level `Ren` layer (`RenTy`, `extRK`, `extRNK`) | ✅ **done** — breaks the cycle |
+| 1b | `renTmK ρ` over the 53 rows; `wkTmK = renTmK vsRen` | ⬜ **HERE** |
+| 1c | then `extVs` (#5) and `pwBodyK`'s 51 defaults (#4) | ⬜ |
 | 2 | pointwise specs for `wkSubK`/`singleK`/`extNK`/`nrsSubK` | ⬜ |
 | 3 | `sub-agree` — the ONE induction, discharges the family | ⬜ |
 | 4 | retire `wkK` for open terms; keep it only where CLOSED, stated | ⬜ |
@@ -345,4 +348,37 @@ the functions, and together they are everything.**
 | **now** | `renTmK` + the pointwise specs — closes #4 and #5 | §6 steps 1–2 |
 | **small** | `renTm` uniqueness in `Spec` — future claims cost the var rows only | §11.3 |
 | **large** | binders as STRUCTURE in `ICon` — the only change that removes the class | §11.2 |
+
+---
+
+## §12 STEP 1a LANDED — `Knot/RenMot`, and it was cheaper than feared
+
+`RenTy`, `extRMotK`, `constMethR`, `extRVs`, the tuple, `extRK`,
+`extRNK` — **327 lines**, green, and it imports `Build`/`Ctors`/`Desc`/
+`Sorts`/`Tags`/`Terms`/`Wf`/`Wk` and **not `SubMot`**. ⇒ the cycle of §8
+is broken: renaming now sits BELOW substitution, exactly as in `Spec`.
+
+★★ **TWO ROWS BECAME ONE.** `extR ρ vz = vz` and the do-nothing answer is
+also `vz` — a `Var` exists at every successor depth — so `cVar-vz` reuses
+`constMethR` and only `cVar-vs` is real work. `Knot/SubMot` needs a
+separate `extVz` because `extS`'s junk answer is `Tm-nzeroK` and its `vz`
+answer is `Tm-varK (Var-vzK n)`.
+
+★★ **AND THE `vs` ROW LOST ITS WEAKENING.** `Knot/SubMot.extVs` pays
+`wkK (pair sTm n) (app σ x)` plus two β-steps, because `extS`'s answer is
+a TERM one binder deeper. A renaming's answer is a `Var`, and `vs` IS the
+constructor for that — `Var-vsK n (app ρ x)`, no weakening at all. ⇒ that
+is not a coincidence; it is *why* renaming can be defined before
+substitution, showing up as a smaller row.
+
+★ `predSndPair`/`predSndSub` MOVED DOWN from `Knot/SubMot`, whose own
+comment asked for it: *"local only because this is its first customer; a
+second one moves it down."* Being below `SubMot`, the move is forced.
+
+⬜ NEXT (1b): `renTmK ρ` over the 53 rows. `Lib/ISub` is parameterised
+(`extN`, `smap`, `decStable`, `fordMap`; its `Typing` takes the
+substitution TYPE and the motive), so this should be that library at
+`extN = extRNK` and `smap = id` — renaming preserves sort where
+substitution maps `sVar ↦ sTm`. The `var` row differs (`Tm-varK (ρ x)`
+against `σ x`) and is one of the three GIVEN methods.
 
