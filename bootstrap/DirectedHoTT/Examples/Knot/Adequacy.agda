@@ -68,14 +68,18 @@
 --     IxIConK    ✅ not owed — a constructor of `IxD`.
 --     IxIDescK   ✅ not owed — a constructor of `IxD`.
 --     IxNoneK    ✅ not owed — a constructor of `IxD`.
+--     atConK     ⬜ OWED — agreement with `atCon`.
 --     conSSK     ⬜ OWED — `conSK`/`atConK`'s core.
 --     extNK      ⬜ OWED — `extS`'s half.
 --     extSK      ⬜ OWED — with `subTmK`.
 --     flatK      ⬜ OWED — agreement with `flat?`.
 --     head-red   ✅ not owed — a lemma INSIDE `Knot/SzAgree`, not a program.
 --     ihTyK      ⬜ OWED — agreement with `ihTy`.
+--     ihTyRho    ✅ not owed — a method row of `ihTyK`.
 --     ilookupDK  ⬜ OWED — agreement with `ilookupD`.
 --     ipayTyK    ⬜ OWED — agreement with `ipayTy`.
+--     ipayTyKap  ✅ not owed — a method row of `ipayTyK`.
+--     ipayTyRho  ✅ not owed — a method row of `ipayTyK`.
 --     lookupDK   ⬜ OWED — agreement with `lookupD`.
 --     nrsK       ⬜ OWED — `nrsSubK`'s core.
 --     nrsSubK    ⬜ OWED — `nrs`'s half.
@@ -95,6 +99,11 @@
 --     wkK        ⬜ OWED, AND FALSE AS STATED — `wkK` is NOT `renTm vs`; it keeps
 --                the de Bruijn index.  `Knot/WkSub.wkTmK`/`wkTyK` are the
 --                correct translation and the emitter must move to them.
+--     wkTmK      ⬜ OWED — `renTm vs`, done PROPERLY (`Knot/WkSub`): `subTm` at
+--                the substitution `x ↦ var (vs x)`.  Replaces `wkK` here.
+--     wkTyK      ⬜ OWED — `renTy vs`, likewise.  ⚠ DEFINED but not yet
+--                EMITTED: no rule so far weakens a TYPE.
+--     wkTyUnderK ⬜ OWED — agreement with `renTy (extR vs)`.
 --     εwkK       ✅ not owed — its argument is CLOSED, and every weakening
 --                agrees on a closed term.  This is exactly why `Knot/PayTy`
 --                may use `wkK` and `Knot/IhTyRho` may not.

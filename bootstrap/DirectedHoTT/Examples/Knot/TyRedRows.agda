@@ -39,6 +39,7 @@ open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -844,7 +845,7 @@ TyRedΣ5 : Ctx
 TyRedΣ5 = TyRedΣ4 ▹ El kTyRedΣ4
 
 kTyRedΣ5 : RTm ⌊ TyRedΣ5 ⌋
-kTyRedΣ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs vz))))))))) (snd (snd (var (vs (vs (vs (vs (vs vz)))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs vz))) (Ty-PiK (Ty-ElK (var (vs (vs (vs vz))))) (Ty-ElK (wkK (pair sTm (var (vs (vs (vs (vs vz)))))) (var (vs (vs vz)))))))
+kTyRedΣ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs vz))))))))) (snd (snd (var (vs (vs (vs (vs (vs vz)))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs vz))) (Ty-PiK (Ty-ElK (var (vs (vs (vs vz))))) (Ty-ElK (wkTmK (var (vs (vs (vs (vs vz))))) (var (vs (vs vz)))))))
 
 TyRedΣ6 : Ctx
 TyRedΣ6 = TyRedΣ5 ▹ El kTyRedΣ5
@@ -899,7 +900,7 @@ TyRedΤ7 : Ctx
 TyRedΤ7 = TyRedΤ6 ▹ El kTyRedΤ6
 
 kTyRedΤ7 : RTm ⌊ TyRedΤ7 ⌋
-kTyRedΤ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) (Ty-PiK (var (vs (vs (vs (vs (vs vz)))))) (Ty-HomK (var (vs (vs (vs (vs vz))))) (Tm-appK (wkK (pair sTm (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs vz))))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs (vs vz)))))))))) (Tm-appK (wkK (pair sTm (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs vz)))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs (vs vz)))))))))))))
+kTyRedΤ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) (Ty-PiK (var (vs (vs (vs (vs (vs vz)))))) (Ty-HomK (var (vs (vs (vs (vs vz))))) (Tm-appK (wkTmK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz))))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs (vs vz)))))))))) (Tm-appK (wkTmK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs vz)))) (Tm-varK (Var-vzK (var (vs (vs (vs (vs (vs (vs vz)))))))))))))
 
 TyRedΤ8 : Ctx
 TyRedΤ8 = TyRedΤ7 ▹ El kTyRedΤ7
