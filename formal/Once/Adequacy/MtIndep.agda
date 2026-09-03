@@ -12,6 +12,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- denotations themselves take it as an explicit argument.
 module Once.Adequacy.MtIndep (fmt : TargetNum) where
 
+
+open import Once.Spec.Module using (EffUU; AllFunsTyped; MainExists; tcons; tnil)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -37,7 +39,6 @@ open import Once.Parser using (FunInfo)
 open FunInfo
 import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
-open import Once.Adequacy.ModuleComplete using (EffUU)
 open import Once.Adequacy.RealizeInvariant fmt using (realize-invariant)
 
 -- `Usage 0` is a singleton.
@@ -61,10 +62,10 @@ head-main-realize : ∀ {polys sigEffs rest ctx} (fi : FunInfo)
   {Ψ : Usage (NamedCtx.size (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) EffUU))}
   (rf : C.resolveFunType ctx polys (funType fi) (funBody fi) ≡ inj₂ EffUU)
   (d : (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (funName fi) EffUU) ⊢ᶜ funBody fi ∶ EffUU ⨾ Ψ)
-  (rt : AS.AllFunsTyped polys sigEffs rest (C.extendFunCtx ctx (funName fi) EffUU))
-  (w : MC.MainExists (AS.tcons {fi = fi} rf d rt)) →
+  (rt : AllFunsTyped polys sigEffs rest (C.extendFunCtx ctx (funName fi) EffUU))
+  (w : MainExists (tcons {fi = fi} rf d rt)) →
   funName fi ≡ "main" → funIsPrimitive fi ≡ false →
-  MC.mainRealized-go (AS.tcons {fi = fi} rf d rt) w ≡ (Ψ , realize d)
+  MC.mainRealized-go (tcons {fi = fi} rf d rt) w ≡ (Ψ , realize d)
 head-main-realize fi rf d rt (inj₁ (_ , _ , refl)) hp hpr = refl
 head-main-realize fi rf d rt (inj₂ w') hp hpr
   with funName fi ≟str "main" | EffUU ≟T EffUU | funIsPrimitive fi
@@ -76,21 +77,21 @@ head-main-realize fi rf d rt (inj₂ w') hp hpr
 -- THE mt-independence lemma: any two typing derivations of the SAME module
 -- (`funs`) realize the SAME `main` denotationally.
 mt-den-indep : ∀ {polys sigEffs funs ctx}
-  (mt bt : AS.AllFunsTyped polys sigEffs funs ctx)
-  (me : MC.MainExists mt) (bme : MC.MainExists bt)
+  (mt bt : AllFunsTyped polys sigEffs funs ctx)
+  (me : MainExists mt) (bme : MainExists bt)
   (dγ : ⟦ ⟦ ∅ ⟧ᶜ ⟧ᴰ) (n : ℕ) →
   SD.⟦ proj₂ (MC.mainRealized-go mt me) ⟧ˢ fmt dγ n
   ≡ SD.⟦ proj₂ (MC.mainRealized-go bt bme) ⟧ˢ fmt dγ n
-mt-den-indep AS.tnil AS.tnil me bme dγ n = ⊥-elim me
+mt-den-indep tnil tnil me bme dγ n = ⊥-elim me
 mt-den-indep {polys = polys} {sigEffs = sigEffs} {ctx = ctx}
-             (AS.tcons {fi = fi} {ty = ty₁} rf₁ d₁ rt₁) (AS.tcons {ty = ty₂} rf₂ d₂ rt₂) me bme dγ n
+             (tcons {fi = fi} {ty = ty₁} rf₁ d₁ rt₁) (tcons {ty = ty₂} rf₂ d₂ rt₂) me bme dγ n
   with inj₂-injective (trans (sym rf₁) rf₂)
 mt-den-indep {polys = polys} {sigEffs = sigEffs} {ctx = ctx}
-             (AS.tcons {fi = fi} {ty = ty₁} rf₁ d₁ rt₁) (AS.tcons rf₂ d₂ rt₂) me bme dγ n
+             (tcons {fi = fi} {ty = ty₁} rf₁ d₁ rt₁) (tcons rf₂ d₂ rt₂) me bme dγ n
   | refl = dispatch me bme
   where
     -- mrg-dispatch spelled out so `with` can abstract the shared scrutinees.
-    dispatch2 : (w₁ : MC.MainExists rt₁) (w₂ : MC.MainExists rt₂) →
+    dispatch2 : (w₁ : MainExists rt₁) (w₂ : MainExists rt₂) →
       SD.⟦ proj₂ (MC.mrg-dispatch d₁ rt₁ w₁ (funName fi ≟str "main") (ty₁ ≟T EffUU) (funIsPrimitive fi)) ⟧ˢ fmt dγ n
       ≡ SD.⟦ proj₂ (MC.mrg-dispatch d₂ rt₂ w₂ (funName fi ≟str "main") (ty₁ ≟T EffUU) (funIsPrimitive fi)) ⟧ˢ fmt dγ n
     dispatch2 w₁ w₂ with funName fi ≟str "main" | ty₁ ≟T EffUU | funIsPrimitive fi
@@ -99,9 +100,9 @@ mt-den-indep {polys = polys} {sigEffs = sigEffs} {ctx = ctx}
     ... | yes _ | no _     | _     = mt-den-indep rt₁ rt₂ w₁ w₂ dγ n
     ... | yes _ | yes refl | true  = mt-den-indep rt₁ rt₂ w₁ w₂ dγ n
 
-    dispatch : (me : MC.MainExists (AS.tcons {fi = fi} rf₁ d₁ rt₁)) (bme : MC.MainExists (AS.tcons {fi = fi} rf₂ d₂ rt₂)) →
-      SD.⟦ proj₂ (MC.mainRealized-go (AS.tcons {fi = fi} rf₁ d₁ rt₁) me) ⟧ˢ fmt dγ n
-      ≡ SD.⟦ proj₂ (MC.mainRealized-go (AS.tcons {fi = fi} rf₂ d₂ rt₂) bme) ⟧ˢ fmt dγ n
+    dispatch : (me : MainExists (tcons {fi = fi} rf₁ d₁ rt₁)) (bme : MainExists (tcons {fi = fi} rf₂ d₂ rt₂)) →
+      SD.⟦ proj₂ (MC.mainRealized-go (tcons {fi = fi} rf₁ d₁ rt₁) me) ⟧ˢ fmt dγ n
+      ≡ SD.⟦ proj₂ (MC.mainRealized-go (tcons {fi = fi} rf₂ d₂ rt₂) bme) ⟧ˢ fmt dγ n
     dispatch (inj₁ (p₁ , q₁ , refl)) (inj₁ (p₂ , q₂ , refl)) =
       RI0 ctx polys sigEffs (funName fi) (funBody fi) d₁ d₂ dγ n
     dispatch (inj₁ (p₁ , q₁ , refl)) (inj₂ w₂) =

@@ -38,6 +38,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- denotations themselves take it as an explicit argument.
 module Once.Adequacy.MainRealizeAgrees (fmt : TargetNum) where
 
+
+open import Once.Spec.Module using (EffUU; HasValidMain-decl; ModuleTyped)
 open import Data.Nat using (ℕ)
 open import Data.Maybe using (just)
 open import Data.Unit using (tt)
@@ -67,8 +69,7 @@ open import Once.Denotation.Realize using (realize)
 open import Once.Adequacy.SourceTrace using (moduleToIR)
 import Once.Adequacy.MainExtract fmt as ME
 import Once.Adequacy.ModuleComplete as MC
-open import Once.Adequacy.ModuleComplete using (EffUU)
-open import Once.Adequacy.AcceptSound as AS using (ModuleTyped)
+import Once.Adequacy.AcceptSound as AS
 import Once.Parser.Module.Core as P
 import Once.Compile as C
 import Once.Adequacy.MainForm fmt as MF
@@ -111,7 +112,7 @@ open import Once.Adequacy.RealizeInvariant fmt using (realize-invariant)
 -- `mainRealized-go mt me`) and `compileAllFuns-go` (reduces `main-ir-form` to the
 -- concrete bundle) makes `mt` and `b` share `polys`/`sigEffs`/`funs`.
 main-extract :
-  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt)
     (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
   → Σ-syntax NamedCtx (λ cctx →
     Σ-syntax RawExpr (λ body →
@@ -143,7 +144,7 @@ main-extract m mt hvm ir mi =
 -- rt  ≈ deriv: ⟦rt⟧  =(C rt-syn)=  ⟦realize mtder⟧  =(B)= ⟦realize(check-sound ce)⟧
 ------------------------------------------------------------------------
 main-checkElab-coherence :
-  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt)
     (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
   → Σ-syntax NamedCtx (λ cctx →
     Σ-syntax RawExpr (λ body →
@@ -167,7 +168,7 @@ main-checkElab-coherence m mt hvm ir mi
 -- The composition. EXACT type of `Compile.main-realize-agrees`.
 ------------------------------------------------------------------------
 main-realize-agrees-proof :
-  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
+  ∀ (m : P.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt)
     (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
   → ∀ n → ME.runMainˢ (proj₁ (proj₂ (ME.source-meaningᴰ m ir mi))) n
           ≡ ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm)) n

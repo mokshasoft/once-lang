@@ -35,20 +35,18 @@ open import Once.Parser.Expr using (parseExprWF)
 open import Once.Grammar.ExprBridge using (complete-exprWFraw)
 open import Once.Parser.Module.Alloc using (tryAllocB; allocStrat; drop2; drop2-≤)
 open import Once.Parser.Module.FunDef.Def using (parseFunDefB; pfd-alloc; pfd-params; pfd-body)
-open import Once.Grammar.ImportBridge using (wordHead; anyWordB-inv; ij-false)
+open import Once.Parser.Module.Core using (wordHead)
+open import Once.Grammar.ImportBridge using (anyWordB-inv; ij-false)
+open import Once.Spec.Grammar.FunDef
+  using (ParsesParams; pp-eq; pp-cons; pp-stop; pp-noword;
+         ParsesFunBody; pfb-mk; ParsesAlloc; pa-some; pa-none;
+         ParsesFunDef; pfd-mk)
 
 ------------------------------------------------------------------------
 -- Parameter scanner.
 ------------------------------------------------------------------------
 
-data ParsesParams : List Token → List String → List Token → Set where
-  pp-eq     : ∀ {name tail} → sepClass tail ≡ skEq →
-              ParsesParams (TWord name ∷ tail) (name ∷ []) tail
-  pp-cons   : ∀ {name tail ps rest'} → sepClass tail ≡ skWord → ParsesParams tail ps rest' →
-              ParsesParams (TWord name ∷ tail) (name ∷ ps) rest'
-  pp-stop   : ∀ {name tail} → sepClass tail ≡ skStop →
-              ParsesParams (TWord name ∷ tail) [] (TWord name ∷ tail)
-  pp-noword : ∀ {toks} → wordHead toks ≡ false → ParsesParams toks [] toks
+-- The relation moved to the spec (plan 0.84).
 
 -- SOUNDNESS — the parser output is always a valid derivation (total parser).
 sound-paramsWF : ∀ (toks : List Token) (a : Acc _<_ (length toks)) →
@@ -84,10 +82,7 @@ complete-params {toks} d = complete-paramsWF (<-wellFounded (length toks)) d
 -- `parseExprWF` already carries the derivation; `complete-exprWFraw` rebuilds it.
 ------------------------------------------------------------------------
 
-data ParsesFunBody (name : String) (alloc : Maybe AllocStrategy) (params : List String)
-                   : List Token → Decl → List Token → Set where
-  pfb-mk : ∀ {toks body rest'} → eqHead toks ≡ true → ParsesExpr (drop1 toks) body rest' →
-           ParsesFunBody name alloc params toks (DFunDef name alloc (wrapLams params body)) rest'
+-- The relation moved to the spec (plan 0.84).
 
 sound-body : ∀ {name alloc params toks d rest bnd} →
   parseFunBodyB name alloc params toks ≡ just (d , rest , bnd) →
@@ -109,10 +104,7 @@ complete-body (pfb-mk {toks = toks} eh pe) rewrite eh
 -- `tryAllocB` is total (none ⇒ unchanged input).
 ------------------------------------------------------------------------
 
-data ParsesAlloc : List Token → Maybe AllocStrategy → List Token → Set where
-  pa-some : ∀ {toks strat} → allocStrat toks ≡ just strat →
-            ParsesAlloc toks (just strat) (drop2 toks)
-  pa-none : ∀ {toks} → allocStrat toks ≡ nothing → ParsesAlloc toks nothing toks
+-- The relation moved to the spec (plan 0.84).
 
 sound-alloc : ∀ (toks : List Token) →
   ParsesAlloc toks (proj₁ (tryAllocB toks)) (proj₁ (proj₂ (tryAllocB toks)))
@@ -129,11 +121,7 @@ complete-alloc (pa-none {toks} as) rewrite as = ≤-refl , refl
 -- Function definition = alloc then params then body.
 ------------------------------------------------------------------------
 
-data ParsesFunDef (name : String) : List Token → Decl → List Token → Set where
-  pfd-mk : ∀ {toks alloc toks' params toks'' d rest} →
-           ParsesAlloc toks alloc toks' → ParsesParams toks' params toks'' →
-           ParsesFunBody name alloc params toks'' d rest →
-           ParsesFunDef name toks d rest
+-- The relation moved to the spec (plan 0.84).
 
 sound-fundef : ∀ {name toks d rest bnd} → parseFunDefB name toks ≡ just (d , rest , bnd) →
   ParsesFunDef name toks d rest

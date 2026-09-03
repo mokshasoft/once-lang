@@ -39,6 +39,8 @@ open import Once.TypeCheck.Elaborate as TE using (CheckElabResult; checkElab; ct
 open import Once.TypeCheck.Classify using (NamedCtx; SigEffectCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
+open import Once.Spec.Module
+  using (AllFunsTyped; tnil; tcons; ModuleTyped-ef; ModuleTyped)
 -- Import `check-sound` DIRECTLY from `Soundness` (not via `Verified`, which
 -- transitively pulls in the still-rotted `ErrorProofs`; soundness needs only
 -- this): `checkElab ctx e T ≡ success … ⇒ ctx ⊢ᶜ e ∶ T ⨾ Ψ`.
@@ -81,15 +83,7 @@ compileFunBody-sound doOpt ctx polys sigEffs name ty expr eq =
 -- ONLY the judgment `_⊢ᶜ_∶_⨾_` — no elaborator function appears.
 ------------------------------------------------------------------------
 
-data AllFunsTyped (polys : TE.PolyCtx) (sigEffs : SigEffectCtx)
-     : List C.FunInfo → C.FunCtx → Set where
-  tnil  : ∀ {ctx} → AllFunsTyped polys sigEffs [] ctx
-  tcons : ∀ {fi rest ctx ty Ψ} →
-    C.resolveFunType ctx polys (C.FunInfo.funType fi) (C.FunInfo.funBody fi) ≡ inj₂ ty →
-    (ctxWithImportsAndSelfAndPolys ctx polys sigEffs (C.FunInfo.funName fi) ty)
-      ⊢ᶜ C.FunInfo.funBody fi ∶ ty ⨾ Ψ →
-    AllFunsTyped polys sigEffs rest (C.extendFunCtx ctx (C.FunInfo.funName fi) ty) →
-    AllFunsTyped polys sigEffs (fi ∷ rest) ctx
+-- The relation is in `Once.Spec.Module` (plan 0.84).
 
 ------------------------------------------------------------------------
 -- Layer 1 — `compileFun` accepts ⇒ its body has a derivation.
@@ -173,13 +167,7 @@ caf-sound doOpt funs polys sigEffs eq =
 -- `m`'s functions are all declaratively well-typed.
 ------------------------------------------------------------------------
 
-ModuleTyped-ef : P.Module → (String ⊎ (List C.FunInfo × List C.PolyFunInfo)) → Set
-ModuleTyped-ef m (inj₁ _)            = ⊥
-ModuleTyped-ef m (inj₂ (funs , polys)) =
-  AllFunsTyped (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx
-
-ModuleTyped : P.Module → Set
-ModuleTyped m = ModuleTyped-ef m (C.extractFunctions (C.extractAliases m) m)
+-- `ModuleTyped-ef`/`ModuleTyped` are in `Once.Spec.Module` (plan 0.84).
 
 crm-aux-sound : ∀ (doOpt : Bool) (m : P.Module)
   (ef : String ⊎ (List C.FunInfo × List C.PolyFunInfo)) {compiled : List C.CompiledFun} →

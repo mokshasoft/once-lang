@@ -41,9 +41,8 @@ import Once.Parser.Module.Core as P
 
 -- The four predicates `Typed` / `_⊢R_` are built from. Named explicitly, so a
 -- reader of the criterion has the whole statement in one place.
-open import Once.Adequacy.FrontEndBridge public using (ParsesText)
-open import Once.Adequacy.AcceptSound    public using (ModuleTyped)
-open import Once.Adequacy.ModuleComplete public using (HasValidMain-decl)
+open import Once.Spec.Parsing public using (ParsesText)
+open import Once.Spec.Module public using (ModuleTyped; HasValidMain-decl)
 open import Once.Denotation.Behavior     public using (Source)
 open import Once.Spec.Resolution         public using (ResolvesModule; rm)
 open import Once.Parser.Module.Resolve   using (polyDefNames)

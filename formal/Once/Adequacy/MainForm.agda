@@ -26,6 +26,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- denotations themselves take it as an explicit argument.
 module Once.Adequacy.MainForm (fmt : TargetNum) where
 
+
+open import Once.Spec.Module using (AllFunsTyped; HasValidMain-decl; MainExists; ModuleMainEffUU-ef; ModuleMainExists-ef; ModuleTyped; ModuleTyped-ef)
 open import Data.Bool using (Bool; false; true)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (tt)
@@ -197,7 +199,7 @@ subst-app : ∀ {A : Set} {P : A → Set} {Q : Set} (f : (a : A) → P a → Q)
   {a a' : A} (eq : a ≡ a') (x : P a) → f a x ≡ f a' (subst P eq x)
 subst-app f refl x = refl
 
-mainRealized-bundle : ∀ (m : C.Module) (mt : AS.ModuleTyped m) (hvm : MC.HasValidMain-decl m mt)
+mainRealized-bundle : ∀ (m : C.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt)
   {funs : List FunInfo} {polys : List C.PolyFunInfo}
   (b : FunBundle (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx)
   (bme : BMainExists b)
@@ -209,8 +211,8 @@ mainRealized-bundle m mt hvm {funs} {polys} b bme ef-eq n =
            (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt tt n) (realize-agree b bme)))
   where
     Motive : (ef : String ⊎ (List FunInfo × List C.PolyFunInfo)) → Set
-    Motive ef = Σ-syntax (AS.ModuleTyped-ef m ef) (λ mtx →
-                  MC.ModuleMainEffUU-ef m ef mtx × MC.ModuleMainExists-ef m ef mtx)
+    Motive ef = Σ-syntax (ModuleTyped-ef m ef) (λ mtx →
+                  ModuleMainEffUU-ef m ef mtx × ModuleMainExists-ef m ef mtx)
     F : (ef : String ⊎ (List FunInfo × List C.PolyFunInfo)) → Motive ef →
         Σ-syntax (Usage 0) (λ Ψ → Expr ∅ Ψ EffUU)
     F ef (mtx , amux , mex) = MC.mainRealized-ef m ef mtx amux mex
@@ -218,7 +220,7 @@ mainRealized-bundle m mt hvm {funs} {polys} b bme ef-eq n =
     x = mt , proj₁ hvm , proj₂ hvm
     x' : Motive (inj₂ (funs , polys))
     x' = subst Motive ef-eq x
-    mt' : AS.AllFunsTyped (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx
+    mt' : AllFunsTyped (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx
     mt' = proj₁ x'
-    me' : MC.MainExists mt'
+    me' : MainExists mt'
     me' = proj₂ (proj₂ x')

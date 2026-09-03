@@ -31,18 +31,17 @@ open import Once.Parser.Module.FunDef.OpDecl using (tryOpDeclB; tryOpDeclAfterB)
 open import Once.Parser.PolyType using (parsePolyTypeB)
 open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
 open import Once.Grammar.PolyTypeBridge using (parsePolyTypeB-sound; parsePolyTypeB-complete)
-open import Once.Grammar.FunDefBridge using (ParsesFunDef; sound-fundef; complete-fundef)
+open import Once.Spec.Grammar.FunDef using (ParsesFunDef)
+open import Once.Grammar.FunDefBridge using (sound-fundef; complete-fundef)
+open import Once.Spec.Grammar.OpDecl
+  using (ParsesOpChars; poc-close; poc-char; ParsesOpAfter; poa-sig; poa-fun;
+         ParsesOpDecl; pod-mk)
 
 ------------------------------------------------------------------------
 -- Operator-character scanner `( <opchars> )` (structural on the tail).
 ------------------------------------------------------------------------
 
-data ParsesOpChars : List Token → List Char → String → List Token → Set where
-  poc-close : ∀ {tok rest c cs} → opTokClass tok ≡ otClose →
-              ParsesOpChars (tok ∷ rest) (c ∷ cs) (strFromList (reverse (c ∷ cs))) rest
-  poc-char  : ∀ {tok rest cs ch s rest'} → opTokClass tok ≡ otChar ch →
-              ParsesOpChars rest (ch ∷ cs) s rest' →
-              ParsesOpChars (tok ∷ rest) cs s rest'
+-- The relation moved to the spec (plan 0.84).
 
 -- `with opTokClass tok` freezes `pocGo`; delegate to a helper that takes the
 -- OpTok as a concrete parameter (applied at the stuck `opTokClass tok`).
@@ -72,13 +71,7 @@ complete-opChars (poc-char eq dsub) rewrite eq with complete-opChars dsub
 -- After the operator name: `: polytype` signature, else a function def.
 ------------------------------------------------------------------------
 
-data ParsesOpAfter (name : String) : List Token → Decl → List Token → Set where
-  poa-sig : ∀ {toks ty rest'} → colonHead toks ≡ true →
-            ParsesPolyType (colDrop1 toks) ty rest' →
-            ParsesOpAfter name toks (DTypeSig name ty) rest'
-  poa-fun : ∀ {toks d rest'} → colonHead toks ≡ false →
-            ParsesFunDef name toks d rest' →
-            ParsesOpAfter name toks d rest'
+-- The relation moved to the spec (plan 0.84).
 
 sound-opAfter : ∀ {name toks d rest' bnd} → tryOpDeclAfterB name toks ≡ just (d , rest' , bnd) →
   ParsesOpAfter name toks d rest'
@@ -99,11 +92,7 @@ complete-opAfter (poa-fun ch dfd) rewrite ch with complete-fundef dfd
 -- `(op)` declaration.
 ------------------------------------------------------------------------
 
-data ParsesOpDecl : List Token → Decl → List Token → Set where
-  pod-mk : ∀ {rest name rest1 d rest'} →
-           ParsesOpChars rest [] name rest1 →
-           ParsesOpAfter name rest1 d rest' →
-           ParsesOpDecl (TLParen ∷ rest) d rest'
+-- The relation moved to the spec (plan 0.84).
 
 sound-opDecl : ∀ {toks d rest'' bnd} → tryOpDeclB toks ≡ just (d , rest'' , bnd) →
   ParsesOpDecl toks d rest''

@@ -23,6 +23,8 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- denotations themselves take it as an explicit argument.
 module Once.Adequacy.MainMeaningBridge (fmt : TargetNum) where
 
+
+open import Once.Spec.Module using (EffUU; AllFunsTyped; HasValidMain-decl; MainExists; ModuleMainEffUU-ef; ModuleMainExists-ef; ModuleTyped; ModuleTyped-ef; tcons)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -49,7 +51,6 @@ import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
 import Once.Adequacy.MainExtract fmt as ME
 import Once.Denotation.MainMeaning as MM
-open import Once.Adequacy.ModuleComplete using (EffUU)
 open import Once.Adequacy.MeaningBridge fmt using (bridge-c; RelEnv)
 open import Once.Parser using (FunInfo)
 open FunInfo
@@ -74,19 +75,19 @@ main-bridge-leaf deriv n =
 ------------------------------------------------------------------------
 
 main-bridge-go : ∀ {polys sigEffs funs ctx}
-  (aft : AS.AllFunsTyped polys sigEffs funs ctx) (me : MC.MainExists aft) (n : ℕ)
+  (aft : AllFunsTyped polys sigEffs funs ctx) (me : MainExists aft) (n : ℕ)
   → ME.runMainˢ (proj₂ (MC.mainRealized-go aft me)) n
     ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ-go fmt aft me)) n
 main-bridge-dispatch : ∀ {polys sigEffs nm bdy rest ctx ty Ψ}
   (deriv : (ctxWithImportsAndSelfAndPolys ctx polys sigEffs nm ty) ⊢ᶜ bdy ∶ ty ⨾ Ψ)
-  (rt : AS.AllFunsTyped polys sigEffs rest (C.extendFunCtx ctx nm ty))
-  (w : MC.MainExists rt)
+  (rt : AllFunsTyped polys sigEffs rest (C.extendFunCtx ctx nm ty))
+  (w : MainExists rt)
   (dn : Dec (nm ≡ "main")) (dt : Dec (ty ≡ EffUU)) (b : Bool) (n : ℕ)
   → ME.runMainˢ (proj₂ (MC.mrg-dispatch deriv rt w dn dt b)) n
     ≡ MM.runMainᵈ (proj₂ (MM.mmd-dispatch fmt deriv rt w dn dt b)) n
 
-main-bridge-go (AS.tcons rf deriv rest) (inj₁ (_ , _ , refl)) n = main-bridge-leaf deriv n
-main-bridge-go (AS.tcons {fi = fi} {ty = ty} rf deriv rt) (inj₂ w) n =
+main-bridge-go (tcons rf deriv rest) (inj₁ (_ , _ , refl)) n = main-bridge-leaf deriv n
+main-bridge-go (tcons {fi = fi} {ty = ty} rf deriv rt) (inj₂ w) n =
   main-bridge-dispatch deriv rt w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi) n
 
 main-bridge-dispatch deriv rt w (yes _) (yes refl) false n = main-bridge-leaf deriv n
@@ -100,14 +101,14 @@ main-bridge-dispatch deriv rt w (yes _) (yes refl) true  n = main-bridge-go rt w
 ------------------------------------------------------------------------
 
 main-bridge-ef : ∀ (m : C.Module) (ef : String ⊎ (List FunInfo × List C.PolyFunInfo))
-  (mt : AS.ModuleTyped-ef m ef)
-  (amu : MC.ModuleMainEffUU-ef m ef mt) (me : MC.ModuleMainExists-ef m ef mt) (n : ℕ)
+  (mt : ModuleTyped-ef m ef)
+  (amu : ModuleMainEffUU-ef m ef mt) (me : ModuleMainExists-ef m ef mt) (n : ℕ)
   → ME.runMainˢ (proj₂ (MC.mainRealized-ef m ef mt amu me)) n
     ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ-ef fmt m ef mt amu me)) n
 main-bridge-ef m (inj₂ (funs , polys)) mt amu me n = main-bridge-go mt me n
 
 -- THE selection lemma: `⟦ tp ⟧ˢ n ≡ ⟦ tp ⟧ᵈ n` (discharges the apex `bridgeᵈ`).
-main-bridge : ∀ (m : C.Module) (mt : AS.ModuleTyped m) (hvm : MC.HasValidMain-decl m mt) (n : ℕ)
+main-bridge : ∀ (m : C.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt) (n : ℕ)
             → ME.runMainˢ (proj₂ (MC.mainRealized m mt hvm)) n
               ≡ MM.runMainᵈ (proj₂ (MM.mainMeaningᵈ fmt m mt hvm)) n
 main-bridge m mt (amu , me) n =

@@ -19,6 +19,8 @@
 
 module Once.Adequacy.FunBundle where
 
+
+open import Once.Spec.Module using (AllFunsTyped; MainExists; tcons; tnil)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -133,10 +135,10 @@ compileFun-ce polys sigEffs ctx ty fi irFun eq =
 ------------------------------------------------------------------------
 
 bundle→typed : ∀ {polys sigEffs funs ctx} →
-  FunBundle polys sigEffs funs ctx → AS.AllFunsTyped polys sigEffs funs ctx
-bundle→typed bnil = AS.tnil
+  FunBundle polys sigEffs funs ctx → AllFunsTyped polys sigEffs funs ctx
+bundle→typed bnil = tnil
 bundle→typed (bcons {fi = fi} {ty = ty} rf ce cf rest) =
-  AS.tcons rf (check-sound (ctxWithImportsAndSelfAndPolys _ _ _ (funName fi) ty) (funBody fi) ty ce)
+  tcons rf (check-sound (ctxWithImportsAndSelfAndPolys _ _ _ (funName fi) ty) (funBody fi) ty ce)
               (bundle→typed rest)
 
 bundle→compiled : ∀ {polys sigEffs funs ctx} →
@@ -278,7 +280,7 @@ find-agree (bcons {fi = fi} {ctx = ctx} {ty = ty} {irFun = irFun} rf ce cf rest)
 ------------------------------------------------------------------------
 
 bme→me : ∀ {polys sigEffs funs ctx} (b : FunBundle polys sigEffs funs ctx) →
-  BMainExists b → MC.MainExists (bundle→typed b)
+  BMainExists b → MainExists (bundle→typed b)
 bme→me (bcons _ _ _ rest) (inj₁ x) = inj₁ x
 bme→me (bcons _ _ _ rest) (inj₂ w) = inj₂ (bme→me rest w)
 

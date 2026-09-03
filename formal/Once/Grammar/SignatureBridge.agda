@@ -27,6 +27,8 @@ open import Once.Parser.Module.DeclTail
         ; effAnnotShape; eaDrop2; parseEffAnnot; parseEffAnnot-go )
 open import Once.Parser.PolyType using (parsePolyTypeB)
 open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
+open import Once.Spec.Grammar.Signature
+  using (ParsesEffAnnot; pea-some; pea-none; ParsesSignature; psig-mk)
 open import Once.Grammar.PolyTypeBridge using (parsePolyTypeB-sound; parsePolyTypeB-complete)
 open import Once.Grammar.ImportBridge using (anyWordB-inv)
 
@@ -34,9 +36,7 @@ open import Once.Grammar.ImportBridge using (anyWordB-inv)
 -- Optional effect annotation `! halts` / `! emits`.
 ------------------------------------------------------------------------
 
-data ParsesEffAnnot : List Token → Maybe SigEffect → List Token → Set where
-  pea-some : ∀ {toks se} → effAnnotShape toks ≡ just se → ParsesEffAnnot toks (just se) (eaDrop2 toks)
-  pea-none : ∀ {toks}    → effAnnotShape toks ≡ nothing → ParsesEffAnnot toks nothing toks
+-- The relation is in `Once.Spec.Grammar.Signature` (plan 0.84).
 
 sound-effAnnot-go : ∀ (toks : List Token) (m : Maybe SigEffect) → effAnnotShape toks ≡ m →
   ParsesEffAnnot toks (proj₁ (parseEffAnnot-go toks m)) (proj₁ (proj₂ (parseEffAnnot-go toks m)))
@@ -65,12 +65,7 @@ complete-effAnnot {toks} dea = complete-effAnnot-go (effAnnotShape toks) refl de
 -- `name : polytype [! shape]`.
 ------------------------------------------------------------------------
 
-data ParsesSignature : List Token → Decl → List Token → Set where
-  psig-mk : ∀ {name residual ty rest' meff rest''} →
-            colonHead residual ≡ true →
-            ParsesPolyType (colDrop1 residual) ty rest' →
-            ParsesEffAnnot rest' meff rest'' →
-            ParsesSignature (TWord name ∷ residual) (DSignature name nothing ty meff) rest''
+-- The relation is in `Once.Spec.Grammar.Signature` (plan 0.84).
 
 sound-signature : ∀ {toks d rest'' bnd} → parseSignatureB toks ≡ just (d , rest'' , bnd) →
   ParsesSignature toks d rest''

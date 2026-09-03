@@ -31,28 +31,19 @@ open import Once.Parser.Module.FunDef.Def using (parseFunDefB)
 open import Once.Parser.Module.FunDef.OpDecl using (tryOpDeclB)
 open import Once.Parser.PolyType using (parsePolyTypeB)
 open import Once.Parser.Generic.PolyInst using (ParsesPolyType)
+open import Once.Spec.Grammar.Decl
+  using (ParsesDecl; pd-import; pd-typealias; pd-signature; pd-typesig;
+         pd-fundef; pd-opdecl;
+         ParsesImport; ParsesTypeAliasDecl; ParsesSignature; ParsesFunDef;
+         ParsesOpDecl)
 open import Once.Grammar.PolyTypeBridge using (parsePolyTypeB-sound; parsePolyTypeB-complete)
-open import Once.Grammar.ImportBridge using (ParsesImport; sound-import; complete-import)
-open import Once.Grammar.TypeAliasBridge using (ParsesTypeAliasDecl; sound-typealias; complete-typealias)
-open import Once.Grammar.SignatureBridge using (ParsesSignature; sound-signature; complete-signature)
-open import Once.Grammar.FunDefBridge using (ParsesFunDef; sound-fundef; complete-fundef)
-open import Once.Grammar.OpDeclBridge using (ParsesOpDecl; sound-opDecl; complete-opDecl)
+open import Once.Grammar.ImportBridge using (sound-import; complete-import)
+open import Once.Grammar.TypeAliasBridge using (sound-typealias; complete-typealias)
+open import Once.Grammar.SignatureBridge using (sound-signature; complete-signature)
+open import Once.Grammar.FunDefBridge using (sound-fundef; complete-fundef)
+open import Once.Grammar.OpDeclBridge using (sound-opDecl; complete-opDecl)
 
-data ParsesDecl : List Token → Decl → List Token → Set where
-  pd-import    : ∀ {rest d rest'} → ParsesImport rest d rest' →
-                 ParsesDecl (TWord "import" ∷ rest) d rest'
-  pd-typealias : ∀ {rest d rest'} → ParsesTypeAliasDecl rest d rest' →
-                 ParsesDecl (TWord "type" ∷ rest) d rest'
-  pd-signature : ∀ {rest d rest'} → ParsesSignature rest d rest' →
-                 ParsesDecl (TWord "signature" ∷ rest) d rest'
-  pd-typesig   : ∀ {w rest ty rest'} → ¬ (w ≡ "import") → ¬ (w ≡ "type") → ¬ (w ≡ "signature") →
-                 colonHead rest ≡ true → ParsesPolyType (colDrop1 rest) ty rest' → eqHead rest' ≡ false →
-                 ParsesDecl (TWord w ∷ rest) (DTypeSig w ty) rest'
-  pd-fundef    : ∀ {w rest d rest'} → ¬ (w ≡ "import") → ¬ (w ≡ "type") → ¬ (w ≡ "signature") →
-                 colonHead rest ≡ false → ParsesFunDef w rest d rest' →
-                 ParsesDecl (TWord w ∷ rest) d rest'
-  pd-opdecl    : ∀ {rest d rest'} → ParsesOpDecl (TLParen ∷ rest) d rest' →
-                 ParsesDecl (TLParen ∷ rest) d rest'
+-- The relation is in `Once.Spec.Grammar.Decl` (plan 0.84).
 
 ------------------------------------------------------------------------
 -- Soundness.

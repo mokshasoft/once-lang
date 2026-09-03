@@ -13,7 +13,8 @@
 module Once.Parser.Module.Core where
 
 open import Data.List using (List; []; _∷_; length) public
-open import Data.Maybe using (Maybe; just; nothing) public
+open import Data.Bool using (Bool)
+open import Data.Maybe using (Maybe; just; nothing; is-just) public
 open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂; Σ-syntax) public
 open import Data.String using (String; _≟_) public
 open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; s≤s; z≤n) public
@@ -123,3 +124,11 @@ parseExprB toks = parseExprB-adapt toks
 anyWordB : (toks : List Token) → ParseAtB {String} toks
 anyWordB (TWord s ∷ rest) = just (s , rest , s≤s ≤-refl)
 anyWordB _ = nothing
+
+-- | Does the stream start with a word? PLAN 0.84: this is an executable parser
+-- helper, so it belongs beside `anyWordB` — it used to live in
+-- `Once.Grammar.ImportBridge`, which made three grammar RELATIONS import a
+-- PROOF module. It relates definitionally to `anyWordB`, which is what the
+-- import/typealias/fundef bridges rely on.
+wordHead : List Token → Bool
+wordHead toks = is-just (anyWordB toks)

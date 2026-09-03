@@ -31,6 +31,8 @@
 
 module Once.Adequacy.Compile where
 
+
+open import Once.Spec.Module using (HasValidMain-decl; ModuleTyped)
 open import Data.Bool using (Bool; false; true)
 open import Data.Nat using (ℕ)
 open import Data.List using (List)
@@ -255,7 +257,7 @@ open import Once.Adequacy.MainBuilds using (main⇒built)
 -- declaratively well-typed programs, so `⟦_⟧⊥`'s `just` domain is genuine
 -- (not true-by-construction). `ModuleTyped m` is the INDEPENDENT predicate
 -- "every function of `m` has a `_⊢ᶜ_∶_⨾_` derivation".
-open import Once.Adequacy.AcceptSound as AS using (ModuleTyped; moduleToIR-typed)
+open import Once.Adequacy.AcceptSound as AS using (moduleToIR-typed)
 -- Plan 0.50 (row-3 apex connection): the COMPOSITION discharging
 -- `main-realize-agrees` from `RealizeBridge.realize-agrees`. Importing it here
 -- puts `realize-agrees` on the apex path (no longer an island).
@@ -656,7 +658,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- ════════════════════════════════════════════════════════════════════
 
   -- An executable typed module: declaratively well-typed (`ModuleTyped`, via
-  -- `AcceptSound`) with a DECLARATIVELY-valid `main` (`MC.HasValidMain-decl`,
+  -- `AcceptSound`) with a DECLARATIVELY-valid `main` (`HasValidMain-decl`,
   -- phrased over the typing derivation). The compiler fact `moduleToIR ≡ just`
   -- is DERIVED from these by `MC.moduleToIR-complete` (which routes through the
   -- proven `check-complete` — so completeness now forces row-1b), and the
@@ -688,7 +690,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- and the `main-checkElab-coherence` hook (strengthened extraction + resolveExpr
   -- faithfulness), NOT this opaque whole-statement axiom.
   main-realize-agrees : ∀ (arch : Arch) (m : P.Module) (mt : ModuleTyped m)
-    (hvm : MC.HasValidMain-decl m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
+    (hvm : HasValidMain-decl m mt) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) (mi : moduleToIR m ≡ just ir)
     → ∀ n → ME.runMainˢ (arch-numerics arch) (proj₁ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m ir mi))) n
             ≡ ME.runMainˢ (arch-numerics arch) (proj₂ (MC.mainRealized m mt hvm)) n
   main-realize-agrees arch = MRA.main-realize-agrees-proof (arch-numerics arch)

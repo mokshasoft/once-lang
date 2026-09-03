@@ -60,7 +60,9 @@ open import Once.Parser
 -- module — the three opaque postulates that were here are now retired.
 ------------------------------------------------------------------------
 
-open import Once.Spec.Lexing public using (Lexes)
+open import Once.Spec.Parsing
+  using (Lexes; ParsesDecl; ParsesDecls; pds-noskip; pds-stop; pds-cons;
+         ParsesModule; ParsesText)
 open import Once.Adequacy.LexerBridge using (lexer-sound; lexer-complete)
 
 ------------------------------------------------------------------------
@@ -69,24 +71,14 @@ open import Once.Adequacy.LexerBridge using (lexer-sound; lexer-complete)
 -- proven in `Once.Grammar.DeclBridge`, bottoming at the expr/type/poly islands.
 ------------------------------------------------------------------------
 
-open import Once.Grammar.DeclBridge using (ParsesDecl; sound-decl; complete-decl) public
+open import Once.Grammar.DeclBridge using (sound-decl; complete-decl)
 
 ------------------------------------------------------------------------
 -- DECLS LOOP — relation DEFINED (mirrors `parseDeclsWF`); bridge postulated.
 -- (`skipNewlines` never returns `nothing`, so there is no no-skip case.)
 ------------------------------------------------------------------------
 
-data ParsesDecls : List Token → List Decl → List Token → Set where
-  -- `skipNewlines` never returns `nothing`; this aligns the relation with
-  -- `pdwf-sk`'s (unreachable) `nothing` clause.
-  pds-noskip : ∀ {toks} → skipNewlines toks ≡ nothing → ParsesDecls toks [] toks
-  pds-stop : ∀ {toks nl toks'} →
-    skipNewlines toks ≡ just (nl , toks') → parseDeclB toks' ≡ nothing →
-    ParsesDecls toks [] toks'
-  pds-cons : ∀ {toks nl toks' d rest ds rest'} →
-    skipNewlines toks ≡ just (nl , toks') → ParsesDecl toks' d rest →
-    ParsesDecls rest ds rest' →
-    ParsesDecls toks (d ∷ ds) rest'
+-- The relation is in `Once.Spec.Parsing` (plan 0.84).
 
 -- DECLS-LOOP soundness — PROVEN over the de-`with`'d `pdwf-sk`/`pdwf-dc` by
 -- casing their result PARAMETERS (the `with`-clash is gone). Mutual, terminating
@@ -154,8 +146,7 @@ complete-decls {toks} {ds} {rest} deriv with complete-declsWF (<-wellFounded (le
 -- m) ≡ m`).
 ------------------------------------------------------------------------
 
-ParsesModule : List Token → Module → List Token → Set
-ParsesModule toks m rest = ParsesDecls toks (decls m) rest
+-- `ParsesModule` is in `Once.Spec.Parsing` (plan 0.84).
 
 -- `parseDecls` always succeeds (it wraps the total `parseDeclsWF`).
 parseDecls-total : ∀ (toks : List Token) →
@@ -178,10 +169,7 @@ sound-module {toks} {m} {rest} pmEq with parseDecls-total toks
 -- ParsesText — the apex anchor. PROVEN bridges to the executable front-end.
 ------------------------------------------------------------------------
 
-ParsesText : String → Module → Set
-ParsesText text m =
-  Σ[ toks ∈ List Token ] Σ[ rest ∈ List Token ]
-    (Lexes text toks × ParsesModule toks m rest × (allTrailing rest ≡ true))
+-- `ParsesText` is in `Once.Spec.Parsing` (plan 0.84).
 
 -- Explicit `trans`/`cong` chain (NOT `rewrite`): `parseModule toks` partially
 -- normalises once the `<-wellFounded` Acc reduces, so `rewrite` can't locate it

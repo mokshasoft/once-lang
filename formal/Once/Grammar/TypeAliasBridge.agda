@@ -27,20 +27,18 @@ open import Once.Parser.Module.DeclTail
   using (goTypeAliasB; goTypeAliasWF; gta-aw; gta-eq; gta-type; gta-sub;
          parseTypeAliasB; pta-aw; pta-go; taEqHead; taDrop1; taDrop1-≤)
 open import Once.Parser.TypeRelation using (ParsesType)
+open import Once.Spec.Grammar.TypeAlias
+  using (ParsesTypeAlias; gta-eq-r; gta-word-r; ParsesTypeAliasDecl; pta-mk)
 open import Once.Parser.Type using (parseTypeWF)
 open import Once.Grammar.ParserBridge using (complete-typeWFraw)
-open import Once.Grammar.ImportBridge using (wordHead; anyWordB-inv; ij-false)
+open import Once.Parser.Module.Core using (wordHead)
+open import Once.Grammar.ImportBridge using (anyWordB-inv; ij-false)
 
 ------------------------------------------------------------------------
 -- Param scanner `param* = Type` (params accumulator). Bottoms at `ParsesType`.
 ------------------------------------------------------------------------
 
-data ParsesTypeAlias (name : String) : List String → List Token → Decl → List Token → Set where
-  gta-eq-r   : ∀ {params toks ty rest''} → wordHead toks ≡ false → taEqHead toks ≡ true →
-               ParsesType (taDrop1 toks) ty rest'' →
-               ParsesTypeAlias name params toks (DTypeAlias name (reverse params) ty) rest''
-  gta-word-r : ∀ {params p rest' d rest''} → ParsesTypeAlias name (p ∷ params) rest' d rest'' →
-               ParsesTypeAlias name params (TWord p ∷ rest') d rest''
+-- The relation is in `Once.Spec.Grammar.TypeAlias` (plan 0.84).
 
 sound-gtaWF : ∀ (name : String) (toks : List Token) (params : List String) (a : Acc _<_ (length toks))
   {d rest bnd} → goTypeAliasWF name toks params a ≡ just (d , rest , bnd) →
@@ -79,9 +77,7 @@ complete-gta {toks = toks} d = complete-gtaWF (<-wellFounded (length toks)) d
 -- `type Name param* = Type` (consume the alias name, then the scanner).
 ------------------------------------------------------------------------
 
-data ParsesTypeAliasDecl : List Token → Decl → List Token → Set where
-  pta-mk : ∀ {name rest d rest'} → ParsesTypeAlias name [] rest d rest' →
-           ParsesTypeAliasDecl (TWord name ∷ rest) d rest'
+-- The relation is in `Once.Spec.Grammar.TypeAlias` (plan 0.84).
 
 sound-typealias : ∀ {toks d rest bnd} → parseTypeAliasB toks ≡ just (d , rest , bnd) →
   ParsesTypeAliasDecl toks d rest

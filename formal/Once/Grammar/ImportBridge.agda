@@ -33,14 +33,18 @@ open import Relation.Nullary using (¬_; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
 
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (ParseAtB; ParseAtB≤; anyWordB; Decl; DImport; Import; mkImport)
+open import Once.Parser.Module.Core using (ParseAtB; ParseAtB≤; anyWordB; wordHead; Decl; DImport; Import; mkImport)
 open import Once.Parser.Module.Import
   using (parseModulePath-WFB; pmp-aw; pmp-tail; pmp-dot; parseModulePathB;
          dropDot; dropDot-≤; dotHead;
          parseImportAliasB; pia-head; pia-as; pia-w; parseImportB; pib-path; pib-alias)
+open import Once.Spec.Grammar.Import
+  using (ParsesModulePath; pmp-cons; pmp-dotfail; pmp-nodot;
+         ParsesImportAlias; pia-alias-r; pia-neq-r; pia-nonword-r;
+         ParsesImport; pi-mk)
 
-wordHead : List Token → Bool
-wordHead toks = is-just (anyWordB toks)
+-- PLAN 0.84: `wordHead` moved to `Once.Parser.Module.Core` (beside `anyWordB`)
+-- — it is a parser helper, and relations must not import a proof module.
 
 ------------------------------------------------------------------------
 -- The parser never returns `nothing` on a word head; it fails only via
@@ -82,14 +86,7 @@ wh-false→nothing toks (acc rec) wf with anyWordB toks
 -- The relation.
 ------------------------------------------------------------------------
 
-data ParsesModulePath : List Token → List String → List Token → Set where
-  pmp-cons    : ∀ {name tail path rest'} → dotHead tail ≡ true →
-                ParsesModulePath (dropDot tail) path rest' →
-                ParsesModulePath (TWord name ∷ tail) (name ∷ path) rest'
-  pmp-dotfail : ∀ {name tail} → dotHead tail ≡ true → wordHead (dropDot tail) ≡ false →
-                ParsesModulePath (TWord name ∷ tail) (name ∷ []) tail
-  pmp-nodot   : ∀ {name tail} → dotHead tail ≡ false →
-                ParsesModulePath (TWord name ∷ tail) (name ∷ []) tail
+-- The relation moved to the spec (plan 0.84).
 
 ------------------------------------------------------------------------
 -- SOUNDNESS.
@@ -210,13 +207,7 @@ ij-false : ∀ {A : Set} {m : Maybe A} → is-just m ≡ false → m ≡ nothing
 ij-false {m = just _} ()
 ij-false {m = nothing} _ = refl
 
-data ParsesImportAlias (path : List String) : List Token → Decl → List Token → Set where
-  pia-alias-r   : ∀ {alias rest} →
-    ParsesImportAlias path (TWord "as" ∷ TWord alias ∷ rest) (DImport (mkImport path (just alias))) rest
-  pia-neq-r     : ∀ {s rest} → s ≢ "as" →
-    ParsesImportAlias path (TWord s ∷ rest) (DImport (mkImport path nothing)) (TWord s ∷ rest)
-  pia-nonword-r : ∀ {toks} → wordHead toks ≡ false →
-    ParsesImportAlias path toks (DImport (mkImport path nothing)) toks
+-- The relation moved to the spec (plan 0.84).
 
 sound-alias : ∀ {path toks d rest bnd} → parseImportAliasB path toks ≡ just (d , rest , bnd) →
   ParsesImportAlias path toks d rest
@@ -242,10 +233,7 @@ complete-alias {path} (pia-nonword-r {toks} wf) rewrite ij-false wf = ≤-refl ,
 -- `ParsesImport` = dotted path then optional alias.
 ------------------------------------------------------------------------
 
-data ParsesImport : List Token → Decl → List Token → Set where
-  pi-mk : ∀ {toks path rest d rest'} →
-    ParsesModulePath toks path rest → ParsesImportAlias path rest d rest' →
-    ParsesImport toks d rest'
+-- The relation moved to the spec (plan 0.84).
 
 sound-import : ∀ {toks d rest bnd} → parseImportB toks ≡ just (d , rest , bnd) → ParsesImport toks d rest
 sound-import {toks} h with parseModulePathB toks in eq1
