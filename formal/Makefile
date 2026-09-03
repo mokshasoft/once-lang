@@ -27,6 +27,7 @@
 #   make compiler      - Verify the whole compiler (= certified; apex + bundle)
 #   make certified     - Correctness (CorrectCompiler) AND VerifiedTypeChecker
 #   make check-all     - Type-check EVERY module (island-rot backstop)
+#   make lint-pragmas  - Fail if pragma text appears inside a comment
 #
 # Dead code analysis (requires patched Agda):
 #   make dead-code-ccc-x86-64 - Dead code analysis for X86-64 CCC
@@ -82,6 +83,10 @@ certified:
 .PHONY: lint-imports
 lint-imports:
 	@./scripts/lint-imports.sh
+
+.PHONY: lint-pragmas
+lint-pragmas:
+	@$(CURDIR)/scripts/lint-pragmas.sh
 
 .PHONY: check-all
 check-all:

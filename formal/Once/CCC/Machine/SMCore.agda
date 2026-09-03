@@ -1602,7 +1602,7 @@ module AbstractExec {FS : FrameSemantics} where
 
   ------------------------------------------------------------------------
   -- THE LOOP, REIFIED (2026-07-31). `exec-loop` used to sit INSIDE the mutual
-  -- block and call `exec-trace body` directly, which cost a `{-# TERMINATING #-}`
+  -- block and call `exec-trace body` directly, which cost a `TERMINATING`
   -- — foetus lost the fuel decrease across that boundary (`exec-trace` carries no
   -- fuel, and a nested `instr-loop` resets fuel to `loopFuel`). A pragma is a
   -- postulate in disguise (D062), and this one was replicated in every proof that
@@ -1669,7 +1669,7 @@ module AbstractExec {FS : FrameSemantics} where
   -- while the `Scratch` register is a nonzero counter; the body updates
   -- `Scratch` each iteration. Since 2026-07-31 this is a WRAPPER around the
   -- reified `exec-loop-run` above — same reduction behaviour, structural
-  -- recursion, and the `{-# TERMINATING #-}` pragma is gone.
+  -- recursion, and the `TERMINATING` pragma is gone.
   exec-loop : ℕ → AbstractTrace → LocState FS → AllocState {FS} →
               LocState FS × AllocState {FS}
   -- Plan 0.30: branch dispatcher for case-on-tag. Mutually recursive with

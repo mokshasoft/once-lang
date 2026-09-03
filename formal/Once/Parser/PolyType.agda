@@ -24,7 +24,7 @@
 --
 -- Termination: structurally recursive on the input token list. Each
 -- recursive call is on a strict-suffix of the input. Marked
--- `{-# TERMINATING #-}` pending a proper well-founded rewrite
+-- `TERMINATING` pending a proper well-founded rewrite
 -- (plan 0.7 Phase 2, which will also add a `ParsesPolyType` relational
 -- specification paralleling `ParsesType`).
 ------------------------------------------------------------------------

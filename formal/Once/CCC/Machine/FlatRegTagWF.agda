@@ -253,7 +253,7 @@ regtag-slot-load-in1 nothing  ls alloc wf = regtag-halt wf
 -- THE LOOP, as a plain FUEL induction over the reified `exec-loop-run`
 -- (2026-07-31). It takes "the body runner preserves the invariant" as a
 -- hypothesis and never calls into the mutual block, so it is structural — this
--- is what retired the `{-# TERMINATING #-}` this proof used to carry.
+-- is what retired the `TERMINATING` this proof used to carry.
 ------------------------------------------------------------------------
 mutual
   regtag-loop-run : ∀ (run : BodyRunner) (fuel : ℕ) (ls : LocState FS) (alloc : AllocState {FS})

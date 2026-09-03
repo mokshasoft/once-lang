@@ -365,7 +365,7 @@ Preserves ls alloc (ls' , alloc') =
 -- THE LOOP, as a plain FUEL induction over the reified `exec-loop-run`
 -- (2026-07-31). It takes "the body runner preserves the invariant" as a
 -- hypothesis and never calls into the mutual block, so it is structural — this
--- is what retired the `{-# TERMINATING #-}` this proof used to carry.
+-- is what retired the `TERMINATING` this proof used to carry.
 ------------------------------------------------------------------------
 BodyPreserves : BodyRunner → Set
 BodyPreserves run = ∀ (ls : LocState FS) (alloc : AllocState {FS})

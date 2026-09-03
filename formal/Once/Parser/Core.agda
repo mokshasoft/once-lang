@@ -144,7 +144,7 @@ optional p toks with p toks
 -- each successful consumption removes exactly one token from the list.
 -- The prior generic `many : Parser A → Parser (List A)` combinator
 -- was removed (used only by `skipNewlines`; retaining it required a
--- `{-# TERMINATING #-}` pragma since generic `many p` has no
+-- `TERMINATING` pragma since generic `many p` has no
 -- length-bound witness on `p`).
 skipNewlines : Parser (List Token)
 skipNewlines [] = just ([] , [])

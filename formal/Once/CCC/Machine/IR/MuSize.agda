@@ -2,7 +2,7 @@
 -- Once.CCC.Machine.IR.MuSize
 --
 -- A structural size measure on μ-values, for well-founded recursion in
--- the Cata machinery (Plan 0.27, Option B — replacing {-# TERMINATING #-}).
+-- the Cata machinery (Plan 0.27, Option B — replacing TERMINATING).
 --
 -- μ-size is defined via the (total) catamorphism sem-cata, so it needs no
 -- TERMINATING pragma here. The key lemma `μ-size-unfold` exposes the

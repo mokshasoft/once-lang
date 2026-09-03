@@ -121,8 +121,10 @@ module RecSchemeProofImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Proof by structural induction on μ-values.
   --
   -- NOTE: This requires well-founded recursion on μ-values.
-  -- Agda cannot see that sem-Out produces a structurally smaller value,
-  -- so we use {-# TERMINATING #-} with documented justification.
+  -- Agda cannot see that sem-Out produces a structurally smaller value.
+  -- (This comment used to claim a TERMINATING pragma was used here; there is
+  -- none in this module. Plan 0.27 Option B replaced that approach with the
+  -- reified `MuSize` measure — see `Once.CCC.Machine.IR.MuSize`.)
   ------------------------------------------------------------------------
 
   -- The inductive hypothesis type for Cata proof

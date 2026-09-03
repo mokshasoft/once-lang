@@ -80,7 +80,7 @@ module CataNextSlot {FS : FrameSemantics} where
   -- it rather than carry the exec-loop induction).
   -- 2026-07-31: the trace level is SPELLED OUT (`SlotStableT`) rather than
   -- routed through `AllI SlotStable`. Going through a predicate APPLICATION hid
-  -- the structural decrease from foetus and cost a `{-# TERMINATING #-}` — a
+  -- the structural decrease from foetus and cost a `TERMINATING` — a
   -- postulate in disguise (D062). Written mutually it is structural.
   mutual
     SlotStable : AbstractInstr → Set
@@ -105,7 +105,7 @@ module CataNextSlot {FS : FrameSemantics} where
   -- (`trace-keeps-next-slot` / `case-keeps-next-slot`) instead of the
   -- higher-order `exec-abstract-case-invariant`. Passing the per-instruction
   -- fact as a function ARGUMENT hid the structural decrease from foetus and
-  -- cost the second `{-# TERMINATING #-}`; spelled out, `f`/`g` are visibly
+  -- cost the second `TERMINATING`; spelled out, `f`/`g` are visibly
   -- subterms of `instr-case-on-tag f g`.
   mutual
     abstract-keeps-next-slot : ∀ (i : AbstractInstr) → SlotStable i

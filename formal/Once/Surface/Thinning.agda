@@ -455,7 +455,7 @@ weakenFromEmpty {Γ = _S,_^_ Γ' _ _} e = weaken (weakenFromEmpty {Γ = Γ'} e)
 -- OLD APPROACH (in TypeCheck.Elaborate):
 --   - 8 separate lookup lemmas (lookup-suc, lookup-suc-suc, ...)
 --   - 8 separate exchange functions, each ~20 lines
---   - {-# TERMINATING #-} pragma needed
+--   - TERMINATING pragma needed
 --   - exchange₈ was a POSTULATE
 --
 -- NEW APPROACH (this module):
