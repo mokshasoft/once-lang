@@ -512,3 +512,13 @@ sub-w³-single {a = a} {b = b} {c = c} t =
                      (trans (sub-w {σ = single b} (w t))
                             (cong w (wk-single {v = b} t))))
                (wk-single {v = a} t))
+
+-- ★ …and the TWO-rung form.  ⚠ The count is the number of binders that
+--   follow the payload in the METHOD, which is one per motive passenger
+--   plus the IH tuple — so it differs per motive and both are needed.
+sub-w²-single : {Γ : Cx} {a b : RTm Γ} (t : RTm Γ) →
+                subTm (single a) (subTm (extS (single b)) (w (w t))) ≡ t
+sub-w²-single {a = a} {b = b} t =
+  trans (cong (subTm (single a))
+              (trans (sub-w {σ = single b} (w t)) (cong w (wk-single {v = b} t))))
+        (wk-single {v = a} t)
