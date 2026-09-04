@@ -153,6 +153,28 @@ proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ lookup 
 proj {Γ = Γ , A ^ q} Fin.zero    = snd
 proj {Γ = Γ , A ^ q} (Fin.suc i) = proj i ∘ fst
 
+-- | THE ENVIRONMENT-PRECISION PROJECTION (plan 0.86 step B, D142).
+--
+-- Given `Ψ' ⊑ᵘ Ψ`, narrow an environment holding the variables `Ψ` uses to one
+-- holding only those `Ψ'` uses. Every elaborator clause with two subterms uses
+-- this to hand each branch EXACTLY its own variables, which is what stops a
+-- dead variable from ever entering an environment product.
+--
+-- A projection chain by construction: `fst` where the variable is dropped,
+-- `⟨ … ∘ fst , snd ⟩` where it is kept.
+restrictEnv : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} (m : AllocMode)
+            → Ψ' ⊑ᵘ Ψ → IR ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ' ⟧ᶜ ⌋
+restrictEnv {Γ = ∅}         m ⊑[]                    = id
+-- dropped on both sides — the variable is in neither environment
+restrictEnv {Γ = Γ , A ^ q} m (z≤z ⊑∷ ule) = restrictEnv {Γ = Γ} m ule
+-- live in Ψ, dead in Ψ' — this is the narrowing that reclaims it
+restrictEnv {Γ = Γ , A ^ q} m (z≤o ⊑∷ ule) = restrictEnv {Γ = Γ} m ule ∘ fst
+restrictEnv {Γ = Γ , A ^ q} m (z≤m ⊑∷ ule) = restrictEnv {Γ = Γ} m ule ∘ fst
+-- live in both — keep it, narrow the rest
+restrictEnv {Γ = Γ , A ^ q} m (o≤o ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩ m
+restrictEnv {Γ = Γ , A ^ q} m (o≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩ m
+restrictEnv {Γ = Γ , A ^ q} m (m≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩ m
+
 -- | Helper: swap product components
 -- Plan 0.14 follow-up: parameterized on AllocMode for the pair node.
 swap' : ∀ {X Y} → AllocMode → IR (X * Y) (Y * X)

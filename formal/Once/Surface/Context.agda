@@ -157,3 +157,65 @@ tailUsage (q ∷ ψ) = ψ
 ------------------------------------------------------------------------
 data SVar : ∀ {n} → Ctx n → Usage n → Type → Set where
   svar : ∀ {n} {Γ : Ctx n} (i : Fin n) → SVar Γ (singleUse i One) (lookup Γ i)
+
+------------------------------------------------------------------------
+-- Usage-restricted contexts (plan 0.86 step B, D142)
+------------------------------------------------------------------------
+
+-- THE INVARIANT THIS EXISTS FOR: the environment carried into a subterm holds
+-- exactly the variables that subterm USES — never "everything bound so far".
+--
+-- `elaborate` used to hand the whole `Γ` to every subterm, so a variable that
+-- died stayed a component of a live environment product and could not be
+-- reclaimed. Dead-variable elimination then had to be an OPTIMISATION anyone
+-- could forget to run. Restricting the context by the usage vector makes it
+-- the SHAPE of the elaborator instead: a dead variable cannot be in the
+-- environment because it was never put there. (OCP-0005 rung 1 — violation is
+-- ill-typed rather than merely suboptimal.)
+
+-- | How many variables a usage vector actually uses.
+liveCount : ∀ {n} → Usage n → ℕ
+liveCount []           = 0
+liveCount (Zero ∷ Ψ)   = liveCount Ψ
+liveCount (One  ∷ Ψ)   = ℕ.suc (liveCount Ψ)
+liveCount (Many ∷ Ψ)   = ℕ.suc (liveCount Ψ)
+
+-- | Restrict a context to the variables a usage vector uses. `Usage`'s head
+--   is `Fin.zero`, which is the context's RIGHTMOST (innermost) binding, so
+--   the two structures line up cons-for-cons.
+_↾_ : ∀ {n} → Ctx n → (Ψ : Usage n) → Ctx (liveCount Ψ)
+∅           ↾ []         = ∅
+(Γ , A ^ q) ↾ (Zero ∷ Ψ) = Γ ↾ Ψ
+(Γ , A ^ q) ↾ (One  ∷ Ψ) = (Γ ↾ Ψ) , A ^ q
+(Γ , A ^ q) ↾ (Many ∷ Ψ) = (Γ ↾ Ψ) , A ^ q
+
+infixl 6 _↾_
+
+-- | Pointwise usage order, RELATIONAL rather than the `Bool`-valued `_≤q_`:
+--   the elaborator needs to induct on the witness, and D134 says the spec
+--   names properties while deciders stay in the implementation.
+-- Each constructor names BOTH quantities, so a clause can case on the larger
+-- side without an unmatchable implicit.
+data _≤q'_ : Quantity → Quantity → Set where
+  z≤z : Zero ≤q' Zero
+  z≤o : Zero ≤q' One
+  z≤m : Zero ≤q' Many
+  o≤o : One  ≤q' One
+  o≤m : One  ≤q' Many
+  m≤m : Many ≤q' Many
+
+-- (`_≤ᵘ_` is taken: it relates a usage vector to a CONTEXT's declared
+--  quantities. This one relates two usage vectors at the same context.)
+data _⊑ᵘ_ : ∀ {n} → Usage n → Usage n → Set where
+  ⊑[] : [] ⊑ᵘ []
+  _⊑∷_ : ∀ {n q r} {Ψ Φ : Usage n} → q ≤q' r → Ψ ⊑ᵘ Φ → (q ∷ Ψ) ⊑ᵘ (r ∷ Φ)
+
+infixr 5 _⊑ᵘ_
+infixr 5 _⊑∷_
+
+-- | The order is reflexive — every subterm may keep what it already has.
+⊑ᵘ-refl : ∀ {n} (Ψ : Usage n) → Ψ ⊑ᵘ Ψ
+⊑ᵘ-refl []           = ⊑[]
+⊑ᵘ-refl (Zero ∷ Ψ)   = z≤z ⊑∷ ⊑ᵘ-refl Ψ
+⊑ᵘ-refl (One  ∷ Ψ)   = o≤o ⊑∷ ⊑ᵘ-refl Ψ
+⊑ᵘ-refl (Many ∷ Ψ)   = m≤m ⊑∷ ⊑ᵘ-refl Ψ
