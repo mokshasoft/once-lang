@@ -202,10 +202,10 @@ data ResolvesExpr (um : UnaliasedMap) (am : AliasMap)
 
 data ResolvesDecl (polys : List String) (um : UnaliasedMap) (am : AliasMap)
                   : Decl → Decl → Set where
-  rd-fundef : ∀ {name alloc body body'}
+  rd-fundef : ∀ {name body body'}
             → ResolvesExpr um am polys body body'
-            → ResolvesDecl polys um am (DFunDef name alloc body)
-                                       (DFunDef name alloc body')
+            → ResolvesDecl polys um am (DFunDef name body)
+                                       (DFunDef name body')
   -- Signatures, aliases and imports carry no references. ENUMERATED rather
   -- than a catch-all with a negative side condition: the reader sees that every
   -- declaration form has been considered, and nothing has to supply a `≢`.
@@ -241,7 +241,7 @@ data ResolvesDecl (polys : List String) (um : UnaliasedMap) (am : AliasMap)
 -- not what the resolver does.
 data NotImport : Decl → Set where
   nim-typesig : ∀ {n t}     → NotImport (DTypeSig n t)
-  nim-fundef  : ∀ {n a b}   → NotImport (DFunDef n a b)
+  nim-fundef  : ∀ {n b}     → NotImport (DFunDef n b)
   nim-sig     : ∀ {n o t e} → NotImport (DSignature n o t e)
   nim-alias   : ∀ {n ps t}  → NotImport (DTypeAlias n ps t)
 

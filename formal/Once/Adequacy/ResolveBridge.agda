@@ -299,8 +299,8 @@ resolves-complete um am bound (RStringLit s)  = re-str
 resolvesDecl-sound : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
                      (d d' : Decl)
                    → ResolvesDecl polys um am d d' → canonDecl polys um am d ≡ d'
-resolvesDecl-sound polys um am _ _ (rd-fundef {name = n} {alloc = al} rb) =
-  cong (DFunDef n al) (resolves-sound um am polys _ _ rb)
+resolvesDecl-sound polys um am _ _ (rd-fundef {name = n} rb) =
+  cong (DFunDef n) (resolves-sound um am polys _ _ rb)
 resolvesDecl-sound polys um am _ _ rd-typesig   = refl
 resolvesDecl-sound polys um am _ _ rd-signature = refl
 resolvesDecl-sound polys um am _ _ rd-typealias = refl
@@ -309,7 +309,7 @@ resolvesDecl-sound polys um am _ _ rd-import    = refl
 resolvesDecl-complete : ∀ (polys : List String) (um : UnaliasedMap) (am : AliasMap)
                         (d : Decl)
                       → ResolvesDecl polys um am d (canonDecl polys um am d)
-resolvesDecl-complete polys um am (DFunDef n al b) =
+resolvesDecl-complete polys um am (DFunDef n b) =
   rd-fundef (resolves-complete um am polys b)
 resolvesDecl-complete polys um am (DTypeSig n t)      = rd-typesig
 resolvesDecl-complete polys um am (DSignature n o t e) = rd-signature
@@ -431,8 +431,8 @@ mutual
   resolvesDecls-complete mm polys um am (DTypeSig n t ∷ rest) ds' eq =
     rdc-cons mm polys um am (DTypeSig n t) nim-typesig rest ds'
       (resolveDecls polys um am mm rest) refl eq
-  resolvesDecls-complete mm polys um am (DFunDef n a b ∷ rest) ds' eq =
-    rdc-cons mm polys um am (DFunDef n a b) nim-fundef rest ds'
+  resolvesDecls-complete mm polys um am (DFunDef n b ∷ rest) ds' eq =
+    rdc-cons mm polys um am (DFunDef n b) nim-fundef rest ds'
       (resolveDecls polys um am mm rest) refl eq
   resolvesDecls-complete mm polys um am (DSignature n o t e ∷ rest) ds' eq =
     rdc-cons mm polys um am (DSignature n o t e) nim-sig rest ds'

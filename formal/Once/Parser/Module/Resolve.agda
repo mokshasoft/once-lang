@@ -208,8 +208,8 @@ pdn-go (DTypeSig name ty ∷ rest) _       with isGround ty
 -- A DFunDef consumes (or drops, on name mismatch) the pending sig —
 -- mirroring `extractFunctions-go`. Sig-less + schema-shaped body
 -- (D072): keep bare (it routes to PolyFunInfo).
-pdn-go (DFunDef name alloc body ∷ rest) (just _) = pdn-go rest nothing
-pdn-go (DFunDef name alloc body ∷ rest) nothing with siglessSchema body
+pdn-go (DFunDef name body ∷ rest) (just _) = pdn-go rest nothing
+pdn-go (DFunDef name body ∷ rest) nothing with siglessSchema body
 ... | just _  = name ∷ pdn-go rest nothing
 ... | nothing = pdn-go rest nothing
 -- A DSignature resets the pending (mirror of `extractFunctions-go`).
@@ -339,7 +339,7 @@ cls-reflect bound um am (RAna _ _) ()
 -- set is `polys` — the own-module polymorphic-def names — so bare references to
 -- them are KEPT as `RVar` (taking `t-var-poly-instantiate`), never canonicalized.
 canonDecl : List String → UnaliasedMap → AliasMap → Decl → Decl
-canonDecl polys um am (DFunDef name alloc body) = DFunDef name alloc (canonExpr polys um am body)
+canonDecl polys um am (DFunDef name body) = DFunDef name (canonExpr polys um am body)
 canonDecl polys um am d                         = d
 
 ------------------------------------------------------------------------

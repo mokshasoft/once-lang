@@ -208,7 +208,7 @@ rawFloatLits (RInt _)            = []
 rawFloatLits (RStringLit _)      = []
 
 declFloatLits : Decl → List (ℕ × ℕ × ℕ × ℕ)
-declFloatLits (DFunDef _ _ body)   = rawFloatLits body
+declFloatLits (DFunDef _ body)   = rawFloatLits body
 declFloatLits (DTypeSig _ _)       = []
 declFloatLits (DSignature _ _ _ _) = []
 declFloatLits (DTypeAlias _ _ _)   = []

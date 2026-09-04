@@ -202,7 +202,7 @@ extractAliases (mkModule ds) = go ds
   go (_ ∷ rest) = go rest
 
 -- | Extract function definitions with their types (paired sig + def)
--- Returns: List (name, type, maybe alloc, body)
+-- Returns: List (name, type, body)
 -- Processes declarations in order, matching type sigs with subsequent defs.
 record FunInfo : Set where
   constructor mkFunInfo
@@ -214,7 +214,6 @@ record FunInfo : Set where
     -- always carry `just`. (Was `Type`; the `nothing` case was previously
     -- DROPPED in `extractFunctions`, contradicting D007.)
     funType  : Maybe Type
-    funAlloc : Maybe AllocStrategy
     funBody  : RawExpr
     -- | Plan 0.11: `true` for signatures (external declarations
     -- whose implementations live in `Strata/Interpretations/<…>.<arch>`
@@ -236,7 +235,6 @@ record PolyFunInfo : Set where
   field
     pfunName  : String
     pfunType  : PolyType
-    pfunAlloc : Maybe AllocStrategy
     pfunBody  : RawExpr
 
 -- | Project a parsed `PolyType` signature to a ground `Type`. Used
@@ -294,12 +292,12 @@ extractFunctions-go aliases (DTypeSig name ty ∷ rest) _ with isGround ty
 ...   | just _  = extractFunctions-go aliases rest (just (name , inj₁ (expandAliases aliases (extractGround ty g))))
 ...   | nothing = extractFunctions-go aliases rest (just (name , inj₂ ty))
 -- DFunDef with matching ground sig → FunInfo (user-defined; not primitive)
-extractFunctions-go aliases (DFunDef name alloc body ∷ rest) (just (sigName , inj₁ gty)) with sigName ≟ name
-... | yes _ = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) alloc body false)
+extractFunctions-go aliases (DFunDef name body ∷ rest) (just (sigName , inj₁ gty)) with sigName ≟ name
+... | yes _ = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) body false)
 ... | no  _ = extractFunctions-go aliases rest nothing
 -- DFunDef with matching polymorphic sig → PolyFunInfo
-extractFunctions-go aliases (DFunDef name alloc body ∷ rest) (just (sigName , inj₂ pty)) with sigName ≟ name
-... | yes _ = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) (mkPolyFunInfo name pty alloc body)
+extractFunctions-go aliases (DFunDef name body ∷ rest) (just (sigName , inj₂ pty)) with sigName ≟ name
+... | yes _ = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) (mkPolyFunInfo name pty body)
 ... | no  _ = extractFunctions-go aliases rest nothing
 -- D007: NO explicit signature → KEEP the definition (was dropped).
 -- D072 M3: if the body's principal type is a SCHEMA (`siglessSchema`),
@@ -311,10 +309,10 @@ extractFunctions-go aliases (DFunDef name alloc body ∷ rest) (just (sigName , 
 -- compilation — inferElab, or the oracle's ground answers via
 -- inferType, D072 M2). `polyDefNames` (Resolve) uses the SAME
 -- criterion, so the keep-bare set agrees.
-extractFunctions-go aliases (DFunDef name alloc body ∷ rest) nothing
+extractFunctions-go aliases (DFunDef name body ∷ rest) nothing
   with siglessSchema body
-... | just pty = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) (mkPolyFunInfo name pty alloc body)
-... | nothing  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name nothing alloc body false)
+... | just pty = extractFunctions-consPoly (extractFunctions-go aliases rest nothing) (mkPolyFunInfo name pty body)
+... | nothing  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name nothing body false)
 -- Primitives: use RVar as placeholder body (actual impl is external).
 -- Owned primitives (from resolved imports) get qualified names
 -- `alias.name` — same textual form that the typechecker's
@@ -324,12 +322,12 @@ extractFunctions-go aliases (DFunDef name alloc body ∷ rest) nothing
 -- `projectSig`.
 extractFunctions-go aliases (DSignature name nothing ty _ ∷ rest) _ with projectSig aliases name ty
 ... | inj₁ err  = inj₁ err
-... | inj₂ gty  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) nothing (RVar name) true)
+... | inj₂ gty  = extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo name (just gty) (RVar name) true)
 extractFunctions-go aliases (DSignature name (just owner) ty _ ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
 ... | inj₁ err  = inj₁ err
 ... | inj₂ gty  =
          let qname = owner ++ "." ++ name
-         in extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo qname (just gty) nothing (RVar qname) true)
+         in extractFunctions-consFun (extractFunctions-go aliases rest nothing) (mkFunInfo qname (just gty) (RVar qname) true)
 extractFunctions-go aliases (_ ∷ rest) pending = extractFunctions-go aliases rest pending
 
 -- Plan 0.50 (clash-freedom): REJECT duplicate top-level definition names. Two

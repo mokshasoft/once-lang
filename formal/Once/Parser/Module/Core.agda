@@ -40,8 +40,11 @@ open import Once.Parser.ExprRelation using (ParsesExpr-shrinks) public
 -- Module Types
 ------------------------------------------------------------------------
 
-data AllocStrategy : Set where
-  Stack Heap Pool Arena Const : AllocStrategy
+-- D142: `AllocStrategy` (@stack/@heap/@pool/@arena/@const) is REMOVED from the
+-- surface language. Allocation is mechanical — IR inputs/outputs are stack or
+-- register-resident, bounded internals go to frontier scratch, unbounded
+-- internals to the heap and are freed by the IR itself. Nothing in the source
+-- picks. Supersedes D012/D013/D014; see plan 0.86.
 
 record Import : Set where
   constructor mkImport
@@ -55,7 +58,7 @@ data Decl : Set where
   -- survive parsing. Ground `Type` is recovered at `extractFunctions`
   -- via `isGround`/`extractGround`. Plan 0.6 Phase B.
   DTypeSig   : String → PolyType → Decl
-  DFunDef    : String → Maybe AllocStrategy → RawExpr → Decl
+  DFunDef    : String → RawExpr → Decl
   -- | `DSignature name owner ty eff`
   -- `owner = nothing`  : source-level primitive (user-written).
   -- `owner = just A`   : primitive inlined by import resolution,

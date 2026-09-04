@@ -22,10 +22,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Parser.Token
-open import Once.Parser.Module.Core using (AllocStrategy; Decl; DFunDef; wordHead)
+open import Once.Parser.Module.Core using (Decl; DFunDef; wordHead)
 open import Once.Parser.Module.FunDef.Params using (skEq; skWord; skStop; sepClass; wrapLams)
 open import Once.Parser.Module.FunDef.Body using (eqHead; drop1)
-open import Once.Parser.Module.Alloc using (allocStrat; drop2)
 open import Once.Parser.ExprRelation using (ParsesExpr)
 
 ------------------------------------------------------------------------
@@ -45,26 +44,17 @@ data ParsesParams : List Token → List String → List Token → Set where
 -- The body, `= expr`, with the parameters wrapped back into lambdas.
 ------------------------------------------------------------------------
 
-data ParsesFunBody (name : String) (alloc : Maybe AllocStrategy) (params : List String)
+data ParsesFunBody (name : String) (params : List String)
                    : List Token → Decl → List Token → Set where
   pfb-mk : ∀ {toks body rest'} → eqHead toks ≡ true → ParsesExpr (drop1 toks) body rest' →
-           ParsesFunBody name alloc params toks (DFunDef name alloc (wrapLams params body)) rest'
+           ParsesFunBody name params toks (DFunDef name (wrapLams params body)) rest'
 
 ------------------------------------------------------------------------
--- Allocation annotation (`@stack` …); `none` leaves the input unchanged.
-------------------------------------------------------------------------
-
-data ParsesAlloc : List Token → Maybe AllocStrategy → List Token → Set where
-  pa-some : ∀ {toks strat} → allocStrat toks ≡ just strat →
-            ParsesAlloc toks (just strat) (drop2 toks)
-  pa-none : ∀ {toks} → allocStrat toks ≡ nothing → ParsesAlloc toks nothing toks
-
-------------------------------------------------------------------------
--- Function definition = alloc then params then body.
+-- Function definition = params then body. (D142: no alloc stage.)
 ------------------------------------------------------------------------
 
 data ParsesFunDef (name : String) : List Token → Decl → List Token → Set where
-  pfd-mk : ∀ {toks alloc toks' params toks'' d rest} →
-           ParsesAlloc toks alloc toks' → ParsesParams toks' params toks'' →
-           ParsesFunBody name alloc params toks'' d rest →
+  pfd-mk : ∀ {toks params toks'' d rest} →
+           ParsesParams toks params toks'' →
+           ParsesFunBody name params toks'' d rest →
            ParsesFunDef name toks d rest

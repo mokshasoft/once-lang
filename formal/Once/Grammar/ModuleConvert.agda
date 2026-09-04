@@ -64,16 +64,7 @@ gtypeToPolyFunctor (G.GFSum f g)  = gtypeToPolyFunctor f P⊕ gtypeToPolyFunctor
 gtypeToPolyFunctor (G.GFProd f g) = gtypeToPolyFunctor f P⊗ gtypeToPolyFunctor g
 
 ------------------------------------------------------------------------
--- AllocStrategy: the two enums have identical constructors in
--- different modules; map by name.
-------------------------------------------------------------------------
-
-gAllocToAlloc : G.AllocStrategy → P.AllocStrategy
-gAllocToAlloc G.Stack = P.Stack
-gAllocToAlloc G.Arena = P.Arena
-gAllocToAlloc G.Pool  = P.Pool
-gAllocToAlloc G.Heap  = P.Heap
-gAllocToAlloc G.Const = P.Const
+-- D142: `gAllocToAlloc` deleted with `AllocStrategy`.
 
 ------------------------------------------------------------------------
 -- Fold a function's parameter list into nested lambdas, so the body
@@ -100,8 +91,8 @@ gdeclToDecl (G.DImport path alias) = just (P.DImport (mkImport path alias))
 gdeclToDecl (G.DTypeAlias name params ty) with gtypeToType ty
 ... | just t  = just (P.DTypeAlias name params t)
 ... | nothing = nothing
-gdeclToDecl (G.DFunDef name params alloc body) with concrete? (wrapParams params body)
-... | just c  = just (P.DFunDef name (mapMaybe gAllocToAlloc alloc) (gexprToRaw c))
+gdeclToDecl (G.DFunDef name params body) with concrete? (wrapParams params body)
+... | just c  = just (P.DFunDef name (gexprToRaw c))
 ... | nothing = nothing
 
 ------------------------------------------------------------------------

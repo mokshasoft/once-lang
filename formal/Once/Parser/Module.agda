@@ -19,7 +19,6 @@ module Once.Parser.Module where
 
 open import Once.Parser.Module.Core public
 open import Once.Parser.Module.Import public
-open import Once.Parser.Module.Alloc public
 open import Once.Parser.Module.OpName public
 open import Once.Parser.Module.FunDef public
 open import Once.Parser.Module.DeclTail public

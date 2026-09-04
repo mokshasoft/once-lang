@@ -144,8 +144,8 @@ data GExpr : Set where
 -- Allocation Strategy
 ------------------------------------------------------------------------
 
-data AllocStrategy : Set where
-  Stack Arena Pool Heap Const : AllocStrategy
+-- D142: `AllocStrategy` is REMOVED — allocation is mechanical, nothing in the
+-- source picks where a value lives. Supersedes D012/D013/D014; plan 0.86.
 
 ------------------------------------------------------------------------
 -- Declarations
@@ -160,11 +160,11 @@ data GDecl : Set where
   -- Type signature: name : Type
   DTypeSig   : LowerIdent → GType → GDecl
 
-  -- Function definition: name params @alloc = expr
+  -- Function definition: name params = expr
   -- Allocation annotation comes after parameters, before '='
   -- Example: foo x y @stack = x + y
   -- Note: Must follow a DTypeSig with matching name
-  DFunDef    : LowerIdent → List LowerIdent → Maybe AllocStrategy → GExpr → GDecl
+  DFunDef    : LowerIdent → List LowerIdent → GExpr → GDecl
 
   -- Primitive: primitive name : Type
   DSignature : LowerIdent → GType → GDecl
@@ -203,8 +203,8 @@ record GModule : Set where
 
 -- | Predicate: declaration pairs a type sig with its definition
 data ValidDeclPair : GDecl → GDecl → Set where
-  validPair : ∀ {name ty params alloc body}
-            → ValidDeclPair (DTypeSig name ty) (DFunDef name params alloc body)
+  validPair : ∀ {name ty params body}
+            → ValidDeclPair (DTypeSig name ty) (DFunDef name params body)
 
 -- | Predicate: a type is valid for main
 data ValidMainType : GType → Set where

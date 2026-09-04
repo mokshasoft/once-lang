@@ -12,7 +12,6 @@ module Once.Parser.Module.FunDef.Body where
 
 open import Data.Bool using (Bool; true; false)
 open import Once.Parser.Module.Core
-open import Once.Parser.Module.Alloc
 open import Once.Parser.Module.FunDef.Params
 
 -- | Bounded parse of function body after `=`: consumes `=` plus a non-empty
@@ -31,23 +30,23 @@ drop1-≤ : (xs : List Token) → length (drop1 xs) ≤ length xs
 drop1-≤ []       = ≤-refl
 drop1-≤ (_ ∷ xs) = m≤n⇒m≤1+n ≤-refl
 
-parseFunBodyB : String → Maybe AllocStrategy → List String →
+parseFunBodyB : String → List String →
                 (toks : List Token) → ParseAtB {Decl} toks
-pfb-eq : (name : String) (alloc : Maybe AllocStrategy) (params : List String)
+pfb-eq : (name : String) (params : List String)
          (toks : List Token) → Bool → ParseAtB {Decl} toks
-pfb-body : (name : String) (alloc : Maybe AllocStrategy) (params : List String)
+pfb-body : (name : String) (params : List String)
            (toks : List Token) → ParseAtB {RawExpr} (drop1 toks) → ParseAtB {Decl} toks
 
-parseFunBodyB name alloc params toks = pfb-eq name alloc params toks (eqHead toks)
+parseFunBodyB name params toks = pfb-eq name params toks (eqHead toks)
 
-pfb-eq name alloc params toks true  = pfb-body name alloc params toks (parseExprB (drop1 toks))
-pfb-eq name alloc params toks false = nothing
+pfb-eq name params toks true  = pfb-body name params toks (parseExprB (drop1 toks))
+pfb-eq name params toks false = nothing
 
-pfb-body name alloc params toks (just (body , rest' , bnd)) =
-  just (DFunDef name alloc (wrapLams params body) , rest' , <-≤-trans bnd (drop1-≤ toks))
-pfb-body name alloc params toks nothing = nothing
+pfb-body name params toks (just (body , rest' , bnd)) =
+  just (DFunDef name (wrapLams params body) , rest' , <-≤-trans bnd (drop1-≤ toks))
+pfb-body name params toks nothing = nothing
 
-parseFunBody : String → Maybe AllocStrategy → List String → Parser Decl
-parseFunBody name alloc params toks with parseFunBodyB name alloc params toks
+parseFunBody : String → List String → Parser Decl
+parseFunBody name params toks with parseFunBodyB name params toks
 ... | just (d , rest , _) = just (d , rest)
 ... | nothing = nothing
