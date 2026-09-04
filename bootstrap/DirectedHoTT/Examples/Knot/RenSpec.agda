@@ -29,7 +29,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; β; single; wk-single )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ; ⟶*-castₗ )
-open import DirectedHoTT.Lib.Wk using ( sub-w³-single; sub-w²-single; towerP )
+open import DirectedHoTT.Lib.Wk using ( sub-w³-single; sub-w²-single; towerP ; towerA )
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans )
 open import DirectedHoTT.Examples.Knot.RenTm
   using ( vsRenK )
@@ -39,7 +39,8 @@ open import DirectedHoTT.Examples.Knot.RenMot
   using ( extRK; extRNK; extRMethsK; constMethR; extRVs )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-varK; Tm-nsucK )
-open import DirectedHoTT.Examples.Knot.Nrs using ( nrsK; nrsMeths )
+open import DirectedHoTT.Examples.Knot.Nrs using ( nrsK; nrsMeths; nrsVz; nrsVs; nrsSubK )
+open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-nsucK )
 open import DirectedHoTT.Lib.ArithComm using ( symN )
 open import DirectedHoTT.Spec.Syntax using ( fst; snd; jsub; ⌜IMu⌝; ilookupD; extS )
 open import DirectedHoTT.Examples.Knot.Sorts using ( IPair )
@@ -48,9 +49,9 @@ open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz; tagVar-vs )
 open import DirectedHoTT.Examples.Knot.Sorts using ( sVar )
 open import DirectedHoTT.Spec.Syntax
   using ( icon; idrefl; ⌜Nat⌝; unit; iihs; isingle; ielim )
-open import DirectedHoTT.Spec.Typing using ( ι-ielim; βfst; jsub-refl; ξ-jsubᵖ )
+open import DirectedHoTT.Spec.Typing using ( ι-ielim; βfst; βsnd; jsub-refl; ξ-jsubᵖ )
 open import DirectedHoTT.Metatheory.RedCong
-  using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-jsubᵖ )
+  using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-jsubᵖ ; ⟶*-idreflᵃ; ⟶*-nsuc )
 open import DirectedHoTT.Lib.IMeths
   using ( methsFrom-sel; methsFrom-past; cdTake; inCD; tt
         ; sel-here; sel-there; sel-here≡; sel-there≡ )
@@ -363,36 +364,189 @@ singleK-vs n u m x =
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- ⬜ `nrs` — EIGHT ATTEMPTS.  PARKED BY THE LOG'S OWN RULE.
+-- ✅ `nrs` — CLOSED 2026-09-04, after being parked at EIGHT attempts.
 --
--- ★★★ THE LOG WAS RIGHT AND PRODUCED TWO REAL FIXES, both committed and
---   both needed by step 3 at 53 rows:
+-- ★★★ THE LOG'S RULE WAS RIGHT TWICE OVER.  It said eight attempts
+--   converging on one mismatch means the MODEL is wrong, not the step,
+--   and that the next move was not another attempt but to come back from
+--   `Lib/ISubRed`.  Half 2 landed; this then took FOUR attempts, and the
+--   thing that was wrong was not any of the eight guesses.
 --
---     Lib/IMeths.sel-here≡ / sel-there≡   the pair equality as a PARAMETER
---     Lib/Wk.towerP                       towerA's sibling at de Bruijn 1
+-- ⚠⚠ WHAT WAS ACTUALLY WRONG: `Var-vsK`'s DEPTH OCCURS TWICE — the head
+--   slot and the second ford (`idrefl ⌜Nat⌝ (nsuc m)`).  `⟶*` reduces one
+--   redex at a time, so moving the depth costs TWO descents and the term
+--   BETWEEN them is not of the form `Var-vsK _ _`.  No cast and no tower
+--   can express that; it needed a congruence that does not exist as a
+--   one-liner (`inVsD`/`inVzD` below).
 --
---   `sel-here`/`sel-there` demanded a LITERAL pair; a method's payload
---   arrives as a substitution chain that collapses only propositionally.
---   That interface defect is real, is fixed, and would have bitten every
---   row of `sub-agree`.
+-- ★ AND THE TWO CORRECTIONS THE PARKED ROW BOUGHT ARE BOTH USED:
+--   `sel-here≡`/`sel-there≡` at every projection, `Lib/Wk.towerP` at both
+--   payload slots.  They were right; only the congruence was missing.
 --
--- ⚠⚠ AND `extR`/`single` NEVER EXPOSED IT — their collapse happened to be
---   DEFINITIONAL.  The wrong interface survived two customers before
---   biting, which is exactly how `wkK` survived two years of use.  ⇒ the
---   session's own thesis, reproduced in miniature by its own tooling.
---
--- ⬜ WHAT IS STILL WRONG IS NOT KNOWN.  Attempts 1–3 cast at the RESULT
---   (wrong per the log); 4–5 fixed the interface; 6–8 stated `pay≡` at
---   the printed context and inlined the pair so `sel-here≡` could
---   decompose it.  All eight converge on the SAME mismatch at the final
---   projection, which by the log's own standard ("try another cast could
---   not have converged") means the model is wrong, not the cast.
---
--- ⇒ NEXT MOVE IS NOT ANOTHER ATTEMPT.  `Lib/ISubRed` exercises the same
---   two interfaces at 53 rows; a defect visible in one isolated row is
---   far easier to place with fifty more instances beside it.  Come back
---   to `nrs` from there.
---
--- ★ The other five laws — `vsRenK`, `extR` ×2, `single` ×2 — are
---   COMPLETE above, and they are what step 3's `Represents` needs.
+-- ⚠ `extR`/`single` never exposed it because their laws do not CHANGE the
+--   depth, so the second occurrence never had to move — the same way
+--   `wkK` survived two customers.  See the block below.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★★ `nrs` — CLOSED.  Parked at EIGHT attempts (`SUBTM-ATTEMPTS.md`
+-- step 7) under that log's own rule: eight attempts converging on one
+-- mismatch means the model is wrong, not the step.  The note said to come
+-- back from `Lib/ISubRed`; half 2 exists, and the answer took four.
+--
+-- ★★★ AND THE MODEL **WAS** WRONG, IN A WAY THAT IS AN INTERFACE FACT:
+--
+--     Var-vsK m x = icon tagVar-vs
+--       (pair m (pair x (pair (idrefl ⌜Nat⌝ sVar)
+--                             (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))))
+--
+--   THE DEPTH OCCURS TWICE — the head slot AND the second ford.  `⟶*`
+--   reduces one redex at a time, so changing the depth costs TWO
+--   descents, and the term BETWEEN them is not of the form `Var-vsK _ _`
+--   at all.  Every earlier attempt reached for a stronger cast or a
+--   deeper tower; none of those can help, because the obstruction is
+--   that one congruence cannot express the step.  ⇒ `inVsD`/`inVzD`.
+--
+-- ⚠ AND `extR`/`single` NEVER EXPOSED IT: their laws do not change the
+--   depth, so the second occurrence never had to move.  The same shape
+--   as `wkK` — an interface wrong for two customers before it bites.
+--
+-- ★ WHAT THE PARKED ROW ALREADY BOUGHT IS WHAT CLOSED IT.  `sel-here≡` /
+--   `sel-there≡` (the pair equality as a PARAMETER) and `Lib/Wk.towerP`
+--   (de Bruijn 1) are used at every projection below.  The two interface
+--   corrections were right; only the missing congruence was missing.
+--
+-- ⚠ AND THE `_`s HAD TO GO.  `towerA`/`towerP` at `_ _` leaves the metas
+--   blocked on the payload and nothing downstream solves — half 2's four
+--   rounds of `UnsolvedConstraints`, again.  `P` and `IH` are named.
+------------------------------------------------------------------------
+
+-- ★★★ AND INSIDE `Var-vsK`'s FIRST ARGUMENT — WHICH OCCURS **TWICE**.
+--
+--     Var-vsK m x = icon tagVar-vs
+--       (pair m (pair x (pair (idrefl ⌜Nat⌝ sVar)
+--                             (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))))
+--
+-- ⚠⚠ The depth is the head slot AND it is inside the second FORD.  A
+--   single congruence cannot reduce both — `⟶*` steps one redex at a
+--   time — so reducing the depth costs TWO descents, and the
+--   intermediate term is not of the form `Var-vsK _ _` at all.
+--   ⇒ this is an INTERFACE fact about `Var-vsK`, not a proof difficulty,
+--     and it is the shape `SUBTM-ATTEMPTS.md` step 7 kept hitting.
+inVsD : {Γ : Cx} {a a' b : RTm Γ} → a ⟶* a' → Var-vsK a b ⟶* Var-vsK a' b
+inVsD r =
+  ⟶*-icon (⟶*-pairˡ r) »
+  ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ (⟶*-idreflᵃ (⟶*-nsuc r))))))
+
+-- ★ and inside its SECOND (the variable).
+inVsX : {Γ : Cx} {a b b' : RTm Γ} → b ⟶* b' → Var-vsK a b ⟶* Var-vsK a b'
+inVsX r = ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ r))
+
+nrsSK-vs : {Γ : Cx} (i m x : RTm Γ) →
+           nrsK i (Var-vsK m x) ⟶*
+             app (app (app nrsVs i)
+                      (pair m (pair x (pair (idrefl ⌜Nat⌝ sVar)
+                                            (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))))
+                 (iihs KnotD nrsMeths (isingle i) cVar-vs
+                       (pair m (pair x (pair (idrefl ⌜Nat⌝ sVar)
+                                             (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))))
+nrsSK-vs i m x =
+  step (ι-ielim KnotD i nrsMeths tagVar-vs _)
+       (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ
+         (methsFrom-past (cdTake 51 KnotD) (suc zero) »
+          sel-there 0 _ _ (sel-here _ _)))))
+
+------------------------------------------------------------------------
+-- STEP 2 — the LAW.  ⚠ `nrsSubK` has NO passenger, so unlike `singleK`
+-- there is no outer `app` to peel: after the wrapper's β the term IS
+-- `nrsK i' (Var-vsK m x)`, and `i'` is `pair sVar (subTm (single _) (w d))`,
+-- which `wk-single` collapses.  Three lams ⇒ βs peel 2·1·0.
+------------------------------------------------------------------------
+
+nrsK-vs : {Γ : Cx} (d m x : RTm Γ) →
+          app (nrsSubK d) (Var-vsK m x) ⟶* Tm-varK (Var-vsK d (Var-vsK m x))
+nrsK-vs {Γ} d m x =
+  step (β _ _)
+    (⟶*-castₗ (cong (λ z → nrsK (pair sVar z) (Var-vsK m x))
+                    (wk-single {v = Var-vsK m x} d))
+      (nrsSK-vs _ _ _ »
+       ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+       ⟶*-appˡ (step (β _ _) done) »
+       step (β _ _) done »
+       -- ★ the DEPTH: `snd i` through a 3-tower at de Bruijn 2 — that is
+       --   `towerA` — then one `βsnd`.  An EQUALITY then a REDUCTION.
+       inVar (inVsD (⟶*-castₗ (cong snd (towerA IH P (pair sVar d)))
+                              (step (βsnd _ _) done))) »
+       -- ★ the PATH: `symN a p = jsub _ p _`, so the projection chain sits
+       --   under TWO `jsub`s — the outer one and `symN`'s own.
+       inVar (inVsX (⟶*-jsubᵖ (⟶*-jsubᵖ
+         (sel-there≡ 2 (towerP IH P)
+           (sel-there≡ 1 refl (sel-there≡ 0 refl (sel-here≡ refl))))))) »
+       -- ★ both fords are `idrefl`, so both `jsub`s fire.
+       inVar (inVsX (⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done))) »
+       inVar (inVsX (step (jsub-refl _ _ _ _) done)) »
+       -- ★ and the two PAYLOAD slots.  ⚠ de Bruijn 1 through a 3-tower:
+       --   the innermost substitution leaves `var (vs vz)` alone, so what
+       --   remains is exactly `Lib/Wk.towerP`'s 2-tower.
+       inVar (inVsX (inVsD (sel-here≡ (towerP IH P)))) »
+       inVar (inVsX (inVsX (sel-there≡ 0 (towerP IH P) (sel-here≡ refl))))))
+  where
+    -- ⚠⚠ PINNED, NOT `_`.  Half 2 cost four rounds of
+    --   `UnsolvedConstraints` learning this: on a substitution tower the
+    --   metas block on the payload and nothing downstream solves.
+    P : RTm Γ
+    P = pair m (pair x (pair (idrefl ⌜Nat⌝ sVar)
+                             (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))
+    IH : RTm Γ
+    IH = iihs KnotD nrsMeths (isingle (pair sVar d)) cVar-vs P
+
+------------------------------------------------------------------------
+-- ★ THE `vz` CASE.  Row 51 is the HEAD of `nrsTail`, so one `sel-here`.
+--
+-- ⚠ `Var-vzK`'s depth occurs TWICE as well (head slot and second ford),
+--   so `inVzD` owes the same two descents `inVsD` does.
+------------------------------------------------------------------------
+
+inNsuc : {Γ : Cx} {a a' : RTm Γ} → a ⟶* a' → Tm-nsucK a ⟶* Tm-nsucK a'
+inNsuc r = ⟶*-icon (⟶*-pairˡ r)
+
+inVzD : {Γ : Cx} {a a' : RTm Γ} → a ⟶* a' → Var-vzK a ⟶* Var-vzK a'
+inVzD r =
+  ⟶*-icon (⟶*-pairˡ r) »
+  ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ (⟶*-idreflᵃ (⟶*-nsuc r)))))
+
+nrsSK-vz : {Γ : Cx} (i m : RTm Γ) →
+           nrsK i (Var-vzK m) ⟶*
+             app (app (app nrsVz i)
+                      (pair m (pair (idrefl ⌜Nat⌝ sVar)
+                                    (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))))
+                 (iihs KnotD nrsMeths (isingle i) cVar-vz
+                       (pair m (pair (idrefl ⌜Nat⌝ sVar)
+                                     (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))))
+nrsSK-vz i m =
+  step (ι-ielim KnotD i nrsMeths tagVar-vz _)
+       (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ
+         (methsFrom-past (cdTake 51 KnotD) zero » sel-here≡ refl))))
+
+nrsK-vz : {Γ : Cx} (d m : RTm Γ) →
+          app (nrsSubK d) (Var-vzK m) ⟶* Tm-nsucK (Tm-varK (Var-vsK d (Var-vzK m)))
+nrsK-vz {Γ} d m =
+  step (β _ _)
+    (⟶*-castₗ (cong (λ z → nrsK (pair sVar z) (Var-vzK m))
+                    (wk-single {v = Var-vzK m} d))
+      (nrsSK-vz _ _ »
+       ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+       ⟶*-appˡ (step (β _ _) done) »
+       step (β _ _) done »
+       inNsuc (inVar (inVsD (⟶*-castₗ (cong snd (towerA IH P (pair sVar d)))
+                                      (step (βsnd _ _) done)))) »
+       inNsuc (inVar (inVsX (⟶*-jsubᵖ (⟶*-jsubᵖ
+         (sel-there≡ 1 (towerP IH P) (sel-there≡ 0 refl (sel-here≡ refl))))))) »
+       inNsuc (inVar (inVsX (⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done)))) »
+       inNsuc (inVar (inVsX (step (jsub-refl _ _ _ _) done))) »
+       inNsuc (inVar (inVsX (inVzD (sel-here≡ (towerP IH P)))))))
+  where
+    P : RTm Γ
+    P = pair m (pair (idrefl ⌜Nat⌝ sVar) (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))
+    IH : RTm Γ
+    IH = iihs KnotD nrsMeths (isingle (pair sVar d)) cVar-vz P
