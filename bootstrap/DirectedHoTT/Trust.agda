@@ -207,6 +207,7 @@ import DirectedHoTT.Examples.Knot.RedWfB
 import DirectedHoTT.Examples.Knot.Single
 import DirectedHoTT.Examples.Knot.Sorts
 import DirectedHoTT.Examples.Knot.Stk
+import DirectedHoTT.Examples.Knot.SubAgree
 import DirectedHoTT.Examples.Knot.SubApp
 import DirectedHoTT.Examples.Knot.SubMot
 import DirectedHoTT.Examples.Knot.Sz
