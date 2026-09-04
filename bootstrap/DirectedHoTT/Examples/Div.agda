@@ -38,10 +38,10 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
         ; _⊢ty_; ty-El; ty-Nat; ty-Π; ty-Hom
         ; ⊢lam; ⊢app; nrs; wk-single )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-natrecⁿ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-natrecⁿ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Strong
   using ( El-homNat; natAsEl; ⊢le-refl; ⊢le-suc; reflTm )
 

@@ -60,7 +60,7 @@ open import DirectedHoTT.Spec.Typing
         ; ICodeWf; icw-clo; icw-ford; icw-imu
         ; IDescWf; idwf-nil; idwf-cons
         ; _≅ᵀ_; csymᵀ; credᵀ; El-⌜Id⌝; El-⌜IMu⌝ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ⊢wk )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; ⊢sTy; toI; fromI; ⊢ixP; num; ⊢num )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )

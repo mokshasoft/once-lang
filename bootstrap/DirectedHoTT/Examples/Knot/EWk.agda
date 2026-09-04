@@ -40,7 +40,7 @@ open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Tm-nzeroKv )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subAtK; ⊢subAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( sortMap )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 
 ------------------------------------------------------------------------
 -- ★ THE EMPTY SUBSTITUTION.  ⚠ Its BODY is junk on purpose: the domain

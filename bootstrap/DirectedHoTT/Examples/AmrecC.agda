@@ -47,7 +47,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )
 -- ★ REUSE: the naturality kit built for lexrec is not lexrec-specific.

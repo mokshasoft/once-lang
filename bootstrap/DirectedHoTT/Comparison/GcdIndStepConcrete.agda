@@ -43,7 +43,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nsuc; ⊢fst; ⊢snd; ⊢app; ⊢natrec
         ; ⊢conv; _≅ᵀ_; csymᵀ; ty-Π; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢ )
 open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; cong₃; cong₄; sub-w-single )
 open import DirectedHoTT.Lib.Pair using ( PairT )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )

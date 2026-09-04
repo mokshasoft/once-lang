@@ -63,7 +63,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢pair; ⊢fst; ⊢snd; ⊢unit; ⊢⌜Nat⌝; ⊢icon; ⊢ielim
         ; imethTy; imethsTy
         ; _⊢ty_; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ; ty-Unit; ty-IMu )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )
 open import DirectedHoTT.Examples.Scoped
   using ( INat; TmD; TmWf; Tm; size; ⊢size; toI; fromI

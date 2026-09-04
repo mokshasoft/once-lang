@@ -37,10 +37,10 @@ open import DirectedHoTT.Spec.Typing
         ; βfst; βsnd
         ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝
         ; ⊢conv; _≅ᵀ_; csymᵀ; _⟶*_; step; done; wk-single; natrec-suc; ⊢pair; ctrnᵀ )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El; doneᵀ )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; Ren⊢; ⊢[] )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; Ren⊢; ⊢[] )
 open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; ren-w; cong₃; cong₄; pw1; sub-w-single )
 open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asN )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )

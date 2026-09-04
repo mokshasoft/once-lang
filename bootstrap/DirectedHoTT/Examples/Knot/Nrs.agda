@@ -54,7 +54,7 @@ open import DirectedHoTT.Spec.Syntax using ( ⌜IMu⌝; jsub )
 open import DirectedHoTT.Spec.Typing using ( ⊢jsub; ⊢⌜IMu⌝; ⊢fst )
 open import DirectedHoTT.Examples.Knot.Sorts using ( sVar; ⊢sVar )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Spec.Typing using ( wk-single )
 open import normalizer.Syntax.Types using ( cong )
 

@@ -24,7 +24,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; El; Nat; nzero; nsuc )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; csymᵀ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ )
 open import DirectedHoTT.Lib.Monus using ( monusTm )
 open import DirectedHoTT.Lib.ArithComm using ( IdN )
 open import DirectedHoTT.Lib.Amrec using ( Prv; prv; prvOk )

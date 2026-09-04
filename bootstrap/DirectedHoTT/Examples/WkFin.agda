@@ -58,7 +58,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶*_; done; step; β; βfst; ξ-appˡ; ι-ielim
         ; jsub-refl; ξ-jsubᵖ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ; El-⌜Id⌝; El-⌜IMu⌝; ⊢jsub )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; isingle-Sub⊢; iihTy-wf )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; reflN )

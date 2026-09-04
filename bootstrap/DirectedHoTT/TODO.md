@@ -165,3 +165,47 @@ lies outside X.
 those clauses are being pruned for another reason — but the method is
 now known to work, which it was not before.
 
+
+## ⬜ SPLIT `Trust.agda` INTO SEVERAL ROOTS — sized 2026-09-04, not urgent
+
+`Trust.agda` imports all 235 modules and type-checks nothing, so its
+entire cost is loading every interface at once. It is the ONE module that
+can never benefit from the interface-size work of `PERF.md` §6 — it
+exists to load everything — and its peak memory grows monotonically with
+the development. It was KILLED(143) at `-A64m` AND `-A64m -c` in the
+2026-09-04 sweep, then passed at `-A8m -c` in **20s**.
+
+★★★ AND SPLITTING COSTS NOTHING IN GUARANTEE. `check-trust.sh`'s own
+header records why: `--safe` BANS `postulate` and `--safe` PROPAGATES
+through imports (`CoInfectiveImport`). That propagation is **edge-local,
+not root-local** — it happens on every import edge regardless of where the
+walk starts. So N roots enforce exactly what one root does, provided every
+module is reachable from SOME root; and "does the root set reach every
+file?" is the coverage question `gen-trust.sh` already answers by diffing
+the list. ⇒ this is a partition, not a weakening.
+
+Sized, by directory, coverage verified complete (uncovered: NONE):
+
+| root | roots | closure it must load |
+| --- | --- | --- |
+| single `Trust` (today) | 235 | **235** |
+| `Trust/Kernel` (Spec+Metatheory+Algorithm) | 17 | 17 |
+| `Trust/Lib` | 40 | 56 |
+| `Trust/Knot` | 112 | **149** |
+| `Trust/Examples` | 62 | 112 |
+| `Trust/Comparison` | 4 | 42 |
+
+⇒ worst single check 235 → 149. Splitting `Knot` further has a floor near
+**89** — that is `JudgeWfAA`'s own closure, which it already survives — so
+the realistic best is ~2.4× on peak, not more.
+
+⚠ THERE MUST BE NO SINGLE ROOT IMPORTING THE FIVE. A `Trust.agda` that
+imports them all has the same closure as today and buys nothing.
+
+⚠ Requires updating `gen-trust.sh` (emit N lists), `check-trust.sh` (diff
+against the union) and `sweep.sh` (build all roots). Do it as its OWN
+commit — this is the safety-critical artifact.
+
+⇒ NOT URGENT: `sweep.sh`'s ladder now has a third rung (`-A8m -c`) and
+`Trust` passes in 20s. Do this when it stops passing, or when a reviewer
+would rather read five short lists than one long one.

@@ -28,8 +28,8 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢fst; ⊢snd; ⊢nzero; ⊢nsuc
         ; ⊢lam; ⊢app; ty-Hom; ty-Nat; ty-Π; ty-El; ⊢⌜Nat⌝
         ; ⊢conv; _≅ᵀ_; csymᵀ; natrec-zero; _⟶*_; step; done; β; ξ-appˡ; wk-single )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
 open import DirectedHoTT.Lib.Wk using ( w; sub-w; ren-w; sub-w-single )
 open import DirectedHoTT.Lib.Pair using ( PairT; asN; asP )
 open import DirectedHoTT.Lib.DvdArith
@@ -44,7 +44,7 @@ open import DirectedHoTT.Lib.MonusLe using ( monusLe )
 open import DirectedHoTT.Lib.Amrec using ( Prv; prv; prvOk; wR; renren )
 open import DirectedHoTT.Lib.AmrecInd using ( PAtR; IndPW )
 open import DirectedHoTT.Lib.Natrec using ( Ren⊢-id )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; Ren⊢ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; Ren⊢ )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG
         ; G1z; gcdInn1; G2z; gcdInn2; G3z; G3s; gcdBody; gcdStp )

@@ -25,7 +25,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢nzero; ⊢nsuc
         ; _⟶*_; done; step; natrec-zero; natrec-suc )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-nsuc )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-nsuc )
 open import DirectedHoTT.Lib.Nat using ( plusTm )
 
 num : {Γ : Cx} → ℕ → RTm Γ

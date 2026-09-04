@@ -28,7 +28,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢absurd
         ; Hom-Nat-sz; Hom-Nat-ss )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
 
 -- ★★ …and transitivity types at OPEN naturals, which is the whole
 --    reason the former exists.  No numerals, no case split, no `Acc`.

@@ -68,8 +68,8 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom
         ; _⟶_; β; _⟶ᵀ_; El-⌜Nat⌝; ξ-El
         ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( sub-lemma; Sub⊢ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
+open import DirectedHoTT.Metatheory.TySub using ( sub-lemma; Sub⊢ )
 open import DirectedHoTT.Examples.Dogfood
   using ( Γ₄; AStepT; AIHT; aAuxMot; aAuxTm; ⊢aAux )
 

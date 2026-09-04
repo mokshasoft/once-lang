@@ -86,6 +86,26 @@ for rel in "${TOBUILD[@]:-}"; do
       if [ "$rc" = 0 ]; then
         d=$((SECONDS-t0)); TIMES+=("$d $tag"); echo "ok (-c) ${d}s"; continue
       fi
+      # ★★★ THIRD RUNG: A **SMALLER** NURSERY, NOT A BIGGER ONE.
+      #
+      # ⚠⚠ THE LADDER USED TO STOP HERE, AND IT STOPPED IN THE WRONG
+      #   DIRECTION.  `-A64m` trades memory for speed; a module whose cost
+      #   is READING MANY INTERFACES rather than allocating deeply wants
+      #   the opposite trade.  `Trust.agda` — which imports all 236
+      #   modules and type-checks nothing — was KILLED(143) at `-A64m`
+      #   AND at `-A64m -c`, then passed at `-A8m -c` in **20 seconds**.
+      #   Two rungs of a ladder that only ever went up reported a 20s
+      #   module as a sweep failure.
+      #
+      # ★ So the last resort shrinks the allocation area.  It costs
+      #   nothing when the first two rungs work, and it is the rung that
+      #   the one module with the largest import closure actually needs.
+      printf 'still 143 — retrying with a smaller nursery ... '
+      AGDA_RTS="-A8m -c" "$CHECK" "$rel" >"$LOGDIR/$tag.log" 2>&1
+      rc=$?
+      if [ "$rc" = 0 ]; then
+        d=$((SECONDS-t0)); TIMES+=("$d $tag"); echo "ok (-A8m -c) ${d}s"; continue
+      fi
     fi
     # ★ IN Comparison/, A 143 IS A MEASUREMENT YOU DID NOT GET, NOT A BREAK.
     #   Those modules are BENCHMARKS — deliberately redundant routes kept so

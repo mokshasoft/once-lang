@@ -43,9 +43,9 @@ open import DirectedHoTT.Spec.Typing
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
         ; _⟶_; _⟶*_; done; step; βfst; βsnd; β; natrec-zero; natrec-suc
         ; ξ-nsuc; ξ-Homˡ; ξ-Homʳ; ξ-appˡ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Rec   using ( aIHT; aIHTat )
 open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )

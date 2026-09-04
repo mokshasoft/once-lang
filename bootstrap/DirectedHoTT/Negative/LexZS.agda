@@ -14,7 +14,7 @@ open import DirectedHoTT.Lib.Ord
   using ( ⊢strong-base'; ⊢strong-step )
 open import DirectedHoTT.Negative.Lex
   using ( Γ₅; REC1T; REC2T; LStepT; M0lex; lexZS )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 
 ------------------------------------------------------------------------
 -- BRANCH (0,S).  n₁ = 0 still collapses `rec₁`, but n₂ = suc m now makes

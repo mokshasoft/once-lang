@@ -65,46 +65,21 @@ private
 -- Type multi-step reduction and its congruences.
 ------------------------------------------------------------------------
 
-infix 3 _⟶ᵀ*_
-data _⟶ᵀ*_ : {Γ : Cx} → RTy Γ → RTy Γ → Set where
-  doneᵀ : {A : RTy Γ} → A ⟶ᵀ* A
-  stepᵀ : {A B C : RTy Γ} → A ⟶ᵀ B → B ⟶ᵀ* C → A ⟶ᵀ* C
 
-⟶ᵀ*-trans : {A B C : RTy Γ} → A ⟶ᵀ* B → B ⟶ᵀ* C → A ⟶ᵀ* C
-⟶ᵀ*-trans doneᵀ       q = q
-⟶ᵀ*-trans (stepᵀ r p) q = stepᵀ r (⟶ᵀ*-trans p q)
+-- ★ `_⟶ᵀ*_`, its congruences and `red→≅ᵀ` moved to `Metatheory/RedCong`
+--   (they are folds, and `TySub` needs them without the injectivity proof);
+--   re-exported here so this module's own callers are unaffected.
+open import DirectedHoTT.Metatheory.RedCong public
 
-⟶ᵀ*-El : {t t' : RTm Γ} → t ⟶* t' → El t ⟶ᵀ* El t'
-⟶ᵀ*-El done       = doneᵀ
-⟶ᵀ*-El (step r p) = stepᵀ (ξ-El r) (⟶ᵀ*-El p)
 
-⟶ᵀ*-Πˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ* A' → Π A B ⟶ᵀ* Π A' B
-⟶ᵀ*-Πˡ doneᵀ       = doneᵀ
-⟶ᵀ*-Πˡ (stepᵀ r p) = stepᵀ (ξ-Πˡ r) (⟶ᵀ*-Πˡ p)
 
-⟶ᵀ*-Πʳ : {A : RTy Γ} {B B' : RTy (Γ ∙)} → B ⟶ᵀ* B' → Π A B ⟶ᵀ* Π A B'
-⟶ᵀ*-Πʳ doneᵀ       = doneᵀ
-⟶ᵀ*-Πʳ (stepᵀ r p) = stepᵀ (ξ-Πʳ r) (⟶ᵀ*-Πʳ p)
 
-⟶ᵀ*-Σˡ : {A A' : RTy Γ} {B : RTy (Γ ∙)} → A ⟶ᵀ* A' → Σ' A B ⟶ᵀ* Σ' A' B
-⟶ᵀ*-Σˡ doneᵀ       = doneᵀ
-⟶ᵀ*-Σˡ (stepᵀ r p) = stepᵀ (ξ-Σˡ r) (⟶ᵀ*-Σˡ p)
 
-⟶ᵀ*-Σʳ : {A : RTy Γ} {B B' : RTy (Γ ∙)} → B ⟶ᵀ* B' → Σ' A B ⟶ᵀ* Σ' A B'
-⟶ᵀ*-Σʳ doneᵀ       = doneᵀ
-⟶ᵀ*-Σʳ (stepᵀ r p) = stepᵀ (ξ-Σʳ r) (⟶ᵀ*-Σʳ p)
 
-⟶ᵀ*-Homᵀ : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ* A' → Hom A t u ⟶ᵀ* Hom A' t u
-⟶ᵀ*-Homᵀ doneᵀ       = doneᵀ
-⟶ᵀ*-Homᵀ (stepᵀ r p) = stepᵀ (ξ-Homᵀ r) (⟶ᵀ*-Homᵀ p)
 
-⟶ᵀ*-Homˡ : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶* t' → Hom A t u ⟶ᵀ* Hom A t' u
-⟶ᵀ*-Homˡ done       = doneᵀ
-⟶ᵀ*-Homˡ (step r p) = stepᵀ (ξ-Homˡ r) (⟶ᵀ*-Homˡ p)
 
-⟶ᵀ*-Homʳ : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶* u' → Hom A t u ⟶ᵀ* Hom A t u'
-⟶ᵀ*-Homʳ done       = doneᵀ
-⟶ᵀ*-Homʳ (step r p) = stepᵀ (ξ-Homʳ r) (⟶ᵀ*-Homʳ p)
+
+
 
 -- the two-former kernel: reducts of `Id` are `Id`-forms, componentwise
 -- (Id is INERT — only the three ξ-rules exist).
@@ -123,23 +98,9 @@ Id-reduct (stepᵀ (ξ-Idʳ r) rest) with Id-reduct rest
 ... | A' , (t' , (u' , (eq , (rA , (rt , ru))))) =
       A' , (t' , (u' , (eq , (rA , (rt , step r ru)))))
 
--- the index congruence, closed under ⟶ᵀ* — `IMu`'s analogue of `⟶ᵀ*-Idˡ`.
-⟶ᵀ*-IMu : {D : IDesc} {I : RTy ε} {i i' : RTm Γ} →
-          i ⟶* i' → IMu D I i ⟶ᵀ* IMu D I i'
-⟶ᵀ*-IMu done       = doneᵀ
-⟶ᵀ*-IMu (step r p) = stepᵀ (ξ-IMu r) (⟶ᵀ*-IMu p)
 
-⟶ᵀ*-Idᵀ : {A A' : RTy Γ} {t u : RTm Γ} → A ⟶ᵀ* A' → Id A t u ⟶ᵀ* Id A' t u
-⟶ᵀ*-Idᵀ doneᵀ       = doneᵀ
-⟶ᵀ*-Idᵀ (stepᵀ r p) = stepᵀ (ξ-Idᵀ r) (⟶ᵀ*-Idᵀ p)
 
-⟶ᵀ*-Idˡ : {A : RTy Γ} {t t' u : RTm Γ} → t ⟶* t' → Id A t u ⟶ᵀ* Id A t' u
-⟶ᵀ*-Idˡ done       = doneᵀ
-⟶ᵀ*-Idˡ (step r p) = stepᵀ (ξ-Idˡ r) (⟶ᵀ*-Idˡ p)
 
-⟶ᵀ*-Idʳ : {A : RTy Γ} {t u u' : RTm Γ} → u ⟶* u' → Id A t u ⟶ᵀ* Id A t u'
-⟶ᵀ*-Idʳ done       = doneᵀ
-⟶ᵀ*-Idʳ (step r p) = stepᵀ (ξ-Idʳ r) (⟶ᵀ*-Idʳ p)
 
 ------------------------------------------------------------------------
 -- Parallel type reduction; reuses the TERM triangle at `El` leaves.
@@ -687,10 +648,6 @@ record ΠRed {Γ} (A : RTy Γ) (B : RTy (Γ ∙)) (C : RTy Γ) : Set where
 Π-reduct (stepᵀ (ξ-Πʳ r) rest) with Π-reduct rest
 ... | mkΠRed A'' B'' eqC rA rB = mkΠRed A'' B'' eqC rA (stepᵀ r rB)
 
--- reductions ⊆ conversion.
-red→≅ᵀ : {A B : RTy Γ} → A ⟶ᵀ* B → A ≅ᵀ B
-red→≅ᵀ doneᵀ       = crflᵀ
-red→≅ᵀ (stepᵀ r p) = ctrnᵀ (credᵀ r) (red→≅ᵀ p)
 
 -- Π constructor is injective for `≡`.
 Πinj≡ : {A A' : RTy Γ} {B B' : RTy (Γ ∙)} → Π A B ≡ Π A' B' → (A ≡ A') × (B ≡ B')

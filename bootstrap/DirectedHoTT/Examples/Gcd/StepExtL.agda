@@ -27,15 +27,15 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢conv; _≅ᵀ_; csymᵀ
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id; ⊢⌜Nat⌝
         ; _⟶_; _⟶*_; done; step; β; ξ-appˡ; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; ⊢-cast; ∋-cast; Ren⊢; Ren⊢-ext; ren-ty; ren-lemma; ⊢[] )
 open import DirectedHoTT.Lib.Amrec
   using ( Prv; prv; prvTm; prvOk; StepExt; StepPW; wR; renren; renTy-idR
         ; subrenTy; aIHTat-ren; aIHTat-sub; idOfRed )
 open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; sub-w³; ren-w )
 open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; asP )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-ren )
+open import DirectedHoTT.Metatheory.RedCong
   using ( _⟶ᵀ*_; stepᵀ; doneᵀ; red→≅ᵀ; ⟶ᵀ*-trans; ⟶ᵀ*-Πʳ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( gcdStp; gcdBody; msr; ⊢msr; gcdIH; ⊢gcdIH; gcdG; ⊢gcdG

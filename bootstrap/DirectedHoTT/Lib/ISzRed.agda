@@ -28,7 +28,7 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; ICon; iι; iρ; iκ; fst; snd; nzero )
 open import DirectedHoTT.Spec.Typing using ( _⟶*_; done )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
-open import DirectedHoTT.Metatheory.Confluence
+open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-trans; ⟶*-natrecᶻ; ⟶*-natrecⁿ )
 open import DirectedHoTT.Lib.NatNum using ( num; plus-num )
 import DirectedHoTT.Lib.IFold as IF

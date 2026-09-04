@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Nat; ty-Π; ty-IMu; ty-Unit; ty-Σ; ⊢⌜Nat⌝; ty-El; wk-single
         ; ⊢lam; ⊢app; ⊢fst; ⊢nsuc; ⊢nzero; ⊢pair; ⊢unit; ⊢icon; ⊢idrefl
         ; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝; ⊢⌜Id⌝; imethTy )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Spec.Syntax using ( hereID )
 open import DirectedHoTT.Examples.Scoped
   using ( INat; TmD; TmWf; Tm; FinD; FinWf; Fin; toI; fromI

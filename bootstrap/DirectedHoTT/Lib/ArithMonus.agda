@@ -40,9 +40,9 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢ordtr; ty-Nat; ty-Hom
         ; _≅ᵀ_; csymᵀ; Hom-Nat-ss; Hom-Nat-sz; ⊢absurd
         ; _⟶_; _⟶*_; done; step; ξ-natrecⁿ; wk-single; βsnd )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; ⊢[] )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ⊢[] )
 open import DirectedHoTT.Lib.Wk using ( w; nrs-w; sub-w; sub-w² )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )

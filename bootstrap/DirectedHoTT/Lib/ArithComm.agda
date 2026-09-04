@@ -44,8 +44,8 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Id; ty-El; ty-Nat
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
         ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; natrec-zero; natrec-suc; wk-single )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; ⊢[] )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ⊢[] )
 open import DirectedHoTT.Lib.Wk using ( w; nrs-w; sub-w; sub-w² )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.Strong using ( natAsEl; El-homNat )

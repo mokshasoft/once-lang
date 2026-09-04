@@ -34,7 +34,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-renTy; renTy-subTy; subTy-cong; subTy-subTy )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _⊢ty_; ⊢natrec; ⊢var; here; wk-single; nzero; subTy )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; ⊢wk; ren-ty; ren-lemma; Ren⊢-ext
         ; Sub⊢; Sub⊢-ext; sub-ty; sub-lemma; Ren⊢; ∋-cast )
 open import DirectedHoTT.Lib.Wk using ( w; cong₃; sub-w )

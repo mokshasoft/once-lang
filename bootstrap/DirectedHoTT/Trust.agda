@@ -293,8 +293,10 @@ import DirectedHoTT.Metatheory.Fundamental.Semantic
 import DirectedHoTT.Metatheory.Fundamental.Syntactic
 import DirectedHoTT.Metatheory.Injectivity
 import DirectedHoTT.Metatheory.LogicalRelation
+import DirectedHoTT.Metatheory.RedCong
 import DirectedHoTT.Metatheory.SubjectReduction
 import DirectedHoTT.Metatheory.SubjectReductionBase
+import DirectedHoTT.Metatheory.TySub
 import DirectedHoTT.Spec.Syntax
 import DirectedHoTT.Spec.Typing
 import DirectedHoTT.Spec.Variance

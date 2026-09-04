@@ -23,7 +23,7 @@ open import DirectedHoTT.Lib.Ord
   using ( ⊢strong-base'; ⊢strong-step )
 open import DirectedHoTT.Negative.Lex
   using ( Γ₅; M1lex; LStepT; lexAuxMot; lexSS )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Negative.LexSS1 using ( ⊢lexSSrec1 )
 open import DirectedHoTT.Negative.LexSS2 using ( ⊢lexSSrec2 )
 

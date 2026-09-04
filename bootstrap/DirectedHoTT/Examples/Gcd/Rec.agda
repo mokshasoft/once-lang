@@ -20,13 +20,13 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; _⊢_∷_; ⊢app; ⊢nsuc; ⊢nzero; ⊢conv; csymᵀ
         ; _⟶*_; done; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ⊢[] )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ⊢[] )
 open import DirectedHoTT.Lib.Wk using ( w )
 open import DirectedHoTT.Lib.Amrec
   using ( Prv; prv; prvTm; prvOk; idToRed; idOfRed )
 open import DirectedHoTT.Lib.Pair using ( PairT; asN ; msrPair)
 open import DirectedHoTT.Lib.ArithComm using ( transN; ⊢transN )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-Homʳ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-Homʳ )
 open import DirectedHoTT.Lib.Nat using ( ⊢plus )
 open import DirectedHoTT.Lib.Monus using ( monusTm )
 open import DirectedHoTT.Lib.Strong using ( reflTm; ⊢le-refl )

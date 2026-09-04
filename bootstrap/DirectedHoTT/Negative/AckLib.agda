@@ -60,8 +60,8 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
         ; ξ-nsuc; ξ-Homˡ; βfst; βsnd )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Rec using ( aIHTat )
 -- ★ ONE import: the façade re-exports the type layer.

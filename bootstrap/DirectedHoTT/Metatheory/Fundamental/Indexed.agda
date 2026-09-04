@@ -41,10 +41,10 @@ open import DirectedHoTT.Spec.Typing
         ; ICodeWf; icw-clo; icw-ford
         ; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTyFrom )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( _⟶ᵀ*_; doneᵀ; stepᵀ )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( wk-sub )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ipayTy-sub-single; iihTy-sub; iihTy-cong )
 open import DirectedHoTT.Metatheory.LogicalRelation
   using ( SN

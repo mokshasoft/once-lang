@@ -36,8 +36,8 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv )
 open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-pairˡ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-pairˡ )
 open import DirectedHoTT.Examples.Knot.Desc using ( K )
 open import DirectedHoTT.Examples.Knot.Sorts using ( ⊢ixP; sTy; sTm; ⊢sTy; ⊢sTm )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )

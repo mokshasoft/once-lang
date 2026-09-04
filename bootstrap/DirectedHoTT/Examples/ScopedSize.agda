@@ -40,7 +40,7 @@ open import DirectedHoTT.Spec.Typing
         ; ι-ielim; ξ-Homʳ
         ; _⊢ty_
         ; _≅ᵀ_; csymᵀ; credᵀ; Hom-Nat-ss )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
 open import DirectedHoTT.Lib.Nat     using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.ArithLe using ( leSumTm; ⊢le-sum )

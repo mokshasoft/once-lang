@@ -42,7 +42,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Nat; ty-Σ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; Hom-Nat-ss
         ; ξ-nsuc; ξ-Homˡ; βfst; βsnd; ξ-natrecⁿ; ξ-natrecᶻ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Nat using ( plusTm )
 

@@ -52,7 +52,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-El; ty-Π; ty-Hom; ty-Nat
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝; ⊢ordtr
         ; Hom-Nat-ss; ⊢natrec; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
         ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma; wk-cancel-tm )
 open import DirectedHoTT.Lib.Rec using ( aIHTat; aIHT; aIHT-fit )
@@ -68,7 +68,7 @@ open import DirectedHoTT.Lib.AmrecRen
 open import DirectedHoTT.Lib.Id using ( symTm; ⊢symId; prvSym )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; ⊢le-suc; reflTm )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import DirectedHoTT.Lib.Natrec using ( Ren⊢-id )
 
 ------------------------------------------------------------------------

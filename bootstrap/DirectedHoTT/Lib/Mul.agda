@@ -22,7 +22,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢var; here; ⊢nzero; ⊢natrec; ty-Nat
         ; _⟶*_; done; step; natrec-zero; natrec-suc; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Spec.Typing using ( single )
 open import DirectedHoTT.Lib.Wk using ( w; sub-w; sub-w²; ren-sub )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )

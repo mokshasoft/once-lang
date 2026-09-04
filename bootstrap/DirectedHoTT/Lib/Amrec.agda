@@ -53,8 +53,8 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ; ⊢⌜Id⌝; El-⌜Id⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id; wk-single )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-Homʳ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-Homʳ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; ⊢-cast; ∋-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext
         ; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
@@ -68,8 +68,8 @@ open import DirectedHoTT.Lib.Rec using ( aIHTat; aIHT; aIHT-ren; aIHT-fit )
 -- ⚠ THE DATATYPE ONLY.  `natEval` (the theorem) lives in `…LibNatEval`
 --   and pulls the canonicity stack; see the note at the foot of this file.
 open import DirectedHoTT.Lib.NatVal using ( NatVal; nv-zero; nv-suc )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢[] )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢[] )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 
 ------------------------------------------------------------------------
 -- ★ `wᶠ` — weaken a FAMILY under a new binder, keeping the family's own

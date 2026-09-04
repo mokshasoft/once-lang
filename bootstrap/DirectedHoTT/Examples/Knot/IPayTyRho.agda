@@ -35,7 +35,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
         ; imethsTy; imethsTyFrom; IDescWfFrom; ⊢ielim
         ; ξ-pairʳ; βsnd; done; step; single; wk-single; iinst )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import normalizer.Syntax.Types using ( cong; trans; sym )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ; ⊢methsFrom; ⊢methsCons

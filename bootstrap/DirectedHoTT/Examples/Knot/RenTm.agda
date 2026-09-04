@@ -53,9 +53,9 @@ open import DirectedHoTT.Lib.IPay
 open import DirectedHoTT.Spec.Syntax using ( Sub; ipayTy; subTm; extS; extR )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc; pred-zero )
 open import DirectedHoTT.Lib.ArithMonus using ( pred*; pred-snd-pair )
-open import DirectedHoTT.Metatheory.Confluence
+open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-⌜Id⌝ˡ )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-Πˡ; ⟶ᵀ*-El )
 open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; elIdN; ⊢reflN )
@@ -63,7 +63,7 @@ open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
 open import DirectedHoTT.Lib.ICast
   using ( muFwd; muBwd*; fordAs; toMu; fromMu; ⟶*-castᵣ; ⟶*-castₗ )
 open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk; iihTy-ren; iihTy-cong )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf; ⊢methLam )
 open import DirectedHoTT.Examples.Knot.Tags

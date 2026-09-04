@@ -49,7 +49,7 @@ open import DirectedHoTT.Examples.Knot.Sorts using ( sVar )
 open import DirectedHoTT.Spec.Syntax
   using ( icon; idrefl; ⌜Nat⌝; unit; iihs; isingle; ielim )
 open import DirectedHoTT.Spec.Typing using ( ι-ielim; βfst; jsub-refl; ξ-jsubᵖ )
-open import DirectedHoTT.Metatheory.Confluence
+open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-jsubᵖ )
 open import DirectedHoTT.Lib.IMeths
   using ( methsFrom-sel; methsFrom-past; cdTake; inCD; tt

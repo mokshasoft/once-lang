@@ -33,9 +33,9 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; ⊢var; here; ⊢⌜Nat⌝; ⊢⌜Id⌝; ⊢jsub
         ; csymᵀ; ctrnᵀ; wk-single; ⊢nsuc )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Wk using ( w )
 open import DirectedHoTT.Lib.Strong using ( natAsEl; elAsNat )
 open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred; pred-suc )

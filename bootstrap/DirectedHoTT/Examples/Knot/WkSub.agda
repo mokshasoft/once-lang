@@ -38,7 +38,7 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; RTy; var; vz; lam; pair; nsuc; Nat; renTm; vs; IMu )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢var; here; ⊢lam; ⊢nsuc; ty-IMu )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; ⊢sTy; sTm; ⊢sTm; sVar; ⊢sVar; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
