@@ -291,7 +291,7 @@ Rows get added here as they are tried, **before** the next attempt.
 
 ---
 
-## Step 7 — `nrs`'s pointwise law (`Knot/RenSpec`) ⬜ OPEN, 8 attempts
+## Step 7 — `nrs`'s pointwise law (`Knot/RenSpec`) ✅ CLOSED (8 + 4 attempts)
 
 Added 2026-09-04. **This file was consulted at attempt 4 and immediately
 paid**, which is the point of it — but the row is not closed, so the
@@ -431,3 +431,41 @@ PROMOTED: `sucs-sub` → `Lib/IWk`; `extS^`/`pw^` → `Lib/Wk`;
 `extN-cong₃`, `isubPay-cong₆`, `extsN-sub`, `sPick-sub`, `kaPick-sub`,
 `isubPay-sub`, `isubMethod-red` → `Lib/ISub.Sub`. Control kept as
 `Examples/Knot/ISubRedControl`.
+
+
+### Step 7 CLOSED — and the log's rule paid a second time
+
+Re-attempted from half 2, as this file's own note instructed. **Four more
+attempts**, and the defect was none of the first eight guesses.
+
+| # | attempt | outcome |
+|---|---------|---------|
+| 9  | head reduction `nrsSK-vs`, `singleSK-vs`'s shape | ✅ first try |
+| 10 | the law, `done` early — to READ the goal | ★ goal legible: a 3-tower at de Bruijn 2 |
+| 11 | `towerA` + `βsnd` at the depth slot | ⚠ `a != a'` — **the tell** |
+| 12 | `inVsD`: reduce the depth in BOTH places | ✅ **GREEN**, and `vz` followed |
+
+★★★ WHAT WAS WRONG, AND WHY EIGHT ATTEMPTS COULD NOT FIND IT:
+
+    Var-vsK m x = icon tagVar-vs
+      (pair m (pair x (pair (idrefl ⌜Nat⌝ sVar)
+                            (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))))
+
+**The depth occurs TWICE** — head slot and second ford. `⟶*` reduces one
+redex at a time, so changing it costs TWO descents, and the term between
+them is not of the form `Var-vsK _ _`. Attempts 1–8 all reached for a
+stronger cast, a different end, or a deeper tower; NONE of those can
+express "reduce two positions", so all eight had to converge on the same
+mismatch. ⇒ the log's "the model is wrong, not the step" was literally
+right, and the model was the CONGRUENCE, not the tower.
+
+⚠ `extR`/`single` never exposed it because their laws do not CHANGE the
+depth — the second occurrence never had to move. An interface wrong for
+two customers before biting, exactly as `wkK` was.
+
+★ Both corrections the parked row bought are load-bearing in the closing
+proof: `sel-here≡`/`sel-there≡` at every projection, `Lib/Wk.towerP` at
+both payload slots. Parking did not waste them.
+
+⚠ And the `_`s had to go: `towerA`/`towerP` at `_ _` leaves metas blocked
+on the payload. `P` and `IH` are named — half 2's lesson, transferred.
