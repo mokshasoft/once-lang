@@ -216,3 +216,25 @@ sel-here a b = step (βfst a b) done
 sel-there : {Γ : Cx} (k : ℕ) (a b : RTm Γ) {c : RTm Γ} →
             sel k b ⟶* c → sel (suc k) (pair a b) ⟶* c
 sel-there k a b r = step (selCong k (βsnd a b)) r
+
+-- ★★★ …AND THE SAME TWO WITH THE PAIR ONLY **PROPOSITIONALLY** THERE.
+--
+-- ⚠⚠ `sel-here`/`sel-there` DEMAND A LITERAL PAIR, and a method's payload
+--   is not one: it arrives as `subTm σ₁ (subTm σ₂ (subTm σ₃ (var …)))`
+--   and collapses to the pair by `wk-single`, an EQUALITY.  So `fst` has
+--   nothing to reduce against until the equality has been applied, and no
+--   cast at the RESULT can help — the mismatch is at the SOURCE.
+--
+-- ★ `SUBTM-ATTEMPTS.md` predicts this exactly: step 1 there burned four
+--   attempts casting at the result before the fix turned out to be
+--   converting the INPUT where its type is still concrete, and its
+--   "slips worth not repeating" says *write the statement at the context
+--   the goal prints, not the one that reads nicely*.  ⇒ these take the
+--   equality as a PARAMETER, which is that context.
+
+sel-here≡ : {Γ : Cx} {p a b : RTm Γ} → p ≡ pair a b → sel zero p ⟶* a
+sel-here≡ refl = step (βfst _ _) done
+
+sel-there≡ : {Γ : Cx} {p a b c : RTm Γ} (k : ℕ) →
+             p ≡ pair a b → sel k b ⟶* c → sel (suc k) p ⟶* c
+sel-there≡ k refl r = step (selCong k (βsnd _ _)) r

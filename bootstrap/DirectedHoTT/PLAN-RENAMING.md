@@ -653,20 +653,57 @@ is the third layer of the same finding:
     a LIBRARY that computes methods but ships no reduction lemmas
       makes every agreement over it unprovable            (§16.2)
 
-### §16.3 ★★★ AND THE PARAMETERISED-MODULE TRAP, AGAIN — ONE LEVEL DOWN
+### §16.3 ⚠ CORRECTION — THE PARAMETERISED-MODULE CLAIM WAS TOO STRONG
 
-`SubDesc`, `isubMeths` and `isubMethod` all live INSIDE `Lib/ISub.Sub`,
-a parameterised module — exactly as `ifMeths-sel` lives inside
-`Lib/IFold.Fold`. So a selection lemma for `isubMeths` would be
-single-customer **by construction**, for the same reason §15.2 found.
+An earlier draft of this section said the parameterised-module pattern is
+the trap. **That is wrong, and this session's own work refutes it:**
+`Lib/ISub.Sub` IS parameterised and instantiated TWICE today — `SubMot`
+and the new `Knot/RenTm`, first try. Parameterisation does not make a
+module single-customer.
 
-★ The fix that worked for `methsAt-sel` was to state it over a
-NON-parameterised carrier (`Lib/IMeths`'s `CDesc`/`methsAt`). The same
-fix applies here, and it is a `Lib` RESTRUCTURING — the kind of decision
-this plan has been putting to the user, not one to take unilaterally.
+★ The accurate rule is narrower and is about WHAT DETERMINES THE LEMMA:
 
-⇒ **the parameterised-module pattern is what makes reduction lemmas
-single-customer, and it has now cost the development twice.** That is the
-finding to act on before writing `Lib/ISubRed`, because writing it inside
-`Sub` would reproduce the trap a third time.
+> **State each lemma over the smallest carrier that determines it.**
 
+* `sel k (methsAt W mth j tl)` is determined by `W`, `mth`, `j`, `tl` and
+  nothing else. Stating it over `ifMeths` dragged in the fold's whole
+  algebra, which selection has nothing to do with — genuinely misplaced,
+  and moving it paid immediately.
+* A lemma reducing THROUGH `isubMethod` genuinely depends on `extN`,
+  `smap`, `fordMap`: the method's behaviour IS those parameters. That one
+  belongs inside `Sub`, and `Lib/ISzRed` is written against `IFold`'s
+  parameters for the same correct reason.
+
+⇒ **`Lib/ISubRed` splits, and neither half is a design fork:**
+
+| | half | where |
+|---|---|---|
+| 1 | selection over `isubMeths` | factor OUT, like `methsAt-sel` |
+| 2 | reduction through `isubMethod` | INSIDE `Sub`, where its parameters live |
+
+## §17 AND THE ATTEMPTS LOG PAID FOR ITSELF, TWICE
+
+`SUBTM-ATTEMPTS.md` was consulted after three failed casts on `nrs`. It
+names the defect three separate ways — step 1's four result-casts before
+the fix turned out to be *converting the input where its type is still
+concrete*; the summary's *every genuinely hard step was a correction to
+an INTERFACE, not a failed proof*; and the slips list's *write the
+statement at the context the goal prints, not the one that reads nicely*.
+
+★★★ **AND THE INTERFACE WAS WRONG.** `sel-here`/`sel-there` demand a
+LITERAL pair; a method's payload arrives as a substitution chain that
+collapses only propositionally. Fixed:
+
+    sel-here≡ / sel-there≡   take the pair equality as a PARAMETER
+    Lib/Wk.towerP            `towerA`'s sibling at de Bruijn 1
+
+Both are committed, and both are what step 3 needs at 53 rows — a payload
+is a substitution chain at EVERY row.
+
+⚠ `extR`/`single` never exposed it because their collapse happened to be
+DEFINITIONAL. **The wrong interface survived two customers before biting
+— which is exactly how `wkK` survived.**
+
+⬜ `nrs`'s final projection still resists after five attempts, now
+localized to one position. The log's own rule applies: the next move is
+to PRINT the chain, not to guess a sixth time.

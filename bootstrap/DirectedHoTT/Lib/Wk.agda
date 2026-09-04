@@ -522,3 +522,13 @@ sub-w²-single {a = a} {b = b} t =
   trans (cong (subTm (single a))
               (trans (sub-w {σ = single b} (w t)) (cong w (wk-single {v = b} t))))
         (wk-single {v = a} t)
+
+-- ★ `towerA`'s SIBLING AT DE BRUIJN 1 — the MIDDLE substitution's value.
+--
+-- ⚠ `towerA`/`towerJ` read a variable at index 2 and 3 and return the
+--   INNERMOST substitution's value; a method's PAYLOAD sits at index 1
+--   and returns the MIDDLE one.  Any further inert layers compute away
+--   (`extS² σ (vs vz) = var (vs vz)`), so two rungs is the general form.
+towerP : {Γ : Cx} (a b : RTm Γ) →
+         subTm (single a) (subTm (extS (single b)) (var (vs vz))) ≡ b
+towerP a b = wk-single {v = a} b
