@@ -320,28 +320,56 @@ wᶠ^ (suc n) t = wᶠ (wᶠ^ n t)
 --   need.  Belongs in `…LibWk` beside `sub-w`; kept here while iterating.
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- ★★★ AND HERE IT IS **INDEXED** — which is what the section header two
+-- screens up already asked for.
+--
+-- ⚠⚠ THIS BLOCK USED TO BE `pw1`, `pw2`, `pw3`, `pw4`: four hand-written
+--   rungs of one lemma, under a heading that reads "ITERATED WEAKENING,
+--   INDEXED RATHER THAN ENUMERATED", with a note admitting they "exist
+--   only at the depths gcd happened to need".  `Lib/ISub`'s
+--   `isubMethod-red` then needed the FIFTH — a method's six argument
+--   slots sit at binder depths 4,3,2,1,0 and each owes its own rung.
+--   ⇒ index it, and no depth is ever missing again.
+--
+-- ⚠ THE EXTRA WEAKENING GOES ON THE **INSIDE**: `w^ k (w t)`, not
+--   `w^ (suc k) t`.  Those are the same term and NOT the same type for a
+--   variable `k` — `_∙^_` recurses on the ℕ, so `(Γ ∙) ∙^ k` and
+--   `(Γ ∙^ k) ∙` are both stuck and will not unify.  Written this way the
+--   context is `(Γ ∙) ∙^ k`, which is exactly `extS^ k (single u)`'s
+--   domain, and the family needs no transport at all.
+--
+-- ★ `pw1`–`pw4` SURVIVE AS ONE-LINERS, so their existing callers
+--   (`Gcd/LeEq`, `Gcd/IndG`, `Gcd/LeMid`) are untouched.
+------------------------------------------------------------------------
+
+extS^ : {Γ Δ : Cx} (k : ℕ) → Sub Γ Δ → Sub (Γ ∙^ k) (Δ ∙^ k)
+extS^ zero    σ = σ
+extS^ (suc k) σ = extS (extS^ k σ)
+
+pw^ : {Γ : Cx} {u : RTm Γ} (k : ℕ) (t : RTm Γ) →
+      subTm (extS^ k (single u)) (w^ k (w t)) ≡ w^ k t
+pw^ zero            t = wk-single t
+pw^ {u = u} (suc k) t =
+  trans (sub-w {σ = extS^ k (single u)} (w^ k (w t)))
+        (cong w (pw^ {u = u} k t))
+
 pw1 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
       subTm (extS (single u)) (w (w t)) ≡ w t
-pw1 {u = u} t = trans (sub-w {σ = single u} (w t)) (cong w (wk-single t))
+pw1 {u = u} t = pw^ {u = u} 1 t
 
 pw2 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
       subTm (extS (extS (single u))) (w (w (w t))) ≡ w (w t)
-pw2 {u = u} t =
-  trans (sub-w {σ = extS (single u)} (w (w t))) (cong w (pw1 {u = u} t))
+pw2 {u = u} t = pw^ {u = u} 2 t
 
 pw3 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
       subTm (extS (extS (extS (single u)))) (w (w (w (w t)))) ≡ w (w (w t))
-pw3 {u = u} t =
-  trans (sub-w {σ = extS (extS (single u))} (w (w (w t)))) (cong w (pw2 {u = u} t))
+pw3 {u = u} t = pw^ {u = u} 3 t
 
--- ★ one deeper again — the `natrec` SUCCESSOR branch sits two slots below
---   the zero branch, so its parameter needs this depth.
 pw4 : {Γ' : Cx} {u : RTm Γ'} (t : RTm Γ') →
       subTm (extS (extS (extS (extS (single u))))) (w (w (w (w (w t)))))
     ≡ w (w (w (w t)))
-pw4 {u = u} t =
-  trans (sub-w {σ = extS (extS (extS (single u)))} (w (w (w (w t)))))
-        (cong w (pw3 {u = u} t))
+pw4 {u = u} t = pw^ {u = u} 4 t
 
 -- ★ one deeper still — the successor branch's BODY, under its `lam`.  Route
 --   8 builds `⊢S3s` at the final context, and the `n'` slot arrives there

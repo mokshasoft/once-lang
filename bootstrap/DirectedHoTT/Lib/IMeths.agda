@@ -27,7 +27,9 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.IMeths where
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
-open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; RTm; pair; ICon; IDesc; _◂_; inil; sel )
+open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; RTm; pair; ICon; IDesc; _◂_; inil; sel 
+        -- ★ for `methsFrom-sub`/`methsAt-sub`:
+        ; Sub; subTm )
 open import DirectedHoTT.Spec.Typing
   using ( _⟶_; _⟶*_; done; step; ξ-fst; ξ-snd; βfst; βsnd )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
@@ -238,3 +240,30 @@ sel-here≡ refl = step (βfst _ _) done
 sel-there≡ : {Γ : Cx} {p a b c : RTm Γ} (k : ℕ) →
              p ≡ pair a b → sel k b ⟶* c → sel (suc k) p ⟶* c
 sel-there≡ k refl r = step (selCong k (βsnd _ _)) r
+
+------------------------------------------------------------------------
+-- ★★★ THE TWO BUILDERS ARE NATURAL IN SUBSTITUTION — one induction over
+-- the WALK, and it belongs here because the walk alone determines it.
+--
+-- ⚠⚠ AND THE ALTERNATIVE WAS MEASURED.  `Knot/RenMot`'s 53-method tuple
+--   is `methsFrom (cdTake 52 KnotD) constMethR extRTail`, and
+--   `subTm σ tuple ≡ tuple` IS provable by `refl` — Agda normalises the
+--   whole thing and the two sides coincide.  **It costs 3m41s**, on every
+--   build of that module, forever.  Going through this lemma instead —
+--   one induction plus two small leaves — costs **1.38s**.  ~160×.
+--   ⇒ `agda-cost-is-elaborated-term-size`, with a number: the naive proof
+--     is not wrong, it is the wrong one.
+------------------------------------------------------------------------
+
+methsFrom-sub : {Γ Δ : Cx} {E : IDesc} (W : CDesc E) (σ : Sub Γ Δ) (m t : RTm Γ) →
+                subTm σ (methsFrom W m t) ≡ methsFrom W (subTm σ m) (subTm σ t)
+methsFrom-sub (cd-stop E) σ m t = refl
+methsFrom-sub (cd-cons W) σ m t = cong (pair (subTm σ m)) (methsFrom-sub W σ m t)
+
+methsAt-sub : {Γ Δ : Cx} {E : IDesc} (W : CDesc E) (σ : Sub Γ Δ)
+              (mth : ℕ → RTm Γ) (j : ℕ) (t : RTm Γ) →
+              subTm σ (methsAt W mth j t)
+              ≡ methsAt W (λ k → subTm σ (mth k)) j (subTm σ t)
+methsAt-sub (cd-stop E) σ mth j t = refl
+methsAt-sub (cd-cons W) σ mth j t =
+  cong (pair (subTm σ (mth j))) (methsAt-sub W σ mth (suc j) t)

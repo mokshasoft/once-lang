@@ -149,6 +149,16 @@ isSucs-sub (is-suc p) σ = cong nsuc (isSucs-sub p σ)
 
 -- a reduction under `sucᵏ` — the congruence the `rides` chain needs, and
 -- the reason its length does not grow with `k`: ONE step, wrapped.
+-- ★ `sucs` COMMUTES WITH SUBSTITUTION — `sucs-red`'s sibling for `≡`.
+--   ⚠ Needed by `Lib/ISub`'s `extsN-sub`, which threads the depth through
+--     `extN` and must move a `subTm` past `nsuc^k`.  Stated here rather
+--     than there because `sucs` alone determines it — nothing about
+--     descriptions, methods or the fold enters.
+sucs-sub : {Γ Δ : Cx} (k : ℕ) (τ : Sub Γ Δ) (t : RTm Γ) →
+           subTm τ (sucs k t) ≡ sucs k (subTm τ t)
+sucs-sub zero    τ t = refl
+sucs-sub (suc k) τ t = cong nsuc (sucs-sub k τ t)
+
 sucs-red : {Γ : Cx} (k : ℕ) {x y : RTm Γ} → x ⟶ y → sucs k x ⟶ sucs k y
 sucs-red zero    r = r
 sucs-red (suc k) r = ξ-nsuc (sucs-red k r)

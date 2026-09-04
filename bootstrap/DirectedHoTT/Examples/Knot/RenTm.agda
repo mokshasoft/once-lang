@@ -25,6 +25,22 @@
 --     not" costs, measured.
 ------------------------------------------------------------------------
 
+-- ⚠⚠ THIS MODULE NEEDS THE **COMPACTING COLLECTOR**.
+--   Measured 2026-09-04, box quiet, 3.9 GB free: at the default `-A64m`
+--   it is OOM-KILLED (143, cgroup scope teardown) at ~515s, reproducibly
+--   — three runs, and it fails the same way with `Lib/ISub` reverted to
+--   HEAD and with this module's own `knot-red` block removed, so it is
+--   NOT a regression from either.  With `-A64m -c` it passes in 351s.
+--   ⇒ `agda-oom-is-a-gc-choice`, third confirmation: try the collector
+--     BEFORE splitting anything.
+--
+-- ★ AND IT WENT UNNOTICED BECAUSE IT WAS NEVER TIMED ALONE.  Every sweep
+--   built `RenTm` inside `Knot/JudgeWfAA`'s closure, and JudgeWfAA
+--   carries this same header — so `RenTm` inherited `-c` and reported a
+--   2s DESERIALIZATION line afterwards.  Same misreading as `PERF.md`
+--   §6.8, one level down.
+--     RETRY: `tools/sweep.sh` takes the OOM kill, then re-runs with `-c`.
+
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RenTm where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
@@ -33,7 +49,9 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; pair; snd; Nat; Π; IMu
         ; ICon; IDesc; _◂_; inil; nsuc; nzero; unit; natrec; renTm; renTy; εwkTy
         ; app; fst; jsub; ⌜IMu⌝; ielim; Σ'; isingle; ipayTy; εwk-ren; ipayTy-ren; ipayTy-cong
-        ; ⌜Id⌝; ⌜Nat⌝; idrefl; El; _∈ID_; ilookupD )
+        ; ⌜Id⌝; ⌜Nat⌝; idrefl; El; _∈ID_; ilookupD 
+        -- ★ for the `isubMethod-red` discharge below:
+        ; Var; ICon; icon )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢snd; ⊢pair; ⊢unit; ⊢icon; ⊢lam; ⊢nsuc; ⊢nzero; ⊢natrec; wk-single; ty-Nat; ty-Π; ty-IMu; ty-Unit
@@ -92,6 +110,7 @@ open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 --   touches only the INDEX slot.
 ------------------------------------------------------------------------
 open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Tm-varKv )
+open import DirectedHoTT.Examples.Knot.RenNat using ( extRNK-sub )
 open import DirectedHoTT.Examples.Knot.RenMot
   using ( RenTy; ty-RenTy; extRNK; ⊢extRNK )
 open import DirectedHoTT.Lib.Wk using ( towerA; towerJ )
@@ -562,3 +581,26 @@ vsRenK n = lam (Var-vsK (renTm vs n) (var vz))
            (⊢conv drn
              (csymᵀ (red→≅ᵀ (⟶ᵀ*-Πˡ (⟶ᵀ*-IMu
                (⟶*-pairʳ (⟶*-castₗ (cong snd (towerA m u i)) done))))))))
+
+------------------------------------------------------------------------
+-- ★★★ AND THE HYPOTHESES OF `Lib/ISub`'s REDUCTION LEMMAS, DISCHARGED AT
+-- THE INSTANTIATION THAT MATTERS.
+--
+-- ⚠ `Examples/Knot/ISubRedControl` discharges them at a TRIVIAL instance,
+--   which answers only "are these inhabited at all".  THIS answers the
+--   question worth asking: `isubMethod-red` is usable where it was built
+--   to be used.  `ExtNSub` is `Knot/RenMot.extRNK-sub`; `FordMapSub` is
+--   `refl`, because `renFordMap fi b p = p`.
+------------------------------------------------------------------------
+
+hE-knot : ExtNSub
+hE-knot = extRNK-sub
+
+hF-knot : FordMapSub
+hF-knot τ fi b p = refl
+
+knot-red : {Δ₀ : Cx} {a : Var Δ₀} {C : ICon Δ₀} (sw : SubCon a C) (k : ℕ)
+           {Γ : Cx} (i p ih n σ : RTm Γ) →
+           app (app (app (app (app (isubMethod k sw) i) p) ih) n) σ
+           ⟶* icon k (isubPay sw (fst i) (snd i) n σ p ih)
+knot-red = isubMethod-red hE-knot hF-knot

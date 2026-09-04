@@ -136,6 +136,7 @@ import DirectedHoTT.Examples.Knot.IPayTyKap
 import DirectedHoTT.Examples.Knot.IPayTyMot
 import DirectedHoTT.Examples.Knot.IPayTyRho
 import DirectedHoTT.Examples.Knot.IxD
+import DirectedHoTT.Examples.Knot.ISubRedControl
 import DirectedHoTT.Examples.Knot.JudgeRows
 import DirectedHoTT.Examples.Knot.JudgeWfA
 import DirectedHoTT.Examples.Knot.JudgeWfAA
@@ -200,6 +201,7 @@ import DirectedHoTT.Examples.Knot.Pw
 import DirectedHoTT.Examples.Knot.PwBody
 import DirectedHoTT.Examples.Knot.RedRows
 import DirectedHoTT.Examples.Knot.RenMot
+import DirectedHoTT.Examples.Knot.RenNat
 import DirectedHoTT.Examples.Knot.RenTm
 import DirectedHoTT.Examples.Knot.RenSpec
 import DirectedHoTT.Examples.Knot.RedWfA

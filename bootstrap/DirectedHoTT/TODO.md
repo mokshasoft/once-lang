@@ -209,3 +209,30 @@ commit — this is the safety-critical artifact.
 ⇒ NOT URGENT: `sweep.sh`'s ladder now has a third rung (`-A8m -c`) and
 `Trust` passes in 20s. Do this when it stops passing, or when a reviewer
 would rather read five short lists than one long one.
+
+## ⬜ `extRNK`'s NATURALITY — the last thing between half 2 and the knot
+
+`Lib/ISub.isubMethod-red` is PROVED but takes `ExtNSub` and `FordMapSub`
+as hypotheses. At the KNOT's renaming instantiation:
+
+* `FordMapSub` is FREE — `renFordMap fi b p = p`, so it is `refl`.
+* `ExtNSub` means `extRNK`'s naturality, and that is the open one.
+
+    extRNK d n ρ = lam (app (app (extRK (pair sVar (nsuc (w d))) (var vz))
+                                 (w n)) (w ρ))
+    extRK i k    = ielim KnotD i extRMethsK k
+
+`subTm` distributes structurally through `lam`/`app`/`ielim`, and the two
+`w`s are `sub-w`. ⇒ **everything reduces to `subTm σ extRMethsK ≡
+extRMethsK` — the 53-method tuple being closed.**
+
+⚠⚠ DO NOT PROVE THAT BY UNFOLDING THE TUPLE. That is
+`abstract-the-substituted-terms` verbatim, measured 87× elsewhere, and the
+tuple is 53 methods deep. Use the occurrence route instead — `Spec/Variance`
+has `occ-sub` and `Lib/IWk` has `pinned-stable`
+(`(∀ x → occTm x j ≡ false) → subTm σ j ≡ subTm τ j`), which is the shape
+this wants.
+
+⇒ NEXT after that: `nrs`'s pointwise law (parked at 8 attempts, and the
+interface fix it needs — `sel-here≡`/`sel-there≡`, `Lib/Wk.towerP` — is
+already committed), then `sub-agree`/`ren-agree`, which is step 3 proper.

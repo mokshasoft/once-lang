@@ -88,6 +88,16 @@ for rel in "${TOBUILD[@]:-}"; do
       fi
       # ★★★ THIRD RUNG: A **SMALLER** NURSERY, NOT A BIGGER ONE.
       #
+      # ⚠⚠ CORRECTION (same day): the causal story below is NOT
+      #   ESTABLISHED.  `Trust` was killed while ANOTHER Agda run
+      #   (`Once/Adequacy`, a different session) was resident on this
+      #   7.6 GB box, and it later passed at plain `-A64m` in 13s once the
+      #   box was quiet.  So "Trust wants a smaller nursery" is one
+      #   explanation; CONTENTION is another, and the evidence does not
+      #   separate them.  ⇒ keep the rung — it costs nothing when the
+      #   first two work — but do not cite it as a measured fact.
+      #   See `never-run-two-agda-checks-at-once`.
+      #
       # ⚠⚠ THE LADDER USED TO STOP HERE, AND IT STOPPED IN THE WRONG
       #   DIRECTION.  `-A64m` trades memory for speed; a module whose cost
       #   is READING MANY INTERFACES rather than allocating deeply wants
