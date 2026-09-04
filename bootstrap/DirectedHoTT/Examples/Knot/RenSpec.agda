@@ -29,6 +29,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; β; single; wk-single )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
+open import DirectedHoTT.Lib.Wk using ( sub-w³-single )
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans )
 open import DirectedHoTT.Examples.Knot.RenTm
   using ( vsRenK )
@@ -42,9 +43,10 @@ open import DirectedHoTT.Spec.Syntax
   using ( icon; idrefl; ⌜Nat⌝; unit; iihs; isingle; ielim )
 open import DirectedHoTT.Spec.Typing using ( ι-ielim; βfst; jsub-refl; ξ-jsubᵖ )
 open import DirectedHoTT.Metatheory.Confluence
-  using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ )
+  using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-jsubᵖ )
 open import DirectedHoTT.Lib.IMeths
-  using ( methsFrom-sel; methsFrom-past; cdTake; inCD; tt )
+  using ( methsFrom-sel; methsFrom-past; cdTake; inCD; tt
+        ; sel-here; sel-there )
 
 -- ★ transitivity, spelled as an operator — `Knot/SzAgree` defines the
 --   same one locally; a third customer moves it to a reduction lib.
@@ -181,3 +183,54 @@ inVs r = ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ r))
 --   (`⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done`),
 --   which is exactly the thing to factor.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ★★★ `extR ρ (vs x) = vs (ρ x)`, COMPLETE — the parked law, unparked
+--   by `Lib/IMeths`'s `sel-here`/`sel-there`.
+--
+-- ★★ AND THE FORDS COMPUTE AWAY.  `Var-vsK`'s depth ford IS `idrefl`
+--   (`Knot/Build:222`), so once the projection reaches it,
+--
+--       predN _ (idrefl …)   ⟶  reflN _  = idrefl …
+--       symN  _ (idrefl …)   ⟶  reflN _  = idrefl …
+--       jsub  _ (idrefl …) x ⟶  x
+--
+--   ⇒ the transports the ROW needs in order to TYPECHECK vanish when the
+--     row meets a real constructor.  That is what makes the Forded
+--     encoding FAITHFUL rather than merely well-typed, and it is only
+--     visible from a REDUCTION proof — never from the typing.
+------------------------------------------------------------------------
+
+extRNK-vs : {Γ : Cx} (d n rn m x : RTm Γ) →
+            app (extRNK d n rn) (Var-vsK m x) ⟶* Var-vsK n (app rn x)
+extRNK-vs d n rn m x =
+  ⟶*-castᵣ
+    (cong₂ (λ a b → Var-vsK a (app b x))
+      (trans (wk-single {v = subTm (single (Var-vsK m x)) (renTm vs rn)}
+                        (subTm (single (Var-vsK m x)) (renTm vs n)))
+             (wk-single {v = Var-vsK m x} n))
+      (wk-single {v = Var-vsK m x} rn))
+  (step (β _ _)
+    (⟶*-appˡ (⟶*-appˡ (extRK-vs _ _ _)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
+     ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+     ⟶*-appˡ (step (β _ _) done) »
+     step (β _ _) done »
+     -- the DEPTH FORD, read out of the payload at slot 3
+     -- ⚠ `symN a p` and `predN a p` ARE `jsub _ p _`, so reducing inside
+     --   them is `⟶*-jsubᵖ` again — three deep, not three different
+     --   congruences.
+     inVs (⟶*-appʳ (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-jsubᵖ
+       (sel-there 2 _ _ (sel-there 1 _ _ (sel-there 0 _ _ (sel-here _ _)))))))) »
+     -- …then the three transports fire, innermost first
+     inVs (⟶*-appʳ (⟶*-jsubᵖ (⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done)))) »
+     inVs (⟶*-appʳ (⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done))) »
+     inVs (⟶*-appʳ (step (jsub-refl _ _ _ _) done)) »
+     -- …and `x` itself, at slot 1.  ⚠ IT COMES BACK WEAKENED THREE TIMES
+     --   AND SUBSTITUTED BACK THREE TIMES — a payload field is weakened
+     --   past every binder that follows it, and each `⊢app` puts one
+     --   back.  `Lib/Wk.sub-w³-single` is that round trip, and it is
+     --   `towerA`/`towerJ`'s shape at a TERM instead of a variable.
+     inVs (⟶*-appʳ (⟶*-castᵣ (sub-w³-single x)
+                             (sel-there 0 _ _ (sel-here _ _))))))

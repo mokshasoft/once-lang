@@ -194,3 +194,25 @@ methsFrom-past : {Γ : Cx} {E : IDesc} (W : CDesc E) {m : RTm Γ}
 methsFrom-past (cd-stop E) k = done
 methsFrom-past (cd-cons W) k =
   step (selCong (cdLen W + k) (βsnd _ _)) (methsFrom-past W k)
+
+------------------------------------------------------------------------
+-- ★★★ READING A FIELD OUT OF A PAYLOAD — and it is `sel` again.
+--
+-- ⚠⚠ A ROW WRITES `fst (snd (snd (snd p)))`, WHICH **IS** `sel 3 p`:
+--   `sel zero ms = fst ms` and `sel (suc k) ms = sel k (snd ms)`, so the
+--   two are definitionally equal.  ⇒ the projection chains that every
+--   reduction proof has to climb are the SAME navigation the method
+--   tuple uses, and they need the same two steps.
+--
+-- ★ `Knot/SzAgree` writes them out per row — `⟶*-fst done » step
+--   (βfst _ _) done` and deeper nests of it — 30 times.  These two
+--   combinators compose to any depth, and they are what step 2's parked
+--   `extRNK-vs` was missing (`PLAN-RENAMING.md` §15.4).
+------------------------------------------------------------------------
+
+sel-here : {Γ : Cx} (a b : RTm Γ) → sel zero (pair a b) ⟶* a
+sel-here a b = step (βfst a b) done
+
+sel-there : {Γ : Cx} (k : ℕ) (a b : RTm Γ) {c : RTm Γ} →
+            sel k b ⟶* c → sel (suc k) (pair a b) ⟶* c
+sel-there k a b r = step (selCong k (βsnd a b)) r
