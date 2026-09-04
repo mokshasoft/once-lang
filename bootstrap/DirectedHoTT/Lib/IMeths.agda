@@ -130,6 +130,25 @@ data InCD : {E : IDesc} → CDesc E → ℕ → Set where
   thereCD : {C : ICon (ε ∙)} {E : IDesc} {W : CDesc E} {k : ℕ} →
             InCD W k → InCD (cd-cons {C = C} W) (suc k)
 
+-- ★ …AND THE WITNESS IS COMPUTED, NOT WRITTEN.  `InCD (cdTake 52 KnotD)
+--   51` is 51 `thereCD`s by hand; `InCD?` DECIDES it and `inCD` extracts
+--   the proof, so a caller writes `inCD _ 51 tt` and Agda does the walk.
+--   ⚠ Same move `Lib/IWk`'s `decCon`/`get` makes, without the `Maybe`:
+--   the predicate computes to `⊤` or `⊥`, so `tt` is the whole argument.
+data ⊤ : Set where
+  tt : ⊤
+
+data ⊥ : Set where
+
+InCD? : {E : IDesc} → CDesc E → ℕ → Set
+InCD? (cd-stop E) k       = ⊥
+InCD? (cd-cons W) zero    = ⊤
+InCD? (cd-cons W) (suc k) = InCD? W k
+
+inCD : {E : IDesc} (W : CDesc E) (k : ℕ) → InCD? W k → InCD W k
+inCD (cd-cons W) zero    _ = hereCD
+inCD (cd-cons W) (suc k) p = thereCD (inCD W k p)
+
 methsAt-sel : {Γ : Cx} {E : IDesc} (W : CDesc E) {mth : ℕ → RTm Γ}
               (j k : ℕ) {tl : RTm Γ} → InCD W k →
               sel k (methsAt W mth j tl) ⟶* mth (k + j)
@@ -151,3 +170,27 @@ methsFrom-sel : {Γ : Cx} {E : IDesc} (W : CDesc E) {m : RTm Γ}
 methsFrom-sel (cd-cons W) zero    hereCD      = step (βfst _ _) done
 methsFrom-sel (cd-cons W) (suc k) (thereCD p) =
   step (selCong k (βsnd _ _)) (methsFrom-sel W k p)
+
+-- ★ …AND WALKING **PAST** THE PREFIX, into the caller's tail.
+--
+-- ⚠ Needed by every law about a row the walk does not cover — which for
+--   a segmented tuple (`Knot/PayTy`'s shape, and `extRMethsK`'s) is
+--   every OVERRIDDEN row.  `methsAt-sel` reaches inside the walk;
+--   this reaches beyond it.
+cdLen : {E : IDesc} → CDesc E → ℕ
+cdLen (cd-stop E) = zero
+cdLen (cd-cons W) = suc (cdLen W)
+
+methsAt-past : {Γ : Cx} {E : IDesc} (W : CDesc E) {mth : ℕ → RTm Γ}
+               {tl : RTm Γ} (j k : ℕ) →
+               sel (cdLen W + k) (methsAt W mth j tl) ⟶* sel k tl
+methsAt-past (cd-stop E) j k = done
+methsAt-past (cd-cons W) j k =
+  step (selCong (cdLen W + k) (βsnd _ _)) (methsAt-past W (suc j) k)
+
+methsFrom-past : {Γ : Cx} {E : IDesc} (W : CDesc E) {m : RTm Γ}
+                 {tl : RTm Γ} (k : ℕ) →
+                 sel (cdLen W + k) (methsFrom W m tl) ⟶* sel k tl
+methsFrom-past (cd-stop E) k = done
+methsFrom-past (cd-cons W) k =
+  step (selCong (cdLen W + k) (βsnd _ _)) (methsFrom-past W k)
