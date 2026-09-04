@@ -28,7 +28,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢var; here; ⊢jsub
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; wk-cancel-tm )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; wk-cancel-tm )
 open import DirectedHoTT.Lib.Amrec using ( Prv; prv )
 
 ------------------------------------------------------------------------

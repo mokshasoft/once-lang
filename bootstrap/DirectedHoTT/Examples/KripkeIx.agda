@@ -45,7 +45,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢ty_; ty-El; ty-Unit; ty-Nat; ty-Σ; ty-Π; ty-IMu
         ; imethTy; imethsTy
         ; _⟶*_; done; step; β; βfst; ξ-appˡ; ι-ielim )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Examples.Scoped
   using ( INat; TmD; TmWf; Tm; FinD; FinWf; Fin; varC; lamC; appC

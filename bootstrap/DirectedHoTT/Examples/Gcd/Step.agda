@@ -58,10 +58,10 @@ open import DirectedHoTT.Spec.Typing
         ; _≅ᵀ_; csymᵀ
         ; ξ-nsuc; ξ-Homˡ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd
         ; _⟶_; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub; wk-sub-tm )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-ren; ⟶*-sub )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ; ⟶*-ren; ⟶*-sub )
 open import DirectedHoTT.Lib.Nat
   using ( plusTm; ⊢plus )
 open import DirectedHoTT.Examples.Nat

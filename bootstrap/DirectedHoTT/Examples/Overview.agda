@@ -50,7 +50,7 @@ open import DirectedHoTT.Spec.Typing
         ; Ctx; ◇; _▹_; ⌊_⌋; here
         ; _⊢_∷_; ⊢var; ⊢lam; ⊢app; ⊢⌜base⌝; ⊢⌜Π⌝; ⊢hrefl; ⊢tr; ⊢ap; ⊢conv
         ; _⊢ty_; ty-base; ty-El; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Metatheory.Canonicity using ( consistency )
 
 ------------------------------------------------------------------------

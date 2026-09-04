@@ -52,7 +52,7 @@ open import DirectedHoTT.Spec.Syntax
         ; ipayTy; isingle; iext; ifields; sel
         ; renTy; renTm; subTy; subTm )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; wk-single
         ; _∋_∷_; here; there

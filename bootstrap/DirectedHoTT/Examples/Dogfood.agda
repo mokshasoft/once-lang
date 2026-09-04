@@ -70,7 +70,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ⊢absurd; ⊢ordtr
         ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom; wk-single )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
 open import DirectedHoTT.Lib.Strong
   using ( El-homNat; ⊢le-refl; reflTm )

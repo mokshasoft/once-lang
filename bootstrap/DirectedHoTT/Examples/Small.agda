@@ -39,7 +39,7 @@ open import DirectedHoTT.Spec.Typing
         ; Ctx; ◇; ⌊_⌋
         ; _⊢_∷_; ⊢conv; ⊢unit; ⊢nzero; ⊢nsuc
         ; ⊢⌜Nat⌝; ⊢⌜Unit⌝; ⊢⌜Hom⌝; ⊢absurd )
-open import DirectedHoTT.Metatheory.Injectivity using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( _⟶ᵀ*_; doneᵀ; stepᵀ; red→≅ᵀ )
 
 n1 n2 : {Γ : Cx} → RTm Γ
 n1 = nsuc nzero

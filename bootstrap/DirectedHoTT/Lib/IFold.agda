@@ -47,7 +47,7 @@ open import DirectedHoTT.Spec.Typing
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTyFrom; iihTy
         ; _⟶_; _⟶*_; done; step; βfst; βsnd; ξ-fst; ξ-snd )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; ren-ty; isingle-Sub⊢; iihTy-wf; iihTy-ren; iihTy-cong )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )

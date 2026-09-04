@@ -48,8 +48,8 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Σ
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Nat⌝; El-⌜Σ⌝; Hom-Nat-ss
         ; _⟶_; β; βfst; ξ-nsuc; ξ-Homˡ; ξ-El )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶ᵀ*-trans )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; stepᵀ; doneᵀ; ⟶ᵀ*-trans )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Examples.AmrecC using ( aStepT )
 

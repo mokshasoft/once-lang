@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢lam; ⊢app
         ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢-ext )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )
 open import DirectedHoTT.Lib.Wk

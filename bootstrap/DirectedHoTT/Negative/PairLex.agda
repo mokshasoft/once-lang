@@ -22,7 +22,7 @@ open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; RTy; Nat; ⌜Nat⌝ )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢nsuc; ⊢⌜Nat⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Rec using ( aIHTat )
 open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT; msr₁; msr₂; ⊢msr₁; ⊢msr₂ )
 open import DirectedHoTT.Negative.Lexrec using ( rec2Tat )

@@ -27,7 +27,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app
         ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; ren-ty )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ren-ty )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base' )
 open import DirectedHoTT.Lib.Wk
   using ( w; wᶠ; cong₆; sub-w; sub-w²; wk-singleTy; wᶠ-single

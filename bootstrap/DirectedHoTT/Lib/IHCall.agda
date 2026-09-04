@@ -46,7 +46,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single
         ; _⊢_∷_; _⊢ty_; ⊢lam; ⊢app; ⊢nsuc; ty-Π; ty-Hom; ty-Nat; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import DirectedHoTT.Lib.Wk using ( w; sub-w )
 open import DirectedHoTT.Lib.Rec using ( aIHTat'; aIHTat )
 open import DirectedHoTT.Lib.Amrec using ( aIHTat-ren )

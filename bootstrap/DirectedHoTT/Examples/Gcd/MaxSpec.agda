@@ -37,7 +37,7 @@ open import DirectedHoTT.Lib.Max
   using ( MaxCode; ⊢MaxCode; MaxCode-sub; MaxT; El-max; ⊢MaxElim )
 open import DirectedHoTT.Lib.Dvd using ( dvdT )
 open import DirectedHoTT.Spec.Typing using ( ⊢conv )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ )
 open import DirectedHoTT.Lib.Amrec using ( Prv; prv; prvOk; prv-cast )
 open import DirectedHoTT.Lib.AmrecInd using ( module Concl )
 open import DirectedHoTT.Examples.Gcd.Step using ( msr; ⊢msr; gcdStp; ⊢gcdStp )

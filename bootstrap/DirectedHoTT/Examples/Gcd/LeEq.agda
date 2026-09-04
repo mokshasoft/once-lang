@@ -34,10 +34,10 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _▹_; _⊢_∷_; ⊢pair; ⊢nsuc; ⊢conv; ty-Nat; csymᵀ; single
         ; nrs; ⊢lam; ⊢app; ⊢var; here; wk-single; ⊢natrec; _≅ᵀ_; El-⌜Nat⌝
         ; ⊢nzero; done; ty-Hom )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
 open import DirectedHoTT.Lib.Strong
   using ( ⊢le-refl; reflTm; natAsEl; elAsNat )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Wk
   using ( w; wᶠ; ren-w; pw3; pw4; pw5; nrs-w; cong₃; sub-w; wfw-single; w²-single )
 open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT ; msrPair)

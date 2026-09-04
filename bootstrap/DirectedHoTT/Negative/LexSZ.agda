@@ -26,7 +26,7 @@ open import DirectedHoTT.Lib.Ord
   using ( ⊢strong-base'; ⊢strong-step )
 open import DirectedHoTT.Negative.Lex
   using ( Γ₅; REC1T; REC2T; LStepT; M1lex; lexAuxMot; lexSZ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 
 ------------------------------------------------------------------------
 -- ctx after the three ⊢lams: vz=lt, vs=le, vs²=x, vs³=n₂, vs⁴=IH₁,

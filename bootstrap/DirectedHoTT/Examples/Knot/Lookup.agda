@@ -42,7 +42,7 @@ open import DirectedHoTT.Examples.Knot.Sorts
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; elIdN )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; ⊢-cast; Sub⊢; Sub⊢-ext; isingle-Sub⊢; iext-Sub⊢ )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
 open import DirectedHoTT.Lib.IWk using ( payStep )

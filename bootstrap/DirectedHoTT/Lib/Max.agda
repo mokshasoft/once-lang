@@ -32,9 +32,9 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢lam; ⊢app
         ; ty-Nat; ty-Π; ⊢⌜Π⌝; ⊢⌜Nat⌝; El-⌜Π⌝; El-⌜Nat⌝; ξ-Πˡ
         ; _≅ᵀ_; csymᵀ; ⊢nzero; ⊢nsuc; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; _⟶*_; step; done; wk-single )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; stepᵀ; doneᵀ; _⟶ᵀ*_; ⟶ᵀ*-trans; ⟶ᵀ*-Πˡ; ⟶ᵀ*-Πʳ; ⟶ᵀ*-El )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Wk
   using ( w; sub-w; sub-w²; sub-w³; ren-w; ren-w²; ren-w³; cong₃ )
 open import DirectedHoTT.Lib.Pair using ( asN )
@@ -43,7 +43,7 @@ open import DirectedHoTT.Lib.Dvd using ( dvdT; ⊢dvdT; dvdCode; ⊢dvdCode )
 open import DirectedHoTT.Lib.DvdArith using ( dvdCode-sub; dvdCode-ren; El-dvd; dvdCode-redN )
 open import DirectedHoTT.Lib.MonusArith using ( ⊢dvd-monus; dvdMonus )
 open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-ren )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-ren )
 open import DirectedHoTT.Lib.ArithComm using ( IdN )
 
 ------------------------------------------------------------------------

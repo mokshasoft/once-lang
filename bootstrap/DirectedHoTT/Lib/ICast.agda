@@ -33,7 +33,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; _⟶_; _⟶*_
         ; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMu )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; elIdN )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 

@@ -24,7 +24,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢conv
         ; csymᵀ; _⟶*_; step; done; βfst; βsnd; natrec-suc )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Wk using ( w )
 open import DirectedHoTT.Lib.Pair using ( asN; PairT ; msrPair)
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )

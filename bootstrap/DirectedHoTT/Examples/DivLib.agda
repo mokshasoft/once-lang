@@ -37,8 +37,8 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢lam; ⊢app; ⊢⌜Nat⌝; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π
         ; _≅ᵀ_; csymᵀ; El-⌜Nat⌝ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Monus
   using ( monusTm; ⊢monus )
 open import DirectedHoTT.Examples.Div

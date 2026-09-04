@@ -28,7 +28,7 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base' )
 open import DirectedHoTT.Negative.Lex
   using ( Γ₅; REC1T; REC2T; LStepT; M0lex; lexZZ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 
 ------------------------------------------------------------------------
 -- 6. BRANCH (0,0), AS Def-BACKED LEMMAS.

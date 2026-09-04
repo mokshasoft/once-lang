@@ -31,7 +31,7 @@ open import DirectedHoTT.Spec.Syntax
   using ( ε; _∙; RTy; RTm; U; Nat; natrec; app; subTm; extS )
 open import DirectedHoTT.Spec.Typing
   using ( ◇; _▹_; single; _⊢_∷_; _⊢ty_; _⟶*_ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢[] )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢[] )
 open import DirectedHoTT.Lib.Strong using ( reflTm )
 open import DirectedHoTT.Lib.NatVal using ( NatVal; nv-zero; nv-suc )
 open import DirectedHoTT.Lib.NatEval using ( natEval )

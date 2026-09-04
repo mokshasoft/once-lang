@@ -32,7 +32,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single
         ; _⊢_∷_; ⊢var; here; there; ⊢lam; ⊢app; ⊢fst; ⊢snd
         ; _⟶*_; done; step; β; ξ-appˡ; ⊢idrefl; ⊢⌜Nat⌝; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ren-lemma; Ren⊢ )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-lemma; Ren⊢ )
 open import DirectedHoTT.Lib.Wk using ( w )
 open import DirectedHoTT.Lib.Amrec
   using ( Prv; prv; prvTm; prvOk; StepExt; aStepT; idOfRed; module AmTΠ )

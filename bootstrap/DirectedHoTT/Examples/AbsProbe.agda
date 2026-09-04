@@ -53,7 +53,7 @@ open import DirectedHoTT.Spec.Syntax
         ; Ren; renTm; renTy; subTm; subTy; extR; nrs )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; _⊢_∷_; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( Ren⊢ )
+open import DirectedHoTT.Metatheory.TySub using ( Ren⊢ )
 open import DirectedHoTT.Lib.Rec using ( aIHTat )
 open import DirectedHoTT.Lib.Amrec using ( prvTm; prvOk; StepPW )
 open import DirectedHoTT.Lib.Pair using ( PairT )

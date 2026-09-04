@@ -44,11 +44,11 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-Idˡ; ξ-Idʳ; ξ-nsuc; ξ-natrecⁿ; natrec-zero; natrec-suc
         ; ξ-⌜Σ⌝ˡ; ξ-⌜Σ⌝ʳ; ξ-⌜Id⌝ʳ; ξ-⌜Id⌝ˡ
         ; _⟶*_; step; done; wk-single )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; _⟶ᵀ*_; ⟶ᵀ*-El )
-open import DirectedHoTT.Metatheory.Confluence
+open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-trans; ⟶*-natrecⁿ; ⟶*-natrecᶻ; ⟶*-natrecˢ; ⟶*-ren )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Wk
   using ( w; nrs-w; ren-sub; sub-w; cong₃; ren-w²; ren-w³; ren-w )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )

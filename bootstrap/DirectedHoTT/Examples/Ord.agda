@@ -32,7 +32,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶_; _⟶*_; done; step
         ; ordtr-z; ordtr-sss
         ; _⊢_∷_; ⊢unit; ⊢conv; ⊢nsuc; ⊢nzero; ⊢absurd; ⊢ordtr )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
 open import DirectedHoTT.Metatheory.Canonicity using ( consistency )
 
 n1 n2 : {Γ : Cx} → RTm Γ

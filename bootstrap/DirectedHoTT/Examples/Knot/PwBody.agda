@@ -74,7 +74,7 @@ open import DirectedHoTT.Examples.Knot.Pw
 open import DirectedHoTT.Lib.IPay using ( idwfDrop; Split; spl-nil )
 open import DirectedHoTT.Spec.Typing using ( imethsTy; imethsTyFrom; ⊢pair; ⊢ielim )
 open import DirectedHoTT.Spec.Syntax using ( ielim )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ren-ty )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-ty )
 open import normalizer.Syntax.Types using ( sym; _≡_; cong; trans )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Lib.IWk using ( sh )

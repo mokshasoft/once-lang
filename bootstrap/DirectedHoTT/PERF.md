@@ -197,3 +197,150 @@ builds in ~157s with headroom and **OOMs at 2 GB free** under `-c`,
 `-A16m -c` and `-A8m -c` alike. The same module has measured 76s, 104s and
 352s-then-death within one hour with no code change. **Below ~2×, a
 difference here is not evidence.**
+
+--------------------------------------------------------------------------
+## 6. ★★★ THE DOMINANT COST IS DESERIALIZATION, AND THE FIX IS TO SPLIT
+##    MODULES BY **WHAT CALLERS USE** — measured 2026-09-04
+
+### 6.1 The phase split, on the knot
+
+`--profile=all`, warm deps, four knot modules:
+
+| module | total | deserialization | **typing** |
+| --- | --- | --- | --- |
+| `Knot/Census` | 5,811ms | 3,948ms (68%) | **2ms** |
+| `Knot/IPayTy` | 3,622ms | 2,655ms (73%) | ~0 |
+| `Knot/SubApp` | 3,383ms | 2,510ms (74%) | ~0 |
+| `Knot/PayTy`  | 3,508ms | 2,599ms (74%) | ~0 |
+
+⇒ **~70% of a knot sweep is reading interfaces.** Type checking is
+noise. So the lever is not proof size, not Def-lifting (measured: 48.3s /
+4.56 GB against 48.3s / 4.53 GB — *no effect*), not mutual-block size.
+It is **how many bytes a module must read before it starts.**
+
+### 6.2 What the knot was reading, and why
+
+253 interfaces, 112 MB. The three largest were `Metatheory/Confluence`
+(8.7 MB), `Metatheory/LogicalRelation` (5.4 MB), `Metatheory/Injectivity`.
+
+**Every knot module reached `Confluence`.** The path was not a direct
+import — it was:
+
+    Knot/JudgeWfA  →  SubjectReduction  →  Confluence
+
+and ~90 of the ~100 modules importing `SubjectReduction` used **exactly
+one name from it: `⊢wk`**. They were deserializing the entire confluence
+proof *in order to weaken a derivation*.
+
+### 6.3 ★★★ THE RULE: SPLIT BY CONSUMPTION, NOT BY SUBJECT
+
+A module is well shaped when its *interface size* matches what its
+*callers* need. `SubjectReduction` was well shaped by subject — reduction
+preserves typing, plus the structural lemmas that proof needs — and badly
+shaped by consumption:
+
+| what callers wanted | how many | what they paid |
+| --- | --- | --- |
+| `⊢wk` alone | ~90 | Confluence + Injectivity + SR |
+| `⊢-cast`, `ren-ty`, `Sub⊢` … | ~15 | same |
+| `sr`, `sr*`, indexed-ι | 8 | same |
+
+Two new modules, each defined by what is *asked for*:
+
+- **`Metatheory/RedCong`** — `⟶*` congruences, `⟶-ren`/`⟶*-ren`,
+  substitution monotonicity, and `_⟶ᵀ*_` + its congruences + `red→≅ᵀ`
+  (those last lifted out of `Injectivity`). Needs only `Spec`.
+- **`Metatheory/TySub`** — the structural typing lemmas: `∋-cast`,
+  `⊢-cast`, the naturality layer, `Ren⊢`/`⊢wk`, `Sub⊢`/`sub-lemma`/
+  `⊢single`, and the five indexed-ι well-formedness lemmas. Needs
+  `RedCong` and **neither `Confluence` nor `Injectivity`**.
+
+Both parents re-export `public`, so no existing importer broke.
+
+### 6.4 Result, measured
+
+| | before | after |
+| --- | --- | --- |
+| `Confluence.agdai` reached by a knot leaf | yes, 112/112 | **no, 111/112** |
+| mean metatheory bytes per knot module | **13.0 MB** | **1.78 MB** |
+| `Injectivity.agdai` | 5.4 MB | 830 KB |
+| modules repointed off `SubjectReduction` | — | 184 → `TySub` |
+| modules repointed off `Injectivity` | — | 55 → `RedCong` |
+| modules that still legitimately want `SubjectReduction` | ~100 | **5** |
+| modules that still legitimately want `Injectivity` | 61 | **6** |
+
+**7.3× less metatheory to deserialize per knot module.**
+
+### 6.5 ⚠ How to find the cut — three checks that did the work
+
+1. **Classify importers by their `using` list.** For each importer, is
+   every name it asks for present in the candidate module? That single
+   test partitioned 61 `Injectivity` importers into 55 movable / 6 not,
+   with no judgement calls.
+   ⚠ The name-extraction regex must include **data constructors**. A
+   first pass missed `doneᵀ`/`stepᵀ` and reported 47 modules as blocked
+   that were in fact already served.
+2. **Grep the candidate block for the thing it must not mention.** Lines
+   84–357 of `Confluence` contain `⟹` zero times — that is what proved
+   the congruences were separable from the confluence proof, before
+   moving a line.
+3. **Compute the dependency cone of the lemmas you want to move.**
+   `iihTy-wf`/`isingle-Sub⊢`/`iext-Sub⊢` sat *after* `sr` in the file and
+   under a header that filed them with ι — but their cone is **five
+   definitions and touches neither `sr` nor any `gen-*`**. They were
+   downstream by narrative, not by dependency.
+
+### 6.6 ⚠⚠ THE TRAP: A REPOINT THAT BUYS NOTHING
+
+Repointing 172 modules at `TySub` moved the needle **0 MB**. Every knot
+module goes through `Lib/IWk`, `Lib/ISub`, `Lib/IFold`, `Lib/IPay`, and
+those four still wanted `iihTy-wf`/`isingle-Sub⊢`/`iext-Sub⊢`. **One
+surviving edge in a chokepoint erases the whole win.**
+
+⇒ Do not measure a split by how many modules you repointed. Measure it by
+**transitive reachability of the heavy interface from a leaf** — and
+re-measure after every step. Two of the four steps here looked like
+progress and delivered nothing until the last edge was cut.
+
+### 6.7 The dev-cycle consequence, measured
+
+| edit | check a knot leaf |
+| --- | --- |
+| edit the leaf itself | **3.61 s** |
+| `touch` a `Lib` module (no content change) | 4.06 s — Agda hashes content |
+| **real content edit in `Lib/IMeths`** | **556.73 s** |
+
+**154×.** So while developing a new library lemma, state it in a *temp
+module that imports the real one* and promote it when the example that
+needs it is finished. Moving code into `Lib` is a **correctness** lever
+and an **anti-lever for sweep time** — it widens the invalidation set
+(demonstrated: 1 → 89 affected modules).
+
+### 6.8 ⚠⚠ A SWEEP'S FIRST MODULE IS BILLED FOR EVERY COLD DEPENDENCY
+
+In the 2026-09-04 verification sweep `Knot/JudgeWfAA` reported **2295s**
+and `Knot/JudgeWfA`, two lines later, reported **5s** — although
+`JudgeWfAA` is the *smaller* file (305 lines against `JudgeWfAG`'s 361,
+which took 84s).
+
+| module | build order | closure | **cold when it ran** | reported |
+| --- | --- | --- | --- | --- |
+| `Gcd/StepExtA` | 1st | 27 | 27 | 400s |
+| `Knot/JudgeWfAA` | 2nd | 89 | **75** | **2295s** |
+| `Knot/JudgeWfA` | 3rd | 63 | **0** | **5s** |
+
+`sweep.sh` times the `check.sh` invocation and Agda builds imports
+transitively, so the first module to reach a subtree pays for all of it.
+`JudgeWfAA` imports `JudgeWfA`…`JudgeWfZ` plus `Knot/Desc`, `Sorts`,
+`Ctors`, `Terms`, `Wf`, `Lib/IWk`, `Lib/ISub`, `Lib/IFold`, `Lib/IPay`,
+`Lib/IMeths`, `Lib/ICast` — 75 modules, ~30s each, which is exactly the
+band the siblings then reported once those were warm.
+
+⇒ **the `<-- SLOW` marker on the first module in the ordering is
+meaningless**, every sweep, because `sweep.sh` deliberately runs the
+RTS-special modules first. To time a module honestly, check it with deps
+warm, or compare it against a sibling whose closure adds 0 new modules.
+
+⚠ Memory pressure (the box dipped to 166 MB free during that window)
+stretched the number but did not create it — see §4 and
+`agda-oom-is-a-gc-choice`.

@@ -40,7 +40,7 @@ open import DirectedHoTT.Spec.Typing
         ; _≅ᵀ_; crflᵀ; csymᵀ; ctrnᵀ; credᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; here
         ; _⊢_∷_; ⊢var; ⊢⌜base⌝; ⊢⌜Id⌝; ⊢⌜Hom⌝; ⊢hrefl; ⊢idrefl; ⊢jsub; ⊢conv )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; wk-cancel-tm; ⊢-cast; ⊢[] )
 
 ------------------------------------------------------------------------

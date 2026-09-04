@@ -35,12 +35,12 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ty-Nat; ty-Π
         ; csymᵀ; ξ-Idʳ; natrec-zero; natrec-suc; _⟶*_; step; done; wk-single )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Wk
   using ( w; nrs-w; sub-w; cong₃; ren-w; ren-w² )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-natrecⁿ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-natrecⁿ )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.Monus
   using ( predTm; monusTm; ⊢pred; ⊢monus; monus-zero; monus-suc )

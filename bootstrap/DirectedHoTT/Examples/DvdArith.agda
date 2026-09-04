@@ -31,8 +31,8 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc
         ; _⟶*_; done; step; natrec-zero; natrec-suc
         ; csymᵀ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-Idʳ )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-nsuc )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-Idʳ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-nsuc )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.Mul using ( mulTm; ⊢mul; mul-zero; mul-suc )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; reflN; ⊢reflN )

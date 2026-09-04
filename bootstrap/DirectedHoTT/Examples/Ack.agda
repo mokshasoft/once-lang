@@ -42,7 +42,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶ᵀ_; El-⌜Σ⌝; El-⌜Nat⌝
         ; _⊢_∷_; ⊢var; here; ⊢lam; ⊢fst; ⊢snd; ⊢conv; ⊢⌜Nat⌝; ⊢⌜Σ⌝
         ; _⊢ty_; ty-El )
-open import DirectedHoTT.Metatheory.Injectivity
+open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ )
 
 ------------------------------------------------------------------------

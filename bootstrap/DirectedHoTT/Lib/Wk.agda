@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy-renTy; subTy-id; renTy-renTy; renTy-subTy; renTm-cong; idₛ )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _∋_∷_; here; there; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ren-lemma; Ren⊢; Ren⊢-ext; ∋-cast )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub )
 

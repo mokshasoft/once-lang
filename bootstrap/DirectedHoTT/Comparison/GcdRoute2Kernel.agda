@@ -54,14 +54,14 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢lam; ⊢app; ⊢fst; ⊢snd; ⊢⌜Nat⌝
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-suc
         ; ty-Nat; ty-Hom; ty-El; ty-Π )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Lib.Wk using ( w )
 open import DirectedHoTT.Lib.Rec using ( aIHTat )
 open import DirectedHoTT.Lib.Pair using ( PairT; ⊢PairT )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 open import DirectedHoTT.Examples.Nat using ( n1; n2 )
 open import DirectedHoTT.Examples.Gcd.Step
   using ( msr; ⊢msr; gcdStp; ⊢gcdStp; X20; msr-2-0; gcd-computes-b0 )

@@ -84,7 +84,7 @@ open import DirectedHoTT.Spec.Variance
         ; stkC?→stkA?; stkA?⊥pw
         ; stk⊥pw; pw⊥stk )
 open import DirectedHoTT.Metatheory.SubjectReductionBase using ( ⟶ᵀ-sub; ≅ᵀ-sub )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( subTy-monoˢ )
+open import DirectedHoTT.Metatheory.TySub using ( subTy-monoˢ )
 open import DirectedHoTT.Metatheory.Confluence using ( single-mono; confluent; ⟶*-absurdᶜ; ⟶*-absurdᵉ )
 open import DirectedHoTT.Metatheory.Confluence
   using ( ⟶*-trans; ⟶*-lam; ⟶*-appˡ; ⟶*-appʳ

@@ -32,14 +32,14 @@ open import DirectedHoTT.Spec.Syntax
         ; Π; El; ⌜Nat⌝ )
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; _⟶_; β; βfst; βsnd; ξ-appˡ; natrec-suc; natrec-zero; single; wk-single )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-appˡ; ⟶*-natrecⁿ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-appˡ; ⟶*-natrecⁿ )
 open import DirectedHoTT.Lib.Monus using ( monusTm )
 open import DirectedHoTT.Lib.Nat using ( plusTm )
 open import DirectedHoTT.Lib.Amrec using ( aIHTat-sub )
 open import DirectedHoTT.Examples.Gcd.Step using ( gcdIH; msr; gcdG-sub )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; _▹_; ⊢natrec; ⊢pair; ⊢nsuc; ⊢var; here; there; ty-Nat )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( sub-lemma; sub-ty; Sub⊢; Sub⊢-ext; ⊢single; ⊢-cast; ⊢wk; subTy-comm )
 open import DirectedHoTT.Lib.Pair using ( PairT )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )

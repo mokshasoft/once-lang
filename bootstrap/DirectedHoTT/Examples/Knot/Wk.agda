@@ -35,7 +35,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢pair; ⊢unit; ⊢fst; ⊢snd; ⊢nsuc
         ; IDescWfFrom; idwf-cons; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd
         ; ty-IMu; imethsTy; imethsTyFrom; ⊢ielim )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢-cast; ren-ty )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-ty )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Lib.IWk
   using ( sh; Mot; decDesc; iwkMeths; ⊢iwkMethsFrom; wkdRest

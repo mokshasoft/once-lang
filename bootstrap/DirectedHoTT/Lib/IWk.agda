@@ -79,7 +79,7 @@ open import DirectedHoTT.Spec.Typing
         ; iihTy; imethTy; imethsTyFrom; ⊢lam; ⊢icon
         ; _≅ᵀ_; csymᵀ; credᵀ; ξ-El; ξ-⌜Id⌝ˡ; ξ-IMu
         ; _⟶_; βfst; βsnd; ξ-pairˡ; ξ-pairʳ; ξ-nsuc )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢; isingle-Sub⊢; ren-ty
         ; iihTy-wf; iihTy-ren; iihTy-cong )
 open import DirectedHoTT.Lib.IPay

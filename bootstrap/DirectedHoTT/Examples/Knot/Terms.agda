@@ -50,7 +50,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶_; βfst; βsnd; ξ-pairʳ; ξ-nsuc
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; credᵀ
         ; El-⌜Id⌝; ξ-El; ξ-IMu; ξ-⌜Id⌝ˡ; ξ-Πˡ )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDCon; sVar; ⊢sTy; ⊢sTm; ⊢sDCon; ⊢sVar
         ; toI; fromI; ⊢ixP )

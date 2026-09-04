@@ -32,9 +32,9 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; Π; El; ⌜Nat⌝
         ; _⟶_; _⟶*_; done; step; ⊢conv; csymᵀ; _≅ᵀ_
         ; ξ-natrecⁿ; ξ-natrecᶻ; βfst; βsnd; natrec-suc; wk-single )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk; ⊢-cast; ⊢[] )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ⊢[] )
 open import DirectedHoTT.Lib.Wk using ( w )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans )
 open import DirectedHoTT.Lib.Amrec
   using ( Prv; prv; prvTm; prvOk; StepExt; module AmTΠ; aStepT; renTm-idR
         ; idToRed; idOfRed )

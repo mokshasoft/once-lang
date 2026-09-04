@@ -95,13 +95,13 @@ open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; csymᵀ; Ctx; ⌊_⌋; _⊢_∷_; ⊢app; ⊢conv; ⊢nsuc; iinst
         ; ⊢pair; ⊢unit; ⊢fst; ⊢snd
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ; IDescWf; iihTy; wk-single; βfst; βsnd )
-open import DirectedHoTT.Metatheory.SubjectReduction
+open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢ )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
-open import DirectedHoTT.Metatheory.Confluence
+open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-⌜Id⌝ˡ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-El )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-El )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ )
 open import DirectedHoTT.Lib.IMeths using ( selCong )

@@ -45,14 +45,14 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Nat; ty-Hom; ty-El; ty-Π
         ; _≅ᵀ_; csymᵀ; ctrnᵀ
         ; _⟶_; β; ξ-nsuc; ξ-Homˡ; ξ-Homʳ )
-open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; stepᵀ; doneᵀ )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
+open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
 open import DirectedHoTT.Lib.Monus
   using ( monusTm; ⊢monus )
 open import DirectedHoTT.Examples.Div
   using ( monusStep; ⊢div-descend )
 open import DirectedHoTT.Lib.Strong using ( reflTm )
-open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Examples.AmrecC using ( aStepT; module AmΠ )
 -- ★ the ℕ-carrier instantiation package, reused verbatim from the
 --   instantiation spike — the data are CONTEXT-POLYMORPHIC, so the same
