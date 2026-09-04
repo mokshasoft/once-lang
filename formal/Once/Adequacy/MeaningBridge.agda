@@ -73,7 +73,7 @@ open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ;
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt using
   (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr;
-   liftFn-∘; liftFn-pair; liftFn-curry; liftFn-case-inj₁; liftFn-case-inj₂; liftFn-apply)
+   liftFn-∘; liftFn-case-inj₁; liftFn-case-inj₂)
 import Once.IR as IR
 open import Once.Arith.SigOp.Builders using (value-info;
   add-info; sub-info; mul-info; div-info; mod-info; neg-info;
@@ -84,7 +84,6 @@ open import Once.Denotation.Realize using (realize; realize-infer; poly-usage-eq
 open import Once.Adequacy.SourceFaithful fmt using (faithful)
 open import Once.Surface.Elaborate using (elaborate)
 import Once.Denotation.SourceDenote as SD
-open import Once.Denotation.ThinSound using (weaken-⟦⟧)
 open import Once.Adequacy.MeaningRelation fmt
   using (RelV; RelT; RelT-return; RelT-bind)
 open import Once.Adequacy.CataBridge fmt using (cata-bridge)

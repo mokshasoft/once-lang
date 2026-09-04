@@ -283,21 +283,76 @@ infixr 5 _⊑∷_
 
 open import Relation.Binary.PropositionalEquality using (cong; trans)
 
--- | `Zero` scales any usage away — an erased argument charges nothing.
-*ᵘ-zeroˡ : ∀ {n} (Ψ : Usage n) → Zero *ᵘ Ψ ≡ zeroUsage
-*ᵘ-zeroˡ []      = refl
-*ᵘ-zeroˡ (q ∷ Ψ) = cong (Zero ∷_) (*ᵘ-zeroˡ Ψ)
+-- NB `*ᵘ-zeroˡ` and `+ᵘ-idʳ` already live in `Once.Surface.Properties`; they
+-- are not restated here. `erase-arg-usage` is stated in terms of them below,
+-- in that module, to keep the algebra in one place.
 
--- | `zeroUsage` is a right identity for usage addition.
-+ᵘ-idʳ : ∀ {n} (Ψ : Usage n) → Ψ +ᵘ zeroUsage ≡ Ψ
-+ᵘ-idʳ []           = refl
-+ᵘ-idʳ (Zero ∷ Ψ)   = cong (Zero ∷_) (+ᵘ-idʳ Ψ)
-+ᵘ-idʳ (One  ∷ Ψ)   = cong (One  ∷_) (+ᵘ-idʳ Ψ)
-+ᵘ-idʳ (Many ∷ Ψ)   = cong (Many ∷_) (+ᵘ-idʳ Ψ)
 
--- | ERASURE AT THE USAGE LEVEL — the Once analogue of `NbEPQTTJ.erase-arg`
---   (`(ρf +ᵘ (𝟘 ·ᵘ ρa)) ≡ ρf`). An application at a `Zero`-graded arrow uses
---   exactly what the FUNCTION uses: the argument's usage scales away, so the
---   argument's variables are not in the runtime environment at all.
-erase-arg-usage : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₁ +ᵘ (Zero *ᵘ Ψ₂) ≡ Ψ₁
-erase-arg-usage Ψ₁ Ψ₂ = trans (cong (Ψ₁ +ᵘ_) (*ᵘ-zeroˡ Ψ₂)) (+ᵘ-idʳ Ψ₁)
+-- | Transitivity, and "scaling by a non-Zero quantity only grows usage".
+--   Together with `⊑ᵘ-+ʳ` these give the argument's narrowing at `app`, whose
+--   usage index is `Ψ₁ +ᵘ (q *ᵘ Ψ₂)` rather than a plain sum.
+⊑q'-trans : ∀ {a b c} → a ≤q' b → b ≤q' c → a ≤q' c
+⊑q'-trans z≤z p    = z≤-any p
+  where z≤-any : ∀ {c} → Zero ≤q' c → Zero ≤q' c
+        z≤-any x = x
+⊑q'-trans z≤o o≤o  = z≤o
+⊑q'-trans z≤o o≤m  = z≤m
+⊑q'-trans z≤m m≤m  = z≤m
+⊑q'-trans o≤o o≤o  = o≤o
+⊑q'-trans o≤o o≤m  = o≤m
+⊑q'-trans o≤m m≤m  = o≤m
+⊑q'-trans m≤m m≤m  = m≤m
+
+⊑ᵘ-trans : ∀ {n} {Ψ₁ Ψ₂ Ψ₃ : Usage n} → Ψ₁ ⊑ᵘ Ψ₂ → Ψ₂ ⊑ᵘ Ψ₃ → Ψ₁ ⊑ᵘ Ψ₃
+⊑ᵘ-trans ⊑[]        ⊑[]        = ⊑[]
+⊑ᵘ-trans (p ⊑∷ ps) (r ⊑∷ rs)   = ⊑q'-trans p r ⊑∷ ⊑ᵘ-trans ps rs
+
+⊑ᵘ-*One : ∀ {n} (Ψ : Usage n) → Ψ ⊑ᵘ (One *ᵘ Ψ)
+⊑ᵘ-*One []           = ⊑[]
+⊑ᵘ-*One (Zero ∷ Ψ)   = z≤z ⊑∷ ⊑ᵘ-*One Ψ
+⊑ᵘ-*One (One  ∷ Ψ)   = o≤o ⊑∷ ⊑ᵘ-*One Ψ
+⊑ᵘ-*One (Many ∷ Ψ)   = m≤m ⊑∷ ⊑ᵘ-*One Ψ
+
+⊑ᵘ-*Many : ∀ {n} (Ψ : Usage n) → Ψ ⊑ᵘ (Many *ᵘ Ψ)
+⊑ᵘ-*Many []          = ⊑[]
+⊑ᵘ-*Many (Zero ∷ Ψ)  = z≤z ⊑∷ ⊑ᵘ-*Many Ψ
+⊑ᵘ-*Many (One  ∷ Ψ)  = o≤m ⊑∷ ⊑ᵘ-*Many Ψ
+⊑ᵘ-*Many (Many ∷ Ψ)  = m≤m ⊑∷ ⊑ᵘ-*Many Ψ
+
+-- | Each branch's usage is below the join — the two narrowings `case'` needs,
+--   since its index is `Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ)`.
+≤q'-⊔ˡ : ∀ (q r : Quantity) → q ≤q' (q ⊔q r)
+≤q'-⊔ˡ Zero Zero = z≤z
+≤q'-⊔ˡ Zero One  = z≤o
+≤q'-⊔ˡ Zero Many = z≤m
+≤q'-⊔ˡ One  Zero = o≤o
+≤q'-⊔ˡ One  One  = o≤o
+≤q'-⊔ˡ One  Many = o≤m
+≤q'-⊔ˡ Many Zero = m≤m
+≤q'-⊔ˡ Many One  = m≤m
+≤q'-⊔ˡ Many Many = m≤m
+
+≤q'-⊔ʳ : ∀ (q r : Quantity) → r ≤q' (q ⊔q r)
+≤q'-⊔ʳ Zero Zero = z≤z
+≤q'-⊔ʳ Zero One  = o≤o
+≤q'-⊔ʳ Zero Many = m≤m
+≤q'-⊔ʳ One  Zero = z≤o
+≤q'-⊔ʳ One  One  = o≤o
+≤q'-⊔ʳ One  Many = m≤m
+≤q'-⊔ʳ Many Zero = z≤m
+≤q'-⊔ʳ Many One  = o≤m
+≤q'-⊔ʳ Many Many = m≤m
+
+⊑ᵘ-⊔ˡ : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₁ ⊑ᵘ (Ψ₁ ⊔ᵘ Ψ₂)
+⊑ᵘ-⊔ˡ []       []       = ⊑[]
+⊑ᵘ-⊔ˡ (q ∷ Ψ₁) (r ∷ Ψ₂) = ≤q'-⊔ˡ q r ⊑∷ ⊑ᵘ-⊔ˡ Ψ₁ Ψ₂
+
+⊑ᵘ-⊔ʳ : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₂ ⊑ᵘ (Ψ₁ ⊔ᵘ Ψ₂)
+⊑ᵘ-⊔ʳ []       []       = ⊑[]
+⊑ᵘ-⊔ʳ (q ∷ Ψ₁) (r ∷ Ψ₂) = ≤q'-⊔ʳ q r ⊑∷ ⊑ᵘ-⊔ʳ Ψ₁ Ψ₂
+
+-- | `∅ ↾ [] ≡ ∅`, proved HERE because `_↾_` reduces in its defining module but
+--   not always at a use site (the recursive-function opacity this codebase has
+--   hit before). Consumers transport along it instead of relying on reduction.
+↾-∅ : (∅ ↾ []) ≡ ∅
+↾-∅ = refl

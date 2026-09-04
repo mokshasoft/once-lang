@@ -236,6 +236,22 @@ push→Tᵈ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (f : A' → T 
   → subst id (sym (cong₂ (λ x y → x → T y) p q)) f w ≡ subst T (sym q) (f (subst id p w))
 push→Tᵈ refl refl f w = refl
 
+-- D143: the ERASED arrow. `coh`/`cohᴰ` build it with a ONE-equation `cong`
+-- (only the codomain is transported — both sides already forget the argument),
+-- so the two-equation `push→`/`push→Tᵈ` above do not apply. These are their
+-- erased counterparts: the argument is passed through untouched.
+push→₀ : ∀ {U B B' : Set} (q : B ≡ B') (g : U → B) (u : U)
+  → subst id (cong (λ y → U → y) q) g u ≡ subst id q (g u)
+push→₀ refl g u = refl
+
+push→₀⁻ : ∀ {U B B' : Set} (q : B ≡ B') (g : U → B') (u : U)
+  → subst id (sym (cong (λ y → U → y) q)) g u ≡ subst id (sym q) (g u)
+push→₀⁻ refl g u = refl
+
+push→T₀ᵈ : ∀ {U B B' : Set} (q : B ≡ B') (f : U → T B') (u : U)
+  → subst id (sym (cong (λ y → U → T y) q)) f u ≡ subst T (sym q) (f u)
+push→T₀ᵈ refl f u = refl
+
 subst-T-value : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X)
   → valueT (subst T eq h) zero ≡ subst id eq (valueT h zero)
 subst-T-value refl h = refl
@@ -268,8 +284,30 @@ mutual
     trans (cong (λ p → subst id (coh (A + B)) (forget p)) (push⊎₂⁻ (cohᴰ A) (cohᴰ B) b))
       (trans (push⊎₂ (coh A) (coh B) (forget (subst id (sym (cohᴰ B)) b)))
              (cong inj₂ (forget-coh-gen B b)))
-  forget-coh-gen (A ⇒[ k ] B) arg = extensionality (λ va →
-    trans (push→ (coh A) (coh B) (forget {⌈ ⌊ A ⇒[ k ] B ⌋ ⌉} (subst id (sym (cohᴰ (A ⇒[ k ] B))) arg)) va)
+  -- D143: at an ERASED arrow neither side has an argument of type `A` to
+  -- convert, so there is no `inject`/`coh A` round-trip — only the codomain
+  -- transports, via the one-equation pushes.
+  forget-coh-gen (A ⇒[ TT.mk-kind TT.Zero π ] B) arg = extensionality (λ u →
+    trans (push→₀ (coh B)
+             (forget {⌈ ⌊ A ⇒[ TT.mk-kind TT.Zero π ] B ⌋ ⌉}
+                     (subst id (sym (cohᴰ (A ⇒[ TT.mk-kind TT.Zero π ] B))) arg)) u)
+      (trans (cong (λ z → subst id (coh B) (forget (valueT z zero)))
+                   (push→T₀ᵈ (cohᴰ B) arg u))
+        (trans (cong (λ z → subst id (coh B) (forget z))
+                     (subst-T-value (sym (cohᴰ B)) (arg u)))
+               (forget-coh-gen B (valueT (arg u) zero)))))
+  forget-coh-gen (A ⇒[ TT.mk-kind TT.One π ] B) arg = extensionality (λ va →
+    trans (push→ (coh A) (coh B) (forget {⌈ ⌊ A ⇒[ TT.mk-kind TT.One π ] B ⌋ ⌉} (subst id (sym (cohᴰ (A ⇒[ TT.mk-kind TT.One π ] B))) arg)) va)
+      (trans (cong (λ z → subst id (coh B) (forget (valueT z zero)))
+                   (push→Tᵈ (cohᴰ A) (cohᴰ B) arg (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))
+        (trans (cong (λ z → subst id (coh B) (forget z))
+                     (subst-T-value (sym (cohᴰ B)) (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))))
+          (trans (forget-coh-gen B (valueT (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va)))) zero))
+                 (cong (λ z → forget (valueT (arg z) zero))
+                       (trans (cong (subst id (cohᴰ A)) (inject-coh-nat A va))
+                              (subst-subst-sym (cohᴰ A))))))))
+  forget-coh-gen (A ⇒[ TT.mk-kind TT.Many π ] B) arg = extensionality (λ va →
+    trans (push→ (coh A) (coh B) (forget {⌈ ⌊ A ⇒[ TT.mk-kind TT.Many π ] B ⌋ ⌉} (subst id (sym (cohᴰ (A ⇒[ TT.mk-kind TT.Many π ] B))) arg)) va)
       (trans (cong (λ z → subst id (coh B) (forget (valueT z zero)))
                    (push→Tᵈ (cohᴰ A) (cohᴰ B) arg (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))
         (trans (cong (λ z → subst id (coh B) (forget z))
@@ -301,13 +339,29 @@ mutual
     trans (cong inject (push⊎₂⁻ (coh A) (coh B) b))
       (trans (cong inj₂ (inject-coh-nat B b))
              (sym (push⊎₂⁻ (cohᴰ A) (cohᴰ B) (inject b))))
-  inject-coh-nat (A ⇒[ k ] B) v = extensionality (λ da →
+  -- D143: the ERASED arrow. Both `inject`s pass the argument straight through
+  -- (`inject {A ⇒[Zero] B} pf = λ u → returnT (inject (pf u))`), so there is no
+  -- `forget`/`coh A` round-trip on the domain — only the codomain transports.
+  inject-coh-nat (A ⇒[ TT.mk-kind TT.Zero π ] B) v = extensionality (λ u →
+    trans (cong (λ z → returnT (inject z)) (push→₀⁻ (coh B) v u))
+      (trans (cong returnT (inject-coh-nat B (v u)))
+             (sym (trans (push→T₀ᵈ (cohᴰ B) (inject {A ⇒[ TT.mk-kind TT.Zero π ] B} v) u)
+                         (subst-T-returnT (sym (cohᴰ B)) (inject {B} (v u)))))))
+  inject-coh-nat (A ⇒[ TT.mk-kind TT.One π ] B) v = extensionality (λ da →
     trans (cong (λ z → returnT (inject z)) (push→⁻ (coh A) (coh B) v (forget da)))
       (trans (cong returnT (inject-coh-nat B (v (subst id (coh A) (forget da)))))
         (trans (cong (λ z → returnT (subst id (sym (cohᴰ B)) (inject (v z))))
                      (trans (cong (λ w → subst id (coh A) (forget w)) (sym (subst-sym-subst (cohᴰ A))))
                             (forget-coh-gen A (subst id (cohᴰ A) da))))
-               (sym (trans (push→Tᵈ (cohᴰ A) (cohᴰ B) (inject {A ⇒[ k ] B} v) da)
+               (sym (trans (push→Tᵈ (cohᴰ A) (cohᴰ B) (inject {A ⇒[ TT.mk-kind TT.One π ] B} v) da)
+                           (subst-T-returnT (sym (cohᴰ B)) (inject {B} (v (forget {A} (subst id (cohᴰ A) da))))))))))
+  inject-coh-nat (A ⇒[ TT.mk-kind TT.Many π ] B) v = extensionality (λ da →
+    trans (cong (λ z → returnT (inject z)) (push→⁻ (coh A) (coh B) v (forget da)))
+      (trans (cong returnT (inject-coh-nat B (v (subst id (coh A) (forget da)))))
+        (trans (cong (λ z → returnT (subst id (sym (cohᴰ B)) (inject (v z))))
+                     (trans (cong (λ w → subst id (coh A) (forget w)) (sym (subst-sym-subst (cohᴰ A))))
+                            (forget-coh-gen A (subst id (cohᴰ A) da))))
+               (sym (trans (push→Tᵈ (cohᴰ A) (cohᴰ B) (inject {A ⇒[ TT.mk-kind TT.Many π ] B} v) da)
                            (subst-T-returnT (sym (cohᴰ B)) (inject {B} (v (forget {A} (subst id (cohᴰ A) da))))))))))
 
 ------------------------------------------------------------------------

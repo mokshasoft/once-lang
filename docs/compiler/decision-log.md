@@ -10680,3 +10680,134 @@ group E: the analysis is live, its correctness proof is a red island).
 (lands); plan 0.2.4.6 (Place); plan 0.17 (the `bump` mechanism this encodes
 into); plan 0.35 (allocator wiring); OCP-0005 (the encoding ladder); D141 (the
 paused `*WF` port).
+
+---
+
+## D143: Erasure Is a SEMANTIC Claim — the Spec's Meaning Is Grade-Aware
+
+**Date**: 2026-09-04 · **Status**: Decided (plan 0.86 step B), landing ·
+**Refines**: plan 0.52 M2 · **Relates**: D142, OCP-0005, OCP-0009 Rung 5
+
+### The rule
+
+The meaning of an arrow depends on its QUANTITY:
+
+    ⟦ A ⇒[ mk-kind Zero π ] B ⟧ = ⟦ Unit ⟧ → ⟦ B ⟧    -- erased: no argument
+    ⟦ A ⇒[ mk-kind _    π ] B ⟧ = ⟦ A ⟧    → ⟦ B ⟧
+
+and `⌊_⌋ : Type → IRTy` mirrors it. Purity remains ignored — a pure and an
+effectful arrow over the same `A`, `B` are the same object, which is what M2
+established and it stands.
+
+### Why the spec had to change, and why nothing smaller worked
+
+`⌊_⌋` dropped the whole `ArrowKind`, so an erased arrow became a real
+exponential WITH an argument slot. The compiler therefore declared an erasure
+it then declined to perform.
+
+Making `⌊_⌋` alone erase does not work, and the reason is precise.
+`Once.Semantics.ValueIR.coh : ⟦ ⌊ T ⌋ ⟧ᴵ ≡ ⟦ T ⟧` is used in BOTH directions —
+`Once.CCC.Eval`'s SigOp case is `subst id (sym (coh B)) (semM si (subst id (coh
+A) x))`, and there are 114 `subst`-by-`coh` sites. With a grade-blind meaning
+and an erasing `⌊_⌋`:
+
+  * runtime -> full is canonical: an erased function ignores its argument, so
+    `λ f a → f tt` recovers the full value;
+  * **full -> runtime has NO canonical inhabitant.** Given an arbitrary
+    `⟦A⟧ → ⟦B⟧` there is no way to produce `⟦Unit⟧ → ⟦B⟧` — you would need an
+    element of `⟦A⟧`. The typing says the function ignores its argument; the
+    DENOTATION does not record that, so the information is not there.
+
+`coh` was not stuck, it was FALSE. One side forgetting the argument breaks the
+equality; both sides forgetting it together restores it. That is the whole
+content of this entry.
+
+### The general statement
+
+**Erasure is a semantic claim, and a compiler cannot honour a guarantee its
+specification does not make.** While `⟦ A ⇒[ _ ] B ⟧ᴰ = ⟦A⟧ᴰ → T ⟦B⟧ᴰ`, QTT was
+load-bearing in the TYPING judgment (it decides which programs are accepted)
+and inert in the MEANING — so "a `Zero`-graded argument is not represented at
+runtime" was a promise no specification made. Erasing and not-erasing were
+observationally identical and BOTH satisfied `correct`. That is OCP-0005's
+"prose decisions are silently violable", at the level of the semantics.
+
+### Only Zero needs representation; One and Many do not
+
+`One` and `Many` have IDENTICAL runtime representation — linearity constrains
+how many times the body uses the argument (licensing in-place update and early
+free), not the shape of the argument. `⇛` being ungraded is right for them.
+`Zero` differs in kind: it does not encode the argument differently, it REMOVES
+it. So there is one bit to represent — is there an argument — and no
+"representation of quantity" to build.
+
+### What this makes possible
+
+`app` at a `Zero`-graded arrow elaborates without widening anything: the
+argument is not in the runtime environment (`erase-arg-usage`: `Ψ₁ +ᵘ (Zero *ᵘ
+Ψ₂) ≡ Ψ₁`), and the arrow has no slot to fill. The earlier idea of indexing
+elaboration by a "runtime usage ⊒ QTT usage" was working around the absence of
+this change rather than using it — it would have kept computing a value the
+type system says does not exist.
+
+### On the OCP-0009 POC
+
+`bootstrap/poc/OCP0009/NbEPQTT.agda` realises the phase distinction at the
+CONTEXT level (`⟦Γ⟧full` / `⟦Γ⟧run` / `erase`, with `erase-irrelevant` true by
+construction), and `NbEPQTTJ.agda` the graded judgment with `erase-arg`. It has
+NO erasing arrow denotation — the proposal names that as Rung 5's remaining
+item ("elaborate `Γ ⊢[ ρ ] A` to the CCC IR … erasing the `𝟘`-graded
+arguments"). So the POC informs the context half and stops where the arrow half
+begins; **this entry rests on standard QTT semantics (Atkey), not on the POC.**
+A future session should not cite the POC as authority for the arrow rule.
+
+**Relates**: D142 (the same OCP-0005 rung-1 technique — make the representation
+incapable of expressing the violation); plan 0.52 M2 (correctly erased purity,
+incorrectly erased quantity with it); plan 0.86 step B.
+
+## D144: `ThinSound` Is DELETED — a Dead Import Kept 380 Lines Nominally Live
+
+**Context.** D143 phase-indexed the source denotation over `Γ ↾ Ψ`. The apex
+build then stopped in `Once.Denotation.ThinSound`, whose statements are all over
+the full `Γ`. The obvious reading was "next module to re-thread", and the
+re-thread was scoped: a `thinᴰ` environment map plus a commutation family
+against `restrictᴰ`, roughly 40 clauses.
+
+**What the check found.** Across all 408 `.agda` files, `ThinSound`'s only
+export `weaken-⟦⟧` appears exactly three times: its own definition, and two
+`open import Once.Denotation.ThinSound using (weaken-⟦⟧)` lines in
+`Adequacy/MeaningBridge` and `Adequacy/RealizeAgrees` that never reference the
+name they bind. Every other export (`thin-⟦⟧`, `lookupᴰ-thin`, `⟦⟧-substΨ`,
+`⟦⟧-subst₂`, `restrictᴰ-refl`, the bind congruences) has zero external uses.
+
+The module was reachable from the apex ONLY through two dead imports. D126's own
+entry predicted this: "`Once.Denotation.ThinSound` (added for D126's `weaken`)
+loses its only consumer unless the new elaboration needs it." The collapsed
+judgment (D127) is the new elaboration, and it does not need it.
+
+**Decision.** Delete `Once/Denotation/ThinSound.agda` and the two dead imports.
+The thinning subsystem itself STAYS — `weaken`/`weakenFromEmpty` are live in
+`Elaborate`, `ElaborateProofs` and `Realize`. What died is the *denotational
+soundness of renaming*, not renaming.
+
+**Why re-threading would have been wrong even if it were live.** Over the full
+`Γ`, a variable's lookup walks to index `i` and projects a different component
+per `i`, so a SCOPE operation looked like it changed MEANING — that is what the
+220 clauses of plumbing paid for. Over `Γ ↾ Ψ` a variable's environment is a
+SINGLETON (`var i : Expr Γ (singleUse i One) A`) and `lookupᴰUsed` is a
+projection whose index walk never touches the data. Thinning cannot move it, so
+the `var` case — which the module's own comment calls "the lemma; everything
+else is plumbing" — degenerates to `refl`. The module was not merely dead; it
+was an artifact of the pre-D143 abstraction.
+
+A `↾-thin` coherence (`subst Ctx (liveCount-thin θ Ψ) (Δ ↾ thin-usage θ Ψ) ≡
+Γ ↾ Ψ`, provable in ~20 lines, thinned-in variables get `Zero` and `↾` drops
+`Zero`) was written and proved during this analysis. It is NOT landed: with
+`ThinSound` gone it has no consumer, and an unwired lemma kept for its
+documentation value is exactly the island the project rejects. The fact is
+recorded here instead.
+
+**Method note.** Before a large re-thread, check that the module has real
+CONSUMERS, not merely importers. An `open import ... using (f)` that never
+applies `f` is invisible to import-graph reachability but carries no proof
+obligation. [[feedback_verify_consumers_not_importers]]

@@ -15,7 +15,8 @@ open import Once.Float.Decimal using (Decimal)
 open import Once.IR
 open import Once.Surface.Syntax
 open import Once.IRTy.WF using (wf-⌊⌋)
-open import Relation.Binary.PropositionalEquality using (subst)
+open import Relation.Binary.PropositionalEquality using (subst; sym)
+open import Once.Surface.Properties using (erase-arg-usage)
 -- coerceIRArrow eliminated: curry/apply are now quantity-polymorphic
 
 open import Data.Nat using (ℕ)
@@ -151,7 +152,7 @@ neIR = SigOp ne-info
 --
 proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ lookup Γ i ⌋
 proj {Γ = Γ , A ^ q} Fin.zero    = snd
-proj {Γ = Γ , A ^ q} (Fin.suc i) = proj i ∘ fst
+proj {Γ = Γ , A ^ q} (Fin.suc i) = proj {Γ = Γ} i ∘ fst
 
 -- | THE ENVIRONMENT-PRECISION PROJECTION (plan 0.86 step B, D142).
 --
@@ -199,11 +200,24 @@ projUsed {Γ = Γ , A ^ q} (Fin.suc i) = projUsed {Γ = Γ} i
 --   environment holding `Ψ₁ +ᵘ Ψ₂`.
 envˡ : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
      → IR ⌊ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ₁ ⟧ᶜ ⌋
-envˡ m Ψ₁ Ψ₂ = restrictEnv m (⊑ᵘ-+ˡ Ψ₁ Ψ₂)
+envˡ {Γ = Γ} m Ψ₁ Ψ₂ = restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₁ Ψ₂)
 
 envʳ : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
      → IR ⌊ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ₂ ⟧ᶜ ⌋
-envʳ m Ψ₁ Ψ₂ = restrictEnv m (⊑ᵘ-+ʳ Ψ₁ Ψ₂)
+envʳ {Γ = Γ} m Ψ₁ Ψ₂ = restrictEnv {Γ = Γ} m (⊑ᵘ-+ʳ Ψ₁ Ψ₂)
+
+-- | Build a BINDER's environment: given the outer environment narrowed to the
+--   body's usage `Ψ'`, paired with the bound value, produce the environment the
+--   body actually runs in. Cases on the bound variable's usage `q`:
+--   at `Zero` the binding is dropped (`fst`), otherwise it is kept.
+--
+--   Factored out because `lam`, `case'` and `let'` all need it — writing it per
+--   clause would mean 3 x 3 combinations at `case'` alone.
+bindEnv : ∀ {n} {Γ : Ctx n} {Ψ' : Usage n} {A} (m : AllocMode) (q : Quantity)
+        → IR (⌊ ⟦ Γ ↾ Ψ' ⟧ᶜ ⌋ * ⌊ A ⌋) ⌊ ⟦ (Γ , A) ↾ (q ∷ Ψ') ⟧ᶜ ⌋
+bindEnv {Γ = Γ} m Zero = fst
+bindEnv {Γ = Γ} m One  = id
+bindEnv {Γ = Γ} m Many = id
 
 -- | Helper: swap product components
 -- Plan 0.14 follow-up: parameterized on AllocMode for the pair node.
@@ -301,7 +315,7 @@ cataM {F} {A} wfF m =
 elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⌊ A ⌋
 
 -- Variable: project from environment
-elaborate m (var i) = projUsed i
+elaborate {Γ = Γ} m (var i) = projUsed {Γ = Γ} i
 
 -- Lambda: λ^q x.e becomes curry of (elaborate e)
 -- Context (Γ, A) has type ⟦Γ⟧ᶜ * A = ⟦Γ,A⟧ᶜ
@@ -311,9 +325,19 @@ elaborate m (var i) = projUsed i
 -- body's environment at all. If the body never uses it the environment is just
 -- `Γ ↾ Ψ`, so the `curry` has to discard the argument slot explicitly — the
 -- binding is not silently carried.
-elaborate m (lam {q' = Zero} q _ e) = curry (elaborate m e ∘ fst) m
-elaborate m (lam {q' = One}  q _ e) = curry (elaborate m e) m
-elaborate m (lam {q' = Many} q _ e) = curry (elaborate m e) m
+-- D143: the ARROW's declared quantity `q` decides the target's shape (at
+-- `Zero` there is no argument slot), while the binder's usage in the BODY `q'`
+-- decides whether it is in the body's environment. Both are cased.
+--
+-- `q' ≤q q` (the lam's own premise) makes the off-diagonal cases impossible:
+-- an erased arrow cannot have a body that uses its argument. Those clauses are
+-- absent rather than absurd — Agda sees the constraint through the premise.
+elaborate {Γ = Γ} m (lam {q' = Zero} Zero _ e) = curry (elaborate m e ∘ fst) m
+elaborate {Γ = Γ} m (lam {q' = Zero} One  _ e) = curry (elaborate m e ∘ fst) m
+elaborate {Γ = Γ} m (lam {q' = Zero} Many _ e) = curry (elaborate m e ∘ fst) m
+elaborate {Γ = Γ} m (lam {q' = One}  One  _ e) = curry (elaborate m e) m
+elaborate {Γ = Γ} m (lam {q' = One}  Many _ e) = curry (elaborate m e) m
+elaborate {Γ = Γ} m (lam {q' = Many} Many _ e) = curry (elaborate m e) m
 
 -- D127: the categorical combinators — CLOSED morphisms composed with the
 -- pairing of the arms.
@@ -329,18 +353,33 @@ elaborate m (lam {q' = Many} q _ e) = curry (elaborate m e) m
 --
 -- The four morphisms are closed and arm-free, which is also what lets O1's
 -- closed-arm equation be about them alone.
-elaborate m (comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g)   =
-  compIR m   ∘ ⟨ elaborate m f ∘ envˡ m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ m Ψ₁ Ψ₂ ⟩ m
-elaborate m (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
-  copairIR m ∘ ⟨ elaborate m f ∘ envˡ m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ m Ψ₁ Ψ₂ ⟩ m
-elaborate m (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g)   =
-  forkIR m   ∘ ⟨ elaborate m f ∘ envˡ m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g)   =
+  compIR m   ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
+  copairIR m ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g)   =
+  forkIR m   ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
 elaborate m (curry' f)    = curryIR m  ∘ elaborate m f
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
 -- IR's apply is quantity-polymorphic, no coercion needed
-elaborate m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
-  apply ∘ ⟨ elaborate m f ∘ envˡ m Ψ₁ Ψ₂ , elaborate m x ∘ envʳ m Ψ₁ Ψ₂ ⟩ m
+-- D143: `app` cases on the ARROW's quantity.
+--
+-- At `Zero` the argument is ERASED: the arrow has no argument slot (`⌊ A ⇒₀ B ⌋
+-- = Unit ⇛ ⌊B⌋`), so `x` IS NOT ELABORATED AT ALL and its variables are not in
+-- the environment. `erase-arg-usage` is what makes that type-correct — the
+-- composite's usage IS the function's. This is the payoff: the compiler now
+-- performs the erasure the grade declares, rather than computing a value the
+-- type system says does not exist.
+elaborate {Γ = Γ} m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} f x) =
+  subst (λ Φ → IR ⌊ ⟦ Γ ↾ Φ ⟧ᶜ ⌋ _) (sym (erase-arg-usage Ψ₁ Ψ₂))
+        (apply ∘ ⟨ elaborate m f , terminal ⟩ m)
+elaborate {Γ = Γ} m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} f x) =
+  apply ∘ ⟨ elaborate m f ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂))
+          , elaborate m x ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) ⟩ m
+elaborate {Γ = Γ} m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} f x) =
+  apply ∘ ⟨ elaborate m f ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂))
+          , elaborate m x ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) ⟩ m
 
 -- Effect application (D018-style lifting): `f x` where `f : Eff A B`
 -- becomes the suspended action `λ _ → f x : Eff Unit B`. Built from
@@ -351,13 +390,13 @@ elaborate m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
 --   curry (…) m          : IR Γ (Unit ⇛ B)          -- Plan 0.52 M2: ungraded
 -- Built from the existing IR constructors alone. (`arr` retired: pure and
 -- eff arrows are the same ungraded `⇛` object, so no tag needed.)
-elaborate m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
-  curry ((apply ∘ ⟨ elaborate m f ∘ envˡ m Ψ₁ Ψ₂
-                  , elaborate m x ∘ envʳ m Ψ₁ Ψ₂ ⟩ m) ∘ fst) m
+elaborate {Γ = Γ} m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
+  curry ((apply ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂
+                  , elaborate m x ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m) ∘ fst) m
 
 -- Pair: (a, b) becomes ⟨a, b⟩
-elaborate m (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
-  ⟨ elaborate m a ∘ envˡ m Ψ₁ Ψ₂ , elaborate m b ∘ envʳ m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  ⟨ elaborate m a ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m b ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
 elaborate m (arr' f)    = elaborate m f   -- Plan 0.52 M2: arr' is identity (IR.arr retired)
 
 -- Projections: compose with projection
@@ -371,8 +410,20 @@ elaborate m (inr' b) = inr m ∘ elaborate m b
 -- Case: distribute environment over sum, then case on result
 -- s : Expr Γ (A + B), l : Expr (Γ,A) C, r : Expr (Γ,B) C
 -- Result: (case el er) ∘ distribute ∘ ⟨ id , es ⟩
-elaborate m (case' s l r) =
-  case (elaborate m l) (elaborate m r) ∘ distribute m ∘ ⟨ id , elaborate m s ⟩ m
+-- D142/D143: the scrutinee gets `Γ ↾ Ψs`; the branches share `Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ)`
+-- (one environment must serve both, since `distribute` has a single `X`), and
+-- each branch then narrows to its OWN usage inside. So a variable used by only
+-- one branch is still absent from the other's environment.
+--
+-- The bound variable's usage in each branch (`qℓ`/`qr`) decides whether it is
+-- in that branch's environment at all — the `Zero` cases discard the slot with
+-- `fst`, exactly as `lam` does.
+elaborate {Γ = Γ} m (case' {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr} {A = A} {B = B} s l r) =
+  case (elaborate m l ∘ bindEnv {Γ = Γ} {A = A} m qℓ ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) ∘ fst , snd ⟩ m)
+       (elaborate m r ∘ bindEnv {Γ = Γ} {A = B} m qr ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) ∘ fst , snd ⟩ m)
+  ∘ distribute m
+  ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ))
+    , elaborate m s ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) ⟩ m
 
 -- Unit
 elaborate m unit = terminal
@@ -380,11 +431,29 @@ elaborate m unit = terminal
 -- Absurd (void elimination)
 elaborate m (absurd v) = initial ∘ elaborate m v
 
--- Let binding: let x = e1 in e2
--- Pairs current environment with computed value, then evaluates e2
--- ⟨ id , e1 ⟩ : Γ → Γ × A  (extend environment with bound value)
--- elaborate e2 : Γ × A → B  (e2 in extended context)
-elaborate m (let' e1 e2) = elaborate m e2 ∘ ⟨ id , elaborate m e1 ⟩ m
+-- Let binding: let x = e1 in e2.  THE CLAUSE THIS WHOLE CHANGE IS FOR.
+--
+-- It used to be `elaborate e2 ∘ ⟨ id , elaborate e1 ⟩` — and that `id` is what
+-- carried the WHOLE environment forward, so a variable that died stayed a
+-- component of a live product and could not be reclaimed. Nested lets
+-- accumulated `((Γ,x),y)` whether or not the body still needed `x`.
+--
+-- Now the body gets `Γ ↾ Ψ₂` — exactly the variables IT uses — so a binding
+-- that is dead from here on is simply not in the environment. `bindEnv` decides
+-- whether the bound value itself is kept, from its usage `q` in the body.
+--
+-- At `q = Zero` (D143) the bound value is ERASED: `e1` IS NOT ELABORATED, and
+-- `erase-arg-usage` is what makes the composite's usage `Ψ₂`.
+elaborate {Γ = Γ} m (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} e1 e2) =
+  subst (λ Φ → IR ⌊ ⟦ Γ ↾ Φ ⟧ᶜ ⌋ _) (sym (erase-arg-usage Ψ₂ Ψ₁)) (elaborate m e2)
+elaborate {Γ = Γ} m (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {A = A} e1 e2) =
+  elaborate m e2 ∘ bindEnv {Γ = Γ} {A = A} m One
+  ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁))
+    , elaborate m e1 ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) ⟩ m
+elaborate {Γ = Γ} m (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {A = A} e1 e2) =
+  elaborate m e2 ∘ bindEnv {Γ = Γ} {A = A} m Many
+  ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁))
+    , elaborate m e1 ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) ⟩ m
 
 -- Integer literal: constant that ignores environment
 elaborate m (int n) = intLit n
@@ -396,27 +465,27 @@ elaborate m (str s) = strLit s
 elaborate m (float d) = floatLit d
 
 -- Arithmetic operations: pair operands, then apply primitive
-elaborate m (add e₁ e₂) = addIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (sub e₁ e₂) = subIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (mul e₁ e₂) = mulIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (fadd e₁ e₂) = faddIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (fsub e₁ e₂) = fsubIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (fmul e₁ e₂) = fmulIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (fdiv e₁ e₂) = fdivIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate {Γ = Γ} m (add {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = addIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (sub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = subIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (mul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = mulIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (fadd {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = faddIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (fsub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fsubIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (fmul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fmulIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (fdiv {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fdivIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
 elaborate m (i2f e) = i2fIR ∘ elaborate m e
-elaborate m (div e₁ e₂) = divIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (mod' e₁ e₂) = modIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate {Γ = Γ} m (div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = divIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (mod' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = modIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
 
 -- Unary negation
 elaborate m (neg e) = negIR ∘ elaborate m e
 
 -- Comparison operations
-elaborate m (lt e₁ e₂) = ltIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (le e₁ e₂) = leIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (gt e₁ e₂) = gtIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (ge e₁ e₂) = geIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (eq e₁ e₂) = eqIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
-elaborate m (ne e₁ e₂) = neIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ ⟩ m
+elaborate {Γ = Γ} m (lt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = ltIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (le {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = leIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (gt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = gtIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (ge {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = geIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (eq {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = eqIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = neIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
 
 -- Effect lifting: arr f lifts pure function to effectful morphism
 -- IR arr : (A ⇒ B) → Eff A B
@@ -447,9 +516,18 @@ elaborate m (ne e₁ e₂) = neIR ∘ ⟨ elaborate m e₁ , elaborate m e₂ �
 -- The arrow case is structurally identical to how a user-defined
 -- `λ x → f x` would elaborate, so SigOps and user closures are
 -- now value-equivalent under apply.
-elaborate m (sigOp {A = (Dom ⇒[ k ] Cod)} name (con-fun bDom cCod)) =
-  curry (SigOp (arrow-info k name bDom cCod) ∘ snd) m
-elaborate m (sigOp name conc) = SigOp (value-info name base-Unit conc) ∘ terminal
+-- D143: split on the SigOp's arrow quantity. An FFI symbol at an ERASED arrow
+-- takes no argument, so the curried wrapper discards the (unit) slot.
+-- At an ERASED arrow the symbol never receives its argument, so it cannot be
+-- an `arrow-info` call (there is no `⌊Dom⌋` to pass). It degenerates to the
+-- VALUE case: the slot is `Unit`, and the symbol produces the result from it.
+elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero π ] Cod)} name (con-fun bDom cCod)) =
+  curry (SigOp (value-info name base-Unit cCod) ∘ snd) m
+elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom cCod)) =
+  curry (SigOp (arrow-info (mk-kind One π) name bDom cCod) ∘ snd) m
+elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod)) =
+  curry (SigOp (arrow-info (mk-kind Many π) name bDom cCod) ∘ snd) m
+elaborate {Γ = Γ} m (sigOp name conc) = SigOp (value-info name base-Unit conc) ∘ terminal
 -- Plan 0.19: user-defined closure reference.
 --
 -- Unlike `sigOp`, `closure name` does NOT curry-wrap at arrow type.
@@ -463,13 +541,13 @@ elaborate m (sigOp name conc) = SigOp (value-info name base-Unit conc) ∘ termi
 -- This is the same shape as `sigOp` at non-arrow type. The split
 -- exists so the elaborator never silently wraps a user-defined
 -- entry in a curry that mismatches its asm signature.
-elaborate m (closure name) = SigOp (internal-info (bare name)) ∘ terminal
+elaborate {A = A} m (closure name) = SigOp (internal-info {A = A} (bare name)) ∘ terminal
 -- Unresolved polymorphic placeholder. A well-formed Surface Expr
 -- reaching elaborate has been through `resolveExpr`, so `poly` nodes
 -- only survive when resolution failed (e.g. cycle). Treat as an
 -- external SigOp with the unqualified name — matches evalSurface for
 -- the correctness theorem, and codegen will catch it as unresolved.
-elaborate m (poly name _) = SigOp (internal-info (bare name)) ∘ terminal
+elaborate {A = A} m (poly name _) = SigOp (internal-info {A = A} (bare name)) ∘ terminal
 
 -- Plan 0.2.4.5 D2: morphism realm.
 -- A `lift-morphism morph` used as a value (e.g. assigned to a variable
@@ -485,7 +563,9 @@ elaborate m (lift-morphism morph) = curry (morph ∘ snd) m
 -- apply-chain bug (Plan 0.2.4.5 D1 compose runtime). This is the
 -- principled lowering for "categorical-style" code (id chains,
 -- compose chains, primitives). See `plans/0.2.4.5-morphism-realm-split.md`.
-elaborate m (morph-app morph x) = morph ∘ elaborate m x
+elaborate {Γ = Γ} m (morph-app {Ψ = Ψ} morph x) =
+  morph ∘ elaborate m x
+        ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ)))
 
 -- D131: the catamorphism, with the algebra OBTAINED ONCE.
 --
@@ -512,9 +592,31 @@ elaborate m (cata {F = F} {A = A} wfF alg) =
 elaborate m (ana {F = F} {A = A} wfF coalg) =
   curry (Ana (wf-⌊⌋ wfF) (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) (apply ∘ ⟨ elaborate m coalg ∘ terminal , id ⟩ m)) ∘ snd) m
 
+-- | `erase` — THE PHASE PROJECTION, from the FULL environment (every binding)
+--   to the RUNTIME one (only what the term uses). This is `NbEPQTT.erase`
+--   written at Once's usage-vector presentation:
+--
+--       erase (Γ ▷[ 𝟘 ] A) = erase Γ ⊙ fstT
+--       erase (Γ ▷[ 𝟙 ] A) = pair (erase Γ ⊙ fstT) sndT
+--
+--   Callers that hold a full environment go through this to reach `elaborate`.
+eraseCtx : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ : Usage n)
+         → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋
+eraseCtx {Γ = ∅}         m []         = id
+eraseCtx {Γ = Γ , A ^ q} m (Zero ∷ Ψ) = eraseCtx {Γ = Γ} m Ψ ∘ fst
+eraseCtx {Γ = Γ , A ^ q} m (One  ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst , snd ⟩ m
+eraseCtx {Γ = Γ , A ^ q} m (Many ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst , snd ⟩ m
+
+-- | Elaboration against the FULL environment — `elaborate` composed with the
+--   phase projection. This is the signature every existing caller expects, so
+--   the environment-precision change stays inside this module.
+elaborateFull : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
+              → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
+elaborateFull {Γ = Γ} {Ψ = Ψ} m e = elaborate m e ∘ eraseCtx {Γ = Γ} m Ψ
+
 -- | Historical default: Heap allocation.
 elaborate-default : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
-elaborate-default = elaborate Heap
+elaborate-default = elaborateFull Heap
 
 -- | Historical-default distribute (Heap). Used by `Once.Surface.Correct`,
 -- which is Heap-specialized until Plan 0.4.2 C0 generalizes the proofs.

@@ -33,7 +33,7 @@ open import Data.Sum using (_⊎_)
 open import Data.String using (String)
 open import Data.Float using () renaming (Float to AgdaFloat)
 
-open import Once.Type as T using (Type; Functor; ArrowKind)
+open import Once.Type as T using (Type; Functor; ArrowKind; Quantity; Zero; One; Many; Purity)
 
 ------------------------------------------------------------------------
 -- The ungraded object language (mirror of Type/Functor, minus the grade)
@@ -68,7 +68,23 @@ infixr 40 _+_
 infixr 50 _*_
 
 ------------------------------------------------------------------------
--- Grade erasure `⌊_⌋ : Type → IRTy` (drops every ArrowKind).
+-- Grade erasure `⌊_⌋ : Type → IRTy`.
+--
+-- D143: erasure is NOT "drop the ArrowKind". It is: drop the PURITY (a pure and
+-- an effectful arrow over the same A, B are the same runtime object — plan 0.52
+-- M2, correctly), and INTERPRET the QUANTITY (a `Zero`-graded argument is
+-- erased, so the arrow has NO ARGUMENT SLOT). M2 conflated the two and dropped
+-- both; purity does not change the representation, a `Zero` quantity does.
+--
+-- This MIRRORS the spec's `⟦_⟧ᴰ`, which is now grade-aware at the same place.
+-- Both sides must forget the argument together or `coh` loses its full→runtime
+-- direction, which has no canonical inhabitant when only one side forgets.
+
+-- | The arrow's runtime shape, decided by its QUANTITY.
+eraseArrow : Quantity → IRTy → IRTy → IRTy
+eraseArrow Zero a b = Unit ⇛ b
+eraseArrow One  a b = a ⇛ b
+eraseArrow Many a b = a ⇛ b
 
 mutual
   ⌊_⌋ : Type → IRTy
@@ -76,7 +92,7 @@ mutual
   ⌊ Type.Void        ⌋ = Void
   ⌊ A Type.* B       ⌋ = ⌊ A ⌋ * ⌊ B ⌋
   ⌊ A Type.+ B       ⌋ = ⌊ A ⌋ + ⌊ B ⌋
-  ⌊ A Type.⇒[ _ ] B  ⌋ = ⌊ A ⌋ ⇛ ⌊ B ⌋       -- the grade is dropped here
+  ⌊ A Type.⇒[ k ] B  ⌋ = eraseArrow (T.ArrowKind.quantity k) ⌊ A ⌋ ⌊ B ⌋
   ⌊ Type.μ-type F    ⌋ = μ-type (eraseF F)
   ⌊ Type.ν-type F    ⌋ = ν-type (eraseF F)
   ⌊ Type.Int         ⌋ = Int
@@ -250,15 +266,28 @@ data FitsInRegI : IRTy → Set where
 -- an effectful arrow over the same A, B are the SAME IR object. `IR.arr`
 -- becomes an identity morphism once `IR` is re-indexed over `IRTy`.
 
-erase-⇒ : ∀ {A B : Type} (k : ArrowKind)
-        → ⌊ A Type.⇒[ k ] B ⌋ ≡ ⌊ A ⌋ ⇛ ⌊ B ⌋
-erase-⇒ _ = refl
+-- D143: `erase-⇒` holds at a NON-erased quantity; grade irrelevance narrows to
+-- PURITY irrelevance, which is all M2 ever justified.
+erase-⇒-One : ∀ {A B : Type} (π : Purity)
+            → ⌊ A Type.⇒[ T.mk-kind One π ] B ⌋ ≡ ⌊ A ⌋ ⇛ ⌊ B ⌋
+erase-⇒-One _ = refl
 
--- Two arrows differing ONLY in their kind erase to the same object.
-erase-⇒-kind-irrelevant
-  : ∀ {A B : Type} (k₁ k₂ : ArrowKind)
-  → ⌊ A Type.⇒[ k₁ ] B ⌋ ≡ ⌊ A Type.⇒[ k₂ ] B ⌋
-erase-⇒-kind-irrelevant _ _ = refl
+erase-⇒-Many : ∀ {A B : Type} (π : Purity)
+             → ⌊ A Type.⇒[ T.mk-kind Many π ] B ⌋ ≡ ⌊ A ⌋ ⇛ ⌊ B ⌋
+erase-⇒-Many _ = refl
+
+-- THE ENCODED INVARIANT: an erased arrow has no argument slot, so no IR can
+-- carry one (OCP-0005 rung 1 — violation is ill-typed, not optimised away).
+erase-⇒-Zero : ∀ {A B : Type} (π : Purity)
+             → ⌊ A Type.⇒[ T.mk-kind Zero π ] B ⌋ ≡ Unit ⇛ ⌊ B ⌋
+erase-⇒-Zero _ = refl
+
+erase-⇒-purity-irrelevant
+  : ∀ {A B : Type} (q : Quantity) (π₁ π₂ : Purity)
+  → ⌊ A Type.⇒[ T.mk-kind q π₁ ] B ⌋ ≡ ⌊ A Type.⇒[ T.mk-kind q π₂ ] B ⌋
+erase-⇒-purity-irrelevant Zero _ _ = refl
+erase-⇒-purity-irrelevant One  _ _ = refl
+erase-⇒-purity-irrelevant Many _ _ = refl
 
 ------------------------------------------------------------------------
 -- Canonical section `⌈_⌉ : IRTy → Type` — picks a canonical graded

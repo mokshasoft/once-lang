@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Type)
 import Once.Denotation.SourceDenote as SD
-open import Once.Surface.Syntax using (Usage; ⟦_⟧ᶜ)
+open import Once.Surface.Syntax using (Usage; ⟦_⟧ᶜ; _↾_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (RawExpr)
@@ -37,5 +37,5 @@ open import Once.Denotation.Realize using (realize)
 postulate
   realize-invariant :
     ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type} {Ψ : Usage (NamedCtx.size ctx)}
-      (d₁ d₂ : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ)
+      (d₁ d₂ : ctx ⊢ᶜ e ∶ A ⨾ Ψ) (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜ ⟧ᴰ) (k : ℕ)
     → SD.⟦ realize d₁ ⟧ˢ fmt dγ k ≡ SD.⟦ realize d₂ ⟧ˢ fmt dγ k

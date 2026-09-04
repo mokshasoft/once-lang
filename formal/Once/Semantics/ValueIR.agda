@@ -51,7 +51,12 @@ base-coh Unit          = refl
 base-coh Void          = refl
 base-coh (A * B)       = cong₂ _×_ (base-coh A) (base-coh B)
 base-coh (A + B)       = cong₂ _⊎_ (base-coh A) (base-coh B)
-base-coh (A ⇒[ k ] B)  = refl
+-- D143: split on the quantity — `⌊_⌋` no longer reduces for a variable kind.
+-- Every case is still `refl`: whatever the quantity, the erasure is an ARROW,
+-- and `⟦_⟧-base` sends every arrow to `⊤`.
+base-coh (A ⇒[ mk-kind Zero π ] B) = refl
+base-coh (A ⇒[ mk-kind One  π ] B) = refl
+base-coh (A ⇒[ mk-kind Many π ] B) = refl
 base-coh (μ-type F)    = refl
 base-coh (ν-type F)    = refl
 base-coh Int           = refl
@@ -73,7 +78,12 @@ coh Unit          = refl
 coh Void          = refl
 coh (A * B)       = cong₂ _×_ (coh A) (coh B)
 coh (A + B)       = cong₂ _⊎_ (coh A) (coh B)
-coh (A ⇒[ k ] B)  = cong₂ (λ x y → x → y) (coh A) (coh B)
+-- D143: at `Zero` both sides lose the argument, so only the codomain is
+-- transported. This is the case that used to make erasure incoherent — with a
+-- grade-blind `⟦_⟧ᴰ` the two sides disagreed and `coh` was simply false.
+coh (A ⇒[ mk-kind Zero π ] B) = cong  (λ y → ⟦ Unit ⟧ → y) (coh B)
+coh (A ⇒[ mk-kind One  π ] B) = cong₂ (λ x y → x → y) (coh A) (coh B)
+coh (A ⇒[ mk-kind Many π ] B) = cong₂ (λ x y → x → y) (coh A) (coh B)
 coh (μ-type F)    = cong μS (tF-coh F)
 coh (ν-type F)    = cong νS (tF-coh F)
 coh Int           = refl

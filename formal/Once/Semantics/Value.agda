@@ -23,7 +23,7 @@
 -- ╔══════════════════════════════════════════════════════════════════╗
 -- ║  WARNING — Eff IS DENOTED AS A PLAIN ARROW.                      ║
 -- ║                                                                  ║
--- ║      ⟦ A ⇒[ _ ] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧                              ║
+-- ║      ⟦ A ⇒[ q ] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧  (⟦Unit⟧ → ⟦B⟧ at q = Zero)   ║
 -- ║                                                                  ║
 -- ║  Pure (`mk-kind _ pure`) and effectful (`mk-kind _ eff`) arrows  ║
 -- ║  collapse to the same Agda function type. Effects are INVISIBLE  ║
@@ -126,7 +126,13 @@ open import Once.Semantics.Functor
 ⟦ Void ⟧         = ⊥
 ⟦ A * B ⟧        = ⟦ A ⟧ × ⟦ B ⟧
 ⟦ A + B ⟧        = ⟦ A ⟧ ⊎ ⟦ B ⟧
-⟦ A ⇒[ _ ] B ⟧   = ⟦ A ⟧ → ⟦ B ⟧
+-- D143: GRADE-AWARE at the quantity. A `Zero`-graded argument is erased — it
+-- has no runtime existence — so the erased arrow's value space takes NO
+-- argument. Purity is still ignored (plan 0.52 M2: pure and eff arrows over the
+-- same A, B are the same object); only the QUANTITY changes representation.
+⟦ A ⇒[ mk-kind Zero π ] B ⟧ = ⟦ Unit ⟧ → ⟦ B ⟧   -- erased: no argument
+⟦ A ⇒[ mk-kind One  π ] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧
+⟦ A ⇒[ mk-kind Many π ] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧
 -- OCP-0003: Fix removed, use μ-type/ν-type
 ⟦ μ-type F ⟧     = ⟦μ⟧ F
 ⟦ ν-type F ⟧     = ⟦ν⟧ F

@@ -113,7 +113,7 @@ import Once.TypeCheck.Principal as Principal
 open import Once.SigEffect using (SigEffect)
 
 -- Surface → IR elaboration
-open import Once.Surface.Elaborate using (elaborate)
+open import Once.Surface.Elaborate using (elaborate; elaborateFull)
 
 ------------------------------------------------------------------------
 -- Main function validation
@@ -173,7 +173,11 @@ directCallIR : (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → ∃[ D ] ∃[ C ] 
 -- Plan 0.53: `Heap`, not `Stack` — see wrapMainAsEntry. A curried direct-call
 -- function's first application returns a closure that captures the first arg
 -- and escapes, so its apply-pair must be heap-allocated.
-directCallIR (A ⇒[ k ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩ Heap
+-- D143: at an ERASED arrow the function takes no argument, so the uncurried
+-- form's domain is `Unit`, not `A` — there is nothing for a caller to pass.
+directCallIR (A ⇒[ mk-kind Zero π ] B) ir = Unit , B , apply ∘ ⟨ ir ∘ terminal , id ⟩ Heap
+directCallIR (A ⇒[ mk-kind One  π ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩ Heap
+directCallIR (A ⇒[ mk-kind Many π ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩ Heap
 directCallIR ty           ir = Unit , ty , ir
 
 ------------------------------------------------------------------------
@@ -220,7 +224,7 @@ compileFunBody-aux m doOpt ctx polys name ty δ-unit (TE.success _ surfaceExpr _
   -- handled via the qualified-name path and never reach this resolver.
   let userList = (name , ty) ∷ ctx
       resolved = resolveExpr polys userList userList 0 surfaceExpr
-      ir = elaborate m resolved
+      ir = elaborateFull m resolved
   in inj₂ (subst (λ X → IR X ⌊ ty ⌋) (cong ⌊_⌋ δ-unit) (if doOpt then optimize ir else ir))
 
 compileFunBody : AllocMode → Bool → FunCtx → PolyCtx → SigEffectCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR ⌊ Unit ⌋ ⌊ ty ⌋

@@ -41,7 +41,7 @@ open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 import Once.Compile as C
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
-open import Once.Surface.Elaborate using (elaborate)
+open import Once.Surface.Elaborate using (elaborate; elaborateFull)
 open import Once.Denotation.Realize using (realize)
 open import Once.TypeCheck.Elaborate as TE
   using (CheckElabResult; checkElab; ctxWithImportsAndSelfAndPolys; PolyCtx; _≟T_)
@@ -409,7 +409,7 @@ irFun-main-form : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigEffectCtx
   (ce : checkElab (ctxWithImportsAndSelfAndPolys ctx polys sigEffs "main" EffUU) body EffUU
           ≡ TE.success Ψ se d f)
   (cf : C.compileFun C.Heap false ctx polys sigEffs "main" EffUU body ≡ inj₂ irFun) →
-  irFun ≡ elaborate C.Heap (resolveExpr polys (("main" , EffUU) ∷ ctx) (("main" , EffUU) ∷ ctx) 0 se)
+  irFun ≡ elaborateFull C.Heap (resolveExpr polys (("main" , EffUU) ∷ ctx) (("main" , EffUU) ∷ ctx) 0 se)
 irFun-main-form ctx polys sigEffs body irFun ce cf =
   inj₂-injective (trans (sym cf) (cong (C.compileFunBody-aux C.Heap false ctx polys "main" EffUU refl) ce))
 
@@ -420,7 +420,7 @@ MNodeAt polys sigEffs fr rr =
   Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
   Σ-syntax (checkElab (ctxWithImportsAndSelfAndPolys mctx polys sigEffs "main" EffUU) mbody EffUU
              ≡ TE.success mΨ mse md mf) (λ mce →
-    (fr ≡ just (C.wrapMainAsEntry (elaborate C.Heap
+    (fr ≡ just (C.wrapMainAsEntry (elaborateFull C.Heap
             (resolveExpr polys (("main" , EffUU) ∷ mctx) (("main" , EffUU) ∷ mctx) 0 mse))))
   × (rr ≡ (mΨ , realize (check-sound (ctxWithImportsAndSelfAndPolys mctx polys sigEffs "main" EffUU)
                            mbody EffUU mce))))))))))

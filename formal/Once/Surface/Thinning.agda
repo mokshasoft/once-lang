@@ -162,7 +162,6 @@ thin-usage-singleUse (skip θ) i        q
 thin-usage-singleUse (keep θ) zero     q = cong (q ∷_) (thin-usage-zeroUsage θ)
 thin-usage-singleUse (keep θ) (suc i) q  = cong (Zero ∷_) (thin-usage-singleUse θ i q)
 
-
 ------------------------------------------------------------------------
 -- Expression Renaming via Thinning
 ------------------------------------------------------------------------
@@ -171,11 +170,10 @@ thin-usage-singleUse (keep θ) (suc i) q  = cong (Zero ∷_) (thin-usage-singleU
 -- This single function replaces ALL exchange functions!
 -- Preserves the usage vector via thin-usage propagation.
 
--- TOP-LEVEL, not `where`-bound: the `var` clause's double transport has to be
--- NAMEABLE, because the denotational soundness of renaming
--- (`Once.Denotation.ThinSound`) is a statement about exactly this term. A
--- `where`-bound helper cannot be quantified over from outside, which is the
--- only reason this moved.
+-- TOP-LEVEL, not `where`-bound: the `var` clause's double transport is shared
+-- by the clauses below, so it needs a name. It was originally lifted out so
+-- that a denotational-soundness lemma could quantify over it; that lemma
+-- (`Once.Denotation.ThinSound`) was deleted as dead — see D144.
 substᵀ₂ : ∀ {a b c} {A : Set a} {B : Set b} (C : A → B → Set c)
         → {x₁ x₂ : A} {y₁ y₂ : B} → x₁ ≡ x₂ → y₁ ≡ y₂ → C x₁ y₁ → C x₂ y₂
 substᵀ₂ C refl refl z = z

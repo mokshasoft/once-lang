@@ -328,10 +328,10 @@ module _ {A' : Type} where
   -- supplies is the algebra closure `⟦F⟧T C ⇒ C`, which is one.
   evalᴰ-Cata-erased : ∀ {F : Functor} {Eˢ : Type} (wfF : WellFormedF F)
       (mir : IR.IR (⌊ Eˢ ⌋ IR.* ⌊ ⟦ F ⟧T A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ) (w : ⟦ μ-type F ⟧ᴰ)
-    → liftFn fmt (IR.Cata (wf-⌊⌋ wfF)
+    → liftFn fmt {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF)
                     (subst (λ o → IR.IR (⌊ Eˢ ⌋ IR.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir))
              (env , w)
-      ≡ cata-sem wfF (λ z → liftFn fmt mir (env , z)) w
+      ≡ cata-sem wfF (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w
   evalᴰ-Cata-erased {F} {Eˢ} wfF mir env w = extensionality goal
     where
       mir' : IR.IR (⌊ Eˢ ⌋ IR.* ⟦ eraseF F ⟧TI ⌊ A' ⌋) ⌊ A' ⌋
@@ -344,8 +344,8 @@ module _ {A' : Type} where
       seed-eq = trans (sym (subst-cong-μS (tF-coh F) w'))
                       (subst-subst-sym {P = λ z → z} (cong μS (tF-coh F)))
 
-      goal : ∀ n → liftFn fmt (IR.Cata (wf-⌊⌋ wfF) mir') (env , w) n
-                 ≡ cata-sem wfF (λ z → liftFn fmt mir (env , z)) w n
+      goal : ∀ n → liftFn fmt {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF) mir') (env , w) n
+                 ≡ cata-sem wfF (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w n
       goal n = trans (cong (λ W → subst T (cohᴰ A')
                               (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir') W) n)
                            (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (μ-type F)) env w))
@@ -366,7 +366,7 @@ module _ {A' : Type} where
           algL' y = algL (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y)
 
           algM : ⟦ translateF Carrier Carrier F ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ) → (List SigOpEvent × ⟦ A' ⟧ᴰ)
-          algM y = cata-ev-algᴰ-D {F} {A'} n (λ z → liftFn fmt mir (env , z)) (coerce-μ-out wfF _ y)
+          algM y = cata-ev-algᴰ-D {F} {A'} n (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) (coerce-μ-out wfF _ y)
 
           Lr≡ : evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir')
                       (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w') n ≡ cataS {translateF Carrier Carrier F} algL' (forget w)
@@ -378,7 +378,7 @@ module _ {A' : Type} where
             where
               z_L = coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF F ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y₁)))
               step-eq : subst T (cohᴰ A') (dalg_L z_L)
-                      ≡ liftFn fmt mir (env , coerce-functor⁻¹-D F A' (sem-fmap F proj₂ (coerce-μ-out wfF _ y₂)))
+                      ≡ liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , coerce-functor⁻¹-D F A' (sem-fmap F proj₂ (coerce-μ-out wfF _ y₂)))
               step-eq = trans (cong (subst T (cohᴰ A'))
                                 (evalᴰ-subst-dom-pair (⌊⟧T-commute F A') mir
                                    (subst (λ t → t) (sym (cohᴰ Eˢ)) env)
@@ -442,7 +442,7 @@ forget-coh (base-Sum {A} {B} ibA ibB) (inj₂ b)
 ------------------------------------------------------------------------
 
 liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B) (bA : IsBaseType A)
-  → liftFn fmt (IR.SigOp info)
+  → liftFn fmt {A} {B} (IR.SigOp info)
     ≡ (λ arg → λ n → (emit-D info (forget arg) , inject (semM info fmt (forget arg))))
 liftFn-SigOp {A} {B} info bA = extensionality λ arg → extensionality λ n →
   trans (subst-T-apply (cohᴰ B) (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)

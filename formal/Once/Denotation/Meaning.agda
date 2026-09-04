@@ -35,12 +35,13 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.String using (String; _++_)
 
 open import Once.Type
-  using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity)
+  using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity; mk-kind; Quantity; Zero; One; Many)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; inject; forget; coerce-functor⁻¹-D)
+open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0; lookupᴰUsed)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -48,7 +49,7 @@ open import Once.Denotation.TraceDenote using (events-F)
 open import Once.CCC.Eval as Val using ()
 open import Data.List using (List) renaming (_++_ to _++ₗ_)
 open import Data.Nat using (ℕ)
-open import Once.Surface.Context using (Ctx; ∅; _,_^_; svar; SVar) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
+open import Once.Surface.Context using (Ctx; ∅; _,_^_; svar; SVar; Usage; _↾_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; zeroUsage; _∷_) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
 open import Once.TypeCheck.Classify using (NamedCtx)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
 open import Once.SigOp.Info using (SigOpInfo; semM)
@@ -120,6 +121,13 @@ lookupᴰ (Γ , A ^ q) (suc i) (dγ , a) = lookupᴰ Γ i dγ
 svarᴰ : ∀ {n} {Γ : Ctx n} {Ψ A} → SVar Γ Ψ A → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ A ⟧ᴰ
 svarᴰ {Γ = Γ} (svar i) dγ = lookupᴰ Γ i dγ
 
+-- | D142/D143: the RUNTIME reading. `SVar Γ Ψ A` carries its own usage
+--   (`svar i : SVar Γ (singleUse i One) _`), so the environment holds exactly
+--   that one variable — the chain collapses to a single projection, as
+--   `lookupᴰUsed` does.
+svarᴰRun : ∀ {n} {Γ : Ctx n} {Ψ A} (v : SVar Γ Ψ A) → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ → ⟦ A ⟧ᴰ
+svarᴰRun {Γ = Γ} (svar i) dγ = lookupᴰUsed Γ i dγ
+
 -- A closed named/sigop value reference (matches SD's `poly`/`closure`), IR-free.
 sigOpValᴰ : ∀ {B} → TargetNum → SigOpInfo Unit B → T ⟦ B ⟧ᴰ
 sigOpValᴰ fmt si = λ _ → (emit-D si tt , inject (semM si fmt tt))
@@ -136,20 +144,44 @@ sigOpValᴰ fmt si = λ _ → (emit-D si tt , inject (semM si fmt tt))
 -- base `A` — `con-fun` forces the arrow shape for the closure form.
 sigOpRefᴰ : ∀ {A} → TargetNum → CanonicalName → IsConcrete A → T ⟦ A ⟧ᴰ
 sigOpRefᴰ {A = A} fmt cn (con-base ib) = sigOpValᴰ fmt (value-info {Unit} {A} cn base-Unit (con-base ib))
-sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = k} bDom cCod) =
-  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} k cn bDom cCod) (forget arg)
-                         , inject (semM (arrow-info {Dom} {Cod} k cn bDom cCod) fmt (forget arg)) ))
+-- D143: split on the arrow's QUANTITY. At an ERASED arrow the symbol never
+-- receives its argument — the meaning takes none — so the reference degenerates
+-- to the value form, exactly as it does in `Elaborate` and `SourceDenote`.
+sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero π} bDom cCod) =
+  returnT (λ _ → λ n → ( emit-D (value-info cn base-Unit cCod) tt
+                       , inject (semM (value-info cn base-Unit cCod) fmt tt) ))
+sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom cCod) =
+  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) (forget arg)
+                         , inject (semM (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) fmt (forget arg)) ))
+sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom cCod) =
+  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) (forget arg)
+                         , inject (semM (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) fmt (forget arg)) ))
 
+-- D142/D143: the RUNTIME environment of a derivation.
+--
+-- `⊢ᶜ` has carried a `Surface.Usage` index all along (`⨾ Ψ`), and `t-lam`
+-- already moves the bound variable's usage into the arrow — that IS QTT's rule,
+-- with the binding RETAINED in the context and the usage recording zero uses.
+-- What was missing is that the MEANING ignored the index and ran over the full
+-- environment. With a grade-aware `⟦_⟧ᴰ` that is not merely wasteful but
+-- unstatable: at an erased arrow the meaning receives no argument, so there is
+-- nothing to extend the environment with.
+--
+-- So the meaning runs over `Γ ↾ Ψ` — exactly the variables the derivation uses
+-- — for the same reason `elaborate` and `⟦_⟧ˢ` do.
 Env : NamedCtx → Set
 Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
+
+EnvRun : (ctx : NamedCtx) → Usage (NamedCtx.size ctx) → Set
+EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
 
 ------------------------------------------------------------------------
 -- (P3) The CHECK / INFER realms — the fusion of `realize` then `SD`, made
 -- IR-free: morphisms via `⟦_⟧ᵐ`, values via `⟦_⟧ᵍ`, locals via `lookupᴰ`.
 ------------------------------------------------------------------------
 
-⟦_⟧ᶜ : ∀ {ctx e A Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → Env ctx → T ⟦ A ⟧ᴰ
-⟦_⟧ᵢ : ∀ {ctx e A Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → Env ctx → T ⟦ A ⟧ᴰ
+⟦_⟧ᶜ : ∀ {ctx e A Ψ} → ctx ⊢ᶜ e ∶ A ⨾ Ψ → TargetNum → EnvRun ctx Ψ → T ⟦ A ⟧ᴰ
+⟦_⟧ᵢ : ∀ {ctx e A Ψ} → ctx ⊢ᵢ e ∶ A ⨾ Ψ → TargetNum → EnvRun ctx Ψ → T ⟦ A ⟧ᴰ
 
 ------------------------------------------------------------------------
 -- D127: the categorical combinators, CONTEXT-INDEXED.
@@ -164,52 +196,61 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 --
 -- The leaves are `returnT` of the plain categorical generator, as they were.
 ------------------------------------------------------------------------
-⟦ t-id-check              ⟧ᶜ fmt dγ = returnT (λ a  → returnT a)
-⟦ t-fst-check             ⟧ᶜ fmt dγ = returnT (λ ab → returnT (proj₁ ab))
-⟦ t-snd-check             ⟧ᶜ fmt dγ = returnT (λ ab → returnT (proj₂ ab))
-⟦ t-terminal-morph-check  ⟧ᶜ fmt dγ = returnT (λ _  → returnT tt)
-⟦ t-initial-morph-check   ⟧ᶜ fmt dγ = returnT (λ v  → ⊥-elim v)
-⟦ t-inl-morph-check       ⟧ᶜ fmt dγ = returnT (λ a  → returnT (inj₁ a))
-⟦ t-inr-morph-check       ⟧ᶜ fmt dγ = returnT (λ b  → returnT (inj₂ b))
-⟦ t-compose-check _ df dg ⟧ᶜ fmt dγ =
-  (⟦ df ⟧ᶜ fmt) dγ >>=T λ vf → (⟦ dg ⟧ᶜ fmt) dγ >>=T λ vg →
+⟦_⟧ᶜ {ctx = ctx} (t-id-check             ) fmt dγ = returnT (λ a  → returnT a)
+⟦_⟧ᶜ {ctx = ctx} (t-fst-check            ) fmt dγ = returnT (λ ab → returnT (proj₁ ab))
+⟦_⟧ᶜ {ctx = ctx} (t-snd-check            ) fmt dγ = returnT (λ ab → returnT (proj₂ ab))
+⟦_⟧ᶜ {ctx = ctx} (t-terminal-morph-check ) fmt dγ = returnT (λ _  → returnT tt)
+⟦_⟧ᶜ {ctx = ctx} (t-initial-morph-check  ) fmt dγ = returnT (λ v  → ⊥-elim v)
+⟦_⟧ᶜ {ctx = ctx} (t-inl-morph-check      ) fmt dγ = returnT (λ a  → returnT (inj₁ a))
+⟦_⟧ᶜ {ctx = ctx} (t-inr-morph-check      ) fmt dγ = returnT (λ b  → returnT (inj₂ b))
+⟦_⟧ᶜ {ctx = ctx} (t-compose-check _ df dg) fmt dγ =
+  (⟦ df ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ dg ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ vg →
   returnT (λ a → vg a >>=T vf)
-⟦ t-case-copair-check df dg ⟧ᶜ fmt dγ =
-  (⟦ df ⟧ᶜ fmt) dγ >>=T λ vf → (⟦ dg ⟧ᶜ fmt) dγ >>=T λ vg →
+⟦_⟧ᶜ {ctx = ctx} (t-case-copair-check df dg) fmt dγ =
+  (⟦ df ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ dg ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ vg →
   returnT (λ ab → [ vf , vg ]′ ab)
-⟦ t-pair-morph-check df dg ⟧ᶜ fmt dγ =
-  (⟦ df ⟧ᶜ fmt) dγ >>=T λ vf → (⟦ dg ⟧ᶜ fmt) dγ >>=T λ vg →
+⟦_⟧ᶜ {ctx = ctx} (t-pair-morph-check df dg) fmt dγ =
+  (⟦ df ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ dg ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ vg →
   returnT (λ a → vf a >>=T λ b → vg a >>=T λ c → returnT (b , c))
-⟦ t-curry-check df ⟧ᶜ fmt dγ =
+⟦_⟧ᶜ {ctx = ctx} (t-curry-check df) fmt dγ =
   (⟦ df ⟧ᶜ fmt) dγ >>=T λ vf → returnT (λ a → returnT (λ b → vf (a , b)))
 -- The algebra is typed in the CLEARED context (plan 0.76 holds the widening
 -- back for its own decision), so it runs on the empty environment — the same
 -- `tt` the telescope rules use.
-⟦ t-cata-check wfF dalg ⟧ᶜ fmt dγ =
+⟦_⟧ᶜ {ctx = ctx} (t-cata-check wfF dalg) fmt dγ =
   (⟦ dalg ⟧ᶜ fmt) tt >>=T λ valg → returnT (cata-sem wfF valg)
-⟦ t-embed d ⟧ᶜ fmt              dγ = (⟦ d ⟧ᵢ fmt) dγ
-⟦ t-lam _ d ⟧ᶜ fmt              dγ = returnT (λ a → (⟦ d ⟧ᶜ fmt) (dγ , a))
-⟦ t-pair-lit-check da db ⟧ᶜ fmt dγ = (⟦ da ⟧ᶜ fmt) dγ >>=T λ a → (⟦ db ⟧ᶜ fmt) dγ >>=T λ b → returnT (a , b)
-⟦ t-In-app-check _ d ⟧ᶜ fmt     dγ = (⟦ d ⟧ᶜ fmt) dγ >>=T λ v → returnT (in-value v)
-⟦ t-apply-check dp ⟧ᶜ fmt       dγ = (⟦ dp ⟧ᵢ fmt) dγ >>=T λ fa → proj₁ fa (proj₂ fa)
-⟦ t-inl-app-check d ⟧ᶜ fmt      dγ = (⟦ d ⟧ᶜ fmt) dγ >>=T λ v → returnT (inj₁ v)
-⟦ t-inr-app-check d ⟧ᶜ fmt      dγ = (⟦ d ⟧ᶜ fmt) dγ >>=T λ v → returnT (inj₂ v)
-⟦ t-initial-app-check d ⟧ᶜ fmt  dγ = (⟦ d ⟧ᶜ fmt) dγ >>=T λ v → ⊥-elim v
-⟦ t-subsume d ⟧ᶜ fmt            dγ = (⟦ d ⟧ᶜ fmt) dγ
-⟦ t-arg-driven-app-check _ darg df ⟧ᶜ fmt dγ = (⟦ df ⟧ᶜ fmt) dγ >>=T λ vf → (⟦ darg ⟧ᵢ fmt) dγ >>=T λ vx → vf vx
+⟦_⟧ᶜ {ctx = ctx} (t-embed d) fmt dγ = (⟦ d ⟧ᵢ fmt) dγ
+-- D143: the arrow's declared quantity `q` decides whether the meaning receives
+-- an argument; the binder's usage `q'` decides whether it enters the body's
+-- environment. `q' ≤q q` (the rule's own premise) rules out the off-diagonal
+-- cases — an erased arrow cannot have a body that uses its argument.
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Zero} {q' = Zero} _ d) fmt dγ = returnT (λ _ → (⟦ d ⟧ᶜ fmt) (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = One}  {q' = Zero} _ d) fmt dγ = returnT (λ a → (⟦ d ⟧ᶜ fmt) (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Many} {q' = Zero} _ d) fmt dγ = returnT (λ a → (⟦ d ⟧ᶜ fmt) (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = One}  {q' = One}  _ d) fmt dγ = returnT (λ a → (⟦ d ⟧ᶜ fmt) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Many} {q' = One}  _ d) fmt dγ = returnT (λ a → (⟦ d ⟧ᶜ fmt) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One  dγ a))
+⟦_⟧ᶜ {ctx = ctx} (t-lam {A = A} {q = Many} {q' = Many} _ d) fmt dγ = returnT (λ a → (⟦ d ⟧ᶜ fmt) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a))
+⟦_⟧ᶜ {ctx = ctx} (t-pair-lit-check da db) fmt dγ = (⟦ da ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ db ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (a , b)
+⟦_⟧ᶜ {ctx = ctx} (t-In-app-check _ d) fmt dγ = (⟦ d ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (in-value v)
+⟦_⟧ᶜ {ctx = ctx} (t-apply-check dp) fmt dγ = (⟦ dp ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ fa → proj₁ fa (proj₂ fa)
+⟦_⟧ᶜ {ctx = ctx} (t-inl-app-check d) fmt dγ = (⟦ d ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (inj₁ v)
+⟦_⟧ᶜ {ctx = ctx} (t-inr-app-check d) fmt dγ = (⟦ d ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (inj₂ v)
+⟦_⟧ᶜ {ctx = ctx} (t-initial-app-check d) fmt dγ = (⟦ d ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → ⊥-elim v
+⟦_⟧ᶜ {ctx = ctx} (t-subsume d) fmt dγ = (⟦ d ⟧ᶜ fmt) dγ
+⟦_⟧ᶜ {ctx = ctx} (t-arg-driven-app-check _ darg df) fmt dγ = (⟦ df ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ darg ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ _)) dγ) >>=T λ vx → vf vx
 -- Plan 0.58 (telescope): a same-module def reference MEANS its closed body
 -- (the body derivation is the rule's premise). Env-independent — the body is
 -- typed in the empty local context (the prefix env), so discard `dγ` and feed
 -- `tt`. Structural recursion (bodyD is a premise ⇒ a subterm).
-⟦ t-var-poly-instantiate _ _ _ _ bodyD ⟧ᶜ fmt dγ = (⟦ bodyD ⟧ᶜ fmt) tt
+⟦_⟧ᶜ {ctx = ctx} (t-var-poly-instantiate _ _ _ _ bodyD) fmt dγ = (⟦ bodyD ⟧ᶜ fmt) tt
 
-⟦ t-int n ⟧ᵢ fmt                dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)
+⟦_⟧ᵢ {ctx = ctx} (t-int n) fmt dγ = returnT (OnceWord.Width.fromℤ (int-bits fmt) n)
 -- D113, in the INFER realm: same clause, same reason as `g-float` above.
-⟦ t-float i f l p ⟧ᵢ fmt          dγ = returnT (round (float-format fmt) (decimalOf i f l))
-⟦ t-str s ⟧ᵢ fmt                dγ = returnT (semM (str-lit-info s) fmt tt)
-⟦ t-unit ⟧ᵢ fmt                 dγ = returnT tt
-⟦ t-unit-var ⟧ᵢ fmt             dγ = returnT tt
-⟦ t-var-local {eV = eV} _ ⟧ᵢ fmt dγ = returnT (svarᴰ eV dγ)
+⟦_⟧ᵢ {ctx = ctx} (t-float i f l p) fmt dγ = returnT (round (float-format fmt) (decimalOf i f l))
+⟦_⟧ᵢ {ctx = ctx} (t-str s) fmt dγ = returnT (semM (str-lit-info s) fmt tt)
+⟦_⟧ᵢ {ctx = ctx} (t-unit) fmt dγ = returnT tt
+⟦_⟧ᵢ {ctx = ctx} (t-unit-var) fmt dγ = returnT tt
+⟦_⟧ᵢ {ctx = ctx} (t-var-local {eV = eV} _) fmt dγ = returnT (svarᴰRun eV dγ)
 ⟦_⟧ᵢ {A = A} (t-var-qualified {name = name} {alias = alias} _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt (bare (alias ++ "." ++ name)) conc
 ⟦_⟧ᵢ {A = A} (t-var-resolved {cn = cn} _ _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt cn conc
 ⟦_⟧ᵢ {A = A} (t-var-import {x = x} _ _ _ conc) fmt dγ = sigOpRefᴰ {A = A} fmt (bare x) conc
@@ -217,10 +258,10 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 -- the context projection Γ(x). The body is closed (typed in the telescope
 -- prefix over the empty local env), so its meaning runs on `tt`. Structural
 -- recursion (bodyD is a premise ⇒ a subterm) — same as the check-mode rule.
-⟦ t-var-poly-instantiate-infer _ _ _ _ _ bodyD ⟧ᵢ fmt dγ = (⟦ bodyD ⟧ᶜ fmt) tt
-⟦ t-annot d ⟧ᵢ fmt              dγ = (⟦ d ⟧ᶜ fmt) dγ
-⟦ t-pair da db ⟧ᵢ fmt           dγ = (⟦ da ⟧ᵢ fmt) dγ >>=T λ a → (⟦ db ⟧ᵢ fmt) dγ >>=T λ b → returnT (a , b)
-⟦ t-neg d ⟧ᵢ fmt                dγ = (⟦ d ⟧ᵢ fmt) dγ >>=T λ v → returnT (semM neg-info fmt v)
+⟦_⟧ᵢ {ctx = ctx} (t-var-poly-instantiate-infer _ _ _ _ _ bodyD) fmt dγ = (⟦ bodyD ⟧ᶜ fmt) tt
+⟦_⟧ᵢ {ctx = ctx} (t-annot d) fmt dγ = (⟦ d ⟧ᶜ fmt) dγ
+⟦_⟧ᵢ {ctx = ctx} (t-pair da db) fmt dγ = (⟦ da ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ db ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (a , b)
+⟦_⟧ᵢ {ctx = ctx} (t-neg d) fmt dγ = (⟦ d ⟧ᵢ fmt) dγ >>=T λ v → returnT (semM neg-info fmt v)
 -- PLAN 0.73 F3. `-3.14` MEANS the target's representation of the decimal
 -- −3.14 — `round` applied to the NEGATED payload, not the word-level negation
 -- of `round 3.14`. That reading is the honest one: the literal names a
@@ -231,22 +272,33 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 -- readings agree — `round` splits sign from magnitude at `signBit (sig d)` /
 -- `∣ sig d ∣`, so negating `sig` moves the sign bit and nothing else — but
 -- that is a fact to PIN, not a coincidence to lean on.
-⟦ t-neg-float i f l p ⟧ᵢ fmt      dγ = returnT (round (float-format fmt) (negate (decimalOf i f l)))
-⟦ t-let d₁ d₂ ⟧ᵢ fmt            dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ v → (⟦ d₂ ⟧ᵢ fmt) (dγ , v)
-⟦ t-case ds dl dr ⟧ᵢ fmt        dγ = (⟦ ds ⟧ᵢ fmt) dγ >>=T λ v →
-                                   [ (λ a → (⟦ dl ⟧ᵢ fmt) (dγ , a)) , (λ b → (⟦ dr ⟧ᵢ fmt) (dγ , b)) ]′ v
-⟦ t-binop-arith {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM add-info fmt (a , b))
-⟦ t-binop-arith {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM sub-info fmt (a , b))
-⟦ t-binop-arith {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM mul-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-neg-float i f l p) fmt dγ = returnT (round (float-format fmt) (negate (decimalOf i f l)))
+-- D143: at `q = Zero` the bound value is ERASED — `e₁` is not evaluated and the
+-- body runs on the unextended environment, matching `elaborate` and `⟦_⟧ˢ`.
+⟦_⟧ᵢ {ctx = ctx} (t-let {A = A} {q = Zero} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} d₁ d₂) fmt dγ =
+  (⟦ d₂ ⟧ᵢ fmt) (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A} (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₂ (Zero *ᵘ Ψ₁)) dγ))
+⟦_⟧ᵢ {ctx = ctx} (t-let {A = A} {q = One} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} d₁ d₂) fmt dγ =
+  (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) dγ) >>=T λ v →
+  (⟦ d₂ ⟧ᵢ fmt) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁)) dγ) v)
+⟦_⟧ᵢ {ctx = ctx} (t-let {A = A} {q = Many} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} d₁ d₂) fmt dγ =
+  (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) dγ) >>=T λ v →
+  (⟦ d₂ ⟧ᵢ fmt) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} Many (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁)) dγ) v)
+⟦_⟧ᵢ {ctx = ctx} (t-case {A = A} {B = B} {qL = qL} {qR = qR} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} ds dl dr) fmt dγ =
+  (⟦ ds ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ) >>=T λ v →
+  [ (λ a → (⟦ dl ⟧ᵢ fmt) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} qL (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) a))
+  , (λ b → (⟦ dr ⟧ᵢ fmt) (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = B} qR (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ)) b)) ]′ v
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpAdd} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM add-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpSub} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM sub-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpMul} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM mul-info fmt (a , b))
 -- PLAN 0.75 F4: the same three at `Float`, reading the same `semM` accessor —
 -- so the float family is not a second story about what arithmetic means, it is
 -- the same story with `Once.Float.Arith`'s operations behind it.
-⟦ t-binop-arith-float {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fadd-info fmt (a , b))
-⟦ t-binop-arith-float {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fsub-info fmt (a , b))
-⟦ t-binop-arith-float {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fmul-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpAdd} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM fadd-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpSub} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM fsub-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpMul} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM fmul-info fmt (a , b))
 -- `/` joins them: the quotient is correctly rounded (the sticky bit lives in
 -- `FA.fdiv`) and total, so it denotes like the other three.
-⟦ t-binop-arith-float {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fdiv-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float {op = OpDiv} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM fdiv-info fmt (a , b))
 -- `%` is NOT a float arithmetic op (see `isFloatArithmeticOp`): IEEE's `fmod`
 -- is a different function and needs its own decision. The witness refutes it
 -- here exactly as it refutes the comparisons.
@@ -264,10 +316,10 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 -- different TRACE SHAPE from `realize-infer`'s, and `MeaningBridge` then has to
 -- neutralise an `++ []` that need never have appeared. Matching the shape is
 -- what keeps that bridge `refl`.
-⟦ t-binop-arith-float-il {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fadd-info fmt (a′ , b))
-⟦ t-binop-arith-float-il {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fsub-info fmt (a′ , b))
-⟦ t-binop-arith-float-il {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fmul-info fmt (a′ , b))
-⟦ t-binop-arith-float-il {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM fdiv-info fmt (a′ , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM fadd-info fmt (a′ , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM fsub-info fmt (a′ , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM fmul-info fmt (a′ , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-il {op = OpDiv} _ d₁ d₂) fmt dγ = ((⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → returnT (semM i2f-info fmt a)) >>=T λ a′ → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM fdiv-info fmt (a′ , b))
 ⟦ t-binop-arith-float-il {op = OpMod} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-il {op = OpLt} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-il {op = OpLe} () _ _ ⟧ᵢ
@@ -275,10 +327,10 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-binop-arith-float-il {op = OpGe} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-il {op = OpEq} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-il {op = OpNe} () _ _ ⟧ᵢ
-⟦ t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fadd-info fmt (a , b′))
-⟦ t-binop-arith-float-ir {op = OpSub} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fsub-info fmt (a , b′))
-⟦ t-binop-arith-float-ir {op = OpMul} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fmul-info fmt (a , b′))
-⟦ t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fdiv-info fmt (a , b′))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fadd-info fmt (a , b′))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fsub-info fmt (a , b′))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fmul-info fmt (a , b′))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → ((⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM i2f-info fmt b)) >>=T λ b′ → returnT (semM fdiv-info fmt (a , b′))
 ⟦ t-binop-arith-float-ir {op = OpMod} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-ir {op = OpLt} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-ir {op = OpLe} () _ _ ⟧ᵢ
@@ -286,29 +338,39 @@ Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜᵗ ⟧ᴰ
 ⟦ t-binop-arith-float-ir {op = OpGe} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-ir {op = OpEq} () _ _ ⟧ᵢ
 ⟦ t-binop-arith-float-ir {op = OpNe} () _ _ ⟧ᵢ
-⟦ t-binop-arith {op = OpDiv} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM div-info fmt (a , b))
-⟦ t-binop-arith {op = OpMod} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM mod-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpDiv} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM div-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-arith {op = OpMod} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM mod-info fmt (a , b))
 ⟦_⟧ᵢ (t-binop-arith {op = OpLt} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpLe} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpGt} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpGe} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpEq} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-arith {op = OpNe} () _ _) fmt
-⟦ t-binop-cmp {op = OpLt} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM lt-info fmt (a , b))
-⟦ t-binop-cmp {op = OpLe} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM le-info fmt (a , b))
-⟦ t-binop-cmp {op = OpGt} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM gt-info fmt (a , b))
-⟦ t-binop-cmp {op = OpGe} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM ge-info fmt (a , b))
-⟦ t-binop-cmp {op = OpEq} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM eq-info fmt (a , b))
-⟦ t-binop-cmp {op = OpNe} _ d₁ d₂ ⟧ᵢ fmt dγ = (⟦ d₁ ⟧ᵢ fmt) dγ >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) dγ >>=T λ b → returnT (semM ne-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpLt} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM lt-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpLe} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM le-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpGt} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM gt-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpGe} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM ge-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpEq} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM eq-info fmt (a , b))
+⟦_⟧ᵢ {ctx = ctx} (t-binop-cmp {op = OpNe} _ d₁ d₂) fmt dγ = (⟦ d₁ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ a → (⟦ d₂ ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ b → returnT (semM ne-info fmt (a , b))
 ⟦_⟧ᵢ (t-binop-cmp {op = OpAdd} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-cmp {op = OpSub} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-cmp {op = OpMul} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-cmp {op = OpDiv} () _ _) fmt
 ⟦_⟧ᵢ (t-binop-cmp {op = OpMod} () _ _) fmt
-⟦ t-id-app d ⟧ᵢ fmt             dγ = (⟦ d ⟧ᵢ fmt) dγ
-⟦ t-fst-app d ⟧ᵢ fmt            dγ = (⟦ d ⟧ᵢ fmt) dγ >>=T λ v → returnT (proj₁ v)
-⟦ t-snd-app d ⟧ᵢ fmt            dγ = (⟦ d ⟧ᵢ fmt) dγ >>=T λ v → returnT (proj₂ v)
-⟦ t-terminal-app d ⟧ᵢ fmt       dγ = (⟦ d ⟧ᵢ fmt) dγ >>=T λ _ → returnT tt
-⟦ t-apply-app-infer d ⟧ᵢ fmt    dγ = (⟦ d ⟧ᵢ fmt) dγ >>=T λ fa → proj₁ fa (proj₂ fa)
-⟦ t-app _ df dx ⟧ᵢ fmt          dγ = (⟦ df ⟧ᵢ fmt) dγ >>=T λ vf → (⟦ dx ⟧ᶜ fmt) dγ >>=T λ vx → vf vx
-⟦ t-effApp _ df dx ⟧ᵢ fmt       dγ = returnT (λ _ → (⟦ df ⟧ᵢ fmt) dγ >>=T λ vf → (⟦ dx ⟧ᶜ fmt) dγ >>=T λ vx → vf vx)
+⟦_⟧ᵢ {ctx = ctx} (t-id-app d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ)
+⟦_⟧ᵢ {ctx = ctx} (t-fst-app d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (proj₁ v)
+⟦_⟧ᵢ {ctx = ctx} (t-snd-app d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (proj₂ v)
+⟦_⟧ᵢ {ctx = ctx} (t-terminal-app d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ _ → returnT tt
+⟦_⟧ᵢ {ctx = ctx} (t-apply-app-infer d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ fa → proj₁ fa (proj₂ fa)
+-- D143: at an ERASED arrow the argument is NOT evaluated — the meaning takes
+-- none, so `vf` is applied to `tt`. The spec's counterpart of the elaborator
+-- not emitting `x`, and the reason `Ψ₂` vanishes from the index.
+⟦_⟧ᵢ {ctx = ctx} (t-app {q = Zero} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ df dx) fmt dγ =
+  (⟦ df ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂)) dγ) >>=T λ vf → vf tt
+⟦_⟧ᵢ {ctx = ctx} (t-app {q = One} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ df dx) fmt dγ =
+  (⟦ df ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂)) dγ) >>=T λ vf →
+  (⟦ dx ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx
+⟦_⟧ᵢ {ctx = ctx} (t-app {q = Many} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} _ df dx) fmt dγ =
+  (⟦ df ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂)) dγ) >>=T λ vf →
+  (⟦ dx ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ) >>=T λ vx → vf vx
+⟦_⟧ᵢ {ctx = ctx} (t-effApp _ df dx) fmt dγ = returnT (λ _ → (⟦ df ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ _ _) dγ) >>=T λ vf → (⟦ dx ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ʳ _ _) dγ) >>=T λ vx → vf vx)

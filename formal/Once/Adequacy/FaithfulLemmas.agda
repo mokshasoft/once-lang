@@ -34,7 +34,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 
 open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer;
                               _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T;
-                              Purity; mk-kind; Many)
+                              Purity; mk-kind; Zero; One; Many)
 open import Once.CCC.Eval as Val using ()
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; curry; terminal; id; snd; Cata; Ana; ⌊_⌋)
 open import Once.Functor.Translate using (WellFormedF)
@@ -51,7 +51,7 @@ open import Once.Semantics.Machine using
   (sem-cata; sem-ana; coerce-functor; coerce-functor⁻¹; sem-fmap; coh; coerce-ν-in; tF-coh; ⟦_⟧F)
 open import Once.Semantics.Functor using (νS; ⟦_⟧SF; SFunctor)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
-open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ)
+open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧ᶜ; _↾_)
 open import Once.Surface.Elaborate using (elaborate; cataM)
 import Once.Compile as C
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -84,7 +84,15 @@ forget-inject {ν-type F} v      = refl
 forget-inject {A * B}  (a , b)  = cong₂ _,_ (forget-inject {A} a) (forget-inject {B} b)
 forget-inject {A + B}  (inj₁ a) = cong inj₁ (forget-inject {A} a)
 forget-inject {A + B}  (inj₂ b) = cong inj₂ (forget-inject {B} b)
-forget-inject {A ⇒[ k ] B} pf   =
+-- D143: at an ERASED arrow neither side carries an argument of type `A`, so
+-- there is no round-trip on the domain — only the codomain's IH is used.
+forget-inject {A ⇒[ mk-kind Zero π ] B} pf =
+  extensionality (λ u → forget-inject {B} (pf u))
+forget-inject {A ⇒[ mk-kind One π ] B} pf =
+  extensionality (λ va →
+    trans (cong (λ z → forget (inject (pf z))) (forget-inject {A} va))
+          (forget-inject {B} (pf va)))
+forget-inject {A ⇒[ mk-kind Many π ] B} pf =
   extensionality (λ va →
     trans (cong (λ z → forget (inject (pf z))) (forget-inject {A} va))
           (forget-inject {B} (pf va)))
@@ -121,8 +129,11 @@ subst-arrow : ∀ {DI DT EI ET : Set} (pD : DI ≡ DT) (pE : EI ≡ ET) (g : DI 
     ≡ (λ x → subst T pE (g (subst (λ z → z) (sym pD) x)))
 subst-arrow refl refl g = refl
 
-morph-app-bridge : ∀ {D E kk} (morph : Expr ∅ zeroUsage (D ⇒[ kk ] E))
-                     (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ kk ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ fmt tt j)
+-- D143: `apply ∘ ⟨ … ⟩` requires `⌊D ⇒[kk] E⌋ ≡ ⌊D⌋ ⇛ ⌊E⌋`, which holds only
+-- at a NON-erased arrow — `⌊_⌋` sends a `Zero`-graded one to `Unit ⇛ ⌊E⌋`.
+-- `Many` is what every consumer (the `ana` coalgebra) instantiates.
+morph-app-bridge : ∀ {D E π} (morph : Expr ∅ zeroUsage (D ⇒[ mk-kind Many π ] E))
+                     (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ fmt tt j)
                      (w : ⟦ D ⟧ᴰ) (n : ℕ)
                    → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w n
                      ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w)) n
@@ -149,10 +160,10 @@ morph-app-bridge {D} {E} morph ih w n =
                      (cong (subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E)))) (extensionality ih))
 
 -- … and its function form (equal as `T`-values, ∀ depth).
-morph-app-bridge-fun : ∀ {D E kk} (morph : Expr ∅ zeroUsage (D ⇒[ kk ] E))
-                         (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ kk ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ fmt tt j)
+morph-app-bridge-fun : ∀ {D E π} (morph : Expr ∅ zeroUsage (D ⇒[ mk-kind Many π ] E))
+                         (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ fmt tt j)
                          (w : ⟦ D ⟧ᴰ)
-                       → liftFn fmt (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w
+                       → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w
                          ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w))
 morph-app-bridge-fun morph ih w = extensionality (morph-app-bridge morph ih w)
 
@@ -200,7 +211,7 @@ cataM-fold {F} {A} {π} wfF c =
                   → liftFn fmt {(⟦ F ⟧T A ⇒[ mk-kind Many π ] A) Once.Type.* (⟦ F ⟧T A)} {A}
                            applyIR (c , z)
                     ≡ c z
-    apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {⟦ F ⟧T A} {A} {mk-kind Many π})
+    apply-closure z = cong (λ h → h (c , z)) (liftFn-apply {⟦ F ⟧T A} {A} {π})
     innerCata = C.Cata (wf-⌊⌋ wfF)
                      (subst (λ o → IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ C.* o) ⌊ A ⌋)
                             (⌊⟧T-commute F A) applyIR)
@@ -213,8 +224,9 @@ cata-body : ∀ {m} {Γ : Ctx m} {F : Functor} {A} {π : Purity}
               (wf : WellFormedF F)
               (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
               (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate C.Heap alg) tt j ≡ SD.⟦ alg ⟧ˢ fmt tt j)
-              (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-            → liftFn fmt {⟦ Γ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A} (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ k
+              (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ) (k : ℕ)
+            → liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
+                (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ k
               ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt dγ k
 cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ k =
   trans (cong (λ t → t k) split) (cong (λ t → t k) fold-step)
@@ -230,14 +242,14 @@ cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ k =
     -- The composition splits and `∘ terminal` feeds the algebra the empty
     -- environment, so the left factor is the algebra's own denotation and the
     -- IH applies to it directly.
-    split : liftFn fmt {⟦ Γ ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
+    split : liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
                    (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ
           ≡ (SD.⟦ alg ⟧ˢ fmt tt >>=T liftCataM)
-    split = trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ⟧ᶜ} cataM' (ealg C.∘ C.terminal)))
+    split = trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {C = μ-type F ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ zeroUsage ⟧ᶜ} cataM' (ealg C.∘ C.terminal)))
                   (cong (λ t → t >>=T liftCataM)
-                        (trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ ∅ ⟧ᶜ} {C = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ⟧ᶜ} ealg C.terminal))
+                        (trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ ∅ ⟧ᶜ} {C = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ zeroUsage ⟧ᶜ} ealg C.terminal))
                                (trans (cong (λ t → t >>=T liftEalg)
-                                            (cong (λ h → h dγ) (liftFn-terminal {⟦ Γ ⟧ᶜ})))
+                                            (cong (λ h → h dγ) (liftFn-terminal {⟦ Γ ↾ zeroUsage ⟧ᶜ})))
                                       (extensionality ih))))
 
     -- Per obtained closure the fold agrees — `cataM-fold`.
@@ -266,8 +278,10 @@ valueT-subst : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (m : ℕ)
   → valueT (subst T eq h) m ≡ subst (λ z → z) eq (valueT h m)
 valueT-subst refl h m = refl
 
-ana-ev-bridge : ∀ {F A kk} (coalg : Expr ∅ zeroUsage (A ⇒[ kk ] ⟦ F ⟧T A))
-                  (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {A ⇒[ kk ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt j ≡ SD.⟦ coalg ⟧ˢ fmt tt j)
+-- D143: same restriction as `morph-app-bridge` — the coalgebra is applied
+-- through `apply`, so its arrow must be NON-erased.
+ana-ev-bridge : ∀ {F A π} (coalg : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A))
+                  (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt j ≡ SD.⟦ coalg ⟧ˢ fmt tt j)
                   (s : Val.⟦ A ⟧) (m : ℕ)
               → ana-events fmt {eraseF F} {⌊ A ⌋}
                   (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A)
@@ -339,8 +353,8 @@ ana-body : ∀ {mm} {Γ : Ctx mm} {F : Functor} {A} {π : Purity}
              (wf : WellFormedF F)
              (coalg : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A))
              (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt j ≡ SD.⟦ coalg ⟧ˢ fmt tt j)
-             (dγ : ⟦ ⟦ Γ ⟧ᶜ ⟧ᴰ) (k : ℕ)
-           → liftFn fmt {⟦ Γ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ k
+             (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ) (k : ℕ)
+           → liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ k
              ≡ SD.⟦ ana {Γ = Γ} wf coalg ⟧ˢ fmt dγ k
 ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
   trans elab-ana-reduce (cong (_,_ []) per-a)
@@ -351,8 +365,8 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
     Ana-IR : IR ⌊ A ⌋ ⌊ ν-type F ⌋
     Ana-IR = Ana (wf-⌊⌋ wf) coalg'
 
-    elab-ana-reduce : liftFn fmt {⟦ Γ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ k
-                      ≡ returnT (λ a → liftFn fmt Ana-IR a) k
+    elab-ana-reduce : liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ k
+                      ≡ returnT (λ a → liftFn fmt {A} {ν-type F} Ana-IR a) k
     elab-ana-reduce = cong (λ t → t k)
       (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ (ν-type F))) (λ a → evalᴰ fmt Ana-IR a))
              (cong returnT (subst-arrow (cohᴰ A) (cohᴰ (ν-type F)) (λ a → evalᴰ fmt Ana-IR a))))
@@ -435,7 +449,7 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
                    (trans (sem-ana-erase-full (coh A) cL-e cR (forget (subst (λ z → z) (sym (cohᴰ A)) a)) (ceq a))
                           (cong (sem-ana F cR) (forget-coh-gen A a)))
 
-    per-a : (λ a → liftFn fmt Ana-IR a)
+    per-a : (λ a → liftFn fmt {A} {ν-type F} Ana-IR a)
             ≡ (λ a → λ n → ( SD.ana-eventsˢ {F} {A} (SD.⟦ coalg ⟧ˢ fmt tt) (forget a) n
                            , inject (sem-ana F cR (forget a)) ))
     per-a = extensionality (λ a → extensionality (λ n →

@@ -140,3 +140,15 @@ open import Data.Product using (_×_; _,_)
 ≤ᵘ?-zero : ∀ {n} (Γ : Ctx n) → zeroUsage ≤ᵘ? Γ ≡ true
 ≤ᵘ?-zero ∅ = refl
 ≤ᵘ?-zero (Γ , A ^ q) = cong (true ∧_) (≤ᵘ?-zero Γ)
+-- | ERASURE AT THE USAGE LEVEL (D143) — the Once analogue of `NbEPQTTJ`'s
+--   judgment-level `erase-arg` (`(ρf +ᵘ (𝟘 ·ᵘ ρa)) ≡ ρf`). An application at a
+--   `Zero`-graded arrow uses exactly what the FUNCTION uses: the argument's
+--   usage scales away, so its variables are not in the runtime environment at
+--   all. This is what makes the erased `app`/`let'` clauses type-correct
+--   without widening the environment.
++ᵘ-idʳ : ∀ {n} (Ψ : Usage n) → Ψ +ᵘ zeroUsage ≡ Ψ
++ᵘ-idʳ []      = refl
++ᵘ-idʳ (q ∷ Ψ) = cong₂ _∷_ (+q-identityʳ q) (+ᵘ-idʳ Ψ)
+
+erase-arg-usage : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₁ +ᵘ (Zero *ᵘ Ψ₂) ≡ Ψ₁
+erase-arg-usage Ψ₁ Ψ₂ = trans (cong (Ψ₁ +ᵘ_) (*ᵘ-zeroˡ Ψ₂)) (+ᵘ-idʳ Ψ₁)

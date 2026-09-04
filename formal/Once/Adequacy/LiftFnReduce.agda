@@ -32,7 +32,7 @@ open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 
-open import Once.Type using (Type; _⇒[_]_; _+_; _*_; Unit)
+open import Once.Type using (Type; _⇒[_]_; _+_; _*_; Unit; mk-kind; Many)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; cohᴰ)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
@@ -133,28 +133,11 @@ liftFn-inr {B} {A} = extensionality λ b →
                              (cong inj₂ (subst-subst-sym (cohᴰ B)))))
 
 liftFn-∘ : (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (f : IR IR.⌊ A ⌋ IR.⌊ B ⌋)
-  → liftFn fmt {A} {C} (g ∘ f) ≡ (λ a → liftFn fmt f a >>=T liftFn fmt g)
+  → liftFn fmt {A} {C} (g ∘ f) ≡ (λ a → liftFn fmt {A} {B} f a >>=T liftFn fmt {B} {C} g)
 liftFn-∘ {B} {C} {A} g f = extensionality λ a →
   subst-bind (cohᴰ B) (cohᴰ C) (evalᴰ fmt f (subst id (sym (cohᴰ A)) a)) (evalᴰ fmt g)
 
-liftFn-pair : (f : IR IR.⌊ A ⌋ IR.⌊ B ⌋) (g : IR IR.⌊ A ⌋ IR.⌊ C ⌋)
-  → liftFn fmt {A} {B * C} (⟨ f , g ⟩ IR.Heap)
-    ≡ (λ a → liftFn fmt f a >>=T (λ b → liftFn fmt g a >>=T (λ c → returnT (b , c))))
-liftFn-pair {A} {B} {C} f g = extensionality λ a →
-  subst-pair-bind (cohᴰ B) (cohᴰ C)
-    (evalᴰ fmt f (subst id (sym (cohᴰ A)) a)) (evalᴰ fmt g (subst id (sym (cohᴰ A)) a))
 
-liftFn-curry : ∀ {A B C : Type} {k} (f : IR (IR.⌊ A ⌋ IR.* IR.⌊ B ⌋) IR.⌊ C ⌋)
-  → liftFn fmt {A} {B ⇒[ k ] C} (curry f IR.Heap) ≡ (λ a → returnT (λ b → liftFn fmt f (a , b)))
-liftFn-curry {A} {B} {C} {k} f = extensionality λ a →
-  trans (subst-T-returnT (cohᴰ (B ⇒[ k ] C))
-                         (λ b → evalᴰ fmt f (subst id (sym (cohᴰ A)) a , b)))
-        (cong returnT
-          (trans (subst-arrowᴰ (cohᴰ B) (cohᴰ C)
-                    (λ b → evalᴰ fmt f (subst id (sym (cohᴰ A)) a , b)))
-                 (extensionality λ b →
-                   cong (λ w → subst T (cohᴰ C) (evalᴰ fmt f w))
-                        (sym (pair-subst⁻ (cohᴰ A) (cohᴰ B) a b)))))
 
 -- fully Set-abstracted case reductions: the case-function's branch reduction is
 -- supplied as a `refl` hypothesis (`evalᴰ (case f g) (inj₁ x) = evalᴰ f x`).
@@ -181,9 +164,23 @@ apply-red : ∀ {AI AT BI BT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT)
     ≡ proj₁ v (proj₂ v)
 apply-red refl refl v = refl
 
-liftFn-apply : ∀ {A B : Type} {k}
-  → liftFn fmt {(A ⇒[ k ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
-liftFn-apply {A} {B} {k} = extensionality λ v → apply-red (cohᴰ A) (cohᴰ B) v
+-- Restored (D144 note): deleted as unused when `MeaningBridge` only imported
+-- it, then re-earned a consumer — `liftFn-restrictEnv` in `SourceFaithful`
+-- needs exactly this for `restrictEnv`'s `⟨ … , snd ⟩` case.
+liftFn-pair : (f : IR IR.⌊ A ⌋ IR.⌊ B ⌋) (g : IR IR.⌊ A ⌋ IR.⌊ C ⌋)
+  → liftFn fmt {A} {B * C} (⟨ f , g ⟩ IR.Heap)
+    ≡ (λ a → liftFn fmt {A} {B} f a >>=T (λ b → liftFn fmt {A} {C} g a >>=T (λ c → returnT (b , c))))
+liftFn-pair {A} {B} {C} f g = extensionality λ a →
+  subst-pair-bind (cohᴰ B) (cohᴰ C)
+    (evalᴰ fmt f (subst id (sym (cohᴰ A)) a)) (evalᴰ fmt g (subst id (sym (cohᴰ A)) a))
+
+-- D143: `⌊_⌋` erases a `Zero`-graded arrow to `Unit ⇛ ⌊B⌋`, so `apply`'s IR
+-- type `(⌊A⌋ ⇛ ⌊B⌋) * ⌊A⌋ → ⌊B⌋` only matches a NON-erased arrow — the lemma
+-- cannot be stated at a variable kind. `Many` is the quantity every consumer
+-- instantiates; a `One` variant belongs here only once something needs it.
+liftFn-apply : ∀ {A B : Type} {π}
+  → liftFn fmt {(A ⇒[ mk-kind Many π ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
+liftFn-apply {A} {B} = extensionality λ v → apply-red (cohᴰ A) (cohᴰ B) v
 
 liftFn-case-inj₁ : ∀ {A B C : Type} (f : IR IR.⌊ A ⌋ IR.⌊ C ⌋) (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (a : ⟦ A ⟧ᴰ)
   → liftFn fmt {A + B} {C} (case f g) (inj₁ a) ≡ liftFn fmt {A} {C} f a

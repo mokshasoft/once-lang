@@ -45,7 +45,7 @@ open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
-open import Once.Surface.Elaborate using (elaborate)
+open import Once.Surface.Elaborate using (elaborate; elaborateFull)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (SigEffectCtx; NamedCtx)
 open import Once.TypeCheck.Elaborate
@@ -53,6 +53,7 @@ open import Once.TypeCheck.Elaborate
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Soundness using (check-sound)
+open import Once.Denotation.Phase using (env0)
 open import Once.Denotation.Realize using (realize)
 import Once.Compile as C
 open import Once.Parser using (FunInfo)
@@ -96,7 +97,7 @@ Payload Ψ seR =
 
 Form : IR ⌊ Unit ⌋ ⌊ Unit ⌋ → Set
 Form ir = Σ-syntax (Usage 0) (λ Ψ → Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-            (ir ≡ C.wrapMainAsEntry (elaborate C.Heap seR)) × Payload Ψ seR))
+            (ir ≡ C.wrapMainAsEntry (elaborateFull C.Heap seR)) × Payload Ψ seR))
 
 ------------------------------------------------------------------------
 -- `MainNode`: the SHARED main-node extractor (independent of any typing
@@ -117,7 +118,7 @@ MainNode m ir =
   Σ-syntax (Usage 0) (λ mΨ → Σ-syntax (Expr ∅ mΨ EffUU) (λ mse → Σ-syntax ℕ (λ md → Σ-syntax ℕ (λ mf →
   Σ-syntax (checkElab (ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) "main" EffUU)
              mbody EffUU ≡ success mΨ mse md mf) (λ mce →
-    (ir ≡ C.wrapMainAsEntry (elaborate C.Heap
+    (ir ≡ C.wrapMainAsEntry (elaborateFull C.Heap
             (resolveExpr (C.buildPolyCtx polys) (("main" , EffUU) ∷ mctx) (("main" , EffUU) ∷ mctx) 0 mse)))
   × (bundle-realize b bme
        ≡ (mΨ , realize (check-sound (ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) "main" EffUU)
@@ -204,11 +205,12 @@ mainRealized-bundle : ∀ (m : C.Module) (mt : ModuleTyped m) (hvm : HasValidMai
   (b : FunBundle (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx)
   (bme : BMainExists b)
   (ef-eq : C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys)) →
-  ∀ (n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt tt n ≡ SD.⟦ proj₂ (bundle-realize b bme) ⟧ˢ fmt tt n
+  ∀ (n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized m mt hvm)} tt) n
+            ≡ SD.⟦ proj₂ (bundle-realize b bme) ⟧ˢ fmt (env0 {proj₁ (bundle-realize b bme)} tt) n
 mainRealized-bundle m mt hvm {funs} {polys} b bme ef-eq n =
-  trans (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt tt n) (subst-app F ef-eq x))
+  trans (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt (env0 {proj₁ z} tt) n) (subst-app F ef-eq x))
     (trans (mt-den-indep mt' (bundle→typed b) me' (bme→me b bme) tt n)
-           (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt tt n) (realize-agree b bme)))
+           (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt (env0 {proj₁ z} tt) n) (realize-agree b bme)))
   where
     Motive : (ef : String ⊎ (List FunInfo × List C.PolyFunInfo)) → Set
     Motive ef = Σ-syntax (ModuleTyped-ef m ef) (λ mtx →

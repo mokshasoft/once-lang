@@ -35,8 +35,8 @@ open import Once.Adequacy.MainIRForm using (findMain-skip; compileFun-main-EffUU
 open import Once.Type using (Type; Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Surface.Syntax using (Expr; ∅; Usage)
-open import Once.Surface.Elaborate using (elaborate)
+open import Once.Surface.Syntax using (Expr; ∅; Usage; [])
+open import Once.Surface.Elaborate using (elaborate; elaborateFull)
 -- Plan 0.49 / D063 C4: the elaborator-free reference elaboration. Importing it
 -- here (proof layer) is fine — `realize` itself does NOT import `checkElab`.
 open import Once.Denotation.Realize using (realize)
@@ -67,9 +67,12 @@ compileFunBody-complete : ∀ (ctx : C.FunCtx) (polys : PolyCtx) (sigEffs : SigE
   (ctxWithImportsAndSelfAndPolys ctx polys sigEffs name ty) ⊢ᶜ body ∶ ty ⨾ Ψ →
   Σ-syntax (IR ⌊ Unit ⌋ ⌊ ty ⌋) (λ irFun →
     C.compileFunBody C.Heap false ctx polys sigEffs name ty body ≡ inj₂ irFun)
-compileFunBody-complete ctx polys sigEffs name ty body deriv =
+-- D143: `Ψ : Usage 0` must be MATCHED, not just quantified: `Usage` is a
+-- `data` (no eta), so `∅ ↾ Ψ` is stuck until `Ψ` is `[]`, and the
+-- elaborated IR's domain `⌊ ⟦ ∅ ↾ Ψ ⟧ᶜ ⌋` will not reduce to `Unit`.
+compileFunBody-complete ctx polys sigEffs name ty body {[]} deriv =
   let (eE , d , f , ce) = check-complete deriv
-  in elaborate C.Heap (resolveExpr polys ((name , ty) ∷ ctx) ((name , ty) ∷ ctx) 0 eE)
+  in elaborateFull C.Heap (resolveExpr polys ((name , ty) ∷ ctx) ((name , ty) ∷ ctx) 0 eE)
    , cong (C.compileFunBody-aux C.Heap false ctx polys name ty refl) ce
 
 ------------------------------------------------------------------------

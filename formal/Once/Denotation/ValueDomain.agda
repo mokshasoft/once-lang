@@ -22,7 +22,7 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; cong)
 
 open import Once.Type
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
@@ -42,7 +42,21 @@ open import Once.Semantics.Machine using (⟦_⟧F; coh)
 ⟦ Void ⟧ᴰ       = ⊥
 ⟦ A * B ⟧ᴰ      = ⟦ A ⟧ᴰ × ⟦ B ⟧ᴰ
 ⟦ A + B ⟧ᴰ      = ⟦ A ⟧ᴰ ⊎ ⟦ B ⟧ᴰ
-⟦ A ⇒[ _ ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ          -- the monadic arrow
+-- D143: the arrow's meaning is GRADE-AWARE at the quantity. A `Zero`-graded
+-- argument is ERASED — it has no runtime existence — so the erased arrow's
+-- meaning takes NO argument. Purity is still ignored: a pure and an effectful
+-- arrow over the same A, B mean the same thing (that is what plan 0.52 M2
+-- established, and it stays).
+--
+-- WHY THIS BELONGS IN THE SPEC. Erasure is a SEMANTIC claim. While the meaning
+-- was grade-blind, "a Zero-graded argument is not represented at runtime" was a
+-- promise no specification made, so no compiler could be obliged to keep it —
+-- and `⌊_⌋` erasing became incoherent with `coh` (the full→runtime direction
+-- has no canonical inhabitant when only ONE side forgets the argument). Making
+-- both sides forget it together is what restores coherence.
+⟦ A ⇒[ mk-kind Zero π ] B ⟧ᴰ = ⊤ → T ⟦ B ⟧ᴰ   -- erased: no argument
+⟦ A ⇒[ mk-kind One  π ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
+⟦ A ⇒[ mk-kind Many π ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
 ⟦ μ-type F ⟧ᴰ   = Val.⟦ μ-type F ⟧            -- first-order data: reuse pure
 ⟦ ν-type F ⟧ᴰ   = Val.⟦ ν-type F ⟧
 ⟦ Int ⟧ᴰ        = Val.⟦ Int ⟧
@@ -64,7 +78,12 @@ cohᴰ Unit         = refl
 cohᴰ Void         = refl
 cohᴰ (A * B)      = cong₂ _×_ (cohᴰ A) (cohᴰ B)
 cohᴰ (A + B)      = cong₂ _⊎_ (cohᴰ A) (cohᴰ B)
-cohᴰ (A ⇒[ k ] B) = cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B)
+-- D143: split on the quantity. At `Zero` BOTH sides forget the argument
+-- (`⌊_⌋` gives `Unit ⇛ ⌊B⌋`, `⟦_⟧ᴰ` gives `⊤ → T ⟦B⟧ᴰ`), so only the codomain
+-- has to be transported — which is exactly what makes erasure coherent.
+cohᴰ (A ⇒[ mk-kind Zero π ] B) = cong  (λ y → ⊤ → T y) (cohᴰ B)
+cohᴰ (A ⇒[ mk-kind One  π ] B) = cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B)
+cohᴰ (A ⇒[ mk-kind Many π ] B) = cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B)
 cohᴰ (μ-type F)   = coh (μ-type F)
 cohᴰ (ν-type F)   = coh (ν-type F)
 cohᴰ Int          = refl
@@ -88,7 +107,12 @@ mutual
   forget {A * B}      (a , b)  = (forget a , forget b)
   forget {A + B}      (inj₁ a) = inj₁ (forget a)
   forget {A + B}      (inj₂ b) = inj₂ (forget b)
-  forget {A ⇒[ _ ] B} clo      = λ va → forget (valueT (clo (inject va)) zero)
+  -- D143: split on the quantity. At `Zero` BOTH domains take `⟦Unit⟧`, so the
+  -- argument is passed through untouched rather than injected — there is no
+  -- argument of type `A` on either side to convert.
+  forget {A ⇒[ mk-kind Zero π ] B} clo = λ u  → forget (valueT (clo u) zero)
+  forget {A ⇒[ mk-kind One  π ] B} clo = λ va → forget (valueT (clo (inject va)) zero)
+  forget {A ⇒[ mk-kind Many π ] B} clo = λ va → forget (valueT (clo (inject va)) zero)
   forget {μ-type F}   x        = x
   forget {ν-type F}   x        = x
   forget {Int}        x        = x
@@ -102,7 +126,9 @@ mutual
   inject {A * B}      (a , b)  = (inject a , inject b)
   inject {A + B}      (inj₁ a) = inj₁ (inject a)
   inject {A + B}      (inj₂ b) = inj₂ (inject b)
-  inject {A ⇒[ _ ] B} pf       = λ da → returnT (inject (pf (forget da)))
+  inject {A ⇒[ mk-kind Zero π ] B} pf = λ u  → returnT (inject (pf u))
+  inject {A ⇒[ mk-kind One  π ] B} pf = λ da → returnT (inject (pf (forget da)))
+  inject {A ⇒[ mk-kind Many π ] B} pf = λ da → returnT (inject (pf (forget da)))
   inject {μ-type F}   x        = x
   inject {ν-type F}   x        = x
   inject {Int}        x        = x

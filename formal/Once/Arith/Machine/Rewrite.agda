@@ -103,8 +103,10 @@ has-op (aneg _)    = true
 -- shape for; the body is the recognised `MArithIR sh NInt`.
 block-as-ir : ∀ {A sh n} → A ≡ ⌊ shape-as-type sh ⌋ → MArithIR sh n
             → IR A ⌊ numtype-as-type n ⌋
-block-as-ir {A} {sh} eq body =
-  subst (λ T → IR T ⌊ _ ⌋) (sym eq) (SigOp (block-info body))
+-- D143: the codomain is written out. `⌊_⌋` interprets the quantity now, so it
+-- is no longer structurally invertible and Agda cannot solve `⌊ ? ⌋ = ⌊ … ⌋`.
+block-as-ir {A} {sh} {n} eq body =
+  subst (λ T → IR T ⌊ numtype-as-type n ⌋) (sym eq) (SigOp (block-info body))
 
 ------------------------------------------------------------------------
 -- Recognition attempt parameterised on the IR's domain

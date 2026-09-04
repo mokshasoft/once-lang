@@ -43,9 +43,10 @@ open import Data.String.Properties as StrProp using ()
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
+open import Data.Bool using (true)
 import Once.Type
 open import Once.Type using (Type; Int; Unit; Void; Float; Str; Buffer; _*_; _+_; μ-type; ν-type;
-                             Purity; pure; eff; mk-kind; Many; One; Zero; _⇒[_]_; isUnit?; ⟦_⟧T; Functor)
+                             Purity; pure; eff; mk-kind; Quantity; Many; One; Zero; _⇒[_]_; isUnit?; ⟦_⟧T; Functor)
 open import Once.TypeCheck.Raw as Raw using (RawExpr)
 open import Once.TypeCheck.Classify using (NamedCtx; extendNamedCtx; lookupSigEffect; lookupImport; lookupLocal; composeMid; ctxWithImportsAndPolys;
   GenView; classifyGen; gv-id; gv-fst; gv-snd; gv-terminal; gv-initial; gv-inl; gv-inr; gv-unit; gv-other)
@@ -66,21 +67,121 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg; t-neg-float; t-let; t-binop-arith; t-binop-cmp)
 open import Once.Denotation.Realize using (realize; realize-infer)
 open import Once.TypeCheck.Soundness using (check-sound)
-open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism)
+open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism; app; lam)
+open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
-open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; ffi-concrete)
-open import Once.Arith.SigOp.Builders using (generic-semM)
+open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; ffi-concrete; semM)
+open import Once.Arith.SigOp.Builders using (generic-semM; i2f-info; add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
 import Once.Denotation.SourceDenote as SD
-open import Once.Denotation.ThinSound using (weaken-⟦⟧)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare; NotGenerator; gen; GenWord; genWord?)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-base; con-fun; base-Unit)
 open import Once.Functor.Decide using (wellFormedF?; isBaseType?; isConcrete?)
 
 private
-  Env : NamedCtx → Set
-  Env ctx = ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ
+  -- D143: the RUNTIME environment. `⟦_⟧ˢ` is phase-indexed, so agreement is
+  -- stated over `debruijn ctx ↾ Ψ` — the variables the term actually uses —
+  -- not the full context. Mirrors `EnvRun` in `Once.Denotation.Meaning`.
+  Env : (ctx : NamedCtx) → Usage (NamedCtx.size ctx) → Set
+  Env ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx Surface.↾ Ψ ⟧ᶜ ⟧ᴰ
+
+-- | Two-sided bind congruence at a fixed fuel. `(m >>=T f) k` REDUCES, so a
+-- congruence that leaves `m` or `f` to be inferred poses an unsolvable
+-- higher-order constraint, and `rewrite` (which IS with-abstraction) cannot
+-- see the sub-denotation once the environments differ. Both monadic arguments
+-- and both continuations are therefore PARAMETERS.
+bind2-agree : ∀ {X Y : Set} (mR mU : T X) (gR gU : X → T Y)
+  → (∀ j → mR j ≡ mU j) → (∀ v j → gR v j ≡ gU v j)
+  → ∀ j → (mR >>=T gR) j ≡ (mU >>=T gU) j
+bind2-agree mR mU gR gU me ge j rewrite me j | ge (proj₂ (mU j)) j = refl
+
+-- | The BINARY-OPERAND shape, shared by every two-operand node. Both sides run
+-- the same continuation `g`; they differ only in the two operand denotations,
+-- each of which lives on its own narrowing of the runtime environment.
+binop-agree : ∀ {X Y Z : Set} (mR mU : T X) (nR nU : T Y) (g : X → Y → T Z)
+  → (∀ j → mR j ≡ mU j) → (∀ j → nR j ≡ nU j)
+  → ∀ j → (mR >>=T λ x → nR >>=T λ y → g x y) j
+            ≡ (mU >>=T λ x → nU >>=T λ y → g x y) j
+binop-agree mR mU nR nU g me ne j =
+  bind2-agree mR mU (λ x → nR >>=T λ y → g x y) (λ x → nU >>=T λ y → g x y) me
+    (λ x j' → bind2-agree nR nU (λ y → g x y) (λ y → g x y) ne (λ y j'' → refl) j') j
+
+-- | The APPLICATION shape. `⟦ app ⟧ˢ` splits on the arrow's quantity — at
+-- `Zero` the argument is ERASED, so it is never evaluated and only the
+-- function's IH exists to use — hence this is a top-level helper with three
+-- clauses rather than a `q`-general `with` branch ([[feedback_with_clauses_painful]],
+-- [[feedback_mutual_block_syntax]]). The IHs come in ENVIRONMENT-GENERAL, so
+-- each clause simply applies them at the narrowing its own denotation carries.
+app-agree : ∀ {ctx : NamedCtx} {A B : Type} (q : Quantity)
+            {Ψ₁ Ψ₂ : Usage (NamedCtx.size ctx)}
+            (fR fU : Expr (NamedCtx.debruijn ctx) Ψ₁ (A ⇒[ mk-kind q pure ] B))
+            (xR xU : Expr (NamedCtx.debruijn ctx) Ψ₂ A)
+          → (∀ E j → SD.⟦ fR ⟧ˢ fmt E j ≡ SD.⟦ fU ⟧ˢ fmt E j)
+          → (∀ E j → SD.⟦ xR ⟧ˢ fmt E j ≡ SD.⟦ xU ⟧ˢ fmt E j)
+          → ∀ (dγ : Env ctx (Ψ₁ Surface.+ᵘ (q Surface.*ᵘ Ψ₂))) k
+          → SD.⟦ app fR xR ⟧ˢ fmt dγ k ≡ SD.⟦ app fU xU ⟧ˢ fmt dγ k
+app-agree {ctx = ctx} {A = A} Zero {Ψ₁} {Ψ₂} fR fU xR xU fIH xIH dγ k =
+  bind2-agree (SD.⟦ fR ⟧ˢ fmt Ef) (SD.⟦ fU ⟧ˢ fmt Ef)
+              (λ vf → vf tt) (λ vf → vf tt) (fIH Ef) (λ v j → refl) k
+  where Ef = restrictᴰ {Γ = NamedCtx.debruijn ctx}
+               (Surface.⊑ᵘ-+ˡ Ψ₁ (Zero Surface.*ᵘ Ψ₂)) dγ
+app-agree {ctx = ctx} {A = A} One {Ψ₁} {Ψ₂} fR fU xR xU fIH xIH dγ k =
+  bind2-agree (SD.⟦ fR ⟧ˢ fmt Ef) (SD.⟦ fU ⟧ˢ fmt Ef)
+    (λ vf → SD.⟦ xR ⟧ˢ fmt Ex >>=T λ vx → vf vx)
+    (λ vf → SD.⟦ xU ⟧ˢ fmt Ex >>=T λ vx → vf vx)
+    (fIH Ef)
+    (λ vf j → bind2-agree (SD.⟦ xR ⟧ˢ fmt Ex) (SD.⟦ xU ⟧ˢ fmt Ex)
+                (λ vx → vf vx) (λ vx → vf vx) (xIH Ex) (λ v j' → refl) j) k
+  where Ef = restrictᴰ {Γ = NamedCtx.debruijn ctx}
+               (Surface.⊑ᵘ-+ˡ Ψ₁ (One Surface.*ᵘ Ψ₂)) dγ
+        Ex = restrictᴰ {Γ = NamedCtx.debruijn ctx}
+               (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*One Ψ₂)
+                  (Surface.⊑ᵘ-+ʳ Ψ₁ (One Surface.*ᵘ Ψ₂))) dγ
+app-agree {ctx = ctx} {A = A} Many {Ψ₁} {Ψ₂} fR fU xR xU fIH xIH dγ k =
+  bind2-agree (SD.⟦ fR ⟧ˢ fmt Ef) (SD.⟦ fU ⟧ˢ fmt Ef)
+    (λ vf → SD.⟦ xR ⟧ˢ fmt Ex >>=T λ vx → vf vx)
+    (λ vf → SD.⟦ xU ⟧ˢ fmt Ex >>=T λ vx → vf vx)
+    (fIH Ef)
+    (λ vf j → bind2-agree (SD.⟦ xR ⟧ˢ fmt Ex) (SD.⟦ xU ⟧ˢ fmt Ex)
+                (λ vx → vf vx) (λ vx → vf vx) (xIH Ex) (λ v j' → refl) j) k
+  where Ef = restrictᴰ {Γ = NamedCtx.debruijn ctx}
+               (Surface.⊑ᵘ-+ˡ Ψ₁ (Many Surface.*ᵘ Ψ₂)) dγ
+        Ex = restrictᴰ {Γ = NamedCtx.debruijn ctx}
+               (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ₂)
+                  (Surface.⊑ᵘ-+ʳ Ψ₁ (Many Surface.*ᵘ Ψ₂))) dγ
+
+-- | The LAMBDA shape. `⟦ lam ⟧ˢ` splits on BOTH the arrow's quantity `q` and
+-- the binder's usage in the body `q'`: at `q = Zero` the meaning takes no
+-- argument, and at `q' = Zero` the binder never enters the body's environment
+-- (`bindᴰ0`), so no witness of `A` is required. Six clauses, constrained by
+-- `q' ≤q q`. A top-level helper rather than a `with`-branch split, and the body
+-- IH arrives ENVIRONMENT-GENERAL so each clause applies it directly.
+lam-agree : ∀ {ctx : NamedCtx} {A B : Type} (q q' : Quantity)
+            {Ψ : Usage (NamedCtx.size ctx)}
+            (leq : (q' Once.Type.≤q q) ≡ true)
+            (bR bU : Expr (NamedCtx.debruijn ctx Surface., A) (q' Surface.∷ Ψ) B)
+          → (∀ E j → SD.⟦ bR ⟧ˢ fmt E j ≡ SD.⟦ bU ⟧ˢ fmt E j)
+          → ∀ (dγ : Env ctx Ψ) k
+          → SD.⟦ lam q leq bR ⟧ˢ fmt dγ k ≡ SD.⟦ lam q leq bU ⟧ˢ fmt dγ k
+lam-agree {ctx = ctx} {A = A} Zero Zero leq bR bU bIH dγ k =
+  cong (λ f → returnT f k)
+    (extensionality (λ _ → extensionality (λ j → bIH (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ) j)))
+lam-agree {ctx = ctx} {A = A} One Zero leq bR bU bIH dγ k =
+  cong (λ f → returnT f k)
+    (extensionality (λ a → extensionality (λ j → bIH (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ) j)))
+lam-agree {ctx = ctx} {A = A} Many Zero leq bR bU bIH dγ k =
+  cong (λ f → returnT f k)
+    (extensionality (λ a → extensionality (λ j → bIH (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A} dγ) j)))
+lam-agree {ctx = ctx} {A = A} One One leq bR bU bIH dγ k =
+  cong (λ f → returnT f k)
+    (extensionality (λ a → extensionality (λ j → bIH (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One dγ a) j)))
+lam-agree {ctx = ctx} {A = A} Many One leq bR bU bIH dγ k =
+  cong (λ f → returnT f k)
+    (extensionality (λ a → extensionality (λ j → bIH (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One dγ a) j)))
+lam-agree {ctx = ctx} {A = A} Many Many leq bR bU bIH dγ k =
+  cong (λ f → returnT f k)
+    (extensionality (λ a → extensionality (λ j → bIH (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} Many dγ a) j)))
 
 -- Agreement of the elaborator's emitted term `se` with `realize`(its witness),
 -- over the elaborator equation. (Forward sigs for the mutual block + scaffolds.)
@@ -131,14 +232,14 @@ inner-arm-< hd f g =
 InferAgreeV : (ctx : NamedCtx) (e : RawExpr) {A : Type} {Ψ : Usage (NamedCtx.size ctx)}
               {se : Expr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ} {w : ctx ⊢ᵢ e ∶ A ⨾ Ψ}
             → E.inferElabV ctx e ≡ (success A Ψ se d f , w) → Set
-InferAgreeV ctx e {se = se} {w = w} _ =
-  ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+InferAgreeV ctx e {Ψ = Ψ} {se = se} {w = w} _ =
+  ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 
 CheckAgreeV : (ctx : NamedCtx) (e : RawExpr) (T : Type) {Ψ : Usage (NamedCtx.size ctx)}
               {se : Expr (NamedCtx.debruijn ctx) Ψ T} {d f : ℕ} {w : ctx ⊢ᶜ e ∶ T ⨾ Ψ}
             → E.checkElabV ctx e T ≡ (success Ψ se d f , w) → Set
-CheckAgreeV ctx e T {se = se} {w = w} _ =
-  ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+CheckAgreeV ctx e T {Ψ = Ψ} {se = se} {w = w} _ =
+  ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 
 -- `infer-agreeV` is now TOTAL (every RawExpr constructor handled; the RApp
 -- apply head is a morph-app congruence, `other` rides `agree-RApp-other-aux`).
@@ -155,7 +256,7 @@ postulate
   -- `poly` emission rides the `bbc-other-poly-infer-witness` gap the same way.
   infer-agreeV-RVar-poly-todo : ∀ (ctx : NamedCtx) (x : String) {A Ψ se d f w}
     → E.inferElabV-RVar-poly-aux ctx x ≡ (success A Ψ se d f , w)
-    → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+    → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
   -- (Plan 0.55 D#2: `check-RApp-todo` ELIMINATED — all RApp check views discharged
   -- by explicit `agree-check-RApp` clauses; the residual is the narrow
   -- `agree-cata-denotes` denotational leaf. See below.)
@@ -352,8 +453,21 @@ agree-RPair : ∀ {ctx : NamedCtx} {a b : RawExpr} {A Ψ}
   → (∀ {Bᵦ Ψᵦ bE dᵦ fᵦ} {wB : ctx ⊢ᵢ b ∶ Bᵦ ⨾ Ψᵦ}
        → rB ≡ (success Bᵦ Ψᵦ bE dᵦ fᵦ , wB) → ∀ dγ k → SD.⟦ bE ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer wB ⟧ˢ fmt dγ k)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
-agree-RPair (success Aₐ Ψₐ aE dₐ fₐ , wA) (success Bᵦ Ψᵦ bE dᵦ fᵦ , wB) refl subA subB dγ k
-  rewrite subA refl dγ k | subB refl dγ k = refl
+agree-RPair {ctx = ctx} (success Aₐ Ψₐ aE dₐ fₐ , wA) (success Bᵦ Ψᵦ bE dᵦ fᵦ , wB)
+            refl subA subB dγ k =
+  bind2-agree
+    (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+    (λ va → SD.⟦ bE ⟧ˢ fmt E₂ >>=T λ vb → returnT (va , vb))
+    (λ va → SD.⟦ realize-infer wB ⟧ˢ fmt E₂ >>=T λ vb → returnT (va , vb))
+    (subA refl E₁)
+    (λ va j → bind2-agree
+                (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+                (λ vb → returnT (va , vb)) (λ vb → returnT (va , vb))
+                (subB refl E₂) (λ vb j' → refl) j)
+    k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
 agree-RPair (failure _ , _) _ () subA subB
 agree-RPair (success _ _ _ _ _ , _) (failure _ , _) () subA subB
 
@@ -422,28 +536,94 @@ agree-RBinOp op (success Int _ _ _ _ , _) (success (_ ⇒[ _ ] _)  _ _ _ _ , _) 
 agree-RBinOp op (success Int _ _ _ _ , _) (success (μ-type _)    _ _ _ _ , _) () s₁ s₂
 agree-RBinOp op (success Int _ _ _ _ , _) (success (ν-type _)    _ _ _ _ , _) () s₁ s₂
 -- both Int → the op picks the IR; rewrite both operand IHs at (dγ,k)
-agree-RBinOp Raw.OpAdd (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpSub (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpMul (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpDiv (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpMod (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpLt (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpLe (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpGt (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpGe (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpEq (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpNe (success Int _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp {ctx = ctx} Raw.OpAdd (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM add-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpSub (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM sub-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpMul (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM mul-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpDiv (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM div-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpMod (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM mod-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpLt (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM lt-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpLe (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM le-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpGt (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM gt-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpGe (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM ge-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpEq (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM eq-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpNe (success Int Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM ne-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
 -- PLAN 0.75 F4: `Float` on the left is no longer absurd — it selects the float
 -- family. Same shape as the integer block above: a mismatched right operand
 -- still makes the aux a `failure`, and the three real ops rewrite both operand
@@ -459,14 +639,38 @@ agree-RBinOp op (success Float _ _ _ _ , _) (success (_ + _)       _ _ _ _ , _) 
 agree-RBinOp op (success Float _ _ _ _ , _) (success (_ ⇒[ _ ] _)       _ _ _ _ , _) () s₁ s₂
 agree-RBinOp op (success Float _ _ _ _ , _) (success (μ-type _)       _ _ _ _ , _) () s₁ s₂
 agree-RBinOp op (success Float _ _ _ _ , _) (success (ν-type _)       _ _ _ _ , _) () s₁ s₂
-agree-RBinOp Raw.OpAdd (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpSub (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpMul (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpDiv (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp {ctx = ctx} Raw.OpAdd (success Float Ψₐ aE _ _ , wA) (success Float Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM fadd-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpSub (success Float Ψₐ aE _ _ , wA) (success Float Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM fsub-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpMul (success Float Ψₐ aE _ _ , wA) (success Float Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM fmul-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpDiv (success Float Ψₐ aE _ _ , wA) (success Float Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM fdiv-info fmt (va , vb))) (s₁ refl E₁) (s₂ refl E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
 agree-RBinOp Raw.OpMod (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
 agree-RBinOp Raw.OpLt (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
 agree-RBinOp Raw.OpLe (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
@@ -477,22 +681,94 @@ agree-RBinOp Raw.OpNe (success Float _ _ _ _ , _) (success Float _ _ _ _ , _) ()
 -- D125: the mixed forms are no longer absurd — the `Int` side widens. Same
 -- two-IH rewrite; the `i2f` node sits inside the elaborated term on one side
 -- and inside `realize-infer`'s output on the other, so it cancels.
-agree-RBinOp Raw.OpAdd (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpAdd (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpSub (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpSub (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpMul (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpMul (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpDiv (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
-agree-RBinOp Raw.OpDiv (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) refl s₁ s₂ dγ k
-  rewrite s₁ refl dγ k | s₂ refl dγ k = refl
+agree-RBinOp {ctx = ctx} Raw.OpAdd (success Int Ψₐ aE _ _ , wA) (success Float Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁ >>=T ci2f) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁ >>=T ci2f)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM fadd-info fmt (va , vb))) (bind2-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+                           ci2f ci2f (s₁ refl E₁) (λ v j → refl))
+                (s₂ refl E₂) k
+  where
+    ci2f = λ va → returnT (semM i2f-info fmt va)
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpAdd (success Float Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂ >>=T ci2f) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂ >>=T ci2f)
+              (λ va vb → returnT (semM fadd-info fmt (va , vb))) (s₁ refl E₁)
+                (bind2-agree (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+                           ci2f ci2f (s₂ refl E₂) (λ v j → refl)) k
+  where
+    ci2f = λ va → returnT (semM i2f-info fmt va)
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpSub (success Int Ψₐ aE _ _ , wA) (success Float Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁ >>=T ci2f) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁ >>=T ci2f)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM fsub-info fmt (va , vb))) (bind2-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+                           ci2f ci2f (s₁ refl E₁) (λ v j → refl))
+                (s₂ refl E₂) k
+  where
+    ci2f = λ va → returnT (semM i2f-info fmt va)
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpSub (success Float Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂ >>=T ci2f) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂ >>=T ci2f)
+              (λ va vb → returnT (semM fsub-info fmt (va , vb))) (s₁ refl E₁)
+                (bind2-agree (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+                           ci2f ci2f (s₂ refl E₂) (λ v j → refl)) k
+  where
+    ci2f = λ va → returnT (semM i2f-info fmt va)
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpMul (success Int Ψₐ aE _ _ , wA) (success Float Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁ >>=T ci2f) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁ >>=T ci2f)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM fmul-info fmt (va , vb))) (bind2-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+                           ci2f ci2f (s₁ refl E₁) (λ v j → refl))
+                (s₂ refl E₂) k
+  where
+    ci2f = λ va → returnT (semM i2f-info fmt va)
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpMul (success Float Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂ >>=T ci2f) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂ >>=T ci2f)
+              (λ va vb → returnT (semM fmul-info fmt (va , vb))) (s₁ refl E₁)
+                (bind2-agree (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+                           ci2f ci2f (s₂ refl E₂) (λ v j → refl)) k
+  where
+    ci2f = λ va → returnT (semM i2f-info fmt va)
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpDiv (success Int Ψₐ aE _ _ , wA) (success Float Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁ >>=T ci2f) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁ >>=T ci2f)
+              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+              (λ va vb → returnT (semM fdiv-info fmt (va , vb))) (bind2-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+                           ci2f ci2f (s₁ refl E₁) (λ v j → refl))
+                (s₂ refl E₂) k
+  where
+    ci2f = λ va → returnT (semM i2f-info fmt va)
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
+agree-RBinOp {ctx = ctx} Raw.OpDiv (success Float Ψₐ aE _ _ , wA) (success Int Ψᵦ bE _ _ , wB)
+             refl s₁ s₂ dγ k =
+  binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize-infer wA ⟧ˢ fmt E₁)
+              (SD.⟦ bE ⟧ˢ fmt E₂ >>=T ci2f) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂ >>=T ci2f)
+              (λ va vb → returnT (semM fdiv-info fmt (va , vb))) (s₁ refl E₁)
+                (bind2-agree (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize-infer wB ⟧ˢ fmt E₂)
+                           ci2f ci2f (s₂ refl E₂) (λ v j → refl)) k
+  where
+    ci2f = λ va → returnT (semM i2f-info fmt va)
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψₐ Ψᵦ) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψₐ Ψᵦ) dγ
 agree-RBinOp Raw.OpMod (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
 agree-RBinOp Raw.OpMod (success Float _ _ _ _ , _) (success Int _ _ _ _ , _) () s₁ s₂
 agree-RBinOp Raw.OpLt (success Int _ _ _ _ , _) (success Float _ _ _ _ , _) () s₁ s₂
@@ -525,8 +801,39 @@ agree-RLet2 : ∀ {ctx : NamedCtx} {x e₁ e₂ A B} {Ψ₁ : Usage (NamedCtx.si
        → rE2 ≡ (success B' (q ∷ᵘ Ψ₂') e₂E d₂' f₂' , w₂)
        → ∀ dγ' k → SD.⟦ e₂E ⟧ˢ fmt dγ' k ≡ SD.⟦ realize-infer w₂ ⟧ˢ fmt dγ' k)
   → ∀ dγ k → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
-agree-RLet2 e₁E d₁ f₁ w₁ (success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂) refl e₁ag e₂IH dγ k
-  rewrite e₁ag dγ k | e₂IH refl (dγ , proj₂ (SD.⟦ realize-infer w₁ ⟧ˢ fmt dγ k)) k = refl
+-- D143: at an ERASED binder the bound term is never evaluated and the body
+-- runs on the UNEXTENDED runtime environment, so only the body's IH is used.
+agree-RLet2 {ctx = ctx} {A = A} {Ψ₁ = Ψ₁} e₁E d₁ f₁ w₁
+            (success B (Zero ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂) refl e₁ag e₂IH dγ k =
+  e₂IH refl (bindᴰ0 {Γ = NamedCtx.debruijn ctx} {A = A}
+               (restrictᴰ {Γ = NamedCtx.debruijn ctx}
+                  (Surface.⊑ᵘ-+ˡ Ψ₂ (Zero Surface.*ᵘ Ψ₁)) dγ)) k
+agree-RLet2 {ctx = ctx} {A = A} {Ψ₁ = Ψ₁} e₁E d₁ f₁ w₁
+            (success B (One ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂) refl e₁ag e₂IH dγ k =
+  bind2-agree
+    (SD.⟦ e₁E ⟧ˢ fmt E₁) (SD.⟦ realize-infer w₁ ⟧ˢ fmt E₁)
+    (λ v1 → SD.⟦ e₂E ⟧ˢ fmt (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One E₂ v1))
+    (λ v1 → SD.⟦ realize-infer w₂ ⟧ˢ fmt (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One E₂ v1))
+    (e₁ag E₁)
+    (λ v1 j → e₂IH refl (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} One E₂ v1) j)
+    k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx}
+           (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*One Ψ₁) (Surface.⊑ᵘ-+ʳ Ψ₂ (One Surface.*ᵘ Ψ₁))) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψ₂ (One Surface.*ᵘ Ψ₁)) dγ
+agree-RLet2 {ctx = ctx} {A = A} {Ψ₁ = Ψ₁} e₁E d₁ f₁ w₁
+            (success B (Many ∷ᵘ Ψ₂) e₂E d₂ f₂ , w₂) refl e₁ag e₂IH dγ k =
+  bind2-agree
+    (SD.⟦ e₁E ⟧ˢ fmt E₁) (SD.⟦ realize-infer w₁ ⟧ˢ fmt E₁)
+    (λ v1 → SD.⟦ e₂E ⟧ˢ fmt (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} Many E₂ v1))
+    (λ v1 → SD.⟦ realize-infer w₂ ⟧ˢ fmt (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} Many E₂ v1))
+    (e₁ag E₁)
+    (λ v1 j → e₂IH refl (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} Many E₂ v1) j)
+    k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx}
+           (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ₁) (Surface.⊑ᵘ-+ʳ Ψ₂ (Many Surface.*ᵘ Ψ₁))) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψ₂ (Many Surface.*ᵘ Ψ₁)) dγ
 agree-RLet2 e₁E d₁ f₁ w₁ (failure _ , _) () e₁ag e₂IH
 
 agree-RLet : ∀ {ctx : NamedCtx} {x e₁ e₂ B} {Ψ : Usage (NamedCtx.size ctx)}
@@ -555,8 +862,8 @@ agree-RLet (failure _ , _) () e₁IH e₂IH
 -- case-split, the `Unit` branch one `lookupSigEffect` split, every leaf `refl`.
 masq : ∀ {ctx : NamedCtx} {Dom Cod : Type} (cn : CanonicalName) (π : Purity)
        (bDom : IsBaseType Dom) (cCod : IsConcrete Cod)
-       (dγ : Env ctx) (k : ℕ)
-     → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.SigOp (E.ext-resolved-info {Dom} {Cod} ctx cn π bDom cCod)) ⟧ˢ fmt dγ k
+       (dγ : Env ctx Surface.zeroUsage) (k : ℕ)
+     → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {A = Dom} {B = Cod} {π = π} (IR.SigOp (E.ext-resolved-info {Dom} {Cod} ctx cn π bDom cCod)) ⟧ˢ fmt dγ k
       ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many π ] Cod} cn (con-fun bDom cCod) ⟧ˢ fmt dγ k
 -- `Cod ≡ Unit` branch: the arrow is an effect contract. `emit-D` collapses
 -- `Emits`/`Halts` to the same event (it reads only `name = cn`), so every
@@ -565,12 +872,12 @@ masq : ∀ {ctx : NamedCtx} {Dom Cod : Type} (cn : CanonicalName) (π : Purity)
 -- = `emitsV`). All three leaves are `refl`. No `with` (mse is an explicit arg).
 masq-unit : ∀ {ctx : NamedCtx} {Dom : Type} (cn : CanonicalName) (mse : Maybe SigEffect)
             (bDom : IsBaseType Dom) (cCod : IsConcrete Unit)
-            (dγ : Env ctx) (k : ℕ)
-          → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = eff} (IR.SigOp (E.ext-resolved-info-aux {Dom} {Unit} cn eff (yes refl) mse bDom cCod)) ⟧ˢ fmt dγ k
+            (dγ : Env ctx Surface.zeroUsage) (k : ℕ)
+          → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {A = Dom} {B = Unit} {π = eff} (IR.SigOp (E.ext-resolved-info-aux {Dom} {Unit} cn eff (yes refl) mse bDom cCod)) ⟧ˢ fmt dγ k
            ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many eff ] Unit} cn (con-fun bDom cCod) ⟧ˢ fmt dγ k
-masq-unit cn (just se-halts) bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-resolved-info-aux cn eff (yes refl) (just se-halts) bDom cCod) bDom)
-masq-unit cn (just se-emits) bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-resolved-info-aux cn eff (yes refl) (just se-emits) bDom cCod) bDom)
-masq-unit cn nothing         bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-resolved-info-aux cn eff (yes refl) nothing bDom cCod) bDom)
+masq-unit {Dom = Dom} cn (just se-halts) bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp {Dom} {Unit} (E.ext-resolved-info-aux cn eff (yes refl) (just se-halts) bDom cCod) bDom)
+masq-unit {Dom = Dom} cn (just se-emits) bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp {Dom} {Unit} (E.ext-resolved-info-aux cn eff (yes refl) (just se-emits) bDom cCod) bDom)
+masq-unit {Dom = Dom} cn nothing         bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp {Dom} {Unit} (E.ext-resolved-info-aux cn eff (yes refl) nothing bDom cCod) bDom)
 
 -- The outer dispatch on `isUnit? Cod` is a `with` (NOT a Dec-arg helper): the
 -- scrutinee appears in the GOAL via `⟦ sigOp … ⟧ˢ` (which computes `isUnit? Cod`
@@ -579,9 +886,9 @@ masq-unit cn nothing         bDom cCod dγ k = cong (λ f → returnT f k) (lift
 -- `isUnit? Cod` stuck. `masq` is a leaf equality lemma — opaque downstream — so
 -- the `with` blocks no later proof's reduction. The inner mse split lives in the
 -- with-free `masq-unit`, keeping this a single, flat `with`.
-masq {ctx} {Dom} {Cod} cn pure bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-resolved-info ctx cn pure bDom cCod) bDom)
+masq {ctx} {Dom} {Cod} cn pure bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp {Dom} {Cod} (E.ext-resolved-info ctx cn pure bDom cCod) bDom)
 masq {ctx} {Dom} {Cod} cn eff bDom cCod dγ k with isUnit? Cod
-... | no ¬p = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-resolved-info-aux cn eff (no ¬p) (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) bDom cCod) bDom)
+... | no ¬p = cong (λ f → returnT f k) (liftFn-SigOp {Dom} {Cod} (E.ext-resolved-info-aux cn eff (no ¬p) (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) bDom cCod) bDom)
 ... | yes refl = masq-unit {ctx} {Dom} cn (lookupSigEffect (NamedCtx.sigEffects ctx) (showCanonical cn)) bDom cCod dγ k
 
 -- The RQualified analogue of `masq`. `ext-arrow-info` decides its Unit-codomain
@@ -594,17 +901,17 @@ masq {ctx} {Dom} {Cod} cn eff bDom cCod dγ k with isUnit? Cod
 -- contradicts ¬p).
 masq-arrow : ∀ {ctx : NamedCtx} {Dom Cod : Type} (alias name : String) (π : Purity)
        (bDom : IsBaseType Dom) (cCod : IsConcrete Cod)
-       (dγ : Env ctx) (k : ℕ)
-     → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {π = π} (IR.SigOp (E.ext-arrow-info {Dom} {Cod} ctx alias name π bDom cCod)) ⟧ˢ fmt dγ k
+       (dγ : Env ctx Surface.zeroUsage) (k : ℕ)
+     → SD.⟦ lift-morphism {Γ = NamedCtx.debruijn ctx} {A = Dom} {B = Cod} {π = π} (IR.SigOp (E.ext-arrow-info {Dom} {Cod} ctx alias name π bDom cCod)) ⟧ˢ fmt dγ k
       ≡ SD.⟦ sigOp {Γ = NamedCtx.debruijn ctx} {A = Dom ⇒[ mk-kind Many π ] Cod} (bare (alias ++ "." ++ name)) (con-fun bDom cCod) ⟧ˢ fmt dγ k
-masq-arrow {ctx} {Dom} {Cod} alias name pure bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp (E.ext-arrow-info ctx alias name pure bDom cCod) bDom)
+masq-arrow {ctx} {Dom} {Cod} alias name pure bDom cCod dγ k = cong (λ f → returnT f k) (liftFn-SigOp {Dom} {Cod} (E.ext-arrow-info ctx alias name pure bDom cCod) bDom)
 masq-arrow {ctx} {Dom} {Cod} alias name eff bDom cCod dγ k with Cod E.≟T Unit
 ... | yes refl with lookupSigEffect (NamedCtx.sigEffects ctx) (alias ++ "." ++ name)
-...   | just se-halts = cong (λ f → returnT f k) (liftFn-SigOp (mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bDom (ffi-concrete cCod)) bDom)
-...   | just se-emits = cong (λ f → returnT f k) (liftFn-SigOp (mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bDom (ffi-concrete cCod)) bDom)
-...   | nothing       = cong (λ f → returnT f k) (liftFn-SigOp (mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bDom (ffi-concrete cCod)) bDom)
+...   | just se-halts = cong (λ f → returnT f k) (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (haltsV refl) bDom (ffi-concrete cCod)) bDom)
+...   | just se-emits = cong (λ f → returnT f k) (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bDom (ffi-concrete cCod)) bDom)
+...   | nothing       = cong (λ f → returnT f k) (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (emitsV refl) bDom (ffi-concrete cCod)) bDom)
 masq-arrow {ctx} {Dom} {Cod} alias name eff bDom cCod dγ k | no ¬p with isUnit? Cod
-... | no _     = cong (λ f → returnT f k) (liftFn-SigOp (mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bDom (ffi-concrete cCod)) bDom)
+... | no _     = cong (λ f → returnT f k) (liftFn-SigOp {Dom} {Cod} (mk-info' (bare (alias ++ "." ++ name)) (pureV (generic-semM (alias ++ "." ++ name))) bDom (ffi-concrete cCod)) bDom)
 ... | yes refl = ⊥-elim (¬p refl)
 
 -- RResolved agreement, dispatched on the import-lookup result exactly as the
@@ -633,7 +940,7 @@ agree-RResolved-arrowᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGe
   (mcB : Maybe (IsConcrete B)) (eqcB : isConcrete? B ≡ mcB)
   {A' Ψ se d f w}
   → E.inferElabV-RResolved-arrow-aux ctx cn ng lkup mbA eqbA mcB eqcB ≡ (success A' Ψ se d f , w)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RResolved-arrowᴴ ctx cn ng {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ k = masq {ctx} {A} {B} cn π bA cB dγ k
 agree-RResolved-arrowᴴ ctx cn ng π lkup nothing eqbA _ eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
 agree-RResolved-arrowᴴ ctx cn ng π lkup (just _) eqbA nothing eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
@@ -643,7 +950,7 @@ agree-RResolved-valueᴴ : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGe
   (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
   {A' Ψ se d f w}
   → E.inferElabV-RResolved-value-aux ctx cn ng ty lkup mc eqc ≡ (success A' Ψ se d f , w)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RResolved-valueᴴ ctx cn ng ty lkup (just conc) eqc refl dγ k = refl
 agree-RResolved-valueᴴ ctx cn ng ty lkup nothing eqc eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
@@ -651,7 +958,7 @@ agree-RResolved : ∀ (ctx : NamedCtx) (cn : CanonicalName) (ng : NotGenerator c
   (lkup : lookupImport (NamedCtx.imports ctx) (showCanonical cn) ≡ lhs)
   {A Ψ se d f w}
   → E.inferElabV-RResolved-aux ctx cn ng lhs lkup ≡ (success A Ψ se d f , w)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RResolved ctx cn ng (just (A ⇒[ mk-kind Many π ] B)) lkup eqS dγ k =
   agree-RResolved-arrowᴴ ctx cn ng π lkup (isBaseType? A) refl (isConcrete? B) refl eqS dγ k
 agree-RResolved ctx cn ng (just (A ⇒[ mk-kind One  π ] B)) lkup eqS dγ k =
@@ -677,7 +984,7 @@ agree-RResolved ctx cn ng nothing lkup eq dγ k = ⊥-elim (fail≢succ (cong pr
 agree-RResolved-view : ∀ (ctx : NamedCtx) (cn : CanonicalName) (gv : GenView cn)
   {A Ψ se d f w}
   → E.inferElabV-RResolved-dispatch ctx cn gv ≡ (success A Ψ se d f , w)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RResolved-view ctx cn gv-unit refl dγ k = refl
 agree-RResolved-view ctx cn gv-id       eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
 agree-RResolved-view ctx cn gv-fst      eq dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
@@ -703,7 +1010,7 @@ agree-RVar-importᴴ : ∀ (ctx : NamedCtx) (x : String)
   (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
   {A' Ψ se d f w}
   → E.inferElabV-RVar-import-value-aux ctx x eq-loc ty eq-imp gw eqg mc eqc ≡ (success A' Ψ se d f , w)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RVar-importᴴ ctx x eq-loc ty eq-imp (no _) eqg (just conc) eqc refl dγ k = refl
 agree-RVar-importᴴ ctx x eq-loc ty eq-imp (no _) eqg nothing eqc eqS dγ k =
   ⊥-elim (fail≢succ (cong proj₁ eqS))
@@ -716,7 +1023,7 @@ agree-RVar : ∀ (ctx : NamedCtx) (x : String)
   (impLhs : Maybe Type) (eq-imp : lookupImport (NamedCtx.imports ctx) x ≡ impLhs)
   {A Ψ se d f w}
   → E.inferElabV-RVar-lookup-aux ctx x locLhs eq-loc impLhs eq-imp ≡ (success A Ψ se d f , w)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RVar ctx x (just (A , Ψ , se)) eq-loc impLhs eq-imp refl dγ k = refl
 agree-RVar ctx x nothing eq-loc (just ty) eq-imp eqS dγ k =
   agree-RVar-importᴴ ctx x eq-loc ty eq-imp (genWord? x) refl (isConcrete? ty) refl eqS dγ k
@@ -738,7 +1045,7 @@ agree-RQualified-arrowᴴ : ∀ (ctx : NamedCtx) (name alias : String) {A B : Ty
   (mcB : Maybe (IsConcrete B)) (eqcB : isConcrete? B ≡ mcB)
   {A' Ψ se d f w}
   → E.inferElabV-RQualified-arrow-aux ctx name alias lkup mbA eqbA mcB eqcB ≡ (success A' Ψ se d f , w)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RQualified-arrowᴴ ctx name alias {A} {B} π lkup (just bA) eqbA (just cB) eqcB refl dγ k = masq-arrow {ctx} {A} {B} alias name π bA cB dγ k
 agree-RQualified-arrowᴴ ctx name alias π lkup nothing eqbA _ eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
 agree-RQualified-arrowᴴ ctx name alias π lkup (just _) eqbA nothing eqcB eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
@@ -748,7 +1055,7 @@ agree-RQualified-valueᴴ : ∀ (ctx : NamedCtx) (name alias : String) (ty : Typ
   (mc : Maybe (IsConcrete ty)) (eqc : isConcrete? ty ≡ mc)
   {A' Ψ se d f w}
   → E.inferElabV-RQualified-value-aux ctx name alias ty lkup mc eqc ≡ (success A' Ψ se d f , w)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RQualified-valueᴴ ctx name alias ty lkup (just conc) eqc refl dγ k = refl
 agree-RQualified-valueᴴ ctx name alias ty lkup nothing eqc eqS dγ k = ⊥-elim (fail≢succ (cong proj₁ eqS))
 
@@ -756,7 +1063,7 @@ agree-RQualified : ∀ (ctx : NamedCtx) (name alias : String) (lhs : Maybe Type)
   (lkup : lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ lhs)
   {A Ψ se d f w}
   → E.inferElabV-RQualified-aux ctx name alias lhs lkup ≡ (success A Ψ se d f , w)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RQualified ctx name alias (just (A ⇒[ mk-kind Many π ] B)) lkup eqS dγ k =
   agree-RQualified-arrowᴴ ctx name alias π lkup (isBaseType? A) refl (isConcrete? B) refl eqS dγ k
 agree-RQualified ctx name alias (just (A ⇒[ mk-kind One  π ] B)) lkup eqS dγ k =
@@ -806,7 +1113,7 @@ agree-RApp-other-aux : ∀ {ctx : NamedCtx} (f arg : RawExpr) {A Ψ se d fr w}
   → (argCheckIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 agree-RApp-other-aux f arg (just _) eqAH () fInferIH argCheckIH
 agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
   with E.inferElabV ctx f | eq
@@ -825,14 +1132,8 @@ agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
       with E.checkElabV ctx arg A in xeq | eq₁
 ...   | failure _ , _ | ()
 ...   | success Ψ₂ xE dx fx , wX | refl =
-        bind2-faithful (SD.⟦ fE ⟧ˢ fmt dγ) (SD.⟦ realize-infer wF ⟧ˢ fmt dγ)
-          (λ vf → SD.⟦ xE ⟧ˢ fmt dγ >>=T λ vx → vf vx)
-          (λ vf → SD.⟦ realize wX ⟧ˢ fmt dγ >>=T λ vx → vf vx)
-          (λ j → fInferIH refl dγ j)
-          (λ vf j → bind2-faithful (SD.⟦ xE ⟧ˢ fmt dγ) (SD.⟦ realize wX ⟧ˢ fmt dγ)
-                      (λ vx → vf vx) (λ vx → vf vx)
-                      (λ j' → argCheckIH xeq dγ j') (λ _ _ → refl) j)
-          k
+        app-agree {ctx = ctx} {A = A} {B = B} q fE (realize-infer wF) xE (realize wX)
+          (λ E j → fInferIH refl E j) (λ E j → argCheckIH xeq E j) dγ k
 agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
   | success (A ⇒[ mk-kind Many eff ] B) Ψ₁ fE df ff , wF | eq₁
       with E.checkElabV ctx arg A in xeq | eq₁
@@ -840,14 +1141,17 @@ agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
 ...   | success Ψ₂ xE dx fx , wX | refl =
         cong (λ g → returnT g k)
           (extensionality (λ _ → extensionality (λ j →
-            bind2-faithful (SD.⟦ fE ⟧ˢ fmt dγ) (SD.⟦ realize-infer wF ⟧ˢ fmt dγ)
-              (λ vf → SD.⟦ xE ⟧ˢ fmt dγ >>=T λ vx → vf vx)
-              (λ vf → SD.⟦ realize wX ⟧ˢ fmt dγ >>=T λ vx → vf vx)
-              (λ j' → fInferIH refl dγ j')
-              (λ vf j' → bind2-faithful (SD.⟦ xE ⟧ˢ fmt dγ) (SD.⟦ realize wX ⟧ˢ fmt dγ)
+            bind2-faithful (SD.⟦ fE ⟧ˢ fmt Ef) (SD.⟦ realize-infer wF ⟧ˢ fmt Ef)
+              (λ vf → SD.⟦ xE ⟧ˢ fmt Ex >>=T λ vx → vf vx)
+              (λ vf → SD.⟦ realize wX ⟧ˢ fmt Ex >>=T λ vx → vf vx)
+              (λ j' → fInferIH refl Ef j')
+              (λ vf j' → bind2-faithful (SD.⟦ xE ⟧ˢ fmt Ex) (SD.⟦ realize wX ⟧ˢ fmt Ex)
                           (λ vx → vf vx) (λ vx → vf vx)
-                          (λ j'' → argCheckIH xeq dγ j'') (λ _ _ → refl) j')
+                          (λ j'' → argCheckIH xeq Ex j'') (λ _ _ → refl) j')
               j)))
+  where
+    Ef = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ
+    Ex = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ
 agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
   | success (A ⇒[ mk-kind One eff ] B) _ _ _ _ , _ | ()
 agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
@@ -866,7 +1170,7 @@ agree-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) {A Ψ se d fr w}
   → (argCheckIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ k
 -- check-only / infer-failing heads: the dispatch is `failure`, so success-eq absurd.
 agree-RApp ctx f arg E.ahv-inl            veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
 agree-RApp ctx f arg E.ahv-inr            veq eq argIH fInferIH argCheckIH dγ k = ⊥-elim (fail≢succ (cong proj₁ eq))
@@ -880,15 +1184,18 @@ agree-RApp ctx f arg E.ahv-curry          veq eq argIH fInferIH argCheckIH dγ k
 -- ahv-id : any-typed arg, result morph-app id.
 agree-RApp ctx f arg E.ahv-id veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
-... | success T Ψ argE d fr , w | refl rewrite argIH refl dγ k = refl
+... | success T Ψ argE d fr , w | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
 -- ahv-terminal : any-typed arg, result morph-app terminal.
 agree-RApp ctx f arg E.ahv-terminal veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
-... | success T Ψ argE d fr , w | refl rewrite argIH refl dγ k = refl
+... | success T Ψ argE d fr , w | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
 -- ahv-fst : arg must be a product; other shapes fail.
 agree-RApp ctx f arg E.ahv-fst veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
-... | success (A * B) Ψ argE d fr , w | refl rewrite argIH refl dγ k = refl
+... | success (A * B) Ψ argE d fr , w | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
 ... | success Unit _ _ _ _ , _ | ()
 ... | success Void _ _ _ _ , _ | ()
 ... | success Int _ _ _ _ , _ | ()
@@ -902,7 +1209,8 @@ agree-RApp ctx f arg E.ahv-fst veq eq argIH fInferIH argCheckIH dγ k with E.inf
 -- ahv-snd : arg must be a product; other shapes fail.
 agree-RApp ctx f arg E.ahv-snd veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
-... | success (A * B) Ψ argE d fr , w | refl rewrite argIH refl dγ k = refl
+... | success (A * B) Ψ argE d fr , w | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
 ... | success Unit _ _ _ _ , _ | ()
 ... | success Void _ _ _ _ , _ | ()
 ... | success Int _ _ _ _ , _ | ()
@@ -947,7 +1255,8 @@ agree-RApp ctx f arg E.ahv-apply veq eq argIH fInferIH argCheckIH dγ k with E.i
 ... | success ((_ ⇒[ mk-kind Zero pure ] _) * _) _ _ _ _ , _ | ()
 ... | success ((_ ⇒[ mk-kind Zero eff ] _) * _) _ _ _ _ , _ | ()
 ... | success ((A ⇒[ mk-kind Many pure ] B) * A') Ψ argE d fr , w | eq₁ with A E.≟T A' | eq₁
-...   | yes refl | refl rewrite argIH refl dγ k = refl
+...   | yes refl | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
 ...   | no _     | ()
 -- ahv-other: the dispatch reduces to `inferElabV-RApp-other ctx f arg =
 -- inferElabV-RApp-other-aux ctx f arg (classifyAppHead f) refl`, so `eq` already
@@ -988,7 +1297,7 @@ SubCheckIH : ℕ → Set
 SubCheckIH n = ∀ (ctx' : NamedCtx) (e' : RawExpr) → μ e' < n
   → ∀ {T' Ψ' eE' d' fr'} {w' : ctx' ⊢ᶜ e' ∶ T' ⨾ Ψ'}
   → E.checkElabV ctx' e' T' ≡ (success Ψ' eE' d' fr' , w')
-  → ∀ (dγ : Env ctx') (k : ℕ) → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx' Ψ') (k : ℕ) → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k
 
 -- compose helper: mirror `checkComposeGo` with `composeMid`'s result `mid` and
 -- `eqB` as EXPLICIT parameters (so the witness's `eqB` is a parameter, not a
@@ -1009,7 +1318,7 @@ agree-compose : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A C : Type) (π : 
   → (gIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 agree-compose ctx f_inner arg A C π nothing eqB () fIH gIH
 agree-compose ctx f_inner arg A C π (just B) eqB disp fIH gIH dγ k
   with E.checkElabV ctx arg (A ⇒[ mk-kind Many π ] B) in eqg | disp
@@ -1017,8 +1326,13 @@ agree-compose ctx f_inner arg A C π (just B) eqB disp fIH gIH dγ k
 ... | success Ψg gE dg frg , wG | disp'
       with E.checkElabV ctx f_inner (B ⇒[ mk-kind Many π ] C) in eqf | disp'
 ...   | failure _ , _ | ()
-...   | success Ψf fE df frf , wF | refl
-        rewrite fIH eqf dγ k | gIH eqg dγ k = refl
+...   | success Ψf fE df frf , wF | refl =
+        binop-agree (SD.⟦ fE ⟧ˢ fmt E₁) (SD.⟦ realize wF ⟧ˢ fmt E₁)
+                    (SD.⟦ gE ⟧ˢ fmt E₂) (SD.⟦ realize wG ⟧ˢ fmt E₂)
+                    (λ vf vg → returnT (λ a → vg a >>=T vf)) (fIH eqf E₁) (gIH eqg E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf Ψg) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψf Ψg) dγ
 
 -- Plan 0.52 (pure⊑eff): the `case` analogue of `agree-compose`, reasoning over
 -- `checkCaseGo` (grade-poly, no clause-split) so it is immune to the eff-clause.
@@ -1033,15 +1347,20 @@ agree-caseGo : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A B C : Type) (π :
   → (gIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 agree-caseGo ctx f_inner arg A B C π disp fIH gIH dγ k
   with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many π ] C) in eqf | disp
 ... | failure _ , _ | ()
 ... | success Ψf fE df frf , wF | disp'
       with E.checkElabV ctx arg (B ⇒[ mk-kind Many π ] C) in eqg | disp'
 ...   | failure _ , _ | ()
-...   | success Ψg gE dg frg , wG | refl
-        rewrite fIH eqf dγ k | gIH eqg dγ k = refl
+...   | success Ψg gE dg frg , wG | refl =
+        binop-agree (SD.⟦ fE ⟧ˢ fmt E₁) (SD.⟦ realize wF ⟧ˢ fmt E₁)
+                    (SD.⟦ gE ⟧ˢ fmt E₂) (SD.⟦ realize wG ⟧ˢ fmt E₂)
+                    (λ vf vg → returnT (λ ab → [ vf , vg ]′ ab)) (fIH eqf E₁) (gIH eqg E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf Ψg) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψf Ψg) dγ
 
 -- eff-clause agreement for compose/case. Mirror the elaborator's eff-clause:
 -- the genuinely-eff Go succeeds (passthrough ⇒ delegate at eff), OR the pure
@@ -1059,7 +1378,7 @@ agree-compose-eff : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A C : Type)
   → (gIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 agree-compose-eff ctx f_inner arg A C disp fIH gIH dγ k
   with E.checkComposeGo ctx f_inner arg A C eff (composeMid ctx f_inner arg A) refl in eqEff | disp
 ... | success Ψe eEe de fre , we | refl =
@@ -1081,7 +1400,7 @@ agree-caseGo-eff : ∀ (ctx : NamedCtx) (f_inner arg : RawExpr) (A B C : Type)
   → (gIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 agree-caseGo-eff ctx f_inner arg A B C disp fIH gIH dγ k
   with E.checkCaseGo ctx f_inner arg A B C eff in eqEff | disp
 ... | success Ψe eEe de fre , we | refl =
@@ -1110,7 +1429,7 @@ agree-check-RApp-argdriven-aux : ∀ {ctx : NamedCtx} (f arg : RawExpr) (T : Typ
   → (argInferIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᵢ arg ∶ T' ⨾ Ψ'}
        → E.inferElabV ctx arg ≡ (success T' Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ fmt dγ k)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 agree-check-RApp-argdriven-aux f arg T errInfer (just _) eqAH () fCheckIH argInferIH
 -- Plan 0.52: dispatch on classifyEffArrow (mirrors the elaborator). Both the
 -- eff branch (f at pure codomain, se = arr'(app …), arr' transparent) and the
@@ -1123,26 +1442,16 @@ agree-check-RApp-argdriven-aux {ctx} f arg T errInfer nothing eqAH eq fCheckIH a
         with E.checkElabV ctx f (X ⇒[ mk-kind Many pure ] (A ⇒[ mk-kind Many pure ] B)) in feq2 | eq₁
 ...     | failure _ , _ | ()
 ...     | success Ψf fE df frf , wF | refl =
-          bind2-faithful (SD.⟦ fE ⟧ˢ fmt dγ) (SD.⟦ realize wF ⟧ˢ fmt dγ)
-            (λ vf → SD.⟦ argE ⟧ˢ fmt dγ >>=T λ vx → vf vx)
-            (λ vf → SD.⟦ realize-infer wArg ⟧ˢ fmt dγ >>=T λ vx → vf vx)
-            (λ j → fCheckIH feq2 dγ j)
-            (λ vf j → bind2-faithful (SD.⟦ argE ⟧ˢ fmt dγ) (SD.⟦ realize-infer wArg ⟧ˢ fmt dγ)
-                        (λ vx → vf vx) (λ vx → vf vx)
-                        (λ j' → argInferIH refl dγ j') (λ _ _ → refl) j)
+          app-agree {ctx = ctx} {A = X} {B = A ⇒[ mk-kind Many pure ] B} Many fE (realize wF) argE (realize-infer wArg)
+            (λ E j → fCheckIH feq2 E j) (λ E j → argInferIH refl E j) dγ
             k
 agree-check-RApp-argdriven-aux {ctx} f arg T errInfer nothing eqAH eq fCheckIH argInferIH dγ k
   | success X Ψx argE dx frx , wArg | eq₁ | E.eav-other _
         with E.checkElabV ctx f (X ⇒[ mk-kind Many pure ] T) in feq2 | eq₁
 ...     | failure _ , _ | ()
 ...     | success Ψf fE df frf , wF | refl =
-          bind2-faithful (SD.⟦ fE ⟧ˢ fmt dγ) (SD.⟦ realize wF ⟧ˢ fmt dγ)
-            (λ vf → SD.⟦ argE ⟧ˢ fmt dγ >>=T λ vx → vf vx)
-            (λ vf → SD.⟦ realize-infer wArg ⟧ˢ fmt dγ >>=T λ vx → vf vx)
-            (λ j → fCheckIH feq2 dγ j)
-            (λ vf j → bind2-faithful (SD.⟦ argE ⟧ˢ fmt dγ) (SD.⟦ realize-infer wArg ⟧ˢ fmt dγ)
-                        (λ vx → vf vx) (λ vx → vf vx)
-                        (λ j' → argInferIH refl dγ j') (λ _ _ → refl) j)
+          app-agree {ctx = ctx} {A = X} {B = T} Many fE (realize wF) argE (realize-infer wArg)
+            (λ E j → fCheckIH feq2 E j) (λ E j → argInferIH refl E j) dγ
             k
 
 ------------------------------------------------------------------------
@@ -1301,12 +1610,13 @@ agree-checkInGo : ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Functor)
   → (argCheckIH : ∀ {T' Ψ' eE' d' fr'} {w' : ctx ⊢ᶜ arg ∶ T' ⨾ Ψ'}
        → E.checkElabV ctx arg T' ≡ (success Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 agree-checkInGo ctx arg F nothing eqW ()
 agree-checkInGo ctx arg F (just wfF) eqW disp argCheckIH dγ k
   with E.checkElabV ctx arg (⟦ F ⟧T (μ-type F)) in aeq | disp
 ... | failure _ , _ | ()
-... | success Ψ argE d fr , wArg | refl rewrite argCheckIH aeq dγ k = refl
+... | success Ψ argE d fr , wArg | refl rewrite argCheckIH aeq (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                     (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
 
 -- Plan 0.55 D#2: the cata agreement over `checkCataGo` (mirrors `agree-caseGo` /
 -- `agree-compose`). `mw`/`eqW` are EXPLICIT so `checkCataGo` reduces on `just wfF`
@@ -1329,7 +1639,7 @@ agree-checkCataGo : ∀ (ctx : NamedCtx) (alg : RawExpr) (F : Functor) (A : Type
        → E.checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) alg T'
            ≡ (success Ψ' eE' d' fr' , w')
        → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k)
-  → ∀ (dγ : Env ctx) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
 agree-checkCataGo ctx alg F A π nothing eqW () algIH
 agree-checkCataGo ctx alg F A π (just wfF) eqW disp algIH dγ k
   with E.checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
@@ -1389,7 +1699,8 @@ agree-check-RApp ctx f arg T E.ahv-terminal veq disp inferIH argCheckIH argInfer
 agree-check-RApp ctx f arg T E.ahv-initial veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
   with E.checkElabV ctx arg Void in aeq | disp
 ... | failure _ , _ | ()
-... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
+... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                     (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
 -- (Plan 0.52 M1: `ahv-arr` check-agree clauses retired with the surface `arr` builtin.)
 -- ahv-inl/inr: direct sum target → morph-app (inl/inr Heap) argE (rewrite arg
 -- check IH). D127: the pure-arrow→sum VALUE-LIFT targets are gone — `checkG` is
@@ -1400,11 +1711,13 @@ agree-check-RApp ctx f arg T E.ahv-initial veq disp inferIH argCheckIH argInferI
 agree-check-RApp ctx f arg (A + B) E.ahv-inl veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
   with E.checkElabV ctx arg A in aeq | disp
 ... | failure _ , _ | ()
-... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
+... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                     (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
 agree-check-RApp ctx f arg (A + B) E.ahv-inr veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
   with E.checkElabV ctx arg B in aeq | disp
 ... | failure _ , _ | ()
-... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq dγ k = refl
+... | success Ψ argE d fr , w | refl rewrite argCheckIH aeq (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                     (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
 -- ahv-In at a bare `μ-type F` target (Plan 0.55 D#2): checkInGo builds `morph-app
 -- (In wfF Heap) argE` — delegate to agree-checkInGo (arg-check congruence).
 agree-check-RApp ctx f arg (μ-type F) E.ahv-In veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
@@ -1435,8 +1748,12 @@ agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg (A ⇒[
       with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] C) in eqg | disp'
 ...   | failure _ , _ | ()
 ...   | success Ψg gE dg frg , wG | refl
-        rewrite subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "pair")) f_inner arg) eqf dγ k
-              | argCheckIH eqg dγ k = refl
+          = binop-agree (SD.⟦ fE ⟧ˢ fmt E₁) (SD.⟦ realize wF ⟧ˢ fmt E₁)
+                        (SD.⟦ gE ⟧ˢ fmt E₂) (SD.⟦ realize wG ⟧ˢ fmt E₂)
+                        (λ vf vg → returnT (λ a → vf a >>=T λ x → vg a >>=T λ y → returnT (x , y))) (subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "pair")) f_inner arg) eqf E₁) (argCheckIH eqg E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf Ψg) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψf Ψg) dγ
 -- ahv-pair-applied at an EFF outer arrow (Plan 0.55 D#2): checkPair subsumes the
 -- pure pair via `arr'`/`t-subsume` (both transparent) — SAME rewrite.
 agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg (A ⇒[ mk-kind Many eff ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
@@ -1446,8 +1763,12 @@ agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg (A ⇒[
       with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] C) in eqg | disp'
 ...   | failure _ , _ | ()
 ...   | success Ψg gE dg frg , wG | refl
-        rewrite subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "pair")) f_inner arg) eqf dγ k
-              | argCheckIH eqg dγ k = refl
+          = binop-agree (SD.⟦ fE ⟧ˢ fmt E₁) (SD.⟦ realize wF ⟧ˢ fmt E₁)
+                        (SD.⟦ gE ⟧ˢ fmt E₂) (SD.⟦ realize wG ⟧ˢ fmt E₂)
+                        (λ vf vg → returnT (λ a → vf a >>=T λ x → vg a >>=T λ y → returnT (x , y))) (subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "pair")) f_inner arg) eqf E₁) (argCheckIH eqg E₂) k
+  where
+    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf Ψg) dγ
+    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψf Ψg) dγ
 -- ahv-case-applied: checkCase emits `lift-morphism (case m_f m_g)`, witness
 -- `t-morph-lift (m-case mFᵐ mGᵐ)`; rewrite both components.
 -- Plan 0.52: case π (checkCase now has a separate eff-clause, so it no longer
@@ -1681,13 +2002,22 @@ mutual
               with C₁ E.≟T C₂ | eq₃
   ...         | no _     | ()
   ...         | yes refl | refl =
-                bind2-faithful (SD.⟦ scrutE ⟧ˢ fmt dγ) (SD.⟦ realize-infer wS ⟧ˢ fmt dγ)
-                  (λ v → [ (λ a → SD.⟦ eLE ⟧ˢ fmt (dγ , a)) , (λ b → SD.⟦ eRE ⟧ˢ fmt (dγ , b)) ]′ v)
-                  (λ v → [ (λ a → SD.⟦ realize-infer wL ⟧ˢ fmt (dγ , a)) , (λ b → SD.⟦ realize-infer wR ⟧ˢ fmt (dγ , b)) ]′ v)
-                  (λ j → infer-agreeV ctx scrut (rec (dbl-< (μ<-d-s (μ scrut) (μ eL) (μ eR)))) seq dγ j)
-                  (λ { (inj₁ a) j → infer-agreeV (extendNamedCtx ctx xL A) eL (rec (dbl-< (μ<-d-l (μ scrut) (μ eL) (μ eR)))) leq (dγ , a) j
-                     ; (inj₂ b) j → infer-agreeV (extendNamedCtx ctx xR B) eR (rec (dbl-< (μ<-d-r (μ scrut) (μ eL) (μ eR)))) req (dγ , b) j })
+                bind2-faithful (SD.⟦ scrutE ⟧ˢ fmt Es) (SD.⟦ realize-infer wS ⟧ˢ fmt Es)
+                  (λ v → [ (λ a → SD.⟦ eLE ⟧ˢ fmt (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} qℓ Eₗ a))
+                         , (λ b → SD.⟦ eRE ⟧ˢ fmt (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = B} qr Eᵣ b)) ]′ v)
+                  (λ v → [ (λ a → SD.⟦ realize-infer wL ⟧ˢ fmt (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} qℓ Eₗ a))
+                         , (λ b → SD.⟦ realize-infer wR ⟧ˢ fmt (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = B} qr Eᵣ b)) ]′ v)
+                  (λ j → infer-agreeV ctx scrut (rec (dbl-< (μ<-d-s (μ scrut) (μ eL) (μ eR)))) seq Es j)
+                  (λ { (inj₁ a) j → infer-agreeV (extendNamedCtx ctx xL A) eL (rec (dbl-< (μ<-d-l (μ scrut) (μ eL) (μ eR)))) leq (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = A} qℓ Eₗ a) j
+                     ; (inj₂ b) j → infer-agreeV (extendNamedCtx ctx xR B) eR (rec (dbl-< (μ<-d-r (μ scrut) (μ eL) (μ eR)))) req (bindᴰ {Γ = NamedCtx.debruijn ctx} {A = B} qr Eᵣ b) j })
                   k
+                where
+                  Eall = restrictᴰ {Γ = NamedCtx.debruijn ctx}
+                           (Surface.⊑ᵘ-+ʳ Ψs (Ψₗ Surface.⊔ᵘ Ψᵣ)) dγ
+                  Es = restrictᴰ {Γ = NamedCtx.debruijn ctx}
+                         (Surface.⊑ᵘ-+ˡ Ψs (Ψₗ Surface.⊔ᵘ Ψᵣ)) dγ
+                  Eₗ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) Eall
+                  Eᵣ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) Eall
 
   check-agreeV : ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type) (ac : Acc _<_ (mCheck e)) {Ψ se d f w}
     (eq : E.checkElabV ctx e T ≡ (success Ψ se d f , w)) → CheckAgreeV ctx e T eq
@@ -1787,8 +2117,13 @@ mutual
             with E.checkElabV ctx b B in eqb | eq''
   ...         | failure _ , _ | ()
   ...         | success Ψ₂ bE db fb , wB | refl
-                rewrite check-agreeV ctx a A (rec (mC-sub (μ<-l (μ a) (μ b)))) eqa dγ k
-                      | check-agreeV ctx b B (rec (mC-sub (μ<-r (μ a) (μ b)))) eqb dγ k = refl
+                = binop-agree (SD.⟦ aE ⟧ˢ fmt E₁) (SD.⟦ realize wA ⟧ˢ fmt E₁)
+                              (SD.⟦ bE ⟧ˢ fmt E₂) (SD.⟦ realize wB ⟧ˢ fmt E₂)
+                              (λ va vb → returnT (va , vb)) (check-agreeV ctx a A (rec (mC-sub (μ<-l (μ a) (μ b)))) eqa E₁)
+                                (check-agreeV ctx b B (rec (mC-sub (μ<-r (μ a) (μ b)))) eqb E₂) k
+                where
+                  E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ
+                  E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ
   -- D127: a pair literal at an ARROW type is no longer a value-lift — `checkG`
   -- is deleted and `checkElabV-RPair-aux` returns `TypeMismatch` — so the
   -- success equation is absurd.
@@ -1809,9 +2144,9 @@ mutual
   ... | failure _ , _ | ()
   ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody | eq₁ with E.decideLeq q' q | eq₁
   ...   | just leq  | refl =
-          cong (λ f → returnT f k)
-            (extensionality (λ a → extensionality (λ j →
-              check-agreeV (extendNamedCtx ctx x A) body B (rec (mC-sub ≤-refl)) eqBody (dγ , a) j)))
+          lam-agree {ctx = ctx} {A = A} {B = B} q q' leq bodyE (realize wBody)
+            (λ E j → check-agreeV (extendNamedCtx ctx x A) body B (rec (mC-sub ≤-refl)) eqBody E j)
+            dγ k
   ...   | nothing   | ()
   check-agreeV ctx (Raw.RLam x body) Unit         _ ()
   check-agreeV ctx (Raw.RLam x body) Void         _ ()
@@ -1831,9 +2166,9 @@ mutual
   ... | failure _ , _ | ()
   ... | success (q' ∷ᵘ Ψ) bodyE d fr , wBody | eq₁ with E.decideLeq q' Many | eq₁
   ...   | just leq  | refl =
-          cong (λ f → returnT f k)
-            (extensionality (λ a → extensionality (λ j →
-              check-agreeV (extendNamedCtx ctx x A) body B (rec (mC-sub ≤-refl)) eqBody (dγ , a) j)))
+          lam-agree {ctx = ctx} {A = A} {B = B} Many q' leq bodyE (realize wBody)
+            (λ E j → check-agreeV (extendNamedCtx ctx x A) body B (rec (mC-sub ≤-refl)) eqBody E j)
+            dγ k
   ...   | nothing   | ()
   check-agreeV ctx (Raw.RLam x body) (_ ⇒[ mk-kind One eff ] _) _ ()
   check-agreeV ctx (Raw.RLam x body) (_ ⇒[ mk-kind Zero eff ] _) _ ()
@@ -1881,7 +2216,7 @@ realize-agrees : ∀ (ctx : NamedCtx) (e : RawExpr) (A : Type)
   {Ψ : Usage (NamedCtx.size ctx)}
   {se : Expr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
   (cc : E.checkElab ctx e A ≡ success Ψ se d f)
-  (dγ : ⟦ ⟦ NamedCtx.debruijn ctx ⟧ᶜ ⟧ᴰ) (k : ℕ) →
+  (dγ : Env ctx Ψ) (k : ℕ) →
   SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize (check-sound ctx e A cc) ⟧ˢ fmt dγ k
 realize-agrees ctx e A cc dγ k with E.checkElabV ctx e A in eqV
 ... | success Ψ' eE' d' fr' , w' with cc
