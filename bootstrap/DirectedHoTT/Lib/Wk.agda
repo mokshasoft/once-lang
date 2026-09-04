@@ -490,3 +490,25 @@ towerA : {Γ : Cx} (m u J : RTm Γ) →
              (subTm (extS (extS (single J))) (var (vs (vs vz))))) ≡ J
 towerA m u J =
   trans (cong (subTm (single m)) (sub-w-single J)) (wk-single {v = m} J)
+
+-- ★★★ THE THREE-RUNG DESCENT ON A **WEAKENED TERM**, as `towerA`/`towerJ`
+--   are on a VARIABLE.
+--
+-- ⚠ A method's payload field arrives weakened past the binders that
+--   follow it and then substituted back, once per `⊢app` — so reading a
+--   field out of it leaves `subTm σ₁ (subTm σ₂ (subTm σ₃ (w³ t)))` where
+--   the towers leave `var (vs³ vz)`.  Same shape, different carrier, and
+--   `Knot/RenSpec` is the first customer.
+sub-w³-single : {Γ : Cx} {a b c : RTm Γ} (t : RTm Γ) →
+                subTm (single a)
+                  (subTm (extS (single b))
+                    (subTm (extS (extS (single c))) (w (w (w t)))))
+                  ≡ t
+sub-w³-single {a = a} {b = b} {c = c} t =
+  trans (cong (λ z → subTm (single a) (subTm (extS (single b)) z))
+              (trans (sub-w² {σ = single c} (w t))
+                     (cong (λ z → w (w z)) (wk-single {v = c} t))))
+        (trans (cong (subTm (single a))
+                     (trans (sub-w {σ = single b} (w t))
+                            (cong w (wk-single {v = b} t))))
+               (wk-single {v = a} t))

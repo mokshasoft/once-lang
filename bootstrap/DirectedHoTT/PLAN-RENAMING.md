@@ -124,7 +124,7 @@ readable line, and that line is pointwise testable.
 | 1a | `Knot/RenMot` — the object-level `Ren` layer (`RenTy`, `extRK`, `extRNK`) | ✅ **done** — breaks the cycle |
 | 1b | `renTmK ρ` over the 53 rows (`Knot/RenTm`) | ✅ **done** |
 | 1c | `extVs` (#5), `pwBodyK`'s 51 defaults (#4), `wkTmK = renTmK vsRen` | ✅ **done** |
-| 2 | pointwise specs — `vsRenK` ✅, and `Lib/IMeths` gained the SELECTION lemma the rest need | 🟡 |
+| 2 | pointwise specs — `vsRenK` ✅, `extR` ✅ (both laws); `single`/`nrs` ⬜ | 🟡 |
 | 3 | `sub-agree` — the ONE induction, discharges the family | ⬜ |
 | 4 | retire `wkK` for open terms; keep it only where CLOSED, stated | ⬜ |
 | 5 | then `methsTyFrom` (unblocked, mechanical) | ⬜ |
@@ -555,4 +555,26 @@ faithful and not merely well-typed.
 at all 53 rows of `sub-agree`.** `Knot/SzAgree` writes them out per row.
 ⇒ build the projection helper in step 3, where it pays 53 times, and come
 back for this law.
+
+### §15.5 ✅ UNPARKED — AND THE TWO REUSABLE PIECES ARE THE POINT
+
+`extRNK-vs` is proved. **`extR` now has its complete pair of laws**, and
+unparking it produced exactly the two pieces step 3 needs 53 times:
+
+* **`Lib/IMeths.sel-here` / `sel-there`** — reading a field out of a
+  payload. ⚠⚠ A row writes `fst (snd (snd (snd p)))`, which **IS**
+  `sel 3 p`: `sel zero ms = fst ms`, `sel (suc k) ms = sel k (snd ms)`,
+  definitionally. ⇒ the projection chains every reduction proof has to
+  climb are the SAME navigation the method tuple uses, and they need the
+  same two steps. `Knot/SzAgree` writes them out 30 times.
+* **`Lib/Wk.sub-w³-single`** — the three-rung descent on a WEAKENED TERM,
+  as `towerA`/`towerJ` are on a variable. A payload field is weakened
+  past every binder that follows it and each `⊢app` puts one back.
+
+★★ AND THE `jsub` NESTING WAS A MISREADING WORTH RECORDING. `symN a p`
+and `predN a p` **are** `jsub _ p _`, so reducing inside them is
+`⟶*-jsubᵖ` again — three deep, not three different congruences. Looking
+for a `⟶*-symNᵖ` is the mistake; there is nothing to find.
+
+⇒ step 3 starts with these in hand rather than discovering them per row.
 
