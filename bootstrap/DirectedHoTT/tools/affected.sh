@@ -66,8 +66,15 @@ while IFS=: read -r f imp; do
   rel="${f#$BOOT/}"
   dep="DirectedHoTT/$(echo "${imp#open import DirectedHoTT.}" | tr '.' '/').agda"
   IMPORTEDBY["$dep"]="${IMPORTEDBY[$dep]:-} $rel"
-done < <(grep -rhoH '^open import DirectedHoTT\.[A-Za-z0-9.]*' \
-           --include='*.agda' "$ROOT" 2>/dev/null)
+# ⚠⚠ BOTH IMPORT FORMS, AND THE THIRD BUG OF THIS CLASS.  `Knot/SubMot`
+#   and `Knot/RenTm` reach `Lib/ISub` by `import … as IS`, which
+#   `^open import` does not match — so a change to `Lib/ISub` reported
+#   ONE affected module (itself) and its two real customers were never
+#   rebuilt.  ★ Same defect as the `Trust.agda` ordering bug fixed
+#   2026-09-01, in the GRAPH rather than in the sort key: `import` and
+#   `open import` are both edges.
+done < <(grep -rhoH '^\(open \)\?import DirectedHoTT\.[A-Za-z0-9.]*' \
+           --include='*.agda' "$ROOT" 2>/dev/null | sed 's/:import /:open import /')
 
 declare -A HIT=(); QUEUE=()
 for s0 in "${SEED[@]}"; do HIT["$s0"]=1; QUEUE+=("$s0"); done

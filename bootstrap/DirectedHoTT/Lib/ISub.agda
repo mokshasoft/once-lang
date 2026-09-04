@@ -89,12 +89,12 @@ open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil; iι; iρ; iκ
         ; app; lam; pair; fst; snd; unit; nzero; nsuc; icon; var; vz; vs; ⌜Id⌝; ⌜Nat⌝
-        ; Sub; subTm; RTy; IMu; Nat; El; extS; ipayTy )
+        ; Sub; subTm; RTy; IMu; Nat; El; extS; ipayTy; sel )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm )
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; csymᵀ; Ctx; ⌊_⌋; _⊢_∷_; ⊢app; ⊢conv; ⊢nsuc; iinst
         ; ⊢pair; ⊢unit; ⊢fst; ⊢snd
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; IDescWf; iihTy; wk-single )
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; IDescWf; iihTy; wk-single; βfst; βsnd )
 open import DirectedHoTT.Metatheory.SubjectReduction
   using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢ )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
@@ -104,6 +104,14 @@ open import DirectedHoTT.Metatheory.Confluence
 open import DirectedHoTT.Metatheory.Injectivity using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-El )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ )
+open import DirectedHoTT.Lib.IMeths using ( selCong )
+
+-- ★ the two-element pair `InSD?` decides into.  ⚠ Local: `Lib/IWk`'s are
+--   inside its own scope and this module sits beside it, not under it.
+data ⊤sd : Set where
+  ttsd : ⊤sd
+
+data ⊥sd : Set where
 open import DirectedHoTT.Lib.IWk
   using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf; sucs
         ; Maybe; just; nothing; decCon; decSucs; decClosed; decVar
@@ -438,6 +446,55 @@ module Sub
   isubMeths give j sd-nil        = unit
   isubMeths give j (sd-comp w W) = pair (isubMethod j w) (isubMeths give (suc j) W)
   isubMeths give j (sd-give W)   = pair (give j)         (isubMeths give (suc j) W)
+
+  ------------------------------------------------------------------------
+  -- ★★★ SELECTING A METHOD OUT OF THE TUPLE — the first reduction lemma
+  -- this library has ever shipped, and the reason `sz` was the only
+  -- agreement in the development.
+  --
+  -- ⚠⚠ `Lib/ISzRed` ships four such lemmas for the FOLD's methods, which
+  --   is exactly why `Knot/SzAgree` can be generated at all.  `Lib/ISub`
+  --   shipped NONE: every `⟶*` in it was a hypothesis it CONSUMES
+  --   (`decStable`, `smap` stability), never a lemma it proves.  So
+  --   nothing could reduce through `isubMeths`, and no agreement over
+  --   `subTm` was statable.  `FUTURE.md` D′, third layer.
+  --
+  -- ★ AND IT BELONGS **HERE**, inside `Sub`, not factored out.  The
+  --   corrected rule (`PLAN-RENAMING.md` §16.3) is *state each lemma
+  --   over the smallest carrier that determines it* — and `isubMeths`
+  --   mentions `isubMethod`, whose behaviour IS this module's
+  --   parameters.  `Lib/ISzRed` is written against `IFold`'s parameters
+  --   for the same correct reason.  ⇒ the earlier "parameterised modules
+  --   are the trap" reading was wrong; what was wrong about
+  --   `ifMeths-sel` is that SELECTION does not depend on the algebra.
+  ------------------------------------------------------------------------
+
+  -- ★ the k-th method of the walk, as a FUNCTION — computed, so a caller
+  --   never names a position.
+  sdMeth : {Γ : Cx} → ((k : ℕ) → RTm Γ) → ℕ → {E : IDesc} → SubDesc E → ℕ → RTm Γ
+  sdMeth give j sd-nil          k       = unit
+  sdMeth give j (sd-comp w W)   zero    = isubMethod j w
+  sdMeth give j (sd-give W)     zero    = give j
+  sdMeth give j (sd-comp w W)   (suc k) = sdMeth give (suc j) W k
+  sdMeth give j (sd-give W)     (suc k) = sdMeth give (suc j) W k
+
+  -- ★ "row k of the walk exists", DECIDED — `Lib/IMeths.InCD?`'s twin.
+  InSD? : {E : IDesc} → SubDesc E → ℕ → Set
+  InSD? sd-nil        k       = ⊥sd
+  InSD? (sd-comp _ W) zero    = ⊤sd
+  InSD? (sd-give W)   zero    = ⊤sd
+  InSD? (sd-comp _ W) (suc k) = InSD? W k
+  InSD? (sd-give W)   (suc k) = InSD? W k
+
+  isubMeths-sel : {Γ : Cx} {give : (k : ℕ) → RTm Γ} {E : IDesc}
+                  (W : SubDesc E) (j k : ℕ) → InSD? W k →
+                  sel k (isubMeths give j W) ⟶* sdMeth give j W k
+  isubMeths-sel (sd-comp w W) j zero    p = step (βfst _ _) done
+  isubMeths-sel (sd-give W)   j zero    p = step (βfst _ _) done
+  isubMeths-sel (sd-comp w W) j (suc k) p =
+    step (selCong k (βsnd _ _)) (isubMeths-sel W (suc j) k p)
+  isubMeths-sel (sd-give W)   j (suc k) p =
+    step (selCong k (βsnd _ _)) (isubMeths-sel W (suc j) k p)
 
   -- how many rows the caller must supply, and where they are
   sdGiven : {E : IDesc} → SubDesc E → ℕ
