@@ -288,3 +288,50 @@ Rows get added here as they are tried, **before** the next attempt.
 
 * ⬜ **5.** the tuple at the mask
 * ⬜ **6.** `subTmK` + `⊢subTmK`
+
+---
+
+## Step 7 — `nrs`'s pointwise law (`Knot/RenSpec`) ⬜ OPEN, 8 attempts
+
+Added 2026-09-04. **This file was consulted at attempt 4 and immediately
+paid**, which is the point of it — but the row is not closed, so the
+attempts are recorded here rather than lost.
+
+| # | Attempt | Result |
+|---|---------|--------|
+| 1 | `⟶*-castᵣ` at the final projection, `sub-w²-single` | ⚠ source unequal |
+| 2 | move the descent inside the last step | ⚠ same mismatch |
+| 3 | `⟶*-castₗ` — move the SOURCE, not the target | ⚠ same |
+| — | **consulted this file** — step 1's four result-casts, the summary's *"a correction to an interface, not a failed proof"*, the slips list's *"write the statement at the context the goal prints"* | ★ all three name the row |
+| 4 | ⇒ `sel-here≡`/`sel-there≡`: take the pair equality as a PARAMETER | ✅ **the interface WAS wrong**; failure moved to one position |
+| 5 | + `Lib/Wk.towerP` — `towerA`'s sibling at de Bruijn 1 | ✅ lemma right; same position |
+| 6 | probe: deliberate mismatch, PRINT the chain | ★ endpoint legible for the first time |
+| 7 | state `pay≡` with its full type, not `_` | ⚠ same |
+| 8 | inline the pair so `sel-here≡` can decompose it (a `Def` hides the constructor) | ⚠ same |
+
+**What the failure is not.** Not a missing lemma: `towerP`, `sub-w²-single`
+and the `≡`-taking projections all typecheck and have visibly the right
+types. Not a cast at the wrong end: attempts 1–3 covered both ends.
+
+**★ What it costs to keep guessing.** Eight attempts converging on ONE
+mismatch is this file's own signature for *the model is wrong, not the
+step* — step 1 says "try another cast could not have converged". ⇒ parked
+deliberately, to be re-attempted from `Lib/ISubRed`, where the same two
+interfaces are exercised at 53 rows and a defect has fifty siblings to be
+triangulated against.
+
+### ★★ What this row already bought
+
+Two interface corrections, both committed, both required by `sub-agree`:
+
+* `Lib/IMeths.sel-here≡` / `sel-there≡` — a method's payload arrives as a
+  substitution chain that collapses only PROPOSITIONALLY, so a projection
+  lemma may not demand a literal pair.
+* `Lib/Wk.towerP` — a payload sits at de Bruijn **1** and returns the
+  MIDDLE substitution's value, where `towerA`/`towerJ` sit at 2 and 3.
+
+⚠⚠ **And `extR`/`single` never exposed either**, because their collapse
+happened to be definitional. The wrong interface survived two customers
+before biting — **which is exactly how `wkK` survived**. The session's
+own thesis, reproduced by its own tooling.
+

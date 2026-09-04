@@ -41,7 +41,7 @@ open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-varK; Tm-nsucK )
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsK; nrsMeths )
 open import DirectedHoTT.Lib.ArithComm using ( symN )
-open import DirectedHoTT.Spec.Syntax using ( fst; snd; jsub; ⌜IMu⌝; ilookupD )
+open import DirectedHoTT.Spec.Syntax using ( fst; snd; jsub; ⌜IMu⌝; ilookupD; extS )
 open import DirectedHoTT.Examples.Knot.Sorts using ( IPair )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz; tagVar-vs )
@@ -360,4 +360,39 @@ singleK-vs n u m x =
 --
 -- ★ The other five laws — `vsRenK`, `extR` ×2, `single` ×2 — are
 --   COMPLETE above.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ⬜ `nrs` — EIGHT ATTEMPTS.  PARKED BY THE LOG'S OWN RULE.
+--
+-- ★★★ THE LOG WAS RIGHT AND PRODUCED TWO REAL FIXES, both committed and
+--   both needed by step 3 at 53 rows:
+--
+--     Lib/IMeths.sel-here≡ / sel-there≡   the pair equality as a PARAMETER
+--     Lib/Wk.towerP                       towerA's sibling at de Bruijn 1
+--
+--   `sel-here`/`sel-there` demanded a LITERAL pair; a method's payload
+--   arrives as a substitution chain that collapses only propositionally.
+--   That interface defect is real, is fixed, and would have bitten every
+--   row of `sub-agree`.
+--
+-- ⚠⚠ AND `extR`/`single` NEVER EXPOSED IT — their collapse happened to be
+--   DEFINITIONAL.  The wrong interface survived two customers before
+--   biting, which is exactly how `wkK` survived two years of use.  ⇒ the
+--   session's own thesis, reproduced in miniature by its own tooling.
+--
+-- ⬜ WHAT IS STILL WRONG IS NOT KNOWN.  Attempts 1–3 cast at the RESULT
+--   (wrong per the log); 4–5 fixed the interface; 6–8 stated `pay≡` at
+--   the printed context and inlined the pair so `sel-here≡` could
+--   decompose it.  All eight converge on the SAME mismatch at the final
+--   projection, which by the log's own standard ("try another cast could
+--   not have converged") means the model is wrong, not the cast.
+--
+-- ⇒ NEXT MOVE IS NOT ANOTHER ATTEMPT.  `Lib/ISubRed` exercises the same
+--   two interfaces at 53 rows; a defect visible in one isolated row is
+--   far easier to place with fifty more instances beside it.  Come back
+--   to `nrs` from there.
+--
+-- ★ The other five laws — `vsRenK`, `extR` ×2, `single` ×2 — are
+--   COMPLETE above, and they are what step 3's `Represents` needs.
 ------------------------------------------------------------------------
