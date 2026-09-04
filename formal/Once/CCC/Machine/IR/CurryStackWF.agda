@@ -10,7 +10,9 @@
 -- RELOCATION APPROACH: No frame manipulation, just stack slot writes.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.CurryStackWF where
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.IR.CurryStackWF (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-reflexive; ≤-trans; m≤m+n; m<m+n; m+n≤o⇒m≤o; +-monoʳ-≤; *-monoˡ-≤; m≤m*n; +-assoc; n≤1+n; +-comm)
@@ -24,7 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; tra
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Semantics.Machine using (⟦_⟧ᴵ)
 open import Once.IR
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 import Once.CCC.Eval as Ev
@@ -66,7 +68,7 @@ module CurryStackWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open SMP.TracePrimitives {FS}
   open SMP.TraceComposition {FS}
 
-  open import Once.CCC.Machine.ClosureWellFormed
+  open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; BodyCorrect;
            valid-closure-wf; validityWF-mem-only;
@@ -169,7 +171,7 @@ module CurryStackWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   run-curry : ∀ {A B C k} (mIn : AllocMode) (f : IR (A * B) C) (m : AllocMode)
     (ir<bound : ir-size (curry {k = k} f m) < program-bound)
     (rec-wf : RecDispatcherWF (ir-size (curry {k = k} f m)))
-    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ A ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →

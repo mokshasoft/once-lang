@@ -21,7 +21,9 @@
 --   2. Execute body trace (in same frame, advanced frontier)
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.ApplyWF where
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.IR.ApplyWF (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; <-≤-trans; m≤m+n; +-monoʳ-≤; m+n≤o⇒m≤o; ≤-reflexive; n≤1+n; +-comm; +-identityʳ)
@@ -41,7 +43,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 import Once.CCC.Machine.SMPrimitives as SMP
 open import Once.Type
-open import Once.Semantics.Machine using (⟦_⟧; sem-fst; sem-snd; sem-pair; sem-inl; sem-inr; sem-case)
+open import Once.Semantics.Machine using (⟦_⟧ᴵ; sem-fst; sem-snd; sem-pair; sem-inl; sem-inr; sem-case)
 open import Once.Memory.TypeSlots using (stack-type-slots; heap-type-slots; type-slots)
 pair = sem-pair
 open import Once.IR
@@ -110,7 +112,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
            exec-abstract-load-indirect-output;
            exec-abstract-load-indirect-suc-output)
 
-  open import Once.CCC.Machine.ClosureWellFormed
+  open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
@@ -261,7 +263,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   ------------------------------------------------------------------------
 
   run-apply : ∀ {m A B k}
-    (x : ⟦ (A ⇒[ k ] B) * A ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ (A ⇒[ k ] B) * A ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS})
     (input-valid-wf : ValidAtWF m alloc x input-loc s) →
     BeforeFrontier alloc input-loc →
@@ -322,10 +324,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       arg-valid-wf = PairValidWF.snd-valid pair-decomp
       arg-before = PairValidWF.snd-before pair-decomp
 
-      closure : ⟦ A ⇒[ k ] B ⟧
+      closure : ⟦ A ⇒[ k ] B ⟧ᴵ
       closure = sem-fst {A ⇒[ k ] B} {A} x
 
-      arg : ⟦ A ⟧
+      arg : ⟦ A ⟧ᴵ
       arg = sem-snd {A ⇒[ k ] B} {A} x
 
       -- Decompose closure (Plan 0.17.2 follow-up: decomposeClosureWF

@@ -48,7 +48,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.Semantics.Machine using (⟦_⟧; sem-inr)
+open import Once.Semantics.Machine using (⟦_⟧ᴵ; sem-inr)
 open import Once.IR
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
@@ -87,7 +87,7 @@ module SumInrAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Heap-mode inl handler.
   run-inr-heap : ∀ {A B} (mIn : AllocMode)
-    (x : ⟦ B ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ B ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →

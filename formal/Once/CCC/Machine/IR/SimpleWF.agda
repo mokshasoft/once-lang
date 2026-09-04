@@ -8,7 +8,9 @@
 -- Final states defined by exec-trace, making trace-correct = refl.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.SimpleWF where
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.IR.SimpleWF (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; _<_; _≤_; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; m≤m+n)
@@ -22,7 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Semantics.Machine using (⟦_⟧ᴵ)
 open import Once.IR
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
@@ -58,7 +60,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open SMP.TracePrimitives {FS}
   open SMP.RecSchemeSemantics {FS}
 
-  open import Once.CCC.Machine.ClosureWellFormed
+  open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
            valid-unit-wf; mk-IRResultAWF-via-bump; validityWF-mem-only;
@@ -74,7 +76,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
 
   run-id : ∀ {m A}
-    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ A ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
@@ -148,7 +150,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Plan 0.13.2/0.13.3: lifted to StoredValue input/output. Trace-preserves-halted
   -- now uses TraceWF; rax-eq witnesses readReg ≡ SV-Ptr fst-loc.
   run-fst : ∀ {m A B}
-    (x : ⟦ A * B ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ A * B ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
@@ -247,7 +249,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
 
   run-snd : ∀ {m A B}
-    (x : ⟦ A * B ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ A * B ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
@@ -339,7 +341,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
 
   run-terminal : ∀ {m A}
-    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ A ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
@@ -395,7 +397,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
 
   run-free-heap : ∀ {m} (ref : HeapRef)
-    (x : ⟦ Unit ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ Unit ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF m alloc {Unit} x input-loc s →
     BeforeFrontier alloc input-loc →
@@ -459,83 +461,10 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       frontier-stable _ _ _ _ _ = inj₁ refl
 
   ------------------------------------------------------------------------
-  -- Arr: effectful morphism coercion (A ⇒[ mk-kind q pure ] B) to (A ⇒[ mk-kind Many eff ] B)
+  -- `arr` is RETIRED (plan 0.52 M2). With ungraded `IRTy`, `A ⇒[pure] B` and
+  -- `A ⇛ B` are the SAME object, so the coercion IS the identity morphism and
+  -- the constructor is gone from `Once.IR`. `run-arr` is therefore not merely
+  -- unproven but UNSTATABLE, and it is subsumed by `run-id` above: what `arr`
+  -- executed, `id` executes. Deleted rather than adapted — no content to carry
+  -- over. (Same removal as `Once.Category.Laws.eval-arr-identity`; D141.)
   ------------------------------------------------------------------------
-
-  run-arr : ∀ {m A B q}
-    (x : ⟦ A ⇒[ mk-kind q pure ] B ⟧) (input-loc : ValueLocation FS)
-    (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF m alloc {A ⇒[ mk-kind q pure ] B} x input-loc s →
-    BeforeFrontier alloc input-loc →
-    halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    IRResultAWF m (arr {A} {B} {q}) x s alloc
-  run-arr {m} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    mk-IRResultAWF-via-bump
-      s' alloc trace bump-0 refl
-      refl refl
-      (cong proj₂ (exec-trace-single mov-to-output s alloc not-halted))
-      (at-loc input-loc valid-eff input-before rax-eq valid-eff input-before)
-      not-halted'
-      (mem-preserved-from-tnhw alloc trace s s' refl tt tt)
-      (twf-∷ tt twf-[])
-      (exec-trace-preserves-halted-WF trace)
-      (tt , tt)
-      (record
-        { max-slot-written = next-slot alloc
-        ; stack-budget = 0
-        ; bump-fits-stack-budget = z≤n
-        ; max-slot-geq-final = ≤-refl
-        ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
-        ; frontier-slot-stable = frontier-stable
-        ; trace-writes-above = tt
-        ; trace-slot-reads-above = tt
-        ; trace-writes-below = tt
-        ; trace-slot-reads-below = tt
-        ; scratch-budget = 0
-        ; scratch-bounded = m≤m+n (next-slot alloc) 0
-        })
-      (record
-        { heap-budget = 0
-        ; max-heap-ref-written = next-heap-ref alloc
-        ; bump-fits-heap-budget = z≤n
-        ; max-heap-ref-geq-final = ≤-refl
-        ; max-heap-usage-bound = m≤m+n (next-heap-ref alloc) 0
-        })
-    where
-      trace : AbstractTrace
-      trace = mov-to-output ∷ []
-
-      s' : LocState FS
-      s' = proj₁ (exec-trace trace s alloc)
-
-      s'-eq : s' ≡ exec (mov Output Input1) s
-      s'-eq = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
-
-      not-halted' : halted s' ≡ false
-      not-halted' = subst (λ st → halted st ≡ false) (sym s'-eq) not-halted
-
-      valid-s' : ValidAtWF m alloc {A ⇒[ mk-kind q pure ] B} x input-loc s'
-      valid-s' = subst (λ st → ValidAtWF m alloc {A ⇒[ mk-kind q pure ] B} x input-loc st) (sym s'-eq)
-                   (validityWF-mem-only x input-loc s (exec (mov Output Input1) s) refl refl input-valid-wf)
-
-      valid-eff : ValidAtWF m alloc {A ⇒[ mk-kind Many eff ] B} x input-loc s'
-      valid-eff = valid-coerce-kind-wf valid-s'
-
-      rax-eq : readReg (regs s') Output ≡ SV-Ptr input-loc
-      rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
-                     (trans (mov-result Output Input1 s) rdi-eq)
-
-      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc _ = trans (cong (λ st → readLoc st loc) s'-eq)
-                              (readLoc-stackMem-eq (exec (mov Output Input1) s) s loc
-                                 (mov-preserves-stackMem Output Input1 s)
-                                 (mov-preserves-heapMem Output Input1 s))
-
-      -- IR doesn't allocate, so return inj₁ refl
-      frontier-stable : ∀ s'' input-loc'' →
-        halted s'' ≡ false →
-        readReg (regs s'') Input1 ≡ SV-Ptr input-loc'' →
-        readLoc s'' (AtStack (current-frame alloc) (next-slot alloc)) ≡ just (SV-Ptr input-loc'') →
-        _
-      frontier-stable _ _ _ _ _ = inj₁ refl

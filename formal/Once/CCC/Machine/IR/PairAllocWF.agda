@@ -62,7 +62,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.Semantics.Machine using (⟦_⟧; sem-pair)
+open import Once.Semantics.Machine using (⟦_⟧ᴵ; sem-pair)
 open import Once.IR
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
@@ -112,7 +112,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   run-pair-heap : ∀ {A B C} (mIn : AllocMode) (f : IR A B) (g : IR A C)
     (rec-wf : RecDispatcherWF (ir-size (⟨ f , g ⟩ Heap)))
-    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ A ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
