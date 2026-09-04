@@ -84,25 +84,31 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.ISub where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil; iι; iρ; iκ
         ; app; lam; pair; fst; snd; unit; nzero; nsuc; icon; var; vz; vs; ⌜Id⌝; ⌜Nat⌝
-        ; Sub; subTm; RTy; IMu; Nat; El; extS; ipayTy; sel )
+        ; Sub; subTm; RTy; IMu; Nat; El; extS; ipayTy; sel 
+        -- ★ for the promoted `isubMethod-red` block:
+        ; subTm-subTm; extS; _∘ₛ_ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; occTm )
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; csymᵀ; Ctx; ⌊_⌋; _⊢_∷_; ⊢app; ⊢conv; ⊢nsuc; iinst
         ; ⊢pair; ⊢unit; ⊢fst; ⊢snd
-        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; IDescWf; iihTy; wk-single; βfst; βsnd )
+        ; IConWf; iwf-ι; iwf-ρ; iwf-κ; IDescWf; iihTy; wk-single; βfst; βsnd ; single 
+        -- ★ for the promoted `isubMethod-red` block:
+        ; single; wk-single; β; step; done )
 open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢ )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf )
-open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
+open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; _∙^_; w^; sub-w; extS^; pw^ )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-⌜Id⌝ˡ )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu; ⟶ᵀ*-El )
-open import DirectedHoTT.Lib.NatNum using ( num )
+-- ★ for the promoted `isubMethod-red` block:
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ )
+open import DirectedHoTT.Lib.NatNum using ( num; num-sub )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ )
 open import DirectedHoTT.Lib.IMeths using ( selCong )
 
@@ -115,7 +121,7 @@ data ⊥sd : Set where
 open import DirectedHoTT.Lib.IWk
   using ( WkCon; wk-ι; wk-ρ; wk-κ; WkIx; rides; pinned; IsSucs; depthOf; sucs
         ; Maybe; just; nothing; decCon; decSucs; decClosed; decVar
-        ; pinned-stable; isSucs-sub; payStep; sucs-red )
+        ; pinned-stable; isSucs-sub; payStep; sucs-red; sucs-sub )
 
 module Sub
   -- ★ the ONE thing that differs from weakening: how a substitution is
@@ -702,3 +708,211 @@ module Sub
                         dih))
       where
         c₀ = ⊢kaPick ka fσ fτ dfi (⊢fst dq)
+
+  ------------------------------------------------------------------------
+  -- ★★★ REDUCTION **THROUGH** A COMPUTED METHOD — the second half of what
+  -- `PLAN-RENAMING.md` §16.2 said this library owed.
+  --
+  -- ⚠⚠ `Lib/ISzRed` ships four such lemmas for the FOLD's methods, which is
+  --   why `Knot/SzAgree` can be generated at all.  `Lib/ISub` shipped NONE:
+  --   every `⟶*` in it was a hypothesis it CONSUMES, never a lemma it
+  --   proves.  `isubMeths-sel` (above) was half 1 — SELECTING a method.
+  --   This is half 2 — REDUCING THROUGH one.
+  --
+  -- ★ AND THE β SPINE WAS NEVER THE PROBLEM.  Five βs peel `isubMethod`'s
+  --   `lam⁵` on the first try (peeling `4·3·2·1·0` `appˡ`s — see
+  --   `PLAN-RENAMING.md` §15.3, the count is not local to any one line).
+  --   What blocks is that `isubPay` recurses on the `SubCon`, so with `w`
+  --   abstract it is a NEUTRAL call and `subTm` cannot compute through it.
+  --   ⇒ the content is naturality, and the βs are the easy part.
+  --
+  -- ⚠⚠ AND THE TWO PARAMETER FACTS ARE **HYPOTHESES, NOT LEMMAS**.  `extN`
+  --   and `fordMap` are this module's parameters; how they behave under
+  --   substitution is not knowable here, exactly as `decStable` is a
+  --   parameter rather than a proof.  They are EXPLICIT ARGUMENTS rather
+  --   than new module parameters, so the existing instantiations
+  --   (`Knot/SubMot`, `Knot/RenTm`) are untouched and only a caller of
+  --   these lemmas owes them.
+  --
+  -- ⚠ NON-VACUITY IS CONTROLLED at `Examples/Knot/ISubRedControl`, which
+  --   discharges both hypotheses at a trivial instantiation.  A lemma whose
+  --   hypotheses cannot be met proves nothing — that is exactly how
+  --   `subTI` made `consistency` vacuous (`PLAN-INDEXED`).
+  ------------------------------------------------------------------------
+
+  -- the two hypotheses, named once
+  ExtNSub : Set
+  ExtNSub = {Γ Δ : Cx} (τ : Sub Γ Δ) (d n σ : RTm Γ) →
+            subTm τ (extN d n σ) ≡ extN (subTm τ d) (subTm τ n) (subTm τ σ)
+
+  FordMapSub : Set
+  FordMapSub = {Γ Δ : Cx} (τ : Sub Γ Δ) (fi b p : RTm Γ) →
+               subTm τ (fordMap fi b p) ≡ fordMap (subTm τ fi) (subTm τ b) (subTm τ p)
+
+  ------------------------------------------------------------------------
+  -- ★ THE CASCADE.  `isubPay` is built from `sPick` and `kaPick`, which
+  --   are built from `extsN`/`sucs` and `fordMap`.  Each layer's
+  --   naturality is one induction, and the two parameter facts enter
+  --   ONLY where the parameter itself does.
+  ------------------------------------------------------------------------
+
+  -- ⚠ `cong₃` by hand: three-argument congruence is not in the prelude,
+  --   and pattern-matching all three to `refl` is shorter than nesting
+  --   `cong₂`.
+  extN-cong₃ : {Γ : Cx} {a a' b b' c c' : RTm Γ} →
+               a ≡ a' → b ≡ b' → c ≡ c' → extN a b c ≡ extN a' b' c'
+  extN-cong₃ refl refl refl = refl
+
+  extsN-sub : ExtNSub → {Γ Δ : Cx} (k : ℕ) (τ : Sub Γ Δ) (d n σ : RTm Γ) →
+              subTm τ (extsN k d n σ) ≡ extsN k (subTm τ d) (subTm τ n) (subTm τ σ)
+  extsN-sub hE zero    τ d n σ = refl
+  extsN-sub hE (suc k) τ d n σ =
+    trans (hE τ (sucs k d) (sucs k n) (extsN k d n σ))
+          (extN-cong₃ (sucs-sub k τ d) (sucs-sub k τ n) (extsN-sub hE k τ d n σ))
+
+  sPick-sub : ExtNSub → {Δ₀ : Cx} {a : Var Δ₀} {j : RTm Δ₀} (ix : SubIx a j) →
+              {Γ Δ : Cx} (τ : Sub Γ Δ) (d n σ q ih : RTm Γ) →
+              subTm τ (sPick ix d n σ q ih)
+              ≡ sPick ix (subTm τ d) (subTm τ n) (subTm τ σ) (subTm τ q) (subTm τ ih)
+  sPick-sub hE (s-rides _ p _) τ d n σ q ih =
+    cong₂ (λ x y → app (app (subTm τ ih) x) y)
+          (sucs-sub (depthOf p) τ n) (extsN-sub hE (depthOf p) τ d n σ)
+  sPick-sub hE (s-pinned _ _)  τ d n σ q ih = refl
+
+  kaPick-sub : FordMapSub → {Δ₀ : Cx} {a : Var Δ₀} {κ : RTm Δ₀} (ka : SubKa a κ) →
+               {Γ Δ : Cx} (τ : Sub Γ Δ) (fi p : RTm Γ) →
+               subTm τ (kaPick ka fi p) ≡ kaPick ka (subTm τ fi) (subTm τ p)
+  kaPick-sub hF (sk-clo _ _)  τ fi p = refl
+  kaPick-sub hF (sk-fst qb _) τ fi p =
+    trans (hF τ fi (num (numOf qb)) p)
+          (cong (λ z → fordMap (subTm τ fi) z (subTm τ p)) (num-sub τ (numOf qb)))
+
+  ------------------------------------------------------------------------
+  -- ★★★ THE LEMMA HALF 2 EXISTS FOR.
+  ------------------------------------------------------------------------
+  isubPay-sub : ExtNSub → FordMapSub →
+                {Δ₀ : Cx} {a : Var Δ₀} {C : ICon Δ₀} (w : SubCon a C) →
+                {Γ Δ : Cx} (τ : Sub Γ Δ) (fi d n σ q ih : RTm Γ) →
+                subTm τ (isubPay w fi d n σ q ih)
+                ≡ isubPay w (subTm τ fi) (subTm τ d) (subTm τ n)
+                            (subTm τ σ) (subTm τ q) (subTm τ ih)
+  isubPay-sub hE hF sc-ι        τ fi d n σ q ih = refl
+  isubPay-sub hE hF (sc-ρ ix w) τ fi d n σ q ih =
+    cong₂ pair (sPick-sub hE ix τ d n σ (fst q) (fst ih))
+               (isubPay-sub hE hF w τ fi d n σ (snd q) (snd ih))
+  isubPay-sub hE hF (sc-κ ka w) τ fi d n σ q ih =
+    cong₂ pair (kaPick-sub hF ka τ fi (fst q))
+               (isubPay-sub hE hF w τ fi d n σ (snd q) ih)
+
+  isubPay-cong₆ : {Δ₀ : Cx} {a : Var Δ₀} {C : ICon Δ₀} (w : SubCon a C) →
+                  {Γ : Cx} {fi fi' d d' n n' σ σ' q q' ih ih' : RTm Γ} →
+                  fi ≡ fi' → d ≡ d' → n ≡ n' → σ ≡ σ' → q ≡ q' → ih ≡ ih' →
+                  isubPay w fi d n σ q ih ≡ isubPay w fi' d' n' σ' q' ih'
+  isubPay-cong₆ w refl refl refl refl refl refl = refl
+
+  ------------------------------------------------------------------------
+  -- ★★★ HALF 2, ASSEMBLED.  The five βs peel the spine (§15.3's
+  --   `4·3·2·1·0`); then FOUR `subTm-subTm`s collapse the five nested
+  --   single-substitutions into one composite, and `isubPay-sub` fires
+  --   ONCE against it.
+  --
+  -- ⚠ COLLAPSE FIRST, PUSH ONCE.  Pushing `isubPay-sub` through the five
+  --   substitutions one at a time needs a `cong (subTm …)` wrapper per
+  --   layer and leaves four intermediate forms to name.  Composing them
+  --   first means the naturality lemma is used exactly once, and the six
+  --   argument slots then COMPUTE — `subTm` on a variable is `σ x`.
+  ------------------------------------------------------------------------
+  -- ⚠ THE `SubCon` BINDER IS `sw`, NOT `w`.  `Lib/Wk.w` is weakening, and
+  --   naming the description `w` shadows it inside the `where` block —
+  --   `w (w (w i))` then parses as the SubCon applied to arguments.
+  isubMethod-red : ExtNSub → FordMapSub →
+                   {Δ₀ : Cx} {a : Var Δ₀} {C : ICon Δ₀} (sw : SubCon a C) (k : ℕ)
+                   {Γ : Cx} (i p ih n σ : RTm Γ) →
+                   app (app (app (app (app (isubMethod k sw) i) p) ih) n) σ
+                   ⟶* icon k (isubPay sw (fst i) (snd i) n σ p ih)
+  isubMethod-red hE hF sw k {Γ} i p ih n σ =
+    ⟶*-trans (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)))))
+   (⟶*-trans (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))))
+   (⟶*-trans (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)))
+   (⟶*-trans (⟶*-appˡ (step (β _ _) done))
+   (⟶*-trans (step (β _ _) done)
+             (subst (λ z → z ⟶* icon k (isubPay sw (fst i) (snd i) n σ p ih))
+                    (sym eq) done)))))
+    where
+      -- ⚠⚠ EVERY SUBSTITUTION IS PINNED.  With `_` for `subTm-subTm`'s
+      --   two implicits the constraints block on the composite and NONE
+      --   of the six argument slots solve — `meta-standing-for-a-computation`
+      --   exactly: a meta here stands for a computation Agda must re-run,
+      --   and it has nothing to run it against until the chain is named.
+      S₁ = extS (extS (extS (extS (single i))))
+      S₂ = extS (extS (extS (single p)))
+      S₃ = extS (extS (single ih))
+      S₄ = extS (single n)
+      S₅ = single σ
+      -- ★ FOUR OF THE SIX SLOTS NEED A TOWER, AT FOUR DIFFERENT DEPTHS.
+      --   A slot bound at binder `j` arrives under `4-j` weakenings, so
+      --   `i` (outermost) owes four, `p` three, `ih` two, `n` one, and
+      --   `σ` (innermost) owes none.  Every one of them is `pw^` counted
+      --   down — which is the whole reason to index it.
+      --
+      -- ⚠ `unc` UN-COLLAPSES FIRST.  `isubPay-sub` fired against the
+      --   composite, so the slots come back as `subTm (…∘ₛ…) V`; the
+      --   towers are stated on the NESTED form, where `pw^` applies with
+      --   no rearrangement.  One helper, used six times.
+      -- ★ the method's BODY, named once.  ⚠ every `subTm-subTm` below
+      --   needs its term argument explicitly; with `_` the composite is
+      --   what blocks, and nothing downstream solves.
+      B : RTm (((((Γ ∙) ∙) ∙) ∙) ∙)
+      B = isubPay sw (fst (var (vs (vs (vs (vs vz))))))
+                     (snd (var (vs (vs (vs (vs vz))))))
+                     (var (vs vz)) (var vz)
+                     (var (vs (vs (vs vz)))) (var (vs (vs vz)))
+
+      unc : (X : RTm (((((Γ ∙) ∙) ∙) ∙) ∙)) →
+            subTm ((((S₅ ∘ₛ S₄) ∘ₛ S₃) ∘ₛ S₂) ∘ₛ S₁) X
+            ≡ subTm S₅ (subTm S₄ (subTm S₃ (subTm S₂ (subTm S₁ X))))
+      unc X = sym
+        (trans (subTm-subTm {τ = S₅} {σ = S₄} (subTm S₃ (subTm S₂ (subTm S₁ X))))
+        (trans (subTm-subTm {τ = S₅ ∘ₛ S₄} {σ = S₃} (subTm S₂ (subTm S₁ X)))
+        (trans (subTm-subTm {τ = (S₅ ∘ₛ S₄) ∘ₛ S₃} {σ = S₂} (subTm S₁ X))
+               (subTm-subTm {τ = ((S₅ ∘ₛ S₄) ∘ₛ S₃) ∘ₛ S₂} {σ = S₁} X))))
+
+      eq-i : subTm ((((S₅ ∘ₛ S₄) ∘ₛ S₃) ∘ₛ S₂) ∘ₛ S₁) (var (vs (vs (vs (vs vz))))) ≡ i
+      eq-i = trans (unc (var (vs (vs (vs (vs vz))))))
+             (trans (cong (λ z → subTm S₅ (subTm S₄ (subTm S₃ z))) (pw^ {u = p}  3 i))
+             (trans (cong (λ z → subTm S₅ (subTm S₄ z))            (pw^ {u = ih} 2 i))
+             (trans (cong (subTm S₅)                               (pw^ {u = n}  1 i))
+                                                                   (pw^ {u = σ}  0 i))))
+
+      eq-p : subTm ((((S₅ ∘ₛ S₄) ∘ₛ S₃) ∘ₛ S₂) ∘ₛ S₁) (var (vs (vs (vs vz)))) ≡ p
+      eq-p = trans (unc (var (vs (vs (vs vz)))))
+             (trans (cong (λ z → subTm S₅ (subTm S₄ z)) (pw^ {u = ih} 2 p))
+             (trans (cong (subTm S₅)                    (pw^ {u = n}  1 p))
+                                                        (pw^ {u = σ}  0 p)))
+
+      eq-ih : subTm ((((S₅ ∘ₛ S₄) ∘ₛ S₃) ∘ₛ S₂) ∘ₛ S₁) (var (vs (vs vz))) ≡ ih
+      eq-ih = trans (unc (var (vs (vs vz))))
+              (trans (cong (subTm S₅) (pw^ {u = n} 1 ih))
+                                      (pw^ {u = σ} 0 ih))
+
+      eq-n : subTm ((((S₅ ∘ₛ S₄) ∘ₛ S₃) ∘ₛ S₂) ∘ₛ S₁) (var (vs vz)) ≡ n
+      eq-n = trans (unc (var (vs vz))) (pw^ {u = σ} 0 n)
+
+      eq-σ : subTm ((((S₅ ∘ₛ S₄) ∘ₛ S₃) ∘ₛ S₂) ∘ₛ S₁) (var vz) ≡ σ
+      eq-σ = trans (unc (var vz)) refl
+
+      eq = cong (icon k)
+             (trans (subTm-subTm {τ = S₅} {σ = S₄} (subTm S₃ (subTm S₂ (subTm S₁ B))))
+             (trans (subTm-subTm {τ = S₅ ∘ₛ S₄} {σ = S₃} (subTm S₂ (subTm S₁ B)))
+             (trans (subTm-subTm {τ = (S₅ ∘ₛ S₄) ∘ₛ S₃} {σ = S₂} (subTm S₁ B))
+             (trans (subTm-subTm {τ = ((S₅ ∘ₛ S₄) ∘ₛ S₃) ∘ₛ S₂} {σ = S₁} B)
+             (trans (isubPay-sub hE hF sw
+                       ((((S₅ ∘ₛ S₄) ∘ₛ S₃) ∘ₛ S₂) ∘ₛ S₁)
+                       (fst (var (vs (vs (vs (vs vz))))))
+                       (snd (var (vs (vs (vs (vs vz))))))
+                       (var (vs vz))
+                       (var vz)
+                       (var (vs (vs (vs vz))))
+                       (var (vs (vs vz))))
+                    (isubPay-cong₆ sw (cong fst eq-i) (cong snd eq-i)
+                                      eq-n eq-σ eq-p eq-ih))))))

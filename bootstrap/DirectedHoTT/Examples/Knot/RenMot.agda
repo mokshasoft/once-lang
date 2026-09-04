@@ -53,7 +53,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢app; ⊢jsub; ⊢fst; ⊢conv; ⊢⌜IMu⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝; ty-El; ⊢ielim; imethsTy
         ; IDescWfFrom; idwf-nil; idwf-cons )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy; w; sub-w; ren-w; sub-w-single; towerA; towerJ )
-open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; cdTake )
+open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; cdTake; methsFrom-sub )
 open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 import DirectedHoTT.Lib.ISub as IS

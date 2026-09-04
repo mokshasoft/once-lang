@@ -335,3 +335,99 @@ happened to be definitional. The wrong interface survived two customers
 before biting — **which is exactly how `wkK` survived**. The session's
 own thesis, reproduced by its own tooling.
 
+
+## Step 8 — half 2: reduction THROUGH `isubMethod` ◐ THE β SPINE IS DONE
+
+Developed in `Examples/Knot/TmpISubRed.agda` — a TEMP module instantiating
+`Lib/ISub.Sub` at the RENAMING parameters (`renSmap` is the identity,
+`renFordMap fi b p = p`, so nothing sits on top of the β spine). Cycle
+time **1.4s**, against the ~556s a real `Lib/ISub` edit costs.
+
+| # | attempt | outcome |
+|---|---|---|
+| 1 | state the lemma, prove by `done` | statement typechecks; prints both sides |
+| 2 | five βs, peeling `4·3·2·1·0` `appˡ`s (§15.3) | ✅ **spine correct** — `icon k` matches |
+
+★★★ ATTEMPT 2 IS THE USEFUL ONE, AND IT IS A HALF-PASS. The five βs fire
+and the `icon k` wrapper unifies. What is left is EXACTLY:
+
+    subTm (single σ) (subTm (extS (single n)) (subTm (extS² (single ih))
+      (subTm (extS³ (single p)) (subTm (extS⁴ (single i))
+        (isubPay w <the five variables>)))))
+    ≠ isubPay w (fst i) (snd i) n σ p ih
+
+⇒ **the β spine was never the problem.** `isubPay w …` is STUCK while `w`
+is abstract — `isubPay` recurses on the `SubCon`, so with `w` a variable
+it is a neutral meta-level call and `subTm` cannot compute through it.
+
+⬜ SO HALF 2'S CONTENT IS A NATURALITY LEMMA, by induction on `w`:
+
+    isubPay-sub : (w : SubCon a C) (τ : Sub Γ Δ) (fi d n σ q ih : RTm Γ) →
+      subTm τ (isubPay w fi d n σ q ih)
+      ≡ isubPay w (subTm τ fi) … (subTm τ ih)
+
+which needs the same for `sPick` and `kaPick`, hence for `sucs`, `extsN`,
+and the two MODULE PARAMETERS `extN` and `fordMap`.
+
+⚠⚠ AND THERE IS A TRAP WAITING AT `extN`. At the renaming instance
+`extRNK d n ρ = lam (app (app (extRK (pair sVar (nsuc (w d))) (var vz))
+(w n)) (w ρ))`, and `extRK` is an `ielim` over the 53-METHOD TUPLE. Proving
+`subTm τ (extRK …) ≡ extRK (subTm τ …)` by unfolding that tuple is the
+`abstract-the-substituted-terms` trap verbatim — measured 87× elsewhere.
+⇒ **state the naturality with the method tuple ABSTRACTED**, and let the
+instantiation supply it; do NOT let the concrete `renMethsK` into the
+statement.
+
+⚠ OPEN DESIGN QUESTION, worth deciding before proving: the alternative is
+to state the lemma's RHS as the SUBSTITUTED form and let each caller —
+which has a CONCRETE `w`, where `isubPay` computes — do the pushing. That
+avoids naturality entirely but gives up "one lemma for 53 rows", which is
+the whole reason half 2 exists. Per `narrow-twin-shadows-general-form`,
+state the general form first; it is usually free. Recorded, not decided.
+
+### Step 8 CLOSED — and the promotion
+
+`isubMethod-red` PROVED, at fully abstract `Sub` parameters, and promoted.
+Iteration cost in the temp module: **~1.5s**, against ~556s for a real
+`Lib/ISub` edit. Sixteen iterations; the whole search cost under a minute
+of machine time.
+
+| # | attempt | outcome |
+|---|---|---|
+| 1 | prove by `done` | statement typechecks — and this is the CONCLUSION control |
+| 2 | five βs, `4·3·2·1·0` | ✅ spine correct, first try |
+| 3 | `subTm-subTm` collapse + `isubPay-sub` | `UnsolvedConstraints` |
+| 4–7 | pin implicits, four rounds | each round exposed the next unpinned `_` |
+| 8 | `pw^` (indexed) + towers at 4/3/2/1/0 | ✅ **GREEN** |
+| 9 | non-vacuity control | ✅ both hypotheses inhabited |
+
+★★★ WHAT THE SEARCH ACTUALLY FOUND, in order of value:
+
+1. **The β spine was never the problem** — it fired on the first try. The
+   content is `isubPay`'s substitution-naturality: `isubPay` recurses on
+   the `SubCon`, so with `w` abstract it is NEUTRAL and `subTm` cannot
+   compute through it.
+2. **`Lib/Wk` contradicted its own section header.** Line 280 reads
+   "ITERATED WEAKENING, INDEXED RATHER THAN ENUMERATED", builds `_∙^_`,
+   `w^`, `wᶠ^` — and then writes `pw1`–`pw4` by hand, noting they "exist
+   only at the depths gcd happened to need". Half 2 needed the FIFTH.
+   ⇒ `pw^` now exists and `pw1`–`pw4` are one-liners over it.
+   ⚠ The weakening must be `w^ k (w t)`, NOT `w^ (suc k) t`: `_∙^_`
+     recurses on the ℕ, so `(Γ ∙) ∙^ k` and `(Γ ∙^ k) ∙` are both stuck
+     and will not unify.
+3. **Every implicit had to be pinned — four separate rounds.**
+   `subTm-subTm`'s two substitutions, then its TERM argument, then
+   `isubPay-sub`'s six slots, then `unc`'s internal chain. All one defect:
+   `meta-standing-for-a-computation`. ⇒ on a substitution chain, pin
+   everything at once rather than discovering it a layer at a time.
+4. **A slot at binder `j` owes `4-j` weakenings.** `i` (outermost) owes
+   four, `p` three, `ih` two, `n` one, `σ` none — so the six slots are
+   `pw^` counted down, which is precisely why indexing it mattered.
+5. ⚠ **`w` shadowed.** Naming the `SubCon` argument `w` shadows
+   `Lib/Wk.w`, and `w (w (w i))` then parses as the description applied to
+   arguments. The binder is `sw`.
+
+PROMOTED: `sucs-sub` → `Lib/IWk`; `extS^`/`pw^` → `Lib/Wk`;
+`extN-cong₃`, `isubPay-cong₆`, `extsN-sub`, `sPick-sub`, `kaPick-sub`,
+`isubPay-sub`, `isubMethod-red` → `Lib/ISub.Sub`. Control kept as
+`Examples/Knot/ISubRedControl`.

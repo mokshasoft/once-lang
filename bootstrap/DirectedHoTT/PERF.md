@@ -344,3 +344,72 @@ warm, or compare it against a sibling whose closure adds 0 new modules.
 ⚠ Memory pressure (the box dipped to 166 MB free during that window)
 stretched the number but did not create it — see §4 and
 `agda-oom-is-a-gc-choice`.
+
+
+### 6.9 ⚠⚠ CORRECTION — §6.8's WALL-CLOCK NUMBERS WERE TAKEN UNDER CONTENTION
+
+Another Agda run (`make agda MODULE=Once/Adequacy/RealizeAgrees.agda`, a
+DIFFERENT session) was resident on this 7.6 GB box during the 2026-09-04
+sweeps. `never-run-two-agda-checks-at-once` says they OOM-kill each other
+and that a 143 means contention. ⇒ THE FOLLOWING ARE NOT SAFE:
+
+* the cold sweep total (5912s) — already disclaimed above, now for a
+  second reason;
+* `JudgeWfAA`'s 2295s — the closure explanation in §6.8 stands (75 cold
+  modules against `JudgeWfA`'s 0, and it is 5s warm), but the MAGNITUDE
+  was inflated by contention as well;
+* **`Trust`'s KILLED(143) at `-A64m` and `-A64m -c`.** It passed at
+  `-A8m -c` in 20s while busy, and at plain `-A64m` in 13s once quiet.
+  ⇒ "Trust needs a smaller nursery" is NOT established; contention
+  explains it equally well. The third ladder rung stays as cheap
+  insurance, not as a measured finding.
+
+★ WHAT IS UNAFFECTED, because it is machine-independent:
+  the interface byte counts (13.0 MB → 1.78 MB of metatheory per knot
+  module; `Injectivity` 5.4 MB → 830 KB; total 112 MB → 107 MB) and the
+  reachability counts (112/112 → 1/112 knot leaves reaching `Confluence`).
+  `JudgeWfA` 179s → 4s is also safe: 45× is far outside contention noise,
+  and `agda-rss-noise-floor` puts that at ±12%.
+
+⇒ **CHECK `ps` FOR ANOTHER AGDA BEFORE TIMING ANYTHING.** This was the
+third session-day whose timing conclusions had to be requalified after the
+fact; it is cheaper to look first.
+
+### 6.10 ⚠⚠⚠ §6.8 IS NOT A CURIOSITY — IT PRODUCED TWO WRONG CONCLUSIONS
+###      IN THE SESSION THAT WROTE IT
+
+§6.8 says a sweep bills the first module for its whole cold closure. That
+is easy to nod at and then misread anyway, because the misreading does not
+look like one: **a module whose closure was already built reports a small
+number, and that number is DESERIALIZATION, not a check.** Both of the
+following were believed, acted on, and wrong:
+
+**(1) "Adding naturality lemmas took `Knot/RenMot` from 1s to 155s."**
+The 1s came from a sweep line. In that sweep `Knot/JudgeWfAA` had already
+built `RenMot` inside its own 2295s, so the line measured nothing.
+`RenMot`'s real cold cost, with the lemmas removed AND every library
+reverted to HEAD, is **264s**. There was no regression. A module
+(`Knot/RenNat`) was created to fix a problem that did not exist, and its
+header asserted the false measurement until it was corrected.
+
+**(2) "`Knot/RenTm` OOMs because of the new `Lib/ISub` cascade."**
+`RenTm` is OOM-killed at ~515s under the default `-A64m`, reproducibly.
+It fails IDENTICALLY with `Lib/ISub` reverted to HEAD and with `RenTm`'s
+own new block deleted — so neither caused it. With `-A64m -c` it passes
+in 351s (233s once warm). It had never been timed alone: every sweep built
+it inside `JudgeWfAA`'s closure, and JudgeWfAA carries the compacting-GC
+header, so `RenTm` silently inherited `-c`. ⇒ `agda-oom-is-a-gc-choice`,
+third confirmation, and `RenTm` now carries its own header.
+
+★★★ THE RULE, stated so it cannot be nodded past:
+
+> **A per-module sweep time is evidence about that module ONLY if its
+> closure was already warm when it ran. Otherwise it is either the whole
+> closure's build (too big) or a deserialization (too small). Both
+> failure directions occur, and the small one is the dangerous one —
+> it looks like a baseline.**
+
+⇒ BEFORE believing any per-module number: compute `reach(M)` minus what
+earlier modules already built (§6.5's third check), or re-time the module
+standalone with `touch M && check.sh M` on a quiet box. And before any
+timing at all, `ps -eo args | grep '[a]gda'` — see §6.9.
