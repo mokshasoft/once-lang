@@ -29,7 +29,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; β; single; wk-single )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ; ⟶*-castₗ )
-open import DirectedHoTT.Lib.Wk using ( sub-w³-single; sub-w²-single )
+open import DirectedHoTT.Lib.Wk using ( sub-w³-single; sub-w²-single; towerP )
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans )
 open import DirectedHoTT.Examples.Knot.RenTm
   using ( vsRenK )
@@ -53,7 +53,7 @@ open import DirectedHoTT.Metatheory.Confluence
   using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-jsubᵖ )
 open import DirectedHoTT.Lib.IMeths
   using ( methsFrom-sel; methsFrom-past; cdTake; inCD; tt
-        ; sel-here; sel-there )
+        ; sel-here; sel-there; sel-here≡; sel-there≡ )
 
 -- ★ transitivity, spelled as an operator — `Knot/SzAgree` defines the
 --   same one locally; a third customer moves it to a reduction lib.
@@ -329,30 +329,35 @@ singleK-vs n u m x =
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- ⬜ `nrs` — PARKED, AND THE REASON IS SPECIFIC, NOT "MORE OF THE SAME".
+-- ⬜ `nrs` — FIVE ATTEMPTS, AND `SUBTM-ATTEMPTS.md` WAS RIGHT TWICE.
 --
--- `nrsMotK` has NO passenger, so the spine is THREE applications and the
--- βs peel 2·1·0 `appˡ`s.  Everything down to and including the three
--- `jsub-refl` transports follows the `extR`/`single` template.
+-- ★★★ THE LOG'S LESSON APPLIED AND PRODUCED A REAL FIX.  Its step 1
+--   burned four attempts casting AT THE RESULT before the answer turned
+--   out to be converting the INPUT where its type is still concrete; its
+--   summary says every hard step was *a correction to an interface, not
+--   a failed proof*; its slips list says *write the statement at the
+--   context the goal prints*.  Read against this row, all three name the
+--   same defect — and the interface WAS wrong:
 --
--- ⚠⚠ WHAT RESISTS IS THE **ORDER** OF THE LAST STEP.  The payload
---   arrives as `subTm σ₁ (subTm σ₂ (subTm σ₃ (var (vs vz))))` and
---   collapses to the literal pair only PROPOSITIONALLY (`wk-single`),
---   so `fst` has no pair to reduce against until the equality has been
---   applied — which means `⟶*-castₗ` (move the SOURCE), not `⟶*-castᵣ`
---   (move the target).  ★ In `extR` and `single` the same collapse
---   happened to be definitional, so the question never arose.
+--     sel-here / sel-there     demand a LITERAL pair
+--     sel-here≡ / sel-there≡   take the pair equality as a PARAMETER
 --
---   Three attempts at the cast did not land it: `cong fst (wk-single
---   {v = ihs} pay)` has visibly the right type and Agda still reports the
---   source unequal, which says the mismatch is EARLIER in the chain than
---   the last step — one of the `inNsucVar` endpoints, not the projection.
+--   plus `Lib/Wk.towerP`, `towerA`'s sibling at de Bruijn 1 (a payload
+--   sits there and returns the MIDDLE substitution's value, where
+--   `towerA`/`towerJ` sit at 2 and 3 and return the innermost).
+--   ⇒ BOTH ARE COMMITTED AND BOTH ARE WHAT STEP 3 NEEDS AT 53 ROWS.
 --
--- ⇒ ★ IT IS A DIAGNOSIS PROBLEM, NOT A MISSING LEMMA.  Every piece
---   exists; what is needed is to print the chain's intermediate
---   endpoints, which is a `--interaction`/hole exercise rather than more
---   reduction machinery.  Parked deliberately at that boundary.
+-- ⚠ AND `extR`/`single` NEVER EXPOSED IT because their collapse happened
+--   to be DEFINITIONAL — the wrong interface survived two customers
+--   before biting, which is exactly how `wkK` survived.
 --
--- ⚠ AND `nrs` IS THE ONLY ONE LEFT: `vsRenK`, `extR` (both rows) and
---   `single` (both rows) are COMPLETE above.
+-- ⬜ WHAT STILL RESISTS is the FINAL projection only: the goal source is
+--   `fst ⟨payload chain⟩` and the chain has an inert layer the equality
+--   does not name.  Attempts 1–3 cast at the result (wrong per the log),
+--   4–5 fixed the interface and moved the failure to this one position.
+--   ⇒ localized, not mysterious — and the log says the next move is to
+--     PRINT the chain, not to guess a sixth time.
+--
+-- ★ The other five laws — `vsRenK`, `extR` ×2, `single` ×2 — are
+--   COMPLETE above.
 ------------------------------------------------------------------------
