@@ -202,6 +202,7 @@ import DirectedHoTT.Examples.Knot.PwBody
 import DirectedHoTT.Examples.Knot.RedRows
 import DirectedHoTT.Examples.Knot.RenMot
 import DirectedHoTT.Examples.Knot.RenNat
+import DirectedHoTT.Examples.Knot.RenRed
 import DirectedHoTT.Examples.Knot.RenTm
 import DirectedHoTT.Examples.Knot.RenSpec
 import DirectedHoTT.Examples.Knot.RedWfA

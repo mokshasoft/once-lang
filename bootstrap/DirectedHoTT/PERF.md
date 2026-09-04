@@ -413,3 +413,38 @@ third confirmation, and `RenTm` now carries its own header.
 earlier modules already built (§6.5's third check), or re-time the module
 standalone with `touch M && check.sh M` on a quiet box. And before any
 timing at all, `ps -eo args | grep '[a]gda'` — see §6.9.
+
+### 6.11 ★★★ THE OTHER HALF OF THE TEMP-MODULE DISCIPLINE: DON'T SWEEP
+###      WHAT CANNOT HAVE CHANGED
+
+§6.7 says develop a new lemma in a temp module (154×). That saves the
+DEVELOPMENT cost. It does nothing about the VERIFICATION cost, and it is
+easy to hand the saving straight back by running a full sweep afterwards:
+a change confined to NEW LEAF MODULES has an affected closure of two or
+three modules, and a full sweep re-verifies 236 that provably cannot have
+changed — ~50 minutes for no information.
+
+★ WHAT A SWEEP ADDS OVER `affected.sh` IS TWO COVERAGE GATES, AND THEY
+  ARE FREE STANDING ALONE — `tools/check-trust.sh`, measured **0s**:
+
+    == KERNEL IS INDEPENDENT: Spec/ and Metatheory/ import no Lib/ or Examples/.
+    == TRUST ROOT REACHES ALL 238 modules
+
+  The second is the one that matters for a NEW module: if it is not in
+  `Trust.agda`, nothing forces it under `--safe`, and `affected.sh` would
+  never notice. That is a COVERAGE question, not a correctness one — the
+  same class as `verification-that-covers-less-than-it-claims`.
+
+⇒ THE RECIPE, for a change that adds or edits only leaf modules:
+
+    tools/check-trust.sh            0s   — coverage gates
+    tools/affected.sh <module>      s    — the TRUE dependent closure, built
+
+  valid when the previous full sweep was green. ⚠ NOT valid for an edit to
+  `Lib/` or `Metatheory/` — there the closure IS most of the tree, and the
+  sweep is the cheap way to build it in dependency order.
+
+⚠ AND `affected.sh` MUST BE TRUSTED ONLY BECAUSE IT WAS FIXED. It had a
+graph bug this session that reported **1** affected module where the true
+answer was **89**. It now matches both import forms and prints the module
+names — check the NAMES against what you edited, not just the count.

@@ -236,3 +236,37 @@ this wants.
 ⇒ NEXT after that: `nrs`'s pointwise law (parked at 8 attempts, and the
 interface fix it needs — `sel-here≡`/`sel-there≡`, `Lib/Wk.towerP` — is
 already committed), then `sub-agree`/`ren-agree`, which is step 3 proper.
+
+## ⬜ STEP 3 — `ren-agree` / `sub-agree`, and the ORDER is forced
+
+`Knot/RenRed.ren-head-red` is the per-row head reduction, PROVED and shown
+callable at row 0. It chains half 1 (`isubMeths-sel`) and half 2
+(`isubMethod-red`), and the five-argument spine matches `renTmAtK` on the
+nose. ⇒ the remaining work per row is the PAYLOAD, not the head.
+
+★ THE ORDER IS NOT A PREFERENCE. `isubMethod-red` takes `ExtNSub` and
+`FordMapSub` as hypotheses:
+
+| instance | `FordMapSub` | `ExtNSub` |
+| --- | --- | --- |
+| renaming | free (`renFordMap fi b p = p`) | ✅ `Knot/RenNat.extRNK-sub` |
+| substitution | ? | ⬜ **`extNK`'s naturality — OWED** |
+
+⇒ `ren-agree` is unblocked NOW; `sub-agree` waits on `extNK-sub`.
+
+⬜ NEXT, in order:
+  1. `extS-Represents : Represents σ s → Represents (extS σ) (extN d n s)`.
+     Every recursive field under a binder needs the IH at the EXTENDED
+     substitution — this is the one structural difference from
+     `Knot/SzAgree`, where the fold has no binders to cross.
+  2. one row END TO END by hand (a `ρ` row, so the extension is exercised),
+     to find the payload shape.
+  3. `gen_renagree` in `tools/gen-knot.py`, modelled on `gen_szagree`
+     (~40 lines of emitter → 436 lines of module).
+     ⚠ It must emit each row's `SubCon` — see `RenRed`'s header.
+  4. `extNK-sub`, then `sub-agree` by the same generator at the other
+     instantiation.
+
+⚠ `Knot/SzAgree` is the shape to copy, NOT the difficulty to expect: `sz`
+counts and never crosses a binder, so its IH needs no extension. The
+`extS-Represents` step has no analogue there.
