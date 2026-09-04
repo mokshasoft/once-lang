@@ -520,3 +520,39 @@ nothing could reduce through a `methsAt`/`methsFrom` tuple.
 reduction is available; then step 3's `sub-agree`, which needs the same
 lemma at all 53 rows.
 
+### §15.3 THE FIRST CASING LAW, END TO END — AND WHAT IT COSTS
+
+    extRNK-vz : app (extRNK d n rn) (Var-vzK m) ⟶* Var-vzK n
+
+`extR ρ vz = vz`, object-level, as a reduction. SIX mechanisms in a row:
+β through `extRNK`'s `lam`; `ι-ielim`; `ifields` IS the application spine
+(`refl`); `methsFrom-sel`; five βs; one `wk-single` round trip twice.
+
+⚠ **THE SPINE IS FIVE APPLICATIONS DEEP**, so the βs peel 4·3·2·1·0
+`appˡ`s. 2·2·2·1·0 typechecks as far as the third step and then fails —
+worth writing down, because the count is not local to any one line.
+
+★ AND `extRK-vs`'s HEAD REDUCTION EXERCISES THE OTHER LEMMA: row 52 is
+the TAIL of `methsFrom (cdTake 52 KnotD) constMethR (pair extRVs unit)`,
+so `methsFrom-sel` cannot reach it — `methsFrom-past` steps over the
+whole prefix and `βfst` takes the head. ⇒ the two selection lemmas are
+not alternatives; a SEGMENTED tuple needs both.
+
+### §15.4 ⬜ PARKED, WITH THE REASON — and it decides step 3's first move
+
+`extRNK-vs`'s tail is parked. After the five βs, BOTH the ford and `x`
+are PROJECTION CHAINS out of the payload, and `fst`/`snd` of a literal
+pair are REDEXES here, not definitional — so each level costs a
+`βfst`/`βsnd` under a congruence.
+
+Then three `jsub-refl`s clear the transports: `Var-vsK`'s depth ford IS
+`idrefl`, so `predN`, `symN` and the outer `jsub` all fire. ★ **The
+transports the ROW needs in order to TYPECHECK compute away when the row
+meets a real constructor** — which is what makes the Forded encoding
+faithful and not merely well-typed.
+
+⚠ **The grind is the projections, not the idea, and it is the same grind
+at all 53 rows of `sub-agree`.** `Knot/SzAgree` writes them out per row.
+⇒ build the projection helper in step 3, where it pays 53 times, and come
+back for this law.
+

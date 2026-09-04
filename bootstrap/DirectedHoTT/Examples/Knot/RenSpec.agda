@@ -23,26 +23,28 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RenSpec where
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; app; lam; var; vz; vs; renTm; nsuc; pair; subTm )
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; β; single; wk-single )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
-open import normalizer.Syntax.Types using ( _≡_; refl; cong; trans )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans )
 open import DirectedHoTT.Examples.Knot.RenTm
   using ( vsRenK )
 open import DirectedHoTT.Examples.Knot.RenMot
-  using ( extRK; extRNK; extRMethsK; constMethR )
+  using ( extRK; extRNK; extRMethsK; constMethR; extRVs )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
-open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; cVar-vz )
-open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
+open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; cVar-vz; cVar-vs )
+open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz; tagVar-vs )
 open import DirectedHoTT.Examples.Knot.Sorts using ( sVar )
 open import DirectedHoTT.Spec.Syntax
   using ( icon; idrefl; ⌜Nat⌝; unit; iihs; isingle; ielim )
-open import DirectedHoTT.Spec.Typing using ( ι-ielim )
-open import DirectedHoTT.Metatheory.Confluence using ( ⟶*-appˡ )
+open import DirectedHoTT.Spec.Typing using ( ι-ielim; βfst; jsub-refl; ξ-jsubᵖ )
+open import DirectedHoTT.Metatheory.Confluence
+  using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ )
 open import DirectedHoTT.Lib.IMeths
-  using ( methsFrom-sel; cdTake; inCD; tt )
+  using ( methsFrom-sel; methsFrom-past; cdTake; inCD; tt )
 
 -- ★ transitivity, spelled as an operator — `Knot/SzAgree` defines the
 --   same one locally; a third customer moves it to a reduction lib.
@@ -123,3 +125,59 @@ extRNK-vz d n rn m =
      ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done))
+
+------------------------------------------------------------------------
+-- ★★★ `extR ρ (vs x) = vs (ρ x)` — AND IT LANDS **PAST** THE WALK.
+--
+-- ⚠ Row 52 is the tail of `extRMethsK = methsFrom (cdTake 52 KnotD)
+--   constMethR (pair extRVs unit)`, so `methsFrom-sel` cannot reach it:
+--   the walk covers 0–51.  `methsFrom-past` steps over the whole prefix
+--   and `βfst` takes the head of the tail.  ⇒ the two selection lemmas
+--   are not alternatives — a SEGMENTED tuple needs both.
+------------------------------------------------------------------------
+
+extRK-vs : {Γ : Cx} (i m x : RTm Γ) →
+           extRK i (Var-vsK m x) ⟶*
+             app (app (app extRVs i)
+                      (pair m (pair x (pair (idrefl ⌜Nat⌝ sVar)
+                                            (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))))
+                 (iihs KnotD extRMethsK (isingle i) cVar-vs
+                       (pair m (pair x (pair (idrefl ⌜Nat⌝ sVar)
+                                             (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))))
+extRK-vs i m x =
+  step (ι-ielim KnotD i extRMethsK tagVar-vs _)
+       (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ
+         (methsFrom-past (cdTake 52 KnotD) zero » step (βfst _ _) done))))
+
+-- ★ reducing INSIDE the `vs` constructor's argument.  `Var-vsK m x` is
+--   `icon tagVar-vs (pair m (pair x …))`, so the congruence is three
+--   deep; naming it once keeps the law readable.
+inVs : {Γ : Cx} {m x x' : RTm Γ} → x ⟶* x' → Var-vsK m x ⟶* Var-vsK m x'
+inVs r = ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ r))
+
+------------------------------------------------------------------------
+-- ⬜ `extR ρ (vs x) = vs (ρ x)` — THE HEAD REDUCTION IS ABOVE; THE TAIL
+--   IS PARKED, AND THE REASON IS WORTH RECORDING.
+--
+-- After the five βs the answer reads
+--
+--     Var-vsK ⟨n⟩ (app ⟨ρ⟩ (jsub _ (symN _ (predN _ (fst (snd (snd (snd p))))))
+--                                (fst (snd p))))
+--
+-- and BOTH the ford and `x` are PROJECTION CHAINS out of the payload.
+-- `fst`/`snd` of a literal pair are REDEXES in this kernel, not
+-- definitional, so each level costs a `βfst`/`βsnd` under a congruence.
+--
+-- ★ Then three `jsub-refl`s clear the transports — `Var-vsK`'s depth
+--   ford IS `idrefl` (`Knot/Build:222`), so `predN`, `symN` and the
+--   outer `jsub` all fire.  ⇒ the transports the ROW needs in order to
+--   TYPECHECK compute away when the row meets a real constructor, which
+--   is what makes the Forded encoding faithful and not merely well-typed.
+--
+-- ⚠ THE GRIND IS THE PROJECTIONS, NOT THE IDEA, and it is the SAME grind
+--   at all 53 rows of step 3's `sub-agree`.  ⇒ build the projection
+--   helper THERE, where it pays 53 times, and come back for this law.
+--   `Knot/SzAgree` writes the chains out per row
+--   (`⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done`),
+--   which is exactly the thing to factor.
+------------------------------------------------------------------------
