@@ -124,7 +124,7 @@ readable line, and that line is pointwise testable.
 | 1a | `Knot/RenMot` — the object-level `Ren` layer (`RenTy`, `extRK`, `extRNK`) | ✅ **done** — breaks the cycle |
 | 1b | `renTmK ρ` over the 53 rows (`Knot/RenTm`) | ✅ **done** |
 | 1c | `extVs` (#5), `pwBodyK`'s 51 defaults (#4), `wkTmK = renTmK vsRen` | ✅ **done** |
-| 2 | pointwise specs — `vsRenK` ✅, `extR` ✅ (both laws); `single`/`nrs` ⬜ | 🟡 |
+| 2 | pointwise specs — `vsRenK` ✅, `extR` ✅✅, `single` ✅✅; `nrs` ⬜ | 🟡 mostly |
 | 3 | `sub-agree` — the ONE induction, discharges the family | ⬜ |
 | 4 | retire `wkK` for open terms; keep it only where CLOSED, stated | ⬜ |
 | 5 | then `methsTyFrom` (unblocked, mechanical) | ⬜ |
@@ -577,4 +577,29 @@ and `predN a p` **are** `jsub _ p _`, so reducing inside them is
 for a `⟶*-symNᵖ` is the mistake; there is nothing to find.
 
 ⇒ step 3 starts with these in hand rather than discovering them per row.
+
+### §15.6 ✅ `single`'s PAIR TOO — AND THE PATTERN IS NOW A PATTERN
+
+    singleK-vz : app (singleK n u) (Var-vzK m)   ⟶* u
+    singleK-vs : app (singleK n u) (Var-vsK m x) ⟶* Tm-varK x
+
+Both first try, using the `extR` template unchanged. **Two complete
+specs, at two different passenger counts, is what makes it a pattern
+rather than a coincidence.**
+
+★★★ AND THE ONLY THING THAT VARIES IS THE PASSENGER COUNT:
+
+| | passengers | spine | βs peel | payload descent |
+|---|---|---|---|---|
+| `extR` | 2 (`n`, `ρ`) | 5 apps | 4·3·2·1·0 | `sub-w³-single` |
+| `single` | 1 (`u`) | 4 apps | 3·2·1·0 | `sub-w²-single` |
+| `nrs` | 0 | 3 apps | 2·1·0 | `wk-single` |
+
+The spine depth, the β count and the descent depth ALL follow from it.
+⇒ that table is what step 3 meets 53 times, and it is written down now
+rather than rediscovered per row. `Lib/Wk` gained `sub-w²-single`
+alongside `sub-w³-single` for exactly this reason.
+
+⬜ `nrs` parked: same tail, third depth. The two complete specs above are
+what step 3 needed from step 2.
 

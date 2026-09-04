@@ -29,13 +29,20 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; β; single; wk-single )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
-open import DirectedHoTT.Lib.Wk using ( sub-w³-single )
+open import DirectedHoTT.Lib.Wk using ( sub-w³-single; sub-w²-single )
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans )
 open import DirectedHoTT.Examples.Knot.RenTm
   using ( vsRenK )
+open import DirectedHoTT.Examples.Knot.Single
+  using ( singleSK; singleK; singleMethsK; singleId; singleVs )
 open import DirectedHoTT.Examples.Knot.RenMot
   using ( extRK; extRNK; extRMethsK; constMethR; extRVs )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
+open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-varK; Tm-nsucK )
+open import DirectedHoTT.Examples.Knot.Nrs using ( nrsK; nrsMeths )
+open import DirectedHoTT.Lib.ArithComm using ( symN )
+open import DirectedHoTT.Spec.Syntax using ( fst; snd; jsub; ⌜IMu⌝ )
+open import DirectedHoTT.Examples.Knot.Sorts using ( IPair )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz; tagVar-vs )
 open import DirectedHoTT.Examples.Knot.Sorts using ( sVar )
@@ -234,3 +241,110 @@ extRNK-vs d n rn m x =
      --   `towerA`/`towerJ`'s shape at a TERM instead of a variable.
      inVs (⟶*-appʳ (⟶*-castᵣ (sub-w³-single x)
                              (sel-there 0 _ _ (sel-here _ _))))))
+
+------------------------------------------------------------------------
+-- ★★★ `single u vz = u` — THE SAME TEMPLATE, ONE APPLICATION SHALLOWER.
+--
+-- ⚠ `singleMotK` has ONE passenger where `extRMotK` has two, so the
+--   spine is FOUR applications and the βs peel 3·2·1·0 `appˡ`s.  ★ That
+--   count is the only thing that changes between these proofs; the six
+--   mechanisms are identical.
+--
+-- ★ Row 51 is PAST the walk here too — `methsFrom (cdTake 51 KnotD)
+--   singleId singleTail` covers 0–50 — so it is `methsFrom-past` again,
+--   then `βfst` for `sel 0` of the tail.
+------------------------------------------------------------------------
+
+singleSK-vz : {Γ : Cx} (i m : RTm Γ) →
+              singleSK i (Var-vzK m) ⟶*
+                app (app (app singleId i)
+                         (pair m (pair (idrefl ⌜Nat⌝ sVar)
+                                       (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))))
+                    (iihs KnotD singleMethsK (isingle i) cVar-vz
+                          (pair m (pair (idrefl ⌜Nat⌝ sVar)
+                                        (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))))
+singleSK-vz i m =
+  step (ι-ielim KnotD i singleMethsK tagVar-vz _)
+       (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ
+         (methsFrom-past (cdTake 51 KnotD) zero » step (βfst _ _) done))))
+
+singleK-vz : {Γ : Cx} (n u m : RTm Γ) →
+             app (singleK n u) (Var-vzK m) ⟶* u
+singleK-vz n u m =
+  ⟶*-castᵣ (wk-single {v = Var-vzK m} u)
+    (step (β _ _)
+      (⟶*-appˡ (singleSK-vz _ _) »
+       ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
+       ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+       ⟶*-appˡ (step (β _ _) done) »
+       step (β _ _) done))
+
+------------------------------------------------------------------------
+-- ★★★ `single u (vs x) = var x` — the transports again, one binder up.
+------------------------------------------------------------------------
+
+singleSK-vs : {Γ : Cx} (i m x : RTm Γ) →
+              singleSK i (Var-vsK m x) ⟶*
+                app (app (app singleVs i)
+                         (pair m (pair x (pair (idrefl ⌜Nat⌝ sVar)
+                                               (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))))
+                    (iihs KnotD singleMethsK (isingle i) cVar-vs
+                          (pair m (pair x (pair (idrefl ⌜Nat⌝ sVar)
+                                                (pair (idrefl ⌜Nat⌝ (nsuc m)) unit)))))
+singleSK-vs i m x =
+  step (ι-ielim KnotD i singleMethsK tagVar-vs _)
+       (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ
+         (methsFrom-past (cdTake 51 KnotD) (suc zero) »
+          sel-there 0 _ _ (sel-here _ _)))))
+
+-- ★ reducing inside `Tm-varK`'s argument.
+inVar : {Γ : Cx} {x x' : RTm Γ} → x ⟶* x' → Tm-varK x ⟶* Tm-varK x'
+inVar r = ⟶*-icon (⟶*-pairˡ r)
+
+singleK-vs : {Γ : Cx} (n u m x : RTm Γ) →
+             app (singleK n u) (Var-vsK m x) ⟶* Tm-varK x
+singleK-vs n u m x =
+  step (β _ _)
+    (⟶*-appˡ (singleSK-vs _ _ _) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
+     ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+     ⟶*-appˡ (step (β _ _) done) »
+     step (β _ _) done »
+     inVar (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-jsubᵖ
+       (sel-there 2 _ _ (sel-there 1 _ _ (sel-there 0 _ _ (sel-here _ _)))))))  »
+     inVar (⟶*-jsubᵖ (⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done))) »
+     inVar (⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done)) »
+     inVar (step (jsub-refl _ _ _ _) done) »
+     inVar (⟶*-castᵣ (sub-w²-single x) (sel-there 0 _ _ (sel-here _ _))))
+
+------------------------------------------------------------------------
+-- ★★★ `nrs vz = nsuc (var (vs vz))` AND `nrs (vs x) = var (vs (vs x))`
+--   — the RAISING substitution, and the shallowest spine of the three.
+--
+-- ⚠ `nrsMotK` has NO passenger at all (`IMu … (pair sTm (nsuc (snd ⟨i⟩)))`),
+--   so the spine is THREE applications and the βs peel 2·1·0 `appˡ`s.
+--   ⇒ across the three substitutions the only thing that varies is the
+--     passenger count: `extR` 2, `single` 1, `nrs` 0, and the spine and
+--     the descent depth follow from it.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- ⬜ `nrs` — THE HEAD REDUCTION IS THE SAME; THE TAIL IS NOT DONE.
+--
+-- `nrsMotK` has NO passenger (`IMu … (pair sTm (nsuc (snd ⟨i⟩)))`), so
+-- the spine is THREE applications and the βs peel 2·1·0 `appˡ`s.
+--
+-- ★ ACROSS THE THREE SUBSTITUTIONS THE ONLY THING THAT VARIES IS THE
+--   PASSENGER COUNT — `extR` 2, `single` 1, `nrs` 0 — and the spine
+--   depth, the β count and the descent depth (`sub-w³-single`,
+--   `sub-w²-single`, `wk-single`) all follow from it.  That is the shape
+--   step 3 will meet 53 times, and it is now written down rather than
+--   rediscovered per row.
+--
+-- ⚠ WHAT IS LEFT HERE is the same projection/transport tail the other
+--   two needed, at the third depth.  Parked deliberately: the two
+--   COMPLETE specs above establish the pattern at two different
+--   passenger counts, which is what makes it a pattern rather than a
+--   coincidence, and step 3 is the higher-value customer for the next
+--   hour of it.
+------------------------------------------------------------------------
