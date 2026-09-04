@@ -10585,3 +10585,98 @@ looked for.
 **Relates**: D132 (per-shape witnesses are not the theorem — still stands; that
 cluster was a different case); plan 0.64 (the audit and the rule); plan 0.52
 (the M2 migration these need); plan 0.78 (`cata-correct`, not in this set).
+
+---
+
+## D142: Allocation Is Mechanical — No Surface Annotation, No IR Mode, and Heap-Neutrality Is a TYPE
+
+**Date**: 2026-09-04 · **Status**: Decided (plan 0.86), not started ·
+**Supersedes**: D012, D013, D014 · **Lands**: plan 0.2.4.5
+
+### The rule
+
+Nothing in the language and nothing in the IR chooses where a value lives.
+Placement follows from the value's role:
+
+    IR inputs and outputs   ->  stack, or REGISTERS for linear values that fit
+    internal, bounded       ->  frontier scratch
+    internal, unbounded     ->  heap, FREED BY THE IR ITSELF
+
+### What is superseded, and why the motivation does not survive
+
+D012 put an allocation annotation in the implementation (`concat @heap a b`),
+D013 scoped it to outputs, D014 added `--alloc` as the default.
+
+The motivation was real: **a dead value can sit trapped on the stack behind a
+longer-lived one**, holding its slots for the rest of the enclosing
+computation. That must be recorded at full strength so it is not re-litigated
+from a weaker version.
+
+It does not survive contact with where trapped values actually come from.
+`let x = e1 in e2` elaborates to `e2 ∘ ⟨ id , e1 ⟩`; the `id` keeps the whole
+environment alive, so nested lets accumulate `((Γ,x),y)` and a binding used
+early and dead later is a dead COMPONENT of a live product. Three consequences:
+
+  * an unread binding already falls out to `π₁ ∘ ⟨f,g⟩ ≡ f` — pure CCC
+    rewriting in the optimizer, no liveness analysis;
+  * the rest are removed by ELABORATION (sink each `let` to the dominator of
+    its uses, so the binding never enters the outer environment);
+  * and D013 scopes the annotation to function OUTPUTS while the trapped value
+    is a `let`-binding — **there is no syntax that names its placement.** The
+    feature could not express a fix for the case that motivated it.
+
+The residual — a value used early AND late, dead between, buried below newer
+values — cannot be sunk (its dominator spans the gap) and reclaiming it means
+repacking everything above it. That trade is accepted and WARNED about, not
+optimised. Reporting, not machinery.
+
+### The invariant, and how it is ENFORCED (OCP-0005 rung 1)
+
+Because what crosses an IR boundary is stack-resident and heap is strictly
+IR-internal and reclaimed before return, **every IR has net heap delta zero**.
+This is the `StackPure` property promoted from a per-use-site mode tag to a
+global law.
+
+It is not left as prose. OCP-0005's ladder puts "make violation ill-typed"
+at rung 1, and plan 0.17 already built the mechanism: each producer declares a
+`bump` (delta on `next-slot` and `next-heap-ref`), `final-alloc = apply-bump
+bump alloc` is derived, and `alloc-correct` ties the trace to the bump.
+
+**The encoding is a SUBTRACTION: remove the heap delta from `bump`.** With
+`bump` carrying only a `next-slot` delta, an IR that leaked heap cannot state
+its own result — `final-alloc` has the same `next-heap-ref` as `alloc`, and
+`alloc-correct` will not typecheck for a leaking trace. Violation becomes
+ill-typed, and the record gets smaller rather than larger.
+
+**Care required — net, not gross.** Heap-neutral does NOT mean heap-untouched.
+An IR may allocate transiently and free within its own trace. `alloc-correct`
+must therefore relate the trace's NET heap effect to the bump. Stating it
+grossly would reject legitimate implementations.
+
+### Consequences
+
+  * `AllocMode` leaves the IR (six constructors: `⟨_,_⟩`, `inl`, `inr`,
+    `curry`, `In`, `in-ν`) — plan 0.2.4.5 lands, whose audit found `AllocMode`
+    had "drifted into a vestigial layout tag".
+  * The per-mode module pairs collapse: `CurryStackWF`+`CurryAllocWF` -> one,
+    `SumRecWF`+`SumInlAllocWF`+`SumInrAllocWF` -> one. Of the parked cluster's
+    91 holes, ~33 are allocation bookkeeping or `ValidAtWF Heap`.
+  * `--alloc` STAYS, repurposed: it no longer selects a mode (there is none),
+    it selects WHICH ALLOCATOR backs the dynamic calls — bump, malloc,
+    mempool, arena. That is what makes the proven allocators of plan 0.35
+    reachable.
+
+### Open, and gating the IR work
+
+**A value escaping a DEFINITION boundary.** Within a definition, framelessness
+makes escape a non-issue: `FrameFreeTrace` proves no emitted trace contains a
+frame op, the backend brackets the body with one `subq $budget*8, %rsp`/`addq`,
+and `ResultPlace.at-loc` places every result BELOW the frontier — so a produced
+value is a lower offset nothing pops underneath. The closing `addq` is the real
+boundary. Same question as `Once.Escape` / `Once.Escape.Correct` (plan 0.64
+group E: the analysis is live, its correctness proof is a red island).
+
+**Relates**: D012/D013/D014 (superseded); plan 0.86 (the work); plan 0.2.4.5
+(lands); plan 0.2.4.6 (Place); plan 0.17 (the `bump` mechanism this encodes
+into); plan 0.35 (allocator wiring); OCP-0005 (the encoding ladder); D141 (the
+paused `*WF` port).
