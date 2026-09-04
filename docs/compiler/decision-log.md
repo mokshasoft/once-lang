@@ -10485,114 +10485,103 @@ disease in `Once.Type`, deliberately deferred — its deciders are already
 
 ---
 
-## D141: The `*WF` Cluster Was the OLD Machine's Per-Case Attack — Deleted, and the Backstop Is Back
+## D141: RETRACTED IN PART — the `*WF` Cluster Is the Intended Discharge Route for Nine of Sixteen Postulates
 
-**Date**: 2026-09-03 · **Status**: Decided and landed (plan 0.83) ·
-**Same species as**: D132
+**Date**: 2026-09-03, **corrected 2026-09-04** · **Status**: two modules
+deleted, eleven RESTORED · **Relates**: D132, plan 0.64, plan 0.52 (M2)
 
-### The decision
+### What this entry first said, and why it was wrong
 
-Thirteen modules deleted (7,549 lines). The nine plan 0.83 named:
+It deleted thirteen modules under `Once/CCC/Machine/IR/` and `Once/CCC/SigOp/`
+on the argument that they were a superseded per-case attack over the structured
+machine. **Eleven are restored. The argument was wrong, and how it was wrong is
+the useful part of this entry.**
 
-    Once/CCC/Machine/IR/{ApplyWF, ComposeWF, CurryStackWF, LambekValidity,
-                         RecSchemeProof, RecSchemePostulates, SimpleWF,
-                         SumRecWF}.agda
-    Once/CCC/SigOp/Helper.agda
+Plan 0.64's test is: *does this island prove something the apex only postulates
+— convertible-after-porting, not "resembles"?* Two errors were made applying it.
 
-They were red, they blocked `make check-all`, and plan 0.83 posed the fork
-honestly: migrate them, or delete them. **They are superseded, not parked.**
+**Error 1 — the postulate list was incomplete.** `IRObsCorrectFlat` was read as
+carrying 7 postulates. It carries **16**; the extractor stopped at the first
+`postulate` block. The full set:
 
-### Why: the general theorem already exists, on the machine that is the semantics
+    cata-correct      obs-correct-pair    obs-correct-curry   obs-correct-Ana
+    obs-correct-fst   obs-correct-inl     obs-correct-case    obs-correct-Hylo
+    obs-correct-snd   obs-correct-inr     obs-correct-apply   obs-correct-Fuse
+    obs-correct-In    obs-correct-Para    obs-correct-sigop-rest   comp-step
 
-`Once.CCC.Codegen.IRObsCorrectFlat.ir-obs-correct` is a TOTAL dispatch over all
-25 IR constructors — `id`, `∘`, `⟨,⟩`, `fst`, `snd`, `inl`, `inr`, `case`,
-`terminal`, `initial`, `curry`, `apply`, `In`, `out-μ`, `Cata`, `Para`, `Out`,
-`in-ν`, `Ana`, `Hylo`, `Fuse`, `free-heap`, `const`, `SigOp` — and it is
-apex-reachable and green. The cluster attacked the SAME cases, one module at a
-time, on `exec-abstract`:
+Eight of the nine names this cluster addresses were invisible when the verdict
+was taken.
 
-    ApplyWF       apply-full-trace              ->  obs-correct-apply
-    ComposeWF     compose-trace                 ->  comp-obs-correct
-    CurryStackWF  curry-trace                   ->  obs-correct-curry
-    SumRecWF      inl-inr-trace-…, case-trace-… ->  obs-correct-inl/inr/case
+**Error 2 — the porting device was never looked for.** The test says
+"convertible AFTER PORTING", and the port exists, is proven, and is live:
 
-Every one of them references `exec-abstract` and NONE references the flat
-machine, which D-series work made THE semantics.
+    Once/CCC/Machine/Flat.agda:1061
+      exec-trace-is-flat : ... Straight prog -> exec-trace ... == exec-flat ...
 
-### The gap check, which is what the decision turned on
+On jump-free traces the structured `exec-trace` EQUALS `exec-flat`. The
+architecture was deliberate and three-staged: prove per-IR-case operational
+facts on the structured machine (`*WF`), lift them with `exec-trace-is-flat`,
+discharge `IRObsCorrectF`. `Once.CCC.Codegen.StraightTrace` is the step-2 piece
+supplying straightness for `ir-to-trace`. Comparing statements directly and
+concluding "different property, different machine" answered a question the test
+does not ask.
 
-The one thing that would have justified migrating them: trace-level lemmas
-feeding an account the flat path does not have. Their `alloc-correct-*` family
-(`alloc-correct-compose`, `curry-trace-alloc-correct`,
-`case-inl-alloc-correct`, …) was the candidate.
+### What `IRObsCorrectF` demands, and why the cluster fits
 
-**No gap. The flat path's allocation account strictly subsumes it and goes
-further:**
+    traces-agree   : forall k -> exists f. take k (flat-events f (ir-to-trace ir) ...)
+                                        == take k (projTrace (evalD ir (inject x)) k)
+    value-realized : exists f mOut ca. ResultPlace B mOut ... (eval ir x) ...
 
-  * slot stability across the WHOLE execution rather than per IR case —
-    `exec-flat-keeps-next-slot`, `flat-run-keeps-next-slot`,
-    `trace-keeps-next-slot`, `abstract-keeps-next-slot`;
-  * minimality — `ir-to-trace-alloc-min`, `fetch-alloc-min`,
-    `emitted-alloc-min`; budget — `emitted-slot-below-budget`;
-  * and, which the cluster never reached, per-instruction allocation at the
-    CONCRETE machine on three arches — `sim-alloc-heap`, `sim-alloc-stack`,
-    `sim-dealloc-stack`, in the apex-reachable arch correspondence.
+The abstract traces `ir-to-trace` emits must refine the denotation in
+observables at every depth AND land the right value in the right place.
+`SimpleWF.run-fst` bundles precisely `value-realized`'s ingredients — the step
+result (`s'-eq`), where the output lands (`rax-eq`), `not-halted'`,
+`frontier-stable`. The same work, one machine below.
 
-### Corroborating evidence
+### The mapping
 
-  * **Zero external importers.** The nine import only each other. In fact
-    NOTHING outside `Once/CCC/Machine/IR/` imports ANY of that directory's 15
-    modules — see the open item below.
-  * **No substantive commit since 2026-08-11.** Everything after is sweeps:
-    copyright headers, float parameterisation, import stripping, pragma-comment
-    hygiene. Two migrations (the CanonName def-side parameter, plan 0.52 M2's
-    `IRTy`) passed them by and broke them, and nobody noticed — because an
-    island produces no red at the apex.
-  * **63 holes and 3 postulates** across the cluster. Migrating them was
-    content work toward a theorem that already exists.
+    SimpleWF                           obs-correct-fst, obs-correct-snd
+    ComposeWF                          comp-step
+    CurryStackWF / CurryAllocWF        obs-correct-curry
+    ApplyWF                            obs-correct-apply
+    SumRecWF / SumInl- / SumInrAllocWF obs-correct-inl, -inr, -case
+    PairAllocWF                        obs-correct-pair
 
-### Why deleting is the honest answer rather than the lazy one
+Nine of sixteen. Restored, plus `LambekValidity` and `RecSchemePostulates`,
+which `SumRecWF` imports.
 
-This is D132's judgment, applied again: **a per-shape/per-case attack is not
-the theorem.** D132 deleted plan 0.36's Nat-shape attack on `cata-correct` for
-exactly this reason three days earlier. Keeping 5,427 lines of superseded
-proof, red, in the tree does not preserve value — it hides the gate.
+### What stays deleted
 
-**The value here is the GATE, not the nine modules.** `make check-all` is the
-only check that sees a module no apex reaches. While it was red for these,
-it reported nothing about anything else, so a NEW island would have hidden
-behind them. That is the whole argument.
+  * `RecSchemeProof` — not a proof. Its `CataIH` is followed by "The full proof
+    would: 1. Define cata-valid by well-founded recursion...", and it targets
+    `ValidAtWF`, not `IRObsCorrectF`.
+  * `Once/CCC/SigOp/Helper` — frame/heap/slot monotonicity of the transition,
+    against `structured-pure-sigop-*`, which are D061 TRUSTED BASE by design and
+    concern an opaque output value.
 
-### The count was wrong, and the reason is the point
+### Two cautions for whoever ports this
 
-This entry first said nine, taking plan 0.83's list as the extent of the rot.
-Running the gate proved otherwise: `check-all` came back red on
-`CurryAllocWF.agda:128`, one of the modules the plan had not listed. **Those
-modules were not "green" — they had never been typechecked by anything.**
-Nothing imports them, so no gate had ever built them, and plan 0.83's list was
-whatever its diagnosis happened to reach first.
+1. **Seven of the nine are postulate-free** (`SimpleWF`, `CurryStackWF`,
+   `CurryAllocWF`, `ApplyWF`, `SumInlAllocWF`, `SumInrAllocWF`, `PairAllocWF`).
+   `ComposeWF` has 3 and `SumRecWF` 2, and `SumRecWF` additionally imports
+   `RecSchemePostulates.rec-scheme-semantic` — an ASSUMPTION module. Plan 0.64:
+   *an island that ASSUMES rather than proves is a delete candidate, not a wire
+   candidate.* Discharging `obs-correct-inl/-inr/-case` on top of
+   `rec-scheme-semantic` would be postulate-shuffling. Check whether the
+   inl/inr/case content is independent of it; that assumption is documented as
+   serving `run-In`/`Out`.
+2. **They carry plan-0.52 M2 rot** (`Type` -> `IRTy`, `WellFormedF` ->
+   `WellFormedFI`) plus the D089 `o` parameter on `ClosureWellFormedDef`. Plan
+   0.52 was CLOSED 2026-07-16, complete and green; the migration never reached
+   these files because nothing built them.
 
-Checking each of the remaining seven individually gave a clean split:
+### The lesson that survives unchanged
 
-    RED    CurryAllocWF, PairAllocWF, SumInlAllocWF, SumInrAllocWF
-    GREEN  FunctorDispatch, MuSize, MuValidity
+**An island is not merely unreachable, it is UNCHECKED.** "It still typechecks"
+can never be assumed about one — and neither can "the apex does not need it",
+unless the postulate list has been read in FULL and the porting device has been
+looked for.
 
-The four red ones are the SAME species as the nine — per-case allocation
-lemmas (`closure-cont-alloc`, `pair-trace-after-setup-alloc-eq`,
-`sum-cont-alloc`) over the old trace/abstract machine, covered by the same gap
-analysis above. **Deleted too: 13 modules, 7,549 lines in total.**
-
-The three survivors are genuinely different: zero `exec-abstract` references,
-and `MuSize` is plan 0.27 Option B's reified measure — a live technique, not an
-old-machine artefact. They remain islands (nothing outside the directory
-imports them) and should be decided on their own merits, but they are not this
-entry's species.
-
-**The lesson is the gate's, not the cluster's.** An island is not merely
-unreachable — it is UNCHECKED, so "it still typechecks" cannot be assumed
-about one. The only way to know a module's status is to build it, which is
-exactly what `check-all` is for, and exactly what could not happen while it
-was red.
-
-**Relates**: D132 (per-shape witnesses are not the theorem); plan 0.83
-(closed by this entry); MERGE.md's no-islands rule.
+**Relates**: D132 (per-shape witnesses are not the theorem — still stands; that
+cluster was a different case); plan 0.64 (the audit and the rule); plan 0.52
+(the M2 migration these need); plan 0.78 (`cata-correct`, not in this set).

@@ -2350,7 +2350,7 @@ module TracePrimitives {FS : FrameSemantics} where
   -- with a single call instead of expanding the four-tuple inline.
   --
   -- This removes the per-instruction `SMP.!!` placeholders that
-  -- previously littered the per-case IR setup chains
+  -- previously littered ApplyWF / SumRecWF / ComposeWF setup chains
   -- whenever the producer had the underlying memory evidence but no
   -- helper to package it into InstrWF shape.
   ------------------------------------------------------------------------
@@ -2794,7 +2794,7 @@ module TracePrimitives {FS : FrameSemantics} where
   -- (a) is left as this sketch; if the reach analysis lands later
   -- (e.g. as part of plan 0.13.x or a separate audit), the lemma
   -- can be finished and used to dissolve g-tph-runtime + the
-  -- compose-frontier-stable analogue with no per-case WF
+  -- compose-frontier-stable analogue with no PairStackWF / ComposeWF
   -- refactor.
 
   ------------------------------------------------------------------------
@@ -3858,7 +3858,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   ... | nothing = refl
 
   -- Plan 0.14 follow-up: per-instruction alloc-preservation lemmas used
-  -- by heap-mode producers to
+  -- by heap-mode WF producers (SumInlAllocWF, SumInrAllocWF, ...) to
   -- discharge the IRResultBase.alloc-correct obligation. Each preserves
   -- the full AllocState (proj₂) verbatim.
 
