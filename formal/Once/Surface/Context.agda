@@ -219,3 +219,85 @@ infixr 5 _⊑∷_
 ⊑ᵘ-refl (Zero ∷ Ψ)   = z≤z ⊑∷ ⊑ᵘ-refl Ψ
 ⊑ᵘ-refl (One  ∷ Ψ)   = o≤o ⊑∷ ⊑ᵘ-refl Ψ
 ⊑ᵘ-refl (Many ∷ Ψ)   = m≤m ⊑∷ ⊑ᵘ-refl Ψ
+
+-- | Each summand uses no more than the sum: the two witnesses every binary
+--   elaborator clause needs to narrow the environment for its branches.
+≤q'-+ˡ : ∀ (q r : Quantity) → q ≤q' (q +q r)
+≤q'-+ˡ Zero Zero = z≤z
+≤q'-+ˡ Zero One  = z≤o
+≤q'-+ˡ Zero Many = z≤m
+≤q'-+ˡ One  Zero = o≤o
+≤q'-+ˡ One  One  = o≤m
+≤q'-+ˡ One  Many = o≤m
+≤q'-+ˡ Many Zero = m≤m
+≤q'-+ˡ Many One  = m≤m
+≤q'-+ˡ Many Many = m≤m
+
+≤q'-+ʳ : ∀ (q r : Quantity) → r ≤q' (q +q r)
+≤q'-+ʳ Zero Zero = z≤z
+≤q'-+ʳ Zero One  = o≤o
+≤q'-+ʳ Zero Many = m≤m
+≤q'-+ʳ One  Zero = z≤o
+≤q'-+ʳ One  One  = o≤m
+≤q'-+ʳ One  Many = m≤m
+≤q'-+ʳ Many Zero = z≤m
+≤q'-+ʳ Many One  = o≤m
+≤q'-+ʳ Many Many = m≤m
+
+⊑ᵘ-+ˡ : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₁ ⊑ᵘ (Ψ₁ +ᵘ Ψ₂)
+⊑ᵘ-+ˡ []        []        = ⊑[]
+⊑ᵘ-+ˡ (q ∷ Ψ₁) (r ∷ Ψ₂)   = ≤q'-+ˡ q r ⊑∷ ⊑ᵘ-+ˡ Ψ₁ Ψ₂
+
+⊑ᵘ-+ʳ : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₂ ⊑ᵘ (Ψ₁ +ᵘ Ψ₂)
+⊑ᵘ-+ʳ []        []        = ⊑[]
+⊑ᵘ-+ʳ (q ∷ Ψ₁) (r ∷ Ψ₂)   = ≤q'-+ʳ q r ⊑∷ ⊑ᵘ-+ʳ Ψ₁ Ψ₂
+
+------------------------------------------------------------------------
+-- The QTT PHASE DISTINCTION (OCP-0009 Rung 5)
+------------------------------------------------------------------------
+
+-- `_↾_` above IS the RUNTIME interpretation of a graded context, and
+-- `Once.Surface.Elaborate.restrictEnv` IS the `erase` projection between the
+-- two phases. This is Atkey's construction, and it is realised in
+-- `bootstrap/poc/OCP0009/NbEPQTT.agda` (2026-07-12) as:
+--
+--     ⟦ Γ ▷[ 𝟘 ] A ⟧run  = ⟦ Γ ⟧run              -- erased: no runtime slot
+--     ⟦ Γ ▷[ 𝟙 ] A ⟧run  = ⟦ Γ ⟧run * A
+--     erase (Γ ▷[ 𝟘 ] A) = erase Γ ⊙ fstT
+--     erase (Γ ▷[ 𝟙 ] A) = pair (erase Γ ⊙ fstT) sndT
+--
+-- structurally identical to `_↾_` / `restrictEnv`. The difference is only
+-- where the multiplicity lives: `Ctxq` bakes it into the context, while Once
+-- carries a DECLARED quantity in `Ctx` and a per-subterm `Usage` vector — so
+-- Once's runtime phase is indexed by the usage, which is what varies. That is
+-- the variable-based presentation `NbEPQTTJ.agda` was written to match.
+--
+-- WHY THIS MATTERS BEYOND TIDINESS. The spec's MEANING ignores the grade
+-- (`⟦ A ⇒[ _ ] B ⟧ᴰ = ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ`), so erasing and not-erasing are
+-- observationally identical and BOTH satisfy `correct`. QTT is load-bearing in
+-- the TYPING judgment (it decides which programs are accepted) but inert in the
+-- meaning. So "a `Zero`-graded argument is not represented at runtime" is a
+-- RESOURCE guarantee that nothing obliges the compiler to honour — a promise
+-- with no enforcement, which is exactly OCP-0005's "prose decisions are
+-- silently violable". Encoding it (rung 1) is what makes it real.
+
+open import Relation.Binary.PropositionalEquality using (cong; trans)
+
+-- | `Zero` scales any usage away — an erased argument charges nothing.
+*ᵘ-zeroˡ : ∀ {n} (Ψ : Usage n) → Zero *ᵘ Ψ ≡ zeroUsage
+*ᵘ-zeroˡ []      = refl
+*ᵘ-zeroˡ (q ∷ Ψ) = cong (Zero ∷_) (*ᵘ-zeroˡ Ψ)
+
+-- | `zeroUsage` is a right identity for usage addition.
++ᵘ-idʳ : ∀ {n} (Ψ : Usage n) → Ψ +ᵘ zeroUsage ≡ Ψ
++ᵘ-idʳ []           = refl
++ᵘ-idʳ (Zero ∷ Ψ)   = cong (Zero ∷_) (+ᵘ-idʳ Ψ)
++ᵘ-idʳ (One  ∷ Ψ)   = cong (One  ∷_) (+ᵘ-idʳ Ψ)
++ᵘ-idʳ (Many ∷ Ψ)   = cong (Many ∷_) (+ᵘ-idʳ Ψ)
+
+-- | ERASURE AT THE USAGE LEVEL — the Once analogue of `NbEPQTTJ.erase-arg`
+--   (`(ρf +ᵘ (𝟘 ·ᵘ ρa)) ≡ ρf`). An application at a `Zero`-graded arrow uses
+--   exactly what the FUNCTION uses: the argument's usage scales away, so the
+--   argument's variables are not in the runtime environment at all.
+erase-arg-usage : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₁ +ᵘ (Zero *ᵘ Ψ₂) ≡ Ψ₁
+erase-arg-usage Ψ₁ Ψ₂ = trans (cong (Ψ₁ +ᵘ_) (*ᵘ-zeroˡ Ψ₂)) (+ᵘ-idʳ Ψ₁)

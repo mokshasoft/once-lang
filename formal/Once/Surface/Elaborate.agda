@@ -175,6 +175,36 @@ restrictEnv {Γ = Γ , A ^ q} m (o≤o ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m
 restrictEnv {Γ = Γ , A ^ q} m (o≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩ m
 restrictEnv {Γ = Γ , A ^ q} m (m≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩ m
 
+-- | Project the ONE variable a `var` term uses out of its environment.
+--
+-- Under the `Γ ↾ Ψ` discipline this is where the old `proj i` chain collapses.
+-- `var i` has usage `singleUse i One`, so its environment holds exactly one
+-- variable, and:
+--   * `Fin.zero`  — the variable IS the head, so `snd`. (No need to know that
+--                   `Γ ↾ zeroUsage ≡ ∅`; `⟦_⟧ᶜ` exposes the `* A` regardless.)
+--   * `Fin.suc i` — the head's usage is `Zero`, so it is NOT in the
+--                   environment, and there is nothing to project past: the
+--                   recursive call has exactly the right type.
+--
+-- Compare `proj`, which walked `proj i ∘ fst ∘ fst ∘ …` because the whole
+-- context was carried. Here a variable reference costs ONE `snd` whatever its
+-- de Bruijn index.
+projUsed : ∀ {n} {Γ : Ctx n} (i : Fin n)
+         → IR ⌊ ⟦ Γ ↾ singleUse i One ⟧ᶜ ⌋ ⌊ lookup Γ i ⌋
+projUsed {Γ = Γ , A ^ q} Fin.zero    = snd
+projUsed {Γ = Γ , A ^ q} (Fin.suc i) = projUsed {Γ = Γ} i
+
+-- | The two narrowings every binary clause needs: feed the left branch the
+--   variables `Ψ₁` uses and the right branch those `Ψ₂` uses, out of an
+--   environment holding `Ψ₁ +ᵘ Ψ₂`.
+envˡ : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
+     → IR ⌊ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ₁ ⟧ᶜ ⌋
+envˡ m Ψ₁ Ψ₂ = restrictEnv m (⊑ᵘ-+ˡ Ψ₁ Ψ₂)
+
+envʳ : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ₁ Ψ₂ : Usage n)
+     → IR ⌊ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ₂ ⟧ᶜ ⌋
+envʳ m Ψ₁ Ψ₂ = restrictEnv m (⊑ᵘ-+ʳ Ψ₁ Ψ₂)
+
 -- | Helper: swap product components
 -- Plan 0.14 follow-up: parameterized on AllocMode for the pair node.
 swap' : ∀ {X Y} → AllocMode → IR (X * Y) (Y * X)
@@ -265,16 +295,25 @@ cataM {F} {A} wfF m =
                      (apply ∘ ⟨ fst , snd ⟩ m))) m
 
 
-elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ A ⌋
+-- D142 / plan 0.86 step B: the environment is `Γ ↾ Ψ` — EXACTLY the variables
+-- this term uses — not the whole context. A dead variable cannot be in the
+-- environment product because it was never put there.
+elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → AllocMode → Expr Γ Ψ A → IR ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋ ⌊ A ⌋
 
 -- Variable: project from environment
-elaborate m (var i) = proj i
+elaborate m (var i) = projUsed i
 
 -- Lambda: λ^q x.e becomes curry of (elaborate e)
 -- Context (Γ, A) has type ⟦Γ⟧ᶜ * A = ⟦Γ,A⟧ᶜ
 -- IR curry is quantity-polymorphic, so it directly produces (A ⇒[ q ] B)
 -- The quantity q is enforced during type checking, not during elaboration
-elaborate m (lam q _ e) = curry (elaborate m e) m
+-- The bound variable's usage in the BODY (`q'`) decides whether it is in the
+-- body's environment at all. If the body never uses it the environment is just
+-- `Γ ↾ Ψ`, so the `curry` has to discard the argument slot explicitly — the
+-- binding is not silently carried.
+elaborate m (lam {q' = Zero} q _ e) = curry (elaborate m e ∘ fst) m
+elaborate m (lam {q' = One}  q _ e) = curry (elaborate m e) m
+elaborate m (lam {q' = Many} q _ e) = curry (elaborate m e) m
 
 -- D127: the categorical combinators — CLOSED morphisms composed with the
 -- pairing of the arms.
@@ -290,14 +329,18 @@ elaborate m (lam q _ e) = curry (elaborate m e) m
 --
 -- The four morphisms are closed and arm-free, which is also what lets O1's
 -- closed-arm equation be about them alone.
-elaborate m (comp' f g)   = compIR m   ∘ ⟨ elaborate m f , elaborate m g ⟩ m
-elaborate m (copair' f g) = copairIR m ∘ ⟨ elaborate m f , elaborate m g ⟩ m
-elaborate m (fork' f g)   = forkIR m   ∘ ⟨ elaborate m f , elaborate m g ⟩ m
+elaborate m (comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g)   =
+  compIR m   ∘ ⟨ elaborate m f ∘ envˡ m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ m Ψ₁ Ψ₂ ⟩ m
+elaborate m (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
+  copairIR m ∘ ⟨ elaborate m f ∘ envˡ m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ m Ψ₁ Ψ₂ ⟩ m
+elaborate m (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g)   =
+  forkIR m   ∘ ⟨ elaborate m f ∘ envˡ m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ m Ψ₁ Ψ₂ ⟩ m
 elaborate m (curry' f)    = curryIR m  ∘ elaborate m f
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
 -- IR's apply is quantity-polymorphic, no coercion needed
-elaborate m (app f x) = apply ∘ ⟨ elaborate m f , elaborate m x ⟩ m
+elaborate m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
+  apply ∘ ⟨ elaborate m f ∘ envˡ m Ψ₁ Ψ₂ , elaborate m x ∘ envʳ m Ψ₁ Ψ₂ ⟩ m
 
 -- Effect application (D018-style lifting): `f x` where `f : Eff A B`
 -- becomes the suspended action `λ _ → f x : Eff Unit B`. Built from
@@ -308,11 +351,13 @@ elaborate m (app f x) = apply ∘ ⟨ elaborate m f , elaborate m x ⟩ m
 --   curry (…) m          : IR Γ (Unit ⇛ B)          -- Plan 0.52 M2: ungraded
 -- Built from the existing IR constructors alone. (`arr` retired: pure and
 -- eff arrows are the same ungraded `⇛` object, so no tag needed.)
-elaborate m (effApp f x) =
-  curry ((apply ∘ ⟨ elaborate m f , elaborate m x ⟩ m) ∘ fst) m
+elaborate m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
+  curry ((apply ∘ ⟨ elaborate m f ∘ envˡ m Ψ₁ Ψ₂
+                  , elaborate m x ∘ envʳ m Ψ₁ Ψ₂ ⟩ m) ∘ fst) m
 
 -- Pair: (a, b) becomes ⟨a, b⟩
-elaborate m (pair a b) = ⟨ elaborate m a , elaborate m b ⟩ m
+elaborate m (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  ⟨ elaborate m a ∘ envˡ m Ψ₁ Ψ₂ , elaborate m b ∘ envʳ m Ψ₁ Ψ₂ ⟩ m
 elaborate m (arr' f)    = elaborate m f   -- Plan 0.52 M2: arr' is identity (IR.arr retired)
 
 -- Projections: compose with projection
