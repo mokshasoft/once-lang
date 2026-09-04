@@ -28,7 +28,7 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; app; lam; var; vz; vs; renTm; nsuc; pair; subTm )
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; β; single; wk-single )
-open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
+open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ; ⟶*-castₗ )
 open import DirectedHoTT.Lib.Wk using ( sub-w³-single; sub-w²-single )
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans )
 open import DirectedHoTT.Examples.Knot.RenTm
@@ -41,7 +41,7 @@ open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-varK; Tm-nsucK )
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsK; nrsMeths )
 open import DirectedHoTT.Lib.ArithComm using ( symN )
-open import DirectedHoTT.Spec.Syntax using ( fst; snd; jsub; ⌜IMu⌝ )
+open import DirectedHoTT.Spec.Syntax using ( fst; snd; jsub; ⌜IMu⌝; ilookupD )
 open import DirectedHoTT.Examples.Knot.Sorts using ( IPair )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; cVar-vz; cVar-vs )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz; tagVar-vs )
@@ -329,22 +329,30 @@ singleK-vs n u m x =
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- ⬜ `nrs` — THE HEAD REDUCTION IS THE SAME; THE TAIL IS NOT DONE.
+-- ⬜ `nrs` — PARKED, AND THE REASON IS SPECIFIC, NOT "MORE OF THE SAME".
 --
--- `nrsMotK` has NO passenger (`IMu … (pair sTm (nsuc (snd ⟨i⟩)))`), so
--- the spine is THREE applications and the βs peel 2·1·0 `appˡ`s.
+-- `nrsMotK` has NO passenger, so the spine is THREE applications and the
+-- βs peel 2·1·0 `appˡ`s.  Everything down to and including the three
+-- `jsub-refl` transports follows the `extR`/`single` template.
 --
--- ★ ACROSS THE THREE SUBSTITUTIONS THE ONLY THING THAT VARIES IS THE
---   PASSENGER COUNT — `extR` 2, `single` 1, `nrs` 0 — and the spine
---   depth, the β count and the descent depth (`sub-w³-single`,
---   `sub-w²-single`, `wk-single`) all follow from it.  That is the shape
---   step 3 will meet 53 times, and it is now written down rather than
---   rediscovered per row.
+-- ⚠⚠ WHAT RESISTS IS THE **ORDER** OF THE LAST STEP.  The payload
+--   arrives as `subTm σ₁ (subTm σ₂ (subTm σ₃ (var (vs vz))))` and
+--   collapses to the literal pair only PROPOSITIONALLY (`wk-single`),
+--   so `fst` has no pair to reduce against until the equality has been
+--   applied — which means `⟶*-castₗ` (move the SOURCE), not `⟶*-castᵣ`
+--   (move the target).  ★ In `extR` and `single` the same collapse
+--   happened to be definitional, so the question never arose.
 --
--- ⚠ WHAT IS LEFT HERE is the same projection/transport tail the other
---   two needed, at the third depth.  Parked deliberately: the two
---   COMPLETE specs above establish the pattern at two different
---   passenger counts, which is what makes it a pattern rather than a
---   coincidence, and step 3 is the higher-value customer for the next
---   hour of it.
+--   Three attempts at the cast did not land it: `cong fst (wk-single
+--   {v = ihs} pay)` has visibly the right type and Agda still reports the
+--   source unequal, which says the mismatch is EARLIER in the chain than
+--   the last step — one of the `inNsucVar` endpoints, not the projection.
+--
+-- ⇒ ★ IT IS A DIAGNOSIS PROBLEM, NOT A MISSING LEMMA.  Every piece
+--   exists; what is needed is to print the chain's intermediate
+--   endpoints, which is a `--interaction`/hole exercise rather than more
+--   reduction machinery.  Parked deliberately at that boundary.
+--
+-- ⚠ AND `nrs` IS THE ONLY ONE LEFT: `vsRenK`, `extR` (both rows) and
+--   `single` (both rows) are COMPLETE above.
 ------------------------------------------------------------------------
