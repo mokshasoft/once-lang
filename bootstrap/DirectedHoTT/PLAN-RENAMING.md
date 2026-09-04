@@ -125,7 +125,7 @@ readable line, and that line is pointwise testable.
 | 1b | `renTmK ρ` over the 53 rows (`Knot/RenTm`) | ✅ **done** |
 | 1c | `extVs` (#5), `pwBodyK`'s 51 defaults (#4), `wkTmK = renTmK vsRen` | ✅ **done** |
 | 2 | pointwise specs — `vsRenK` ✅, `extR` ✅✅, `single` ✅✅; `nrs` ⬜ | 🟡 mostly |
-| 3 | `sub-agree` — the ONE induction, discharges the family | ⬜ |
+| 3 | `sub-agree` — statement SOLVED (`Represents`); blocked on `Lib/ISubRed` | 🟡 see §16 |
 | 4 | retire `wkK` for open terms; keep it only where CLOSED, stated | ⬜ |
 | 5 | then `methsTyFrom` (unblocked, mechanical) | ⬜ |
 
@@ -602,4 +602,71 @@ alongside `sub-w³-single` for exactly this reason.
 
 ⬜ `nrs` parked: same tail, third depth. The two complete specs above are
 what step 3 needed from step 2.
+
+---
+
+## §16 STEP 3 — THE STATEMENT IS SOLVED; THE OBSTACLE IS ONE LEVEL DOWN
+
+### §16.1 ✅ THE STATEMENT, AND STEP 2 IS ITS HYPOTHESIS
+
+The obvious form cannot be written:
+
+    sub-agree : subTmAtK … ⌈σ⌉ ⌈t⌉ ⟶* ⌈ subTm σ t ⌉
+
+There is no `⌈σ⌉` — a `Sub Γ Δ` is an AGDA FUNCTION (`Var Γ → RTm Δ`),
+and `Knot/Map` encodes SYNTAX, not functions. So the encoded substitution
+is **related**, not computed:
+
+    Represents σ s  =  ∀ x → app s ⌈x⌉ ⟶* ⌈ σ x ⌉
+
+★★★ **AND THAT IS EXACTLY STEP 2'S POINTWISE LAW.** `Knot/SubAgree`
+proves
+
+    single-Represents : Represents (single u) (singleK n ⌈u⌉)
+    single-Represents vz     = singleK-vz …
+    single-Represents (vs x) = singleK-vs …
+
+— the two lemmas ARE the two clauses of `single`, read back. Step 2's
+laws are not preparation for step 3; they are its hypothesis.
+
+★★ AND IT IS WHY `wkK` COULD NEVER JOIN: `Represents` is a statement
+about APPLYING `s`, and `wkK` has no `s` to apply. The whole arc, in one
+type.
+
+### §16.2 ⚠⚠ THE OBSTACLE — `Lib/ISzRed` EXISTS AND `Lib/ISubRed` DOES NOT
+
+`Knot/SzAgree` is 436 lines and GENERATED (`gen_szagree`, ~40 lines of
+emitter). It works because **`Lib/ISzRed` ships the reduction lemmas for
+the fold's methods** — `szsStep-red`, `szsTail-red`, `szsSum-red`,
+`szsSumStep-red`, 139 lines.
+
+`Lib/ISub` ships **none**. Audited: every `⟶*` in it is a HYPOTHESIS it
+consumes (`decStable`, `smap` stability), never a lemma it proves. So
+there is nothing to reduce `isubMethod` — the COMPUTED method at 50 of
+the 53 rows — through.
+
+⇒ **step 3 is blocked on a `Lib/ISubRed` of `Lib/ISzRed`'s scale.** That
+is the third layer of the same finding:
+
+    a law you cannot STATE           you will not prove   (FUTURE.md D′)
+    a law you cannot REDUCE THROUGH  you will not prove   (§15.2)
+    a LIBRARY that computes methods but ships no reduction lemmas
+      makes every agreement over it unprovable            (§16.2)
+
+### §16.3 ★★★ AND THE PARAMETERISED-MODULE TRAP, AGAIN — ONE LEVEL DOWN
+
+`SubDesc`, `isubMeths` and `isubMethod` all live INSIDE `Lib/ISub.Sub`,
+a parameterised module — exactly as `ifMeths-sel` lives inside
+`Lib/IFold.Fold`. So a selection lemma for `isubMeths` would be
+single-customer **by construction**, for the same reason §15.2 found.
+
+★ The fix that worked for `methsAt-sel` was to state it over a
+NON-parameterised carrier (`Lib/IMeths`'s `CDesc`/`methsAt`). The same
+fix applies here, and it is a `Lib` RESTRUCTURING — the kind of decision
+this plan has been putting to the user, not one to take unilaterally.
+
+⇒ **the parameterised-module pattern is what makes reduction lemmas
+single-customer, and it has now cost the development twice.** That is the
+finding to act on before writing `Lib/ISubRed`, because writing it inside
+`Sub` would reproduce the trap a third time.
 
