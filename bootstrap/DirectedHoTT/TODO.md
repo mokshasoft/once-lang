@@ -269,44 +269,55 @@ nose. ⇒ the remaining work per row is the PAYLOAD, not the head.
      (~40 lines of emitter → 436 lines of module).
      ⚠ It must emit each row's `SubCon` — see `RenRed`'s header — AND the
        `decSubCon` control beside it; see below.
-     ★ SCOPE, COUNTED: **25 of the 30 `cTm-` rows are same-sort only** and
-       are emittable now.  Only FIVE have cross-sort recursive fields:
-         cTm-var    (sVar)   — but row 11 is a GIVEN row, handled by
-                               `Represents` itself, not by this emitter
-         cTm-elim   (sDesc)
-         cTm-ielim  (sIDesc)
-         cTm-cMu    (sDesc)
-         cTm-cIMu   (sIDesc, sTy, sTm)
-       ⇒ those four need agreement AT OTHER SORTS, i.e. a mutual
-         statement.  `Knot/SzAgree` never had to: a cross-sort child is
-         stepped PAST there (`aih-ρ 0 ok`) because the measure does not
-         count it — but `renTm` genuinely renames it.  Emit the 25 as
-         per-row LEMMAS (not one `agree` function, which would have to be
-         exhaustive), then tie the mutual knot separately.
+     ★ SCOPE, COUNTED: **25 of the 30 `cTm-` rows are same-sort only** —
+       ✅ DONE, `Knot/RenAgree`, generated.
 
-## ⚠⚠⚠ AND THE GENERATOR NEEDS A CONTROL THE ROWS CANNOT PROVIDE — D′
+## ⚠ CORRECTION — THE FOUR CROSS-SORT ROWS ARE **NOT** A MUTUAL INDUCTION
 
-`ren-head-red` takes the row's `SubCon` as an argument, and at the
-RENAMING instantiation it is **NOT PINNED BY THE ROW**:
+An earlier note here said `cTm-elim`/`ielim`/`cMu`/`cIMu` "need agreement
+AT OTHER SORTS, i.e. a mutual statement".  ⚠ THAT WAS WRONG, and the spec
+says so directly (`Spec/Syntax:87`): *"descriptions must stay CLOSED (they
+appear in types, and `renTy ρ (IMu D I i) = IMu D I (renTm ρ i)` must not
+have to rename `D`)"*.  Read off the formers:
 
-    renFordMap fi b p = p          -- ignores the tag
-    fordMapK   fi b p = jsub (⌜Id⌝ ⌜Nat⌝ (sortMap (var vz)) (w b))
-                             (symN fi p) (idrefl ⌜Nat⌝ b)
+    ⌜Mu⌝  : Desc → RTm Γ                    renTm ρ (⌜Mu⌝ D)      = ⌜Mu⌝ D
+    ⌜IMu⌝ : IDesc → RTy ε → RTm Γ → RTm Γ   renTm ρ (⌜IMu⌝ D I i) = ⌜IMu⌝ D I (renTm ρ i)
+    elim  : Desc → RTm Γ → RTm Γ → RTm Γ    renTm ρ (elim D ms t) = elim D … …
 
-★★★ MEASURED: replacing `cTm-nzero`'s ford witness with `n-zero` — the
-WRONG sort — left the row GREEN.  ⇒ a generator emitting a wrong tag
-produces a clean `ren-agree` and breaks only at `sub-agree`, ONE
-INSTANTIATION LATER.  `FUTURE.md` D′, and exactly how `wkK` survived.
+`Desc`, `IDesc` and that `RTy ε` carry NO context — the meta-level renaming
+does not touch them.  ⇒ what the four rows owe is not agreement at another
+sort but **IDENTITY at a closed sort**:
 
-⇒ FIX, already in `Knot/RenAgreeRows`: pin each emitted `SubCon` against
-the DECIDER, which is what actually builds the mask —
+    ren-Desc-id  : renDescAtK  … (enDesc  D) ⟶* enDesc  D
+    ren-IDesc-id : renIDescAtK … (enIDesc D) ⟶* enIDesc D
+    ren-Ty-id    : renTyAtK    … (enTy    I) ⟶* enTy    I     (I : RTy ε)
 
-    subcon-nzero : decSubCon vz (ilookupD KnotD 30)
-                   ≡ just (sc-κ (sk-fst (n-suc n-zero) done) sc-ι)
-    subcon-nzero = refl
+⚠⚠ AND THEY ARE **NOT** THREE SELF-CONTAINED INDUCTIONS — a first draft of
+this note said so, and the constructors refute it:
 
-CONTROLLED BOTH WAYS: correct tag accepted, `n-zero` rejected with
-`nzero != nsuc sTy`.  The generator must emit one of these per row.
+    dκ    : RTy ε → DCon → DCon      Desc  reaches RTy ε
+    El    : RTm Γ → RTy Γ            RTy   reaches RTm
+    ⌜Mu⌝  : Desc  → RTm Γ            RTm   reaches Desc
+
+⇒ ONE MUTUAL induction over the CLOSED FRAGMENT — `Desc`, `DCon`,
+`IDesc`, `ICon`, `RTy ε`, `RTm ε` — not three separate ones.
+
+★★★ BUT THE PAYOFF SURVIVES, AND IT IS THE WHOLE POINT: the statement is
+**identity**, not agreement, and its ONE hard case is VACUOUS.  `Var ε` is
+empty, so the `var` row — the only place a renaming can do anything — is
+absurd.  Every other row is "the former is rebuilt unchanged".
+⇒ so this is a mutual induction with no interesting case, which is a very
+  different proposition from "agreement at seven sorts".
+
+⚠ SIZE, COUNTED: Desc 2 + DCon 3 + IDesc 2 + ICon 3 + Ty 11 + Tm 30 = 51
+rows.  Generatable by the same emitter with the conclusion changed from
+"renamed" to "unchanged" — but note it is MORE rows than `ren-agree`'s 25,
+so budget it as its own generated module, not an appendix to one.
+
+⇒ NEXT: state the mutual identity, check the vacuous `var` case first
+  (it is the load-bearing one — if `Var ε` does not eliminate cleanly the
+  whole shape is wrong), then generate.
+
   4. `extNK-sub`, then `sub-agree` by the same generator at the other
      instantiation.
 
