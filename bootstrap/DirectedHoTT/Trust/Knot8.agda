@@ -25,6 +25,7 @@
 module DirectedHoTT.Trust.Knot8 where
 
 import DirectedHoTT.Examples.Knot.SubMot
+import DirectedHoTT.Examples.Knot.SubNat
 import DirectedHoTT.Examples.Knot.Sz
 import DirectedHoTT.Examples.Knot.SzAgree
 import DirectedHoTT.Examples.Knot.SzProbe
