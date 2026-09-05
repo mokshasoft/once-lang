@@ -272,55 +272,31 @@ nose. ⇒ the remaining work per row is the PAYLOAD, not the head.
      ★ SCOPE, COUNTED: **25 of the 30 `cTm-` rows are same-sort only** —
        ✅ DONE, `Knot/RenAgree`, generated.
 
-## ⚠ CORRECTION — THE FOUR CROSS-SORT ROWS ARE **NOT** A MUTUAL INDUCTION
+## ✅ THE CLOSED-SORT IDENTITY — DONE (`Knot/RenClosed`), 7 rows not 51
 
-An earlier note here said `cTm-elim`/`ielim`/`cMu`/`cIMu` "need agreement
-AT OTHER SORTS, i.e. a mutual statement".  ⚠ THAT WAS WRONG, and the spec
-says so directly (`Spec/Syntax:87`): *"descriptions must stay CLOSED (they
-appear in types, and `renTy ρ (IMu D I i) = IMu D I (renTm ρ i)` must not
-have to rename `D`)"*.  Read off the formers:
+    ren-Desc-id / ren-DCon-id / ren-IDesc-id
+      : renTmAtK s… (enX x) ⟶* enX x
 
-    ⌜Mu⌝  : Desc → RTm Γ                    renTm ρ (⌜Mu⌝ D)      = ⌜Mu⌝ D
-    ⌜IMu⌝ : IDesc → RTy ε → RTm Γ → RTm Γ   renTm ρ (⌜IMu⌝ D I i) = ⌜IMu⌝ D I (renTm ρ i)
-    elim  : Desc → RTm Γ → RTm Γ → RTm Γ    renTm ρ (elim D ms t) = elim D … …
+⚠⚠ THE ESTIMATE HERE WAS WRONG THREE TIMES, each correction narrowing it:
+  1. "agreement at another sort" → no, IDENTITY.  `Spec/Syntax:87`:
+     *"descriptions must stay CLOSED … must not have to rename `D`"*.
+  2. "three self-contained inductions" → no: `dκ : RTy ε → DCon`,
+     `El : RTm Γ → RTy Γ`, `⌜Mu⌝ : Desc → RTm Γ` close a cycle, so it
+     looked MUTUAL over six sorts — 51 rows.
+  3. ★★★ AND THAT CYCLE IS NEVER WALKED.  The fields that would walk it
+     are PINNED — a CLOSED index (`lit(_)`), which `decSubIx` classifies
+     `s-pinned` and `sPick` hands back UNCHANGED:
+         cDCon-kap    sTy@lit(0)
+         cIDesc-cons  sICon@lit(1)
+         cTm-cIMu     sTy@lit(0)
+     ⇒ Desc 2 + DCon 3 + IDesc 2 = SEVEN rows, and no `RTy`/`RTm`/`ICon`
+       work at all.
 
-`Desc`, `IDesc` and that `RTy ε` carry NO context — the meta-level renaming
-does not touch them.  ⇒ what the four rows owe is not agreement at another
-sort but **IDENTITY at a closed sort**:
+★ A PINNED FIELD REDUCES LIKE A FORD: one projection, no descent, no IH.
+★ And the `var` case never appears — these sorts have no variables.
 
-    ren-Desc-id  : renDescAtK  … (enDesc  D) ⟶* enDesc  D
-    ren-IDesc-id : renIDescAtK … (enIDesc D) ⟶* enIDesc D
-    ren-Ty-id    : renTyAtK    … (enTy    I) ⟶* enTy    I     (I : RTy ε)
-
-⚠⚠ AND THEY ARE **NOT** THREE SELF-CONTAINED INDUCTIONS — a first draft of
-this note said so, and the constructors refute it:
-
-    dκ    : RTy ε → DCon → DCon      Desc  reaches RTy ε
-    El    : RTm Γ → RTy Γ            RTy   reaches RTm
-    ⌜Mu⌝  : Desc  → RTm Γ            RTm   reaches Desc
-
-⇒ ONE MUTUAL induction over the CLOSED FRAGMENT — `Desc`, `DCon`,
-`IDesc`, `ICon`, `RTy ε`, `RTm ε` — not three separate ones.
-
-★★★ BUT THE PAYOFF SURVIVES, AND IT IS THE WHOLE POINT: the statement is
-**identity**, not agreement, and its ONE hard case is VACUOUS.  `Var ε` is
-empty, so the `var` row — the only place a renaming can do anything — is
-absurd.  Every other row is "the former is rebuilt unchanged".
-⇒ so this is a mutual induction with no interesting case, which is a very
-  different proposition from "agreement at seven sorts".
-
-⚠ SIZE, COUNTED: Desc 2 + DCon 3 + IDesc 2 + ICon 3 + Ty 11 + Tm 30 = 51
-rows.  Generatable by the same emitter with the conclusion changed from
-"renamed" to "unchanged" — but note it is MORE rows than `ren-agree`'s 25,
-so budget it as its own generated module, not an appendix to one.
-
-⇒ NEXT: state the mutual identity, check the vacuous `var` case first
-  (it is the load-bearing one — if `Var ε` does not eliminate cleanly the
-  whole shape is wrong), then generate.
-
-  4. `extNK-sub`, then `sub-agree` by the same generator at the other
-     instantiation.
-
-⚠ `Knot/SzAgree` is the shape to copy, NOT the difficulty to expect: `sz`
-counts and never crosses a binder, so its IH needs no extension. The
-`extS-Represents` step has no analogue there.
+⇒ NEXT: the four cross-sort `ren-agree` rows (`cTm-elim`, `cTm-ielim`,
+  `cTm-cMu`, `cTm-cIMu`) now have everything they need — `RenClosed` for
+  the `sDesc`/`sIDesc` slots, `RenAgree`'s shape for the `sTm` ones, and a
+  PINNED projection for `cTm-cIMu`'s `sTy`.  Then `cTm-var` (row 11, a
+  GIVEN row, discharged by `Represents` itself) closes `ren-agree`.
