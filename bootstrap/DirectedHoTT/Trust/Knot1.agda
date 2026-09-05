@@ -39,3 +39,4 @@ import DirectedHoTT.Examples.Knot.ILookupD
 import DirectedHoTT.Examples.Knot.IPayTy
 import DirectedHoTT.Examples.Knot.IPayTyKap
 import DirectedHoTT.Examples.Knot.IPayTyMot
+import DirectedHoTT.Examples.Knot.IPayTyRho
