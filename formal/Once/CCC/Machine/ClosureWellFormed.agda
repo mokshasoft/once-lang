@@ -410,25 +410,26 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- shape that consumers (compose, pair, RecTrace cata) and
     -- `rec-wf`'s preconditions still expect:
     --
-    --   * `place-loc rp` — a `ValueLocation FS`.
-    --   * `place-valid rp` — `ValidAtWF` at `place-loc rp`.
-    --   * `place-before rp` — `BeforeFrontier alloc (place-loc rp)`.
-    --   * `place-rax rp` — `readReg s Output ≡ place-loc rp`.
-    --   * `place-cont-valid rp` / `place-cont-before rp` —
-    --     same but for the continuation-side alloc state.
+    --   * `place-sv rp` — the `StoredValue` `Output` holds: a POINTER for a
+    --     located result, the VALUE itself for a register-resident one.
+    --   * `place-rax rp` — `readReg s Output ≡ place-sv rp`.
+    --
+    -- These two are the whole surviving interface. The location-projecting
+    -- accessors are gone (see below): a `Place` is not always a location, and
+    -- an accessor that pretends otherwise is a trap, not a convenience.
     --
     -- For `at-loc`, all six are constructor projections (no trust).
-    -- For `unit-result`, each is postulated, encoding the
+    -- For `unit-result`, each is a PROOF GAP, encoding the
     -- structural fact that "Unit values don't observably reside
     -- anywhere" — there's nothing to extract.
     --
-    -- Each postulate is sound for Unit because:
+    -- Each gap is sound for Unit because:
     --   * Unit values carry no observable content.
     --   * `valid-unit-wf` is loc-agnostic (works at any loc).
     --   * BeforeFrontier on a Unit's mythical loc is vacuous.
     --   * Output's value at a Unit boundary is irrelevant.
     --
-    -- The postulates are TRANSITIONAL. They go away when either:
+    -- The gaps are TRANSITIONAL. They go away when either:
     --   (a) `rec-wf`'s preconditions become type-aware — for
     --       Unit-typed IRs, drop `BeforeFrontier alloc input-loc`
     --       and `readReg s Input1 ≡ input-loc` (both vacuous).
@@ -438,22 +439,27 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     --
     -- Either route requires a deeper proof restructure than the
     -- spec migration covered. Tracked as Plan 0.2.4.5 D1 task #28.
-    place-loc : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → ValueLocation FS
-    place-loc (at-loc loc _ _ _ _ _) = loc
-    place-loc (at-reg loc _ _ _ _) = loc
-    place-loc {Unit} unit-result = unit-result-loc-stub
-      where postulate unit-result-loc-stub : ValueLocation FS
-
     -- (`place-valid` / `place-cont-valid` DELETED — Plan 0.54 rung A. They were
     -- dead (every remaining reference is a comment) and `at-reg` no longer
-    -- carries a memory `ValidAtWF`. Deleting them removes 2 postulate stubs.)
-
-    place-before : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
-                   BeforeFrontier a₁ (place-loc rp)
-    place-before (at-loc _ _ before _ _ _) = before
-    place-before (at-reg _ _ before _ _) = before
-    place-before {Unit} {_} {a₁} unit-result = before-stub
-      where postulate before-stub : BeforeFrontier a₁ _
+    -- carries a memory `ValidAtWF`. Deleting them removes 2 proof-gap stubs.)
+    --
+    -- (`place-loc` / `place-before` / `place-cont-before` DELETED — stage F,
+    -- same test, same answer: every remaining reference was a COMMENT. Three
+    -- more proof-gap stubs go with them.
+    --
+    -- They were also actively DANGEROUS, which is why they went rather than
+    -- being kept for symmetry. `place-loc` was TOTAL but only MEANINGFUL for
+    -- `at-loc`: for `at-reg` it returned the producer's INPUT cell, reused as
+    -- a placeholder (`IRObsCorrectFlat`: `at-reg input-loc fit …`), which does
+    -- not hold the value. Projecting a place to a location therefore invited
+    -- exactly the false `rax-eq` / `result-valid-wf` that D148 records — and
+    -- nearly produced two fresh ones in `ApplyWF` before the residence was
+    -- propagated instead.
+    --
+    -- What survives is what is SAFE for both residences: `place-sv` and
+    -- `place-rax`, which say what `Output` holds without claiming a location.
+    -- That is the pair `at-reg`'s own comment already named as its consumer
+    -- interface, and it is what `ComposeWF` uses.)
 
     -- The actual StoredValue Output holds for this result: a pointer for a
     -- located result (`at-loc`), the register sentinel for a register-resident
@@ -471,13 +477,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     place-rax (at-reg _ _ _ rax _) = rax
     place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
       where postulate rax-stub : readReg (regs s) Output ≡ place-sv {Unit} unit-result
-
-    place-cont-before : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
-                       BeforeFrontier a₂ (place-loc rp)
-    place-cont-before (at-loc _ _ _ _ _ cbefore) = cbefore
-    place-cont-before (at-reg _ _ _ _ cbefore) = cbefore
-    place-cont-before {Unit} {_} {_} {a₂} unit-result = before-cs
-      where postulate before-cs : BeforeFrontier a₂ _
 
     --------------------------------------------------------------------
     -- Plan 0.14 Phase B.0: factored IRResultAWF.
@@ -536,7 +535,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- trace MUST equal what IRToTrace emits at this alloc's
         -- frontier. Spec/runtime divergence becomes a type error.
         -- Producers discharge with `refl` when shapes match definitionally;
-        -- those needing alignment work surface as visible postulates.
+        -- those needing alignment work surface as visible proof gaps.
         trace-is-ir-to-trace :
           trace ≡ ir-to-trace-at-frontier (next-slot alloc) ir
         trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
@@ -957,7 +956,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- in a composition, `f`'s unit output is likewise unconstrained). The
     -- machine never reads it — `readTyped Unit` and `readReg-typed Unit` both
     -- materialise `tt` regardless. Carrying a location here is what forced
-    -- consumers to postulate one.
+    -- consumers to assume one.
     in-unit : A ≡ Unit → InputPlace m alloc v s
 
   -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
@@ -1845,7 +1844,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- requires defining μValid-mem-preserved-in-regions / νValid-mem-preserved-in-regions
   -- which are sister lemmas in MuValidity. Tracked separately.
   -- Option 3: retyped to the layer's ValidAtWF (was μValid). Still a
-  -- postulate — the regional reasoning for μ/ν needs the layer's
+  -- proof gap — the regional reasoning for μ/ν needs the layer's
   -- LocsInRegions, which the μ-case doesn't currently carry (LocsInRegions
   -- of a μ-value is stubbed to ⊤). Pre-existing gap, not introduced here.
   postulate
@@ -1866,7 +1865,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- require sister lemmas in MuValidity).
   --
   -- The original `validityWF-mem-preserved-in-regions` (below, still
-  -- postulated as SMP.!!) is the unsafe version without this hypothesis.
+  -- left as SMP.!!) is the unsafe version without this hypothesis.
   -- Callers can migrate to the strong version as needed; until then the
   -- unsafe version remains for backward compatibility.
   validityWF-mem-preserved-in-regions-strong :
@@ -1966,7 +1965,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   validityWF-mem-preserved-in-regions-strong alloc _ loc ib fs s₁ s₂
     loc-before _ _ _ _ _ _ (valid-buffer-wf bf) _ = valid-buffer-wf bf
 
-  -- UNSAFE version (still postulated): no LocsInRegions hypothesis.
+  -- UNSAFE version (still a proof gap): no LocsInRegions hypothesis.
   -- Existing callers (PairStackWF's 5 sites) use this. Migrate to the strong
   -- version above (taking a LocsInRegions witness) to discharge this.
   validityWF-mem-preserved-in-regions :

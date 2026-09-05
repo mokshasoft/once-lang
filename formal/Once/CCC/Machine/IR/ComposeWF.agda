@@ -340,7 +340,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- valid at. The register equation IS the residence witness.
       mk-g-input (at-reg _ fit _ _ _) eq = in-at-reg fit eq
       -- A Unit intermediate has no residence, so there is nothing to locate
-      -- and nothing to postulate. This retires the `unit-inter-loc` /
+      -- and nothing to assume. This retires the `unit-inter-loc` /
       -- `unit-inter-before` / `unit-inter-rax` trio the old `FFacts` needed.
       mk-g-input unit-result eq = in-unit refl
 

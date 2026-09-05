@@ -1002,7 +1002,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- Plan 0.2.4.5 D1 task #30: alloc' tracks body's full final-alloc
       -- (next-slot extends past pair-slots into body's stack region).
-      -- This bridges body's place-before / place-valid (both in body's
+      -- This bridges the body's frontier facts (both in body's
       -- final-alloc) up to apply's alloc' frontier without going through
       -- a (broken) static `next-slot alloc + pair-slots` claim.
       alloc' : AllocState {FS}
@@ -1018,9 +1018,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       --     value as their result-loc index.
       result-loc-dispatch : ResultPlace _ _ _ _ _ _ → ValueLocation FS
       result-loc-dispatch (at-loc loc _ _ _ _ _) = loc
-      -- Plan 0.54 rung A: `at-reg` (register-resident result) carries a `loc`
-      -- too — only its VALIDITY witness is absent, and this dispatch needs
-      -- just the location. Same clause as the upstream `place-loc`.
+      -- Plan 0.54 rung A: `at-reg` (register-resident result) still carries a
+      -- `loc` field, and this dispatch needs only a location. NOTE that the
+      -- location is a PLACEHOLDER (the producer's input cell) — it does not
+      -- hold the value. It is safe here because `result-place-final`'s
+      -- `at-reg` branch propagates the residence and never consults
+      -- `result-loc`; the at-loc branch, which does, has a real one. The field
+      -- itself is vestigial and slated to go — see the note where
+      -- `place-loc` used to live.
       result-loc-dispatch (at-reg loc _ _ _ _) = loc
       result-loc-dispatch unit-result = SMP.!!  -- TODO: extract via sv-as-loc of body's Output
 
@@ -1113,7 +1118,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- trace-slot-reads-above'.
       --
       -- STRUCTURALLY DEFERRED (need apply spec changes):
-      --   result-before', result-valid-wf' — body's `place-before`
+      --   result-before', result-valid-wf' — the body's frontier fact
       --     gives `BeforeFrontier (final-alloc body) loc`, but apply's
       --     `alloc'` only widens next-slot by pair-slots, NOT
       --     next-heap-ref. If body allocates in heap, the returned loc
@@ -1208,8 +1213,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                                 (trans (body-mem-preserved loc bf) (setup-mem-preserved loc bf))
 
       -- Result is before frontier in alloc'.
-      -- Plan 0.2.4.5 D1 task #30: alloc' = body's final-alloc, so body's
-      -- place-before transports directly via the result-place dispatch.
+      -- Plan 0.2.4.5 D1 task #30: alloc' = body's final-alloc, so the body's
+      -- frontier fact transports directly via the result-place dispatch.
       -- For unit-result branch this isn't reached (apply uses unit-result),
       -- but the function must still typecheck for the at-loc dispatch.
       result-before' : BeforeFrontier alloc' result-loc
@@ -1443,7 +1448,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- not hold the value, and an `at-loc` there would assert a false
       -- `rax-eq'`/`result-valid-wf'` — D148's disease, freshly minted.
       --
-      -- Nothing new is postulated. `apply-full-trace = setup ++ body`, so the
+      -- No new proof gap is opened. `apply-full-trace = setup ++ body`, so the
       -- body runs LAST: `s'-eq` says apply's final state IS the body's, and
       -- `alloc' = final-alloc body-result` definitionally. The register
       -- equation therefore transports across `s'-eq` and `eval-apply-eq`, and
