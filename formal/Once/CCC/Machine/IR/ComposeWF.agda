@@ -8,7 +8,9 @@
 -- Final state defined by exec-trace, making trace-correct = refl.
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.ComposeWF where
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.IR.ComposeWF (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n; _≟_; _⊔_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; m≤m+n; m≤n+m; m≤n⇒m<n∨m≡n; m≤m⊔n; m≤n⊔m; ⊔-lub)
@@ -23,7 +25,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.Semantics.Machine using (⟦_⟧)
+-- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
+open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.IR
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
@@ -61,7 +64,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open SMP.TracePrimitives {FS}
   open SMP.TraceComposition {FS}
 
-  open import Once.CCC.Machine.ClosureWellFormed
+  open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
            valid-unit-wf; mk-IRResultAWF-via-bump;

@@ -12,7 +12,9 @@
 -- (Cata) and productivity (Ana via GuardedT).
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.SumRecWF where
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.IR.SumRecWF (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; _<_; _≤_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; n<1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤; ≤-irrelevant; <⇒≢; +-comm)
@@ -27,7 +29,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; tra
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.Semantics.Machine using (⟦_⟧; sem-inl; sem-inr)
+-- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
+open import Once.Semantics.Machine using (sem-inl; sem-inr) renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.IR
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
 open import Once.Functor.Translate using (WellFormedF)
@@ -42,10 +45,10 @@ open import Once.Memory.TypeSlots using (type-slots)
 import Once.CCC.Machine.SMPrimitives as SMP
 
 -- Import consolidated postulates (shared with RecCoreWF, ParaWF, AnaWF)
-import Once.CCC.Machine.IR.RecSchemePostulates as RSP
+import Once.CCC.Machine.IR.RecSchemePostulates o as RSP
 
 -- Import Lambek validity lemmas for In/Out operations
-import Once.CCC.Machine.IR.LambekValidity as LV
+import Once.CCC.Machine.IR.LambekValidity o as LV
 
 ------------------------------------------------------------------------
 -- Sum and Fix IR implementations
@@ -72,7 +75,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open SMP.TracePrimitives {FS}
   open SMP.RecSchemeSemantics {FS}
 
-  open import Once.CCC.Machine.ClosureWellFormed
+  open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; valid-unit-wf;
            mk-IRResultAWF-via-bump;

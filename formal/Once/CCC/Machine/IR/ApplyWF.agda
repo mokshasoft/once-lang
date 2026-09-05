@@ -262,15 +262,15 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   -- run-apply: Clean trace-based implementation
   ------------------------------------------------------------------------
 
-  run-apply : ∀ {m A B k}
-    (x : ⟦ (A ⇒[ k ] B) * A ⟧ᴵ) (input-loc : ValueLocation FS)
+  run-apply : ∀ {m A B}
+    (x : ⟦ (A ⇛ B) * A ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS})
     (input-valid-wf : ValidAtWF m alloc x input-loc s) →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    ∃[ mOut ] IRResultAWF mOut (apply {A} {B} {k}) x s alloc
-  run-apply {m} {A} {B} {k} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    ∃[ mOut ] IRResultAWF mOut (apply {A} {B}) x s alloc
+  run-apply {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     -- Plan 0.17: use mk-IRResultAWF-via-bump. Producer-side fields
     -- stay at `alloc'` (= body-result.final-alloc, the local shape);
     -- the helper transports proofs to `apply-bump apply-bump alloc`.
@@ -316,7 +316,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       open import Data.Nat.Properties using (*-monoʳ-≤; <⇒≤; *-monoˡ-≤; m<m+n)
 
       -- Decompose input pair
-      pair-decomp = decomposePairWF {m} {_} {A ⇒[ k ] B} {A} input-valid-wf
+      pair-decomp = decomposePairWF {m} {_} {A ⇛ B} {A} input-valid-wf
       closure-loc = PairValidWF.fst-loc pair-decomp
       arg-loc = PairValidWF.snd-loc pair-decomp
       mArg = PairValidWF.mB pair-decomp
@@ -324,17 +324,17 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       arg-valid-wf = PairValidWF.snd-valid pair-decomp
       arg-before = PairValidWF.snd-before pair-decomp
 
-      closure : ⟦ A ⇒[ k ] B ⟧ᴵ
-      closure = sem-fst {A ⇒[ k ] B} {A} x
+      closure : ⟦ A ⇛ B ⟧ᴵ
+      closure = sem-fst {A ⇛ B} {A} x
 
       arg : ⟦ A ⟧ᴵ
-      arg = sem-snd {A ⇒[ k ] B} {A} x
+      arg = sem-snd {A ⇛ B} {A} x
 
       -- Decompose closure (Plan 0.17.2 follow-up: decomposeClosureWF
       -- is now mode-polymorphic, so the prior Heap-coercion via
       -- closure-mode-is-heap-proof is gone).
       mClosure = PairValidWF.mA pair-decomp
-      closure-decomp = decomposeClosureWF {mClosure} {_} {k} {A} {B} closure-valid-wf
+      closure-decomp = decomposeClosureWF {mClosure} {_} {A} {B} closure-valid-wf
       EnvType = ClosureValidWF.EnvType closure-decomp
       body = ClosureValidWF.body closure-decomp
       env = ClosureValidWF.env closure-decomp
@@ -1200,7 +1200,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- closure-is-body : closure ≡ (λ a → eval body (pair env a)).
       -- eval (apply) (closure, arg) reduces to closure arg, which equals
       -- (λ a → eval body (pair env a)) arg ≡ eval body (pair env arg).
-      eval-apply-eq : eval (apply {A} {B} {k}) x ≡ eval body (pair env arg)
+      eval-apply-eq : eval (apply {A} {B}) x ≡ eval body (pair env arg)
       eval-apply-eq = cong (λ c → c arg) closure-is-body
 
       -- Result validity. body's place-valid gives validity for eval body
@@ -1208,7 +1208,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- alloc' = body's final-alloc (definitional);
       -- s' ≡ body-final-state via s'-eq;
       -- eval (apply ...) x ≡ eval body (pair env arg) via eval-apply-eq.
-      result-valid-wf' : ValidAtWF mBody alloc' (eval (apply {A} {B} {k}) x) result-loc s'
+      result-valid-wf' : ValidAtWF mBody alloc' (eval (apply {A} {B}) x) result-loc s'
       result-valid-wf' = SMP.!!  -- TODO: dispatch on body's result-place (at-loc / unit-result)
 
       -- Frontier slot stability: apply uses the third (give-up) branch.
@@ -1402,9 +1402,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         alloc'-frame-eq refl refl result-loc result-before'
 
       cont-preserves-validity' :
-        ValidAtWF mBody continuation-alloc (eval (apply {A} {B} {k}) x) result-loc s'
+        ValidAtWF mBody continuation-alloc (eval (apply {A} {B}) x) result-loc s'
       cont-preserves-validity' = validityWF-with-bf-transfer
-        (eval (apply {A} {B} {k}) x) result-loc s' alloc' continuation-alloc
+        (eval (apply {A} {B}) x) result-loc s' alloc' continuation-alloc
         (λ loc bf → bf-same-frame-slot alloc' continuation-alloc alloc'-frame-eq refl refl loc bf)
         result-valid-wf'
 
@@ -1413,7 +1413,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       result-place-final : ResultPlace B mBody alloc'
         (record alloc { next-slot     = next-slot     alloc'
                       ; next-heap-ref = next-heap-ref alloc' })
-        (eval (apply {A} {B} {k}) x) s'
+        (eval (apply {A} {B}) x) s'
       result-place-final with IRResultAWF.result-place body-result
       ... | at-loc _ _ _ _ _ _ = at-loc result-loc result-valid-wf' result-before' rax-eq'
                                        cont-preserves-validity' cont-preserves-result'

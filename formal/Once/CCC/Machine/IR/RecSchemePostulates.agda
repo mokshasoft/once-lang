@@ -23,7 +23,9 @@
 --   3. The postulate represents valid semantic equivalence
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.RecSchemePostulates where
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.IR.RecSchemePostulates (o : CanonicalName) where
 
 open import Data.Nat using (ℕ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -34,7 +36,8 @@ import Once.Semantics.Machine as EvV
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
 -- Import ⟦_⟧ (type value interpretation) directly from source
-open import Once.Semantics.Machine using (⟦_⟧)
+-- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
+open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 
 -- Import SMPrimitives for the !! proof obligation marker
 import Once.CCC.Machine.SMPrimitives as SMP
@@ -57,7 +60,7 @@ module RecSchemePostulatesImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
   open SMP.TracePrimitives {FS}
 
-  open import Once.CCC.Machine.ClosureWellFormed
+  open import Once.CCC.Machine.ClosureWellFormed o
   -- Open ClosureWellFormedDef to get ValidAtWF
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF)

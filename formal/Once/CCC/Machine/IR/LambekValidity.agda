@@ -14,7 +14,7 @@
 --
 -- However, proving this in Agda requires showing that the ValidAtWF
 -- type indices (Type) are compatible across the isomorphism. This is
--- blocked by the fact that μ-type F and ⟦ F ⟧T (μ-type F) are
+-- blocked by the fact that μ-type F and ⟦ F ⟧TI (μ-type F) are
 -- different Type values, even though they have identical memory layout.
 --
 -- These postulates are JUSTIFIED because:
@@ -24,21 +24,26 @@
 --
 -- COMPARISON TO PREVIOUS POSTULATES:
 -- - OLD: lambek-iso-semantic for ANY IR - too general
--- - NEW: specific to In/Out operations with WellFormedF evidence
+-- - NEW: specific to In/Out operations with WellFormedFI evidence
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.LambekValidity where
+open import Once.CanonicalName using (CanonicalName)
+
+module Once.CCC.Machine.IR.LambekValidity (o : CanonicalName) where
 
 open import Data.Nat using (ℕ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.Semantics.Machine using (⟦_⟧)
+-- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
+open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.IR
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
-open import Once.Type using (Type; Functor; μ-type; ν-type; ⟦_⟧T)
-open import Once.Functor.Translate using (WellFormedF; WellFormedF-irrelevant)
+-- Plan 0.52 M2: μ-type / ν-type / ⟦_⟧TI / WellFormedFI are the IRTy tier,
+-- and come from Once.IR; Once.Type supplies only the surface `Type`.
+open import Once.Type using (Type)
+open import Once.IRTy using (WellFormedFI-irrelevant)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst; sym; trans)
 
 -- Semantic operations
@@ -66,7 +71,7 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
   open FrontierInvariant {FS}
 
-  open import Once.CCC.Machine.ClosureWellFormed
+  open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; valid-μ-wf; valid-ν-wf)
 
@@ -81,14 +86,14 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Lambek round-trip `out-μ ∘ In ≡ id` (sem-Out-In + coerce-round-trip).
   -- No `BeforeFrontier`, no `μLayerValid`, no forward kernel.
   ------------------------------------------------------------------------
-  In-valid-bf : ∀ {m F} (wf : WellFormedF F) (mode : AllocMode)
+  In-valid-bf : ∀ {m F} (wf : WellFormedFI F) (mode : AllocMode)
     {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
-    (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) →
-    ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} x loc s →
+    (x : ⟦ ⟦ F ⟧TI (μ-type F) ⟧) →
+    ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} x loc s →
     ValidAtWF m alloc {μ-type F} (eval (In wf mode) x) loc s
   In-valid-bf {m} {F} wf mode {alloc} {loc} {s} x v =
     valid-μ-wf wf (eval (In wf mode) x)
-      (subst (λ y → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} y loc s)
+      (subst (λ y → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} y loc s)
              (sym roundtrip) v)
     where
       -- out-μ ∘ In ≡ id at the value level (Lambek).
@@ -110,30 +115,30 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- | ValidAtWF for eval (out-μ wf) x — Plan 0.27 Option 3: REAL, not via
   -- the μ-to-layer-valid postulate. out-μ is "unwrap": invert valid-μ-wf
   -- (the only constructor for μ-type) and transport the stored layer
-  -- ValidAtWF along WellFormedF-irrelevant (stored wf ≡ out-μ's wf).
-  out-μ-valid : ∀ {m F} (wf : WellFormedF F)
+  -- ValidAtWF along WellFormedFI-irrelevant (stored wf ≡ out-μ's wf).
+  out-μ-valid : ∀ {m F} (wf : WellFormedFI F)
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
     (x : ⟦ μ-type F ⟧)
     → ValidAtWF m alloc {μ-type F} x loc s
-    → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ wf) x) loc s
+    → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (eval (out-μ wf) x) loc s
   out-μ-valid {m} {F} wf {alloc} {loc} {s} x (valid-μ-wf wf' .x layerV) =
-    subst (λ w → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval (out-μ w) x) loc s)
-          (WellFormedF-irrelevant wf' wf)
+    subst (λ w → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (eval (out-μ w) x) loc s)
+          (WellFormedFI-irrelevant wf' wf)
           layerV
 
   -- | ValidAtWF for eval (in-ν wf m) x — Plan 0.27 Option 3: REAL (dual
   -- of In-valid-bf). in-ν is "wrap"; transport the layer validity along
   -- the ν Lambek round-trip `Out ∘ in-ν ≡ id` (sem-CoOut-CoIn + coerce).
-  in-ν-valid : ∀ {m F} (wf : WellFormedF F) (mode : AllocMode)
+  in-ν-valid : ∀ {m F} (wf : WellFormedFI F) (mode : AllocMode)
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
-    (x : ⟦ ⟦ F ⟧T (ν-type F) ⟧)
-    → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} x loc s
+    (x : ⟦ ⟦ F ⟧TI (ν-type F) ⟧)
+    → ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} x loc s
     → ValidAtWF m alloc {ν-type F} (eval (in-ν wf mode) x) loc s
   in-ν-valid {m} {F} wf mode {alloc} {loc} {s} x v =
     valid-ν-wf wf (eval (in-ν wf mode) x)
-      (subst (λ y → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} y loc s)
+      (subst (λ y → ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} y loc s)
              (sym roundtrip) v)
     where
       roundtrip : eval (Out wf) (eval (in-ν wf mode) x) ≡ x
@@ -144,16 +149,16 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- | ValidAtWF for eval (Out wf) x — Plan 0.27 Option 3: REAL (dual of
   -- out-μ-valid). Out is "unwrap": invert valid-ν-wf, transport along
-  -- WellFormedF-irrelevant.
-  Out-valid : ∀ {m F} (wf : WellFormedF F)
+  -- WellFormedFI-irrelevant.
+  Out-valid : ∀ {m F} (wf : WellFormedFI F)
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
     (x : ⟦ ν-type F ⟧)
     → ValidAtWF m alloc {ν-type F} x loc s
-    → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} (eval (Out wf) x) loc s
+    → ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (eval (Out wf) x) loc s
   Out-valid {m} {F} wf {alloc} {loc} {s} x (valid-ν-wf wf' .x layerV) =
-    subst (λ w → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} (eval (Out w) x) loc s)
-          (WellFormedF-irrelevant wf' wf)
+    subst (λ w → ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (eval (Out w) x) loc s)
+          (WellFormedFI-irrelevant wf' wf)
           layerV
 
   ------------------------------------------------------------------------
