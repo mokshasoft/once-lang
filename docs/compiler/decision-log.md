@@ -10912,7 +10912,7 @@ makes the invariant true by construction. Step B's remaining item is struck;
 step C (the warning) becomes measurable against slots rather than types, and
 worth building only if the budget still exceeds peak-live after D.
 
-## D147: The Definition-Boundary Escape Question Is the Output Convention — and D and B' Are ONE Change
+## D147: The Definition-Boundary Escape Question Is Destination Passing (Plan 0.2.4.5)
 
 **Date**: 2026-09-05 · **Settles**: plan 0.86 §6 (the gate on step D) ·
 **Relates**: D146, D142, **plan 0.2.4.5 (destination passing — the mechanism
@@ -10966,12 +10966,24 @@ encoded (OCP-0005 rung 1, §4's "do not leave it as prose"): not as a new
 predicate, but by making the result location a parameter the callee cannot
 choose.
 
-**Consequence for the order of work.** `ResultPlace` is indexed by
-`AllocMode`, which step D deletes. D rewrites this structure and B' rewrites
-the same structure. Doing them in sequence means rewriting `ResultPlace`,
-every `ValidAtWF` site and the `*WF` cluster TWICE. **They are one change.**
-Plan 0.86's §7 order is amended: D and B' merge into a single step, and the
-`*WF` port (paused at `c1bceafa`) resumes against the single-mode IR with the
-output convention already in it — which is also what collapses the per-mode
-module pairs (§5) and retires ~33 of the 91 `SMP.!!` holes in one pass rather
-than disturbing them twice.
+**Consequence for the order of work.** 0.86's B' and D are 0.2.4.5's stages
+**F** (destination parameter on every WF `run-*`: the caller passes
+`result-loc`, the IR does not choose) and **G** (drop `AllocMode` from the six
+IR signatures, 205 references). 0.2.4.5 already sequences them F → G and gives
+the reason: G is "naturally subsumed once F lands — the destination parameter
+replaces `AllocMode`'s 'where does this go' role."
+
+An earlier revision of this entry claimed F and G were ONE change, on the
+grounds that sequencing them rewrites `ResultPlace` / `ValidAtWF` / the `*WF`
+cluster twice. **That was wrong.** F is additive (a parameter appears) and G
+subtractive (a now-vacuous index disappears); each touches the structure once,
+for a different reason, and F-first is exactly what makes G a deletion rather
+than a redesign. Plan 0.86 §7 is amended only to NAME the stages.
+
+**Open sequencing question.** F cascades through `Dispatcher`, `Correct` and
+`IRResultAWF` — ~10 IRs, one WF module each — while 0.86 §7 says "Do NOT
+resume the `*WF` port before D/E". F is not the port (it adds a parameter; the
+port is TERMINATING → WF), but it lands in the same parked, currently-red
+modules, so "follow the red" is not available as a signal there. Whether F
+precedes or follows E (collapsing the per-mode module pairs) is settled by
+neither plan.
