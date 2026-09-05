@@ -396,12 +396,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- (`ir-to-trace (SigOp si) = instr-sigop si ∷ []` stores nothing). The value
       -- witness for this residence IS the register equation below. Shape dictated
       -- by the consumer `comp-step`, which reads only `place-rax`.
+      -- Stage F: the `loc` field and its two `BeforeFrontier` witnesses are
+      -- GONE. A register-resident result has no cell, so the location was
+      -- always a placeholder — every producer passed its own `input-loc`,
+      -- which does not hold the value — and the frontier bounds were bounds on
+      -- that placeholder. Carrying them invited consumers to project a
+      -- location out of a place that has none, which is what `place-loc` did
+      -- and why it was deleted.
+      --
+      -- What remains is the whole content of this residence: the value fits a
+      -- register, and `Output` holds it.
       at-reg      : ∀ {B m alloc continuation-alloc v s}
-                    (loc : ValueLocation FS)
                     (fit : FitsInRegI B)
-                  → BeforeFrontier alloc loc
                   → readReg (regs s) Output ≡ prim-sv fit v
-                  → BeforeFrontier continuation-alloc loc
                   → ResultPlace B m alloc continuation-alloc v s
 
     -- Plan 0.2.4.5 D1 trust points: place-* extraction helpers.
@@ -467,14 +474,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- `SV-Ptr (place-loc rp)`, so existing `at-loc`-only consumers are unchanged.
     place-sv : ∀ {B m a₁ a₂ v s} → ResultPlace B m a₁ a₂ v s → StoredValue FS
     place-sv (at-loc loc _ _ _ _ _) = SV-Ptr loc
-    place-sv {v = v} (at-reg _ fit _ _ _) = prim-sv fit v
+    place-sv {v = v} (at-reg fit _) = prim-sv fit v
     place-sv {Unit} unit-result     = SV-Ptr unit-result-sv-loc
       where postulate unit-result-sv-loc : ValueLocation FS
 
     place-rax : ∀ {B m a₁ a₂ v s} (rp : ResultPlace B m a₁ a₂ v s) →
                 readReg (regs s) Output ≡ place-sv rp
     place-rax (at-loc _ _ _ rax _ _) = rax
-    place-rax (at-reg _ _ _ rax _) = rax
+    place-rax (at-reg _ rax) = rax
     place-rax {Unit} {_} {_} {_} {_} {s} unit-result = rax-stub
       where postulate rax-stub : readReg (regs s) Output ≡ place-sv {Unit} unit-result
 

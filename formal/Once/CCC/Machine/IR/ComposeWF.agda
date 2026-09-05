@@ -338,7 +338,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         in-at-loc loc (validityWF-mem-only (eval f x) loc s₁ s₁' refl refl valid) before eq
       -- Register-resident: no `ValidAtWF`, because there is no cell to be
       -- valid at. The register equation IS the residence witness.
-      mk-g-input (at-reg _ fit _ _ _) eq = in-at-reg fit eq
+      mk-g-input (at-reg fit _) eq = in-at-reg fit eq
       -- A Unit intermediate has no residence, so there is nothing to locate
       -- and nothing to assume. This retires the `unit-inter-loc` /
       -- `unit-inter-before` / `unit-inter-rax` trio the old `FFacts` needed.

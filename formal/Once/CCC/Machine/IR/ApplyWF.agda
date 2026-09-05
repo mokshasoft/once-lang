@@ -1016,20 +1016,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       --     properties (rax-eq', mem-preserved', result-before',
       --     etc., all currently SMP.!! — see task #30) inherit this
       --     value as their result-loc index.
-      result-loc-dispatch : ResultPlace _ _ _ _ _ _ → ValueLocation FS
-      result-loc-dispatch (at-loc loc _ _ _ _ _) = loc
-      -- Plan 0.54 rung A: `at-reg` (register-resident result) still carries a
-      -- `loc` field, and this dispatch needs only a location. NOTE that the
-      -- location is a PLACEHOLDER (the producer's input cell) — it does not
-      -- hold the value. It is safe here because `result-place-final`'s
-      -- `at-reg` branch propagates the residence and never consults
-      -- `result-loc`; the at-loc branch, which does, has a real one. The field
-      -- itself is vestigial and slated to go — see the note where
-      -- `place-loc` used to live.
-      result-loc-dispatch (at-reg loc _ _ _ _) = loc
-      result-loc-dispatch unit-result = SMP.!!  -- TODO: extract via sv-as-loc of body's Output
-
-      result-loc = result-loc-dispatch (IRResultAWF.result-place body-result)
+      -- Stage F: `result-loc-dispatch` is GONE. It existed to project a
+      -- location out of the body's result place so the memory-resident facts
+      -- below could be stated once, at the outer level. But `at-reg` has no
+      -- location (its field was a placeholder, now removed), so the projection
+      -- was total only by inventing one — and its `unit-result` clause was a
+      -- proof gap for the same reason. Those facts now live with the branch
+      -- that actually has a location: see `at-loc-final`.
 
       ------------------------------------------------------------------------
       -- Full trace and final state (CLEAN: defined by exec-trace)
@@ -1162,12 +1155,6 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       s'-eq : s' ≡ IRResultAWF.final-state body-result
       s'-eq = trans s'-decomp (trans body-frame-bridge body-trace-correct)
 
-      -- Output register contains result location.
-      -- Dispatch on body's result-place: at-loc gives place-rax;
-      -- unit-result reduces result-loc to readReg body-final-state Output (refl after s'-eq).
-      rax-eq' : readReg (regs s') Output ≡ SV-Ptr result-loc
-      rax-eq' = SMP.!!  -- TODO: dispatch on body's result-place; cascade through s'-eq
-
       -- Not halted after full trace
       not-halted' : halted s' ≡ false
       not-halted' = exec-trace-preserves-halted-WF trace s alloc not-halted trace-twf'
@@ -1213,13 +1200,6 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                                 (trans (body-mem-preserved loc bf) (setup-mem-preserved loc bf))
 
       -- Result is before frontier in alloc'.
-      -- Plan 0.2.4.5 D1 task #30: alloc' = body's final-alloc, so the body's
-      -- frontier fact transports directly via the result-place dispatch.
-      -- For unit-result branch this isn't reached (apply uses unit-result),
-      -- but the function must still typecheck for the at-loc dispatch.
-      result-before' : BeforeFrontier alloc' result-loc
-      result-before' = SMP.!!  -- TODO: dispatch on body's result-place; postulate for unit-result branch
-
       -- Closure-decomp eval bridge: eval (apply ...) x ≡ eval body (pair env arg).
       -- closure-is-body : closure ≡ (λ a → eval body (pair env a)).
       -- eval (apply) (closure, arg) reduces to closure arg, which equals
@@ -1232,8 +1212,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- alloc' = body's final-alloc (definitional);
       -- s' ≡ body-final-state via s'-eq;
       -- eval (apply ...) x ≡ eval body (pair env arg) via eval-apply-eq.
-      result-valid-wf' : ValidAtWF mBody alloc' (eval (apply {A} {B}) x) result-loc s'
-      result-valid-wf' = SMP.!!  -- TODO: dispatch on body's result-place (at-loc / unit-result)
+      -- (`rax-eq'` / `result-before'` / `result-valid-wf'` moved into
+      -- `at-loc-final`, where a location exists to state them about.)
 
       -- Frontier slot stability: apply uses the third (give-up) branch.
       -- The 3-way return for IRs that allocate but may write the
@@ -1421,16 +1401,37 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       alloc'-frame-eq : current-frame alloc' ≡ current-frame alloc
       alloc'-frame-eq = trans (IRResultAWF.frame-preserved body-result) refl
 
-      cont-preserves-result' : BeforeFrontier continuation-alloc result-loc
-      cont-preserves-result' = bf-same-frame-slot alloc' continuation-alloc
-        alloc'-frame-eq refl refl result-loc result-before'
+      -- Stage F: the memory-resident half of apply's result, parameterised by
+      -- the location the BODY reported. Everything here is a statement ABOUT
+      -- that location, which is exactly why none of it belongs at the outer
+      -- level any more: a register-resident body result has no location to
+      -- state it about, and inventing one is how D148's refutable residuals
+      -- get made.
+      at-loc-final : (loc : ValueLocation FS) →
+        ResultPlace B mBody alloc'
+          (record alloc { next-slot     = next-slot     alloc'
+                        ; next-heap-ref = next-heap-ref alloc' })
+          (eval (apply {A} {B}) x) s'
+      at-loc-final loc = at-loc loc valid before rax cont-valid cont-before
+        where
+          rax : readReg (regs s') Output ≡ SV-Ptr loc
+          rax = SMP.!!  -- TODO: cascade the body's `place-rax` through s'-eq
 
-      cont-preserves-validity' :
-        ValidAtWF mBody continuation-alloc (eval (apply {A} {B}) x) result-loc s'
-      cont-preserves-validity' = validityWF-with-bf-transfer
-        (eval (apply {A} {B}) x) result-loc s' alloc' continuation-alloc
-        (λ loc bf → bf-same-frame-slot alloc' continuation-alloc alloc'-frame-eq refl refl loc bf)
-        result-valid-wf'
+          before : BeforeFrontier alloc' loc
+          before = SMP.!!  -- TODO: the body's frontier fact at alloc' = final-alloc body
+
+          valid : ValidAtWF mBody alloc' (eval (apply {A} {B}) x) loc s'
+          valid = SMP.!!  -- TODO: the body's validity, across s'-eq and eval-apply-eq
+
+          cont-before : BeforeFrontier continuation-alloc loc
+          cont-before = bf-same-frame-slot alloc' continuation-alloc
+            alloc'-frame-eq refl refl loc before
+
+          cont-valid : ValidAtWF mBody continuation-alloc (eval (apply {A} {B}) x) loc s'
+          cont-valid = validityWF-with-bf-transfer
+            (eval (apply {A} {B}) x) loc s' alloc' continuation-alloc
+            (λ l bf → bf-same-frame-slot alloc' continuation-alloc alloc'-frame-eq refl refl l bf)
+            valid
 
       -- Plan 0.2.4.5 D1 task #30: dispatch on body's result-place.
       -- Plan 0.17: result-place stays at alloc'; helper transports.
@@ -1439,8 +1440,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                       ; next-heap-ref = next-heap-ref alloc' })
         (eval (apply {A} {B}) x) s'
       result-place-final with IRResultAWF.result-place body-result
-      ... | at-loc _ _ _ _ _ _ = at-loc result-loc result-valid-wf' result-before' rax-eq'
-                                       cont-preserves-validity' cont-preserves-result'
+      ... | at-loc loc _ _ _ _ _ = at-loc-final loc
       -- Stage F: a register-resident body result is PROPAGATED as `at-reg`,
       -- not collapsed to `at-loc`. Collapsing would be unsound, not merely
       -- lossy: `at-reg`'s location is the producer's INPUT cell reused as a
@@ -1454,13 +1454,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- equation therefore transports across `s'-eq` and `eval-apply-eq`, and
       -- the continuation bound is the same `bf-same-frame-slot` the `at-loc`
       -- branch already uses.
-      ... | at-reg loc fit before rax cont =
-              at-reg loc fit before
+      ... | at-reg fit rax =
+              at-reg fit
                 (subst (λ st → readReg (regs st) Output ≡ prim-sv fit (eval (apply {A} {B}) x))
                        (sym s'-eq)
                        (subst (λ w → readReg (regs (IRResultAWF.final-state body-result)) Output
                                        ≡ prim-sv fit w)
                               (sym eval-apply-eq)
                               rax))
-                (bf-same-frame-slot alloc' continuation-alloc alloc'-frame-eq refl refl loc before)
       ... | unit-result = unit-result

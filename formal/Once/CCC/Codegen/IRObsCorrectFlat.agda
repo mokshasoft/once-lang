@@ -451,7 +451,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
         where valid'' = subst (λ a → ValidAtWF mIn a x input-loc
                                        (forced (floc (flat-run 2 (id {A}) s alloc))))
                               (sym keeps-alloc) valid'
-      place (in-reg fit eq)  = at-reg input-loc fit before' (out-lit fit eq) before'
+      place (in-reg fit eq)  = at-reg fit (out-lit fit eq)
       place (in-unit refl)   = unit-result
 
   -- ── `terminal` — DISCHARGED. The emitter emits NOTHING for it
@@ -639,7 +639,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
       ; value-realized =
           2 , mIn , falloc (flat-run 2 (const fits-int v) s alloc) ,
-          at-reg input-loc fits-int before' out-lit before'
+          at-reg fits-int out-lit
       }
     where
       instr = instr-load-const fits-intˢ v
@@ -676,7 +676,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
       ; value-realized =
           2 , mIn , falloc (flat-run 2 (const fits-float v) s alloc) ,
-          at-reg input-loc fits-float before' out-lit before'
+          at-reg fits-float out-lit
       }
     where
       instr = instr-load-const fits-floatˢ v
@@ -944,8 +944,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                     (cong (take k) (sym (denot-[] k)))
       ; value-realized =
           2 , Stack , falloc (flat-run 2 (SigOp si) s alloc) ,
-          at-reg input-loc (fits-erase fitness) before
-            (pure-sigop-value-correct si fitness rA pure-eq x input-loc s alloc valid not-halted rdi-eq) before
+          at-reg (fits-erase fitness)
+            (pure-sigop-value-correct si fitness rA pure-eq x input-loc s alloc valid not-halted rdi-eq)
       }
     where
       -- Machine side: no fetchable instr emits an event (the sole
