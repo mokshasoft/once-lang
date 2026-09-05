@@ -239,6 +239,42 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         ValidAtWF mB alloc b payload-loc s →
         ValidAtWF m alloc {A + B} (sem-inr b) sum-loc s
 
+      ------------------------------------------------------------------------
+      -- Stage F: a sum whose payload FITS A REGISTER is stored INLINE — the
+      -- payload cell holds the VALUE, not a pointer to it.
+      --
+      -- The emitted trace already does this and always did:
+      --   instr-load-tag-lit t ∷ store-at-slot sum-slot ∷
+      --   mov-to-output ∷ store-at-slot (suc sum-slot) ∷ lea-slot sum-slot
+      -- `store-at-slot (suc sum-slot)` stores whatever `Output` holds, and
+      -- after `mov-to-output` that is the INPUT's stored value — a pointer if
+      -- the input was in memory, the value itself if it was in a register.
+      -- Only the model assumed a pointer, which is why `run-inl`/`run-inr`
+      -- could not be handed an `in-at-reg` input.
+      --
+      -- No `payload-loc`, no payload `ValidAtWF`: an inline payload has no
+      -- cell of its own to be valid at. Same reason `at-reg` carries neither.
+      ------------------------------------------------------------------------
+      valid-inl-reg-wf : ∀ {m A B} {a : ⟦ A ⟧}
+        {alloc : AllocState {FS}}
+        {sum-loc : ValueLocation FS} {s : LocState FS} →
+        LocMatchesMode m sum-loc →
+        SumTag m 0 s sum-loc →
+        (fit : FitsInRegI A) →
+        readLoc s (sucLoc sum-loc) ≡ just (prim-sv fit a) →
+        BeforeFrontier alloc (sucLoc sum-loc) →
+        ValidAtWF m alloc {A + B} (sem-inl a) sum-loc s
+
+      valid-inr-reg-wf : ∀ {m A B} {b : ⟦ B ⟧}
+        {alloc : AllocState {FS}}
+        {sum-loc : ValueLocation FS} {s : LocState FS} →
+        LocMatchesMode m sum-loc →
+        SumTag m 1 s sum-loc →
+        (fit : FitsInRegI B) →
+        readLoc s (sucLoc sum-loc) ≡ just (prim-sv fit b) →
+        BeforeFrontier alloc (sucLoc sum-loc) →
+        ValidAtWF m alloc {A + B} (sem-inr b) sum-loc s
+
       -- OCP-0003: μ-type and ν-type validity via MuValidity predicates
       -- These wrap μValid/νValid from MuValidity, avoiding pattern matching issues
       -- by keeping the layer type opaque to ValidAtWF pattern matching.
@@ -1026,18 +1062,46 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Reference-based model: tag + payload-ptr (identical for all modes)
   ------------------------------------------------------------------------
 
+  ------------------------------------------------------------------------
+  -- Stage F: WHERE an inl/inr payload lives, read out of the sum's second
+  -- cell. Shaped from its consumer (`run-case`), which needs exactly enough to
+  -- build an `InputPlace` for the branch it dispatches to, and nothing more.
+  ------------------------------------------------------------------------
+  data PayloadAt (alloc : AllocState {FS}) {A : IRTy} (a : ⟦ A ⟧)
+                 (sum-loc : ValueLocation FS) (s : LocState FS) : Set where
+    payload-at-loc : ∀ {mA : AllocMode} (payload-loc : ValueLocation FS)
+                   → readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc)
+                   → BeforeFrontier alloc payload-loc
+                   → ValidAtWF mA alloc a payload-loc s
+                   → PayloadAt alloc a sum-loc s
+    payload-in-reg : (fit : FitsInRegI A)
+                   → readLoc s (sucLoc sum-loc) ≡ just (prim-sv fit a)
+                   → PayloadAt alloc a sum-loc s
+
+  -- The uniform accessors, mirroring `place-sv` / `place-rax` on the output
+  -- side: what the payload CELL holds, and the proof that it holds it. A
+  -- pointer for a located payload, the value itself for an inline one. Every
+  -- consumer that only needs to move the cell's contents (which is all
+  -- `run-case` does — `load-indirect-suc` then `mov-to-input`) can use these
+  -- and never case-split.
+  payload-sv : ∀ {alloc A} {a : ⟦ A ⟧} {sum-loc s}
+             → PayloadAt alloc a sum-loc s → StoredValue FS
+  payload-sv (payload-at-loc pl _ _ _)      = SV-Ptr pl
+  payload-sv {a = a} (payload-in-reg fit _) = prim-sv fit a
+
+  payload-read : ∀ {alloc A} {a : ⟦ A ⟧} {sum-loc s} (pd : PayloadAt alloc a sum-loc s)
+               → readLoc s (sucLoc sum-loc) ≡ just (payload-sv pd)
+  payload-read (payload-at-loc _ pp _ _) = pp
+  payload-read (payload-in-reg _ pp)     = pp
+
   record InlValidWF (alloc : AllocState {FS}) {A B : IRTy}
                     (v : ⟦ A + B ⟧)
                     (sum-loc : ValueLocation FS)
                     (s : LocState FS) : Set where
     field
       a : ⟦ A ⟧
-      mA : AllocMode
-      payload-loc : ValueLocation FS
-      payload-ptr : readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc)
-      payload-before : BeforeFrontier alloc payload-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc sum-loc)
-      payload-valid : ValidAtWF mA alloc a payload-loc s
+      payload : PayloadAt alloc a sum-loc s
       v-is-inl : v ≡ sem-inl a
 
   record InrValidWF (alloc : AllocState {FS}) {A B : IRTy}
@@ -1046,39 +1110,27 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                     (s : LocState FS) : Set where
     field
       b : ⟦ B ⟧
-      mB : AllocMode
-      payload-loc : ValueLocation FS
-      payload-ptr : readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr payload-loc)
-      payload-before : BeforeFrontier alloc payload-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc sum-loc)
-      payload-valid : ValidAtWF mB alloc b payload-loc s
+      payload : PayloadAt alloc b sum-loc s
       v-is-inr : v ≡ sem-inr b
 
   decomposeInlWF : ∀ {m alloc A B} {a : ⟦ A ⟧} {loc s} →
     ValidAtWF m alloc {A + B} (sem-inl a) loc s → InlValidWF alloc {A} {B} (sem-inl a) loc s
-  decomposeInlWF {A = A} {B = B} (valid-inl-wf {_} {_} {_} {a} {_} {_} {pl} {_} {mA} lmm _ pp pb slb pv) = record
-    { a = a
-    ; mA = mA
-    ; payload-loc = pl
-    ; payload-ptr = pp
-    ; payload-before = pb
-    ; sucLoc-before = slb
-    ; payload-valid = pv
-    ; v-is-inl = refl
-    }
+  decomposeInlWF (valid-inl-wf {_} {_} {_} {a} {_} {_} {pl} {_} {mA} lmm _ pp pb slb pv) = record
+    { a = a ; sucLoc-before = slb
+    ; payload = payload-at-loc {mA = mA} pl pp pb pv ; v-is-inl = refl }
+  decomposeInlWF (valid-inl-reg-wf {_} {_} {_} {a} lmm _ fit pp slb) = record
+    { a = a ; sucLoc-before = slb
+    ; payload = payload-in-reg fit pp ; v-is-inl = refl }
 
   decomposeInrWF : ∀ {m alloc A B} {b : ⟦ B ⟧} {loc s} →
     ValidAtWF m alloc {A + B} (sem-inr b) loc s → InrValidWF alloc {A} {B} (sem-inr b) loc s
-  decomposeInrWF {A = A} {B = B} (valid-inr-wf {_} {_} {_} {b} {_} {_} {pl} {_} {mB} lmm _ pp pb slb pv) = record
-    { b = b
-    ; mB = mB
-    ; payload-loc = pl
-    ; payload-ptr = pp
-    ; payload-before = pb
-    ; sucLoc-before = slb
-    ; payload-valid = pv
-    ; v-is-inr = refl
-    }
+  decomposeInrWF (valid-inr-wf {_} {_} {_} {b} {_} {_} {pl} {_} {mB} lmm _ pp pb slb pv) = record
+    { b = b ; sucLoc-before = slb
+    ; payload = payload-at-loc {mA = mB} pl pp pb pv ; v-is-inr = refl }
+  decomposeInrWF (valid-inr-reg-wf {_} {_} {_} {b} lmm _ fit pp slb) = record
+    { b = b ; sucLoc-before = slb
+    ; payload = payload-in-reg fit pp ; v-is-inr = refl }
 
   ------------------------------------------------------------------------
   -- OCP-0003: FoldValidWF record and decomposeFoldWF removed.
@@ -1143,6 +1195,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Eff (effectful morphism): recurse on underlying closure validity
 
   -- inl (any mode)
+  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
+  -- fields an inline payload does not have (its own location and validity).
+  validityWF-mem-only {m} {alloc} {A + B} .(sem-inl a) loc s₁ s₂ stack-eq heap-eq
+    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
+    valid-inl-reg-wf lmm (transport-SumTag (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) tg) fit (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp) slb
+  validityWF-mem-only {m} {alloc} {A + B} .(sem-inr b) loc s₁ s₂ stack-eq heap-eq
+    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
+    valid-inr-reg-wf lmm (transport-SumTag (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) tg) fit (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp) slb
+
   validityWF-mem-only {m} {alloc} {A + B} .(sem-inl a) loc s₁ s₂ stack-eq heap-eq
     (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
     valid-inl-wf lmm tg' pp' pb slb pv'
@@ -1223,6 +1284,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Kind-coerced closure
 
   -- inl (any mode)
+  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
+  -- fields an inline payload does not have (its own location and validity).
+  validityWF-write-at-frontier {m} {alloc} {A + B} .(sem-inl a) loc s val loc-before
+    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
+    valid-inl-reg-wf lmm (transport-SumTag (write-at-frontier-preserves-before s alloc loc val loc-before) tg) fit (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp) slb
+  validityWF-write-at-frontier {m} {alloc} {A + B} .(sem-inr b) loc s val loc-before
+    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
+    valid-inr-reg-wf lmm (transport-SumTag (write-at-frontier-preserves-before s alloc loc val loc-before) tg) fit (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp) slb
+
   validityWF-write-at-frontier {m} {alloc} {A + B} .(sem-inl a) loc s val loc-before
     (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
     valid-inl-wf lmm tg' pp' pb slb pv'
@@ -1289,6 +1359,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Kind-coerced closure
 
   -- inl (any mode)
+  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
+  -- fields an inline payload does not have (its own location and validity).
+  validityWF-write-at-suc-frontier {m} {alloc} {A + B} .(sem-inl a) loc s val loc-before
+    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
+    valid-inl-reg-wf lmm (transport-SumTag (write-at-suc-frontier-preserves-before s alloc loc val loc-before) tg) fit (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp) slb
+  validityWF-write-at-suc-frontier {m} {alloc} {A + B} .(sem-inr b) loc s val loc-before
+    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
+    valid-inr-reg-wf lmm (transport-SumTag (write-at-suc-frontier-preserves-before s alloc loc val loc-before) tg) fit (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp) slb
+
   validityWF-write-at-suc-frontier {m} {alloc} {A + B} .(sem-inl a) loc s val loc-before
     (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
     valid-inl-wf lmm tg' pp' pb slb pv'
@@ -1368,6 +1447,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Kind-coerced closure
 
   -- inl (any mode)
+  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
+  -- fields an inline payload does not have (its own location and validity).
+  validityWF-write-sv-at-frontier {m} {alloc} {A + B} .(sem-inl a) loc s stored loc-before
+    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
+    valid-inl-reg-wf lmm (transport-SumTag (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) tg) fit (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp) slb
+  validityWF-write-sv-at-frontier {m} {alloc} {A + B} .(sem-inr b) loc s stored loc-before
+    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
+    valid-inr-reg-wf lmm (transport-SumTag (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) tg) fit (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp) slb
+
   validityWF-write-sv-at-frontier {m} {alloc} {A + B} .(sem-inl a) loc s stored loc-before
     (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
     valid-inl-wf lmm tg' pp' pb slb pv'
@@ -1444,6 +1532,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Kind-coerced closure
 
   -- inl (any mode)
+  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
+  -- fields an inline payload does not have (its own location and validity).
+  validityWF-alloc-advance {m} {alloc} {A + B} .(sem-inl a) loc s n
+    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
+    valid-inl-reg-wf lmm tg fit pp (stack-alloc-advances alloc n (sucLoc loc) slb)
+  validityWF-alloc-advance {m} {alloc} {A + B} .(sem-inr b) loc s n
+    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
+    valid-inr-reg-wf lmm tg fit pp (stack-alloc-advances alloc n (sucLoc loc) slb)
+
   validityWF-alloc-advance {m} {alloc} {A + B} .(sem-inl a) loc s n
     (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
     valid-inl-wf lmm tg pp pb' slb' pv'
@@ -1518,6 +1615,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Kind-coerced closure
 
   -- inl (any mode)
+  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
+  -- fields an inline payload does not have (its own location and validity).
+  validityWF-frontier-advance {m} {alloc} {alloc'} {A + B} .(sem-inl a) loc s cf-eq slot-≤ heap-≤
+    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
+    valid-inl-reg-wf lmm tg fit pp (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
+  validityWF-frontier-advance {m} {alloc} {alloc'} {A + B} .(sem-inr b) loc s cf-eq slot-≤ heap-≤
+    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
+    valid-inr-reg-wf lmm tg fit pp (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
+
   validityWF-frontier-advance {m} {alloc} {alloc'} {A + B} .(sem-inl a) loc s cf-eq slot-≤ heap-≤
     (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
     valid-inl-wf lmm tg pp pb' slb' pv'
@@ -1586,6 +1692,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Kind-coerced closure
 
   -- inl (any mode)
+  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
+  -- fields an inline payload does not have (its own location and validity).
+  validityWF-with-bf-transfer {m} {A + B} .(sem-inl a) loc s a₁ a₂ bf
+    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
+    valid-inl-reg-wf lmm tg fit pp (bf (sucLoc loc) slb)
+  validityWF-with-bf-transfer {m} {A + B} .(sem-inr b) loc s a₁ a₂ bf
+    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
+    valid-inr-reg-wf lmm tg fit pp (bf (sucLoc loc) slb)
+
   validityWF-with-bf-transfer {m} {A + B} .(sem-inl a) loc s a₁ a₂ bf
     (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
     valid-inl-wf lmm tg pp (bf pl pb) (bf (sucLoc loc) slb)
@@ -1655,6 +1770,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Kind-coerced closure
 
   -- inl (any mode)
+  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
+  -- fields an inline payload does not have (its own location and validity).
+  validityWF-mem-preserved {m} {alloc} {A + B} .(sem-inl a) loc s₁ s₂ loc-before mem-eq
+    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
+    valid-inl-reg-wf lmm (transport-SumTag (mem-eq loc loc-before) tg) fit (trans (mem-eq (sucLoc loc) slb) pp) slb
+  validityWF-mem-preserved {m} {alloc} {A + B} .(sem-inr b) loc s₁ s₂ loc-before mem-eq
+    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
+    valid-inr-reg-wf lmm (transport-SumTag (mem-eq loc loc-before) tg) fit (trans (mem-eq (sucLoc loc) slb) pp) slb
+
   validityWF-mem-preserved {m} {alloc} {A + B} .(sem-inl a) loc s₁ s₂ loc-before mem-eq
     (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
     valid-inl-wf lmm tg' pp' pb slb pv'
@@ -1795,6 +1919,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                   (input-bound fresh-start : ℕ) →
                   ValidAtWF m alloc v loc s → Set
   LocsInRegions {alloc = alloc} ib fs valid-unit-wf = ⊤
+  -- Stage F: an INLINE payload has no cell of its own, so there is no third
+  -- conjunct — only the sum's own two cells are constrained.
+  LocsInRegions {alloc = alloc} ib fs (valid-inl-reg-wf {sum-loc = sl} lmm _ _ _ _) =
+    LocInRegions alloc ib fs sl × LocInRegions alloc ib fs (sucLoc sl)
+  LocsInRegions {alloc = alloc} ib fs (valid-inr-reg-wf {sum-loc = sl} lmm _ _ _ _) =
+    LocInRegions alloc ib fs sl × LocInRegions alloc ib fs (sucLoc sl)
   LocsInRegions {alloc = alloc} ib fs
     (valid-pair-wf {pair-loc = pl} lmm fp sp fb sb slb fv sv) =
     LocInRegions alloc ib fs pl ×
@@ -1928,6 +2058,20 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                  eb ib≤fs fs≤next ir fr hr ar ev elocs
 
 
+  -- Stage F: the region evidence is a PAIR here, not a triple — there is no
+  -- payload cell to place in a region.
+  validityWF-mem-preserved-in-regions-strong alloc .(sem-inl a) loc ib fs s₁ s₂
+    loc-before ib≤fs fs≤next ir fr hr ar
+    (valid-inl-reg-wf {a = a} lmm tg fit pp slb)
+    (tag-ir , sl-ir) =
+    valid-inl-reg-wf lmm (transport-SumTag (loc-mem-eq-from-regions ir fr hr ar tag-ir) tg)
+      fit (trans (loc-mem-eq-from-regions ir fr hr ar sl-ir) pp) slb
+  validityWF-mem-preserved-in-regions-strong alloc .(sem-inr b) loc ib fs s₁ s₂
+    loc-before ib≤fs fs≤next ir fr hr ar
+    (valid-inr-reg-wf {b = b} lmm tg fit pp slb)
+    (tag-ir , sl-ir) =
+    valid-inr-reg-wf lmm (transport-SumTag (loc-mem-eq-from-regions ir fr hr ar tag-ir) tg)
+      fit (trans (loc-mem-eq-from-regions ir fr hr ar sl-ir) pp) slb
   validityWF-mem-preserved-in-regions-strong alloc .(sem-inl a) loc ib fs s₁ s₂
     loc-before ib≤fs fs≤next ir fr hr ar
     (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv)

@@ -65,6 +65,12 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
     valid-inl-wf lm (transport-SumTag (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b va)
   validAtWF-set-halted {s = s} b (valid-inr-wf {sum-loc = sl} lm tg r bf1 bf2 vb) =
     valid-inr-wf lm (transport-SumTag (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b vb)
+  -- Stage F: an inline payload has no sub-validity to transport, so these
+  -- two clauses are the pointer ones minus the recursive call.
+  validAtWF-set-halted {s = s} b (valid-inl-reg-wf {sum-loc = sl} lm tg fit r bf) =
+    valid-inl-reg-wf lm (transport-SumTag (rl s b sl) tg) fit (trans (rl s b (sucLoc sl)) r) bf
+  validAtWF-set-halted {s = s} b (valid-inr-reg-wf {sum-loc = sl} lm tg fit r bf) =
+    valid-inr-reg-wf lm (transport-SumTag (rl s b sl) tg) fit (trans (rl s b (sucLoc sl)) r) bf
   validAtWF-set-halted b (valid-μ-wf wf x v) =
     valid-μ-wf wf x (validAtWF-set-halted b v)
   validAtWF-set-halted b (valid-ν-wf wf x v) =

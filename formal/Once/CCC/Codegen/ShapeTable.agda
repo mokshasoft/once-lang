@@ -559,6 +559,7 @@ module Sem (FS : FrameSemantics) where
   open import Once.CCC.Machine.ShapeAt FS using
     (ShapeAt; TagAt; tag-at-read;
      shape-unit; shape-pair; shape-closure; shape-inl; shape-inr;
+     shape-inl-reg; shape-inr-reg;
      shape-μ; shape-ν; shape-int; shape-float; shape-str; shape-buffer)
   open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
   open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
@@ -906,6 +907,10 @@ module Sem (FS : FrameSemantics) where
                → Σ ℕ λ t → readLoc ls loc ≡ just (SV-Tag t)
   tag-of-shape (shape-inl {m = m} lm tg cell bfp bfs pay) = 0 , tag-at-read m 0 _ _ tg
   tag-of-shape (shape-inr {m = m} lm tg cell bfp bfs pay) = 1 , tag-at-read m 1 _ _ tg
+  -- Stage F: an inline payload changes nothing here — the TAG cell is the
+  -- same cell, written the same way. Only the payload cell differs.
+  tag-of-shape (shape-inl-reg {m = m} lm tg fit cell bfs) = 0 , tag-at-read m 0 _ _ tg
+  tag-of-shape (shape-inr-reg {m = m} lm tg fit cell bfs) = 1 , tag-at-read m 1 _ _ tg
 
   -- …and through one μ/ν unfolding, provided the layer is a sum
   tag-of-μ : ∀ {m alloc loc ls} (T : IRTy) {a b : IRTy}
@@ -1014,6 +1019,12 @@ module Sem (FS : FrameSemantics) where
   shape-uw {m = m} {ls = ls} hl' v' uw (shape-inr {sum-loc = sl} lm tg r b1 b2 sp) =
     shape-inr lm (tag-uw m 1 hl' v' uw tg) (read-uw ls hl' v' (sucLoc sl) uw r)
               b1 b2 (shape-uw hl' v' uw sp)
+  -- Stage F: the inline variants have no payload SHAPE to carry through the
+  -- heap write, so there is no recursive call — just the two cell reads.
+  shape-uw {m = m} {ls = ls} hl' v' uw (shape-inl-reg {sum-loc = sl} lm tg fit r b) =
+    shape-inl-reg lm (tag-uw m 0 hl' v' uw tg) fit (read-uw ls hl' v' (sucLoc sl) uw r) b
+  shape-uw {m = m} {ls = ls} hl' v' uw (shape-inr-reg {sum-loc = sl} lm tg fit r b) =
+    shape-inr-reg lm (tag-uw m 1 hl' v' uw tg) fit (read-uw ls hl' v' (sucLoc sl) uw r) b
   shape-uw hl' v' uw (shape-μ wf sh) = shape-μ wf (shape-uw hl' v' uw sh)
   shape-uw hl' v' uw (shape-ν wf sh) = shape-ν wf (shape-uw hl' v' uw sh)
   shape-uw {loc = l} {ls = ls} hl' v' uw (shape-int b r)   = shape-int b (read-uw ls hl' v' l uw r)

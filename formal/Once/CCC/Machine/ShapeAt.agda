@@ -33,11 +33,11 @@ open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.IR using (IRTy; Unit; Int; Float; Str; Buffer; _*_; _+_; _⇛_;
-  μ-type; ν-type; ⟦_⟧TI; WellFormedFI)
+  μ-type; ν-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float)
 open import Once.Type using ()
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ;
             Int to Intˢ; Float to Floatˢ)
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
   hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
@@ -61,6 +61,14 @@ tag-at-read : ∀ (m : AllocMode) (t : ℕ) (s : LocState FS) (loc : ValueLocati
             → TagAt m t s loc → readLoc s loc ≡ just (SV-Tag t)
 tag-at-read Heap  t s loc x = x
 tag-at-read Stack t s loc x = x
+
+-- Stage F: the register-resident stored value, RESTATED here for the same
+-- reason `TagAt` is — this module stays independent of `ClosureWellFormed`.
+-- `valid→shape` splits on `fit` so both definitions reduce to the same
+-- `SV-Lit`, so no bridging lemma is needed.
+prim-sv-at : ∀ {B : IRTy} → FitsInRegI B → ⟦ B ⟧ᴵ → StoredValue FS
+prim-sv-at fits-int   v = SV-Lit fits-intˢ   v
+prim-sv-at fits-float v = SV-Lit fits-floatˢ v
 
 data ShapeAt : AllocMode → AllocState {FS} →
      IRTy → ValueLocation FS → LocState FS → Set where
@@ -122,6 +130,36 @@ data ShapeAt : AllocMode → AllocState {FS} →
     ShapeAt mB alloc B payload-loc s →
     ShapeAt m alloc (A + B) sum-loc s
 
+  -- Stage F: the INLINE-payload sums. The payload cell holds the value, so
+  -- there is no payload location, no payload shape, and no payload mode.
+  --
+  -- The value stays an IMPLICIT, exactly as `shape-int`/`shape-float` keep
+  -- theirs: `ShapeAt` drops the value INDEX, but a constructor may still
+  -- mention a value it does not index on. That keeps `valid→shape` a plain
+  -- projection, which is D076's constraint on this layer — these say neither
+  -- more nor less than `valid-inl-reg-wf` / `valid-inr-reg-wf` do.
+  shape-inl-reg : ∀ {m A B}
+    {alloc : AllocState {FS}}
+    {sum-loc : ValueLocation FS} {s : LocState FS}
+    {a : ⟦ A ⟧ᴵ} →
+    LocMatchesMode m sum-loc →
+    TagAt m 0 s sum-loc →
+    (fit : FitsInRegI A) →
+    readLoc s (sucLoc sum-loc) ≡ just (prim-sv-at fit a) →
+    BeforeFrontier alloc (sucLoc sum-loc) →
+    ShapeAt m alloc (A + B) sum-loc s
+
+  shape-inr-reg : ∀ {m A B}
+    {alloc : AllocState {FS}}
+    {sum-loc : ValueLocation FS} {s : LocState FS}
+    {b : ⟦ B ⟧ᴵ} →
+    LocMatchesMode m sum-loc →
+    TagAt m 1 s sum-loc →
+    (fit : FitsInRegI B) →
+    readLoc s (sucLoc sum-loc) ≡ just (prim-sv-at fit b) →
+    BeforeFrontier alloc (sucLoc sum-loc) →
+    ShapeAt m alloc (A + B) sum-loc s
+
   shape-μ : ∀ {m F}
     {alloc : AllocState {FS}}
     {loc : ValueLocation FS} {s : LocState FS}
@@ -175,7 +213,8 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
   open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
   open ClosureWellFormedDef o {FS} program-bound
     using (ValidAtWF; valid-unit-wf; valid-pair-wf; valid-closure-wf;
-           valid-inl-wf; valid-inr-wf; valid-μ-wf; valid-ν-wf;
+           valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf;
+           valid-μ-wf; valid-ν-wf;
            valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
            SumTag)
 
@@ -196,6 +235,17 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
     shape-inl lm (tag-of m 0 _ _ tg) r b1 b2 (valid→shape vp)
   valid→shape (valid-inr-wf {m = m} lm tg r b1 b2 vp) =
     shape-inr lm (tag-of m 1 _ _ tg) r b1 b2 (valid→shape vp)
+  -- Split on `fit` so `prim-sv` (ClosureWellFormed's) and `prim-sv-at` (the
+  -- local restatement) both reduce to the same `SV-Lit`; with `fit` abstract
+  -- neither reduces and the read equation would not typecheck across them.
+  valid→shape (valid-inl-reg-wf {m = m} lm tg fits-int   r b) =
+    shape-inl-reg lm (tag-of m 0 _ _ tg) fits-int   r b
+  valid→shape (valid-inl-reg-wf {m = m} lm tg fits-float r b) =
+    shape-inl-reg lm (tag-of m 0 _ _ tg) fits-float r b
+  valid→shape (valid-inr-reg-wf {m = m} lm tg fits-int   r b) =
+    shape-inr-reg lm (tag-of m 1 _ _ tg) fits-int   r b
+  valid→shape (valid-inr-reg-wf {m = m} lm tg fits-float r b) =
+    shape-inr-reg lm (tag-of m 1 _ _ tg) fits-float r b
   valid→shape (valid-μ-wf wf x lv) = shape-μ wf (valid→shape lv)
   valid→shape (valid-ν-wf wf x lv) = shape-ν wf (valid→shape lv)
   valid→shape (valid-int-wf b r)   = shape-int b r
