@@ -21,7 +21,7 @@ open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; ≤-reflexi
 open import Data.Bool using (false)
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (just)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
@@ -99,6 +99,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            decomposePairWF; PairValidWF;
            valid-inl-wf; valid-inr-wf;
            decomposeInlWF; decomposeInrWF;
+           PayloadAt; payload-at-loc; payload-in-reg; payload-sv; payload-read;
            InlValidWF; InrValidWF)
 
   open import Once.CCC.Machine.TraceEvaluator
@@ -295,16 +296,21 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   --   2. Prove IR dispatch traces satisfy this predicate
   --   3. Prove exec-trace is insensitive to Output for such traces
   ------------------------------------------------------------------------
-  -- Plan 0.13.2 StoredValue restate: input-loc threaded via SV-Ptr;
-  -- payload reads now produce SV-Ptr payload-loc.
+  -- Plan 0.13.2 StoredValue restate: input-loc threaded via SV-Ptr.
+  --
+  -- Stage F: these are parameterised by the payload cell's STORED VALUE, not
+  -- by a payload LOCATION. `load-indirect-suc ∷ mov-to-input` copies the cell
+  -- into `Input1` whatever it holds — a pointer for a located payload, the
+  -- value itself for an inline one — so naming a location here was both
+  -- narrower than the machine and unstatable for an inline payload.
   postulate
     case-dispatch-output-independent : ∀ (dispatch-trace : AbstractTrace)
       (s : LocState FS) (alloc : AllocState {FS})
-      (input-loc payload-loc : ValueLocation FS)
+      (input-loc : ValueLocation FS) (pv : StoredValue FS)
       (s-setup : LocState FS) (s-final : LocState FS) →
       readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-      readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc) →
-      s-setup ≡ record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) } →
+      readLoc s (sucLoc input-loc) ≡ just pv →
+      s-setup ≡ record s { regs = writeReg (regs s) Input1 pv } →
       proj₁ (exec-trace dispatch-trace s-setup alloc) ≡ s-final →
       halted s ≡ false →
       proj₁ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ s-final
@@ -312,11 +318,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- case trace correctness - delegated to postulate (Plan 0.13.2 restated)
   case-trace-state-correct : ∀ (dispatch-trace : AbstractTrace)
     (s : LocState FS) (alloc : AllocState {FS})
-    (input-loc payload-loc : ValueLocation FS)
+    (input-loc : ValueLocation FS) (pv : StoredValue FS)
     (s-setup : LocState FS) (s-final : LocState FS) →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc) →
-    s-setup ≡ record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) } →
+    readLoc s (sucLoc input-loc) ≡ just pv →
+    s-setup ≡ record s { regs = writeReg (regs s) Input1 pv } →
     proj₁ (exec-trace dispatch-trace s-setup alloc) ≡ s-final →
     halted s ≡ false →
     proj₁ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ s-final
@@ -332,22 +338,22 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   postulate
     case-dispatch-alloc-independent : ∀ (dispatch-trace : AbstractTrace)
       (s : LocState FS) (alloc : AllocState {FS})
-      (input-loc payload-loc : ValueLocation FS)
+      (input-loc : ValueLocation FS) (pv : StoredValue FS)
       (s-setup : LocState FS) (alloc-final : AllocState {FS}) →
       readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-      readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc) →
-      s-setup ≡ record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) } →
+      readLoc s (sucLoc input-loc) ≡ just pv →
+      s-setup ≡ record s { regs = writeReg (regs s) Input1 pv } →
       proj₂ (exec-trace dispatch-trace s-setup alloc) ≡ alloc-final →
       halted s ≡ false →
       proj₂ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ alloc-final
 
   case-trace-alloc-correct : ∀ (dispatch-trace : AbstractTrace)
     (s : LocState FS) (alloc : AllocState {FS})
-    (input-loc payload-loc : ValueLocation FS)
+    (input-loc : ValueLocation FS) (pv : StoredValue FS)
     (s-setup : LocState FS) (alloc-final : AllocState {FS}) →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    readLoc s (sucLoc input-loc) ≡ just (SV-Ptr payload-loc) →
-    s-setup ≡ record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) } →
+    readLoc s (sucLoc input-loc) ≡ just pv →
+    s-setup ≡ record s { regs = writeReg (regs s) Input1 pv } →
     proj₂ (exec-trace dispatch-trace s-setup alloc) ≡ alloc-final →
     halted s ≡ false →
     proj₂ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ alloc-final
@@ -806,18 +812,17 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Decompose sum validity
       inl-decomp = decomposeInlWF input-valid-wf
       a' = InlValidWF.a inl-decomp
-      mA = InlValidWF.mA inl-decomp
-      payload-loc = InlValidWF.payload-loc inl-decomp
-      payload-before = InlValidWF.payload-before inl-decomp
-      payload-valid-wf' = InlValidWF.payload-valid inl-decomp
+      pd' = InlValidWF.payload inl-decomp
 
       -- v-is-inl : inl a ≡ inl a', so a ≡ a' by sem-inl-injective
       a-eq : a' ≡ a
       a-eq = sem-inl-injective (sym (InlValidWF.v-is-inl inl-decomp))
 
-      -- Transport payload validity from a' to a
-      payload-valid-wf : ValidAtWF mA alloc a payload-loc s
-      payload-valid-wf = subst (λ x → ValidAtWF mA alloc x payload-loc s) a-eq payload-valid-wf'
+      -- Stage F: transport the payload's RESIDENCE. Where it lives is what
+      -- varies; the old code transported a validity proof because it assumed
+      -- the payload was always in memory.
+      pd : PayloadAt alloc a input-loc s
+      pd = subst (λ x → PayloadAt alloc x input-loc s) a-eq pd'
 
       -- Capacity bound for f
       -- case-stack-req: ir-stack-requirement (case f g) = rf + rg
@@ -825,21 +830,32 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       cap-f-bound : next-slot alloc +ℕ rf ≤ next-slot alloc +ℕ req-case
       cap-f-bound = +-monoʳ-≤ (next-slot alloc) (m≤m+n rf rg)
 
-      -- Put payload-loc in Input1 for dispatch
-      s-setup = record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) }
+      -- Stage F: the setup moves the payload CELL into Input1, whatever it
+      -- holds — exactly what `load-indirect-suc ∷ mov-to-input` does.
+      s-setup = record s { regs = writeReg (regs s) Input1 (payload-sv pd) }
 
       -- s-setup preserves memory from s (only regs changed)
       mem-setup-eq : ∀ loc → readLoc s-setup loc ≡ readLoc s loc
       mem-setup-eq loc = readLoc-stackMem-eq s-setup s loc refl refl
 
-      rdi-payload : readReg (regs s-setup) Input1 ≡ SV-Ptr payload-loc
-      rdi-payload = writeReg-same (regs s) Input1 (SV-Ptr payload-loc)
+      rdi-payload : readReg (regs s-setup) Input1 ≡ payload-sv pd
+      rdi-payload = writeReg-same (regs s) Input1 (payload-sv pd)
 
       not-halted-setup : halted s-setup ≡ false
       not-halted-setup = not-halted
 
-      payload-valid-wf-setup : ValidAtWF mA alloc a payload-loc s-setup
-      payload-valid-wf-setup = validityWF-mem-only a payload-loc s s-setup refl refl payload-valid-wf
+      -- The branch's input place, by residence. A helper TAKING the register
+      -- equation, not a `with` on `pd`: a `with` would abstract `pd` in the
+      -- goal but not in `rdi-payload`, bound outside it. An inline payload
+      -- carries no mode, so the mode comes back WITH the place.
+      mk-input : (q : PayloadAt alloc a input-loc s)
+               → readReg (regs s-setup) Input1 ≡ payload-sv q
+               → Σ AllocMode (λ mI → InputPlace mI alloc a s-setup)
+      mk-input (payload-at-loc {mA = mP} pl pp pb pv) eq =
+        mP , in-at-loc pl (validityWF-mem-only a pl s s-setup refl refl pv) pb eq
+      mk-input (payload-in-reg fit pp) eq = Stack , in-at-reg fit eq
+
+      the-input = mk-input pd rdi-payload
 
       -- Dispatch to f via recursive dispatch
       -- Note: cap-f argument removed in Phase 3
@@ -847,9 +863,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Stage F: the four memory facts are now bundled as an `InputPlace`.
       -- Stage F: the taken branch produces CASE's result, so it inherits
       -- case's own destination. (Not yet binding — see RecDispatcherWF.)
-      f-exec-result = rec-wf mA f (case-f-smaller f g) a s-setup alloc
-                        (in-at-loc payload-loc payload-valid-wf-setup payload-before rdi-payload)
-                        dest not-halted-setup
+      f-exec-result = rec-wf (proj₁ the-input) f (case-f-smaller f g) a s-setup alloc
+                        (proj₂ the-input) dest not-halted-setup
       mF = proj₁ f-exec-result
       result-f = proj₂ f-exec-result
 
@@ -871,18 +886,18 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       case-inl-trace-correct :
         proj₁ (exec-trace case-inl-trace s alloc) ≡ IRResultAWF.final-state result-f
       case-inl-trace-correct = case-trace-state-correct f-trace s alloc input-loc
-                                payload-loc s-setup (IRResultAWF.final-state result-f)
+                                (payload-sv pd) s-setup (IRResultAWF.final-state result-f)
                                 rdi-eq
-                                (InlValidWF.payload-ptr inl-decomp)
+                                (payload-read pd)
                                 refl
                                 (IRResultAWF.trace-correct result-f) not-halted
 
       case-inl-alloc-correct :
         proj₂ (exec-trace case-inl-trace s alloc) ≡ IRResultAWF.final-alloc result-f
       case-inl-alloc-correct = case-trace-alloc-correct f-trace s alloc input-loc
-                                 payload-loc s-setup (IRResultAWF.final-alloc result-f)
+                                 (payload-sv pd) s-setup (IRResultAWF.final-alloc result-f)
                                  rdi-eq
-                                 (InlValidWF.payload-ptr inl-decomp)
+                                 (payload-read pd)
                                  refl
                                  (IRResultAWF.alloc-correct result-f) not-halted
 
@@ -959,18 +974,17 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Decompose sum validity
       inr-decomp = decomposeInrWF input-valid-wf
       b' = InrValidWF.b inr-decomp
-      mB = InrValidWF.mB inr-decomp
-      payload-loc = InrValidWF.payload-loc inr-decomp
-      payload-before = InrValidWF.payload-before inr-decomp
-      payload-valid-wf' = InrValidWF.payload-valid inr-decomp
+      pd' = InrValidWF.payload inr-decomp
 
       -- v-is-inr : inr b ≡ inr b', so b ≡ b' by sem-inr-injective
       b-eq : b' ≡ b
       b-eq = sem-inr-injective (sym (InrValidWF.v-is-inr inr-decomp))
 
-      -- Transport payload validity from b' to b
-      payload-valid-wf : ValidAtWF mB alloc b payload-loc s
-      payload-valid-wf = subst (λ x → ValidAtWF mB alloc x payload-loc s) b-eq payload-valid-wf'
+      -- Stage F: transport the payload's RESIDENCE. Where it lives is what
+      -- varies; the old code transported a validity proof because it assumed
+      -- the payload was always in memory.
+      pd : PayloadAt alloc b input-loc s
+      pd = subst (λ x → PayloadAt alloc x input-loc s) b-eq pd'
 
       -- Capacity bound for g
       -- case-stack-req: ir-stack-requirement (case f g) = rf + rg
@@ -978,28 +992,38 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       cap-g-bound : next-slot alloc +ℕ rg ≤ next-slot alloc +ℕ req-case
       cap-g-bound = +-monoʳ-≤ (next-slot alloc) (m≤n+m rg rf)
 
-      -- Put payload-loc in Input1 for dispatch
-      s-setup = record s { regs = writeReg (regs s) Input1 (SV-Ptr payload-loc) }
+      -- Stage F: the setup moves the payload CELL into Input1, whatever it
+      -- holds — exactly what `load-indirect-suc ∷ mov-to-input` does.
+      s-setup = record s { regs = writeReg (regs s) Input1 (payload-sv pd) }
 
       -- s-setup preserves memory from s (only regs changed)
       mem-setup-eq : ∀ loc → readLoc s-setup loc ≡ readLoc s loc
       mem-setup-eq loc = readLoc-stackMem-eq s-setup s loc refl refl
 
-      rdi-payload : readReg (regs s-setup) Input1 ≡ SV-Ptr payload-loc
-      rdi-payload = writeReg-same (regs s) Input1 (SV-Ptr payload-loc)
+      rdi-payload : readReg (regs s-setup) Input1 ≡ payload-sv pd
+      rdi-payload = writeReg-same (regs s) Input1 (payload-sv pd)
 
       not-halted-setup : halted s-setup ≡ false
       not-halted-setup = not-halted
 
-      payload-valid-wf-setup : ValidAtWF mB alloc b payload-loc s-setup
-      payload-valid-wf-setup = validityWF-mem-only b payload-loc s s-setup refl refl payload-valid-wf
+      -- The branch's input place, by residence. A helper TAKING the register
+      -- equation, not a `with` on `pd`: a `with` would abstract `pd` in the
+      -- goal but not in `rdi-payload`, bound outside it. An inline payload
+      -- carries no mode, so the mode comes back WITH the place.
+      mk-input : (q : PayloadAt alloc b input-loc s)
+               → readReg (regs s-setup) Input1 ≡ payload-sv q
+               → Σ AllocMode (λ mI → InputPlace mI alloc b s-setup)
+      mk-input (payload-at-loc {mA = mP} pl pp pb pv) eq =
+        mP , in-at-loc pl (validityWF-mem-only b pl s s-setup refl refl pv) pb eq
+      mk-input (payload-in-reg fit pp) eq = Stack , in-at-reg fit eq
+
+      the-input = mk-input pd rdi-payload
 
       -- Dispatch to g via recursive dispatch
       -- Note: cap-g argument removed in Phase 3
       g-exec-result : ∃[ mOut ] IRResultAWF mOut g b s-setup alloc
-      g-exec-result = rec-wf mB g (case-g-smaller f g) b s-setup alloc
-                        (in-at-loc payload-loc payload-valid-wf-setup payload-before rdi-payload)
-                        dest not-halted-setup
+      g-exec-result = rec-wf (proj₁ the-input) g (case-g-smaller f g) b s-setup alloc
+                        (proj₂ the-input) dest not-halted-setup
       mG = proj₁ g-exec-result
       result-g = proj₂ g-exec-result
 
@@ -1018,18 +1042,18 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       case-inr-trace-correct :
         proj₁ (exec-trace case-inr-trace s alloc) ≡ IRResultAWF.final-state result-g
       case-inr-trace-correct = case-trace-state-correct g-trace s alloc input-loc
-                                payload-loc s-setup (IRResultAWF.final-state result-g)
+                                (payload-sv pd) s-setup (IRResultAWF.final-state result-g)
                                 rdi-eq
-                                (InrValidWF.payload-ptr inr-decomp)
+                                (payload-read pd)
                                 refl
                                 (IRResultAWF.trace-correct result-g) not-halted
 
       case-inr-alloc-correct :
         proj₂ (exec-trace case-inr-trace s alloc) ≡ IRResultAWF.final-alloc result-g
       case-inr-alloc-correct = case-trace-alloc-correct g-trace s alloc input-loc
-                                 payload-loc s-setup (IRResultAWF.final-alloc result-g)
+                                 (payload-sv pd) s-setup (IRResultAWF.final-alloc result-g)
                                  rdi-eq
-                                 (InrValidWF.payload-ptr inr-decomp)
+                                 (payload-read pd)
                                  refl
                                  (IRResultAWF.alloc-correct result-g) not-halted
 
