@@ -3940,6 +3940,31 @@ _SUBST_CT = {"single": "singleK", "subTm": "subTmAtK",
              #   variable; `Knot/EWk` builds it in three lines.
              "isingle": "isingleK"}
 
+# ⚠⚠ STEP 5 — WHY THE FOUR "ALREADY EXISTING" FUNCTIONS ARE NOT JUST A
+#   TABLE ENTRY.  `Knot/JudgeRows` names its own gaps:
+#
+#       ⊢con    unmapped ['lookupD', 'payTy']
+#       ⊢elim   unmapped ['methsTyFrom']
+#       ⊢icon   unmapped ['ilookupD', 'ipayTy']
+#       ⊢ielim  unmapped ['imethsTy']
+#
+#   `lookupDK`, `payTyK`, `ilookupDK` and `ipayTyK` all EXIST, so adding
+#   them to `_SUBST_CT` looks free.  It is not: their ARGUMENT SHAPES
+#   differ from the kernel's, and `_SUBST_CT` only renames a head.
+#
+#       lookupD  D k        →  lookupDK  n D k          depth prefix only
+#       payTy    D C        →  payTyK    n C D          ★ Desc/DCon SWAPPED
+#       ilookupD E k        →  ilookupDK n E k          depth prefix only
+#       ipayTy   D I σ C    →  ipayTyK   dd c n sb d i  ★ 4 args → 6
+#
+#   ⇒ what is missing is an ARGUMENT-REMAPPING hook, not four names.  A
+#     rename-only table silently produced `KeyError: 'payTyK'` from
+#     `FIELD_SORT` — which is the RIGHT failure, because a per-argument
+#     sort cannot be stated for a call whose arguments are permuted.
+#   ⚠ DO NOT "fix" this by adding a `FIELD_SORT` row; that would type the
+#     arguments in the wrong order and the error would move from the
+#     generator into a generated proof.
+
 # ★★★ WRAPPERS THAT TAKE THE ARGUMENT'S **INDEX**, not just its depth.
 #
 # ⚠ `pwBodyK i t` is an `ielim`, so it wants `⟨i⟩ = (sort , d)` — a PAIR,
