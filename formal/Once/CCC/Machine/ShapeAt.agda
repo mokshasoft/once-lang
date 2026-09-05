@@ -70,6 +70,16 @@ prim-sv-at : ∀ {B : IRTy} → FitsInRegI B → ⟦ B ⟧ᴵ → StoredValue FS
 prim-sv-at fits-int   v = SV-Lit fits-intˢ   v
 prim-sv-at fits-float v = SV-Lit fits-floatˢ v
 
+-- …and likewise `InlineRep`. `valid→shape` maps one to the other constructor
+-- for constructor, which is also where both `inline-sv`s reduce.
+data InlineRepAt (A : IRTy) : Set where
+  rep-prim-at : FitsInRegI A → InlineRepAt A
+  rep-unit-at : A ≡ Unit → StoredValue FS → InlineRepAt A
+
+inline-sv-at : ∀ {A : IRTy} → InlineRepAt A → ⟦ A ⟧ᴵ → StoredValue FS
+inline-sv-at (rep-prim-at fit)  a = prim-sv-at fit a
+inline-sv-at (rep-unit-at _ sv) _ = sv
+
 data ShapeAt : AllocMode → AllocState {FS} →
      IRTy → ValueLocation FS → LocState FS → Set where
 
@@ -144,8 +154,8 @@ data ShapeAt : AllocMode → AllocState {FS} →
     {a : ⟦ A ⟧ᴵ} →
     LocMatchesMode m sum-loc →
     TagAt m 0 s sum-loc →
-    (fit : FitsInRegI A) →
-    readLoc s (sucLoc sum-loc) ≡ just (prim-sv-at fit a) →
+    (rep : InlineRepAt A) →
+    readLoc s (sucLoc sum-loc) ≡ just (inline-sv-at rep a) →
     BeforeFrontier alloc (sucLoc sum-loc) →
     ShapeAt m alloc (A + B) sum-loc s
 
@@ -155,8 +165,8 @@ data ShapeAt : AllocMode → AllocState {FS} →
     {b : ⟦ B ⟧ᴵ} →
     LocMatchesMode m sum-loc →
     TagAt m 1 s sum-loc →
-    (fit : FitsInRegI B) →
-    readLoc s (sucLoc sum-loc) ≡ just (prim-sv-at fit b) →
+    (rep : InlineRepAt B) →
+    readLoc s (sucLoc sum-loc) ≡ just (inline-sv-at rep b) →
     BeforeFrontier alloc (sucLoc sum-loc) →
     ShapeAt m alloc (A + B) sum-loc s
 
@@ -214,6 +224,7 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
   open ClosureWellFormedDef o {FS} program-bound
     using (ValidAtWF; valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf;
+           rep-prim; rep-unit;
            valid-μ-wf; valid-ν-wf;
            valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
            SumTag)
@@ -235,17 +246,26 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
     shape-inl lm (tag-of m 0 _ _ tg) r b1 b2 (valid→shape vp)
   valid→shape (valid-inr-wf {m = m} lm tg r b1 b2 vp) =
     shape-inr lm (tag-of m 1 _ _ tg) r b1 b2 (valid→shape vp)
-  -- Split on `fit` so `prim-sv` (ClosureWellFormed's) and `prim-sv-at` (the
-  -- local restatement) both reduce to the same `SV-Lit`; with `fit` abstract
-  -- neither reduces and the read equation would not typecheck across them.
-  valid→shape (valid-inl-reg-wf {m = m} lm tg fits-int   r b) =
-    shape-inl-reg lm (tag-of m 0 _ _ tg) fits-int   r b
-  valid→shape (valid-inl-reg-wf {m = m} lm tg fits-float r b) =
-    shape-inl-reg lm (tag-of m 0 _ _ tg) fits-float r b
-  valid→shape (valid-inr-reg-wf {m = m} lm tg fits-int   r b) =
-    shape-inr-reg lm (tag-of m 1 _ _ tg) fits-int   r b
-  valid→shape (valid-inr-reg-wf {m = m} lm tg fits-float r b) =
-    shape-inr-reg lm (tag-of m 1 _ _ tg) fits-float r b
+  -- Split on the rep so `inline-sv` (ClosureWellFormed's) and `inline-sv-at`
+  -- (the local restatement) both reduce to the same stored value; with the rep
+  -- abstract neither reduces and the read equation would not typecheck across
+  -- them. `rep-unit` reduces without splitting further — its cell contents are
+  -- carried, not computed.
+  valid→shape (valid-inl-reg-wf {m = m} lm tg (rep-prim fits-int)   r b) =
+    shape-inl-reg lm (tag-of m 0 _ _ tg) (rep-prim-at fits-int)   r b
+  valid→shape (valid-inl-reg-wf {m = m} lm tg (rep-prim fits-float) r b) =
+    shape-inl-reg lm (tag-of m 0 _ _ tg) (rep-prim-at fits-float) r b
+  -- `a` must be pinned here: `ShapeAt` has no value index, and unlike the
+  -- prim reps `inline-sv (rep-unit …)` does not mention `a`, so nothing else
+  -- determines it.
+  valid→shape (valid-inl-reg-wf {m = m} {a = a} lm tg (rep-unit u sv) r b) =
+    shape-inl-reg {a = a} lm (tag-of m 0 _ _ tg) (rep-unit-at u sv) r b
+  valid→shape (valid-inr-reg-wf {m = m} lm tg (rep-prim fits-int)   r b) =
+    shape-inr-reg lm (tag-of m 1 _ _ tg) (rep-prim-at fits-int)   r b
+  valid→shape (valid-inr-reg-wf {m = m} lm tg (rep-prim fits-float) r b) =
+    shape-inr-reg lm (tag-of m 1 _ _ tg) (rep-prim-at fits-float) r b
+  valid→shape (valid-inr-reg-wf {m = m} {b = bv} lm tg (rep-unit u sv) r b) =
+    shape-inr-reg {b = bv} lm (tag-of m 1 _ _ tg) (rep-unit-at u sv) r b
   valid→shape (valid-μ-wf wf x lv) = shape-μ wf (valid→shape lv)
   valid→shape (valid-ν-wf wf x lv) = shape-ν wf (valid→shape lv)
   valid→shape (valid-int-wf b r)   = shape-int b r

@@ -169,3 +169,30 @@ module WriteWithDisjoint {FS : FrameSemantics} where
 
   -- Case 3: heap location — a stack write cannot touch it.
   write-sv-at-frontier-preserves-before s alloc (AtDynamic hl) sv (heap-before _) = refl
+
+  -- | …and the SUC-frontier sibling, likewise for an arbitrary `StoredValue`.
+  --
+  -- Stage F: `run-inl`/`run-inr` store into the payload cell whatever `Input1`
+  -- holds, which is a pointer only when the input was memory-resident. With a
+  -- register-resident or unit input it is some other `StoredValue`, so the
+  -- `write-loc` (pointer-only) form no longer covers the write. The proof is
+  -- unchanged: `k < next-slot alloc < suc (next-slot alloc)`, so a
+  -- `BeforeFrontier` location is never the written slot.
+  write-sv-at-suc-frontier-preserves-before : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) (sv : StoredValue FS) →
+    BeforeFrontier alloc loc →
+    readLoc (writeLoc s (AtStack (current-frame alloc) (suc (next-slot alloc))) sv) loc ≡
+    readLoc s loc
+
+  write-sv-at-suc-frontier-preserves-before s alloc (AtStack f k) sv (stack-before f≡cf k<next)
+    with _≟F_ (current-frame alloc) f | Data.Nat._≟_ (suc (next-slot alloc)) k
+  ... | yes _ | yes sns≡k = ⊥-elim (<⇒≢ (m<n⇒m<1+n k<next) (sym sns≡k))
+  ... | yes _ | no _ = refl
+  ... | no cf≢f | _ = ⊥-elim (cf≢f (sym f≡cf))
+
+  write-sv-at-suc-frontier-preserves-before s alloc (AtStack f k) sv (stack-ancestor cf≺f _)
+    with _≟F_ (current-frame alloc) f
+  ... | yes cf≡f = ⊥-elim (≺⇒≢ cf≺f cf≡f)
+  ... | no _ = refl
+
+  write-sv-at-suc-frontier-preserves-before s alloc (AtDynamic hl) sv (heap-before _) = refl

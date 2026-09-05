@@ -148,6 +148,31 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   prim-sv fits-int   v = SV-Lit fits-intˢ   v
   prim-sv fits-float v = SV-Lit fits-floatˢ v
 
+  ------------------------------------------------------------------------
+  -- Stage F: how a sum's payload CELL stands for its payload, when the
+  -- payload has no block of its own. Two ways, and the reason this is a
+  -- PARAMETER rather than a second pair of constructors is that every
+  -- transport below passes the witness through opaquely — widening the
+  -- witness costs those sites nothing, adding a constructor would cost each
+  -- of them a clause.
+  --
+  --   `rep-prim` — the payload FITS IN A REGISTER, so the cell holds the
+  --     value itself, `prim-sv fit a`.
+  --   `rep-unit` — the payload is `Unit`, which has one inhabitant and
+  --     therefore carries no information. The cell holds whatever the trace
+  --     happened to copy there (`store-at-slot` after `mov-to-output`, and
+  --     `Input1` is unconstrained for a unit input), so the witness records
+  --     that value rather than pretending to constrain it. This is the same
+  --     stance as `in-unit` and `unit-result`: Unit has NO residence.
+  ------------------------------------------------------------------------
+  data InlineRep (A : IRTy) : Set where
+    rep-prim : FitsInRegI A → InlineRep A
+    rep-unit : A ≡ Unit → StoredValue FS → InlineRep A
+
+  inline-sv : ∀ {A : IRTy} → InlineRep A → ⟦ A ⟧ → StoredValue FS
+  inline-sv (rep-prim fit)  a = prim-sv fit a
+  inline-sv (rep-unit _ sv) _ = sv
+
   mutual
     --------------------------------------------------------------------
     -- ValidAtWF: Mode-indexed validity
@@ -260,8 +285,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         {sum-loc : ValueLocation FS} {s : LocState FS} →
         LocMatchesMode m sum-loc →
         SumTag m 0 s sum-loc →
-        (fit : FitsInRegI A) →
-        readLoc s (sucLoc sum-loc) ≡ just (prim-sv fit a) →
+        (rep : InlineRep A) →
+        readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep a) →
         BeforeFrontier alloc (sucLoc sum-loc) →
         ValidAtWF m alloc {A + B} (sem-inl a) sum-loc s
 
@@ -270,8 +295,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         {sum-loc : ValueLocation FS} {s : LocState FS} →
         LocMatchesMode m sum-loc →
         SumTag m 1 s sum-loc →
-        (fit : FitsInRegI B) →
-        readLoc s (sucLoc sum-loc) ≡ just (prim-sv fit b) →
+        (rep : InlineRep B) →
+        readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep b) →
         BeforeFrontier alloc (sucLoc sum-loc) →
         ValidAtWF m alloc {A + B} (sem-inr b) sum-loc s
 
@@ -1002,6 +1027,26 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- consumers to assume one.
     in-unit : A ≡ Unit → InputPlace m alloc v s
 
+  -- What `Input1` HOLDS, and the proof that it holds it — the input-side twin
+  -- of `payload-sv`/`payload-read`. A pointer for a located input, the value
+  -- itself for a register-resident one, and for a unit input whatever happens
+  -- to be there: `in-unit` constrains nothing, but the register still has
+  -- SOME contents, and naming them is what keeps this accessor TOTAL.
+  --
+  -- Totality is the point. Any consumer that only MOVES the input (which is
+  -- all `run-inl`/`run-inr` do — `mov-to-output` then `store-at-slot`) can
+  -- use these and never case-split on the residence.
+  input-sv : ∀ {A m alloc} {v : ⟦ A ⟧} {s} → InputPlace {A} m alloc v s → StoredValue FS
+  input-sv (in-at-loc loc _ _ _)  = SV-Ptr loc
+  input-sv {v = v} (in-at-reg fit _) = prim-sv fit v
+  input-sv {s = s} (in-unit _)    = readReg (regs s) Input1
+
+  input-read : ∀ {A m alloc} {v : ⟦ A ⟧} {s} (ip : InputPlace {A} m alloc v s)
+             → readReg (regs s) Input1 ≡ input-sv ip
+  input-read (in-at-loc _ _ _ eq) = eq
+  input-read (in-at-reg _ eq)     = eq
+  input-read (in-unit _)          = refl
+
   -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
   RecDispatcherWF : ℕ → Set
   RecDispatcherWF bound = ∀ {A B} (mIn : AllocMode) (ir : IR A B) →
@@ -1074,8 +1119,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                    → BeforeFrontier alloc payload-loc
                    → ValidAtWF mA alloc a payload-loc s
                    → PayloadAt alloc a sum-loc s
-    payload-in-reg : (fit : FitsInRegI A)
-                   → readLoc s (sucLoc sum-loc) ≡ just (prim-sv fit a)
+    payload-in-reg : (rep : InlineRep A)
+                   → readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep a)
                    → PayloadAt alloc a sum-loc s
 
   -- The uniform accessors, mirroring `place-sv` / `place-rax` on the output
@@ -1087,7 +1132,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   payload-sv : ∀ {alloc A} {a : ⟦ A ⟧} {sum-loc s}
              → PayloadAt alloc a sum-loc s → StoredValue FS
   payload-sv (payload-at-loc pl _ _ _)      = SV-Ptr pl
-  payload-sv {a = a} (payload-in-reg fit _) = prim-sv fit a
+  payload-sv {a = a} (payload-in-reg rep _) = inline-sv rep a
 
   payload-read : ∀ {alloc A} {a : ⟦ A ⟧} {sum-loc s} (pd : PayloadAt alloc a sum-loc s)
                → readLoc s (sucLoc sum-loc) ≡ just (payload-sv pd)
@@ -1489,6 +1534,88 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   validityWF-write-sv-at-frontier {m} {alloc} {Str} _ loc s stored loc-before (valid-str-wf bf) =
     valid-str-wf bf
   validityWF-write-sv-at-frontier {m} {alloc} {Buffer} _ loc s stored loc-before (valid-buffer-wf bf) =
+    valid-buffer-wf bf
+
+  ------------------------------------------------------------------------
+  -- …and the SUC-frontier sibling, for an arbitrary `StoredValue`.
+  --
+  -- Stage F: the payload cell of a sum receives whatever `Input1` held, which
+  -- is a pointer only when the input was memory-resident. The pointer-only
+  -- `validityWF-write-at-suc-frontier` therefore no longer covers `run-inl`'s
+  -- second write. Clause for clause the frontier version, one slot up.
+  ------------------------------------------------------------------------
+  validityWF-write-sv-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
+    (s : LocState FS) (stored : StoredValue FS) →
+    BeforeFrontier alloc loc →
+    ValidAtWF m alloc v loc s →
+    ValidAtWF m alloc v loc (writeLoc s (AtStack (current-frame alloc) (suc (next-slot alloc))) stored)
+
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {Unit} _ loc s stored loc-before valid-unit-wf =
+    valid-unit-wf
+
+  -- Pair (any mode)
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {A * B} (a , b) loc s stored loc-before
+    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
+    valid-pair-wf lmm fp' sp' fb sb slb fv' sv'
+    where
+      fp' = trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) fp
+      sp' = trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) sp
+      fv' = validityWF-write-sv-at-suc-frontier a fl s stored fb fv
+      sv' = validityWF-write-sv-at-suc-frontier b sl s stored sb sv
+
+  validityWF-write-sv-at-suc-frontier {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s stored loc-before
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
+    valid-closure-wf bb lmm ep' cp' eb slb ev' bc
+    where
+      ep' = trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) ep
+      cp' = trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp
+      ev' = validityWF-write-sv-at-suc-frontier env el s stored eb ev
+
+  -- Kind-coerced closure
+
+  -- inl (any mode)
+  -- Stage F: the INLINE-payload mirrors. Same transports, minus the two
+  -- fields an inline payload does not have (its own location and validity).
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {A + B} .(sem-inl a) loc s stored loc-before
+    (valid-inl-reg-wf {a = a} lmm tg fit pp slb) =
+    valid-inl-reg-wf lmm (transport-SumTag (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) tg) fit (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp) slb
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {A + B} .(sem-inr b) loc s stored loc-before
+    (valid-inr-reg-wf {b = b} lmm tg fit pp slb) =
+    valid-inr-reg-wf lmm (transport-SumTag (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) tg) fit (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp) slb
+
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {A + B} .(sem-inl a) loc s stored loc-before
+    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inl-wf lmm tg' pp' pb slb pv'
+    where
+      tg' = transport-SumTag (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) tg
+      pp' = trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp
+      pv' = validityWF-write-sv-at-suc-frontier a pl s stored pb pv
+
+  -- inr (any mode)
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {A + B} .(sem-inr b) loc s stored loc-before
+    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inr-wf lmm tg' pp' pb slb pv'
+    where
+      tg' = transport-SumTag (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) tg
+      pp' = trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp
+      pv' = validityWF-write-sv-at-suc-frontier b pl s stored pb pv
+
+  -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
+  -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {μ-type F} x loc s stored loc-before (valid-μ-wf wf .x lv) =
+    valid-μ-wf wf x (validityWF-write-sv-at-suc-frontier (eval (out-μ wf) x) loc s stored loc-before lv)
+
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {ν-type F} x loc s stored loc-before (valid-ν-wf wf .x lv) =
+    valid-ν-wf wf x (validityWF-write-sv-at-suc-frontier (eval (Out wf) x) loc s stored loc-before lv)
+
+  -- Primitives: BeforeFrontier unchanged
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {Int} _ loc s stored loc-before (valid-int-wf bf rl) =
+    valid-int-wf bf (trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) rl)
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {Float} _ loc s stored loc-before (valid-float-wf bf rl) =
+    valid-float-wf bf (trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) rl)
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {Str} _ loc s stored loc-before (valid-str-wf bf) =
+    valid-str-wf bf
+  validityWF-write-sv-at-suc-frontier {m} {alloc} {Buffer} _ loc s stored loc-before (valid-buffer-wf bf) =
     valid-buffer-wf bf
 
   ------------------------------------------------------------------------
