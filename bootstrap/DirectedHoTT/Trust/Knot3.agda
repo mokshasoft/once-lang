@@ -24,8 +24,6 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot3 where
 
-import DirectedHoTT.Examples.Knot.JudgeWfAC
-import DirectedHoTT.Examples.Knot.JudgeWfAD
 import DirectedHoTT.Examples.Knot.JudgeWfAE
 import DirectedHoTT.Examples.Knot.JudgeWfAF
 import DirectedHoTT.Examples.Knot.JudgeWfAG
@@ -39,3 +37,6 @@ import DirectedHoTT.Examples.Knot.JudgeWfAN
 import DirectedHoTT.Examples.Knot.JudgeWfAO
 import DirectedHoTT.Examples.Knot.JudgeWfAP
 import DirectedHoTT.Examples.Knot.JudgeWfAQ
+import DirectedHoTT.Examples.Knot.JudgeWfAR
+import DirectedHoTT.Examples.Knot.JudgeWfAS
+import DirectedHoTT.Examples.Knot.JudgeWfAT

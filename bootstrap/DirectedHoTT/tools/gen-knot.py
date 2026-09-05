@@ -4358,6 +4358,8 @@ _WRAP_LEDGER = {
     "ren-head-give": "✅ not a program — `ren-head-red`'s twin for a GIVEN\n--                row, whose method is hand-written and so is not an\n--                `isubMethod` at all (`Knot/RenAgreeX`, `cTm-var`).",
     "ren-head-red": "✅ not a program — the per-row head reduction INSIDE\n--                `Knot/RenRed`, i.e. a step of `renTmK`'s own adequacy.",
     "extRK-vz":  "✅ not a program — a clause of `extRK`'s adequacy.",
+    "extSK-vz":  "✅ not a program — the SUBSTITUTION twin (`Knot/SubSpec`).",
+    "extSK-sub": "✅ not a program — `extSK`'s substitution naturality\n--                (`Knot/SubNat`), i.e. `ExtNSub` for `extNK`.",
     "extRK-vs":  "✅ not a program — the other clause.",
     "extRK-sub": "✅ not a program — `extRK`'s substitution naturality\n--                (`Knot/RenNat`), the hypothesis `isubMethod-red` takes.",
     "singleSK-vz": "✅ not a program — a clause of `singleK`'s adequacy.",
@@ -4369,7 +4371,7 @@ _WRAP_LEDGER = {
     "pwDefault": "⬜ OWED — the default method of `Knot/PwBody`'s tuple.  It\n--                REBUILDS `icon k p` and renames, so its adequacy is a\n--                corollary of `renTmK`'s; blocked on the same five\n--                cross-sort rows.",
     # ⬜ OWED — a commutation lemma, `Knot/SzAgree`'s shape.
     "wkK":      "⬜ OWED, AND FALSE AS STATED — `wkK` is NOT `renTm vs`; it keeps\n--                the de Bruijn index.  `Knot/WkSub.wkTmK`/`wkTyK` are the\n--                correct translation and the emitter must move to them.",
-    "wkTmK":    "⬜ OWED — `renTm vs`, done PROPERLY (`Knot/WkSub`): `subTm` at\n--                the substitution `x ↦ var (vs x)`.  Replaces `wkK` here.",
+    "wkTmK":    "✅ DISCHARGED — `Knot/SubSpec.wkTmK-agree`, and in ONE LINE:\n--                `wkTmK n t = renTmAtK sTm n (nsuc n) (vsRenK n) t`, so\n--                its adequacy is `ren-agree` at the renaming `vs`, whose\n--                witness is `vsRenK-app`.  ★ That is the law §15.1 showed\n--                was UNSTATABLE for `wkK` — the wrong weakening had no\n--                `app wkK x` to reduce.  The unstatable law discharges the\n--                correct one as a corollary.",
     "wkTyK":    "⬜ OWED — `renTy vs`, likewise.  ⚠ DEFINED but not yet\n--                EMITTED: no rule so far weakens a TYPE.",
     "subTmAtK": "⬜ OWED — `enTm (subTm σ t) ≡ subTmAtK … (enTm t)`.",
     "subTyAtK": "⬜ OWED — `enTy (subTy σ A) ≡ subTyAtK … (enTy A)`.",

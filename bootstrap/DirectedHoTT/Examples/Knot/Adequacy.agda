@@ -85,6 +85,9 @@
 --     extRNK-vz  ✅ not a program — a clause of `extRNK`'s adequacy
 --                (`Knot/RenSpec`), which `extR-Represents` assembles.
 --     extSK      ⬜ OWED — with `subTmK`.
+--     extSK-sub  ✅ not a program — `extSK`'s substitution naturality
+--                (`Knot/SubNat`), i.e. `ExtNSub` for `extNK`.
+--     extSK-vz   ✅ not a program — the SUBSTITUTION twin (`Knot/SubSpec`).
 --     flatK      ⬜ OWED — agreement with `flat?`.
 --     head-red   ✅ not owed — a lemma INSIDE `Knot/SzAgree`, not a program.
 --     ihTyK      ⬜ OWED — agreement with `ihTy`.
@@ -132,8 +135,13 @@
 --     wkK        ⬜ OWED, AND FALSE AS STATED — `wkK` is NOT `renTm vs`; it keeps
 --                the de Bruijn index.  `Knot/WkSub.wkTmK`/`wkTyK` are the
 --                correct translation and the emitter must move to them.
---     wkTmK      ⬜ OWED — `renTm vs`, done PROPERLY (`Knot/WkSub`): `subTm` at
---                the substitution `x ↦ var (vs x)`.  Replaces `wkK` here.
+--     wkTmK      ✅ DISCHARGED — `Knot/SubSpec.wkTmK-agree`, and in ONE LINE:
+--                `wkTmK n t = renTmAtK sTm n (nsuc n) (vsRenK n) t`, so
+--                its adequacy is `ren-agree` at the renaming `vs`, whose
+--                witness is `vsRenK-app`.  ★ That is the law §15.1 showed
+--                was UNSTATABLE for `wkK` — the wrong weakening had no
+--                `app wkK x` to reduce.  The unstatable law discharges the
+--                correct one as a corollary.
 --     wkTyK      ⬜ OWED — `renTy vs`, likewise.  ⚠ DEFINED but not yet
 --                EMITTED: no rule so far weakens a TYPE.
 --     wkTyUnderK ⬜ OWED — agreement with `renTy (extR vs)`.
