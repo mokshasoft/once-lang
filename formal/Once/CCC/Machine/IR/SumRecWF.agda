@@ -452,7 +452,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                 }
 
       -- Write payload pointer to sucLoc sum-loc
-      s₁ = write-loc s (sucLoc sum-loc) input-loc
+      -- The state must model what the trace DOES. `in{l,r}-trace` is
+      -- tag-aware (`instr-load-tag-lit 0 ∷ store-at-slot sum-slot`), so the
+      -- tag cell is written BEFORE the payload pointer. Omitting it was
+      -- invisible while `SumTag Stack` was `⊤`; it is precisely what the
+      -- strengthening to `readLoc s loc ≡ just (SV-Tag t)` exposes.
+      s₀ = writeLoc s sum-loc (SV-Tag 0)
+
+      s₁ = write-loc s₀ (sucLoc sum-loc) input-loc
       s-final = record s₁ { regs = writeReg (regs s₁) Output (SV-Ptr sum-loc) }
 
       -- Stack mode: sum-slots = 2 > 0
@@ -474,7 +481,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
       payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
       payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
-                          (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
+                          (write-read-same s₀ (sucLoc sum-loc) input-loc stack-valid)
 
       -- Input1 validity in final state
       input-valid-wf-final : ValidAtWF mIn alloc₁ x input-loc s-final
@@ -601,7 +608,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc₁ = record alloc { next-slot = next-slot alloc +ℕ sum-slots }
 
       -- Write payload pointer to sucLoc sum-loc
-      s₁ = write-loc s (sucLoc sum-loc) input-loc
+      -- The state must model what the trace DOES. `in{l,r}-trace` is
+      -- tag-aware (`instr-load-tag-lit 1 ∷ store-at-slot sum-slot`), so the
+      -- tag cell is written BEFORE the payload pointer. Omitting it was
+      -- invisible while `SumTag Stack` was `⊤`; it is precisely what the
+      -- strengthening to `readLoc s loc ≡ just (SV-Tag t)` exposes.
+      s₀ = writeLoc s sum-loc (SV-Tag 1)
+
+      s₁ = write-loc s₀ (sucLoc sum-loc) input-loc
       s-final = record s₁ { regs = writeReg (regs s₁) Output (SV-Ptr sum-loc) }
 
       -- Stack mode: sum-slots = 2 > 0
@@ -623,7 +637,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
       payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just (SV-Ptr input-loc)
       payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
-                          (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
+                          (write-read-same s₀ (sucLoc sum-loc) input-loc stack-valid)
 
       -- Input1 validity in final state
       input-valid-wf-final : ValidAtWF mIn alloc₁ x input-loc s-final

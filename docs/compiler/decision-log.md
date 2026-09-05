@@ -10987,3 +10987,65 @@ port is TERMINATING → WF), but it lands in the same parked, currently-red
 modules, so "follow the red" is not available as a signal there. Whether F
 precedes or follows E (collapsing the per-mode module pairs) is settled by
 neither plan.
+
+## D148: `inl-inr-trace-state-correct` Is REFUTABLE — a Residual That Cannot Be Discharged, Not One That Is Merely Open
+
+**Date**: 2026-09-05 · **Found by**: plan 0.86 step E, greening the `*WF`
+island · **Relates**: D142/D143 (the same rung-1 move, arriving as a finding),
+plan 0.64, the residual ledger
+
+**What was found.** `Once.CCC.Machine.IR.SumRecWF.inl-inr-trace-state-correct`
+is `SMP.!!`, and its STATEMENT is false. It equates
+
+    proj₁ (exec-trace (instr-alloc-stack … ∷ instr-load-tag-lit tag ∷
+                       store-at-slot result-slot ∷ …) s alloc)
+
+with an `s-final` the caller constructs as
+
+    record (write-loc s (AtStack frame payload-slot) input-loc)
+           { regs = writeReg … Output (SV-Ptr result-loc) }
+
+The trace STORES THE TAG at `result-slot`; the constructed `s-final` leaves
+`result-slot` holding whatever `s` held. `s` is universally quantified, so the
+two states differ and no proof exists.
+
+**This was already known and precisely recorded**, in a comment above the
+residual: "the s-final shape on the caller side ONLY models the payload write
+and the Output register update … **The tag write at result-slot is folded into
+this postulate's soundness debt** … Migrating callers to a tag-aware `s-final`
+is the next step (requires a `validityWF-write-sv-at-frontier` sibling lemma in
+`ClosureWellFormed`)." The entry exists to move that from a comment on a hole
+into the ledger, where a refutable residual belongs.
+
+**Why it stayed invisible.** `SumTag Stack` was `⊤`. Nothing downstream could
+ask whether the tag was written, so a model that never wrote it type-checked.
+Upstream later strengthened it —
+
+    SumTag Stack t s loc = readLoc s loc ≡ just (SV-Tag t)
+
+— with the reason recorded in place: "`SumTag Stack = ⊤` UNDERSTATED the
+representation and made the branch scrutinee's tag fact underivable for stack
+sums." That strengthening is what surfaces this: `run-inl` now fails to supply
+the witness, because its model never performs the write.
+
+**The compiler is NOT affected.** `ir-to-trace' n l (inl Stack)` emits
+`instr-load-tag-lit 0 ∷ store-at-slot sum-slot ∷ mov-to-output ∷
+store-at-slot (suc sum-slot) ∷ lea-slot sum-slot ∷ []` — the tag IS stored in
+emitted code. The defect is confined to the WF island's reference model, which
+nothing imports. What it would have cost is a correspondence proof discharged
+against the wrong state.
+
+**Decision.** Fix the model, not the statement. `run-inl`/`run-inr` now write
+the tag (`s₀ = writeLoc s sum-loc (SV-Tag t)`) before the payload, matching
+their own `inl-trace`/`inr-trace` — which were ALREADY tag-aware, so the module
+disagreed with itself. Closing the rest needs the named sibling lemma
+`validityWF-write-sv-at-frontier` (an arbitrary `StoredValue` written at the
+frontier slot preserves the validity of anything `BeforeFrontier`, the write
+being disjoint by `stack-slot-disjoint`), mirroring the existing
+`validityWF-write-at-suc-frontier` clause for clause.
+
+**The general lesson.** A `⊤`-valued predicate is not a weak invariant, it is
+an ABSENT one, and it silently licenses a model that does less than the code.
+This is the third time in this plan that strengthening a representation turned
+a prose-level guarantee into a checkable one and found something (D142 the
+annotation, D143 erasure, this the tag).
