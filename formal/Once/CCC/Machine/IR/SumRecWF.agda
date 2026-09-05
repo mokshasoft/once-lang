@@ -90,7 +90,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; InputPlace; in-at-loc; in-at-reg; in-unit; valid-unit-wf;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; InputPlace; in-at-loc; in-at-reg; in-unit; Place; valid-unit-wf;
            mk-IRResultAWF-via-bump;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-mem-preserved;
@@ -752,14 +752,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (x : ⟦ A + B ⟧)
     (s : LocState FS) (alloc : AllocState {FS}) →
     InputPlace m alloc x s →
+    (dest : Place) →
     halted s ≡ false →
     ∃[ mOut ] IRResultAWF mOut (case f g) x s alloc
-  run-case _ _ _ _ _ _ (in-at-reg () _) _
-  run-case _ _ _ _ _ _ (in-unit ()) _
+  run-case _ _ _ _ _ _ (in-at-reg () _) _ _
+  run-case _ _ _ _ _ _ (in-unit ()) _ _
 
   -- Case for inl: dispatch to f
   run-case {m} {A} {B} {C} f g rec-wf (inj₁ a) s alloc
-           (in-at-loc input-loc input-valid-wf input-before rdi-eq) not-halted =
+           (in-at-loc input-loc input-valid-wf input-before rdi-eq) dest not-halted =
     mF ,
     mk-IRResultAWF-via-bump
       (IRResultAWF.final-state result-f)
@@ -844,9 +845,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Note: cap-f argument removed in Phase 3
       f-exec-result : ∃[ mOut ] IRResultAWF mOut f a s-setup alloc
       -- Stage F: the four memory facts are now bundled as an `InputPlace`.
+      -- Stage F: the taken branch produces CASE's result, so it inherits
+      -- case's own destination. (Not yet binding — see RecDispatcherWF.)
       f-exec-result = rec-wf mA f (case-f-smaller f g) a s-setup alloc
                         (in-at-loc payload-loc payload-valid-wf-setup payload-before rdi-payload)
-                        not-halted-setup
+                        dest not-halted-setup
       mF = proj₁ f-exec-result
       result-f = proj₂ f-exec-result
 
@@ -910,7 +913,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Case for inr: dispatch to g
   run-case {m} {A} {B} {C} f g rec-wf (inj₂ b) s alloc
-           (in-at-loc input-loc input-valid-wf input-before rdi-eq) not-halted =
+           (in-at-loc input-loc input-valid-wf input-before rdi-eq) dest not-halted =
     mG ,
     mk-IRResultAWF-via-bump
       (IRResultAWF.final-state result-g)
@@ -996,7 +999,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       g-exec-result : ∃[ mOut ] IRResultAWF mOut g b s-setup alloc
       g-exec-result = rec-wf mB g (case-g-smaller f g) b s-setup alloc
                         (in-at-loc payload-loc payload-valid-wf-setup payload-before rdi-payload)
-                        not-halted-setup
+                        dest not-halted-setup
       mG = proj₁ g-exec-result
       result-g = proj₂ g-exec-result
 

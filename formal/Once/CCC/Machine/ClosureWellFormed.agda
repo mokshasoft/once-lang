@@ -902,6 +902,27 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
 
   ------------------------------------------------------------------------
+  -- Stage F: the DESTINATION a caller hands an IR.
+  --
+  -- The architecture, stated plainly: STACK-allocated input/output BETWEEN
+  -- IRs; HEAP allocation only for temporaries INSIDE an IR. So a boundary
+  -- destination is a caller-supplied storage location — which the caller owns,
+  -- and which therefore outlives the callee's frame — or a register when the
+  -- value fits one. Heap never appears here: it is IR-internal and reclaimed
+  -- before return.
+  --
+  -- Deliberately NOT a `ValueLocation` constructor. `SMCore` records why
+  -- (plan 0.2.4.5 stage E, backed out the same day it was tried): an
+  -- `InReg : AbstractReg → ValueLocation` broke the `preserves-mem` family
+  -- universally, because `readLoc s (InReg Output)` shifts under
+  -- `mov-to-output`. Memory-only operations stay storage-typed; `Place`
+  -- appears only at handover points.
+  ------------------------------------------------------------------------
+  data Place : Set where
+    AtStorage : ValueLocation FS → Place
+    InReg     : AbstractReg → Place
+
+  ------------------------------------------------------------------------
   -- Stage F (plan 0.2.4.5): `InputPlace`, the INPUT-side mirror of
   -- `ResultPlace`.
   --
@@ -945,6 +966,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ir-size ir < bound →
     (x : ⟦ A ⟧) (s : LocState FS) (alloc : AllocState {FS}) →
     InputPlace mIn alloc x s →
+    -- Stage F: the caller says WHERE the result goes. Not yet read by
+    -- `IRResultBase.result-place`, which still lets the callee choose — that
+    -- re-indexing is the next step and is what makes this parameter load-
+    -- bearing rather than plumbing.
+    (dest : Place) →
     halted s ≡ false →
     ∃[ mOut ] IRResultAWF mOut ir x s alloc
 

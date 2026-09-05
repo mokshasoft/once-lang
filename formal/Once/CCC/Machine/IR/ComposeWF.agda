@@ -69,6 +69,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; at-reg;
            valid-unit-wf; mk-IRResultAWF-via-bump;
            RecDispatcherWF; InputPlace; in-at-loc; in-at-reg; in-unit;
+           Place; AtStorage; InReg;
            place-sv; place-rax; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved;
            validityWF-with-bf-transfer; mem-preserved-from-tnhw)
@@ -178,9 +179,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (rec-wf : RecDispatcherWF (ir-size (g ∘ f)))
     (x : ⟦ A ⟧) (s : LocState FS) (alloc : AllocState {FS}) →
     InputPlace mIn alloc x s →
+    (dest : Place) →
     halted s ≡ false →
     ∃[ mOut ] IRResultAWF mOut (g ∘ f) x s alloc
-  run-compose mIn f g rec-wf x s alloc input-place not-halted =
+  run-compose mIn f g rec-wf x s alloc input-place dest not-halted =
     -- Plan 0.17: bump = bump-+ result-f.bump result-g.bump.
     mOut , mk-IRResultAWF-via-bump
       s-final
@@ -263,7 +265,19 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Stage F: compose's OWN input, bundled. `run-compose` still takes the
       -- four memory facts (its callers are unchanged); only the dispatcher
       -- interface generalised.
-      f-result-pair = rec-wf mIn f (∘-f-smaller f g) x s alloc input-place not-halted
+      -- Stage F destinations. `g` produces COMPOSE's result, so it gets
+      -- compose's own `dest`. `f` produces the INTERMEDIATE, which is an IR
+      -- boundary and therefore stack-resident: the frontier slot compose owns.
+      --
+      -- NOT yet load-bearing: `result-place` still lets the callee choose, so
+      -- neither sub-IR is obliged to honour these. Making them binding is the
+      -- next step, and it is what will force compose to RESERVE the
+      -- intermediate slot (its `bump` must then account for it).
+      inter-dest : Place
+      inter-dest = AtStorage (AtStack (current-frame alloc) (next-slot alloc))
+
+      f-result-pair = rec-wf mIn f (∘-f-smaller f g) x s alloc input-place
+                        inter-dest not-halted
       mMid = proj₁ f-result-pair
       result-f = proj₂ f-result-pair
       s₁ = IRResultAWF.final-state result-f
@@ -337,7 +351,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Run g via recursive dispatch
       ------------------------------------------------------------------------
       g-result-pair = rec-wf mMid g (∘-g-smaller f g) (eval f x) s₁' alloc₁
-                        g-input not-halted₁
+                        g-input dest not-halted₁
       mOut = proj₁ g-result-pair
       result-g = proj₂ g-result-pair
       s₂ = IRResultAWF.final-state result-g
