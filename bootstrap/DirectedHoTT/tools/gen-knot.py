@@ -4579,17 +4579,20 @@ _WRAP_LEDGER = {
     "extRNK-vs": "✅ not a program — the other clause.",
     "pwDefault": "⬜ OWED — the default method of `Knot/PwBody`'s tuple.  It\n--                REBUILDS `icon k p` and renames, so its adequacy is a\n--                corollary of `renTmK`'s; blocked on the same five\n--                cross-sort rows.",
     # ⬜ OWED — a commutation lemma, `Knot/SzAgree`'s shape.
-    "wkK":      "✅ RETIRED — ZERO applications remain.  Step 4: the last four\n--                (`Knot/PayTy` ×2, `Knot/IPayTyRho`, `Knot/IPayTyKap`)\n--                converted to `Knot/WkSub.wkAtK`, and the emitter no\n--                longer imports it into ~74 generated modules.\n--                ⚠ KEPT, not deleted: `Knot/Wk` still documents the wrong\n--                weakening and `Knot/WkProbe` exercises it.  It is now\n--                a RECORD, not a dependency.",
+    # ⚠ `wkK` HAS NO ENTRY ANY MORE, and that is correct: it was moved to
+    #   `Negative/WkK.agda`, which the scanner does not walk, so a ledger
+    #   entry for it would be a STALE NAME and the both-ways gate rejects
+    #   it.  The record of what it was and why lives in that file's header.
     "wkAtK":    "✅ DISCHARGED via `wkTmK`/`wkTyK` — `wkAtK s n t` IS\n--                `renTmAtK s n (nsuc n) (vsRenK n) t`, the sort-generic\n--                form they are instances of, so its adequacy at a sort is\n--                `ren-agree` at that sort.  ⚠ `sTm` is proved\n--                (`Knot/SubSpec.wkTmK-agree`); `sTy`/`sIDesc` wait on the\n--                type-sort agreement — see `wkTyK`.",
     "wkTmK":    "✅ DISCHARGED — `Knot/SubSpec.wkTmK-agree`, and in ONE LINE:\n--                `wkTmK n t = renTmAtK sTm n (nsuc n) (vsRenK n) t`, so\n--                its adequacy is `ren-agree` at the renaming `vs`, whose\n--                witness is `vsRenK-app`.  ★ That is the law §15.1 showed\n--                was UNSTATABLE for `wkK` — the wrong weakening had no\n--                `app wkK x` to reduce.  The unstatable law discharges the\n--                correct one as a corollary.",
     "wkTyK":    "⬜ OWED — `renTy vs`, likewise.  ⚠ DEFINED but not yet\n--                EMITTED: no rule so far weakens a TYPE.",
-    "subTmAtK": "⬜ OWED — `enTm (subTm σ t) ≡ subTmAtK … (enTm t)`.",
+    "subTmAtK": "✅ DISCHARGED — it IS `subAtK sTm`, so `Knot/SubAgreeTie.sub-agree`\n--                is exactly its statement.",
     "subAtK":   "✅ DISCHARGED — `Knot/SubAgreeTie.sub-agree`, ALL 30 `RTm`\n--                rows: `subAtK sTm ⌈Γ⌉ ⌈Δ⌉ s ⌈t⌉ ⟶* ⌈ subTm σ t ⌉` given\n--                `Represents σ s`.  25 generated (`Knot/SubAgreeRows`),\n--                4 cross-sort + 1 given (`Knot/SubAgreeX`), closed sorts\n--                by `Knot/SubClosed`.  ⇒ step 3, both halves.",
     "subTmK":   "✅ DISCHARGED via `subAtK` — same theorem, unapplied form.",
     "subTyAtK": "⬜ OWED — `enTy (subTy σ A) ≡ subTyAtK … (enTy A)`.",
-    "singleK":  "⬜ OWED — `single`'s half of the substitution agreement.",
-    "extNK":    "⬜ OWED — `extS`'s half.",
-    "nrsSubK":  "⬜ OWED — `nrs`'s half.",
+    "singleK":  "✅ DISCHARGED — `Knot/SubAgree.single-Represents`:\n--                `Represents (single u) (singleK n ⌈u⌉)`, from step 2's\n--                `singleK-vz`/`-vs`.",
+    "extNK":    "✅ DISCHARGED — `Knot/SubExt.extS-Represents`.  ⚠ Its `vs`\n--                case composes with `wkTmK-agree`, i.e. with `ren-agree`:\n--                `extS σ (vs x) = renTm vs (σ x)` WEAKENS.",
+    "nrsSubK":  "✅ DISCHARGED — `Knot/SubAgree.nrs-Represents`, packaging\n--                step 2's `nrsK-vz`/`-vs` (the row parked at eight\n--                attempts).  ⚠ The two depths differ — `nrs` RAISES, so\n--                the outer `Var-vsK` carries ⌈Γ ∙⌉ and the inner ⌈Γ⌉.",
     # ⬜ boolean/predicate functions over syntax: the SAME obligation `sz`
     #   discharges, and `Knot/SzAgree` is the only one discharged.
     "flatK":    "⬜ OWED — agreement with `flat?`.",
@@ -4620,7 +4623,6 @@ _WRAP_LEDGER = {
     "atConK":    "⬜ OWED — agreement with `atCon`.",
     "wkTyUnderK":"⬜ OWED — agreement with `renTy (extR vs)`.",
     # ⬜ the eliminators the wrappers above are built from.
-    "subTmK":    "⬜ OWED — `subTmK`'s agreement with `subTm`; `subTmAtK`'s core.",
     "extSK":     "⬜ OWED — with `subTmK`.",
     "singleSK":  "⬜ OWED — `singleK`'s core.",
     "nrsK":      "⬜ OWED — `nrsSubK`'s core.",
@@ -4974,6 +4976,24 @@ if __name__ == "__main__":
         "not." % _miss)
     _stale = sorted(set(_WRAP_LEDGER) - set(_seen))
     assert not _stale, ("_WRAP_LEDGER names %r, which the knot neither applies nor defines." % _stale)
+
+    # ⚠⚠ AND NO ENTRY MAY BE WRITTEN TWICE.  `_WRAP_LEDGER` is a dict literal,
+    #   so a repeated key is kept SILENTLY — the LAST one wins and the first
+    #   vanishes.  Measured 2026-09-05: `subTmK` had a ✅ DISCHARGED entry AND
+    #   a stale ⬜ OWED one, the stale one came second, and the discharge was
+    #   invisible for as long as both existed.
+    # ★ The both-ways gates above ask "is everything covered?" and "does every
+    #   name exist?" — NEITHER can see a shadowed entry, because the shadowed
+    #   and shadowing entries share a name.  A third question is needed, and
+    #   it is asked of the SOURCE TEXT, not of the dict.
+    import re as _re, os as _os
+    _src = open(_os.path.join(_os.path.dirname(__file__), 'gen-knot.py'), encoding='utf-8').read()
+    _lsrc = _src[_src.index('_WRAP_LEDGER = {'):_src.index('\n}', _src.index('_WRAP_LEDGER = {'))]
+    _lk = _re.findall(r'^\s*"([\w-]+)":', _lsrc, _re.M)
+    _dup = sorted({k for k in _lk if _lk.count(k) > 1})
+    assert not _dup, (
+        "_WRAP_LEDGER writes %r more than once — a dict literal keeps the LAST "
+        "silently, so the earlier entry is invisible.  Merge them." % _dup)
     _awrap = sorted(_seen)
     print("  agreement ledger: %d object-level program(s), %d still OWED"
           % (len(_awrap), sum(1 for w in _awrap if _WRAP_LEDGER[w].startswith("⬜"))))

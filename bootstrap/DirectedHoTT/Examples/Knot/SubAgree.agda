@@ -36,8 +36,10 @@ open import DirectedHoTT.Spec.Typing using ( _⟶*_; done; step; single )
 open import DirectedHoTT.Examples.Knot.Map using ( enTm; enVar )
 open import DirectedHoTT.Examples.Knot.Sorts using ( num; len )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK )
+open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK )
+open import DirectedHoTT.Spec.Typing using ( nrs )
 open import DirectedHoTT.Examples.Knot.RenSpec
-  using ( singleK-vz; singleK-vs; extRNK-vz; extRNK-vs; inVsX )
+  using ( singleK-vz; singleK-vs; extRNK-vz; extRNK-vs; inVsX; nrsK-vz; nrsK-vs )
 open import DirectedHoTT.Examples.Knot.RenMot using ( extRNK )
 
 ------------------------------------------------------------------------
@@ -100,3 +102,24 @@ extR-Represents :
   RepresentsR ρ r → RepresentsR (extR ρ) (extRNK d (num (len Δ)) r)
 extR-Represents d h vz     = extRNK-vz d _ _ _
 extR-Represents d h (vs x) = extRNK-vs d _ _ _ _ » inVsX (h x)
+
+------------------------------------------------------------------------
+-- ★★★ AND `nrs`'s HALF — the RAISING substitution.
+--
+--     nrs vz     = nsuc (var (vs vz))
+--     nrs (vs x) = var (vs (vs x))
+--
+-- ★ THE TWO LAWS WERE PROVED IN STEP 2 (`Knot/RenSpec.nrsK-vz`/`-vs`, the
+--   row that was parked at eight attempts).  This is only their
+--   PACKAGING as `Represents` — the same three lines `single-Represents`
+--   is, and the reason the laws were worth the fight.
+--
+-- ⚠ THE DEPTHS ARE FORCED, and differ from `single`'s: `nrs` raises, so
+--   the outer `Var-vsK` carries `⌈Γ ∙⌉` while the inner carries `⌈Γ⌉`.
+--   Passing one depth would not typecheck.
+------------------------------------------------------------------------
+
+nrs-Represents : {Γ Θ : Cx} →
+                 Represents {Γ = Γ ∙} {Θ = Θ} nrs (nrsSubK (num (len (Γ ∙))))
+nrs-Represents {Γ} vz     = nrsK-vz (num (len (Γ ∙))) (num (len Γ))
+nrs-Represents {Γ} (vs x) = nrsK-vs (num (len (Γ ∙))) (num (len Γ)) (enVar x)
