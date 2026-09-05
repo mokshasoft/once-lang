@@ -43,8 +43,10 @@ open import Once.CCC.Machine.Allocation hiding (AllocMode)
 -- Plan 0.52 M2: μ-type / ν-type / ⟦_⟧TI / WellFormedFI are the IRTy tier,
 -- and come from Once.IR; Once.Type supplies only the surface `Type`.
 open import Once.Type using (Type)
-open import Once.IRTy using (WellFormedFI-irrelevant)
+open import Once.IRTy using (WellFormedFI-irrelevant; ⌈_⌉; ⌈_⌉F; ⌈⟧TI-commute)
+open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst; sym; trans)
+open import Relation.Binary.PropositionalEquality.Properties using (subst-sym-subst)
 
 -- Semantic operations
 open import Once.Word using (Carrier)
@@ -97,11 +99,24 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
              (sym roundtrip) v)
     where
       -- out-μ ∘ In ≡ id at the value level (Lambek).
+      --
+      -- Plan 0.52 M2: `eval` runs the SURFACE helpers at `⌈F⌉F` and transports
+      -- the `⟦F⟧TI`-shaped operand along `⌈⟧TI-commute` (the μ RESULT needs no
+      -- transport — `⌈ μ-type F ⌉ = μ-type ⌈F⌉F` definitionally). So the round
+      -- trip is the surface one CONJUGATED by that transport, and the two
+      -- transports cancel by `subst-sym-subst`. Nothing about Lambek changed.
       roundtrip : eval (out-μ wf) (eval (In wf mode) x) ≡ x
       roundtrip =
-        trans (cong (coerce-functor⁻¹ F (μ-type F))
-                    (sem-Out-In wf (coerce-functor F (μ-type F) x)))
-              (coerce-round-trip F (μ-type F) x)
+        trans (cong (λ y → subst (λ T → EvV.⟦ T ⟧) (sym eq)
+                                 (EvV.coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F ⌉ y))
+                    (EvV.sem-Out-In (wf-⌈⌉ wf)
+                       (EvV.coerce-functor ⌈ F ⌉F ⌈ μ-type F ⌉ x')))
+              (trans (cong (subst (λ T → EvV.⟦ T ⟧) (sym eq))
+                           (EvV.coerce-round-trip ⌈ F ⌉F ⌈ μ-type F ⌉ x'))
+                     (subst-sym-subst eq))
+        where
+          eq = ⌈⟧TI-commute F (μ-type F)
+          x' = subst (λ T → EvV.⟦ T ⟧) eq x
 
   ------------------------------------------------------------------------
   -- Plan 0.27 Option 3: the four representational-transfer postulates
@@ -141,11 +156,19 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
       (subst (λ y → ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} y loc s)
              (sym roundtrip) v)
     where
+      -- The ν dual, same conjugation.
       roundtrip : eval (Out wf) (eval (in-ν wf mode) x) ≡ x
       roundtrip =
-        trans (cong (coerce-functor⁻¹ F (ν-type F))
-                    (sem-CoOut-CoIn wf (coerce-functor F (ν-type F) x)))
-              (coerce-round-trip F (ν-type F) x)
+        trans (cong (λ y → subst (λ T → EvV.⟦ T ⟧) (sym eq)
+                                 (EvV.coerce-functor⁻¹ ⌈ F ⌉F ⌈ ν-type F ⌉ y))
+                    (EvV.sem-CoOut-CoIn (wf-⌈⌉ wf)
+                       (EvV.coerce-functor ⌈ F ⌉F ⌈ ν-type F ⌉ x')))
+              (trans (cong (subst (λ T → EvV.⟦ T ⟧) (sym eq))
+                           (EvV.coerce-round-trip ⌈ F ⌉F ⌈ ν-type F ⌉ x'))
+                     (subst-sym-subst eq))
+        where
+          eq = ⌈⟧TI-commute F (ν-type F)
+          x' = subst (λ T → EvV.⟦ T ⟧) eq x
 
   -- | ValidAtWF for eval (Out wf) x — Plan 0.27 Option 3: REAL (dual of
   -- out-μ-valid). Out is "unwrap": invert valid-ν-wf, transport along

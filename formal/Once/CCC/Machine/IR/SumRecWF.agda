@@ -30,16 +30,17 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; tra
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 -- Plan 0.52 M2: machine values are IRTy values (⟦_⟧ᴵ), renamed to ⟦_⟧ locally.
-open import Once.Semantics.Machine using (sem-inl; sem-inr) renaming (⟦_⟧ᴵ to ⟦_⟧)
+open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
 open import Once.IR
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
-open import Once.Functor.Translate using (WellFormedF)
+-- Plan 0.52 M2: the IR tier's functor witness is `WellFormedFI`, from Once.IR.
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
 open import Once.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.Memory.TypeSlots using (type-slots)
+open import Once.IRTy using (⌈_⌉)
 
 -- Import SMPrimitives qualified for trace predicates
 import Once.CCC.Machine.SMPrimitives as SMP
@@ -53,6 +54,16 @@ import Once.CCC.Machine.IR.LambekValidity o as LV
 ------------------------------------------------------------------------
 -- Sum and Fix IR implementations
 ------------------------------------------------------------------------
+
+-- Plan 0.52 M2: `Once.Semantics.Machine`'s `sem-inl`/`sem-inr` are Type-tier
+-- (their implicits are `Type`), and this module's objects are `IRTy`. They are
+-- literally `inj₁`/`inj₂`, so re-establishing the two names at the IR tier
+-- leaves all fifteen call sites — implicit arguments included — unchanged.
+sem-inl : ∀ {A B : IRTy} → ⟦ A ⟧ → ⟦ A + B ⟧
+sem-inl = inj₁
+
+sem-inr : ∀ {A B : IRTy} → ⟦ B ⟧ → ⟦ A + B ⟧
+sem-inr = inj₂
 
 module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
@@ -369,8 +380,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Memory layout: sum-loc stores tag (implicit), sucLoc sum-loc stores payload ptr
   ------------------------------------------------------------------------
 
-  -- Helper: type-slots (A + B) > 0
-  sum-slots-pos : ∀ {A B} → 0 < type-slots (A + B)
+  -- Helper: type-slots (A + B) > 0.
+  -- Plan 0.52 M2: `type-slots` is Type-tier, and this module's objects are
+  -- `IRTy`. The slot count of an IR object is that of its canonical
+  -- representative `⌈ A ⌉` — `⌈_⌉` only invents an arrow grade, which layout
+  -- does not read, and it is structural everywhere else.
+  sum-slots-pos : ∀ {A B} → 0 < type-slots ⌈ A + B ⌉
   sum-slots-pos {A} {B} = s≤s z≤n
 
   -- Plan 0.14 (Camp 2): run-inl handles Stack-mode only. Heap-mode inl is
@@ -1012,8 +1027,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- For Heap mode (currently same as Stack in reference model).
   ------------------------------------------------------------------------
 
-  run-In : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode) (m : AllocMode)
-    (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) (input-loc : ValueLocation FS)
+  run-In : ∀ {F} (wf : WellFormedFI F) (mIn : AllocMode) (m : AllocMode)
+    (x : ⟦ ⟦ F ⟧TI (μ-type F) ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
@@ -1099,7 +1114,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- F(μF) have identical representation, so this is identity.
   ------------------------------------------------------------------------
 
-  run-out-μ : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode)
+  run-out-μ : ∀ {F} (wf : WellFormedFI F) (mIn : AllocMode)
     (x : ⟦ μ-type F ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
@@ -1190,7 +1205,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- This is a trivial identity operation.
   ------------------------------------------------------------------------
 
-  run-Out : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode)
+  run-Out : ∀ {F} (wf : WellFormedFI F) (mIn : AllocMode)
     (x : ⟦ ν-type F ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
@@ -1277,8 +1292,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Like In, if AllocMode requests allocation, we store at slot.
   ------------------------------------------------------------------------
 
-  run-in-ν : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode) (m : AllocMode)
-    (x : ⟦ ⟦ F ⟧T (ν-type F) ⟧) (input-loc : ValueLocation FS)
+  run-in-ν : ∀ {F} (wf : WellFormedFI F) (mIn : AllocMode) (m : AllocMode)
+    (x : ⟦ ⟦ F ⟧TI (ν-type F) ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
