@@ -741,7 +741,39 @@ itself.  A design decision from §16.1 shows up as the last line of a proof.
     three different depths.  The hand-written `pw1`–`pw4` ladder would
     have needed a fifth rung and then a sixth.
 
-⬜ WHAT REMAINS OF STEP 3: the SUBSTITUTION half (`sub-agree`).  It needs
+### §18.1 ✅ AND THE SUBSTITUTION HALF TOO — STEP 3 IS CLOSED
+
+    sub-agree : Represents σ s → (t : RTm Γ) →
+                subAtK sTm ⌈Γ⌉ ⌈Δ⌉ s ⌈t⌉ ⟶* ⌈ subTm σ t ⌉
+
+`Knot/SubAgreeTie`, all 30 rows: 25 generated (`gen_subagree`), 4
+cross-sort + 1 given (`Knot/SubAgreeX`), closed sorts by
+`Knot/SubClosed`.
+
+★★★ THE SAME EMITTER PRODUCES BOTH HALVES, and only five names differ —
+exactly the five `Lib/ISub.Sub` is parameterised over.  That is the
+evidence §16.3's cut was placed correctly, and it is not an argument, it
+is a diff.
+
+⚠⚠ BUT THE TWO HALVES ARE NOT SYMMETRIC, IN TWO PLACES, AND BOTH TRACE TO
+   ONE FACT — SUBSTITUTION LEAVES THE VARIABLE SORT:
+
+  · THE FORD CHAIN.  `renFordMap fi b p = p` IGNORES the tag, so a ford
+    slot is ONE PROJECTION at the renaming instance.  `fordMapK` USES it
+    three times, so the same slot is a `jsub` there and TWO `jsub-refl`s
+    fire.  ⇒ `gen_subagree` is not a clone of `gen_renagree`.
+    ★ AND A `ℕ` FIELD IS NOT A FORD: `kaPick (sk-clo …) fi p = p` copies a
+      CLOSED code at both instances.  `Lib/ISub`'s own note predicted the
+      split; the emitter learned it by getting `cTm-con` wrong.
+  · THE `var` ROW IS SHORTER AND THE EXTENSION ROW IS LONGER.
+    `subTm σ (var x) = σ x` directly, so `subVarM`'s body is `app σ …`
+    with no `Tm-varK` and `h x` finishes it.  But `extS σ (vs x) =
+    renTm vs (σ x)` WEAKENS, so `extS-Represents` composes with
+    `wkTmK-agree` — i.e. with `ren-agree` itself.
+    ⇒ THE SUBSTITUTION HALF IS BUILT ON THE RENAMING HALF.  The order was
+      not a preference; it is a dependency edge.
+
+⬜ WHAT REMAINS (was: the substitution half).  It needs
 `extNK`'s naturality — the `ExtNSub` hypothesis at the substitution
 instantiation — and then the same five modules with `extNK`/`sortMap`/
 `fordMapK` in place of the renaming ones.  ⚠ AND ITS FORD TAGS ARE LIVE:
