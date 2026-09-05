@@ -10915,7 +10915,9 @@ worth building only if the budget still exceeds peak-live after D.
 ## D147: The Definition-Boundary Escape Question Is the Output Convention — and D and B' Are ONE Change
 
 **Date**: 2026-09-05 · **Settles**: plan 0.86 §6 (the gate on step D) ·
-**Relates**: D146, D142, plan 0.2.4.5, plan 0.64 group E
+**Relates**: D146, D142, **plan 0.2.4.5 (destination passing — the mechanism
+this entry points at, stages A–C landed)**, plan 0.2.4.6 (Place — decides the
+destinations), plan 0.64 group E
 
 **The question §6 left open.** Within a definition, escape is a non-issue:
 `FrameFreeTrace` proves no emitted trace contains a frame op, the backend
@@ -10925,15 +10927,25 @@ that nothing pops underneath". But the closing `addq` tears the region down, so
 a closure returned from a top-level function cannot live in it. §6 called this
 "the one placement decision that is not mechanical" and gated step D on it.
 
-**It is the same object as D146's convention.** A returned value needs a
-location that outlives the callee's `addq`. A caller-designated output region
-IS such a location — and it is `BeforeFrontier` in the CALLER's alloc state by
-construction, which is exactly what `at-loc` asks for. The size is statically
-known: the result type determines `⌊ B ⌋`, closures included. So the decision
-is mechanical after all, once the location is the caller's to choose:
+**It is DESTINATION PASSING, which is already the design.** Plan 0.2.4.5's
+core principle is verbatim this: "CCC IRs do not know or care which allocator
+placed their values. Every IR primitive takes a *destination* — a pre-computed
+`ValueLocation` saying where to write its output." Plan 0.2.4.6 (Place) is the
+pass that DECIDES destinations; 0.2.4.5 stages A, B and C have landed, stage E
+(`InReg` inside `ValueLocation`) was tried and backed out the same day, with
+register residency deferred to a separate `Place = AtStorage | InReg` used only
+at result-handle handover. Plan 0.86 §5 already says step D "lands plan
+0.2.4.5". **This entry claims no new mechanism** — it identifies §6's open
+question as one that destination passing already answers:
 
-    result fits in a register (`FitsInReg`)  -> register
-    otherwise                                -> caller-provided output slots
+    result fits in a register (`FitsInReg`)  -> `InReg` at handover
+    otherwise                                -> the caller-supplied destination
+
+A returned value needs a location that outlives the callee's `addq`; a
+destination supplied by the caller IS such a location, and it is
+`BeforeFrontier` in the CALLER's alloc state by construction — exactly what
+`at-loc` asks for. The size is statically known from the result type, closures
+included, so the placement is mechanical once the callee does not choose it.
 
 **Why this is not merely convenient.** `at-loc` carries TWO frontier facts —
 `BeforeFrontier alloc loc` and `BeforeFrontier continuation-alloc loc`. The
@@ -10943,9 +10955,16 @@ slots must supply that second fact some other way; a caller-provided output
 region supplies it directly, because the region is below the CALLER's frontier
 and the callee never allocates under it.
 
-**So `at-loc` is where the invariant gets encoded** (OCP-0005 rung 1, §4's
-"do not leave it as prose") — not as a new predicate but by making the result
-location a parameter the callee cannot choose.
+**What this entry adds to 0.2.4.5 is the reason it is load-bearing for
+ALLOCATION, not just for allocator-agnosticism.** 0.2.4.5 motivates
+destination passing by IRs not needing to know their allocator. The `at-loc`
+argument above says something stronger: destination passing is what makes
+interior slots dead at return, and therefore it — and nothing at the `let`
+level (D146) — is what can ever turn `ir-stack-budget` from
+total-intermediates into peak-live. `at-loc` is where the invariant gets
+encoded (OCP-0005 rung 1, §4's "do not leave it as prose"): not as a new
+predicate, but by making the result location a parameter the callee cannot
+choose.
 
 **Consequence for the order of work.** `ResultPlace` is indexed by
 `AllocMode`, which step D deletes. D rewrites this structure and B' rewrites
