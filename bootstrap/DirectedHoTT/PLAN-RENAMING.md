@@ -124,9 +124,11 @@ readable line, and that line is pointwise testable.
 | 1a | `Knot/RenMot` — the object-level `Ren` layer (`RenTy`, `extRK`, `extRNK`) | ✅ **done** — breaks the cycle |
 | 1b | `renTmK ρ` over the 53 rows (`Knot/RenTm`) | ✅ **done** |
 | 1c | `extVs` (#5), `pwBodyK`'s 51 defaults (#4), `wkTmK = renTmK vsRen` | ✅ **done** |
-| 2 | pointwise specs — `vsRenK` ✅, `extR` ✅✅, `single` ✅✅; `nrs` ⬜ | 🟡 mostly |
-| 3 | `sub-agree` — statement SOLVED (`Represents`); blocked on `Lib/ISubRed` | 🟡 see §16 |
-| 4 | retire `wkK` for open terms; keep it only where CLOSED, stated | ⬜ |
+| 2 | pointwise specs — `vsRenK` ✅, `extR` ✅✅, `single` ✅✅, `nrs` ✅✅ | ✅ **done** |
+| 3 | `ren-agree` ✅ + `sub-agree` ✅ — ALL 30 rows each, both halves | ✅ **done** — §18 |
+| 4 | retire `wkK` for open terms; keep it only where CLOSED, stated | ⬜ **4 sites** |
+| | ⇒ `Knot/PayTy` ×2, `Knot/IPayTyKap`, `Knot/IPayTyRho` — and NOTHING else. | |
+| | ⚠ Everything else matching `wkK` is `εwkK`, a DIFFERENT function; `⊢wkK` has ZERO uses outside its module. | |
 | 5 | then `methsTyFrom` (unblocked, mechanical) | ⬜ |
 
 ### §6.1 Step 1's sites — the audit to be CONFIRMED, not trusted

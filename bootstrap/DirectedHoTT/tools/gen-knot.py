@@ -1895,7 +1895,6 @@ open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
@@ -3793,7 +3792,6 @@ open import DirectedHoTT.Examples.Knot.Sorts using ( IPair; sTy; sVar )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.CtxD using ( CtxD; INat; Ctx-extK )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; wkTyK )
 open import DirectedHoTT.Lib.ArithComm using ( symN )
 open import DirectedHoTT.Spec.Typing
@@ -3807,7 +3805,6 @@ open import DirectedHoTT.Examples.Knot.Sorts
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.CtxD using ( CtxWf; ⊢Ctx-extKt )
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
-open import DirectedHoTT.Examples.Knot.Wk using ( ⊢wkK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( ⊢wkTmK; ⊢wkTyK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( ⊢symN )
@@ -3867,7 +3864,6 @@ open import DirectedHoTT.Examples.Knot.Pw using ( pwK )
 open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; stkCK; flatK )
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; wkTyK )
 
 -- ★ the judgement's index: a depth and two terms at it.
@@ -4258,7 +4254,6 @@ open import DirectedHoTT.Examples.Knot.Stk
   using ( stkAK; ⊢stkAK; stkCK; ⊢stkCK; flatK; ⊢flatK )
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK; ⊢nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
 open import DirectedHoTT.Examples.Knot.RedRows
 %s
@@ -4584,7 +4579,8 @@ _WRAP_LEDGER = {
     "extRNK-vs": "✅ not a program — the other clause.",
     "pwDefault": "⬜ OWED — the default method of `Knot/PwBody`'s tuple.  It\n--                REBUILDS `icon k p` and renames, so its adequacy is a\n--                corollary of `renTmK`'s; blocked on the same five\n--                cross-sort rows.",
     # ⬜ OWED — a commutation lemma, `Knot/SzAgree`'s shape.
-    "wkK":      "⬜ OWED, AND FALSE AS STATED — `wkK` is NOT `renTm vs`; it keeps\n--                the de Bruijn index.  `Knot/WkSub.wkTmK`/`wkTyK` are the\n--                correct translation and the emitter must move to them.",
+    "wkK":      "✅ RETIRED — ZERO applications remain.  Step 4: the last four\n--                (`Knot/PayTy` ×2, `Knot/IPayTyRho`, `Knot/IPayTyKap`)\n--                converted to `Knot/WkSub.wkAtK`, and the emitter no\n--                longer imports it into ~74 generated modules.\n--                ⚠ KEPT, not deleted: `Knot/Wk` still documents the wrong\n--                weakening and `Knot/WkProbe` exercises it.  It is now\n--                a RECORD, not a dependency.",
+    "wkAtK":    "✅ DISCHARGED via `wkTmK`/`wkTyK` — `wkAtK s n t` IS\n--                `renTmAtK s n (nsuc n) (vsRenK n) t`, the sort-generic\n--                form they are instances of, so its adequacy at a sort is\n--                `ren-agree` at that sort.  ⚠ `sTm` is proved\n--                (`Knot/SubSpec.wkTmK-agree`); `sTy`/`sIDesc` wait on the\n--                type-sort agreement — see `wkTyK`.",
     "wkTmK":    "✅ DISCHARGED — `Knot/SubSpec.wkTmK-agree`, and in ONE LINE:\n--                `wkTmK n t = renTmAtK sTm n (nsuc n) (vsRenK n) t`, so\n--                its adequacy is `ren-agree` at the renaming `vs`, whose\n--                witness is `vsRenK-app`.  ★ That is the law §15.1 showed\n--                was UNSTATABLE for `wkK` — the wrong weakening had no\n--                `app wkK x` to reduce.  The unstatable law discharges the\n--                correct one as a corollary.",
     "wkTyK":    "⬜ OWED — `renTy vs`, likewise.  ⚠ DEFINED but not yet\n--                EMITTED: no rule so far weakens a TYPE.",
     "subTmAtK": "⬜ OWED — `enTm (subTm σ t) ≡ subTmAtK … (enTm t)`.",

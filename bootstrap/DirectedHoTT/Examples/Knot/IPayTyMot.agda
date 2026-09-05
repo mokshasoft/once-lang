@@ -64,7 +64,6 @@ open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
   using ( ⊢Ty-UnitKv; ⊢Ty-SgKv; ⊢Ty-IMuKv; ⊢Ty-ElKv )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy; ty-SubTy; subBwd )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkKat )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Lib.Wk using ( towerA; towerJ )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subTmAtK; ⊢subTmAtK )

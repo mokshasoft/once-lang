@@ -54,7 +54,7 @@ open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Ty-UnitK; Ty-SgK; Ty-MuK )
 open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Ty-UnitKv; ⊢Ty-SgKv; ⊢Ty-MuKv )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkKat )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkAtK; ⊢wkAtK )
 open import DirectedHoTT.Lib.ICast using ( muFwd; muBwd* )
 open import DirectedHoTT.Examples.Knot.Desc using ( cDCon-rho; cDCon-kap )
 open import DirectedHoTT.Examples.Knot.Wf using ( cDCon-rhoWf; cDCon-kapWf )
@@ -97,14 +97,14 @@ payTyJunk = lam (lam (lam (lam Ty-UnitK)))
 
 ------------------------------------------------------------------------
 -- ★★★ `dρ` — `Σ' (Mu D) (payTy D C)`.  ⚠ `Σ'`'s second component sits
---   one binder deeper than the IH answers, hence `⊢wkKat`.
+--   one binder deeper than the IH answers, hence `⊢wkAtK`.
 ------------------------------------------------------------------------
 
 payTyRho : {Γ : Cx} → RTm Γ
 payTyRho =
   lam (lam (lam (lam
     (Ty-SgK (Ty-MuK (var vz))
-            (wkK (pair sTy (snd (var (vs (vs (vs vz))))))
+            (wkAtK sTy (snd (var (vs (vs (vs vz)))))
                  (app (fst (var (vs vz))) (var vz)))))))
 
 ⊢payTyRho : {Γ : Ctx} →
@@ -116,7 +116,7 @@ payTyRho =
     (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there here))))))
       (⊢Ty-SgKv _ (⊢snd (⊢var (there (there (there here)))))
         (⊢Ty-MuKv _ (⊢snd (⊢var (there (there (there here))))) (⊢var here))
-        (⊢wkKat ⊢sTy (⊢snd (⊢var (there (there (there here)))))
+        (⊢wkAtK ⊢sTy (⊢snd (⊢var (there (there (there here)))))
           (muFwd (ξ-pairʳ (βsnd sDCon (snd (var (vs (vs (vs vz))))))) 
             (⊢app (⊢ihHere
                      {D = KnotD} {I = IPair}
@@ -131,7 +131,7 @@ payTyRho =
 ------------------------------------------------------------------------
 -- ★★★ `dκ` — `Σ' (εwkTy A) (payTy D C)`.  ⚠ TWO weakenings, and they
 --   are DIFFERENT ones: `A` is an `RTy ε` so it climbs from depth 0
---   (`εwkK`), while the recursive answer climbs ONE slot (`⊢wkKat`).
+--   (`εwkK`), while the recursive answer climbs ONE slot (`⊢wkAtK`).
 --   The first field's IH is junk (a `Desc → Ty` at depth 0); only the
 --   second field's is used, reached by `⊢ihSkipρ` then `⊢ihHere`.
 ------------------------------------------------------------------------
@@ -140,7 +140,7 @@ payTyKap : {Γ : Cx} → RTm Γ
 payTyKap =
   lam (lam (lam (lam
     (Ty-SgK (εwkK sTy (snd (var (vs (vs (vs vz))))) (fst (var (vs (vs vz)))))
-            (wkK (pair sTy (snd (var (vs (vs (vs vz))))))
+            (wkAtK sTy (snd (var (vs (vs (vs vz)))))
                  (app (fst (snd (var (vs vz)))) (var vz)))))))
 
 ⊢payTyKap : {Γ : Ctx} →
@@ -153,7 +153,7 @@ payTyKap =
       (⊢Ty-SgKv _ (⊢snd (⊢var (there (there (there here)))))
         (⊢εwkK ⊢sTy sortMap-ty (⊢snd (⊢var (there (there (there here)))))
                (⊢fst (⊢var (there (there here)))))
-        (⊢wkKat ⊢sTy (⊢snd (⊢var (there (there (there here)))))
+        (⊢wkAtK ⊢sTy (⊢snd (⊢var (there (there (there here)))))
           (muFwd (ξ-pairʳ (βsnd sDCon (snd (var (vs (vs (vs vz)))))))
             (⊢app (⊢ihHere
                      {D = KnotD} {I = IPair}

@@ -71,6 +71,28 @@ open import DirectedHoTT.Examples.Knot.RenTm
 -- ★ `vs`, as a RENAMING value.  ⚠ `Knot/RenTm.vsRenK` is the thing
 --   `Knot/Wk.wkK` never had: the renaming, NAMED.
 
+------------------------------------------------------------------------
+-- ★★★ AND THE SORT-GENERIC FORM — `wkTyK`/`wkTmK` ARE INSTANCES.
+--
+-- ⚠ THE SAME LESSON `pw^` TAUGHT: index it rather than enumerate it.
+--   `wkTyK` and `wkTmK` were written as separate definitions, and step 4
+--   then needed the SAME thing at `sIDesc` (`Knot/IPayTyRho`,
+--   `Knot/IPayTyKap`) — a third sort, which would have been a third
+--   copy.  `renTmAtK` is already sort-generic; so is this.
+--
+-- ★ AND IT LANDS EXACTLY WHERE `Knot/Wk.⊢wkKat` DID —
+--   `K (pair s (nsuc n))` — which is what makes the step-4 conversion a
+--   substitution of names rather than a re-derivation.
+------------------------------------------------------------------------
+
+wkAtK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
+wkAtK s n t = renTmAtK s n (nsuc n) (vsRenK n) t
+
+⊢wkAtK : {Γ : Ctx} {s n t : RTm ⌊ Γ ⌋} →
+         Γ ⊢ s ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ t ∷ K (pair s n) →
+         Γ ⊢ wkAtK s n t ∷ K (pair s (nsuc n))
+⊢wkAtK ds dn dt = ⊢renTmAtK ds dn (⊢nsuc dn) (⊢vsRenK dn) dt
+
 wkTyK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 wkTyK n A = renTmAtK sTy n (nsuc n) (vsRenK n) A
 

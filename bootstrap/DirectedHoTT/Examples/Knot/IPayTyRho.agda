@@ -55,7 +55,7 @@ open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
   using ( ⊢Ty-UnitKv; ⊢Ty-SgKv; ⊢Ty-IMuKv; ⊢Ty-ElKv )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy; ty-SubTy; subBwd )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkKat )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkAtK; ⊢wkAtK )
 open import DirectedHoTT.Examples.Knot.SubMot using ( extNK; ⊢extNK )
 open import DirectedHoTT.Lib.Wk using ( towerA; towerJ )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subTmAtK; ⊢subTmAtK )
@@ -76,7 +76,7 @@ open import DirectedHoTT.Examples.Knot.IPayTyMot
 -- ★★ AND THE RECURSIVE ANSWER NEEDS NO WEAKENING.  It comes back at
 --   `pair sTy (nsuc n)` because `extS` moved the TARGET depth too, which
 --   is exactly `⊢Ty-SgKv`'s second premise.  Contrast `Knot/PayTy`,
---   where every recursive answer costs a `⊢wkKat`.
+--   where every recursive answer costs a `⊢wkAtK`.
 --
 -- ⚠ `⊢ipayAppK`'s `dd`/`u` ARE PINNED.  They sit under `iinst`, which is
 --   two `subTy`s and so not injective; left as metas they leave a stuck
@@ -96,7 +96,7 @@ ipayTyRho =
                            (extNK (snd (var (vs (vs (vs (vs (vs (vs vz))))))))
                                   (var (vs (vs (vs vz))))
                                   (var (vs (vs vz)))))
-                      (wkK (pair sIDesc (var (vs (vs (vs vz))))) (var (vs vz))))
+                      (wkAtK sIDesc (var (vs (vs (vs vz)))) (var (vs vz))))
                  (var vz)))))))))
 
 ⊢ipayTyRho : {Γ : Ctx} →
@@ -115,7 +115,7 @@ ipayTyRho =
                  {dd = nsuc (snd (var (vs (vs (vs (vs (vs (vs vz)))))))) }
                  {u = fst (snd (var (vs (vs (vs (vs (vs vz))))))) }
                  dIH (⊢nsuc dn) (⊢extNK ddd dn dsb)
-                 (⊢wkKat ⊢sIDesc dn dD) dI))))))
+                 (⊢wkAtK ⊢sIDesc dn dD) dI))))))
   where
     dn  = ⊢var (there (there (there here)))
     dsb = ⊢var (there (there here))
