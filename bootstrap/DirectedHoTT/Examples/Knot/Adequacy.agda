@@ -87,6 +87,7 @@
 --     extSK      ⬜ OWED — with `subTmK`.
 --     extSK-sub  ✅ not a program — `extSK`'s substitution naturality
 --                (`Knot/SubNat`), i.e. `ExtNSub` for `extNK`.
+--     extSK-vs   ✅ not a program — the other clause (`Knot/SubExt`).
 --     extSK-vz   ✅ not a program — the SUBSTITUTION twin (`Knot/SubSpec`).
 --     flatK      ⬜ OWED — agreement with `flat?`.
 --     head-red   ✅ not owed — a lemma INSIDE `Knot/SzAgree`, not a program.
@@ -126,6 +127,13 @@
 --     singleSK-vz ✅ not a program — a clause of `singleK`'s adequacy.
 --     stkAK      ⬜ OWED — agreement with `stkA?`.
 --     stkCK      ⬜ OWED — agreement with `stkC?`.
+--     sub-head-red ✅ not a program — `ren-head-red`'s twin at the
+--                SUBSTITUTION instantiation (`Knot/SubRed`).
+--     subAtK     ◐ IN PROGRESS — `Knot/SubAgreeRows` proves it for the 25
+--                SAME-SORT `RTm` rows, by the SAME emitter as
+--                `Knot/RenAgree`.  The cross-sort five and the tie-up are
+--                next; `Knot/RenClosed`'s identities already cover the
+--                closed sorts.
 --     subTmAtK   ⬜ OWED — `enTm (subTm σ t) ≡ subTmAtK … (enTm t)`.
 --     subTmK     ⬜ OWED — `subTmK`'s agreement with `subTm`; `subTmAtK`'s core.
 --     subTyAtK   ⬜ OWED — `enTy (subTy σ A) ≡ subTyAtK … (enTy A)`.
@@ -142,6 +150,9 @@
 --                was UNSTATABLE for `wkK` — the wrong weakening had no
 --                `app wkK x` to reduce.  The unstatable law discharges the
 --                correct one as a corollary.
+--     wkTmK-sub  ✅ not a program — `wkTmK`'s substitution naturality
+--                (`Knot/SubSpec`), needed because `extVs`'s body puts a
+--                `wkTmK` under five binders.
 --     wkTyK      ⬜ OWED — `renTy vs`, likewise.  ⚠ DEFINED but not yet
 --                EMITTED: no rule so far weakens a TYPE.
 --     wkTyUnderK ⬜ OWED — agreement with `renTy (extR vs)`.
