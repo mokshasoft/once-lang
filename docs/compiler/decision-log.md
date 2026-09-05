@@ -11049,3 +11049,55 @@ an ABSENT one, and it silently licenses a model that does less than the code.
 This is the third time in this plan that strengthening a representation turned
 a prose-level guarantee into a checkable one and found something (D142 the
 annotation, D143 erasure, this the tag).
+
+## D149
+
+**Question.** A sum node has two cells: a tag and a payload. The payload cell
+held `SV-Ptr payload-loc`, always — `valid-inl-wf` demanded a pointer plus a
+recursive `ValidAtWF` for the block behind it. Should a payload that FITS IN A
+REGISTER still be boxed?
+
+**Context.** Stage F is making the WF layer's calling convention explicit:
+inputs arrive at an `InputPlace` (`in-at-loc` / `in-at-reg` / `in-unit`) and
+results land at a `ResultPlace` (`at-loc` / `at-reg` / `unit-result`). Once
+`run-case` could receive its scrutinee's payload in a register, the pointer-only
+sum representation became the thing forcing the box back into existence: to
+build `inl x` from an `x` already in `Output`, `run-inl` had to allocate a heap
+cell, store `x` into it, and store a pointer to it. Every `inl` of an `Int`
+paid a two-cell heap allocation for a one-word value, and (given `Once.Escape`
+is unwired) never freed it.
+
+**Decision.** A sum carries its payload INLINE when the payload type inhabits
+`FitsInRegI`. `ValidAtWF` gains `valid-inl-reg-wf`/`valid-inr-reg-wf`, whose
+payload cell holds `prim-sv fit a` — the literal — with no sub-validity and no
+recursion. The pointer form stays for structured payloads; the two are distinct
+constructors rather than a mode index, so a consumer that must distinguish them
+case-splits and a consumer that must not (anything reading the TAG) does not.
+
+**Why the tag cell is untouched.** Runtime dispatch reads cell 0. Both
+representations write the same tag the same way, so `tag-of-shape` needed the
+new clauses verbatim, `case-on-tag` needed nothing, and no emitted code changed.
+The branch is confined to the payload cell's meaning. This is what let the
+change be representation-only: residual count is identical before and after.
+
+**The cost, measured.** Seven layers case-split on a sum: ClosureWellFormed
+(the constructors, `PayloadAt` with `payload-sv`/`payload-read`, reshaped
+`InlValidWF`/`InrValidWF`, `decomposeInl/InrWF`, ten transports), SumRecWF
+(`run-case`'s four setup lemmas generalise from a payload LOCATION to a
+`StoredValue`), ShapeAt (`shape-inl-reg`/`shape-inr-reg`, `prim-sv-at`,
+`valid→shape` split on the `FitsInRegI` witness so both `prim-sv` equations
+reduce), ShapeTable (`tag-of-shape`, `shape-uw`), ValidAtWFHalted
+(`validAtWF-set-halted`). Four were predicted, the fifth and sixth found by
+building the cluster, the seventh only by a full apex build. The transports
+(`shape-uw`, `validAtWF-set-halted`) are the cheap ones — with no payload
+sub-structure to carry, each new clause is the old one minus its recursive call.
+
+**What it does not yet buy.** The representation exists; nothing produces it.
+`run-inl`/`run-inr` still take a payload LOCATION positionally and still emit
+`instr-alloc-heap 2`. Making the box actually disappear is the next step of
+stage F: give them an `InputPlace` and emit the inline form on `in-at-reg`.
+
+**The general lesson.** When a representation change forks a constructor,
+count the case-splits, not the importers — and check the transports first.
+They are the majority of the sites and the least of the work, which is why the
+estimate came out high and the effort came out low.
