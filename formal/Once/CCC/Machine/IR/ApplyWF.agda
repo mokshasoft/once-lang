@@ -47,7 +47,8 @@ open import Once.Semantics.Machine using (⟦_⟧ᴵ; sem-fst; sem-snd; sem-pair
 open import Once.Memory.TypeSlots using (stack-type-slots; heap-type-slots; type-slots)
 pair = sem-pair
 open import Once.IR
-open import Once.CCC.Eval using (eval)
+import Once.CCC.Eval as Ev
+import Once.Semantics.Machine as EvV
 open import Once.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
@@ -95,6 +96,11 @@ module BFTransfer {FS : FrameSemantics} where
 -- the parent's frame and survive trivially across the apply.
 module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   where
+  -- Plan 0.52 M2 / D113: `Ev.eval` now takes the target numerics. Same local
+  -- shim SimpleWF and PairAllocWF already use, so the body reads unchanged.
+  eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
+  eval = Ev.eval (Once.CCC.FrameSemantics.fs-numerics FS)
+
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -114,7 +120,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
   open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; BodyCorrect;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; at-reg; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf;
            mk-IRResultAWF-via-bump;
@@ -325,10 +331,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       arg-before = PairValidWF.snd-before pair-decomp
 
       closure : ⟦ A ⇛ B ⟧ᴵ
-      closure = sem-fst {A ⇛ B} {A} x
+      -- Plan 0.52 M2: `sem-fst`/`sem-snd` are Type-tier (their implicits are
+      -- `Type`, not `IRTy`), but `⟦ A ⟧ᴵ = ⟦ ⌈ A ⌉ ⟧` and the product is a
+      -- real `×`, so the projections apply directly and carry no tier.
+      closure = proj₁ x
 
       arg : ⟦ A ⟧ᴵ
-      arg = sem-snd {A ⇛ B} {A} x
+      arg = proj₂ x
 
       -- Decompose closure (Plan 0.17.2 follow-up: decomposeClosureWF
       -- is now mode-polymorphic, so the prior Heap-coercion via
@@ -1003,6 +1012,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       --     value as their result-loc index.
       result-loc-dispatch : ResultPlace _ _ _ _ _ _ → ValueLocation FS
       result-loc-dispatch (at-loc loc _ _ _ _ _) = loc
+      -- Plan 0.54 rung A: `at-reg` (register-resident result) carries a `loc`
+      -- too — only its VALIDITY witness is absent, and this dispatch needs
+      -- just the location. Same clause as the upstream `place-loc`.
+      result-loc-dispatch (at-reg loc _ _ _ _) = loc
       result-loc-dispatch unit-result = SMP.!!  -- TODO: extract via sv-as-loc of body's Output
 
       result-loc = result-loc-dispatch (IRResultAWF.result-place body-result)
