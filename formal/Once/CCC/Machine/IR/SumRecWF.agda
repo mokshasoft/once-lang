@@ -75,6 +75,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open FrontierInvariant {FS}
   open MemOps {FS}
+  -- D148: `readLoc-writeLoc-same` (the tag write's read-back) lives here.
+  open MemoryOps {FS}
   open WriteOps {FS}
   open StackAllocation {FS}
   open ExecFinal {FS}
@@ -93,6 +95,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-mem-preserved;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
+           validityWF-write-sv-at-frontier;
            decomposePairWF; PairValidWF;
            valid-inl-wf; valid-inr-wf;
            decomposeInlWF; decomposeInrWF;
@@ -187,8 +190,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (s-final : LocState FS) →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     result-loc ≡ AtStack (current-frame alloc) result-slot →
-    s-final ≡ record (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)
-                { regs = writeReg (regs (write-loc s (AtStack (current-frame alloc) payload-slot) input-loc)) Output (SV-Ptr result-loc) } →
+    -- D148: the trace STORES THE TAG at `result-slot` before writing the
+    -- payload, so the caller's `s-final` must model that write too. While this
+    -- hypothesis named the tag-less state, the equation below was REFUTABLE —
+    -- invisible only because `SumTag Stack` was `⊤` and no caller could ask.
+    s-final ≡ record (write-loc (writeLoc s (AtStack (current-frame alloc) result-slot) (SV-Tag tag))
+                                (AtStack (current-frame alloc) payload-slot) input-loc)
+                { regs = writeReg (regs (write-loc (writeLoc s (AtStack (current-frame alloc) result-slot) (SV-Tag tag))
+                                                   (AtStack (current-frame alloc) payload-slot) input-loc))
+                                  Output (SV-Ptr result-loc) } →
     halted s ≡ false →
     proj₁ (exec-trace
             (instr-alloc-stack sum-slots ∷
@@ -488,12 +498,27 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       input-valid-wf-final =
         validityWF-alloc-advance x input-loc s-final sum-slots
           (validityWF-mem-only x input-loc s₁ s-final refl refl
-            (validityWF-write-at-suc-frontier x input-loc s input-loc input-before
-              input-valid-wf))
-
+            -- D148: two writes now, so two transports — the tag at the
+            -- frontier slot, then the payload pointer above it.
+            (validityWF-write-at-suc-frontier x input-loc s₀ input-loc input-before
+              (validityWF-write-sv-at-frontier x input-loc s (SV-Tag 0) input-before
+                input-valid-wf)))
       -- Construct validity for inl x (Stack mode = reference-based)
+      -- D148: the SumTag witness. `SumTag Stack` is no longer `⊤`, so this
+      -- must be earned: the tag is written at the frontier slot, the payload
+      -- write lands one slot ABOVE it (disjoint), and `s-final` differs from
+      -- `s₁` only in registers.
+      tag-eq : readLoc s-final sum-loc ≡ just (SV-Tag 0)
+      tag-eq =
+        trans (readLoc-stackMem-eq s-final s₁ sum-loc refl refl)
+              (trans (write-stack-preserves-diff s₀ (current-frame alloc)
+                        (suc (next-slot alloc)) (current-frame alloc) (next-slot alloc)
+                        (SV-Ptr input-loc)
+                        (inj₂ (≢-sym (<⇒≢ (n<1+n (next-slot alloc))))))
+                     (readLoc-writeLoc-same s sum-loc (SV-Tag 0)))
+
       inl-valid-wf-final : ValidAtWF Stack alloc₁ (sem-inl {A} {B} x) sum-loc s-final
-      inl-valid-wf-final = valid-inl-wf tt tt payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
+      inl-valid-wf-final = valid-inl-wf tt tag-eq payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
 
       rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
       rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
@@ -505,7 +530,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         readLoc s-final loc ≡ readLoc s loc
       mem-preserved-inl loc bf =
         trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
-              (write-at-suc-frontier-preserves-before s alloc loc input-loc bf)
+              -- D148: two writes to step back over, tag then payload.
+              (trans (write-at-suc-frontier-preserves-before s₀ alloc loc input-loc bf)
+                     (write-sv-at-frontier-preserves-before s alloc loc (SV-Tag 0) bf))
 
       -- Note: fits parameter removed in Phase 3
       inl-reclaim-preserves-result :
@@ -644,12 +671,27 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       input-valid-wf-final =
         validityWF-alloc-advance x input-loc s-final sum-slots
           (validityWF-mem-only x input-loc s₁ s-final refl refl
-            (validityWF-write-at-suc-frontier x input-loc s input-loc input-before
-              input-valid-wf))
-
+            -- D148: two writes now, so two transports — the tag at the
+            -- frontier slot, then the payload pointer above it.
+            (validityWF-write-at-suc-frontier x input-loc s₀ input-loc input-before
+              (validityWF-write-sv-at-frontier x input-loc s (SV-Tag 1) input-before
+                input-valid-wf)))
       -- Construct validity for inr x (Stack mode = reference-based)
+      -- D148: the SumTag witness. `SumTag Stack` is no longer `⊤`, so this
+      -- must be earned: the tag is written at the frontier slot, the payload
+      -- write lands one slot ABOVE it (disjoint), and `s-final` differs from
+      -- `s₁` only in registers.
+      tag-eq : readLoc s-final sum-loc ≡ just (SV-Tag 1)
+      tag-eq =
+        trans (readLoc-stackMem-eq s-final s₁ sum-loc refl refl)
+              (trans (write-stack-preserves-diff s₀ (current-frame alloc)
+                        (suc (next-slot alloc)) (current-frame alloc) (next-slot alloc)
+                        (SV-Ptr input-loc)
+                        (inj₂ (≢-sym (<⇒≢ (n<1+n (next-slot alloc))))))
+                     (readLoc-writeLoc-same s sum-loc (SV-Tag 1)))
+
       inr-valid-wf-final : ValidAtWF Stack alloc₁ (sem-inr {A} {B} x) sum-loc s-final
-      inr-valid-wf-final = valid-inr-wf tt tt payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
+      inr-valid-wf-final = valid-inr-wf tt tag-eq payload-ptr input-before₁ sucLoc-sum-before input-valid-wf-final
 
       rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
       rax-eq = writeReg-same (regs s₁) Output (SV-Ptr sum-loc)
@@ -661,7 +703,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         readLoc s-final loc ≡ readLoc s loc
       mem-preserved-inr loc bf =
         trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
-              (write-at-suc-frontier-preserves-before s alloc loc input-loc bf)
+              -- D148: two writes to step back over, tag then payload.
+              (trans (write-at-suc-frontier-preserves-before s₀ alloc loc input-loc bf)
+                     (write-sv-at-frontier-preserves-before s alloc loc (SV-Tag 1) bf))
 
       -- Note: fits parameter removed in Phase 3
       inr-reclaim-preserves-result :

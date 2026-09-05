@@ -1258,6 +1258,85 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-buffer-wf bf
 
   ------------------------------------------------------------------------
+  -- D148: the FRONTIER-slot sibling of `validityWF-write-at-suc-frontier`,
+  -- for an arbitrary `StoredValue` rather than a location pointer.
+  --
+  -- `run-inl`/`run-inr` write the sum TAG at the frontier slot before the
+  -- payload pointer above it (their traces always did; their state models did
+  -- not, which is what `SumTag Stack = ⊤` hid). Carrying an input's validity
+  -- across that write needs exactly this. Clause for clause the same proof as
+  -- the `suc`-frontier version — a `BeforeFrontier` location is strictly below
+  -- the frontier, so the write is disjoint from it.
+  --
+  -- The written value is `stored`, not `sv`: `sv` is already bound as the
+  -- snd-validity in the pair clause below.
+  ------------------------------------------------------------------------
+  validityWF-write-sv-at-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
+    (s : LocState FS) (stored : StoredValue FS) →
+    BeforeFrontier alloc loc →
+    ValidAtWF m alloc v loc s →
+    ValidAtWF m alloc v loc (writeLoc s (AtStack (current-frame alloc) (next-slot alloc)) stored)
+
+  validityWF-write-sv-at-frontier {m} {alloc} {Unit} _ loc s stored loc-before valid-unit-wf =
+    valid-unit-wf
+
+  -- Pair (any mode)
+  validityWF-write-sv-at-frontier {m} {alloc} {A * B} (a , b) loc s stored loc-before
+    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
+    valid-pair-wf lmm fp' sp' fb sb slb fv' sv'
+    where
+      fp' = trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) fp
+      sp' = trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) sp
+      fv' = validityWF-write-sv-at-frontier a fl s stored fb fv
+      sv' = validityWF-write-sv-at-frontier b sl s stored sb sv
+
+  validityWF-write-sv-at-frontier {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s stored loc-before
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
+    valid-closure-wf bb lmm ep' cp' eb slb ev' bc
+    where
+      ep' = trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) ep
+      cp' = trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp
+      ev' = validityWF-write-sv-at-frontier env el s stored eb ev
+
+  -- Kind-coerced closure
+
+  -- inl (any mode)
+  validityWF-write-sv-at-frontier {m} {alloc} {A + B} .(sem-inl a) loc s stored loc-before
+    (valid-inl-wf {a = a} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inl-wf lmm tg' pp' pb slb pv'
+    where
+      tg' = transport-SumTag (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) tg
+      pp' = trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp
+      pv' = validityWF-write-sv-at-frontier a pl s stored pb pv
+
+  -- inr (any mode)
+  validityWF-write-sv-at-frontier {m} {alloc} {A + B} .(sem-inr b) loc s stored loc-before
+    (valid-inr-wf {b = b} {payload-loc = pl} lmm tg pp pb slb pv) =
+    valid-inr-wf lmm tg' pp' pb slb pv'
+    where
+      tg' = transport-SumTag (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) tg
+      pp' = trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) pp
+      pv' = validityWF-write-sv-at-frontier b pl s stored pb pv
+
+  -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
+  -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
+  validityWF-write-sv-at-frontier {m} {alloc} {μ-type F} x loc s stored loc-before (valid-μ-wf wf .x lv) =
+    valid-μ-wf wf x (validityWF-write-sv-at-frontier (eval (out-μ wf) x) loc s stored loc-before lv)
+
+  validityWF-write-sv-at-frontier {m} {alloc} {ν-type F} x loc s stored loc-before (valid-ν-wf wf .x lv) =
+    valid-ν-wf wf x (validityWF-write-sv-at-frontier (eval (Out wf) x) loc s stored loc-before lv)
+
+  -- Primitives: BeforeFrontier unchanged
+  validityWF-write-sv-at-frontier {m} {alloc} {Int} _ loc s stored loc-before (valid-int-wf bf rl) =
+    valid-int-wf bf (trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) rl)
+  validityWF-write-sv-at-frontier {m} {alloc} {Float} _ loc s stored loc-before (valid-float-wf bf rl) =
+    valid-float-wf bf (trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) rl)
+  validityWF-write-sv-at-frontier {m} {alloc} {Str} _ loc s stored loc-before (valid-str-wf bf) =
+    valid-str-wf bf
+  validityWF-write-sv-at-frontier {m} {alloc} {Buffer} _ loc s stored loc-before (valid-buffer-wf bf) =
+    valid-buffer-wf bf
+
+  ------------------------------------------------------------------------
   -- Validity transport across allocation advancement
   --
   -- When the frontier advances (next-slot increases), ValidAtWF can be

@@ -139,3 +139,33 @@ module WriteWithDisjoint {FS : FrameSemantics} where
 
   -- Case 3: Heap location
   write-at-suc-frontier-preserves-before s alloc (AtDynamic hl) val (heap-before _) = refl
+
+  -- | The FRONTIER-slot sibling, for an arbitrary `StoredValue`.
+  --
+  -- D148: `run-inl`/`run-inr` store the sum TAG at the frontier slot before
+  -- writing the payload pointer above it. Their models could not carry an
+  -- input's validity across that write, because the only lemma available wrote
+  -- at `suc (next-slot alloc)` and stored an `SV-Ptr`. Same proof as above: a
+  -- `BeforeFrontier` location has `k < next-slot alloc`, so it is never the
+  -- frontier slot itself, and the write is disjoint.
+  write-sv-at-frontier-preserves-before : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) (sv : StoredValue FS) →
+    BeforeFrontier alloc loc →
+    readLoc (writeLoc s (AtStack (current-frame alloc) (next-slot alloc)) sv) loc ≡
+    readLoc s loc
+
+  -- Case 1: same frame, slot < next-slot — so the slot is NOT the frontier.
+  write-sv-at-frontier-preserves-before s alloc (AtStack f k) sv (stack-before f≡cf k<next)
+    with _≟F_ (current-frame alloc) f | Data.Nat._≟_ (next-slot alloc) k
+  ... | yes _ | yes ns≡k = ⊥-elim (<⇒≢ k<next (sym ns≡k))
+  ... | yes _ | no _ = refl
+  ... | no cf≢f | _ = ⊥-elim (cf≢f (sym f≡cf))
+
+  -- Case 2: ancestor frame — a different frame entirely.
+  write-sv-at-frontier-preserves-before s alloc (AtStack f k) sv (stack-ancestor cf≺f _)
+    with _≟F_ (current-frame alloc) f
+  ... | yes cf≡f = ⊥-elim (≺⇒≢ cf≺f cf≡f)
+  ... | no _ = refl
+
+  -- Case 3: heap location — a stack write cannot touch it.
+  write-sv-at-frontier-preserves-before s alloc (AtDynamic hl) sv (heap-before _) = refl
