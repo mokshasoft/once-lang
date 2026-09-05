@@ -68,7 +68,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; at-reg;
            valid-unit-wf; mk-IRResultAWF-via-bump;
-           RecDispatcherWF; InputPlace; in-at-loc; in-at-reg;
+           RecDispatcherWF; InputPlace; in-at-loc; in-at-reg; in-unit;
            place-sv; place-rax; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved;
            validityWF-with-bf-transfer; mem-preserved-from-tnhw)
@@ -170,16 +170,17 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Uses ir-stack-requirement for capacity: req(g ∘ f) = req(f) + req(g)
   ------------------------------------------------------------------------
 
+  -- Stage F: the input is an `InputPlace`, not four positional memory facts.
+  -- `f` runs FIRST, at the entry state, so compose passes its own input place
+  -- straight through — which is what lets a register-resident input reach `f`
+  -- at all. Nothing here inspects the residence.
   run-compose : ∀ {A B C} (mIn : AllocMode) (f : IR A B) (g : IR B C)
     (rec-wf : RecDispatcherWF (ir-size (g ∘ f)))
-    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
-    (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF mIn alloc x input-loc s →
-    BeforeFrontier alloc input-loc →
+    (x : ⟦ A ⟧) (s : LocState FS) (alloc : AllocState {FS}) →
+    InputPlace mIn alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut (g ∘ f) x s alloc
-  run-compose mIn f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-compose mIn f g rec-wf x s alloc input-place not-halted =
     -- Plan 0.17: bump = bump-+ result-f.bump result-g.bump.
     mOut , mk-IRResultAWF-via-bump
       s-final
@@ -262,9 +263,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Stage F: compose's OWN input, bundled. `run-compose` still takes the
       -- four memory facts (its callers are unchanged); only the dispatcher
       -- interface generalised.
-      f-result-pair = rec-wf mIn f (∘-f-smaller f g) x s alloc
-                        (in-at-loc input-loc input-valid-wf input-before rdi-eq)
-                        not-halted
+      f-result-pair = rec-wf mIn f (∘-f-smaller f g) x s alloc input-place not-halted
       mMid = proj₁ f-result-pair
       result-f = proj₂ f-result-pair
       s₁ = IRResultAWF.final-state result-f
@@ -326,9 +325,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Register-resident: no `ValidAtWF`, because there is no cell to be
       -- valid at. The register equation IS the residence witness.
       mk-g-input (at-reg _ fit _ _ _) eq = in-at-reg fit eq
-      mk-g-input unit-result eq =
-        in-at-loc _ valid-unit-wf unit-inter-before eq
-        where postulate unit-inter-before : BeforeFrontier alloc₁ _
+      -- A Unit intermediate has no residence, so there is nothing to locate
+      -- and nothing to postulate. This retires the `unit-inter-loc` /
+      -- `unit-inter-before` / `unit-inter-rax` trio the old `FFacts` needed.
+      mk-g-input unit-result eq = in-unit refl
 
       g-input : InputPlace mMid alloc₁ (eval f x) s₁'
       g-input = mk-g-input rp rdi-eq₁

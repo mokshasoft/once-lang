@@ -931,6 +931,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     in-at-reg : (fit : FitsInRegI A)
               → readReg (regs s) Input1 ≡ prim-sv fit v
               → InputPlace m alloc v s
+    -- D074, mirrored from `InputAt`: a UNIT input has NO residence. `Input1`
+    -- may hold anything (the entry state's tag filler; after `f : IR A Unit`
+    -- in a composition, `f`'s unit output is likewise unconstrained). The
+    -- machine never reads it — `readTyped Unit` and `readReg-typed Unit` both
+    -- materialise `tt` regardless. Carrying a location here is what forced
+    -- consumers to postulate one.
+    in-unit : A ≡ Unit → InputPlace m alloc v s
 
   -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
   RecDispatcherWF : ℕ → Set

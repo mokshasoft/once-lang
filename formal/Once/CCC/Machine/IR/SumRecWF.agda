@@ -90,7 +90,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; InputPlace; in-at-loc; valid-unit-wf;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; InputPlace; in-at-loc; in-at-reg; in-unit; valid-unit-wf;
            mk-IRResultAWF-via-bump;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-mem-preserved;
@@ -367,15 +367,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Initial: absurd elimination (input is Void, so never executed)
   ------------------------------------------------------------------------
 
+  -- Stage F: the input is an `InputPlace`.
   run-initial : ∀ {m A}
-    (x : ⟦ Void ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ Void ⟧)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF m alloc x input-loc s →
-    BeforeFrontier alloc input-loc →
+    InputPlace m alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut (initial {A}) x s alloc
-  run-initial () _ _ _ _ _ _ _  -- x : ⟦ Void ⟧ = ⊥, so pattern match is absurd
+  run-initial () _ _ _ _  -- x : ⟦ Void ⟧ = ⊥, so pattern match is absurd
 
   -- OCP-0003: run-unfold removed (replaced by Out handler for ν-types)
 
@@ -745,18 +744,22 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- ir-size (case f g) = suc (ir-size f + ir-size g)
   ------------------------------------------------------------------------
 
+  -- Stage F: the input is an `InputPlace`. `case`'s input is a SUM, and
+  -- `FitsInRegI` inhabits only `Int`/`Float`, so a register-resident input is
+  -- absurd; so is a Unit one (`_+_` and `Unit` are distinct `IRTy` heads).
   run-case : ∀ {m A B C} (f : IR A C) (g : IR B C)
     (rec-wf : RecDispatcherWF (ir-size (case f g)))
-    (x : ⟦ A + B ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ A + B ⟧)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF m alloc x input-loc s →  -- Reference-based: any mode works
-    BeforeFrontier alloc input-loc →
+    InputPlace m alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut (case f g) x s alloc
+  run-case _ _ _ _ _ _ (in-at-reg () _) _
+  run-case _ _ _ _ _ _ (in-unit ()) _
 
   -- Case for inl: dispatch to f
-  run-case {m} {A} {B} {C} f g rec-wf (inj₁ a) input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-case {m} {A} {B} {C} f g rec-wf (inj₁ a) s alloc
+           (in-at-loc input-loc input-valid-wf input-before rdi-eq) not-halted =
     mF ,
     mk-IRResultAWF-via-bump
       (IRResultAWF.final-state result-f)
@@ -906,7 +909,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       case-frontier-stable _ _ _ _ _ = inj₂ (inj₂ tt)
 
   -- Case for inr: dispatch to g
-  run-case {m} {A} {B} {C} f g rec-wf (inj₂ b) input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-case {m} {A} {B} {C} f g rec-wf (inj₂ b) s alloc
+           (in-at-loc input-loc input-valid-wf input-before rdi-eq) not-halted =
     mG ,
     mk-IRResultAWF-via-bump
       (IRResultAWF.final-state result-g)

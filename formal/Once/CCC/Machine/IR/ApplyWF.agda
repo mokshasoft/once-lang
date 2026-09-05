@@ -120,7 +120,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
   open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; at-reg; prim-sv; BodyCorrect;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; at-reg; prim-sv;
+           InputPlace; in-at-loc; in-at-reg; in-unit; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf;
            mk-IRResultAWF-via-bump;
@@ -268,15 +269,20 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   -- run-apply: Clean trace-based implementation
   ------------------------------------------------------------------------
 
+  -- Stage F: the input is an `InputPlace`. `apply`'s input is a PRODUCT, and
+  -- `FitsInRegI` inhabits only `Int` and `Float`, so a register-resident input
+  -- is absurd here — and so is a Unit one (`_*_` and `Unit` are distinct `IRTy`
+  -- constructors). Both fall out as empty patterns; no case analysis survives
+  -- into the proof.
   run-apply : ∀ {m A B}
-    (x : ⟦ (A ⇛ B) * A ⟧ᴵ) (input-loc : ValueLocation FS)
-    (s : LocState FS) (alloc : AllocState {FS})
-    (input-valid-wf : ValidAtWF m alloc x input-loc s) →
-    BeforeFrontier alloc input-loc →
+    (x : ⟦ (A ⇛ B) * A ⟧ᴵ)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    InputPlace m alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut (apply {A} {B}) x s alloc
-  run-apply {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-apply {m} {A} {B} x s alloc (in-at-reg () _) _
+  run-apply {m} {A} {B} x s alloc (in-unit ()) _
+  run-apply {m} {A} {B} x s alloc (in-at-loc input-loc input-valid-wf input-before rdi-eq) not-halted =
     -- Plan 0.17: use mk-IRResultAWF-via-bump. Producer-side fields
     -- stay at `alloc'` (= body-result.final-alloc, the local shape);
     -- the helper transports proofs to `apply-bump apply-bump alloc`.

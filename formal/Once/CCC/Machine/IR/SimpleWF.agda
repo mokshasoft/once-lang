@@ -63,6 +63,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
+           InputPlace; in-at-loc; in-at-reg; in-unit;
            valid-unit-wf; mk-IRResultAWF-via-bump; validityWF-mem-only;
            validityWF-frontier-advance; decomposePairWF; PairValidWF;
            mem-preserved-from-tnhw)
@@ -149,15 +150,19 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Plan 0.13.2/0.13.3: lifted to StoredValue input/output. Trace-preserves-halted
   -- now uses TraceWF; rax-eq witnesses readReg ≡ SV-Ptr fst-loc.
+  -- Stage F: `InputPlace`. The input is a PRODUCT, so a register-resident or
+  -- Unit input is absurd (`FitsInRegI` inhabits only Int/Float; `_*_` and
+  -- `Unit` are distinct `IRTy` heads).
   run-fst : ∀ {m A B}
-    (x : ⟦ A * B ⟧ᴵ) (input-loc : ValueLocation FS)
+    (x : ⟦ A * B ⟧ᴵ)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF m alloc x input-loc s →
-    BeforeFrontier alloc input-loc →
+    InputPlace m alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mA ] IRResultAWF mA (fst {A} {B}) x s alloc
-  run-fst {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-fst _ _ _ (in-at-reg () _) _
+  run-fst _ _ _ (in-unit ()) _
+  run-fst {m} {A} {B} x s alloc
+          (in-at-loc input-loc input-valid-wf input-before rdi-eq) not-halted =
     mA , mk-IRResultAWF-via-bump
       s' alloc trace bump-0 refl
       refl  -- trace-is-ir-to-trace
@@ -248,15 +253,19 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Snd: extract second component from pair
   ------------------------------------------------------------------------
 
+  -- Stage F: `InputPlace`. The input is a PRODUCT, so a register-resident or
+  -- Unit input is absurd (`FitsInRegI` inhabits only Int/Float; `_*_` and
+  -- `Unit` are distinct `IRTy` heads).
   run-snd : ∀ {m A B}
-    (x : ⟦ A * B ⟧ᴵ) (input-loc : ValueLocation FS)
+    (x : ⟦ A * B ⟧ᴵ)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF m alloc x input-loc s →
-    BeforeFrontier alloc input-loc →
+    InputPlace m alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mB ] IRResultAWF mB (snd {A} {B}) x s alloc
-  run-snd {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-snd _ _ _ (in-at-reg () _) _
+  run-snd _ _ _ (in-unit ()) _
+  run-snd {m} {A} {B} x s alloc
+          (in-at-loc input-loc input-valid-wf input-before rdi-eq) not-halted =
     mB , mk-IRResultAWF-via-bump
       s' alloc trace bump-0 refl
       refl refl
@@ -340,20 +349,21 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Terminal: output unit
   ------------------------------------------------------------------------
 
+  -- Stage F: `InputPlace`, and it is IGNORED — terminal's result is Unit, so
+  -- where the input lived is irrelevant. One clause covers all three
+  -- residences, which is the cleanest possible statement of that.
   run-terminal : ∀ {m A}
-    (x : ⟦ A ⟧ᴵ) (input-loc : ValueLocation FS)
+    (x : ⟦ A ⟧ᴵ)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF m alloc x input-loc s →
-    BeforeFrontier alloc input-loc →
+    InputPlace m alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF m (terminal {A}) x s alloc
   -- Plan 0.2.4.5 D1 (Unit erasure): terminal produces a Unit value
   -- which has no observable content — no register, no slot, no
   -- state delta. result-place = unit-result (no location), trace =
   -- [] (no-op). The structural Unit-erasure: the spec doesn't carry
   -- any "where the value is" data because there is no value.
-  run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-terminal x s alloc _ not-halted =
     mk-IRResultAWF-via-bump
       s alloc [] bump-0 refl
       refl refl refl
@@ -396,17 +406,16 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Free-heap: explicit heap deallocation (semantically a no-op)
   ------------------------------------------------------------------------
 
+  -- Stage F: `InputPlace`, likewise ignored — `free-heap : IR Unit Unit`.
   run-free-heap : ∀ {m} (ref : HeapRef)
-    (x : ⟦ Unit ⟧ᴵ) (input-loc : ValueLocation FS)
+    (x : ⟦ Unit ⟧ᴵ)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF m alloc {Unit} x input-loc s →
-    BeforeFrontier alloc input-loc →
+    InputPlace {Unit} m alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF m (free-heap ref) x s alloc
   -- Plan 0.2.4.5 D1: free-heap : IR Unit Unit. Like terminal, it
   -- has a Unit-typed result — `unit-result` carries no location.
-  run-free-heap ref x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-free-heap ref x s alloc _ not-halted =
     mk-IRResultAWF-via-bump
       s' alloc trace bump-0 refl
       refl refl
