@@ -70,7 +70,9 @@
 --     IxNoneK    ✅ not owed — a constructor of `IxD`.
 --     atConK     ⬜ OWED — agreement with `atCon`.
 --     conSSK     ⬜ OWED — `conSK`/`atConK`'s core.
---     extNK      ⬜ OWED — `extS`'s half.
+--     extNK      ✅ DISCHARGED — `Knot/SubExt.extS-Represents`.  ⚠ Its `vs`
+--                case composes with `wkTmK-agree`, i.e. with `ren-agree`:
+--                `extS σ (vs x) = renTm vs (σ x)` WEAKENS.
 --     extRK      ✅ DISCHARGED via `extRNK` — `extRK` is its eliminator, and
 --                `Knot/RenSpec.extRK-vz`/`-vs` are the two clauses.
 --     extRK-sub  ✅ not a program — `extRK`'s substitution naturality
@@ -101,7 +103,10 @@
 --     nrsK       ⬜ OWED — `nrsSubK`'s core.
 --     nrsSK-vs   ✅ not a program — the other clause.
 --     nrsSK-vz   ✅ not a program — a clause of `nrsSubK`'s adequacy.
---     nrsSubK    ⬜ OWED — `nrs`'s half.
+--     nrsSubK    ✅ DISCHARGED — `Knot/SubAgree.nrs-Represents`, packaging
+--                step 2's `nrsK-vz`/`-vs` (the row parked at eight
+--                attempts).  ⚠ The two depths differ — `nrs` RAISES, so
+--                the outer `Var-vsK` carries ⌈Γ ∙⌉ and the inner ⌈Γ⌉.
 --     payTyK     ⬜ OWED — agreement with `payTy`.
 --     pwBodyK    ⬜ OWED — agreement with `pw?`'s body case.
 --     pwDefault  ⬜ OWED — the default method of `Knot/PwBody`'s tuple.  It
@@ -121,7 +126,9 @@
 --                (`Knot/RenAgree`), 4 cross-sort + 1 given
 --                (`Knot/RenAgreeX`), closed sorts by
 --                `Knot/RenClosed`.  ⇒ step 3's renaming half.
---     singleK    ⬜ OWED — `single`'s half of the substitution agreement.
+--     singleK    ✅ DISCHARGED — `Knot/SubAgree.single-Represents`:
+--                `Represents (single u) (singleK n ⌈u⌉)`, from step 2's
+--                `singleK-vz`/`-vs`.
 --     singleSK   ⬜ OWED — `singleK`'s core.
 --     singleSK-vs ✅ not a program — the other clause.
 --     singleSK-vz ✅ not a program — a clause of `singleK`'s adequacy.
@@ -136,8 +143,9 @@
 --                `Represents σ s`.  25 generated (`Knot/SubAgreeRows`),
 --                4 cross-sort + 1 given (`Knot/SubAgreeX`), closed sorts
 --                by `Knot/SubClosed`.  ⇒ step 3, both halves.
---     subTmAtK   ⬜ OWED — `enTm (subTm σ t) ≡ subTmAtK … (enTm t)`.
---     subTmK     ⬜ OWED — `subTmK`'s agreement with `subTm`; `subTmAtK`'s core.
+--     subTmAtK   ✅ DISCHARGED — it IS `subAtK sTm`, so `Knot/SubAgreeTie.sub-agree`
+--                is exactly its statement.
+--     subTmK     ✅ DISCHARGED via `subAtK` — same theorem, unapplied form.
 --     subTyAtK   ⬜ OWED — `enTy (subTy σ A) ≡ subTyAtK … (enTy A)`.
 --     szTm       ✅ `Knot/SzProbe` — same-sort counts, per row, by `refl`.
 --     szsTm      ✅ `Knot/SzAgree` — `szsTm i ⌈t⌉ ⟶* num (sz t)`, all 30 rows,
@@ -148,13 +156,6 @@
 --                `ren-agree` at that sort.  ⚠ `sTm` is proved
 --                (`Knot/SubSpec.wkTmK-agree`); `sTy`/`sIDesc` wait on the
 --                type-sort agreement — see `wkTyK`.
---     wkK        ✅ RETIRED — ZERO applications remain.  Step 4: the last four
---                (`Knot/PayTy` ×2, `Knot/IPayTyRho`, `Knot/IPayTyKap`)
---                converted to `Knot/WkSub.wkAtK`, and the emitter no
---                longer imports it into ~74 generated modules.
---                ⚠ KEPT, not deleted: `Knot/Wk` still documents the wrong
---                weakening and `Knot/WkProbe` exercises it.  It is now
---                a RECORD, not a dependency.
 --     wkTmK      ✅ DISCHARGED — `Knot/SubSpec.wkTmK-agree`, and in ONE LINE:
 --                `wkTmK n t = renTmAtK sTm n (nsuc n) (vsRenK n) t`, so
 --                its adequacy is `ren-agree` at the renaming `vs`, whose
