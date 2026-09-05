@@ -254,13 +254,14 @@ nose. ⇒ the remaining work per row is the PAYLOAD, not the head.
 
 ⇒ `ren-agree` is unblocked NOW; `sub-agree` waits on `extNK-sub`.
 
+✅ 1. `extR-Represents` — DONE (`Knot/SubAgree`), and it must stay
+     POLYMORPHIC IN `d`; see `Knot/RenAgreeRows`' header for why a fixed
+     `d` makes the binder row unprovable.
+✅ 2. TWO rows END TO END — `Knot/RenAgreeRows`: `cTm-nzero` (ford only)
+     and `cTm-lam` (one `rec` a binder deeper).  Those two shapes cover
+     the table: every other row is a longer list of the same two kinds,
+     and `rec` at `D` is `rec` at `sucD()` with `depthOf = 0`.
 ⬜ NEXT, in order:
-  1. `extS-Represents : Represents σ s → Represents (extS σ) (extN d n s)`.
-     Every recursive field under a binder needs the IH at the EXTENDED
-     substitution — this is the one structural difference from
-     `Knot/SzAgree`, where the fold has no binders to cross.
-  2. one row END TO END by hand (a `ρ` row, so the extension is exercised),
-     to find the payload shape.
   3. `gen_renagree` in `tools/gen-knot.py`, modelled on `gen_szagree`
      (~40 lines of emitter → 436 lines of module).
      ⚠ It must emit each row's `SubCon` — see `RenRed`'s header.

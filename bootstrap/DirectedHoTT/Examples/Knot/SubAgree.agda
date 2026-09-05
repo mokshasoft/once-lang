@@ -30,13 +30,15 @@
 module DirectedHoTT.Examples.Knot.SubAgree where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTm; RTy; Var; vz; vs; Sub; app; lam; var; pair
-        ; subTm; extS )
+  using ( Cx; ε; _∙; RTm; RTy; Var; vz; vs; Sub; Ren; app; lam; var; pair
+        ; subTm; extS; extR )
 open import DirectedHoTT.Spec.Typing using ( _⟶*_; done; step; single )
 open import DirectedHoTT.Examples.Knot.Map using ( enTm; enVar )
 open import DirectedHoTT.Examples.Knot.Sorts using ( num; len )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK )
-open import DirectedHoTT.Examples.Knot.RenSpec using ( singleK-vz; singleK-vs )
+open import DirectedHoTT.Examples.Knot.RenSpec
+  using ( singleK-vz; singleK-vs; extRNK-vz; extRNK-vs; inVsX )
+open import DirectedHoTT.Examples.Knot.RenMot using ( extRNK )
 
 ------------------------------------------------------------------------
 -- ★ THE REPRESENTATION RELATION.
@@ -64,3 +66,37 @@ single-Represents : {Γ Θ : Cx} (n : RTm Θ) {u : RTm Γ} →
 single-Represents {Γ = Γ} n {u = u} vz     = singleK-vz n (enTm u) (num (len Γ))
 single-Represents {Γ = Γ} n {u = u} (vs x) =
   singleK-vs n (enTm u) (num (len Γ)) (enVar x)
+
+infixr 5 _»_
+_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
+done       » q = q
+(step r p) » q = step r (p » q)
+
+------------------------------------------------------------------------
+-- ★★★ THE RENAMING'S REPRESENTATION RELATION.
+--
+-- ⚠ AT THE `Var` SORT, not `Tm`.  `Knot/SubAgree.Represents` relates a
+--   `Sub` to a term that produces ENCODED TERMS; a renaming produces
+--   encoded VARIABLES, and step 2's laws (`extRNK-vz`/`extRNK-vs`) land
+--   on `Var-vzK`/`Var-vsK`.  ⇒ two relations, one per sort, and the
+--   renaming one is what `ren-agree` will carry.
+------------------------------------------------------------------------
+
+RepresentsR : {Γ Δ Θ : Cx} → Ren Γ Δ → RTm Θ → Set
+RepresentsR {Γ = Γ} ρ r = (x : Var Γ) → app r (enVar x) ⟶* enVar (ρ x)
+
+------------------------------------------------------------------------
+-- ★★★ EXTENSION PRESERVES IT — the one structural step `Knot/SzAgree`
+-- has no analogue for, because a fold never crosses a binder.
+--
+-- ⚠ THE TARGET DEPTH IS FORCED TO `num (len Δ)`.  `extRNK-vz` lands on
+--   `Var-vzK n`, and the goal is `enVar {Δ ∙} vz = Var-vzK (num (len Δ))`.
+--   So `n` is not free: the lemma may only be stated at the depth the
+--   ENCODING uses.  Passing `n` as a parameter would make it unprovable.
+------------------------------------------------------------------------
+
+extR-Represents :
+  {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} (d : RTm Θ) →
+  RepresentsR ρ r → RepresentsR (extR ρ) (extRNK d (num (len Δ)) r)
+extR-Represents d h vz     = extRNK-vz d _ _ _
+extR-Represents d h (vs x) = extRNK-vs d _ _ _ _ » inVsX (h x)
