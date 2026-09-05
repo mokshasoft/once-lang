@@ -36,30 +36,38 @@ open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans; sym )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; app; pair; icon; ielim; iihs; isingle; ilookupD
-        ; idrefl; ⌜Nat⌝; unit; fst; snd; var; vz; vs; renTm; IDesc; nsuc; sel )
+        ; idrefl; ⌜Nat⌝; unit; fst; snd; var; vz; vs; renTm; IDesc; nsuc; sel ; Sub ; lam )
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; β; βfst; βsnd; ι-ielim; single; wk-single )
 open import DirectedHoTT.Spec.Syntax using ( subTm; extS )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-appˡ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-fst; ⟶*-snd )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ; ⟶*-castₗ )
-open import DirectedHoTT.Lib.Wk using ( w; pw^ )
+open import DirectedHoTT.Lib.Wk using ( w; pw^ ; sub-w )
 open import DirectedHoTT.Lib.IMeths
   using ( CDesc; cd-stop; cd-cons; cdTake; cdLen; selCong )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
-open import DirectedHoTT.Examples.Knot.Sorts using ( sVar; num )
-open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK )
+open import DirectedHoTT.Examples.Knot.Sorts using ( sVar; num ; sTm )
+open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-varK )
 open import DirectedHoTT.Examples.Knot.Map using ( enTm; enVar )
 open import DirectedHoTT.Examples.Knot.Sorts using ( len )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK )
-open import DirectedHoTT.Examples.Knot.RenTm using ( vsRenK )
+open import DirectedHoTT.Examples.Knot.RenTm using ( vsRenK; renSmap; renDecStable; renFordMap )
 open import DirectedHoTT.Examples.Knot.RenSpec using ( vsRenK-app )
 open import DirectedHoTT.Examples.Knot.SubAgree using ( RepresentsR )
 open import DirectedHoTT.Examples.Knot.RenAgreeTie using ( ren-agree )
 open import DirectedHoTT.Examples.Knot.SubMot
   using ( extNK; extSK; extMethsK; extTail; constMethsFrom; constMeth; extVz )
+
+open import DirectedHoTT.Lib.IFold using ( eqℕ )
+open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
+open import DirectedHoTT.Examples.Knot.RenTm using ( renGiveK; renMethsK; renDescK; hE-knot; hF-knot )
+import DirectedHoTT.Lib.ISub as IS
+open import DirectedHoTT.Examples.Knot.RenMot using ( extRNK )
+open IS.Sub extRNK renSmap renDecStable renFordMap
+
 
 infixr 5 _»_
 _»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
@@ -131,3 +139,64 @@ wk-Represents {Γ} x = vsRenK-app (num (len Γ)) (enVar x)
 wkTmK-agree : {Γ Θ : Cx} (t : RTm Γ) →
               wkTmK (num (len Γ)) (enTm {Γ} {Θ} t) ⟶* enTm {Γ ∙} {Θ} (renTm vs t)
 wkTmK-agree {Γ} t = ren-agree (wk-Represents {Γ}) t
+
+------------------------------------------------------------------------
+-- ★★★ AND THE KNOT'S METHOD TUPLE IS SUBSTITUTION-STABLE — which is what
+-- lets `wkTmK-agree` be used UNDER a substitution.
+--
+-- ⚠⚠ WHY THIS WAS NEEDED AT ALL, and it was not foreseen: `extVs`'s body
+--   mentions `wkTmK`, whose unfolding mentions `renMethsK`.  After
+--   `extVs`'s five βs the WHOLE body sits under a substitution, so
+--   `wkTmK-agree` only applies if the 53-method tuple survives it.
+--   ⇒ `Lib/ISub.isubMeths-sub` (new) plus `renGive-sub` here.
+------------------------------------------------------------------------
+
+-- ★ AND THE KNOT'S `give`.  `renGiveK` picks one of three hand-written
+--   methods by a decidable tag test, and all three are CLOSED lam-terms —
+--   so each case is `refl` and the only work is the `pickTm` case split.
+-- ⚠ AND `pickTm` MUST BE SPLIT.  It is a meta-level `if` on a decidable
+--   tag test, so with `k` abstract it is stuck and `refl` proves nothing.
+--   Each of the four leaves is then a CLOSED lam-term, where `refl` is
+--   both true and cheap.
+renGive-sub : GiveSub (λ {Γ} k → renGiveK {Γ} k)
+renGive-sub τ k with eqℕ k 11
+... | true  = refl
+... | false with eqℕ k 51
+...   | true  = refl
+...   | false with eqℕ k 52
+...     | true  = refl
+...     | false = refl
+
+-- ★★★ AND THE KNOT'S METHOD TUPLE IS SUBSTITUTION-STABLE.
+--   `renMethsK = isubMeths renGiveK 0 renDescK`, so this is the three
+--   lemmas above composed — and it is what lets `wkTmK-agree` be used
+--   UNDER `extVs`'s five βs.
+renMethsK-sub : {Γ Δ : Cx} (τ : Sub Γ Δ) →
+                subTm τ (renMethsK {Γ}) ≡ renMethsK {Δ}
+renMethsK-sub τ = isubMeths-sub hE-knot hF-knot renGive-sub τ renDescK 0
+
+------------------------------------------------------------------------
+-- ★★★ AND THEREFORE `wkTmK` IS NATURAL.
+--
+--     wkTmK n t = app (app (ielim KnotD (pair sTm n) renMethsK t) (nsuc n))
+--                     (vsRenK n)
+--
+-- ⚠ `n` occurs THREE times and `renMethsK` once, so naturality needs
+--   `renMethsK-sub` (above) and `vsRenK`'s own — which is one `sub-w`,
+--   because `vsRenK n = lam (Var-vsK (w n) (var vz))` weakens its
+--   argument past its own binder.
+--
+-- ★ THIS is what lets `wkTmK-agree` be applied under `extVs`'s five βs:
+--   the substituted wrapper IS a wrapper again.
+------------------------------------------------------------------------
+
+vsRenK-sub : {Γ Δ : Cx} (τ : Sub Γ Δ) (n : RTm Γ) →
+             subTm τ (vsRenK n) ≡ vsRenK (subTm τ n)
+vsRenK-sub τ n = cong (λ z → lam (Var-vsK z (var vz))) (sub-w {σ = τ} n)
+
+wkTmK-sub : {Γ Δ : Cx} (τ : Sub Γ Δ) (n t : RTm Γ) →
+            subTm τ (wkTmK n t) ≡ wkTmK (subTm τ n) (subTm τ t)
+wkTmK-sub τ n t =
+  cong₂ (λ ms rn → app (app (ielim KnotD (pair sTm (subTm τ n)) ms (subTm τ t))
+                            (nsuc (subTm τ n))) rn)
+        (renMethsK-sub τ) (vsRenK-sub τ n)
