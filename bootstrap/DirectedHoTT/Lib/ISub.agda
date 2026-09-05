@@ -916,3 +916,44 @@ module Sub
                        (var (vs (vs vz))))
                     (isubPay-cong₆ sw (cong fst eq-i) (cong snd eq-i)
                                       eq-n eq-σ eq-p eq-ih))))))
+
+  ------------------------------------------------------------------------
+  -- ★ ONE METHOD.  `isubMethod j w = lam⁵ (icon j (isubPay w <the five
+  --   bound variables>))`, so a substitution reaching it must cross five
+  --   binders — and `extS⁵ τ` fixes every one of those variables.  ⇒ the
+  --   whole method is INVARIANT, and the only real content is
+  --   `isubPay-sub`, which `Lib/ISub` already has.
+  ------------------------------------------------------------------------
+
+  isubMethod-sub : ExtNSub → FordMapSub →
+                   {Δ₀ : Cx} {a : Var Δ₀} {C : ICon Δ₀} (w : SubCon a C) (j : ℕ) →
+                   {Γ Δ : Cx} (τ : Sub Γ Δ) →
+                   subTm τ (isubMethod j w) ≡ isubMethod j w
+  isubMethod-sub hE hF w j τ =
+    cong (λ z → lam (lam (lam (lam (lam (icon j z))))))
+         (isubPay-sub hE hF w (extS (extS (extS (extS (extS τ)))))
+            _ _ _ _ _ _)
+
+  ------------------------------------------------------------------------
+  -- ★★★ THE TUPLE.  Induction on the walk; the `sd-comp` slots are
+  --   `isubMethod-sub` above, and the `sd-give` slots are the caller's
+  --   business — hence the hypothesis.
+  --
+  -- ⚠ `give` MUST BE Γ-GENERIC (`{Γ : Cx} → ℕ → RTm Γ`).  `isubMeths` takes
+  --   it at a FIXED `Γ`, but invariance relates `give {Γ}` to `give {Δ}`,
+  --   which cannot even be WRITTEN for a Γ-fixed function.  `renGiveK` and
+  --   `giveK` are both already generic, so nothing at the call sites moves.
+  ------------------------------------------------------------------------
+
+  GiveSub : ({Γ : Cx} → ℕ → RTm Γ) → Set
+  GiveSub give = {Γ Δ : Cx} (τ : Sub Γ Δ) (k : ℕ) → subTm τ (give {Γ} k) ≡ give {Δ} k
+
+  isubMeths-sub : ExtNSub → FordMapSub →
+                  {give : {Γ : Cx} → ℕ → RTm Γ} → GiveSub give →
+                  {Γ Δ : Cx} (τ : Sub Γ Δ) {E : IDesc} (W : SubDesc E) (j : ℕ) →
+                  subTm τ (isubMeths (give {Γ}) j W) ≡ isubMeths (give {Δ}) j W
+  isubMeths-sub hE hF hg τ sd-nil        j = refl
+  isubMeths-sub hE hF hg τ (sd-comp w W) j =
+    cong₂ pair (isubMethod-sub hE hF w j τ) (isubMeths-sub hE hF hg τ W (suc j))
+  isubMeths-sub hE hF hg τ (sd-give W)   j =
+    cong₂ pair (hg τ j) (isubMeths-sub hE hF hg τ W (suc j))
