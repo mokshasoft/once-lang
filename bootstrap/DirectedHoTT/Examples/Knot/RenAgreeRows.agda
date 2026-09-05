@@ -23,12 +23,28 @@
 --   the IH's own statement at the EXTENDED renaming.  `extR-Represents`
 --   supplies its hypothesis.
 --
--- ⚠⚠ AND `extR-Represents` MUST STAY POLYMORPHIC IN `d`.  The payload
---   hands the IH `extsN`'s depth argument unreduced; because neither
---   `extRNK-vz` nor `extRNK-vs` mentions `d` in its conclusion, the lemma
---   can simply be instantiated there.  Had it been stated at a FIXED `d`,
---   this row would need a congruence through `extRNK`'s own `lam` — which
---   does not exist, and there is no `⟶*-lam`-under-`extRNK` to write.
+-- ⚠⚠ AND `extR-Represents` STAYS POLYMORPHIC IN `d` — BUT NOT BECAUSE THE
+--   ALTERNATIVE IS IMPOSSIBLE.  An earlier version of this note said a
+--   fixed `d` "would need a congruence through `extRNK`'s own `lam`,
+--   which does not exist".  THE SECOND HALF WAS WRONG: it does not exist
+--   YET, and it is ONE LINE, from pieces already in `Metatheory/RedCong`:
+--
+--       extRNK-congᵈ r = ⟶*-lam (⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ
+--                          (⟶*-pairʳ (⟶*-nsuc (⟶*-ren vs r))))))
+--
+--   (checked, then deleted unused.)  ⇒ the real argument for the
+--   polymorphic form is that it is FREE — the proof never touches `d` —
+--   and it saves a reduction step at all 30 call sites.  That is a good
+--   reason; "otherwise impossible" was not one.
+--
+-- ★ AND WHY IT IS FREE IS WORTH SAYING OUT LOUD.  `d` is load-bearing for
+--   TYPING (`⊢extRNK` needs `Γ ⊢ rn ∷ RenTy d n`) and irrelevant to the
+--   REDUCTION behaviour on encoded variables — neither `extRNK-vz` nor
+--   `extRNK-vs` mentions it in its conclusion.  ⚠ A parameter that does
+--   not affect reduction is exactly the shape that hid `wkK` for two
+--   customers, so it earns an explicit reason rather than a shrug: here
+--   the typing use is real and checked, and the reduction laws are stated
+--   over an arbitrary `d`, which is the strongest form available.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
@@ -102,8 +118,10 @@ row-lam {Γ} {Δ} h b ih =
      --   `extsN`'s depth argument: `extR-Represents` is polymorphic in
      --   `d`, because neither `extRNK-vz` nor `extRNK-vs` mentions it in
      --   its conclusion.  ⇒ instantiate it at whatever the payload
-     --   produced.  A FIXED `d` would have forced a congruence through
-     --   `extRNK`'s own `lam`, which does not exist.
+     --   produced.  ⚠ A fixed `d` would need `extRNK-congᵈ` — which is
+     --   ONE LINE and was checked, not impossible; see the header.  The
+     --   polymorphic form is chosen because it is FREE, not because the
+     --   alternative is blocked.
      ih (extR-Represents (snd (pair sTm (num (len Γ)))) h))) »
   -- ★ SLOT 1 — the ford.  `kaPick` is the identity at the renaming
   --   instance, so what is left is two projections out of the payload.
