@@ -262,9 +262,51 @@ nose. ⇒ the remaining work per row is the PAYLOAD, not the head.
      the table: every other row is a longer list of the same two kinds,
      and `rec` at `D` is `rec` at `sucD()` with `depthOf = 0`.
 ⬜ NEXT, in order:
+✅ 2b. A THIRD row, `cTm-app` (two `rec`s at depth **0**) — and depth 0 is
+     NOT a separate case: `extsN 0 d n σ = σ`, so `h` passes straight
+     through with no `extR-Represents`.  One emitter, `k` extensions.
   3. `gen_renagree` in `tools/gen-knot.py`, modelled on `gen_szagree`
      (~40 lines of emitter → 436 lines of module).
-     ⚠ It must emit each row's `SubCon` — see `RenRed`'s header.
+     ⚠ It must emit each row's `SubCon` — see `RenRed`'s header — AND the
+       `decSubCon` control beside it; see below.
+     ★ SCOPE, COUNTED: **25 of the 30 `cTm-` rows are same-sort only** and
+       are emittable now.  Only FIVE have cross-sort recursive fields:
+         cTm-var    (sVar)   — but row 11 is a GIVEN row, handled by
+                               `Represents` itself, not by this emitter
+         cTm-elim   (sDesc)
+         cTm-ielim  (sIDesc)
+         cTm-cMu    (sDesc)
+         cTm-cIMu   (sIDesc, sTy, sTm)
+       ⇒ those four need agreement AT OTHER SORTS, i.e. a mutual
+         statement.  `Knot/SzAgree` never had to: a cross-sort child is
+         stepped PAST there (`aih-ρ 0 ok`) because the measure does not
+         count it — but `renTm` genuinely renames it.  Emit the 25 as
+         per-row LEMMAS (not one `agree` function, which would have to be
+         exhaustive), then tie the mutual knot separately.
+
+## ⚠⚠⚠ AND THE GENERATOR NEEDS A CONTROL THE ROWS CANNOT PROVIDE — D′
+
+`ren-head-red` takes the row's `SubCon` as an argument, and at the
+RENAMING instantiation it is **NOT PINNED BY THE ROW**:
+
+    renFordMap fi b p = p          -- ignores the tag
+    fordMapK   fi b p = jsub (⌜Id⌝ ⌜Nat⌝ (sortMap (var vz)) (w b))
+                             (symN fi p) (idrefl ⌜Nat⌝ b)
+
+★★★ MEASURED: replacing `cTm-nzero`'s ford witness with `n-zero` — the
+WRONG sort — left the row GREEN.  ⇒ a generator emitting a wrong tag
+produces a clean `ren-agree` and breaks only at `sub-agree`, ONE
+INSTANTIATION LATER.  `FUTURE.md` D′, and exactly how `wkK` survived.
+
+⇒ FIX, already in `Knot/RenAgreeRows`: pin each emitted `SubCon` against
+the DECIDER, which is what actually builds the mask —
+
+    subcon-nzero : decSubCon vz (ilookupD KnotD 30)
+                   ≡ just (sc-κ (sk-fst (n-suc n-zero) done) sc-ι)
+    subcon-nzero = refl
+
+CONTROLLED BOTH WAYS: correct tag accepted, `n-zero` rejected with
+`nzero != nsuc sTy`.  The generator must emit one of these per row.
   4. `extNK-sub`, then `sub-agree` by the same generator at the other
      instantiation.
 
