@@ -63,7 +63,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
-           InputPlace; in-at-loc; in-at-reg; in-unit;
+           InputPlace; in-at-loc; in-at-reg; in-unit; at-reg; prim-sv;
            valid-unit-wf; mk-IRResultAWF-via-bump; validityWF-mem-only;
            validityWF-frontier-advance; decomposePairWF; PairValidWF;
            mem-preserved-from-tnhw)
@@ -76,21 +76,25 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Identity: output is same as input
   ------------------------------------------------------------------------
 
+  -- Stage F: `id`'s trace is `mov-to-output`, so its result lands wherever the
+  -- INPUT was — in memory, in a register, or nowhere at all for `Unit`. The
+  -- residence is INHERITED, not chosen, and with `at-reg` no longer demanding
+  -- a location that a register-resident value does not have, that is now
+  -- sayable. `id-place` below is the whole difference between the three cases;
+  -- everything else is shared bookkeeping.
   run-id : ∀ {m A}
-    (x : ⟦ A ⟧ᴵ) (input-loc : ValueLocation FS)
+    (x : ⟦ A ⟧ᴵ)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF m alloc x input-loc s →
-    BeforeFrontier alloc input-loc →
+    InputPlace m alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF m (id {A}) x s alloc
-  run-id x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+  run-id {m} {A} x s alloc input-place not-halted =
     mk-IRResultAWF-via-bump
       s' alloc trace bump-0 refl
       refl  -- trace-is-ir-to-trace
       refl  -- trace-correct
       (cong proj₂ (exec-trace-single mov-to-output s alloc not-halted))
-      (at-loc input-loc valid-s' input-before rax-eq valid-s' input-before)
+      (id-place input-place)
       not-halted'
       (mem-preserved-from-tnhw alloc trace s s' refl tt tt)
       (twf-∷ tt twf-[])
@@ -130,12 +134,31 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       not-halted' : halted s' ≡ false
       not-halted' = subst (λ st → halted st ≡ false) (sym s'-eq) not-halted
 
-      valid-s' = subst (λ st → ValidAtWF _ alloc x input-loc st) (sym s'-eq)
-                   (validityWF-mem-only x input-loc s (exec (mov Output Input1) s) refl refl input-valid-wf)
+      -- The memory witnesses, parameterised by the location — so they exist
+      -- only where a location does.
+      valid-at : (loc : ValueLocation FS) → ValidAtWF m alloc x loc s
+               → ValidAtWF m alloc x loc s'
+      valid-at loc v = subst (λ st → ValidAtWF m alloc x loc st) (sym s'-eq)
+                   (validityWF-mem-only x loc s (exec (mov Output Input1) s) refl refl v)
 
-      rax-eq : readReg (regs s') Output ≡ SV-Ptr input-loc
-      rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
-                     (trans (mov-result Output Input1 s) rdi-eq)
+      -- `mov-to-output` copies `Input1` to `Output`, whatever it holds. So the
+      -- output equation is the input equation, transported — the SAME proof
+      -- for a pointer and for a register-resident value.
+      rax-at : (loc : ValueLocation FS) → readReg (regs s) Input1 ≡ SV-Ptr loc
+             → readReg (regs s') Output ≡ SV-Ptr loc
+      rax-at loc rdi = trans (cong (λ st → readReg (regs st) Output) s'-eq)
+                             (trans (mov-result Output Input1 s) rdi)
+
+      rax-reg : (fit : FitsInRegI A) → readReg (regs s) Input1 ≡ prim-sv fit x
+              → readReg (regs s') Output ≡ prim-sv fit x
+      rax-reg fit eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)
+                             (trans (mov-result Output Input1 s) eq)
+
+      id-place : InputPlace m alloc x s → ResultPlace A m _ _ x s'
+      id-place (in-at-loc loc valid before rdi) =
+        at-loc loc (valid-at loc valid) before (rax-at loc rdi) (valid-at loc valid) before
+      id-place (in-at-reg fit eq) = at-reg fit (rax-reg fit eq)
+      id-place (in-unit refl)     = unit-result
 
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
