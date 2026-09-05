@@ -10911,3 +10911,48 @@ which is a direct violation of the invariant, so deleting the mode is what
 makes the invariant true by construction. Step B's remaining item is struck;
 step C (the warning) becomes measurable against slots rather than types, and
 worth building only if the budget still exceeds peak-live after D.
+
+## D147: The Definition-Boundary Escape Question Is the Output Convention — and D and B' Are ONE Change
+
+**Date**: 2026-09-05 · **Settles**: plan 0.86 §6 (the gate on step D) ·
+**Relates**: D146, D142, plan 0.2.4.5, plan 0.64 group E
+
+**The question §6 left open.** Within a definition, escape is a non-issue:
+`FrameFreeTrace` proves no emitted trace contains a frame op, the backend
+brackets the whole body with one `subq $budget*8, %rsp` / `addq`, and
+`ResultPlace.at-loc` places every result below the frontier — "a lower offset
+that nothing pops underneath". But the closing `addq` tears the region down, so
+a closure returned from a top-level function cannot live in it. §6 called this
+"the one placement decision that is not mechanical" and gated step D on it.
+
+**It is the same object as D146's convention.** A returned value needs a
+location that outlives the callee's `addq`. A caller-designated output region
+IS such a location — and it is `BeforeFrontier` in the CALLER's alloc state by
+construction, which is exactly what `at-loc` asks for. The size is statically
+known: the result type determines `⌊ B ⌋`, closures included. So the decision
+is mechanical after all, once the location is the caller's to choose:
+
+    result fits in a register (`FitsInReg`)  -> register
+    otherwise                                -> caller-provided output slots
+
+**Why this is not merely convenient.** `at-loc` carries TWO frontier facts —
+`BeforeFrontier alloc loc` and `BeforeFrontier continuation-alloc loc`. The
+second is what makes a result survive into the continuation, and it is true
+today only because the frontier is monotone (D146). Any scheme that reuses
+slots must supply that second fact some other way; a caller-provided output
+region supplies it directly, because the region is below the CALLER's frontier
+and the callee never allocates under it.
+
+**So `at-loc` is where the invariant gets encoded** (OCP-0005 rung 1, §4's
+"do not leave it as prose") — not as a new predicate but by making the result
+location a parameter the callee cannot choose.
+
+**Consequence for the order of work.** `ResultPlace` is indexed by
+`AllocMode`, which step D deletes. D rewrites this structure and B' rewrites
+the same structure. Doing them in sequence means rewriting `ResultPlace`,
+every `ValidAtWF` site and the `*WF` cluster TWICE. **They are one change.**
+Plan 0.86's §7 order is amended: D and B' merge into a single step, and the
+`*WF` port (paused at `c1bceafa`) resumes against the single-mode IR with the
+output convention already in it — which is also what collapses the per-mode
+module pairs (§5) and retires ~33 of the 91 `SMP.!!` holes in one pass rather
+than disturbing them twice.
