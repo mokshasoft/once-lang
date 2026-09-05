@@ -127,13 +127,15 @@
 --     singleSK-vz ✅ not a program — a clause of `singleK`'s adequacy.
 --     stkAK      ⬜ OWED — agreement with `stkA?`.
 --     stkCK      ⬜ OWED — agreement with `stkC?`.
+--     sub-head-give ✅ not a program — `ren-head-give`'s twin for the GIVEN
+--                row at the substitution instantiation.
 --     sub-head-red ✅ not a program — `ren-head-red`'s twin at the
 --                SUBSTITUTION instantiation (`Knot/SubRed`).
---     subAtK     ◐ IN PROGRESS — `Knot/SubAgreeRows` proves it for the 25
---                SAME-SORT `RTm` rows, by the SAME emitter as
---                `Knot/RenAgree`.  The cross-sort five and the tie-up are
---                next; `Knot/RenClosed`'s identities already cover the
---                closed sorts.
+--     subAtK     ✅ DISCHARGED — `Knot/SubAgreeTie.sub-agree`, ALL 30 `RTm`
+--                rows: `subAtK sTm ⌈Γ⌉ ⌈Δ⌉ s ⌈t⌉ ⟶* ⌈ subTm σ t ⌉` given
+--                `Represents σ s`.  25 generated (`Knot/SubAgreeRows`),
+--                4 cross-sort + 1 given (`Knot/SubAgreeX`), closed sorts
+--                by `Knot/SubClosed`.  ⇒ step 3, both halves.
 --     subTmAtK   ⬜ OWED — `enTm (subTm σ t) ≡ subTmAtK … (enTm t)`.
 --     subTmK     ⬜ OWED — `subTmK`'s agreement with `subTm`; `subTmAtK`'s core.
 --     subTyAtK   ⬜ OWED — `enTy (subTy σ A) ≡ subTyAtK … (enTy A)`.
