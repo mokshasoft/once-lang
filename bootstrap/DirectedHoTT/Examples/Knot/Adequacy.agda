@@ -105,14 +105,18 @@
 --                corollary of `renTmK`'s; blocked on the same five
 --                cross-sort rows.
 --     pwK        ⬜ OWED — agreement with `pw?`.
+--     ren-head-give ✅ not a program — `ren-head-red`'s twin for a GIVEN
+--                row, whose method is hand-written and so is not an
+--                `isubMethod` at all (`Knot/RenAgreeX`, `cTm-var`).
 --     ren-head-red ✅ not a program — the per-row head reduction INSIDE
 --                `Knot/RenRed`, i.e. a step of `renTmK`'s own adequacy.
---     renTmAtK   ◐ IN PROGRESS — the applied form of `renTmK`; same status.
---     renTmK     ◐ IN PROGRESS — `Knot/RenAgree` proves it for the 25 SAME-SORT
---                `RTm` rows.  The five cross-sort rows (`var`, `elim`,
---                `ielim`, `cMu`, `cIMu`) need agreement at another sort,
---                i.e. a mutual statement; `Knot/SzAgree` never did,
---                because a fold steps a cross-sort child PAST.
+--     renTmAtK   ✅ DISCHARGED — the applied form; same theorem.
+--     renTmK     ✅ DISCHARGED — `Knot/RenAgreeTie.ren-agree`, ALL 30 `RTm`
+--                rows: `renTmAtK sTm ⌈Γ⌉ ⌈Δ⌉ r ⌈t⌉ ⟶* ⌈ renTm ρ t ⌉`
+--                given `RepresentsR ρ r`.  25 generated
+--                (`Knot/RenAgree`), 4 cross-sort + 1 given
+--                (`Knot/RenAgreeX`), closed sorts by
+--                `Knot/RenClosed`.  ⇒ step 3's renaming half.
 --     singleK    ⬜ OWED — `single`'s half of the substitution agreement.
 --     singleSK   ⬜ OWED — `singleK`'s core.
 --     singleSK-vs ✅ not a program — the other clause.

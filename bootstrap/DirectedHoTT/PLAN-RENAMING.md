@@ -707,3 +707,44 @@ DEFINITIONAL. **The wrong interface survived two customers before biting
 ⬜ `nrs`'s final projection still resists after five attempts, now
 localized to one position. The log's own rule applies: the next move is
 to PRINT the chain, not to guess a sixth time.
+
+
+--------------------------------------------------------------------------
+## §18 ✅ STEP 3 CLOSED — THE RENAMING HALF
+
+    ren-agree : RepresentsR ρ r → (t : RTm Γ) →
+                renTmAtK sTm ⌈Γ⌉ ⌈Δ⌉ r ⌈t⌉ ⟶* ⌈ renTm ρ t ⌉
+
+ALL 30 `RTm` rows.  `Knot/RenAgreeTie`.
+
+| piece | rows | how |
+| --- | --- | --- |
+| `Knot/RenAgree` | 25 | GENERATED (`gen_renagree`) |
+| `Knot/RenAgreeX` | 5 | 4 cross-sort + 1 given, by hand |
+| `Knot/RenClosed` | 7 | the closed-sort identities they lean on |
+| `Knot/RenRed` | — | the per-row head reduction (halves 1+2 composed) |
+| `Knot/SubAgree` | — | `RepresentsR`, `extR-Represents` |
+
+★★★ AND §16.1's CLAIM IS NOW A PROOF STEP, NOT A DESIGN NOTE.  It said the
+statement had to be a RELATION because there is no `⌈σ⌉` — a `Sub` is an
+Agda function and `Knot/Map` encodes syntax.  `cTm-var` is where that pays:
+its method `renVarM` is HAND-WRITTEN, so `ren-head-red`'s premise cannot
+even be stated for it, and what discharges the row is `h x` — the relation
+itself.  A design decision from §16.1 shows up as the last line of a proof.
+
+★★ THE THREE PIECES BUILT FOR THIS ALL GOT USED, AT DIFFERENT DEPTHS:
+  · `isubMeths-sel` (half 1) — every row, via `ren-head-red`.
+  · `isubMethod-red` (half 2) — every COMPUTED row; its five-argument
+    spine matches `renTmAtK` because that is what it was stated for.
+  · `pw^` (the indexed tower) — `nrs` at one depth, `isubMethod-red`'s six
+    slots at 4/3/2/1/0, and `cTm-var`'s payload at 3.  THREE customers,
+    three different depths.  The hand-written `pw1`–`pw4` ladder would
+    have needed a fifth rung and then a sixth.
+
+⬜ WHAT REMAINS OF STEP 3: the SUBSTITUTION half (`sub-agree`).  It needs
+`extNK`'s naturality — the `ExtNSub` hypothesis at the substitution
+instantiation — and then the same five modules with `extNK`/`sortMap`/
+`fordMapK` in place of the renaming ones.  ⚠ AND ITS FORD TAGS ARE LIVE:
+`fordMapK` USES the tag `renFordMap` ignores, so the substitution instance
+is where a wrong `SubCon` would finally show — which is why `wOf` computes
+it rather than the emitter writing it.
