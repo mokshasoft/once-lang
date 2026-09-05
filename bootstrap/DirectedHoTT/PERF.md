@@ -448,3 +448,38 @@ changed — ~50 minutes for no information.
 graph bug this session that reported **1** affected module where the true
 answer was **89**. It now matches both import forms and prints the module
 names — check the NAMES against what you edited, not just the count.
+
+
+### 6.12 ⚠⚠ FOURTH INSTANCE, AND THIS ONE ALMOST SHIPPED A SPLIT
+
+`gen_renagree`'s 25-row output was OOM-killed at **234s**, and again at
+**260s** under `-c`.  Conclusion drawn: 25 rows is too much for one module,
+split it like `RedWfA`/`RedWfB`.  The split was written, both halves went
+green (441s and 7s), and the generator carried a comment asserting the
+measurement.
+
+★ THEN THE 441s/7s ASYMMETRY WAS CHECKED.  Half A had built the whole
+closure; half B inherited it.  Re-timed with dependencies warm:
+
+| | |
+| --- | --- |
+| half A (13 rows), `-c` | **9s** |
+| half A (13 rows), default RTS | **9s** |
+| **FULL 25-row module, default RTS** | **12s** |
+
+⇒ the split was UNNECESSARY, the OOMs were the cold closure, and `-c` was
+never needed.  Un-split.
+
+⚠⚠⚠ THIS IS THE FOURTH TIME IN ONE SESSION (§6.10 lists the first three),
+and it is the one that came closest to being permanent: the other three
+were wrong *diagnoses* of things that were already green, while this one
+was about to bake a structural decision — and a false justification for it
+— into a GENERATOR, where it would have been inherited by every future
+emitted module.
+
+★ WHAT WOULD HAVE CAUGHT IT SOONER, and costs seconds:
+
+    find . -name 'M.agdai' -delete && time ./check.sh …/M.agda
+
+  run TWICE — the first rebuilds the closure, the second measures M.  Any
+  per-module claim not made from the second run is not evidence.

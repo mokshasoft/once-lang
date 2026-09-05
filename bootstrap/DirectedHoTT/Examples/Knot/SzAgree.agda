@@ -67,7 +67,7 @@ open import DirectedHoTT.Spec.Syntax
         )
 open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; ι-ielim; β; βfst; βsnd )
-open import DirectedHoTT.Metatheory.RedCong
+open import DirectedHoTT.Metatheory.Confluence
   using ( ⟶*-trans; ⟶*-appˡ; ⟶*-fst; ⟶*-snd; ⟶*-nsuc; ⟶*-ielimᵗ )
 open import DirectedHoTT.Metatheory.Canonicity using ( sz )
 open import DirectedHoTT.Lib.NatNum using ( num )

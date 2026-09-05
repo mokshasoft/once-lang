@@ -49,7 +49,8 @@ open import DirectedHoTT.Examples.Knot.RenTm
   using ( renTmAtK; renTmK; renMethsK; renDescK; renGiveK
         ; hE-knot; hF-knot )
 import DirectedHoTT.Lib.ISub as IS
-open import DirectedHoTT.Lib.ISub using ( ttsd )
+open import DirectedHoTT.Lib.ISub using ( ttsd; ⊤sd; ⊥sd )
+open import DirectedHoTT.Lib.IWk using ( Maybe; just; nothing )
 open import DirectedHoTT.Examples.Knot.RenMot using ( extRNK )
 open import DirectedHoTT.Examples.Knot.RenTm using ( renSmap; renDecStable; renFordMap )
 open IS.Sub extRNK renSmap renDecStable renFordMap
@@ -64,25 +65,56 @@ done       » q = q
 --   spine of `isubMethod-red` is EXACTLY `renTmAtK`'s: the eliminator's
 --   three, then the motive's `m` and `rn`.
 ------------------------------------------------------------------------
+-- ★★★ AND THE ROW'S `SubCon` IS **COMPUTED**, NOT EMITTED.
+--
+-- ⚠⚠ THE FIRST VERSION TOOK IT AS AN ARGUMENT, AND THAT WAS A D′ HOLE.
+--   At the RENAMING instantiation `renFordMap fi b p = p` IGNORES the ford
+--   tag, while `fordMapK` uses it three times — so a WRONG tag left the
+--   row GREEN (measured: `n-zero` for `cTm-nzero`'s `sTm` ford) and would
+--   have broken only at `sub-agree`, one instantiation later.
+--
+-- ★ `decSubCon` already computes the row's `SubCon`; taking it from there
+--   leaves NOTHING for a generator to get wrong.  A control would have
+--   caught the defect; this makes it unstatable — which is the same
+--   upgrade `Represents` made over `wkK`.
+------------------------------------------------------------------------
 
+JustOf : {A : Set} → Maybe A → Set
+JustOf (just _) = ⊤sd
+JustOf nothing  = ⊥sd
+
+theJust : {A : Set} (m : Maybe A) → JustOf m → A
+theJust (just a) _ = a
+theJust nothing ()
+
+-- the row's classification, read off the decider
+wOf : (k : ℕ) → JustOf (decSubCon vz (ilookupD KnotD k)) →
+      SubCon vz (ilookupD KnotD k)
+wOf k p = theJust (decSubCon vz (ilookupD KnotD k)) p
+
+------------------------------------------------------------------------
+
+-- ⚠ AND `j` IS `k`.  `sdMeth give j W` recurses at `suc j` while it walks
+--   down `k`, so starting from 0 the row's method is `isubMethod k w` —
+--   there is no second index to pass, or to pass wrongly.
 ren-head-red :
   {Γ : Cx} (k : ℕ) (msel : InSD? renDescK k)
-  {C : ICon (ε ∙)} (w : SubCon vz C) (j : ℕ) →
-  sdMeth renGiveK 0 renDescK k ≡ isubMethod j w →
+  (pj : JustOf (decSubCon vz (ilookupD KnotD k))) →
+  sdMeth renGiveK 0 renDescK k ≡ isubMethod k (wOf k pj) →
   (s dd m rn p : RTm Γ) →
   renTmAtK s dd m rn (icon k p) ⟶*
     -- ⚠ `fst (pair s dd)`, NOT `s`: `βfst` is a REDUCTION rule here, not
     --   a definitional equality, so the conclusion must be stated at the
     --   shape `isubMethod-red` actually produces.  Callers pay the two
     --   projections; stating it with `s`/`dd` makes the lemma unusable.
-    icon j (isubPay w (fst (pair s dd)) (snd (pair s dd)) m rn p
+    icon k (isubPay (wOf k pj) (fst (pair s dd)) (snd (pair s dd)) m rn p
               (iihs KnotD renMethsK (isingle (pair s dd)) (ilookupD KnotD k) p))
-ren-head-red k msel w j eq s dd m rn p =
+ren-head-red k msel pj eq s dd m rn p =
   ⟶*-appˡ (⟶*-appˡ
     (step (ι-ielim KnotD (pair s dd) renMethsK k p)
           (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ
             (⟶*-castᵣ eq (isubMeths-sel renDescK 0 k msel))))))) »
-  isubMethod-red hE-knot hF-knot w j _ _ _ _ _
+  isubMethod-red hE-knot hF-knot (wOf k pj) k _ _ _ _ _
 
 ------------------------------------------------------------------------
 -- ★ USE-SITE CHECK.  `judge-abstractions-at-the-use-site`: a helper whose
@@ -103,5 +135,4 @@ ren-head-red k msel w j eq s dd m rn p =
 --   whose build is elegant and whose CALL is impossible is worth nothing.
 --   This is row 0, with its `SubCon` written out as the generator will.
 row0-callable : {Γ : Cx} (s dd m rn p : RTm Γ) → _
-row0-callable s dd m rn p =
-  ren-head-red 0 ttsd (sc-κ (sk-fst n-zero done) sc-ι) 0 refl s dd m rn p
+row0-callable s dd m rn p = ren-head-red 0 ttsd ttsd refl s dd m rn p

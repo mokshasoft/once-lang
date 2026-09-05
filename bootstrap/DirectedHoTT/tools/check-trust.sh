@@ -59,18 +59,29 @@ fi
 echo "== KERNEL IS INDEPENDENT: Spec/ and Metatheory/ import no Lib/ or Examples/."
 echo "   ⇒ a defect in a library cannot reach consistency, canonicity or SN."
 
-want="$("$HERE/gen-trust.sh")"
-have="$(grep '^import ' "$ROOT/Trust.agda" | LC_ALL=C sort)"
+# ⚠ COMPUTED HERE, not by calling `gen-trust.sh` — that script now WRITES
+#   the roots rather than printing a list, and a `$(...)` of it would have
+#   silently produced an empty `want` and a green diff against nothing.
+want="$(find "$ROOT" -name '*.agda' \
+  | grep -v '/Negative/' | grep -v '/Trust/' \
+  | sed "s|^$ROOT/||; s|\.agda$||; s|/|.|g; s|^|import DirectedHoTT.|" \
+  | LC_ALL=C sort)"
+# ⚠⚠ THE UNION OF THE FIVE ROOTS, not one file.  `--safe` propagation is
+#   EDGE-LOCAL, so coverage — "is every module reachable from SOME root" —
+#   is the whole question, and a union answers it exactly as one root did.
+#   ★ A module in NO root is invisible to `--safe` however sound the
+#     language is; that is what this diff exists to catch.
+have="$(cat "$ROOT"/Trust/*.agda | grep '^import ' | LC_ALL=C sort -u)"
 
 if [ "$want" = "$have" ]; then
   n=$(printf '%s\n' "$want" | grep -c .)
   echo "== TRUST ROOT REACHES ALL $n modules (Negative/ excluded by design)."
   echo "   ⇒ --safe, no postulates, no pragmas, no holes: enforced BY AGDA,"
-  echo "     transitively, when the sweep builds Trust.agda."
+  echo "     transitively, when the sweep builds the Trust/ roots."
   exit 0
 fi
 
-echo "== TRUST ROOT INCOMPLETE — Trust.agda does not import every module." >&2
+echo "== TRUST ROOTS INCOMPLETE — Trust/ does not cover every module." >&2
 echo "   Regenerate with tools/gen-trust.sh.  Difference (want vs have):" >&2
 diff <(printf '%s\n' "$want") <(printf '%s\n' "$have") >&2
 exit 1
