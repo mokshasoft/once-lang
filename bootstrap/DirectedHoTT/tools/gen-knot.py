@@ -1309,6 +1309,13 @@ FIELD_SORT.update({
     "subTyAtK": [None, "sTy"],
     "extNK":    [None],
     "pwBodyK":  ["sTm"],
+    # ★ STEP 5.  ⚠ These are the KERNEL's argument orders — that is the
+    #   whole point of the adapters, and why a row could not simply be
+    #   added for `payTyK`/`ipayTyK` themselves.
+    "lookupDK":  ["sDesc", "nat"],
+    "ilookupDK": ["sIDesc", "nat"],
+    "payTyKᵏ":   ["sDesc", "sDCon"],
+    "ipayTyKᵏ":  ["sIDesc", "sTy", None, "sICon"],
 })
 
 # ============================ THE MUTUAL PAIR =============================
@@ -1896,6 +1903,13 @@ open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
+-- ★ STEP 5 — `⊢con` needs these.  `lookupDK`/`ilookupDK` are already in
+--   the kernel's argument order; `payTyKᵏ` is `Knot/KAdapt`'s adapter,
+--   because `payTy D C` maps to `payTyK n C D` with the arguments SWAPPED
+--   and `_SUBST_CT` only renames a head.
+open import DirectedHoTT.Examples.Knot.LookupD using ( lookupDK; ⊢lookupDK )
+open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK )
+open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -3157,6 +3171,14 @@ WF_CTOR.update({
     #   `pair s (nsuc m)` on the nose, because a `subTyAtK` result is
     #   already indexed by its TARGET depth.
     "wkTmK":    ("⊢wkTmK",     ["N", "MU"],       None),
+    # ★ STEP 5 — the four step-5 heads.  `DD` is a generator-supplied depth
+    #   prefix (`_PRE_N`), `MU` a knot term, `IX` a substitution, `N` a ℕ.
+    #   ⚠ `payTyKᵏ`/`ipayTyKᵏ` are the `Knot/KAdapt` adapters, so these
+    #     roles are in the KERNEL's argument order.
+    "lookupDK":  ("⊢lookupDK",  ["DD", "MU", "N"],                   None),
+    "ilookupDK": ("⊢ilookupDK", ["DD", "MU", "N"],                   None),
+    "payTyKᵏ":   ("⊢payTyKᵏ",   ["DD", "MU", "MU"],                  None),
+    "ipayTyKᵏ":  ("⊢ipayTyKᵏ",  ["DD", "DD", "MU", "MU", "IX", "MU"], None),
     "wkTyK":    ("⊢wkTyK",     ["N", "MU"],       None),
     # ★★★ THE SUBSTITUTION WRAPPERS.  `Knot/SubApp` proved these; the
     #   roles say only WHERE each argument comes from.
@@ -3291,6 +3313,25 @@ FIELD_DEPTH.update({
     # ⚠ `extNK`'s substitution argument lives one binder SHALLOWER than
     #   the position `extS` appears at — it is the σ being extended.
     "extNK":    [('D',), ('D',), ('predD',)],
+    # ★ STEP 5 — ONLY `ipayTyKᵏ` needs an entry.  `lookupDK`,
+    #   `ilookupDK` and `payTyKᵏ` are entirely at the ambient depth, which
+    #   is the default; adding `('D',)` rows for them CRASHED the walk
+    #   ("a Var at a non-successor depth"), because an explicit entry is
+    #   read at EMITTED positions and shifted the prefix accounting.
+    #   ⚠ Absent is not the same as all-`('D',)` here.
+    # ⬜ `ipayTyKᵏ` HAS NO ENTRY YET, AND THE REASON IS RECORDED.
+    #   `⊢icon` currently refuses with
+    #       conflicting depths [('I', 0, 'closed')]
+    #   because `ipayTy`'s second argument is an `RTy ε` — closed, depth 0
+    #   wherever the rule appears — while the inference reads the ambient
+    #   depth off the conclusion.  Declaring it
+    #       "ipayTyKᵏ": [('D',),('D',),('D',),('lit',0),('D',),('D',)]
+    #   DOES resolve that conflict, and the row then gets FURTHER and dies
+    #   in `_pred` with "a Var at a non-successor depth: ('v','#m')".
+    #   ⇒ so the depth declaration is necessary but not sufficient: past
+    #     the conflict there is a real depth-model question about where
+    #     `⊢icon`'s variable sits.  Left OUT rather than left half-applied,
+    #     so the generator stays green and the refusal stays honest.
     # ★ `Var-vsK d x : K (sVar , nsuc d)` with `x` at `d` — its argument
     #   is one BELOW it.  Never stated before because no rule nested two
     #   variable constructors until `tr-pw`'s `var (vs vz)`.
@@ -3915,7 +3956,9 @@ _DEPTH_ARG = {"Var-vzK", "Var-vsK", "nrsSubK"}
 #   wrapper is named for where it LANDS, so `n` is the depth at the
 #   position, unshifted.  ⚠ `_DEPTH_ARG`'s rule is the opposite one and
 #   using it here silently builds a term one binder too shallow.
-_DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK", "extNK"}
+_DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK", "extNK",
+              # ★ STEP 5 — see `_PRE_N`.
+              "lookupDK", "ilookupDK", "payTyKᵏ", "ipayTyKᵏ"}
 
 # ★★★ HOW MANY DEPTHS EACH WRAPPER TAKES BEFORE ITS SOURCE ARGUMENTS.
 #
@@ -3927,7 +3970,11 @@ _DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK", "extNK"}
 #   way `extNK` does: their source is whatever the SUBSTITUTION takes
 #   its argument from, which `_argshift` is the one place that knows.
 _PRE_N = {"singleK": 1, "subTmAtK": 2, "subTyAtK": 2, "extNK": 2,
-          "wkTmK": 1, "wkTyK": 1}
+          "wkTmK": 1, "wkTyK": 1,
+          # ★ STEP 5.  `ipayTyKᵏ` takes TWO — the `ICon`'s own depth and
+          #   the target — for the same reason `extNK` does: the kernel
+          #   writes neither.
+          "lookupDK": 1, "ilookupDK": 1, "payTyKᵏ": 1, "ipayTyKᵏ": 2}
 
 # ★ what a rule NAMES → what the object level CALLS it.  `single`,
 #   `subTm` and `subTy` are the three the judgement rules mention, and
@@ -3938,7 +3985,12 @@ _SUBST_CT = {"single": "singleK", "subTm": "subTmAtK",
              "pwBody": "pwBodyK", "nrs": "nrsSubK",
              # ★ `isingle i : Sub (ε ∙) Γ` — a `lam` ignoring its
              #   variable; `Knot/EWk` builds it in three lines.
-             "isingle": "isingleK"}
+             "isingle": "isingleK",
+             # ★ STEP 5 — via `Knot/KAdapt`'s KERNEL-ORDER adapters for the
+             #   two whose arguments are permuted; `lookupD`/`ilookupD`
+             #   already match and need only the depth prefix.
+             "lookupD": "lookupDK", "ilookupD": "ilookupDK",
+             "payTy": "payTyKᵏ", "ipayTy": "ipayTyKᵏ"}
 
 # ⚠⚠ STEP 5 — WHY THE FOUR "ALREADY EXISTING" FUNCTIONS ARE NOT JUST A
 #   TABLE ENTRY.  `Knot/JudgeRows` names its own gaps:
@@ -4280,6 +4332,13 @@ open import DirectedHoTT.Examples.Knot.Stk
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK; ⊢nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
+-- ★ STEP 5 — `⊢con` needs these.  `lookupDK`/`ilookupDK` are already in
+--   the kernel's argument order; `payTyKᵏ` is `Knot/KAdapt`'s adapter,
+--   because `payTy D C` maps to `payTyK n C D` with the arguments SWAPPED
+--   and `_SUBST_CT` only renames a head.
+open import DirectedHoTT.Examples.Knot.LookupD using ( lookupDK; ⊢lookupDK )
+open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK )
+open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )
 open import DirectedHoTT.Examples.Knot.RedRows
 %s
 """
@@ -4901,7 +4960,7 @@ _SRCMOD = {"Typing": "DirectedHoTT.Spec.Typing",
 #   Agda equation then pins it exactly.  Raising one is a deliberate act,
 #   the same contract as `_FLOOR`.
 _SKIP_EXPECT = {"RedD": 2, "TyRedD": 0, "ConvD": 0, "NoNatCD": 0,
-                "InDD": 0, "InIDD": 0, "JudgeD": 5}
+                "InDD": 0, "InIDD": 0, "JudgeD": 4}
 
 def gen_census(out):
     """one equation per family, from `_CENSUS` — so a family cannot be

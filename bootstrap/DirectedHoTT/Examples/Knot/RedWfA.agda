@@ -47,6 +47,13 @@ open import DirectedHoTT.Examples.Knot.Stk
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK; ⊢nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
+-- ★ STEP 5 — `⊢con` needs these.  `lookupDK`/`ilookupDK` are already in
+--   the kernel's argument order; `payTyKᵏ` is `Knot/KAdapt`'s adapter,
+--   because `payTy D C` maps to `payTyK n C D` with the arguments SWAPPED
+--   and `_SUBST_CT` only renames a head.
+open import DirectedHoTT.Examples.Knot.LookupD using ( lookupDK; ⊢lookupDK )
+open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK )
+open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )
 open import DirectedHoTT.Examples.Knot.RedRows
 
 

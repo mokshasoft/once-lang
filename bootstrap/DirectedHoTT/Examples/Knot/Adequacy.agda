@@ -22,7 +22,7 @@
 --   only that each subject it builds is the one the rule names.  A full
 --   `enDeriv` would subsume it.
 --
--- ★ 32 checks.  ⚠ 11 subject(s) SKIPPED and named — a
+-- ★ 32 checks.  ⚠ 12 subject(s) SKIPPED and named — a
 --   translation mentioning the row's DEPTH has no meta-level depth to be
 --   instantiated at, and an `ICon` binder's scope is not named by its
 --   rule:
@@ -33,6 +33,7 @@
 --     ⊢ap          applies subTmAtK
 --     ⊢jsub        applies subTmAtK
 --     ⊢natrec      applies subTyAtK
+--     ⊢con         _Undepthed
 --     iwf-ρ        _Undepthed
 --     iwf-κ        _Undepthed
 --     icw-clo      applies εwkK
