@@ -1,4 +1,19 @@
 ------------------------------------------------------------------------
+-- ⚠⚠ `wkK` HAS MOVED TO `Negative/WkK.agda` — IT WAS THE WRONG WEAKENING.
+--
+--   `wkK` is NOT `renTm vs`: it keeps the de Bruijn index where `renTm vs`
+--   shifts it.  Six bugs came from that single class (`PLAN-RENAMING.md`
+--   §7), and step 4 retired the last four applications.
+--   ⇒ use `Knot/WkSub.wkAtK` (or its `wkTyK`/`wkTmK` instances), which has
+--     an adequacy proof; `wkK` cannot even be given a specification
+--     (§15.1 — the law is UNSTATABLE, because there is no `app wkK x`).
+--
+-- ★ WHAT REMAINS HERE IS LIVE AND SHARED: `⊢shIPair` (`Knot/WkProbe`) and
+--   `⊢MotK` + the method tuple (`Knot/PwBody`, 9 uses, for its OWN
+--   eliminator).  They merely shared a file with the failed attempt.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — ★★★ OBJECT-LEVEL WEAKENING OVER THE WHOLE KNOT.
 --
 --     wkK : K i → K (sh i)          i.e.  K (s, d) → K (s, suc d)
@@ -119,36 +134,3 @@ wkMethsK = iwkMeths (decDesc KnotD) wkTail
           (⊢shIPair (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
                                    (εwk-ren vs IPair))
                             (⊢var (there here))))
-
--- ★★★ OBJECT-LEVEL WEAKENING FOR THE KNOT.
-wkK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-wkK i t = ielim KnotD i wkMethsK t
-
-⊢wkK : {Γ : Ctx} {i t : RTm ⌊ Γ ⌋} →
-       Γ ⊢ i ∷ Σ' Nat Nat → Γ ⊢ t ∷ K i → Γ ⊢ wkK i t ∷ K (sh i)
-⊢wkK {i = i} di dt =
-  ⊢-cast (cong (λ z → K (sh z)) (wk-single i))
-         (⊢ielim KnotWf ⊢MotK di ⊢wkMethsK dt)
-
-------------------------------------------------------------------------
--- ★★★ `wkK` AT AN EXPLICIT `(sort , depth)` — the two β-steps, once.
---
--- ⚠⚠ `⊢wkK` lands at `sh i`, and `sh i = pair (fst i) (nsuc (snd i))`
---   (`Lib/IWk`).  At a concrete `i = pair s n` that is
---   `pair (fst (pair s n)) (nsuc (snd (pair s n)))` — two `⟶` STEPS
---   away from `pair s (nsuc n)`, not definitionally equal to it.  Every
---   caller therefore pays the SAME pair of conversions.
---
--- ★ THREE CUSTOMERS ALREADY: `tools/gen-knot.py` hard-codes it as the
---   `WK` post (`muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _))) (muFwd (ξ-pairˡ
---   (βfst _ _)) …)`), `Knot/Nrs` writes it out, and `Knot/PayTy` needs
---   it for `Σ'`'s second component.  ⇒ lifted here, beside `wkK`, rather
---   than copied a fourth time.
-------------------------------------------------------------------------
-
-⊢wkKat : {Γ : Ctx} {s n t : RTm ⌊ Γ ⌋} →
-         Γ ⊢ s ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ t ∷ K (pair s n) →
-         Γ ⊢ wkK (pair s n) t ∷ K (pair s (nsuc n))
-⊢wkKat ds dn dt =
-  muFwd (ξ-pairʳ (ξ-nsuc (βsnd _ _)))
-    (muFwd (ξ-pairˡ (βfst _ _)) (⊢wkK (⊢ixP ds dn) dt))
