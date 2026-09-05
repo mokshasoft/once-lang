@@ -10685,7 +10685,7 @@ paused `*WF` port).
 
 ## D143: Erasure Is a SEMANTIC Claim — the Spec's Meaning Is Grade-Aware
 
-**Date**: 2026-09-04 · **Status**: Decided (plan 0.86 step B), landing ·
+**Date**: 2026-09-04 · **Status**: LANDED 2026-09-05 (apex green) ·
 **Refines**: plan 0.52 M2 · **Relates**: D142, OCP-0005, OCP-0009 Rung 5
 
 ### The rule
@@ -10851,3 +10851,63 @@ inference.
 the boundary (the `var` lookup, the closed-algebra `cata` premise, and the
 telescope-body recursion). The same shape applies wherever a relation is
 indexed by a *computed* context — prefer the components.
+
+## D146: Let-Sinking Is Replaced — the Boundary Convention, Not an Analysis, Is What Reclaims
+
+**Date**: 2026-09-05 · **Supersedes**: plan 0.86 §2 · **Refines**: D142 ·
+**Relates**: D143, plan 0.86 §4/§5 step D, plan 0.35, OCP-0005 rung 1
+
+**Context.** D142 recorded that a dead value trapped behind a longer-lived one
+is the real motivation the `@stack`/`@heap` annotation served, and prescribed
+(plan 0.86 §2) that elaboration sink each `let` to the dominator of its uses
+so the binding never enters the outer environment. Step B was to build that.
+
+**What was checked.** Two things, both in the code rather than the plan text:
+
+  * D142's stated cause is GONE. It reads "`let x = e1 in e2` elaborates to
+    `e2 ∘ ⟨ id , e1 ⟩`; the `id` keeps the whole environment alive". After
+    D143 the clause emits `restrictEnv (⊑ᵘ-+ˡ Ψ₂ …)`, not `id`, and `_↾_`
+    drops `Zero` slots — so a binding dead from here on is not in the body's
+    environment at the level of the TYPE. `restrictEnv`'s own `z≤o` clause is
+    commented "this is the narrowing that reclaims it".
+
+  * The slots are nevertheless not reclaimed, and `let` placement is not why.
+    `ir-to-trace'` threads its frontier additively — `f ∘ g` and `⟨ f , g ⟩`
+    both run `n → n₁ → n₂` and return `n₂` — so `ir-stack-budget` is the TOTAL
+    number of intermediates in a function body, not the peak live at once.
+    Sinking a `let` reorders which slots are taken when; against an additive
+    frontier that changes the total by exactly zero. **Sinking cannot reach
+    the problem it was specified to solve.**
+
+**Why the frontier is additive, and it is not an oversight.** `⟨ f , g ⟩ Stack`
+ends `lea-slot fst-slot`: a pair's VALUE is a pointer into the frame. With `f`
+itself a pair, the outer `fst-slot` holds a pointer into `f`'s own interior
+slot range, so those slots are live past `f`'s return and restarting `g` inside
+them would corrupt the pair. Monotonicity is the conservative choice that makes
+this safe.
+
+**The decision.** Do not build let-sinking. What licenses reclamation is the
+boundary invariant D142 already states — *what crosses an IR boundary is
+stack- or register-resident; heap is strictly IR-internal and freed before
+return* — read at full strength: resident in the BOUNDARY REGION, not merely
+"somewhere on the stack, possibly inside the callee's interior". Once an IR
+materialises its result into a caller-designated output location, its interior
+slots are dead at return BY THE CONVENTION, and then:
+
+  * `g` may restart at `f-start`, making `ir-stack-budget` peak-live;
+  * "heap is IR-internal and reclaimed" becomes statable, which is what finally
+    gives `free-heap` — an IR constructor with NO producer today, passed
+    through opaquely by `Escape` and `Fusion` — something to be produced by.
+
+**An analysis was the wrong instrument.** `Once.Escape` discovers non-escape
+case by case (ten syntactic rules, all rewriting `AllocMode`). The convention
+makes escape UNREPRESENTABLE instead. That is OCP-0005 rung 1, and it is the
+same move D142 and D143 each made; reaching for the analysis here would have
+been rung 0 dressed up.
+
+**Consequence for the order of work.** Step D (`AllocMode` out of the IR) is
+not tidying — `⟨ f , g ⟩ Heap` returns a heap pointer ACROSS an IR boundary,
+which is a direct violation of the invariant, so deleting the mode is what
+makes the invariant true by construction. Step B's remaining item is struck;
+step C (the warning) becomes measurable against slots rather than types, and
+worth building only if the budget still exceeds peak-live after D.
