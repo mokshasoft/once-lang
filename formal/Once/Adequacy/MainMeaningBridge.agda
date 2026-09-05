@@ -51,7 +51,8 @@ import Once.Adequacy.AcceptSound as AS
 import Once.Adequacy.ModuleComplete as MC
 import Once.Adequacy.MainExtract fmt as ME
 import Once.Denotation.MainMeaning as MM
-open import Once.Adequacy.MeaningBridge fmt using (bridge-c; RelEnv)
+open import Once.Adequacy.MeaningBridge fmt using (bridge-c; RelEnv; RelEnv↾; mk↾; rel-env0)
+open import Once.Denotation.Phase using (env0)
 open import Once.Parser using (FunInfo)
 open FunInfo
 
@@ -64,9 +65,10 @@ open FunInfo
 main-bridge-leaf : ∀ {polys sigEffs nm bdy ctx Ψ}
   (deriv : (ctxWithImportsAndSelfAndPolys ctx polys sigEffs nm EffUU) ⊢ᶜ bdy ∶ EffUU ⨾ Ψ)
   (n : ℕ)
-  → ME.runMainˢ (realize deriv) n ≡ MM.runMainᵈ (⟦ deriv ⟧ᶜ fmt) n
-main-bridge-leaf deriv n =
-  let bd = bridge-c deriv {tt} {tt} tt n
+  → ME.runMainˢ (realize deriv) n
+    ≡ MM.runMainᵈ (λ _ → ⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt)) n
+main-bridge-leaf {Ψ = Ψ} deriv n =
+  let bd = bridge-c deriv {env0 {Ψ} tt} {env0 {Ψ} tt} rel-env0 n
   in sym (cong (take n)
        (cong₂ _++_ (proj₁ bd) (proj₁ (proj₂ bd {tt} {tt} tt n))))
 

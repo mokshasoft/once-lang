@@ -37,7 +37,8 @@ open import Data.List using (_++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
-                             _*_; _+_; _⇒[_]_; μ-type; ν-type)
+                             _*_; _+_; _⇒[_]_; μ-type; ν-type;
+                             mk-kind; Zero; One; Many)
 open import Once.Denotation.TraceMonad using (T; projTrace; valueT; returnT; _>>=T_)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 
@@ -69,7 +70,13 @@ RelV (A + B) (inj₁ _)  (inj₂ _)  = ⊥
 RelV (A + B) (inj₂ _)  (inj₁ _)  = ⊥
 -- The arrow: related arguments map to related computations. This is the
 -- funext-free heart — a Π over related inputs, not an equality of functions.
-RelV (A ⇒[ k ] B) f g = ∀ {a b} → RelV A a b → RelT B (f a) (g b)
+--
+-- D143: split on the quantity. At `Zero` the meaning takes NO argument (its
+-- domain is `⊤`), so relatedness is just relatedness of the two thunks' bodies
+-- — there is no input to quantify over.
+RelV (A ⇒[ mk-kind Zero π ] B) f g = RelT B (f tt) (g tt)
+RelV (A ⇒[ mk-kind One  π ] B) f g = ∀ {a b} → RelV A a b → RelT B (f a) (g b)
+RelV (A ⇒[ mk-kind Many π ] B) f g = ∀ {a b} → RelV A a b → RelT B (f a) (g b)
 
 ------------------------------------------------------------------------
 -- Monad lemmas — the two combinators `⟦_⟧ᶜ`/SD are built from (`returnT`,

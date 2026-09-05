@@ -10811,3 +10811,43 @@ recorded here instead.
 CONSUMERS, not merely importers. An `open import ... using (f)` that never
 applies `f` is invisible to import-graph reachability but carries no proof
 obligation. [[feedback_verify_consumers_not_importers]]
+
+## D145: A Non-Injective Index Belongs in the RECORD, Not in the Type Former
+
+**Date**: 2026-09-05 · **Refines**: D143 · **Relates**: D144
+
+**Context.** `MeaningBridge`'s logical relation was `RelEnv : (Γ : Ctx n) → …`,
+and D143 moved every use of it to the RUNTIME context, so the bridge's premise
+became `RelEnv (NamedCtx.debruijn ctx ↾ Ψ) dγ₁ dγ₂`. Each of the ~40 clauses
+that splits a usage (`pair`, `let`, `case`, every binop, every application,
+`lam`) then needs the relation NARROWED along the same `⊑ᵘ` witness that
+`⟦_⟧ᵢ` and `⟦_⟧ˢ` apply — a `rel-restrict`/`rel-bind` combinator per shape.
+
+**Problem.** `_↾_` is a recursive function on `Ctx`/`Usage`, not a constructor.
+From an expected `RelEnv (_Γ ↾ _Ψ) …` Agda cannot recover `_Γ` or `_Ψ`: the
+constraint is *blocked on the meta itself*, because `_Γ ↾ _Ψ` cannot be reduced
+without knowing `_Γ`. So every combinator call reported `UnsolvedConstraints`
+unless BOTH indices were pinned by hand — ~60 sites, each carrying
+`{Γ = NamedCtx.debruijn ctx} {Ψ₁ = …} {Ψ₂ = …}`, and each clause additionally
+binding `{ctx = ctx}` just to have the name available.
+
+**Decision.** Index the relation by the two components SEPARATELY, in a record:
+
+```agda
+record RelEnv↾ {n} (Γ : Ctx n) (Ψ : Usage n)
+               (dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ) : Set where
+  constructor mk↾
+  field un↾ : RelEnv (Γ ↾ Ψ) dγ₁ dγ₂
+```
+
+`Γ` and `Ψ` are now ordinary record indices, solved by unification like any
+other, and every combinator (`rel-restrict`, `rel-bind`, `rel-bind0`, and the
+four split shapes `reˡ`/`reʳ`/`reᵐ`/`re¹`) infers them from its call site with
+nothing pinned. The composite `Γ ↾ Ψ` is what the relation is ABOUT; it is not
+what the relation is indexed BY, and conflating the two is what cost the
+inference.
+
+**Consequence.** Zero pinning at the ~40 clause bodies; three `mk↾`/`un↾` at
+the boundary (the `var` lookup, the closed-algebra `cata` premise, and the
+telescope-body recursion). The same shape applies wherever a relation is
+indexed by a *computed* context — prefer the components.

@@ -30,6 +30,7 @@ open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Surface.Context using (∅) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
+open import Once.Denotation.Phase using (env0)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ)
 import Once.Compile as C
 import Once.Adequacy.AcceptSound as AS
@@ -60,11 +61,15 @@ mmd-dispatch : ∀ {polys sigEffs nm bdy rest ctx ty Ψ} (fmt : TargetNum)
   → Dec (nm ≡ "main") → Dec (ty ≡ EffUU) → Bool
   → Σ-syntax (Usage 0) (λ _ → MClo)
 
-mainMeaningᵈ-go fmt (tcons {Ψ = Ψ} rf deriv rest) (inj₁ (_ , _ , refl)) = Ψ , (⟦ deriv ⟧ᶜ fmt)
+-- D143: `⟦_⟧ᶜ` runs on the RUNTIME environment `∅ ↾ Ψ`; `MClo` takes the
+-- full (empty) one, so `env0` bridges — it is the identity.
+mainMeaningᵈ-go fmt (tcons {Ψ = Ψ} rf deriv rest) (inj₁ (_ , _ , refl)) =
+  Ψ , (λ _ → ⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt))
 mainMeaningᵈ-go fmt (tcons {fi = fi} {ty = ty} rf deriv rt) (inj₂ w) =
   mmd-dispatch fmt deriv rt w (funName fi ≟str "main") (ty ≟T EffUU) (funIsPrimitive fi)
 
-mmd-dispatch {Ψ = Ψ} fmt deriv rest-typed w (yes _) (yes refl) false = Ψ , (⟦ deriv ⟧ᶜ fmt)
+mmd-dispatch {Ψ = Ψ} fmt deriv rest-typed w (yes _) (yes refl) false =
+  Ψ , (λ _ → ⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt))
 mmd-dispatch fmt deriv rest-typed w (no _)  _          _     = mainMeaningᵈ-go fmt rest-typed w
 mmd-dispatch fmt deriv rest-typed w (yes _) (no _)     _     = mainMeaningᵈ-go fmt rest-typed w
 mmd-dispatch fmt deriv rest-typed w (yes _) (yes _)    true  = mainMeaningᵈ-go fmt rest-typed w

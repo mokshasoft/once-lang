@@ -45,14 +45,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; cong; trans)
 open import Once.Type using (Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Surface.Syntax using (Expr; ∅; Usage)
-open import Once.Surface.Elaborate using (elaborate)
+open import Once.Surface.Syntax using (Expr; ∅; Usage; [])
+open import Once.Surface.Elaborate using (elaborate; elaborateFull)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
+open import Once.Denotation.Phase using (env0)
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 open import Once.Adequacy.WrapBridge fmt using (wrap-trace)
-open import Once.Adequacy.SourceFaithful fmt using (faithful)
+open import Once.Adequacy.SourceFaithful fmt using (faithful; faithful∅)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
 open import Once.Denotation.DenotTrace using (evalᴰ)
@@ -64,7 +65,8 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 -- Behavior: apply the closure `SD.⟦ se ⟧ˢ tt` to the Unit input, read the
 -- depth-`n` SigOp-trace prefix. Mirrors `⟦_⟧IR` but through `SD`.
 runMainˢ : ∀ {Ψ : Usage 0} → Expr ∅ Ψ EffUU → Behavior
-runMainˢ se n = take n (projTrace ((SD.⟦ se ⟧ˢ fmt) tt >>=T (λ clo → clo tt)) n)
+runMainˢ {Ψ} se n =
+  take n (projTrace ((SD.⟦ se ⟧ˢ fmt) (env0 {Ψ} tt) >>=T (λ clo → clo tt)) n)
 
 -- Bind respects pointwise equality of the bound computation, at the trace level.
 bind-cong-trace : ∀ {X Y} (m m′ : T X) (f : X → T Y) (n : ℕ) →
@@ -89,16 +91,20 @@ source-meaningᴰ-aux : ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Form ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
       ∀ (n : ℕ) → ⟦ just ir ⟧IR fmt n ≡ runMainˢ seR n))
+-- D143: `Ψ` stays ABSTRACT here — matching it would block this function from
+-- reducing at its call site. `elaborateFull` (the erasure adapter composed in)
+-- keeps the IR's domain `Unit`, and `faithful∅` supplies the denotation at the
+-- empty context, doing the `Usage 0` match inside the lemma instead.
 source-meaningᴰ-aux ir (Ψ , seR , eq , _) = Ψ , seR , bridge
   where
     bridge : ∀ (n : ℕ) → ⟦ just ir ⟧IR fmt n ≡ runMainˢ seR n
     bridge n =
       trans (cong (λ X → ⟦ just X ⟧IR fmt n) eq)
-        (trans (cong (take n) (wrap-trace (elaborate C.Heap seR) n))
+        (trans (cong (take n) (wrap-trace (elaborateFull C.Heap seR) n))
                (cong (take n)
-                 (bind-cong-trace (evalᴰ fmt (elaborate C.Heap seR) tt)
-                                  (SD.⟦ seR ⟧ˢ fmt tt) (λ clo → clo tt) n
-                                  (faithful seR tt n))))
+                 (bind-cong-trace (evalᴰ fmt (elaborateFull C.Heap seR) tt)
+                                  (SD.⟦ seR ⟧ˢ fmt (env0 {Ψ} tt)) (λ clo → clo tt) n
+                                  (faithful∅ seR n))))
 
 source-meaningᴰ : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   moduleToIR m ≡ just ir →

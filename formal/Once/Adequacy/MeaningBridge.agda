@@ -35,7 +35,7 @@ open import Data.List.Properties using (++-identityʳ)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 
-open import Once.Type using (Type; Purity; mk-kind; Many; pure; eff; _⇒[_]_; _+_; _*_; μ-type; ⟦_⟧T; Functor; Int; Unit)
+open import Once.Type using (Type; Purity; Quantity; mk-kind; Zero; One; Many; pure; eff; _⇒[_]_; _+_; _*_; μ-type; ⟦_⟧T; Functor; Int; Unit)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
   IsConcrete; con-base; con-fun)
@@ -45,7 +45,11 @@ open import Once.IRTy using (eraseF; ⌊⟧T-commute; IRTy)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Adequacy.InErased fmt using (In-ir; liftFn-In)
 open import Once.Postulates using (extensionality)
-open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar)
+open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar; _↾_;
+                                        singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_;
+                                        z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; _∷_; [];
+                                        _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ;
+                                        ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many)
   renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Surface.Syntax using (sigOp; poly; Expr; Usage; morph-app; unit)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
@@ -68,12 +72,13 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
   t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
   t-var-poly-instantiate-infer)
+open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ;
-  lookupᴰ; Env; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
+  lookupᴰ; Env; EnvRun; cata-sem; sigOpValᴰ; sigOpRefᴰ; svarᴰ; in-value; named-sem)
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt using
   (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr;
-   liftFn-∘; liftFn-case-inj₁; liftFn-case-inj₂)
+   liftFn-∘; liftFn-case-inj₁; liftFn-case-inj₂; liftFn-apply)
 import Once.IR as IR
 open import Once.Arith.SigOp.Builders using (value-info;
   add-info; sub-info; mul-info; div-info; mod-info; neg-info;
@@ -102,6 +107,19 @@ RelEnv : ∀ {n} (Γ : Ctx n) → ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ → ⟦ ⟦ Γ ⟧
 RelEnv ∅           _          _          = ⊤
 RelEnv (Γ , A ^ q) (dγ₁ , a₁) (dγ₂ , a₂) = RelEnv Γ dγ₁ dγ₂ × RelV A a₁ a₂
 
+-- D143: the bridge relates environments over the RUNTIME context `Γ ↾ Ψ`, and
+-- `_↾_` is NOT injective — from an expected `RelEnv (Γ ↾ Ψ) …` Agda recovers
+-- neither `Γ` nor `Ψ`, so every combinator below would need both pinned by
+-- hand at every call site. Wrapping the relation in a RECORD indexed by the
+-- two SEPARATELY makes them ordinary indices, solved by unification like any
+-- other. The composite is what the relation is ABOUT; it is not what it is
+-- indexed BY.
+record RelEnv↾ {n} (Γ : Ctx n) (Ψ : Usage n)
+               (dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ) : Set where
+  constructor mk↾
+  field un↾ : RelEnv (Γ ↾ Ψ) dγ₁ dγ₂
+open RelEnv↾ public
+
 -- A related environment yields related values at every de-Bruijn position.
 -- The RIGHT side uses `SD.lookupᴰ` (the SourceDenote env-lookup) so this feeds
 -- the `t-var-local` bridge case directly: `Meaning.lookupᴰ` and `SD.lookupᴰ`
@@ -110,6 +128,123 @@ rel-lookup : ∀ {n} (Γ : Ctx n) (i : Fin n) {dγ₁ dγ₂ : ⟦ ⟦ Γ ⟧ᶜ
            → RelEnv Γ dγ₁ dγ₂ → RelV (lookup Γ i) (lookupᴰ Γ i dγ₁) (SD.lookupᴰ Γ i dγ₂)
 rel-lookup (Γ , A ^ q) zero    {dγ₁ , a₁} {dγ₂ , a₂} (_  , ra) = ra
 rel-lookup (Γ , A ^ q) (suc i) {dγ₁ , a₁} {dγ₂ , a₂} (re , _)  = rel-lookup Γ i re
+
+-- D143: the RUNTIME lookup. A variable's environment is a SINGLETON (`var i`
+-- has usage `singleUse i One`), and BOTH sides now use `lookupᴰUsed`, so the
+-- `suc` case passes the environment through untouched — `↾` never put the
+-- skipped slot there. Same collapse as `proj-lookup` in `SourceFaithful`.
+rel-lookupUsed : ∀ {n} (Γ : Ctx n) (i : Fin n)
+                 {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ singleUse i One ⟧ᶜᵗ ⟧ᴰ}
+               → RelEnv (Γ ↾ singleUse i One) dγ₁ dγ₂
+               → RelV (lookup Γ i) (lookupᴰUsed Γ i dγ₁) (lookupᴰUsed Γ i dγ₂)
+rel-lookupUsed (Γ , A ^ q) zero    {dγ₁ , a₁} {dγ₂ , a₂} (_ , ra) = ra
+rel-lookupUsed (Γ , A ^ q) (suc i) re = rel-lookupUsed Γ i re
+
+-- | `RelEnv` transports along a usage NARROWING: `restrictᴰ` only drops or
+--   keeps slots, so relatedness survives it. The RelEnv analogue of
+--   `liftFn-restrictEnv` in `SourceFaithful`; matches `restrictᴰ`'s own split.
+rel-restrict₀ : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ)
+                 {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
+             → RelEnv (Γ ↾ Ψ) dγ₁ dγ₂
+             → RelEnv (Γ ↾ Ψ') (restrictᴰ {Γ = Γ} ule dγ₁) (restrictᴰ {Γ = Γ} ule dγ₂)
+rel-restrict₀ {Γ = ∅}         ⊑[]           re                             = re
+rel-restrict₀ {Γ = Γ , A ^ q} (z≤z ⊑∷ ule) re                             = rel-restrict₀ {Γ = Γ} ule re
+rel-restrict₀ {Γ = Γ , A ^ q} (z≤o ⊑∷ ule) {_ , _} {_ , _} (re , _)       = rel-restrict₀ {Γ = Γ} ule re
+rel-restrict₀ {Γ = Γ , A ^ q} (z≤m ⊑∷ ule) {_ , _} {_ , _} (re , _)       = rel-restrict₀ {Γ = Γ} ule re
+rel-restrict₀ {Γ = Γ , A ^ q} (o≤o ⊑∷ ule) {_ , _} {_ , _} (re , ra)      = rel-restrict₀ {Γ = Γ} ule re , ra
+rel-restrict₀ {Γ = Γ , A ^ q} (o≤m ⊑∷ ule) {_ , _} {_ , _} (re , ra)      = rel-restrict₀ {Γ = Γ} ule re , ra
+rel-restrict₀ {Γ = Γ , A ^ q} (m≤m ⊑∷ ule) {_ , _} {_ , _} (re , ra)      = rel-restrict₀ {Γ = Γ} ule re , ra
+
+-- | `RelEnv` under a BINDER, keyed on the bound variable's usage in the body —
+--   the RelEnv analogue of `bindᴰ`. At `Zero` the value is dropped, so no
+--   `RelV` premise is consumed (and none is available at an erased arrow).
+rel-bind₀ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (q : Quantity)
+             {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ} {a₁ a₂ : ⟦ A ⟧ᴰ}
+         → RelEnv (Γ ↾ Ψ) dγ₁ dγ₂ → RelV A a₁ a₂
+         → RelEnv ((Γ , A ^ Many) ↾ (q ∷ Ψ))
+                  (bindᴰ {Γ = Γ} {A = A} q dγ₁ a₁) (bindᴰ {Γ = Γ} {A = A} q dγ₂ a₂)
+rel-bind₀ Zero re rv = re
+rel-bind₀ One  re rv = re , rv
+rel-bind₀ Many re rv = re , rv
+
+-- | The ERASED binder: `bindᴰ0` is the identity on the environment.
+rel-bind0₀ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
+              {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
+          → RelEnv (Γ ↾ Ψ) dγ₁ dγ₂
+          → RelEnv ((Γ , A ^ Many) ↾ (Zero ∷ Ψ))
+                   (bindᴰ0 {Γ = Γ} {A = A} dγ₁) (bindᴰ0 {Γ = Γ} {A = A} dγ₂)
+rel-bind0₀ re = re
+
+-- The same three at `RelEnv↾`, which is what the clauses below actually use.
+rel-restrict : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ)
+                 {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
+             → RelEnv↾ Γ Ψ dγ₁ dγ₂
+             → RelEnv↾ Γ Ψ' (restrictᴰ {Γ = Γ} ule dγ₁) (restrictᴰ {Γ = Γ} ule dγ₂)
+rel-restrict {Γ = Γ} ule r = mk↾ (rel-restrict₀ {Γ = Γ} ule (un↾ r))
+
+rel-bind : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (q : Quantity)
+             {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ} {a₁ a₂ : ⟦ A ⟧ᴰ}
+         → RelEnv↾ Γ Ψ dγ₁ dγ₂ → RelV A a₁ a₂
+         → RelEnv↾ (Γ , A ^ Many) (q ∷ Ψ)
+                   (bindᴰ {Γ = Γ} {A = A} q dγ₁ a₁) (bindᴰ {Γ = Γ} {A = A} q dγ₂ a₂)
+rel-bind {Γ = Γ} q r rv = mk↾ (rel-bind₀ {Γ = Γ} q (un↾ r) rv)
+
+rel-bind0 : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A}
+              {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ}
+          → RelEnv↾ Γ Ψ dγ₁ dγ₂
+          → RelEnv↾ (Γ , A ^ Many) (Zero ∷ Ψ)
+                    (bindᴰ0 {Γ = Γ} {A = A} dγ₁) (bindᴰ0 {Γ = Γ} {A = A} dγ₂)
+rel-bind0 {Γ = Γ} {A = A} r = mk↾ (rel-bind0₀ {Γ = Γ} {A = A} (un↾ r))
+
+-- | At the EMPTY context the runtime environment IS the full one — but
+--   `∅ ↾ Ψ` only reduces once `Ψ : Usage 0` is MATCHED, and matching it in
+--   `runMainˢ`/`runMainᵈ` would block those at their call sites. So the match
+--   lives here, in a lemma, exactly as `env0` itself does.
+rel-env0 : ∀ {Ψ : Usage 0} → RelEnv↾ ∅ Ψ (env0 {Ψ} tt) (env0 {Ψ} tt)
+rel-env0 {[]} = mk↾ tt
+
+-- The four usage-split shapes, each `rel-restrict` at EXACTLY the witness both
+-- `⟦_⟧ᵢ` and `⟦_⟧ˢ` apply — pinned, never inferred, so the clause bodies below
+-- stay as short as they were before the phase index.
+reˡ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜᵗ ⟧ᴰ}
+    → RelEnv↾ Γ (Ψ₁ +ᵘ Ψ₂) dγ₁ dγ₂
+    → RelEnv↾ Γ Ψ₁ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ₁)
+                    (restrictᴰ {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂) dγ₂)
+reˡ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} = rel-restrict {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ Ψ₂)
+
+reʳ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜᵗ ⟧ᴰ}
+    → RelEnv↾ Γ (Ψ₁ +ᵘ Ψ₂) dγ₁ dγ₂
+    → RelEnv↾ Γ Ψ₂ (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ₁)
+                    (restrictᴰ {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂) dγ₂)
+reʳ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} = rel-restrict {Γ = Γ} (⊑ᵘ-+ʳ Ψ₁ Ψ₂)
+
+-- The ARGUMENT half of an application: scaled by the arrow's quantity, then
+-- taken from the right of the split. `Many` and `One` differ only in the scale.
+reᵐ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n}
+        {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) ⟧ᶜᵗ ⟧ᴰ}
+    → RelEnv↾ Γ (Ψ₁ +ᵘ (Many *ᵘ Ψ₂)) dγ₁ dγ₂
+    → RelEnv↾ Γ Ψ₂
+             (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ₁)
+             (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) dγ₂)
+reᵐ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} =
+  rel-restrict {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂)))
+
+re¹ : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n}
+        {dγ₁ dγ₂ : ⟦ ⟦ Γ ↾ (Ψ₁ +ᵘ (One *ᵘ Ψ₂)) ⟧ᶜᵗ ⟧ᴰ}
+    → RelEnv↾ Γ (Ψ₁ +ᵘ (One *ᵘ Ψ₂)) dγ₁ dγ₂
+    → RelEnv↾ Γ Ψ₂
+             (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) dγ₁)
+             (restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) dγ₂)
+re¹ {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} =
+  rel-restrict {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂)))
+
+-- The same narrowing on a BARE environment: `morph-app`'s own, so the SD side
+-- of a point-free application clause names the environment `⟦_⟧ˢ` actually
+-- hands its argument.
+resᵐ : ∀ {n} {Γ : Ctx n} {Ψ : Usage n}
+     → ⟦ ⟦ Γ ↾ (zeroUsage +ᵘ (Many *ᵘ Ψ)) ⟧ᶜᵗ ⟧ᴰ → ⟦ ⟦ Γ ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
+resᵐ {Γ = Γ} {Ψ = Ψ} =
+  restrictᴰ {Γ = Γ} (⊑ᵘ-trans (⊑ᵘ-*Many Ψ) (⊑ᵘ-+ʳ zeroUsage (Many *ᵘ Ψ)))
 
 
 ------------------------------------------------------------------------
@@ -173,7 +308,12 @@ base-rel→refl (base-Sum ibA ibB) (inj₂ b) = base-rel→refl ibB b
 mutual
   concrete-rel→refl : ∀ {A} (c : IsConcrete A) (v : ⟦ A ⟧ᴰ) → RelV A v v
   concrete-rel→refl (con-base ib) v = base-rel→refl ib v
-  concrete-rel→refl (con-fun bA cB) v {a} {b} rv
+  -- D143: split on the arrow's quantity — at `Zero` the meaning takes no
+  -- argument, so there are no related inputs to quantify over.
+  concrete-rel→refl (con-fun {k = mk-kind Zero π} bA cB) v = RelT-refl cB (v tt)
+  concrete-rel→refl (con-fun {k = mk-kind One π} bA cB) v {a} {b} rv
+    rewrite base-rel→eq bA rv = RelT-refl cB (v b)
+  concrete-rel→refl (con-fun {k = mk-kind Many π} bA cB) v {a} {b} rv
     rewrite base-rel→eq bA rv = RelT-refl cB (v b)
 
   RelT-refl : ∀ {A} (c : IsConcrete A) (t : T ⟦ A ⟧ᴰ) → RelT A t t
@@ -185,7 +325,7 @@ mutual
 -- `concrete-rel→refl` (result is concrete). Funext-free.
 sigop-bridge : ∀ {A B} {cn : CanonicalName} (bA : IsBaseType A) (cB : IsConcrete B) {a b : ⟦ A ⟧ᴰ} → RelV A a b
              → RelT B (named-sem {A} {B} fmt cn bA cB a)
-                      (liftFn fmt (IR.SigOp (value-info {A} {B} cn bA cB)) b)
+                      (liftFn fmt {A} {B} (IR.SigOp (value-info {A} {B} cn bA cB)) b)
 sigop-bridge {A} {B} {cn} bA cB {a} {b} rv
   rewrite base-rel→eq bA rv
   = subst (λ f → RelT B (named-sem fmt cn bA cB b) (f b))
@@ -199,7 +339,7 @@ sigop-bridge {A} {B} {cn} bA cB {a} {b} rv
 -- on the correctly-dispatching `sigOpRefᴰ`.
 -- At a base (non-arrow) type SD's `sigOp` catch-all IS the closed `value-info`
 -- form; casing the witness exposes the shape so each clause is `refl`.
-sd-sigOp-base≡ : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (ib : IsBaseType A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
+sd-sigOp-base≡ : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (ib : IsBaseType A) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜᵗ ⟧ᴰ)
                → (SD.⟦ sigOp {Γ = Γ} {A = A} cn (con-base ib) ⟧ˢ fmt) dγ ≡ sigOpValᴰ fmt (value-info {Unit} {A} cn base-Unit (con-base ib))
 sd-sigOp-base≡ cn base-Unit          dγ = refl
 sd-sigOp-base≡ cn base-Void          dγ = refl
@@ -215,14 +355,22 @@ sd-sigOp-base≡ cn (base-Sum ibA ibB)  dγ = refl
 -- catch-all (`sd-sigOp-base≡`, `sigOpRefᴰ (con-base) = sigOpValᴰ fmt (value-info)`);
 -- `con-fun` exposes `A` as an arrow so BOTH sides are the same `arrow-info`
 -- closure ⇒ plain reflexivity.
-sigop-ref-bridge : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ ⟧ᶜᵗ ⟧ᴰ)
+sigop-ref-bridge : ∀ {n} {Γ : Ctx n} {A : Type} (cn : CanonicalName) (conc : IsConcrete A) (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜᵗ ⟧ᴰ)
                  → RelT A (sigOpRefᴰ fmt cn conc) ((SD.⟦ sigOp {Γ = Γ} {A = A} cn conc ⟧ˢ fmt) dγ)
 sigop-ref-bridge {A = A} cn (con-base ib) dγ =
   subst (λ z → RelT A (sigOpRefᴰ fmt cn (con-base ib)) z)
         (sym (sd-sigOp-base≡ cn ib dγ))
         (RelT-refl (con-base ib) (sigOpRefᴰ fmt cn (con-base ib)))
-sigop-ref-bridge {A = Dom ⇒[ k ] Cod} cn (con-fun bDom cCod) dγ =
-  RelT-refl (con-fun {k = k} bDom cCod) (sigOpRefᴰ fmt cn (con-fun {k = k} bDom cCod))
+-- D143: `⟦ sigOp ⟧ˢ` splits on the arrow's quantity, so this must too.
+sigop-ref-bridge {A = Dom ⇒[ mk-kind Zero π ] Cod} cn (con-fun bDom cCod) dγ =
+  RelT-refl (con-fun {k = mk-kind Zero π} bDom cCod)
+            (sigOpRefᴰ fmt cn (con-fun {k = mk-kind Zero π} bDom cCod))
+sigop-ref-bridge {A = Dom ⇒[ mk-kind One π ] Cod} cn (con-fun bDom cCod) dγ =
+  RelT-refl (con-fun {k = mk-kind One π} bDom cCod)
+            (sigOpRefᴰ fmt cn (con-fun {k = mk-kind One π} bDom cCod))
+sigop-ref-bridge {A = Dom ⇒[ mk-kind Many π ] Cod} cn (con-fun bDom cCod) dγ =
+  RelT-refl (con-fun {k = mk-kind Many π} bDom cCod)
+            (sigOpRefᴰ fmt cn (con-fun {k = mk-kind Many π} bDom cCod))
 
 -- Plan 0.58 / D071: `poly-ref-bridge` DELETED. The surface `poly` node is no
 -- longer a concrete `value-info` leaf (it is an internal `internal-info`
@@ -235,7 +383,8 @@ sigop-ref-bridge {A = Dom ⇒[ k ] Cod} cn (con-fun bDom cCod) dγ =
 -- recursive slot), so a `cong` finishes — no funext.
 in-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
               → RelV (⟦ F ⟧T (μ-type F)) vᴸ vᴿ
-              → RelT (μ-type F) (returnT (in-value vᴸ)) (liftFn fmt (In-ir wfF) vᴿ)
+              → RelT (μ-type F) (returnT (in-value vᴸ))
+                     (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) vᴿ)
 in-app-bridge {F} {wfF} rv =
   subst (RelT (μ-type F) (returnT (in-value _))) (sym (liftFn-In wfF _))
         (λ k → refl , cong in-value (wfF-layer-eq wfF (λ r → r) rv))
@@ -283,19 +432,32 @@ copair-rel rf rg (inj₂ _) (inj₁ _) ()
 ≡→RelV-⊎⊤ {inj₁ _} refl = tt
 ≡→RelV-⊎⊤ {inj₂ _} refl = tt
 
--- `SD.⟦_⟧ˢ` ignores the usage index, so a usage-coercing `subst` (as in
--- `realize`'s telescope poly clause) is invisible to the denotation. Lets the
--- poly bridge case see through `realize`'s `subst uEq (morph-app …)`.
-SD-subst-usage : ∀ {n} {Γ : Ctx n} {A} {Ψ Ψ' : Usage n} {eq : Ψ ≡ Ψ'}
-                   {e : Expr Γ Ψ A} {dγ}
-  → (SD.⟦ subst (λ u → Expr Γ u A) eq e ⟧ˢ fmt) dγ ≡ (SD.⟦ e ⟧ˢ fmt) dγ
-SD-subst-usage {eq = refl} = refl
+-- D143 CORRECTION: `SD.⟦_⟧ˢ` no longer ignores the usage index — its
+-- ENVIRONMENT is `Γ ↾ Ψ`. So a usage-coercing `subst` (as in `realize`'s
+-- telescope poly clause) is NOT invisible; it moves the environment too, and
+-- what this lemma says is that the two transports cancel.
+-- Stated so the LHS is what a GOAL looks like: the coerced expression at a
+-- PLAIN environment (the environment is whatever the surrounding derivation
+-- supplies, never itself a transport). The compensating transport therefore
+-- lands on the right, along `sym eq`.
+-- ...and stated AT the fuel `k`, because the goal applies the denotation to it:
+-- `rewrite` cannot abstract a partial application out of an over-applied spine,
+-- and a vacuous `rewrite` is silently accepted rather than rejected.
+SD-subst-usage : ∀ {n} {Γ : Ctx n} {A} {Ψ Ψ' : Usage n} (eq : Ψ ≡ Ψ')
+                   {e : Expr Γ Ψ A} (dγ : ⟦ ⟦ Γ ↾ Ψ' ⟧ᶜᵗ ⟧ᴰ) (k : ℕ)
+  → (SD.⟦ subst (λ u → Expr Γ u A) eq e ⟧ˢ fmt) dγ k
+    ≡ (SD.⟦ e ⟧ˢ fmt) (subst (λ u → ⟦ ⟦ Γ ↾ u ⟧ᶜᵗ ⟧ᴰ) (sym eq) dγ) k
+SD-subst-usage refl dγ k = refl
 
+-- D143: over the RUNTIME environment. `RelEnv` needs no change — it is already
+-- generic in the context, and the runtime context IS `debruijn ctx ↾ Ψ`.
 bridge-i : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᵢ e ∶ A ⨾ Ψ)
-           {dγ₁ dγ₂ : Env ctx} (re : RelEnv (NamedCtx.debruijn ctx) dγ₁ dγ₂)
+           {dγ₁ dγ₂ : EnvRun ctx Ψ}
+           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂)
          → RelT A ((⟦ d ⟧ᵢ fmt) dγ₁) ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂)
 bridge-c : ∀ {ctx : NamedCtx} {e A Ψ} (d : ctx ⊢ᶜ e ∶ A ⨾ Ψ)
-           {dγ₁ dγ₂ : Env ctx} (re : RelEnv (NamedCtx.debruijn ctx) dγ₁ dγ₂)
+           {dγ₁ dγ₂ : EnvRun ctx Ψ}
+           (re : RelEnv↾ (NamedCtx.debruijn ctx) Ψ dγ₁ dγ₂)
          → RelT A ((⟦ d ⟧ᶜ fmt) dγ₁) ((SD.⟦ realize d ⟧ˢ fmt) dγ₂)
 
 -- Literals — pure `returnT`, identical values.
@@ -313,7 +475,8 @@ bridge-i t-unit-var  re k = refl , tt
 
 -- Local variable — `svarᴰ (svar i)` (LHS) and `SD.⟦ var i ⟧ˢ` (RHS) both peel to
 -- the positional lookup; `rel-lookup` relates the two envs at position `i`.
-bridge-i (t-var-local {eV = svar i} _) re k = refl , rel-lookup _ i re
+bridge-i {ctx = ctx} (t-var-local {eV = svar i} _) re k =
+  refl , rel-lookupUsed (NamedCtx.debruijn ctx) i (un↾ re)
 
 -- Named value references — the sigop-reference leaf (dispatch on result type).
 bridge-i {ctx = ctx} (t-var-qualified {T = A} _ conc)   {dγ₂ = dγ₂} re = sigop-ref-bridge {Γ = NamedCtx.debruijn ctx} {A = A} _ conc dγ₂
@@ -325,18 +488,22 @@ bridge-i {ctx = ctx} (t-var-import {T = A} _ _ _ conc)  {dγ₂ = dγ₂} re = s
 -- δ-reduce to the closed body (⟦_⟧ᵢ = ⟦ bodyD ⟧ᶜ tt; realize-infer inlines
 -- `morph-app (elaborate (realize bodyD)) unit`), so RECURSE on the body with
 -- the empty related env; `faithful` closes the evalᴰ↔SD gap.
-bridge-i {ctx = ctx} (t-var-poly-instantiate-infer _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
-  rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {eq = poly-usage-eq}
-                         {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} {dγ = dγ₂}
-  rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} tt k
+-- The `{A = A}` is LOAD-BEARING: `⌊_⌋` is not injective under D143, so from
+-- `elaborate Heap (realize bodyD) : IR ⌊ ⟦ ∅ ⟧ᶜ ⌋ ⌊ A ⌋` Agda cannot recover
+-- `morph-app`'s codomain. Left to inference it stays a meta, the rewrite
+-- pattern never matches the goal, and `rewrite` reports only `RewritesNothing`.
+bridge-i {ctx = ctx} {A = A} (t-var-poly-instantiate-infer _ _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
+  rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {A = A} poly-usage-eq
+                         {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} dγ₂ k
+  rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} (mk↾ tt) k
 
 -- Annotation switches to check mode.
 bridge-i (t-annot d) re = bridge-c d re
 
 -- Pair — two sequenced infers, product value.
 bridge-i (t-pair da db) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i da re k)) (proj₁ (bridge-i db re k))
-  , (proj₂ (bridge-i da re k) , proj₂ (bridge-i db re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i da (reˡ re) k)) (proj₁ (bridge-i db (reʳ re) k))
+  , (proj₂ (bridge-i da (reˡ re) k) , proj₂ (bridge-i db (reʳ re) k))
 
 -- Negation — bind then a pure `semM neg-info fmt`.
 bridge-i (t-neg d) re k =
@@ -344,52 +511,69 @@ bridge-i (t-neg d) re k =
   , cong (semM neg-info fmt) (proj₂ (bridge-i d re k))
 
 -- Let — thread the bound value into the extended related env.
-bridge-i (t-let d₁ d₂) re k =
-  let b1 = bridge-i d₁ re k
-      b2 = bridge-i d₂ (re , proj₂ b1) k
+-- D143: at `q = Zero` the bound expression is NEVER RUN — both realms skip it
+-- and the body runs on the unextended environment, so there is no `b1` to
+-- sequence and no value to relate. The other two differ only in the scale.
+bridge-i (t-let {q = Zero} d₁ d₂) re k = bridge-i d₂ (rel-bind0 (reˡ re)) k
+bridge-i (t-let {q = One} d₁ d₂) re k =
+  let b1 = bridge-i d₁ (re¹ re) k
+      b2 = bridge-i d₂ (rel-bind One (reˡ re) (proj₂ b1)) k
+  in cong₂ _++_ (proj₁ b1) (proj₁ b2) , proj₂ b2
+bridge-i (t-let {q = Many} d₁ d₂) re k =
+  let b1 = bridge-i d₁ (reᵐ re) k
+      b2 = bridge-i d₂ (rel-bind Many (reˡ re) (proj₂ b1)) k
   in cong₂ _++_ (proj₁ b1) (proj₁ b2) , proj₂ b2
 
 -- Case — split on the (related) scrutinee's injection; recurse in the branch.
-bridge-i (t-case ds dl dr) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re k
-  with valueT ((⟦ ds ⟧ᵢ fmt) dγ₁) k | valueT ((SD.⟦ realize-infer ds ⟧ˢ fmt) dγ₂) k | bridge-i ds re k
+bridge-i {ctx = ctx} (t-case {qL = qL} {qR = qR} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} ds dl dr)
+         {dγ₁ = dγ₁} {dγ₂ = dγ₂} re k
+  with valueT ((⟦ ds ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₁)) k
+     | valueT ((SD.⟦ realize-infer ds ⟧ˢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) dγ₂)) k
+     | bridge-i ds (reˡ {Γ = NamedCtx.debruijn ctx} {Ψ₁ = Ψs} {Ψ₂ = Ψₗ ⊔ᵘ Ψᵣ} re) k
 ... | inj₁ a | inj₁ a' | tr , rv =
-      cong₂ _++_ tr (proj₁ (bridge-i dl (re , rv) k)) , proj₂ (bridge-i dl (re , rv) k)
+      let bl = bridge-i dl (rel-bind {Γ = NamedCtx.debruijn ctx} qL
+                     (rel-restrict {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ)
+                       (reʳ {Γ = NamedCtx.debruijn ctx} {Ψ₁ = Ψs} {Ψ₂ = Ψₗ ⊔ᵘ Ψᵣ} re)) rv) k
+      in cong₂ _++_ tr (proj₁ bl) , proj₂ bl
 ... | inj₂ b | inj₂ b' | tr , rv =
-      cong₂ _++_ tr (proj₁ (bridge-i dr (re , rv) k)) , proj₂ (bridge-i dr (re , rv) k)
+      let br = bridge-i dr (rel-bind {Γ = NamedCtx.debruijn ctx} qR
+                     (rel-restrict {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ)
+                       (reʳ {Γ = NamedCtx.debruijn ctx} {Ψ₁ = Ψs} {Ψ₂ = Ψₗ ⊔ᵘ Ψᵣ} re)) rv) k
+      in cong₂ _++_ tr (proj₁ br) , proj₂ br
 ... | inj₁ a | inj₂ b' | tr , ()
 ... | inj₂ b | inj₁ a' | tr , ()
 
 -- Arithmetic binops — bind both, pure `semM <op>-info` (Int value = `≡`).
 bridge-i (t-binop-arith {op = OpAdd} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM add-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM add-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith {op = OpSub} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM sub-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM sub-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith {op = OpMul} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM mul-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM mul-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith {op = OpDiv} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM div-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM div-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith {op = OpMod} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM mod-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM mod-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 -- PLAN 0.75 F4: the float family, and the SAME two `cong₂`s — which is the
 -- content: both realms sequence the operands identically and differ only in
 -- which `semM` closes over them.
 bridge-i (t-binop-arith-float {op = OpAdd} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fadd-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fadd-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float {op = OpSub} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fsub-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fsub-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float {op = OpMul} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fmul-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fmul-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float {op = OpDiv} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fdiv-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fdiv-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float {op = OpMod} () _ _)
 bridge-i (t-binop-arith-float {op = OpLt} () _ _)
 bridge-i (t-binop-arith-float {op = OpLe} () _ _)
@@ -403,17 +587,17 @@ bridge-i (t-binop-arith-float {op = OpNe} () _ _)
 -- `trans` chain, because `⟦_⟧ᵢ` was written to mirror the elaborated term's
 -- binds rather than to inline the conversion.
 bridge-i (t-binop-arith-float-il {op = OpAdd} _ d₁ d₂) re k =
-    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fadd-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fadd-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float-il {op = OpSub} _ d₁ d₂) re k =
-    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fsub-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fsub-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float-il {op = OpMul} _ d₁ d₂) re k =
-    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fmul-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fmul-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float-il {op = OpDiv} _ d₁ d₂) re k =
-    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fdiv-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → (x ++ []) ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fdiv-info fmt ((semM i2f-info fmt a) , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float-il {op = OpMod} () _ _)
 bridge-i (t-binop-arith-float-il {op = OpLt} () _ _)
 bridge-i (t-binop-arith-float-il {op = OpLe} () _ _)
@@ -422,17 +606,17 @@ bridge-i (t-binop-arith-float-il {op = OpGe} () _ _)
 bridge-i (t-binop-arith-float-il {op = OpEq} () _ _)
 bridge-i (t-binop-arith-float-il {op = OpNe} () _ _)
 bridge-i (t-binop-arith-float-ir {op = OpAdd} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fadd-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fadd-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float-ir {op = OpSub} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fsub-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fsub-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float-ir {op = OpMul} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fmul-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fmul-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float-ir {op = OpDiv} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , cong₂ (λ a b → semM fdiv-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k))
+    cong₂ (λ x y → x ++ ((y ++ []) ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , cong₂ (λ a b → semM fdiv-info fmt (a , (semM i2f-info fmt b))) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k))
 bridge-i (t-binop-arith-float-ir {op = OpMod} () _ _)
 bridge-i (t-binop-arith-float-ir {op = OpLt} () _ _)
 bridge-i (t-binop-arith-float-ir {op = OpLe} () _ _)
@@ -449,23 +633,23 @@ bridge-i (t-binop-arith {op = OpNe} () _ _)
 
 -- Comparison binops — bind both, pure `semM <op>-info` (Unit+Unit value).
 bridge-i (t-binop-cmp {op = OpLt} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM lt-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM lt-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k)))
 bridge-i (t-binop-cmp {op = OpLe} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM le-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM le-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k)))
 bridge-i (t-binop-cmp {op = OpGt} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM gt-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM gt-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k)))
 bridge-i (t-binop-cmp {op = OpGe} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM ge-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM ge-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k)))
 bridge-i (t-binop-cmp {op = OpEq} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM eq-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM eq-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k)))
 bridge-i (t-binop-cmp {op = OpNe} _ d₁ d₂) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ re k)) (proj₁ (bridge-i d₂ re k))
-  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM ne-info fmt (a , b)) (proj₂ (bridge-i d₁ re k)) (proj₂ (bridge-i d₂ re k)))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-i d₁ (reˡ re) k)) (proj₁ (bridge-i d₂ (reʳ re) k))
+  , ≡→RelV-⊎⊤ (cong₂ (λ a b → semM ne-info fmt (a , b)) (proj₂ (bridge-i d₁ (reˡ re) k)) (proj₂ (bridge-i d₂ (reʳ re) k)))
 bridge-i (t-binop-cmp {op = OpAdd} () _ _)
 bridge-i (t-binop-cmp {op = OpSub} () _ _)
 bridge-i (t-binop-cmp {op = OpMul} () _ _)
@@ -474,37 +658,48 @@ bridge-i (t-binop-cmp {op = OpMod} () _ _)
 
 -- Polymorphic-builtin applications — RHS is `morph-app <ir> …`; each `evalᴰ <ir>`
 -- reduces to the same pure post-op the LHS applies (modulo the `++ []` bookkeeping).
-bridge-i {A = A} (t-id-app d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+bridge-i {ctx = ctx} {A = A} (t-id-app d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
   subst (RelT A ((⟦ t-id-app d ⟧ᵢ fmt) dγ₁))
-        (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-id {A})))
-        (λ k → trans (proj₁ (bridge-i d re k)) (sym (++-identityʳ _)) , proj₂ (bridge-i d re k))
-bridge-i (t-fst-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT A ((⟦ t-fst-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-fst {A} {B})))
-        (λ k → cong (_++ []) (proj₁ (bridge-i d re k)) , proj₁ (proj₂ (bridge-i d re k)))
-bridge-i (t-snd-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT B ((⟦ t-snd-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-snd {A} {B})))
-        (λ k → cong (_++ []) (proj₁ (bridge-i d re k)) , proj₂ (proj₂ (bridge-i d re k)))
-bridge-i (t-terminal-app {T = T} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT Unit ((⟦ t-terminal-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-terminal {T})))
-        (λ k → cong (_++ []) (proj₁ (bridge-i d re k)) , tt)
-bridge-i (t-apply-app-infer {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT B ((⟦ t-apply-app-infer d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-apply {A} {B} {mk-kind Many pure})))
-        (λ k → let bd = bridge-i d re k
+        (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-id {A})))
+        (λ k → trans (proj₁ (bridge-i d (reᵐ re) k)) (sym (++-identityʳ _)) , proj₂ (bridge-i d (reᵐ re) k))
+bridge-i {ctx = ctx} (t-fst-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT A ((⟦ t-fst-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-fst {A} {B})))
+        (λ k → cong (_++ []) (proj₁ (bridge-i d (reᵐ re) k)) , proj₁ (proj₂ (bridge-i d (reᵐ re) k)))
+bridge-i {ctx = ctx} (t-snd-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT B ((⟦ t-snd-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-snd {A} {B})))
+        (λ k → cong (_++ []) (proj₁ (bridge-i d (reᵐ re) k)) , proj₂ (proj₂ (bridge-i d (reᵐ re) k)))
+bridge-i {ctx = ctx} (t-terminal-app {T = T} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT Unit ((⟦ t-terminal-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-terminal {T})))
+        (λ k → cong (_++ []) (proj₁ (bridge-i d (reᵐ re) k)) , tt)
+bridge-i {ctx = ctx} (t-apply-app-infer {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT B ((⟦ t-apply-app-infer d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-apply {A} {B} {pure})))
+        (λ k → let bd = bridge-i d (reᵐ re) k
                    inner = proj₁ (proj₂ bd) (proj₂ (proj₂ bd)) k
                in cong₂ _++_ (proj₁ bd) (proj₁ inner) , proj₂ inner)
 
 -- Application — infer the head, check the argument, apply the related closures.
-bridge-i (t-app _ df dx) re k =
-  let bf = bridge-i df re k
-      bx = bridge-c dx re k
+-- D143: at an ERASED arrow the argument derivation is not run at all, and the
+-- arrow's `RelV` takes no related value — it IS the body relation at `tt`.
+bridge-i (t-app {q = Zero} _ df dx) re k =
+  let bf = bridge-i df (reˡ re) k
+      inner = proj₂ bf k
+  in cong₂ _++_ (proj₁ bf) (proj₁ inner) , proj₂ inner
+bridge-i (t-app {q = One} _ df dx) re k =
+  let bf = bridge-i df (reˡ re) k
+      bx = bridge-c dx (re¹ re) k
+      inner = proj₂ bf (proj₂ bx) k
+  in cong₂ _++_ (proj₁ bf) (cong₂ _++_ (proj₁ bx) (proj₁ inner)) , proj₂ inner
+bridge-i (t-app {q = Many} _ df dx) re k =
+  let bf = bridge-i df (reˡ re) k
+      bx = bridge-c dx (reᵐ re) k
       inner = proj₂ bf (proj₂ bx) k
   in cong₂ _++_ (proj₁ bf) (cong₂ _++_ (proj₁ bx) (proj₁ inner)) , proj₂ inner
 
 -- Effectful application — a suspended thunk; the value is the (arg-ignoring)
 -- closure, related pointwise via the same application reasoning.
 bridge-i (t-effApp _ df dx) re k = refl , λ {a} {b} _ k' →
-  let bf = bridge-i df re k'
-      bx = bridge-c dx re k'
+  let bf = bridge-i df (reˡ re) k'
+      bx = bridge-c dx (reʳ re) k'
       inner = proj₂ bf (proj₂ bx) k'
   in cong₂ _++_ (proj₁ bf) (cong₂ _++_ (proj₁ bx) (proj₁ inner)) , proj₂ inner
 
@@ -537,17 +732,17 @@ bridge-c (t-inr-morph-check {A = A} {B = B} {π = π}) re k =
 -- congruence — no realm, no extraction, no per-shape reasoning.
 bridge-c (t-compose-check {A = A} {B = B} {C = C} {π = π} _ df dg) re =
   RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = A ⇒[ mk-kind Many π ] C}
-            (bridge-c df re) (λ {f₁} {f₂} rf →
+            (bridge-c df (reˡ re)) (λ {f₁} {f₂} rf →
   RelT-bind {A = A ⇒[ mk-kind Many π ] B} {B = A ⇒[ mk-kind Many π ] C}
-            (bridge-c dg re) (λ {g₁} {g₂} rg →
+            (bridge-c dg (reʳ re)) (λ {g₁} {g₂} rg →
   RelT-return {A = A ⇒[ mk-kind Many π ] C}
               {x = λ a → g₁ a >>=T f₁} {y = λ a → g₂ a >>=T f₂}
               (λ rv → RelT-bind {A = B} {B = C} (rg rv) rf)))
 bridge-c (t-case-copair-check {A = A} {B = B} {C = C} {π = π} df dg) re =
   RelT-bind {A = A ⇒[ mk-kind Many π ] C} {B = (A + B) ⇒[ mk-kind Many π ] C}
-            (bridge-c df re) (λ {c₁} {c₂} rf →
+            (bridge-c df (reˡ re)) (λ {c₁} {c₂} rf →
   RelT-bind {A = B ⇒[ mk-kind Many π ] C} {B = (A + B) ⇒[ mk-kind Many π ] C}
-            (bridge-c dg re) (λ {d₁} {d₂} rg →
+            (bridge-c dg (reʳ re)) (λ {d₁} {d₂} rg →
   RelT-return {A = (A + B) ⇒[ mk-kind Many π ] C}
               {x = λ ab → [ c₁ , d₁ ]′ ab} {y = λ ab → [ c₂ , d₂ ]′ ab}
               (λ {ab} {ab'} rv →
@@ -556,10 +751,10 @@ bridge-c (t-case-copair-check {A = A} {B = B} {C = C} {π = π} df dg) re =
 bridge-c (t-pair-morph-check {A = A} {B = B} {C = C} df dg) re =
   RelT-bind {A = A ⇒[ mk-kind Many Once.Type.pure ] B}
             {B = A ⇒[ mk-kind Many Once.Type.pure ] (B * C)}
-            (bridge-c df re) (λ {f₁} {f₂} rf →
+            (bridge-c df (reˡ re)) (λ {f₁} {f₂} rf →
   RelT-bind {A = A ⇒[ mk-kind Many Once.Type.pure ] C}
             {B = A ⇒[ mk-kind Many Once.Type.pure ] (B * C)}
-            (bridge-c dg re) (λ {g₁} {g₂} rg →
+            (bridge-c dg (reʳ re)) (λ {g₁} {g₂} rg →
   RelT-return {A = A ⇒[ mk-kind Many Once.Type.pure ] (B * C)}
               {x = λ a → f₁ a >>=T λ b → g₁ a >>=T λ c → returnT (b , c)}
               {y = λ a → f₂ a >>=T λ b → g₂ a >>=T λ c → returnT (b , c)}
@@ -583,44 +778,53 @@ bridge-c (t-curry-check {A = A} {B = B} {C = C} df) re =
 bridge-c (t-cata-check {F = F} {A = A} {π = π} wfF dalg) re =
   RelT-bind {A = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A}
             {B = μ-type F ⇒[ mk-kind Many π ] A}
-            (bridge-c dalg tt) (λ {c₁} {c₂} ralg →
+            (bridge-c dalg (mk↾ tt)) (λ {c₁} {c₂} ralg →
   RelT-return {A = μ-type F ⇒[ mk-kind Many π ] A}
               {x = cata-sem wfF c₁}
               {y = λ x → λ n → let r = sem-cata wfF (SD.cata-ev-algˢ {F} {A} n (returnT c₂)) x
                                in (proj₁ r , proj₂ r)}
               (λ {a} {b} rv → cata-bridge {A' = A} {wfF = wfF} c₁ c₂ ralg rv))
 bridge-c (t-embed d) re = bridge-i d re
-bridge-c (t-lam _ d) re k = refl , λ {a} {b} rv → bridge-c d (re , rv)
+-- D143: `q` (the arrow) decides whether the RELATION supplies an argument;
+-- `q'` (the binder) decides whether it enters the environment. Six clauses,
+-- mirroring `⟦_⟧ᶜ`'s own split — `q' ≤q q` rules the rest out.
+bridge-c (t-lam {q = Zero} {q' = Zero} _ d) re k = refl , bridge-c d (rel-bind0 re)
+bridge-c (t-lam {q = One}  {q' = Zero} _ d) re k = refl , λ {a} {b} rv → bridge-c d (rel-bind0 re)
+bridge-c (t-lam {q = Many} {q' = Zero} _ d) re k = refl , λ {a} {b} rv → bridge-c d (rel-bind0 re)
+bridge-c (t-lam {q = One}  {q' = One}  _ d) re k = refl , λ {a} {b} rv → bridge-c d (rel-bind One re rv)
+bridge-c (t-lam {q = Many} {q' = One}  _ d) re k = refl , λ {a} {b} rv → bridge-c d (rel-bind One re rv)
+bridge-c (t-lam {q = Many} {q' = Many} _ d) re k = refl , λ {a} {b} rv → bridge-c d (rel-bind Many re rv)
 bridge-c (t-pair-lit-check da db) re k =
-    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-c da re k)) (proj₁ (bridge-c db re k))
-  , (proj₂ (bridge-c da re k) , proj₂ (bridge-c db re k))
+    cong₂ (λ x y → x ++ (y ++ [])) (proj₁ (bridge-c da (reˡ re) k)) (proj₁ (bridge-c db (reʳ re) k))
+  , (proj₂ (bridge-c da (reˡ re) k) , proj₂ (bridge-c db (reʳ re) k))
 bridge-c (t-In-app-check wfF d) re k =
-  let bd = bridge-c d re k
+  let bd = bridge-c d (reᵐ re) k
       bi = in-app-bridge {wfF = wfF} (proj₂ bd) k
   in cong₂ _++_ (proj₁ bd) (proj₁ bi) , proj₂ bi
-bridge-c (t-apply-check {A = A} {B = B} dp) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT B ((⟦ t-apply-check dp ⟧ᶜ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer dp ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-apply {A} {B} {mk-kind Many pure})))
-        (λ k → let bd = bridge-i dp re k
+bridge-c {ctx = ctx} (t-apply-check {A = A} {B = B} dp) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT B ((⟦ t-apply-check dp ⟧ᶜ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer dp ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-apply {A} {B} {pure})))
+        (λ k → let bd = bridge-i dp (reᵐ re) k
                    inner = proj₁ (proj₂ bd) (proj₂ (proj₂ bd)) k
                in cong₂ _++_ (proj₁ bd) (proj₁ inner) , proj₂ inner)
-bridge-c (t-inl-app-check {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT (A + B) ((⟦ t-inl-app-check {A = A} {B = B} d ⟧ᶜ fmt) dγ₁)) (sym (cong ((SD.⟦ realize d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-inl {A} {B})))
-        (λ k → cong (_++ []) (proj₁ (bridge-c d re k)) , proj₂ (bridge-c d re k))
-bridge-c (t-inr-app-check {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
-  subst (RelT (A + B) ((⟦ t-inr-app-check {A = A} {B = B} d ⟧ᶜ fmt) dγ₁)) (sym (cong ((SD.⟦ realize d ⟧ˢ fmt) dγ₂ >>=T_) (liftFn-inr {B} {A})))
-        (λ k → cong (_++ []) (proj₁ (bridge-c d re k)) , proj₂ (bridge-c d re k))
-bridge-c (t-initial-app-check d) {dγ₁ = dγ₁} re k = ⊥-elim (valueT ((⟦ d ⟧ᶜ fmt) dγ₁) k)
+bridge-c {ctx = ctx} (t-inl-app-check {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT (A + B) ((⟦ t-inl-app-check {A = A} {B = B} d ⟧ᶜ fmt) dγ₁)) (sym (cong ((SD.⟦ realize d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-inl {A} {B})))
+        (λ k → cong (_++ []) (proj₁ (bridge-c d (reᵐ re) k)) , proj₂ (bridge-c d (reᵐ re) k))
+bridge-c {ctx = ctx} (t-inr-app-check {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT (A + B) ((⟦ t-inr-app-check {A = A} {B = B} d ⟧ᶜ fmt) dγ₁)) (sym (cong ((SD.⟦ realize d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-inr {B} {A})))
+        (λ k → cong (_++ []) (proj₁ (bridge-c d (reᵐ re) k)) , proj₂ (bridge-c d (reᵐ re) k))
+bridge-c {ctx = ctx} (t-initial-app-check d) {dγ₁ = dγ₁} re k =
+  ⊥-elim (valueT ((⟦ d ⟧ᶜ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ _ _)) dγ₁)) k)
 bridge-c (t-subsume d) re = bridge-c d re
 bridge-c (t-arg-driven-app-check _ darg df) re k =
-  let bf = bridge-c df re k
-      bx = bridge-i darg re k
+  let bf = bridge-c df (reˡ re) k
+      bx = bridge-i darg (reᵐ re) k
       inner = proj₂ bf (proj₂ bx) k
   in cong₂ _++_ (proj₁ bf) (cong₂ _++_ (proj₁ bx) (proj₁ inner)) , proj₂ inner
 -- Plan 0.58 (telescope): ⟦ t-var-poly ⟧ᶜ dγ₁ = ⟦ bodyD ⟧ᶜ tt and
 -- SD.⟦ realize d ⟧ˢ dγ₂ = evalᴰ (elaborate Heap (realize bodyD)) tt (morph-app+unit,
 -- env-independent by def). So the bridge RECURSES on the body (bodyD is closed ⇒
 -- empty RelEnv `tt`); `faithful (realize bodyD)` closes the evalᴰ↔SD gap.
-bridge-c {ctx = ctx} (t-var-poly-instantiate _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
-  rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {eq = poly-usage-eq}
-                         {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} {dγ = dγ₂}
-  rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} tt k
+bridge-c {ctx = ctx} {A = A} (t-var-poly-instantiate _ _ _ _ bodyD) {dγ₂ = dγ₂} re k
+  rewrite SD-subst-usage {Γ = NamedCtx.debruijn ctx} {A = A} poly-usage-eq
+                         {e = morph-app (elaborate IR.Heap (realize bodyD)) unit} dγ₂ k
+  rewrite faithful (realize bodyD) tt k = bridge-c bodyD {dγ₁ = tt} {dγ₂ = tt} (mk↾ tt) k

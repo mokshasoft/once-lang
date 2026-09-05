@@ -90,7 +90,7 @@ subst-⟦⟧ᴰᴵ-fix refl x = refl
 -- TRACE half: `[]` — `subst T` doesn't touch the trace; `evalᴰ-subst-dom` peels
 -- the domain subst; `rec-trace-D (In) = []` is definitional.
 in-trace : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ) (n : ℕ)
-  → projTrace (liftFn fmt (In-ir wfF) v) n ≡ []
+  → projTrace (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v) n ≡ []
 in-trace {F} wfF v n =
   trans (subst-T-projTrace (cong μS (tF-coh F))
           (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n)
@@ -100,7 +100,7 @@ in-trace {F} wfF v n =
 
 -- VALUE half — the coherence (PROBE: refl to read the goal).
 in-value-erase : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ) (n : ℕ)
-  → proj₂ (liftFn fmt (In-ir wfF) v n) ≡ in-value v
+  → proj₂ (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v n) ≡ in-value v
 in-value-erase {F} wfF v n =
   trans (cong proj₂ (subst-T-apply (cong μS (tF-coh F))
                       (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n))
@@ -124,5 +124,5 @@ in-value-erase {F} wfF v n =
 -- transported `In` is `returnT (in-value v)` — trace `[]`, value `in-value-erase`
 -- (the value is n-independent, so `in-value-erase` at 0 covers every `n`).
 liftFn-In : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
-  → liftFn fmt (In-ir wfF) v ≡ returnT (in-value v)
+  → liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v ≡ returnT (in-value v)
 liftFn-In wfF v = extensionality λ n → cong₂ _,_ (in-trace wfF v n) (in-value-erase wfF v n)

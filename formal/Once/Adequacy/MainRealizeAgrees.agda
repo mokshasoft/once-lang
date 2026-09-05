@@ -53,7 +53,8 @@ open import Once.Type using (Unit; Type)
 
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
-open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ)
+open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ; _↾_)
+open import Once.Denotation.Phase using (env0)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ)
 
 open import Once.TypeCheck.Classify using (NamedCtx)
@@ -119,24 +120,26 @@ main-extract :
     Σ-syntax (Usage (NamedCtx.size cctx)) (λ Ψ →
     Σ-syntax (Expr (NamedCtx.debruijn cctx) Ψ EffUU) (λ se →
     Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
-    Σ-syntax (⟦ ⟦ NamedCtx.debruijn cctx ⟧ᶜ ⟧ᴰ) (λ dγ₀ →
+    Σ-syntax (⟦ ⟦ NamedCtx.debruijn cctx Srf.↾ Ψ ⟧ᶜ ⟧ᴰ) (λ dγ₀ →
     Σ-syntax (cctx ⊢ᶜ body ∶ EffUU ⨾ Ψ) (λ mtder →
     Σ-syntax (checkElab cctx body EffUU ≡ success Ψ se d f) (λ ce →
     Σ-syntax PolyCtx (λ polys →
     Σ-syntax Imports (λ imps → Σ-syntax Imports (λ userFns → Σ-syntax ℕ (λ fresh →
-      ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt tt n
+      ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt
+          (env0 {proj₁ (ME.source-meaningᴰ m ir mi)} tt) n
                ≡ SD.⟦ resolveExpr polys imps userFns fresh se ⟧ˢ fmt dγ₀ n)
-    × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt tt n
+    × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt
+          (env0 {proj₁ (MC.mainRealized m mt hvm)} tt) n
                ≡ SD.⟦ realize mtder ⟧ˢ fmt dγ₀ n))))))))))))))
 main-extract m mt hvm ir mi =
   let (funs , polys , ef-eq , b , bme , mctx , mbody , mΨ , mse , md , mf , mce , ir≡ , rw) = MF.main-node-of m ir mi
   in    ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) "main" EffUU
-      , mbody , mΨ , mse , md , mf , tt
+      , mbody , mΨ , mse , md , mf , env0 {mΨ} tt
       , check-sound (ctxWithImportsAndSelfAndPolys mctx (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) "main" EffUU) mbody EffUU mce
       , mce , C.buildPolyCtx polys , (("main" , EffUU) ∷ mctx) , (("main" , EffUU) ∷ mctx) , 0
       , (λ n → refl)
       , (λ n → trans (MF.mainRealized-bundle m mt hvm b bme ef-eq n)
-                     (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt tt n) rw))
+                     (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt (env0 {proj₁ z} tt) n) rw))
 
 ------------------------------------------------------------------------
 -- The coherence hook, now PROVEN from A/B/C (the postulate is gone).
@@ -151,11 +154,13 @@ main-checkElab-coherence :
     Σ-syntax (Usage (NamedCtx.size cctx)) (λ Ψ →
     Σ-syntax (Expr (NamedCtx.debruijn cctx) Ψ EffUU) (λ se →
     Σ-syntax ℕ (λ d → Σ-syntax ℕ (λ f →
-    Σ-syntax (⟦ ⟦ NamedCtx.debruijn cctx ⟧ᶜ ⟧ᴰ) (λ dγ₀ →
+    Σ-syntax (⟦ ⟦ NamedCtx.debruijn cctx Srf.↾ Ψ ⟧ᶜ ⟧ᴰ) (λ dγ₀ →
     Σ-syntax (checkElab cctx body EffUU ≡ success Ψ se d f) (λ ce →
-      ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt tt n
+      ((n : ℕ) → SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt
+          (env0 {proj₁ (ME.source-meaningᴰ m ir mi)} tt) n
                ≡ SD.⟦ se ⟧ˢ fmt dγ₀ n)
-    × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt tt n
+    × ((n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt
+          (env0 {proj₁ (MC.mainRealized m mt hvm)} tt) n
                ≡ SD.⟦ realize (check-sound cctx body EffUU ce) ⟧ˢ fmt dγ₀ n)))))))))
 main-checkElab-coherence m mt hvm ir mi
   with main-extract m mt hvm ir mi
@@ -177,8 +182,10 @@ main-realize-agrees-proof m mt hvm ir mi n
 ... | cctx , body , Ψ , se , d , f , dγ₀ , ce , seR≈se , rt≈deriv =
       cong (take n)
         (ME.bind-cong-trace
-          (SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt tt)
-          (SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt tt)
+          (SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt
+          (env0 {proj₁ (ME.source-meaningᴰ m ir mi)} tt))
+          (SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt
+          (env0 {proj₁ (MC.mainRealized m mt hvm)} tt))
           (λ clo → clo tt) n
           (trans (seR≈se n)
             (trans (realize-agrees cctx body EffUU ce dγ₀ n)
