@@ -120,7 +120,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
   open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; at-reg; BodyCorrect;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; at-reg; prim-sv; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf;
            mk-IRResultAWF-via-bump;
@@ -1430,4 +1430,26 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       result-place-final with IRResultAWF.result-place body-result
       ... | at-loc _ _ _ _ _ _ = at-loc result-loc result-valid-wf' result-before' rax-eq'
                                        cont-preserves-validity' cont-preserves-result'
+      -- Stage F: a register-resident body result is PROPAGATED as `at-reg`,
+      -- not collapsed to `at-loc`. Collapsing would be unsound, not merely
+      -- lossy: `at-reg`'s location is the producer's INPUT cell reused as a
+      -- placeholder (`IRObsCorrectFlat`: `at-reg input-loc fit …`), so it does
+      -- not hold the value, and an `at-loc` there would assert a false
+      -- `rax-eq'`/`result-valid-wf'` — D148's disease, freshly minted.
+      --
+      -- Nothing new is postulated. `apply-full-trace = setup ++ body`, so the
+      -- body runs LAST: `s'-eq` says apply's final state IS the body's, and
+      -- `alloc' = final-alloc body-result` definitionally. The register
+      -- equation therefore transports across `s'-eq` and `eval-apply-eq`, and
+      -- the continuation bound is the same `bf-same-frame-slot` the `at-loc`
+      -- branch already uses.
+      ... | at-reg loc fit before rax cont =
+              at-reg loc fit before
+                (subst (λ st → readReg (regs st) Output ≡ prim-sv fit (eval (apply {A} {B}) x))
+                       (sym s'-eq)
+                       (subst (λ w → readReg (regs (IRResultAWF.final-state body-result)) Output
+                                       ≡ prim-sv fit w)
+                              (sym eval-apply-eq)
+                              rax))
+                (bf-same-frame-slot alloc' continuation-alloc alloc'-frame-eq refl refl loc before)
       ... | unit-result = unit-result
