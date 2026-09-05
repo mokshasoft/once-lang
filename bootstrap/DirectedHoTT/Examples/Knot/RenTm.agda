@@ -80,7 +80,6 @@ open import DirectedHoTT.Lib.ArithComm using ( IdN; symN; ⊢symN; elIdN; ⊢ref
 open import DirectedHoTT.Lib.IdSuc using ( predN; ⊢fordPredN )
 open import DirectedHoTT.Lib.ICast
   using ( muFwd; muBwd*; fordAs; toMu; fromMu; ⟶*-castᵣ; ⟶*-castₗ )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; isingle-Sub⊢; iihTy-wf; ren-ty; ⊢wk; iihTy-ren; iihTy-cong )
 open import DirectedHoTT.Lib.IPay using ( ipayTy-wf; ⊢methLam )

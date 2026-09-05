@@ -48,7 +48,6 @@ open import DirectedHoTT.Examples.Knot.Pw using ( pwK )
 open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; stkCK; flatK )
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; wkTyK )
 
 -- ★ the judgement's index: a depth and two terms at it.

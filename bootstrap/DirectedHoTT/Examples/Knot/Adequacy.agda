@@ -142,9 +142,19 @@
 --     szTm       ✅ `Knot/SzProbe` — same-sort counts, per row, by `refl`.
 --     szsTm      ✅ `Knot/SzAgree` — `szsTm i ⌈t⌉ ⟶* num (sz t)`, all 30 rows,
 --                GENERATED.  THE model for every ⬜ below.
---     wkK        ⬜ OWED, AND FALSE AS STATED — `wkK` is NOT `renTm vs`; it keeps
---                the de Bruijn index.  `Knot/WkSub.wkTmK`/`wkTyK` are the
---                correct translation and the emitter must move to them.
+--     wkAtK      ✅ DISCHARGED via `wkTmK`/`wkTyK` — `wkAtK s n t` IS
+--                `renTmAtK s n (nsuc n) (vsRenK n) t`, the sort-generic
+--                form they are instances of, so its adequacy at a sort is
+--                `ren-agree` at that sort.  ⚠ `sTm` is proved
+--                (`Knot/SubSpec.wkTmK-agree`); `sTy`/`sIDesc` wait on the
+--                type-sort agreement — see `wkTyK`.
+--     wkK        ✅ RETIRED — ZERO applications remain.  Step 4: the last four
+--                (`Knot/PayTy` ×2, `Knot/IPayTyRho`, `Knot/IPayTyKap`)
+--                converted to `Knot/WkSub.wkAtK`, and the emitter no
+--                longer imports it into ~74 generated modules.
+--                ⚠ KEPT, not deleted: `Knot/Wk` still documents the wrong
+--                weakening and `Knot/WkProbe` exercises it.  It is now
+--                a RECORD, not a dependency.
 --     wkTmK      ✅ DISCHARGED — `Knot/SubSpec.wkTmK-agree`, and in ONE LINE:
 --                `wkTmK n t = renTmAtK sTm n (nsuc n) (vsRenK n) t`, so
 --                its adequacy is `ren-agree` at the renaming `vs`, whose

@@ -52,7 +52,6 @@ open import DirectedHoTT.Examples.Knot.CtxD
         ; Ctx-empK; ⊢Ctx-empK; ⊢Ctx-extK )
 open import DirectedHoTT.Examples.Knot.Build
   using ( Var-vzK; ⊢Var-vzK; ⊢Var-vzKv; Var-vsK; ⊢Var-vsKv )
-open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 -- ⚠⚠ `wkTyK`, NOT `wkK`, FOR THE ROW'S `renTy vs A`.  `A` is a bound
 --   FIELD standing for an arbitrary type, hence OPEN, and the two
 --   weakenings differ on exactly those (`PLAN-RENAMING.md` §0).  The
