@@ -3,7 +3,7 @@
 # DirectedHoTT sweep — builds THE LIVE PATH ONLY.
 #
 # ★ WHAT IS AND IS NOT BUILT, AND WHY THAT IS THE POINT.
-#   Spec/ Metatheory/ Algorithm/ Lib/ Examples/ Trust.agda   -> BUILT
+#   Spec/ Metatheory/ Algorithm/ Lib/ Examples/ Trust/       -> BUILT
 #   Comparison/                                              -> BUILT, reported apart
 #   Negative/                                                -> NOT BUILT
 #
@@ -101,11 +101,17 @@ for rel in "${TOBUILD[@]:-}"; do
       # ⚠⚠ THE LADDER USED TO STOP HERE, AND IT STOPPED IN THE WRONG
       #   DIRECTION.  `-A64m` trades memory for speed; a module whose cost
       #   is READING MANY INTERFACES rather than allocating deeply wants
-      #   the opposite trade.  `Trust.agda` — which imports all 236
-      #   modules and type-checks nothing — was KILLED(143) at `-A64m`
-      #   AND at `-A64m -c`, then passed at `-A8m -c` in **20 seconds**.
-      #   Two rungs of a ladder that only ever went up reported a 20s
-      #   module as a sweep failure.
+      #   the opposite trade.
+      #
+      # ⚠⚠ HISTORICAL: this rung was added for `Trust.agda`, which imported
+      #   all 239 modules and type-checked nothing.  That module is GONE —
+      #   split into the `Trust/` roots on 2026-09-05, because no RTS
+      #   setting could build it once `Knot/RenAgree` landed (`-A64m`,
+      #   `-A64m -c` all OOM-killed; `-A8m -c` still grinding at 10 min on
+      #   a QUIET box with 4.8 GB free).  ⇒ the rung stays as cheap
+      #   insurance, but its original customer was fixed by ARCHITECTURE,
+      #   not by a flag — which is the better repair whenever it is
+      #   available.
       #
       # ★ So the last resort shrinks the allocation area.  It costs
       #   nothing when the first two rungs work, and it is the rung that

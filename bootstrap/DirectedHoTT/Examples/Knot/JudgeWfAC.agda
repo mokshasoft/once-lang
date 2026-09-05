@@ -61,7 +61,7 @@ open import DirectedHoTT.Examples.Knot.Wk using ( wkK; ⊢wkK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
+open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
 open import DirectedHoTT.Examples.Knot.SubApp
   using ( subTmAtK; subTyAtK; ⊢subTmAtK; ⊢subTyAtK )

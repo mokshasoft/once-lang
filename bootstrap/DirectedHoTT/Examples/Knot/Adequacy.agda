@@ -71,6 +71,19 @@
 --     atConK     ⬜ OWED — agreement with `atCon`.
 --     conSSK     ⬜ OWED — `conSK`/`atConK`'s core.
 --     extNK      ⬜ OWED — `extS`'s half.
+--     extRK      ✅ DISCHARGED via `extRNK` — `extRK` is its eliminator, and
+--                `Knot/RenSpec.extRK-vz`/`-vs` are the two clauses.
+--     extRK-sub  ✅ not a program — `extRK`'s substitution naturality
+--                (`Knot/RenNat`), the hypothesis `isubMethod-red` takes.
+--     extRK-vs   ✅ not a program — the other clause.
+--     extRK-vz   ✅ not a program — a clause of `extRK`'s adequacy.
+--     extRNK     ✅ DISCHARGED — `Knot/SubAgree.extR-Represents`:
+--                `RepresentsR ρ r → RepresentsR (extR ρ) (extRNK d ⌈Δ⌉ r)`.
+--                ⚠ POLYMORPHIC in `d`, and that is load-bearing three
+--                layers up — see `Knot/RenAgree`'s binder rows.
+--     extRNK-vs  ✅ not a program — the other clause.
+--     extRNK-vz  ✅ not a program — a clause of `extRNK`'s adequacy
+--                (`Knot/RenSpec`), which `extR-Represents` assembles.
 --     extSK      ⬜ OWED — with `subTmK`.
 --     flatK      ⬜ OWED — agreement with `flat?`.
 --     head-red   ✅ not owed — a lemma INSIDE `Knot/SzAgree`, not a program.
@@ -82,12 +95,28 @@
 --     ipayTyRho  ✅ not owed — a method row of `ipayTyK`.
 --     lookupDK   ⬜ OWED — agreement with `lookupD`.
 --     nrsK       ⬜ OWED — `nrsSubK`'s core.
+--     nrsSK-vs   ✅ not a program — the other clause.
+--     nrsSK-vz   ✅ not a program — a clause of `nrsSubK`'s adequacy.
 --     nrsSubK    ⬜ OWED — `nrs`'s half.
 --     payTyK     ⬜ OWED — agreement with `payTy`.
 --     pwBodyK    ⬜ OWED — agreement with `pw?`'s body case.
+--     pwDefault  ⬜ OWED — the default method of `Knot/PwBody`'s tuple.  It
+--                REBUILDS `icon k p` and renames, so its adequacy is a
+--                corollary of `renTmK`'s; blocked on the same five
+--                cross-sort rows.
 --     pwK        ⬜ OWED — agreement with `pw?`.
+--     ren-head-red ✅ not a program — the per-row head reduction INSIDE
+--                `Knot/RenRed`, i.e. a step of `renTmK`'s own adequacy.
+--     renTmAtK   ◐ IN PROGRESS — the applied form of `renTmK`; same status.
+--     renTmK     ◐ IN PROGRESS — `Knot/RenAgree` proves it for the 25 SAME-SORT
+--                `RTm` rows.  The five cross-sort rows (`var`, `elim`,
+--                `ielim`, `cMu`, `cIMu`) need agreement at another sort,
+--                i.e. a mutual statement; `Knot/SzAgree` never did,
+--                because a fold steps a cross-sort child PAST.
 --     singleK    ⬜ OWED — `single`'s half of the substitution agreement.
 --     singleSK   ⬜ OWED — `singleK`'s core.
+--     singleSK-vs ✅ not a program — the other clause.
+--     singleSK-vz ✅ not a program — a clause of `singleK`'s adequacy.
 --     stkAK      ⬜ OWED — agreement with `stkA?`.
 --     stkCK      ⬜ OWED — agreement with `stkC?`.
 --     subTmAtK   ⬜ OWED — `enTm (subTm σ t) ≡ subTmAtK … (enTm t)`.
