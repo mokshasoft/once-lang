@@ -66,9 +66,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; at-reg;
            valid-unit-wf; mk-IRResultAWF-via-bump;
-           RecDispatcherWF; validityWF-mem-only;
+           RecDispatcherWF; InputPlace; in-at-loc; in-at-reg;
+           place-sv; place-rax; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved;
            validityWF-with-bf-transfer; mem-preserved-from-tnhw)
 
@@ -258,8 +259,12 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Run f via recursive dispatch
       ------------------------------------------------------------------------
-      f-result-pair = rec-wf mIn f (∘-f-smaller f g) x input-loc s alloc
-                        input-valid-wf input-before not-halted rdi-eq
+      -- Stage F: compose's OWN input, bundled. `run-compose` still takes the
+      -- four memory facts (its callers are unchanged); only the dispatcher
+      -- interface generalised.
+      f-result-pair = rec-wf mIn f (∘-f-smaller f g) x s alloc
+                        (in-at-loc input-loc input-valid-wf input-before rdi-eq)
+                        not-halted
       mMid = proj₁ f-result-pair
       result-f = proj₂ f-result-pair
       s₁ = IRResultAWF.final-state result-f
@@ -283,38 +288,14 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- BeforeFrontier on Output's value isn't generally provable,
       -- which is the genuine trust point for Unit erasure when
       -- composing through `rec-wf`'s fixed precondition shape.
-      record FFacts : Set where
-        field
-          inter-loc-f    : ValueLocation FS
-          inter-before-f : BeforeFrontier alloc₁ inter-loc-f
-          inter-valid-f  : ValidAtWF mMid alloc₁ (eval f x) inter-loc-f s₁
-          inter-rax-f    : readReg (regs s₁) Output ≡ SV-Ptr inter-loc-f
-
-      f-facts : FFacts
-      f-facts with IRResultAWF.result-place result-f
-      ... | at-loc loc valid before rax _ _ = record
-              { inter-loc-f    = loc
-              ; inter-before-f = before
-              ; inter-valid-f  = valid
-              ; inter-rax-f    = rax
-              }
-      ... | unit-result = record
-              { inter-loc-f    = unit-inter-loc
-              ; inter-before-f = unit-inter-before
-              ; inter-valid-f  = valid-unit-wf
-              ; inter-rax-f    = unit-inter-rax
-              }
-        where
-          postulate
-            unit-inter-loc : ValueLocation FS
-            unit-inter-before : BeforeFrontier alloc₁ unit-inter-loc
-            unit-inter-rax : readReg (regs s₁) Output ≡ SV-Ptr unit-inter-loc
-
-      open FFacts f-facts using ()
-        renaming (inter-loc-f to inter-loc;
-                  inter-before-f to inter-before-f';
-                  inter-valid-f to inter-valid-f';
-                  inter-rax-f to inter-rax-f')
+      -- Stage F: f's RESULT PLACE decides how the intermediate reaches g.
+      -- `ir-to-trace (g ∘ f) = ft ++ mov-to-input ∷ gt` does not spill, and
+      -- `mov-to-input` copies whatever `Output` holds — a pointer for a
+      -- located result, the VALUE itself for a register-resident one. That is
+      -- exactly `place-sv`, and `place-rax` is the (total) fact that `Output`
+      -- held it. The old `FFacts` record hard-coded `SV-Ptr inter-loc` and a
+      -- `ValidAtWF`, so it could not be built for an `at-reg` intermediate.
+      rp = IRResultAWF.result-place result-f
 
       ------------------------------------------------------------------------
       -- Plan 0.14: g runs from alloc₁ (the actual runtime alloc after f),
@@ -329,19 +310,34 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-f-bound : reclaim-f ≤ next-slot alloc +ℕ rf
       reclaim-f-bound = IRResultAWF.slot-stays-in-budget result-f
 
-      s₁' = record s₁ { regs = writeReg (regs s₁) Input1 (SV-Ptr inter-loc) }
+      s₁' = record s₁ { regs = writeReg (regs s₁) Input1 (place-sv rp) }
 
-      rdi-eq₁ : readReg (regs s₁') Input1 ≡ SV-Ptr inter-loc
-      rdi-eq₁ = writeReg-same (regs s₁) Input1 (SV-Ptr inter-loc)
+      rdi-eq₁ : readReg (regs s₁') Input1 ≡ place-sv rp
+      rdi-eq₁ = writeReg-same (regs s₁) Input1 (place-sv rp)
 
-      inter-valid-wf' : ValidAtWF mMid alloc₁ (eval f x) inter-loc s₁'
-      inter-valid-wf' = validityWF-mem-only (eval f x) inter-loc s₁ s₁' refl refl inter-valid-f'
+      -- The place is built by a helper TAKING the register equation, not by a
+      -- `with` on `rp`: a `with` here would abstract `rp` in the goal but not
+      -- in `rdi-eq₁`, which is bound outside it.
+      mk-g-input : (rp' : ResultPlace _ mMid alloc₁ _ (eval f x) s₁)
+                 → readReg (regs s₁') Input1 ≡ place-sv rp'
+                 → InputPlace mMid alloc₁ (eval f x) s₁'
+      mk-g-input (at-loc loc valid before _ _ _) eq =
+        in-at-loc loc (validityWF-mem-only (eval f x) loc s₁ s₁' refl refl valid) before eq
+      -- Register-resident: no `ValidAtWF`, because there is no cell to be
+      -- valid at. The register equation IS the residence witness.
+      mk-g-input (at-reg _ fit _ _ _) eq = in-at-reg fit eq
+      mk-g-input unit-result eq =
+        in-at-loc _ valid-unit-wf unit-inter-before eq
+        where postulate unit-inter-before : BeforeFrontier alloc₁ _
+
+      g-input : InputPlace mMid alloc₁ (eval f x) s₁'
+      g-input = mk-g-input rp rdi-eq₁
 
       ------------------------------------------------------------------------
       -- Run g via recursive dispatch
       ------------------------------------------------------------------------
-      g-result-pair = rec-wf mMid g (∘-g-smaller f g) (eval f x) inter-loc s₁' alloc₁
-                        inter-valid-wf' inter-before-f' not-halted₁ rdi-eq₁
+      g-result-pair = rec-wf mMid g (∘-g-smaller f g) (eval f x) s₁' alloc₁
+                        g-input not-halted₁
       mOut = proj₁ g-result-pair
       result-g = proj₂ g-result-pair
       s₂ = IRResultAWF.final-state result-g
@@ -387,7 +383,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- So s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) }
       s₁'-eq-output : s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input1 (readReg (regs s₁) Output) }
       s₁'-eq-output = cong (λ v → record s₁ { regs = writeReg (regs s₁) Input1 v })
-                           (sym inter-rax-f')
+                           (sym (place-rax rp))
 
       s-final-eq : s-final ≡ s₂
       s-final-eq = exec-trace-compose-eq f-trace g-trace s alloc s₁ s₁' alloc₁ s₂

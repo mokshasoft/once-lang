@@ -901,16 +901,44 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- No global invariants needed - capacity is threaded dynamically per closure.
   ------------------------------------------------------------------------
 
+  ------------------------------------------------------------------------
+  -- Stage F (plan 0.2.4.5): `InputPlace`, the INPUT-side mirror of
+  -- `ResultPlace`.
+  --
+  -- `ir-to-trace (f ∘ g) = ft ++ mov-to-input ∷ gt` does NOT spill, so after a
+  -- primitive-returning `f` the intermediate reaches `g` in `Input1` AS A
+  -- VALUE. The flat machine already models this (`IRObsCorrectFlat.InputAt`'s
+  -- `in-reg`, and `pure-sigop-out-aux`'s register-resident branch, whose
+  -- comment records that it was "forced top-down by `comp-step`").
+  --
+  -- The structured dispatcher could not. Its precondition was
+  -- `loc + ValidAtWF + BeforeFrontier + readReg Input1 ≡ SV-Ptr loc`, which
+  -- expresses ONLY memory residence — and that is exactly why
+  -- `ComposeWF.FFacts` had no case for an `at-reg` intermediate.
+  --
+  -- Shaped like `ResultPlace`: `in-at-loc` carries the memory witnesses;
+  -- `in-at-reg` carries the register equation and NO `ValidAtWF`, because
+  -- there is no cell for it to be valid at. That is the same reason plan 0.54
+  -- rung A deleted `place-valid` rather than making it total.
+  ------------------------------------------------------------------------
+  data InputPlace {A : IRTy} (m : AllocMode) (alloc : AllocState {FS})
+                  (v : ⟦ A ⟧) (s : LocState FS) : Set where
+    in-at-loc : (loc : ValueLocation FS)
+              → ValidAtWF m alloc v loc s
+              → BeforeFrontier alloc loc
+              → readReg (regs s) Input1 ≡ SV-Ptr loc
+              → InputPlace m alloc v s
+    in-at-reg : (fit : FitsInRegI A)
+              → readReg (regs s) Input1 ≡ prim-sv fit v
+              → InputPlace m alloc v s
+
   -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
   RecDispatcherWF : ℕ → Set
   RecDispatcherWF bound = ∀ {A B} (mIn : AllocMode) (ir : IR A B) →
     ir-size ir < bound →
-    (x : ⟦ A ⟧) (input-loc : ValueLocation FS) (s : LocState FS)
-    (alloc : AllocState {FS}) →
-    ValidAtWF mIn alloc x input-loc s →
-    BeforeFrontier alloc input-loc →
+    (x : ⟦ A ⟧) (s : LocState FS) (alloc : AllocState {FS}) →
+    InputPlace mIn alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     ∃[ mOut ] IRResultAWF mOut ir x s alloc
 
   ------------------------------------------------------------------------

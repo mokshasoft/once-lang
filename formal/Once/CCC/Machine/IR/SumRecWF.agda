@@ -90,7 +90,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.CCC.Machine.ClosureWellFormed o
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; valid-unit-wf;
+    using (ValidAtWF; IRResultAWF; ResultPlace; unit-result; at-loc; RecDispatcherWF; InputPlace; in-at-loc; valid-unit-wf;
            mk-IRResultAWF-via-bump;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-mem-preserved;
@@ -840,8 +840,10 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Dispatch to f via recursive dispatch
       -- Note: cap-f argument removed in Phase 3
       f-exec-result : ∃[ mOut ] IRResultAWF mOut f a s-setup alloc
-      f-exec-result = rec-wf mA f (case-f-smaller f g) a payload-loc s-setup alloc
-                        payload-valid-wf-setup payload-before not-halted-setup rdi-payload
+      -- Stage F: the four memory facts are now bundled as an `InputPlace`.
+      f-exec-result = rec-wf mA f (case-f-smaller f g) a s-setup alloc
+                        (in-at-loc payload-loc payload-valid-wf-setup payload-before rdi-payload)
+                        not-halted-setup
       mF = proj₁ f-exec-result
       result-f = proj₂ f-exec-result
 
@@ -988,8 +990,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Dispatch to g via recursive dispatch
       -- Note: cap-g argument removed in Phase 3
       g-exec-result : ∃[ mOut ] IRResultAWF mOut g b s-setup alloc
-      g-exec-result = rec-wf mB g (case-g-smaller f g) b payload-loc s-setup alloc
-                        payload-valid-wf-setup payload-before not-halted-setup rdi-payload
+      g-exec-result = rec-wf mB g (case-g-smaller f g) b s-setup alloc
+                        (in-at-loc payload-loc payload-valid-wf-setup payload-before rdi-payload)
+                        not-halted-setup
       mG = proj₁ g-exec-result
       result-g = proj₂ g-exec-result
 

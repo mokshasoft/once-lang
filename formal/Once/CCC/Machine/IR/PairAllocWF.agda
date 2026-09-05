@@ -102,7 +102,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; at-loc; valid-pair-wf;
-           RecDispatcherWF; mk-IRResultAWF-via-bump;
+           RecDispatcherWF; InputPlace; in-at-loc; mk-IRResultAWF-via-bump;
            validityWF-mem-only; validityWF-mem-preserved;
            validityWF-frontier-advance)
 
@@ -345,9 +345,11 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- f phase: run f on (s-after-setup, alloc-after-scratch).
       ------------------------------------------------------------------
       f-exec : ∃[ mF ] IRResultAWF mF f x s-after-setup alloc-after-scratch
-      f-exec = rec-wf mIn f (⟨,⟩-f-smaller f g {Heap}) x input-loc s-after-setup alloc-after-scratch
-                 input-valid-wf-at-f-start input-before-at-f-start
-                 not-halted-after-setup rdi-eq-after-setup
+      -- Stage F: the four memory facts are now bundled as an `InputPlace`.
+      f-exec = rec-wf mIn f (⟨,⟩-f-smaller f g {Heap}) x s-after-setup alloc-after-scratch
+                 (in-at-loc input-loc input-valid-wf-at-f-start input-before-at-f-start
+                            rdi-eq-after-setup)
+                 not-halted-after-setup
       result-f = proj₂ f-exec
       f-trace = IRResultAWF.trace result-f
 
@@ -693,10 +695,11 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- g phase: run g on (s-after-middle, alloc-for-g).
       ------------------------------------------------------------------
       g-exec : ∃[ mG ] IRResultAWF mG g x s-after-middle alloc-for-g
-      g-exec = rec-wf mIn g (⟨,⟩-g-smaller f g {Heap}) x input-loc
+      g-exec = rec-wf mIn g (⟨,⟩-g-smaller f g {Heap}) x
                  s-after-middle alloc-for-g
-                 input-valid-wf-at-g-start input-before-at-g-start
-                 not-halted-after-middle rdi-eq-after-middle
+                 (in-at-loc input-loc input-valid-wf-at-g-start input-before-at-g-start
+                            rdi-eq-after-middle)
+                 not-halted-after-middle
       result-g = proj₂ g-exec
       g-trace = IRResultAWF.trace result-g
 
