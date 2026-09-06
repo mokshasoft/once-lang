@@ -63,7 +63,7 @@ open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 IInID : RTy ε
 IInID = Σ' Nat (Σ' Nat (IMu KnotD IPair (pair sIDesc (var (vs vz)))))
 
--- ⚠ NOT EMITTED — 0 of 2 rules:
+-- ✅ ALL 2 RULES EMITTED — nothing in this family is skipped.
 
 -- hereID
 InIDΑ0 : Ctx

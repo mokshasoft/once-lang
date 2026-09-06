@@ -24,10 +24,6 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot5 where
 
-import DirectedHoTT.Examples.Knot.JudgeWfO
-import DirectedHoTT.Examples.Knot.JudgeWfP
-import DirectedHoTT.Examples.Knot.JudgeWfQ
-import DirectedHoTT.Examples.Knot.JudgeWfR
 import DirectedHoTT.Examples.Knot.JudgeWfS
 import DirectedHoTT.Examples.Knot.JudgeWfT
 import DirectedHoTT.Examples.Knot.JudgeWfU
@@ -41,3 +37,8 @@ import DirectedHoTT.Examples.Knot.Lookup
 import DirectedHoTT.Examples.Knot.LookupD
 import DirectedHoTT.Examples.Knot.LookupGen
 import DirectedHoTT.Examples.Knot.Map
+import DirectedHoTT.Examples.Knot.MethTy
+import DirectedHoTT.Examples.Knot.MethsTyMot
+import DirectedHoTT.Examples.Knot.NoNatCRows
+import DirectedHoTT.Examples.Knot.NoNatCWf
+import DirectedHoTT.Examples.Knot.Nrs

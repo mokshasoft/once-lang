@@ -1934,7 +1934,7 @@ def gen_j_rows(J, CT):
     L.append("%s : RTy ε" % J.ity)
     L.append("%s = %s" % (J.ity, J.ixdef))
     L.append("")
-    L.append("-- ⚠ NOT EMITTED — %d of %d rules:" % (len(skipped), len(skipped) + len(rows)))
+    L.append(_emit_banner(len(skipped), len(skipped) + len(rows), ""))
     for n, w in skipped: L.append("--     %-12s %s" % (n, w))
     L.append("")
     for i, (nm, row) in enumerate(rows):
@@ -2150,7 +2150,7 @@ def write_mutual(out, CT):
           "--   cannot change SORT with the tag.",
           "IJudge : RTy ε", "IJudge =",
           "  " + (IJUDGE_WIDE if SPIKE_WIDE else IJUDGE_DEF), ""]
-    L.append("-- ⚠ NOT EMITTED — %d of %d rules:" % (len(skipped), len(skipped) + len(rows)))
+    L.append(_emit_banner(len(skipped), len(skipped) + len(rows), ""))
     for n, w in skipped: L.append("--     %-10s %s" % (n, w))
     L.append("")
     for i, (nm, row) in enumerate(rows):
@@ -4400,6 +4400,17 @@ def _val(e, CT, dep):
         return AP(c, *sub)
     return V(h[1])
 
+# ★ THE BANNER OVER THE UNTRANSLATED LIST.
+#
+# ⚠ "NOT EMITTED — 0 of 26 rules:" IS A REAL SENTENCE THAT READS AS ITS
+#   OWN OPPOSITE.  It means zero rules failed; it scans as none landed,
+#   and it flew a ⚠ over a family that is COMPLETE.  A count of zero
+#   deserves the good news, not a warning with an empty list under it.
+def _emit_banner(nskip, ntotal, extra=""):
+    if nskip == 0:
+        return "-- ✅ ALL %d RULES EMITTED — nothing in this family is skipped." % ntotal
+    return "-- ⚠ NOT EMITTED — %d of %d rules%s:" % (nskip, ntotal, extra)
+
 def gen_redrows():
     CT = {d.split(":")[0].strip(): n[1:] + "K" for n, d, _ in KNOT}
     CT.update(_SUBST_CT)
@@ -4452,7 +4463,7 @@ def gen_redrows():
     _ROWS[:] = [(nm, row, _tagof(i)) for i, (nm, row) in enumerate(rows)]
     _SKIP[:] = skipped
     L = [REDROWS_HDR]
-    L.append("-- ⚠ NOT EMITTED — %d of %d rules, in two classes:" % (len(skipped), len(skipped) + len(rows)))
+    L.append(_emit_banner(len(skipped), len(skipped) + len(rows), ", in two classes"))
     for n, w in skipped: L.append("--     %-12s %s" % (n, w))
     L.append("")
     for i, (nm, row) in enumerate(rows):
