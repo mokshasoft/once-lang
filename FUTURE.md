@@ -1443,3 +1443,53 @@ INDUCTIVE FAMILY like `NoNatC`. The boolean spelling looks cheapest at the
 definition site and is the most expensive everywhere else — it does not
 encode, it does not compose with substitution, and it forces a
 strengthening lemma at the first consumer that needs the structure back.
+
+### ⚠⚠ ATTEMPTED 2026-09-06, AND IT BROKE `sr`'s TERMINATION
+
+The reformulation was built and most of it WORKED — and the parts that
+worked confirmed the thesis:
+
+* `Spec/Typing` green with both boolean premises gone;
+* `Metatheory/TySub` green and SIMPLER — both `with posc-ren`/`posc-sub`
+  blocks deleted, replaced by `wk-ren`/`wk-sub-tm`, which that module
+  already proved for other reasons;
+* `SubjectReduction`'s `tr-pw` block COLLAPSED: `eq-cu`/`eq-au` became
+  `wk-single`, `a-comp` became `refl`, and `pwBody-occ c key hcM` became
+  the observation that `pwShift ≡ vs ∘ pwDrop` (nothing maps to `vz`);
+* `red-reflects-w` — reduction reflects weakening — turned out to be
+  EIGHT LINES, not a 58-case induction: `occ-red` carries vz-freeness
+  across the step, `subTm-occ` turns that into the witness, and the
+  strengthened step is `⟶-sub (single x)` with `wk-single` cancelling
+  the left side.
+
+**Then `sr` failed to terminate.** `sr` recurses structurally on the
+reduction derivation. At `ξ-trᵈ` the boolean form passes the SUBDERIVATION
+`rc` straight through; the structural form cannot, because `rc` is a step
+on the WEAKENED code and the rebuilt `⊢tr` needs a `Γ`-code — so the step
+must be strengthened first, and `red-reflects-w` produces that via
+`⟶-sub`, a derivation Agda cannot see as smaller.
+
+    Termination checking failed for: sr
+      … with-8518 cM aM r (hsˡ ra) … | subTm (single t) a' , (sym (eq …) , red …)
+
+⇒ **the rule is right and the metatheory is not ready for it.** Three ways
+out, none small: a size-preserving `red-reflects-w` plus well-founded
+recursion for `sr` (~1200 lines touched); a typing-STRENGTHENING lemma
+`(Γ ∙) ⊢ renTm vs X ∷ renTy vs A → Γ ⊢ X ∷ A` (does not exist); or leave
+the rule alone.
+
+⇒ **DECISION 2026-09-06: leave the rule alone and generalise `Lib/IFold`
+instead** (the alternative above). ★ And the generalisation is SMALLER
+than this entry first claimed, because of one observation: use a de Bruijn
+**LEVEL** rather than an index as the occurrence check's parameter.
+`occTm x (lam t) = occTm (vs x) t` shifts the INDEX — which is what forces
+an index-dependent motive — but a LEVEL is unchanged under a binder. With
+a level the motive is `Π Nat Nat`, and
+
+    subTy σ Nat = Nat        subTy σ (Π A B) = Π (subTy σ A) (subTy (extS σ) B)
+
+so `Π Nat Nat` is substitution-stable DEFINITIONALLY, exactly as `Nat` is.
+⇒ what `IFold` needs is the CONSTANT abstract motive its header already
+sanctions, not the index-dependent one. ★ See also the levels-vs-indices
+entry above: this is a second, independent place where levels are the
+cheaper representation.
