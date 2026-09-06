@@ -11347,3 +11347,65 @@ already there, fixed from above by what `ir-flat-correct` needs — the shape
 was DERIVABLE. Building `IRResultAWF` alongside it produced nine modules that
 typecheck, prove real things, and discharge nothing. Bottom-up construction
 does not fail loudly: it fails by being green and unreachable.
+
+## D152
+
+**Question.** D151 named `IRObsCorrectF` "the live internal interface, fixed
+from above". Is it the PRINCIPLED obligation, or just the shape the current
+gap happens to have?
+
+**It is not principled.** It is the shape the ENTRY case needs, with the
+induction step postulated so the difference never surfaces.
+
+**The derivation, from the emitter.** `ir-to-trace'` threads a frontier `n`
+and a label base `l`:
+
+    ir-to-trace' n l (g ∘ f) =
+      let (n1 , l1 , ft , fb) = ir-to-trace' n  l  f
+          (n2 , l2 , gt , gb) = ir-to-trace' n1 l1 g
+      in n2 , l2 , (ft ++ mov-to-input ∷ gt) , (fb ++ gb)
+
+`g` is emitted at `n1` — the frontier `f` left — which is not 0. But
+
+  * `ir-to-trace ir = proj-trace (ir-to-trace' 0 0 ir)`;
+  * `MachineRefinesObsF ir x s alloc` speaks only about `ir-to-trace ir`,
+    hence only about frontier 0;
+  * `IRObsCorrectF` demands `next-slot alloc ≡ 0` at EVERY use, recursive
+    ones included.
+
+So a sub-IR's witness concerns a trace that is NOT the one spliced into the
+composite. The mismatch has to be absorbed somewhere, and it is:
+`comp-step` — the composition case, the single place the frontiers would have
+to be reconciled — is a POSTULATE.
+
+**What the principled obligation is.** Frontier- and label-indexed, because
+the emitter is:
+
+    IRObsCorrect ir = ∀ n l → … → next-slot alloc ≡ n → … →
+      MachineRefinesObs (trace-of (ir-to-trace' n l ir)) ir x s alloc
+
+with `n = l = 0` the entry instance the consumer uses. The rule: THE
+CORRECTNESS STATEMENT MUST THREAD WHATEVER THE EMITTER THREADS. `ir-to-trace'`
+threads `(n , l)`; a statement quantifying over neither cannot compose, which
+is precisely why `comp-step` could not be proven and became an axiom.
+
+The label base is not optional for the same reason — `LabelScope`'s
+`label-mono` / `labels-in` / `seg-agree` machinery already exists to support
+exactly this threading, which is further evidence the frontier-0 statement is
+the anomaly rather than the design.
+
+**A correction to D151.** D151 read `next-slot alloc ≡ 0` as independent
+confirmation that the frontier is construction-time (D150). It is not
+independent evidence of anything: it is the frontier-0 restriction in
+disguise. D150's conclusion stands on its own derivation from
+`CorrectCompiler.correct` and the prologue; this premise neither supports nor
+undermines it.
+
+**The general lesson, a third instance.** D150: an internal INVARIANT is not
+free to be invented. D151: an internal INTERFACE is not free to be invented.
+D152: and when one IS invented, the tell is a postulated INDUCTION STEP.
+A statement that holds at the entry case and is assumed to compose is a
+statement that was written by looking at the consumer instead of at the
+recursion. Look for the axiom sitting exactly where the induction would have
+had to relate two instances of the interface — `comp-step` is that axiom
+here, and it names the defect precisely.
