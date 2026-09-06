@@ -4954,6 +4954,19 @@ _WRAP_LEDGER = {
     #   scanner starts seeing them.  ⇒ the two gates are a pincer — one
     #   forbids an unlisted program, the other a listed non-program — and
     #   between them the ledger cannot drift in either direction.
+    # ★ STEP 5's `⊢ielim` GROUNDWORK, 2026-09-06.
+    # ⚠⚠ AND `iconSK` OWES ITS **FACTORISATION** BEFORE ITS AGREEMENT.
+    #   The spec defines `iconS` by three `Var` cases two levels deep; the
+    #   object level builds it as `icS k ∘ extS (single i)` instead, to
+    #   avoid an eliminator whose `vs` method eliminates again.  So the
+    #   adequacy goes through
+    #       iconS k i x ≡ subTm (icS k) (extS (single i) x)
+    #   a three-case `Var` induction at the SPEC level.  ⇒ TWO obligations,
+    #   and the factorisation is the one that could be WRONG — the
+    #   agreement is then routine.
+    "iconSSK":  "⬜ OWED — `icS k`'s core, the one-level `Var` eliminator.\n--                A clone of `conSSK` with `icon` for `con`.",
+    "iconSK":   "⬜ OWED — agreement with `iconS`, VIA the factorisation\n--                above.",
+    "iatConK":  "⬜ OWED — agreement with `iatCon`; a corollary of\n--                `iconSK`'s and `subTyAtK`'s (the latter ✅ 2026-09-06).",
     "methsTyFromK": "⬜ OWED — agreement with `methsTyFrom`.  ⚠ It also owes\n--                the closed-sort identity for `methTyK`'s `wkAtK sDCon`:\n--                the object level weakens `C` to reach `ihTy`'s ambient\n--                where the spec does not, because `DCon` carries no\n--                context at all.",
     "lookupDK":  "⬜ OWED — agreement with `lookupD`.",
     "ilookupDK": "⬜ OWED — agreement with `ilookupD`.",

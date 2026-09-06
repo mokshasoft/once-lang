@@ -96,6 +96,12 @@
 --     extSK-vz   ✅ not a program — the SUBSTITUTION twin (`Knot/SubSpec`).
 --     flatK      ⬜ OWED — agreement with `flat?`.
 --     head-red   ✅ not owed — a lemma INSIDE `Knot/SzAgree`, not a program.
+--     iatConK    ⬜ OWED — agreement with `iatCon`; a corollary of
+--                `iconSK`'s and `subTyAtK`'s (the latter ✅ 2026-09-06).
+--     iconSK     ⬜ OWED — agreement with `iconS`, VIA the factorisation
+--                above.
+--     iconSSK    ⬜ OWED — `icS k`'s core, the one-level `Var` eliminator.
+--                A clone of `conSSK` with `icon` for `con`.
 --     ihTyK      ⬜ OWED — agreement with `ihTy`.
 --     ihTyRho    ✅ not owed — a method row of `ihTyK`.
 --     ilookupDK  ⬜ OWED — agreement with `ilookupD`.

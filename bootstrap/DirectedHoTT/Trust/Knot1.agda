@@ -35,10 +35,10 @@ import DirectedHoTT.Examples.Knot.CtorsV
 import DirectedHoTT.Examples.Knot.CtxD
 import DirectedHoTT.Examples.Knot.Desc
 import DirectedHoTT.Examples.Knot.EWk
+import DirectedHoTT.Examples.Knot.IConS
 import DirectedHoTT.Examples.Knot.ILookupD
 import DirectedHoTT.Examples.Knot.IPayTy
 import DirectedHoTT.Examples.Knot.IPayTyKap
 import DirectedHoTT.Examples.Knot.IPayTyMot
 import DirectedHoTT.Examples.Knot.IPayTyRho
 import DirectedHoTT.Examples.Knot.ISubRedControl
-import DirectedHoTT.Examples.Knot.IhTy
