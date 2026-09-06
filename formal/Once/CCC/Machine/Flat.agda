@@ -29,6 +29,8 @@ open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length; _++_)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 -- for `flink-pres`'s two excluded writers (plan 0.65 G2)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -831,6 +833,70 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr (instr-push-frame cap)  _ fs = flat-step-frame (instr-push-frame cap)  (enter-frame (suc cap)) fs
   flat-exec-instr instr-pop-frame         _ fs = flat-step-frame instr-pop-frame         leave-frame             fs
   flat-exec-instr i                                      _    fs = flat-step-straight i fs
+
+  ------------------------------------------------------------------------
+  -- D153 / plan 0.88 A: RELOCATION, the state half — first component.
+  --
+  -- `comp-value-realized` must relate the composite's run to `g`'s own run,
+  -- and `flat-exec-instr` takes the WHOLE program. But it only ever LOOKS at
+  -- it for label resolution (`c-jmp`, the two branches) and `do-call`.
+  -- Everything else ignores the program entirely, so for those instructions
+  -- relocation is free — the step does not know which trace it is embedded in.
+  --
+  -- `ProgFree` names exactly that. The control instructions that DO consult
+  -- the program are `⊥` here; they need the label-agreement side condition
+  -- (`ft-go-++-miss`) instead, which is the other component.
+  --
+  -- Enumerated because `flat-exec-instr`'s catch-all does not reduce on a
+  -- variable instruction — the recurring cost this module already documents.
+  ------------------------------------------------------------------------
+  ProgFree : AbstractInstr → Set
+  ProgFree (instr-ctrl (c-jmp _))                 = ⊥
+  ProgFree (instr-ctrl (c-branch-scratch-zero _)) = ⊥
+  ProgFree (instr-ctrl (c-branch-tag-zero _))     = ⊥
+  ProgFree instr-call-closure                     = ⊥
+  {-# CATCHALL #-}
+  ProgFree _                                      = ⊤
+
+  flat-exec-instr-prog-irrelevant :
+    ∀ (i : AbstractInstr) (t t' : AbstractTrace) (fs : FlatState)
+    → ProgFree i → flat-exec-instr i t fs ≡ flat-exec-instr i t' fs
+  flat-exec-instr-prog-irrelevant mov-to-output                          t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant mov-to-input                           t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant load-indirect                          t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant load-indirect-suc                      t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (load-from-slot _)                     t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (store-at-slot _)                      t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant store-indirect                         t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant store-indirect-suc                     t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (lea-slot _)                           t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (restore-input _)                      t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (lea-indexed _)                        t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-alloc-stack _)                  t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-dealloc-stack _)                t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-reclaim-to _)                   t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-push-frame _)                   t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant instr-pop-frame                        t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (worklist-init _)                      t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (worklist-push _)                      t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (worklist-pop _)                       t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (worklist-check _)                     t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-sigop _)                        t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-load-const _ _)                 t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-load-code-addr _)               t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant instr-save-closure-reg                 t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-load-tag-lit _)                 t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-case-on-tag _ _)                t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-loop _)                         t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-alloc-heap _)                   t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-reg-op _)                       t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-ctrl (c-label _))               t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-ctrl (c-thunk _ _))             t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-ctrl (c-ret _))                 t t' fs _  = refl
+  flat-exec-instr-prog-irrelevant (instr-ctrl (c-jmp _))                 t t' fs ()
+  flat-exec-instr-prog-irrelevant (instr-ctrl (c-branch-scratch-zero _)) t t' fs ()
+  flat-exec-instr-prog-irrelevant (instr-ctrl (c-branch-tag-zero _))     t t' fs ()
+  flat-exec-instr-prog-irrelevant instr-call-closure                     t t' fs ()
 
   ----------------------------------------------------------------------
   -- WHERE THE LINK MOVES, and it is exactly two instructions (plan 0.65 G2,
