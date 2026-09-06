@@ -41,6 +41,10 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 
 open import Once.CCC.Machine.SMCore
+open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Bool using (true; false)
 
 -- No mutual needed since Plan 0.54 item 6: with `instr-case-on-tag` in the ⊥
 -- set there is NO nested trace anywhere — the predicate is shallow.
@@ -190,3 +194,95 @@ frame-free-all (i ∷ is) (fi , ffs) = fi ∷ frame-free-all is ffs
 frame-free-nest : ∀ {t} → All FrameFreeI t → FrameFreeT t
 frame-free-nest []         = tt
 frame-free-nest (fi ∷ ffs) = fi , frame-free-nest ffs
+
+------------------------------------------------------------------------
+-- D150: a frame-free execution PRESERVES `next-slot`.
+--
+-- This is the direct payoff of making `next-slot` construction-time only.
+-- Before that change it was false — `instr-alloc-stack` bumped it and
+-- `instr-reclaim-to` set it — and the WF handlers papered over the gap by
+-- putting `instr-alloc-stack` into traces the compiler never emits, which is
+-- what made `trace-is-ir-to-trace` unprovable eleven times over.
+--
+-- Now no instruction moves `next-slot`, so the only cases needing an argument
+-- are the two that run a NESTED trace, `instr-case-on-tag` and `instr-loop` —
+-- and both are `⊥` here, because neither is ever emitted. So the frame-free
+-- premise is not a restriction on real programs; it is how we say "this trace
+-- is one the compiler could actually produce".
+--
+-- What it buys: a WF handler may pass a sub-IR a CONSTRUCTION frontier
+-- (`record alloc { next-slot = n + scratch }`) while the runtime threads the
+-- unbumped `alloc`, and bridge the two — the use `SMPrimitives`'
+-- `exec-abstract-state-next-slot-invariant` was written for and never had.
+------------------------------------------------------------------------
+
+module _ {FS : FrameSemantics} where
+  open AbstractExec {FS}
+
+  -- The two dispatch helpers that return an ALLOC as well as a state. Both
+  -- branches pass `alloc` through untouched, but that does not reduce while
+  -- the `Maybe` is a variable, so each needs its two-clause split.
+  load-from-slot-alloc : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS) (alloc : AllocState {FS})
+    → next-slot (proj₂ (exec-load-from-slot-with-value mv s alloc)) ≡ next-slot alloc
+  load-from-slot-alloc (just _) s alloc = refl
+  load-from-slot-alloc nothing  s alloc = refl
+
+  restore-input-alloc : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS) (alloc : AllocState {FS})
+    → next-slot (proj₂ (exec-restore-input-with-value mv s alloc)) ≡ next-slot alloc
+  restore-input-alloc (just _) s alloc = refl
+  restore-input-alloc nothing  s alloc = refl
+
+  exec-abstract-preserves-next-slot :
+    ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS})
+    → FrameFreeI i
+    → next-slot (proj₂ (exec-abstract i s alloc)) ≡ next-slot alloc
+  exec-abstract-preserves-next-slot mov-to-output            s alloc _ = refl
+  exec-abstract-preserves-next-slot mov-to-input             s alloc _ = refl
+  exec-abstract-preserves-next-slot load-indirect            s alloc _ = refl
+  exec-abstract-preserves-next-slot load-indirect-suc        s alloc _ = refl
+  exec-abstract-preserves-next-slot (load-from-slot k)       s alloc _ =
+    load-from-slot-alloc (stackMem s (current-frame alloc) k) s alloc
+  exec-abstract-preserves-next-slot (store-at-slot _)        s alloc _ = refl
+  exec-abstract-preserves-next-slot store-indirect           s alloc _ = refl
+  exec-abstract-preserves-next-slot store-indirect-suc       s alloc _ = refl
+  exec-abstract-preserves-next-slot (lea-slot _)             s alloc _ = refl
+  exec-abstract-preserves-next-slot (restore-input k)        s alloc _ =
+    restore-input-alloc (stackMem s (current-frame alloc) k) s alloc
+  exec-abstract-preserves-next-slot (lea-indexed _)          s alloc ()
+  exec-abstract-preserves-next-slot (instr-alloc-stack _)    s alloc ()
+  exec-abstract-preserves-next-slot (instr-dealloc-stack _)  s alloc ()
+  exec-abstract-preserves-next-slot (instr-reclaim-to _)     s alloc _ = refl
+  exec-abstract-preserves-next-slot (instr-push-frame _)     s alloc ()
+  exec-abstract-preserves-next-slot instr-pop-frame          s alloc ()
+  exec-abstract-preserves-next-slot instr-call-closure       s alloc _ = refl
+  exec-abstract-preserves-next-slot (worklist-init _)        s alloc _ = refl
+  exec-abstract-preserves-next-slot (worklist-push _)        s alloc _ = refl
+  exec-abstract-preserves-next-slot (worklist-pop k)         s alloc _ =
+    load-from-slot-alloc (stackMem s (current-frame alloc) k) s alloc
+  exec-abstract-preserves-next-slot (worklist-check _)       s alloc _ = refl
+  exec-abstract-preserves-next-slot (instr-sigop _)          s alloc _ = refl
+  exec-abstract-preserves-next-slot (instr-load-const _ _)   s alloc _ = refl
+  exec-abstract-preserves-next-slot (instr-load-code-addr _) s alloc _ = refl
+  exec-abstract-preserves-next-slot instr-save-closure-reg   s alloc _ = refl
+  exec-abstract-preserves-next-slot (instr-load-tag-lit _)   s alloc _ = refl
+  -- the two nested-trace instructions: never emitted, so `⊥` here
+  exec-abstract-preserves-next-slot (instr-case-on-tag _ _)  s alloc ()
+  exec-abstract-preserves-next-slot (instr-loop _)           s alloc ()
+  exec-abstract-preserves-next-slot (instr-alloc-heap _)     s alloc _ = refl
+  exec-abstract-preserves-next-slot (instr-reg-op _)         s alloc _ = refl
+  exec-abstract-preserves-next-slot (instr-ctrl _)           s alloc _ = refl
+
+  -- …and the trace-level statement, by induction. The `halted` split mirrors
+  -- `exec-trace`'s own: a halted state is returned untouched, so `next-slot`
+  -- is trivially preserved there.
+  exec-trace-preserves-next-slot :
+    ∀ (t : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
+    → FrameFreeT t
+    → next-slot (proj₂ (exec-trace t s alloc)) ≡ next-slot alloc
+  exec-trace-preserves-next-slot []       s alloc _ = refl
+  exec-trace-preserves-next-slot (i ∷ is) s alloc (fi , ffs) with halted s
+  ... | true  = refl
+  ... | false =
+    trans (exec-trace-preserves-next-slot is
+             (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc)) ffs)
+          (exec-abstract-preserves-next-slot i s alloc fi)
