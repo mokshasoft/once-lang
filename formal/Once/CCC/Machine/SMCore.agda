@@ -1755,11 +1755,16 @@ module AbstractExec {FS : FrameSemantics} where
   -- do now that the runtime mirror is gone.
   exec-abstract (instr-dealloc-stack n) s alloc = s , alloc
 
-  -- instr-reclaim-to: set next-slot to given value (actual reclamation)
-  -- OCP-0003: Used by Sum wrapper allocation to place wrapper at child's reclaimable-slot.
-  -- The LocState is unchanged; only the AllocState's next-slot is updated.
-  exec-abstract (instr-reclaim-to n) s alloc =
-    s , record alloc { next-slot = n }
+  -- instr-reclaim-to: a NO-OP on alloc too (D150), for the same reason as
+  -- `instr-alloc-stack`, and with an even blunter piece of evidence: ALL THREE
+  -- backends compile it to `[]` —
+  --   `compile-abstract (instr-reclaim-to n) = []`
+  -- in AbstractToX86, AbstractToRiscV and AbstractToX86-32 alike. It becomes
+  -- no machine instructions whatsoever, so it cannot move anything the
+  -- criterion observes; `ir-to-trace'` never emits it either (its only mention
+  -- there is an import list). An abstract effect with no counterpart in the
+  -- emitted bytes is exactly what D150 is about.
+  exec-abstract (instr-reclaim-to n) s alloc = s , alloc
 
   -- instr-push-frame / instr-pop-frame: the STRUCTURED layer keeps the
   -- degenerate frame model (the flat machine owns the real one).
