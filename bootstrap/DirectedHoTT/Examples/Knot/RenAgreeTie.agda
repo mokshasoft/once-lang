@@ -13,7 +13,7 @@
 --
 -- ⚠ THE ROWS ARE LEMMAS TAKING THEIR IHs, precisely so this file can be
 --   the single place the knot is tied.  A row cannot recurse on its own —
---   it does not know the other 29 exist.
+--   it does not know the others exist.
 --
 -- ★ AND THE BINDER ROWS PASS `extR-Represents` THROUGH THE IH.  A field
 --   at depth k needs the relation at `extR^k ρ`, which is why
@@ -25,7 +25,7 @@
 module DirectedHoTT.Examples.Knot.RenAgreeTie where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; RTm; Var; Ren; renTm
+  using ( Cx; RTm; RTy; Var; Ren; renTm; renTy; Desc; IDesc
         ; absurd
         ; ap
         ; app
@@ -58,8 +58,8 @@ open import DirectedHoTT.Spec.Syntax
         ; ⌜Σ⌝
         )
 open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
-open import DirectedHoTT.Examples.Knot.Map using ( enTm )
-open import DirectedHoTT.Examples.Knot.Sorts using ( num; len; sTm )
+open import DirectedHoTT.Examples.Knot.Map using ( enTm; enTy )
+open import DirectedHoTT.Examples.Knot.Sorts using ( num; len; sTm; sTy )
 open import DirectedHoTT.Examples.Knot.RenTm using ( renTmAtK )
 open import DirectedHoTT.Examples.Knot.SubAgree using ( RepresentsR )
 open import DirectedHoTT.Examples.Knot.RenAgree
