@@ -11259,3 +11259,91 @@ not relatable as stated. Eleven gaps that all name the same field, in every
 handler sharing one structural feature, is not eleven pieces of unfinished
 work — it is one modelling defect wearing eleven hats. Counting which handlers
 DISCHARGE the field, and what distinguishes them, found it in one measurement.
+
+## D151
+
+**Question.** Why is the entire `*WF` handler layer — nine modules, thousands
+of lines, `IRResultAWF`, `RecDispatcherWF`, `InputPlace`, `AllocBump`,
+`IRStackBudget` — imported by NOTHING?
+
+**The measurement.** The import closure of `Once.Certified` is 335 modules.
+Against it:
+
+    ISLAND  SimpleWF  ComposeWF  ApplyWF  PairWF  SumRecWF
+    ISLAND  CurryStackWF  CurryAllocWF  SumInlAllocWF  SumInrAllocWF
+    LIVE    ClosureWellFormed, ShapeAt, ShapeTable, SMCore, SMPrimitives,
+            FrameFree, IRToTrace, Once.IR
+
+`ClosureWellFormed` is live, but only its TYPES are, through `ShapeAt`,
+`ValidAtWFHalted`, `IRObsCorrectFlat`, `FlatFromObs`, `ReadTypedAdequate`.
+The handlers that would inhabit those types are reachable from nothing.
+
+**Walking the live path down from the criterion** —
+
+    correct                      (Once.Spec.Correct, the criterion)
+      correctᵈ / correctR-sound  (Once.Adequacy.Compile)
+        correct-gm → module-to-asm-correct → codegen-asm-correct
+          ArchCorrect.asm-trace-correct     (per arch)
+          ArchCorrect.ir-flat-correct       (per arch)
+            ir-flat-correct-of              PROVED from `traces-agree`
+              ir-obs-correct ir             ← THE dispatcher
+                obs-correct-pair            POSTULATE
+                obs-correct-inl             POSTULATE
+                obs-correct-curry           POSTULATE
+                obs-correct-apply           POSTULATE
+                cata-correct                POSTULATE   (17 in total)
+
+**The finding.** `ir-obs-correct` IS the top-level dispatcher. It exists, it
+is live, and it recurses structurally —
+`ir-obs-correct (g ∘ f) = comp-obs-correct (ir-obs-correct g) (ir-obs-correct f)`.
+Every constructor routes to a postulate, and THOSE POSTULATES ARE THE HOLES
+THE WF HANDLERS WERE WRITTEN TO FILL.
+
+They cannot fill them, because they were written against a different
+interface. The live obligation is
+
+    IRObsCorrectF ir =
+      ir-size ir < program-bound →
+      ∀ mIn x input-loc s alloc → next-slot alloc ≡ 0 →
+      ValidAtWF mIn alloc x input-loc s → BeforeFrontier alloc input-loc →
+      halted s ≡ false → InputAt x input-loc s →
+      MachineRefinesObsF ir x s alloc
+
+while the handlers prove `IRResultAWF`, take an `InputPlace`, and demand a
+`RecDispatcherWF` parameter. Two vocabularies for one job: `InputAt` vs
+`InputPlace`, `MachineRefinesObsF` vs `IRResultAWF`, `ir-obs-correct` vs
+`RecDispatcherWF`. The shared ones — `ValidAtWF`, `ResultPlace`, `ShapeAt` —
+are exactly the ones in the LIVE module.
+
+**Why the missing dispatcher was never missing.** Earlier work recorded
+"`RecDispatcherWF` appears only ever as a module parameter, so the top-level
+dispatcher does not exist" and treated building it as the next step. It does
+exist. It is `ir-obs-correct`, it is live, and `RecDispatcherWF` is a
+reinvention of it that no one ever instantiated — which is exactly why the
+parameter is never applied.
+
+**Decision.** The handlers are restated to discharge `obs-correct-X :
+IRObsCorrectF X` directly, each one deleting a postulate. `IRResultAWF`,
+`RecDispatcherWF`, `AllocBump` and `IRStackBudget` are island vocabulary and
+retire with the island; `ValidAtWF`, `ResultPlace`, `InputAt` and `ShapeAt`
+are the live vocabulary and stay. The measure of progress is the count of the
+17 postulates, not the count of green WF modules.
+
+**Two corrections this forces to earlier entries.** D150 said the eleven
+`trace-is-ir-to-trace` gaps mean the compiler's correspondence is assumed.
+More precisely: they are in DEAD code, so they never weakened
+`Once.Certified` — and equally, the WF layer never strengthened it. The
+modelling defect D150 identified was real and its fix landed in live modules
+(`SMCore`, `SMPrimitives`, `FrameFree`); the gaps themselves were not
+load-bearing. And plan 0.2.4.5's stage F work on `InputPlace` — `input-sv`,
+`inputPlace-transport`, the `InputPlace`-shaped `run-*` signatures — was
+island work. The inline-sum-payload change (D149) is the exception that
+proves the rule: it landed in `ClosureWellFormed`/`ShapeAt`/`ShapeTable`,
+which are LIVE, so it stands.
+
+**The general lesson, and it is the same one as D150 one level up.** An
+internal interface is not free to be invented either. `IRObsCorrectF` was
+already there, fixed from above by what `ir-flat-correct` needs — the shape
+was DERIVABLE. Building `IRResultAWF` alongside it produced nine modules that
+typecheck, prove real things, and discharge nothing. Bottom-up construction
+does not fail loudly: it fails by being green and unreachable.
