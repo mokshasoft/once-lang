@@ -28,7 +28,7 @@ open import Data.Nat.Properties using (+-identityʳ; +-suc)
 open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; length)
+open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 -- for `flink-pres`'s two excluded writers (plan 0.65 G2)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -167,6 +167,30 @@ module FlatMachine {FS : FrameSemantics} where
   fetch []       _       = nothing
   fetch (i ∷ _)  zero    = just i
   fetch (_ ∷ is) (suc n) = fetch is n
+
+  ------------------------------------------------------------------------
+  -- D152 / plan 0.88 A1: RELOCATION, the fetch half.
+  --
+  -- `emitted n l (g ∘ f) = ft ++ mov-to-input ∷ gt`, so a composition proof
+  -- has to say that running the composite's PREFIX behaves like running `ft`
+  -- alone, and that running past the `mov` behaves like running `gt` alone
+  -- from its own pc 0. Both reduce to these two statements about `fetch`,
+  -- which is plain list indexing.
+  --
+  -- These are the foundation of piece (1) of `comp-step`; the other half is
+  -- label resolution, which needs the label ranges to be disjoint (what
+  -- threading the label base `l` is for).
+  ------------------------------------------------------------------------
+  fetch-++-left : ∀ (t₁ t₂ : AbstractTrace) (pc : ℕ) (i : AbstractInstr)
+                → fetch t₁ pc ≡ just i → fetch (t₁ ++ t₂) pc ≡ just i
+  fetch-++-left []        t₂ pc      i ()
+  fetch-++-left (j ∷ t₁)  t₂ zero    i eq = eq
+  fetch-++-left (j ∷ t₁)  t₂ (suc p) i eq = fetch-++-left t₁ t₂ p i eq
+
+  fetch-++-right : ∀ (t₁ t₂ : AbstractTrace) (j : ℕ)
+                 → fetch (t₁ ++ t₂) (length t₁ + j) ≡ fetch t₂ j
+  fetch-++-right []       t₂ j = refl
+  fetch-++-right (i ∷ t₁) t₂ j = fetch-++-right t₁ t₂ j
 
   ------------------------------------------------------------------------
   -- THE CALL SCAN IS SOUND: what it finds IS a body entry for that label.
