@@ -89,7 +89,7 @@ _ = refl
 _ : ilen ConvD ≡ rules _≅ᵀ_
 _ = refl
 
--- JudgeD  (3 rules the generator could not translate)
-_ : ilen JudgeD + 3 ≡ rules _⊢ty_ + rules _⊢_∷_ + rules DConWf + rules DescWf + rules IConWf + rules ICodeWf + rules IDescWfFrom
+-- JudgeD  (2 rules the generator could not translate)
+_ : ilen JudgeD + 2 ≡ rules _⊢ty_ + rules _⊢_∷_ + rules DConWf + rules DescWf + rules IConWf + rules ICodeWf + rules IDescWfFrom
 _ = refl
 

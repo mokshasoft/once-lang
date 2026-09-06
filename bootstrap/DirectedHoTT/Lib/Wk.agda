@@ -510,6 +510,53 @@ towerJ sb m u J = trans (cong (λ z → subTm (single sb) (subTm (extS (single m
     rC : subTm (single sb) (w J) ≡ J
     rC = wk-single {v = sb} J
 
+-- ★★★ THE FIFTH RUNG — for a motive with THREE passengers whose result
+--   reads the INDEX.
+--
+-- ⚠⚠ AND IT IS THE LAST ONE THAT MAY BE LISTED.  The note above says
+--   these "want INDEXING, not listing.  Two rungs is where it stops
+--   being worth it", and that is still right — but the alternative here
+--   was worse than one more rung.  `methsTyFrom D M j E`'s result depth
+--   IS the scrutinee's depth, so its motive genuinely reads `snd ⟨i⟩`;
+--   dodging the rung means either bundling `D` and `M` into a `Σ'`
+--   passenger (an artificial type, and its casts need a `sgBwd` nobody
+--   has) or taking the depth as a passenger — which BREAKS, because the
+--   payload's `C` arrives at `snd ⟨i⟩` and would then sit at a different
+--   depth from the `n` the row builds at.  ⇒ the honest fix is the rung.
+--
+-- ⬜ OWED: the INDEXED form.  Its shape is a fold over a LIST of
+--   substitutions (each rung has a different one), which is why the
+--   family was listed rather than iterated in the first place.  Three
+--   customers now (`towerA`, `towerJ`, `towerJ⁵`); at a fourth, stop and
+--   write `tower^`.
+peel¹ : {Γ : Cx} (a t : RTm Γ) →
+        subTm (extS (single a)) (w (w t)) ≡ w t
+peel¹ a t = sub-w-single {v = a} t
+
+peel² : {Γ : Cx} (a t : RTm Γ) →
+        subTm (extS (extS (single a))) (w (w (w t))) ≡ w (w t)
+peel² a t = trans (sub-w {σ = extS (single a)} (w (w t))) (cong w (peel¹ a t))
+
+peel³ : {Γ : Cx} (a t : RTm Γ) →
+        subTm (extS (extS (extS (single a)))) (w (w (w (w t)))) ≡ w (w (w t))
+peel³ a t = trans (sub-w {σ = extS (extS (single a))} (w (w (w t))))
+                  (cong w (peel² a t))
+
+towerJ⁵ : {Γ : Cx} (sb m u v J : RTm Γ) →
+          subTm (single sb)
+            (subTm (extS (single m))
+              (subTm (extS (extS (single u)))
+                (subTm (extS (extS (extS (single v))))
+                  (subTm (extS (extS (extS (extS (single J)))))
+                         (var (vs (vs (vs (vs vz))))))))) ≡ J
+towerJ⁵ sb m u v J =
+  trans (cong (λ z → subTm (single sb)
+                       (subTm (extS (single m))
+                         (subTm (extS (extS (single u))) z))) (peel³ v J))
+   (trans (cong (λ z → subTm (single sb) (subTm (extS (single m)) z)) (peel² u J))
+    (trans (cong (subTm (single sb)) (peel¹ m J))
+           (wk-single {v = sb} J)))
+
 -- ⚠ AND THE ARGUMENT'S TOWER IS ONE RUNG SHORTER — it is read under the
 --   Π, so `iinst`'s outermost substitution has not reached it.
 towerA : {Γ : Cx} (m u J : RTm Γ) →
