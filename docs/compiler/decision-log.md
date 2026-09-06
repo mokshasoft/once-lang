@@ -11200,7 +11200,35 @@ result-f`, which is opaque, where the emitter has `ir-to-trace' … f`. Closing
 return the correspondence. That is a structural change to the dispatcher
 interface, and it is a prerequisite for every composite constructor.
 
-**Decision.** NOT TAKEN — this needs a choice about what `next-slot` means:
+**Decision — TAKEN, and forced by the spec, not chosen.** The first draft of
+this entry left the choice open. Reading `Once.Spec` top-down closes it.
+
+`CorrectCompiler.correct` says, for the soundness half:
+
+    ∀ bytes → compile arch doOpt src ≡ just bytes →
+      Σ[ tp ∈ Typed ] ((src ⊢ tp) × Admissible arch tp
+                       × (exec arch bytes ≈ ⟦ arch ⟧ˢ tp))
+
+No `AllocState`, no `next-slot`, no abstract machine appears in the criterion.
+The only runtime in it is `exec arch bytes` — the CONCRETE machine on emitted
+bytes. And the emitted bytes reserve their slots exactly ONCE, in the
+prologue: `ir-stack-budget ir = proj-budget (ir-to-trace' 0 0 ir)`, with
+`frame-slots ≡ ir-stack-budget ir` at entry — which `X86-64` calls out as
+"what makes the slot cluster a theorem rather than an assumption".
+
+So there is no per-IR runtime slot allocation ANYWHERE in the artifact the
+spec talks about. `exec-abstract (instr-alloc-stack n)` bumping `next-slot`
+models nothing that exists. Option (b) below is therefore not a live
+alternative — it would make the abstract machine diverge from the bytes in
+order to make an internal lemma go through, which is the exact inversion of
+what a correctness proof is for.
+
+    (a) IS THE ANSWER. `next-slot` is a CONSTRUCTION-time frontier only —
+        the `n` that `ir-to-trace'` threads. `exec-trace`'s alloc must not
+        move it. Slot discipline is carried by `IRStackBudget` and the one
+        prologue reservation the criterion actually observes.
+
+For the record, the rejected alternative and why:
 
   (a) `exec-trace`'s alloc stops tracking `next-slot` at all. It becomes a
       construction-time frontier only; slot discipline is carried by the
@@ -11212,11 +11240,20 @@ interface, and it is a prerequisite for every composite constructor.
       `EmittableI`/`FrameFreeI`. This contradicts the current invariants and
       changes generated code.
 
-(a) is almost certainly right, but it changes `AllocState`/`exec-abstract`
-semantics for EVERY handler, so it is not a pair-local edit and must not be
-started as one.
+(a) changes `AllocState`/`exec-abstract` semantics for EVERY handler, so it is
+not a pair-local edit and must not be started as one — but it is no longer a
+judgement call about which internal design is nicer.
 
-**The general lesson.** A proof gap on a correspondence field does not mean
+**The general lesson.** An internal invariant is not free to be invented. Its
+shape is DERIVABLE from the spec, and deriving it is cheaper than discovering
+by eleven proof gaps that the invention cannot be reconciled with the emitted
+code. `next-slot` acquired a runtime meaning nothing in `CorrectCompiler` asks
+for; every proof written against that meaning was work that could not have
+closed. Proving things about a wrong internal abstraction does not produce a
+correctness proof — it relocates the gap to wherever the invention meets
+reality, which here was `trace-is-ir-to-trace`, eleven times.
+
+**The second lesson.** A proof gap on a correspondence field does not mean
 "this proof is not written yet". It can mean the two things being related are
 not relatable as stated. Eleven gaps that all name the same field, in every
 handler sharing one structural feature, is not eleven pieces of unfinished
