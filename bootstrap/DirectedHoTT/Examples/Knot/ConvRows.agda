@@ -65,7 +65,7 @@ IConv : RTy ε
 IConv = Σ' Nat (Σ' (IMu KnotD IPair (pair sTy (var vz)))
                   (IMu KnotD IPair (pair sTy (var (vs vz)))))
 
--- ⚠ NOT EMITTED — 0 of 4 rules:
+-- ✅ ALL 4 RULES EMITTED — nothing in this family is skipped.
 
 -- credᵀ
 ConvΑ0 : Ctx

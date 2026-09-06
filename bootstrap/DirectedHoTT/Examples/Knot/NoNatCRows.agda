@@ -63,7 +63,7 @@ open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 INoNatC : RTy ε
 INoNatC = Σ' Nat (IMu KnotD IPair (pair sTm (var vz)))
 
--- ⚠ NOT EMITTED — 0 of 7 rules:
+-- ✅ ALL 7 RULES EMITTED — nothing in this family is skipped.
 
 -- nnc-base
 NoNatCΑ0 : Ctx

@@ -65,7 +65,7 @@ ITyRed : RTy ε
 ITyRed = Σ' Nat (Σ' (IMu KnotD IPair (pair sTy (var vz)))
                   (IMu KnotD IPair (pair sTy (var (vs vz)))))
 
--- ⚠ NOT EMITTED — 0 of 26 rules:
+-- ✅ ALL 26 RULES EMITTED — nothing in this family is skipped.
 
 -- El-⌜base⌝
 TyRedΑ0 : Ctx

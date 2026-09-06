@@ -24,9 +24,6 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot6 where
 
-import DirectedHoTT.Examples.Knot.NoNatCRows
-import DirectedHoTT.Examples.Knot.NoNatCWf
-import DirectedHoTT.Examples.Knot.Nrs
 import DirectedHoTT.Examples.Knot.PayTy
 import DirectedHoTT.Examples.Knot.Pw
 import DirectedHoTT.Examples.Knot.PwBody
@@ -41,3 +38,7 @@ import DirectedHoTT.Examples.Knot.RenAgreeX
 import DirectedHoTT.Examples.Knot.RenClosed
 import DirectedHoTT.Examples.Knot.RenMot
 import DirectedHoTT.Examples.Knot.RenNat
+import DirectedHoTT.Examples.Knot.RenRed
+import DirectedHoTT.Examples.Knot.RenSpec
+import DirectedHoTT.Examples.Knot.RenTm
+import DirectedHoTT.Examples.Knot.Single
