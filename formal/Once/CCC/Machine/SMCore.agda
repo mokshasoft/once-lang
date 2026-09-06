@@ -1734,13 +1734,22 @@ module AbstractExec {FS : FrameSemantics} where
     exec-lea-indexed-via (slot-base (readLoc s (AtStack (current-frame alloc) slot)))
                          (sv-tag-val (readReg (regs s) Scratch)) s , alloc
 
-  -- instr-alloc-stack: advance the compile-time frontier by n.
-  -- Capacity was verified by Dispatcher when constructing the trace.
-  -- Plan 0.63: the LocState is now UNTOUCHED — the runtime `stackSlot` mirror
-  -- is gone, and the FLAT machine (which is the semantics of record) moves the
-  -- frame instead. This clause is the structured layer's degenerate model.
-  exec-abstract (instr-alloc-stack n) s alloc =
-    s , record alloc { next-slot = next-slot alloc + n }
+  -- instr-alloc-stack: a NO-OP, on both components (D150).
+  --
+  -- It used to advance `next-slot`. Nothing in the artifact `CorrectCompiler`
+  -- talks about does that: the criterion relates `exec arch bytes` to
+  -- `⟦ arch ⟧ˢ tp`, the emitted bytes reserve their slots exactly ONCE in the
+  -- prologue (`frame-slots ≡ ir-stack-budget ir` at entry), and `ir-to-trace'`
+  -- never emits this instruction at all — `EmittableI (instr-alloc-stack _) = ⊥`
+  -- states that outright.
+  --
+  -- So the bump modelled nothing that exists, and it made `next-slot` serve two
+  -- incompatible masters: a runtime quantity here, and the construction-time
+  -- frontier `ir-to-trace'` threads as its `n`. They agreed only inside WF
+  -- traces that contained this instruction — which is exactly why eleven
+  -- handlers could not prove `trace-is-ir-to-trace`. `next-slot` is now
+  -- construction-time ONLY, and no execution moves it.
+  exec-abstract (instr-alloc-stack n) s alloc = s , alloc
 
   -- instr-dealloc-stack: the structured layer's degenerate model — nothing to
   -- do now that the runtime mirror is gone.

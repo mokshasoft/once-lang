@@ -3586,15 +3586,14 @@ module RecSchemeSemantics {FS : FrameSemantics} where
         (tph-∷ iph-mov-to-output
           (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))))
 
-  -- After the 4-instr trace, alloc.next-slot is bumped by 1.
-  -- instr-alloc-stack bumps; the remaining 3 preserve alloc.
-  -- Note: returns the "raw" form `next-slot alloc + 1` (from
-  -- instr-alloc-stack 1's semantics). Callers can convert via
-  -- arithmetic if they want `suc (next-slot alloc)`.
+  -- D150: the 4-instr trace leaves `alloc` UNCHANGED. It used to bump
+  -- `next-slot` by 1, via `instr-alloc-stack 1`; that instruction is now a
+  -- no-op because `next-slot` is a construction-time frontier and nothing in
+  -- the emitted bytes moves it. The other three instructions always preserved
+  -- alloc, so the whole trace is now alloc-neutral.
   rec-scheme-alloc-correct-4 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
-    proj₂ (exec-trace (rec-scheme-trace-4 n) s alloc) ≡
-      record alloc { next-slot = Data.Nat._+_ (next-slot alloc) 1 }
+    proj₂ (exec-trace (rec-scheme-trace-4 n) s alloc) ≡ alloc
   rec-scheme-alloc-correct-4 n s alloc not-halted =
     let s₁ = proj₁ (exec-abstract (instr-alloc-stack 1) s alloc)
         alloc₁ = proj₂ (exec-abstract (instr-alloc-stack 1) s alloc)
