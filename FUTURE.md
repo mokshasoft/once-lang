@@ -1227,3 +1227,133 @@ indistinguishable from a good one."* `InIDD` is that hazard, realised.
 ⇒ ★ i.e. **turn every prose claim in an `Examples/` header into a
 proposition.** The technique is the one already built; what is missing is
 the pass.
+
+## Once: A TYPED METALANGUAGE FOR ITS OWN GENERATORS — "two-level Once"
+
+**The idea.** `DirectedHoTT/tools/gen-knot.py` is ~5 200 lines of
+*untyped* Python that emits Agda. The output is fully typechecked, so the
+TCB is not the issue. The issue is that the **generator** is a program
+like any other, and it is written in the one language in this repository
+that has no types. Give Once a static stage and the generator becomes an
+Once program — checked, not just its output.
+
+⚠ **The trust story is NOT the argument, and conflating them hides the
+real one.** "The generated code is checked, so Python is fine" answers a
+question nobody asked. Types do not only protect consumers; they make the
+*author* faster and the program more likely to be right the first time.
+That benefit is forfeited entirely today.
+
+### The evidence: five generator bugs in two days, all of a typeable kind
+
+| bug | what a type would have said |
+|---|---|
+| `_WRAP_LEDGER` had `subTmK` **twice**; Python keeps the last silently, so a `✅` vanished and neither existing gate could see it | a total map from the constructor enum — a duplicate key is not writable |
+| `_PRE_N` was a **count** that secretly carried `extNK`'s convention (`two` ⇒ `(d, pred d)`); `ipayTyKᵏ` also takes two and they are `(1, d)` | the domain was never `ℕ`; it is a *list of shift-expressions* (`_PRE_D`, the fix) |
+| `ihn` counted `recs` (recursive fields) where the type quantified over `ihs` (fields taking a hypothesis) — `CannotEliminateWithPattern` | two lists in lockstep ⇒ one length-indexed vector |
+| `_depth` answers `0` for **both** `D` and `lit(0)`, so a PINNED slot was indistinguishable from depth zero | a sum projected to `ℕ` loses its tag; don't project |
+| a `str.replace` on a header hit the wrong one of two near-identical templates; 59 modules failed 351 s later | a module header is a record, not a string |
+
+⇒ every one is a *representation* error: a sum flattened to a number, a
+list flattened to its length, a keyed map with no key discipline, a
+program manipulated as text. This is precisely the class typed
+metaprogramming removes, and it is not a small tail — it is most of what
+goes wrong in this generator.
+
+### The name for it, and the prior art
+
+Program generation / **staged metaprogramming** (MSP, Taha & Sheard). The
+distinction that matters here is exactly the untyped/typed one this entry
+is about:
+
+- **Template Haskell** — `Q Exp`, untyped; splices fail at the use site.
+- **Typed Template Haskell** — `Code Q a`: quoted code carries its object
+  type. ★ The single closest analogue to what is wanted.
+- **MetaOCaml** — `.<e>.` / `.~e`; generated code is guaranteed
+  well-typed *and* well-scoped.
+- **Two-level type theory** (Annenkov–Capriotti–Kraus–Sattler) and
+  **Kovács, *Staged Compilation with Two-Level Type Theory*, ICFP 2022** —
+  a static and a dynamic universe with a modality between them; staging
+  provably yields well-typed object code. This is the dependent-typed
+  answer, and Agda does not have it.
+- **MetaCoq**, **Idris 2 elaborator reflection** — the same move in
+  neighbouring systems.
+
+⚠ Agda *does* have reflection (`macro`, `unquoteDecl`), and it would be
+the wrong tool: `Term` is untyped, so a buggy macro reports at the splice
+site with no provenance. That is strictly worse to debug than a `.agda`
+file on disk which can be read, diffed and checked module by module —
+and it buys no type safety over Python.
+
+### ★★★ Why Once is unusually well placed — the knot is already half of it
+
+This is the striking part. **OCP-0009 has already built the object half
+of a staged system and did not set out to.**
+
+1. `Knot/Map.enTm : RTm Γ → RTm Γ'` is a **quoter**. Note the arbitrary
+   target context: a quoted term is closed data, exactly `Code`.
+2. `Knot/Desc.K i = IMu KnotD IPair i` is the **type of code**, and
+   `IPair = Σ' Nat Nat` — a (sort tag, depth) pair. So the knot's code is
+   already **scope-safe and sort-safe**: `K (pair sTm n)` is "a term at
+   depth `n`", and a generator that built a term at the wrong depth would
+   not typecheck.
+3. `PLAN-JUDGEMENT` step 4 (`prog` at the object level) is the *splice*
+   side, already on the roadmap for a different reason (dogfooding).
+
+⇒ what is missing is not the representation. It is (a) code indexed by
+its object **type**, not just its sort, and (b) a stage separation that
+says which computations run before the object program does.
+
+### ⚠ The obstacle is MEASURED, and it is the same 40×
+
+Making the knot's index carry the object type — `Code Γ A` instead of
+`K (sort, depth)` — is *precisely* "a datatype index that accumulates
+codes", which this project has already measured at **40×**
+(`datatype-indices-that-accumulate`: a `Def`-backed name shares, a
+datatype index cannot). It is also what
+`agda-perf-is-mutual-block-size` says is expensive: indices feed the
+positivity and termination graphs, which are 84 % of compile time.
+
+⇒ **the reason generation beats reification is the same reason the
+knot is sort-indexed rather than type-indexed.** One measurement, two
+consequences. Any "just index code by its type" proposal has to answer
+that number first, and Typed Template Haskell's `Code Q a` is the
+existence proof only for a *simply*-typed object language.
+
+### ⚠ QTT `{0,1,ω}` does NOT already give this
+
+Once's surface is graded, and grade `0` is tempting to read as "the
+static stage". It is not: erasure says *not needed at runtime*, staging
+says *computed before runtime*. A `0`-quantity value still cannot be
+matched on to emit different code. Idris 2 is the demonstration — it has
+QTT **and, separately,** elaborator reflection. ⇒ two-level Once is an
+addition to the grading story, not a corollary of it.
+
+### The honest counter-argument: the generator should be SHRINKING
+
+Every time a lemma lands in `Lib/`, generated bulk collapses —
+`Lib/ISzRed`'s header is literally titled *"WHY A LEMMA AND NOT 30
+CHAINS"*, and `isubMethod-red`, `ren-head-red`, `szsSum-red` each turned
+~10 lines per row into one. 2026-09-06 is another instance: five
+hand-written cross-sort agreement rows became **zero** once the emitter
+learned to *classify* a field (ford / ℕ / pinned / closed / ih).
+
+⇒ so the generator is a **staging area for discovering which parts are
+uniform**, and its answers keep migrating into Agda as `Lib` lemmas. If
+that trend continues to its limit, what is left to generate is a table
+and a call — and the case for a typed metalanguage weakens with it.
+⚠ But it has not reached that limit and will not soon: the emitter is
+still growing structure (`_AGREE_SORT`, `_fclass`, `_PRE_D` are all
+2026-09), and structure in an untyped language is where the five bugs
+above came from.
+
+### What would decide it
+
+1. **Count the residue.** Track generated lines per release. If it is
+   falling fast, wait; if it plateaus above ~2 000, the generator is a
+   permanent component and deserves a real language.
+2. **Try the cheap half first.** Do NOT start with `Code Γ A`. Start by
+   giving the *table* (`KNOT`, `FIELD_DEPTH`, `_PRE_D`, `_WRAP_LEDGER`) a
+   checked schema — that alone kills bugs 1, 2 and 4 above, and costs
+   nothing at the object level.
+3. **Then ask whether the type index pays**, with the 40 × measurement in
+   hand and a specific object-language fragment in mind.
