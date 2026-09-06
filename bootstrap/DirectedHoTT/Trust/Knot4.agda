@@ -28,6 +28,7 @@ import DirectedHoTT.Examples.Knot.JudgeWfAX
 import DirectedHoTT.Examples.Knot.JudgeWfAY
 import DirectedHoTT.Examples.Knot.JudgeWfAZ
 import DirectedHoTT.Examples.Knot.JudgeWfB
+import DirectedHoTT.Examples.Knot.JudgeWfBA
 import DirectedHoTT.Examples.Knot.JudgeWfC
 import DirectedHoTT.Examples.Knot.JudgeWfD
 import DirectedHoTT.Examples.Knot.JudgeWfE
@@ -40,4 +41,3 @@ import DirectedHoTT.Examples.Knot.JudgeWfK
 import DirectedHoTT.Examples.Knot.JudgeWfL
 import DirectedHoTT.Examples.Knot.JudgeWfM
 import DirectedHoTT.Examples.Knot.JudgeWfN
-import DirectedHoTT.Examples.Knot.JudgeWfO

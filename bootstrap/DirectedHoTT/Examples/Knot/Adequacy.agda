@@ -22,7 +22,7 @@
 --   only that each subject it builds is the one the rule names.  A full
 --   `enDeriv` would subsume it.
 --
--- ★ 32 checks.  ⚠ 12 subject(s) SKIPPED and named — a
+-- ★ 32 checks.  ⚠ 13 subject(s) SKIPPED and named — a
 --   translation mentioning the row's DEPTH has no meta-level depth to be
 --   instantiated at, and an `ICon` binder's scope is not named by its
 --   rule:
@@ -34,6 +34,7 @@
 --     ⊢jsub        applies subTmAtK
 --     ⊢natrec      applies subTyAtK
 --     ⊢con         _Undepthed
+--     ⊢icon        _Undepthed
 --     iwf-ρ        _Undepthed
 --     iwf-κ        _Undepthed
 --     icw-clo      applies εwkK
@@ -100,6 +101,8 @@
 --     ipayTyK    ⬜ OWED — agreement with `ipayTy`.
 --     ipayTyKap  ✅ not owed — a method row of `ipayTyK`.
 --     ipayTyRho  ✅ not owed — a method row of `ipayTyK`.
+--     isingleK   ⬜ OWED — `Represents (isingle i) (isingleK ⌈i⌉)`, one
+--                clause (`vz`) plus a refutation; see the note above.
 --     lookupDK   ⬜ OWED — agreement with `lookupD`.
 --     nrsK       ⬜ OWED — `nrsSubK`'s core.
 --     nrsSK-vs   ✅ not a program — the other clause.
