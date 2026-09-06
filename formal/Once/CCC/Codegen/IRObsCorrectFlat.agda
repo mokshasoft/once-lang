@@ -1074,12 +1074,68 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- It is still an axiom, but now it is an axiom of the right shape: `ihg` is
   -- instantiable exactly where `g` is emitted.
+  -- D152 A1: the RESULT-to-INPUT bridge, which piece (4) of `comp-step` is
+  -- about. `emitted n l (g ∘ f) = ft ++ mov-to-input ∷ gt`, so `g`'s input
+  -- residence is `f`'s RESULT residence carried across the mov — and the three
+  -- `ResultPlace` shapes map onto the three `InputAt` shapes one for one:
+  --
+  --     at-loc loc … rax-eq …  ↦  in-loc   (Output held a pointer)
+  --     at-reg fit rax-eq      ↦  in-reg   (Output held the literal)
+  --     unit-result            ↦  in-unit  (Unit has no residence)
+  --
+  -- Parameterised by the register equation the mov ESTABLISHES rather than by
+  -- the mov itself — the codebase's own rule (`ArithSimCore`): parameterise
+  -- over what holds AFTER the step, never over how the step is built. So this
+  -- says nothing about `flat-exec-instr` and is reusable wherever a value moves
+  -- Output → Input1.
+  -- `dflt` is any location at all: `in-reg` and `in-unit` do not constrain
+  -- the index, and there is no canonical `ValueLocation`, so the caller
+  -- supplies one (it always has `input-loc` to hand) rather than this lemma
+  -- inventing it.
+  result→input :
+    ∀ {B} {v : ⟦ B ⟧} {mOut alloc ca} {s s' : LocState FS}
+      (dflt : ValueLocation FS)
+    → ResultPlace B mOut alloc ca v s
+    → readReg (regs s') Input1 ≡ readReg (regs s) Output
+    → ∃[ loc ] InputAt v loc s'
+  result→input dflt (at-loc loc _ _ rax-eq _ _) mov-eq =
+    loc , in-loc (trans mov-eq rax-eq)
+  result→input dflt (at-reg fit rax-eq) mov-eq =
+    dflt , in-reg fit (trans mov-eq rax-eq)
+  result→input dflt unit-result _ =
+    dflt , in-unit refl
+
+  -- D152 A1, TOP-DOWN ASSEMBLY. `comp-step` is no longer one axiom: the
+  -- record has exactly two fields, so the goal splits into exactly two
+  -- obligations, each carrying the field's own type. Nothing is glued upward
+  -- from the four supporting pieces — each obligation states what it needs and
+  -- the pieces are consumed where the goal asks for them.
   postulate
-    comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc}
-                  (n l : ℕ)
-              → ir-size g < program-bound
-              → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc
-              → MachineRefinesObsF n l (g ∘ f) x s alloc
+    comp-traces-agree :
+      ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc} (n l : ℕ)
+      → ir-size g < program-bound
+      → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc
+      → ∀ (k : ℕ) → ∃[ fu ]
+          take k (flat-events fu (emitted n l (g ∘ f)) (mkFlat s alloc 0))
+            ≡ take k (projTrace (evalᴰ (g ∘ f) (inject x)) k)
+    comp-value-realized :
+      ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc} (n l : ℕ)
+      → ir-size g < program-bound
+      → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc
+      → ∃[ fu ] ∃[ mOut ] ∃[ ca ]
+          ResultPlace C mOut (falloc (flat-run fu n l (g ∘ f) s alloc)) ca
+            (eval (g ∘ f) x)
+            (forced (floc (flat-run fu n l (g ∘ f) s alloc)))
+
+  comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc}
+                (n l : ℕ)
+            → ir-size g < program-bound
+            → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc
+            → MachineRefinesObsF n l (g ∘ f) x s alloc
+  comp-step n l szg ihg mf = record
+    { traces-agree   = comp-traces-agree   n l szg ihg mf
+    ; value-realized = comp-value-realized n l szg ihg mf
+    }
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
