@@ -46,6 +46,8 @@ open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢
 open import DirectedHoTT.Examples.Knot.LookupD using ( lookupDK; ⊢lookupDK )
 open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK )
 open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )
+-- ★ `⊢elim`'s method-tuple type.
+open import DirectedHoTT.Examples.Knot.MethsTy using ( methsTyFromK; ⊢methsTyFromK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -94,9 +96,8 @@ IJudge =
           (Σ' Nat
               (IMu IxD INat (var (vs (vs (vs (vs vz))))))))))
 
--- ⚠ NOT EMITTED — 3 of 56 rules:
+-- ⚠ NOT EMITTED — 2 of 56 rules:
 --     ⊢tr        premise 'occTm vz c ≡ false'
---     ⊢elim      unmapped ['methsTyFrom']
 --     ⊢ielim     unmapped ['imethsTy']
 
 -- ty-base
@@ -3119,7 +3120,7 @@ XJΞΒ14 = XJΞΒ13 ∙
 jd⊢con : ICon (ε ∙)
 jd⊢con = iκ kJΞΒ0 (iκ kJΞΒ1 (iκ kJΞΒ2 (iκ kJΞΒ3 (iκ kJΞΒ4 (iκ kJΞΒ5 (iρ kJΞΒ6 (iρ kJΞΒ7 (iκ kJΞΒ8 (iκ kJΞΒ9 (iκ kJΞΒ10 (iκ kJΞΒ11 (iκ kJΞΒ12 (iκ kJΞΒ13 (iι))))))))))))))
 
--- ⊢icon
+-- ⊢elim
 JΟΒ0 : Ctx
 JΟΒ0 = ◇ ▹ εwkTy IJudge
 
@@ -3136,99 +3137,93 @@ JΟΒ2 : Ctx
 JΟΒ2 = JΟΒ1 ▹ El kJΟΒ1
 
 kJΟΒ2 : RTm ⌊ JΟΒ2 ⌋
-kJΟΒ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
+kJΟΒ2 = ⌜IMu⌝ KnotD IPair (pair sDesc nzero)
 
 JΟΒ3 : Ctx
 JΟΒ3 = JΟΒ2 ▹ El kJΟΒ2
 
 kJΟΒ3 : RTm ⌊ JΟΒ3 ⌋
-kJΟΒ3 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs vz))))
+kJΟΒ3 = ⌜IMu⌝ KnotD IPair (pair sTy (nsuc (var (vs (vs vz)))))
 
 JΟΒ4 : Ctx
 JΟΒ4 = JΟΒ3 ▹ El kJΟΒ3
 
 kJΟΒ4 : RTm ⌊ JΟΒ4 ⌋
-kJΟΒ4 = ⌜IMu⌝ KnotD IPair (pair sIDesc nzero)
+kJΟΒ4 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs (vs vz)))))
 
 JΟΒ5 : Ctx
 JΟΒ5 = JΟΒ4 ▹ El kJΟΒ4
 
 kJΟΒ5 : RTm ⌊ JΟΒ5 ⌋
-kJΟΒ5 = ⌜IMu⌝ KnotD IPair (pair sTy nzero)
+kJΟΒ5 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs (vs (vs vz))))))
 
 JΟΒ6 : Ctx
 JΟΒ6 = JΟΒ5 ▹ El kJΟΒ5
 
 kJΟΒ6 : RTm ⌊ JΟΒ6 ⌋
-kJΟΒ6 = ⌜Nat⌝
+kJΟΒ6 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 3) (IxDescK (num 0) (var (vs (vs (vs vz)))))))))
 
-JΟΒ7 : Ctx
-JΟΒ7 = JΟΒ6 ▹ El kJΟΒ6
+XJΟΒ7 : Cx
+XJΟΒ7 = ⌊ JΟΒ6 ⌋ ∙
 
-kJΟΒ7 : RTm ⌊ JΟΒ7 ⌋
-kJΟΒ7 = ⌜IMu⌝ InIDD IInID (pair (num 0) (pair (var vz) (var (vs (vs vz)))))
+kJΟΒ7 : RTm XJΟΒ7
+kJΟΒ7 = pair (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (pair (Ctx-extK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (Ty-MuK (εwkK sDesc (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz)))))))) (pair Tm-unitK (pair (var (vs (vs (vs vz)))) (pair (num 0) (IxNoneK (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))))))))
 
-JΟΒ8 : Ctx
-JΟΒ8 = JΟΒ7 ▹ El kJΟΒ7
+XJΟΒ8 : Cx
+XJΟΒ8 = XJΟΒ7 ∙
 
-kJΟΒ8 : RTm ⌊ JΟΒ8 ⌋
-kJΟΒ8 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 6) (IxIDescK (num 0) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var (vs (vs (vs vz)))))))))
+kJΟΒ8 : RTm XJΟΒ8
+kJΟΒ8 = pair (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (pair (var (vs (vs (vs (vs (vs (vs vz))))))) (pair (var (vs (vs (vs vz)))) (pair (methsTyFromK (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (εwkK sDesc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) nzero (εwkK sDesc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz)))))))) (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))
 
 XJΟΒ9 : Cx
-XJΟΒ9 = ⌊ JΟΒ8 ⌋ ∙
+XJΟΒ9 = XJΟΒ8 ∙
 
 kJΟΒ9 : RTm XJΟΒ9
-kJΟΒ9 = pair (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (pair (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (pair (var (vs (vs (vs (vs (vs (vs vz))))))) (pair (εwkK sTy (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs vz))))) (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))
+kJΟΒ9 = pair (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (pair (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (pair (var (vs (vs (vs vz)))) (pair (Ty-MuK (εwkK sDesc (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs vz))))))))) (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))
 
 XJΟΒ10 : Cx
 XJΟΒ10 = XJΟΒ9 ∙
 
 kJΟΒ10 : RTm XJΟΒ10
-kJΟΒ10 = pair (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (pair (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (pair (var (vs (vs (vs (vs (vs (vs vz))))))) (pair (ipayTyKᵏ (num 1) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (εwkK sIDesc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) (isingleK (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (ilookupDK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (εwkK sIDesc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz)))))) (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))
+kJΟΒ10 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))
 
 XJΟΒ11 : Cx
 XJΟΒ11 = XJΟΒ10 ∙
 
 kJΟΒ11 : RTm XJΟΒ11
-kJΟΒ11 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
+kJΟΒ11 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var vz)) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
 
 XJΟΒ12 : Cx
 XJΟΒ12 = XJΟΒ11 ∙
 
 kJΟΒ12 : RTm XJΟΒ12
-kJΟΒ12 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var vz)) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
+kJΟΒ12 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs vz))) (Tm-elimK (εwkK sDesc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs (vs vz)))))))))
 
 XJΟΒ13 : Cx
 XJΟΒ13 = XJΟΒ12 ∙
 
 kJΟΒ13 : RTm XJΟΒ13
-kJΟΒ13 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (var (vs vz))) (Tm-iconK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
+kJΟΒ13 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (var (vs (vs vz)))) (subTyAtK (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (singleK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
 
 XJΟΒ14 : Cx
 XJΟΒ14 = XJΟΒ13 ∙
 
 kJΟΒ14 : RTm XJΟΒ14
-kJΟΒ14 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (var (vs (vs vz)))) (Ty-IMuK (εwkK sIDesc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))
+kJΟΒ14 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (var (vs (vs (vs vz))))) (num 1))
 
 XJΟΒ15 : Cx
 XJΟΒ15 = XJΟΒ14 ∙
 
 kJΟΒ15 : RTm XJΟΒ15
-kJΟΒ15 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (var (vs (vs (vs vz))))) (num 1))
+kJΟΒ15 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))
 
 XJΟΒ16 : Cx
 XJΟΒ16 = XJΟΒ15 ∙
 
-kJΟΒ16 : RTm XJΟΒ16
-kJΟΒ16 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))
+jd⊢elim : ICon (ε ∙)
+jd⊢elim = iκ kJΟΒ0 (iκ kJΟΒ1 (iκ kJΟΒ2 (iκ kJΟΒ3 (iκ kJΟΒ4 (iκ kJΟΒ5 (iρ kJΟΒ6 (iρ kJΟΒ7 (iρ kJΟΒ8 (iρ kJΟΒ9 (iκ kJΟΒ10 (iκ kJΟΒ11 (iκ kJΟΒ12 (iκ kJΟΒ13 (iκ kJΟΒ14 (iκ kJΟΒ15 (iι))))))))))))))))
 
-XJΟΒ17 : Cx
-XJΟΒ17 = XJΟΒ16 ∙
-
-jd⊢icon : ICon (ε ∙)
-jd⊢icon = iκ kJΟΒ0 (iκ kJΟΒ1 (iκ kJΟΒ2 (iκ kJΟΒ3 (iκ kJΟΒ4 (iκ kJΟΒ5 (iκ kJΟΒ6 (iκ kJΟΒ7 (iρ kJΟΒ8 (iρ kJΟΒ9 (iρ kJΟΒ10 (iκ kJΟΒ11 (iκ kJΟΒ12 (iκ kJΟΒ13 (iκ kJΟΒ14 (iκ kJΟΒ15 (iκ kJΟΒ16 (iι)))))))))))))))))
-
--- ⊢conv
+-- ⊢icon
 JΠΒ0 : Ctx
 JΠΒ0 = ◇ ▹ εwkTy IJudge
 
@@ -3251,69 +3246,93 @@ JΠΒ3 : Ctx
 JΠΒ3 = JΠΒ2 ▹ El kJΠΒ2
 
 kJΠΒ3 : RTm ⌊ JΠΒ3 ⌋
-kJΠΒ3 = ⌜IMu⌝ KnotD IPair (pair sTy (var (vs (vs vz))))
+kJΠΒ3 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs vz))))
 
 JΠΒ4 : Ctx
 JΠΒ4 = JΠΒ3 ▹ El kJΠΒ3
 
 kJΠΒ4 : RTm ⌊ JΠΒ4 ⌋
-kJΠΒ4 = ⌜IMu⌝ KnotD IPair (pair sTy (var (vs (vs (vs vz)))))
+kJΠΒ4 = ⌜IMu⌝ KnotD IPair (pair sIDesc nzero)
 
 JΠΒ5 : Ctx
 JΠΒ5 = JΠΒ4 ▹ El kJΠΒ4
 
 kJΠΒ5 : RTm ⌊ JΠΒ5 ⌋
-kJΠΒ5 = ⌜IMu⌝ ConvD IConv (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs vz)) (var vz)))
+kJΠΒ5 = ⌜IMu⌝ KnotD IPair (pair sTy nzero)
 
 JΠΒ6 : Ctx
 JΠΒ6 = JΠΒ5 ▹ El kJΠΒ5
 
 kJΠΒ6 : RTm ⌊ JΠΒ6 ⌋
-kJΠΒ6 = pair (var (vs (vs (vs (vs (vs vz)))))) (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs (vs vz)))) (pair (var (vs (vs vz))) (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs vz)))))))))))
+kJΠΒ6 = ⌜Nat⌝
 
-XJΠΒ7 : Cx
-XJΠΒ7 = ⌊ JΠΒ6 ⌋ ∙
+JΠΒ7 : Ctx
+JΠΒ7 = JΠΒ6 ▹ El kJΠΒ6
 
-kJΠΒ7 : RTm XJΠΒ7
-kJΠΒ7 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs vz)))))))
+kJΠΒ7 : RTm ⌊ JΠΒ7 ⌋
+kJΠΒ7 = ⌜IMu⌝ InIDD IInID (pair (num 0) (pair (var vz) (var (vs (vs vz)))))
 
-XJΠΒ8 : Cx
-XJΠΒ8 = XJΠΒ7 ∙
+JΠΒ8 : Ctx
+JΠΒ8 = JΠΒ7 ▹ El kJΠΒ7
 
-kJΠΒ8 : RTm XJΠΒ8
-kJΠΒ8 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var vz)) (var (vs (vs (vs (vs (vs (vs vz))))))))
+kJΠΒ8 : RTm ⌊ JΠΒ8 ⌋
+kJΠΒ8 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 6) (IxIDescK (num 0) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var (vs (vs (vs vz)))))))))
 
 XJΠΒ9 : Cx
-XJΠΒ9 = XJΠΒ8 ∙
+XJΠΒ9 = ⌊ JΠΒ8 ⌋ ∙
 
 kJΠΒ9 : RTm XJΠΒ9
-kJΠΒ9 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz))) (var (vs (vs (vs (vs (vs (vs vz))))))))
+kJΠΒ9 = pair (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (pair (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (pair (var (vs (vs (vs (vs (vs (vs vz))))))) (pair (εwkK sTy (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs vz))))) (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))
 
 XJΠΒ10 : Cx
 XJΠΒ10 = XJΠΒ9 ∙
 
 kJΠΒ10 : RTm XJΠΒ10
-kJΠΒ10 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs vz)))) (var (vs (vs (vs (vs (vs vz)))))))
+kJΠΒ10 = pair (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (pair (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (pair (var (vs (vs (vs (vs (vs (vs vz))))))) (pair (ipayTyKᵏ (num 1) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (εwkK sIDesc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) (isingleK (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (ilookupDK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (εwkK sIDesc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz)))))) (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))
 
 XJΠΒ11 : Cx
 XJΠΒ11 = XJΠΒ10 ∙
 
 kJΠΒ11 : RTm XJΠΒ11
-kJΠΒ11 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs vz))))) (num 1))
+kJΠΒ11 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
 
 XJΠΒ12 : Cx
 XJΠΒ12 = XJΠΒ11 ∙
 
 kJΠΒ12 : RTm XJΠΒ12
-kJΠΒ12 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))
+kJΠΒ12 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var vz)) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
 
 XJΠΒ13 : Cx
 XJΠΒ13 = XJΠΒ12 ∙
 
-jd⊢conv : ICon (ε ∙)
-jd⊢conv = iκ kJΠΒ0 (iκ kJΠΒ1 (iκ kJΠΒ2 (iκ kJΠΒ3 (iκ kJΠΒ4 (iκ kJΠΒ5 (iρ kJΠΒ6 (iκ kJΠΒ7 (iκ kJΠΒ8 (iκ kJΠΒ9 (iκ kJΠΒ10 (iκ kJΠΒ11 (iκ kJΠΒ12 (iι)))))))))))))
+kJΠΒ13 : RTm XJΠΒ13
+kJΠΒ13 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (var (vs vz))) (Tm-iconK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
 
--- dwf-ι
+XJΠΒ14 : Cx
+XJΠΒ14 = XJΠΒ13 ∙
+
+kJΠΒ14 : RTm XJΠΒ14
+kJΠΒ14 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (var (vs (vs vz)))) (Ty-IMuK (εwkK sIDesc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))
+
+XJΠΒ15 : Cx
+XJΠΒ15 = XJΠΒ14 ∙
+
+kJΠΒ15 : RTm XJΠΒ15
+kJΠΒ15 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (var (vs (vs (vs vz))))) (num 1))
+
+XJΠΒ16 : Cx
+XJΠΒ16 = XJΠΒ15 ∙
+
+kJΠΒ16 : RTm XJΠΒ16
+kJΠΒ16 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))
+
+XJΠΒ17 : Cx
+XJΠΒ17 = XJΠΒ16 ∙
+
+jd⊢icon : ICon (ε ∙)
+jd⊢icon = iκ kJΠΒ0 (iκ kJΠΒ1 (iκ kJΠΒ2 (iκ kJΠΒ3 (iκ kJΠΒ4 (iκ kJΠΒ5 (iκ kJΠΒ6 (iκ kJΠΒ7 (iρ kJΠΒ8 (iρ kJΠΒ9 (iρ kJΠΒ10 (iκ kJΠΒ11 (iκ kJΠΒ12 (iκ kJΠΒ13 (iκ kJΠΒ14 (iκ kJΠΒ15 (iκ kJΠΒ16 (iι)))))))))))))))))
+
+-- ⊢conv
 JΡΒ0 : Ctx
 JΡΒ0 = ◇ ▹ εwkTy IJudge
 
@@ -3324,45 +3343,81 @@ JΡΒ1 : Ctx
 JΡΒ1 = JΡΒ0 ▹ El kJΡΒ0
 
 kJΡΒ1 : RTm ⌊ JΡΒ1 ⌋
-kJΡΒ1 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) (num 0)
+kJΡΒ1 = ⌜IMu⌝ CtxD INat (var vz)
 
 JΡΒ2 : Ctx
 JΡΒ2 = JΡΒ1 ▹ El kJΡΒ1
 
 kJΡΒ2 : RTm ⌊ JΡΒ2 ⌋
-kJΡΒ2 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs vz))))) (fst (snd (var (vs (vs vz))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs vz)))) (var vz)) Ctx-empK)
+kJΡΒ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
 
 JΡΒ3 : Ctx
 JΡΒ3 = JΡΒ2 ▹ El kJΡΒ2
 
 kJΡΒ3 : RTm ⌊ JΡΒ3 ⌋
-kJΡΒ3 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs vz))))))) (fst (snd (snd (var (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs vz))))) (var (vs vz))) Tm-unitK)
+kJΡΒ3 = ⌜IMu⌝ KnotD IPair (pair sTy (var (vs (vs vz))))
 
 JΡΒ4 : Ctx
 JΡΒ4 = JΡΒ3 ▹ El kJΡΒ3
 
 kJΡΒ4 : RTm ⌊ JΡΒ4 ⌋
-kJΡΒ4 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs vz)))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs vz)))))) (var (vs (vs vz)))) Ty-NatK)
+kJΡΒ4 = ⌜IMu⌝ KnotD IPair (pair sTy (var (vs (vs (vs vz)))))
 
 JΡΒ5 : Ctx
 JΡΒ5 = JΡΒ4 ▹ El kJΡΒ4
 
 kJΡΒ5 : RTm ⌊ JΡΒ5 ⌋
-kJΡΒ5 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs vz))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz))))) (num 2))
+kJΡΒ5 = ⌜IMu⌝ ConvD IConv (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs vz)) (var vz)))
 
 JΡΒ6 : Ctx
 JΡΒ6 = JΡΒ5 ▹ El kJΡΒ5
 
 kJΡΒ6 : RTm ⌊ JΡΒ6 ⌋
-kJΡΒ6 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs vz))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs vz)))))) (IxDConK (num 0) DCon-iK))
+kJΡΒ6 = pair (var (vs (vs (vs (vs (vs vz)))))) (pair (var (vs (vs (vs (vs vz))))) (pair (var (vs (vs (vs vz)))) (pair (var (vs (vs vz))) (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs vz)))))))))))
 
-JΡΒ7 : Ctx
-JΡΒ7 = JΡΒ6 ▹ El kJΡΒ6
+XJΡΒ7 : Cx
+XJΡΒ7 = ⌊ JΡΒ6 ⌋ ∙
 
-jddwf-ι : ICon (ε ∙)
-jddwf-ι = iκ kJΡΒ0 (iκ kJΡΒ1 (iκ kJΡΒ2 (iκ kJΡΒ3 (iκ kJΡΒ4 (iκ kJΡΒ5 (iκ kJΡΒ6 (iι)))))))
+kJΡΒ7 : RTm XJΡΒ7
+kJΡΒ7 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs vz)))))))
 
--- dwf-ρ
+XJΡΒ8 : Cx
+XJΡΒ8 = XJΡΒ7 ∙
+
+kJΡΒ8 : RTm XJΡΒ8
+kJΡΒ8 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var vz)) (var (vs (vs (vs (vs (vs (vs vz))))))))
+
+XJΡΒ9 : Cx
+XJΡΒ9 = XJΡΒ8 ∙
+
+kJΡΒ9 : RTm XJΡΒ9
+kJΡΒ9 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz))) (var (vs (vs (vs (vs (vs (vs vz))))))))
+
+XJΡΒ10 : Cx
+XJΡΒ10 = XJΡΒ9 ∙
+
+kJΡΒ10 : RTm XJΡΒ10
+kJΡΒ10 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs vz)))) (var (vs (vs (vs (vs (vs vz)))))))
+
+XJΡΒ11 : Cx
+XJΡΒ11 = XJΡΒ10 ∙
+
+kJΡΒ11 : RTm XJΡΒ11
+kJΡΒ11 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs vz))))) (num 1))
+
+XJΡΒ12 : Cx
+XJΡΒ12 = XJΡΒ11 ∙
+
+kJΡΒ12 : RTm XJΡΒ12
+kJΡΒ12 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))
+
+XJΡΒ13 : Cx
+XJΡΒ13 = XJΡΒ12 ∙
+
+jd⊢conv : ICon (ε ∙)
+jd⊢conv = iκ kJΡΒ0 (iκ kJΡΒ1 (iκ kJΡΒ2 (iκ kJΡΒ3 (iκ kJΡΒ4 (iκ kJΡΒ5 (iρ kJΡΒ6 (iκ kJΡΒ7 (iκ kJΡΒ8 (iκ kJΡΒ9 (iκ kJΡΒ10 (iκ kJΡΒ11 (iκ kJΡΒ12 (iι)))))))))))))
+
+-- dwf-ι
 JΣΒ0 : Ctx
 JΣΒ0 = ◇ ▹ εwkTy IJudge
 
@@ -3373,57 +3428,45 @@ JΣΒ1 : Ctx
 JΣΒ1 = JΣΒ0 ▹ El kJΣΒ0
 
 kJΣΒ1 : RTm ⌊ JΣΒ1 ⌋
-kJΣΒ1 = ⌜IMu⌝ KnotD IPair (pair sDCon nzero)
+kJΣΒ1 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) (num 0)
 
 JΣΒ2 : Ctx
 JΣΒ2 = JΣΒ1 ▹ El kJΣΒ1
 
 kJΣΒ2 : RTm ⌊ JΣΒ2 ⌋
-kJΣΒ2 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 2) (IxDConK (num 0) (var vz))))))
+kJΣΒ2 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs vz))))) (fst (snd (var (vs (vs vz))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs vz)))) (var vz)) Ctx-empK)
 
-XJΣΒ3 : Cx
-XJΣΒ3 = ⌊ JΣΒ2 ⌋ ∙
+JΣΒ3 : Ctx
+JΣΒ3 = JΣΒ2 ▹ El kJΣΒ2
 
-kJΣΒ3 : RTm XJΣΒ3
-kJΣΒ3 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) (num 0)
+kJΣΒ3 : RTm ⌊ JΣΒ3 ⌋
+kJΣΒ3 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs vz))))))) (fst (snd (snd (var (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs vz))))) (var (vs vz))) Tm-unitK)
 
-XJΣΒ4 : Cx
-XJΣΒ4 = XJΣΒ3 ∙
+JΣΒ4 : Ctx
+JΣΒ4 = JΣΒ3 ▹ El kJΣΒ3
 
-kJΣΒ4 : RTm XJΣΒ4
-kJΣΒ4 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs vz))))))) (fst (snd (var (vs (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs vz)))))) (var vz)) Ctx-empK)
+kJΣΒ4 : RTm ⌊ JΣΒ4 ⌋
+kJΣΒ4 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs vz)))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs vz)))))) (var (vs (vs vz)))) Ty-NatK)
 
-XJΣΒ5 : Cx
-XJΣΒ5 = XJΣΒ4 ∙
+JΣΒ5 : Ctx
+JΣΒ5 = JΣΒ4 ▹ El kJΣΒ4
 
-kJΣΒ5 : RTm XJΣΒ5
-kJΣΒ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs vz))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs vz))) Tm-unitK)
+kJΣΒ5 : RTm ⌊ JΣΒ5 ⌋
+kJΣΒ5 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs vz))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz))))) (num 2))
 
-XJΣΒ6 : Cx
-XJΣΒ6 = XJΣΒ5 ∙
+JΣΒ6 : Ctx
+JΣΒ6 = JΣΒ5 ▹ El kJΣΒ5
 
-kJΣΒ6 : RTm XJΣΒ6
-kJΣΒ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs vz)))) Ty-NatK)
+kJΣΒ6 : RTm ⌊ JΣΒ6 ⌋
+kJΣΒ6 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs vz))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs vz)))))) (IxDConK (num 0) DCon-iK))
 
-XJΣΒ7 : Cx
-XJΣΒ7 = XJΣΒ6 ∙
+JΣΒ7 : Ctx
+JΣΒ7 = JΣΒ6 ▹ El kJΣΒ6
 
-kJΣΒ7 : RTm XJΣΒ7
-kJΣΒ7 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs vz))))) (num 2))
+jddwf-ι : ICon (ε ∙)
+jddwf-ι = iκ kJΣΒ0 (iκ kJΣΒ1 (iκ kJΣΒ2 (iκ kJΣΒ3 (iκ kJΣΒ4 (iκ kJΣΒ5 (iκ kJΣΒ6 (iι)))))))
 
-XJΣΒ8 : Cx
-XJΣΒ8 = XJΣΒ7 ∙
-
-kJΣΒ8 : RTm XJΣΒ8
-kJΣΒ8 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs vz)))))) (IxDConK (num 0) (DCon-rhoK (var (vs (vs (vs (vs (vs (vs vz))))))))))
-
-XJΣΒ9 : Cx
-XJΣΒ9 = XJΣΒ8 ∙
-
-jddwf-ρ : ICon (ε ∙)
-jddwf-ρ = iκ kJΣΒ0 (iκ kJΣΒ1 (iρ kJΣΒ2 (iκ kJΣΒ3 (iκ kJΣΒ4 (iκ kJΣΒ5 (iκ kJΣΒ6 (iκ kJΣΒ7 (iκ kJΣΒ8 (iι)))))))))
-
--- dwf-κ
+-- dwf-ρ
 JΤΒ0 : Ctx
 JΤΒ0 = ◇ ▹ εwkTy IJudge
 
@@ -3440,63 +3483,51 @@ JΤΒ2 : Ctx
 JΤΒ2 = JΤΒ1 ▹ El kJΤΒ1
 
 kJΤΒ2 : RTm ⌊ JΤΒ2 ⌋
-kJΤΒ2 = ⌜IMu⌝ KnotD IPair (pair sTm nzero)
+kJΤΒ2 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 2) (IxDConK (num 0) (var vz))))))
 
-JΤΒ3 : Ctx
-JΤΒ3 = JΤΒ2 ▹ El kJΤΒ2
+XJΤΒ3 : Cx
+XJΤΒ3 = ⌊ JΤΒ2 ⌋ ∙
 
-kJΤΒ3 : RTm ⌊ JΤΒ3 ⌋
-kJΤΒ3 = pair (num 0) (pair Ctx-empK (pair (var vz) (pair Ty-UK (pair (num 1) (IxNoneK (num 0))))))
+kJΤΒ3 : RTm XJΤΒ3
+kJΤΒ3 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) (num 0)
 
 XJΤΒ4 : Cx
-XJΤΒ4 = ⌊ JΤΒ3 ⌋ ∙
+XJΤΒ4 = XJΤΒ3 ∙
 
 kJΤΒ4 : RTm XJΤΒ4
-kJΤΒ4 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 2) (IxDConK (num 0) (var (vs (vs vz))))))))
+kJΤΒ4 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs vz))))))) (fst (snd (var (vs (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs vz)))))) (var vz)) Ctx-empK)
 
 XJΤΒ5 : Cx
 XJΤΒ5 = XJΤΒ4 ∙
 
 kJΤΒ5 : RTm XJΤΒ5
-kJΤΒ5 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) (num 0)
+kJΤΒ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs vz))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs vz))) Tm-unitK)
 
 XJΤΒ6 : Cx
 XJΤΒ6 = XJΤΒ5 ∙
 
 kJΤΒ6 : RTm XJΤΒ6
-kJΤΒ6 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs vz))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) Ctx-empK)
+kJΤΒ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs vz)))) Ty-NatK)
 
 XJΤΒ7 : Cx
 XJΤΒ7 = XJΤΒ6 ∙
 
 kJΤΒ7 : RTm XJΤΒ7
-kJΤΒ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) Tm-unitK)
+kJΤΒ7 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs vz))))) (num 2))
 
 XJΤΒ8 : Cx
 XJΤΒ8 = XJΤΒ7 ∙
 
 kJΤΒ8 : RTm XJΤΒ8
-kJΤΒ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs vz)))) Ty-NatK)
+kJΤΒ8 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs vz)))))) (IxDConK (num 0) (DCon-rhoK (var (vs (vs (vs (vs (vs (vs vz))))))))))
 
 XJΤΒ9 : Cx
 XJΤΒ9 = XJΤΒ8 ∙
 
-kJΤΒ9 : RTm XJΤΒ9
-kJΤΒ9 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs vz))))) (num 2))
+jddwf-ρ : ICon (ε ∙)
+jddwf-ρ = iκ kJΤΒ0 (iκ kJΤΒ1 (iρ kJΤΒ2 (iκ kJΤΒ3 (iκ kJΤΒ4 (iκ kJΤΒ5 (iκ kJΤΒ6 (iκ kJΤΒ7 (iκ kJΤΒ8 (iι)))))))))
 
-XJΤΒ10 : Cx
-XJΤΒ10 = XJΤΒ9 ∙
-
-kJΤΒ10 : RTm XJΤΒ10
-kJΤΒ10 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs vz)))))) (IxDConK (num 0) (DCon-kapK (Ty-ElK (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
-
-XJΤΒ11 : Cx
-XJΤΒ11 = XJΤΒ10 ∙
-
-jddwf-κ : ICon (ε ∙)
-jddwf-κ = iκ kJΤΒ0 (iκ kJΤΒ1 (iκ kJΤΒ2 (iρ kJΤΒ3 (iρ kJΤΒ4 (iκ kJΤΒ5 (iκ kJΤΒ6 (iκ kJΤΒ7 (iκ kJΤΒ8 (iκ kJΤΒ9 (iκ kJΤΒ10 (iι)))))))))))
-
--- dwf-nil
+-- dwf-κ
 JΥΒ0 : Ctx
 JΥΒ0 = ◇ ▹ εwkTy IJudge
 
@@ -3507,45 +3538,69 @@ JΥΒ1 : Ctx
 JΥΒ1 = JΥΒ0 ▹ El kJΥΒ0
 
 kJΥΒ1 : RTm ⌊ JΥΒ1 ⌋
-kJΥΒ1 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) (num 0)
+kJΥΒ1 = ⌜IMu⌝ KnotD IPair (pair sDCon nzero)
 
 JΥΒ2 : Ctx
 JΥΒ2 = JΥΒ1 ▹ El kJΥΒ1
 
 kJΥΒ2 : RTm ⌊ JΥΒ2 ⌋
-kJΥΒ2 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs vz))))) (fst (snd (var (vs (vs vz))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs vz)))) (var vz)) Ctx-empK)
+kJΥΒ2 = ⌜IMu⌝ KnotD IPair (pair sTm nzero)
 
 JΥΒ3 : Ctx
 JΥΒ3 = JΥΒ2 ▹ El kJΥΒ2
 
 kJΥΒ3 : RTm ⌊ JΥΒ3 ⌋
-kJΥΒ3 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs vz))))))) (fst (snd (snd (var (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs vz))))) (var (vs vz))) Tm-unitK)
+kJΥΒ3 = pair (num 0) (pair Ctx-empK (pair (var vz) (pair Ty-UK (pair (num 1) (IxNoneK (num 0))))))
 
-JΥΒ4 : Ctx
-JΥΒ4 = JΥΒ3 ▹ El kJΥΒ3
+XJΥΒ4 : Cx
+XJΥΒ4 = ⌊ JΥΒ3 ⌋ ∙
 
-kJΥΒ4 : RTm ⌊ JΥΒ4 ⌋
-kJΥΒ4 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs vz)))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs vz)))))) (var (vs (vs vz)))) Ty-NatK)
+kJΥΒ4 : RTm XJΥΒ4
+kJΥΒ4 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 2) (IxDConK (num 0) (var (vs (vs vz))))))))
 
-JΥΒ5 : Ctx
-JΥΒ5 = JΥΒ4 ▹ El kJΥΒ4
+XJΥΒ5 : Cx
+XJΥΒ5 = XJΥΒ4 ∙
 
-kJΥΒ5 : RTm ⌊ JΥΒ5 ⌋
-kJΥΒ5 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs vz))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz))))) (num 3))
+kJΥΒ5 : RTm XJΥΒ5
+kJΥΒ5 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) (num 0)
 
-JΥΒ6 : Ctx
-JΥΒ6 = JΥΒ5 ▹ El kJΥΒ5
+XJΥΒ6 : Cx
+XJΥΒ6 = XJΥΒ5 ∙
 
-kJΥΒ6 : RTm ⌊ JΥΒ6 ⌋
-kJΥΒ6 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs vz))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs vz)))))) (IxDescK (num 0) Desc-nilK))
+kJΥΒ6 : RTm XJΥΒ6
+kJΥΒ6 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs vz))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) Ctx-empK)
 
-JΥΒ7 : Ctx
-JΥΒ7 = JΥΒ6 ▹ El kJΥΒ6
+XJΥΒ7 : Cx
+XJΥΒ7 = XJΥΒ6 ∙
 
-jddwf-nil : ICon (ε ∙)
-jddwf-nil = iκ kJΥΒ0 (iκ kJΥΒ1 (iκ kJΥΒ2 (iκ kJΥΒ3 (iκ kJΥΒ4 (iκ kJΥΒ5 (iκ kJΥΒ6 (iι)))))))
+kJΥΒ7 : RTm XJΥΒ7
+kJΥΒ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) Tm-unitK)
 
--- dwf-cons
+XJΥΒ8 : Cx
+XJΥΒ8 = XJΥΒ7 ∙
+
+kJΥΒ8 : RTm XJΥΒ8
+kJΥΒ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs vz)))) Ty-NatK)
+
+XJΥΒ9 : Cx
+XJΥΒ9 = XJΥΒ8 ∙
+
+kJΥΒ9 : RTm XJΥΒ9
+kJΥΒ9 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs vz))))) (num 2))
+
+XJΥΒ10 : Cx
+XJΥΒ10 = XJΥΒ9 ∙
+
+kJΥΒ10 : RTm XJΥΒ10
+kJΥΒ10 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs vz)))))) (IxDConK (num 0) (DCon-kapK (Ty-ElK (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
+
+XJΥΒ11 : Cx
+XJΥΒ11 = XJΥΒ10 ∙
+
+jddwf-κ : ICon (ε ∙)
+jddwf-κ = iκ kJΥΒ0 (iκ kJΥΒ1 (iκ kJΥΒ2 (iρ kJΥΒ3 (iρ kJΥΒ4 (iκ kJΥΒ5 (iκ kJΥΒ6 (iκ kJΥΒ7 (iκ kJΥΒ8 (iκ kJΥΒ9 (iκ kJΥΒ10 (iι)))))))))))
+
+-- dwf-nil
 JΦΒ0 : Ctx
 JΦΒ0 = ◇ ▹ εwkTy IJudge
 
@@ -3556,69 +3611,45 @@ JΦΒ1 : Ctx
 JΦΒ1 = JΦΒ0 ▹ El kJΦΒ0
 
 kJΦΒ1 : RTm ⌊ JΦΒ1 ⌋
-kJΦΒ1 = ⌜IMu⌝ KnotD IPair (pair sDCon nzero)
+kJΦΒ1 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) (num 0)
 
 JΦΒ2 : Ctx
 JΦΒ2 = JΦΒ1 ▹ El kJΦΒ1
 
 kJΦΒ2 : RTm ⌊ JΦΒ2 ⌋
-kJΦΒ2 = ⌜IMu⌝ KnotD IPair (pair sDesc nzero)
+kJΦΒ2 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs vz))))) (fst (snd (var (vs (vs vz))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs vz)))) (var vz)) Ctx-empK)
 
 JΦΒ3 : Ctx
 JΦΒ3 = JΦΒ2 ▹ El kJΦΒ2
 
 kJΦΒ3 : RTm ⌊ JΦΒ3 ⌋
-kJΦΒ3 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 2) (IxDConK (num 0) (var (vs vz)))))))
+kJΦΒ3 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs vz))))))) (fst (snd (snd (var (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs vz))))) (var (vs vz))) Tm-unitK)
 
-XJΦΒ4 : Cx
-XJΦΒ4 = ⌊ JΦΒ3 ⌋ ∙
+JΦΒ4 : Ctx
+JΦΒ4 = JΦΒ3 ▹ El kJΦΒ3
 
-kJΦΒ4 : RTm XJΦΒ4
-kJΦΒ4 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 3) (IxDescK (num 0) (var (vs vz)))))))
+kJΦΒ4 : RTm ⌊ JΦΒ4 ⌋
+kJΦΒ4 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs vz)))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs vz)))))) (var (vs (vs vz)))) Ty-NatK)
 
-XJΦΒ5 : Cx
-XJΦΒ5 = XJΦΒ4 ∙
+JΦΒ5 : Ctx
+JΦΒ5 = JΦΒ4 ▹ El kJΦΒ4
 
-kJΦΒ5 : RTm XJΦΒ5
-kJΦΒ5 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) (num 0)
+kJΦΒ5 : RTm ⌊ JΦΒ5 ⌋
+kJΦΒ5 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs vz))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz))))) (num 3))
 
-XJΦΒ6 : Cx
-XJΦΒ6 = XJΦΒ5 ∙
+JΦΒ6 : Ctx
+JΦΒ6 = JΦΒ5 ▹ El kJΦΒ5
 
-kJΦΒ6 : RTm XJΦΒ6
-kJΦΒ6 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs vz))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) Ctx-empK)
+kJΦΒ6 : RTm ⌊ JΦΒ6 ⌋
+kJΦΒ6 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs vz))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs vz)))))) (IxDescK (num 0) Desc-nilK))
 
-XJΦΒ7 : Cx
-XJΦΒ7 = XJΦΒ6 ∙
+JΦΒ7 : Ctx
+JΦΒ7 = JΦΒ6 ▹ El kJΦΒ6
 
-kJΦΒ7 : RTm XJΦΒ7
-kJΦΒ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) Tm-unitK)
+jddwf-nil : ICon (ε ∙)
+jddwf-nil = iκ kJΦΒ0 (iκ kJΦΒ1 (iκ kJΦΒ2 (iκ kJΦΒ3 (iκ kJΦΒ4 (iκ kJΦΒ5 (iκ kJΦΒ6 (iι)))))))
 
-XJΦΒ8 : Cx
-XJΦΒ8 = XJΦΒ7 ∙
-
-kJΦΒ8 : RTm XJΦΒ8
-kJΦΒ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs vz)))) Ty-NatK)
-
-XJΦΒ9 : Cx
-XJΦΒ9 = XJΦΒ8 ∙
-
-kJΦΒ9 : RTm XJΦΒ9
-kJΦΒ9 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs vz))))) (num 3))
-
-XJΦΒ10 : Cx
-XJΦΒ10 = XJΦΒ9 ∙
-
-kJΦΒ10 : RTm XJΦΒ10
-kJΦΒ10 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs vz)))))) (IxDescK (num 0) (Desc-consK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
-
-XJΦΒ11 : Cx
-XJΦΒ11 = XJΦΒ10 ∙
-
-jddwf-cons : ICon (ε ∙)
-jddwf-cons = iκ kJΦΒ0 (iκ kJΦΒ1 (iκ kJΦΒ2 (iρ kJΦΒ3 (iρ kJΦΒ4 (iκ kJΦΒ5 (iκ kJΦΒ6 (iκ kJΦΒ7 (iκ kJΦΒ8 (iκ kJΦΒ9 (iκ kJΦΒ10 (iι)))))))))))
-
--- iwf-ι
+-- dwf-cons
 JΧΒ0 : Ctx
 JΧΒ0 = ◇ ▹ εwkTy IJudge
 
@@ -3629,63 +3660,69 @@ JΧΒ1 : Ctx
 JΧΒ1 = JΧΒ0 ▹ El kJΧΒ0
 
 kJΧΒ1 : RTm ⌊ JΧΒ1 ⌋
-kJΧΒ1 = ⌜IMu⌝ KnotD IPair (pair sIDesc nzero)
+kJΧΒ1 = ⌜IMu⌝ KnotD IPair (pair sDCon nzero)
 
 JΧΒ2 : Ctx
 JΧΒ2 = JΧΒ1 ▹ El kJΧΒ1
 
 kJΧΒ2 : RTm ⌊ JΧΒ2 ⌋
-kJΧΒ2 = ⌜IMu⌝ KnotD IPair (pair sTy nzero)
+kJΧΒ2 = ⌜IMu⌝ KnotD IPair (pair sDesc nzero)
 
 JΧΒ3 : Ctx
 JΧΒ3 = JΧΒ2 ▹ El kJΧΒ2
 
 kJΧΒ3 : RTm ⌊ JΧΒ3 ⌋
-kJΧΒ3 = ⌜IMu⌝ CtxD INat (var (vs (vs vz)))
+kJΧΒ3 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 2) (IxDConK (num 0) (var (vs vz)))))))
 
-JΧΒ4 : Ctx
-JΧΒ4 = JΧΒ3 ▹ El kJΧΒ3
+XJΧΒ4 : Cx
+XJΧΒ4 = ⌊ JΧΒ3 ⌋ ∙
 
-kJΧΒ4 : RTm ⌊ JΧΒ4 ⌋
-kJΧΒ4 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))
+kJΧΒ4 : RTm XJΧΒ4
+kJΧΒ4 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 3) (IxDescK (num 0) (var (vs vz)))))))
 
-JΧΒ5 : Ctx
-JΧΒ5 = JΧΒ4 ▹ El kJΧΒ4
+XJΧΒ5 : Cx
+XJΧΒ5 = XJΧΒ4 ∙
 
-kJΧΒ5 : RTm ⌊ JΧΒ5 ⌋
-kJΧΒ5 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs vz)))))))) (fst (snd (var (vs (vs (vs (vs (vs vz)))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var vz)) (var (vs vz)))
+kJΧΒ5 : RTm XJΧΒ5
+kJΧΒ5 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) (num 0)
 
-JΧΒ6 : Ctx
-JΧΒ6 = JΧΒ5 ▹ El kJΧΒ5
+XJΧΒ6 : Cx
+XJΧΒ6 = XJΧΒ5 ∙
 
-kJΧΒ6 : RTm ⌊ JΧΒ6 ⌋
-kJΧΒ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz))) Tm-unitK)
+kJΧΒ6 : RTm XJΧΒ6
+kJΧΒ6 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs vz))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) Ctx-empK)
 
-JΧΒ7 : Ctx
-JΧΒ7 = JΧΒ6 ▹ El kJΧΒ6
+XJΧΒ7 : Cx
+XJΧΒ7 = XJΧΒ6 ∙
 
-kJΧΒ7 : RTm ⌊ JΧΒ7 ⌋
-kJΧΒ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz)))) Ty-NatK)
+kJΧΒ7 : RTm XJΧΒ7
+kJΧΒ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) Tm-unitK)
 
-JΧΒ8 : Ctx
-JΧΒ8 = JΧΒ7 ▹ El kJΧΒ7
+XJΧΒ8 : Cx
+XJΧΒ8 = XJΧΒ7 ∙
 
-kJΧΒ8 : RTm ⌊ JΧΒ8 ⌋
-kJΧΒ8 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs vz))))) (num 4))
+kJΧΒ8 : RTm XJΧΒ8
+kJΧΒ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs vz)))) Ty-NatK)
 
-JΧΒ9 : Ctx
-JΧΒ9 = JΧΒ8 ▹ El kJΧΒ8
+XJΧΒ9 : Cx
+XJΧΒ9 = XJΧΒ8 ∙
 
-kJΧΒ9 : RTm ⌊ JΧΒ9 ⌋
-kJΧΒ9 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs vz)))))) (IxIConK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs (vs vz))))))) ICon-iK))
+kJΧΒ9 : RTm XJΧΒ9
+kJΧΒ9 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs vz))))) (num 3))
 
-JΧΒ10 : Ctx
-JΧΒ10 = JΧΒ9 ▹ El kJΧΒ9
+XJΧΒ10 : Cx
+XJΧΒ10 = XJΧΒ9 ∙
 
-jdiwf-ι : ICon (ε ∙)
-jdiwf-ι = iκ kJΧΒ0 (iκ kJΧΒ1 (iκ kJΧΒ2 (iκ kJΧΒ3 (iκ kJΧΒ4 (iκ kJΧΒ5 (iκ kJΧΒ6 (iκ kJΧΒ7 (iκ kJΧΒ8 (iκ kJΧΒ9 (iι))))))))))
+kJΧΒ10 : RTm XJΧΒ10
+kJΧΒ10 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs vz)))))) (IxDescK (num 0) (Desc-consK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
 
--- iwf-ρ
+XJΧΒ11 : Cx
+XJΧΒ11 = XJΧΒ10 ∙
+
+jddwf-cons : ICon (ε ∙)
+jddwf-cons = iκ kJΧΒ0 (iκ kJΧΒ1 (iκ kJΧΒ2 (iρ kJΧΒ3 (iρ kJΧΒ4 (iκ kJΧΒ5 (iκ kJΧΒ6 (iκ kJΧΒ7 (iκ kJΧΒ8 (iκ kJΧΒ9 (iκ kJΧΒ10 (iι)))))))))))
+
+-- iwf-ι
 JΨΒ0 : Ctx
 JΨΒ0 = ◇ ▹ εwkTy IJudge
 
@@ -3714,69 +3751,45 @@ JΨΒ4 : Ctx
 JΨΒ4 = JΨΒ3 ▹ El kJΨΒ3
 
 kJΨΒ4 : RTm ⌊ JΨΒ4 ⌋
-kJΨΒ4 = ⌜IMu⌝ KnotD IPair (pair sICon (nsuc (var (vs (vs (vs vz))))))
+kJΨΒ4 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))
 
 JΨΒ5 : Ctx
 JΨΒ5 = JΨΒ4 ▹ El kJΨΒ4
 
 kJΨΒ5 : RTm ⌊ JΨΒ5 ⌋
-kJΨΒ5 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs (vs (vs vz))))))
+kJΨΒ5 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs vz)))))))) (fst (snd (var (vs (vs (vs (vs (vs vz)))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var vz)) (var (vs vz)))
 
 JΨΒ6 : Ctx
 JΨΒ6 = JΨΒ5 ▹ El kJΨΒ5
 
 kJΨΒ6 : RTm ⌊ JΨΒ6 ⌋
-kJΨΒ6 = pair (var (vs (vs (vs (vs (vs vz)))))) (pair (var (vs (vs vz))) (pair (var vz) (pair (εwkK sTy (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))) (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs vz)))))))))))
+kJΨΒ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz))) Tm-unitK)
 
-XJΨΒ7 : Cx
-XJΨΒ7 = ⌊ JΨΒ6 ⌋ ∙
+JΨΒ7 : Ctx
+JΨΒ7 = JΨΒ6 ▹ El kJΨΒ6
 
-kJΨΒ7 : RTm XJΨΒ7
-kJΨΒ7 = pair (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (pair (Ctx-extK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz)))) (Ty-IMuK (εwkK sIDesc (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) (var (vs vz)))) (pair Tm-unitK (pair Ty-NatK (pair (num 4) (IxIConK (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs vz))))))))
+kJΨΒ7 : RTm ⌊ JΨΒ7 ⌋
+kJΨΒ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz)))) Ty-NatK)
 
-XJΨΒ8 : Cx
-XJΨΒ8 = XJΨΒ7 ∙
+JΨΒ8 : Ctx
+JΨΒ8 = JΨΒ7 ▹ El kJΨΒ7
 
-kJΨΒ8 : RTm XJΨΒ8
-kJΨΒ8 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz))))))))
+kJΨΒ8 : RTm ⌊ JΨΒ8 ⌋
+kJΨΒ8 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs vz))))) (num 4))
 
-XJΨΒ9 : Cx
-XJΨΒ9 = XJΨΒ8 ∙
+JΨΒ9 : Ctx
+JΨΒ9 = JΨΒ8 ▹ El kJΨΒ8
 
-kJΨΒ9 : RTm XJΨΒ9
-kJΨΒ9 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var vz)) (var (vs (vs (vs (vs (vs vz)))))))
+kJΨΒ9 : RTm ⌊ JΨΒ9 ⌋
+kJΨΒ9 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs vz)))))) (IxIConK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs (vs vz))))))) ICon-iK))
 
-XJΨΒ10 : Cx
-XJΨΒ10 = XJΨΒ9 ∙
+JΨΒ10 : Ctx
+JΨΒ10 = JΨΒ9 ▹ El kJΨΒ9
 
-kJΨΒ10 : RTm XJΨΒ10
-kJΨΒ10 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz))) Tm-unitK)
+jdiwf-ι : ICon (ε ∙)
+jdiwf-ι = iκ kJΨΒ0 (iκ kJΨΒ1 (iκ kJΨΒ2 (iκ kJΨΒ3 (iκ kJΨΒ4 (iκ kJΨΒ5 (iκ kJΨΒ6 (iκ kJΨΒ7 (iκ kJΨΒ8 (iκ kJΨΒ9 (iι))))))))))
 
-XJΨΒ11 : Cx
-XJΨΒ11 = XJΨΒ10 ∙
-
-kJΨΒ11 : RTm XJΨΒ11
-kJΨΒ11 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs vz)))) Ty-NatK)
-
-XJΨΒ12 : Cx
-XJΨΒ12 = XJΨΒ11 ∙
-
-kJΨΒ12 : RTm XJΨΒ12
-kJΨΒ12 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs vz))))) (num 4))
-
-XJΨΒ13 : Cx
-XJΨΒ13 = XJΨΒ12 ∙
-
-kJΨΒ13 : RTm XJΨΒ13
-kJΨΒ13 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxIConK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (ICon-rhoK (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
-
-XJΨΒ14 : Cx
-XJΨΒ14 = XJΨΒ13 ∙
-
-jdiwf-ρ : ICon (ε ∙)
-jdiwf-ρ = iκ kJΨΒ0 (iκ kJΨΒ1 (iκ kJΨΒ2 (iκ kJΨΒ3 (iκ kJΨΒ4 (iκ kJΨΒ5 (iρ kJΨΒ6 (iρ kJΨΒ7 (iκ kJΨΒ8 (iκ kJΨΒ9 (iκ kJΨΒ10 (iκ kJΨΒ11 (iκ kJΨΒ12 (iκ kJΨΒ13 (iι))))))))))))))
-
--- iwf-κ
+-- iwf-ρ
 JΩΒ0 : Ctx
 JΩΒ0 = ◇ ▹ εwkTy IJudge
 
@@ -3817,63 +3830,57 @@ JΩΒ6 : Ctx
 JΩΒ6 = JΩΒ5 ▹ El kJΩΒ5
 
 kJΩΒ6 : RTm ⌊ JΩΒ6 ⌋
-kJΩΒ6 = pair (var (vs (vs (vs (vs (vs vz)))))) (pair (var (vs (vs vz))) (pair (var vz) (pair Ty-NatK (pair (num 5) (IxNoneK (var (vs (vs (vs (vs (vs vz)))))))))))
+kJΩΒ6 = pair (var (vs (vs (vs (vs (vs vz)))))) (pair (var (vs (vs vz))) (pair (var vz) (pair (εwkK sTy (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))) (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs vz)))))))))))
 
 XJΩΒ7 : Cx
 XJΩΒ7 = ⌊ JΩΒ6 ⌋ ∙
 
 kJΩΒ7 : RTm XJΩΒ7
-kJΩΒ7 = pair (var (vs (vs (vs (vs (vs (vs vz))))))) (pair (var (vs (vs (vs vz)))) (pair (var (vs vz)) (pair Ty-UK (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs (vs vz))))))))))))
+kJΩΒ7 = pair (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (pair (Ctx-extK (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs vz)))) (Ty-IMuK (εwkK sIDesc (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) (var (vs vz)))) (pair Tm-unitK (pair Ty-NatK (pair (num 4) (IxIConK (nsuc (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs vz))))))))
 
 XJΩΒ8 : Cx
 XJΩΒ8 = XJΩΒ7 ∙
 
 kJΩΒ8 : RTm XJΩΒ8
-kJΩΒ8 = pair (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (pair (Ctx-extK (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs vz))))) (Ty-ElK (var (vs (vs vz))))) (pair Tm-unitK (pair Ty-NatK (pair (num 4) (IxIConK (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz)))))))))
+kJΩΒ8 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz))))))))
 
 XJΩΒ9 : Cx
 XJΩΒ9 = XJΩΒ8 ∙
 
 kJΩΒ9 : RTm XJΩΒ9
-kJΩΒ9 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))
+kJΩΒ9 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var vz)) (var (vs (vs (vs (vs (vs vz)))))))
 
 XJΩΒ10 : Cx
 XJΩΒ10 = XJΩΒ9 ∙
 
 kJΩΒ10 : RTm XJΩΒ10
-kJΩΒ10 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var vz)) (var (vs (vs (vs (vs (vs (vs vz))))))))
+kJΩΒ10 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs vz))) Tm-unitK)
 
 XJΩΒ11 : Cx
 XJΩΒ11 = XJΩΒ10 ∙
 
 kJΩΒ11 : RTm XJΩΒ11
-kJΩΒ11 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs vz))) Tm-unitK)
+kJΩΒ11 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs vz)))) Ty-NatK)
 
 XJΩΒ12 : Cx
 XJΩΒ12 = XJΩΒ11 ∙
 
 kJΩΒ12 : RTm XJΩΒ12
-kJΩΒ12 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs vz)))) Ty-NatK)
+kJΩΒ12 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs vz))))) (num 4))
 
 XJΩΒ13 : Cx
 XJΩΒ13 = XJΩΒ12 ∙
 
 kJΩΒ13 : RTm XJΩΒ13
-kJΩΒ13 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (var (vs (vs (vs vz))))) (num 4))
+kJΩΒ13 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxIConK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (ICon-rhoK (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
 
 XJΩΒ14 : Cx
 XJΩΒ14 = XJΩΒ13 ∙
 
-kJΩΒ14 : RTm XJΩΒ14
-kJΩΒ14 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxIConK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (ICon-kapK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))
+jdiwf-ρ : ICon (ε ∙)
+jdiwf-ρ = iκ kJΩΒ0 (iκ kJΩΒ1 (iκ kJΩΒ2 (iκ kJΩΒ3 (iκ kJΩΒ4 (iκ kJΩΒ5 (iρ kJΩΒ6 (iρ kJΩΒ7 (iκ kJΩΒ8 (iκ kJΩΒ9 (iκ kJΩΒ10 (iκ kJΩΒ11 (iκ kJΩΒ12 (iκ kJΩΒ13 (iι))))))))))))))
 
-XJΩΒ15 : Cx
-XJΩΒ15 = XJΩΒ14 ∙
-
-jdiwf-κ : ICon (ε ∙)
-jdiwf-κ = iκ kJΩΒ0 (iκ kJΩΒ1 (iκ kJΩΒ2 (iκ kJΩΒ3 (iκ kJΩΒ4 (iκ kJΩΒ5 (iρ kJΩΒ6 (iρ kJΩΒ7 (iρ kJΩΒ8 (iκ kJΩΒ9 (iκ kJΩΒ10 (iκ kJΩΒ11 (iκ kJΩΒ12 (iκ kJΩΒ13 (iκ kJΩΒ14 (iι)))))))))))))))
-
--- icw-clo
+-- iwf-κ
 JΑΓ0 : Ctx
 JΑΓ0 = ◇ ▹ εwkTy IJudge
 
@@ -3884,63 +3891,93 @@ JΑΓ1 : Ctx
 JΑΓ1 = JΑΓ0 ▹ El kJΑΓ0
 
 kJΑΓ1 : RTm ⌊ JΑΓ1 ⌋
-kJΑΓ1 = ⌜IMu⌝ CtxD INat (var vz)
+kJΑΓ1 = ⌜IMu⌝ KnotD IPair (pair sIDesc nzero)
 
 JΑΓ2 : Ctx
 JΑΓ2 = JΑΓ1 ▹ El kJΑΓ1
 
 kJΑΓ2 : RTm ⌊ JΑΓ2 ⌋
-kJΑΓ2 = ⌜IMu⌝ KnotD IPair (pair sTm nzero)
+kJΑΓ2 = ⌜IMu⌝ KnotD IPair (pair sTy nzero)
 
 JΑΓ3 : Ctx
 JΑΓ3 = JΑΓ2 ▹ El kJΑΓ2
 
 kJΑΓ3 : RTm ⌊ JΑΓ3 ⌋
-kJΑΓ3 = pair (num 0) (pair Ctx-empK (pair (var vz) (pair Ty-UK (pair (num 1) (IxNoneK (num 0))))))
+kJΑΓ3 = ⌜IMu⌝ CtxD INat (var (vs (vs vz)))
 
-XJΑΓ4 : Cx
-XJΑΓ4 = ⌊ JΑΓ3 ⌋ ∙
+JΑΓ4 : Ctx
+JΑΓ4 = JΑΓ3 ▹ El kJΑΓ3
 
-kJΑΓ4 : RTm XJΑΓ4
-kJΑΓ4 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))
+kJΑΓ4 : RTm ⌊ JΑΓ4 ⌋
+kJΑΓ4 = ⌜IMu⌝ KnotD IPair (pair sICon (nsuc (var (vs (vs (vs vz))))))
 
-XJΑΓ5 : Cx
-XJΑΓ5 = XJΑΓ4 ∙
+JΑΓ5 : Ctx
+JΑΓ5 = JΑΓ4 ▹ El kJΑΓ4
 
-kJΑΓ5 : RTm XJΑΓ5
-kJΑΓ5 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs vz)))))))) (fst (snd (var (vs (vs (vs (vs (vs vz)))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var vz)) (var (vs (vs (vs vz)))))
+kJΑΓ5 : RTm ⌊ JΑΓ5 ⌋
+kJΑΓ5 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs (vs (vs vz))))))
 
-XJΑΓ6 : Cx
-XJΑΓ6 = XJΑΓ5 ∙
+JΑΓ6 : Ctx
+JΑΓ6 = JΑΓ5 ▹ El kJΑΓ5
 
-kJΑΓ6 : RTm XJΑΓ6
-kJΑΓ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz))) (εwkK sTm (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))))
+kJΑΓ6 : RTm ⌊ JΑΓ6 ⌋
+kJΑΓ6 = pair (var (vs (vs (vs (vs (vs vz)))))) (pair (var (vs (vs vz))) (pair (var vz) (pair Ty-NatK (pair (num 5) (IxNoneK (var (vs (vs (vs (vs (vs vz)))))))))))
 
 XJΑΓ7 : Cx
-XJΑΓ7 = XJΑΓ6 ∙
+XJΑΓ7 = ⌊ JΑΓ6 ⌋ ∙
 
 kJΑΓ7 : RTm XJΑΓ7
-kJΑΓ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz)))) Ty-NatK)
+kJΑΓ7 = pair (var (vs (vs (vs (vs (vs (vs vz))))))) (pair (var (vs (vs (vs vz)))) (pair (var (vs vz)) (pair Ty-UK (pair (num 1) (IxNoneK (var (vs (vs (vs (vs (vs (vs vz))))))))))))
 
 XJΑΓ8 : Cx
 XJΑΓ8 = XJΑΓ7 ∙
 
 kJΑΓ8 : RTm XJΑΓ8
-kJΑΓ8 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs vz))))) (num 5))
+kJΑΓ8 = pair (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (pair (Ctx-extK (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs vz))))) (Ty-ElK (var (vs (vs vz))))) (pair Tm-unitK (pair Ty-NatK (pair (num 4) (IxIConK (nsuc (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz)))))))))
 
 XJΑΓ9 : Cx
 XJΑΓ9 = XJΑΓ8 ∙
 
 kJΑΓ9 : RTm XJΑΓ9
-kJΑΓ9 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
+kJΑΓ9 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))
 
 XJΑΓ10 : Cx
 XJΑΓ10 = XJΑΓ9 ∙
 
-jdicw-clo : ICon (ε ∙)
-jdicw-clo = iκ kJΑΓ0 (iκ kJΑΓ1 (iκ kJΑΓ2 (iρ kJΑΓ3 (iκ kJΑΓ4 (iκ kJΑΓ5 (iκ kJΑΓ6 (iκ kJΑΓ7 (iκ kJΑΓ8 (iκ kJΑΓ9 (iι))))))))))
+kJΑΓ10 : RTm XJΑΓ10
+kJΑΓ10 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var vz)) (var (vs (vs (vs (vs (vs (vs vz))))))))
 
--- icw-ford
+XJΑΓ11 : Cx
+XJΑΓ11 = XJΑΓ10 ∙
+
+kJΑΓ11 : RTm XJΑΓ11
+kJΑΓ11 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs vz))) Tm-unitK)
+
+XJΑΓ12 : Cx
+XJΑΓ12 = XJΑΓ11 ∙
+
+kJΑΓ12 : RTm XJΑΓ12
+kJΑΓ12 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs vz)))) Ty-NatK)
+
+XJΑΓ13 : Cx
+XJΑΓ13 = XJΑΓ12 ∙
+
+kJΑΓ13 : RTm XJΑΓ13
+kJΑΓ13 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (var (vs (vs (vs vz))))) (num 4))
+
+XJΑΓ14 : Cx
+XJΑΓ14 = XJΑΓ13 ∙
+
+kJΑΓ14 : RTm XJΑΓ14
+kJΑΓ14 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxIConK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (ICon-kapK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))
+
+XJΑΓ15 : Cx
+XJΑΓ15 = XJΑΓ14 ∙
+
+jdiwf-κ : ICon (ε ∙)
+jdiwf-κ = iκ kJΑΓ0 (iκ kJΑΓ1 (iκ kJΑΓ2 (iκ kJΑΓ3 (iκ kJΑΓ4 (iκ kJΑΓ5 (iρ kJΑΓ6 (iρ kJΑΓ7 (iρ kJΑΓ8 (iκ kJΑΓ9 (iκ kJΑΓ10 (iκ kJΑΓ11 (iκ kJΑΓ12 (iκ kJΑΓ13 (iκ kJΑΓ14 (iι)))))))))))))))
+
+-- icw-clo
 JΒΓ0 : Ctx
 JΒΓ0 = ◇ ▹ εwkTy IJudge
 
@@ -3957,63 +3994,57 @@ JΒΓ2 : Ctx
 JΒΓ2 = JΒΓ1 ▹ El kJΒΓ1
 
 kJΒΓ2 : RTm ⌊ JΒΓ2 ⌋
-kJΒΓ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
+kJΒΓ2 = ⌜IMu⌝ KnotD IPair (pair sTm nzero)
 
 JΒΓ3 : Ctx
 JΒΓ3 = JΒΓ2 ▹ El kJΒΓ2
 
 kJΒΓ3 : RTm ⌊ JΒΓ3 ⌋
-kJΒΓ3 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs vz))))
+kJΒΓ3 = pair (num 0) (pair Ctx-empK (pair (var vz) (pair Ty-UK (pair (num 1) (IxNoneK (num 0))))))
 
-JΒΓ4 : Ctx
-JΒΓ4 = JΒΓ3 ▹ El kJΒΓ3
+XJΒΓ4 : Cx
+XJΒΓ4 = ⌊ JΒΓ3 ⌋ ∙
 
-kJΒΓ4 : RTm ⌊ JΒΓ4 ⌋
-kJΒΓ4 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs (vs vz)))))
+kJΒΓ4 : RTm XJΒΓ4
+kJΒΓ4 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))
 
-JΒΓ5 : Ctx
-JΒΓ5 = JΒΓ4 ▹ El kJΒΓ4
+XJΒΓ5 : Cx
+XJΒΓ5 = XJΒΓ4 ∙
 
-kJΒΓ5 : RTm ⌊ JΒΓ5 ⌋
-kJΒΓ5 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz)))))
+kJΒΓ5 : RTm XJΒΓ5
+kJΒΓ5 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs vz)))))))) (fst (snd (var (vs (vs (vs (vs (vs vz)))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var vz)) (var (vs (vs (vs vz)))))
 
-JΒΓ6 : Ctx
-JΒΓ6 = JΒΓ5 ▹ El kJΒΓ5
+XJΒΓ6 : Cx
+XJΒΓ6 = XJΒΓ5 ∙
 
-kJΒΓ6 : RTm ⌊ JΒΓ6 ⌋
-kJΒΓ6 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs vz))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) (var (vs (vs (vs (vs vz))))))
+kJΒΓ6 : RTm XJΒΓ6
+kJΒΓ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs vz))) (εwkK sTm (var (vs (vs (vs (vs (vs vz)))))) (var (vs (vs (vs vz))))))
 
-JΒΓ7 : Ctx
-JΒΓ7 = JΒΓ6 ▹ El kJΒΓ6
+XJΒΓ7 : Cx
+XJΒΓ7 = XJΒΓ6 ∙
 
-kJΒΓ7 : RTm ⌊ JΒΓ7 ⌋
-kJΒΓ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) (Tm-cIdK (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz)))) (var (vs (vs vz)))))
+kJΒΓ7 : RTm XJΒΓ7
+kJΒΓ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs vz)))) Ty-NatK)
 
-JΒΓ8 : Ctx
-JΒΓ8 = JΒΓ7 ▹ El kJΒΓ7
+XJΒΓ8 : Cx
+XJΒΓ8 = XJΒΓ7 ∙
 
-kJΒΓ8 : RTm ⌊ JΒΓ8 ⌋
-kJΒΓ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs vz)))) Ty-NatK)
+kJΒΓ8 : RTm XJΒΓ8
+kJΒΓ8 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs vz))))) (num 5))
 
-JΒΓ9 : Ctx
-JΒΓ9 = JΒΓ8 ▹ El kJΒΓ8
+XJΒΓ9 : Cx
+XJΒΓ9 = XJΒΓ8 ∙
 
-kJΒΓ9 : RTm ⌊ JΒΓ9 ⌋
-kJΒΓ9 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs vz))))) (num 5))
+kJΒΓ9 : RTm XJΒΓ9
+kJΒΓ9 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
 
-JΒΓ10 : Ctx
-JΒΓ10 = JΒΓ9 ▹ El kJΒΓ9
+XJΒΓ10 : Cx
+XJΒΓ10 = XJΒΓ9 ∙
 
-kJΒΓ10 : RTm ⌊ JΒΓ10 ⌋
-kJΒΓ10 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
+jdicw-clo : ICon (ε ∙)
+jdicw-clo = iκ kJΒΓ0 (iκ kJΒΓ1 (iκ kJΒΓ2 (iρ kJΒΓ3 (iκ kJΒΓ4 (iκ kJΒΓ5 (iκ kJΒΓ6 (iκ kJΒΓ7 (iκ kJΒΓ8 (iκ kJΒΓ9 (iι))))))))))
 
-JΒΓ11 : Ctx
-JΒΓ11 = JΒΓ10 ▹ El kJΒΓ10
-
-jdicw-ford : ICon (ε ∙)
-jdicw-ford = iκ kJΒΓ0 (iκ kJΒΓ1 (iκ kJΒΓ2 (iκ kJΒΓ3 (iκ kJΒΓ4 (iκ kJΒΓ5 (iκ kJΒΓ6 (iκ kJΒΓ7 (iκ kJΒΓ8 (iκ kJΒΓ9 (iκ kJΒΓ10 (iι)))))))))))
-
--- icw-imu
+-- icw-ford
 JΓΓ0 : Ctx
 JΓΓ0 = ◇ ▹ εwkTy IJudge
 
@@ -4030,13 +4061,13 @@ JΓΓ2 : Ctx
 JΓΓ2 = JΓΓ1 ▹ El kJΓΓ1
 
 kJΓΓ2 : RTm ⌊ JΓΓ2 ⌋
-kJΓΓ2 = ⌜IMu⌝ KnotD IPair (pair sIDesc nzero)
+kJΓΓ2 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs vz)))
 
 JΓΓ3 : Ctx
 JΓΓ3 = JΓΓ2 ▹ El kJΓΓ2
 
 kJΓΓ3 : RTm ⌊ JΓΓ3 ⌋
-kJΓΓ3 = ⌜IMu⌝ KnotD IPair (pair sTy nzero)
+kJΓΓ3 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs vz))))
 
 JΓΓ4 : Ctx
 JΓΓ4 = JΓΓ3 ▹ El kJΓΓ3
@@ -4048,51 +4079,45 @@ JΓΓ5 : Ctx
 JΓΓ5 = JΓΓ4 ▹ El kJΓΓ4
 
 kJΓΓ5 : RTm ⌊ JΓΓ5 ⌋
-kJΓΓ5 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 6) (IxIDescK (num 0) (var (vs (vs vz))) (var (vs vz)) (var (vs (vs vz))))))))
+kJΓΓ5 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz)))))
 
-XJΓΓ6 : Cx
-XJΓΓ6 = ⌊ JΓΓ5 ⌋ ∙
+JΓΓ6 : Ctx
+JΓΓ6 = JΓΓ5 ▹ El kJΓΓ5
 
-kJΓΓ6 : RTm XJΓΓ6
-kJΓΓ6 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))
+kJΓΓ6 : RTm ⌊ JΓΓ6 ⌋
+kJΓΓ6 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs vz))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var vz)) (var (vs (vs (vs (vs vz))))))
 
-XJΓΓ7 : Cx
-XJΓΓ7 = XJΓΓ6 ∙
+JΓΓ7 : Ctx
+JΓΓ7 = JΓΓ6 ▹ El kJΓΓ6
 
-kJΓΓ7 : RTm XJΓΓ7
-kJΓΓ7 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (var (vs (vs (vs (vs (vs vz)))))))
+kJΓΓ7 : RTm ⌊ JΓΓ7 ⌋
+kJΓΓ7 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs vz))) (Tm-cIdK (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz)))) (var (vs (vs vz)))))
 
-XJΓΓ8 : Cx
-XJΓΓ8 = XJΓΓ7 ∙
+JΓΓ8 : Ctx
+JΓΓ8 = JΓΓ7 ▹ El kJΓΓ7
 
-kJΓΓ8 : RTm XJΓΓ8
-kJΓΓ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Tm-cIMuK (εwkK sIDesc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
+kJΓΓ8 : RTm ⌊ JΓΓ8 ⌋
+kJΓΓ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs vz)))) Ty-NatK)
 
-XJΓΓ9 : Cx
-XJΓΓ9 = XJΓΓ8 ∙
+JΓΓ9 : Ctx
+JΓΓ9 = JΓΓ8 ▹ El kJΓΓ8
 
-kJΓΓ9 : RTm XJΓΓ9
-kJΓΓ9 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))) Ty-NatK)
+kJΓΓ9 : RTm ⌊ JΓΓ9 ⌋
+kJΓΓ9 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs vz))))) (num 5))
 
-XJΓΓ10 : Cx
-XJΓΓ10 = XJΓΓ9 ∙
+JΓΓ10 : Ctx
+JΓΓ10 = JΓΓ9 ▹ El kJΓΓ9
 
-kJΓΓ10 : RTm XJΓΓ10
-kJΓΓ10 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs vz))))) (num 5))
+kJΓΓ10 : RTm ⌊ JΓΓ10 ⌋
+kJΓΓ10 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))
 
-XJΓΓ11 : Cx
-XJΓΓ11 = XJΓΓ10 ∙
+JΓΓ11 : Ctx
+JΓΓ11 = JΓΓ10 ▹ El kJΓΓ10
 
-kJΓΓ11 : RTm XJΓΓ11
-kJΓΓ11 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))
+jdicw-ford : ICon (ε ∙)
+jdicw-ford = iκ kJΓΓ0 (iκ kJΓΓ1 (iκ kJΓΓ2 (iκ kJΓΓ3 (iκ kJΓΓ4 (iκ kJΓΓ5 (iκ kJΓΓ6 (iκ kJΓΓ7 (iκ kJΓΓ8 (iκ kJΓΓ9 (iκ kJΓΓ10 (iι)))))))))))
 
-XJΓΓ12 : Cx
-XJΓΓ12 = XJΓΓ11 ∙
-
-jdicw-imu : ICon (ε ∙)
-jdicw-imu = iκ kJΓΓ0 (iκ kJΓΓ1 (iκ kJΓΓ2 (iκ kJΓΓ3 (iκ kJΓΓ4 (iρ kJΓΓ5 (iκ kJΓΓ6 (iκ kJΓΓ7 (iκ kJΓΓ8 (iκ kJΓΓ9 (iκ kJΓΓ10 (iκ kJΓΓ11 (iι))))))))))))
-
--- idwf-nil
+-- icw-imu
 JΔΓ0 : Ctx
 JΔΓ0 = ◇ ▹ εwkTy IJudge
 
@@ -4103,57 +4128,75 @@ JΔΓ1 : Ctx
 JΔΓ1 = JΔΓ0 ▹ El kJΔΓ0
 
 kJΔΓ1 : RTm ⌊ JΔΓ1 ⌋
-kJΔΓ1 = ⌜IMu⌝ KnotD IPair (pair sIDesc nzero)
+kJΔΓ1 = ⌜IMu⌝ CtxD INat (var vz)
 
 JΔΓ2 : Ctx
 JΔΓ2 = JΔΓ1 ▹ El kJΔΓ1
 
 kJΔΓ2 : RTm ⌊ JΔΓ2 ⌋
-kJΔΓ2 = ⌜IMu⌝ KnotD IPair (pair sTy nzero)
+kJΔΓ2 = ⌜IMu⌝ KnotD IPair (pair sIDesc nzero)
 
 JΔΓ3 : Ctx
 JΔΓ3 = JΔΓ2 ▹ El kJΔΓ2
 
 kJΔΓ3 : RTm ⌊ JΔΓ3 ⌋
-kJΔΓ3 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) (num 0)
+kJΔΓ3 = ⌜IMu⌝ KnotD IPair (pair sTy nzero)
 
 JΔΓ4 : Ctx
 JΔΓ4 = JΔΓ3 ▹ El kJΔΓ3
 
 kJΔΓ4 : RTm ⌊ JΔΓ4 ⌋
-kJΔΓ4 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs vz))))))) (fst (snd (var (vs (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs vz)))))) (var vz)) Ctx-empK)
+kJΔΓ4 = ⌜IMu⌝ KnotD IPair (pair sTm (var (vs (vs (vs vz)))))
 
 JΔΓ5 : Ctx
 JΔΓ5 = JΔΓ4 ▹ El kJΔΓ4
 
 kJΔΓ5 : RTm ⌊ JΔΓ5 ⌋
-kJΔΓ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs vz))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs vz))) Tm-unitK)
+kJΔΓ5 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 6) (IxIDescK (num 0) (var (vs (vs vz))) (var (vs vz)) (var (vs (vs vz))))))))
 
-JΔΓ6 : Ctx
-JΔΓ6 = JΔΓ5 ▹ El kJΔΓ5
+XJΔΓ6 : Cx
+XJΔΓ6 = ⌊ JΔΓ5 ⌋ ∙
 
-kJΔΓ6 : RTm ⌊ JΔΓ6 ⌋
-kJΔΓ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs vz)))) Ty-NatK)
+kJΔΓ6 : RTm XJΔΓ6
+kJΔΓ6 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))
 
-JΔΓ7 : Ctx
-JΔΓ7 = JΔΓ6 ▹ El kJΔΓ6
+XJΔΓ7 : Cx
+XJΔΓ7 = XJΔΓ6 ∙
 
-kJΔΓ7 : RTm ⌊ JΔΓ7 ⌋
-kJΔΓ7 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs vz))))) (num 6))
+kJΔΓ7 : RTm XJΔΓ7
+kJΔΓ7 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var vz)) (var (vs (vs (vs (vs (vs vz)))))))
 
-JΔΓ8 : Ctx
-JΔΓ8 = JΔΓ7 ▹ El kJΔΓ7
+XJΔΓ8 : Cx
+XJΔΓ8 = XJΔΓ7 ∙
 
-kJΔΓ8 : RTm ⌊ JΔΓ8 ⌋
-kJΔΓ8 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs vz)))))) (IxIDescK (num 0) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) IDesc-nilK))
+kJΔΓ8 : RTm XJΔΓ8
+kJΔΓ8 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs vz))) (Tm-cIMuK (εwkK sIDesc (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz))))))
 
-JΔΓ9 : Ctx
-JΔΓ9 = JΔΓ8 ▹ El kJΔΓ8
+XJΔΓ9 : Cx
+XJΔΓ9 = XJΔΓ8 ∙
 
-jdidwf-nil : ICon (ε ∙)
-jdidwf-nil = iκ kJΔΓ0 (iκ kJΔΓ1 (iκ kJΔΓ2 (iκ kJΔΓ3 (iκ kJΔΓ4 (iκ kJΔΓ5 (iκ kJΔΓ6 (iκ kJΔΓ7 (iκ kJΔΓ8 (iι)))))))))
+kJΔΓ9 : RTm XJΔΓ9
+kJΔΓ9 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs vz)))) Ty-NatK)
 
--- idwf-cons
+XJΔΓ10 : Cx
+XJΔΓ10 = XJΔΓ9 ∙
+
+kJΔΓ10 : RTm XJΔΓ10
+kJΔΓ10 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs (vs vz))))) (num 5))
+
+XJΔΓ11 : Cx
+XJΔΓ11 = XJΔΓ10 ∙
+
+kJΔΓ11 : RTm XJΔΓ11
+kJΔΓ11 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxNoneK (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))
+
+XJΔΓ12 : Cx
+XJΔΓ12 = XJΔΓ11 ∙
+
+jdicw-imu : ICon (ε ∙)
+jdicw-imu = iκ kJΔΓ0 (iκ kJΔΓ1 (iκ kJΔΓ2 (iκ kJΔΓ3 (iκ kJΔΓ4 (iρ kJΔΓ5 (iκ kJΔΓ6 (iκ kJΔΓ7 (iκ kJΔΓ8 (iκ kJΔΓ9 (iκ kJΔΓ10 (iκ kJΔΓ11 (iι))))))))))))
+
+-- idwf-nil
 JΕΓ0 : Ctx
 JΕΓ0 = ◇ ▹ εwkTy IJudge
 
@@ -4176,67 +4219,128 @@ JΕΓ3 : Ctx
 JΕΓ3 = JΕΓ2 ▹ El kJΕΓ2
 
 kJΕΓ3 : RTm ⌊ JΕΓ3 ⌋
-kJΕΓ3 = ⌜IMu⌝ KnotD IPair (pair sICon (num 1))
+kJΕΓ3 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs vz))))) (num 0)
 
 JΕΓ4 : Ctx
 JΕΓ4 = JΕΓ3 ▹ El kJΕΓ3
 
 kJΕΓ4 : RTm ⌊ JΕΓ4 ⌋
-kJΕΓ4 = ⌜IMu⌝ KnotD IPair (pair sIDesc nzero)
+kJΕΓ4 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs vz))))))) (fst (snd (var (vs (vs (vs (vs vz))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs vz)))))) (var vz)) Ctx-empK)
 
 JΕΓ5 : Ctx
 JΕΓ5 = JΕΓ4 ▹ El kJΕΓ4
 
 kJΕΓ5 : RTm ⌊ JΕΓ5 ⌋
-kJΕΓ5 = pair (num 1) (pair (Ctx-extK (num 0) Ctx-empK (εwkK sTy (num 0) (var (vs (vs vz))))) (pair Tm-unitK (pair Ty-NatK (pair (num 4) (IxIConK (num 1) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var (vs vz)))))))
+kJΕΓ5 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs vz))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs vz))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs vz))))))) (var (vs vz))) Tm-unitK)
 
-XJΕΓ6 : Cx
-XJΕΓ6 = ⌊ JΕΓ5 ⌋ ∙
+JΕΓ6 : Ctx
+JΕΓ6 = JΕΓ5 ▹ El kJΕΓ5
 
-kJΕΓ6 : RTm XJΕΓ6
-kJΕΓ6 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 6) (IxIDescK (num 0) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz)))) (var (vs vz)))))))
+kJΕΓ6 : RTm ⌊ JΕΓ6 ⌋
+kJΕΓ6 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs vz)))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs vz)))))))) (var (vs (vs vz)))) Ty-NatK)
 
-XJΕΓ7 : Cx
-XJΕΓ7 = XJΕΓ6 ∙
+JΕΓ7 : Ctx
+JΕΓ7 = JΕΓ6 ▹ El kJΕΓ6
 
-kJΕΓ7 : RTm XJΕΓ7
-kJΕΓ7 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (num 0)
+kJΕΓ7 : RTm ⌊ JΕΓ7 ⌋
+kJΕΓ7 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs vz))))) (num 6))
 
-XJΕΓ8 : Cx
-XJΕΓ8 = XJΕΓ7 ∙
+JΕΓ8 : Ctx
+JΕΓ8 = JΕΓ7 ▹ El kJΕΓ7
 
-kJΕΓ8 : RTm XJΕΓ8
-kJΕΓ8 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var vz)) Ctx-empK)
+kJΕΓ8 : RTm ⌊ JΕΓ8 ⌋
+kJΕΓ8 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var (vs (vs (vs (vs vz)))))) (IxIDescK (num 0) (var (vs (vs (vs (vs (vs (vs vz))))))) (var (vs (vs (vs (vs (vs vz)))))) IDesc-nilK))
 
-XJΕΓ9 : Cx
-XJΕΓ9 = XJΕΓ8 ∙
+JΕΓ9 : Ctx
+JΕΓ9 = JΕΓ8 ▹ El kJΕΓ8
 
-kJΕΓ9 : RTm XJΕΓ9
-kJΕΓ9 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz))) Tm-unitK)
+jdidwf-nil : ICon (ε ∙)
+jdidwf-nil = iκ kJΕΓ0 (iκ kJΕΓ1 (iκ kJΕΓ2 (iκ kJΕΓ3 (iκ kJΕΓ4 (iκ kJΕΓ5 (iκ kJΕΓ6 (iκ kJΕΓ7 (iκ kJΕΓ8 (iι)))))))))
 
-XJΕΓ10 : Cx
-XJΕΓ10 = XJΕΓ9 ∙
+-- idwf-cons
+JΖΓ0 : Ctx
+JΖΓ0 = ◇ ▹ εwkTy IJudge
 
-kJΕΓ10 : RTm XJΕΓ10
-kJΕΓ10 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs vz)))) Ty-NatK)
+kJΖΓ0 : RTm ⌊ JΖΓ0 ⌋
+kJΖΓ0 = ⌜Nat⌝
 
-XJΕΓ11 : Cx
-XJΕΓ11 = XJΕΓ10 ∙
+JΖΓ1 : Ctx
+JΖΓ1 = JΖΓ0 ▹ El kJΖΓ0
 
-kJΕΓ11 : RTm XJΕΓ11
-kJΕΓ11 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs vz))))) (num 6))
+kJΖΓ1 : RTm ⌊ JΖΓ1 ⌋
+kJΖΓ1 = ⌜IMu⌝ KnotD IPair (pair sIDesc nzero)
 
-XJΕΓ12 : Cx
-XJΕΓ12 = XJΕΓ11 ∙
+JΖΓ2 : Ctx
+JΖΓ2 = JΖΓ1 ▹ El kJΖΓ1
 
-kJΕΓ12 : RTm XJΕΓ12
-kJΕΓ12 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxIDescK (num 0) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (IDesc-consK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
+kJΖΓ2 : RTm ⌊ JΖΓ2 ⌋
+kJΖΓ2 = ⌜IMu⌝ KnotD IPair (pair sTy nzero)
 
-XJΕΓ13 : Cx
-XJΕΓ13 = XJΕΓ12 ∙
+JΖΓ3 : Ctx
+JΖΓ3 = JΖΓ2 ▹ El kJΖΓ2
+
+kJΖΓ3 : RTm ⌊ JΖΓ3 ⌋
+kJΖΓ3 = ⌜IMu⌝ KnotD IPair (pair sICon (num 1))
+
+JΖΓ4 : Ctx
+JΖΓ4 = JΖΓ3 ▹ El kJΖΓ3
+
+kJΖΓ4 : RTm ⌊ JΖΓ4 ⌋
+kJΖΓ4 = ⌜IMu⌝ KnotD IPair (pair sIDesc nzero)
+
+JΖΓ5 : Ctx
+JΖΓ5 = JΖΓ4 ▹ El kJΖΓ4
+
+kJΖΓ5 : RTm ⌊ JΖΓ5 ⌋
+kJΖΓ5 = pair (num 1) (pair (Ctx-extK (num 0) Ctx-empK (εwkK sTy (num 0) (var (vs (vs vz))))) (pair Tm-unitK (pair Ty-NatK (pair (num 4) (IxIConK (num 1) (var (vs (vs (vs vz)))) (var (vs (vs vz))) (var (vs vz)))))))
+
+XJΖΓ6 : Cx
+XJΖΓ6 = ⌊ JΖΓ5 ⌋ ∙
+
+kJΖΓ6 : RTm XJΖΓ6
+kJΖΓ6 = pair (num 0) (pair Ctx-empK (pair Tm-unitK (pair Ty-NatK (pair (num 6) (IxIDescK (num 0) (var (vs (vs (vs (vs vz))))) (var (vs (vs (vs vz)))) (var (vs vz)))))))
+
+XJΖΓ7 : Cx
+XJΖΓ7 = XJΖΓ6 ∙
+
+kJΖΓ7 : RTm XJΖΓ7
+kJΖΓ7 = ⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs (vs (vs (vs (vs (vs vz))))))))) (num 0)
+
+XJΖΓ8 : Cx
+XJΖΓ8 = XJΖΓ7 ∙
+
+kJΖΓ8 : RTm XJΖΓ8
+kJΖΓ8 = ⌜Id⌝ (⌜IMu⌝ CtxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (fst (snd (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (jsub (⌜IMu⌝ CtxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (var vz)) Ctx-empK)
+
+XJΖΓ9 : Cx
+XJΖΓ9 = XJΖΓ8 ∙
+
+kJΖΓ9 : RTm XJΖΓ9
+kJΖΓ9 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (fst (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTm (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs vz))) Tm-unitK)
+
+XJΖΓ10 : Cx
+XJΖΓ10 = XJΖΓ9 ∙
+
+kJΖΓ10 : RTm XJΖΓ10
+kJΖΓ10 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTy (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (fst (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (jsub (⌜IMu⌝ KnotD IPair (pair sTy (var vz))) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))) (var (vs (vs vz)))) Ty-NatK)
+
+XJΖΓ11 : Cx
+XJΖΓ11 = XJΖΓ10 ∙
+
+kJΖΓ11 : RTm XJΖΓ11
+kJΖΓ11 = ⌜Id⌝ ⌜Nat⌝ (fst (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))))) (jsub ⌜Nat⌝ (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))) (var (vs (vs (vs vz))))) (num 6))
+
+XJΖΓ12 : Cx
+XJΖΓ12 = XJΖΓ11 ∙
+
+kJΖΓ12 : RTm XJΖΓ12
+kJΖΓ12 = ⌜Id⌝ (⌜IMu⌝ IxD INat (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))))))) (snd (snd (snd (snd (snd (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))))))) (jsub (⌜IMu⌝ IxD INat (var vz)) (symN (fst (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))) (var (vs (vs (vs (vs vz)))))) (IxIDescK (num 0) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))))) (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))) (IDesc-consK (var (vs (vs (vs (vs (vs (vs (vs (vs vz))))))))) (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
+
+XJΖΓ13 : Cx
+XJΖΓ13 = XJΖΓ12 ∙
 
 jdidwf-cons : ICon (ε ∙)
-jdidwf-cons = iκ kJΕΓ0 (iκ kJΕΓ1 (iκ kJΕΓ2 (iκ kJΕΓ3 (iκ kJΕΓ4 (iρ kJΕΓ5 (iρ kJΕΓ6 (iκ kJΕΓ7 (iκ kJΕΓ8 (iκ kJΕΓ9 (iκ kJΕΓ10 (iκ kJΕΓ11 (iκ kJΕΓ12 (iι)))))))))))))
+jdidwf-cons = iκ kJΖΓ0 (iκ kJΖΓ1 (iκ kJΖΓ2 (iκ kJΖΓ3 (iκ kJΖΓ4 (iρ kJΖΓ5 (iρ kJΖΓ6 (iκ kJΖΓ7 (iκ kJΖΓ8 (iκ kJΖΓ9 (iκ kJΖΓ10 (iκ kJΖΓ11 (iκ kJΖΓ12 (iι)))))))))))))
 
 ------------------------------------------------------------------------
 -- ★★★ …AND THE MUTUAL PAIR IS ONE DESCRIPTION.
@@ -4248,7 +4352,7 @@ JudgeD =
   jd⊢app ◂ jd⊢pair ◂ jd⊢absurd ◂ jd⊢ordtr ◂ jd⊢fst ◂ jd⊢snd ◂ jd⊢⌜base⌝ ◂ 
   jd⊢⌜Π⌝ ◂ jd⊢⌜Σ⌝ ◂ jd⊢⌜Hom⌝ ◂ jd⊢hrefl ◂ jd⊢trU ◂ jd⊢ap ◂ jd⊢⌜Id⌝ ◂ 
   jd⊢⌜Nat⌝ ◂ jd⊢⌜Mu⌝ ◂ jd⊢⌜IMu⌝ ◂ jd⊢⌜Unit⌝ ◂ jd⊢idrefl ◂ jd⊢jsub ◂ 
-  jd⊢unit ◂ jd⊢nzero ◂ jd⊢nsuc ◂ jd⊢natrec ◂ jd⊢con ◂ jd⊢icon ◂ 
-  jd⊢conv ◂ jddwf-ι ◂ jddwf-ρ ◂ jddwf-κ ◂ jddwf-nil ◂ jddwf-cons ◂ 
-  jdiwf-ι ◂ jdiwf-ρ ◂ jdiwf-κ ◂ jdicw-clo ◂ jdicw-ford ◂ jdicw-imu ◂ 
-  jdidwf-nil ◂ jdidwf-cons ◂ inil
+  jd⊢unit ◂ jd⊢nzero ◂ jd⊢nsuc ◂ jd⊢natrec ◂ jd⊢con ◂ jd⊢elim ◂ 
+  jd⊢icon ◂ jd⊢conv ◂ jddwf-ι ◂ jddwf-ρ ◂ jddwf-κ ◂ jddwf-nil ◂ 
+  jddwf-cons ◂ jdiwf-ι ◂ jdiwf-ρ ◂ jdiwf-κ ◂ jdicw-clo ◂ jdicw-ford ◂ 
+  jdicw-imu ◂ jdidwf-nil ◂ jdidwf-cons ◂ inil

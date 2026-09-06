@@ -1316,6 +1316,8 @@ FIELD_SORT.update({
     "ilookupDK": ["sIDesc", "nat"],
     "payTyKᵏ":   ["sDesc", "sDCon"],
     "ipayTyKᵏ":  ["sIDesc", "sTy", None, "sICon"],
+    # ★ `methsTyFrom D M j E` — `j` is a ℕ, hence `None`.
+    "methsTyFromK": ["sDesc", "sTy", None, "sDesc"],
 })
 
 # ============================ THE MUTUAL PAIR =============================
@@ -1910,6 +1912,8 @@ open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢
 open import DirectedHoTT.Examples.Knot.LookupD using ( lookupDK; ⊢lookupDK )
 open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK )
 open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )
+-- ★ `⊢elim`'s method-tuple type.
+open import DirectedHoTT.Examples.Knot.MethsTy using ( methsTyFromK; ⊢methsTyFromK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -3339,6 +3343,7 @@ WF_CTOR.update({
     "ilookupDK": ("⊢ilookupDK", ["DD", "MU", "N"],                   None),
     "payTyKᵏ":   ("⊢payTyKᵏ",   ["DD", "MU", "MU"],                  None),
     "ipayTyKᵏ":  ("⊢ipayTyKᵏ",  ["DD", "DD", "MU", "MU", "IX", "MU"], None),
+    "methsTyFromK": ("⊢methsTyFromK", ["DD", "MU", "MU", "N", "MU"],  None),
     # ★★★ DISCHARGED 2026-09-06 — the `Ty` sort.
     "wkTyK":    ("⊢wkTyK",     ["N", "MU"],       None),
     # ★★★ THE SUBSTITUTION WRAPPERS.  `Knot/SubApp` proved these; the
@@ -3497,6 +3502,9 @@ FIELD_DEPTH.update({
     #   is one BELOW it.  Never stated before because no rule nested two
     #   variable constructors until `tr-pw`'s `var (vs vz)`.
     "ipayTyKᵏ": [('D',),('D',),('D',),('lit',0),('D',),('D',)],
+    # ★ `methsTyFromK n D M j E` — `M` is the MOTIVE, at `nsuc n`
+    #   (`(Γ ▹ Mu D) ⊢ty M`); everything else is ambient.
+    "methsTyFromK": [('D',), ('D',), ('sucD', 1), ('D',), ('D',)],
     "Var-vsK":  [('D',), ('predD',)],
     # ⚠⚠ `wkK`'s BOTH arguments sit at the SOURCE depth — `wkK i t : K (sh i)`
     #   — so the derivation emitter must descend at `pred` of the ambient
@@ -4120,7 +4128,8 @@ _DEPTH_ARG = {"Var-vzK", "Var-vsK", "nrsSubK"}
 #   using it here silently builds a term one binder too shallow.
 _DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK", "extNK",
               # ★ STEP 5 — see `_PRE_N`.
-              "lookupDK", "ilookupDK", "payTyKᵏ", "ipayTyKᵏ"}
+              "lookupDK", "ilookupDK", "payTyKᵏ", "ipayTyKᵏ",
+              "methsTyFromK"}
 
 # ★★★ HOW MANY DEPTHS EACH WRAPPER TAKES BEFORE ITS SOURCE ARGUMENTS.
 #
@@ -4165,7 +4174,8 @@ _PRE_D = {"singleK":  (('D',),),
           "wkTmK":    (('D',),), "wkTyK": (('D',),),
           # ★ STEP 5.
           "lookupDK": (('D',),), "ilookupDK": (('D',),), "payTyKᵏ": (('D',),),
-          "ipayTyKᵏ": (('lit', 1), ('D',))}
+          "ipayTyKᵏ": (('lit', 1), ('D',)),
+          "methsTyFromK": (('D',),)}
 
 # ⚠ DERIVED, so a prefix cannot be given a shape without also being
 #   counted.  Every other reader wants only the COUNT (an offset into the
@@ -4186,7 +4196,11 @@ _SUBST_CT = {"single": "singleK", "subTm": "subTmAtK",
              #   two whose arguments are permuted; `lookupD`/`ilookupD`
              #   already match and need only the depth prefix.
              "lookupD": "lookupDK", "ilookupD": "ilookupDK",
-             "payTy": "payTyKᵏ", "ipayTy": "ipayTyKᵏ"}
+             "payTy": "payTyKᵏ", "ipayTy": "ipayTyKᵏ",
+             # ★ `⊢elim`'s premise.  ⚠ The rule writes `methsTy D M D`;
+             #   the expander unfolds it to `methsTyFrom D M zero D`,
+             #   which is the name that must map.
+             "methsTyFrom": "methsTyFromK"}
 
 # ⚠⚠ STEP 5 — WHY THE FOUR "ALREADY EXISTING" FUNCTIONS ARE NOT JUST A
 #   TABLE ENTRY.  `Knot/JudgeRows` names its own gaps:
@@ -4546,6 +4560,8 @@ open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢
 open import DirectedHoTT.Examples.Knot.LookupD using ( lookupDK; ⊢lookupDK )
 open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK )
 open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )
+-- ★ `⊢elim`'s method-tuple type.
+open import DirectedHoTT.Examples.Knot.MethsTy using ( methsTyFromK; ⊢methsTyFromK )
 open import DirectedHoTT.Examples.Knot.RedRows
 %s
 """
@@ -4929,6 +4945,16 @@ _WRAP_LEDGER = {
     # ⬜ functions over syntax with NO emitted-row customer yet — which is
     #   exactly why none has an agreement: nothing has needed them to
     #   COMPUTE, only to TYPE.
+    # ★ STEP 5's `⊢elim` PROGRAMS, built 2026-09-06.  `Ty`-sorted, and
+    #   their adequacy is now REACHABLE rather than blocked —
+    #   `wkTyK`/`subTyAtK` were discharged the day before.
+    # ⚠ ONLY `methsTyFromK` IS LISTED, and the OTHER gate is why: the
+    #   ledger may not name what the knot neither applies nor defines, so
+    #   `methTyK`/`methsTyK`/`methsTyCons` join when `⊢elim` EMITS and the
+    #   scanner starts seeing them.  ⇒ the two gates are a pincer — one
+    #   forbids an unlisted program, the other a listed non-program — and
+    #   between them the ledger cannot drift in either direction.
+    "methsTyFromK": "⬜ OWED — agreement with `methsTyFrom`.  ⚠ It also owes\n--                the closed-sort identity for `methTyK`'s `wkAtK sDCon`:\n--                the object level weakens `C` to reach `ihTy`'s ambient\n--                where the spec does not, because `DCon` carries no\n--                context at all.",
     "lookupDK":  "⬜ OWED — agreement with `lookupD`.",
     "ilookupDK": "⬜ OWED — agreement with `ilookupD`.",
     "payTyK":    "⬜ OWED — agreement with `payTy`.",
@@ -5175,7 +5201,7 @@ _SRCMOD = {"Typing": "DirectedHoTT.Spec.Typing",
 #   Agda equation then pins it exactly.  Raising one is a deliberate act,
 #   the same contract as `_FLOOR`.
 _SKIP_EXPECT = {"RedD": 2, "TyRedD": 0, "ConvD": 0, "NoNatCD": 0,
-                "InDD": 0, "InIDD": 0, "JudgeD": 3}
+                "InDD": 0, "InIDD": 0, "JudgeD": 2}
 
 def gen_census(out):
     """one equation per family, from `_CENSUS` — so a family cannot be
