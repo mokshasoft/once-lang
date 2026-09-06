@@ -189,10 +189,14 @@ entry-nh = refl
 -- `main`'s machine-refinement witness at the entry state. The `Unit` input's
 -- validity is `valid-unit-wf`, and its residence is `in-unit` (D074: a unit
 -- input needs none — the tag filler in `Input1` is never read).
+-- D152: the ENTRY INSTANCE of the obligation is `n = l = 0`. That is the only
+-- instance this consumer ever needs -- which is exactly why the obligation
+-- could be (wrongly) stated at frontier 0 and still satisfy its consumer,
+-- while being unusable for the induction underneath it.
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
-              → MachineRefinesObsF ir tt entry-s (entry-alloc (ir-stack-budget ir))
+              → MachineRefinesObsF 0 0 ir tt entry-s (entry-alloc (ir-stack-budget ir))
 entry-witness ir ioc =
-  ioc (entry-size ir) Stack tt entry-loc entry-s (entry-alloc (ir-stack-budget ir))
+  ioc (entry-size ir) 0 0 Stack tt entry-loc entry-s (entry-alloc (ir-stack-budget ir))
       (entry-ns (ir-stack-budget ir)) valid-unit-wf
       (entry-bf (ir-stack-budget ir)) entry-nh
             (in-unit refl)
