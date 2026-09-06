@@ -21,6 +21,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ty-El; ty-Nat; ⊢⌜Nat⌝
         ; ⊢ielim; imethsTy )
+open import DirectedHoTT.Lib.IPay using ( spl-nil )
 open import DirectedHoTT.Lib.IDepth using ( dpMeths; ⊢dpMeths )
 open import DirectedHoTT.Examples.Scoped using ( TmD; TmWf; INat; Tm )
 
@@ -28,7 +29,7 @@ dpMethsTm : {Γ : Cx} → RTm Γ
 dpMethsTm = dpMeths TmD
 
 ⊢dpMethsTm : {Γ : Ctx} → Γ ⊢ dpMethsTm ∷ imethsTy TmD INat Nat TmD
-⊢dpMethsTm = ⊢dpMeths TmD INat zero TmD TmWf TmWf (ty-El ⊢⌜Nat⌝)
+⊢dpMethsTm = ⊢dpMeths TmD INat zero TmD TmWf TmWf spl-nil (ty-El ⊢⌜Nat⌝)
 
 -- ★ `depth : Tm n → Nat`, at the object level.
 dpTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ

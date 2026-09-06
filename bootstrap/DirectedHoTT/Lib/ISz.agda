@@ -13,13 +13,19 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.ISz where
-open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc )
-open import DirectedHoTT.Spec.Typing using ( ⊢nzero; ⊢nsuc )
+open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc; Nat )
+open import DirectedHoTT.Spec.Typing using ( ⊢nzero; ⊢nsuc; ty-Nat )
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true )
 import DirectedHoTT.Lib.IFold as IF
 
-open IF.Fold 𝔹 (λ _ → true) (λ b _ → b) nzero plusTm nsuc ⊢nzero ⊢plus ⊢nsuc public
+-- ★ THE MOTIVE, NOW EXPLICIT — this module is `Lib/IFold` at `Nat`.
+-- ⚠ `subA`/`renA` are `refl`: `subTy σ Nat = Nat` and `renTy ρ Nat = Nat`
+--   DEFINITIONALLY, which is exactly why `Nat` was hard-wired before.
+open IF.Fold 𝔹 (λ _ → true) (λ b _ → b)
+             Nat ty-Nat refl refl
+             nzero plusTm nsuc ⊢nzero ⊢plus ⊢nsuc public
   renaming ( ifStep    to szStep    ; ⊢ifStep    to ⊢szStep
            ; ifSumStep to szSumStep
            ; ifTail   to szTail   ; ⊢ifTail   to ⊢szTail

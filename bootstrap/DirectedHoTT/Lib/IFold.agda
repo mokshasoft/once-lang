@@ -7,10 +7,28 @@
 -- `Lib/ISz` is now this module at `z = 0`, `op = +`, `nd = suc`;
 -- `Lib/IDepth` is it at `op = max`.
 --
--- ⚠ THE MOTIVE STAYS `Nat`, deliberately.  An abstract constant motive
---   `A` would need `subTy σ A ≡ A` threaded as a parameter, where `Nat`
---   is stable DEFINITIONALLY.  Generalise the motive when something wants
---   a non-`Nat` fold, not before.
+-- ★★★ THE MOTIVE IS NOW A PARAMETER — generalised 2026-09-06, which is
+--   what this note used to say to wait for:
+--
+--     "THE MOTIVE STAYS `Nat`, deliberately… Generalise the motive when
+--      something wants a non-`Nat` fold, not before."
+--
+--   ⚠ AND THE NOTE WAS RIGHT ABOUT THE COST: `subTy σ A ≡ A` HAS to be
+--     threaded.  `iihTy … (iρ j C) q A` unfolds through
+--     `iinst i t A = subTy (single t) (subTy (extS (single i)) A)`, which
+--     COMPUTES at `Nat` and does not at an abstract motive.  ⇒ `subA`
+--     below, used twice per `iρ` field.  It is `refl` at both current
+--     instantiations, but it cannot be left out.
+--   ★ What HAD already been done, and was never propagated here:
+--     `iatCon-wf` — the lemma `Lib/IPay`'s spike named as THE blocker —
+--     landed with `iconS-Sub⊢`, and `imethTy-wf`/`imethsTyFrom-wf` have
+--     been motive-generic ever since.  Only this module stayed at `Nat`.
+--
+--   ★ The first non-`Nat` customer is the occurrence check, whose motive
+--     is `Π Nat Nat` — a de Bruijn LEVEL in, a boolean out.  A level does
+--     not shift under a binder (an index does), which is what keeps the
+--     motive CONSTANT; and `subTy σ (Π Nat Nat)` is `Π Nat Nat`
+--     DEFINITIONALLY, exactly as `Nat` was.
 --
 -- ★★ NOTHING HERE IS PER-CONSTRUCTOR.  The method is COMPUTED from the
 --   `ICon` and the tuple from the `IDesc`, both by ONE induction with the
@@ -30,7 +48,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.IFold where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Unit; Σ'; El; IMu; Nat; Π
@@ -38,7 +56,7 @@ open import DirectedHoTT.Spec.Syntax
         ; ICon; IDesc; iι; iρ; iκ; inil; _◂_
         ; ipayTy; Sub; extS; subTm; subTy; renTy; isingle; iext
         ; sel; ilookupD; _∈ID_; hereID; thereID; ⌜Id⌝; Var
-        ; εwkTy; εwk-ren; ipayTy-ren; ipayTy-cong )
+        ; εwkTy; εwk-ren; ipayTy-ren; ipayTy-cong ; Ren; extR)
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; ⊢var; here; there; ⊢lam; ⊢pair; ⊢fst; ⊢snd; ⊢unit
@@ -46,12 +64,13 @@ open import DirectedHoTT.Spec.Typing
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTyFrom; iihTy
-        ; _⟶_; _⟶*_; done; step; βfst; βsnd; ξ-fst; ξ-snd )
+        ; _⟶_; _⟶*_; done; step; βfst; βsnd; ξ-fst; ξ-snd ; iinst; single; iconS; iatCon)
 open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; ren-ty; isingle-Sub⊢; iihTy-wf; iihTy-ren; iihTy-cong )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
-open import DirectedHoTT.Lib.IPay using ( ipayTy-wf; imethsTyFromNat-wf )
+open import DirectedHoTT.Lib.IPay
+  using ( ipayTy-wf; imethsTyFrom-wf; Split; spl-step )
 
 ------------------------------------------------------------------------
 -- ★ THE ALGEBRA.  `z` for a constructor with NO recursive fields, `op` to
@@ -154,13 +173,27 @@ module Fold
   (R    : Set)
   (rsum : {Δ : Cx} → ICon Δ → R)
   (pick : {Δ : Cx} → R → RTm Δ → 𝔹)
+  ------------------------------------------------------------------------
+  -- ★ THE MOTIVE, and its well-formedness.  ⚠ `A` is used at SEVERAL
+  --   contexts (the method's three binders), so it is `Cx`-polymorphic
+  --   rather than a fixed `RTy Γ`.
+  ------------------------------------------------------------------------
+  (A    : {Γ : Cx} → RTy Γ)
+  (tyA  : {Γ : Ctx} → Γ ⊢ty A)
+  -- ⚠ SUBSTITUTION-STABILITY, and it is not optional — see the header.
+  --   `refl` at `Nat` and at `Π Nat Nat` alike.
+  (subA : {Γ Δ : Cx} {σ : Sub Γ Δ} → subTy σ A ≡ A)
+  -- ⚠ AND RENAMING-stability, for the same reason one level up:
+  --   `imethTy`'s IH slot and codomain weaken the motive past the index
+  --   and payload binders (`renTy (extR (extR vs))`, twice).
+  (renA : {Γ Δ : Cx} {ρ : Ren Γ Δ} → renTy ρ A ≡ A)
   (z   : {Γ : Cx} → RTm Γ)
   (op  : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ)
   (nd  : {Γ : Cx} → RTm Γ → RTm Γ)
-  (⊢z  : {Γ : Ctx} → Γ ⊢ z ∷ Nat)
+  (⊢z  : {Γ : Ctx} → Γ ⊢ z ∷ A)
   (⊢op : {Γ : Ctx} {a b : RTm ⌊ Γ ⌋} →
-         Γ ⊢ a ∷ Nat → Γ ⊢ b ∷ Nat → Γ ⊢ op a b ∷ Nat)
-  (⊢nd : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat → Γ ⊢ nd a ∷ Nat)
+         Γ ⊢ a ∷ A → Γ ⊢ b ∷ A → Γ ⊢ op a b ∷ A)
+  (⊢nd : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ A → Γ ⊢ nd a ∷ A)
   where
 
   -- ⚠ THE BOOLEAN IS CONSUMED HERE, BY A SEPARATE FUNCTION, NOT BY A
@@ -177,6 +210,36 @@ module Fold
   --   `(sz c + sz a) + sz b`, and that is exactly what this emits.
   --   Flipped, every one of the 30 agreement chains would have to carry
   --   a commutativity-and-associativity rearrangement.
+  -- ★ `iinst i t A ≡ A` — `subA` twice, since
+  --   `iinst i t M = subTy (single t) (subTy (extS (single i)) M)`.
+  --   This is the ONE place the abstract motive costs anything.
+  iinstA : {Γ : Cx} {i t : RTm Γ} → iinst i t A ≡ A
+  iinstA {t = t} = trans (cong (subTy (single t)) subA) subA
+
+  -- ★ the motive weakened past BOTH of `imethTy`'s leading binders.
+  -- ⚠ TWO DIFFERENT RENAMINGS.  `imethTy` weakens past the index binder
+  --   and then past the payload binder, so the two `extR (extR vs)`s live
+  --   at successive contexts and cannot share one `ρ`.
+  renAA : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {ρ' : Ren Δ Θ} →
+          renTy ρ' (renTy ρ A) ≡ A
+  renAA {ρ' = ρ'} = trans (cong (renTy ρ') renA) renA
+
+  -- ★ …and THREE, for the IH-tuple variable: the `⊢lam`'s domain already
+  --   carries the motive weakened twice, and `iihTy-ren` adds a third
+  --   when it moves the outer renaming inside.
+  renA³ : {Γ Δ Θ Ξ : Cx} {ρ₁ : Ren Γ Δ} {ρ₂ : Ren Δ Θ} {ρ₃ : Ren Θ Ξ} →
+          renTy ρ₃ (renTy ρ₂ (renTy ρ₁ A)) ≡ A
+  renA³ {ρ₃ = ρ₃} = trans (cong (renTy ρ₃) renAA) renA
+
+  -- ★ `imethTy`'s CODOMAIN — `renTy vs (iatCon k ⟨-⟩ (renTy _ A))`.
+  --   ⚠ This is the equation `Lib/IPay`'s spike called THE blocker: at
+  --     `Nat` it holds definitionally, at an abstract motive it needs
+  --     `renA`, `subA` (through `iconS`) and `renA` again.
+  codA : {Γ Δ : Cx} {k : ℕ} {i : RTm Γ} {ρ : Ren Δ ((Γ ∙) ∙)} →
+         renTy vs (iatCon k i (renTy ρ A)) ≡ A
+  codA {k = k} {i = i} =
+    trans (cong (renTy vs) (trans (cong (subTy (iconS k i)) renA) subA)) renA
+
   ifStep : {Γ : Cx} → 𝔹 → RTm Γ → RTm Γ → RTm Γ
   ifStep true  acc h = op acc h
   ifStep false acc h = acc
@@ -208,36 +271,36 @@ module Fold
   --   recursion cannot solve its own implicit: only `⌊ Θ ⌋` occurs, `⌊_⌋`
   --   is not injective, and `⌊ Θ ⌋ ∙ = ⌊ Θ' ⌋` does not determine `Θ'`.
   ⊢ifStep : {Γ : Ctx} (b : 𝔹) {acc h : RTm ⌊ Γ ⌋} →
-            Γ ⊢ acc ∷ Nat → Γ ⊢ h ∷ Nat → Γ ⊢ ifStep b acc h ∷ Nat
+            Γ ⊢ acc ∷ A → Γ ⊢ h ∷ A → Γ ⊢ ifStep b acc h ∷ A
   ⊢ifStep true  da dh = ⊢op da dh
   ⊢ifStep false da dh = da
 
   ⊢ifTail : {Γ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) (σ : Sub Δ ⌊ Γ ⌋)
             (r : R) (C : ICon Δ) (q acc ih : RTm ⌊ Γ ⌋) →
-            Γ ⊢ acc ∷ Nat → Γ ⊢ ih ∷ iihTy D I σ C q Nat →
-            Γ ⊢ ifTail r C acc ih ∷ Nat
+            Γ ⊢ acc ∷ A → Γ ⊢ ih ∷ iihTy D I σ C q A →
+            Γ ⊢ ifTail r C acc ih ∷ A
   ⊢ifTail D I σ r iι       q acc ih da d = da
   ⊢ifTail D I σ r (iρ j C) q acc ih da d =
     ⊢ifTail D I (iext σ (fst q)) r C (snd q)
             (ifStep (pick r j) acc (fst ih)) (snd ih)
-            (⊢ifStep (pick r j) da (⊢fst d))
+            (⊢ifStep (pick r j) da (⊢-cast iinstA (⊢fst d)))
             (⊢-cast (wk-singleTy {v = fst ih}
-                                 (iihTy D I (iext σ (fst q)) C (snd q) Nat))
+                                 (iihTy D I (iext σ (fst q)) C (snd q) A))
                     (⊢snd d))
   ⊢ifTail D I σ r (iκ κ C) q acc ih da d =
     ⊢ifTail D I (iext σ (fst q)) r C (snd q) acc ih da d
 
   ⊢ifSum : {Γ : Ctx} {Δ : Cx} (D : IDesc) (I : RTy ε) (σ : Sub Δ ⌊ Γ ⌋)
            (r : R) (C : ICon Δ) (q ih : RTm ⌊ Γ ⌋) →
-           Γ ⊢ ih ∷ iihTy D I σ C q Nat → Γ ⊢ ifSum r C ih ∷ Nat
+           Γ ⊢ ih ∷ iihTy D I σ C q A → Γ ⊢ ifSum r C ih ∷ A
 
   -- ⚠ `b` FIRST, and matched on FIRST: it is the argument that decides
   --   which clause of `ifSumStep` the goal reduces to.
   ⊢ifSumStep : {Γ : Ctx} {Δ : Cx} (b : 𝔹) (D : IDesc) (I : RTy ε)
                (σ : Sub Δ ⌊ Γ ⌋) (r : R) (j : RTm Δ) (C : ICon (Δ ∙))
                (q ih : RTm ⌊ Γ ⌋) →
-               Γ ⊢ ih ∷ iihTy D I σ (iρ j C) q Nat →
-               Γ ⊢ ifSumStep b r C ih ∷ Nat
+               Γ ⊢ ih ∷ iihTy D I σ (iρ j C) q A →
+               Γ ⊢ ifSumStep b r C ih ∷ A
 
   ⊢ifSum D I σ r iι       q ih d = ⊢z
   ⊢ifSum D I σ r (iρ j C) q ih d = ⊢ifSumStep (pick r j) D I σ r j C q ih d
@@ -246,15 +309,15 @@ module Fold
 
   ⊢ifSumStep true  D I σ r j C q ih d =
     ⊢ifTail D I (iext σ (fst q)) r C (snd q) (fst ih) (snd ih)
-            (⊢fst d)
+            (⊢-cast iinstA (⊢fst d))
             (⊢-cast (wk-singleTy {v = fst ih}
-                                 (iihTy D I (iext σ (fst q)) C (snd q) Nat))
+                                 (iihTy D I (iext σ (fst q)) C (snd q) A))
                     (⊢snd d))
   ⊢ifSumStep false D I σ r j C q ih d =
     -- ⚠ the field is not COUNTED, but its IH slot is still THERE.
     ⊢ifSum D I (iext σ (fst q)) r C (snd q) (snd ih)
            (⊢-cast (wk-singleTy {v = fst ih}
-                                (iihTy D I (iext σ (fst q)) C (snd q) Nat))
+                                (iihTy D I (iext σ (fst q)) C (snd q) A))
                    (⊢snd d))
 
   ------------------------------------------------------------------------
@@ -269,29 +332,39 @@ module Fold
   ⊢ifMethod : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙)) →
               IDescWf I D → IConWf D I (◇ ▹ εwkTy I) C →
               ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
-              Γ ⊢ ifMethod C ∷ imethTy D I k C Nat
+              Γ ⊢ ifMethod C ∷ imethTy D I k C A
   ⊢ifMethod {Γ = Γ} D I k C wD wC tI =
     ⊢lam tI
       (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
                        wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
-        (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
-                        D I Nat (isingle (var (vs vz))) C (var vz) wC
+        (⊢lam (subst (λ z → _ ⊢ty iihTy D I (isingle (var (vs vz))) C (var vz) z)
+                     (sym renAA)
+                (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
+                        D I A (isingle (var (vs vz))) C (var vz) wC
                         (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                      (εwk-ren vs I))
-                                              (⊢var (there here)))) ty-Nat
+                                              (⊢var (there here)))) tyA
                         (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
                                        (ipayTy-cong D I C (λ { vz → refl ; (vs ()) })))
-                                (⊢var here)))
+                                (⊢var here))))
           -- ⚠ the IH-tuple variable, RETYPED: `⊢var here` hands back
           --   `renTy vs (iihTy …)` and the fold is stated one binder out.
           --   `iihTy-ren` moves the renaming inside, `iihTy-cong` then
           --   identifies the two environments — pointwise, not definitionally.
-          (⊢nd (⊢ifSum D I (isingle (var (vs (vs vz)))) (rsum C) C (var (vs vz)) (var vz)
-                 (⊢-cast (trans (iihTy-ren vs D I (isingle (var (vs vz))) C
-                                           (var vz) Nat)
-                                (iihTy-cong D I C (var (vs vz)) Nat
-                                            (λ { vz → refl ; (vs ()) })))
-                         (⊢var here))))))
+          (⊢-cast (sym codA)
+            (⊢nd (⊢ifSum D I (isingle (var (vs (vs vz)))) (rsum C) C (var (vs vz)) (var vz)
+                 -- ⚠ ONE STEP MORE THAN THE `Nat` VERSION: after
+                 --   `iihTy-ren`/`iihTy-cong` the MOTIVE is still
+                 --   `renTy _ (renTy _ (renTy _ A))`, which at `Nat`
+                 --   was already `Nat`.  `renA³` collapses it.
+                 (⊢-cast (trans (trans (iihTy-ren vs D I (isingle (var (vs vz))) C
+                                                  (var vz) _)
+                                       (iihTy-cong D I C (var (vs vz)) _
+                                                   (λ { vz → refl ; (vs ()) })))
+                                (cong (iihTy D I (isingle (var (vs (vs vz)))) C
+                                             (var (vs vz)))
+                                      renA³))
+                         (⊢var here)))))))
 
   ------------------------------------------------------------------------
   -- ★★★ THE TUPLE, COMPUTED FROM THE DESCRIPTION.  ONE induction, and the
@@ -303,17 +376,24 @@ module Fold
   ifMeths inil    = unit
   ifMeths (C ◂ E) = pair (ifMethod C) (ifMeths E)
 
+  -- ⚠ ONE PARAMETER MORE THAN THE `Nat` VERSION: a `Split D j E`.
+  --   `imethsTyFrom-wf` is motive-generic but its per-row
+  --   `imethTy-wf` needs `k ∈ID D` and `ilookupD D k ≡ C`, which the
+  --   split supplies (`spl-mem`/`spl-look`).  At `Nat` nobody had to
+  --   say it, because the method type's CODOMAIN never mentioned the
+  --   payload — `iatCon k i Nat` is `Nat`.
   ⊢ifMeths : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc) →
-             IDescWf I D → IDescWfFrom D I E →
+             IDescWf I D → IDescWfFrom D I E → Split D j E →
              ({Δ : Ctx} → Δ ⊢ty εwkTy I) →
-             Γ ⊢ ifMeths E ∷ imethsTyFrom D I Nat j E
-  ⊢ifMeths D I j inil    wD idwf-nil          tI = ⊢unit
-  ⊢ifMeths D I j (C ◂ E) wD (idwf-cons wC wE) tI =
-    ⊢pair (ren-ty (imethsTyFromNat-wf D I (suc j) E wD wE tI) there)
+             Γ ⊢ ifMeths E ∷ imethsTyFrom D I A j E
+  ⊢ifMeths D I j inil    wD idwf-nil          sp tI = ⊢unit
+  ⊢ifMeths D I j (C ◂ E) wD (idwf-cons wC wE) sp tI =
+    ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI tyA)
+                  there)
           (⊢ifMethod D I j C wD wC tI)
           (⊢-cast (sym (wk-singleTy {v = ifMethod C}
-                                    (imethsTyFrom D I Nat (suc j) E)))
-                  (⊢ifMeths D I (suc j) E wD wE tI))
+                                    (imethsTyFrom D I A (suc j) E)))
+                  (⊢ifMeths D I (suc j) E wD wE (spl-step sp) tI))
 
   ------------------------------------------------------------------------
   -- ★★★ SELECTING A METHOD OUT OF THE TUPLE, IN **ONE** STEP PER ROW.

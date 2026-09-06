@@ -17,6 +17,7 @@ open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; Nat; Σ'; ielim )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ty-Nat; ⊢ielim; imethsTy )
+open import DirectedHoTT.Lib.IPay using ( spl-nil )
 open import DirectedHoTT.Lib.ISzSort using ( szsMeths; ⊢szsMeths )
 open import DirectedHoTT.Examples.Knot.Sorts using ( IPair; ⊢IPair )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
@@ -25,8 +26,13 @@ open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 szsMethsK : {Γ : Cx} → RTm Γ
 szsMethsK = szsMeths KnotD
 
+-- ⚠ ONE ARGUMENT MORE: a `Split KnotD 0 KnotD`.  `Lib/IFold`'s
+--   method-tuple lemma is motive-generic now, and its per-row
+--   `imethTy-wf` needs `k ∈ID D` / `ilookupD D k ≡ C`, which the
+--   split supplies.  At the hard-wired `Nat` motive the codomain
+--   never mentioned the payload, so nobody had to say it.
 ⊢szsMethsK : {Γ : Ctx} → Γ ⊢ szsMethsK ∷ imethsTy KnotD IPair Nat KnotD
-⊢szsMethsK = ⊢szsMeths KnotD IPair zero KnotD KnotWf KnotWf ⊢IPair
+⊢szsMethsK = ⊢szsMeths KnotD IPair zero KnotD KnotWf KnotWf spl-nil ⊢IPair
 
 -- ★★★ `sz` OVER THE WHOLE KNOT.
 szsTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
