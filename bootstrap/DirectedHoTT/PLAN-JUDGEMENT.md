@@ -180,6 +180,47 @@ needs nothing.
 
 ### Step 2 — object-level weakening for `RTy`/`RTm`, then `extS`, then `subTm`
 
+## ✅✅✅ **CLOSED 2026-09-06.** Both sorts, both halves.
+
+|                 | renaming (`renTm`/`renTy`) | substitution (`subTm`/`subTy`) |
+|---|---|---|
+| `RTm`, 30 rows  | `ren-agree` ✅              | `sub-agree` ✅ |
+| `RTy`, 11 rows  | `ren-agree-ty` ✅           | `sub-agree-ty` ✅ |
+
+and the two wrappers the rest of the development actually calls:
+
+    Knot/SubSpec.wkTmK-agree     A = ren-agree    wk-Represents A
+    Knot/TyAgree.wkTyK-agree     A = ren-agree-ty wk-Represents A
+    Knot/TyAgree.subTyAtK-agree h A = sub-agree-ty h A
+
+⇒ the agreement ledger fell 20 ⬜ OWED → 18, and — more to the point —
+the 15 remaining `Ty`-sorted entries (`atConK`, `ihTyK`, `payTyK`,
+`ipayTyK`, `wkTyUnderK`, `conSSK`, …) are no longer *blocked*: each is now
+a use of `ren-agree-ty`/`sub-agree-ty` rather than a wait for them.
+
+★★★ **Why it was affordable: the `Ty` layer is not mutual with `Tm`.**
+The only `cTm-` row with an `sTy` child is `cTm-cIMu`, whose slot is
+`sTy@lit(0)` — **pinned**, so `sPick` copies it and there is no descent.
+`ren-agree-ty` calls `ren-agree`; nothing calls back. A mutual
+restructure of a finished proof was expected and was not needed.
+
+★ **And five hand-written rows became zero.** The four agreement emitters
+are now sort-parametric (`_AGREE_SORT`), and the row emitter classifies a
+field into five shapes — `ford` / `ℕ` / `pinned` / `closed` / `ih` —
+where its header had claimed three. ⚠ The `Tm` output is byte-identical
+apart from imports, which is what makes that a refactor rather than a
+rewrite.
+
+⬜ **Follow-up, deliberately not taken here:** `cross=False` at `Tm` is a
+consumer switch, not a capability one. The emitter can now generate
+`Knot/RenAgreeX`/`SubAgreeX`'s four cross-sort rows too, leaving only the
+*given* `row-var`. That deletes ~120 lines of hand proof each side.
+
+---
+
+**What follows is the original plan text, kept for the reasoning.**
+
+
 ✅ **THE MOTIVE QUESTION IS SETTLED** — see step 0. The uniform shift
 `M(i,t) = K (pair (fst ⟨i⟩) (nsuc (snd ⟨i⟩)))` is honest at all 53 sorts
 now that `Ctx` is not one of them. (`Negative/WkEmp` is why that sentence
