@@ -127,7 +127,7 @@ ana-events   : (fmt : TargetNum) → ∀ {F A} → IR A (⟦ F ⟧TI A) → Val.
 
 evalᴰ fmt id            a        = returnT a
 evalᴰ fmt (g ∘ f)       a        = evalᴰ fmt f a >>=T evalᴰ fmt g
-evalᴰ fmt (⟨ f , g ⟩ _) a        = evalᴰ fmt f a >>=T λ b → evalᴰ fmt g a >>=T λ c → returnT (b , c)
+evalᴰ fmt (⟨ f , g ⟩) a        = evalᴰ fmt f a >>=T λ b → evalᴰ fmt g a >>=T λ c → returnT (b , c)
 evalᴰ fmt fst           p        = returnT (proj₁ p)
 evalᴰ fmt snd           p        = returnT (proj₂ p)
 evalᴰ fmt (inl _)       a        = returnT (inj₁ a)

@@ -31,9 +31,9 @@ data CompReducible : ∀ {A B C} → IR B C → IR A B → Set where
 
   -- Product beta
   red-fst-pair : ∀ {A B C} {f : IR C A} {g : IR C B} {m} →
-                 CompReducible fst (⟨ f , g ⟩ m)
+                 CompReducible fst (⟨ f , g ⟩)
   red-snd-pair : ∀ {A B C} {f : IR C A} {g : IR C B} {m} →
-                 CompReducible snd (⟨ f , g ⟩ m)
+                 CompReducible snd (⟨ f , g ⟩)
 
   -- Coproduct beta
   red-case-inl : ∀ {A B C} {f : IR A C} {g : IR B C} {m} →
@@ -43,7 +43,7 @@ data CompReducible : ∀ {A B C} → IR B C → IR A B → Set where
 
   -- Exponential beta
   red-apply-curry : ∀ {A B C k} {f : IR (A * B) C} {g : IR A B} {m₁ m₂} →
-                    CompReducible apply (⟨ curry {k = k} f m₁ , g ⟩ m₂)
+                    CompReducible apply (⟨ curry {k = k} f m₁ , g ⟩)
 
   -- Dead code elimination
   red-terminal : ∀ {A B} {f : IR A B} → CompReducible terminal f
@@ -100,7 +100,7 @@ comp-reducible? (h ∘ k) f = yes red-assoc
 -- f = id: reducible (red-id-right)
 comp-reducible? fst id = yes red-id-right
 comp-reducible? snd id = yes red-id-right
-comp-reducible? (⟨ _ , _ ⟩ _) id = yes red-id-right
+comp-reducible? (⟨ _ , _ ⟩) id = yes red-id-right
 comp-reducible? (inl _) id = yes red-id-right
 comp-reducible? (inr _) id = yes red-id-right
 comp-reducible? (case _ _) id = yes red-id-right
@@ -115,7 +115,7 @@ comp-reducible? (free-heap _) id = yes red-id-right
 -- f = initial: reducible (red-initial)
 comp-reducible? fst initial = yes red-initial
 comp-reducible? snd initial = yes red-initial
-comp-reducible? (⟨ _ , _ ⟩ _) initial = yes red-initial
+comp-reducible? (⟨ _ , _ ⟩) initial = yes red-initial
 comp-reducible? (inl _) initial = yes red-initial
 comp-reducible? (inr _) initial = yes red-initial
 comp-reducible? (case _ _) initial = yes red-initial
@@ -128,15 +128,15 @@ comp-reducible? arr initial = yes red-initial
 comp-reducible? (SigOp _) initial = yes red-initial
 comp-reducible? (free-heap _) initial = yes red-initial
 -- g = fst, f = ⟨ _ , _ ⟩ _: reducible (red-fst-pair)
-comp-reducible? fst (⟨ _ , _ ⟩ _) = yes red-fst-pair
+comp-reducible? fst (⟨ _ , _ ⟩) = yes red-fst-pair
 -- g = snd, f = ⟨ _ , _ ⟩ _: reducible (red-snd-pair)
-comp-reducible? snd (⟨ _ , _ ⟩ _) = yes red-snd-pair
+comp-reducible? snd (⟨ _ , _ ⟩) = yes red-snd-pair
 -- g = (case _ _), f = inl _: reducible (red-case-inl)
 comp-reducible? (case _ _) (inl _) = yes red-case-inl
 -- g = (case _ _), f = inr _: reducible (red-case-inr)
 comp-reducible? (case _ _) (inr _) = yes red-case-inr
 -- g = apply, f = ⟨ curry _ _ , _ ⟩ _: reducible (red-apply-curry)
-comp-reducible? apply (⟨ curry _ _ , _ ⟩ _) = yes red-apply-curry
+comp-reducible? apply (⟨ curry _ _ , _ ⟩) = yes red-apply-curry
 -- All remaining cases: not reducible
 -- g = fst (non-pair, non-id, non-initial f)
 -- fst : IR (A * B) A, so f must have codomain A * B
@@ -163,25 +163,25 @@ comp-reducible? snd apply = no λ ()
 comp-reducible? snd unfold = no λ ()
 comp-reducible? snd (SigOp _) = no λ ()
 -- g = ⟨ _ , _ ⟩ _ (non-id, non-initial f)
-comp-reducible? (⟨ _ , _ ⟩ _) (_ ∘ _) = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) fst = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) snd = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) (⟨ _ , _ ⟩ _) = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) (inl _) = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) (inr _) = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) (case _ _) = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) terminal = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) (curry _ _) = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) apply = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) (fold _) = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) unfold = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) arr = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) (SigOp _) = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) (_ ∘ _) = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) fst = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) snd = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) (⟨ _ , _ ⟩) = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) (inl _) = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) (inr _) = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) (case _ _) = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) terminal = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) (curry _ _) = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) apply = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) (fold _) = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) unfold = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) arr = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) (SigOp _) = no λ ()
 -- g = inl _ (non-id, non-initial f)
 comp-reducible? (inl _) (_ ∘ _) = no λ ()
 comp-reducible? (inl _) fst = no λ ()
 comp-reducible? (inl _) snd = no λ ()
-comp-reducible? (inl _) (⟨ _ , _ ⟩ _) = no λ ()
+comp-reducible? (inl _) (⟨ _ , _ ⟩) = no λ ()
 comp-reducible? (inl _) (inl _) = no λ ()
 comp-reducible? (inl _) (inr _) = no λ ()
 comp-reducible? (inl _) (case _ _) = no λ ()
@@ -196,7 +196,7 @@ comp-reducible? (inl _) (SigOp _) = no λ ()
 comp-reducible? (inr _) (_ ∘ _) = no λ ()
 comp-reducible? (inr _) fst = no λ ()
 comp-reducible? (inr _) snd = no λ ()
-comp-reducible? (inr _) (⟨ _ , _ ⟩ _) = no λ ()
+comp-reducible? (inr _) (⟨ _ , _ ⟩) = no λ ()
 comp-reducible? (inr _) (inl _) = no λ ()
 comp-reducible? (inr _) (inr _) = no λ ()
 comp-reducible? (inr _) (case _ _) = no λ ()
@@ -232,7 +232,7 @@ comp-reducible? initial (SigOp _) = no λ ()
 comp-reducible? (curry _ _) (_ ∘ _) = no λ ()
 comp-reducible? (curry _ _) fst = no λ ()
 comp-reducible? (curry _ _) snd = no λ ()
-comp-reducible? (curry _ _) (⟨ _ , _ ⟩ _) = no λ ()
+comp-reducible? (curry _ _) (⟨ _ , _ ⟩) = no λ ()
 comp-reducible? (curry _ _) (inl _) = no λ ()
 comp-reducible? (curry _ _) (inr _) = no λ ()
 comp-reducible? (curry _ _) (case _ _) = no λ ()
@@ -251,15 +251,15 @@ comp-reducible? apply snd = no λ ()
 -- apply : IR ((A ⇒ B) * A) B, so f must have codomain (A ⇒ B) * A
 -- First component of pair must have codomain A ⇒ B (function type)
 -- ⟨_,_⟩, inl, inr, terminal, fold, arr have wrong codomain - type-impossible
-comp-reducible? apply (⟨ id , _ ⟩ _) = no λ ()
-comp-reducible? apply (⟨ (_ ∘ _) , _ ⟩ _) = no λ ()
-comp-reducible? apply (⟨ fst , _ ⟩ _) = no λ ()
-comp-reducible? apply (⟨ snd , _ ⟩ _) = no λ ()
-comp-reducible? apply (⟨ (case _ _) , _ ⟩ _) = no λ ()
-comp-reducible? apply (⟨ initial , _ ⟩ _) = no λ ()
-comp-reducible? apply (⟨ apply , _ ⟩ _) = no λ ()
-comp-reducible? apply (⟨ unfold , _ ⟩ _) = no λ ()
-comp-reducible? apply (⟨ (SigOp _) , _ ⟩ _) = no λ ()
+comp-reducible? apply (⟨ id , _ ⟩) = no λ ()
+comp-reducible? apply (⟨ (_ ∘ _) , _ ⟩) = no λ ()
+comp-reducible? apply (⟨ fst , _ ⟩) = no λ ()
+comp-reducible? apply (⟨ snd , _ ⟩) = no λ ()
+comp-reducible? apply (⟨ (case _ _) , _ ⟩) = no λ ()
+comp-reducible? apply (⟨ initial , _ ⟩) = no λ ()
+comp-reducible? apply (⟨ apply , _ ⟩) = no λ ()
+comp-reducible? apply (⟨ unfold , _ ⟩) = no λ ()
+comp-reducible? apply (⟨ (SigOp _) , _ ⟩) = no λ ()
 -- inl, inr have codomain A + B - type-impossible
 -- terminal has codomain Unit - type-impossible
 -- curry has codomain B ⇒ C - handled by red-apply-curry
@@ -273,7 +273,7 @@ comp-reducible? apply (SigOp _) = no λ ()
 comp-reducible? (fold _) (_ ∘ _) = no λ ()
 comp-reducible? (fold _) fst = no λ ()
 comp-reducible? (fold _) snd = no λ ()
-comp-reducible? (fold _) (⟨ _ , _ ⟩ _) = no λ ()
+comp-reducible? (fold _) (⟨ _ , _ ⟩) = no λ ()
 comp-reducible? (fold _) (inl _) = no λ ()
 comp-reducible? (fold _) (inr _) = no λ ()
 comp-reducible? (fold _) (case _ _) = no λ ()
@@ -310,7 +310,7 @@ comp-reducible? arr (SigOp _) = no λ ()
 comp-reducible? (SigOp _) (_ ∘ _) = no λ ()
 comp-reducible? (SigOp _) fst = no λ ()
 comp-reducible? (SigOp _) snd = no λ ()
-comp-reducible? (SigOp _) (⟨ _ , _ ⟩ _) = no λ ()
+comp-reducible? (SigOp _) (⟨ _ , _ ⟩) = no λ ()
 comp-reducible? (SigOp _) (inl _) = no λ ()
 comp-reducible? (SigOp _) (inr _) = no λ ()
 comp-reducible? (SigOp _) (case _ _) = no λ ()
@@ -322,7 +322,7 @@ comp-reducible? (SigOp _) unfold = no λ ()
 comp-reducible? (SigOp _) arr = no λ ()
 comp-reducible? (SigOp _) (SigOp _) = no λ ()
 comp-reducible? (SigOp _) (free-heap _) = no λ ()
-comp-reducible? (⟨ _ , _ ⟩ _) (free-heap _) = no λ ()
+comp-reducible? (⟨ _ , _ ⟩) (free-heap _) = no λ ()
 comp-reducible? (inl _) (free-heap _) = no λ ()
 comp-reducible? (inr _) (free-heap _) = no λ ()
 comp-reducible? (curry _ _) (free-heap _) = no λ ()
@@ -374,7 +374,7 @@ pair-reducible? fst (fst ∘ _) = no λ ()
 pair-reducible? fst (snd ∘ _) = no λ ()
 -- Remaining composition cases for f = fst
 pair-reducible? fst (id ∘ _) = no λ ()
-pair-reducible? fst ((⟨ _ , _ ⟩ _) ∘ _) = no λ ()
+pair-reducible? fst ((⟨ _ , _ ⟩) ∘ _) = no λ ()
 pair-reducible? fst ((inl _) ∘ _) = no λ ()
 pair-reducible? fst ((inr _) ∘ _) = no λ ()
 pair-reducible? fst ((case _ _) ∘ _) = no λ ()
@@ -388,7 +388,7 @@ pair-reducible? fst (arr ∘ _) = no λ ()
 pair-reducible? fst ((SigOp _) ∘ _) = no λ ()
 pair-reducible? fst ((_ ∘ _) ∘ _) = no λ ()
 pair-reducible? fst id = no λ ()
-pair-reducible? fst (⟨ _ , _ ⟩ _) = no λ ()
+pair-reducible? fst (⟨ _ , _ ⟩) = no λ ()
 pair-reducible? fst (inl _) = no λ ()
 pair-reducible? fst (inr _) = no λ ()
 pair-reducible? fst terminal = no λ ()
@@ -401,7 +401,7 @@ pair-reducible? snd _ = no λ ()
 -- f = id
 pair-reducible? id _ = no λ ()
 -- f = ⟨ _ , _ ⟩ _
-pair-reducible? (⟨ _ , _ ⟩ _) _ = no λ ()
+pair-reducible? (⟨ _ , _ ⟩) _ = no λ ()
 -- f = inl _
 pair-reducible? (inl _) _ = no λ ()
 -- f = inr _
@@ -427,7 +427,7 @@ pair-reducible? (snd ∘ _) _ = no λ ()
 -- f = id ∘ _
 pair-reducible? (id ∘ _) _ = no λ ()
 -- f = (⟨ _ , _ ⟩ _) ∘ _
-pair-reducible? ((⟨ _ , _ ⟩ _) ∘ _) _ = no λ ()
+pair-reducible? ((⟨ _ , _ ⟩) ∘ _) _ = no λ ()
 -- f = (inl _) ∘ _
 pair-reducible? ((inl _) ∘ _) _ = no λ ()
 -- f = (inr _) ∘ _
@@ -464,7 +464,7 @@ pair-reducible? initial _ = no λ ()
 pair-reducible? (fst ∘ _) id = no λ ()
 pair-reducible? (fst ∘ _) fst = no λ ()
 pair-reducible? (fst ∘ _) snd = no λ ()
-pair-reducible? (fst ∘ _) (⟨ _ , _ ⟩ _) = no λ ()
+pair-reducible? (fst ∘ _) (⟨ _ , _ ⟩) = no λ ()
 pair-reducible? (fst ∘ _) (inl _) = no λ ()
 pair-reducible? (fst ∘ _) (inr _) = no λ ()
 pair-reducible? (fst ∘ _) (case _ _) = no λ ()
@@ -479,7 +479,7 @@ pair-reducible? (fst ∘ _) (SigOp _) = no λ ()
 -- f = fst ∘ h, g = non-snd ∘ _
 pair-reducible? (fst ∘ _) (id ∘ _) = no λ ()
 pair-reducible? (fst ∘ _) (fst ∘ _) = no λ ()
-pair-reducible? (fst ∘ _) ((⟨ _ , _ ⟩ _) ∘ _) = no λ ()
+pair-reducible? (fst ∘ _) ((⟨ _ , _ ⟩) ∘ _) = no λ ()
 pair-reducible? (fst ∘ _) ((inl _) ∘ _) = no λ ()
 pair-reducible? (fst ∘ _) ((inr _) ∘ _) = no λ ()
 pair-reducible? (fst ∘ _) ((case _ _) ∘ _) = no λ ()
@@ -545,7 +545,7 @@ case-reducible? fst _ = no λ ()
 -- f = snd
 case-reducible? snd _ = no λ ()
 -- f = ⟨ _ , _ ⟩ _
-case-reducible? (⟨ _ , _ ⟩ _) _ = no λ ()
+case-reducible? (⟨ _ , _ ⟩) _ = no λ ()
 -- f = (case _ _)
 case-reducible? (case _ _) _ = no λ ()
 -- f = terminal
@@ -571,7 +571,7 @@ case-reducible? (_ ∘ fst) _ = no λ ()
 -- f = _ ∘ snd
 case-reducible? (_ ∘ snd) _ = no λ ()
 -- f = _ ∘ (⟨ _ , _ ⟩ _)
-case-reducible? (_ ∘ (⟨ _ , _ ⟩ _)) _ = no λ ()
+case-reducible? (_ ∘ (⟨ _ , _ ⟩)) _ = no λ ()
 -- f = _ ∘ (inr _)
 case-reducible? (_ ∘ (inr _)) _ = no λ ()
 -- f = _ ∘ (case _ _)
@@ -598,7 +598,7 @@ case-reducible? (_ ∘ (_ ∘ _)) _ = no λ ()
 case-reducible? (_ ∘ (inl _)) id = no λ ()
 case-reducible? (_ ∘ (inl _)) fst = no λ ()
 case-reducible? (_ ∘ (inl _)) snd = no λ ()
-case-reducible? (_ ∘ (inl _)) (⟨ _ , _ ⟩ _) = no λ ()
+case-reducible? (_ ∘ (inl _)) (⟨ _ , _ ⟩) = no λ ()
 case-reducible? (_ ∘ (inl _)) (inl _) = no λ ()
 case-reducible? (_ ∘ (inl _)) (inr _) = no λ ()
 case-reducible? (_ ∘ (inl _)) (case _ _) = no λ ()
@@ -614,7 +614,7 @@ case-reducible? (_ ∘ (inl _)) (SigOp _) = no λ ()
 case-reducible? (_ ∘ (inl _)) (_ ∘ id) = no λ ()
 case-reducible? (_ ∘ (inl _)) (_ ∘ fst) = no λ ()
 case-reducible? (_ ∘ (inl _)) (_ ∘ snd) = no λ ()
-case-reducible? (_ ∘ (inl _)) (_ ∘ (⟨ _ , _ ⟩ _)) = no λ ()
+case-reducible? (_ ∘ (inl _)) (_ ∘ (⟨ _ , _ ⟩)) = no λ ()
 case-reducible? (_ ∘ (inl _)) (_ ∘ (inl _)) = no λ ()
 case-reducible? (_ ∘ (inl _)) (_ ∘ (case _ _)) = no λ ()
 case-reducible? (_ ∘ (inl _)) (_ ∘ terminal) = no λ ()

@@ -66,7 +66,7 @@ desugar m (g S.∘ f) = desugar m g C.∘ desugar m f
 -- Products
 desugar m S.fst = C.fst
 desugar m S.snd = C.snd
-desugar m S.⟨ f , g ⟩ = C.⟨ desugar m f , desugar m g ⟩ m
+desugar m S.⟨ f , g ⟩ = C.⟨ desugar m f , desugar m g ⟩
 
 -- Coproducts
 desugar m S.inl = C.inl m
@@ -96,7 +96,7 @@ desugar m S.arr = C.id
 -- - Body e2 : A * B → C receives this pair
 -- - Body uses fst to access original input, snd for bound value
 --
-desugar m (Let e1 e2) = desugar m e2 C.∘ C.⟨ C.id , desugar m e1 ⟩ m
+desugar m (Let e1 e2) = desugar m e2 C.∘ C.⟨ C.id , desugar m e1 ⟩
 
 -- | Primitive passthrough
 --

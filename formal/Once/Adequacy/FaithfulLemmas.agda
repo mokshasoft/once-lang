@@ -135,7 +135,7 @@ subst-arrow refl refl g = refl
 morph-app-bridge : ∀ {D E π} (morph : Expr ∅ zeroUsage (D ⇒[ mk-kind Many π ] E))
                      (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ fmt tt j)
                      (w : ⟦ D ⟧ᴰ) (n : ℕ)
-                   → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w n
+                   → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w n
                      ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w)) n
 morph-app-bridge {D} {E} morph ih w n =
   trans (cong (λ X → subst T (cohᴰ E) X n) app-⟨⟩-clean)
@@ -146,7 +146,7 @@ morph-app-bridge {D} {E} morph ih w n =
     -- The elaborated closed-morphism `apply ∘ ⟨ morph ∘ terminal , id ⟩` applied to `w'`
     -- monad-reduces (`terminal`/`id` = `returnT`) to `evalᴰ morph tt >>=T (λ vf → vf w')`;
     -- the only residual is the pair-build's empty trace (`++ []`, `++-identityʳ`).
-    app-⟨⟩-clean : evalᴰ fmt (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w'
+    app-⟨⟩-clean : evalᴰ fmt (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w'
                    ≡ (evalᴰ fmt (elaborate C.Heap morph) tt >>=T (λ vf → vf w'))
     app-⟨⟩-clean = extensionality (λ j →
       cong₂ _,_
@@ -163,7 +163,7 @@ morph-app-bridge {D} {E} morph ih w n =
 morph-app-bridge-fun : ∀ {D E π} (morph : Expr ∅ zeroUsage (D ⇒[ mk-kind Many π ] E))
                          (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ fmt tt j)
                          (w : ⟦ D ⟧ᴰ)
-                       → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩ C.Heap) w
+                       → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w
                          ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w))
 morph-app-bridge-fun morph ih w = extensionality (morph-app-bridge morph ih w)
 
@@ -204,7 +204,7 @@ cataM-fold {F} {A} {π} wfF c =
   where
     c' = subst (λ z → z) (sym (cohᴰ (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))) c
     applyIR : IR (⌊ ⟦ F ⟧T A ⇒[ mk-kind Many π ] A ⌋ C.* ⌊ ⟦ F ⟧T A ⌋) ⌊ A ⌋
-    applyIR = C.apply C.∘ C.⟨ C.fst , C.snd ⟩ C.Heap
+    applyIR = C.apply C.∘ C.⟨ C.fst , C.snd ⟩
     -- Applying the carried closure IS the algebra: `⟨fst,snd⟩` is pair-η and
     -- `liftFn apply` is application, so the fold's per-layer algebra is `c`.
     apply-closure : ∀ (z : ⟦ ⟦ F ⟧T A ⟧ᴰ)
@@ -285,7 +285,7 @@ ana-ev-bridge : ∀ {F A π} (coalg : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π
                   (s : Val.⟦ A ⟧) (m : ℕ)
               → ana-events fmt {eraseF F} {⌊ A ⌋}
                   (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A)
-                         (apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩ C.Heap))
+                         (apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩))
                   (subst (λ z → z) (sym (coh A)) s) m
                 ≡ SD.ana-eventsˢ {F} {A} (SD.⟦ coalg ⟧ˢ fmt tt) s m
 ana-ev-bridge coalg ih s zero = refl
@@ -293,7 +293,7 @@ ana-ev-bridge {F} {A} coalg ih s (suc m) =
   cong₂ _++_ trace-eq events-eq
   where
     p : IR ⌊ A ⌋ ⌊ ⟦ F ⟧T A ⌋
-    p = apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩ C.Heap
+    p = apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩
     seed-e = subst (λ z → z) (sym (coh A)) s
     v0T = evalᴰ fmt p (inject seed-e)
     v0 = valueT v0T m
@@ -360,7 +360,7 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
   trans elab-ana-reduce (cong (_,_ []) per-a)
   where
     coalgIR : IR ⌊ A ⌋ ⌊ ⟦ F ⟧T A ⌋
-    coalgIR = apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩ C.Heap
+    coalgIR = apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩
     coalg' = subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) coalgIR
     Ana-IR : IR ⌊ A ⌋ ⌊ ν-type F ⌋
     Ana-IR = Ana (wf-⌊⌋ wf) coalg'

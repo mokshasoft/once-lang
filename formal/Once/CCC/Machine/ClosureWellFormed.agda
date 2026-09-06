@@ -565,7 +565,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     --
     -- Stack-only IRs fill the heap sub-record trivially
     -- (heap-monotone = ≤-refl, heap-budget = 0, trace-no-heap-writes = tt).
-    -- Heap-allocating IRs (run-pair-heap and friends) contribute
+    -- Heap-allocating IRs (run-pair and friends) contribute
     -- non-trivially to the heap sub-record while filling the stack
     -- sub-record with whatever scratch they use.
     --
@@ -738,7 +738,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- Plan 0.17: smart constructor for producers.
     --
     -- Captures the cascade pattern that every compositional producer
-    -- (PairAllocWF, ApplyWF, ComposeWF, ...) hits: the producer has a
+    -- (PairWF, ApplyWF, ComposeWF, ...) hits: the producer has a
     -- natural `alloc-final-local` (computed from sub-IR results or
     -- scratch budgets) and constructs all its proofs (alloc-correct,
     -- result-place, stack-inv, heap-inv) typed against that local
@@ -1944,7 +1944,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Stage F: carry an input's PLACE across a state change that preserves
   -- memory below the frontier and re-establishes `Input1`.
   --
-  -- Every multi-step handler needs this. `run-pair-heap` stashes its input,
+  -- Every multi-step handler needs this. `run-pair` stashes its input,
   -- runs `f`, then restores the input to dispatch `g`; `run-compose` hands
   -- `f`'s output on to `g`. Each such site used to re-derive the four
   -- positional facts by hand, per residence. Stated once here, the residence

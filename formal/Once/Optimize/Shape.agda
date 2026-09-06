@@ -24,7 +24,7 @@ open import Relation.Nullary using (Dec; yes; no)
 data OptPairShape {A B : Type} : {C : Type} → IR C A → IR C B → IR C (A * B) → Set where
   ops-id   : OptPairShape (fst {A} {B}) snd id
   ops-h    : ∀ {C} (h : IR C (A * B)) → OptPairShape (fst ∘ h) (snd ∘ h) h
-  ops-pair : ∀ {C} (f : IR C A) (g : IR C B) → OptPairShape f g (⟨ f , g ⟩ Heap)
+  ops-pair : ∀ {C} (f : IR C A) (g : IR C B) → OptPairShape f g (⟨ f , g ⟩)
 
 ------------------------------------------------------------------------
 -- Direct proof: optimize-pair-shape
@@ -74,7 +74,7 @@ optimize-pair-shape id g = ops-pair id g
 optimize-pair-shape snd g = ops-pair snd g
 
 -- f = ⟨ _ , _ ⟩
-optimize-pair-shape (⟨ _ , _ ⟩ _) g = ops-pair _ g
+optimize-pair-shape (⟨ _ , _ ⟩) g = ops-pair _ g
 
 -- f = inl
 optimize-pair-shape (inl _) g = ops-pair _ g
@@ -113,7 +113,7 @@ optimize-pair-shape (SigOp _) g = ops-pair _ g
 -- g must have source type (D * A) - constructors with any source type work
 optimize-pair-shape fst id = ops-pair fst id
 optimize-pair-shape fst fst = ops-pair fst fst
-optimize-pair-shape fst (⟨ _ , _ ⟩ _) = ops-pair fst _
+optimize-pair-shape fst (⟨ _ , _ ⟩) = ops-pair fst _
 optimize-pair-shape fst (inl _) = ops-pair fst _
 optimize-pair-shape fst (inr _) = ops-pair fst _
 optimize-pair-shape fst terminal = ops-pair fst terminal
@@ -127,7 +127,7 @@ optimize-pair-shape fst (_ ∘ _) = ops-pair fst _
 optimize-pair-shape (fst ∘ _) id = ops-pair _ id
 optimize-pair-shape (fst ∘ _) fst = ops-pair _ fst
 optimize-pair-shape (fst ∘ _) snd = ops-pair _ snd
-optimize-pair-shape (fst ∘ _) (⟨ _ , _ ⟩ _) = ops-pair _ _
+optimize-pair-shape (fst ∘ _) (⟨ _ , _ ⟩) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (inl _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (inr _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (case _ _) = ops-pair _ _
@@ -142,7 +142,7 @@ optimize-pair-shape (fst ∘ _) (SigOp _) = ops-pair _ _
 -- g = _ ∘ _ where inner is not snd (snd ∘ _ handled above)
 optimize-pair-shape (fst ∘ _) (id ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (fst ∘ _) = ops-pair _ _
-optimize-pair-shape (fst ∘ _) ((⟨ _ , _ ⟩ _) ∘ _) = ops-pair _ _
+optimize-pair-shape (fst ∘ _) ((⟨ _ , _ ⟩) ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) ((inl _) ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) ((inr _) ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) ((case _ _) ∘ _) = ops-pair _ _
@@ -159,7 +159,7 @@ optimize-pair-shape (fst ∘ _) ((_ ∘ _) ∘ _) = ops-pair _ _
 -- f = h ∘ k where h is not fst
 optimize-pair-shape (id ∘ _) g = ops-pair _ g
 optimize-pair-shape (snd ∘ _) g = ops-pair _ g
-optimize-pair-shape ((⟨ _ , _ ⟩ _) ∘ _) g = ops-pair _ g
+optimize-pair-shape ((⟨ _ , _ ⟩) ∘ _) g = ops-pair _ g
 optimize-pair-shape ((inl _) ∘ _) g = ops-pair _ g
 optimize-pair-shape ((inr _) ∘ _) g = ops-pair _ g
 optimize-pair-shape ((case _ _) ∘ _) g = ops-pair _ g
@@ -229,7 +229,7 @@ optimize-case-shape fst g = ocs-case fst g
 optimize-case-shape snd g = ocs-case snd g
 
 -- f = ⟨ _ , _ ⟩
-optimize-case-shape (⟨ _ , _ ⟩ _) g = ocs-case _ g
+optimize-case-shape (⟨ _ , _ ⟩) g = ocs-case _ g
 
 -- f = inr
 optimize-case-shape (inr _) g = ocs-case _ g
@@ -280,7 +280,7 @@ optimize-case-shape (inl _) (_ ∘ _) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) id = ocs-case _ id
 optimize-case-shape (_ ∘ (inl _)) fst = ocs-case _ fst
 optimize-case-shape (_ ∘ (inl _)) snd = ocs-case _ snd
-optimize-case-shape (_ ∘ (inl _)) (⟨ _ , _ ⟩ _) = ocs-case _ _
+optimize-case-shape (_ ∘ (inl _)) (⟨ _ , _ ⟩) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (inl _) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (inr _) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (case _ _) = ocs-case _ _
@@ -296,7 +296,7 @@ optimize-case-shape (_ ∘ (inl _)) (SigOp _) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ id) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ fst) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ snd) = ocs-case _ _
-optimize-case-shape (_ ∘ (inl _)) (_ ∘ (⟨ _ , _ ⟩ _)) = ocs-case _ _
+optimize-case-shape (_ ∘ (inl _)) (_ ∘ (⟨ _ , _ ⟩)) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ (inl _)) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ (case _ _)) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ terminal) = ocs-case _ _
@@ -313,7 +313,7 @@ optimize-case-shape (_ ∘ (inl _)) (_ ∘ (_ ∘ _)) = ocs-case _ _
 optimize-case-shape (_ ∘ id) g = ocs-case _ g
 optimize-case-shape (_ ∘ fst) g = ocs-case _ g
 optimize-case-shape (_ ∘ snd) g = ocs-case _ g
-optimize-case-shape (_ ∘ (⟨ _ , _ ⟩ _)) g = ocs-case _ g
+optimize-case-shape (_ ∘ (⟨ _ , _ ⟩)) g = ocs-case _ g
 optimize-case-shape (_ ∘ (inr _)) g = ocs-case _ g
 optimize-case-shape (_ ∘ (case _ _)) g = ocs-case _ g
 optimize-case-shape (_ ∘ terminal) g = ocs-case _ g

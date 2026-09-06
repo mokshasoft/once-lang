@@ -368,7 +368,7 @@ h₁ ≟IRHead h₂ with headTag h₁ Data.Nat.Properties.≟ headTag h₂
 ir-head : ∀ {A B} → IR A B → IRHead
 ir-head id = h-id
 ir-head (_ ∘ _) = h-∘
-ir-head (⟨ _ , _ ⟩ _) = h-⟨,⟩
+ir-head (⟨ _ , _ ⟩) = h-⟨,⟩
 ir-head fst = h-fst
 ir-head snd = h-snd
 ir-head (inl _) = h-inl
@@ -567,17 +567,14 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ≟IRH-∘-aux g₁ f₁ g₂ f₂ (yes refl) =
   ≟IRH-∘-inner g₁ g₂ f₁ f₂ (≟IRH g₁ g₂ refl refl) (≟IRH f₁ f₂ refl refl)
 
-≟IRH-⟨,⟩-aux : ∀ {A B C} (f₁ f₂ : IR A B) (g₁ g₂ : IR A C) (m₁ m₂ : AllocMode)
-             → Dec (f₁ ≡ f₂) → Dec (g₁ ≡ g₂) → Dec (m₁ ≡ m₂)
-             → Dec (⟨ f₁ , g₁ ⟩ m₁ ≡ ⟨ f₂ , g₂ ⟩ m₂)
-≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (yes refl) (yes refl) (yes refl) = yes refl
-≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (yes refl) (yes refl) (no nm)    = no (λ { refl → nm refl })
-≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (yes refl) (no nq)    (yes _)    = no (λ { refl → nq refl })
-≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (yes refl) (no nq)    (no _)     = no (λ { refl → nq refl })
-≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (no np)    (yes _)    (yes _)    = no (λ { refl → np refl })
-≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (no np)    (yes _)    (no _)     = no (λ { refl → np refl })
-≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (no np)    (no _)     (yes _)    = no (λ { refl → np refl })
-≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂ (no np)    (no _)     (no _)     = no (λ { refl → np refl })
+-- Stage G: no mode to compare, so the 3x2 matrix collapses to 2x2.
+≟IRH-⟨,⟩-aux : ∀ {A B C} (f₁ f₂ : IR A B) (g₁ g₂ : IR A C)
+             → Dec (f₁ ≡ f₂) → Dec (g₁ ≡ g₂)
+             → Dec (⟨ f₁ , g₁ ⟩ ≡ ⟨ f₂ , g₂ ⟩)
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ (yes refl) (yes refl) = yes refl
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ (yes refl) (no nq)    = no (λ { refl → nq refl })
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ (no np)    (yes _)    = no (λ { refl → np refl })
+≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ (no np)    (no _)     = no (λ { refl → np refl })
 
 ≟IRH-case-aux : ∀ {A B C} (f₁ f₂ : IR A C) (g₁ g₂ : IR B C)
               → Dec (f₁ ≡ f₂) → Dec (g₁ ≡ g₂)
@@ -637,9 +634,9 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
   ≟IRH-∘-aux g₁ f₁ g₂ f₂ (B ≟IRTy B')
 
 -- ⟨_,_⟩: B * C equality refl-unifies both component types
-≟IRH-diag (⟨ f₁ , g₁ ⟩ m₁) (⟨ f₂ , g₂ ⟩ m₂) _ refl refl =
-  ≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂ m₁ m₂
-    (≟IRH f₁ f₂ refl refl) (≟IRH g₁ g₂ refl refl) (m₁ ≟AllocMode m₂)
+≟IRH-diag (⟨ f₁ , g₁ ⟩) (⟨ f₂ , g₂ ⟩) _ refl refl =
+  ≟IRH-⟨,⟩-aux f₁ f₂ g₁ g₂
+    (≟IRH f₁ f₂ refl refl) (≟IRH g₁ g₂ refl refl)
 
 ≟IRH-diag fst fst _ refl refl = yes refl
 ≟IRH-diag snd snd _ refl refl = yes refl
@@ -885,7 +882,7 @@ wants-coprod f =
 
 -- View: classify IR terms targeting a product type
 data PairView : ∀ {A B C : IRTy} → IR A (B * C) → Set where
-  is-pair : ∀ {A B C} (f : IR A B) (g : IR A C) m → PairView (⟨ f , g ⟩ m)
+  is-pair : ∀ {A B C} (f : IR A B) (g : IR A C) → PairView ⟨ f , g ⟩
   is-other-pair : ∀ {A B C} (f : IR A (B * C)) → PairView f
 
 -- View: classify IR terms targeting a coproduct type
@@ -943,7 +940,7 @@ data InlInrView : ∀ {A B : IRTy} → IR A B → Set where
 -- via subst (plan 0.5 Phase A / F2).
 pairView-gen : ∀ {A B'} (f : IR A B') → ∀ {B C} → (eq : B' ≡ B * C)
              → PairView {A} {B} {C} (subst (IR A) eq f)
-pairView-gen (⟨ f , g ⟩ m) refl = is-pair f g m
+pairView-gen ⟨ f , g ⟩ refl = is-pair f g
 pairView-gen id              eq = is-other-pair (subst (IR _) eq id)
 pairView-gen (f ∘ g)         eq = is-other-pair (subst (IR _) eq (f ∘ g))
 pairView-gen fst             eq = is-other-pair (subst (IR _) eq fst)
@@ -978,7 +975,7 @@ coprodView-gen (inl m) refl = is-inl m
 coprodView-gen (inr m) refl = is-inr m
 coprodView-gen id              eq = is-other-coprod (subst (IR _) eq id)
 coprodView-gen (f ∘ g)         eq = is-other-coprod (subst (IR _) eq (f ∘ g))
-coprodView-gen (⟨ f , g ⟩ m)   eq = is-other-coprod (subst (IR _) eq (⟨ f , g ⟩ m))
+coprodView-gen (⟨ f , g ⟩)   eq = is-other-coprod (subst (IR _) eq (⟨ f , g ⟩))
 coprodView-gen fst             eq = is-other-coprod (subst (IR _) eq fst)
 coprodView-gen snd             eq = is-other-coprod (subst (IR _) eq snd)
 coprodView-gen (case f g)      eq = is-other-coprod (subst (IR _) eq (case f g))
@@ -1016,7 +1013,7 @@ composeFirstView fst             = cf-fst
 composeFirstView snd             = cf-snd
 composeFirstView (case h k)      = cf-case h k
 composeFirstView (g ∘ h)         = cf-other (g ∘ h)
-composeFirstView (⟨ f , g ⟩ m)   = cf-other (⟨ f , g ⟩ m)
+composeFirstView (⟨ f , g ⟩)   = cf-other (⟨ f , g ⟩)
 composeFirstView (inl m)         = cf-other (inl m)
 composeFirstView (inr m)         = cf-other (inr m)
 composeFirstView initial         = cf-other initial
@@ -1039,7 +1036,7 @@ composeSecondView : ∀ {A B} → (f : IR A B) → ComposeSecondView f
 composeSecondView id             = cs-id
 composeSecondView initial        = cs-initial
 composeSecondView (f ∘ g)        = cs-other (f ∘ g)
-composeSecondView (⟨ f , g ⟩ m)  = cs-other (⟨ f , g ⟩ m)
+composeSecondView (⟨ f , g ⟩)  = cs-other (⟨ f , g ⟩)
 composeSecondView fst            = cs-other fst
 composeSecondView snd            = cs-other snd
 composeSecondView (inl m)        = cs-other (inl m)
@@ -1066,7 +1063,7 @@ fstSndView fst             = fsv-fst
 fstSndView snd             = fsv-snd
 fstSndView id              = fsv-other id
 fstSndView (f ∘ g)         = fsv-other (f ∘ g)
-fstSndView (⟨ f , g ⟩ m)   = fsv-other (⟨ f , g ⟩ m)
+fstSndView (⟨ f , g ⟩)   = fsv-other (⟨ f , g ⟩)
 fstSndView (inl m)         = fsv-other (inl m)
 fstSndView (inr m)         = fsv-other (inr m)
 fstSndView (case f g)      = fsv-other (case f g)
@@ -1092,7 +1089,7 @@ inlInrView (inl m)         = iiv-inl m
 inlInrView (inr m)         = iiv-inr m
 inlInrView id              = iiv-other id
 inlInrView (f ∘ g)         = iiv-other (f ∘ g)
-inlInrView (⟨ f , g ⟩ m)   = iiv-other (⟨ f , g ⟩ m)
+inlInrView (⟨ f , g ⟩)   = iiv-other (⟨ f , g ⟩)
 inlInrView fst             = iiv-other fst
 inlInrView snd             = iiv-other snd
 inlInrView (case f g)      = iiv-other (case f g)
@@ -1133,7 +1130,7 @@ has-effect? id              = false
 has-effect? (g ∘ f)         = has-effect? g ∨ has-effect? f
 has-effect? fst             = false
 has-effect? snd             = false
-has-effect? (⟨ f , g ⟩ _)   = has-effect? f ∨ has-effect? g
+has-effect? (⟨ f , g ⟩)   = has-effect? f ∨ has-effect? g
 has-effect? (inl _)         = false
 has-effect? (inr _)         = false
 has-effect? (case f g)      = has-effect? f ∨ has-effect? g
@@ -1170,13 +1167,13 @@ has-effect?-nt (ntPair t u) = has-effect?-nt t ∨ has-effect?-nt u
 
 optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
 optimize-fst f with pairView f
-... | is-pair g _ _ = g
+... | is-pair g _ = g
 ... | is-other-pair f = fst ∘ f
 
 -- Helper: beta reduction for snd ∘ f (verified given view)
 optimize-snd : ∀ {A B C} → IR A (B * C) → IR A C
 optimize-snd f with pairView f
-... | is-pair _ g _ = g
+... | is-pair _ g = g
 ... | is-other-pair f = snd ∘ f
 
 -- Helper: optimize (case h k) ∘ f (verified given view)
@@ -1215,24 +1212,27 @@ optimize-compose g f | false with composeFirstView g
 
 -- | Optimize pair construction
 --   ⟨ fst , snd ⟩ = id (eta)
--- Plan 0.53: preserve the pair's original AllocMode `m` instead of forcing
--- `Stack`. Forcing `Stack` was the same class of mode leak as the closure-env
--- fix: an optimized pair that escapes (e.g. captured by a closure) must stay on
--- the heap in heap-mode. The eta case `⟨fst,snd⟩ → id` is mode-independent.
-optimize-pair-aux : ∀ {A B C} (m : AllocMode) (f : IR C A) (g : IR C B)
+-- Plan 0.53 preserved the pair's `AllocMode` here rather than forcing `Stack`,
+-- because "an optimized pair that escapes (e.g. captured by a closure) must
+-- stay on the heap in heap-mode".
+--
+-- Stage G removes the mode, so that distinction can no longer be expressed at
+-- this node. See the ESCAPE note on `⟨_,_⟩` in `Once.IR`: this is the one
+-- claim in the pair migration that is NOT discharged by the typechecker.
+optimize-pair-aux : ∀ {A B C} (f : IR C A) (g : IR C B)
                   → FstSndView f → FstSndView g → IR C (A * B)
-optimize-pair-aux m f g fsv-fst       fsv-snd       = id
-optimize-pair-aux m f g fsv-fst       fsv-fst       = ⟨ f , g ⟩ m
-optimize-pair-aux m f g fsv-fst       (fsv-other _) = ⟨ f , g ⟩ m
-optimize-pair-aux m f g fsv-snd       fsv-fst       = ⟨ f , g ⟩ m
-optimize-pair-aux m f g fsv-snd       fsv-snd       = ⟨ f , g ⟩ m
-optimize-pair-aux m f g fsv-snd       (fsv-other _) = ⟨ f , g ⟩ m
-optimize-pair-aux m f g (fsv-other _) fsv-fst       = ⟨ f , g ⟩ m
-optimize-pair-aux m f g (fsv-other _) fsv-snd       = ⟨ f , g ⟩ m
-optimize-pair-aux m f g (fsv-other _) (fsv-other _) = ⟨ f , g ⟩ m
+optimize-pair-aux f g fsv-fst       fsv-snd       = id
+optimize-pair-aux f g fsv-fst       fsv-fst       = ⟨ f , g ⟩
+optimize-pair-aux f g fsv-fst       (fsv-other _) = ⟨ f , g ⟩
+optimize-pair-aux f g fsv-snd       fsv-fst       = ⟨ f , g ⟩
+optimize-pair-aux f g fsv-snd       fsv-snd       = ⟨ f , g ⟩
+optimize-pair-aux f g fsv-snd       (fsv-other _) = ⟨ f , g ⟩
+optimize-pair-aux f g (fsv-other _) fsv-fst       = ⟨ f , g ⟩
+optimize-pair-aux f g (fsv-other _) fsv-snd       = ⟨ f , g ⟩
+optimize-pair-aux f g (fsv-other _) (fsv-other _) = ⟨ f , g ⟩
 
-optimize-pair : ∀ {A B C} → AllocMode → IR C A → IR C B → IR C (A * B)
-optimize-pair m f g = optimize-pair-aux m f g (fstSndView f) (fstSndView g)
+optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
+optimize-pair f g = optimize-pair-aux f g (fstSndView f) (fstSndView g)
 
 -- | Optimize case construction
 --   [ inl , inr ] = id (eta)
@@ -1274,7 +1274,7 @@ mutual
   optimize-once-structural (g ∘ f) = optimize-compose (optimize-once g) (optimize-once f)
   optimize-once-structural fst = fst
   optimize-once-structural snd = snd
-  optimize-once-structural (⟨ f , g ⟩ m) = optimize-pair m (optimize-once f) (optimize-once g)
+  optimize-once-structural ⟨ f , g ⟩ = optimize-pair (optimize-once f) (optimize-once g)
   -- | inl with Void source is equivalent to initial (no inhabitants)
   optimize-once-structural (inl {A} {B} m) with A ≟IRTy II.Void
   ... | yes refl = initial

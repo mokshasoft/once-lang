@@ -25,7 +25,7 @@ ir-size : ∀ {A B} → IR A B → ℕ
 ir-size-nt : ∀ {G F} → NatTr G F → ℕ
 ir-size id = 1
 ir-size (g ∘ f) = 1 +ℕ ir-size g +ℕ ir-size f
-ir-size (⟨ f , g ⟩ _) = 1 +ℕ ir-size f +ℕ ir-size g
+ir-size ⟨ f , g ⟩ = 1 +ℕ ir-size f +ℕ ir-size g
 ir-size fst = 1
 ir-size snd = 1
 ir-size (inl _) = 1
@@ -72,11 +72,11 @@ ir-size-nt (ntPair t u) = 1 +ℕ ir-size-nt t +ℕ ir-size-nt u
 ∘-g-smaller : ∀ {A B C} (f : IR A B) (g : IR B C) → ir-size g < ir-size (g ∘ f)
 ∘-g-smaller f g = s≤s (m≤m+n (ir-size g) (ir-size f))
 
-⟨,⟩-f-smaller : ∀ {A B C} (f : IR A B) (g : IR A C) {m : AllocMode} → ir-size f < ir-size (⟨ f , g ⟩ m)
-⟨,⟩-f-smaller f g {m} = s≤s (m≤m+n (ir-size f) (ir-size g))
+⟨,⟩-f-smaller : ∀ {A B C} (f : IR A B) (g : IR A C) → ir-size f < ir-size ⟨ f , g ⟩
+⟨,⟩-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
 
-⟨,⟩-g-smaller : ∀ {A B C} (f : IR A B) (g : IR A C) {m : AllocMode} → ir-size g < ir-size (⟨ f , g ⟩ m)
-⟨,⟩-g-smaller f g {m} = s≤s (m≤n+m (ir-size g) (ir-size f))
+⟨,⟩-g-smaller : ∀ {A B C} (f : IR A B) (g : IR A C) → ir-size g < ir-size ⟨ f , g ⟩
+⟨,⟩-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
 curry-smaller : ∀ {A B C} (f : IR (A * B) C) {m : AllocMode} → ir-size f < ir-size (curry f m)
 curry-smaller f {m} = m≤n⇒m≤1+n (n<1+n (ir-size f))

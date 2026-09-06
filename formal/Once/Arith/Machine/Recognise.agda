@@ -95,7 +95,7 @@ recognise-body : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MArithIR 
 -- is the SigOp's ERASED domain `⌊Dom⌋` and `⌊Dom⌋ ≟ B * C` is unification-stuck
 -- (`⌊_⌋` non-invertible). Plan 0.52 M2.
 recognise-binop : (sh : InputShape) → ∀ {X Y} → IR X Y → Maybe (MArithIR sh NInt × MArithIR sh NInt)
-recognise-binop sh (⟨ a , b ⟩ _) with recognise-body sh a | recognise-body sh b
+recognise-binop sh (⟨ a , b ⟩) with recognise-body sh a | recognise-body sh b
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
 recognise-binop sh _ = nothing
@@ -176,7 +176,7 @@ recognise-body-float : (sh : InputShape) → ∀ {A B} → IR A B → Maybe (MAr
 
 recognise-binop-float : (sh : InputShape) → ∀ {X Y} → IR X Y
                       → Maybe (MArithIR sh NFloat × MArithIR sh NFloat)
-recognise-binop-float sh (⟨ a , b ⟩ _) with recognise-body-float sh a | recognise-body-float sh b
+recognise-binop-float sh (⟨ a , b ⟩) with recognise-body-float sh a | recognise-body-float sh b
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
 recognise-binop-float sh _ = nothing

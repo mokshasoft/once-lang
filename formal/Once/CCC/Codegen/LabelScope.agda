@@ -550,13 +550,9 @@ labels-in initial  n l = li-none refl ∷ []
 labels-in (g ∘ f)  n l =
   ++⁺ (ls-weaken ≤-refl (label-mono g _ _) (labels-in f n l))
       (li-none refl ∷ ls-weaken (label-mono f n l) ≤-refl (labels-in g _ _))
-labels-in (⟨ f , g ⟩ Stack) n l =
-  li-none refl ∷ li-none refl ∷
-  ++⁺ (ls-weaken ≤-refl (label-mono g _ _) (labels-in f _ l))
-      (li-none refl ∷ li-none refl ∷
-       ++⁺ (ls-weaken (label-mono f _ l) ≤-refl (labels-in g _ _))
-           (li-none refl ∷ li-none refl ∷ []))
-labels-in (⟨ f , g ⟩ Heap) n l =
+-- Stage G: the stack-shape clause that stood here collapsed onto this
+-- same LHS when the pair's mode was dropped, and shadowed the heap one.
+labels-in (⟨ f , g ⟩) n l =
   li-none refl ∷ li-none refl ∷
   ++⁺ (ls-weaken ≤-refl (label-mono g _ _) (labels-in f _ l))
       (li-none refl ∷ li-none refl ∷
@@ -1522,10 +1518,8 @@ cata-agree (strat-branching F) lo bb n1 l1 at natl saB lsB = cata-br-agree F lo 
 -- embedded traces, descending windows).
 ------------------------------------------------------------------------
 seg-agree   : ∀ {A B} (ir : IR A B) (n l : ℕ) → SegAgree (trace-of (ir-to-trace' n l ir))
-pair-agree  : ∀ {A B C} (f : IR A B) (g : IR A C) (n l : ℕ)
-            → SegAgree (trace-of (ir-to-trace' n l (⟨ f , g ⟩ Stack)))
 pair-agree-heap : ∀ {A B C} (f : IR A B) (g : IR A C) (n l : ℕ)
-            → SegAgree (trace-of (ir-to-trace' n l (⟨ f , g ⟩ Heap)))
+            → SegAgree (trace-of (ir-to-trace' n l (⟨ f , g ⟩)))
 case-pieces : ∀ {A B C} (f : IR A C) (g : IR B C) (n l : ℕ)
             → Pieces2 l (suc (suc l))
                       (label-of (ir-to-trace' (budget-of (ir-to-trace' n (suc (suc l)) f))
@@ -1593,8 +1587,9 @@ seg-agree (Cata {F} _ alg) n l =
   cata-agree (cata-strategy ⌈ F ⌉F) l _ _ _ _
     (λ st → ok-neu (slots-below alg 0 l) st)
     (seg-agree alg 0 l) (labels-in alg 0 l)
-seg-agree (⟨ f , g ⟩ Stack) n l = pair-agree f g n l
-seg-agree (⟨ f , g ⟩ Heap)  n l = pair-agree-heap f g n l
+-- Stage G: the stack-shape clause and its `pair-agree` helper are deleted;
+-- the pair has one lowering now, and it is the heap one.
+seg-agree (⟨ f , g ⟩)  n l = pair-agree-heap f g n l
 -- `case`: the skeleton's labels `l`/`suc l` are INTERLEAVED with the two
 -- branches, so no left-to-right split works — `Pieces2` is exactly this shape,
 -- with `gt`'s window above `ft`'s (windows descend along the trace).
@@ -1619,28 +1614,6 @@ case-pieces f g n l =
            li-none refl ∷ li-none refl ∷ []
     tailL : LabelsIn l (suc (suc l)) _
     tailL = li-lab refl (n≤1+n l) ≤-refl ∷ []
-
-pair-agree f g n l =
-  segagree-pre (mov-to-output ∷ store-at-slot n ∷ []) l l lg (refl ∷ refl ∷ [])
-    (++⁺ (ls-weaken ≤-refl (label-mono g nf lf) (labels-in f (suc (suc (suc n))) l))
-         (ls-weaken (label-mono f (suc (suc (suc n))) l) ≤-refl restL)) ≤-refl
-    (segagree-++' _ _ l lf lf lg
-       (labels-in f (suc (suc (suc n))) l) restL (inj₁ ≤-refl)
-       (seg-agree f (suc (suc (suc n))) l)
-       (segagree-pre (_ ∷ _ ∷ []) lf lf lg (refl ∷ refl ∷ [])
-          (++⁺ (labels-in g nf lf) (ls-weaken (label-mono g nf lf) ≤-refl tailS)) ≤-refl
-          (segagree-++' _ _ lf lg lg lg (labels-in g nf lf) tailS (inj₁ ≤-refl)
-             (seg-agree g nf lf)
-             (segagree-nolab _ (refl ∷ refl ∷ [])))))
-  where
-    nf = budget-of (ir-to-trace' (suc (suc (suc n))) l f)
-    lf = label-of (ir-to-trace' (suc (suc (suc n))) l f)
-    lg = label-of (ir-to-trace' nf lf g)
-    tailS : LabelsIn lg lg _
-    tailS = li-none refl ∷ li-none refl ∷ []
-    restL : LabelsIn lf lg _
-    restL = li-none refl ∷ li-none refl ∷
-            ++⁺ (labels-in g nf lf) (ls-weaken (label-mono g nf lf) ≤-refl tailS)
 
 pair-agree-heap f g n l =
   segagree-pre (mov-to-output ∷ store-at-slot n ∷ []) l l lg (refl ∷ refl ∷ [])

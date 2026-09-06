@@ -150,7 +150,7 @@ wrapMainAsEntry : IR ⌊ Unit ⌋ ⌊ Unit ⇒[ mk-kind Many eff ] Unit ⌋ → 
 -- only survived it by luck). AllocMode is semantically transparent, so this
 -- does not affect the evaluation proof; it only moves the allocation to the
 -- heap, where an escaping closure's environment must live. We are heap-only.
-wrapMainAsEntry mainIR = apply ∘ ⟨ mainIR , terminal ⟩ Heap
+wrapMainAsEntry mainIR = apply ∘ ⟨ mainIR , terminal ⟩
 
 -- | Apply the entry wrap conditionally for the function named "main".
 -- Returns the (possibly-rewritten) type and IR. Non-main functions and
@@ -175,9 +175,9 @@ directCallIR : (ty : Type) → IR ⌊ Unit ⌋ ⌊ ty ⌋ → ∃[ D ] ∃[ C ] 
 -- and escapes, so its apply-pair must be heap-allocated.
 -- D143: at an ERASED arrow the function takes no argument, so the uncurried
 -- form's domain is `Unit`, not `A` — there is nothing for a caller to pass.
-directCallIR (A ⇒[ mk-kind Zero π ] B) ir = Unit , B , apply ∘ ⟨ ir ∘ terminal , id ⟩ Heap
-directCallIR (A ⇒[ mk-kind One  π ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩ Heap
-directCallIR (A ⇒[ mk-kind Many π ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩ Heap
+directCallIR (A ⇒[ mk-kind Zero π ] B) ir = Unit , B , apply ∘ ⟨ ir ∘ terminal , id ⟩
+directCallIR (A ⇒[ mk-kind One  π ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩
+directCallIR (A ⇒[ mk-kind Many π ] B) ir = A , B , apply ∘ ⟨ ir ∘ terminal , id ⟩
 directCallIR ty           ir = Unit , ty , ir
 
 ------------------------------------------------------------------------

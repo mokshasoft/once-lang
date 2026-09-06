@@ -241,11 +241,9 @@ alloc-min-trace' terminal n l = []
 alloc-min-trace' initial  n l = tt ∷ []
 alloc-min-trace' (g ∘ f)  n l =
   ++⁺ (alloc-min-trace' f _ _) (tt ∷ alloc-min-trace' g _ _)
-alloc-min-trace' (⟨ f , g ⟩ Stack) n l =
-  tt ∷ tt ∷
-  ++⁺ (alloc-min-trace' f _ _)
-      (tt ∷ tt ∷ ++⁺ (alloc-min-trace' g _ _) (tt ∷ tt ∷ []))
-alloc-min-trace' (⟨ f , g ⟩ Heap) n l =
+-- Stage G: the stack-shape clause that stood here collapsed onto this
+-- same LHS when the pair's mode was dropped, and shadowed the heap one.
+alloc-min-trace' (⟨ f , g ⟩) n l =
   tt ∷ tt ∷
   ++⁺ (alloc-min-trace' f _ _)
       (tt ∷ tt ∷

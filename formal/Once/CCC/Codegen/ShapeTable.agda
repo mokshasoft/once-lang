@@ -467,7 +467,9 @@ HeapModed terminal  = ⊤
 HeapModed initial   = ⊤
 HeapModed apply     = ⊤
 HeapModed (g ∘ f)   = HeapModed f × HeapModed g
-HeapModed (⟨ f , g ⟩ m) = IsHeap m × HeapModed f × HeapModed g
+-- Stage G: a pair carries NO mode any more, so it contributes no `IsHeap`
+-- obligation — only its components can be heap-moded.
+HeapModed ⟨ f , g ⟩ = HeapModed f × HeapModed g
 HeapModed (curry b m)   = IsHeap m × HeapModed b
 HeapModed (inl m)   = IsHeap m
 HeapModed (inr m)   = IsHeap m

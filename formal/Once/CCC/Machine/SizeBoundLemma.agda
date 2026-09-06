@@ -38,12 +38,12 @@ open import Once.IR.Size
 
 -- Pair sub-IR bounds
 ⟨,⟩-f-bound : ∀ {A B C} (f : IR A B) (g : IR A C) {m : AllocMode} (program-bound : ℕ) →
-  ir-size (⟨ f , g ⟩ m) < program-bound →
+  ir-size (⟨ f , g ⟩) < program-bound →
   ir-size f < program-bound
 ⟨,⟩-f-bound f g {m} pb ir<bound = <-trans (⟨,⟩-f-smaller f g {m}) ir<bound
 
 ⟨,⟩-g-bound : ∀ {A B C} (f : IR A B) (g : IR A C) {m : AllocMode} (program-bound : ℕ) →
-  ir-size (⟨ f , g ⟩ m) < program-bound →
+  ir-size (⟨ f , g ⟩) < program-bound →
   ir-size g < program-bound
 ⟨,⟩-g-bound f g {m} pb ir<bound = <-trans (⟨,⟩-g-smaller f g {m}) ir<bound
 

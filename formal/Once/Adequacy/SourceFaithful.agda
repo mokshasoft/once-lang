@@ -234,7 +234,7 @@ mutual
     ∀ {n} {Γ : Ctx n} {A : Type} {Ψ Ψ' : Usage n} (ule : Ψ' ⊑ᵘ Ψ)
       (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ × ⟦ A ⟧ᴰ) (k : ℕ)
     → liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ * A} {⟦ Γ ↾ Ψ' ⟧ᶜ * A}
-             (⟨ restrictEnv {Γ = Γ} C.Heap ule ∘ fst , snd ⟩ C.Heap) dγ k
+             (⟨ restrictEnv {Γ = Γ} C.Heap ule ∘ fst , snd ⟩) dγ k
       ≡ returnT (restrictᴰ {Γ = Γ} ule (proj₁ dγ) , proj₂ dγ) k
   restrictEnv-keep {Γ = Γ} {A = A} {Ψ = Ψ} {Ψ' = Ψ'} ule dγ k =
     trans (cong (λ t → t dγ k)
@@ -331,7 +331,7 @@ arith-body-II : ∀ {X : Type} (info : SigOpInfo (Int * Int) Int)
              → (noEmit : ∀ v → emit-D info v ≡ [])
              → (∀ j → liftFn fmt {X} {Int} ea dγ j ≡ sa j)
              → (∀ j → liftFn fmt {X} {Int} eb dγ j ≡ sb j)
-             → liftFn fmt {X} {Int} (SigOp info ∘ ⟨ ea , eb ⟩ C.Heap) dγ n
+             → liftFn fmt {X} {Int} (SigOp info ∘ ⟨ ea , eb ⟩) dγ n
                ≡ (sa >>=T (λ va → sb >>=T (λ vb → returnT (semM info fmt (va , vb))))) n
 arith-body-II {X = X} info ea eb sa sb dγ n noEmit iha ihb
   rewrite ihᴰgen {X} {Int} ea sa dγ iha | ihᴰgen {X} {Int} eb sb dγ ihb
@@ -344,7 +344,7 @@ arith-body-FF : ∀ {X : Type} (info : SigOpInfo (Float * Float) Float)
              → (noEmit : ∀ v → emit-D info v ≡ [])
              → (∀ j → liftFn fmt {X} {Float} ea dγ j ≡ sa j)
              → (∀ j → liftFn fmt {X} {Float} eb dγ j ≡ sb j)
-             → liftFn fmt {X} {Float} (SigOp info ∘ ⟨ ea , eb ⟩ C.Heap) dγ n
+             → liftFn fmt {X} {Float} (SigOp info ∘ ⟨ ea , eb ⟩) dγ n
                ≡ (sa >>=T (λ va → sb >>=T (λ vb → returnT (semM info fmt (va , vb))))) n
 arith-body-FF {X = X} info ea eb sa sb dγ n noEmit iha ihb
   rewrite ihᴰgen {X} {Float} ea sa dγ iha | ihᴰgen {X} {Float} eb sb dγ ihb
@@ -357,7 +357,7 @@ arith-body-IB : ∀ {X : Type} (info : SigOpInfo (Int * Int) (Unit + Unit))
              → (noEmit : ∀ v → emit-D info v ≡ [])
              → (∀ j → liftFn fmt {X} {Int} ea dγ j ≡ sa j)
              → (∀ j → liftFn fmt {X} {Int} eb dγ j ≡ sb j)
-             → liftFn fmt {X} {(Unit + Unit)} (SigOp info ∘ ⟨ ea , eb ⟩ C.Heap) dγ n
+             → liftFn fmt {X} {(Unit + Unit)} (SigOp info ∘ ⟨ ea , eb ⟩) dγ n
                ≡ (sa >>=T (λ va → sb >>=T (λ vb → returnT (semM info fmt (va , vb))))) n
 arith-body-IB {X = X} info ea eb sa sb dγ n noEmit iha ihb
   rewrite ihᴰgen {X} {Int} ea sa dγ iha | ihᴰgen {X} {Int} eb sb dγ ihb
@@ -413,7 +413,7 @@ bindEnv-denote {Γ = Γ} {A = A} Many d a k =
 branch-pair : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} {A} (ule : Ψ' ⊑ᵘ Ψ)
               (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ) (a : ⟦ A ⟧ᴰ) (k : ℕ)
   → liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ * A} {⟦ Γ ↾ Ψ' ⟧ᶜ * A}
-           (⟨ restrictEnv {Γ = Γ} C.Heap ule ∘ fst , snd ⟩ C.Heap) (dγ , a) k
+           (⟨ restrictEnv {Γ = Γ} C.Heap ule ∘ fst , snd ⟩) (dγ , a) k
     ≡ returnT (restrictᴰ {Γ = Γ} ule dγ , a) k
 branch-pair {Γ = Γ} {Ψ = Ψ} {Ψ' = Ψ'} {A = A} ule dγ a k =
   trans (cong (λ t → t (dγ , a) k)
@@ -430,14 +430,14 @@ branchEnv-denote : ∀ {n} {Γ : Ctx n} {Ψ Ψ' : Usage n} {A} (ule : Ψ' ⊑ᵘ
                    (dγ : ⟦ ⟦ Γ ↾ Ψ ⟧ᶜ ⟧ᴰ) (a : ⟦ A ⟧ᴰ) (k : ℕ)
   → liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ * A} {⟦ (Γ ,ᶜ A) ↾ (q ∷ Ψ') ⟧ᶜ}
            (bindEnv {Γ = Γ} {A = A} C.Heap q
-             ∘ ⟨ restrictEnv {Γ = Γ} C.Heap ule ∘ fst , snd ⟩ C.Heap) (dγ , a) k
+             ∘ ⟨ restrictEnv {Γ = Γ} C.Heap ule ∘ fst , snd ⟩) (dγ , a) k
     ≡ returnT (bindᴰ {Γ = Γ} {A = A} q (restrictᴰ {Γ = Γ} ule dγ) a) k
 branchEnv-denote {Γ = Γ} {Ψ = Ψ} {Ψ' = Ψ'} {A = A} ule q dγ a k =
   trans (cong (λ t → t (dγ , a) k)
               (liftFn-∘ {B = ⟦ Γ ↾ Ψ' ⟧ᶜ * A} {C = ⟦ (Γ ,ᶜ A) ↾ (q ∷ Ψ') ⟧ᶜ}
                         {A = ⟦ Γ ↾ Ψ ⟧ᶜ * A}
                         (bindEnv {Γ = Γ} {A = A} C.Heap q)
-                        (⟨ restrictEnv {Γ = Γ} C.Heap ule ∘ fst , snd ⟩ C.Heap)))
+                        (⟨ restrictEnv {Γ = Γ} C.Heap ule ∘ fst , snd ⟩)))
     (trans (cong (λ t → (t >>=T liftFn fmt {⟦ Γ ↾ Ψ' ⟧ᶜ * A} {⟦ (Γ ,ᶜ A) ↾ (q ∷ Ψ') ⟧ᶜ}
                                     (bindEnv {Γ = Γ} {A = A} C.Heap q)) k)
                  (extensionality (branch-pair {Γ = Γ} {Ψ = Ψ} {Ψ' = Ψ'} {A = A} ule dγ a)))
@@ -522,7 +522,7 @@ app-body-Zero : ∀ {X : Type} {A B} {π}
              (dγ : ⟦ X ⟧ᴰ) (n : ℕ)
            → (∀ j → liftFn fmt {X} {A ⇒[ mk-kind Zero π ] B} ef dγ j ≡ sf j)
            → (∀ j → liftFn fmt {X} {Unit} ex dγ j ≡ sx j)
-           → liftFn fmt {X} {B} (apply ∘ ⟨ ef , ex ⟩ C.Heap) dγ n
+           → liftFn fmt {X} {B} (apply ∘ ⟨ ef , ex ⟩) dγ n
              ≡ (sf >>=T (λ vf → sx >>=T (λ vx → vf vx))) n
 app-body-Zero {X = X} {A = A} {B = B} ef ex sf sx dγ n ihf ihx =
   trans (cong (λ t → subst T (cohᴰ B) t n)
@@ -539,7 +539,7 @@ app-body-Zero {X = X} {A = A} {B = B} ef ex sf sx dγ n ihf ihx =
     -- directly (the general `subst-sym-subst` route leaves its motive a meta).
     ihx-T : evalᴰ fmt ex dγ' ≡ subst T (sym (cohᴰ Unit)) sx
     ihx-T = extensionality ihx
-    evalᴰ-app-reduce : evalᴰ fmt (apply ∘ ⟨ ef , ex ⟩ C.Heap) dγ'
+    evalᴰ-app-reduce : evalᴰ fmt (apply ∘ ⟨ ef , ex ⟩) dγ'
                        ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt ex dγ' >>=T (λ vx → vf vx)))
     evalᴰ-app-reduce = extensionality (λ m →
       cong₂ _,_ (app-trace (proj₁ (evalᴰ fmt ef dγ' m)) (proj₁ (evalᴰ fmt ex dγ' m))
@@ -573,7 +573,7 @@ comp-body : ∀ {X : Type} {A B C} {π}
             → (∀ j → liftFn fmt {X} {B ⇒[ mk-kind Many π ] C} ef dγ j ≡ sf j)
             → (∀ j → liftFn fmt {X} {A ⇒[ mk-kind Many π ] B} eg dγ j ≡ sg j)
             → liftFn fmt {X} {A ⇒[ mk-kind Many π ] C}
-                     (compIR C.Heap ∘ ⟨ ef , eg ⟩ C.Heap) dγ n
+                     (compIR C.Heap ∘ ⟨ ef , eg ⟩) dγ n
               ≡ (sf >>=T (λ vf → sg >>=T (λ vg →
                  returnT (λ a → vg a >>=T vf)))) n
 comp-body {X = X} {A = A} {B = B} {C = C} {π = π} ef eg sf sg dγ n ihf ihg =
@@ -590,7 +590,7 @@ comp-body {X = X} {A = A} {B = B} {C = C} {π = π} ef eg sf sg dγ n ihf ihg =
     ihg-T : evalᴰ fmt eg dγ' ≡ subst T (sym (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ B))) sg
     ihg-T = trans (sym (subst-sym-subst (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ B))))
                   (cong (subst T (sym (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ B)))) (extensionality ihg))
-    evalᴰ-comp-reduce : evalᴰ fmt (compIR C.Heap ∘ ⟨ ef , eg ⟩ C.Heap) dγ'
+    evalᴰ-comp-reduce : evalᴰ fmt (compIR C.Heap ∘ ⟨ ef , eg ⟩) dγ'
                         ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt eg dγ' >>=T (λ vg →
                            returnT (λ a → vg a >>=T vf))))
     evalᴰ-comp-reduce = extensionality (λ m → cong₂ _,_ (++-identityʳ _)
@@ -650,7 +650,7 @@ fork-body : ∀ {X : Type} {A B C}
             → (∀ j → liftFn fmt {X} {A ⇒[ mk-kind Many pure ] B} ef dγ j ≡ sf j)
             → (∀ j → liftFn fmt {X} {A ⇒[ mk-kind Many pure ] C} eg dγ j ≡ sg j)
             → liftFn fmt {X} {A ⇒[ mk-kind Many pure ] (B * C)}
-                     (forkIR C.Heap ∘ ⟨ ef , eg ⟩ C.Heap) dγ n
+                     (forkIR C.Heap ∘ ⟨ ef , eg ⟩) dγ n
               ≡ (sf >>=T (λ vf → sg >>=T (λ vg →
                  returnT (λ a → vf a >>=T (λ b → vg a >>=T (λ c → returnT (b , c))))))) n
 fork-body {X = X} {A = A} {B = B} {C = C} ef eg sf sg dγ n ihf ihg =
@@ -668,7 +668,7 @@ fork-body {X = X} {A = A} {B = B} {C = C} ef eg sf sg dγ n ihf ihg =
     ihg-T : evalᴰ fmt eg dγ' ≡ subst T (sym (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ C))) (sg)
     ihg-T = trans (sym (subst-sym-subst (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ C))))
                   (cong (subst T (sym (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ C)))) (extensionality ihg))
-    evalᴰ-fork-reduce : evalᴰ fmt (forkIR C.Heap ∘ ⟨ ef , eg ⟩ C.Heap) dγ'
+    evalᴰ-fork-reduce : evalᴰ fmt (forkIR C.Heap ∘ ⟨ ef , eg ⟩) dγ'
                         ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt eg dγ' >>=T (λ vg →
                            returnT (λ a → vf a >>=T (λ b → vg a >>=T (λ c → returnT (b , c)))))))
     evalᴰ-fork-reduce = extensionality (λ m → cong₂ _,_ (++-identityʳ _)
@@ -693,7 +693,7 @@ copair-body : ∀ {X : Type} {A B C} {π}
               → (∀ j → liftFn fmt {X} {A ⇒[ mk-kind Many π ] C} ef dγ j ≡ sf j)
               → (∀ j → liftFn fmt {X} {B ⇒[ mk-kind Many π ] C} eg dγ j ≡ sg j)
               → liftFn fmt {X} {(A + B) ⇒[ mk-kind Many π ] C}
-                       (copairIR C.Heap ∘ ⟨ ef , eg ⟩ C.Heap) dγ n
+                       (copairIR C.Heap ∘ ⟨ ef , eg ⟩) dγ n
                 ≡ (sf >>=T (λ vf → sg >>=T (λ vg →
                    returnT (λ ab → [ vf , vg ]′ ab)))) n
 copair-body {X = X} {A = A} {B = B} {C = C} {π = π} ef eg sf sg dγ n ihf ihg =
@@ -710,14 +710,14 @@ copair-body {X = X} {A = A} {B = B} {C = C} {π = π} ef eg sf sg dγ n ihf ihg 
     ihg-T : evalᴰ fmt eg dγ' ≡ subst T (sym (cong₂ (λ u v → u → T v) (cohᴰ B) (cohᴰ C))) (sg)
     ihg-T = trans (sym (subst-sym-subst (cong₂ (λ u v → u → T v) (cohᴰ B) (cohᴰ C))))
                   (cong (subst T (sym (cong₂ (λ u v → u → T v) (cohᴰ B) (cohᴰ C)))) (extensionality ihg))
-    evalᴰ-copair-reduce : evalᴰ fmt (copairIR C.Heap ∘ ⟨ ef , eg ⟩ C.Heap) dγ'
+    evalᴰ-copair-reduce : evalᴰ fmt (copairIR C.Heap ∘ ⟨ ef , eg ⟩) dγ'
                           ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt eg dγ' >>=T (λ vg →
                              returnT (λ ab → [ vf , vg ]′ ab))))
     -- The elaborated side goes through `distribIR` and then `case`, which is
     -- STUCK on an abstract sum value — so the per-call step case-splits on the
     -- argument. That is the only structural difference from the other three.
     branch : ∀ (m : ℕ) (ab : ⟦ ⌊ A ⌋ ⟧ᴰᴵ ⊎ ⟦ ⌊ B ⌋ ⟧ᴰᴵ)
-           → proj₂ (evalᴰ fmt (copairIR C.Heap ∘ ⟨ ef , eg ⟩ C.Heap) dγ' m) ab
+           → proj₂ (evalᴰ fmt (copairIR C.Heap ∘ ⟨ ef , eg ⟩) dγ' m) ab
              ≡ proj₂ ((evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt eg dγ' >>=T (λ vg →
                        returnT (λ x → [ vf , vg ]′ x)))) m) ab
     branch m (inj₁ x) = extensionality (λ k → cong₂ _,_ refl refl)
@@ -736,7 +736,7 @@ app-body : ∀ {X : Type} {A B} {π}
              (dγ : ⟦ X ⟧ᴰ) (n : ℕ)
            → (∀ j → liftFn fmt {X} {A ⇒[ mk-kind Many π ] B} ef dγ j ≡ sf j)
            → (∀ j → liftFn fmt {X} {A} ex dγ j ≡ sx j)
-           → liftFn fmt {X} {B} (apply ∘ ⟨ ef , ex ⟩ C.Heap) dγ n
+           → liftFn fmt {X} {B} (apply ∘ ⟨ ef , ex ⟩) dγ n
              ≡ (sf >>=T (λ vf → sx >>=T (λ vx → vf vx))) n
 app-body {X = X} {A = A} {B = B} ef ex sf sx dγ n ihf ihx =
   trans (cong (λ t → subst T (cohᴰ B) t n)
@@ -750,7 +750,7 @@ app-body {X = X} {A = A} {B = B} ef ex sf sx dγ n ihf ihx =
                   (cong (subst T (sym (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ B)))) (extensionality ihf))
     ihx-T : evalᴰ fmt ex dγ' ≡ subst T (sym (cohᴰ A)) sx
     ihx-T = trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T (sym (cohᴰ A))) (extensionality ihx))
-    evalᴰ-app-reduce : evalᴰ fmt (apply ∘ ⟨ ef , ex ⟩ C.Heap) dγ'
+    evalᴰ-app-reduce : evalᴰ fmt (apply ∘ ⟨ ef , ex ⟩) dγ'
                        ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt ex dγ' >>=T (λ vx → vf vx)))
     evalᴰ-app-reduce = extensionality (λ m →
       cong₂ _,_ (app-trace (proj₁ (evalᴰ fmt ef dγ' m)) (proj₁ (evalᴰ fmt ex dγ' m))
@@ -762,7 +762,7 @@ app-body-One : ∀ {X : Type} {A B} {π}
              (dγ : ⟦ X ⟧ᴰ) (n : ℕ)
            → (∀ j → liftFn fmt {X} {A ⇒[ mk-kind One π ] B} ef dγ j ≡ sf j)
            → (∀ j → liftFn fmt {X} {A} ex dγ j ≡ sx j)
-           → liftFn fmt {X} {B} (apply ∘ ⟨ ef , ex ⟩ C.Heap) dγ n
+           → liftFn fmt {X} {B} (apply ∘ ⟨ ef , ex ⟩) dγ n
              ≡ (sf >>=T (λ vf → sx >>=T (λ vx → vf vx))) n
 app-body-One {X = X} {A = A} {B = B} ef ex sf sx dγ n ihf ihx =
   trans (cong (λ t → subst T (cohᴰ B) t n)
@@ -776,7 +776,7 @@ app-body-One {X = X} {A = A} {B = B} ef ex sf sx dγ n ihf ihx =
                   (cong (subst T (sym (cong₂ (λ u v → u → T v) (cohᴰ A) (cohᴰ B)))) (extensionality ihf))
     ihx-T : evalᴰ fmt ex dγ' ≡ subst T (sym (cohᴰ A)) sx
     ihx-T = trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T (sym (cohᴰ A))) (extensionality ihx))
-    evalᴰ-app-reduce : evalᴰ fmt (apply ∘ ⟨ ef , ex ⟩ C.Heap) dγ'
+    evalᴰ-app-reduce : evalᴰ fmt (apply ∘ ⟨ ef , ex ⟩) dγ'
                        ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt ex dγ' >>=T (λ vx → vf vx)))
     evalᴰ-app-reduce = extensionality (λ m →
       cong₂ _,_ (app-trace (proj₁ (evalᴰ fmt ef dγ' m)) (proj₁ (evalᴰ fmt ex dγ' m))
@@ -937,9 +937,9 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Many} {A = A} {B = B} Many _ e) dγ k =
 faithful (app {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} {q = Zero} f x) dγ n =
   trans (liftFn-substΦ {Γ = Γ} {Φ = Ψ₁ +ᵘ (Zero *ᵘ Ψ₂)} {Φ' = Ψ₁} {B = B}
                        (erase-arg-usage Ψ₁ Ψ₂)
-                       (apply ∘ ⟨ elaborate C.Heap f , terminal ⟩ C.Heap) dγ n)
+                       (apply ∘ ⟨ elaborate C.Heap f , terminal ⟩) dγ n)
         (trans (cong (λ d → liftFn fmt {⟦ Γ ↾ Ψ₁ ⟧ᶜ} {B}
-                              (apply ∘ ⟨ elaborate C.Heap f , terminal ⟩ C.Heap) d n)
+                              (apply ∘ ⟨ elaborate C.Heap f , terminal ⟩) d n)
                      (sym (restrictᴰ-subst {Γ = Γ} (⊑ᵘ-+ˡ Ψ₁ (Zero *ᵘ Ψ₂))
                                            (erase-arg-usage Ψ₁ Ψ₂) dγ)))
                (app-body-Zero {⟦ Γ ↾ Ψ₁ ⟧ᶜ} {A} {B} {pure}
@@ -1001,7 +1001,7 @@ faithful (effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} f x) 
     leX = ⊑ᵘ-+ʳ Ψ₁ Ψ₂
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ)) dγ
     inner = apply ∘ ⟨ elaborate C.Heap f ∘ restrictEnv {Γ = Γ} C.Heap leF
-                    , elaborate C.Heap x ∘ restrictEnv {Γ = Γ} C.Heap leX ⟩ C.Heap
+                    , elaborate C.Heap x ∘ restrictEnv {Γ = Γ} C.Heap leX ⟩
     body = inner ∘ fst
     liftFn-curry-reduce-effApp :
       liftFn fmt {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {Unit ⇒[ mk-kind Many eff ] B} (curry body C.Heap) dγ
@@ -1359,7 +1359,7 @@ faithful (let' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {A = A} {B = 
     ee1 = elaborate C.Heap e1 ∘ restrictEnv {Γ = Γ} C.Heap leA
     ee2 = elaborate C.Heap e2
     let-reduce : evalᴰ fmt (ee2 ∘ bindEnv {Γ = Γ} {A = A} C.Heap One
-                            ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leB , ee1 ⟩ C.Heap) dγ'
+                            ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leB , ee1 ⟩) dγ'
                  ≡ (evalᴰ fmt ee1 dγ' >>=T (λ v1 → evalᴰ fmt ee2 (E2' , v1)))
     -- `restrictEnv leB` is stuck on the bound `leB`, so unlike the clause-level
     -- goals this one IS a legitimate `rewrite` target.
@@ -1393,7 +1393,7 @@ faithful (let' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {A = A} {B =
     ee1 = elaborate C.Heap e1 ∘ restrictEnv {Γ = Γ} C.Heap leA
     ee2 = elaborate C.Heap e2
     let-reduce : evalᴰ fmt (ee2 ∘ bindEnv {Γ = Γ} {A = A} C.Heap Many
-                            ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leB , ee1 ⟩ C.Heap) dγ'
+                            ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leB , ee1 ⟩) dγ'
                  ≡ (evalᴰ fmt ee1 dγ' >>=T (λ v1 → evalᴰ fmt ee2 (E2' , v1)))
     -- `restrictEnv leB` is stuck on the bound `leB`, so unlike the clause-level
     -- goals this one IS a legitimate `rewrite` target.
@@ -1479,15 +1479,15 @@ faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = q�
     Eall' = subst id (sym (cohᴰ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ)) Eall
     es = elaborate C.Heap s ∘ restrictEnv {Γ = Γ} C.Heap leS
     LL = elaborate C.Heap l ∘ bindEnv {Γ = Γ} {A = A} C.Heap qℓ
-                            ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leL ∘ fst , snd ⟩ C.Heap
+                            ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leL ∘ fst , snd ⟩
     RR = elaborate C.Heap r ∘ bindEnv {Γ = Γ} {A = B} C.Heap qr
-                            ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leR ∘ fst , snd ⟩ C.Heap
+                            ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leR ∘ fst , snd ⟩
     reshape : ⟦ ⌊ A ⌋ ⟧ᴰᴵ ⊎ ⟦ ⌊ B ⌋ ⟧ᴰᴵ
             → ⟦ (⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋ *ᴵ ⌊ A ⌋) +ᴵ (⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋ *ᴵ ⌊ B ⌋) ⟧ᴰᴵ
     reshape v = [ (λ a → inj₁ (Eall' , a)) , (λ b → inj₂ (Eall' , b)) ]′ v
     branchᴰ = λ v → [ (λ a → evalᴰ fmt LL (Eall' , a)) , (λ b → evalᴰ fmt RR (Eall' , b)) ]′ v
     dd-reduce : evalᴰ fmt (distribute {⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋} {⌊ A ⌋} {⌊ B ⌋} C.Heap
-                            ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leAll , es ⟩ C.Heap) dγ'
+                            ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leAll , es ⟩) dγ'
               ≡ (evalᴰ fmt es dγ' >>=T λ v → returnT (reshape v))
     dd-reduce rewrite evalᴰ-restrictEnv {Γ = Γ} leAll dγ = extensionality (λ m →
       cong₂ _,_
@@ -1523,7 +1523,7 @@ faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = q�
                             {A = ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ * A}
                             (elaborate C.Heap l)
                             (bindEnv {Γ = Γ} {A = A} C.Heap qℓ
-                              ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leL ∘ fst , snd ⟩ C.Heap)))
+                              ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leL ∘ fst , snd ⟩)))
         (trans (cong (λ t → (t >>=T liftFn fmt {⟦ (Γ ,ᶜ A) ↾ (qℓ ∷ Ψₗ) ⟧ᶜ} {C}
                                         (elaborate C.Heap l)) j)
                      (extensionality (branchEnv-denote {Γ = Γ} {Ψ = Ψₗ ⊔ᵘ Ψᵣ} {Ψ' = Ψₗ}
@@ -1538,7 +1538,7 @@ faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = q�
                             {A = ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ * B}
                             (elaborate C.Heap r)
                             (bindEnv {Γ = Γ} {A = B} C.Heap qr
-                              ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leR ∘ fst , snd ⟩ C.Heap)))
+                              ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leR ∘ fst , snd ⟩)))
         (trans (cong (λ t → (t >>=T liftFn fmt {⟦ (Γ ,ᶜ B) ↾ (qr ∷ Ψᵣ) ⟧ᶜ} {C}
                                         (elaborate C.Heap r)) j)
                      (extensionality (branchEnv-denote {Γ = Γ} {Ψ = Ψₗ ⊔ᵘ Ψᵣ} {Ψ' = Ψᵣ}

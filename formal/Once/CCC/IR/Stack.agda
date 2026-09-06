@@ -87,7 +87,7 @@ ir-stack-requirement : ∀ {A B} → IR A B → ℕ
 ir-stack-requirement-nt : ∀ {G F} → NatTr G F → ℕ
 ir-stack-requirement id = 0
 ir-stack-requirement (g ∘ f) = ir-stack-requirement f +ℕ ir-stack-requirement g
-ir-stack-requirement (⟨ f , g ⟩ _) = 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
+ir-stack-requirement ⟨ f , g ⟩ = 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
 ir-stack-requirement fst = 0
 ir-stack-requirement snd = 0
 ir-stack-requirement (inl _) = pair-slots
@@ -215,9 +215,9 @@ layer-capacity (wf-Prod wfL wfR) wfG alg = 1 +ℕ layer-capacity wfL wfG alg +�
   ir-stack-requirement (g ∘ f) ≡ ir-stack-requirement f +ℕ ir-stack-requirement g
 ∘-stack-req f g = refl
 
-⟨,⟩-stack-req : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
-  ir-stack-requirement (⟨ f , g ⟩ m) ≡ 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
-⟨,⟩-stack-req f g m = refl
+⟨,⟩-stack-req : ∀ {A B C} (f : IR A B) (g : IR A C) →
+  ir-stack-requirement ⟨ f , g ⟩ ≡ 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
+⟨,⟩-stack-req f g = refl
 
 sigOp-stack-req : ∀ {A B} (si : SigOpInfo A B) →
   ir-stack-requirement (SigOp {A} {B} si) ≡ 0
@@ -227,10 +227,10 @@ sigOp-stack-req _ = refl
 -- Capacity Lemmas
 ------------------------------------------------------------------------
 
-⟨,⟩-capacity-for-pair : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) (slot cap : ℕ) →
-  slot +ℕ ir-stack-requirement (⟨ f , g ⟩ m) ≤ cap →
+⟨,⟩-capacity-for-pair : ∀ {A B C} (f : IR A B) (g : IR A C) (slot cap : ℕ) →
+  slot +ℕ ir-stack-requirement ⟨ f , g ⟩ ≤ cap →
   (slot +ℕ 1) +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots ≤ cap
-⟨,⟩-capacity-for-pair f g m slot cap pf =
+⟨,⟩-capacity-for-pair f g slot cap pf =
   let rf = ir-stack-requirement f
       rg = ir-stack-requirement g
       ps = pair-slots

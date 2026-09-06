@@ -168,7 +168,7 @@ apply-red refl refl v = refl
 -- it, then re-earned a consumer — `liftFn-restrictEnv` in `SourceFaithful`
 -- needs exactly this for `restrictEnv`'s `⟨ … , snd ⟩` case.
 liftFn-pair : (f : IR IR.⌊ A ⌋ IR.⌊ B ⌋) (g : IR IR.⌊ A ⌋ IR.⌊ C ⌋)
-  → liftFn fmt {A} {B * C} (⟨ f , g ⟩ IR.Heap)
+  → liftFn fmt {A} {B * C} (⟨ f , g ⟩)
     ≡ (λ a → liftFn fmt {A} {B} f a >>=T (λ b → liftFn fmt {A} {C} g a >>=T (λ c → returnT (b , c))))
 liftFn-pair {A} {B} {C} f g = extensionality λ a →
   subst-pair-bind (cohᴰ B) (cohᴰ C)

@@ -367,9 +367,10 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable (Fuse _ _ _ _)  n l = all-stable?-sound _ refl
   ir-stable (free-heap _)   n l = all-stable?-sound _ refl
   ir-stable (g ∘ f)         n l = ++⁺ (ir-stable f n l) (tt ∷ᴬ ir-stable g _ _)
-  ir-stable (⟨ f , g ⟩ Stack) n l =
-    tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable f _ _) (tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable g _ _) (tt ∷ᴬ tt ∷ᴬ []ᴬ))
-  ir-stable (⟨ f , g ⟩ Heap) n l =
+  -- Stage G: one clause, the heap shape. (The stack-shape clause that stood
+  -- here collapsed onto the same LHS when the mode was dropped, and shadowed
+  -- this one.)
+  ir-stable ⟨ f , g ⟩ n l =
     tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable f _ _) (tt ∷ᴬ tt ∷ᴬ ++⁺ (ir-stable g _ _) (all-stable?-sound _ refl))
   -- item 6: case is FLAT CONTROL — plain splices.
   ir-stable (case f g)      n l =

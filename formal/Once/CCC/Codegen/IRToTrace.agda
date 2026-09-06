@@ -669,27 +669,14 @@ ir-to-trace' n l (g ∘ f)   =
 --     store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
 -- ────────────────────────────────────────────────────────────────────
 
--- Stack mode: pair lives on stack at [fst-slot, snd-slot].
-ir-to-trace' n l (⟨ f , g ⟩ Stack) =
-  let backup-slot = n
-      fst-slot    = suc backup-slot
-      snd-slot    = suc fst-slot
-      f-start     = suc snd-slot
-      (n1 , l1 , ft , fb) = ir-to-trace' f-start l  f
-      (n2 , l2 , gt , gb) = ir-to-trace' n1 l1 g
-  in n2 , l2 ,
-     (mov-to-output ∷ store-at-slot backup-slot ∷
-      ft ++
-      store-at-slot fst-slot ∷ restore-input backup-slot ∷
-      gt ++
-      store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []) ,
-     (fb ++ gb)
-
--- Heap mode: pair lives on the heap (2 cells). Mirrors
--- PairAllocWF setup + mid + post. Uses 4 scratch slots:
--- backup-slot (input ptr), fst-stash (f-result), snd-stash (g-result),
--- pair-stash (heap ptr). f starts at n+4.
-ir-to-trace' n l (⟨ f , g ⟩ Heap) =
+-- Stage G: THE pair lowering, and now the only one. The pair carries no mode,
+-- so there is one clause; it is the HEAP lowering (2 cells, 4 scratch slots),
+-- which is what the mode's `Heap` value selected before. Keeping heap here is
+-- deliberate: it leaves `lea-slot` unemitted, so `FrameFreeTrace` and
+-- `FlatStackPtr`'s "there is no stack pointer" invariant stand unchanged and
+-- the flat<->concrete correspondence is not reopened. Moving pair I/O to the
+-- stack is plan 0.87.
+ir-to-trace' n l ⟨ f , g ⟩ =
   let backup-slot = n
       fst-stash   = suc backup-slot
       snd-stash   = suc fst-stash

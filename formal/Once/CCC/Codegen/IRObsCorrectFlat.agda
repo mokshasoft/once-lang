@@ -735,8 +735,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                           → IRObsCorrectF (In wf m)
 
     -- CLASS B — allocating, no control flow. Step 1; adds the frontier thread.
-    obs-correct-pair : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode)
-                     → IRObsCorrectF (⟨ f , g ⟩ m)
+    obs-correct-pair : ∀ {A B C} (f : IR A B) (g : IR A C)
+                     → IRObsCorrectF ⟨ f , g ⟩
     obs-correct-inl  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inl {A} {B} m)
     obs-correct-inr  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inr {A} {B} m)
 
@@ -1070,7 +1070,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-obs-correct id                  = obs-correct-id
   ir-obs-correct (g ∘ f)             = comp-obs-correct (ir-obs-correct g) (ir-obs-correct f)
   -- products
-  ir-obs-correct (⟨ f , g ⟩ m)       = obs-correct-pair f g m
+  ir-obs-correct ⟨ f , g ⟩         = obs-correct-pair f g
   ir-obs-correct fst                 = obs-correct-fst
   ir-obs-correct snd                 = obs-correct-snd
   -- sums

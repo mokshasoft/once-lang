@@ -97,7 +97,7 @@ module BFTransfer {FS : FrameSemantics} where
 module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   where
   -- Plan 0.52 M2 / D113: `Ev.eval` now takes the target numerics. Same local
-  -- shim SimpleWF and PairAllocWF already use, so the body reads unchanged.
+  -- shim SimpleWF and PairWF already use, so the body reads unchanged.
   eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
   eval = Ev.eval (Once.CCC.FrameSemantics.fs-numerics FS)
 

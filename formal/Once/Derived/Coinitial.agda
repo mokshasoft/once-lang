@@ -109,7 +109,7 @@ repeat {A} wf = Ana wf coalg
     -- Coalgebra: ignore state, produce (a, unit)
     -- State is the value itself (A), output is (A * A) interpreted as StreamF
     coalg : IR A (A * A)
-    coalg = ⟨ id , id ⟩ Stack
+    coalg = ⟨ id , id ⟩
 
 -- | Iterate a function
 --
@@ -122,7 +122,7 @@ iterate {A} {q} wf = Ana wf coalg
     -- Coalgebra: state is (current_value, step_function)
     -- Output: (current_value, (step_function current_value, step_function))
     coalg : IR (A * (A ⇒[ q ] A)) (⟦ StreamF A ⟧T (A * (A ⇒[ q ] A)))
-    coalg = ⟨ fst , ⟨ apply ∘ ⟨ snd , fst ⟩ Stack , snd ⟩ Stack ⟩ Stack
+    coalg = ⟨ fst , ⟨ apply ∘ ⟨ snd , fst ⟩ , snd ⟩ ⟩
 
 -- | Map a function over a stream
 --
@@ -140,9 +140,9 @@ stream-map {A} {B} wfA wfB = Ana wfB coalg
     -- State: (function, input_stream)
     -- Output: (f (head input), (function, tail input))
     coalg : IR ((A ⇒[ _ ] B) * Stream A) (B * ((A ⇒[ _ ] B) * Stream A))
-    coalg = ⟨ apply ∘ ⟨ fst , head wfA ∘ snd ⟩ Stack
-            , ⟨ fst , tail wfA ∘ snd ⟩ Stack
-            ⟩ Stack
+    coalg = ⟨ apply ∘ ⟨ fst , head wfA ∘ snd ⟩
+            , ⟨ fst , tail wfA ∘ snd ⟩
+            ⟩
 
 ------------------------------------------------------------------------
 -- CoList Operations

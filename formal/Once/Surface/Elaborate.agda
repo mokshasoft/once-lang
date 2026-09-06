@@ -172,9 +172,9 @@ restrictEnv {Γ = Γ , A ^ q} m (z≤z ⊑∷ ule) = restrictEnv {Γ = Γ} m ule
 restrictEnv {Γ = Γ , A ^ q} m (z≤o ⊑∷ ule) = restrictEnv {Γ = Γ} m ule ∘ fst
 restrictEnv {Γ = Γ , A ^ q} m (z≤m ⊑∷ ule) = restrictEnv {Γ = Γ} m ule ∘ fst
 -- live in both — keep it, narrow the rest
-restrictEnv {Γ = Γ , A ^ q} m (o≤o ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩ m
-restrictEnv {Γ = Γ , A ^ q} m (o≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩ m
-restrictEnv {Γ = Γ , A ^ q} m (m≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩ m
+restrictEnv {Γ = Γ , A ^ q} m (o≤o ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩
+restrictEnv {Γ = Γ , A ^ q} m (o≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩
+restrictEnv {Γ = Γ , A ^ q} m (m≤m ⊑∷ ule) = ⟨ restrictEnv {Γ = Γ} m ule ∘ fst , snd ⟩
 
 -- | Project the ONE variable a `var` term uses out of its environment.
 --
@@ -222,7 +222,7 @@ bindEnv {Γ = Γ} m Many = id
 -- | Helper: swap product components
 -- Plan 0.14 follow-up: parameterized on AllocMode for the pair node.
 swap' : ∀ {X Y} → AllocMode → IR (X * Y) (Y * X)
-swap' m = ⟨ snd , fst ⟩ m
+swap' m = ⟨ snd , fst ⟩
 
 -- | Distribute environment over sum (distributivity isomorphism)
 --
@@ -246,7 +246,7 @@ distribute {Γ} {A} {B} m = distrib' ∘ swap' m
     curryDistrib = case curryInlSwap curryInrSwap
 
     distrib' : IR ((A + B) * Γ) ((Γ * A) + (Γ * B))
-    distrib' = apply ∘ ⟨ curryDistrib ∘ fst , snd ⟩ m
+    distrib' = apply ∘ ⟨ curryDistrib ∘ fst , snd ⟩
 
 -- | Elaborate surface expression to IR
 --
@@ -275,30 +275,30 @@ distribute {Γ} {A} {B} m = distrib' ∘ swap' m
 -- with `swap = ⟨ snd , fst ⟩`. Each of the two branch morphisms is built once
 -- and neither duplicates its input.
 swapIR : ∀ {A B} → AllocMode → IR (A * B) (B * A)
-swapIR m = ⟨ snd , fst ⟩ m
+swapIR m = ⟨ snd , fst ⟩
 
 distribIR : ∀ {G A B} → (m : AllocMode) → IR (G * (A + B)) ((G * A) + (G * B))
 distribIR m =
   apply ∘ ⟨ case (curry (inl m ∘ swapIR m) m) (curry (inr m ∘ swapIR m) m) ∘ snd
-          , fst ⟩ m
+          , fst ⟩
 
 -- D127: the four combinator morphisms. CLOSED — they mention no arm, so an
 -- arm's effects happen once, where `⟨_,_⟩` runs it, and not per call.
 compIR : ∀ {A B C} → (m : AllocMode) → IR ((B ⇛ C) * (A ⇛ B)) (A ⇛ C)
-compIR m = curry (apply ∘ ⟨ fst ∘ fst , apply ∘ ⟨ snd ∘ fst , snd ⟩ m ⟩ m) m
+compIR m = curry (apply ∘ ⟨ fst ∘ fst , apply ∘ ⟨ snd ∘ fst , snd ⟩ ⟩) m
 
 copairIR : ∀ {A B C} → (m : AllocMode) → IR ((A ⇛ C) * (B ⇛ C)) ((A + B) ⇛ C)
 copairIR m =
-  curry (case (apply ∘ ⟨ fst ∘ fst , snd ⟩ m)
-              (apply ∘ ⟨ snd ∘ fst , snd ⟩ m)
+  curry (case (apply ∘ ⟨ fst ∘ fst , snd ⟩)
+              (apply ∘ ⟨ snd ∘ fst , snd ⟩)
          ∘ distribIR m) m
 
 forkIR : ∀ {A B C} → (m : AllocMode) → IR ((A ⇛ B) * (A ⇛ C)) (A ⇛ (B * C))
-forkIR m = curry (⟨ apply ∘ ⟨ fst ∘ fst , snd ⟩ m
-                  , apply ∘ ⟨ snd ∘ fst , snd ⟩ m ⟩ m) m
+forkIR m = curry (⟨ apply ∘ ⟨ fst ∘ fst , snd ⟩
+                  , apply ∘ ⟨ snd ∘ fst , snd ⟩ ⟩) m
 
 curryIR : ∀ {A B C} → (m : AllocMode) → IR ((A * B) ⇛ C) (A ⇛ (B ⇛ C))
-curryIR m = curry (curry (apply ∘ ⟨ fst ∘ fst , ⟨ snd ∘ fst , snd ⟩ m ⟩ m) m) m
+curryIR m = curry (curry (apply ∘ ⟨ fst ∘ fst , ⟨ snd ∘ fst , snd ⟩ ⟩) m) m
 
 cataM : ∀ {F : Functor} {A : Type} → WellFormedF F → AllocMode
       → IR (⌊ ⟦ F ⟧T A ⌋ ⇛ ⌊ A ⌋) (⌊ μ-type F ⌋ ⇛ ⌊ A ⌋)
@@ -306,7 +306,7 @@ cataM {F} {A} wfF m =
   curry (Cata (wf-⌊⌋ wfF)
               (subst (λ o → IR ((⌊ ⟦ F ⟧T A ⌋ ⇛ ⌊ A ⌋) * o) ⌊ A ⌋)
                      (⌊⟧T-commute F A)
-                     (apply ∘ ⟨ fst , snd ⟩ m))) m
+                     (apply ∘ ⟨ fst , snd ⟩))) m
 
 
 -- D142 / plan 0.86 step B: the environment is `Γ ↾ Ψ` — EXACTLY the variables
@@ -354,11 +354,11 @@ elaborate {Γ = Γ} m (lam {q' = Many} Many _ e) = curry (elaborate m e) m
 -- The four morphisms are closed and arm-free, which is also what lets O1's
 -- closed-arm equation be about them alone.
 elaborate {Γ = Γ} m (comp' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g)   =
-  compIR m   ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+  compIR m   ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
 elaborate {Γ = Γ} m (copair' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g) =
-  copairIR m ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+  copairIR m ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
 elaborate {Γ = Γ} m (fork' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f g)   =
-  forkIR m   ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+  forkIR m   ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m g ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
 elaborate m (curry' f)    = curryIR m  ∘ elaborate m f
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
@@ -373,13 +373,13 @@ elaborate m (curry' f)    = curryIR m  ∘ elaborate m f
 -- type system says does not exist.
 elaborate {Γ = Γ} m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} f x) =
   subst (λ Φ → IR ⌊ ⟦ Γ ↾ Φ ⟧ᶜ ⌋ _) (sym (erase-arg-usage Ψ₁ Ψ₂))
-        (apply ∘ ⟨ elaborate m f , terminal ⟩ m)
+        (apply ∘ ⟨ elaborate m f , terminal ⟩)
 elaborate {Γ = Γ} m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} f x) =
   apply ∘ ⟨ elaborate m f ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₁ (One *ᵘ Ψ₂))
-          , elaborate m x ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) ⟩ m
+          , elaborate m x ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*One Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (One *ᵘ Ψ₂))) ⟩
 elaborate {Γ = Γ} m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} f x) =
   apply ∘ ⟨ elaborate m f ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₁ (Many *ᵘ Ψ₂))
-          , elaborate m x ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) ⟩ m
+          , elaborate m x ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₂) (⊑ᵘ-+ʳ Ψ₁ (Many *ᵘ Ψ₂))) ⟩
 
 -- Effect application (D018-style lifting): `f x` where `f : Eff A B`
 -- becomes the suspended action `λ _ → f x : Eff Unit B`. Built from
@@ -392,11 +392,11 @@ elaborate {Γ = Γ} m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} f x) =
 -- eff arrows are the same ungraded `⇛` object, so no tag needed.)
 elaborate {Γ = Γ} m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
   curry ((apply ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂
-                  , elaborate m x ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m) ∘ fst) m
+                  , elaborate m x ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩) ∘ fst) m
 
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate {Γ = Γ} m (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
-  ⟨ elaborate m a ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m b ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+  ⟨ elaborate m a ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m b ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
 elaborate m (arr' f)    = elaborate m f   -- Plan 0.52 M2: arr' is identity (IR.arr retired)
 
 -- Projections: compose with projection
@@ -419,11 +419,11 @@ elaborate m (inr' b) = inr m ∘ elaborate m b
 -- in that branch's environment at all — the `Zero` cases discard the slot with
 -- `fst`, exactly as `lam` does.
 elaborate {Γ = Γ} m (case' {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = qℓ} {qr = qr} {A = A} {B = B} s l r) =
-  case (elaborate m l ∘ bindEnv {Γ = Γ} {A = A} m qℓ ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) ∘ fst , snd ⟩ m)
-       (elaborate m r ∘ bindEnv {Γ = Γ} {A = B} m qr ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) ∘ fst , snd ⟩ m)
+  case (elaborate m l ∘ bindEnv {Γ = Γ} {A = A} m qℓ ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-⊔ˡ Ψₗ Ψᵣ) ∘ fst , snd ⟩)
+       (elaborate m r ∘ bindEnv {Γ = Γ} {A = B} m qr ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-⊔ʳ Ψₗ Ψᵣ) ∘ fst , snd ⟩)
   ∘ distribute m
   ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-+ʳ Ψs (Ψₗ ⊔ᵘ Ψᵣ))
-    , elaborate m s ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) ⟩ m
+    , elaborate m s ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψs (Ψₗ ⊔ᵘ Ψᵣ)) ⟩
 
 -- Unit
 elaborate m unit = terminal
@@ -449,11 +449,11 @@ elaborate {Γ = Γ} m (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Zero} e1 e2) =
 elaborate {Γ = Γ} m (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {A = A} e1 e2) =
   elaborate m e2 ∘ bindEnv {Γ = Γ} {A = A} m One
   ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₂ (One *ᵘ Ψ₁))
-    , elaborate m e1 ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) ⟩ m
+    , elaborate m e1 ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*One Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (One *ᵘ Ψ₁))) ⟩
 elaborate {Γ = Γ} m (let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {A = A} e1 e2) =
   elaborate m e2 ∘ bindEnv {Γ = Γ} {A = A} m Many
   ∘ ⟨ restrictEnv {Γ = Γ} m (⊑ᵘ-+ˡ Ψ₂ (Many *ᵘ Ψ₁))
-    , elaborate m e1 ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) ⟩ m
+    , elaborate m e1 ∘ restrictEnv {Γ = Γ} m (⊑ᵘ-trans (⊑ᵘ-*Many Ψ₁) (⊑ᵘ-+ʳ Ψ₂ (Many *ᵘ Ψ₁))) ⟩
 
 -- Integer literal: constant that ignores environment
 elaborate m (int n) = intLit n
@@ -465,27 +465,27 @@ elaborate m (str s) = strLit s
 elaborate m (float d) = floatLit d
 
 -- Arithmetic operations: pair operands, then apply primitive
-elaborate {Γ = Γ} m (add {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = addIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (sub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = subIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (mul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = mulIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (fadd {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = faddIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (fsub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fsubIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (fmul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fmulIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (fdiv {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fdivIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (add {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = addIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (sub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = subIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (mul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = mulIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (fadd {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = faddIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (fsub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fsubIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (fmul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fmulIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (fdiv {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = fdivIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
 elaborate m (i2f e) = i2fIR ∘ elaborate m e
-elaborate {Γ = Γ} m (div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = divIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (mod' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = modIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = divIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (mod' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = modIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
 
 -- Unary negation
 elaborate m (neg e) = negIR ∘ elaborate m e
 
 -- Comparison operations
-elaborate {Γ = Γ} m (lt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = ltIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (le {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = leIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (gt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = gtIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (ge {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = geIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (eq {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = eqIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
-elaborate {Γ = Γ} m (ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = neIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩ m
+elaborate {Γ = Γ} m (lt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = ltIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (le {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = leIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (gt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = gtIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (ge {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = geIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (eq {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = eqIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
+elaborate {Γ = Γ} m (ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = neIR ∘ ⟨ elaborate m e₁ ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂ , elaborate m e₂ ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩
 
 -- Effect lifting: arr f lifts pure function to effectful morphism
 -- IR arr : (A ⇒ B) → Eff A B
@@ -590,7 +590,7 @@ elaborate m (cata {F = F} {A = A} wfF alg) =
 -- `Ana wfF coalgebra : IR A (νF)`; `∘ snd` projects the seed from the curry's
 -- `(env, seed)`; `curry … m : IR Γ (A ⇒ νF)`.
 elaborate m (ana {F = F} {A = A} wfF coalg) =
-  curry (Ana (wf-⌊⌋ wfF) (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) (apply ∘ ⟨ elaborate m coalg ∘ terminal , id ⟩ m)) ∘ snd) m
+  curry (Ana (wf-⌊⌋ wfF) (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) (apply ∘ ⟨ elaborate m coalg ∘ terminal , id ⟩)) ∘ snd) m
 
 -- | `erase` — THE PHASE PROJECTION, from the FULL environment (every binding)
 --   to the RUNTIME one (only what the term uses). This is `NbEPQTT.erase`
@@ -604,8 +604,8 @@ eraseCtx : ∀ {n} {Γ : Ctx n} (m : AllocMode) (Ψ : Usage n)
          → IR ⌊ ⟦ Γ ⟧ᶜ ⌋ ⌊ ⟦ Γ ↾ Ψ ⟧ᶜ ⌋
 eraseCtx {Γ = ∅}         m []         = id
 eraseCtx {Γ = Γ , A ^ q} m (Zero ∷ Ψ) = eraseCtx {Γ = Γ} m Ψ ∘ fst
-eraseCtx {Γ = Γ , A ^ q} m (One  ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst , snd ⟩ m
-eraseCtx {Γ = Γ , A ^ q} m (Many ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst , snd ⟩ m
+eraseCtx {Γ = Γ , A ^ q} m (One  ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst , snd ⟩
+eraseCtx {Γ = Γ , A ^ q} m (Many ∷ Ψ) = ⟨ eraseCtx {Γ = Γ} m Ψ ∘ fst , snd ⟩
 
 -- | Elaboration against the FULL environment — `elaborate` composed with the
 --   phase projection. This is the signature every existing caller expects, so

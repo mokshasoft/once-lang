@@ -10,7 +10,7 @@
 --
 -- The State is the `next-heap-ref` counter from SMCore's AllocState
 -- — the trivial bump-counter model. This is the malloc-like interface
--- IR-level proofs (PairAllocWF, future run-inl-heap, run-inr-heap)
+-- IR-level proofs (PairWF, future run-inl-heap, run-inr-heap)
 -- consume for disjointness facts.
 --
 -- The concrete codegen instance (Once.Allocator.BumpAllocator at Addr

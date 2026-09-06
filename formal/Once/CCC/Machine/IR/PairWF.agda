@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.PairAllocWF
+-- Once.CCC.Machine.IR.PairWF
 --
 -- Heap-mode pair handler (Plan 0.14 Phase B).
 --
@@ -48,7 +48,7 @@
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Machine.IR.PairAllocWF (o : CanonicalName) where
+module Once.CCC.Machine.IR.PairWF (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
@@ -76,10 +76,10 @@ import Once.CCC.Machine.SMPrimitives as SMP
 import Once.CCC.Machine.SMPrimitives.Heap as SMPH
 
 ------------------------------------------------------------------------
--- PairAllocWF Implementation
+-- PairWF Implementation
 ------------------------------------------------------------------------
 
-module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
   -- has no format-free machine value. Inside a module already fixed to this
   -- target's `FrameSemantics`, THE evaluator is the one at its float format,
@@ -109,11 +109,11 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            validityWF-frontier-advance)
 
   ----------------------------------------------------------------------
-  -- run-pair-heap: emits the alloc-heap-based trace described above.
+  -- run-pair: emits the alloc-heap-based trace described above.
   ----------------------------------------------------------------------
 
-  run-pair-heap : ∀ {A B C} (mIn : AllocMode) (f : IR A B) (g : IR A C)
-    (rec-wf : RecDispatcherWF (ir-size (⟨ f , g ⟩ Heap)))
+  run-pair : ∀ {A B C} (mIn : AllocMode) (f : IR A B) (g : IR A C)
+    (rec-wf : RecDispatcherWF (ir-size (⟨ f , g ⟩)))
     (x : ⟦ A ⟧ᴵ)
     (s : LocState FS) (alloc : AllocState {FS}) →
     -- Stage F: the input arrives at an `InputPlace`. The setup trace stashes
@@ -123,8 +123,8 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- SAME place via `inputPlace-transport`.
     InputPlace mIn alloc x s →
     halted s ≡ false →
-    IRResultAWF Heap (⟨ f , g ⟩ Heap) x s alloc
-  run-pair-heap {A} {B} {C} mIn f g rec-wf x s alloc ip not-halted =
+    IRResultAWF Heap (⟨ f , g ⟩) x s alloc
+  run-pair {A} {B} {C} mIn f g rec-wf x s alloc ip not-halted =
     -- Plan 0.17: use mk-IRResultAWF-via-bump smart constructor.
     -- Producer-side fields stay at `alloc-final` (local shape);
     -- the helper transports proofs to `apply-bump pair-bump alloc`
@@ -354,7 +354,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       f-dest : Place
       f-dest = AtStorage (AtStack (current-frame alloc) (next-slot alloc-after-scratch))
 
-      f-exec = rec-wf mIn f (⟨,⟩-f-smaller f g {Heap}) x s-after-setup alloc-after-scratch
+      f-exec = rec-wf mIn f (⟨,⟩-f-smaller f g) x s-after-setup alloc-after-scratch
                  ip-at-f-start
                  f-dest not-halted-after-setup
       result-f = proj₂ f-exec
@@ -690,7 +690,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       g-dest : Place
       g-dest = AtStorage (AtStack (current-frame alloc) (next-slot alloc-for-g))
 
-      g-exec = rec-wf mIn g (⟨,⟩-g-smaller f g {Heap}) x
+      g-exec = rec-wf mIn g (⟨,⟩-g-smaller f g) x
                  s-after-middle alloc-for-g
                  ip-at-g-start
                  g-dest not-halted-after-middle

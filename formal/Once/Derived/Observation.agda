@@ -91,7 +91,7 @@ obs : ∀ {A}
     → WellFormedF (ListF A)
     → IR (Nat * Stream A) (List A)
 obs {A} wfStream wfList =
-  apply ∘ ⟨ Para wf-NatF obsAlg ∘ fst , snd ⟩ Stack
+  apply ∘ ⟨ Para wf-NatF obsAlg ∘ fst , snd ⟩
   where
     -- Para algebra type: NatF (Nat × (Stream A ⇒ List A)) → (Stream A ⇒ List A)
     -- NatF X = Unit + X, so the algebra input is:
@@ -118,8 +118,8 @@ obs {A} wfStream wfList =
           (In wfList Stack ∘ inr Stack ∘
            ⟨ fst ∘ Out wfStream ∘ snd                    -- head of stream
            , apply ∘ ⟨ snd ∘ fst                         -- continuation (rec)
-                    , snd ∘ Out wfStream ∘ snd ⟩ Stack   -- tail of stream
-           ⟩ Stack)
+                    , snd ∘ Out wfStream ∘ snd ⟩   -- tail of stream
+           ⟩)
           Stack
 
 -- | obsWhile p : (A → Bool) → ν F → μ F

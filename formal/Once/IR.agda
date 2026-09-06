@@ -126,7 +126,20 @@ data IR where
   _∘_ : ∀ {A B C} → IR B C → IR A B → IR A C
 
   -- Product (A * B)
-  ⟨_,_⟩ : ∀ {A B C} → IR A B → IR A C → AllocMode → IR A (B * C)
+  -- Stage G (per-IR, pair first): NO `AllocMode`. D142's rule is that nothing
+  -- in the IR chooses where a value lives — placement follows from the value's
+  -- ROLE, decided by the lowering, not by a tag the constructor carries.
+  --
+  -- The mode is removed WITHOUT changing behaviour: the single lowering is the
+  -- one `Heap` selected, so `lea-slot` stays unemitted and the flat<->concrete
+  -- correspondence (which rests on "there is no stack pointer") is untouched.
+  -- It also RETIRES rather than falsifies `main-heap-moded`: with no modes,
+  -- `HeapModed` is trivially true instead of being false for stack nodes.
+  --
+  -- Moving IR inputs and outputs to the stack — plan 0.86's actual end state —
+  -- is plan 0.87, where its real cost (re-proving the correspondence in the
+  -- presence of stack pointers, on three architectures) is priced.
+  ⟨_,_⟩ : ∀ {A B C} → IR A B → IR A C → IR A (B * C)
   fst : ∀ {A B} → IR (A * B) A
   snd : ∀ {A B} → IR (A * B) B
 

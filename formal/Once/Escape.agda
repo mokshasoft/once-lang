@@ -81,7 +81,7 @@ escape-once snd = snd
 
 -- Pairing: recurse into components, preserve mode
 -- (Mode may be optimized when this pair is consumed in a composition)
-escape-once (⟨ f , g ⟩ m) = ⟨ escape-once f , escape-once g ⟩ m
+escape-once (⟨ f , g ⟩) = ⟨ escape-once f , escape-once g ⟩
 
 -- Injections: preserve mode
 -- (Mode may be optimized when this injection is consumed in a composition)

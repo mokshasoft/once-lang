@@ -73,7 +73,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 ------------------------------------------------------------------------
 StraightIR : ∀ {A B} → IR A B → Set
 StraightIR (g ∘ f)       = StraightIR g × StraightIR f
-StraightIR (⟨ f , g ⟩ m) = StraightIR f × StraightIR g
+StraightIR (⟨ f , g ⟩) = StraightIR f × StraightIR g
 StraightIR (Cata _ _)    = ⊥
 StraightIR (case _ _)    = ⊥
 StraightIR (curry _ _)   = ⊥
@@ -111,13 +111,13 @@ module _ {FS : FrameSemantics} where
   straight-trace' id          _        n l = (λ _ _ → refl) ∷ []
   straight-trace' (g ∘ f)     (sg , sf) n l =
     ++⁺ (straight-trace' f sf _ _) ((λ _ _ → refl) ∷ straight-trace' g sg _ _)
-  straight-trace' (⟨ f , g ⟩ Stack) (sf , sg) n l =
+  straight-trace' (⟨ f , g ⟩) (sf , sg) n l =
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
     ++⁺ (straight-trace' f sf _ _)
         ((λ _ _ → refl) ∷ (λ _ _ → refl) ∷
          ++⁺ (straight-trace' g sg _ _)
              ((λ _ _ → refl) ∷ (λ _ _ → refl) ∷ []))
-  straight-trace' (⟨ f , g ⟩ Heap)  (sf , sg) n l =
+  straight-trace' (⟨ f , g ⟩)  (sf , sg) n l =
     (λ _ _ → refl) ∷ (λ _ _ → refl) ∷
     ++⁺ (straight-trace' f sf _ _)
         ((λ _ _ → refl) ∷ (λ _ _ → refl) ∷

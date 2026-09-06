@@ -12,7 +12,7 @@
 -- final load), but the closure itself lives at a fresh `AtDynamic`
 -- and validity is `heap-before`.
 --
--- Trace skeleton (parallel to PairAllocWF):
+-- Trace skeleton (parallel to PairWF):
 --
 --    1. mov-to-output                  ; Output := SV-Ptr env-loc (= input)
 --    2. store-at-slot env-stash        ; stash env-ptr for re-use after alloc
@@ -228,7 +228,7 @@ module CurryAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       ------------------------------------------------------------------
       -- Validity, rax-eq, before — all SMP.!! pending Phase C analogue.
-      -- Pattern follows PairAllocWF: step-through proof of the trace.
+      -- Pattern follows PairWF: step-through proof of the trace.
       ------------------------------------------------------------------
       closure-valid-final : ValidAtWF Heap alloc-final
                              (eval (curry {k = k} f Heap) x) closure-loc s-final

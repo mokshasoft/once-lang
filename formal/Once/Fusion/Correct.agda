@@ -93,7 +93,7 @@ fusion-once-correct (g ∘ f) x =
                (fusion-once-correct g (eval f x)))
 fusion-once-correct fst x = refl
 fusion-once-correct snd x = refl
-fusion-once-correct (⟨ f , g ⟩ m) x =
+fusion-once-correct (⟨ f , g ⟩) x =
   cong₂ _,_ (fusion-once-correct f x) (fusion-once-correct g x)
 fusion-once-correct (inl m) x = refl
 fusion-once-correct (inr m) x = refl

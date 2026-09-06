@@ -91,7 +91,7 @@ escape-once-correct (g ∘ f) x =
                (escape-once-correct g (eval f x)))
 escape-once-correct fst x = refl
 escape-once-correct snd x = refl
-escape-once-correct (⟨ f , g ⟩ m) x =
+escape-once-correct (⟨ f , g ⟩) x =
   cong₂ _,_ (escape-once-correct f x) (escape-once-correct g x)
 escape-once-correct (inl m) x = refl
 escape-once-correct (inr m) x = refl

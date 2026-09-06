@@ -63,7 +63,7 @@ eval-assoc f g h x = refl
 -- Projecting the first component of a pair gives the first morphism.
 --
 eval-fst-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) (x : ⟦ C ⟧)
-              → eval (fst ∘ ⟨ f , g ⟩ m) x ≡ eval f x
+              → eval (fst ∘ ⟨ f , g ⟩) x ≡ eval f x
 eval-fst-pair f g m x = refl
 
 -- | snd ∘ ⟨ f , g ⟩ ≡ g
@@ -71,7 +71,7 @@ eval-fst-pair f g m x = refl
 -- Projecting the second component of a pair gives the second morphism.
 --
 eval-snd-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) (x : ⟦ C ⟧)
-              → eval (snd ∘ ⟨ f , g ⟩ m) x ≡ eval g x
+              → eval (snd ∘ ⟨ f , g ⟩) x ≡ eval g x
 eval-snd-pair f g m x = refl
 
 ------------------------------------------------------------------------
@@ -83,7 +83,7 @@ eval-snd-pair f g m x = refl
 -- Pairing the projections gives back the identity on products.
 --
 eval-pair-eta : ∀ {A B} (m : AllocMode) (x : ⟦ A * B ⟧)
-              → eval (⟨ fst , snd ⟩ m) x ≡ x
+              → eval (⟨ fst , snd ⟩) x ≡ x
 eval-pair-eta m (a , b) = refl
 
 -- | Product uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ ≡ h (semantically)
@@ -92,7 +92,7 @@ eval-pair-eta m (a , b) = refl
 -- This is the universal property of products.
 --
 eval-pair-unique : ∀ {A B C} (h : IR C (A * B)) (m : AllocMode) (x : ⟦ C ⟧)
-                 → eval (⟨ fst ∘ h , snd ∘ h ⟩ m) x ≡ eval h x
+                 → eval (⟨ fst ∘ h , snd ∘ h ⟩) x ≡ eval h x
 eval-pair-unique h m x with eval h x
 ... | (a , b) = refl
 
@@ -175,7 +175,7 @@ eval-initial-unique f ()
 -- The quantity {q} is phantom; the law holds for any quantity.
 --
 eval-curry-apply : ∀ {A B C k} (f : IR (A * B) C) (m₁ m₂ : AllocMode) (x : ⟦ A * B ⟧)
-                 → eval (apply {k = k} ∘ ⟨ curry {k = k} f m₁ ∘ fst , snd ⟩ m₂) x ≡ eval f x
+                 → eval (apply {k = k} ∘ ⟨ curry {k = k} f m₁ ∘ fst , snd ⟩) x ≡ eval f x
 eval-curry-apply f m₁ m₂ (a , b) = refl
 
 -- | curry (apply ∘ ⟨ g ∘ fst , snd ⟩) ≡ g (semantically, for functions)
@@ -187,7 +187,7 @@ eval-curry-apply f m₁ m₂ (a , b) = refl
 -- With plain functions, application is direct function application.
 -- The quantity {q} is phantom; the law holds for any quantity.
 eval-curry-eta : ∀ {A B C k} (g : IR A (B ⇒[ k ] C)) (m₁ m₂ : AllocMode) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
-               → eval (curry {k = k} (apply {k = k} ∘ ⟨ g ∘ fst , snd ⟩ m₁) m₂) a b ≡ eval g a b
+               → eval (curry {k = k} (apply {k = k} ∘ ⟨ g ∘ fst , snd ⟩) m₂) a b ≡ eval g a b
 eval-curry-eta g m₁ m₂ a b = refl
 
 ------------------------------------------------------------------------
@@ -204,7 +204,7 @@ eval-curry-eta g m₁ m₂ a b = refl
 -- | bimap f g = ⟨ f ∘ fst , g ∘ snd ⟩ preserves identity
 --
 eval-bimap-id : ∀ {A B} (m : AllocMode) (x : ⟦ A * B ⟧)
-              → eval (⟨ id ∘ fst , id ∘ snd ⟩ m) x ≡ x
+              → eval (⟨ id ∘ fst , id ∘ snd ⟩) x ≡ x
 eval-bimap-id m (a , b) = refl
 
 -- | bimap preserves composition
@@ -212,8 +212,8 @@ eval-bimap-id m (a , b) = refl
 eval-bimap-compose : ∀ {A B C D E F}
                      (f : IR B C) (g : IR A B) (h : IR E F) (i : IR D E)
                      (m₁ m₂ : AllocMode) (x : ⟦ A * D ⟧)
-                   → eval (⟨ (f ∘ g) ∘ fst , (h ∘ i) ∘ snd ⟩ m₁) x
-                     ≡ eval (⟨ f ∘ fst , h ∘ snd ⟩ m₁ ∘ ⟨ g ∘ fst , i ∘ snd ⟩ m₂) x
+                   → eval (⟨ (f ∘ g) ∘ fst , (h ∘ i) ∘ snd ⟩) x
+                     ≡ eval (⟨ f ∘ fst , h ∘ snd ⟩ ∘ ⟨ g ∘ fst , i ∘ snd ⟩) x
 eval-bimap-compose f g h i m₁ m₂ (a , d) = refl
 
 -- | bicase f g = [ inl ∘ f , inr ∘ g ] preserves identity

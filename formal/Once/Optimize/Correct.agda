@@ -91,7 +91,7 @@ optimize-compose-correct g f x | false with composeFirstView g
 ------------------------------------------------------------------------
 
 optimize-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
-                      → eval (optimize-pair f g) x ≡ eval (⟨ f , g ⟩ Heap) x
+                      → eval (optimize-pair f g) x ≡ eval (⟨ f , g ⟩) x
 optimize-pair-correct f g x with fstSndView f | fstSndView g
 -- Eta case: ⟨ fst , snd ⟩ = id. Here C = A * B so x is a pair.
 optimize-pair-correct .fst .snd (a , b) | fsv-fst | fsv-snd = refl
@@ -197,7 +197,7 @@ mutual
                  (optimize-once-correct g (eval f x)))
   optimize-once-structural-correct fst x = refl
   optimize-once-structural-correct snd x = refl
-  optimize-once-structural-correct (⟨ f , g ⟩ m) x =
+  optimize-once-structural-correct (⟨ f , g ⟩) x =
     trans (optimize-pair-correct (optimize-once f) (optimize-once g) x)
           (cong₂ _,_ (optimize-once-correct f x) (optimize-once-correct g x))
   -- inl: check Void source

@@ -80,7 +80,7 @@ appNatTr-F : ∀ {G F} (fmt : TargetNum) → NatTr G F → ∀ {X} → ⟦ G ⟧
 
 eval fmt id x = x
 eval fmt (g ∘ f) x = eval fmt g (eval fmt f x)
-eval fmt (⟨ f , g ⟩ _) x = sem-pair (eval fmt f x) (eval fmt g x)
+eval fmt (⟨ f , g ⟩) x = sem-pair (eval fmt f x) (eval fmt g x)
 eval fmt fst x = sem-fst x
 eval fmt snd x = sem-snd x
 eval fmt (inl _) x = sem-inl x

@@ -232,7 +232,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-slot-usage-bound = compose-max-slot-bound
         -- Plan 0.17.1: frontier-slot-stable now returns relative to
         -- `apply-bump compose-bump alloc`, not raw `alloc₂`. Match the
-        -- pattern used by ApplyWF / PairAllocWF / CurryAllocWF and return
+        -- pattern used by ApplyWF / PairWF / CurryAllocWF and return
         -- the uncertain branch `inj₂ (inj₂ tt)`. The legacy compose-
         -- frontier-stable (with the alloc₂-shape return type) is kept
         -- below as dead code for reference; reviving it would require

@@ -437,10 +437,9 @@ frontier-mono snd      n l = ≤-refl
 frontier-mono terminal n l = ≤-refl
 frontier-mono initial  n l = ≤-refl
 frontier-mono (g ∘ f)  n l = ≤-trans (frontier-mono f n l) (frontier-mono g _ _)
-frontier-mono (⟨ f , g ⟩ Stack) n l =
-  ≤-trans (≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (n≤1+n (suc (suc n)))))
-          (≤-trans (frontier-mono f _ l) (frontier-mono g _ _))
-frontier-mono (⟨ f , g ⟩ Heap) n l =
+-- Stage G: the stack-shape clause that stood here collapsed onto this
+-- same LHS when the pair's mode was dropped, and shadowed the heap one.
+frontier-mono (⟨ f , g ⟩) n l =
   ≤-trans (≤-trans (n≤1+n n)
             (≤-trans (n≤1+n (suc n))
               (≤-trans (n≤1+n (suc (suc n))) (n≤1+n (suc (suc (suc n)))))))
@@ -977,22 +976,9 @@ slots-below initial  n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (g ∘ f)  n l =
   segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f n l))
       (segok-pre _ refl (sb-none refl ∷ []) (slots-below g _ _))
-slots-below (⟨ f , g ⟩ Stack) n l =
-  segok-pre _ refl
-    (sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷ [])
-  (segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f _ l))
-      (segok-pre _ refl
-        (sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
-         sb-slot refl (≤-trans (≤-step (≤-step ≤-refl)) h) (λ _ ()) ∷ [])
-       (segok-++ (slots-below g _ _)
-           (segok-idle _ refl
-            (sb-slot refl h (λ _ ()) ∷
-            -- `lea-slot fst-slot`: fst = `suc n`, and `snd = suc (suc n)` is the
-            -- slot the SAME clause reserved — that is exactly `h`.
-            sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ { _ refl → h }) ∷ [])))))
-  where h : suc (suc (suc n)) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩ Stack))
-        h = ≤-trans (frontier-mono f _ l) (frontier-mono g _ _)
-slots-below (⟨ f , g ⟩ Heap) n l =
+-- Stage G: the stack-shape clause that stood here collapsed onto this
+-- same LHS when the pair's mode was dropped, and shadowed the heap one.
+slots-below (⟨ f , g ⟩) n l =
   segok-pre _ refl
     (sb-none refl ∷ sb-slot refl (≤-trans (≤-step (≤-step (≤-step ≤-refl))) h) (λ _ ()) ∷ [])
   (segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f _ l))
@@ -1010,7 +996,7 @@ slots-below (⟨ f , g ⟩ Heap) n l =
             sb-slot refl (≤-trans (≤-step ≤-refl) h) (λ _ ()) ∷
             sb-none refl ∷
             sb-slot refl h (λ _ ()) ∷ [])))))
-  where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩ Heap))
+  where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩))
         h = ≤-trans (frontier-mono f _ l) (frontier-mono g _ _)
 -- THE FLIP: the closure construction, then the body's own segment.
 slots-below (curry b Stack) n l =

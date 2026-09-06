@@ -134,7 +134,7 @@ fusion-once fst = fst
 fusion-once snd = snd
 
 -- Pairing: recurse into components, preserve mode
-fusion-once (⟨ f , g ⟩ m) = ⟨ fusion-once f , fusion-once g ⟩ m
+fusion-once (⟨ f , g ⟩) = ⟨ fusion-once f , fusion-once g ⟩
 
 -- Injections: preserve mode
 fusion-once (inl m) = inl m

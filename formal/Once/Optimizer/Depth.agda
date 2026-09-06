@@ -37,7 +37,7 @@ depth id            = 0
 depth (g ∘ f)       = suc (depth g ⊔ depth f)
 depth fst           = 0
 depth snd           = 0
-depth (⟨ f , g ⟩ _) = suc (depth f ⊔ depth g)
+depth (⟨ f , g ⟩) = suc (depth f ⊔ depth g)
 depth (inl _)       = 0
 depth (inr _)       = 0
 depth (case f g)    = suc (depth f ⊔ depth g)
@@ -106,11 +106,11 @@ depth-∘-right : ∀ {A B C} (g : IR B C) (f : IR A B) →
 depth-∘-right g f = ≤-trans (m≤n⊔m (depth g) (depth f)) (n≤1+n _)
 
 depth-pair-left : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) →
-  depth f ≤ depth (⟨ f , g ⟩ m)
+  depth f ≤ depth (⟨ f , g ⟩)
 depth-pair-left f g m = ≤-trans (m≤m⊔n (depth f) (depth g)) (n≤1+n _)
 
 depth-pair-right : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) →
-  depth g ≤ depth (⟨ f , g ⟩ m)
+  depth g ≤ depth (⟨ f , g ⟩)
 depth-pair-right f g m = ≤-trans (m≤n⊔m (depth f) (depth g)) (n≤1+n _)
 
 depth-case-left : ∀ {A B C} (f : IR A C) (g : IR B C) →

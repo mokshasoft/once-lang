@@ -276,8 +276,12 @@ frame-free-trace' terminal hm n l = []
 frame-free-trace' initial  hm n l = tt ∷ []
 frame-free-trace' (g ∘ f)  (hf , hg) n l =
   ++⁺ (frame-free-trace' f hf _ _) (tt ∷ frame-free-trace' g hg _ _)
-frame-free-trace' (⟨ f , g ⟩ Stack) (() , _) n l
-frame-free-trace' (⟨ f , g ⟩ Heap) (_ , hf , hg) n l =
+-- Stage G: ONE pair clause. The pair no longer carries a mode, so there is no
+-- `IsHeap` component to refute and no stack lowering to exclude — the heap
+-- lowering is THE pair lowering. `lea-slot` therefore stays unemitted by pair
+-- and stays ⊥ in `FrameFreeI`; moving pair I/O to the stack is a separate
+-- plan (0.87), priced there rather than smuggled in under "drop a mode".
+frame-free-trace' ⟨ f , g ⟩ (hf , hg) n l =
   tt ∷ tt ∷
   ++⁺ (frame-free-trace' f hf _ _)
       (tt ∷ tt ∷

@@ -170,10 +170,10 @@ rewrite-ir ir with try-lift ir
       in (g' ∘ f') , (bg ++ bf)
     walk fst               = fst , []
     walk snd               = snd , []
-    walk (⟨ f , g ⟩ m)     =
+    walk (⟨ f , g ⟩)     =
       let (f' , bf) = rewrite-ir f
           (g' , bg) = rewrite-ir g
-      in ⟨ f' , g' ⟩ m , (bf ++ bg)
+      in ⟨ f' , g' ⟩ , (bf ++ bg)
     walk (inl m)           = inl m , []
     walk (inr m)           = inr m , []
     walk (case f g)        =
