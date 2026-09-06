@@ -45,6 +45,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (true; false)
+open import Data.Nat using (ℕ)
 
 -- No mutual needed since Plan 0.54 item 6: with `instr-case-on-tag` in the ⊥
 -- set there is NO nested trace anywhere — the predicate is shallow.
@@ -286,3 +287,150 @@ module _ {FS : FrameSemantics} where
     trans (exec-trace-preserves-next-slot is
              (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc)) ffs)
           (exec-abstract-preserves-next-slot i s alloc fi)
+
+  -- The STATE companion. `SMPrimitives` has an unconditioned version of the
+  -- per-instruction half whose `instr-case-on-tag` and `instr-loop` clauses are
+  -- proof gaps ("discharge at M4"), because those two run a nested trace. Under
+  -- `FrameFreeI` both are `⊥`, so the gaps become absurd patterns — the same
+  -- move that made `exec-abstract-preserves-next-slot` provable.
+  --
+  -- Every other clause is `refl`: an instruction's STATE effect reads
+  -- `current-frame` or `next-heap-ref`, never `next-slot`, and the record
+  -- update preserves both.
+  -- state-level twins of the two alloc helpers above
+  load-from-slot-state : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS)
+      (a b : AllocState {FS})
+    → proj₁ (exec-load-from-slot-with-value mv s a)
+      ≡ proj₁ (exec-load-from-slot-with-value mv s b)
+  load-from-slot-state (just _) s a b = refl
+  load-from-slot-state nothing  s a b = refl
+
+  restore-input-state : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS)
+      (a b : AllocState {FS})
+    → proj₁ (exec-restore-input-with-value mv s a)
+      ≡ proj₁ (exec-restore-input-with-value mv s b)
+  restore-input-state (just _) s a b = refl
+  restore-input-state nothing  s a b = refl
+
+  load-from-slot-alloc-full : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS)
+      (alloc : AllocState {FS}) (k : ℕ)
+    → proj₂ (exec-load-from-slot-with-value mv s (record alloc { next-slot = k }))
+      ≡ record (proj₂ (exec-load-from-slot-with-value mv s alloc)) { next-slot = k }
+  load-from-slot-alloc-full (just _) s alloc k = refl
+  load-from-slot-alloc-full nothing  s alloc k = refl
+
+  restore-input-alloc-full : ∀ (mv : Maybe (StoredValue FS)) (s : LocState FS)
+      (alloc : AllocState {FS}) (k : ℕ)
+    → proj₂ (exec-restore-input-with-value mv s (record alloc { next-slot = k }))
+      ≡ record (proj₂ (exec-restore-input-with-value mv s alloc)) { next-slot = k }
+  restore-input-alloc-full (just _) s alloc k = refl
+  restore-input-alloc-full nothing  s alloc k = refl
+
+  exec-abstract-state-nsi :
+    ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) (k : ℕ)
+    → FrameFreeI i
+    → proj₁ (exec-abstract i s alloc)
+      ≡ proj₁ (exec-abstract i s (record alloc { next-slot = k }))
+  exec-abstract-state-nsi mov-to-output            s alloc k _ = refl
+  exec-abstract-state-nsi mov-to-input             s alloc k _ = refl
+  exec-abstract-state-nsi load-indirect            s alloc k _ = refl
+  exec-abstract-state-nsi load-indirect-suc        s alloc k _ = refl
+  exec-abstract-state-nsi (load-from-slot j)       s alloc k _ =
+    load-from-slot-state (stackMem s (current-frame alloc) j) s alloc _
+  exec-abstract-state-nsi (store-at-slot _)        s alloc k _ = refl
+  exec-abstract-state-nsi store-indirect           s alloc k _ = refl
+  exec-abstract-state-nsi store-indirect-suc       s alloc k _ = refl
+  exec-abstract-state-nsi (lea-slot _)             s alloc k _ = refl
+  exec-abstract-state-nsi (restore-input j)        s alloc k _ =
+    restore-input-state (stackMem s (current-frame alloc) j) s alloc _
+  exec-abstract-state-nsi (lea-indexed _)          s alloc k ()
+  exec-abstract-state-nsi (instr-alloc-stack _)    s alloc k ()
+  exec-abstract-state-nsi (instr-dealloc-stack _)  s alloc k ()
+  exec-abstract-state-nsi (instr-reclaim-to _)     s alloc k _ = refl
+  exec-abstract-state-nsi (instr-push-frame _)     s alloc k ()
+  exec-abstract-state-nsi instr-pop-frame          s alloc k ()
+  exec-abstract-state-nsi instr-call-closure       s alloc k _ = refl
+  exec-abstract-state-nsi (worklist-init _)        s alloc k _ = refl
+  exec-abstract-state-nsi (worklist-push _)        s alloc k _ = refl
+  exec-abstract-state-nsi (worklist-pop j)         s alloc k _ =
+    load-from-slot-state (stackMem s (current-frame alloc) j) s alloc _
+  exec-abstract-state-nsi (worklist-check _)       s alloc k _ = refl
+  exec-abstract-state-nsi (instr-sigop _)          s alloc k _ = refl
+  exec-abstract-state-nsi (instr-load-const _ _)   s alloc k _ = refl
+  exec-abstract-state-nsi (instr-load-code-addr _) s alloc k _ = refl
+  exec-abstract-state-nsi instr-save-closure-reg   s alloc k _ = refl
+  exec-abstract-state-nsi (instr-load-tag-lit _)   s alloc k _ = refl
+  exec-abstract-state-nsi (instr-case-on-tag _ _)  s alloc k ()
+  exec-abstract-state-nsi (instr-loop _)           s alloc k ()
+  exec-abstract-state-nsi (instr-alloc-heap _)     s alloc k _ = refl
+  exec-abstract-state-nsi (instr-reg-op _)         s alloc k _ = refl
+  exec-abstract-state-nsi (instr-ctrl _)           s alloc k _ = refl
+
+  -- The alloc half: re-threading with a different `next-slot` gives back the
+  -- same alloc with that `next-slot`. Needed because the trace induction has to
+  -- know the two runs' allocs stay related after each step.
+  exec-abstract-alloc-nsi :
+    ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) (k : ℕ)
+    → FrameFreeI i
+    → proj₂ (exec-abstract i s (record alloc { next-slot = k }))
+      ≡ record (proj₂ (exec-abstract i s alloc)) { next-slot = k }
+  exec-abstract-alloc-nsi mov-to-output            s alloc k _ = refl
+  exec-abstract-alloc-nsi mov-to-input             s alloc k _ = refl
+  exec-abstract-alloc-nsi load-indirect            s alloc k _ = refl
+  exec-abstract-alloc-nsi load-indirect-suc        s alloc k _ = refl
+  exec-abstract-alloc-nsi (load-from-slot j)       s alloc k _ =
+    load-from-slot-alloc-full (stackMem s (current-frame alloc) j) s alloc k
+  exec-abstract-alloc-nsi (store-at-slot _)        s alloc k _ = refl
+  exec-abstract-alloc-nsi store-indirect           s alloc k _ = refl
+  exec-abstract-alloc-nsi store-indirect-suc       s alloc k _ = refl
+  exec-abstract-alloc-nsi (lea-slot _)             s alloc k _ = refl
+  exec-abstract-alloc-nsi (restore-input j)        s alloc k _ =
+    restore-input-alloc-full (stackMem s (current-frame alloc) j) s alloc k
+  exec-abstract-alloc-nsi (lea-indexed _)          s alloc k ()
+  exec-abstract-alloc-nsi (instr-alloc-stack _)    s alloc k ()
+  exec-abstract-alloc-nsi (instr-dealloc-stack _)  s alloc k ()
+  exec-abstract-alloc-nsi (instr-reclaim-to _)     s alloc k _ = refl
+  exec-abstract-alloc-nsi (instr-push-frame _)     s alloc k ()
+  exec-abstract-alloc-nsi instr-pop-frame          s alloc k ()
+  exec-abstract-alloc-nsi instr-call-closure       s alloc k _ = refl
+  exec-abstract-alloc-nsi (worklist-init _)        s alloc k _ = refl
+  exec-abstract-alloc-nsi (worklist-push _)        s alloc k _ = refl
+  exec-abstract-alloc-nsi (worklist-pop j)         s alloc k _ =
+    load-from-slot-alloc-full (stackMem s (current-frame alloc) j) s alloc k
+  exec-abstract-alloc-nsi (worklist-check _)       s alloc k _ = refl
+  exec-abstract-alloc-nsi (instr-sigop _)          s alloc k _ = refl
+  exec-abstract-alloc-nsi (instr-load-const _ _)   s alloc k _ = refl
+  exec-abstract-alloc-nsi (instr-load-code-addr _) s alloc k _ = refl
+  exec-abstract-alloc-nsi instr-save-closure-reg   s alloc k _ = refl
+  exec-abstract-alloc-nsi (instr-load-tag-lit _)   s alloc k _ = refl
+  exec-abstract-alloc-nsi (instr-case-on-tag _ _)  s alloc k ()
+  exec-abstract-alloc-nsi (instr-loop _)           s alloc k ()
+  exec-abstract-alloc-nsi (instr-alloc-heap _)     s alloc k _ = refl
+  exec-abstract-alloc-nsi (instr-reg-op _)         s alloc k _ = refl
+  exec-abstract-alloc-nsi (instr-ctrl _)           s alloc k _ = refl
+
+  ------------------------------------------------------------------------
+  -- THE BRIDGE. Running a frame-free trace from a construction frontier
+  -- (`record alloc { next-slot = k }`) and from the runtime alloc gives the
+  -- SAME state, and allocs that differ in `next-slot` and nothing else.
+  --
+  -- This is what a WF handler needs to dispatch a sub-IR at `n + scratch`
+  -- while the runtime threads the unbumped alloc — the use
+  -- `SMPrimitives.exec-abstract-state-next-slot-invariant` was written for and
+  -- never had, now available at TRACE level, which is where handlers use it.
+  ------------------------------------------------------------------------
+  exec-trace-nsi :
+    ∀ (t : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) (k : ℕ)
+    → FrameFreeT t
+    → (proj₁ (exec-trace t s alloc)
+       ≡ proj₁ (exec-trace t s (record alloc { next-slot = k })))
+    × (proj₂ (exec-trace t s (record alloc { next-slot = k }))
+       ≡ record (proj₂ (exec-trace t s alloc)) { next-slot = k })
+  exec-trace-nsi []       s alloc k _ = refl , refl
+  exec-trace-nsi (i ∷ is) s alloc k (fi , ffs) with halted s
+  ... | true  = refl , refl
+  ... | false
+    rewrite exec-abstract-state-nsi i s alloc k fi
+          | exec-abstract-alloc-nsi i s alloc k fi
+    = exec-trace-nsi is (proj₁ (exec-abstract i s (record alloc { next-slot = k })))
+                        (proj₂ (exec-abstract i s alloc)) k ffs

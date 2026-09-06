@@ -203,13 +203,17 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- correct intermediate state without re-deriving exec-trace
       -- decompositions.
       ------------------------------------------------------------------
-      -- Plan 0.14: setup ends with `instr-alloc-stack pair-heap-overhead` so the
-      -- runtime next-slot bumps to match `alloc-after-scratch` (= the
-      -- construction-time alloc passed to f's rec-wf). Eliminates the
-      -- runtime/construction-time alignment story that PairStackWF had to
-      -- thread by hand. See [[alloc-construction-vs-runtime]].
+      -- D150: `instr-alloc-stack pair-heap-overhead` is GONE. It was here so the
+      -- runtime `next-slot` would bump to match `alloc-after-scratch`, the
+      -- CONSTRUCTION frontier handed to f. But `ir-to-trace'` never emits it
+      -- (`EmittableI (instr-alloc-stack _) = ⊥`), so while it stayed,
+      -- `trace-is-ir-to-trace` could only ever be a proof gap.
+      --
+      -- The alignment it was faking is now done honestly: `next-slot` is a
+      -- construction-time frontier no execution moves, and
+      -- `exec-trace-preserves-next-slot` bridges the two.
       setup-trace : AbstractTrace
-      setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ instr-alloc-stack pair-heap-overhead ∷ []
+      setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
 
       mid-trace : AbstractTrace
       mid-trace = store-at-slot fst-stash ∷ restore-input backup-slot ∷ []
@@ -237,7 +241,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- All three setup instructions are unconditional preservers (InstrWF = ⊤).
       setup-twf : TraceWF s alloc setup-trace
-      setup-twf = twf-∷ tt (twf-∷ tt (twf-∷ tt twf-[]))
+      setup-twf = twf-∷ tt (twf-∷ tt twf-[])
 
       not-halted-after-setup : halted s-after-setup ≡ false
       not-halted-after-setup = exec-trace-preserves-halted-WF setup-trace s alloc not-halted setup-twf
@@ -256,27 +260,17 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             alloc₂  = proj₂ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁)
             store-preserves : readReg (regs s₂) Input1 ≡ readReg (regs s₁) Input1
             store-preserves = exec-abstract-store-at-slot-preserves-input backup-slot s₁ alloc₁
-            not-halted₂ = exec-abstract-preserves-halted (store-at-slot backup-slot) s₁ alloc₁ not-halted₁ iph-store-at-slot
-            s₃      = proj₁ (exec-abstract (instr-alloc-stack pair-heap-overhead) s₂ alloc₂)
-            -- instr-alloc-stack changes nothing in the LocState, leaving
-            -- input1 / input2 / output untouched (definitional).
-            alloc-stack-preserves : readReg (regs s₃) Input1 ≡ readReg (regs s₂) Input1
-            alloc-stack-preserves = refl
             d1 : exec-trace setup-trace s alloc ≡
-                 exec-trace (store-at-slot backup-slot ∷ instr-alloc-stack pair-heap-overhead ∷ []) s₁ alloc₁
+                 exec-trace (store-at-slot backup-slot ∷ []) s₁ alloc₁
             d1 = exec-trace-cons mov-to-output _ s alloc not-halted
-            d2 : exec-trace (store-at-slot backup-slot ∷ instr-alloc-stack pair-heap-overhead ∷ []) s₁ alloc₁ ≡
-                 exec-trace (instr-alloc-stack pair-heap-overhead ∷ []) s₂ alloc₂
-            d2 = exec-trace-cons (store-at-slot backup-slot) _ s₁ alloc₁ not-halted₁
-            d3 : exec-trace (instr-alloc-stack pair-heap-overhead ∷ []) s₂ alloc₂ ≡
-                 exec-abstract (instr-alloc-stack pair-heap-overhead) s₂ alloc₂
-            d3 = exec-trace-single (instr-alloc-stack pair-heap-overhead) s₂ alloc₂ not-halted₂
-            s-eq : s-after-setup ≡ s₃
-            s-eq = cong proj₁ (trans d1 (trans d2 d3))
+            d2 : exec-trace (store-at-slot backup-slot ∷ []) s₁ alloc₁ ≡
+                 exec-abstract (store-at-slot backup-slot) s₁ alloc₁
+            d2 = exec-trace-single (store-at-slot backup-slot) s₁ alloc₁ not-halted₁
+            s-eq : s-after-setup ≡ s₂
+            s-eq = cong proj₁ (trans d1 d2)
         in trans (cong (λ st → readReg (regs st) Input1) s-eq)
-                 (trans alloc-stack-preserves
-                   (trans store-preserves
-                     (trans mov-preserves (input-read ip))))
+                 (trans store-preserves
+                   (trans mov-preserves (input-read ip)))
 
       -- f-start ≡ next-slot alloc + 4 propositionally. `4 + n` reduces
       -- definitionally to suc(suc(suc(suc n))) = f-start (when
@@ -314,25 +308,16 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             alloc₂  = proj₂ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁)
             store-mem : readLoc s₂ loc ≡ readLoc s₁ loc
             store-mem = exec-abstract-store-at-slot-preserves-loc backup-slot s₁ alloc₁ loc loc≢slot
-            not-halted₂ = exec-abstract-preserves-halted (store-at-slot backup-slot) s₁ alloc₁ not-halted₁ iph-store-at-slot
-            -- instr-alloc-stack changes no LocState field, so stack/heap
-            -- memory is preserved.
-            s₃      = proj₁ (exec-abstract (instr-alloc-stack pair-heap-overhead) s₂ alloc₂)
-            alloc-stack-mem : readLoc s₃ loc ≡ readLoc s₂ loc
-            alloc-stack-mem = ExecLemmas.readLoc-stackMem-eq s₃ s₂ loc refl refl
             d1 : exec-trace setup-trace s alloc ≡
-                 exec-trace (store-at-slot backup-slot ∷ instr-alloc-stack pair-heap-overhead ∷ []) s₁ alloc₁
+                 exec-trace (store-at-slot backup-slot ∷ []) s₁ alloc₁
             d1 = exec-trace-cons mov-to-output _ s alloc not-halted
-            d2 : exec-trace (store-at-slot backup-slot ∷ instr-alloc-stack pair-heap-overhead ∷ []) s₁ alloc₁ ≡
-                 exec-trace (instr-alloc-stack pair-heap-overhead ∷ []) s₂ alloc₂
-            d2 = exec-trace-cons (store-at-slot backup-slot) _ s₁ alloc₁ not-halted₁
-            d3 : exec-trace (instr-alloc-stack pair-heap-overhead ∷ []) s₂ alloc₂ ≡
-                 exec-abstract (instr-alloc-stack pair-heap-overhead) s₂ alloc₂
-            d3 = exec-trace-single (instr-alloc-stack pair-heap-overhead) s₂ alloc₂ not-halted₂
-            s-eq : s-after-setup ≡ s₃
-            s-eq = cong proj₁ (trans d1 (trans d2 d3))
+            d2 : exec-trace (store-at-slot backup-slot ∷ []) s₁ alloc₁ ≡
+                 exec-abstract (store-at-slot backup-slot) s₁ alloc₁
+            d2 = exec-trace-single (store-at-slot backup-slot) s₁ alloc₁ not-halted₁
+            s-eq : s-after-setup ≡ s₂
+            s-eq = cong proj₁ (trans d1 d2)
         in trans (cong (λ st → readLoc st loc) s-eq)
-                 (trans alloc-stack-mem (trans store-mem mov-mem))
+                 (trans store-mem mov-mem)
 
       -- The input's PLACE at f's start. One call, residence-blind: the
       -- located case transports its validity, the register-resident case has
@@ -412,7 +397,6 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             s₂ = proj₁ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁)
             alloc₂ = proj₂ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁)
             not-halted₂ = exec-abstract-preserves-halted (store-at-slot backup-slot) s₁ alloc₁ not-halted₁ iph-store-at-slot
-            s₃ = proj₁ (exec-abstract (instr-alloc-stack pair-heap-overhead) s₂ alloc₂)
             -- step1: after mov-to-output, Output := readReg Input1 = input-sv ip.
             mov-output : readReg (regs s₁) Output ≡ input-sv ip
             mov-output = trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) (input-read ip)
@@ -421,24 +405,17 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             store-stores = writeLoc-read-same-stack s₁ (current-frame alloc₁) backup-slot (readReg (regs s₁) Output)
             backup-at-s₂ : readLoc s₂ (AtStack (current-frame alloc₁) backup-slot) ≡ just (input-sv ip)
             backup-at-s₂ = trans store-stores (cong just mov-output)
-            -- step3: instr-alloc-stack preserves stack memory.
-            backup-at-s₃ : readLoc s₃ (AtStack (current-frame alloc₁) backup-slot) ≡
-                           readLoc s₂ (AtStack (current-frame alloc₁) backup-slot)
-            backup-at-s₃ = ExecLemmas.readLoc-stackMem-eq s₃ s₂ (AtStack (current-frame alloc₁) backup-slot) refl refl
-            -- exec-trace decomposition
+            -- exec-trace decomposition (two instructions now)
             d1 : exec-trace setup-trace s alloc ≡
-                 exec-trace (store-at-slot backup-slot ∷ instr-alloc-stack pair-heap-overhead ∷ []) s₁ alloc₁
+                 exec-trace (store-at-slot backup-slot ∷ []) s₁ alloc₁
             d1 = exec-trace-cons mov-to-output _ s alloc not-halted
-            d2 : exec-trace (store-at-slot backup-slot ∷ instr-alloc-stack pair-heap-overhead ∷ []) s₁ alloc₁ ≡
-                 exec-trace (instr-alloc-stack pair-heap-overhead ∷ []) s₂ alloc₂
-            d2 = exec-trace-cons (store-at-slot backup-slot) _ s₁ alloc₁ not-halted₁
-            d3 : exec-trace (instr-alloc-stack pair-heap-overhead ∷ []) s₂ alloc₂ ≡
-                 exec-abstract (instr-alloc-stack pair-heap-overhead) s₂ alloc₂
-            d3 = exec-trace-single (instr-alloc-stack pair-heap-overhead) s₂ alloc₂ not-halted₂
-            s-eq : s-after-setup ≡ s₃
-            s-eq = cong proj₁ (trans d1 (trans d2 d3))
+            d2 : exec-trace (store-at-slot backup-slot ∷ []) s₁ alloc₁ ≡
+                 exec-abstract (store-at-slot backup-slot) s₁ alloc₁
+            d2 = exec-trace-single (store-at-slot backup-slot) s₁ alloc₁ not-halted₁
+            s-eq : s-after-setup ≡ s₂
+            s-eq = cong proj₁ (trans d1 d2)
         in trans (cong (λ st → readLoc st (AtStack frame backup-slot)) s-eq)
-                 (trans backup-at-s₃ backup-at-s₂)
+                 backup-at-s₂
 
       -- f preserves backup-slot. Discharged via mem-preserved-before
       -- from result-f (consequence-form invariant: any BeforeFrontier
