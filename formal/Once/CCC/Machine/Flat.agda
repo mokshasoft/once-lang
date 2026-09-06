@@ -193,6 +193,46 @@ module FlatMachine {FS : FrameSemantics} where
   fetch-++-right (i ∷ t₁) t₂ j = fetch-++-right t₁ t₂ j
 
   ------------------------------------------------------------------------
+  -- ...and RELOCATION, the label half. A jump inside `gt` must land in the
+  -- same place whether `gt` runs alone or spliced into `ft ++ mov : gt`.
+  -- That holds exactly when the target does NOT occur in the prefix -- which
+  -- is what threading the label base `l` through `ir-to-trace'` guarantees
+  -- (`LabelScope`'s `label-mono` / `labels-in` / `seg-agree`).
+  --
+  -- "Not in the prefix" is spelled as the scan FAILING on it: the weakest
+  -- useful hypothesis, and the one a caller can actually produce. With-free,
+  -- in this module's own style (D092): the `ft-at` / `ft-match` dispatch is
+  -- mirrored by an auxiliary per layer.
+  ------------------------------------------------------------------------
+  ft-go-++-miss    : ∀ (t₁ t₂ : AbstractTrace) (target : LabelId) (i : ℕ)
+                   → ft-go t₁ target i ≡ nothing
+                   → ft-go (t₁ ++ t₂) target i ≡ ft-go t₂ target (length t₁ + i)
+  ft-at-++-miss    : ∀ (mo : Maybe LabelId) (t₁ t₂ : AbstractTrace)
+                       (target : LabelId) (i : ℕ)
+                   → ft-at mo t₁ target i ≡ nothing
+                   → ft-at mo (t₁ ++ t₂) target i ≡ ft-go t₂ target (suc (length t₁ + i))
+  ft-match-++-miss : ∀ (b : Bool) (t₁ t₂ : AbstractTrace)
+                       (target : LabelId) (i : ℕ)
+                   → ft-match b t₁ target i ≡ nothing
+                   → ft-match b (t₁ ++ t₂) target i ≡ ft-go t₂ target (suc (length t₁ + i))
+
+  ft-go-++-miss []       t₂ target i _    = refl
+  ft-go-++-miss (x ∷ t₁) t₂ target i miss =
+    ft-at-++-miss (thunk-of? x) t₁ t₂ target i miss
+
+  ft-at-++-miss (just m) t₁ t₂ target i miss =
+    ft-match-++-miss (m ≡ᵇᴵ target) t₁ t₂ target i miss
+  ft-at-++-miss nothing  t₁ t₂ target i miss =
+    trans (ft-go-++-miss t₁ t₂ target (suc i) miss)
+          (cong (ft-go t₂ target) (+-suc (length t₁) i))
+
+  -- `true` is impossible: the scan would have RETURNED `just i`, not missed.
+  ft-match-++-miss true  t₁ t₂ target i ()
+  ft-match-++-miss false t₁ t₂ target i miss =
+    trans (ft-go-++-miss t₁ t₂ target (suc i) miss)
+          (cong (ft-go t₂ target) (+-suc (length t₁) i))
+
+  ------------------------------------------------------------------------
   -- THE CALL SCAN IS SOUND: what it finds IS a body entry for that label.
   --
   -- D092 needs this to say what a call LANDS ON. `find-thunk` returns an index
