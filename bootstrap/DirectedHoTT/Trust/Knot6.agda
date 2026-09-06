@@ -36,8 +36,8 @@ import DirectedHoTT.Examples.Knot.RedWfB
 import DirectedHoTT.Examples.Knot.RenAgree
 import DirectedHoTT.Examples.Knot.RenAgreeTie
 import DirectedHoTT.Examples.Knot.RenAgreeTy
+import DirectedHoTT.Examples.Knot.RenAgreeTyTie
 import DirectedHoTT.Examples.Knot.RenAgreeX
 import DirectedHoTT.Examples.Knot.RenClosed
 import DirectedHoTT.Examples.Knot.RenMot
 import DirectedHoTT.Examples.Knot.RenNat
-import DirectedHoTT.Examples.Knot.RenRed

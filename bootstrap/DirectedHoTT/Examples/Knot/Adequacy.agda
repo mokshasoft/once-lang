@@ -150,7 +150,10 @@
 --     subTmAtK   ✅ DISCHARGED — it IS `subAtK sTm`, so `Knot/SubAgreeTie.sub-agree`
 --                is exactly its statement.
 --     subTmK     ✅ DISCHARGED via `subAtK` — same theorem, unapplied form.
---     subTyAtK   ⬜ OWED — `enTy (subTy σ A) ≡ subTyAtK … (enTy A)`.
+--     subTyAtK   ✅ DISCHARGED — `Knot/TyAgree.subTyAtK-agree`.  ⚠ NOT a
+--                commutation lemma after all: `subTyAtK d m σ A` IS
+--                `subAtK sTy d m σ A` definitionally, so this is
+--                `sub-agree-ty` with no repackaging.
 --     szTm       ✅ `Knot/SzProbe` — same-sort counts, per row, by `refl`.
 --     szsTm      ✅ `Knot/SzAgree` — `szsTm i ⌈t⌉ ⟶* num (sz t)`, all 30 rows,
 --                GENERATED.  THE model for every ⬜ below.
@@ -170,8 +173,9 @@
 --     wkTmK-sub  ✅ not a program — `wkTmK`'s substitution naturality
 --                (`Knot/SubSpec`), needed because `extVs`'s body puts a
 --                `wkTmK` under five binders.
---     wkTyK      ⬜ OWED — `renTy vs`, likewise.  ⚠ DEFINED but not yet
---                EMITTED: no rule so far weakens a TYPE.
+--     wkTyK      ✅ DISCHARGED — `Knot/TyAgree.wkTyK-agree`:
+--                `ren-agree-ty` at the renaming `vs`, exactly as `wkTmK`
+--                is `ren-agree` at it.  The cost was opening the sort.
 --     wkTyUnderK ⬜ OWED — agreement with `renTy (extR vs)`.
 --     εwkK       ✅ not owed — its argument is CLOSED, and every weakening
 --                agrees on a closed term.  This is exactly why `Knot/PayTy`

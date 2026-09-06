@@ -19,7 +19,7 @@
 module DirectedHoTT.Examples.Knot.SubAgreeTie where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; RTm; Var; Sub; subTm
+  using ( Cx; RTm; RTy; Var; Sub; subTm; subTy; Desc; IDesc
         ; absurd
         ; ap
         ; app
@@ -52,14 +52,15 @@ open import DirectedHoTT.Spec.Syntax
         ; ⌜Σ⌝
         )
 open import DirectedHoTT.Spec.Typing using ( _⟶*_ )
-open import DirectedHoTT.Examples.Knot.Map using ( enTm )
-open import DirectedHoTT.Examples.Knot.Sorts using ( num; len; sTm )
+open import DirectedHoTT.Examples.Knot.Map using ( enTm; enTy )
+open import DirectedHoTT.Examples.Knot.Sorts using ( num; len; sTm; sTy )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subAtK )
 open import DirectedHoTT.Examples.Knot.SubAgree using ( Represents )
 open import DirectedHoTT.Examples.Knot.SubAgreeRows
   using ( row-lam; row-app; row-pair; row-absurd; row-ordtr; row-fst; row-snd; row-cbase; row-cPi; row-cSg; row-cHom; row-hrefl; row-tr; row-ap; row-cId; row-idrefl; row-jsub; row-unit; row-nzero; row-nsuc; row-natrec; row-con; row-icon; row-cNat; row-cUnit )
 open import DirectedHoTT.Examples.Knot.SubAgreeX
   using ( row-cMu; row-elim; row-ielim; row-cIMu; row-var )
+
 
 
 sub-agree : {Γ Δ Θ : Cx} {σ : Sub Γ Δ} {s : RTm Θ} →

@@ -2,7 +2,7 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — ★★★ `sub-agree`, THE 25 SAME-SORT `RTm` ROWS.
 --
---     subAtK sTm ⌈Γ⌉ ⌈Δ⌉ σ ⌈t⌉  ⟶*  ⌈ subTm σ' t ⌉     given  Represents σ' σ
+--     subAtK sTm ⌈Γ⌉ ⌈Δ⌉ σ ⌈t⌉  ⟶*  ⌈ subTm σ' t ⌉   given  Represents σ' σ
 --
 -- ★ THE SAME EMITTER AS `Knot/RenAgree`, at the other instantiation.  Only
 --   five things differ, and they are exactly the five the parameterisation
@@ -33,7 +33,8 @@ module DirectedHoTT.Examples.Knot.SubAgreeRows where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTm; Var; vz; vs; Sub; app; pair; icon; subTm; extS
+  using ( Cx; ε; _∙; RTm; RTy; Var; vz; vs; Sub; app; pair; icon; extS
+        ; subTm; subTy; Desc; IDesc
         ; nzero; idrefl; ⌜Nat⌝; unit; snd; ilookupD
         ; lam
         ; app
@@ -67,8 +68,10 @@ open import DirectedHoTT.Metatheory.RedCong
         ; ⟶*-fst; ⟶*-snd; ⟶*-nsuc; ⟶*-jsubᵖ )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.ISub using ( ttsd )
-open import DirectedHoTT.Examples.Knot.Map using ( enTm )
-open import DirectedHoTT.Examples.Knot.Sorts using ( num; len; sTm )
+open import DirectedHoTT.Examples.Knot.Map using ( enTm; enTy; enDesc; enIDesc )
+open import DirectedHoTT.Examples.Knot.Sorts using ( num; len; sTm; sTy )
+-- ★ THE CLOSED-SORT IDENTITIES — a cross-sort slot's "IH", at THIS half.
+open import DirectedHoTT.Examples.Knot.SubClosed using ( sub-Desc-id; sub-IDesc-id )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subAtK )
 open import DirectedHoTT.Examples.Knot.SubRed using ( sub-head-red )
 open import DirectedHoTT.Examples.Knot.SubAgree using ( Represents )
