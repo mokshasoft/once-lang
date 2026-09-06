@@ -1318,6 +1318,9 @@ FIELD_SORT.update({
     "ipayTyKᵏ":  ["sIDesc", "sTy", None, "sICon"],
     # ★ `methsTyFrom D M j E` — `j` is a ℕ, hence `None`.
     "methsTyFromK": ["sDesc", "sTy", None, "sDesc"],
+    # ★ `⊢ielim` — `imethsTy D I M E` and the conclusion's `iinst i t M`.
+    "imethsTyK": ["sIDesc", "sTy", "sTy", "sIDesc"],
+    "iinstK":    ["sTm", "sTm", "sTy"],
 })
 
 # ============================ THE MUTUAL PAIR =============================
@@ -1914,6 +1917,9 @@ open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK 
 open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )
 -- ★ `⊢elim`'s method-tuple type.
 open import DirectedHoTT.Examples.Knot.MethsTy using ( methsTyFromK; ⊢methsTyFromK )
+-- ★ `⊢ielim`'s method-tuple type, and its conclusion's `iinst`.
+open import DirectedHoTT.Examples.Knot.IMethsTy using ( imethsTyK; ⊢imethsTyK )
+open import DirectedHoTT.Examples.Knot.IExt using ( iinstK; ⊢iinstK )
 open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
@@ -3344,6 +3350,8 @@ WF_CTOR.update({
     "payTyKᵏ":   ("⊢payTyKᵏ",   ["DD", "MU", "MU"],                  None),
     "ipayTyKᵏ":  ("⊢ipayTyKᵏ",  ["DD", "DD", "MU", "MU", "IX", "MU"], None),
     "methsTyFromK": ("⊢methsTyFromK", ["DD", "MU", "MU", "N", "MU"],  None),
+    "imethsTyK":    ("⊢imethsTyK",    ["DD", "MU", "MU", "MU", "MU"], None),
+    "iinstK":       ("⊢iinstK",       ["DD", "MU", "MU", "MU"],       None),
     # ★★★ DISCHARGED 2026-09-06 — the `Ty` sort.
     "wkTyK":    ("⊢wkTyK",     ["N", "MU"],       None),
     # ★★★ THE SUBSTITUTION WRAPPERS.  `Knot/SubApp` proved these; the
@@ -3505,6 +3513,10 @@ FIELD_DEPTH.update({
     # ★ `methsTyFromK n D M j E` — `M` is the MOTIVE, at `nsuc n`
     #   (`(Γ ▹ Mu D) ⊢ty M`); everything else is ambient.
     "methsTyFromK": [('D',), ('D',), ('sucD', 1), ('D',), ('D',)],
+    # ★ `imethsTyK n D I M E` — `I` is a CLOSED `RTy ε`, `M` is the
+    #   TWO-slot motive at `n+2`.  `iinstK n i t M` likewise.
+    "imethsTyK": [('D',), ('D',), ('lit', 0), ('sucD', 2), ('D',)],
+    "iinstK":    [('D',), ('D',), ('D',), ('sucD', 2)],
     "Var-vsK":  [('D',), ('predD',)],
     # ⚠⚠ `wkK`'s BOTH arguments sit at the SOURCE depth — `wkK i t : K (sh i)`
     #   — so the derivation emitter must descend at `pred` of the ambient
@@ -4129,7 +4141,7 @@ _DEPTH_ARG = {"Var-vzK", "Var-vsK", "nrsSubK"}
 _DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK", "extNK",
               # ★ STEP 5 — see `_PRE_N`.
               "lookupDK", "ilookupDK", "payTyKᵏ", "ipayTyKᵏ",
-              "methsTyFromK"}
+              "methsTyFromK", "imethsTyK", "iinstK"}
 
 # ★★★ HOW MANY DEPTHS EACH WRAPPER TAKES BEFORE ITS SOURCE ARGUMENTS.
 #
@@ -4175,7 +4187,8 @@ _PRE_D = {"singleK":  (('D',),),
           # ★ STEP 5.
           "lookupDK": (('D',),), "ilookupDK": (('D',),), "payTyKᵏ": (('D',),),
           "ipayTyKᵏ": (('lit', 1), ('D',)),
-          "methsTyFromK": (('D',),)}
+          "methsTyFromK": (('D',),),
+          "imethsTyK": (('D',),), "iinstK": (('D',),)}
 
 # ⚠ DERIVED, so a prefix cannot be given a shape without also being
 #   counted.  Every other reader wants only the COUNT (an offset into the
@@ -4200,7 +4213,9 @@ _SUBST_CT = {"single": "singleK", "subTm": "subTmAtK",
              # ★ `⊢elim`'s premise.  ⚠ The rule writes `methsTy D M D`;
              #   the expander unfolds it to `methsTyFrom D M zero D`,
              #   which is the name that must map.
-             "methsTyFrom": "methsTyFromK"}
+             "methsTyFrom": "methsTyFromK",
+             # ★ `⊢ielim`'s premise and its CONCLUSION.
+             "imethsTy": "imethsTyK", "iinst": "iinstK"}
 
 # ⚠⚠ STEP 5 — WHY THE FOUR "ALREADY EXISTING" FUNCTIONS ARE NOT JUST A
 #   TABLE ENTRY.  `Knot/JudgeRows` names its own gaps:
@@ -4562,6 +4577,9 @@ open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK 
 open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )
 -- ★ `⊢elim`'s method-tuple type.
 open import DirectedHoTT.Examples.Knot.MethsTy using ( methsTyFromK; ⊢methsTyFromK )
+-- ★ `⊢ielim`'s method-tuple type, and its conclusion's `iinst`.
+open import DirectedHoTT.Examples.Knot.IMethsTy using ( imethsTyK; ⊢imethsTyK )
+open import DirectedHoTT.Examples.Knot.IExt using ( iinstK; ⊢iinstK )
 open import DirectedHoTT.Examples.Knot.RedRows
 %s
 """
@@ -4954,6 +4972,17 @@ _WRAP_LEDGER = {
     #   scanner starts seeing them.  ⇒ the two gates are a pincer — one
     #   forbids an unlisted program, the other a listed non-program — and
     #   between them the ledger cannot drift in either direction.
+    # ★★★ `⊢ielim`'s FIVE PROGRAMS, 2026-09-06.
+    "iextK":         "⬜ OWED — agreement with `iext`, VIA its factorisation\n--                `iext σ t ≡ single t ∘ extS σ` (the same two-step debt\n--                `iconSK` carries).",
+    "iinstK":        "⬜ OWED — agreement with `iinst`; two `subTyAtK`s and\n--                no trick, so a corollary of theirs.",
+    "iihTyK":        "⬜ OWED — agreement with `iihTy`.",
+    "imethsTyFromK": "⬜ OWED — agreement with `imethsTyFrom`.",
+    "imethsTyK":     "⬜ OWED — `imethsTyFromK` at `j = 0`; a corollary.",
+    "wkTyUnder2K":   "⬜ OWED — agreement with `renTy (extR (extR vs))`.\n--                ⚠ The TWO-binder weakening; `wkTyUnderK` is the\n--                one-binder form and nothing needed this until `imethTy`.",
+    # ★ not programs — pieces of the eliminators above.
+    "iihTyMotK": "✅ not a program — `iihTyK`'s MOTIVE.",
+    "iihAppK":   "✅ not a program — the descent through `iihTyMotK`'s four\n--                Π binders, i.e. a step of `iihTyK`'s own definition.",
+    "iihTyRho":  "✅ not a program — the `cICon-rho` METHOD of `iihTyK`.",
     # ★ STEP 5's `⊢ielim` GROUNDWORK, 2026-09-06.
     # ⚠⚠ AND `iconSK` OWES ITS **FACTORISATION** BEFORE ITS AGREEMENT.
     #   The spec defines `iconS` by three `Var` cases two levels deep; the
@@ -5214,7 +5243,7 @@ _SRCMOD = {"Typing": "DirectedHoTT.Spec.Typing",
 #   Agda equation then pins it exactly.  Raising one is a deliberate act,
 #   the same contract as `_FLOOR`.
 _SKIP_EXPECT = {"RedD": 2, "TyRedD": 0, "ConvD": 0, "NoNatCD": 0,
-                "InDD": 0, "InIDD": 0, "JudgeD": 2}
+                "InDD": 0, "InIDD": 0, "JudgeD": 1}
 
 def gen_census(out):
     """one equation per family, from `_CENSUS` — so a family cannot be

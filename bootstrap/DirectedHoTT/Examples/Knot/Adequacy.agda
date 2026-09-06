@@ -22,7 +22,7 @@
 --   only that each subject it builds is the one the rule names.  A full
 --   `enDeriv` would subsume it.
 --
--- ★ 32 checks.  ⚠ 14 subject(s) SKIPPED and named — a
+-- ★ 32 checks.  ⚠ 15 subject(s) SKIPPED and named — a
 --   translation mentioning the row's DEPTH has no meta-level depth to be
 --   instantiated at, and an `ICon` binder's scope is not named by its
 --   rule:
@@ -36,6 +36,7 @@
 --     ⊢con         _Undepthed
 --     ⊢elim        applies subTyAtK
 --     ⊢icon        _Undepthed
+--     ⊢ielim       applies iinstK
 --     iwf-ρ        _Undepthed
 --     iwf-κ        _Undepthed
 --     icw-clo      applies εwkK
@@ -102,9 +103,21 @@
 --                above.
 --     iconSSK    ⬜ OWED — `icS k`'s core, the one-level `Var` eliminator.
 --                A clone of `conSSK` with `icon` for `con`.
+--     iextK      ⬜ OWED — agreement with `iext`, VIA its factorisation
+--                `iext σ t ≡ single t ∘ extS σ` (the same two-step debt
+--                `iconSK` carries).
 --     ihTyK      ⬜ OWED — agreement with `ihTy`.
 --     ihTyRho    ✅ not owed — a method row of `ihTyK`.
+--     iihAppK    ✅ not a program — the descent through `iihTyMotK`'s four
+--                Π binders, i.e. a step of `iihTyK`'s own definition.
+--     iihTyK     ⬜ OWED — agreement with `iihTy`.
+--     iihTyMotK  ✅ not a program — `iihTyK`'s MOTIVE.
+--     iihTyRho   ✅ not a program — the `cICon-rho` METHOD of `iihTyK`.
+--     iinstK     ⬜ OWED — agreement with `iinst`; two `subTyAtK`s and
+--                no trick, so a corollary of theirs.
 --     ilookupDK  ⬜ OWED — agreement with `ilookupD`.
+--     imethsTyFromK ⬜ OWED — agreement with `imethsTyFrom`.
+--     imethsTyK  ⬜ OWED — `imethsTyFromK` at `j = 0`; a corollary.
 --     ipayTyK    ⬜ OWED — agreement with `ipayTy`.
 --     ipayTyKap  ✅ not owed — a method row of `ipayTyK`.
 --     ipayTyRho  ✅ not owed — a method row of `ipayTyK`.
@@ -188,6 +201,9 @@
 --     wkTyK      ✅ DISCHARGED — `Knot/TyAgree.wkTyK-agree`:
 --                `ren-agree-ty` at the renaming `vs`, exactly as `wkTmK`
 --                is `ren-agree` at it.  The cost was opening the sort.
+--     wkTyUnder2K ⬜ OWED — agreement with `renTy (extR (extR vs))`.
+--                ⚠ The TWO-binder weakening; `wkTyUnderK` is the
+--                one-binder form and nothing needed this until `imethTy`.
 --     wkTyUnderK ⬜ OWED — agreement with `renTy (extR vs)`.
 --     εwkK       ✅ not owed — its argument is CLOSED, and every weakening
 --                agrees on a closed term.  This is exactly why `Knot/PayTy`
