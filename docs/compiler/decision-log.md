@@ -11409,3 +11409,68 @@ statement that was written by looking at the consumer instead of at the
 recursion. Look for the axiom sitting exactly where the induction would have
 had to relate two instances of the interface — `comp-step` is that axiom
 here, and it names the defect precisely.
+
+## D153
+
+**Question.** With the obligation re-indexed by the emission site (D152), is
+`comp-step` provable? No — and the second obstruction is independent of the
+first.
+
+**The defect.** `IRObsCorrectF` demanded, side by side,
+
+    ValidAtWF mIn alloc x input-loc s →   -- memory residency AT A LOCATION
+    InputAt x input-loc s →                -- whose `in-reg` asserts NO memory residency
+
+`valid-int-wf` requires `readLoc s loc ≡ just (prim-sv fits-int n)` — a MEMORY
+read. A register-resident value has no such `loc`. So when `f` returns
+`at-reg`, no caller can supply `ValidAtWF` for `g`, `ihg` cannot be applied,
+and both halves of `comp-step` are unprovable — in exactly the case the file's
+own piece-(4) note calls "the load-bearing one for rung A".
+
+**It was half-fixed already, and that is the instructive part.** `InputAt`'s
+`in-reg` carries a note saying it was "forced top-down by `comp-step`" because
+"a pointer-only precondition could never be met, and `g`'s IH could not be
+applied at all". That diagnosis is exactly right. But the `ValidAtWF` premise
+beside it was left in place, re-imposing memory residency through the other
+door. Half a fix is no fix: the register case remained uninstantiable.
+
+**Why the merge is principled — not an induction from cases that worked.**
+
+  * STRUCTURAL: the obligation bound `∀ (input-loc : ValueLocation FS)` OUTSIDE
+    the residence choice. It committed to the input having a location before
+    `InputAt` got to decide whether it has one, then demanded memory evidence
+    for that location. Incoherent on its own terms, independent of usage.
+  * SYMMETRY: the output side already IS a sum. `ResultPlace` puts the evidence
+    in the branch that has it — `at-loc` carries loc+validity+frontier,
+    `at-reg` carries fit+equation, `unit-result` carries nothing. The input
+    side being `∀loc` plus loose evidence was an unmotivated asymmetry between
+    two halves of ONE interface, and `comp-step` is precisely where they meet.
+  * THE TELL: `result→input` (proven under the old shape) had to conclude
+    `∃[ loc ] InputAt v loc s'` and take a `dflt` location the caller invents,
+    only because `InputAt` was indexed by a location it does not always
+    constrain. Under the merge it states as `InputAt mOut alloc v s'` — no
+    existential, no invented location. A lemma getting SIMPLER under a change
+    is the sign the change removed an artifact rather than adding one.
+
+**Decision.** Residence and its evidence travel in ONE premise:
+
+    data InputAt (mIn : AllocMode) (alloc : AllocState) (v : ⟦ A ⟧) (s) where
+      in-loc  : (loc : ValueLocation FS) → ValidAtWF mIn alloc v loc s
+              → BeforeFrontier alloc loc → readReg (regs s) Input1 ≡ SV-Ptr loc → …
+      in-reg  : (fit : FitsInRegI A) → readReg (regs s) Input1 ≡ prim-sv fit v → …
+      in-unit : A ≡ Unit → …
+
+Choosing `in-reg` now DISCHARGES the memory obligation instead of leaving it
+to be supplied separately. `IRObsCorrectF` loses three premises.
+
+**Corroboration at the entry.** `entry-witness` used to thread `entry-loc`,
+`valid-unit-wf` and `entry-bf`. `main : IR Unit Unit` has no input residence,
+so `in-unit refl` discharges it outright: that triple existed only to satisfy
+a premise that should not have existed.
+
+**The general lesson.** This is the island's `InputPlace` design, arrived at
+independently from the live obligation — the third time the island turned out
+to be right about WHAT the interface should be while being built in the wrong
+place. A quantifier that ranges over a component before the case analysis that
+decides whether the component exists is a design error, and its symptom is a
+branch nobody can instantiate.

@@ -196,10 +196,14 @@ entry-nh = refl
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
               → MachineRefinesObsF 0 0 ir tt entry-s (entry-alloc (ir-stack-budget ir))
 entry-witness ir ioc =
-  ioc (entry-size ir) 0 0 Stack tt entry-loc entry-s (entry-alloc (ir-stack-budget ir))
-      (entry-ns (ir-stack-budget ir)) valid-unit-wf
-      (entry-bf (ir-stack-budget ir)) entry-nh
-            (in-unit refl)
+  ioc (entry-size ir) 0 0 Stack tt entry-s (entry-alloc (ir-stack-budget ir))
+      (entry-ns (ir-stack-budget ir)) entry-nh
+      -- D153: ONE residence premise. `main : IR Unit Unit`, so its input has
+      -- no residence at all and `in-unit` discharges it outright — the
+      -- `entry-loc` / `valid-unit-wf` / `entry-bf` triple that used to be
+      -- threaded here was only ever satisfying a premise that should not have
+      -- existed.
+      (in-unit refl)
 
 ------------------------------------------------------------------------
 -- `flat-trace` — DEFINED (the adequate fuel is `traces-agree`'s ∃-witness).
