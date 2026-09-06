@@ -11143,3 +11143,82 @@ against what the trace does, not against what one caller happened to pass.
 that case-splits on the IR and routes to the per-shape handlers does not exist
 yet. The stage-F interface is verified but not exercised end to end, and that
 — not more per-shape work — is the next thing that would make it load-bearing.
+
+## D150
+
+**Question.** Why can 11 of 13 IR handlers not prove `trace-is-ir-to-trace`,
+the field whose comment promises "spec/runtime divergence becomes a type
+error"? Closing it for `pair` was supposed to be the easy case once the pair
+had a single lowering. It is not, and the reason is not about pairs.
+
+**The measurement.** Discharge of `trace-is-ir-to-trace`, against whether the
+handler's WF trace mentions `instr-alloc-stack`:
+
+    SimpleWF       refl x2   instr-alloc-stack mentions: 0
+    ComposeWF      gap x1    instr-alloc-stack mentions: 0
+    PairWF         gap x1    instr-alloc-stack mentions: 6
+    ApplyWF        gap x1    instr-alloc-stack mentions: 43
+    SumRecWF       gap x7    instr-alloc-stack mentions: 11
+    CurryStackWF   gap x1    instr-alloc-stack mentions: 9
+
+The only handler that PROVES it is the only one that never mentions
+`instr-alloc-stack`.
+
+**The root cause.** `AllocState.next-slot` is doing two incompatible jobs.
+
+  * At RUNTIME it is moved by exactly one instruction —
+    `exec-abstract (instr-alloc-stack n) s alloc = s , record alloc
+    { next-slot = next-slot alloc + n }` (`SMCore`). Nothing else moves it.
+  * At CONSTRUCTION time it is the frontier `ir-to-trace'` threads as its `n`
+    argument, deciding which slots each sub-IR may use.
+
+These agree only because WF traces contain `instr-alloc-stack` — and
+**`ir-to-trace'` never emits it.** `EmittableI (instr-alloc-stack _) = ⊥` and
+`FrameFreeI (instr-alloc-stack _) = ⊥` say so outright. So every handler that
+reserves slots writes a trace that provably is not the emitted trace, and
+`trace-is-ir-to-trace` is unprovable for it by construction. The gap is not
+unfinished work; it is a modelling contradiction the gap was hiding.
+
+`PairWF` made this concrete. Removing the instruction (the fix `SumInlAllocWF`
+already applied, and which `ApplyWF`'s comment names as "Pattern 1: drop
+instr-alloc-stack") immediately falsifies
+
+    alloc-setup-eq-scratch :
+      proj₂ (exec-trace setup-trace s alloc) ≡ alloc-after-scratch
+
+because `alloc-after-scratch` is `next-slot alloc + 4` while the runtime alloc
+no longer moves. The lemma's own comment says the instruction was added to
+"eliminate the runtime/construction-time alignment story that PairStackWF had
+to thread by hand". It did not eliminate it; it hid it behind an instruction
+the compiler does not emit.
+
+**The second, independent cause.** `ComposeWF` has NO `instr-alloc-stack` and
+still cannot close the field: its trace splices `f-trace = IRResultAWF.trace
+result-f`, which is opaque, where the emitter has `ir-to-trace' … f`. Closing
+`refl` on any composite IR needs the RECURSIVE result to hand back its own
+`trace-is-ir-to-trace` so the `++` composes — i.e. `RecDispatcherWF` must
+return the correspondence. That is a structural change to the dispatcher
+interface, and it is a prerequisite for every composite constructor.
+
+**Decision.** NOT TAKEN — this needs a choice about what `next-slot` means:
+
+  (a) `exec-trace`'s alloc stops tracking `next-slot` at all. It becomes a
+      construction-time frontier only; slot discipline is carried by the
+      `IRStackBudget` record and the function prologue (`subq $budget*8, %rsp`).
+      This matches the stated design — `SumInlAllocWF`: "slot allocation is
+      implicit in the function prologue; the abstract trace doesn't bump
+      next-slot" — and it is the only option consistent with `EmittableI`.
+  (b) `ir-to-trace'` emits `instr-alloc-stack`, and it is re-admitted to
+      `EmittableI`/`FrameFreeI`. This contradicts the current invariants and
+      changes generated code.
+
+(a) is almost certainly right, but it changes `AllocState`/`exec-abstract`
+semantics for EVERY handler, so it is not a pair-local edit and must not be
+started as one.
+
+**The general lesson.** A proof gap on a correspondence field does not mean
+"this proof is not written yet". It can mean the two things being related are
+not relatable as stated. Eleven gaps that all name the same field, in every
+handler sharing one structural feature, is not eleven pieces of unfinished
+work — it is one modelling defect wearing eleven hats. Counting which handlers
+DISCHARGE the field, and what distinguishes them, found it in one measurement.
