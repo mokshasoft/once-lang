@@ -2,7 +2,16 @@
 ------------------------------------------------------------------------
 -- OCP-0009 · EXAMPLES — ★★★ `ren-agree`, THE 25 SAME-SORT `RTm` ROWS.
 --
---     renTmAtK sTm ⌈Γ⌉ ⌈Δ⌉ r ⌈t⌉  ⟶*  ⌈ renTm ρ t ⌉      given  RepresentsR ρ r
+--     renTmAtK sTm ⌈Γ⌉ ⌈Δ⌉ r ⌈t⌉  ⟶*  ⌈ renTm ρ t ⌉    given  RepresentsR ρ r
+--
+-- ★★★ SORT-PARAMETRIC.  This emitter ran only at `RTm` until the `Ty`
+--   sort was opened; the sort's five names live in `_AGREE_SORT` and
+--   NOTHING else here knows which one is running.
+-- ⚠ THE `Ty` LAYER IS NOT MUTUAL WITH THE `Tm` ONE, and that is what
+--   makes it a layer at all: the only `cTm-` row with an `sTy` child is
+--   `cTm-cIMu`, whose slot is `sTy@lit(0)` — PINNED, so `sPick` copies it
+--   and there is no descent.  ⇒ `Ty` may call `Tm`'s finished agreement;
+--   `Tm` never calls back.
 --
 -- ⚠ PER-ROW LEMMAS, NOT ONE `agree` FUNCTION.  Five of the 30 `cTm-` rows
 --   have CROSS-SORT recursive fields (`var`→sVar, `elim`/`cMu`→sDesc,
@@ -38,7 +47,8 @@ module DirectedHoTT.Examples.Knot.RenAgree where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
-  using ( Cx; ε; _∙; RTm; Var; vz; vs; Ren; app; pair; icon; renTm; extR
+  using ( Cx; ε; _∙; RTm; RTy; Var; vz; vs; Ren; app; pair; icon; extR
+        ; renTm; renTy; Desc; IDesc
         ; nzero; idrefl; ⌜Nat⌝; unit; snd; ilookupD
         ; lam
         ; app
@@ -72,7 +82,9 @@ open import DirectedHoTT.Metatheory.RedCong
         ; ⟶*-fst; ⟶*-snd; ⟶*-nsuc )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.ISub using ( ttsd )
-open import DirectedHoTT.Examples.Knot.Map using ( enTm )
+open import DirectedHoTT.Examples.Knot.Map using ( enTm; enTy; enDesc; enIDesc )
+-- ★ THE CLOSED-SORT IDENTITIES — a cross-sort slot's "IH".
+open import DirectedHoTT.Examples.Knot.RenClosed using ( ren-Desc-id; ren-IDesc-id )
 open import DirectedHoTT.Examples.Knot.Sorts using ( num; len; sTm; sTy; sDesc; sDCon; sIDesc; sICon; sVar )
 open import DirectedHoTT.Examples.Knot.RenTm using ( renTmAtK )
 open import DirectedHoTT.Examples.Knot.RenRed using ( ren-head-red )
