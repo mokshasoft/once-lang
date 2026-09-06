@@ -11,13 +11,17 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.IDepth where
-open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc )
-open import DirectedHoTT.Spec.Typing using ( ⊢nzero; ⊢nsuc )
+open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc; Nat )
+open import DirectedHoTT.Spec.Typing using ( ⊢nzero; ⊢nsuc; ty-Nat )
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Lib.NatMax using ( maxTm; ⊢max )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true )
 import DirectedHoTT.Lib.IFold as IF
 
-open IF.Fold 𝔹 (λ _ → true) (λ b _ → b) nzero maxTm nsuc ⊢nzero ⊢max ⊢nsuc public
+-- ★ the THIRD instantiation — `Lib/IFold` at `Nat` with `op = max`.
+open IF.Fold 𝔹 (λ _ → true) (λ b _ → b)
+             Nat ty-Nat refl refl
+             nzero maxTm nsuc ⊢nzero ⊢max ⊢nsuc public
   renaming ( ifTail   to dpTail   ; ⊢ifTail   to ⊢dpTail
            ; ifSum    to dpSum    ; ⊢ifSum    to ⊢dpSum
            ; ifMethod to dpMethod ; ⊢ifMethod to ⊢dpMethod

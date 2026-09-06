@@ -30,13 +30,17 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.ISzSort where
-open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc )
-open import DirectedHoTT.Spec.Typing using ( ⊢nzero; ⊢nsuc )
+open import DirectedHoTT.Spec.Syntax using ( nzero; nsuc ; Nat)
+open import DirectedHoTT.Spec.Typing using ( ⊢nzero; ⊢nsuc; ty-Nat )
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Lib.Nat using ( plusTm; ⊢plus )
 import DirectedHoTT.Lib.IFold as IF
 open IF using ( Maybeℕ; rowSort; sameSortAt )
 
-open IF.Fold Maybeℕ rowSort sameSortAt nzero plusTm nsuc ⊢nzero ⊢plus ⊢nsuc public
+-- ★ the same module at the SAME motive, a different algebra.
+open IF.Fold Maybeℕ rowSort sameSortAt
+             Nat ty-Nat refl refl
+             nzero plusTm nsuc ⊢nzero ⊢plus ⊢nsuc public
   renaming ( ifStep    to szsStep    ; ⊢ifStep    to ⊢szsStep
            ; ifSumStep to szsSumStep
            ; ifTail   to szsTail   ; ⊢ifTail   to ⊢szsTail

@@ -24,6 +24,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ty-El; ty-Nat; ⊢⌜Nat⌝
         ; ⊢ielim; imethsTy )
+open import DirectedHoTT.Lib.IPay using ( spl-nil )
 open import DirectedHoTT.Lib.ISz using ( szMeths; ⊢szMeths )
 open import DirectedHoTT.Examples.Scoped using ( TmD; TmWf; INat; Tm )
 
@@ -31,7 +32,7 @@ szMethsTm : {Γ : Cx} → RTm Γ
 szMethsTm = szMeths TmD
 
 ⊢szMethsTm : {Γ : Ctx} → Γ ⊢ szMethsTm ∷ imethsTy TmD INat Nat TmD
-⊢szMethsTm = ⊢szMeths TmD INat zero TmD TmWf TmWf (ty-El ⊢⌜Nat⌝)
+⊢szMethsTm = ⊢szMeths TmD INat zero TmD TmWf TmWf spl-nil (ty-El ⊢⌜Nat⌝)
 
 -- ★ `size` for the scoped λ-calculus, from the SAME library that does
 --   the 53-constructor knot.
