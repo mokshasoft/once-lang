@@ -1357,3 +1357,89 @@ above came from.
    nothing at the object level.
 3. **Then ask whether the type index pays**, with the 40 × measurement in
    hand and a specific object-language fragment in mind.
+
+## Once: THE KNOT REFUSED EXACTLY ONE RULE, AND IT WAS RIGHT — `⊢tr`'s boolean premise
+
+**The finding.** `tools/gen-knot.py` encodes 55 of the kernel's 56
+judgement rules. The one it cannot encode is `⊢tr`, and the reason is two
+premises:
+
+    occTm vz c ≡ false → occTm vz a ≡ false →
+
+⇒ **that refusal is the POC working.** The knot's job is to find design
+defects by trying to write the system down inside itself; it flagged the
+one premise in 56 rules that is formulated unlike every other.
+
+### The controlled contrast is inside the same rule
+
+`⊢tr` has THREE side conditions. One — `NoNatC c` — is an inductive
+family, and it encodes without trouble (`NoNatCD`, 7/7 rows). The other
+two are booleans, and they are the only things in the whole judgement
+layer that do not encode. Same author, same rule: the difference is the
+FORMULATION, not the difficulty.
+
+### What the premise is actually saying, and the cheaper way to say it
+
+`occTm vz c ≡ false` says "`c` does not mention the bound variable" — i.e.
+`c : RTm (Γ ▹ A)` is really a `Γ`-term. **The context already expresses
+that.** Take the code and the point as `Γ`-terms and weaken them:
+
+    ⊢tr : … → Γ ⊢ c₀ ∷ U → Γ ⊢ a₀ ∷ El c₀ → NoNatC c₀ → …
+          Γ ⊢ tr (⌜Hom⌝ (renTm vs c₀) (renTm vs a₀) (var vz)) p e ∷ …
+
+Both boolean premises are then discharged BY CONSTRUCTION and vanish.
+
+### ★★★ And the development is already paying to undo the formulation
+
+This is the decisive evidence, and it was already in the tree:
+
+    Metatheory/Fundamental:1828  strength   : (t₂ : RTm (Ξ ∙)) →
+                                              occTm vz t₂ ≡ false → …
+    Metatheory/Fundamental:1838  strengthC  : renTm vs cT ≡ subTm (extS σ) c₀
+    Metatheory/Fundamental:1842  strengthA  : renTm vs aT ≡ subTm (extS σ) a₀
+
+`strengthC` RECONSTRUCTS "the code is a weakening of something" from the
+boolean fact — which is exactly the reformulated rule's hypothesis,
+derived the hard way. ⇒ the boolean form does not avoid the structural
+fact; it hides it and then pays a lemma to get it back.
+
+### The preservation obligations get BETTER, not merely fewer
+
+`Fundamental`'s `occCS`/`occAS` and `SubjectReduction`'s `hc-in`/`ha-in`
+prove the occurrence fact survives substitution and reduction. Under the
+reformulation each becomes a renaming COMMUTATION —
+`subTm (extS σ) (w c₀) ≡ w (subTm σ c₀)`, already `Lib/Wk.sub-w` — instead
+of an induction over a boolean. That is this project's own recorded
+direction (*transport-free sweep at consolidation*: replace transports
+with structural data).
+
+### ⚠ The alternative, and why it is good engineering but the wrong fix
+
+The other route is to build `occTmK` so the premise encodes. `Knot/Sz` is
+37 lines because `Lib/IFold` computes all 53 methods generically — but its
+header says:
+
+> THE MOTIVE STAYS `Nat`, deliberately… Generalise the motive when
+> something wants a non-`Nat` fold, not before.
+
+`occTm x t` is worse than that note anticipates: each child's contribution
+is a FUNCTION of the shifted variable, so the motive is
+`Π (K (sVar, d)) Nat` — INDEX-DEPENDENT, not merely non-`Nat`. ⇒ real Lib
+work, in service of encoding a formulation the knot is telling us is
+wrong. Solving the wrong problem well.
+
+### Cost, measured
+
+~13 real call sites (`Metatheory/TySub` 4, `SubjectReduction` 6,
+`Fundamental` 1, `Examples/Overview` 1, plus the rule itself) — the naive
+grep says 41, but most are comments.
+
+### The general lesson, which outlives this rule
+
+⇒ **A decidable side condition stated as `f x ≡ literal` is a code smell
+in a type theory's rules.** Either it is a scoping fact, and the CONTEXT
+should carry it; or it is a genuine predicate, and it should be an
+INDUCTIVE FAMILY like `NoNatC`. The boolean spelling looks cheapest at the
+definition site and is the most expensive everywhere else — it does not
+encode, it does not compose with substitution, and it forces a
+strengthening lemma at the first consumer that needs the structure back.
