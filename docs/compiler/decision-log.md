@@ -11101,3 +11101,45 @@ stage F: give them an `InputPlace` and emit the inline form on `in-at-reg`.
 count the case-splits, not the importers — and check the transports first.
 They are the majority of the sites and the least of the work, which is why the
 estimate came out high and the effort came out low.
+
+**Addendum (2026-09-06), what producing the form actually cost.** The estimate
+above was for the representation. Making `run-inl`/`run-inr` produce it cost
+almost nothing, for a reason worth recording: THE TRACE DID NOT CHANGE. The
+emitted sequence is `instr-load-tag-lit t ∷ store-at-slot sum-slot ∷
+mov-to-output ∷ store-at-slot (suc sum-slot) ∷ lea-slot sum-slot`, and
+`store-at-slot` after `mov-to-output` stores whatever `Input1` holds without
+inspecting it. The payload cell has ALWAYS held the input's stored value —
+a pointer only when the input was memory-resident. The pointer was never in
+the machine; it was in the model. So the residence surfaces in exactly two
+lines of `run-inl` (`pv = input-sv ip`, and which constructor witnesses it),
+and the slot arithmetic, frontier facts, trace well-formedness and every bound
+record are untouched.
+
+Three supporting pieces, each chosen the same way:
+
+  * A UNIT payload has NO residence — `FitsInRegI Unit` is uninhabited and the
+    cell cannot be shown to hold a pointer. Rather than a third constructor
+    pair (≈28 mechanical clauses across the seven layers), the witness was
+    WIDENED to a parameter, `InlineRep A` with `rep-prim`/`rep-unit`. The ten
+    transports pass the witness through opaquely, so widening cost them
+    nothing where a constructor would have cost each of them a clause:
+    ClosureWellFormed went green with zero transport edits. `rep-unit` carries
+    the cell's contents rather than pretending to constrain them.
+  * `input-sv`/`input-read` on `InputPlace`, twins of `payload-sv`/
+    `payload-read`. TOTALITY is the point: it lets the payload fact be stated
+    once, before the residence split, instead of once per branch.
+  * `write-sv-at-suc-frontier-preserves-before` and
+    `validityWF-write-sv-at-suc-frontier`. Note `write-loc s loc val` is NOT
+    `writeLoc s loc (SV-Ptr val)` — they differ on a heap cell holding a stack
+    ref — so the pointer lemmas are not instances of the stored-value ones and
+    the siblings had to be added rather than derived.
+
+`inl-inr-trace-state-correct` pinned its register hypothesis to
+`SV-Ptr input-loc`. It is a proof gap either way, but a gap should be stated
+against what the trace does, not against what one caller happened to pass.
+
+**What is still not wired.** Nothing CALLS `run-inl`/`run-inr`.
+`RecDispatcherWF` appears only as a module parameter; the top-level dispatcher
+that case-splits on the IR and routes to the per-shape handlers does not exist
+yet. The stage-F interface is verified but not exercised end to end, and that
+— not more per-shape work — is the next thing that would make it load-bearing.
