@@ -24,6 +24,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot7 where
 
+import DirectedHoTT.Examples.Knot.RenTm
 import DirectedHoTT.Examples.Knot.Single
 import DirectedHoTT.Examples.Knot.Sorts
 import DirectedHoTT.Examples.Knot.Stk
@@ -40,4 +41,3 @@ import DirectedHoTT.Examples.Knot.SubRed
 import DirectedHoTT.Examples.Knot.SubSpec
 import DirectedHoTT.Examples.Knot.Sz
 import DirectedHoTT.Examples.Knot.SzAgree
-import DirectedHoTT.Examples.Knot.SzProbe

@@ -3335,6 +3335,7 @@ FIELD_DEPTH.update({
     # ★ `Var-vsK d x : K (sVar , nsuc d)` with `x` at `d` — its argument
     #   is one BELOW it.  Never stated before because no rule nested two
     #   variable constructors until `tr-pw`'s `var (vs vz)`.
+    "ipayTyKᵏ": [('D',),('D',),('D',),('lit',0),('D',),('D',)],
     "Var-vsK":  [('D',), ('predD',)],
     # ⚠⚠ `wkK`'s BOTH arguments sit at the SOURCE depth — `wkK i t : K (sh i)`
     #   — so the derivation emitter must descend at `pred` of the ambient
@@ -3969,12 +3970,46 @@ _DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK", "extNK",
 # ⚠ `subTmAtK`/`subTyAtK` TAKE TWO as well, and NOT `(d, pred d)` the
 #   way `extNK` does: their source is whatever the SUBSTITUTION takes
 #   its argument from, which `_argshift` is the one place that knows.
-_PRE_N = {"singleK": 1, "subTmAtK": 2, "subTyAtK": 2, "extNK": 2,
-          "wkTmK": 1, "wkTyK": 1,
-          # ★ STEP 5.  `ipayTyKᵏ` takes TWO — the `ICon`'s own depth and
-          #   the target — for the same reason `extNK` does: the kernel
-          #   writes neither.
-          "lookupDK": 1, "ilookupDK": 1, "payTyKᵏ": 1, "ipayTyKᵏ": 2}
+# ★★★ …AND **WHICH** DEPTHS, NOT ONLY HOW MANY.
+#
+# ⚠⚠ THIS TABLE USED TO BE A COUNT (`_PRE_N`), AND THE COUNT SILENTLY
+#   CARRIED A CONVENTION: two meant `(d, pred d)` — which is `extNK`'s
+#   shape and ONLY `extNK`'s.  `ipayTyKᵏ` also takes two and they are
+#   NOT that pair, so `_val` reached for `pred` of a depth that is a bare
+#   rule variable and the generator died in `_pred`:
+#
+#       ValueError: a Var at a non-successor depth: ('v','#m')
+#
+#   ⇒ THE CRASH WAS THE RIGHT ANSWER TO THE WRONG QUESTION.  `pred` is
+#     genuinely undefined there; what was wrong is that nothing should
+#     have asked for it.  So the prefix is now written in the SAME shift
+#     language `FIELD_DEPTH` uses (`D`/`predD`/`sucD`/`lit`), which
+#     `_shift` already interprets — a new convention needs a table row,
+#     not a new branch.
+#
+# ★ WHY `ipayTyKᵏ`'S FIRST DEPTH IS THE LITERAL 1.  Read off the kernel:
+#
+#       ⊢isingleK  … → Γ ⊢ isingleK i     ∷ SubTy (num 1) n
+#       ⊢ilookupDK … → Γ ⊢ ilookupDK n d k ∷ K (pair sICon (nsuc nzero))
+#
+#   An `ICon` inside an `IDesc` is a CODE: it binds exactly its index, so
+#   it sits at depth 1 whatever the ambient depth of the rule using it.
+#   `isingle` lowers from that 1 to the ambient `n`.  ⚠ I had assumed
+#   `dd = nsuc n` — that the ICon tracked the rule — and the assumption
+#   is what made `(d, pred d)` look plausible.
+_PRE_D = {"singleK":  (('D',),),
+          "subTmAtK": (('D',), ('D',)),   # special-cased in `_val`
+          "subTyAtK": (('D',), ('D',)),   # (its source comes from `_argshift`)
+          "extNK":    (('D',), ('predD',)),
+          "wkTmK":    (('D',),), "wkTyK": (('D',),),
+          # ★ STEP 5.
+          "lookupDK": (('D',),), "ilookupDK": (('D',),), "payTyKᵏ": (('D',),),
+          "ipayTyKᵏ": (('lit', 1), ('D',))}
+
+# ⚠ DERIVED, so a prefix cannot be given a shape without also being
+#   counted.  Every other reader wants only the COUNT (an offset into the
+#   emitted argument list) and keeps reading this.
+_PRE_N = {c: len(v) for c, v in _PRE_D.items()}
 
 # ★ what a rule NAMES → what the object level CALLS it.  `single`,
 #   `subTm` and `subTy` are the three the judgement rules mention, and
@@ -4199,8 +4234,8 @@ def _val(e, CT, dep):
             #   substituted lives — `_argshift`'s answer for that very
             #   argument, so the two cannot disagree.
             return AP(c, _shift(dep, _argshift(c, 3, _sg)), dep, *sub)
-        if _PRE_N.get(c) == 1: return AP(c, *([dep] + sub))
-        if _PRE_N.get(c) == 2: return AP(c, *([dep, _pred(dep)] + sub))
+        if c in _PRE_D:
+            return AP(c, *([_shift(dep, E) for E in _PRE_D[c]] + sub))
         return AP(c, *sub)
     return V(h[1])
 
@@ -4674,6 +4709,13 @@ _WRAP_LEDGER = {
     "subAtK":   "✅ DISCHARGED — `Knot/SubAgreeTie.sub-agree`, ALL 30 `RTm`\n--                rows: `subAtK sTm ⌈Γ⌉ ⌈Δ⌉ s ⌈t⌉ ⟶* ⌈ subTm σ t ⌉` given\n--                `Represents σ s`.  25 generated (`Knot/SubAgreeRows`),\n--                4 cross-sort + 1 given (`Knot/SubAgreeX`), closed sorts\n--                by `Knot/SubClosed`.  ⇒ step 3, both halves.",
     "subTmK":   "✅ DISCHARGED via `subAtK` — same theorem, unapplied form.",
     "subTyAtK": "⬜ OWED — `enTy (subTy σ A) ≡ subTyAtK … (enTy A)`.",
+    # ⬜ OWED — and SMALL, for the reason `Knot/EWk`'s header gives.
+    #   `isingle : RTm Γ → Sub (ε ∙) Γ` has a ONE-VARIABLE domain, so
+    #   `Represents (isingle i) (isingleK ⌈i⌉)` is `vz` and a refuted
+    #   `vs ()`.  The `vz` clause is a β-step and then `Lib/Wk`'s `pw`
+    #   — `subTm (single ⌈vz⌉) (renTm vs ⌈i⌉) ≡ ⌈i⌉`.
+    #   ⚠ It arrived with `⊢icon`, whose payload premise names `isingle`.
+    "isingleK": "⬜ OWED — `Represents (isingle i) (isingleK ⌈i⌉)`, one\n--                clause (`vz`) plus a refutation; see the note above.",
     "singleK":  "✅ DISCHARGED — `Knot/SubAgree.single-Represents`:\n--                `Represents (single u) (singleK n ⌈u⌉)`, from step 2's\n--                `singleK-vz`/`-vs`.",
     "extNK":    "✅ DISCHARGED — `Knot/SubExt.extS-Represents`.  ⚠ Its `vs`\n--                case composes with `wkTmK-agree`, i.e. with `ren-agree`:\n--                `extS σ (vs x) = renTm vs (σ x)` WEAKENS.",
     "nrsSubK":  "✅ DISCHARGED — `Knot/SubAgree.nrs-Represents`, packaging\n--                step 2's `nrsK-vz`/`-vs` (the row parked at eight\n--                attempts).  ⚠ The two depths differ — `nrs` RAISES, so\n--                the outer `Var-vsK` carries ⌈Γ ∙⌉ and the inner ⌈Γ⌉.",
@@ -4960,7 +5002,7 @@ _SRCMOD = {"Typing": "DirectedHoTT.Spec.Typing",
 #   Agda equation then pins it exactly.  Raising one is a deliberate act,
 #   the same contract as `_FLOOR`.
 _SKIP_EXPECT = {"RedD": 2, "TyRedD": 0, "ConvD": 0, "NoNatCD": 0,
-                "InDD": 0, "InIDD": 0, "JudgeD": 4}
+                "InDD": 0, "InIDD": 0, "JudgeD": 3}
 
 def gen_census(out):
     """one equation per family, from `_CENSUS` — so a family cannot be
