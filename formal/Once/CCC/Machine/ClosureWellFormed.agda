@@ -1941,6 +1941,41 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-buffer-wf bf
 
   ------------------------------------------------------------------------
+  -- Stage F: carry an input's PLACE across a state change that preserves
+  -- memory below the frontier and re-establishes `Input1`.
+  --
+  -- Every multi-step handler needs this. `run-pair-heap` stashes its input,
+  -- runs `f`, then restores the input to dispatch `g`; `run-compose` hands
+  -- `f`'s output on to `g`. Each such site used to re-derive the four
+  -- positional facts by hand, per residence. Stated once here, the residence
+  -- is invisible to them: a located input transports its validity, a
+  -- register-resident one has none to transport, and a unit input has nothing
+  -- to say. That the three collapse to one call is the payoff of `InputPlace`
+  -- being a place rather than a bundle of facts about a location.
+  --
+  -- Note the conclusion names `ip` — the transported place holds the SAME
+  -- stored value, which is exactly what a caller that stashed and reloaded
+  -- `Input1` can prove.
+  ------------------------------------------------------------------------
+  inputPlace-transport : ∀ {A m alloc alloc'} {x : ⟦ A ⟧} {s s'}
+    (ip : InputPlace {A} m alloc x s)
+    → current-frame alloc' ≡ current-frame alloc
+    → next-slot alloc ≤ next-slot alloc'
+    → next-heap-ref alloc ≤ next-heap-ref alloc'
+    → (∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc)
+    → readReg (regs s') Input1 ≡ input-sv ip
+    → InputPlace {A} m alloc' x s'
+  inputPlace-transport {x = x} {s = s} {s' = s'}
+      (in-at-loc loc valid before _) cf-eq slot-≤ heap-≤ mem-eq eq' =
+    in-at-loc loc
+      (validityWF-frontier-advance x loc s' cf-eq slot-≤ heap-≤
+        (validityWF-mem-preserved x loc s s' before mem-eq valid))
+      (frontier-monotone _ _ (sym cf-eq) slot-≤ heap-≤ loc before)
+      eq'
+  inputPlace-transport (in-at-reg fit _) _ _ _ _ eq' = in-at-reg fit eq'
+  inputPlace-transport (in-unit u)       _ _ _ _ _   = in-unit u
+
+  ------------------------------------------------------------------------
   -- Validity preservation with excluded slot
   --
   -- Variant of validityWF-mem-preserved for when memory differs at one

@@ -15,11 +15,11 @@
 --
 -- Trace skeleton (no inter-IR stack-frontier dependence):
 --
---    1. mov-to-output                  ; Output := SV-Ptr input-loc
+--    1. mov-to-output                  ; Output := input-sv ip
 --    2. store-at-slot backup-slot      ; stash input-loc for re-use after f
 --    3. f-trace                        ; Output := SV-Ptr fst-loc
 --    4. store-at-slot fst-stash        ; stash fst-loc
---    5. restore-input backup-slot      ; Input1 := SV-Ptr input-loc again
+--    5. restore-input backup-slot      ; Input1 := input-sv ip again
 --    6. g-trace                        ; Output := SV-Ptr snd-loc
 --    7. store-at-slot snd-stash        ; stash snd-loc
 --    8. instr-alloc-heap 2             ; Output := SV-Ptr (AtDynamic fresh)
@@ -102,7 +102,9 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; ResultPlace; at-loc; valid-pair-wf;
-           RecDispatcherWF; InputPlace; in-at-loc; Place; AtStorage; mk-IRResultAWF-via-bump;
+           RecDispatcherWF; InputPlace; in-at-loc; in-at-reg; in-unit;
+           input-sv; input-read; inputPlace-transport;
+           Place; AtStorage; mk-IRResultAWF-via-bump;
            validityWF-mem-only; validityWF-mem-preserved;
            validityWF-frontier-advance)
 
@@ -112,15 +114,17 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   run-pair-heap : ∀ {A B C} (mIn : AllocMode) (f : IR A B) (g : IR A C)
     (rec-wf : RecDispatcherWF (ir-size (⟨ f , g ⟩ Heap)))
-    (x : ⟦ A ⟧ᴵ) (input-loc : ValueLocation FS)
+    (x : ⟦ A ⟧ᴵ)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF mIn alloc x input-loc s →
-    BeforeFrontier alloc input-loc →
+    -- Stage F: the input arrives at an `InputPlace`. The setup trace stashes
+    -- `Input1` to `backup-slot` and `restore-input` reloads it before `g`, and
+    -- neither instruction inspects the value — so `input-sv ip` replaces
+    -- `input-sv ip` throughout and the two sub-dispatches rebuild the
+    -- SAME place via `inputPlace-transport`.
+    InputPlace mIn alloc x s →
     halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF Heap (⟨ f , g ⟩ Heap) x s alloc
-  run-pair-heap {A} {B} {C} mIn f g rec-wf x input-loc s alloc
-                input-valid-wf input-before not-halted rdi-eq =
+  run-pair-heap {A} {B} {C} mIn f g rec-wf x s alloc ip not-halted =
     -- Plan 0.17: use mk-IRResultAWF-via-bump smart constructor.
     -- Producer-side fields stay at `alloc-final` (local shape);
     -- the helper transports proofs to `apply-bump pair-bump alloc`
@@ -241,7 +245,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- All three setup instructions preserve Input1:
       --   mov-to-output writes Output, store-at-slot writes stack mem,
       --   instr-alloc-stack touches nothing in the LocState (0.63).
-      rdi-eq-after-setup : readReg (regs s-after-setup) Input1 ≡ SV-Ptr input-loc
+      rdi-eq-after-setup : readReg (regs s-after-setup) Input1 ≡ input-sv ip
       rdi-eq-after-setup =
         let s₁      = proj₁ (exec-abstract mov-to-output s alloc)
             alloc₁  = proj₂ (exec-abstract mov-to-output s alloc)
@@ -272,7 +276,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         in trans (cong (λ st → readReg (regs st) Input1) s-eq)
                  (trans alloc-stack-preserves
                    (trans store-preserves
-                     (trans mov-preserves rdi-eq)))
+                     (trans mov-preserves (input-read ip))))
 
       -- f-start ≡ next-slot alloc + 4 propositionally. `4 + n` reduces
       -- definitionally to suc(suc(suc(suc n))) = f-start (when
@@ -281,13 +285,13 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       f-start≡+4 = sym (+-comm (next-slot alloc) 4)
         where open import Data.Nat.Properties using (+-comm)
 
-      input-before-at-f-start : BeforeFrontier alloc-after-scratch input-loc
-      input-before-at-f-start = frontier-monotone alloc alloc-after-scratch refl
-                                  (subst (next-slot alloc ≤_) f-start≡+4
-                                    (≤-trans (n≤1+n backup-slot)
-                                      (≤-trans (n≤1+n fst-stash)
-                                        (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))))
-                                  ≤-refl input-loc input-before
+      -- Stage F: how far the frontier moved over the setup trace. Shared by
+      -- the f-phase place transport below.
+      setup-slot-≤ : next-slot alloc ≤ next-slot alloc-after-scratch
+      setup-slot-≤ = subst (next-slot alloc ≤_) f-start≡+4
+                       (≤-trans (n≤1+n backup-slot)
+                         (≤-trans (n≤1+n fst-stash)
+                           (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash))))
 
       -- setup-trace stack writes: backup-slot = next-slot alloc.
       -- BeforeFrontier locations are below backup-slot, so the store
@@ -330,16 +334,12 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         in trans (cong (λ st → readLoc st loc) s-eq)
                  (trans alloc-stack-mem (trans store-mem mov-mem))
 
-      input-valid-wf-at-f-start : ValidAtWF mIn alloc-after-scratch x input-loc s-after-setup
-      input-valid-wf-at-f-start =
-        validityWF-frontier-advance x input-loc s-after-setup refl
-          (subst (next-slot alloc ≤_) f-start≡+4
-            (≤-trans (n≤1+n backup-slot)
-              (≤-trans (n≤1+n fst-stash)
-                (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))))
-          ≤-refl
-          (validityWF-mem-preserved x input-loc s s-after-setup input-before
-            mem-preserved-through-setup input-valid-wf)
+      -- The input's PLACE at f's start. One call, residence-blind: the
+      -- located case transports its validity, the register-resident case has
+      -- none to transport, and a unit input has nothing to say.
+      ip-at-f-start : InputPlace mIn alloc-after-scratch x s-after-setup
+      ip-at-f-start = inputPlace-transport ip refl setup-slot-≤ ≤-refl
+                        mem-preserved-through-setup rdi-eq-after-setup
 
       ------------------------------------------------------------------
       -- f phase: run f on (s-after-setup, alloc-after-scratch).
@@ -355,8 +355,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       f-dest = AtStorage (AtStack (current-frame alloc) (next-slot alloc-after-scratch))
 
       f-exec = rec-wf mIn f (⟨,⟩-f-smaller f g {Heap}) x s-after-setup alloc-after-scratch
-                 (in-at-loc input-loc input-valid-wf-at-f-start input-before-at-f-start
-                            rdi-eq-after-setup)
+                 ip-at-f-start
                  f-dest not-halted-after-setup
       result-f = proj₂ f-exec
       f-trace = IRResultAWF.trace result-f
@@ -385,7 +384,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Middle phase: stash f's result to fst-stash, restore input.
       --
       -- The restore-input backup-slot precondition needs that backup-slot
-      -- still holds SV-Ptr input-loc at this point. That value was put
+      -- still holds input-sv ip at this point. That value was put
       -- there by setup; f preserves it (BeforeFrontier alloc-after-scratch
       -- holds for backup-slot since backup-slot < f-start = next-slot
       -- alloc-after-scratch); store-at-slot fst-stash also preserves it
@@ -403,9 +402,9 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       backup-loc-before-scratch : BeforeFrontier alloc-after-scratch (AtStack frame backup-slot)
       backup-loc-before-scratch = stack-before refl backup<f-start
 
-      -- After setup, backup-slot holds SV-Ptr input-loc. Step through
+      -- After setup, backup-slot holds input-sv ip. Step through
       -- setup-trace's three instructions.
-      backup-after-setup : readLoc s-after-setup (AtStack frame backup-slot) ≡ just (SV-Ptr input-loc)
+      backup-after-setup : readLoc s-after-setup (AtStack frame backup-slot) ≡ just (input-sv ip)
       backup-after-setup =
         let s₁ = proj₁ (exec-abstract mov-to-output s alloc)
             alloc₁ = proj₂ (exec-abstract mov-to-output s alloc)
@@ -414,13 +413,13 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             alloc₂ = proj₂ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁)
             not-halted₂ = exec-abstract-preserves-halted (store-at-slot backup-slot) s₁ alloc₁ not-halted₁ iph-store-at-slot
             s₃ = proj₁ (exec-abstract (instr-alloc-stack pair-heap-overhead) s₂ alloc₂)
-            -- step1: after mov-to-output, Output := readReg Input1 = SV-Ptr input-loc.
-            mov-output : readReg (regs s₁) Output ≡ SV-Ptr input-loc
-            mov-output = trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) rdi-eq
-            -- step2: after store-at-slot backup-slot, stack[frame, backup-slot] = Output = SV-Ptr input-loc.
+            -- step1: after mov-to-output, Output := readReg Input1 = input-sv ip.
+            mov-output : readReg (regs s₁) Output ≡ input-sv ip
+            mov-output = trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) (input-read ip)
+            -- step2: after store-at-slot backup-slot, stack[frame, backup-slot] = Output = input-sv ip.
             store-stores : readLoc s₂ (AtStack (current-frame alloc₁) backup-slot) ≡ just (readReg (regs s₁) Output)
             store-stores = writeLoc-read-same-stack s₁ (current-frame alloc₁) backup-slot (readReg (regs s₁) Output)
-            backup-at-s₂ : readLoc s₂ (AtStack (current-frame alloc₁) backup-slot) ≡ just (SV-Ptr input-loc)
+            backup-at-s₂ : readLoc s₂ (AtStack (current-frame alloc₁) backup-slot) ≡ just (input-sv ip)
             backup-at-s₂ = trans store-stores (cong just mov-output)
             -- step3: instr-alloc-stack preserves stack memory.
             backup-at-s₃ : readLoc s₃ (AtStack (current-frame alloc₁) backup-slot) ≡
@@ -496,8 +495,8 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           (readReg (regs s-after-f) Output)
           (λ eq → ¬suc-≡-self backup-slot (AtStack-snd-injective eq))
 
-      -- Chain everything: backup-slot in s-after-fst-store = SV-Ptr input-loc.
-      backup-at-fst-store : readLoc s-after-fst-store (AtStack frame backup-slot) ≡ just (SV-Ptr input-loc)
+      -- Chain everything: backup-slot in s-after-fst-store = input-sv ip.
+      backup-at-fst-store : readLoc s-after-fst-store (AtStack frame backup-slot) ≡ just (input-sv ip)
       backup-at-fst-store = trans backup-after-fst-store (trans backup-after-f backup-after-setup)
 
       -- store-at-slot preserves frame, so current-frame alloc-after-fst-store
@@ -508,14 +507,14 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Bridge backup-at-fst-store from `frame` to `current-frame alloc-after-fst-store`.
       backup-at-fst-store-current-frame :
         readLoc s-after-fst-store (AtStack (current-frame alloc-after-fst-store) backup-slot) ≡
-        just (SV-Ptr input-loc)
+        just (input-sv ip)
       backup-at-fst-store-current-frame =
-        subst (λ f → readLoc s-after-fst-store (AtStack f backup-slot) ≡ just (SV-Ptr input-loc))
+        subst (λ f → readLoc s-after-fst-store (AtStack f backup-slot) ≡ just (input-sv ip))
               (sym (trans frame-after-fst-store-eq frame-after-f-eq))
               backup-at-fst-store
 
       mid-twf : TraceWF s-after-f alloc-after-f mid-trace
-      mid-twf = twf-∷ tt (twf-∷ (SV-Ptr input-loc , backup-at-fst-store-current-frame) twf-[])
+      mid-twf = twf-∷ tt (twf-∷ (input-sv ip , backup-at-fst-store-current-frame) twf-[])
 
       not-halted-after-middle : halted s-after-middle ≡ false
       not-halted-after-middle = exec-trace-preserves-halted-WF mid-trace s-after-f alloc-after-f
@@ -531,15 +530,15 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- The `just` branch of exec-restore-input-with-value writes
       -- the looked-up value to Input1. backup-at-fst-store-current-frame
-      -- says the lookup returns just (SV-Ptr input-loc).
-      restore-input-input1 : readReg (regs s-after-restore) Input1 ≡ SV-Ptr input-loc
+      -- says the lookup returns just (input-sv ip).
+      restore-input-input1 : readReg (regs s-after-restore) Input1 ≡ input-sv ip
       restore-input-input1
         rewrite backup-at-fst-store-current-frame =
-          writeReg-same (regs s-after-fst-store) Input1 (SV-Ptr input-loc)
+          writeReg-same (regs s-after-fst-store) Input1 (input-sv ip)
 
       -- mid-trace's last instruction is restore-input backup-slot, which
-      -- overwrites Input1 with stack[backup-slot] = SV-Ptr input-loc.
-      rdi-eq-after-middle : readReg (regs s-after-middle) Input1 ≡ SV-Ptr input-loc
+      -- overwrites Input1 with stack[backup-slot] = input-sv ip.
+      rdi-eq-after-middle : readReg (regs s-after-middle) Input1 ≡ input-sv ip
       rdi-eq-after-middle =
         let d1 : exec-trace mid-trace s-after-f alloc-after-f ≡
                  exec-trace (restore-input backup-slot ∷ []) s-after-fst-store alloc-after-fst-store
@@ -561,16 +560,9 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-for-g = record alloc { next-slot     = next-slot     (IRResultAWF.final-alloc result-f)
                                  ; next-heap-ref = next-heap-ref (IRResultAWF.final-alloc result-f) }
 
-      input-before-at-g-start : BeforeFrontier alloc-for-g input-loc
-      input-before-at-g-start = frontier-monotone alloc alloc-for-g refl
-                                  (≤-trans
-                                    (subst (next-slot alloc ≤_) f-start≡+4
-                                      (≤-trans (n≤1+n backup-slot)
-                                        (≤-trans (n≤1+n fst-stash)
-                                          (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))))
-                                    (IRResultAWF.slot-monotone result-f))
-                                  (IRResultAWF.heap-monotone result-f)
-                                  input-loc input-before
+      -- …and how far it moved over setup AND f.
+      middle-slot-≤ : next-slot alloc ≤ next-slot alloc-for-g
+      middle-slot-≤ = ≤-trans setup-slot-≤ (IRResultAWF.slot-monotone result-f)
 
       -- BeforeFrontier alloc loc lifts to BeforeFrontier alloc-after-scratch loc
       -- (alloc-after-scratch.next-slot ≥ next-slot alloc; same frame; same heap-ref).
@@ -686,18 +678,10 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         where
           open ClosureWellFormedDef {FS} program-bound using (irresult-mem-preserved)
 
-      input-valid-wf-at-g-start : ValidAtWF mIn alloc-for-g x input-loc s-after-middle
-      input-valid-wf-at-g-start =
-        validityWF-frontier-advance x input-loc s-after-middle refl
-          (≤-trans
-            (subst (next-slot alloc ≤_) f-start≡+4
-              (≤-trans (n≤1+n backup-slot)
-                (≤-trans (n≤1+n fst-stash)
-                  (≤-trans (n≤1+n snd-stash) (n≤1+n pair-stash)))))
-            (IRResultAWF.slot-monotone result-f))
-          (IRResultAWF.heap-monotone result-f)
-          (validityWF-mem-preserved x input-loc s s-after-middle input-before
-            mem-preserved-s-to-after-middle input-valid-wf)
+      ip-at-g-start : InputPlace mIn alloc-for-g x s-after-middle
+      ip-at-g-start = inputPlace-transport ip refl middle-slot-≤
+                        (IRResultAWF.heap-monotone result-f)
+                        mem-preserved-s-to-after-middle rdi-eq-after-middle
 
       ------------------------------------------------------------------
       -- g phase: run g on (s-after-middle, alloc-for-g).
@@ -708,8 +692,7 @@ module PairAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       g-exec = rec-wf mIn g (⟨,⟩-g-smaller f g {Heap}) x
                  s-after-middle alloc-for-g
-                 (in-at-loc input-loc input-valid-wf-at-g-start input-before-at-g-start
-                            rdi-eq-after-middle)
+                 ip-at-g-start
                  g-dest not-halted-after-middle
       result-g = proj₂ g-exec
       g-trace = IRResultAWF.trace result-g
