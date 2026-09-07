@@ -36,8 +36,9 @@ module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_)
 open import Data.Bool using (false; true)
-open import Data.List using (length; take; []; _∷_)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using (length; take; []; _∷_; _++_; map)
+open import Data.List.Properties using (++-assoc; length-++)
+open import Data.Maybe using (Maybe; just; nothing) renaming (map to mmap)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
@@ -68,18 +69,18 @@ fits-erase : ∀ {B} → FitsInReg B → FitsInRegI ⌊ B ⌋
 fits-erase fits-intˢ   = fits-int
 fits-erase fits-floatˢ = fits-float
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂)
 open import Once.IR.Size using (ir-size)
-open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n)
+open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; +-identityʳ; +-assoc; +-suc; +-comm)
 open import Function using (case_of_)
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; SV-Ptr; sv-as-loc; halted; regs; readReg; Input1; Output;
-         instr-sigop; mov-to-output; instr-load-const; SV-Lit; writeReg; writeReg-same; AbstractTrace;
+         instr-sigop; mov-to-output; mov-to-input; instr-load-const; SV-Lit; writeReg; writeReg-same; AbstractTrace;
          -- D155: the closure register's type — the entry state's one open
          -- component (see `entry-flat`).
-         StoredValue; module AbstractExec; module MemOps)
+         StoredValue; AbstractInstr; module AbstractExec; module MemOps)
 open import Once.CCC.Machine.Validity using (module ValidityDef)
 open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
@@ -114,7 +115,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS)
 
   open FlatMachine {FS}
-  open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; exec-flat-steps)
+  open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc)
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
@@ -1200,12 +1201,163 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- `flat-run-keeps-next-slot` (the run does not move it) and
     -- `frontier-mono f n l` (`n ≤ n1`). With the old equational premise the
     -- same step was unsatisfiable — see D154/D155.
-    comp-value-realized :
-      ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl} (n l : ℕ)
-      → ir-size g < program-bound
-      → next-slot alloc ≤ n
-      → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc cl
-      → ValueRealized n l (g ∘ f) x s alloc cl
+    -- ── THE TWO LABEL-SCOPE FACTS the splice rests on (D155). Both are
+    -- statements about the EMITTER, not about the machine: a fragment's own
+    -- jumps and calls must resolve the same way inside the composite as they
+    -- do alone. They are stated per-instruction because the universal form
+    -- over all labels is unsatisfiable (see `FlatSteps-prefix`'s note), and
+    -- they are exactly what `LabelScope`'s window lemmas are about — the
+    -- fragments' label ranges `[l , l1)` and `[l1 , l2)` are disjoint by
+    -- `label-mono`. Named separately so the assembly below is a PROOF and the
+    -- residue is a scope argument rather than a machine axiom.
+    comp-prefix-agree :
+      ∀ {A B C} (g : IR B C) (f : IR A B) (n l : ℕ)
+      → ∀ (i : AbstractInstr) (pc : ℕ) → fetch (emitted n l f) pc ≡ just i
+      → ∀ (st : FlatState)
+      → flat-exec-instr i (emitted n l (g ∘ f)) st
+        ≡ flat-exec-instr i (emitted n l f) st
+    comp-suffix-agree :
+      ∀ {A B C} (g : IR B C) (f : IR A B) (n l : ℕ)
+      → ∀ (i : AbstractInstr) (pc : ℕ)
+      → fetch (emitted (proj₁ (ir-to-trace' n l f))
+                       (proj₁ (proj₂ (ir-to-trace' n l f))) g) pc ≡ just i
+      → ∀ (st : FlatState)
+      → flat-exec-instr i ((emitted n l f ++ mov-to-input ∷ []) ++
+                           emitted (proj₁ (ir-to-trace' n l f))
+                                   (proj₁ (proj₂ (ir-to-trace' n l f))) g)
+                          (shift (length (emitted n l f ++ mov-to-input ∷ [])) st)
+        ≡ shift (length (emitted n l f ++ mov-to-input ∷ []))
+                (flat-exec-instr i (emitted (proj₁ (ir-to-trace' n l f))
+                                            (proj₁ (proj₂ (ir-to-trace' n l f))) g) st)
+
+  -- D155: the hand-over state, as a RECORD EQUATION. `Shifted`-turned-function
+  -- (`shift`) means a state that sits at pc `d` with nothing pending IS the
+  -- relocation of a fresh entry state — which is what lets `g`'s chain, stated
+  -- from `entry-flat`, be spliced in at the bridge.
+  handover-eq : ∀ (d : ℕ) (fs : FlatState)
+              → fpc fs ≡ d → fret fs ≡ [] → flink fs ≡ nothing
+              → fs ≡ shift d (entry-flat (floc fs) (falloc fs) (fclosure fs))
+  handover-eq d (mkFlatFull lo al pc rt cls lk) refl refl refl =
+    cong (λ m → mkFlatFull lo al m [] cls nothing) (sym (+-identityʳ pc))
+
+  -- ══════════════════════════════════════════════════════════════════════
+  -- D155: `comp-value-realized`, ASSEMBLED. It was an axiom; it is now a
+  -- proof, modulo the two label-scope facts above.
+  --
+  -- The composite emits `ft ++ mov-to-input ∷ gt`, so the run is three pieces:
+  -- `f`'s chain relocated as a PREFIX (same pc coordinates), the bridging
+  -- `mov`, and `g`'s chain relocated as a SUFFIX (shifted by `length ft + 1`).
+  -- Every field of the composite's witness is then read off `g`'s, because
+  -- `shift` touches only the three control components and `ResultPlace`
+  -- mentions the run only through `floc`/`falloc`.
+  -- ══════════════════════════════════════════════════════════════════════
+  comp-value-realized :
+    ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl} (n l : ℕ)
+    → ir-size g < program-bound
+    → next-slot alloc ≤ n
+    → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc cl
+    → ValueRealized n l (g ∘ f) x s alloc cl
+  comp-value-realized {g = g} {f} {x} {s} {alloc} {cl} n l szg ns ihg mf =
+    go (MachineRefinesObsF.value-realized mf)
+    where
+      module VR = ValueRealized
+
+      ft   = emitted n l f
+      n1   = proj₁ (ir-to-trace' n l f)
+      l1   = proj₁ (proj₂ (ir-to-trace' n l f))
+      gt   = emitted n1 l1 g
+      prog = emitted n l (g ∘ f)
+      t₁   = ft ++ mov-to-input ∷ []
+      d    = length t₁
+
+      -- `(ft ++ mov ∷ []) ++ gt` is the shape both relocation halves want.
+      split : prog ≡ t₁ ++ gt
+      split = sym (++-assoc ft (mov-to-input ∷ []) gt)
+
+      d-eq : d ≡ suc (length ft)
+      d-eq = trans (length-++ ft {mov-to-input ∷ []}) (+-comm (length ft) 1)
+
+      go : ValueRealized n l f x s alloc cl → ValueRealized n l (g ∘ f) x s alloc cl
+      go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF) =
+        realized (kf + suc (VR.steps vg)) (shift d (VR.settle vg))
+                 (VR.out-mode vg) (VR.cont-alloc vg)
+                 chain (VR.live vg) atEnd noRet noLink (VR.place vg)
+        where
+          -- The bridge step's target state. `mov-to-input` is `Input1 :=
+          -- Output`: it touches one register, so `falloc`, `halted`, `fret`,
+          -- `flink` and `fclosure` all come through unchanged (definitionally).
+          fsM : FlatState
+          fsM = flat-exec-instr mov-to-input prog fsF
+
+          runF≡ : exec-flat kf ft (entry-flat s alloc cl) ≡ fsF
+          runF≡ = trans (cong (λ m → exec-flat m ft (entry-flat s alloc cl))
+                              (sym (+-identityʳ kf)))
+                        (exec-flat-steps chainF 0)
+
+          nsF : next-slot (falloc fsF) ≡ next-slot alloc
+          nsF = trans (cong (λ st → next-slot (falloc st)) (sym runF≡))
+                      (flat-run-keeps-next-slot kf n l f s alloc cl)
+
+          -- D155's premise, at `g`'s emission site: the run did not move the
+          -- frontier (`nsF`), and the emitter's only moved it UP
+          -- (`frontier-mono`).
+          nsG : next-slot (falloc fsM) ≤ n1
+          nsG = ≤-trans (≤-reflexive nsF) (≤-trans ns (frontier-mono f n l))
+
+          liveM : halted (floc fsM) ≡ false
+          liveM = liveF
+
+          movEq : readReg (regs (floc fsM)) Input1 ≡ readReg (regs (floc fsF)) Output
+          movEq = writeReg-same (regs (floc fsF)) Input1 (readReg (regs (floc fsF)) Output)
+
+          memEq : ∀ loc → readLoc (floc fsM) loc ≡ readLoc (floc fsF) loc
+          memEq loc = reg-write-readLoc (floc fsF) _ (halted (floc fsF)) loc
+
+          inputM : InputAt mOutf (falloc fsM) (eval f x) (floc fsM)
+          inputM = result→input placeF movEq memEq
+
+          vg : ValueRealized n1 l1 g (eval f x) (floc fsM) (falloc fsM) (fclosure fsM)
+          vg = MachineRefinesObsF.value-realized
+                 (ihg szg n1 l1 mOutf (eval f x) (floc fsM) (falloc fsM) (fclosure fsM)
+                      nsG liveM inputM)
+
+          chainF' : FlatSteps prog kf (entry-flat s alloc cl) fsF
+          chainF' = FlatSteps-prefix ft (mov-to-input ∷ gt)
+                      (comp-prefix-agree g f n l) chainF
+
+          movFetch : fetch prog (fpc fsF) ≡ just mov-to-input
+          movFetch = trans (cong (fetch prog) (trans endF (sym (+-identityʳ (length ft)))))
+                           (fetch-++-right ft (mov-to-input ∷ gt) 0)
+
+          movStep : FlatSteps prog 1 fsF fsM
+          movStep = (liveF , movFetch) ∷ []
+
+          pcM : fpc fsM ≡ d
+          pcM = trans (cong suc endF) (sym d-eq)
+
+          handover : fsM ≡ shift d (entry-flat (floc fsM) (falloc fsM) (fclosure fsM))
+          handover = handover-eq d fsM pcM retF linkF
+
+          chainG : FlatSteps prog (VR.steps vg) fsM (shift d (VR.settle vg))
+          chainG = subst₂ (λ pr st → FlatSteps pr (VR.steps vg) st (shift d (VR.settle vg)))
+                          (sym split) (sym handover)
+                          (FlatSteps-reloc t₁ gt (comp-suffix-agree g f n l) (VR.run vg))
+
+          chain : FlatSteps prog (kf + suc (VR.steps vg)) (entry-flat s alloc cl)
+                            (shift d (VR.settle vg))
+          chain = FlatSteps-++ chainF' (FlatSteps-++ movStep chainG)
+
+          atEnd : fpc (shift d (VR.settle vg)) ≡ length prog
+          atEnd = trans (cong (d +_) (VR.at-end vg))
+                        (trans (cong (_+ length gt) d-eq)
+                               (sym (trans (length-++ ft {mov-to-input ∷ gt})
+                                           (+-suc (length ft) (length gt)))))
+
+          noRet : fret (shift d (VR.settle vg)) ≡ []
+          noRet = cong (map (d +_)) (VR.no-ret vg)
+
+          noLink : flink (shift d (VR.settle vg)) ≡ nothing
+          noLink = cong (mmap (d +_)) (VR.no-link vg)
 
   comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
                 (n l : ℕ)

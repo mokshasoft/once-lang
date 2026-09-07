@@ -11590,3 +11590,50 @@ own `halted s ≡ false` premise fails. A fuel is not a handover; a STEP CHAIN t
 a named settle state is. That is the next change to the interface, and it is
 `value-realized`'s alone — nothing outside this module reads that field (the
 apex adapter consumes only `traces-agree`).
+
+## D156
+
+**`comp-value-realized` is a proof.** It was one of the two axioms `comp-step`
+split into (D152 A1). With D155's interface — the frontier premise weakened to
+`≤`, and `value-realized` a step chain to a named settle state rather than a
+fuel — the assembly goes through, and it is short:
+
+    f's chain, relocated as a PREFIX  (same pc coordinates)
+    the bridging `mov-to-input`       (one link)
+    g's chain, relocated as a SUFFIX  (shifted by `length ft + 1`)
+
+Every field of the composite's witness is then READ OFF `g`'s. That is not
+luck: `shift` touches only `fpc`/`fret`/`flink`, and `ResultPlace` mentions the
+run only through `floc` and `falloc`, so `place` transports literally, `live`
+transports literally, and the three control fields are one `cong` each. The
+hand-over itself — that the post-`mov` state IS a relocated entry state — is
+`handover-eq`, a record equality out of `at-end`, `no-ret` and `no-link`. Those
+three fields were added because `Shifted` asks for them; this is where they are
+spent.
+
+**What is left, and it is a different KIND of thing.** Two facts, both about
+the EMITTER rather than the machine: `f`'s own jumps and calls resolve the same
+way inside the composite as they do alone (`comp-prefix-agree`), and `g`'s do
+too under the shift (`comp-suffix-agree`). The postulate count in
+`IRObsCorrectFlat` goes 18 → 19 and that number is the wrong way to read this:
+one opaque axiom about a composite RUN became two statements about LABEL SCOPE,
+which is the thing `LabelScope` exists to prove (`label-mono` plus `labels-in`
+give exactly the disjointness of `[l , l1)` and `[l1 , l2)`). Route known,
+sub-goal named, and the machine half is finished.
+
+**A defect found on the way, in machinery already landed.** `exec-flat-reloc`
+(plan 0.88 A) takes its side condition as
+
+    ∀ tg → find-label (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-label t₂ tg)
+
+and that universal is UNSATISFIABLE the moment `t₁` defines a label of its own:
+at such a `tg` the left side finds it in `t₁` and the right side is `nothing`.
+It holds only over a label-free prefix — which a composite's `f` is not, as soon
+as `f` contains a case, a cata or a closure. The lemma is not vacuous, but it is
+restricted to a case the intended caller is not in, and the restriction is
+invisible from its statement. The chain-level lemmas take the condition PER
+INSTRUCTION instead — agreement of the step effect at each instruction the chain
+actually fetches — which is the weakest form, is what the induction consumes,
+and is meetable because the caller knows which label each fetched instruction
+targets. Same lesson as the restricted-step-lemma one: a side condition stated
+over more than the proof needs is where a false assumption hides.
