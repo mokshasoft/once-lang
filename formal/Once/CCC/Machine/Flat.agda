@@ -27,7 +27,7 @@ open import Data.Nat.Properties using (+-identityʳ; +-suc)
 -- Plan 0.63 (D089): the scans key on the STRUCTURED identity.
 open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true)
 open import Data.Bool using (Bool; true; false)
-open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe using (Maybe; just; nothing) renaming (map to mmap)
 open import Data.List using (List; []; _∷_; length; _++_; map)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
@@ -42,7 +42,7 @@ open import Once.CCC.Machine.SMCore
 module FlatMachine {FS : FrameSemantics} where
   open MemOps {FS}
   open FrameSemantics FS using (Frame; shift-frame)
-  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+  open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; cong₂)
   open AbstractExec {FS} using (exec-abstract; exec-trace; exec-trace-cons)
 
   -- Flat machine state: the typed LocState + allocator + pc.
@@ -206,6 +206,37 @@ module FlatMachine {FS : FrameSemantics} where
   -- in this module's own style (D092): the `ft-at` / `ft-match` dispatch is
   -- mirrored by an auxiliary per layer.
   ------------------------------------------------------------------------
+  -- The JUMP scan's twin of `ft-go-++-miss` below. `find-label` uses `fl-go`
+  -- (jump labels), `find-thunk` uses `ft-go` (body entries) — different
+  -- provenances, per D082 — so relocation needs the fact for both.
+  fl-go-++-miss    : ∀ (t₁ t₂ : AbstractTrace) (target : LabelId) (i : ℕ)
+                   → fl-go t₁ target i ≡ nothing
+                   → fl-go (t₁ ++ t₂) target i ≡ fl-go t₂ target (length t₁ + i)
+  fl-at-++-miss    : ∀ (mo : Maybe LabelId) (t₁ t₂ : AbstractTrace)
+                       (target : LabelId) (i : ℕ)
+                   → fl-at mo t₁ target i ≡ nothing
+                   → fl-at mo (t₁ ++ t₂) target i ≡ fl-go t₂ target (suc (length t₁ + i))
+  fl-match-++-miss : ∀ (b : Bool) (t₁ t₂ : AbstractTrace)
+                       (target : LabelId) (i : ℕ)
+                   → fl-label-match b t₁ target i ≡ nothing
+                   → fl-label-match b (t₁ ++ t₂) target i
+                     ≡ fl-go t₂ target (suc (length t₁ + i))
+
+  fl-go-++-miss []       t₂ target i _    = refl
+  fl-go-++-miss (x ∷ t₁) t₂ target i miss =
+    fl-at-++-miss (label-of? x) t₁ t₂ target i miss
+
+  fl-at-++-miss (just m) t₁ t₂ target i miss =
+    fl-match-++-miss (m ≡ᵇᴵ target) t₁ t₂ target i miss
+  fl-at-++-miss nothing  t₁ t₂ target i miss =
+    trans (fl-go-++-miss t₁ t₂ target (suc i) miss)
+          (cong (fl-go t₂ target) (+-suc (length t₁) i))
+
+  fl-match-++-miss true  t₁ t₂ target i ()
+  fl-match-++-miss false t₁ t₂ target i miss =
+    trans (fl-go-++-miss t₁ t₂ target (suc i) miss)
+          (cong (fl-go t₂ target) (+-suc (length t₁) i))
+
   ft-go-++-miss    : ∀ (t₁ t₂ : AbstractTrace) (target : LabelId) (i : ℕ)
                    → ft-go t₁ target i ≡ nothing
                    → ft-go (t₁ ++ t₂) target i ≡ ft-go t₂ target (length t₁ + i)
@@ -457,9 +488,15 @@ module FlatMachine {FS : FrameSemantics} where
 
   -- Conditional branch (Plan 0.34): if the (inline-computed) condition
   -- holds, jump to the target label; else fall through. No flag state.
+  -- Split so relocation can speak about the RESOLVED target: `do-branch` picks
+  -- the label out of the program, `do-branch-at` acts on what it found. Same
+  -- with-free discipline the module already uses for `ft-at`/`ft-match`.
+  do-branch-at : Bool → Maybe ℕ → FlatState → FlatState
+  do-branch-at true  mj fs = do-jump mj fs
+  do-branch-at false _  fs = record fs { fpc = suc (fpc fs) }
+
   do-branch : Bool → LabelId → AbstractTrace → FlatState → FlatState
-  do-branch true  target prog fs = do-jump (find-label prog target) fs
-  do-branch false _      _    fs = record fs { fpc = suc (fpc fs) }
+  do-branch b target prog fs = do-branch-at b (find-label prog target) fs
 
   -- straight-line: thread the LocState/AllocState through exec-abstract,
   -- advance pc. (Lambda-free read positions: applied to floc fs directly.)
@@ -893,6 +930,61 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-straight d i fs fs' (lo , al , pc , rt , lk)
     rewrite lo | al =
       refl , refl , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk
+
+  -- `c-label` and `c-thunk`: both bump the pc by one and touch neither `fret`
+  -- nor the program, so they preserve the relation for the same reason a
+  -- straight step does. `c-thunk` additionally rewrites `floc`/`falloc`, but
+  -- only from `floc`/`falloc`, which the relation equates.
+  shifted-label : ∀ (d : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
+                → Shifted d (record fs { fpc = suc (fpc fs) })
+                            (record fs' { fpc = suc (fpc fs') })
+  shifted-label d fs fs' (lo , al , pc , rt , lk) =
+    lo , al , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk
+
+  shifted-thunk : ∀ (d b : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
+                → Shifted d (do-thunk b fs) (do-thunk b fs')
+  shifted-thunk d b fs fs' (lo , al , pc , rt , lk) =
+      cong₂ (λ L A → record L { stackMem = clear-frame (stackMem L)
+                                  (shift-frame (current-frame A) b) b }) lo al
+    , cong (grow-frame b) al
+    , trans (cong suc pc) (sym (+-suc d (fpc fs')))
+    , rt , refl
+
+  -- `c-ret` is the case that MOTIVATED the relation: it restores a pc from
+  -- `fret`, so the shift survives only because `fret` carries it. With the
+  -- return stacks related, both sides take the same branch and the restored
+  -- pc is shifted by construction.
+  shifted-ret-aux : ∀ (d : ℕ) (rl rl' : List ℕ) (fs fs' : FlatState)
+                  → Shifted d fs fs' → rl ≡ map (d +_) rl'
+                  → Shifted d (do-ret rl fs) (do-ret rl' fs')
+  shifted-ret-aux d .[] [] fs fs' (lo , al , pc , rt , lk) refl =
+      cong (λ L → record L { halted = true }) lo
+    , cong leave-frame al , pc , rt , lk
+  shifted-ret-aux d .((d + p) ∷ map (d +_) rest) (p ∷ rest) fs fs'
+                  (lo , al , pc , rt , lk) refl =
+      lo , cong leave-frame al , refl , refl , lk
+
+  shifted-ret : ∀ (d : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
+              → Shifted d (do-ret (fret fs) fs) (do-ret (fret fs') fs')
+  shifted-ret d fs fs' sh@(_ , _ , _ , rt , _) =
+    shifted-ret-aux d (fret fs) (fret fs') fs fs' sh rt
+
+  -- `c-jmp` / the branches: the ONLY cases with a side condition, and it is
+  -- exactly label agreement. Given the resolved target is shifted by `d`, both
+  -- sides jump to corresponding pcs; if it resolves to nothing, both halt.
+  shifted-jump : ∀ (d : ℕ) (mj mj' : Maybe ℕ) (fs fs' : FlatState)
+               → Shifted d fs fs' → mj ≡ mmap (d +_) mj'
+               → Shifted d (do-jump mj fs) (do-jump mj' fs')
+  shifted-jump d .(just (d + p)) (just p) fs fs' (lo , al , pc , rt , lk) refl =
+    lo , al , refl , rt , lk
+  shifted-jump d .nothing nothing fs fs' (lo , al , pc , rt , lk) refl =
+    cong (λ L → record L { halted = true }) lo , al , pc , rt , lk
+
+  shifted-branch : ∀ (d : ℕ) (b : Bool) (mj mj' : Maybe ℕ) (fs fs' : FlatState)
+                 → Shifted d fs fs' → mj ≡ mmap (d +_) mj'
+                 → Shifted d (do-branch-at b mj fs) (do-branch-at b mj' fs')
+  shifted-branch d true  mj mj' fs fs' sh eq = shifted-jump d mj mj' fs fs' sh eq
+  shifted-branch d false mj mj' fs fs' sh _  = shifted-label d fs fs' sh
 
   flat-exec-instr-prog-irrelevant :
     ∀ (i : AbstractInstr) (t t' : AbstractTrace) (fs : FlatState)
