@@ -19,24 +19,61 @@ two developments stop drifting. It is evidence, never a dependency.
 
 ## 1. THE COMPILER, MEASURED
 
-### 1a. Trust surface — the frontend is already clean
+### 1a. Trust surface
 
-**190 postulated names across 40 files**, and they are not where adoption
-would land:
+⚠ **CORRECTED 2026-09-07.** An earlier revision said "190 postulated
+names across 40 files" and "the frontend is 0". The first number was
+wrong (a line-counting `awk` ran past block ends); the second was true
+only for *postulates*, and postulates are not the whole trust surface.
+Re-measured with a layout-aware parser. ⚠ The repo's own
+`make postulates-grep` lists block **openers**, not names, and precise
+detection needs the patched `--warn-postulates` Agda it runs on two entry
+points — so there is no authoritative tree-wide count to check against.
+Treat the numbers below as this plan's measurement, method recorded.
 
-| area | postulates |
-|---|---|
-| `Adequacy/` (backends, CPU models) | 88 |
-| `CCC/` (machine, codegen) | 82 |
-| `Optimizer/` | 10 |
-| `TypeCheck/` | 4 |
-| `Surface/`, `Denotation/`, `Grammar/`, `Spec/` | **0** |
+**119 postulated names, 68 blocks, 45 of 408 files:**
 
-★ Every postulate is at or below the IR. The four in `TypeCheck` are
-`completeness-gap-arg-driven-app-check{,-eff}` and
-`bbc-other-poly-{,-infer-}witness` — completeness gaps and a
-polymorphism witness, **not soundness holes**. Adoption inherits none of
-the 190.
+| area | names | files |
+|---|---|---|
+| `Adequacy/` (backends, CPU models) | 49 | 17 |
+| `CCC/` (machine, codegen) | 35 | 15 |
+| `Optimizer/` | 13 | 1 |
+| `Arith/` | 9 | 1 |
+| top-level `Once/*.agda` | 4 | 4 |
+| **`TypeCheck/`** | **4** | 2 |
+| `Semantics/`, `Target/`, `SigOp/`, `Memory/` | 5 | 5 |
+| `Surface/`, `Denotation/`, `Grammar/`, `Spec/`, `Parser/` | **0** | — |
+
+★ The four in `TypeCheck` are `completeness-gap-arg-driven-app-check{,-eff}`
+and `bbc-other-poly-{,-infer-}witness` — completeness gaps and a
+polymorphism witness, **not soundness holes**.
+
+⚠ **AND POSTULATES ARE NOT THE WHOLE SURFACE.** The other vectors, which
+the earlier revision never checked:
+
+| vector | count | where |
+|---|---|---|
+| `{-# TERMINATING #-}` | **22** in 7 files | 14 `Parser/Generic/Sound`, 1 `Parser/Generic/Parser`, 1 `Parser/PolyType`, 3 `Arith/Machine`, 2 `Optimizer/Normal`, 2 `SPF` |
+| `{-# NO_POSITIVITY_CHECK #-}` | **1** | `CCC/Machine/ClosureWellFormed:822` |
+| `{-# CATCHALL #-}` | 13 | documented; has its own `make catchalls` |
+| `--safe` | **0 of 408** | not used anywhere in `formal/Once` |
+| global flags | `--exact-split --guardedness` | `Once.agda-lib` |
+| holes, `trustMe`, `--type-in-type`, `--rewriting`, `--sized-types`, `--allow-unsolved-metas` | 0 | — |
+
+★ **THE CORRECTED CLAIM.** Every *postulate* is at or below the IR, and
+adoption inherits none of them. But `Parser/` — which DirectedHoTT does
+**not** replace, since it produces the `RawExpr` the kernel would be
+elaborated *from* — carries 16 `TERMINATING` pragmas that stay regardless.
+The clean layer is the *typing* frontend (`Surface`, `Denotation`, `Spec`,
+`Grammar`, `TypeCheck`): 0 postulates bar the four named gaps, 0 pragmas.
+
+⚠⚠ **AND ONE ASYMMETRY THAT MATTERS FOR AXIS 3.** DirectedHoTT is
+`--safe` throughout with an empty `Trust.agda` **checked by a script**;
+`formal/Once` does not use `--safe` at all. `--safe` is per-file, so
+ported modules can keep their pragma — but the guarantee stops at the
+seam, and nothing on the compiler side enforces it today. Decide at axis
+3 whether the ported kernel keeps its `--safe` discipline or joins the
+ambient one. Silently losing it is the failure mode.
 
 ### 1b. The grade algebra — the same semiring, different theorems
 
@@ -242,7 +279,8 @@ face it; this branch must not.
 | the socket: `Typed` / `_⊢_` / `⟦_⟧ˢ` | already abstract (§1d) — no apex edit |
 | surface → kernel elaboration | **does not exist**; the largest single piece |
 | kernel → `Behavior` (effect trace) | **needs the purity axis** (§1e) |
-| the 190 postulates | not inherited (§1a) |
+| the 119 postulates | not inherited (§1a) |
+| `--safe` discipline across the seam | ⬜ **decide** — §1a's asymmetry |
 
 ---
 
