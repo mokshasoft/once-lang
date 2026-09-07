@@ -4,6 +4,14 @@
 dated `HANDOFF-2026-08-NN.md`; the rules in `LESSONS.md`. This file is
 just the checklist, newest state as of **2026-09-01**.
 
+⬜ **INTEGRATION — `PLAN-INTEGRATION.md`, branch
+`ocp-0009-qtt-integration`.** Four axes: **0 the prelude** (two `_≡_`s in
+the tree today — `FormerCensus` already straddles both), **1 QTT**
+(`PLAN-QTT.md`), **2 the kernel's missing language**, **3 adoption into
+the compiler**. Not a prerequisite for anything below: axis 1 step 6 (the
+knot rows) is gated on section D closing. Read axis 1 step 0's three
+spikes and their kill criteria before costing any of it.
+
 Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜ not started
 
 ---
