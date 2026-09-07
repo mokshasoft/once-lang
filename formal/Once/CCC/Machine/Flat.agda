@@ -907,7 +907,10 @@ module FlatMachine {FS : FrameSemantics} where
     × (falloc fs ≡ falloc fs')
     × (fpc fs ≡ d + fpc fs')
     × (fret fs ≡ map (d +_) (fret fs'))
-    × (flink fs ≡ flink fs')
+    -- `flink` is a RETURN PC too (`do-call-at` sets it to `suc (fpc fs)`
+    -- alongside pushing the same number on `fret`), so it shifts exactly as
+    -- `fret` does. Stating it as plain equality made the call case false.
+    × (flink fs ≡ mmap (d +_) (flink fs'))
 
   ProgFree : AbstractInstr → Set
   ProgFree (instr-ctrl (c-jmp _))                 = ⊥
@@ -985,6 +988,26 @@ module FlatMachine {FS : FrameSemantics} where
                  → Shifted d (do-branch-at b mj fs) (do-branch-at b mj' fs')
   shifted-branch d true  mj mj' fs fs' sh eq = shifted-jump d mj mj' fs fs' sh eq
   shifted-branch d false mj mj' fs fs' sh _  = shifted-label d fs fs' sh
+
+  -- `flat-halt` is relation-preserving: it touches only `halted`, which lives
+  -- in `floc`, and the relation equates `floc` outright.
+  shifted-halt : ∀ (d : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
+               → Shifted d (flat-halt fs) (flat-halt fs')
+  shifted-halt d fs fs' (lo , al , pc , rt , lk) =
+    cong (λ L → record L { halted = true }) lo , al , pc , rt , lk
+
+  -- `instr-call-closure`. It reads the program (the thunk scan) AND pushes a
+  -- return pc onto both `fret` and `flink` — which is what forced `flink` to
+  -- be shifted rather than equal. Given the scan agrees up to the shift, both
+  -- sides push corresponding return pcs and land at corresponding entries.
+  shifted-call-at : ∀ (d : ℕ) (mj mj' : Maybe ℕ) (fs fs' : FlatState)
+                  → Shifted d fs fs' → mj ≡ mmap (d +_) mj'
+                  → Shifted d (do-call-at mj fs) (do-call-at mj' fs')
+  shifted-call-at d .(just (d + j)) (just j) fs fs' (lo , al , pc , rt , lk) refl =
+      lo , cong enter-call al , refl
+    , cong₂ _∷_ (trans (cong suc pc) (sym (+-suc d (fpc fs')))) rt
+    , cong (λ z → just z) (trans (cong suc pc) (sym (+-suc d (fpc fs'))))
+  shifted-call-at d .nothing nothing fs fs' sh refl = shifted-halt d fs fs' sh
 
   flat-exec-instr-prog-irrelevant :
     ∀ (i : AbstractInstr) (t t' : AbstractTrace) (fs : FlatState)
