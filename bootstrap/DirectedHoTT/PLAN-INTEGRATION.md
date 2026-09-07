@@ -189,7 +189,52 @@ twice.
 
 ## 2. THE AXES
 
-### Axis 0 — THE PRELUDE  ⬜ *(new; do this first)*
+### Axis 0 — THE PRELUDE  🟡 *(increment 1 landed 2026-09-07, `b13fe24b`)*
+
+**DONE.** `DirectedHoTT/Prelude.agda` re-exports the stdlib; all 237
+import sites moved; 134 `Σ.fst`/`Σ.snd` → `proj₁`/`proj₂`.
+
+★★ **THE SPLIT IS GONE, NOT NARROWED** — the stdlib's `_≡_` IS
+`Agda.Builtin.Equality._≡_`, so the two reflection-side census modules now
+share the kernel's equality. `Examples/PreludeAgree` is the standing
+control; it is the ONLY module that would go red if the prelude were
+re-pointed at a hand-rolled equality, because every other module is
+internally consistent either way.
+
+★ **The parameter-vs-index risk cost ZERO proof changes.** Every failure
+was scope-level. The warning below stays for the record, but it did not
+bite.
+
+⚠⚠ **VERIFICATION IS INCOMPLETE, AND THE GAP IS HALF THE TREE.**
+
+| | modules |
+|---|---|
+| `Trust/Kernel` — all `Spec/`, `Metatheory/`, `Algorithm/` | ✅ built, 5m32s |
+| `Trust/Lib` — 40 modules | ✅ built, 0 errors |
+| built (interface present) | 116 of 319 |
+| **unverified AND modified** | **151** |
+| unverified but untouched (no risk) | 52 |
+
+The tail is `Examples/Knot/*` (149 modules) and `Examples/Gcd/*`. The box
+(7.5 GB) cannot finish: `check.sh` caps Agda at 5.5 GB, single modules run
+6+ minutes (`Gcd.StepExtA` 384s), `Trust/Comparison` hit 143 at 900s, and
+three attempts were killed for memory. **The sweep is resumable** — the
+`.agdai` cache makes each run pick up where the last stopped — so this
+converges by repetition, not by cleverness.
+
+⚠ **AND EXIT 0 IS NOT A VERDICT EITHER.** The first sweep attempt exited
+**0 having built nothing**: it bailed at `check-trust.sh`'s coverage gate
+because `Prelude` was a module no trust root reached. `PERF.md` says 143
+is not a verdict; this says the same of 0. The gate working is the good
+news — that is exactly the coverage question it exists to ask.
+
+**Increment 2 — still hand-rolled**, and lower priority because these are
+duplicate *types*, not duplicate *equalities*, so they cannot break an
+induction the way the `_≡_` split could: `Lib/IWk`'s `Maybe`/`⊥`,
+`Lib/IMeths`' `⊥`, `Lib/ISub`'s `⊥sd`, `Spec/Variance`'s `𝔹`,
+`Metatheory/Canonicity`'s `_≤_`, `Algorithm/DecideConversion`'s `Dec`.
+
+<details><summary>The original plan for this axis (kept for the record)</summary>
 
 ⚠ **THE FAILURE MODE IS ALREADY IN THE TREE.** Not hypothetical: an
 induction that has one half hand-rolled and one half standard does not
@@ -246,6 +291,8 @@ the sweep green at each layer.
 ⛔ `Trust.agda` must stay empty and `tools/check-trust.sh` green through
 every step of this axis. That is what makes a large dependency
 admissible: the trust surface is *checked*, not argued.
+
+</details>
 
 ### Axis 1 — QTT  ⬜  → **`PLAN-QTT.md`**
 
