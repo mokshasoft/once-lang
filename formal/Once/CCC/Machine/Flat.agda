@@ -911,6 +911,9 @@ module FlatMachine {FS : FrameSemantics} where
     -- alongside pushing the same number on `fret`), so it shifts exactly as
     -- `fret` does. Stating it as plain equality made the call case false.
     × (flink fs ≡ mmap (d +_) (flink fs'))
+    -- `fclosure` is a closure POINTER, not a pc, so it is equated outright.
+    -- It needs to be in the relation because `do-call` dispatches on it.
+    × (fclosure fs ≡ fclosure fs')
 
   ProgFree : AbstractInstr → Set
   ProgFree (instr-ctrl (c-jmp _))                 = ⊥
@@ -930,9 +933,9 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-straight : ∀ (d : ℕ) (i : AbstractInstr) (fs fs' : FlatState)
                    → Shifted d fs fs'
                    → Shifted d (flat-step-straight i fs) (flat-step-straight i fs')
-  shifted-straight d i fs fs' (lo , al , pc , rt , lk)
+  shifted-straight d i fs fs' (lo , al , pc , rt , lk , cl)
     rewrite lo | al =
-      refl , refl , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk
+      refl , refl , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk , cl
 
   -- `c-label` and `c-thunk`: both bump the pc by one and touch neither `fret`
   -- nor the program, so they preserve the relation for the same reason a
@@ -941,17 +944,17 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-label : ∀ (d : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
                 → Shifted d (record fs { fpc = suc (fpc fs) })
                             (record fs' { fpc = suc (fpc fs') })
-  shifted-label d fs fs' (lo , al , pc , rt , lk) =
-    lo , al , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk
+  shifted-label d fs fs' (lo , al , pc , rt , lk , cl) =
+    lo , al , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk , cl
 
   shifted-thunk : ∀ (d b : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
                 → Shifted d (do-thunk b fs) (do-thunk b fs')
-  shifted-thunk d b fs fs' (lo , al , pc , rt , lk) =
+  shifted-thunk d b fs fs' (lo , al , pc , rt , lk , cl) =
       cong₂ (λ L A → record L { stackMem = clear-frame (stackMem L)
                                   (shift-frame (current-frame A) b) b }) lo al
     , cong (grow-frame b) al
     , trans (cong suc pc) (sym (+-suc d (fpc fs')))
-    , rt , refl
+    , rt , refl , cl
 
   -- `c-ret` is the case that MOTIVATED the relation: it restores a pc from
   -- `fret`, so the shift survives only because `fret` carries it. With the
@@ -960,16 +963,16 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-ret-aux : ∀ (d : ℕ) (rl rl' : List ℕ) (fs fs' : FlatState)
                   → Shifted d fs fs' → rl ≡ map (d +_) rl'
                   → Shifted d (do-ret rl fs) (do-ret rl' fs')
-  shifted-ret-aux d .[] [] fs fs' (lo , al , pc , rt , lk) refl =
+  shifted-ret-aux d .[] [] fs fs' (lo , al , pc , rt , lk , cl) refl =
       cong (λ L → record L { halted = true }) lo
-    , cong leave-frame al , pc , rt , lk
+    , cong leave-frame al , pc , rt , lk , cl
   shifted-ret-aux d .((d + p) ∷ map (d +_) rest) (p ∷ rest) fs fs'
-                  (lo , al , pc , rt , lk) refl =
-      lo , cong leave-frame al , refl , refl , lk
+                  (lo , al , pc , rt , lk , cl) refl =
+      lo , cong leave-frame al , refl , refl , lk , cl
 
   shifted-ret : ∀ (d : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
               → Shifted d (do-ret (fret fs) fs) (do-ret (fret fs') fs')
-  shifted-ret d fs fs' sh@(_ , _ , _ , rt , _) =
+  shifted-ret d fs fs' sh@(_ , _ , _ , rt , _ , _) =
     shifted-ret-aux d (fret fs) (fret fs') fs fs' sh rt
 
   -- `c-jmp` / the branches: the ONLY cases with a side condition, and it is
@@ -978,23 +981,45 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-jump : ∀ (d : ℕ) (mj mj' : Maybe ℕ) (fs fs' : FlatState)
                → Shifted d fs fs' → mj ≡ mmap (d +_) mj'
                → Shifted d (do-jump mj fs) (do-jump mj' fs')
-  shifted-jump d .(just (d + p)) (just p) fs fs' (lo , al , pc , rt , lk) refl =
-    lo , al , refl , rt , lk
-  shifted-jump d .nothing nothing fs fs' (lo , al , pc , rt , lk) refl =
-    cong (λ L → record L { halted = true }) lo , al , pc , rt , lk
+  shifted-jump d .(just (d + p)) (just p) fs fs' (lo , al , pc , rt , lk , cl) refl =
+    lo , al , refl , rt , lk , cl
+  shifted-jump d .nothing nothing fs fs' (lo , al , pc , rt , lk , cl) refl =
+    cong (λ L → record L { halted = true }) lo , al , pc , rt , lk , cl
 
-  shifted-branch : ∀ (d : ℕ) (b : Bool) (mj mj' : Maybe ℕ) (fs fs' : FlatState)
-                 → Shifted d fs fs' → mj ≡ mmap (d +_) mj'
-                 → Shifted d (do-branch-at b mj fs) (do-branch-at b mj' fs')
-  shifted-branch d true  mj mj' fs fs' sh eq = shifted-jump d mj mj' fs fs' sh eq
-  shifted-branch d false mj mj' fs fs' sh _  = shifted-label d fs fs' sh
+  -- The condition is computed from each side's own `floc`; the relation
+  -- equates those, so the caller supplies the resulting equation rather than
+  -- this lemma re-deriving it.
+  shifted-branch : ∀ (d : ℕ) (b b' : Bool) (mj mj' : Maybe ℕ) (fs fs' : FlatState)
+                 → Shifted d fs fs' → b ≡ b' → mj ≡ mmap (d +_) mj'
+                 → Shifted d (do-branch-at b mj fs) (do-branch-at b' mj' fs')
+  shifted-branch d true  .true  mj mj' fs fs' sh refl eq = shifted-jump d mj mj' fs fs' sh eq
+  shifted-branch d false .false mj mj' fs fs' sh refl _  = shifted-label d fs fs' sh
+
+  -- The four frame instructions. Same shape as a straight step — everything
+  -- read comes from `floc`/`falloc`, pc bumps by one — with an extra allocator
+  -- transform applied on top.
+  shifted-frame : ∀ (d : ℕ) (i : AbstractInstr)
+                    (gA : AllocState {FS} → AllocState {FS}) (fs fs' : FlatState)
+                → Shifted d fs fs'
+                → Shifted d (flat-step-frame i gA fs) (flat-step-frame i gA fs')
+  shifted-frame d i gA fs fs' (lo , al , pc , rt , lk , cl) =
+      cong₂ (λ L A → proj₁ (exec-abstract i L A)) lo al
+    , cong₂ (λ L A → gA (proj₂ (exec-abstract i L A))) lo al
+    , trans (cong suc pc) (sym (+-suc d (fpc fs')))
+    , rt , lk , cl
+
+  shifted-save-closure : ∀ (d : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
+                       → Shifted d (do-save-closure fs) (do-save-closure fs')
+  shifted-save-closure d fs fs' (lo , al , pc , rt , lk , cl) =
+      lo , al , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk
+    , cong (λ L → readReg (regs L) Input1) lo
 
   -- `flat-halt` is relation-preserving: it touches only `halted`, which lives
   -- in `floc`, and the relation equates `floc` outright.
   shifted-halt : ∀ (d : ℕ) (fs fs' : FlatState) → Shifted d fs fs'
                → Shifted d (flat-halt fs) (flat-halt fs')
-  shifted-halt d fs fs' (lo , al , pc , rt , lk) =
-    cong (λ L → record L { halted = true }) lo , al , pc , rt , lk
+  shifted-halt d fs fs' (lo , al , pc , rt , lk , cl) =
+    cong (λ L → record L { halted = true }) lo , al , pc , rt , lk , cl
 
   -- `instr-call-closure`. It reads the program (the thunk scan) AND pushes a
   -- return pc onto both `fret` and `flink` — which is what forced `flink` to
@@ -1003,11 +1028,106 @@ module FlatMachine {FS : FrameSemantics} where
   shifted-call-at : ∀ (d : ℕ) (mj mj' : Maybe ℕ) (fs fs' : FlatState)
                   → Shifted d fs fs' → mj ≡ mmap (d +_) mj'
                   → Shifted d (do-call-at mj fs) (do-call-at mj' fs')
-  shifted-call-at d .(just (d + j)) (just j) fs fs' (lo , al , pc , rt , lk) refl =
+  shifted-call-at d .(just (d + j)) (just j) fs fs' (lo , al , pc , rt , lk , cl) refl =
       lo , cong enter-call al , refl
     , cong₂ _∷_ (trans (cong suc pc) (sym (+-suc d (fpc fs')))) rt
     , cong (λ z → just z) (trans (cong suc pc) (sym (+-suc d (fpc fs'))))
+    , cl
   shifted-call-at d .nothing nothing fs fs' sh refl = shifted-halt d fs fs' sh
+
+  -- `do-call` dispatches through three levels — the closure register's shape,
+  -- the cell it points at, the label scan — so relocation follows it down.
+  -- `fclosure` and `floc` are equated by the relation, so both sides take the
+  -- same branch at every level; only the scan differs, and that is the
+  -- hypothesis.
+  shifted-call-code : ∀ (d : ℕ) (mv : Maybe (StoredValue FS))
+                        (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
+                    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (d +_) (find-thunk t₂ tg))
+                    → Shifted d fs fs'
+                    → Shifted d (do-call-code (t₁ ++ t₂) mv fs) (do-call-code t₂ mv fs')
+  shifted-call-code d (just (SV-Code ℓ))  t₁ t₂ fs fs' ft sh =
+    shifted-call-at d (find-thunk (t₁ ++ t₂) ℓ) (find-thunk t₂ ℓ) fs fs' sh (ft ℓ)
+  shifted-call-code d (just (SV-Tag _))   t₁ t₂ fs fs' _ sh = shifted-halt d fs fs' sh
+  shifted-call-code d (just (SV-Lit _ _)) t₁ t₂ fs fs' _ sh = shifted-halt d fs fs' sh
+  shifted-call-code d (just (SV-Ptr _))   t₁ t₂ fs fs' _ sh = shifted-halt d fs fs' sh
+  shifted-call-code d nothing             t₁ t₂ fs fs' _ sh = shifted-halt d fs fs' sh
+
+  shifted-call-sv : ∀ (d : ℕ) (sv : StoredValue FS)
+                      (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
+                  → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (d +_) (find-thunk t₂ tg))
+                  → Shifted d fs fs'
+                  → Shifted d (do-call-sv (t₁ ++ t₂) sv fs) (do-call-sv t₂ sv fs')
+  shifted-call-sv d (SV-Ptr (AtDynamic hl)) t₁ t₂ fs fs' ft sh@(lo , _) =
+    subst (λ mv → Shifted d (do-call-code (t₁ ++ t₂) (heapMem (floc fs) (sucHL hl)) fs)
+                            (do-call-code t₂ mv fs'))
+          (cong (λ L → heapMem L (sucHL hl)) lo)
+          (shifted-call-code d (heapMem (floc fs) (sucHL hl)) t₁ t₂ fs fs' ft sh)
+  shifted-call-sv d (SV-Ptr (AtStack _ _)) t₁ t₂ fs fs' _ sh = shifted-halt d fs fs' sh
+  shifted-call-sv d (SV-Tag _)             t₁ t₂ fs fs' _ sh = shifted-halt d fs fs' sh
+  shifted-call-sv d (SV-Lit _ _)           t₁ t₂ fs fs' _ sh = shifted-halt d fs fs' sh
+  shifted-call-sv d (SV-Code _)            t₁ t₂ fs fs' _ sh = shifted-halt d fs fs' sh
+
+  shifted-call-closure : ∀ (d : ℕ) (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
+                       → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (d +_) (find-thunk t₂ tg))
+                       → Shifted d fs fs'
+                       → Shifted d (do-call (t₁ ++ t₂) fs) (do-call t₂ fs')
+  shifted-call-closure d t₁ t₂ fs fs' ft sh@(_ , _ , _ , _ , _ , cl) =
+    subst (λ sv → Shifted d (do-call-sv (t₁ ++ t₂) (fclosure fs) fs)
+                            (do-call-sv t₂ sv fs'))
+          cl (shifted-call-sv d (fclosure fs) t₁ t₂ fs fs' ft sh)
+
+  -- ONE STEP of the machine preserves the relation, for EVERY instruction.
+  -- The two hypotheses are the scan agreements — the only way an instruction
+  -- can observe which trace surrounds it.
+  shifted-instr :
+    ∀ (d : ℕ) (i : AbstractInstr) (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
+    → (∀ tg → find-label (t₁ ++ t₂) tg ≡ mmap (d +_) (find-label t₂ tg))
+    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (d +_) (find-thunk t₂ tg))
+    → Shifted d fs fs'
+    → Shifted d (flat-exec-instr i (t₁ ++ t₂) fs) (flat-exec-instr i t₂ fs')
+  shifted-instr d mov-to-output                          t₁ t₂ fs fs' _  _  sh = shifted-straight d mov-to-output fs fs' sh
+  shifted-instr d mov-to-input                           t₁ t₂ fs fs' _  _  sh = shifted-straight d mov-to-input fs fs' sh
+  shifted-instr d load-indirect                          t₁ t₂ fs fs' _  _  sh = shifted-straight d load-indirect fs fs' sh
+  shifted-instr d load-indirect-suc                      t₁ t₂ fs fs' _  _  sh = shifted-straight d load-indirect-suc fs fs' sh
+  shifted-instr d (load-from-slot k)                     t₁ t₂ fs fs' _  _  sh = shifted-straight d (load-from-slot k) fs fs' sh
+  shifted-instr d (store-at-slot k)                      t₁ t₂ fs fs' _  _  sh = shifted-straight d (store-at-slot k) fs fs' sh
+  shifted-instr d store-indirect                         t₁ t₂ fs fs' _  _  sh = shifted-straight d store-indirect fs fs' sh
+  shifted-instr d store-indirect-suc                     t₁ t₂ fs fs' _  _  sh = shifted-straight d store-indirect-suc fs fs' sh
+  shifted-instr d (lea-slot k)                           t₁ t₂ fs fs' _  _  sh = shifted-straight d (lea-slot k) fs fs' sh
+  shifted-instr d (restore-input k)                      t₁ t₂ fs fs' _  _  sh = shifted-straight d (restore-input k) fs fs' sh
+  shifted-instr d (lea-indexed k)                        t₁ t₂ fs fs' _  _  sh = shifted-straight d (lea-indexed k) fs fs' sh
+  shifted-instr d (instr-reclaim-to k)                   t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-reclaim-to k) fs fs' sh
+  shifted-instr d (worklist-init k)                      t₁ t₂ fs fs' _  _  sh = shifted-straight d (worklist-init k) fs fs' sh
+  shifted-instr d (worklist-push k)                      t₁ t₂ fs fs' _  _  sh = shifted-straight d (worklist-push k) fs fs' sh
+  shifted-instr d (worklist-pop k)                       t₁ t₂ fs fs' _  _  sh = shifted-straight d (worklist-pop k) fs fs' sh
+  shifted-instr d (worklist-check k)                     t₁ t₂ fs fs' _  _  sh = shifted-straight d (worklist-check k) fs fs' sh
+  shifted-instr d (instr-sigop k)                        t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-sigop k) fs fs' sh
+  shifted-instr d (instr-load-const k j)                 t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-load-const k j) fs fs' sh
+  shifted-instr d (instr-load-code-addr k)               t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-load-code-addr k) fs fs' sh
+  shifted-instr d instr-save-closure-reg                 t₁ t₂ fs fs' _  _  sh = shifted-save-closure d fs fs' sh
+  shifted-instr d (instr-load-tag-lit k)                 t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-load-tag-lit k) fs fs' sh
+  shifted-instr d (instr-case-on-tag k j)                t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-case-on-tag k j) fs fs' sh
+  shifted-instr d (instr-loop k)                         t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-loop k) fs fs' sh
+  shifted-instr d (instr-alloc-heap k)                   t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-alloc-heap k) fs fs' sh
+  shifted-instr d (instr-reg-op k)                       t₁ t₂ fs fs' _  _  sh = shifted-straight d (instr-reg-op k) fs fs' sh
+  shifted-instr d (instr-ctrl (c-label _))               t₁ t₂ fs fs' _  _  sh = shifted-label d fs fs' sh
+  shifted-instr d (instr-ctrl (c-thunk _ b))             t₁ t₂ fs fs' _  _  sh = shifted-thunk d b fs fs' sh
+  shifted-instr d (instr-ctrl (c-ret _))                 t₁ t₂ fs fs' _  _  sh = shifted-ret d fs fs' sh
+  shifted-instr d (instr-ctrl (c-jmp t))                 t₁ t₂ fs fs' fl _  sh =
+    shifted-jump d (find-label (t₁ ++ t₂) t) (find-label t₂ t) fs fs' sh (fl t)
+  shifted-instr d (instr-ctrl (c-branch-scratch-zero t)) t₁ t₂ fs fs' fl _ sh@(lo , _) =
+    shifted-branch d _ _ (find-label (t₁ ++ t₂) t) (find-label t₂ t) fs fs' sh
+      (cong (λ L → sv-is-zero (readReg (regs L) Scratch)) lo) (fl t)
+  shifted-instr d (instr-ctrl (c-branch-tag-zero t))     t₁ t₂ fs fs' fl _ sh@(lo , _) =
+    shifted-branch d _ _ (find-label (t₁ ++ t₂) t) (find-label t₂ t) fs fs' sh
+      (cong (λ L → tag-zf (flat-read-tag L)) lo) (fl t)
+  shifted-instr d (instr-alloc-stack k)                  t₁ t₂ fs fs' _  _  sh = shifted-frame d (instr-alloc-stack k) (enter-frame k) fs fs' sh
+  shifted-instr d (instr-dealloc-stack k)                t₁ t₂ fs fs' _  _  sh = shifted-frame d (instr-dealloc-stack k) leave-frame fs fs' sh
+  shifted-instr d (instr-push-frame k)                   t₁ t₂ fs fs' _  _  sh = shifted-frame d (instr-push-frame k) (enter-frame (suc k)) fs fs' sh
+  shifted-instr d instr-pop-frame                        t₁ t₂ fs fs' _  _  sh = shifted-frame d instr-pop-frame leave-frame fs fs' sh
+  shifted-instr d instr-call-closure                     t₁ t₂ fs fs' _  ft sh =
+    shifted-call-closure d t₁ t₂ fs fs' ft sh
+
 
   flat-exec-instr-prog-irrelevant :
     ∀ (i : AbstractInstr) (t t' : AbstractTrace) (fs : FlatState)
@@ -1138,6 +1258,56 @@ module FlatMachine {FS : FrameSemantics} where
 
   fetch-dispatch nothing  _ _    fs = record fs { floc = record (floc fs) { halted = true } }
   fetch-dispatch (just i) n prog fs = exec-flat n prog (flat-exec-instr i prog fs)
+
+  ------------------------------------------------------------------------
+  -- THE FUEL INDUCTION. Running `t₂` inside `t₁ ++ t₂` simulates running it
+  -- alone, at shift `d = length t₁`.
+  --
+  -- With-free, mirroring `exec-flat`'s own three-level dispatch
+  -- (`step-dispatch` on `halted`, `fetch-dispatch` on the fetched
+  -- instruction). The two sides agree on both decisions: `halted` because the
+  -- relation equates `floc`, and the fetched instruction because
+  -- `fetch-++-right` says the composite fetches exactly what the suffix does
+  -- at the shifted pc — which is why ONE instruction `i` serves both sides.
+  ------------------------------------------------------------------------
+  exec-flat-reloc :
+    ∀ (fu : ℕ) (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
+    → (∀ tg → find-label (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-label t₂ tg))
+    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-thunk t₂ tg))
+    → Shifted (length t₁) fs fs'
+    → Shifted (length t₁) (exec-flat fu (t₁ ++ t₂) fs) (exec-flat fu t₂ fs')
+  reloc-step :
+    ∀ (b : Bool) (fu : ℕ) (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
+    → (∀ tg → find-label (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-label t₂ tg))
+    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-thunk t₂ tg))
+    → Shifted (length t₁) fs fs'
+    → Shifted (length t₁) (step-dispatch b fu (t₁ ++ t₂) fs) (step-dispatch b fu t₂ fs')
+  reloc-fetch :
+    ∀ (mi : Maybe AbstractInstr) (fu : ℕ) (t₁ t₂ : AbstractTrace) (fs fs' : FlatState)
+    → (∀ tg → find-label (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-label t₂ tg))
+    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ mmap (length t₁ +_) (find-thunk t₂ tg))
+    → Shifted (length t₁) fs fs'
+    → Shifted (length t₁) (fetch-dispatch mi fu (t₁ ++ t₂) fs) (fetch-dispatch mi fu t₂ fs')
+
+  exec-flat-reloc zero     t₁ t₂ fs fs' _  _  sh = sh
+  exec-flat-reloc (suc fu) t₁ t₂ fs fs' fl ft sh@(lo , _) =
+    subst (λ b → Shifted (length t₁)
+                   (step-dispatch (halted (floc fs)) fu (t₁ ++ t₂) fs)
+                   (step-dispatch b fu t₂ fs'))
+          (cong halted lo)
+          (reloc-step (halted (floc fs)) fu t₁ t₂ fs fs' fl ft sh)
+
+  reloc-step true  fu t₁ t₂ fs fs' _  _  sh = sh
+  reloc-step false fu t₁ t₂ fs fs' fl ft sh@(_ , _ , pc , _) =
+    subst (λ mi → Shifted (length t₁)
+                    (fetch-dispatch (fetch (t₁ ++ t₂) (fpc fs)) fu (t₁ ++ t₂) fs)
+                    (fetch-dispatch mi fu t₂ fs'))
+          (trans (cong (fetch (t₁ ++ t₂)) pc) (fetch-++-right t₁ t₂ (fpc fs')))
+          (reloc-fetch (fetch (t₁ ++ t₂) (fpc fs)) fu t₁ t₂ fs fs' fl ft sh)
+
+  reloc-fetch nothing  fu t₁ t₂ fs fs' _  _  sh = shifted-halt (length t₁) fs fs' sh
+  reloc-fetch (just i) fu t₁ t₂ fs fs' fl ft sh =
+    exec-flat-reloc fu t₁ t₂ _ _ fl ft (shifted-instr (length t₁) i t₁ t₂ fs fs' fl ft sh)
 
   ----------------------------------------------------------------------
   -- Plan 0.32 M3 Phase D: with-FREE reduction API over OPAQUE states.
