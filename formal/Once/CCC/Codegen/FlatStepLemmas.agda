@@ -269,6 +269,56 @@ module FlatStepsAPI {FS : FrameSemantics} where
   ...     | reified N r fs' ch st fsp =
               reified (suc N) r fs' ((heq , feq) ∷ ch) st (cong suc fsp)
 
+  ----------------------------------------------------------------------
+  -- D155: RELOCATING A CHAIN. `comp-value-realized` splices `f`'s trace and
+  -- `g`'s trace into one program, and what it has of each is a `FlatSteps`
+  -- chain — so relocation is needed AT CHAIN LEVEL, not only at `exec-flat`
+  -- level. Both halves are one induction over the chain.
+  --
+  -- THE SIDE CONDITION IS PER-INSTRUCTION, and that is not a stylistic choice.
+  -- `exec-flat-reloc` takes it as `∀ tg → find-label (t₁ ++ t₂) tg ≡ mmap
+  -- (length t₁ +_) (find-label t₂ tg)`, and that universal is UNSATISFIABLE as
+  -- soon as `t₁` defines a label of its own: at such a `tg` the left side finds
+  -- it in `t₁` while the right side is `nothing`. Restricting to the labels the
+  -- relocated fragment actually TARGETS is what makes the hypothesis meetable,
+  -- and the weakest form of that is agreement of the STEP EFFECT at each
+  -- instruction the chain fetches — which is also exactly what the induction
+  -- consumes. `Flat.flat-exec-instr-prefix` and `shifted-eq ∘ shifted-instr`
+  -- discharge it, per instruction, where the caller knows the target.
+  --
+  -- PREFIX: the fragment sits at the front and keeps its pc coordinates.
+  ----------------------------------------------------------------------
+  FlatSteps-prefix : ∀ (t₁ t₂ : AbstractTrace) {k : ℕ} {fs fs' : FlatState}
+    → (∀ (i : AbstractInstr) (pc : ℕ) → fetch t₁ pc ≡ just i
+        → ∀ (st : FlatState) → flat-exec-instr i (t₁ ++ t₂) st ≡ flat-exec-instr i t₁ st)
+    → FlatSteps t₁ k fs fs' → FlatSteps (t₁ ++ t₂) k fs fs'
+  FlatSteps-prefix t₁ t₂ ag []       = []
+  FlatSteps-prefix t₁ t₂ ag (_∷_ {fs = fs} {i = i} (h , f) rest) =
+    (h , fetch-++-left t₁ t₂ (fpc fs) i f) ∷
+      subst (λ st → FlatSteps (t₁ ++ t₂) _ st _)
+            (sym (ag i (fpc fs) f fs))
+            (FlatSteps-prefix t₁ t₂ ag rest)
+
+  ----------------------------------------------------------------------
+  -- SUFFIX: the fragment sits after `t₁`, so every state it passes through is
+  -- the `shift (length t₁)` of the state it would be in alone. `shift` is a
+  -- FUNCTION rather than `Shifted` because a chain link names its result state
+  -- syntactically, so only an equation can be threaded through one.
+  ----------------------------------------------------------------------
+  FlatSteps-reloc : ∀ (t₁ t₂ : AbstractTrace) {k : ℕ} {fs fs' : FlatState}
+    → (∀ (i : AbstractInstr) (pc : ℕ) → fetch t₂ pc ≡ just i
+        → ∀ (st : FlatState)
+        → flat-exec-instr i (t₁ ++ t₂) (shift (length t₁) st)
+          ≡ shift (length t₁) (flat-exec-instr i t₂ st))
+    → FlatSteps t₂ k fs fs'
+    → FlatSteps (t₁ ++ t₂) k (shift (length t₁) fs) (shift (length t₁) fs')
+  FlatSteps-reloc t₁ t₂ ag []       = []
+  FlatSteps-reloc t₁ t₂ ag (_∷_ {fs = fs} {i = i} (h , f) rest) =
+    (h , trans (fetch-++-right t₁ t₂ (fpc fs)) f) ∷
+      subst (λ st → FlatSteps (t₁ ++ t₂) _ st _)
+            (sym (ag i (fpc fs) f fs))
+            (FlatSteps-reloc t₁ t₂ ag rest)
+
   FlatSteps-++ : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
                → FlatSteps prog k₁ fs₁ fs₂ → FlatSteps prog k₂ fs₂ fs₃
                → FlatSteps prog (k₁ + k₂) fs₁ fs₃

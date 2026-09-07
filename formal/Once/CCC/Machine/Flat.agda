@@ -1169,6 +1169,110 @@ module FlatMachine {FS : FrameSemantics} where
   flat-exec-instr-prog-irrelevant (instr-ctrl (c-branch-tag-zero _))     t t' fs ()
   flat-exec-instr-prog-irrelevant instr-call-closure                     t t' fs ()
 
+  ------------------------------------------------------------------------
+  -- D155: RELOCATION, THE PREFIX HALF.
+  --
+  -- `g ∘ f` runs `f` at the FRONT of the composite trace, so `f`'s steps keep
+  -- their pc coordinates: there is no shift, and the claim is a plain EQUATION
+  -- rather than a simulation. What it does need is the mirror of the suffix's
+  -- side condition — a label the prefix resolves must resolve the same way in
+  -- the whole program — stated as AGREEMENT of the two scans, which is the
+  -- form a caller can actually produce (`LabelScope`'s window lemmas).
+  ------------------------------------------------------------------------
+  do-call-code-prefix : ∀ (t₁ t₂ : AbstractTrace) (mv : Maybe (StoredValue FS))
+                          (fs : FlatState)
+    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ find-thunk t₁ tg)
+    → do-call-code (t₁ ++ t₂) mv fs ≡ do-call-code t₁ mv fs
+  do-call-code-prefix t₁ t₂ (just (SV-Code ℓ))  fs ft = cong (λ mj → do-call-at mj fs) (ft ℓ)
+  do-call-code-prefix t₁ t₂ (just (SV-Tag _))   fs _  = refl
+  do-call-code-prefix t₁ t₂ (just (SV-Lit _ _)) fs _  = refl
+  do-call-code-prefix t₁ t₂ (just (SV-Ptr _))   fs _  = refl
+  do-call-code-prefix t₁ t₂ nothing             fs _  = refl
+
+  do-call-sv-prefix : ∀ (t₁ t₂ : AbstractTrace) (sv : StoredValue FS) (fs : FlatState)
+    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ find-thunk t₁ tg)
+    → do-call-sv (t₁ ++ t₂) sv fs ≡ do-call-sv t₁ sv fs
+  do-call-sv-prefix t₁ t₂ (SV-Ptr (AtDynamic hl)) fs ft =
+    do-call-code-prefix t₁ t₂ (heapMem (floc fs) (sucHL hl)) fs ft
+  do-call-sv-prefix t₁ t₂ (SV-Ptr (AtStack _ _))  fs _  = refl
+  do-call-sv-prefix t₁ t₂ (SV-Tag _)              fs _  = refl
+  do-call-sv-prefix t₁ t₂ (SV-Lit _ _)            fs _  = refl
+  do-call-sv-prefix t₁ t₂ (SV-Code _)             fs _  = refl
+
+  do-call-prefix : ∀ (t₁ t₂ : AbstractTrace) (fs : FlatState)
+    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ find-thunk t₁ tg)
+    → do-call (t₁ ++ t₂) fs ≡ do-call t₁ fs
+  do-call-prefix t₁ t₂ fs ft = do-call-sv-prefix t₁ t₂ (fclosure fs) fs ft
+
+  -- Enumerated, like every other dispatch in this module: `flat-exec-instr`'s
+  -- catch-all does not reduce on a variable instruction, and `ProgFree` is a
+  -- catch-all too, so there is no way to route the easy 32 through one clause.
+  flat-exec-instr-prefix :
+    ∀ (i : AbstractInstr) (t₁ t₂ : AbstractTrace) (fs : FlatState)
+    → (∀ tg → find-label (t₁ ++ t₂) tg ≡ find-label t₁ tg)
+    → (∀ tg → find-thunk (t₁ ++ t₂) tg ≡ find-thunk t₁ tg)
+    → flat-exec-instr i (t₁ ++ t₂) fs ≡ flat-exec-instr i t₁ fs
+  flat-exec-instr-prefix mov-to-output              t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix mov-to-input               t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix load-indirect              t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix load-indirect-suc          t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (load-from-slot _)         t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (store-at-slot _)          t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix store-indirect             t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix store-indirect-suc         t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (lea-slot _)               t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (restore-input _)          t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (lea-indexed _)            t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-alloc-stack _)      t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-dealloc-stack _)    t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-reclaim-to _)       t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-push-frame _)       t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix instr-pop-frame            t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (worklist-init _)          t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (worklist-push _)          t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (worklist-pop _)           t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (worklist-check _)         t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-sigop _)            t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-load-const _ _)     t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-load-code-addr _)   t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix instr-save-closure-reg     t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-load-tag-lit _)     t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-case-on-tag _ _)    t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-loop _)             t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-alloc-heap _)       t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-reg-op _)           t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-ctrl (c-label _))   t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-ctrl (c-thunk _ _)) t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-ctrl (c-ret _))     t₁ t₂ fs _  _  = refl
+  flat-exec-instr-prefix (instr-ctrl (c-jmp m))                 t₁ t₂ fs fl _  =
+    cong (λ mj → do-jump mj fs) (fl m)
+  flat-exec-instr-prefix (instr-ctrl (c-branch-scratch-zero m)) t₁ t₂ fs fl _  =
+    cong (λ mj → do-branch-at (sv-is-zero (readReg (regs (floc fs)) Scratch)) mj fs) (fl m)
+  flat-exec-instr-prefix (instr-ctrl (c-branch-tag-zero m))     t₁ t₂ fs fl _  =
+    cong (λ mj → do-branch-at (tag-zf (flat-read-tag (floc fs))) mj fs) (fl m)
+  flat-exec-instr-prefix instr-call-closure                     t₁ t₂ fs _  ft =
+    do-call-prefix t₁ t₂ fs ft
+
+  ------------------------------------------------------------------------
+  -- `Shifted` IS AN EQUATION (D155). The relation names one equation per
+  -- `FlatState` field and the record has exactly those fields, so by eta it
+  -- says the left state IS the right one relocated. Naming the relocation as a
+  -- FUNCTION is what lets a `FlatSteps` chain be relocated at all: a chain
+  -- link's result state is `flat-exec-instr i prog fs` SYNTACTICALLY, so a
+  -- relation between states cannot be threaded through one — an equation can.
+  ------------------------------------------------------------------------
+  shift : ℕ → FlatState → FlatState
+  shift d fs = record fs { fpc   = d + fpc fs
+                         ; fret  = map (d +_) (fret fs)
+                         ; flink = mmap (d +_) (flink fs) }
+
+  shifted-shift : ∀ (d : ℕ) (fs : FlatState) → Shifted d (shift d fs) fs
+  shifted-shift d fs = refl , refl , refl , refl , refl , refl
+
+  shifted-eq : ∀ (d : ℕ) (fs fs' : FlatState) → Shifted d fs fs' → fs ≡ shift d fs'
+  shifted-eq d (mkFlatFull _ _ _ _ _ _) (mkFlatFull _ _ _ _ _ _)
+             (refl , refl , refl , refl , refl , refl) = refl
+
   ----------------------------------------------------------------------
   -- WHERE THE LINK MOVES, and it is exactly two instructions (plan 0.65 G2,
   -- 2026-08-16). The CALL sets it and the body ENTRY clears it; every other
