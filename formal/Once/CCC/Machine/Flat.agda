@@ -28,7 +28,7 @@ open import Data.Nat.Properties using (+-identityʳ; +-suc)
 open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; length; _++_)
+open import Data.List using (List; []; _∷_; length; _++_; map)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
@@ -850,6 +850,28 @@ module FlatMachine {FS : FrameSemantics} where
   -- Enumerated because `flat-exec-instr`'s catch-all does not reduce on a
   -- variable instruction — the recurring cost this module already documents.
   ------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- RELOCATION IS A SIMULATION, not an equation (plan 0.88 A).
+  --
+  -- Running `t₂` inside `t₁ ++ t₂` is NOT `shift (running t₂ alone)` as a
+  -- plain equality, because `do-ret (pc' ∷ rest) fs` sets `fpc := pc'` from
+  -- the RETURN-PC STACK. Those saved pcs are in the surrounding trace's
+  -- coordinates, so the shift has to be carried by `fret` as well as by
+  -- `fpc` — i.e. the induction preserves a RELATION, and the relation is the
+  -- artifact, not the equation. (This is almost certainly why the deleted
+  -- `CataAtRelocate` was a module rather than a lemma.)
+  --
+  -- `floc`/`falloc` are shared outright: no instruction's effect on memory,
+  -- registers or the allocator depends on where in a trace it sits.
+  ------------------------------------------------------------------------
+  Shifted : ℕ → FlatState → FlatState → Set
+  Shifted d fs fs' =
+      (floc fs ≡ floc fs')
+    × (falloc fs ≡ falloc fs')
+    × (fpc fs ≡ d + fpc fs')
+    × (fret fs ≡ map (d +_) (fret fs'))
+    × (flink fs ≡ flink fs')
+
   ProgFree : AbstractInstr → Set
   ProgFree (instr-ctrl (c-jmp _))                 = ⊥
   ProgFree (instr-ctrl (c-branch-scratch-zero _)) = ⊥
@@ -857,6 +879,20 @@ module FlatMachine {FS : FrameSemantics} where
   ProgFree instr-call-closure                     = ⊥
   {-# CATCHALL #-}
   ProgFree _                                      = ⊤
+
+  -- A STRAIGHT step preserves the relation, unconditionally. `flat-step-
+  -- straight` reads only `floc`/`falloc` (which the relation equates), bumps
+  -- `fpc` by one on both sides, and leaves `fret`/`flink` alone — so the shift
+  -- `d` is untouched. This is the bulk of the induction; what remains is the
+  -- control instructions, and they are exactly the ones with a side condition:
+  -- `c-jmp`/branches need label agreement (`ft-go-++-miss`), `c-ret` needs the
+  -- `fret` component of the relation that motivated it.
+  shifted-straight : ∀ (d : ℕ) (i : AbstractInstr) (fs fs' : FlatState)
+                   → Shifted d fs fs'
+                   → Shifted d (flat-step-straight i fs) (flat-step-straight i fs')
+  shifted-straight d i fs fs' (lo , al , pc , rt , lk)
+    rewrite lo | al =
+      refl , refl , trans (cong suc pc) (sym (+-suc d (fpc fs'))) , rt , lk
 
   flat-exec-instr-prog-irrelevant :
     ∀ (i : AbstractInstr) (t t' : AbstractTrace) (fs : FlatState)
