@@ -11593,6 +11593,13 @@ apex adapter consumes only `traces-agree`).
 
 ## D156
 
+**SUPERSEDED IN PART BY D157** — read them together. The assembly below is
+real and is checked, but the two residual facts it reduces to are called
+label-scope facts here, and only the JUMP half of them is. The CALL half is
+refutable; D157 has the counterexample and the reason. So `comp-value-realized`
+is a proof FROM those two agreements (`comp-value-realized-of`), not
+outright, and it remains an axiom at the point of use.
+
 **`comp-value-realized` is a proof.** It was one of the two axioms `comp-step`
 split into (D152 A1). With D155's interface — the frontier premise weakened to
 `≤`, and `value-realized` a step chain to a named settle state rather than a
@@ -11637,3 +11644,51 @@ actually fetches — which is the weakest form, is what the induction consumes,
 and is meetable because the caller knows which label each fetched instruction
 targets. Same lesson as the restricted-step-lemma one: a side condition stated
 over more than the proof needs is where a false assumption hides.
+
+
+## D157
+
+**The two splice agreements are REFUTABLE, and the counterexample is
+`curry`/`apply`.** D156 landed `comp-value-realized` as a proof from two
+statements — `f`'s instructions have the same effect inside the composite as
+alone, and `g`'s do too under the shift — and called them label-scope facts.
+Only half of that is right.
+
+A JUMP's target is syntactic. `c-jmp m` names `m`, `LabelScope` bounds the
+labels a fragment mentions to its own window, `label-mono` makes the windows
+disjoint, and the agreement follows. That half is a scope fact.
+
+A CALL's target is not. `flat-exec-instr instr-call-closure prog fs =
+do-call prog fs`, which reads the closure register, follows it into the heap,
+and scans THE WHOLE PROGRAM for whatever label it finds there. Nothing in the
+instruction names that label, so no property of the emitted text can bound it.
+Concretely: `ir-to-trace' n l (curry body m)` puts `c-thunk (ℓ o this-label)`
+INLINE in its own trace, and `ir-to-trace' n l apply` ends in
+`instr-call-closure`. For `f = curry body m`, `g = apply`, at a state whose
+closure resolves to `f`'s thunk label, the composite ENTERS `f`'s body while
+`g` alone HALTS — `find-thunk gt _ ≡ nothing`. The two sides differ in
+`halted`, so the universally-quantified agreement is false, and a postulate of
+it would have been inconsistent.
+
+**What this actually is: the fragment-vs-program gap.** `MachineRefinesObsF`
+is stated over `emitted n l ir` — the fragment's OWN trace. A call that leaves
+the fragment cannot be described there at all, and `apply` is exactly such a
+call. This is the same family of error as D152 (a witness stated at frontier 0
+while the emitter emits at `n`) and D155 (a fuel where a hand-over was needed):
+the correctness statement must be indexed by what the machine actually reads,
+and `do-call` reads the whole program. It also explains, without any new
+argument, why `obs-correct-apply` and `obs-correct-curry` are still axioms.
+
+**So the assembly stays, as a lemma with the agreements as ARGUMENTS.**
+`comp-value-realized-of` is checked and its content is real — the three-piece
+splice, the hand-over, the transport of every field. `comp-value-realized`
+returns to being the axiom, and the lemma records in checkable form exactly
+what that axiom reduces to: two agreements, one of which is a scope argument
+and one of which needs the interface to see the program.
+
+**Method note.** The refutation came from re-reading the postulate I had just
+written and asking what its universally-quantified `st` ranges over. A residual
+whose hypothesis quantifies over states with no constraint linking them to the
+run is the shape that hides an inconsistency — the same tell as the
+"state-premise / program-conclusion" residuals. Write the axiom, then try to
+break it BEFORE building on it.

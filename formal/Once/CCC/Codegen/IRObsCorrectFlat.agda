@@ -1201,34 +1201,17 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- `flat-run-keeps-next-slot` (the run does not move it) and
     -- `frontier-mono f n l` (`n ≤ n1`). With the old equational premise the
     -- same step was unsatisfiable — see D154/D155.
-    -- ── THE TWO LABEL-SCOPE FACTS the splice rests on (D155). Both are
-    -- statements about the EMITTER, not about the machine: a fragment's own
-    -- jumps and calls must resolve the same way inside the composite as they
-    -- do alone. They are stated per-instruction because the universal form
-    -- over all labels is unsatisfiable (see `FlatSteps-prefix`'s note), and
-    -- they are exactly what `LabelScope`'s window lemmas are about — the
-    -- fragments' label ranges `[l , l1)` and `[l1 , l2)` are disjoint by
-    -- `label-mono`. Named separately so the assembly below is a PROOF and the
-    -- residue is a scope argument rather than a machine axiom.
-    comp-prefix-agree :
-      ∀ {A B C} (g : IR B C) (f : IR A B) (n l : ℕ)
-      → ∀ (i : AbstractInstr) (pc : ℕ) → fetch (emitted n l f) pc ≡ just i
-      → ∀ (st : FlatState)
-      → flat-exec-instr i (emitted n l (g ∘ f)) st
-        ≡ flat-exec-instr i (emitted n l f) st
-    comp-suffix-agree :
-      ∀ {A B C} (g : IR B C) (f : IR A B) (n l : ℕ)
-      → ∀ (i : AbstractInstr) (pc : ℕ)
-      → fetch (emitted (proj₁ (ir-to-trace' n l f))
-                       (proj₁ (proj₂ (ir-to-trace' n l f))) g) pc ≡ just i
-      → ∀ (st : FlatState)
-      → flat-exec-instr i ((emitted n l f ++ mov-to-input ∷ []) ++
-                           emitted (proj₁ (ir-to-trace' n l f))
-                                   (proj₁ (proj₂ (ir-to-trace' n l f))) g)
-                          (shift (length (emitted n l f ++ mov-to-input ∷ [])) st)
-        ≡ shift (length (emitted n l f ++ mov-to-input ∷ []))
-                (flat-exec-instr i (emitted (proj₁ (ir-to-trace' n l f))
-                                            (proj₁ (proj₂ (ir-to-trace' n l f))) g) st)
+    -- D157: the ASSEMBLY of this is below and it IS a proof —
+    -- `comp-value-realized-of` derives it from two SPLICE AGREEMENTS. It stays
+    -- an axiom HERE because the call case of those agreements is REFUTABLE for
+    -- a fragment-indexed interface; see D157 and the note on
+    -- `comp-value-realized-of`.
+    comp-value-realized :
+      ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl} (n l : ℕ)
+      → ir-size g < program-bound
+      → next-slot alloc ≤ n
+      → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc cl
+      → ValueRealized n l (g ∘ f) x s alloc cl
 
   -- D155: the hand-over state, as a RECORD EQUATION. `Shifted`-turned-function
   -- (`shift`) means a state that sits at pc `d` with nothing pending IS the
@@ -1241,8 +1224,25 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     cong (λ m → mkFlatFull lo al m [] cls nothing) (sym (+-identityʳ pc))
 
   -- ══════════════════════════════════════════════════════════════════════
-  -- D155: `comp-value-realized`, ASSEMBLED. It was an axiom; it is now a
-  -- proof, modulo the two label-scope facts above.
+  -- D155/D157: `comp-value-realized`, ASSEMBLED — a PROOF from two SPLICE
+  -- AGREEMENTS, taken as ARGUMENTS rather than assumed.
+  --
+  -- WHY THEY ARE ARGUMENTS AND NOT POSTULATES (D157). Stated for every state,
+  -- both are REFUTABLE, and at exactly one instruction: `instr-call-closure`.
+  -- A jump's target is SYNTACTIC, so its agreement is a label-scope fact and
+  -- `LabelScope`'s windows settle it. A CALL's target is a RUNTIME value — the
+  -- code pointer the closure register reaches — so `do-call` scans the whole
+  -- program for a label the instruction does not name. Take `f = curry body m`
+  -- and `g = apply`: `f`'s trace carries `c-thunk (ℓ o this-label)` INLINE and
+  -- `g`'s trace ends in `instr-call-closure`, so at a state whose closure
+  -- resolves to that label the composite ENTERS `f`'s body while `g` alone
+  -- HALTS (`find-thunk gt _ ≡ nothing`). The two sides differ in `halted`.
+  --
+  -- That is not a gap in this proof; it is the fragment-vs-program gap. A
+  -- witness stated over `emitted n l ir` — the fragment's OWN trace — cannot
+  -- describe a call that leaves the fragment, and `apply` is exactly such a
+  -- call. So the residue stays as the `comp-value-realized` axiom above, and
+  -- this lemma records, in checkable form, what that axiom reduces to.
   --
   -- The composite emits `ft ++ mov-to-input ∷ gt`, so the run is three pieces:
   -- `f`'s chain relocated as a PREFIX (same pc coordinates), the bridging
@@ -1251,13 +1251,31 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- `shift` touches only the three control components and `ResultPlace`
   -- mentions the run only through `floc`/`falloc`.
   -- ══════════════════════════════════════════════════════════════════════
-  comp-value-realized :
+  comp-value-realized-of :
     ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl} (n l : ℕ)
     → ir-size g < program-bound
     → next-slot alloc ≤ n
+    -- SPLICE AGREEMENT, prefix half: `f`'s own instructions have the same
+    -- effect inside the composite as they do alone.
+    → (∀ (i : AbstractInstr) (pc : ℕ) → fetch (emitted n l f) pc ≡ just i
+       → ∀ (st : FlatState)
+       → flat-exec-instr i (emitted n l (g ∘ f)) st
+         ≡ flat-exec-instr i (emitted n l f) st)
+    -- …and the suffix half, under the shift.
+    → (∀ (i : AbstractInstr) (pc : ℕ)
+       → fetch (emitted (proj₁ (ir-to-trace' n l f))
+                        (proj₁ (proj₂ (ir-to-trace' n l f))) g) pc ≡ just i
+       → ∀ (st : FlatState)
+       → flat-exec-instr i ((emitted n l f ++ mov-to-input ∷ []) ++
+                            emitted (proj₁ (ir-to-trace' n l f))
+                                    (proj₁ (proj₂ (ir-to-trace' n l f))) g)
+                           (shift (length (emitted n l f ++ mov-to-input ∷ [])) st)
+         ≡ shift (length (emitted n l f ++ mov-to-input ∷ []))
+                 (flat-exec-instr i (emitted (proj₁ (ir-to-trace' n l f))
+                                             (proj₁ (proj₂ (ir-to-trace' n l f))) g) st))
     → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc cl
     → ValueRealized n l (g ∘ f) x s alloc cl
-  comp-value-realized {g = g} {f} {x} {s} {alloc} {cl} n l szg ns ihg mf =
+  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} n l szg ns pre-ag suf-ag ihg mf =
     go (MachineRefinesObsF.value-realized mf)
     where
       module VR = ValueRealized
@@ -1323,7 +1341,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
 
           chainF' : FlatSteps prog kf (entry-flat s alloc cl) fsF
           chainF' = FlatSteps-prefix ft (mov-to-input ∷ gt)
-                      (comp-prefix-agree g f n l) chainF
+                      pre-ag chainF
 
           movFetch : fetch prog (fpc fsF) ≡ just mov-to-input
           movFetch = trans (cong (fetch prog) (trans endF (sym (+-identityʳ (length ft)))))
@@ -1341,7 +1359,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           chainG : FlatSteps prog (VR.steps vg) fsM (shift d (VR.settle vg))
           chainG = subst₂ (λ pr st → FlatSteps pr (VR.steps vg) st (shift d (VR.settle vg)))
                           (sym split) (sym handover)
-                          (FlatSteps-reloc t₁ gt (comp-suffix-agree g f n l) (VR.run vg))
+                          (FlatSteps-reloc t₁ gt suf-ag (VR.run vg))
 
           chain : FlatSteps prog (kf + suc (VR.steps vg)) (entry-flat s alloc cl)
                             (shift d (VR.settle vg))
