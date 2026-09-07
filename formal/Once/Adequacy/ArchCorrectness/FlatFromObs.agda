@@ -195,10 +195,15 @@ entry-nh = refl
 -- instance this consumer ever needs -- which is exactly why the obligation
 -- could be (wrongly) stated at frontier 0 and still satisfy its consumer,
 -- while being unusable for the induction underneath it.
+-- D155: the entry closure register is the tag filler, and
+-- `entry-flat s alloc (SV-Tag 0)` IS `mkFlat s alloc 0` — so every consumer
+-- below (which names the entry state as `mkFlat …`) is untouched by the
+-- interface gaining that component.
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
               → MachineRefinesObsF 0 0 ir tt entry-s (entry-alloc (ir-stack-budget ir))
+                  (SV-Tag 0)
 entry-witness ir ioc =
-  ioc (entry-size ir) 0 0 Stack tt entry-s (entry-alloc (ir-stack-budget ir))
+  ioc (entry-size ir) 0 0 Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
       (entry-ns (ir-stack-budget ir)) entry-nh
       -- D153: ONE residence premise. `main : IR Unit Unit`, so its input has
       -- no residence at all and `in-unit` discharges it outright — the
