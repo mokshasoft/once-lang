@@ -30,7 +30,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.IHCallAgree where
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; El; Id; var; vz; vs; fst; snd; app; ⌜Nat⌝ )
 open import DirectedHoTT.Lib.Wk using ( w )

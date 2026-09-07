@@ -26,7 +26,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.LookupGen where
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; var; vz; vs; pair; fst; snd; nsuc; El; IMu; Nat
         ; ⌜Nat⌝; ⌜Id⌝; ⌜IMu⌝; jsub; ICon; IDesc; iι; iρ; iκ; εwkTy )

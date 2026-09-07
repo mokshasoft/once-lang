@@ -39,7 +39,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Negative.WkK where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Lib.ICast using ( muFwd )
 open import DirectedHoTT.Spec.Typing

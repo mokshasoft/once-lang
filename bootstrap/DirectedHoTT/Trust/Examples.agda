@@ -77,6 +77,7 @@ import DirectedHoTT.Examples.Overview
 import DirectedHoTT.Examples.PairC
 import DirectedHoTT.Examples.PairIx
 import DirectedHoTT.Examples.PairLib
+import DirectedHoTT.Examples.PreludeAgree
 import DirectedHoTT.Examples.Scoped
 import DirectedHoTT.Examples.ScopedDepth
 import DirectedHoTT.Examples.ScopedSize
@@ -86,3 +87,4 @@ import DirectedHoTT.Examples.Strong
 import DirectedHoTT.Examples.Vec
 import DirectedHoTT.Examples.WkFin
 import DirectedHoTT.Examples.WkTm
+import DirectedHoTT.Prelude

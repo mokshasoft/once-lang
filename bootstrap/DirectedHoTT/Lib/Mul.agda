@@ -14,7 +14,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.Mul where
-open import normalizer.Syntax.Types
+open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; var; vz; nzero; nsuc; natrec; Nat; Sub; subTm

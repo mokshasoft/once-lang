@@ -40,7 +40,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.AmrecInd where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; RTm; El; U; Nat; Hom; Π; var; vz; vs; Var; app; nsuc; nzero; natrec
         ; lam; absurd; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃; ordtr; unit

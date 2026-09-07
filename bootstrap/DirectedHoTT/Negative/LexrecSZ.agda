@@ -20,7 +20,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Negative.LexrecSZ where
-open import normalizer.Syntax.Types
+open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; Ren

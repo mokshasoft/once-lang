@@ -61,7 +61,7 @@ open import DirectedHoTT.Examples.Knot.Sorts using ( sVar; ⊢sVar )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Spec.Typing using ( wk-single )
-open import normalizer.Syntax.Types using ( cong )
+open import DirectedHoTT.Prelude using ( cong )
 
 open import DirectedHoTT.Spec.Syntax using ( Π; app )
 open import DirectedHoTT.Spec.Typing using ( ty-Π; ty-Nat; ⊢app; ⊢nsuc )
@@ -70,7 +70,7 @@ open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Tm-conKv )
 open import DirectedHoTT.Lib.Wk using ( towerA )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subTyAtK; ⊢subTyAtK )
 open import DirectedHoTT.Examples.Knot.Sorts using ( sTy )
-open import normalizer.Syntax.Types using ( sym )
+open import DirectedHoTT.Prelude using ( sym )
 
 ------------------------------------------------------------------------
 -- ★ THE MOTIVE.  The tag rides; the answer sits at the Var's own depth.

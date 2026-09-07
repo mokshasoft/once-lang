@@ -20,7 +20,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.OneApp where
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong )
+open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; El; Id; RTm; app; ⌜Nat⌝
         ; Ren; renTm; renTy; subTm; subTy; extR; nrs )

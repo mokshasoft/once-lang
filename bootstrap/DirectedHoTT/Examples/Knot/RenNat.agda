@@ -32,7 +32,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RenNat where
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂ )
+open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; Sub; subTm; extS; pair; lam; app; var; vz; nsuc; ielim )
 open import DirectedHoTT.Lib.Wk using ( w; sub-w )

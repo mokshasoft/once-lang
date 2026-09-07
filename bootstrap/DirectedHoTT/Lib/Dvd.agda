@@ -33,7 +33,7 @@ module DirectedHoTT.Lib.Dvd where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; RTm; Σ'; Nat; var; vz; pair; fst; snd; subTy; nzero; nsuc
         ; U; El; Id; ⌜Σ⌝; ⌜Id⌝; ⌜Nat⌝ )
-open import normalizer.Syntax.Types using ( _≡_; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Prelude using ( _≡_; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Lib.Strong using ( natAsEl; elAsNat )
 open import DirectedHoTT.Spec.Typing
   using ( ⊢⌜Σ⌝; ⊢⌜Id⌝; ⊢⌜Nat⌝

@@ -29,7 +29,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.SubNat where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans )
+open import DirectedHoTT.Prelude using ( _≡_; refl; cong; cong₂; trans )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; Sub; subTm; extS; pair; lam; app; var; vz; vs; nsuc; ielim
         ; IDesc; jsub; ⌜Id⌝; ⌜Nat⌝; idrefl )

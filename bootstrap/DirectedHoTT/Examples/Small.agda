@@ -25,7 +25,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Small where
-open import normalizer.Syntax.Types using ( _≡_; refl; ⊥ )
+open import DirectedHoTT.Prelude using ( _≡_; refl; ⊥ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; base; U; El; Hom; Unit; Nat
         ; RTm; ⌜Hom⌝; ⌜Nat⌝; ⌜Unit⌝; absurd

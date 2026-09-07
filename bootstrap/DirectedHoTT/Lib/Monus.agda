@@ -14,7 +14,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.Monus where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst; ⊥ )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; subst; ⊥ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; El; Hom; Unit; Nat

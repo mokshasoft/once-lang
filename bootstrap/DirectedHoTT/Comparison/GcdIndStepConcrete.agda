@@ -35,7 +35,7 @@
 module DirectedHoTT.Comparison.GcdIndStepConcrete where
 open import DirectedHoTT.Examples.Gcd.DvdL public
 open import DirectedHoTT.Examples.Gcd.DvdLs public
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTy; RTm; El; Nat; Hom; Π
         ; var; nzero; nsuc; fst; snd; app; natrec; ⌜Nat⌝; Sub; subTm; subTy; extS )

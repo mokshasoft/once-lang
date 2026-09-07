@@ -52,7 +52,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AmrecT where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Lib.Wk using ( cong₄; ren-sub; ren-w; sub-w; w )
 import DirectedHoTT.Lib.Wk as W
 open import DirectedHoTT.Spec.Syntax

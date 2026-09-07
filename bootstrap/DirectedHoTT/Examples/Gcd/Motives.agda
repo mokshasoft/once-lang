@@ -20,7 +20,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.Motives where
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; El; Nat; nzero; nsuc )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢conv; csymᵀ )

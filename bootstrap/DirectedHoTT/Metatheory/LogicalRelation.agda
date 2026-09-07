@@ -39,8 +39,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.LogicalRelation where
-open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; subst; cong; cong₂; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_; ⊤ )
+open import DirectedHoTT.Prelude
+  using ( _≡_; refl; sym; trans; subst; cong; cong₂; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_; ⊤; proj₁; proj₂ )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Typing using ( wk-single ) public
@@ -6023,9 +6023,9 @@ exp₁ (⊩₁Id _) r h =
   ( sn-exp r (projl h) , λ ch → projr h (idpay-peel r ch) )
 exp₁ (⊩₁U _)       r h =
   ( sn-exp r (projl h)
-  , ( bwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (Σ.fst (projr h))
-    , payT-exp r (⟶ᵀ*-El (step (snr→⟶ r) done)) (Σ.fst (projr h))
-               (Σ.snd (projr h)) ) )
+  , ( bwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (proj₁ (projr h))
+    , payT-exp r (⟶ᵀ*-El (step (snr→⟶ r) done)) (proj₁ (projr h))
+               (proj₂ (projr h)) ) )
 exp₁ (⊩₁Π _ ⊩F ⊩G) r h =
   (sn-exp r (projl h) , λ v rv → exp₁ (⊩G v rv) (snr-app r) (projr h v rv))
 exp₁ (⊩₁Σ {G = G} _ ⊩F ⊩G) {t} {t'} r h =
@@ -6058,11 +6058,11 @@ mem-whred₁ (⊩₁Id _) r h =
   ( sn-whred (projl h) r , λ ch → projr h (snr-step r ch) )
 mem-whred₁ (⊩₁U _)     r h =
   ( sn-whred (projl h) r
-  , ( fwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (Σ.fst (projr h))
+  , ( fwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (proj₁ (projr h))
     , payT-irrel (red→≅ᵀ (⟶ᵀ*-El (step (snr→⟶ r) done)))
-                 (Σ.fst (projr h))
-                 (fwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (Σ.fst (projr h)))
-                 (payT-whred r (Σ.fst (projr h)) (Σ.snd (projr h))) ) )
+                 (proj₁ (projr h))
+                 (fwd₀ (⟶ᵀ*-El (step (snr→⟶ r) done)) (proj₁ (projr h)))
+                 (payT-whred r (proj₁ (projr h)) (proj₂ (projr h))) ) )
 mem-whred₁ (⊩₁Π _ ⊩F ⊩G) r h =
   ( sn-whred (projl h) r
   , λ u ru → mem-whred₁ (⊩G u ru) (snr-app r) (projr h u ru) )
@@ -6228,7 +6228,7 @@ sem-pair {G = G} p ⊩F ⊩G {a} {b} sna snb ra rb =
 
 -- ★ the `ty-El` obligation: one projection, level 1 → 0.
 sem-El : {A : RTy Γ} (p : A ⟶ᵀ* U) {c : RTm Γ} → (⊩₁U p) ⊩₁∋ c → ⊩₀ (El c)
-sem-El p h = Σ.fst (projr h)
+sem-El p h = proj₁ (projr h)
 
 sem-⌜base⌝ : {A : RTy Γ} (p : A ⟶ᵀ* U) → (⊩₁U p) ⊩₁∋ ⌜base⌝
 sem-⌜base⌝ p = (sn-cb , (⊩₀base (stepᵀ El-⌜base⌝ doneᵀ) , _))
@@ -6367,9 +6367,9 @@ homSem₁ (⊩₁Mu p _)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-Mu)
 homSem₁ (⊩₁IMu p _)    ha hb = ⊩₁Hom (⟶ᵀ*-Homᵀ p) (sh-Hom sh-IMu)
 homSem₁ (⊩₁U p) {c} {d} hc hd =
   ⊩₁Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-U c d) doneᵀ))
-      (emb (Σ.fst (projr hc)))
+      (emb (proj₁ (projr hc)))
       (λ v r → subst ⊩₁_ (sym (cong El (wk-single d)))
-                     (emb (Σ.fst (projr hd))))
+                     (emb (proj₁ (projr hd))))
 homSem₁ (⊩₁Π {F = F} {G = G} p ⊩F ⊩G) {a} {b} ha hb =
   ⊩₁Π (⟶ᵀ*-trans (⟶ᵀ*-Homᵀ p) (stepᵀ (Hom-Π F G a b) doneᵀ))
       ⊩F

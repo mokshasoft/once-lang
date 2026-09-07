@@ -35,7 +35,7 @@ open import DirectedHoTT.Spec.Typing
         ; csymᵀ; credᵀ; El-⌜IMu⌝; ξ-IMu )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Lib.ArithComm using ( IdN; elIdN )
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 
 -- ★ THE DESCRIPTION AND ITS INDEX TYPE ARE IMPLICIT, and that is the
 --   whole point: one pair of conversions for `KnotD`, `CtxD`, and every

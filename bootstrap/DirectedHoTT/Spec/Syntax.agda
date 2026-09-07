@@ -36,13 +36,13 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Spec.Syntax where
-open import normalizer.Syntax.Types
+open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; cong₂ )
 -- ★ INDUCTIVE-TYPES AXIS: a metalanguage ℕ, used only as a CONSTRUCTOR
 --   TAG.  It is not the object-language `Nat`.
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 
--- ⚠ LOCAL: `normalizer.Syntax.Types` exports `cong₂` but not `cong₃`, and
+-- ⚠ LOCAL: `DirectedHoTT.Prelude` exports `cong₂` but not `cong₃`, and
 --   `Lib/Wk`'s copy is downstream of this module.  Three lines beats an
 --   import cycle.
 cong₃ : {A B C D : Set} (f : A → B → C → D) {a a' : A} {b b' : B} {c c' : C} →

@@ -30,7 +30,7 @@ open import DirectedHoTT.Spec.Typing
   using ( _⟶*_; done; step; β; single; wk-single )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ; ⟶*-castₗ )
 open import DirectedHoTT.Lib.Wk using ( sub-w³-single; sub-w²-single; towerP ; towerA )
-open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans )
+open import DirectedHoTT.Prelude using ( _≡_; refl; cong; cong₂; trans )
 open import DirectedHoTT.Examples.Knot.RenTm
   using ( vsRenK )
 open import DirectedHoTT.Examples.Knot.Single

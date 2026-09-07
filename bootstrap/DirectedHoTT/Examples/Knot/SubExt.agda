@@ -34,7 +34,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.SubExt where
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
-open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans; sym )
+open import DirectedHoTT.Prelude using ( _≡_; refl; cong; cong₂; trans; sym )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; Var; vz; vs; Sub; subTm; extS; app; pair; icon; ielim
         ; iihs; isingle; ilookupD; idrefl; ⌜Nat⌝; unit; fst; snd; var; renTm

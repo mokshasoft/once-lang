@@ -33,7 +33,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Spec.Typing where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var; lam; app

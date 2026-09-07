@@ -33,7 +33,7 @@ open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; RTm; pair; ICon; IDes
 open import DirectedHoTT.Spec.Typing
   using ( _⟶_; _⟶*_; done; step; ξ-fst; ξ-snd; βfst; βsnd )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; cong )
 
 data CDesc : IDesc → Set where
   cd-stop : (E : IDesc) → CDesc E

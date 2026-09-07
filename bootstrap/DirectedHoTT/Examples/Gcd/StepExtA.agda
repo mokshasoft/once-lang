@@ -35,7 +35,7 @@
 module DirectedHoTT.Examples.Gcd.StepExtA where
 open import DirectedHoTT.Examples.Gcd.StepExt public
 open import DirectedHoTT.Examples.Gcd.StepExtE public
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym )
+open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; cong₂; sym )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π; Id

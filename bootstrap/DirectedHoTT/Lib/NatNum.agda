@@ -18,7 +18,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.NatNum where
-open import normalizer.Syntax.Types using ( _≡_; refl; cong )
+open import DirectedHoTT.Prelude using ( _≡_; refl; cong )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; Ren; Sub; renTm; subTm; nzero; nsuc; natrec; var; vz; Nat )

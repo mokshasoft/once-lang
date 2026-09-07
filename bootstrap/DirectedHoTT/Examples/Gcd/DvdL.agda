@@ -18,7 +18,7 @@
 module DirectedHoTT.Examples.Gcd.DvdL where
 open import DirectedHoTT.Examples.Gcd.Dvd public
 
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; RTy; RTm; El; Nat; Hom
         ; var; nzero; nsuc; fst; snd; app; subTm; subTy )

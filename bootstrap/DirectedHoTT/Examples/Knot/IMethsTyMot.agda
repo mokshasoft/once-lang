@@ -37,7 +37,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
         ; single; wk-single; iinst )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; sym )
+open import DirectedHoTT.Prelude using ( cong; sym )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Wk using ( towerA; towerJ⁵ )

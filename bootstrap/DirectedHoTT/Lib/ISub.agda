@@ -84,7 +84,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.ISub where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; Var; ICon; IDesc; _◂_; inil; iι; iρ; iκ

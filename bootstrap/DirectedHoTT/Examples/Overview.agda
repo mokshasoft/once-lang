@@ -33,7 +33,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Overview where
-open import normalizer.Syntax.Types
+open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; subst; ⊥ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs

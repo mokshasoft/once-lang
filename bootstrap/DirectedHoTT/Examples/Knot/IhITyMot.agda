@@ -33,7 +33,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
         ; ξ-pairʳ; βsnd; done; step; single; wk-single; iinst )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; sym )
+open import DirectedHoTT.Prelude using ( cong; sym )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam )
 open import DirectedHoTT.Lib.ICast using ( muFwd; muBwd* )
 open import DirectedHoTT.Lib.Wk using ( towerA; towerJ )

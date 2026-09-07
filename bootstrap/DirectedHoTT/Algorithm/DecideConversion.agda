@@ -31,7 +31,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Algorithm.DecideConversion where
-open import normalizer.Syntax.Types
+open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; ¬_; ⊥; ⊥-elim; Σ; _,_; _×_ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; ε; _∙; Var; vz; vs; RTm; var; lam; app )
 open import DirectedHoTT.Spec.Typing

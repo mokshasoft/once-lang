@@ -47,7 +47,7 @@ open import DirectedHoTT.Lib.IPay
 open import DirectedHoTT.Lib.IMeths using ( cdTake; cdRest; methsFrom )
 open import DirectedHoTT.Lib.Wk using ( sub-w-single )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; trans )
+open import DirectedHoTT.Prelude using ( cong; trans )
 open import DirectedHoTT.Lib.ICast using ( muFwd )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; ⊢IPair; sDCon; ⊢sDCon; sDesc; ⊢sDesc; ⊢ixP )

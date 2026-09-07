@@ -32,7 +32,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.NatEval where
-open import normalizer.Syntax.Types using ( ⊥-elim )
+open import DirectedHoTT.Prelude using ( ⊥-elim )
 open import DirectedHoTT.Spec.Syntax using ( RTm; ε; Nat )
 open import DirectedHoTT.Spec.Typing using ( ◇; _⊢_∷_; c-◇ )
 open import DirectedHoTT.Metatheory.LogicalRelation using ( mkWN )

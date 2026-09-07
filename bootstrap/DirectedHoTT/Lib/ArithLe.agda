@@ -27,7 +27,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.ArithLe where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong; cong₂ )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; Hom; Nat

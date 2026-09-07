@@ -21,7 +21,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.WkTm where
-open import normalizer.Syntax.Types using ( _≡_; cong )
+open import DirectedHoTT.Prelude using ( _≡_; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs

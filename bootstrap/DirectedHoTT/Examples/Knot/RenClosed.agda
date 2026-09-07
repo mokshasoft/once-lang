@@ -42,7 +42,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RenClosed where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; Var; vz; vs; Desc; dnil; _◃_; DCon; dι; dρ; dκ; IDesc; inil; _◂_; ICon
         ; RTy; app; pair; icon; idrefl; ⌜Nat⌝; unit; fst; snd; ilookupD )

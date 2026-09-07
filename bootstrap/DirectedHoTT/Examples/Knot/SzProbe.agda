@@ -15,7 +15,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.SzProbe where
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc )
 open import DirectedHoTT.Spec.Syntax using ( nzero; fst; var; vz; RTm; ε; _∙ )
 open import DirectedHoTT.Spec.Variance using ( true )

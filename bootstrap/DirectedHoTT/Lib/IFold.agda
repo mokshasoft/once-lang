@@ -30,7 +30,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.IFold where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Unit; Σ'; El; IMu; Nat; Π

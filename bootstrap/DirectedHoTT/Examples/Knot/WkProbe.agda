@@ -11,7 +11,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.WkProbe where
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( vz; _◂_; inil; Cx; RTm; εwkTy )
 open import DirectedHoTT.Spec.Typing

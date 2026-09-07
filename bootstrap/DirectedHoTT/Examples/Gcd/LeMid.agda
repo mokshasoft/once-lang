@@ -42,7 +42,7 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Metatheory.TySub
   using ( sub-lemma; sub-ty; Sub⊢; Sub⊢-ext; ⊢single; ⊢-cast; ⊢wk; subTy-comm )
 open import DirectedHoTT.Lib.Pair using ( PairT )
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂; subst )
 open import DirectedHoTT.Lib.Wk
   using ( nrs-w; w; sub-w; pw1; pw2; pw3; pw4 )
 open import DirectedHoTT.Lib.Natrec

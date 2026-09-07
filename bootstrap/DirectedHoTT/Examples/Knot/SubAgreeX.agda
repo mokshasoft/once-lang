@@ -21,7 +21,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.SubAgreeX where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import normalizer.Syntax.Types using ( _≡_; refl; cong; trans )
+open import DirectedHoTT.Prelude using ( _≡_; refl; cong; trans )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; RTy; Var; vz; vs; Sub; subTm; extS; Desc; IDesc
         ; app; pair; icon; idrefl; ⌜Nat⌝; unit; ⌜Mu⌝; ⌜IMu⌝; elim; ielim; var

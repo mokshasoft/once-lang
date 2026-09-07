@@ -35,7 +35,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Agree where
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax using ( Cx; _∙; RTy; RTm; U; Nat )
 open import DirectedHoTT.Spec.Typing using ( Ctx; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_ )
 open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )

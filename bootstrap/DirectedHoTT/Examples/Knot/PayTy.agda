@@ -43,7 +43,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-pairʳ; βsnd; done; step; single; wk-single )
 open import DirectedHoTT.Lib.Wk using ( sub-w-single )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; trans; sym )
+open import DirectedHoTT.Prelude using ( cong; trans; sym )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ; ⊢methsFrom; ⊢methsCons
         ; idwfDrop; splTake; Split; spl-nil; spl-step )

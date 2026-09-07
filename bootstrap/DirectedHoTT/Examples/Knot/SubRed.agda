@@ -22,7 +22,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.SubRed where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; Var; vz; vs; app; pair; fst; snd; icon; ICon
         ; iihs; isingle; ilookupD; IDesc )

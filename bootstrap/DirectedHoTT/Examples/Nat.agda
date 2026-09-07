@@ -15,7 +15,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Nat where
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; base; U; El; Id; Unit; Nat

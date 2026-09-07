@@ -13,8 +13,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Fundamental.Semantic where
-open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
+open import DirectedHoTT.Prelude
+  using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim; proj₁; proj₂ )
 
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
@@ -395,7 +395,7 @@ snHH sp (sn-icon h) snt noPiT =
 snHH sp (sn-cIMu h) snt noPiT =
   sn-ne (sne-hrefl (snPlug sp (sn-cIMu h)) snt (nopw-plug sp refl))
 snHH sp (sn-cΠ {c = γ} {d = δ} h₁ h₂) snt noPiT =
-  ⊥-elim (noPiT (Σ.fst (Σ.snd (pw-El-decode (plug sp (⌜Π⌝ γ δ))
+  ⊥-elim (noPiT (proj₁ (proj₂ (pw-El-decode (plug sp (⌜Π⌝ γ δ))
                                             (pw-plug sp refl)))))
 snHH sp (sn-cH {c = C'} {a = a'} {b = b'} hC ha hb) snt noPiT =
   snHH (sp-cons a' b' ha hb sp) hC snt noPiT
@@ -562,20 +562,20 @@ semHreflPay x₀ {c = c} {t = t} (⊩₀Π {G = G} p ⊩F ⊩G) lk snc pay snt h
   bodyLk : (v : RTm _) (r : ⊩F ⊩₀∋ v) →
            subTy (single v) G
            ≅ᵀ El (subTm (single v)
-                        (pwBody (Σ.fst (pay v r))))
+                        (pwBody (proj₁ (pay v r))))
   bodyLk v r =
     ctrnᵀ (≅ᵀ-sub (single v)
-            (Σ.snd (Π-inj
+            (proj₂ (Π-inj
               (ctrnᵀ (csymᵀ (red→≅ᵀ p))
                 (ctrnᵀ lk
                   (red→≅ᵀ
                     (⟶ᵀ*-trans
-                      (⟶ᵀ*-El (csrs→⟶* (Σ.fst (Σ.snd (pay v r)))))
-                      (Σ.fst (Σ.snd (pw-El-decode (Σ.fst (pay v r))
-                               (Σ.fst (Σ.snd (Σ.snd (pay v r))))))))))))))
+                      (⟶ᵀ*-El (csrs→⟶* (proj₁ (proj₂ (pay v r)))))
+                      (proj₁ (proj₂ (pw-El-decode (proj₁ (pay v r))
+                               (proj₁ (proj₂ (proj₂ (pay v r))))))))))))))
           (csymᵀ (≅ᵀ-sub (single v)
-            (red→≅ᵀ (Σ.snd (Σ.snd (pw-El-decode (Σ.fst (pay v r))
-                       (Σ.fst (Σ.snd (Σ.snd (pay v r))))))))))
+            (red→≅ᵀ (proj₂ (proj₂ (pw-El-decode (proj₁ (pay v r))
+                       (proj₁ (proj₂ (proj₂ (pay v r))))))))))
 
   rE₀ = CR3₁ (emb ⊩F) (sne-var x₀)
   r₀  = projr (emb-coh ⊩F) (var x₀) rE₀
@@ -583,24 +583,24 @@ semHreflPay x₀ {c = c} {t = t} (⊩₀Π {G = G} p ⊩F ⊩G) lk snc pay snt h
 
   rmem₀ =
     semHreflPay x₀ (⊩G (var x₀) r₀) (bodyLk (var x₀) r₀)
-      (Σ.fst (Σ.snd (Σ.snd (Σ.snd (pay (var x₀) r₀)))))
-      (Σ.snd (Σ.snd (Σ.snd (Σ.snd (pay (var x₀) r₀)))))
+      (proj₁ (proj₂ (proj₂ (proj₂ (pay (var x₀) r₀)))))
+      (proj₂ (proj₂ (proj₂ (proj₂ (pay (var x₀) r₀)))))
       (CR1₁ (emb (⊩G (var x₀) r₀)) htv₀) htv₀
 
-  body-eq : hrefl (subTm (single (var x₀)) (pwBody (Σ.fst (pay (var x₀) r₀))))
+  body-eq : hrefl (subTm (single (var x₀)) (pwBody (proj₁ (pay (var x₀) r₀))))
                   (app t (var x₀))
             ≡ subTm (single (var x₀))
-                    (hrefl (pwBody (Σ.fst (pay (var x₀) r₀)))
+                    (hrefl (pwBody (proj₁ (pay (var x₀) r₀)))
                            (app (renTm vs t) (var vz)))
   body-eq = cong (λ z → hrefl (subTm (single (var x₀))
-                                     (pwBody (Σ.fst (pay (var x₀) r₀))))
+                                     (pwBody (proj₁ (pay (var x₀) r₀))))
                               (app z (var x₀)))
                  (sym (wk-single t))
 
   snWhole : SN (hrefl c t)
   snWhole =
-    snExpStar (snrs-hreflᶜ (Σ.fst (Σ.snd (pay (var x₀) r₀))))
-      (sn-exp (snr-hrefl-pw (Σ.fst (Σ.snd (Σ.snd (pay (var x₀) r₀)))))
+    snExpStar (snrs-hreflᶜ (proj₁ (proj₂ (pay (var x₀) r₀))))
+      (sn-exp (snr-hrefl-pw (proj₁ (proj₂ (proj₂ (pay (var x₀) r₀)))))
         (sn-lam (sn-body x₀
           (subst SN body-eq (CR1₁ _ rmem₀)))))
 
@@ -613,13 +613,13 @@ semHreflPay x₀ {c = c} {t = t} (⊩₀Π {G = G} p ⊩F ⊩G) lk snc pay snt h
       (homSem₁ (emb (⊩G v (projr (emb-coh ⊩F) v r')))
                (projr ht v r') (projr ht v r'))
       (expStar₁ _
-        (payChain (Σ.fst (Σ.snd (pay v (projr (emb-coh ⊩F) v r'))))
-                  (Σ.fst (Σ.snd (Σ.snd (pay v (projr (emb-coh ⊩F) v r')))))
+        (payChain (proj₁ (proj₂ (pay v (projr (emb-coh ⊩F) v r'))))
+                  (proj₁ (proj₂ (proj₂ (pay v (projr (emb-coh ⊩F) v r')))))
                   v (CR1₁ (emb ⊩F) r') t)
         (semHreflPay x₀ (⊩G v (projr (emb-coh ⊩F) v r'))
           (bodyLk v (projr (emb-coh ⊩F) v r'))
-          (Σ.fst (Σ.snd (Σ.snd (Σ.snd (pay v (projr (emb-coh ⊩F) v r'))))))
-          (Σ.snd (Σ.snd (Σ.snd (Σ.snd (pay v (projr (emb-coh ⊩F) v r'))))))
+          (proj₁ (proj₂ (proj₂ (proj₂ (pay v (projr (emb-coh ⊩F) v r'))))))
+          (proj₂ (proj₂ (proj₂ (proj₂ (pay v (projr (emb-coh ⊩F) v r'))))))
           (CR1₁ (emb (⊩G v (projr (emb-coh ⊩F) v r'))) (projr ht v r'))
           (projr ht v r')))
 
@@ -922,7 +922,7 @@ snTrGo {Ξ = Ξ} {CT = CT} {aP} {eP} noPiT snCT snA snE = go'
   go' (sn-lam snf) with motFate snCT
   ... | CT* , (csr , mf-pw k) =
         ⊥-elim (noPiT (⟶ᵀ*-trans (⟶ᵀ*-El (csrs→⟶* csr))
-                        (Σ.fst (Σ.snd (pw-El-decode CT* k)))))
+                        (proj₁ (proj₂ (pw-El-decode CT* k)))))
   ... | CT* , (csr , mf-dead k) =
         snExpStar (mstar csr)
           (sn-ne (sne-tr (sn-cH (sn-ren (sn-csrs snCT csr)) (sn-ren snA)
@@ -1111,9 +1111,9 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
   -- the x₀-node pins the (unique) spine-normalization of CT.
   r₀ = CR3₀ Fc (sne-var x₀)
   n₀ = payR (var x₀) r₀
-  cT*  = Σ.fst n₀
-  csr₀ = Σ.fst (Σ.snd n₀)
-  key₀ = Σ.fst (Σ.snd (Σ.snd n₀))
+  cT*  = proj₁ n₀
+  csr₀ = proj₁ (proj₂ n₀)
+  key₀ = proj₁ (proj₂ (proj₂ n₀))
 
   go₀  : {pʹ : RTm _} → SN pʹ →
          (homSem₁ (emb RcΠ) hTe hUe) ⊩₁∋ pʹ → RH0 ⊩₀∋ tr M pʹ eP
@@ -1259,14 +1259,14 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
              subTy (single v) G ≅ᵀ El (subTm (single v) (pwBody cT*))
     bodyLk v =
       ctrnᵀ (≅ᵀ-sub (single v)
-              (Σ.snd (Π-inj
+              (proj₂ (Π-inj
                 (ctrnᵀ (csymᵀ (red→≅ᵀ q))
                   (ctrnᵀ lk
                     (red→≅ᵀ
                       (⟶ᵀ*-trans (⟶ᵀ*-El (csrs→⟶* csr₀))
-                        (Σ.fst (Σ.snd (pw-El-decode cT* key₀))))))))))
+                        (proj₁ (proj₂ (pw-El-decode cT* key₀))))))))))
             (csymᵀ (≅ᵀ-sub (single v)
-              (red→≅ᵀ (Σ.snd (Σ.snd (pw-El-decode cT* key₀))))))
+              (red→≅ᵀ (proj₂ (proj₂ (pw-El-decode cT* key₀))))))
 
     inner : (v : RTm _) (r : Fc ⊩₀∋ v) →
             (homSem₀ (Gc v r) (projr hA v r) (projr hU v r)) ⊩₀∋
@@ -1286,15 +1286,15 @@ semTr x₀ {X = X} (⊩₀Π {F = F} {G = G} q Fc Gc) {CT = CT} lk snCT payR
                        (projr hE v r))
       where
       nv = payR v r
-      ceq : Σ.fst nv ≡ cT*
-      ceq = csrs-det (Σ.fst (Σ.snd nv)) (Σ.fst (Σ.snd (Σ.snd nv))) csr₀ key₀
+      ceq : proj₁ nv ≡ cT*
+      ceq = csrs-det (proj₁ (proj₂ nv)) (proj₁ (proj₂ (proj₂ nv))) csr₀ key₀
       snb' : SN (subTm (single v) (pwBody cT*))
       snb' = subst (λ z → SN (subTm (single v) (pwBody z))) ceq
-                   (Σ.fst (Σ.snd (Σ.snd (Σ.snd nv))))
+                   (proj₁ (proj₂ (proj₂ (proj₂ nv))))
       pay' : PayT (Gc v r) (subTm (single v) (pwBody cT*))
       pay' = payT-code (Gc v r)
                        (cong (λ z → subTm (single v) (pwBody z)) ceq)
-                       (Σ.snd (Σ.snd (Σ.snd (Σ.snd nv))))
+                       (proj₂ (proj₂ (proj₂ (proj₂ nv))))
       hTe' = projl (emb-coh (Gc v r)) (app tP v) (projr hT v r)
       hUe' = projl (emb-coh (Gc v r)) (app uP v) (projr hU v r)
       re = projl (emb-coh Fc) v r

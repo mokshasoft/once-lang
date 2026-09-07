@@ -20,7 +20,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Lookup where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym )
 open import Agda.Builtin.Nat using ( zero; suc )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Nat; Σ'; El; U; IMu; pair

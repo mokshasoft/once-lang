@@ -27,7 +27,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢var; here; ⊢lam; ⊢app; ⊢nsuc; ty-IMu
         ; wk-single )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import normalizer.Syntax.Types using ( cong )
+open import DirectedHoTT.Prelude using ( cong )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTm; ⊢sTm; sTy; ⊢sTy; sVar; ⊢sVar; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )

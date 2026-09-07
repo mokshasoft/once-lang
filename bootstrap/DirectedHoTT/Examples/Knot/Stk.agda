@@ -23,7 +23,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Stk where
-open import normalizer.Syntax.Types using ( _≡_; refl; subst )
+open import DirectedHoTT.Prelude using ( _≡_; refl; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; lam; nzero; nsuc; Nat; ICon; IDesc; εwkTy

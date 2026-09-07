@@ -23,7 +23,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Injectivity where
-open import normalizer.Syntax.Types
+open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; subst; Σ; _,_; _×_ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; base; U; Π; Σ'; El; Hom; RTm; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝

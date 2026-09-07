@@ -29,7 +29,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.DivC where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Lib.Wk using ( w )
 open import DirectedHoTT.Lib.Rec using ( rec1T )
 open import DirectedHoTT.Spec.Syntax

@@ -24,7 +24,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Negative.LexCMot where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs; Ren
         ; RTy; El; Hom; Nat

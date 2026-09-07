@@ -18,7 +18,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Fundamental.Indexed where
 
-open import normalizer.Syntax.Types
+open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 

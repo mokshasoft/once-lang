@@ -27,7 +27,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.Natrec where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; subst )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; RTm; Nat; natrec; var; vz; vs; nzero
         ; Ren; Sub; renTy; renTm; subTy; subTm; extR; extS; _∘ₛ_

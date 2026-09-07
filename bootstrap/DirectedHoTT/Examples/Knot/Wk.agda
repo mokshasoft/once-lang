@@ -40,7 +40,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Wk where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; RTy; RTm; Nat; Σ'; IMu; pair; unit
         ; ielim; renTm; subTm; renTy; εwkTy; εwk-ren; IDesc; ICon; _◂_; nsuc )

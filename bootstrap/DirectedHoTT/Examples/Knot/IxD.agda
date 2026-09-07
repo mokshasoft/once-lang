@@ -59,7 +59,7 @@ open import DirectedHoTT.Examples.Knot.CtxD using ( INat; toKn )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Wk using ( sub-w-single )
 open import DirectedHoTT.Examples.Knot.Build using ( tmCast; kCast )
-open import normalizer.Syntax.Types using ( sym; trans; cong )
+open import DirectedHoTT.Prelude using ( sym; trans; cong )
 
 ------------------------------------------------------------------------
 -- 1. THE FIVE CONSTRUCTORS.  ⚠ `iι` targets the AMBIENT index, so none

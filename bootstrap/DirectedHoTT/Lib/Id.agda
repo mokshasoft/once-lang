@@ -21,7 +21,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.Id where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; cong )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; El; U; var; vz; vs; jsub; Id; ⌜Id⌝; idrefl; ⌜Id⌝-cong₃
         ; renTm )

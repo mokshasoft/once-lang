@@ -24,8 +24,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.SubjectReduction where
-open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥ )
+open import DirectedHoTT.Prelude
+  using ( _≡_; refl; sym; trans; subst; cong; cong₂; Σ; _,_; _×_ ; ⊥; proj₁; proj₂ )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; RTy; base; U; Π; Σ'; El; Hom; RTm; var
@@ -1728,9 +1728,9 @@ sr {Γ = Γ} d (tr-pw c a f e₀ key) with gen-tr d
 
   genC = pw-gen dC₀ keyT
   dDom : Γ ⊢ pwDom C₀ ∷ U
-  dDom = Σ.fst genC
+  dDom = proj₁ genC
   dBody : ΓD ⊢ pwBody C₀ ∷ U
-  dBody = Σ.snd genC
+  dBody = proj₂ genC
 
   -- raw-rule ↔ typed-form bridges
   eq-c-in : renTm pwShift (pwBody c) ≡ renTm vs (pwBody C₀)
@@ -1787,19 +1787,19 @@ sr {Γ = Γ} d (tr-pw c a f e₀ key) with gen-tr d
 
   cdU = pw-Hom-decode C₀ keyT A₀ u
   BodyU : RTy (⌊ Γ ⌋ ∙)
-  BodyU = Σ.fst cdU
+  BodyU = proj₁ cdU
   chU₁ : Hom (El C₀) A₀ u ⟶ᵀ* Π (El (pwDom C₀)) BodyU
-  chU₁ = Σ.fst (Σ.snd cdU)
+  chU₁ = proj₁ (proj₂ cdU)
   chU₂ : Hom (El (pwBody C₀)) W u' ⟶ᵀ* BodyU
-  chU₂ = Σ.snd (Σ.snd cdU)
+  chU₂ = proj₂ (proj₂ cdU)
 
   cdP = pw-Hom-decode C₀ keyT t u
   BodyP : RTy (⌊ Γ ⌋ ∙)
-  BodyP = Σ.fst cdP
+  BodyP = proj₁ cdP
   chP₁ : Hom (El C₀) t u ⟶ᵀ* Π (El (pwDom C₀)) BodyP
-  chP₁ = Σ.fst (Σ.snd cdP)
+  chP₁ = proj₁ (proj₂ cdP)
   chP₂ : Hom (El (pwBody C₀)) t' u' ⟶ᵀ* BodyP
-  chP₂ = Σ.snd (Σ.snd cdP)
+  chP₂ = proj₂ (proj₂ cdP)
 
   inst-c : (w : RTm (⌊ Γ ⌋ ∙)) →
            subTm (single w) (renTm pwShift (pwBody c)) ≡ pwBody C₀
@@ -1839,22 +1839,22 @@ sr {Γ = Γ} d (tr-pw c a f e₀ key) with gen-tr d
 
   glam = gen-lam dp
   A₁ : RTy ⌊ Γ ⌋
-  A₁ = Σ.fst glam
+  A₁ = proj₁ glam
   B₁ : RTy (⌊ Γ ⌋ ∙)
-  B₁ = Σ.fst (Σ.snd glam)
+  B₁ = proj₁ (proj₂ glam)
   cΠ : Hom A t u ≅ᵀ Π A₁ B₁
-  cΠ = Σ.fst (Σ.snd (Σ.snd glam))
+  cΠ = proj₁ (proj₂ (proj₂ glam))
   tyA₁ : Γ ⊢ty A₁
-  tyA₁ = Σ.fst (Σ.snd (Σ.snd (Σ.snd glam)))
+  tyA₁ = proj₁ (proj₂ (proj₂ (proj₂ glam)))
   d-f : (Γ ▹ A₁) ⊢ f ∷ B₁
-  d-f = Σ.snd (Σ.snd (Σ.snd (Σ.snd glam)))
+  d-f = proj₂ (proj₂ (proj₂ (proj₂ glam)))
 
   cΠ' : Π A₁ B₁ ≅ᵀ Π (El (pwDom C₀)) BodyP
   cΠ' = ctrnᵀ (csymᵀ cΠ) (ctrnᵀ (≅ᵀ-Homᵀ cA) (red→≅ᵀ chP₁))
 
   dp-in : ΓD ⊢ f ∷ Hom A″ t' u'
-  dp-in = ⊢conv (ctx-conv d-f (csymᵀ (Σ.fst (Π-inj cΠ'))))
-                (ctrnᵀ (Σ.snd (Π-inj cΠ')) (csymᵀ (red→≅ᵀ chP₂)))
+  dp-in = ⊢conv (ctx-conv d-f (csymᵀ (proj₁ (Π-inj cΠ'))))
+                (ctrnᵀ (proj₂ (Π-inj cΠ')) (csymᵀ (red→≅ᵀ chP₂)))
 
   de-in : ΓD ⊢ app (renTm vs e₀) (var vz)
              ∷ El (subTm (single t')

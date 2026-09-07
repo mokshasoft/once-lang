@@ -34,7 +34,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AmrecC where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Lib.Wk using ( cong₄; nrs-w; ren-w; ren-w²; sub-w; sub-w²; w )
 open import DirectedHoTT.Lib.Rec using ( rec1T; rec1T-ren; rec1T-sub )
 open import DirectedHoTT.Spec.Syntax

@@ -21,7 +21,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.MonusPlus where
-open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
+open import DirectedHoTT.Prelude using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs
         ; RTy; El; Id; Nat; Π; lam; app; absurd

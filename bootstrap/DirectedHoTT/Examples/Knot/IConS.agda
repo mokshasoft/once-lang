@@ -64,7 +64,7 @@ open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Wk using ( towerA )
-open import normalizer.Syntax.Types using ( cong )
+open import DirectedHoTT.Prelude using ( cong )
 open import DirectedHoTT.Spec.Typing using ( wk-single )
 -- ★ EVERYTHING SHARED WITH `conS` IS IMPORTED, NOT COPIED.
 open import DirectedHoTT.Examples.Knot.ConS

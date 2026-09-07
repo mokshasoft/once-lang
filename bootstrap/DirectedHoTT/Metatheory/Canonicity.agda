@@ -29,7 +29,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Canonicity where
-open import normalizer.Syntax.Types
+open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; subst; Σ; _,_; _×_; ⊥; ⊥-elim
         ; _⊎_; inj₁; inj₂; cong₂ )
 open import DirectedHoTT.Spec.Syntax

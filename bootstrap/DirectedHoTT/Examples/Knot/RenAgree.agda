@@ -45,7 +45,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RenAgree where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import normalizer.Syntax.Types using ( _≡_; refl )
+open import DirectedHoTT.Prelude using ( _≡_; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTm; RTy; Var; vz; vs; Ren; app; pair; icon; extR
         ; renTm; renTy; Desc; IDesc

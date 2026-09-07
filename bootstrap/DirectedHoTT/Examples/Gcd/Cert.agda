@@ -27,7 +27,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.Cert where
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym; subst )
+open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; cong₂; sym; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π

@@ -25,7 +25,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Gcd.LeEq where
-open import normalizer.Syntax.Types using ( _≡_; refl; trans; cong; cong₂; sym; subst )
+open import DirectedHoTT.Prelude using ( _≡_; refl; trans; cong; cong₂; sym; subst )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTy; El; Hom; Nat; Id; RTm; nsuc; pair; fst; snd; ⌜Nat⌝; Ren; renTy
         ; var; vz; vs; lam; app; Sub; extS; subTm; subTy; natrec; nzero

@@ -10,7 +10,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Fundamental.Syntactic where
-open import normalizer.Syntax.Types
+open import DirectedHoTT.Prelude
   using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )

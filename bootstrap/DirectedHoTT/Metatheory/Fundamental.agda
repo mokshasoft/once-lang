@@ -7,8 +7,8 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Metatheory.Fundamental where
-open import normalizer.Syntax.Types
-  using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim )
+open import DirectedHoTT.Prelude
+  using ( _≡_; refl; sym; trans; cong; cong₂; subst; Σ; _,_; _×_; ⊥; ⊥-elim; proj₁; proj₂ )
 
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
@@ -1065,10 +1065,10 @@ fund {Ξ = Ξ} {σ = σ} (⊢⌜Π⌝ {c = c} {d = e} dc de) x₀ ρ =
     pays u r =
       ( subst SN (sym (sub-single-Tm σ u e)) (projl (memb u r))
       , payT-cast (cong El (sym (sub-single-Tm σ u e)))
-                  (Σ.fst (projr (memb u r)))
-                  (payT-code (Σ.fst (projr (memb u r)))
+                  (proj₁ (projr (memb u r)))
+                  (payT-code (proj₁ (projr (memb u r)))
                              (sym (sub-single-Tm σ u e))
-                             (Σ.snd (projr (memb u r)))) )
+                             (proj₂ (projr (memb u r)))) )
 
     r₀ = CR3₀ ⊩c (sne-var x₀)
 
@@ -1110,7 +1110,7 @@ fund {σ = σ} (⊢⌜Hom⌝ {c = c} {a = a} {b = b} dc da db) x₀ ρ =
                (subTm σ c) (dsnd (fund dc x₀ ρ))
     snc = projl hc
     ⊩c  = sem-El doneᵀ hc
-    payc = Σ.snd (projr hc)
+    payc = proj₂ (projr hc)
 
     ha = projr (emb-coh ⊩c) (subTm σ a)
                (projl (irrel₁ crflᵀ (dfst (fund da x₀ ρ)) (emb ⊩c))
@@ -1131,14 +1131,14 @@ fund {σ = σ} (⊢hrefl {c = c} {t = t} dc dt) x₀ ρ =
   , projl (irrel₁ crflᵀ (homSem₁ (emb R₀) htE htE)
                         (homSem₁ (dfst Rt) (dsnd Rt) (dsnd Rt)))
           (hrefl (subTm σ c) (subTm σ t))
-          (semHreflPay x₀ R₀ crflᵀ (projl hcode) (Σ.snd (projr hcode))
+          (semHreflPay x₀ R₀ crflᵀ (projl hcode) (proj₂ (projr hcode))
                        snt htE) )
   where
     Rt = fund dt x₀ ρ
     snt = CR1₁ (dfst Rt) (dsnd Rt)
     hcode = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ρ)) (⊩₁U doneᵀ))
                   (subTm σ c) (dsnd (fund dc x₀ ρ))
-    R₀ = Σ.fst (projr hcode)
+    R₀ = proj₁ (projr hcode)
     htE = projl (irrel₁ crflᵀ (dfst Rt) (emb R₀))
                 (subTm σ t) (dsnd Rt)
 
@@ -1217,13 +1217,13 @@ fund {Ξ = Ξ} {σ = σ}
               cBI (dsnd (fund dcB x₀ ρ))
 
   snCB : SN cBI
-  snCB = Σ.fst hcB
+  snCB = proj₁ hcB
 
   R₀B : ⊩₀ (El cBI)
-  R₀B = Σ.fst (Σ.snd hcB)
+  R₀B = proj₁ (proj₂ hcB)
 
   payB : PayT R₀B cBI
-  payB = Σ.snd (Σ.snd hcB)
+  payB = proj₂ (proj₂ hcB)
 
   -- ── the body instances (the ⊢lam pattern) ──
   bodyB : (u : RTm Ξ) (r : RA ⊩₁∋ u) →
@@ -1348,7 +1348,7 @@ fund {σ = σ} (⊢⌜Id⌝ {c = c} {a = a} {b = b} dc da db) x₀ ρ =
     hc = projl (irrel₁ crflᵀ (dfst (fund dc x₀ ρ)) (⊩₁U doneᵀ))
                (subTm σ c) (dsnd (fund dc x₀ ρ))
     snc = projl hc
-    ⊩c  = Σ.fst (projr hc)
+    ⊩c  = proj₁ (projr hc)
     sna = CR1₁ (dfst (fund da x₀ ρ)) (dsnd (fund da x₀ ρ))
     snb = CR1₁ (dfst (fund db x₀ ρ)) (dsnd (fund db x₀ ρ))
 
@@ -1396,9 +1396,9 @@ fund {Ξ = Ξ} {σ = σ}
                    (subTm (single v) dI) (dsnd (bodyD v r))
 
   R₀t : ⊩₀ (El (subTm (single tI) dI))
-  R₀t = Σ.fst (projr (dmem tI ht))
+  R₀t = proj₁ (projr (dmem tI ht))
   R₀u : ⊩₀ (El (subTm (single uI) dI))
-  R₀u = Σ.fst (projr (dmem uI hu))
+  R₀u = proj₁ (projr (dmem uI hu))
 
   snDI : SN dI
   snDI = sn-body x₀
@@ -1413,9 +1413,9 @@ fund {Ξ = Ξ} {σ = σ}
   ... | _ , (a₃ , (b₃ , (refl , (rH , (rt , ru))))) =
         ( projl h
         , (λ c₂ → let j = projr h c₂
-                  in Σ.fst j
-                     , ( ⟶*-trans rt (Σ.fst (Σ.snd j))
-                       , ⟶*-trans ru (Σ.snd (Σ.snd j)) )) )
+                  in proj₁ j
+                     , ( ⟶*-trans rt (proj₁ (proj₂ j))
+                       , ⟶*-trans ru (proj₂ (proj₂ j)) )) )
   idMemGet (⊩₁base ch) h with Id-reduct ch
   ... | _ , (_ , (_ , ((), _)))
   idMemGet (⊩₁U ch) h with Id-reduct ch
@@ -1530,7 +1530,7 @@ fund {Ξ = Ξ} {σ = σ}
               (dsnd (fund du x₀ ρ))
 
   R_result : ⊩₁ (El uI)
-  R_result = emb (Σ.fst (projr hUu))
+  R_result = emb (proj₁ (projr hUu))
 
   R_e : ⊩₁ (El tI)
   R_e = dfst (fund de x₀ ρ)
@@ -1789,7 +1789,7 @@ fund {Ξ = Ξ} {σ = σ}
         (mem₀cast eqTgt tgtBase
           (bwd₀-mem⁻ (stepᵀ (El-⌜Hom⌝ cT aT uI) doneᵀ) (homSem₀ Rc haT huT)
             (memTm (homSem₀ Rc haT huT) trEq
-              (semTr x₀ Rc crflᵀ (projl hcT) (Σ.snd (projr hcT))
+              (semTr x₀ Rc crflᵀ (projl hcT) (proj₂ (projr hcT))
                      haT htT huT (sn-lam snf) hTe hUe hpX hEX)))) )
     where
     hTe = projl (emb-coh Rc) tI htT
