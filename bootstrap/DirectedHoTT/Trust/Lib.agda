@@ -39,6 +39,7 @@ import DirectedHoTT.Lib.IDepth
 import DirectedHoTT.Lib.IFold
 import DirectedHoTT.Lib.IHCall
 import DirectedHoTT.Lib.IMeths
+import DirectedHoTT.Lib.IOcc
 import DirectedHoTT.Lib.IPay
 import DirectedHoTT.Lib.ISub
 import DirectedHoTT.Lib.ISz
@@ -54,6 +55,7 @@ import DirectedHoTT.Lib.MonusLe
 import DirectedHoTT.Lib.MonusPlus
 import DirectedHoTT.Lib.Mul
 import DirectedHoTT.Lib.Nat
+import DirectedHoTT.Lib.NatEq
 import DirectedHoTT.Lib.NatEval
 import DirectedHoTT.Lib.NatMax
 import DirectedHoTT.Lib.NatNum
