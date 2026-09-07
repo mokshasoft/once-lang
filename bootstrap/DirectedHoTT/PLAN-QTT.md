@@ -244,19 +244,29 @@ neither POC module has and §2 needs:
   witnesses `≤-+ˡ`/`≤-+ʳ`;
 * `Grade` (§3) wrapping `Mult`.
 
-★★ **AND THE JOIN'S LAWS — THE ONE THING THIS BRANCH PAYS BACK FIRST.**
-`⊔` is defined on both sides and has **zero proven laws on either**
-(`PLAN-INTEGRATION.md` §1b), while being load-bearing for the compiler's
-`t-case` and for `⊢elim` here. Prove, in this module:
+★★ **TRANSCRIBE THE REST FROM THE COMPILER — IT IS ALL ALREADY PROVEN.**
+⚠ An earlier revision of this step said the join laws were missing
+everywhere and that proving them here would pay the compiler back. **That
+was wrong** — see `PLAN-INTEGRATION.md` §1b for the corrected census. The
+compiler proves the order, the lattice (`⊔q`/`⊔ᵘ` comm, idem, assoc,
+unit, top), monotonicity, the join property (`≤q'-⊔ˡ/ʳ`, `⊑ᵘ-⊔ˡ/ʳ`), the
+whole `⊑ᵘ` family and the thinning-commutations — and gates ~26 of them
+at its apex.
 
-* `⊔` is the join for `≤` (`x ≤ x ⊔ y`, `y ≤ x ⊔ y`, and least);
-* commutativity, associativity, idempotence, `𝟘` as unit;
-* the interaction with `+` and `·` that `⊢elim` will actually need.
+So this step is **transcription against a reference**, not design:
 
-This module is pure algebra depending on nothing else in either tree.
-**Hand it to the compiler regardless of whether the rest of axis 1
-lands** — it is the cheapest item in the plan and the only one that is
-useful even if this branch is abandoned.
+* the semiring — from `NbEPQTT`/`NbEPQTTJ` (ports verbatim);
+* the order, lattice, monotonicity, `⊑ᵘ` family — restate from
+  `Surface/Context.agda` and `TypeCheck/Identities.agda`.
+
+⛔ Transcribed, never imported (`LESSONS.md` §5).
+
+★ The one law **absent on both sides** is **leastness** of `⊔`
+(`x ≤ z → y ≤ z → x ⊔ y ≤ z`). Nothing needs it today — the elaborator
+uses only the upper-bound halves, to narrow the environment into each
+branch. Add it here **only if** §6a's still-open `⊢elim` grading turns
+out to want it; if it does, that is a small result the compiler could
+take.
 
 ⚠ Do not add lemmas to a heavily-imported module (`LESSONS.md` §3).
 This is a leaf; keep it one.
@@ -456,18 +466,15 @@ invisible until adoption unless pinned here. Every ✅ below is a decision
 to stay composable; every ⬜ is an unpinned risk.
 
 ★ **THE SEMIRING ITSELF ALREADY AGREES**: `+q`/`*q` are the same
-functions as `+ᵐ`/`·ᵐ`, table for table. What diverges is which theorems
-each side has bothered to prove —
+functions as `+ᵐ`/`·ᵐ`, table for table. And ⚠ **contrary to an earlier
+revision of this file**, the compiler's *theorems* are a strict superset
+of the POC's too — full ordered semiring, the lattice, monotonicity, the
+`⊑ᵘ` family, thinning-commutation, ~26 of them gated at its apex. The
+corrected census is `PLAN-INTEGRATION.md` §1b; only **leastness of `⊔`**
+is absent on both sides, and nothing needs it.
 
-| law | POC | compiler |
-|---|---|---|
-| `·` assoc, distributivity | ✅ | ❌ |
-| `≤` refl / trans | ❌ | ✅ |
-| `⊑ᵘ-refl`, `≤-+ˡ/ʳ` | ❌ | ✅ |
-| **`⊔` — anything at all** | ❌ | ❌ |
-
-— which is why §4 step 1 is a *merge* of both law sets plus the join
-laws neither has.
+⇒ §4 step 1 is therefore **transcription**, not a merge of two partial
+law sets.
 
 | | POC | compiler | taken into this plan? |
 |---|---|---|---|

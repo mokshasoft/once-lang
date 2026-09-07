@@ -45,23 +45,47 @@ table for table. Only clause structure differs, and both sides document
 the same reason (keeping a single clause preserves a definitional
 reduction).
 
-| law | POC | compiler |
-|---|---|---|
-| `+` comm / assoc / identityˡ ʳ | ✅ | ✅ (+ `+q-absorb`) |
-| `·` identityˡ ʳ, zeroˡ ʳ | ✅ | ✅ (`*ᵘ` only) |
-| **`·` assoc, distributivity** | ✅ | ❌ |
-| **`≤q` refl / trans** | ❌ (no order at all) | ✅ |
-| vector `+ᵘ` / `*ᵘ` laws | ✅ | ✅ |
-| `⊑ᵘ-refl`, `≤q'-+ˡ/ʳ` | ❌ | ✅ |
-| **`⊔q` — any law whatsoever** | ❌ | ❌ |
+⚠ **CORRECTED 2026-09-07.** An earlier revision of this table claimed the
+compiler lacked `·`-assoc, distributivity, and every `⊔` law. **All three
+claims were false.** They came from grepping `Surface/Properties.agda`
+alone; the algebra is spread over FOUR modules and the missing lemmas
+were in the others. The corrected census:
 
-★★ **`⊔q` IS LOAD-BEARING AND COMPLETELY UNLAWED, ON BOTH SIDES.** The
-compiler's `t-case` reads `Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ)`, and it is the operation
-`⊢elim` will need here. Nothing proves it is the join for `≤q`, that it
-is associative, or how it interacts with `+q`/`*q`. This is a defect in
-the *compiler*, surfaced by the cross-check and independent of any work
-on this branch. See §4 — it is the one thing this branch can pay back
-first.
+| law | POC | compiler | where (compiler) |
+|---|---|---|---|
+| `+q` comm / assoc / identity ˡʳ / absorb ˡʳ | ✅ | ✅ | `Identities`, `Properties` |
+| `*q` identity ˡʳ / zero ˡʳ / **assoc** | ✅ | ✅ | `Identities:295–369` |
+| **`*q` distributivity over `+q`** | ✅ | ✅ | `Identities:411` |
+| `≤q` refl / trans | ❌ | ✅ | `Properties:27`, `Identities:196` |
+| `+q` monotonicity | ❌ | ✅ | `Identities:510` |
+| `⊔q` comm / idem / assoc / unit / top | ❌ | ✅ | `Identities:315–408` |
+| `⊔ᵘ` comm / idem / assoc / zero ˡʳ | ❌ | ✅ | `Identities:462–492` |
+| **the join property** `x ≤ x ⊔ y` | ❌ | ✅ | `Context:324–353` (`≤q'-⊔ˡ/ʳ`, `⊑ᵘ-⊔ˡ/ʳ`) |
+| `⊑ᵘ` refl / trans / `+ˡʳ` / `*One` / `*Many` | ❌ | ✅ | `Context` |
+| `thin-usage` commutes with `+ᵘ`/`*ᵘ`/`⊔ᵘ` | ❌ | ✅ | `Thinning` |
+| leastness of `⊔` (`x≤z → y≤z → x⊔y≤z`) | ❌ | ❌ | — |
+
+★★ **THE COMPILER'S GRADE ALGEBRA IS STRICTLY RICHER THAN THE POC'S**, and
+~26 of these lemmas are **wired into the apex**: they are fields of
+`VerifiedTypeChecker` (`TypeCheck/Verified.agda:885–919`, filled at
+`:1032–1046`), which `Once.Certified` conjoins — so a regression in any of
+them makes the apex fail to type-check. `Certified.agda`'s header says
+this is deliberate, to prevent the drift "that let `ErrorProofs` rot
+silently".
+
+★ **THE ONLY GENUINE ABSENCE IS LEASTNESS, AND IT IS NOT A HOLE.** The
+elaborator needs only the upper-bound direction — `Ψₗ ⊑ᵘ Ψₗ ⊔ᵘ Ψᵣ`, to
+narrow the environment into each branch (`Denotation/Meaning:288–289`,
+`SourceDenote:192–193`). Leastness would say the case rule assigns the
+*tightest* usage: an optimality/principality property, not a soundness
+one. Nothing is postulated to cover it because nothing needs covering.
+
+⚠ **THE ONE REAL (MINOR) FINDING THAT SURVIVES.** The algebra has no
+single home, and `Surface/Properties.agda` and `TypeCheck/Identities.agda`
+**both** prove `≤q-refl`, `≤q-trans`, `+q-comm`, `+ᵘ-comm` and others.
+Duplication, not absence — and it is why a reader looking in one place
+concludes the other is empty. Worth consolidating; not urgent, and not
+this branch's call.
 
 ### 1c. Erasure — realised three times, coherently, arity-preserving
 
@@ -245,17 +269,34 @@ as `PLAN-QTT.md` says. Nothing in axis 0 is gated on anything.
 
 ## 4. WHAT PAYS WHOM
 
-★ **The `⊔q` laws are the one thing this branch can pay the compiler
-FIRST** (§1b). DirectedHoTT already has the full semiring laws the
-compiler lacks (`·`-assoc, distributivity); adding the join laws here —
-`⊔` is the join for `≤`, associativity, commutativity, and the
-interaction with `+`/`·` — produces a result the compiler can take
-directly, in a module that is pure algebra and depends on nothing else in
-either tree.
+⚠ **CORRECTED 2026-09-07 — THIS SECTION USED TO POINT THE OTHER WAY.** It
+claimed the `⊔` laws were a gap this branch could fill for the compiler.
+§1b shows they are not a gap: the compiler proves them, and gates them at
+the apex.
 
-Do it as **axis 1 step 1**, and hand it over regardless of whether the
-rest of axis 1 lands. It is the cheapest thing in this plan and the only
-part that is useful even if the branch is abandoned.
+★ **The debt runs toward DirectedHoTT.** `Spec/Grade.agda` (axis 1 step 1)
+should be written by **porting the compiler's algebra**, not by
+re-deriving the POC's nine laws and extending them. Concretely, the POC's
+`NbEPQTT`/`NbEPQTTJ` blocks supply the semiring; everything else axis 1
+needs — the order, the lattice, monotonicity, the join property, the
+`⊑ᵘ` family — already exists at `Surface/Context.agda` and
+`TypeCheck/Identities.agda` and should be transcribed from there.
+
+⚠ Transcribed, not imported: `LESSONS.md` §5 still forbids the
+dependency. The point is that the *statements and proofs* are known, so
+this step is transcription against a reference rather than design.
+
+★ **What DirectedHoTT can still contribute back** is narrower than
+claimed and worth stating honestly:
+
+* **leastness of `⊔`** — absent on both sides, needed by neither today.
+  If `⊢elim`'s grading (axis 1 §6a, still open) turns out to want it, it
+  is a small lemma and the compiler could take it.
+* **the consolidation** — one home for the algebra, given the
+  `Properties`/`Identities` duplication §1b names.
+
+Neither is a reason to do this branch. **Do not sequence axis 1 around a
+payback that is not there.**
 
 ---
 
