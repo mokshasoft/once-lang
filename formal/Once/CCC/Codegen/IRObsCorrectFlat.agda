@@ -34,7 +34,7 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; zero; suc; _<_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_)
 open import Data.Bool using (false; true)
 open import Data.List using (length; take; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -70,7 +70,7 @@ fits-erase fits-floatˢ = fits-float
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst)
 open import Once.IR.Size using (ir-size)
-open import Data.Nat.Properties using (≤-<-trans; ≤-trans; m≤m+n; m≤n+m; n≤1+n)
+open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n)
 open import Function using (case_of_)
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
@@ -83,6 +83,7 @@ open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module Fro
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-to-trace')
 open import Once.CCC.Codegen.CataNextSlot using (module CataNextSlot)
+open import Once.CCC.Codegen.SlotBudget o using (frontier-mono; budget-of)
 open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable)
 open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 import Once.CCC.Machine.ReadTypedAdequate as RTA
@@ -284,7 +285,18 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     ∀ (n l : ℕ)
       (mIn : AllocMode) (x : ⟦ A ⟧)
       (s : LocState FS) (alloc : AllocState {FS}) →
-    next-slot alloc ≡ n →
+    -- D155: `≤`, not `≡`. What this premise is FOR is that the emitter's
+    -- scratch region `[n , …)` is above anything the caller has live —
+    -- `BeforeFrontier` bounds live data by `next-slot alloc`. Stated as an
+    -- EQUATION it says more than that, and D150 showed the extra content is
+    -- false: `next-slot` never moves at run time, while the emission frontier
+    -- advances through the program, so `next-slot alloc ≡ n` can hold at ONE
+    -- emission site and nowhere after it. In `g ∘ f` the second component is
+    -- always emitted at `n1 ≥ n`, so the equation made `comp-value-realized`'s
+    -- own induction hypothesis inapplicable (D154). No discharged shape ever
+    -- used it — every one of them takes this argument as `_` — so nothing is
+    -- weakened by asking only for what the invariant means.
+    next-slot alloc ≤ n →
     halted s ≡ false →
     -- D153: ONE residence premise, carrying its own evidence. The separate
     -- `input-loc` / `ValidAtWF` / `BeforeFrontier` triple is gone — it made
@@ -1153,9 +1165,16 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       → ∀ (k : ℕ) → ∃[ fu ]
           take k (flat-events fu (emitted n l (g ∘ f)) (mkFlat s alloc 0))
             ≡ take k (projTrace (evalᴰ (g ∘ f) (inject x)) k)
+    -- D155: `next-slot alloc ≤ n` is threaded IN. `g` is emitted at `f`'s
+    -- output frontier `n1`, so applying `ihg` needs `next-slot alloc' ≤ n1`
+    -- for the allocator `f`'s run leaves; that is this premise composed with
+    -- `flat-run-keeps-next-slot` (the run does not move it) and
+    -- `frontier-mono f n l` (`n ≤ n1`). With the old equational premise the
+    -- same step was unsatisfiable — see D154/D155.
     comp-value-realized :
       ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc} (n l : ℕ)
       → ir-size g < program-bound
+      → next-slot alloc ≤ n
       → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc
       → ∃[ fu ] ∃[ mOut ] ∃[ ca ]
           ResultPlace C mOut (falloc (flat-run fu n l (g ∘ f) s alloc)) ca
@@ -1165,17 +1184,18 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc}
                 (n l : ℕ)
             → ir-size g < program-bound
+            → next-slot alloc ≤ n
             → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc
             → MachineRefinesObsF n l (g ∘ f) x s alloc
-  comp-step n l szg ihg mf = record
-    { traces-agree   = comp-traces-agree   n l szg ihg mf
-    ; value-realized = comp-value-realized n l szg ihg mf
+  comp-step n l szg ns ihg mf = record
+    { traces-agree   = comp-traces-agree   n l szg    ihg mf
+    ; value-realized = comp-value-realized n l szg ns ihg mf
     }
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
   comp-obs-correct {g = g} {f} ihg ihf sz n l mIn x s alloc ns nh inp =
-    comp-step n l (comp-size-g {g = g} {f} sz) ihg
+    comp-step n l (comp-size-g {g = g} {f} sz) ns ihg
       (ihf (comp-size-f {g = g} {f} sz) n l mIn x s alloc ns nh inp)
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has

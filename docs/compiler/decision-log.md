@@ -11521,3 +11521,72 @@ the transition that uses it and none foreseen; and now a prefix lemma that the
 goal never asked for. The cheap way to get an obligation's true shape is to
 write the term that needs it and let the typechecker state it — placeholders
 whose type errors print the goal cost one build and cannot be wrong.
+
+## D155
+
+**The premise no discharge ever used, and the one thing it blocked.** D154
+found that `comp-value-realized` cannot apply `g`'s hypothesis, because doing
+so demands `next-slot alloc' ≡ n1` for the allocator `f`'s run leaves, while
+D150 established that no execution moves `next-slot`. D154 proposed to work
+around the coupling: apply the hypothesis at a fabricated construction
+allocator whose frontier is `n1`, and transport the conclusion back with the
+flat twin of `exec-trace-nsi`.
+
+That transport cannot exist, and the reason is worth stating: `ResultPlace`
+carries `BeforeFrontier alloc loc`, whose stack case is `k < next-slot alloc`.
+Transporting it from a frontier `n1` down to the run's actual `n ≤ n1` is a
+STRENGTHENING — `frontier-monotone` (Allocation) goes the other way, and
+rightly so. So the fabricated-allocator route buys the premise at the price of
+a conclusion nobody can bring home.
+
+**What the premise is for.** It says the emitter's scratch region `[n , …)` is
+above anything the caller has live — live data is bounded by `next-slot alloc`,
+which is exactly what `BeforeFrontier` means. That content is an INEQUALITY.
+Stated as `≡` it says more, and D150 proved the surplus false: `next-slot` is a
+construction-time frontier that execution never moves, while the emission
+frontier advances through the program, so `next-slot alloc ≡ n` can hold at one
+emission site and at none after it. `g ∘ f` always emits `g` at `n1 ≥ n`.
+
+**The evidence that the surplus is dead weight.** Every discharged shape —
+`obs-correct-id`, `-terminal`, `-free-heap`, `-out-μ`, `-Out`, both `-const`
+clauses, `-sigop` — binds this argument as `_`. Not one of them reads it. The
+only consumer was `comp-obs-correct`, which passes it through, and the only
+producer `entry-witness`, where it is `next-slot (entry-alloc _) ≡ 0` and
+becomes `≤ 0` by `z≤n`. So weakening `≡` to `≤` costs nothing that was being
+spent.
+
+**The change.** `IRObsCorrectF`'s premise is now `next-slot alloc ≤ n`, and
+`comp-value-realized` / `comp-step` thread it. `g`'s hypothesis is then applied
+at the allocator `f`'s run ACTUALLY leaves, with no fabrication and no
+transport: `flat-run-keeps-next-slot` gives `next-slot alloc' ≡ next-slot
+alloc`, and `frontier-mono f n l` (SlotBudget, already proved) gives `n ≤ n1`.
+Composing the two with the premise discharges `next-slot alloc' ≤ n1`. Verified
+against the goal, not argued: with the premise weakened, that argument
+typechecks and the frontier obligation disappears from the assembly's error.
+
+**What the goal asks for next, now that the frontier is out of the way.** One
+thing, and it is purely a machine obligation — no validity, no residence, no
+frontier:
+
+    floc   (flat-run FU n l (g ∘ f) s alloc) ≡ floc   (flat-run fug n1 l1 g s' alloc')
+    falloc (flat-run FU n l (g ∘ f) s alloc) ≡ falloc (flat-run fug n1 l1 g s' alloc')
+
+`ResultPlace` mentions the run only through `floc` and `falloc`, so those two
+equations are the whole of what is left of `comp-value-realized`. `Shifted`
+(plan 0.88 A) is precisely their conjunction plus the four control components,
+and `exec-flat-reloc` already propagates it — which is why relocation was the
+right thing to build even though the prefix lemma beside it was not.
+
+**And a limit of the CURRENT interface, forced by that statement rather than
+guessed.** `flat-run fug n1 l1 g s' alloc'` starts at `mkFlat s' alloc' 0`, and
+`Shifted d fsK (mkFlat s' alloc' 0)` unfolds to six components. Two are `refl`.
+The other four are demands on the state the composite is in when it hands over:
+`fpc ≡ suc (length (emitted n l f))`, `fret ≡ []`, `flink ≡ nothing`, and
+`fclosure ≡ SV-Tag 0` — the last because `mkFlat` hardwires the closure
+register to the entry filler. Meanwhile `value-realized`'s `∃ fuel` form cannot
+supply even the first: at a fuel large enough to finish `f`, the run has fallen
+off the end of `f`'s trace and `flat-halt` has set `halted := true`, so `g`'s
+own `halted s ≡ false` premise fails. A fuel is not a handover; a STEP CHAIN to
+a named settle state is. That is the next change to the interface, and it is
+`value-realized`'s alone — nothing outside this module reads that field (the
+apex adapter consumes only `traces-agree`).

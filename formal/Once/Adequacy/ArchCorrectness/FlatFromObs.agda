@@ -93,7 +93,7 @@ open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Tag;
          halted)
 open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef)
-open import Data.Nat using (z≤n; s≤s)
+open import Data.Nat using (z≤n; s≤s; _≤_)
 open import Once.CCC.Machine.Allocation
   using (AllocState; mkAllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -177,8 +177,10 @@ entry-s : LocState FS
 entry-s = mkLocState entry-regs (λ _ _ → nothing) (λ _ → nothing) false
 
 -- All four preconditions now hold BY CONSTRUCTION.
-entry-ns : ∀ (slots : ℕ) → next-slot (entry-alloc slots) ≡ 0
-entry-ns _ = refl
+-- D155: the premise is `next-slot alloc ≤ n`, not an equation — the entry
+-- instance is `n ≡ 0`, so this is `0 ≤ 0` and still holds by construction.
+entry-ns : ∀ (slots : ℕ) → next-slot (entry-alloc slots) ≤ 0
+entry-ns _ = z≤n
 
 entry-bf : ∀ (slots : ℕ) → BeforeFrontier (entry-alloc slots) entry-loc
 entry-bf _ = heap-before (s≤s z≤n)
