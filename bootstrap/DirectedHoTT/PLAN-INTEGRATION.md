@@ -215,12 +215,42 @@ bite.
 | **unverified AND modified** | **151** |
 | unverified but untouched (no risk) | 52 |
 
-The tail is `Examples/Knot/*` (149 modules) and `Examples/Gcd/*`. The box
-(7.5 GB) cannot finish: `check.sh` caps Agda at 5.5 GB, single modules run
-6+ minutes (`Gcd.StepExtA` 384s), `Trust/Comparison` hit 143 at 900s, and
-three attempts were killed for memory. **The sweep is resumable** — the
-`.agdai` cache makes each run pick up where the last stopped — so this
-converges by repetition, not by cleverness.
+The tail is `Examples/Knot/*` (149 modules) and `Examples/Gcd/*`.
+
+⚠⚠ **AND IT DOES NOT CONVERGE BY REPETITION — AN EARLIER CLAIM HERE SAID
+IT DID, AND THAT WAS WRONG.** Measured: two consecutive sweeps both died
+on the SAME module, `Examples/Knot/JudgeWfAA`, and the interface count did
+not move (117 → 117). Built alone, in the foreground, with the compacting
+collector its own header prescribes, it still exits 143 at 2m50s.
+`Knot/InDRows` likewise, with and without `-c`. The `.agdai` cache makes
+the sweep *resumable*, which is not the same as *convergent*: it is a hard
+wall at specific modules, and repetition buys nothing.
+
+★ **EVERY FAILURE IS `143` WITH ZERO ERRORS — a resource kill, never a
+type error.** Across everything exercised (`Trust/Kernel`, `Trust/Lib`,
+`Knot/CtxD`, `Knot/IxD`, and the whole chain under `LogicalRelation`) the
+conversion has produced **no type errors at all**. The unverified
+remainder is blocked by machine capacity, not by correctness.
+
+⚠ **THE DIAGNOSIS IS PROBABLY ENVIRONMENTAL, AND THAT IS NOT THE SAME AS
+PROVEN.** `JudgeWfAA`'s header records it passing with `-c` at 179s —
+measured in a plain shell. Under the agent harness ~3.6 GB of the 7.5 GB
+box is already resident, leaving Agda ~4 GB against `check.sh`'s 5.5 GB
+cap. ⇒ **run `tools/sweep.sh` from a plain terminal**; that is the cheap
+way to close this.
+
+⚠⚠ **THE OPEN RISK, STATED BECAUSE IT IS NOT RULED OUT.** The old
+hand-rolled `_≡_` was MONOMORPHIC (`{A : Set}`); the stdlib's is
+UNIVERSE-POLYMORPHIC. Level metavariables everywhere could plausibly
+raise elaboration cost and push borderline modules over a cap they used
+to clear. Nothing measured here confirms *or* refutes that. **The
+experiment:** `git worktree add` at `b13fe24b^`, build a mid-weight module
+that currently succeeds (`Knot/IxD`), and compare peak RSS against the
+post-conversion build. If the post-conversion peak is materially higher,
+this axis has a cost the plan has not booked — and note that option (ii)
+(`Agda.Builtin.*` only) does NOT avoid it, since the builtin `_≡_` is
+level-polymorphic too. The only monomorphic option is the hand-rolled one,
+i.e. reverting.
 
 ⚠ **AND EXIT 0 IS NOT A VERDICT EITHER.** The first sweep attempt exited
 **0 having built nothing**: it bailed at `check-trust.sh`'s coverage gate
