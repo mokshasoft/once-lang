@@ -11750,3 +11750,111 @@ form bakes in TERMINATION — a chain to a settle state at the fragment's end.
 That is right for every shape except `Ana`, which by construction has no final
 state. `obs-correct-Ana` is a postulate either way, but the record's own comment
 ("only `Ana` carries a step-index") is where the reconciliation belongs.
+
+## D159
+
+**THE COMPILER OUTPUTS RELOCATABLE CODE, and that is encoded in a codomain
+rather than asserted in a premise.**
+
+### The decision
+
+`ir-to-trace : IR A B → AbstractTrace` is the wrong codomain. A list IS a
+placement: every position in it is a global index, and everything downstream
+inherits that — `fpc` indexes into it, `blk-off` walks it from the start of the
+program, `find-label`/`find-thunk` scan it, `Shifted` shifts indices into it.
+The emitter's TYPE commits to a placement at the one level where the placement
+is not yet determined.
+
+The emitter shall produce a COMPILATION UNIT — an entry block plus a set of
+NAMED blocks — and placement shall happen exactly once, in `link`:
+
+    record CompUnit : Set where
+      entry  : AbstractTrace                        -- block-local positions only
+      blocks : List (LabelId × ℕ × AbstractTrace)   -- label, frame budget, body
+
+    ir-to-unit  : IR A B → CompUnit
+    link        : CompUnit → AbstractTrace           -- the ONLY place addresses appear
+    ir-to-trace ir = link (ir-to-unit ir)            -- apex statement UNCHANGED
+
+### Why this form, and not an invariant (OCP-0005)
+
+OCP-0005's rule is "encoding turns *we decided X* into *the compiler rejects
+¬X*", and its success story is `⇒[pure]`: purity is not asserted and checked,
+it is a GRADE IN THE TYPE, so the violation is unsayable.
+
+By that standard the premise form is the weak one. D158 threaded
+`SpanAt prog base (emitted n l ir)` — a placement hypothesis — through the
+correctness statement. That is a prose decision in typed clothing, and D157 is
+the proof: a premise of exactly that kind was written, was REFUTABLE, and
+nothing structural caught it. A predicate (`Relocatable : AbstractTrace → Set`)
+is no better: it asserts that a representation WITH positions happens not to
+depend on them, which is a claim one can state wrongly or weakly.
+
+Removing positions from the representation is the strong form. There is then no
+position-dependent statement to write.
+
+### Why this layer
+
+The emitter's output type is the FIRST level at which a position could enter
+and the LAST at which it is still undetermined — the same principle as
+"canonicalise as early as possible". Not the machine: a symbolic `fpc` bolted
+onto a placed representation still lets the emitter produce placed code. Not the
+apex: `correct` speaks of ONE program, so it has no fragments and nothing to say
+about placement. Position-independence is a property of the induction we choose,
+and the induction is fixed by what the emitter produces.
+
+### The layering that follows
+
+1. REPRESENTATION — `CompUnit` has no global positions. (The encoding; ¬X unsayable.)
+2. UNIT WELL-FORMEDNESS — block labels are distinct. This is `LabelScope`'s real
+   content, stated ONCE on the unit instead of threaded through every fragment
+   proof. (`LabelScope`'s `SegAgree` induction is measured-but-unlanded; under
+   units the obligation changes shape rather than needing that induction.)
+3. LINK CORRECTNESS — `link` preserves behaviour. THIS is where relocation
+   lives, proved once and globally.
+4. APEX — `correct` unchanged.
+
+### The relocation work is not wasted; it was applied at the wrong level
+
+`Shifted`, the twelve `shifted-*` lemmas and `exec-flat-reloc` (plan 0.88 A) are
+exactly what proving `link` behaviour-preserving requires, because `link` places
+blocks at offsets. They belong to the LINKER — one global lemma — not to the
+per-composition induction, where D157 showed they cannot be made to hold anyway.
+
+### This design is already implemented at three levels; the abstract emitter
+### is the one that refuses to feed it
+
+  * `ir-to-trace'`'s fourth component is `List (ℕ × ℕ × AbstractTrace)` —
+    (label, budget, trace). That IS the block map.
+  * `ir-to-bodies` / `ir-to-bodies-from` are the accessors, exported.
+  * All three backends implement block emission: `emit-thunk-body o cl
+    (lbl , budget , body-trace)` emits `.L_thunk_<lbl>:` with its own
+    `subq/addq` frame and `ret`, placed AFTER the parent's `ret` and "reachable
+    only via `lea .L_thunk_<n>(%rip)`".
+
+And NOTHING EVER FILLS IT. Every clause of `ir-to-trace'` returns `[]`, passes a
+sub-IR's list through, or concatenates two. In particular `curry` INLINES its
+body into the main trace and emits `c-jmp (ℓ o end-label)` purely to jump over
+it — the jump and the label exist only because of the inlining — and `Cata`
+splices its algebra even though its own comment says the algebra "runs in its
+OWN frame as a called body (exactly as `curry`'s body is generated)".
+
+So the abstract emitter contradicts a model the concrete backends already
+implement. That divergence is the root of D157: `apply ∘ curry body` is
+unprovable precisely because `curry`'s body is spliced into `curry`'s trace at
+an offset unrelated to `apply`'s, so no single placement maps both.
+
+### What collapses
+
+  * `Shifted` + relocation in the composition proof — nothing to shift.
+  * `SpanAt prog base`, `k + base`, `shuffle`, `length-++` (D158) — become
+    `u.blocks ⊆ prog.blocks`, monotone, preserved by composition definitionally
+    because composition of units is UNION.
+  * `find-label` becomes BLOCK-LOCAL, so "a jump never leaves its body" is true
+    by construction rather than a scoping theorem.
+  * `find-thunk` becomes block lookup, so D082's two label namespaces become two
+    TYPES rather than a naming discipline.
+  * `blk-off` (412 sites) goes from a walk from the start of the PROGRAM to an
+    offset within a BLOCK — from a global quantity to a local one, which is why
+    fragment-local statements become possible at all.
+  * `apply ∘ curry body` closes for free: the union contains the body's block.
