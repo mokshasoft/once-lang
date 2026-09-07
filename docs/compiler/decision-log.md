@@ -11692,3 +11692,61 @@ whose hypothesis quantifies over states with no constraint linking them to the
 run is the shape that hides an inconsistency — the same tell as the
 "state-premise / program-conclusion" residuals. Write the axiom, then try to
 break it BEFORE building on it.
+
+## D158
+
+**Quantify over placement; do not relocate.** D157 left the composition proof
+conditional on two splice agreements whose call case is refutable. The fix is
+not a better agreement — it is to stop asking the question. A fragment's
+witness is now stated IN A PROGRAM, at the offset its own text occupies, and
+universally over both:
+
+    ∀ (prog : AbstractTrace) (base : ℕ)
+      → AllSlotStable prog → SpanAt prog base (emitted n l ir) → …
+
+`SpanAt prog base t = ∀ k i → fetch t k ≡ just i → fetch prog (k + base) ≡ just i`
+— fetch agreement, the weakest thing a run ever asks of a program.
+
+**This IS the position-independence a relocation lemma was trying to prove.** A
+fragment's correctness cannot depend on where it lands, because it is asserted
+for EVERY landing. The difference from a shift lemma is that a shift places one
+contiguous thing, and that is not enough: `ir-to-trace' n l (curry body m)`
+emits the body at offset 7 of its OWN trace, so in `apply ∘ curry body` the
+body and `apply` sit at unrelated offsets and no `shift d` maps both. That is
+what D157's counterexample was really about. Quantifying costs nothing and
+covers both, because each is placed on its own.
+
+**`k + base`, not `base + k`.** At `k ≡ 0` it reduces to `base`, the entry
+state's pc, and at literal `k` to `sucᵏ base`, where the machine actually is
+after `k` straight steps. Every leaf shape's chain link is `refl` because of
+that choice; with the arguments the other way round each would have needed
+`+-identityʳ`.
+
+**`comp-value-realized` is now a PROOF, unconditionally** — the postulate is
+gone (18 → 17 named residuals in `IRObsCorrectFlat`). `f` and `g` are witnessed
+in the SAME program, at `base` and `base + length ft + 1`, so there is no
+second program for their scans to disagree with: `find-thunk prog ℓ` is the
+same scan on both sides, which is exactly what `apply ∘ curry body` needs. The
+splice is now three chains concatenated, with no shift, no `Shifted`, and no
+side conditions. `handover-eq` lost its arithmetic too — the sequel's entry
+state IS the state the bridge produced.
+
+**Consequence: the plan 0.88 A relocation apparatus has no consumer.**
+`Shifted`, the twelve `shifted-*` lemmas, `exec-flat-reloc`, `shift`,
+`shifted-eq`, `flat-exec-instr-prefix`, `FlatSteps-prefix`, `FlatSteps-reloc` —
+all unused now. That is the LESSONS #1 pattern once more: they were machinery
+for an interface shape that was itself wrong, and proving things about it
+relocated the gap rather than closing it. Left in place rather than deleted in
+the same commit; deletion is its own call.
+
+**Staged, and named as such.** `traces-agree` is still fragment-local. It has
+to follow, and it cannot simply take the same index: run inside a program that
+continues past the fragment, an `∃ fuel` event prefix over-collects the
+successor's events. It must be bounded by the chain — `chain-events` (FlatEvents)
+already exists for that.
+
+**Also recorded, since D155 made it worse rather than better:** the hand-over
+form bakes in TERMINATION — a chain to a settle state at the fragment's end.
+That is right for every shape except `Ana`, which by construction has no final
+state. `obs-correct-Ana` is a postulate either way, but the record's own comment
+("only `Ana` carries a step-index") is where the reconciliation belongs.

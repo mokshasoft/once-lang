@@ -129,7 +129,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open ValidityDef {FS} program-bound using (readLoc-stack-heap-eq)
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[])
   open RTA o {FS} program-bound using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate)
-  open CataNextSlot {FS} using (exec-flat-keeps-next-slot)
+  open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable)
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable)
 
   -- μ↔layer iso (the strat-const crux), general in F. A μ-value's
@@ -173,16 +173,40 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- entered only at `mkFlat` cannot RECEIVE a hand-over at all. `cl` is that
   -- component, quantified rather than fixed; `entry-flat s alloc (SV-Tag 0)`
   -- IS `mkFlat s alloc 0`, so the entry instance is unchanged.
-  entry-flat : LocState FS → AllocState {FS} → StoredValue FS → FlatState
-  entry-flat s alloc cl = mkFlatFull s alloc 0 [] cl nothing
+  entry-flat : ℕ → LocState FS → AllocState {FS} → StoredValue FS → FlatState
+  entry-flat base s alloc cl = mkFlatFull s alloc base [] cl nothing
+
+  -- D158: THE FRAGMENT'S PLACEMENT, as a hypothesis rather than an identity.
+  --
+  -- `emitted n l ir` is what the emitter produces for `ir`; `SpanAt prog base`
+  -- says that text occurs in `prog` starting at `base`. Stated as fetch
+  -- agreement — the weakest form, and the only thing a run ever asks of a
+  -- program. Every witness below is universally quantified over `prog` and
+  -- `base`, which IS the position-independence a relocation lemma was trying
+  -- to prove: a fragment's correctness cannot depend on where it lands,
+  -- because it is asserted for every landing.
+  --
+  -- WHY QUANTIFY RATHER THAN RELOCATE (D158). A single shift can place a
+  -- fragment, but not a fragment AND the code it calls into. `curry` emits its
+  -- body at offset 7 of its own trace, so in `apply ∘ curry body` the body and
+  -- `apply` sit at unrelated offsets; no `shift d` maps both. Quantifying over
+  -- placement costs nothing and covers both, because each is placed on its own.
+  --
+  -- `k + base`, not `base + k`: at `k ≡ 0` it reduces to `base`, which is the
+  -- entry state's pc, and at literal `k` it reduces to `sucᵏ base`, which is
+  -- where the machine actually is after `k` straight steps. The proofs are
+  -- `refl` because of that choice.
+  SpanAt : AbstractTrace → ℕ → AbstractTrace → Set
+  SpanAt prog base t =
+    ∀ (k : ℕ) (i : AbstractInstr) → fetch t k ≡ just i → fetch prog (k + base) ≡ just i
 
   -- D152: the flat run of `ir` AT THE FRONTIER AND LABEL BASE IT IS EMITTED
   -- AT. It used to be hardwired to frontier 0, which is only ever true of the
   -- top-level `ir` — every sub-IR of a composite is emitted at a nonzero `n`.
-  flat-run : ℕ → ℕ → ℕ → ∀ {A B} → IR A B → LocState FS → AllocState {FS}
+  flat-run : ℕ → AbstractTrace → ℕ → LocState FS → AllocState {FS}
            → StoredValue FS → FlatState
-  flat-run fuel n l ir s alloc cl =
-    exec-flat fuel (emitted n l ir) (entry-flat s alloc cl)
+  flat-run fuel prog base s alloc cl =
+    exec-flat fuel prog (entry-flat base s alloc cl)
 
   -- Frame discipline (codegen-image half + machine half wired together):
   -- running any compiled IR preserves the stack-frame frontier `next-slot`.
@@ -192,11 +216,11 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- IH at every cata layer: the cata scaffold keeps `next-slot ≡ 0`, so the
   -- algebra's `next-slot alloc ≡ 0` precondition holds at each layer's run.
   flat-run-keeps-next-slot :
-    ∀ (fuel n l : ℕ) {A B} (ir : IR A B) (s : LocState FS) (alloc : AllocState {FS})
-      (cl : StoredValue FS)
-    → next-slot (falloc (flat-run fuel n l ir s alloc cl)) ≡ next-slot alloc
-  flat-run-keeps-next-slot fuel n l ir s alloc cl =
-    exec-flat-keeps-next-slot (emitted n l ir) (ir-stable ir n l) fuel (entry-flat s alloc cl)
+    ∀ (fuel : ℕ) (prog : AbstractTrace) → AllSlotStable prog
+    → ∀ (base : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    → next-slot (falloc (flat-run fuel prog base s alloc cl)) ≡ next-slot alloc
+  flat-run-keeps-next-slot fuel prog ss base s alloc cl =
+    exec-flat-keeps-next-slot prog ss fuel (entry-flat base s alloc cl)
 
   -- Observable refinement over the flat machine.
   --
@@ -234,7 +258,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- because `Shifted` asks for them: `at-end` gives the pc the sequel is
   -- relocated by, and `no-ret`/`no-link` say the run left no return pending.
   -- `fclosure` is deliberately NOT constrained — it is what `ir` hands on.
-  record ValueRealized {A B} (n l : ℕ) (ir : IR A B) (x : ⟦ A ⟧)
+  record ValueRealized (prog : AbstractTrace) (base : ℕ)
+                       {A B} (n l : ℕ) (ir : IR A B) (x : ⟦ A ⟧)
                        (s : LocState FS) (alloc : AllocState {FS})
                        (cl : StoredValue FS) : Set where
     constructor realized
@@ -243,15 +268,16 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       settle     : FlatState
       out-mode   : AllocMode
       cont-alloc : AllocState {FS}
-      run        : FlatSteps (emitted n l ir) steps (entry-flat s alloc cl) settle
+      run        : FlatSteps prog steps (entry-flat base s alloc cl) settle
       live       : halted (floc settle) ≡ false
-      at-end     : fpc settle ≡ length (emitted n l ir)
+      at-end     : fpc settle ≡ length (emitted n l ir) + base
       no-ret     : fret settle ≡ []
       no-link    : flink settle ≡ nothing
       place      : ResultPlace B out-mode (falloc settle) cont-alloc
                      (eval ir x) (floc settle)
 
-  record MachineRefinesObsF {A B} (n l : ℕ) (ir : IR A B) (x : ⟦ A ⟧)
+  record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
+                             {A B} (n l : ℕ) (ir : IR A B) (x : ⟦ A ⟧)
                              (s : LocState FS) (alloc : AllocState {FS})
                              (cl : StoredValue FS) : Set where
     field
@@ -265,7 +291,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- correctly in `evalᴰ`, observed by the `take k` event-prefix.)
       traces-agree :
         ∀ (k : ℕ) → ∃[ f ]
-          take k (flat-events f (emitted n l ir) (entry-flat s alloc cl))
+          take k (flat-events f (emitted n l ir) (entry-flat 0 s alloc cl))
             ≡ take k (projTrace (evalᴰ ir (inject x)) k)
       -- The value device: "the value the next effectful SigOp reads is right".
       -- Plan 0.54 rung A: a `ResultPlace` (register `at-reg` OR memory `at-loc`),
@@ -274,7 +300,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- it. This is the `Place` split (register-allocation both-residences); the
       -- register count per arch is rung B. Final-value form (its own fuel `f`).
       -- D155: the hand-over form. See `ValueRealized` above.
-      value-realized : ValueRealized n l ir x s alloc cl
+      value-realized : ValueRealized prog base n l ir x s alloc cl
 
   -- The INPUT's residence — the input-side mirror of `ResultPlace`. `Input1`
   -- either POINTS at the value in memory (`in-loc`, the spill path) or HOLDS it
@@ -325,7 +351,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- frontier is `n` rather than 0. `n = l = 0` is the entry instance, which
     -- is all `ir-flat-correct-of` ever uses.
     ∀ (n l : ℕ)
-      (mIn : AllocMode) (x : ⟦ A ⟧)
+      -- D158: ∀ PLACEMENT. `prog` is the program the fragment is part of and
+      -- `base` where its own text begins; `SpanAt` is the only thing tying
+      -- them together, and `AllSlotStable prog` is what `next-slot`
+      -- preservation needs once the run is no longer confined to `emitted`.
+      (prog : AbstractTrace) (base : ℕ) →
+      AllSlotStable prog →
+      SpanAt prog base (emitted n l ir) →
+    ∀ (mIn : AllocMode) (x : ⟦ A ⟧)
       (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) →
     -- D155: `≤`, not `≡`. What this premise is FOR is that the emitter's
     -- scratch region `[n , …)` is above anything the caller has live —
@@ -344,7 +377,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- `input-loc` / `ValidAtWF` / `BeforeFrontier` triple is gone — it made
     -- the `in-reg` case unusable.
     InputAt mIn alloc x s →
-    MachineRefinesObsF n l ir x s alloc cl
+    MachineRefinesObsF prog base n l ir x s alloc cl
 
   -- `cata-correct`: the single named obligation; the record FIELDS name the
   -- parts the discharge must provide (all sharing one `enough-fuel`):
@@ -480,12 +513,12 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- is stuck on `halted s` until `nh` fires, so the reduction is done ONCE and
   -- every component rewrites by it, instead of each re-deriving the run.
   obs-correct-id : ∀ {A} → IRObsCorrectF (id {A})
-  obs-correct-id {A} _ n l mIn x s alloc cl _ nh rdi-eq =
+  obs-correct-id {A} _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =
     record
       { traces-agree = λ k →
           2 , trans (cong (take k) (mach-[] 2)) (cong (take k) (sym (denot-[] k)))
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , refl) ∷ []) nh refl refl refl
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
                    (place rdi-eq)
       }
     where
@@ -493,7 +526,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- is derived from the two step lemmas rather than by `rewrite nh`: the
       -- second step's `halted` test is not a syntactic occurrence in the goal.
       regs' = writeReg (regs s) Output (readReg (regs s) Input1)
-      fs₁   = flat-exec-instr mov-to-output (emitted n l (id {A})) (entry-flat s alloc cl)
+      fs₁   = flat-exec-instr mov-to-output prog (entry-flat base s alloc cl)
 
 
       -- Machine side: the only fetchable instruction is `mov-to-output`, which
@@ -502,8 +535,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       ev-[] zero    .mov-to-output refl fs = refl
       ev-[] (suc n) i              ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (id {A})) (entry-flat s alloc cl) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (id {A})) ev-[] f (entry-flat s alloc cl)
+      mach-[] : ∀ f → flat-events f (emitted n l (id {A})) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (id {A})) ev-[] f (entry-flat 0 s alloc cl)
 
       -- Denotation side: `evalᴰ id a = returnT a` emits nothing.
       denot-[] : ∀ k → projTrace (evalᴰ (id {A}) (inject x)) k ≡ []
@@ -562,19 +595,19 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- result place is `unit-result` — which asserts nothing about the state,
   -- exactly because a unit result has no residence (D074).
   obs-correct-terminal : ∀ {A} → IRObsCorrectF (terminal {A})
-  obs-correct-terminal {A} _ n l mIn x s alloc cl _ nh rdi-eq =
+  obs-correct-terminal {A} _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =
     record
       { traces-agree = λ k → 1 , cong (take k) (mach-[] 1)
       ; value-realized =
-          realized 0 (entry-flat s alloc cl) mIn alloc [] nh refl refl refl unit-result
+          realized 0 (entry-flat base s alloc cl) mIn alloc [] nh refl refl refl unit-result
       }
     where
       ev-[] : ∀ pc i → fetch (emitted n l (terminal {A})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
       ev-[] zero    i () fs
       ev-[] (suc n) i () fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (terminal {A})) (entry-flat s alloc cl) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (terminal {A})) ev-[] f (entry-flat s alloc cl)
+      mach-[] : ∀ f → flat-events f (emitted n l (terminal {A})) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (terminal {A})) ev-[] f (entry-flat 0 s alloc cl)
 
   -- ── `initial` — DISCHARGED, VACUOUSLY, and that is the honest reading.
   -- `initial : IR Void A` and `⟦ Void ⟧ᴵ` is `⊥`, so there is no input to run
@@ -582,26 +615,26 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- absurd pattern. The emitter's `mov-to-output` is never reached because the
   -- state it would run from cannot exist.
   obs-correct-initial : ∀ {A} → IRObsCorrectF (initial {A})
-  obs-correct-initial _ n l mIn ()
+  obs-correct-initial _ n l prog base _ span mIn ()
 
   -- ── `free-heap` — DISCHARGED. `IR Unit Unit`, a semantic no-op that still
   -- compiles to `mov-to-output ∷ []` (copy through, so the register discipline
   -- holds). Unit codomain ⇒ `unit-result`; no event on either side.
   obs-correct-free-heap : ∀ (r : HeapRef) → IRObsCorrectF (free-heap r)
-  obs-correct-free-heap r _ n l mIn x s alloc cl _ nh rdi-eq =    record
+  obs-correct-free-heap r _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
       { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , refl) ∷ []) nh refl refl refl unit-result
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl unit-result
       }
     where
-      fs₁ = flat-exec-instr mov-to-output (emitted n l (free-heap r)) (entry-flat s alloc cl)
+      fs₁ = flat-exec-instr mov-to-output prog (entry-flat base s alloc cl)
 
       ev-[] : ∀ pc i → fetch (emitted n l (free-heap r)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
       ev-[] zero    .mov-to-output refl fs = refl
       ev-[] (suc n) i              ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (free-heap r)) (entry-flat s alloc cl) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (free-heap r)) ev-[] f (entry-flat s alloc cl)
+      mach-[] : ∀ f → flat-events f (emitted n l (free-heap r)) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (free-heap r)) ev-[] f (entry-flat 0 s alloc cl)
 
   -- ── `out-μ` / `Out` — DISCHARGED. Both are Lambek inverses compiling to the
   -- same `mov-to-output ∷ []` as `id`, and both are DOMAIN-RESTRICTED in a way
@@ -613,23 +646,23 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- the layer iso: `valid-μ-wf`/`valid-ν-wf` CARRY the layer's own `ValidAtWF`
   -- (Plan 0.27 Option 3), so destructing one yields what `at-loc` wants.
   obs-correct-out-μ : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
-  obs-correct-out-μ {F} wf _ n l mIn x s alloc cl _ nh rdi-eq =    record
+  obs-correct-out-μ {F} wf _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
       { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , refl) ∷ []) nh refl refl refl
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
                    (place rdi-eq)
       }
     where
       regs' = writeReg (regs s) Output (readReg (regs s) Input1)
-      fs₁   = flat-exec-instr mov-to-output (emitted n l (out-μ wf)) (entry-flat s alloc cl)
+      fs₁   = flat-exec-instr mov-to-output prog (entry-flat base s alloc cl)
 
 
       ev-[] : ∀ pc i → fetch (emitted n l (out-μ wf)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
       ev-[] zero    .mov-to-output refl fs = refl
       ev-[] (suc n) i              ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (out-μ wf)) (entry-flat s alloc cl) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (out-μ wf)) ev-[] f (entry-flat s alloc cl)
+      mach-[] : ∀ f → flat-events f (emitted n l (out-μ wf)) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (out-μ wf)) ev-[] f (entry-flat 0 s alloc cl)
 
       keeps-alloc : falloc fs₁ ≡ alloc
       keeps-alloc = refl
@@ -672,23 +705,23 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       place (in-unit ())
 
   obs-correct-Out : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
-  obs-correct-Out {F} wf _ n l mIn x s alloc cl _ nh rdi-eq =    record
+  obs-correct-Out {F} wf _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
       { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , refl) ∷ []) nh refl refl refl
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
                    (place rdi-eq)
       }
     where
       regs' = writeReg (regs s) Output (readReg (regs s) Input1)
-      fs₁   = flat-exec-instr mov-to-output (emitted n l (Out wf)) (entry-flat s alloc cl)
+      fs₁   = flat-exec-instr mov-to-output prog (entry-flat base s alloc cl)
 
 
       ev-[] : ∀ pc i → fetch (emitted n l (Out wf)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
       ev-[] zero    .mov-to-output refl fs = refl
       ev-[] (suc n) i              ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (Out wf)) (entry-flat s alloc cl) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (Out wf)) ev-[] f (entry-flat s alloc cl)
+      mach-[] : ∀ f → flat-events f (emitted n l (Out wf)) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (Out wf)) ev-[] f (entry-flat 0 s alloc cl)
 
       keeps-alloc : falloc fs₁ ≡ alloc
       keeps-alloc = refl
@@ -740,23 +773,23 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- bodies are identical.
   obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ ℤ , Decimal ⟧-baseI A)
                     → IRObsCorrectF (const fit v)
-  obs-correct-const fits-int v _ n l mIn x s alloc cl _ nh rdi-eq =    record
+  obs-correct-const fits-int v _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
       { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , refl) ∷ []) nh refl refl refl
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
                    (at-reg fits-int out-lit)
       }
     where
       instr = instr-load-const fits-intˢ v
-      fs₁   = flat-exec-instr instr (emitted n l (const fits-int v)) (entry-flat s alloc cl)
+      fs₁   = flat-exec-instr instr prog (entry-flat base s alloc cl)
 
 
       ev-[] : ∀ pc i → fetch (emitted n l (const fits-int v)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
       ev-[] zero    .instr refl fs = refl
       ev-[] (suc n) i      ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (const fits-int v)) (entry-flat s alloc cl) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (const fits-int v)) ev-[] f (entry-flat s alloc cl)
+      mach-[] : ∀ f → flat-events f (emitted n l (const fits-int v)) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (const fits-int v)) ev-[] f (entry-flat 0 s alloc cl)
 
       keeps-alloc : falloc fs₁ ≡ alloc
       keeps-alloc = refl
@@ -768,23 +801,23 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       out-lit =
         writeReg-same (regs s) Output (SV-Lit fits-intˢ (AbstractExec.lit-value {FS} fits-intˢ v))
 
-  obs-correct-const fits-float v _ n l mIn x s alloc cl _ nh rdi-eq =    record
+  obs-correct-const fits-float v _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
       { traces-agree = λ k → 2 , cong (take k) (mach-[] 2)
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , refl) ∷ []) nh refl refl refl
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
                    (at-reg fits-float out-lit)
       }
     where
       instr = instr-load-const fits-floatˢ v
-      fs₁   = flat-exec-instr instr (emitted n l (const fits-float v)) (entry-flat s alloc cl)
+      fs₁   = flat-exec-instr instr prog (entry-flat base s alloc cl)
 
 
       ev-[] : ∀ pc i → fetch (emitted n l (const fits-float v)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
       ev-[] zero    .instr refl fs = refl
       ev-[] (suc n) i      ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (const fits-float v)) (entry-flat s alloc cl) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (const fits-float v)) ev-[] f (entry-flat s alloc cl)
+      mach-[] : ∀ f → flat-events f (emitted n l (const fits-float v)) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (const fits-float v)) ev-[] f (entry-flat 0 s alloc cl)
 
       keeps-alloc : falloc fs₁ ≡ alloc
       keeps-alloc = refl
@@ -1024,13 +1057,13 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
     → effect si ≡ Pure → IRObsCorrectF (SigOp si)
   pure-obs-correct-sigop {A} {B} si fitness rA pure-eq
-    _ n l mIn x s alloc cl _ not-halted rdi-eq =
+    _ n l prog base _ span mIn x s alloc cl _ not-halted rdi-eq =
     record
       { traces-agree = λ k →
           2 , trans (cong (take k) (mach-[] 2))
                     (cong (take k) (sym (denot-[] k)))
       ; value-realized =
-          realized 1 fs₁ Stack (falloc fs₁) ((not-halted , refl) ∷ [])
+          realized 1 fs₁ Stack (falloc fs₁) ((not-halted , span 0 _ refl) ∷ [])
                    -- A `Pure` SigOp does not halt, so the settle state is LIVE
                    -- (which is what the sequel's `halted s ≡ false` needs).
                    (sigop-halts-false si pure-eq s) refl refl refl
@@ -1039,7 +1072,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                         not-halted rdi-eq))
       }
     where
-      fs₁ = flat-exec-instr (instr-sigop si) (emitted n l (SigOp si)) (entry-flat s alloc cl)
+      fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl)
 
       -- Machine side: no fetchable instr emits an event (the sole
       -- instruction `instr-sigop si` is `Pure`), so the whole trace is `[]`.
@@ -1048,8 +1081,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       ev-[] zero    .(instr-sigop si) refl fs rewrite pure-eq = refl
       ev-[] (suc pc') i               ()   fs
 
-      mach-[] : ∀ f → flat-events f (emitted n l (SigOp si)) (entry-flat s alloc cl) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (SigOp si)) ev-[] f (entry-flat s alloc cl)
+      mach-[] : ∀ f → flat-events f (emitted n l (SigOp si)) (entry-flat 0 s alloc cl) ≡ []
+      mach-[] f = flat-events-[] (emitted n l (SigOp si)) ev-[] f (entry-flat 0 s alloc cl)
 
       -- Denotation side: a `Pure` SigOp emits nothing (`emit-D … ≡ []`).
       denot-[] : ∀ k → projTrace (evalᴰ (SigOp si) (inject x)) k ≡ []
@@ -1188,137 +1221,113 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- from the four supporting pieces — each obligation states what it needs and
   -- the pieces are consumed where the goal asks for them.
   postulate
+    -- D158: still fragment-local on the RIGHT (the events of `g ∘ f` run
+    -- alone), which is the staged half — `value-realized` moved to the
+    -- program-indexed form and this must follow, bounded by the chain rather
+    -- than by a fuel, or it over-collects the successor's events.
     comp-traces-agree :
-      ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl} (n l : ℕ)
+      ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl} {prog base} (n l : ℕ)
       → ir-size g < program-bound
-      → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc cl
+      → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl
       → ∀ (k : ℕ) → ∃[ fu ]
-          take k (flat-events fu (emitted n l (g ∘ f)) (entry-flat s alloc cl))
+          take k (flat-events fu (emitted n l (g ∘ f)) (entry-flat 0 s alloc cl))
             ≡ take k (projTrace (evalᴰ (g ∘ f) (inject x)) k)
-    -- D155: `next-slot alloc ≤ n` is threaded IN. `g` is emitted at `f`'s
-    -- output frontier `n1`, so applying `ihg` needs `next-slot alloc' ≤ n1`
-    -- for the allocator `f`'s run leaves; that is this premise composed with
-    -- `flat-run-keeps-next-slot` (the run does not move it) and
-    -- `frontier-mono f n l` (`n ≤ n1`). With the old equational premise the
-    -- same step was unsatisfiable — see D154/D155.
-    -- D157: the ASSEMBLY of this is below and it IS a proof —
-    -- `comp-value-realized-of` derives it from two SPLICE AGREEMENTS. It stays
-    -- an axiom HERE because the call case of those agreements is REFUTABLE for
-    -- a fragment-indexed interface; see D157 and the note on
-    -- `comp-value-realized-of`.
-    comp-value-realized :
-      ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl} (n l : ℕ)
-      → ir-size g < program-bound
-      → next-slot alloc ≤ n
-      → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc cl
-      → ValueRealized n l (g ∘ f) x s alloc cl
 
-  -- D155: the hand-over state, as a RECORD EQUATION. `Shifted`-turned-function
-  -- (`shift`) means a state that sits at pc `d` with nothing pending IS the
-  -- relocation of a fresh entry state — which is what lets `g`'s chain, stated
-  -- from `entry-flat`, be spliced in at the bridge.
-  handover-eq : ∀ (d : ℕ) (fs : FlatState)
-              → fpc fs ≡ d → fret fs ≡ [] → flink fs ≡ nothing
-              → fs ≡ shift d (entry-flat (floc fs) (falloc fs) (fclosure fs))
-  handover-eq d (mkFlatFull lo al pc rt cls lk) refl refl refl =
-    cong (λ m → mkFlatFull lo al m [] cls nothing) (sym (+-identityʳ pc))
+  -- D158: the hand-over state, as a RECORD EQUATION — and with NO shift. Both
+  -- fragments run in the SAME program, so `g`'s entry pc is simply where `f`
+  -- left off plus the bridge, and the sequel's entry state IS the state the
+  -- bridge produced. This is what quantifying over placement buys: the
+  -- relocation that D156's version needed here has nothing left to do.
+  handover-eq : ∀ (b : ℕ) (fs : FlatState)
+              → fpc fs ≡ b → fret fs ≡ [] → flink fs ≡ nothing
+              → fs ≡ entry-flat b (floc fs) (falloc fs) (fclosure fs)
+  handover-eq b (mkFlatFull lo al pc rt cls lk) refl refl refl = refl
+
+  -- `(a + suc b) + c ≡ b + suc (a + c)` — the one arithmetic shuffle the
+  -- splice needs, in both directions (the sequel's span index, and its end).
+  shuffle : ∀ (a b c : ℕ) → (a + suc b) + c ≡ b + suc (a + c)
+  shuffle a b c =
+    trans (cong (_+ c) (+-suc a b))
+          (trans (cong suc (trans (+-assoc a b c)
+                           (trans (cong (a +_) (+-comm b c))
+                                  (trans (sym (+-assoc a c b))
+                                         (+-comm (a + c) b)))))
+                 (sym (+-suc b (a + c))))
+
+  -- The composite's span restricted to each component. `f` is a PREFIX of
+  -- `ft ++ mov ∷ gt`, `g` a suffix past the bridge.
+  comp-span-f : ∀ {A B C} (g : IR B C) (f : IR A B) (prog : AbstractTrace) (base n l : ℕ)
+              → SpanAt prog base (emitted n l (g ∘ f))
+              → SpanAt prog base (emitted n l f)
+  comp-span-f g f prog base n l span k i eq =
+    span k i (fetch-++-left (emitted n l f)
+                (mov-to-input ∷ emitted (proj₁ (ir-to-trace' n l f))
+                                        (proj₁ (proj₂ (ir-to-trace' n l f))) g)
+                k i eq)
 
   -- ══════════════════════════════════════════════════════════════════════
-  -- D155/D157: `comp-value-realized`, ASSEMBLED — a PROOF from two SPLICE
-  -- AGREEMENTS, taken as ARGUMENTS rather than assumed.
+  -- D158: `comp-value-realized`, ASSEMBLED — and now unconditionally.
   --
-  -- WHY THEY ARE ARGUMENTS AND NOT POSTULATES (D157). Stated for every state,
-  -- both are REFUTABLE, and at exactly one instruction: `instr-call-closure`.
-  -- A jump's target is SYNTACTIC, so its agreement is a label-scope fact and
-  -- `LabelScope`'s windows settle it. A CALL's target is a RUNTIME value — the
-  -- code pointer the closure register reaches — so `do-call` scans the whole
-  -- program for a label the instruction does not name. Take `f = curry body m`
-  -- and `g = apply`: `f`'s trace carries `c-thunk (ℓ o this-label)` INLINE and
-  -- `g`'s trace ends in `instr-call-closure`, so at a state whose closure
-  -- resolves to that label the composite ENTERS `f`'s body while `g` alone
-  -- HALTS (`find-thunk gt _ ≡ nothing`). The two sides differ in `halted`.
-  --
-  -- That is not a gap in this proof; it is the fragment-vs-program gap. A
-  -- witness stated over `emitted n l ir` — the fragment's OWN trace — cannot
-  -- describe a call that leaves the fragment, and `apply` is exactly such a
-  -- call. So the residue stays as the `comp-value-realized` axiom above, and
-  -- this lemma records, in checkable form, what that axiom reduces to.
-  --
-  -- The composite emits `ft ++ mov-to-input ∷ gt`, so the run is three pieces:
-  -- `f`'s chain relocated as a PREFIX (same pc coordinates), the bridging
-  -- `mov`, and `g`'s chain relocated as a SUFFIX (shifted by `length ft + 1`).
-  -- Every field of the composite's witness is then read off `g`'s, because
-  -- `shift` touches only the three control components and `ResultPlace`
-  -- mentions the run only through `floc`/`falloc`.
+  -- D156 proved this modulo two splice agreements, and D157 showed the call
+  -- case of those is refutable: a fragment-local witness cannot describe a
+  -- call that leaves the fragment. Quantifying over placement (D158) removes
+  -- the question rather than answering it — `f` and `g` are witnessed IN THE SAME
+  -- PROGRAM, at `base` and at `base + length ft + 1`, so there is no second
+  -- program for their scans to disagree with. `find-thunk prog ℓ` is the same
+  -- scan on both sides, which is exactly what `apply ∘ curry body` needs.
   -- ══════════════════════════════════════════════════════════════════════
   comp-value-realized-of :
-    ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl} (n l : ℕ)
+    ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
+      (prog : AbstractTrace) (base n l : ℕ)
     → ir-size g < program-bound
     → next-slot alloc ≤ n
-    -- SPLICE AGREEMENT, prefix half: `f`'s own instructions have the same
-    -- effect inside the composite as they do alone.
-    → (∀ (i : AbstractInstr) (pc : ℕ) → fetch (emitted n l f) pc ≡ just i
-       → ∀ (st : FlatState)
-       → flat-exec-instr i (emitted n l (g ∘ f)) st
-         ≡ flat-exec-instr i (emitted n l f) st)
-    -- …and the suffix half, under the shift.
-    → (∀ (i : AbstractInstr) (pc : ℕ)
-       → fetch (emitted (proj₁ (ir-to-trace' n l f))
-                        (proj₁ (proj₂ (ir-to-trace' n l f))) g) pc ≡ just i
-       → ∀ (st : FlatState)
-       → flat-exec-instr i ((emitted n l f ++ mov-to-input ∷ []) ++
-                            emitted (proj₁ (ir-to-trace' n l f))
-                                    (proj₁ (proj₂ (ir-to-trace' n l f))) g)
-                           (shift (length (emitted n l f ++ mov-to-input ∷ [])) st)
-         ≡ shift (length (emitted n l f ++ mov-to-input ∷ []))
-                 (flat-exec-instr i (emitted (proj₁ (ir-to-trace' n l f))
-                                             (proj₁ (proj₂ (ir-to-trace' n l f))) g) st))
-    → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc cl
-    → ValueRealized n l (g ∘ f) x s alloc cl
-  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} n l szg ns pre-ag suf-ag ihg mf =
+    → AllSlotStable prog
+    → SpanAt prog base (emitted n l (g ∘ f))
+    → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl
+    → ValueRealized prog base n l (g ∘ f) x s alloc cl
+  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l szg ns ss span ihg mf =
     go (MachineRefinesObsF.value-realized mf)
     where
       module VR = ValueRealized
 
-      ft   = emitted n l f
-      n1   = proj₁ (ir-to-trace' n l f)
-      l1   = proj₁ (proj₂ (ir-to-trace' n l f))
-      gt   = emitted n1 l1 g
-      prog = emitted n l (g ∘ f)
-      t₁   = ft ++ mov-to-input ∷ []
-      d    = length t₁
+      ft    = emitted n l f
+      n1    = proj₁ (ir-to-trace' n l f)
+      l1    = proj₁ (proj₂ (ir-to-trace' n l f))
+      gt    = emitted n1 l1 g
+      base' = suc (length ft + base)
 
-      -- `(ft ++ mov ∷ []) ++ gt` is the shape both relocation halves want.
-      split : prog ≡ t₁ ++ gt
-      split = sym (++-assoc ft (mov-to-input ∷ []) gt)
+      span-g : SpanAt prog base' gt
+      span-g k i eq =
+        subst (λ m → fetch prog m ≡ just i) (shuffle (length ft) k base)
+              (span (length ft + suc k) i
+                    (trans (fetch-++-right ft (mov-to-input ∷ gt) (suc k)) eq))
 
-      d-eq : d ≡ suc (length ft)
-      d-eq = trans (length-++ ft {mov-to-input ∷ []}) (+-comm (length ft) 1)
+      mov-in-prog : fetch prog (length ft + base) ≡ just mov-to-input
+      mov-in-prog =
+        span (length ft) mov-to-input
+             (trans (cong (fetch (ft ++ mov-to-input ∷ gt))
+                          (sym (+-identityʳ (length ft))))
+                    (fetch-++-right ft (mov-to-input ∷ gt) 0))
 
-      go : ValueRealized n l f x s alloc cl → ValueRealized n l (g ∘ f) x s alloc cl
+      go : ValueRealized prog base n l f x s alloc cl
+         → ValueRealized prog base n l (g ∘ f) x s alloc cl
       go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF) =
-        realized (kf + suc (VR.steps vg)) (shift d (VR.settle vg))
+        realized (kf + suc (VR.steps vg)) (VR.settle vg)
                  (VR.out-mode vg) (VR.cont-alloc vg)
-                 chain (VR.live vg) atEnd noRet noLink (VR.place vg)
+                 chain (VR.live vg) atEnd (VR.no-ret vg) (VR.no-link vg) (VR.place vg)
         where
-          -- The bridge step's target state. `mov-to-input` is `Input1 :=
-          -- Output`: it touches one register, so `falloc`, `halted`, `fret`,
-          -- `flink` and `fclosure` all come through unchanged (definitionally).
           fsM : FlatState
           fsM = flat-exec-instr mov-to-input prog fsF
 
-          runF≡ : exec-flat kf ft (entry-flat s alloc cl) ≡ fsF
-          runF≡ = trans (cong (λ m → exec-flat m ft (entry-flat s alloc cl))
+          runF≡ : exec-flat kf prog (entry-flat base s alloc cl) ≡ fsF
+          runF≡ = trans (cong (λ m → exec-flat m prog (entry-flat base s alloc cl))
                               (sym (+-identityʳ kf)))
                         (exec-flat-steps chainF 0)
 
           nsF : next-slot (falloc fsF) ≡ next-slot alloc
           nsF = trans (cong (λ st → next-slot (falloc st)) (sym runF≡))
-                      (flat-run-keeps-next-slot kf n l f s alloc cl)
+                      (flat-run-keeps-next-slot kf prog ss base s alloc cl)
 
-          -- D155's premise, at `g`'s emission site: the run did not move the
-          -- frontier (`nsF`), and the emitter's only moved it UP
-          -- (`frontier-mono`).
           nsG : next-slot (falloc fsM) ≤ n1
           nsG = ≤-trans (≤-reflexive nsF) (≤-trans ns (frontier-mono f n l))
 
@@ -1334,65 +1343,50 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           inputM : InputAt mOutf (falloc fsM) (eval f x) (floc fsM)
           inputM = result→input placeF movEq memEq
 
-          vg : ValueRealized n1 l1 g (eval f x) (floc fsM) (falloc fsM) (fclosure fsM)
+          vg : ValueRealized prog base' n1 l1 g (eval f x)
+                             (floc fsM) (falloc fsM) (fclosure fsM)
           vg = MachineRefinesObsF.value-realized
-                 (ihg szg n1 l1 mOutf (eval f x) (floc fsM) (falloc fsM) (fclosure fsM)
-                      nsG liveM inputM)
-
-          chainF' : FlatSteps prog kf (entry-flat s alloc cl) fsF
-          chainF' = FlatSteps-prefix ft (mov-to-input ∷ gt)
-                      pre-ag chainF
-
-          movFetch : fetch prog (fpc fsF) ≡ just mov-to-input
-          movFetch = trans (cong (fetch prog) (trans endF (sym (+-identityʳ (length ft)))))
-                           (fetch-++-right ft (mov-to-input ∷ gt) 0)
+                 (ihg szg n1 l1 prog base' ss span-g mOutf (eval f x)
+                      (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM)
 
           movStep : FlatSteps prog 1 fsF fsM
-          movStep = (liveF , movFetch) ∷ []
+          movStep = (liveF , trans (cong (fetch prog) endF) mov-in-prog) ∷ []
 
-          pcM : fpc fsM ≡ d
-          pcM = trans (cong suc endF) (sym d-eq)
+          handover : fsM ≡ entry-flat base' (floc fsM) (falloc fsM) (fclosure fsM)
+          handover = handover-eq base' fsM (cong suc endF) retF linkF
 
-          handover : fsM ≡ shift d (entry-flat (floc fsM) (falloc fsM) (fclosure fsM))
-          handover = handover-eq d fsM pcM retF linkF
+          chainG : FlatSteps prog (VR.steps vg) fsM (VR.settle vg)
+          chainG = subst (λ st → FlatSteps prog (VR.steps vg) st (VR.settle vg))
+                         (sym handover) (VR.run vg)
 
-          chainG : FlatSteps prog (VR.steps vg) fsM (shift d (VR.settle vg))
-          chainG = subst₂ (λ pr st → FlatSteps pr (VR.steps vg) st (shift d (VR.settle vg)))
-                          (sym split) (sym handover)
-                          (FlatSteps-reloc t₁ gt suf-ag (VR.run vg))
+          chain : FlatSteps prog (kf + suc (VR.steps vg))
+                            (entry-flat base s alloc cl) (VR.settle vg)
+          chain = FlatSteps-++ chainF (FlatSteps-++ movStep chainG)
 
-          chain : FlatSteps prog (kf + suc (VR.steps vg)) (entry-flat s alloc cl)
-                            (shift d (VR.settle vg))
-          chain = FlatSteps-++ chainF' (FlatSteps-++ movStep chainG)
-
-          atEnd : fpc (shift d (VR.settle vg)) ≡ length prog
-          atEnd = trans (cong (d +_) (VR.at-end vg))
-                        (trans (cong (_+ length gt) d-eq)
-                               (sym (trans (length-++ ft {mov-to-input ∷ gt})
-                                           (+-suc (length ft) (length gt)))))
-
-          noRet : fret (shift d (VR.settle vg)) ≡ []
-          noRet = cong (map (d +_)) (VR.no-ret vg)
-
-          noLink : flink (shift d (VR.settle vg)) ≡ nothing
-          noLink = cong (mmap (d +_)) (VR.no-link vg)
+          atEnd : fpc (VR.settle vg) ≡ length (emitted n l (g ∘ f)) + base
+          atEnd = trans (VR.at-end vg)
+                        (sym (trans (cong (_+ base) (length-++ ft {mov-to-input ∷ gt}))
+                                    (shuffle (length ft) (length gt) base)))
 
   comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
-                (n l : ℕ)
+                (prog : AbstractTrace) (base n l : ℕ)
             → ir-size g < program-bound
             → next-slot alloc ≤ n
-            → IRObsCorrectF g → MachineRefinesObsF n l f x s alloc cl
-            → MachineRefinesObsF n l (g ∘ f) x s alloc cl
-  comp-step n l szg ns ihg mf = record
-    { traces-agree   = comp-traces-agree   n l szg    ihg mf
-    ; value-realized = comp-value-realized n l szg ns ihg mf
+            → AllSlotStable prog
+            → SpanAt prog base (emitted n l (g ∘ f))
+            → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl
+            → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl
+  comp-step prog base n l szg ns ss span ihg mf = record
+    { traces-agree   = comp-traces-agree n l szg ihg mf
+    ; value-realized = comp-value-realized-of prog base n l szg ns ss span ihg mf
     }
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
-  comp-obs-correct {g = g} {f} ihg ihf sz n l mIn x s alloc cl ns nh inp =
-    comp-step n l (comp-size-g {g = g} {f} sz) ns ihg
-      (ihf (comp-size-f {g = g} {f} sz) n l mIn x s alloc cl ns nh inp)
+  comp-obs-correct {g = g} {f} ihg ihf sz n l prog base ss span mIn x s alloc cl ns nh inp =
+    comp-step prog base n l (comp-size-g {g = g} {f} sz) ns ss span ihg
+      (ihf (comp-size-f {g = g} {f} sz) n l prog base ss
+           (comp-span-f g f prog base n l span) mIn x s alloc cl ns nh inp)
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a

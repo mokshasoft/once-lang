@@ -80,7 +80,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
 
 open import Once.IR using (IR; Unit; AllocMode; Stack)
 open import Once.IR.Size using (ir-size)
@@ -89,6 +89,10 @@ open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
+-- D158: the entry instance supplies the PLACEMENT — the whole program is the
+-- fragment, at offset 0.
+open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable)
+open import Data.Nat.Properties using (+-identityʳ)
 open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Tag;
          halted)
@@ -105,8 +109,9 @@ import Once.Parser.Module.Core as P
 -- pairwise distinct. Consumed by `AsmTraceCorrect` below.
 open import Once.Adequacy.LabelClash using (DistinctLabels)
 
-open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; in-unit)
-open FlatMachine {FS} using (mkFlat)
+open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; in-unit; SpanAt; emitted)
+open FlatMachine {FS} using (mkFlat; fetch)
+open CataIRSlotStable {FS} using (ir-stable)
 open FlatEventTrace {FS} using (flat-events)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
 open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-unit-wf)
@@ -199,11 +204,21 @@ entry-nh = refl
 -- `entry-flat s alloc (SV-Tag 0)` IS `mkFlat s alloc 0` — so every consumer
 -- below (which names the entry state as `mkFlat …`) is untouched by the
 -- interface gaining that component.
+-- D158: `main` IS the program, so its placement is the identity one — the
+-- span is `fetch prog (k + 0) ≡ fetch prog k`, and the slot-stability premise
+-- is the emitter's own `ir-stable` at the entry site. Every fragment below is
+-- placed relative to this.
+entry-span : (ir : IR Unit Unit) → SpanAt (ir-to-trace ir) 0 (emitted 0 0 ir)
+entry-span ir k i eq = subst (λ m → fetch (ir-to-trace ir) m ≡ just i)
+                             (sym (+-identityʳ k)) eq
+
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
-              → MachineRefinesObsF 0 0 ir tt entry-s (entry-alloc (ir-stack-budget ir))
-                  (SV-Tag 0)
+              → MachineRefinesObsF (ir-to-trace ir) 0 0 0 ir tt entry-s
+                  (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
 entry-witness ir ioc =
-  ioc (entry-size ir) 0 0 Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
+  ioc (entry-size ir) 0 0 (ir-to-trace ir) 0 (ir-stable ir 0 0)
+      (entry-span ir)
+      Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
       (entry-ns (ir-stack-budget ir)) entry-nh
       -- D153: ONE residence premise. `main : IR Unit Unit`, so its input has
       -- no residence at all and `in-unit` discharges it outright — the
