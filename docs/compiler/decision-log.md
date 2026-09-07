@@ -11474,3 +11474,50 @@ to be right about WHAT the interface should be while being built in the wrong
 place. A quantifier that ranges over a component before the case analysis that
 decides whether the component exists is a design error, and its symptom is a
 branch nobody can instantiate.
+
+## D154
+
+**How this was found — the method, not just the result.** The plan was to
+prove a "prefix handover" lemma and then assemble `comp-value-realized` from
+it. That lemma's shape was DERIVED BY REASONING about what the assembly would
+need, which is a guess. Writing the assembly instead — with `tt` placeholders,
+so the type errors report the real obligations — asked for something else
+entirely on its first step. The guessed lemma was not what the goal wanted.
+
+**The obligation the goal actually produced.** Applying `g`'s hypothesis in
+`comp-step` demands
+
+    next-slot _alloc ≡ n1
+
+where `n1` is the frontier `f` leaves — `proj₁ (ir-to-trace' n l f)`, which is
+where the emitter puts `g`. But D150 established that NO EXECUTION MOVES
+`next-slot`: it is a construction-time frontier. So after running `f` the
+runtime allocator still has `next-slot ≡ n`, while the emitter's frontier has
+advanced to `n1`, and the premise cannot be met for the second component of
+any composition.
+
+**So `IRObsCorrectF`'s `next-slot alloc ≡ n` is the last remnant of the
+construction/runtime conflation D150 diagnosed.** It ties a RUNTIME allocator
+to a CONSTRUCTION-time frontier — precisely the two things D150 proved are
+different. D152 re-indexed the obligation by the emission site and made the
+premise read `≡ n` instead of `≡ 0`; that was right as far as it went, but it
+preserved the coupling rather than removing it.
+
+**The resolution already exists one layer down.** Under D150 the structured
+machine got `exec-trace-nsi`: running from a construction frontier and from
+the runtime allocator gives the SAME state, and allocators differing only in
+`next-slot`. The flat machine needs its twin, and it is inherited rather than
+new work — `flat-step-straight` is `exec-abstract` on `floc`/`falloc`, and the
+per-instruction halves (`exec-abstract-state-nsi`, `exec-abstract-alloc-nsi`)
+are already proved. With it, the assembly applies `ihg` at a construction
+allocator whose frontier is `n1` and transports the conclusion back to the
+actual run.
+
+**The general lesson, and it is a method lesson.** A lemma whose shape was
+derived by reasoning about a proof you have not written is a guess, however
+well-informed. This session has four instances of the same correction:
+`Shifted` gained `fret`, `flink` and `fclosure` one at a time, each forced by
+the transition that uses it and none foreseen; and now a prefix lemma that the
+goal never asked for. The cheap way to get an obligation's true shape is to
+write the term that needs it and let the typechecker state it — placeholders
+whose type errors print the goal cost one build and cannot be wrong.
