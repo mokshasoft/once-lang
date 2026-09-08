@@ -12027,8 +12027,17 @@ Those are the remaining crossings, by the same test.
 
 ## D170
 
-**A CLOSURE VALUE CARRIES ITS CODE'S ADDRESS, NOT ITS CODE'S BEHAVIOUR.
+**A CLOSURE VALUE CARRIES ITS CODE'S NAME, NOT ITS CODE'S BEHAVIOUR.
 `valid-closure-wf` DROPS `BodyCorrect`; `apply` LOOKS THE BODY UP.**
+
+> **Wording corrected on review.** An earlier draft said "carries its code's
+> ADDRESS". Wrong, and it undercut the point. What the value holds is
+> `SV-Code body-label` with `body-label : LabelId` — a SYMBOL. The abstract
+> layer has no addresses at all; one appears only at the concrete machine,
+> where `sim-load-code-addr` consumes `caddr hv n ≡ j` and the code map
+> resolves the label. The closure value is placement-independent PRECISELY
+> because it holds a name rather than an offset — which is D159's whole point,
+> and the reason `link` can put the block anywhere.
 
 ### The symptom
 
@@ -12105,10 +12114,39 @@ meaningful.
   reason — the union contains the body's block — rather than by threading a
   witness through the value.
 
+### Scope — is this closures only?
+
+As an INSTANCE, yes, and checked: of `ValidAtWF`'s ten constructors —
+`valid-{unit,pair,closure,inl,inr,int,float,str,buffer,primitive}-wf` — only
+the closure carries an execution fact. Every other one carries `readLoc`,
+`ValidAtWF` and `BeforeFrontier`, i.e. representation alone. That is exactly
+why there is exactly one cycle.
+
+As a RULE, no. The same shape appeared three more times in one day at other
+layers: D161 (the emitter carried a second implementation of `link`), D162
+(`Bridge.hs` mirrored an Agda datatype's shape), D165 (a toolchain axiom
+carried the arith pass's correctness). One concept, expressed twice, related by
+nothing. D170 is the value-level instance.
+
+### The honest complication
+
+`BodyCorrect` is NOT purely a courier. `CurryStackWF` calls it "recursive
+dispatcher for body", and its `execute` field is a specialised
+`RecDispatcherWF` — the well-founded recursion device the WF layer uses to
+descend into a body whose size is below the bound. So deleting it has a second
+consequence beyond breaking the cycle: THE RECURSION KNOT MOVES. `apply` must
+obtain the body's behaviour from the unit's block table, and a body that itself
+contains closures is handled by induction over the unit's blocks rather than by
+threading a dispatcher through values.
+
+That is the right place for it — the blocks are a finite, statically known map,
+which is a better recursion measure than a size bound threaded through a value
+— but it is real work and should not be described as removing redundancy.
+
 ### The general rule
 
 A VALUE's well-formedness may mention only what is true of the value in the
 state. If it carries a proof about what happens when the value is USED, the
 predicate has absorbed an execution obligation, and the first symptom is a
-mutual block that needs a positivity escape hatch. Look for the address, not
-the behaviour.
+mutual block that needs a positivity escape hatch. Carry the NAME, and look the
+behaviour up where it is used.
