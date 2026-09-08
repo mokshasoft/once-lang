@@ -622,7 +622,7 @@ cata-dispatch strat-linear        bb n1 l1 at = cata-trace-linear bb n1 l1 at
 cata-dispatch (strat-branching F) bb n1 l1 at = cata-trace-branching F bb n1 l1 at
 
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
-              → ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
+              → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
 
 -- ────────────────────────────────────────────────────────────────────
 -- Trivial morphisms (no slots needed; mirror SimpleWF.run-*-trace).
@@ -766,7 +766,7 @@ ir-to-trace' n l (curry body Stack) =
       -- used to jump over it, and `end-label` itself, existed only because of
       -- the inlining. (`end-label` stays RESERVED for now so label arithmetic
       -- does not shift in the same step; reclaiming it is a follow-up.)
-      all-bodies  = (this-label , body-budget , body-trace) ∷ body-bodies
+      all-bodies  = (ℓ o this-label , body-budget , body-trace) ∷ body-bodies
   in next , l2 , this-trace , all-bodies
 
 -- Heap mode: closure record bump-allocated on the heap (2 cells:
@@ -792,7 +792,7 @@ ir-to-trace' n l (curry body Heap) =
                      store-indirect-suc ∷
                      load-from-slot closure-stash ∷ [])
       -- D159: see the Stack clause — the body is a named block.
-      all-bodies  = (this-label , body-budget , body-trace) ∷ body-bodies
+      all-bodies  = (ℓ o this-label , body-budget , body-trace) ∷ body-bodies
   in next , l2 , this-trace , all-bodies
 
 -- ────────────────────────────────────────────────────────────────────
@@ -1005,13 +1005,13 @@ ir-to-trace' n l (free-heap _)  = n , l , (mov-to-output ∷ []) , []
 -- | Plan 0.2.4.2 Phase C: helpers to project main trace / bodies
 -- from `ir-to-trace'`'s 4-tuple result.
 private
-  proj-trace : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → AbstractTrace
+  proj-trace : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → AbstractTrace
   proj-trace (_ , _ , t , _) = t
 
-  proj-bodies : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → List (ℕ × ℕ × AbstractTrace)
+  proj-bodies : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → List (LabelId × ℕ × AbstractTrace)
   proj-bodies (_ , _ , _ , bs) = bs
 
-  proj-budget : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → ℕ
+  proj-budget : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → ℕ
   proj-budget (n , _ , _ , _) = n
 
 ------------------------------------------------------------------------
@@ -1042,11 +1042,11 @@ ir-to-unit = ir-to-unit-at 0 0
 -- A block, placed: its `c-thunk` marker carries the frame budget and it ends
 -- in `c-ret` — the abstract mirror of `emit-thunk-body`'s
 -- `.L_thunk_<lbl>: subq … / body / addq … / ret`.
-block-layout : ℕ × ℕ × AbstractTrace → AbstractTrace
+block-layout : LabelId × ℕ × AbstractTrace → AbstractTrace
 block-layout (lbl , b , t) =
-  instr-ctrl (c-thunk (ℓ o lbl) b) ∷ t ++ instr-ctrl (c-ret b) ∷ []
+  instr-ctrl (c-thunk lbl b) ∷ t ++ instr-ctrl (c-ret b) ∷ []
 
-blocks-layout : List (ℕ × ℕ × AbstractTrace) → AbstractTrace
+blocks-layout : List (LabelId × ℕ × AbstractTrace) → AbstractTrace
 blocks-layout []       = []
 blocks-layout (b ∷ bs) = block-layout b ++ blocks-layout bs
 
@@ -1083,7 +1083,7 @@ ir-stack-budget ir = proj-budget (ir-to-trace' 0 0 ir)
 -- `.L_thunk_<label>:` block, framed by `subq body-budget*8, %rsp` and
 -- `addq body-budget*8, %rsp` (frameless model — body has its own
 -- %rsp-relative frame, physically disjoint from caller's).
-ir-to-bodies : ∀ {A B} → IR A B → List (ℕ × ℕ × AbstractTrace)
+ir-to-bodies : ∀ {A B} → IR A B → List (LabelId × ℕ × AbstractTrace)
 ir-to-bodies ir = proj-bodies (ir-to-trace' 0 0 ir)
 
 ------------------------------------------------------------------------
@@ -1115,7 +1115,7 @@ ir-stack-budget-from : ∀ {A B} → ℕ → IR A B → ℕ
 ir-stack-budget-from l ir = proj-budget (ir-to-trace' 0 l ir)
 
 -- | Closure bodies + next-label, given a starting label counter.
-ir-to-bodies-from : ∀ {A B} → ℕ → IR A B → ℕ × List (ℕ × ℕ × AbstractTrace)
+ir-to-bodies-from : ∀ {A B} → ℕ → IR A B → ℕ × List (LabelId × ℕ × AbstractTrace)
 ir-to-bodies-from l ir =
   let (_ , l' , _ , bs) = ir-to-trace' 0 l ir
   in l' , bs

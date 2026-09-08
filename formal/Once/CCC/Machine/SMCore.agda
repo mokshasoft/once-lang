@@ -1276,7 +1276,7 @@ record CompUnit : Set where
   field
     entry-budget : ℕ
     entry        : AbstractTrace
-    blocks       : List (ℕ × ℕ × AbstractTrace)
+    blocks       : List (LabelId × ℕ × AbstractTrace)
 open CompUnit public
 
 ------------------------------------------------------------------------

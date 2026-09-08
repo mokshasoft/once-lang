@@ -59,6 +59,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open import Once.CCC.Machine.SMCore using (LabelId)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; load-indirect-suc; mov-to-input)
 open import Once.CCC.Machine.FrameFree using
@@ -77,7 +78,7 @@ open import Once.CCC.Codegen.IRToTrace o using
 -- third projection of `ir-to-trace'`'s 4-tuple / of `cata-dispatch`'s 3-tuple
 -- (record patterns, so they reduce under eta — unlike IRToTrace's own
 -- `private proj-trace`).
-trace-of : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → AbstractTrace
+trace-of : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → AbstractTrace
 trace-of (_ , _ , t , _) = t
 
 cata-trace-of : ℕ × ℕ × AbstractTrace → AbstractTrace
@@ -336,14 +337,14 @@ frame-free-trace' (const fits-float _) hm n l = tt ∷ []
 -- D159: …AND EVERY EMITTED BLOCK. `FrameFreeTrace` is `All EmittableI`, a
 -- plain `All`, so `link` preservation is `++⁺` — no index to thread.
 ------------------------------------------------------------------------
-ffbds : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
-      → List (ℕ × ℕ × AbstractTrace)
+ffbds : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
+      → List (LabelId × ℕ × AbstractTrace)
 ffbds (_ , _ , _ , bs) = bs
 
-BlockFrameFree : ℕ × ℕ × AbstractTrace → Set
+BlockFrameFree : LabelId × ℕ × AbstractTrace → Set
 BlockFrameFree (_ , _ , t) = FrameFreeTrace t
 
-frame-free-blocks : ∀ (bs : List (ℕ × ℕ × AbstractTrace))
+frame-free-blocks : ∀ (bs : List (LabelId × ℕ × AbstractTrace))
                   → All BlockFrameFree bs → FrameFreeTrace (blocks-layout bs)
 frame-free-blocks []                   []       = []
 frame-free-blocks ((lb , bb , t) ∷ bs) (q ∷ qs) =

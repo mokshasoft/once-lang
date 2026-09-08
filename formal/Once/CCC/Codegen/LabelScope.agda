@@ -97,7 +97,7 @@ open LabelIn public
 cata-trace-of : ℕ × ℕ × AbstractTrace → AbstractTrace
 cata-trace-of (_ , _ , t) = t
 
-trace-of : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → AbstractTrace
+trace-of : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → AbstractTrace
 trace-of (_ , _ , t , _) = t
 
 LabelsIn : ℕ → ℕ → AbstractTrace → Set

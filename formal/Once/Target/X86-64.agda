@@ -13,6 +13,10 @@ module Once.Target.X86-64 where
 open import Data.String using (String; _++_)
 open import Data.Nat using (ℕ; _*_)
 open import Data.Nat.Show using () renaming (show to showNat)
+-- D159/Phase B: a closure body's symbol is rendered from its LabelId on BOTH
+-- sides now — the reference already was; the definition used `showNat` on a
+-- bare counter and produced a DIFFERENT symbol.
+open import Once.CCC.Label using (LabelId; showLabelId)
 open import Data.List using (List; []; _∷_; foldr)
 open import Data.Product using (_×_; _,_)
 
@@ -140,10 +144,10 @@ x86-64-irToAsm o l ir =
 -- frameless model where every IR function is %rsp-relative.
 -- Plan 0.13.1 Phase 5: emit-thunk-body o now threads a label counter
 -- for case-on-tag dispatch in the body.
-emit-thunk-body : CanonicalName → ℕ → (ℕ × ℕ × AbstractTrace) → ℕ × String
+emit-thunk-body : CanonicalName → ℕ → (LabelId × ℕ × AbstractTrace) → ℕ × String
 emit-thunk-body o cl (lbl , budget , body-trace) =
   let (cl' , prog) = compile-trace-cnt o cl body-trace
-  in cl' , (".L_thunk_" ++ showNat lbl ++ ":\n" ++
+  in cl' , (".L_thunk_" ++ showLabelId lbl ++ ":\n" ++
             "    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
             programToText prog ++
             "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
@@ -162,7 +166,7 @@ x86-64-irToBodies o l ir =
     -- Threading: each emit-thunk-body o consumes & produces a fresh
     -- case-label counter so nested cases inside thunk bodies get
     -- globally-unique labels.
-    emit-bodies : ℕ → List (ℕ × ℕ × AbstractTrace) → ℕ × String
+    emit-bodies : ℕ → List (LabelId × ℕ × AbstractTrace) → ℕ × String
     emit-bodies cl []       = cl , ""
     emit-bodies cl (b ∷ bs) =
       let (cl1 , txt1) = emit-thunk-body o cl b

@@ -22,6 +22,10 @@ module Once.Target.RiscV64 where
 open import Data.String using (String; _++_)
 open import Data.Nat using (ℕ; _*_; _+_)
 open import Data.Nat.Show using () renaming (show to showNat)
+-- D159/Phase B: a closure body's symbol is rendered from its LabelId on BOTH
+-- sides now — the reference already was; the definition used `showNat` on a
+-- bare counter and produced a DIFFERENT symbol.
+open import Once.CCC.Label using (LabelId; showLabelId)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_)
 
@@ -127,17 +131,17 @@ riscv64-irToBodies o l ir =
   where
     -- Thread the case/loop label counter through each body's
     -- compile-trace-cnt o so nested cases inside thunk bodies get unique labels.
-    emit-thunk-body : ℕ → (ℕ × ℕ × AbstractTrace) → ℕ × String
+    emit-thunk-body : ℕ → (LabelId × ℕ × AbstractTrace) → ℕ × String
     emit-thunk-body cl (lbl , budget , body-trace) =
       let (cl' , prog) = compile-trace-cnt o cl body-trace
-      in cl' , (".L_thunk_" ++ showNat lbl ++ ":\n" ++
+      in cl' , (".L_thunk_" ++ showLabelId lbl ++ ":\n" ++
                 "    addi sp, sp, -" ++ showNat (budget * 8 + 8) ++ "\n" ++
                 "    sd ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
                 programToText prog ++
                 "    ld ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
                 "    addi sp, sp, " ++ showNat (budget * 8 + 8) ++ "\n" ++
                 "    ret\n\n")
-    emit-bodies : ℕ → List (ℕ × ℕ × AbstractTrace) → ℕ × String
+    emit-bodies : ℕ → List (LabelId × ℕ × AbstractTrace) → ℕ × String
     emit-bodies cl []       = cl , ""
     emit-bodies cl (b ∷ bs) =
       let (cl1 , txt1) = emit-thunk-body cl b

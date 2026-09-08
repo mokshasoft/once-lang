@@ -48,7 +48,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   free-heap; SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace)
+open import Once.CCC.Machine.SMCore using (LabelId; AbstractInstr; AbstractTrace)
 open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; lsize)
@@ -57,7 +57,7 @@ open import Once.CCC.Codegen.IRToTrace o using
 -- The label projections of the two result tuples (record patterns, so they
 -- reduce under eta — mirrors `SlotBudget.budget-of`).
 ------------------------------------------------------------------------
-label-of : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → ℕ
+label-of : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → ℕ
 label-of (_ , l , _ , _) = l
 
 cata-label-of : ℕ × ℕ × AbstractTrace → ℕ

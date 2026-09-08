@@ -43,7 +43,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.IR
 open import Once.IRTy using (⌈_⌉F)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; fits-int; fits-float)
-open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr;
+open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr;
          mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot; store-at-slot;
          store-indirect; store-indirect-suc; lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack; instr-reclaim-to;
@@ -69,7 +69,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
 
   -- the trace component of `ir-to-trace'`'s 4-tuple (proj-trace is private
   -- in IRToTrace; this is the same extraction, definitionally).
-  trc : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → AbstractTrace
+  trc : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → AbstractTrace
   trc (_ , _ , t , _) = t
 
   -- stdlib `All SlotStable` → the spelled-out `SlotStableT` that
@@ -383,14 +383,14 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- D159: …and the BLOCKS. `AllSlotStable` is a plain `All`, so `link`
   -- preservation is `++⁺` — no index to thread, unlike `SegOK`.
   ----------------------------------------------------------------------
-  bds : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
-      → List (ℕ × ℕ × AbstractTrace)
+  bds : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
+      → List (LabelId × ℕ × AbstractTrace)
   bds (_ , _ , _ , bs) = bs
 
-  BlockStable : ℕ × ℕ × AbstractTrace → Set
+  BlockStable : LabelId × ℕ × AbstractTrace → Set
   BlockStable (_ , _ , t) = AllSlotStable t
 
-  blocks-stable : ∀ (bs : List (ℕ × ℕ × AbstractTrace))
+  blocks-stable : ∀ (bs : List (LabelId × ℕ × AbstractTrace))
                 → All BlockStable bs → AllSlotStable (blocks-layout bs)
   blocks-stable []                   []ᴬ       = []ᴬ
   blocks-stable ((lb , bb , t) ∷ bs) (q ∷ᴬ qs) =

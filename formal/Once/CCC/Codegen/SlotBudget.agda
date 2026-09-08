@@ -77,10 +77,10 @@ open import Once.CCC.Codegen.IRToTrace o using
 
 -- the two projections of `ir-to-trace'`'s 4-tuple this module reads (record
 -- patterns, so they reduce under eta — IRToTrace's own are private)
-budget-of : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → ℕ
+budget-of : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → ℕ
 budget-of (n , _ , _ , _) = n
 
-trace-of : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → AbstractTrace
+trace-of : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → AbstractTrace
 trace-of (_ , _ , t , _) = t
 
 cata-budget-of : ℕ × ℕ × AbstractTrace → ℕ
@@ -439,14 +439,14 @@ segok-block {B} ℓ bb body bok = mkSegOK inner neu
                    refl)
 
 -- …and a whole block list. Each block is neutral, so the list is.
-BlockOK : ℕ × ℕ × AbstractTrace → Set
+BlockOK : LabelId × ℕ × AbstractTrace → Set
 BlockOK (_ , bb , t) = SegOK bb t
 
-segok-blocks : ∀ {B : ℕ} (bs : List (ℕ × ℕ × AbstractTrace))
+segok-blocks : ∀ {B : ℕ} (bs : List (LabelId × ℕ × AbstractTrace))
              → All BlockOK bs → SegOK B (blocks-layout bs)
 segok-blocks []                 []       = segok-idle [] refl []
 segok-blocks ((lbl , bb , t) ∷ bs) (q ∷ qs) =
-  segok-++ (segok-block (ℓ o lbl) bb t q) (segok-blocks bs qs)
+  segok-++ (segok-block lbl bb t q) (segok-blocks bs qs)
 
 ------------------------------------------------------------------------
 -- THE FRONTIER NEVER RETREATS.
@@ -1203,8 +1203,8 @@ allseg-at (x ∷ xs) (suc pc) (p ∷ ps) eq   = allseg-at xs pc ps eq
 -- list, and together they are what the linked program needs — the entry's
 -- budget no longer being claimed to govern a body that has its own.
 ------------------------------------------------------------------------
-bodies-of : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
-          → List (ℕ × ℕ × AbstractTrace)
+bodies-of : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
+          → List (LabelId × ℕ × AbstractTrace)
 bodies-of (_ , _ , _ , bs) = bs
 
 blocks-below : ∀ {A B} (ir : IR A B) (n l : ℕ)
