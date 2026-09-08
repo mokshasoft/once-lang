@@ -41,6 +41,7 @@ import DirectedHoTT.Lib.IHCall
 import DirectedHoTT.Lib.IHeadRed
 import DirectedHoTT.Lib.IMeths
 import DirectedHoTT.Lib.IOcc
+import DirectedHoTT.Lib.IOccRed
 import DirectedHoTT.Lib.IPay
 import DirectedHoTT.Lib.ISub
 import DirectedHoTT.Lib.ISz

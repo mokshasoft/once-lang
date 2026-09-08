@@ -22,7 +22,7 @@ module DirectedHoTT.Lib.NatMaxNum where
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax using ( Cx; RTm; nzero; nsuc )
 open import DirectedHoTT.Spec.Typing using ( _⟶*_; done )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-natrecᶻ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-natrecᶻ; ⟶*-natrecⁿ )
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
 open import DirectedHoTT.Lib.NatNum using ( num; plus-num )
 open import DirectedHoTT.Lib.Monus
@@ -63,3 +63,12 @@ maxℕ a b = a + monusℕ b a
 
 max-num : {Γ : Cx} (a b : ℕ) → maxTm {Γ} (num a) (num b) ⟶* num (maxℕ a b)
 max-num a b = ⟶*-natrecᶻ (monus-num b a) » plus-num a (monusℕ b a)
+
+maxTm-red : {Γ : Cx} {a b : RTm Γ} (p q : ℕ) →
+            a ⟶* num p → b ⟶* num q →
+            maxTm a b ⟶* num (maxℕ p q)
+maxTm-red p q ha hb =
+  ⟶*-natrecᶻ (⟶*-natrecᶻ hb) »   -- `b`: the inner monus's zero branch
+  ⟶*-natrecⁿ ha »                -- `a`: the outer plus's scrutinee
+  ⟶*-natrecᶻ (⟶*-natrecⁿ ha) »   -- `a` AGAIN: the inner monus's scrutinee
+  max-num p q
