@@ -92,3 +92,47 @@ lives (`eqNat k m`) and where the naturality question above will reappear.
 
 ⚠ It also means the 9-statement block's difficulty is NOT uniform: budget the
 work as 52 mechanical rows + 1 genuinely hard one, not 53 equal ones.
+
+
+---
+
+## Step A continued — the emitter (`gen_occagree`)
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 7 | emit the `aih` spine from the `KNOT` field list | ✅ reproduces the hand-proved `El`/`Π` spines |
+| 8 | — diffed against the hand rows | ⚠ caught a DROPPED `⟶*-ielimⁱ` wrapper on the index peel. Generated blind, all 53 rows would have failed identically |
+| 9 | emit the full row body | ✅ `cTy-El`'s generated body is textually CONTAINED in the hand-proved row |
+| 10 | `n≥2` cast chain (`b2n-∨`, then `maxℕ-assoc`) | ✅ shapes match: `refl` at n=1, `b2n-∨` at n=2, trans-chain at n=3 |
+| 11 | generate `cTy-Hom` (n=3), flat `βsnd » βsnd` slot peel | ⚠ slot 2 fails — the inner `snd`s reduce under `⟶*-snd` congruences. A FLAT chain type-checks at k=1 and fails at k=2 |
+| 12 | + recursive `_snds` (= `gen_szagree`'s `_peelR`) | ⚠ **`extR vs x₁ != vs x₁`** — a NEW failure mode |
+
+★★★ **ATTEMPT 12 IS THE INFORMATIVE ONE.** Reading the `ICon`s side by side:
+
+```agda
+cTy-Pi   iρ (pair sTy (snd (var vz)))                  -- field 0
+          (iρ (pair sTy (nsuc (snd (var (vs vz)))))    -- field 1   ✅
+cTy-Hom  iρ (pair sTy (snd (var vz)))
+          (iρ (pair sTm (snd (var (vs vz))))
+           (iρ (pair sTm (snd (var (vs (vs vz))))))    -- field 2   ❌
+```
+
+⇒ **the ambient index is read from `j` BINDERS IN**: field `j` names
+`var (vs^j vz)`, and the substitution that resolves it is an `iext`-chain of
+length `j`. So the INDEX PEEL IS POSITION-DEPENDENT, not merely
+depth-dependent — `peel_ix` currently reads only the field's depth
+annotation (`D` / `sucD n` / `lit` / `fld`) and so handles `j ≤ 1`.
+
+★ That is why `Π` passed and `Hom` fails: `Π` has two recursive fields, `Hom`
+three, and the break is at field 2 exactly.
+
+⚠ AND IT EXPLAINS THE ROW BUDGET.  14 rows have 0 recursive fields, 12 have
+1, 14 have 2 — all reachable with the current peel. **27 rows have ≥2 and 13
+have ≥3**, so roughly a quarter of the block is blocked on this one
+generalisation.
+
+⬜ NEXT: make `peel_ix` take the field POSITION as well as its depth, and
+   emit the `iext`-chain resolution for `var (vs^j vz)`.  `gen_szagree`'s
+   `_fstat(r)` vs `_fstat(j)` split — the RECURSIVE index `r` and the FIELD
+   index `j` counted separately — is the same distinction and is probably
+   the shape to copy.
