@@ -92,7 +92,7 @@ open import Once.Arith.Machine.Rewrite using (rewrite-ir)
 -- `moduleSyms`. `labels-def` reads them off the abstract trace; the trace walk
 -- itself is telescoped per definition (`IRT.ir-to-trace-from o l ir`).
 open import Once.CCC.Label using (Label)
-open import Once.CCC.Codegen.EmittedWF using (labels-def; syms-ref)
+open import Once.CCC.Codegen.EmittedWF using (labels-def; labels-ref; syms-ref)
 import Once.CCC.Codegen.IRToTrace as IRT
 
 -- Re-export Parser (for module loading)
@@ -643,6 +643,36 @@ moduleLabels arch m doOpt mod =
 -- from what the backend emits. That is the whole point: read it off the
 -- program that is generated, never off a re-derivation.
 ------------------------------------------------------------------------
+
+-- D169: …and the local labels the text REFERENCES (`c-jmp`, the two branches,
+-- and the closure-body code address). `moduleLabels` is the DEFINITIONS; this
+-- is the other side, so `ld`'s "undefined reference" can be stated for `.L`
+-- symbols exactly as D167 stated it for `.globl` ones.
+funLabelRefs-cons : Bool → Target → ℕ → CompiledFun → ℕ × List Label
+funLabelRefs-cons true  target l cf = l , []
+funLabelRefs-cons false target l cf =
+  let (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
+      (ir' , _)      = rewrite-ir dcIR
+      (l₁ , _)       = irToAsm    target (cfName cf) l ir'
+      (_  , at)      = IRT.ir-to-linked-from (cfName cf) l ir'
+  in l₁ , labels-ref at
+
+funLabelRefs : Target → ℕ → CompiledFun → ℕ × List Label
+funLabelRefs target l cf = funLabelRefs-cons (cfIsPrimitive cf) target l cf
+
+emittedLabelRefs : Target → ℕ → List CompiledFun → List Label
+emittedLabelRefs target l []         = []
+emittedLabelRefs target l (cf ∷ cfs) =
+  proj₂ (funLabelRefs target l cf) DL.++
+  emittedLabelRefs target (proj₁ (funLabelRefs target l cf)) cfs
+
+moduleLabelRefs-aux : Target → String ⊎ List CompiledFun → List Label
+moduleLabelRefs-aux target (inj₁ _)   = []
+moduleLabelRefs-aux target (inj₂ cfs) = emittedLabelRefs target 0 cfs
+
+moduleLabelRefs : Arch → AllocMode → Bool → Module → List Label
+moduleLabelRefs arch m doOpt mod =
+  moduleLabelRefs-aux (archTarget arch) (compileResolvedModule m doOpt mod)
 
 funSyms-cons : Bool → Target → ℕ → CompiledFun → ℕ × List CanonicalName
 funSyms-cons true  target l cf = l , []       -- primitive: no body, calls nothing

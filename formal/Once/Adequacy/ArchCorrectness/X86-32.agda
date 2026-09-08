@@ -92,7 +92,7 @@ import Once.Compile as C
 import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded
 -- into this arch's `loader-faithful` axiom.
-open import Once.Adequacy.LabelClash using (DistinctLabels)
+open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
 open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
@@ -176,6 +176,7 @@ postulate
     DistinctLabels x86-32 m →
     -- D167: …and it links — every compiler-minted SigOp the text calls has
     -- its arith block emitted. `ld`'s rejection; nothing stated it before.
+    LabelsResolvable x86-32 m →
     SymbolsResolvable x86-32 m →
     ∀ (n : ℕ) → FFOx.asm-sem asm n ≡ conc-trace (moduleToIR-emitted m) n
 
@@ -477,8 +478,8 @@ x86-32-conc-flat-sim (just ir) n = conc-flat-sim-just ir n
 -- The seam, ASSEMBLED from (A) ∘ (B). No longer one opaque postulate: the
 -- provable half is named and separated from the honest toolchain axiom.
 asm-trace-correct-x86-32 : FFOx.AsmTraceCorrect (FFOx.flat-trace-of ir-obs-correct)
-asm-trace-correct-x86-32 m asm eq dl sr n =
-  trans (x86-32-loader-faithful m asm eq dl sr n)
+asm-trace-correct-x86-32 m asm eq dl lr sr n =
+  trans (x86-32-loader-faithful m asm eq dl lr sr n)
         (x86-32-conc-flat-sim (moduleToIR-emitted m) n)
 
 x86-32-correct : ArchCorrect x86-32 (arch-semantics x86-32)

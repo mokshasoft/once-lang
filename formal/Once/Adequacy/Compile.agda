@@ -103,7 +103,7 @@ open import Once.Adequacy.NameClash using (DistinctSymbols; program-no-clash)
 -- and (for now) owed in `Once.Adequacy.LabelClash`; consumed by
 -- `ArchCorrect.asm-trace-correct` and supplied at the apex, exactly as
 -- `program-no-clash` supplies `DistinctSymbols`.
-open import Once.Adequacy.LabelClash using (DistinctLabels; program-labels-distinct)
+open import Once.Adequacy.LabelClash using (DistinctLabels; program-labels-distinct; LabelsResolvable; program-labels-resolvable)
 open import Once.Adequacy.SymbolClash using (SymbolsResolvable; program-symbols-resolvable)
 
 -- `Arch` (here, via `Once.Adequacy.CPU.Interface`) and `C.Arch` (via
@@ -231,6 +231,7 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
       ∀ (m : P.Module) (asm : String) →
       C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
       DistinctLabels arch m →
+      LabelsResolvable arch m →
       SymbolsResolvable arch m →
       ∀ (n : ℕ) → asm-sem asm n ≡ flat-trace (moduleToIR-emitted m) n
     -- D165 — THE ARITH PASS PRESERVES THE FLAT TRACE. Split out of
@@ -391,6 +392,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   codegen-asm-correct arch m asm eq n =
     trans (ArchCorrect.asm-trace-correct (arch-correct arch) m asm eq
              (program-labels-distinct arch m)
+             (program-labels-resolvable arch m)
              (program-symbols-resolvable arch m) n)
     (trans (ArchCorrect.rewrite-preserves (arch-correct arch) (moduleToIR m) n)
            (ArchCorrect.ir-flat-correct  (arch-correct arch) (moduleToIR m) n))

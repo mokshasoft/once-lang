@@ -48,6 +48,8 @@ module Once.Adequacy.LabelClash where
 open import Relation.Binary.PropositionalEquality using (_≢_)
 open import Data.Bool using (false)
 open import Data.List.Relation.Unary.AllPairs using (AllPairs)
+open import Data.List.Relation.Unary.All using (All)
+open import Data.List.Membership.Propositional using (_∈_)
 
 open import Once.Parser.Module.Core using (Module)
 open import Once.Target.Arch using (Arch)
@@ -66,6 +68,36 @@ import Once.Compile as C
 
 DistinctLabels : Arch → Module → Set
 DistinctLabels arch m = AllPairs _≢_ (C.moduleLabels arch C.Heap false m)
+
+------------------------------------------------------------------------
+-- D169 — AND THE OTHER HALF, for the same namespace.
+--
+-- `DistinctLabels` is `as`'s rejection ("symbol already defined").
+-- `LabelsResolvable` is `ld`'s ("undefined reference"), for LOCAL labels —
+-- the exact analogue of D167's `SymbolsResolvable` one namespace up, and the
+-- module-level form of `EmittedWF.labels-resolvable`, which has been stated
+-- since D100 with NO CONSUMER.
+--
+-- It is not idle. A `c-jmp` names a `c-label`, and `instr-load-code-addr`
+-- names a `c-thunk` — and until D159 the closure body was INLINED, so the
+-- `c-thunk` it names lived in text the modelled program never contained. That
+-- is the riscv64 defect `AbstractToRiscV` records verbatim: "the `lla`
+-- referenced an undefined symbol — a link failure caught by the exit tests and
+-- invisible to the proofs". With bodies as named blocks in the linked image,
+-- the property is finally STATABLE over what is emitted.
+------------------------------------------------------------------------
+
+LabelsResolvable : Arch → Module → Set
+LabelsResolvable arch m =
+  All (_∈ C.moduleLabels arch C.Heap false m) (C.moduleLabelRefs arch C.Heap false m)
+
+postulate
+  -- RESIDUAL (deferred proof / codegen), the sibling of the one below: every
+  -- jump, branch and code-address the emitted text names is defined in it.
+  -- D160 is the input its proof wants — `linked-agree` / `scope-ok` already
+  -- carry the label windows and the entry-vs-blocks disjointness over exactly
+  -- this program.
+  program-labels-resolvable : ∀ (arch : Arch) (m : Module) → LabelsResolvable arch m
 
 postulate
   -- RESIDUAL (deferred proof / codegen). The obligation the apex owes so that
