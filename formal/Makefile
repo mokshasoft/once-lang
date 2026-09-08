@@ -241,6 +241,10 @@ compiler-all: certified compiler-x86-32 compiler-riscv64
 # MAlonzo Extraction
 #-----------------------------------------------------------------------------
 
+.PHONY: check-extraction-sync
+check-extraction-sync:
+	@$(CURDIR)/scripts/check-extraction-sync.sh
+
 .PHONY: malonzo
 malonzo:
 	@if [ -z "$$AGDA_SAFE_ACTIVE" ] && [ -z "$$AGDA_SAFE_DISABLE" ]; then \

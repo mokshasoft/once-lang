@@ -51,6 +51,7 @@ library
       Paths_once
       MAlonzo.Code.Data.Maybe.Relation.Binary.Pointwise
       MAlonzo.Code.Once.CanonicalName
+      MAlonzo.Code.Once.Extract.Names
       MAlonzo.Code.Once.Denotation.Phase
       MAlonzo.Code.Once.Denotation.Realize
       MAlonzo.Code.Once.TypeCheck.Completeness

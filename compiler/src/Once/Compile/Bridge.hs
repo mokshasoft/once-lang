@@ -50,6 +50,7 @@ import qualified MAlonzo.Code.Once.Adequacy.Compile as MVC
 import qualified MAlonzo.Code.Once.Target.Arch as MTA
 import qualified MAlonzo.Code.Once.Warnings as MW
 import qualified MAlonzo.Code.Once.Parser as MP
+import qualified MAlonzo.Code.Once.Extract.Names as MEN
 import qualified MAlonzo.Code.Once.Parser.Module.Core as MMC
 import qualified MAlonzo.Code.Once.Parser.Module.Resolve as MMR
 import qualified MAlonzo.Code.Once.Type as MT
@@ -172,21 +173,26 @@ parseSource source =
 
 -- | Extract just the `import` declarations from a parsed Module.
 -- Haskell uses this to decide which files to read + parse next.
+-- D162: goes through `Once.Extract.Names`, which returns (path, alias) pairs,
+-- so this no longer names `DImport` or its fields. Before, it destructured
+-- MAlonzo constructors by serial — a second copy of the datatype's shape,
+-- checked by nobody.
 moduleImports :: Module -> [ImportRef]
 moduleImports (Module m) =
-  [ ImportRef (map agdaToText (MMC.d_path_14 i))
-              (fmap agdaToText (MMC.d_alias_16 i))
-  | MMC.C_DImport_30 i <- MMC.d_decls_36 m
+  [ ImportRef (map agdaToText (MEN.d_import'45'path_50 pr))
+              (fmap agdaToText (MEN.d_import'45'alias_54 pr))
+  | pr <- MEN.d_module'45'imports_34 m
   ]
 
 -- | Does the module define a top-level `main`? This — not a CLI flag — is what
 -- distinguishes a PROGRAM (has `main`, gets an entry point via `maybeWrapMain`)
 -- from a LIBRARY (no `main`). Mirrors `moduleImports`' decl inspection.
+-- D162: the predicate itself lives in Agda now (`Once.Extract.Names`). The
+-- Haskell version pattern-matched the `DFunDef` constructor with three fields, a stale
+-- mirror of the constructor's ARITY — it broke loudly on 2026-09-08 only
+-- because the field COUNT changed.
 moduleHasMain :: Module -> Bool
-moduleHasMain (Module m) = any isMain (MMC.d_decls_36 m)
-  where
-    isMain (MMC.C_DFunDef_24 name _) = agdaToText name == T.pack "main"
-    isMain _                           = False
+moduleHasMain (Module m) = MEN.d_module'45'has'45'main_6 m
 
 -- | D123/D116: the rounding warnings this module has AT THIS TARGET, rendered.
 --

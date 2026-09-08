@@ -75,6 +75,13 @@ open import Once.Adequacy.ArchCorrectness o program-bound x86-64-heap-room x86-6
        x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits using (arch-correctness)
 import Once.Adequacy.Compile as VCompile
 
+-- D162: the Haskell-facing surface. Imported HERE because `make malonzo`
+-- extracts from this module, and `Once.Extract.Names` must be in that cone to
+-- be extracted. It contributes nothing to the theorem below — it is stable
+-- extracted NAMES plus two predicates the hand-written bridge used to compute
+-- by pattern-matching MAlonzo constructors.
+open import Once.Extract.Names using (module-has-main; module-imports)
+
 -- Instantiate the verified pipeline with the concrete per-arch
 -- semantics AND the per-arch backend-correctness witnesses. `VC.compile` /
 -- `VC.exec` / `VC.correct` are the compiler, the injected execution, and the
