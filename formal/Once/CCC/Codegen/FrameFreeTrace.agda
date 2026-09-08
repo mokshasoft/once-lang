@@ -66,7 +66,7 @@ open import Once.CCC.Machine.FrameFree using
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.ShapeTable using (HeapModed; IsHeap)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
+  (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier; blocks-layout;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; cata-trace-nat; cata-trace-linear;
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
@@ -288,14 +288,13 @@ frame-free-trace' ⟨ f , g ⟩ (hf , hg) n l =
        ++⁺ (frame-free-trace' g hg _ _)
            (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
 frame-free-trace' (curry b Stack) (() , _) n l
--- THE BODY IS INLINE (the flip): the walk recurses into it right here, which
--- is the one-line change inlining AT THE CLAUSE buys — a strengthened "main
--- AND every body" induction would have been the alternative. The markers are
--- `tt` because the fence admits them; the body's own instructions come from
--- the same recursive `ir-to-trace'`.
+-- D159: the body is a NAMED BLOCK, so this clause covers the ENTRY only and
+-- the recursion into the body moved to `frame-free-blocks'`. That IS the
+-- "strengthened main AND every body induction" this comment used to name as
+-- the alternative — `link` makes it the only honest one, because the statement
+-- is now about the whole program rather than the main block.
 frame-free-trace' (curry b Heap)  (_ , hb) n l =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-  ++⁺ (frame-free-trace' b hb _ _) (tt ∷ tt ∷ [])
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 frame-free-trace' apply hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
@@ -333,10 +332,63 @@ frame-free-trace' (const fits-float _) hm n l = tt ∷ []
 -- correspondence consumes: a FETCH into an emitted program never yields a
 -- frame op.
 ------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- D159: …AND EVERY EMITTED BLOCK. `FrameFreeTrace` is `All EmittableI`, a
+-- plain `All`, so `link` preservation is `++⁺` — no index to thread.
+------------------------------------------------------------------------
+ffbds : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
+      → List (ℕ × ℕ × AbstractTrace)
+ffbds (_ , _ , _ , bs) = bs
+
+BlockFrameFree : ℕ × ℕ × AbstractTrace → Set
+BlockFrameFree (_ , _ , t) = FrameFreeTrace t
+
+frame-free-blocks : ∀ (bs : List (ℕ × ℕ × AbstractTrace))
+                  → All BlockFrameFree bs → FrameFreeTrace (blocks-layout bs)
+frame-free-blocks []                   []       = []
+frame-free-blocks ((lb , bb , t) ∷ bs) (q ∷ qs) =
+  ++⁺ (tt ∷ ++⁺ q (tt ∷ [])) (frame-free-blocks bs qs)
+
+frame-free-blocks' : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (n l : ℕ)
+                   → All BlockFrameFree (ffbds (ir-to-trace' n l ir))
+frame-free-blocks' id       hm n l = []
+frame-free-blocks' fst      hm n l = []
+frame-free-blocks' snd      hm n l = []
+frame-free-blocks' terminal hm n l = []
+frame-free-blocks' initial  hm n l = []
+frame-free-blocks' (g ∘ f)  (hf , hg) n l =
+  ++⁺ (frame-free-blocks' f hf n l) (frame-free-blocks' g hg _ _)
+frame-free-blocks' ⟨ f , g ⟩ (hf , hg) n l =
+  ++⁺ (frame-free-blocks' f hf _ l) (frame-free-blocks' g hg _ _)
+frame-free-blocks' (curry b Stack) (() , _) n l
+frame-free-blocks' (curry b Heap)  (_ , hb) n l =
+  frame-free-trace' b hb 0 (suc (suc l)) ∷ frame-free-blocks' b hb 0 (suc (suc l))
+frame-free-blocks' apply hm n l = []
+frame-free-blocks' (inl Stack) () n l
+frame-free-blocks' (inr Stack) () n l
+frame-free-blocks' (inl Heap)  hm n l = []
+frame-free-blocks' (inr Heap)  hm n l = []
+frame-free-blocks' (case f g) (hf , hg) n l =
+  ++⁺ (frame-free-blocks' f hf n (suc (suc l))) (frame-free-blocks' g hg _ _)
+frame-free-blocks' (In _ _)  hm n l = []
+frame-free-blocks' (out-μ _) hm n l = []
+frame-free-blocks' (Cata {F} _ alg) hm n l = frame-free-blocks' alg hm 0 l
+frame-free-blocks' (Para _ _)     hm n l = []
+frame-free-blocks' (Out _)        hm n l = []
+frame-free-blocks' (in-ν _ _)     hm n l = []
+frame-free-blocks' (Ana _ _)      hm n l = []
+frame-free-blocks' (Hylo _ _ _ _) hm n l = []
+frame-free-blocks' (Fuse _ _ _ _) hm n l = []
+frame-free-blocks' (free-heap _)  hm n l = []
+frame-free-blocks' (SigOp _)      hm n l = []
+frame-free-blocks' (const fits-int _)   hm n l = []
+frame-free-blocks' (const fits-float _) hm n l = []
+
 frame-free-at-frontier : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (n : ℕ)
                        → FrameFreeTrace (ir-to-trace-at-frontier n ir)
-frame-free-at-frontier ir hm n with ir-to-trace' n 0 ir | frame-free-trace' ir hm n 0
-... | _ , _ , _ , _ | ff = ff
+frame-free-at-frontier ir hm n =
+  ++⁺ (frame-free-trace' ir hm n 0)
+      (tt ∷ frame-free-blocks _ (frame-free-blocks' ir hm n 0))
 
 ir-to-trace-frame-free : ∀ {A B} (ir : IR A B) (hm : HeapModed ir)
                        → FrameFreeTrace (ir-to-trace ir)
