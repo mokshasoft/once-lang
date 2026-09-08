@@ -245,3 +245,41 @@ this hypothesis is not established.
    and diff the two printed left-hand sides. The difference between a
    case that reduces and one that does not is the actual answer, and it
    is two commands.
+
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 17 | the `done` diagnostic on the PASSING `Π` row, to diff against `Hom`'s | ⚠ **structurally IDENTICAL** — same `subTm` stack outside the same unreduced `ifSum`.  ⇒ attempt 16's hypothesis is refuted: that shape is common to a passing and a failing row |
+| 18 | SPIKE (`tmp/PeelSpike.agda`): the three generated SLOT PEELS on a literal tuple | ✅ rc=0 — all three, INCLUDING slot 2 |
+| 19 | SPIKE (`tmp/OccSpike4.agda`): attempt 14 redone with a CONCRETE `ihs` | ✅ rc=0 at two AND three fields |
+
+★★★ **ATTEMPT 19 MATTERS BECAUSE ATTEMPT 14 WAS NOT A FAITHFUL ISOLATION.**
+14 used an ABSTRACT `ihs`; `occSum` only unfolds into the `occOp` chain when
+its arguments are concrete, so 14 could not have reproduced attempt 13's
+mechanism even if that mechanism were the cause. 19 supplies the concrete
+`iihs …` term and STILL passes. ⇒ attempt 13 is now refuted properly, not
+merely relocated.
+
+⚠⚠ **FOUR MECHANISMS PROPOSED, FOUR REFUTED** (12 position-dependent peel ·
+13 `occOp` weakening · 16 `ifSum` naturality · and 14's own scope). Every
+component works in isolation:
+
+| component | verified |
+|---|---|
+| slot peels 0,1,2 | ✅ spike 18 |
+| `occSum-red`, abstract, 3 fields | ✅ spike 14 |
+| `occSum-red`, CONCRETE ihs, 3 fields | ✅ spike 19 |
+| cast chain shapes (n=1,2,3) | ✅ attempt 10 |
+| the post-β goal shape | ✅ identical in passing `Π` and failing `Hom` (17) |
+
+⇒ **THE FAULT IS IN THE COMPOSITION, AND IT IS NOT LOCATED.** Bisection has
+eliminated every part; what remains is how the parts are joined — the `»`
+between the head-red and `occSum-red`, or the IH TYPES in the row's own
+signature.
+
+⬜ NEXT, and NOT another mechanism: build the `Hom` row by STARTING FROM THE
+   PASSING `Π` ROW and adding one field, changing one thing at a time. The
+   two rows are 40 lines apart and one works; the difference is finite and
+   can be bisected directly instead of hypothesised. ⚠ Do not propose a
+   fifth mechanism before that diff is read — this file's record on
+   mechanisms is 0 for 4.
