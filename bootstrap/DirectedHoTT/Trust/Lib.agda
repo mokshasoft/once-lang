@@ -59,6 +59,7 @@ import DirectedHoTT.Lib.Nat
 import DirectedHoTT.Lib.NatEq
 import DirectedHoTT.Lib.NatEval
 import DirectedHoTT.Lib.NatMax
+import DirectedHoTT.Lib.NatMaxNum
 import DirectedHoTT.Lib.NatNum
 import DirectedHoTT.Lib.NatVal
 import DirectedHoTT.Lib.Natrec
