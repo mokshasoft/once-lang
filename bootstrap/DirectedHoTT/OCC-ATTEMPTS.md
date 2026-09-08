@@ -182,3 +182,66 @@ been tested. Two mechanisms predicted the same symptom.
      first.
    ⚠ Do NOT build the position-dependent peel of attempt 12; it solves
      a problem that does not exist.
+
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 14 | SPIKE (`tmp/OccSpike3.agda`): apply `occSum-red` to `cTy-Hom` with everything ABSTRACT — no encoding, no row, no peels | ✅ **rc=0 at THREE fields** (and at two) |
+
+★★★ **THE SPIKE LOCATES THE FAULT, AND IT IS NOT WHERE ATTEMPT 13 SAID.**
+`occSum-red` composes fine at three fields. ⇒ `Lib/IOccRed` is sound here,
+and BOTH repairs attempt 13 proposed — absorbing the weakening in
+`occStep-red`, or de-weakening `Lib/IOcc.occOp` — are aimed at the wrong
+file. The `occOp`-weakening mechanism is REAL (`renTm ρ (lam t) =
+lam (renTm (extR ρ) t)`, and two chainings do land at field 3) but it is
+not what fails.
+
+⚠⚠ **THAT IS TWICE.** Attempt 12: a mechanism that reproduced the
+boundary, wrong. Attempt 13: a mechanism that is mechanically real AND
+reproduces the boundary, still not the cause. ⇒ **a mechanism is not a
+diagnosis until something that ISOLATES it has been run.** The spike cost
+two commands and would have saved the whole of attempt 13.
+
+★ SO THE FAULT IS IN THE ROW'S OWN CONSTRUCTION — the pinned `{ihs = …}`,
+  or the slot/index peels feeding `aih-ρ`, at slot 2. That is emitter
+  code, not library code, which also means the 13 three-plus-field rows
+  are NOT blocked on a library question.
+
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 15 | drop the `{ihs = …}` pin from the `Hom` row | ⚠ identical error ⇒ the pin is not the fault |
+| 16 | DIAGNOSTIC: replace the row's tail with `done`, read both sides | ✅ printed the goal — see below |
+
+The left-hand side after the three βs:
+
+```
+app (subTm (single ihs) (subTm (extS (single p)) (subTm (extS² (single i))
+      (ifSum 𝔹 … (ilookupD KnotD tagTy-Hom) (var vz))))) (num (lvl x))
+```
+
+★ THE SUBSTITUTIONS SIT **OUTSIDE AN UNREDUCED `ifSum`**, while
+`occSum-red` needs the shape `occSum true C ihs`. `ifSum` is a DEFINED
+function recursing on the `ICon`, so `subTm` cannot push through it.
+
+⬜ **HYPOTHESIS — NOT A DIAGNOSIS.** This looks like `SUBTM-ATTEMPTS.md`'s
+`isubPay` wall verbatim ("a neutral meta-level call `subTm` cannot compute
+through"), whose content was a NATURALITY lemma:
+
+    ifSum-sub : subTm σ (ifSum r C ih) ≡ ifSum r C (subTm σ ih)
+
+⚠⚠ BUT IT DOES NOT YET EXPLAIN THE BOUNDARY, and that is exactly the test
+attempts 12 and 13 failed. `Π` (two fields) goes through the SAME three βs
+and the SAME `ifSum`, and it PASSES. If `subTm` simply could not commute
+with `ifSum`, `Π` would fail too. ⇒ something makes the two-field case
+reduce where the three-field case does not, and until that is identified
+this hypothesis is not established.
+
+★ WHAT IS ESTABLISHED (attempt 14): the fault is in the ROW, not in
+  `Lib/IOccRed` — `occSum-red` composes at three fields with abstract
+  arguments. So whatever the mechanism, the repair is emitter-side.
+
+⬜ NEXT DIAGNOSTIC: run the same `done` diagnostic on the PASSING `Π` row
+   and diff the two printed left-hand sides. The difference between a
+   case that reduces and one that does not is the actual answer, and it
+   is two commands.
