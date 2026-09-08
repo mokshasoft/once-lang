@@ -113,8 +113,17 @@
 --     iihTyK     ⬜ OWED — agreement with `iihTy`.
 --     iihTyMotK  ✅ not a program — `iihTyK`'s MOTIVE.
 --     iihTyRho   ✅ not a program — the `cICon-rho` METHOD of `iihTyK`.
---     iinstK     ⬜ OWED — agreement with `iinst`; two `subTyAtK`s and
---                no trick, so a corollary of theirs.
+--     iinst-agree ✅ not a program — it IS an adequacy lemma
+--                (`Knot/IExtAgree`), namely `iinstK`'s own.  The
+--                scanner over-approximates and flags it; a lemma
+--                ABOUT an eliminator owes no adequacy of its own.
+--     iinstK     ✅ DISCHARGED — `Knot/IExtAgree.iinst-agree`:
+--                `iinstK ⌈|Γ|⌉ ⌈j⌉ ⌈t⌉ ⌈M⌉ ⟶* ⌈ iinst j t M ⌉`.
+--                Exactly the corollary this entry predicted: two
+--                `subTyAtK-agree`s over `single-Represents` and
+--                `extS-Represents`, plus one congruence for
+--                `subTyAtK` in its scrutinee.  No arithmetic lemma —
+--                `num (suc n) = nsuc (num n)` is definitional.
 --     ilookupDK  ⬜ OWED — agreement with `ilookupD`.
 --     imethsTyFromK ⬜ OWED — agreement with `imethsTyFrom`.
 --     imethsTyK  ⬜ OWED — `imethsTyFromK` at `j = 0`; a corollary.

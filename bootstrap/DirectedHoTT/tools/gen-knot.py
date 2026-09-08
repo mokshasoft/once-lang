@@ -5201,6 +5201,7 @@ _WRAP_LEDGER = {
     #   into `Lib/` takes it out of this scanner's sight.  Move PROOF
     #   STEPS there; do not move an object-level PROGRAM there without
     #   widening the walk to `Lib/` first.
+    "iinst-agree": "✅ not a program — it IS an adequacy lemma\n--                (`Knot/IExtAgree`), namely `iinstK`'s own.  The\n--                scanner over-approximates and flags it; a lemma\n--                ABOUT an eliminator owes no adequacy of its own.",
     # ✅ METHOD ROWS of a program above: covered by that program's own
     #   agreement, not owed one each.
     "ihTyRho":   "✅ not owed — a method row of `ihTyK`.",
@@ -5236,7 +5237,7 @@ _WRAP_LEDGER = {
     "occVzK": "⬜ OWED — `occK` with the level taken as `pred (snd ⟨i⟩)`;\n--                a COROLLARY of `occK`'s once the level convention is\n--                fixed (`vz` in a depth-`nsuc n` context is level `n`).",
     # ★★★ `⊢ielim`'s FIVE PROGRAMS, 2026-09-06.
     "iextK":         "⬜ OWED — agreement with `iext`, VIA its factorisation\n--                `iext σ t ≡ single t ∘ extS σ` (the same two-step debt\n--                `iconSK` carries).",
-    "iinstK":        "⬜ OWED — agreement with `iinst`; two `subTyAtK`s and\n--                no trick, so a corollary of theirs.",
+    "iinstK":    "✅ DISCHARGED — `Knot/IExtAgree.iinst-agree`:\n--                `iinstK ⌈|Γ|⌉ ⌈j⌉ ⌈t⌉ ⌈M⌉ ⟶* ⌈ iinst j t M ⌉`.\n--                Exactly the corollary this entry predicted: two\n--                `subTyAtK-agree`s over `single-Represents` and\n--                `extS-Represents`, plus one congruence for\n--                `subTyAtK` in its scrutinee.  No arithmetic lemma —\n--                `num (suc n) = nsuc (num n)` is definitional.",
     "iihTyK":        "⬜ OWED — agreement with `iihTy`.",
     "imethsTyFromK": "⬜ OWED — agreement with `imethsTyFrom`.",
     "imethsTyK":     "⬜ OWED — `imethsTyFromK` at `j = 0`; a corollary.",

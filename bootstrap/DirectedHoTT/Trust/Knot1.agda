@@ -37,10 +37,10 @@ import DirectedHoTT.Examples.Knot.Desc
 import DirectedHoTT.Examples.Knot.EWk
 import DirectedHoTT.Examples.Knot.IConS
 import DirectedHoTT.Examples.Knot.IExt
+import DirectedHoTT.Examples.Knot.IExtAgree
 import DirectedHoTT.Examples.Knot.ILookupD
 import DirectedHoTT.Examples.Knot.IMethTy
 import DirectedHoTT.Examples.Knot.IMethsTy
 import DirectedHoTT.Examples.Knot.IMethsTyMot
 import DirectedHoTT.Examples.Knot.IPayTy
 import DirectedHoTT.Examples.Knot.IPayTyKap
-import DirectedHoTT.Examples.Knot.IPayTyMot
