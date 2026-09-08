@@ -380,3 +380,43 @@ and every subsequent mechanism (12, 13, 16, and the peel machinery for
    · the ROW-LEVEL statements quantify the index; the TOP-LEVEL theorem
      ties it. Those are different statements and conflating them is what
      cost this whole investigation.
+
+
+## Attempts 29–31 — `peel_ix` deleted; the residue is the JOIN
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 29 | delete `peel_ix`, regenerate the `aih` (two peels, `IH _`) | ✅ spine now matches `SzAgree`'s exactly |
+| 30 | full `Hom` row, `peel_ix` gone, IHs quantified | ⚠ still `extR vs x₁ != vs x₁` |
+| 31 | state the `ICon` as `ilookupD KnotD tagTy-Hom` (the head-red's own form) rather than `cTy-Hom` | ⚠ no change — the `ICon` form is not it |
+
+★★★ **THE `extR` ENTERS THROUGH THE JOIN, AND THE ASYMMETRY WITH `sz` IS
+WHY.** Three configurations, and only their combination fails:
+
+| configuration | result |
+|---|---|
+| build the `AllIH` alone (`tmp/AihSpike.agda`) | ✅ |
+| `occSum-red` with the `AllIH` GIVEN (spike 5) | ✅ |
+| both, JOINED to the head-red (`tmp/HomFinal.agda`) | ❌ |
+
+```agda
+plusTm m n = natrec n (nsuc (var vz)) m           -- sz's op: no lam, no renTm
+occOp  f g = lam (maxTm (app (renTm vs f) …) …)   -- occ's op: BOTH
+```
+
+`SzAgree`'s rows never cancel a weakening because `plusTm` builds no
+lambda. `occOp` does — so when the three βs COMPUTE `occSum` into an
+`occOp` chain, `renTm vs` meets a `lam` and produces `renTm (extR vs)`.
+Spike 5 never saw it: its `occSum` came from a TYPE, not from βs.
+
+⇒ attempt 13's mechanism was REAL after all, but its LOCATION was wrong
+  in both directions — it is not in `Lib/IOccRed` (spikes 5/19/23 clear
+  it) and not in the `AllIH` (spike 28 clears that). It is in the
+  head-red's OUTPUT, where the βs force `occSum` to unfold.
+
+⬜ NEXT: the βs' target needs a weakening cancellation, the way
+   `Knot/RenSpec.singleK-vz` opens with `⟶*-castᵣ (wk-single …)`.
+   ⚠ This is the FIRST place `occ` needs something `sz` does not, so
+   there is no row in `SzAgree` to copy — the template runs out here, and
+   that is exactly why every mechanism that assumed symmetry with `sz`
+   was wrong.
