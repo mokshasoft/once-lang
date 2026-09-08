@@ -975,7 +975,25 @@ def _parse_spine(ts):
 BOOL_PREM = {"pw?":   ("pwK",   "⊢pwK",   "sTm"),
              "stkA?": ("stkAK", "⊢stkAK", "sTm"),
              "stkC?": ("stkCK", "⊢stkCK", "sTm"),
-             "flat?": ("flatK", "⊢flatK", "sTm")}
+             "flat?": ("flatK", "⊢flatK", "sTm"),
+             # ★ `⊢tr`'s occurrence premise — see `BOOL_PREM_VZ`.
+             "occTm": ("occVzK", "⊢occVzK", "sTm")}
+
+# ★★★ A BOOLEAN PREMISE WRITTEN WITH **TWO** ARGUMENTS, the first of which
+#   is the rule's own bound variable:
+#
+#       ⊢tr : … → occTm vz c ≡ false → occTm vz a ≡ false → …
+#
+# ⚠⚠ AND THE OBJECT LEVEL TAKES ONE.  `Knot/Occ.occVzK ⟨i⟩ c` recovers
+#   the LEVEL of `vz` as `pred (snd ⟨i⟩)` — in a context of depth
+#   `nsuc n` the variable `vz` sits at level `n` — so it never appears as
+#   an argument and the emitted shape is `pw?`'s exactly.
+#   ⇒ THIS IS A PARSE RULE, NOT A NEW EMISSION PATH.  Strip the `vz` and
+#     the existing `bools` pipeline runs untouched — which is why
+#     widening `BOOL_PREM` to a general arity was not needed.
+# ★ Levels pay twice here: they made the fold's motive CONSTANT
+#   (`Lib/IOcc`) and they make this premise's arity ONE.
+BOOL_PREM_VZ = {"occTm"}
 
 def TBOOL(app, lit): return ('tbool', app, lit)
 
@@ -1154,6 +1172,13 @@ def translate_rule(r, CT, REL="⟶", FOREIGN_RELS=(), arity=2):
             #   term-level one — silently, and the row still typechecks.
             # ★ a BOOLEAN premise, before the relation search: it
             #   contains no relation symbol at all.
+            # ★ the TWO-argument form, `f vz X ≡ b`, tried first: its
+            #   pattern is a prefix of the one-argument one.
+            mz = re.match(r"^\s*([A-Za-z?]+)\s+vz\s+(.+?)\s*≡\s*(true|false)\s*$", p)
+            if mz and mz.group(1) in BOOL_PREM_VZ:
+                bools.append((mz.group(1), mz.group(2).strip(),
+                              1 if mz.group(3) == "true" else 0))
+                continue
             mb = re.match(r"^\s*([A-Za-z?]+)\s+(.+?)\s*≡\s*(true|false)\s*$", p)
             if mb and mb.group(1) in BOOL_PREM:
                 bools.append((mb.group(1), mb.group(2),
@@ -1403,6 +1428,10 @@ def _parse_jpart(p):
     #   own premise parser and had never heard of `BOOL_PREM`.
     #   ⇒ "the mechanism is general" is a claim about EVERY caller, and
     #     this one had exactly one.
+    mz = re.match(r"^\s*([A-Za-z?]+)\s+vz\s+(.+?)\s*≡\s*(true|false)\s*$", p)
+    if mz and mz.group(1) in BOOL_PREM_VZ:
+        return ("bool", mz.group(1), mz.group(2).strip(),
+                1 if mz.group(3) == "true" else 0)
     mm = re.match(r"^\s*([A-Za-z?]+)\s+(.+?)\s*≡\s*(true|false)\s*$", p)
     if mm and mm.group(1) in BOOL_PREM:
         return ("bool", mm.group(1), mm.group(2).strip(),
@@ -1499,7 +1528,19 @@ def infer_depths(rule, names, CT):
         # ★ a `bool` part binds nothing and carries an INT literal — its
         #   only term is the ARGUMENT, at the ambient depth.
         if q[0] == "bool":
-            scan(_parse_spine(_tokens(q[2])), 0); continue
+            # ⚠⚠ THE `vz` FORM SCANS ONE BINDER DEEPER.  `occTm vz c` asks
+            #   about the variable bound OVER `c`, so `c` lives at
+            #   ambient+1 — where `pw? C` asks about the ambient `C`
+            #   itself.  Scanning both at 0 made `⊢tr` look as though its
+            #   own typing premise `(Γ ▹ A) ⊢ c ∷ U` disagreed with it:
+            #       conflicting depths [('c', 1, 0), ('a', 1, 0)]
+            # ★ AND THE EMITTER THEN LINES UP FOR FREE.  With `c` at
+            #   depth 1 the index is `pair sTm (nsuc ⟨d⟩)`, so
+            #   `occVzK`'s `pred (snd ⟨i⟩)` is `⟨d⟩` — exactly the level
+            #   of `vz` in that context.
+            scan(_parse_spine(_tokens(q[2])),
+                 1 if q[1] in BOOL_PREM_VZ else 0)
+            continue
         # ★★★ A `wf` PART CARRIES NO DEPTH INFORMATION — the same rule an
         #   unknown head follows.  Its subjects' depths are dictated by
         #   `IxD`'s FIELD CODES (closed, or the row's), not by where they
@@ -1908,19 +1949,7 @@ open import DirectedHoTT.Examples.Knot.Ctors
 open import DirectedHoTT.Examples.Knot.CtorsV
 open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK; ⊢Var-vzKt; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
--- ★ STEP 5 — `⊢con` needs these.  `lookupDK`/`ilookupDK` are already in
---   the kernel's argument order; `payTyKᵏ` is `Knot/KAdapt`'s adapter,
---   because `payTy D C` maps to `payTyK n C D` with the arguments SWAPPED
---   and `_SUBST_CT` only renames a head.
-open import DirectedHoTT.Examples.Knot.LookupD using ( lookupDK; ⊢lookupDK )
-open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK )
-open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )
--- ★ `⊢elim`'s method-tuple type.
-open import DirectedHoTT.Examples.Knot.MethsTy using ( methsTyFromK; ⊢methsTyFromK )
--- ★ `⊢ielim`'s method-tuple type, and its conclusion's `iinst`.
-open import DirectedHoTT.Examples.Knot.IMethsTy using ( imethsTyK; ⊢imethsTyK )
-open import DirectedHoTT.Examples.Knot.IExt using ( iinstK; ⊢iinstK )
-open import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
+%(opt)sopen import DirectedHoTT.Lib.ICast using ( toMu; fromMu; fordAs; muFwd )
 open import DirectedHoTT.Lib.ArithComm using ( symN; ⊢symN )
 open import DirectedHoTT.Metatheory.SubjectReduction using ( ⊢wk )
 open import DirectedHoTT.Examples.Knot.Single using ( singleK; ⊢singleK )
@@ -1939,8 +1968,10 @@ def gen_j_rows(J, CT):
     rows, skipped = _jrows(J, CT)
     _JCACHE[J.mod] = rows
     _CENSUS.append((J.desc, [J.data], len(skipped), J.src))
+    # ★ the small families (`TyRedD`, `ConvD`, `InDD`, …) never mention a
+    #   step-5 wrapper, so their `opt` is empty by construction.
     L = [JHDR % dict(gc="", data=J.data, what=", THE ROWS.", mod=J.mod + "Rows",
-                     extra=J.extra)]
+                     extra=J.extra, opt="")]
     L.append("%s : RTy ε" % J.ity)
     L.append("%s = %s" % (J.ity, J.ixdef))
     L.append("")
@@ -1986,7 +2017,7 @@ def gen_j_wf(J, part, lo, hi, last):
            + ("open import DirectedHoTT.Examples.Knot.%sWfA\n" % J.mod
               if part == "B" else "") + J.extra)
     L = [JHDR % dict(gc="", data=J.data, what=" IS A WELL-FORMED DESCRIPTION.",
-                     mod=J.mod + "Wf" + part, extra=imp)]
+                     mod=J.mod + "Wf" + part, extra=imp, opt="")]
     for nm, row in rows[lo:hi]:
         tag = J.mod + _tagof(rows.index((nm, row)))
         L.append("-- %s" % nm)
@@ -2071,6 +2102,41 @@ IJUDGE_DEF = """Σ' Nat
           (Σ' Nat
               (IMu IxD INat (var (vs (vs (vs (vs vz))))))))))"""
 
+# ★★★ THE STEP-5 IMPORTS ARE EMITTED **PER MODULE**, not into the shared
+#   header — and that is not tidiness, it is the difference between the
+#   tree building and not.
+#
+# ⚠⚠ MEASURED 2026-09-07.  Putting `Knot/Occ` in the shared judgement
+#   header gave every one of ~56 `JudgeWf` modules a 53-method tuple in
+#   its closure, and `JudgeWfAA`…`AD` were OOM-KILLED(143) one after
+#   another at ~3 GB against ~1.2 GB of headroom.  ONE module actually
+#   uses `occVzK` — `JudgeWfZ`.  `split-modules-by-consumption`:
+#   deserialization is ~70% of the build, so an unused import is not
+#   free, it is most of the cost.
+#
+# ⚠ AND THE SAME WAS ALREADY TRUE OF THE EARLIER FOUR (`KAdapt`,
+#   `MethsTy`, `IMethsTy`, `IExt`) — they were just under the ceiling.
+#   `JudgeWfAA` imported all four and used NONE.
+#
+# name it defines → the import line to emit when a body mentions it
+_OPT_IMPORT = [
+  (("lookupDK",),  "open import DirectedHoTT.Examples.Knot.LookupD using ( lookupDK; ⊢lookupDK )"),
+  (("ilookupDK",), "open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK )"),
+  (("payTyKᵏ", "ipayTyKᵏ"),
+                   "open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )"),
+  (("methsTyFromK",), "open import DirectedHoTT.Examples.Knot.MethsTy using ( methsTyFromK; ⊢methsTyFromK )"),
+  (("imethsTyK",), "open import DirectedHoTT.Examples.Knot.IMethsTy using ( imethsTyK; ⊢imethsTyK )"),
+  (("iinstK",),    "open import DirectedHoTT.Examples.Knot.IExt using ( iinstK; ⊢iinstK )"),
+  (("occVzK",),    "open import DirectedHoTT.Examples.Knot.Occ using ( occVzK; ⊢occVzK )"),
+]
+
+def _opt_imports(body):
+    """only the step-5 imports `body` actually mentions."""
+    out = []
+    for names, line in _OPT_IMPORT:
+        if any(n in body for n in names): out.append(line)
+    return ("\n".join(out) + "\n") if out else ""
+
 MUT_EXTRA = """open import DirectedHoTT.Examples.Knot.CtxD
   using ( CtxD; INat; CtxWf; Ctx-extK; ⊢Ctx-extKt; Ctx-empK; ⊢Ctx-empK )
 open import DirectedHoTT.Examples.Knot.EWk using ( εwkK; ⊢εwkK; isingleK; ⊢isingleK )
@@ -2149,7 +2215,11 @@ def write_mutual(out, CT):
     _cap = os.environ.get("JUDGE_MAX_ROWS")
     if _cap: rows = rows[:int(_cap)]
     L = [JHDR % dict(gc="", data="_⊢ty_ / _⊢_∷_", what=", ONE TAGGED DESCRIPTION.",
-                     mod="JudgeRows", extra=MUT_EXTRA)]
+                     mod="JudgeRows", extra=MUT_EXTRA,
+                     # ★ `JudgeRows` holds ALL the rows, so it needs the
+                     #   lot; the `JudgeWf` parts each take only theirs.
+                     opt=_opt_imports("".join(n for n, _ in _OPT_IMPORT
+                                              for n in n)))]
     L += ["-- ★★★ THE INDEX IS TAGGED, and the tag is not decoration: a",
           "--   `⊢ty` row PADS its `Tm` slot with a dummy, and `⊢unit :`",
           "--   `Γ ⊢ unit ∷ Unit` is a `⊢_∷_` rule whose subject IS that",
@@ -2226,6 +2296,63 @@ def write_mutual(out, CT):
     JWF_ROWS = int(os.environ.get("JWF_ROWS", 1))
     _n = len(rows)
     _bounds = [(i, min(i + JWF_ROWS, _n)) for i in range(0, _n, JWF_ROWS)]
+
+    # ========================================================================
+    # ★★★ SUB-RULE SPLITTING — because `JWF_ROWS` BOTTOMS OUT AT ONE.
+    #
+    # ⚠⚠ MEASURED 2026-09-07 on a quiet 7.5 GB box, `JudgeWfZ` (= `⊢tr`,
+    #   the deepest rule in the kernel, a 25-rung chain):
+    #       cap 3000M  -> rc=143 at 188s
+    #       cap 5500M  -> rc=143 at 215s
+    #       cap 7000M  -> rc=143, PEAK RSS 5.52 GB, machine exhausted
+    #   Zero type errors in all three.  ⇒ ONE RULE does not fit in one
+    #   module on this hardware, and `JWF_ROWS=1` is already the finest
+    #   the row-chunker can go.  The generator's own note was right:
+    #   "splitting cannot reach 10-20s ... the expensive rows stay
+    #   expensive wherever they are put" — so stop moving rows between
+    #   modules and split the ROW ITSELF.
+    #
+    # ★ WHERE THE SEAM IS.  A row emits a context block, then rungs
+    #   `W{n-1} … W{0}` where `W{k}` names `W{k+1}`, then
+    #   `jd<rule>Wf = W0`.  That chain is a LINE, so any cut across it
+    #   is a module boundary: the part holding the HIGHER k is a
+    #   complete Agda module on its own, and the part below it imports
+    #   it for exactly one name.  Parts are emitted highest-k FIRST.
+    #     - the first part emitted declares the context block;
+    #     - the last part emitted (k=0) carries `jd<rule>Wf`;
+    #     - every part but the first imports its predecessor.
+    #
+    # ⚠ THIS IS A REAL DEPENDENCY, unlike the 1540-edge predecessor
+    #   chain deleted above: `W{k}` genuinely names `W{k+1}`.  Do not
+    #   confuse the two when trimming imports again.
+    #
+    # ⚠ FAILURE MODE IS BENIGN: a bad cut is "Not in scope", instantly.
+    #
+    # Set via env so the sweep can bisect a width without a code edit:
+    #   JWF_SUBSPLIT="⊢tr=3,⊢ap=2"
+    # ========================================================================
+    _SUBSPLIT = {"⊢tr": 3}
+    for _kv in os.environ.get("JWF_SUBSPLIT", "").split(","):
+        if "=" in _kv:
+            _k, _v = _kv.split("=", 1)
+            _SUBSPLIT[_k.strip()] = int(_v)
+
+    _units = []
+    for _lo, _hi in _bounds:
+        _ns = _SUBSPLIT.get(rows[_lo][0], 1) if _hi - _lo == 1 else 1
+        if _ns <= 1:
+            _units.append(dict(lo=_lo, hi=_hi, kslice=None,
+                               with_ctx=True, with_term=True, chain=False))
+            continue
+        _nf = len(jrow_fields(rows[_lo][1], TEL)[1])
+        _e = [round(_nf * _t / _ns) for _t in range(_ns + 1)]
+        # highest-k piece first; it is the base of the chain
+        for _t in range(_ns - 1, -1, -1):
+            _units.append(dict(lo=_lo, hi=_hi, kslice=(_e[_t], _e[_t + 1] - 1),
+                               with_ctx=(_t == _ns - 1),
+                               with_term=(_t == 0),
+                               chain=(_t != _ns - 1)))
+        print("  sub-split %s into %d parts (%d rungs)" % (rows[_lo][0], _ns, _nf))
     # ⚠ MORE THAN 26 PARTS RUNS PAST `Z` into `[`, `\\`, `]` — real files
     #   with those names, which the next run does not overwrite and the
     #   sweep would then check as STALE.  The width spike at one row per
@@ -2239,7 +2366,7 @@ def write_mutual(out, CT):
                 else chr(ord("A") + i // 26 - 1) + chr(ord("A") + i % 26))
     if len(_bounds) > 26 * 27:
         sys.exit("  ⇒ %d parts: even AA–ZZ is exhausted." % len(_bounds))
-    _parts = [_pn(i) for i in range(len(_bounds))]
+    _parts = [_pn(i) for i in range(len(_units))]
     # ★★★ AND REMOVE THE PARTS A PREVIOUS RUN LEFT BEHIND.
     #
     # ⚠⚠ THE `>26` GUARD ABOVE DOES NOT COVER THIS, and I found out by
@@ -2257,18 +2384,59 @@ def write_mutual(out, CT):
     for _f in sorted(os.listdir(out)):
         if _f.startswith("JudgeWf") and _f.endswith(".agda") and _f not in _keep:
             os.remove(os.path.join(out, _f)); print("  removed stale", _f[:-5])
-    for _pi, (part, (lo, hi)) in enumerate(zip(_parts, _bounds)):
-        # ⚠ EACH PART IMPORTS EVERY EARLIER PART, not just its predecessor:
-        #   Agda's `open import` does not RE-EXPORT, so the final assembly
-        #   would not see the names of parts before the last one.
-        _prev = "".join("\nopen import DirectedHoTT.Examples.Knot.JudgeWf%s" % q
-                        for q in _parts[:_pi])
-        W = [JHDR % dict(gc=GC_NOTE, data="_⊢ty_ / _⊢_∷_",
-                         what=" IS A WELL-FORMED DESCRIPTION.",
-                         mod="JudgeWf" + part,
-                         extra=MUT_EXTRA
-                         + "\nopen import DirectedHoTT.Examples.Knot.JudgeRows"
-                         + _prev)]
+    for _pi, (part, _u) in enumerate(zip(_parts, _units)):
+        lo, hi = _u['lo'], _u['hi']
+        # ★★★ NO PREDECESSOR IMPORTS.  A part imports NONE of the earlier
+        #   parts — not the previous one, not all of them.
+        #
+        # ⚠⚠ THE OLD REASON IS STALE, and it cost 1540 dead import edges.
+        #   It read: "each part imports every earlier part, because Agda's
+        #   `open import` does not RE-EXPORT, so the final assembly would
+        #   not see the names of parts before the last one."  There is no
+        #   longer a single final assembly: `Trust.agda` was SPLIT into
+        #   the `Trust/` roots on 2026-09-05, and those four roots now
+        #   name all 56 parts EXPLICITLY (19+19+15+3).  Nothing relies on
+        #   transitive re-export any more.
+        #
+        # ★ MEASURED 2026-09-07 before removing it:
+        #     - the chain was n(n-1)/2 = 1540 bare imports, no `using`;
+        #     - `JudgeWfY` type-checks with all 24 of its predecessor
+        #       imports deleted — 0 scope errors, `rc=0`;
+        #     - a probe module with 25 predecessor imports and NO CONTENT
+        #       costs 7.4s / 600 MB (empty baseline: 0.12s / 55 MB);
+        #     - but the marginal build cost is only ~1s per module
+        #       (`JudgeWfA`, 0 preds, 6s vs `JudgeWfY`, 24 preds, 7s),
+        #       because the shared closure (`Spec/Syntax`, `Spec/Typing`)
+        #       is loaded by each part's OWN imports regardless.
+        #   ⇒ delete it for the RSS headroom and the honesty, but do not
+        #     expect the tail (`JudgeWfZ`…`BD`) to clear the memory cap on
+        #     this alone.  See `split-modules-by-consumption`.
+        #
+        # ⚠ FAILURE MODE IS BENIGN: if a part ever does need an earlier
+        #   one, Agda says "Not in scope" immediately.  That is a cheap,
+        #   loud error — not an OOM and not a silent wrong answer.
+        #
+        # ⚠⚠ EXCEPT THE **LAST** PART, WHICH REALLY DOES NEED THEM ALL.
+        #   It carries the final assembly
+        #       JudgeWf : IDescWf IJudge JudgeD
+        #   whose body names `jd<rule>Wf` for EVERY row — 46 of them live
+        #   in other parts.  That is what the original comment meant by
+        #   "the final assembly would not see the names of parts before
+        #   the last one", and it is still true.  Dropping its imports
+        #   gives 46 × "Not in scope".
+        #   ⇒ the chain shrinks from n(n-1)/2 = 1540 edges to n-1 = 55:
+        #     every part but the last imports NONE of its predecessors.
+        _is_last = (_pi == len(_units) - 1)
+        _prev = ("".join("\nopen import DirectedHoTT.Examples.Knot.JudgeWf%s" % q
+                         for q in _parts[:_pi]) if _is_last else "")
+        # ★ a sub-split continuation imports the part holding the rungs
+        #   ABOVE it — one real edge, and the only one it needs.
+        if _u['chain'] and not _is_last:
+            _prev = "\nopen import DirectedHoTT.Examples.Knot.JudgeWf%s" % _parts[_pi - 1]
+        # ⚠⚠ THE BODY IS BUILT BEFORE THE HEADER, so the header can ask
+        #   it which step-5 imports it actually needs.  Emitting them all
+        #   OOM-KILLED `JudgeWfAA`…`AD` — see `_OPT_IMPORT`.
+        W = []
         for i in range(lo, hi):
             nm, row = rows[i]
             tag = "J" + _tagof(i)
@@ -2288,9 +2456,12 @@ def write_mutual(out, CT):
                                  #     again — the argument that these rungs
                                  #     were payload rather than shape was
                                  #     WRONG.  Mechanism kept, disabled.
-                                 "jd%sWf" % nm, "JudgeD"))
+                                 "jd%sWf" % nm, "JudgeD",
+                                 kslice=_u['kslice'],
+                                 with_ctx=_u['with_ctx'],
+                                 with_term=_u['with_term']))
             W.append("")
-        if _pi == len(_bounds) - 1:
+        if _is_last:
             W.append("-" * 72)
             W.append("-- ★★★ …AND IT IS WELL FORMED.")
             W.append("-" * 72)
@@ -2299,8 +2470,16 @@ def write_mutual(out, CT):
             W.append(nest(["idwf-cons (jd%sWf JudgeD)" % nm if not row.prems
                            else "idwf-cons jd%sWf" % nm
                            for nm, row in rows], "idwf-nil", 2))
+        _body = "\n".join(W)
+        _hdr = JHDR % dict(gc=GC_NOTE, data="_⊢ty_ / _⊢_∷_",
+                           what=" IS A WELL-FORMED DESCRIPTION.",
+                           mod="JudgeWf" + part,
+                           extra=MUT_EXTRA
+                           + "\nopen import DirectedHoTT.Examples.Knot.JudgeRows"
+                           + _prev,
+                           opt=_opt_imports(_body))
         open(os.path.join(out, "JudgeWf%s.agda" % part), "w").write(
-            "\n".join(W) + "\n")
+            _hdr + "\n" + _body + "\n")
     return rows
 
 # ============================ LAYER 3: THE ADEQUACY MAP ====================
@@ -3732,7 +3911,8 @@ def _tupderiv(comps, tel, k, vis, bty):
     DEPTHD[0] = _keep
     return body
 
-def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None):
+def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None,
+                kslice=None, with_ctx=True, with_term=True):
     """the `IConWf` chain for one row — one lemma per field, innermost
     first, exactly as `Knot/Lookup` writes them by hand.
 
@@ -3751,7 +3931,7 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None):
     depth_at = ix.get('#depth')
     L, W = [], "W_" + T
     para = (npr == 0)
-    if not para:
+    if not para and with_ctx:
         assert idesc is not None, "a row with a premise needs its description"
         rho = next(j for j, (kd, _) in enumerate(fs) if kd == 'ρ')
         names = ["%s%d" % (T, j) for j in range(rho + 1, len(fs) + 1)]
@@ -3771,6 +3951,11 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None):
     for k in range(len(fs) - 1, -1, -1):
         # ★★★ THE SHARED TOP RUNGS ARE NOT EMITTED — see `topname`.
         if share and k < share: continue
+        # ★★★ SUB-RULE SPLIT: emit only this part's slice of the chain.
+        #   `W{k}` names `W{k+1}`, so a slice compiles iff the slice
+        #   ABOVE it is already in scope — which is why the parts are
+        #   emitted highest-k first and each imports its predecessor.
+        if kslice is not None and not (kslice[0] <= k <= kslice[1]): continue
         kind, e = fs[k]
         vis = {nm: j for nm, j in ix.items() if j < k or nm == '#depth'}
         damb = dbd(k)
@@ -3913,10 +4098,10 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None):
             L.append("%s : IConWf %s %s %s0 %s"
                      % (wfname, idesc, ity, T, row.name))
             L.append("%s = %s %s (%s%d)" % (wfname, topname, idesc, W, share))
-    elif para:
+    elif para and with_term:
         L.append("%s : (D : IDesc) → IConWf D %s %s0 %s" % (wfname, ity, T, row.name))
         L.append("%s = %s0" % (wfname, W))
-    else:
+    elif with_term:
         L.append("%s : IConWf %s %s %s0 %s" % (wfname, idesc, ity, T, row.name))
         L.append("%s = %s0" % (wfname, W))
     return "\n".join(reversed_blocks(L))
@@ -4531,7 +4716,7 @@ REDWF_HDR = """--- GENERATED by tools/gen-knot.py — do not edit.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
-module DirectedHoTT.Examples.Knot.RedWf%s where
+module DirectedHoTT.Examples.Knot.RedWf%(part)s where
 open import normalizer.Syntax.Types using ( _≡_; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -4568,20 +4753,8 @@ open import DirectedHoTT.Examples.Knot.Stk
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK; ⊢nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK; ⊢pwBodyK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; ⊢wkTmK; wkTyK; ⊢wkTyK )
--- ★ STEP 5 — `⊢con` needs these.  `lookupDK`/`ilookupDK` are already in
---   the kernel's argument order; `payTyKᵏ` is `Knot/KAdapt`'s adapter,
---   because `payTy D C` maps to `payTyK n C D` with the arguments SWAPPED
---   and `_SUBST_CT` only renames a head.
-open import DirectedHoTT.Examples.Knot.LookupD using ( lookupDK; ⊢lookupDK )
-open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK )
-open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )
--- ★ `⊢elim`'s method-tuple type.
-open import DirectedHoTT.Examples.Knot.MethsTy using ( methsTyFromK; ⊢methsTyFromK )
--- ★ `⊢ielim`'s method-tuple type, and its conclusion's `iinst`.
-open import DirectedHoTT.Examples.Knot.IMethsTy using ( imethsTyK; ⊢imethsTyK )
-open import DirectedHoTT.Examples.Knot.IExt using ( iinstK; ⊢iinstK )
-open import DirectedHoTT.Examples.Knot.RedRows
-%s
+%(opt)sopen import DirectedHoTT.Examples.Knot.RedRows
+%(prev)s
 """
 
 def gen_redwf(part, lo, hi):
@@ -4595,15 +4768,18 @@ def gen_redwf(part, lo, hi):
       it trips is noise.  `exit-143-is-not-evidence-about-cost` again.
       ⇒ two halves of ~33 sit well inside the linear region."""
     TEL = [TNAT(), TKNOT("sTm"), TKNOT("sTm")]
-    L = [REDWF_HDR % (part, "open import DirectedHoTT.Examples.Knot.RedWfA"
-                      if part == "B" else "")]
+    # ⚠ SAME TREATMENT AS `JudgeWf`: body first, then only the step-5
+    #   imports it mentions.
+    L = []
     for nm, row, tag in _ROWS[lo:hi]:
         L.append("-- %s" % nm)
         L.append(emit_jrowwf(row, TEL, (tag, "k" + tag), "IRed",
                              "rd%sWf" % nm, "RedD"))
         L.append("")
     if part != "B":
-        return "\n".join(L) + "\n"
+        _b = "\n".join(L)
+        return (REDWF_HDR % dict(part=part, prev="", opt=_opt_imports(_b))
+                + "\n" + _b + "\n")
     L.append("-" * 72)
     L.append("-- ★★★ …AND `_⟶_` IS A WELL-FORMED DESCRIPTION.")
     L.append("-" * 72)
@@ -4615,7 +4791,12 @@ def gen_redwf(part, lo, hi):
     L.append(nest(["idwf-cons (rd%sWf RedD)" % nm if not row.prems
                    else "idwf-cons rd%sWf" % nm
                    for nm, row, _ in _ROWS], "idwf-nil", 2))
-    return "\n".join(L) + "\n"
+    _b = "\n".join(L)
+    return (REDWF_HDR % dict(
+              part=part,
+              prev="open import DirectedHoTT.Examples.Knot.RedWfA",
+              opt=_opt_imports(_b))
+            + "\n" + _b + "\n")
 
 
 def gen_lookupgen():
@@ -4972,6 +5153,15 @@ _WRAP_LEDGER = {
     #   scanner starts seeing them.  ⇒ the two gates are a pincer — one
     #   forbids an unlisted program, the other a listed non-program — and
     #   between them the ledger cannot drift in either direction.
+    # ★★★ `⊢tr`'s OCCURRENCE CHECK, 2026-09-07 — the LAST rule's premise.
+    # ⚠ ITS AGREEMENT IS STATED AT A **LEVEL**, not an index:
+    #       occK s ⌈Γ⌉ ⌈lvl x⌉ ⌈t⌉ ⟶* ⌜ occTm x t ⌝
+    #   which is a 53-row induction of `Knot/SzAgree`'s shape.  ★ But 52
+    #   of the rows are the COMPUTED fold, so the agreement should follow
+    #   `Lib/ISzRed`'s pattern — one lemma about the fold plus one real
+    #   row — rather than 53 chains.  `cVar-vz` is the real row.
+    "occK":   "⬜ OWED — agreement with `occTm`/`occTy`, at a LEVEL.",
+    "occVzK": "⬜ OWED — `occK` with the level taken as `pred (snd ⟨i⟩)`;\n--                a COROLLARY of `occK`'s once the level convention is\n--                fixed (`vz` in a depth-`nsuc n` context is level `n`).",
     # ★★★ `⊢ielim`'s FIVE PROGRAMS, 2026-09-06.
     "iextK":         "⬜ OWED — agreement with `iext`, VIA its factorisation\n--                `iext σ t ≡ single t ∘ extS σ` (the same two-step debt\n--                `iconSK` carries).",
     "iinstK":        "⬜ OWED — agreement with `iinst`; two `subTyAtK`s and\n--                no trick, so a corollary of theirs.",
@@ -5243,7 +5433,7 @@ _SRCMOD = {"Typing": "DirectedHoTT.Spec.Typing",
 #   Agda equation then pins it exactly.  Raising one is a deliberate act,
 #   the same contract as `_FLOOR`.
 _SKIP_EXPECT = {"RedD": 2, "TyRedD": 0, "ConvD": 0, "NoNatCD": 0,
-                "InDD": 0, "InIDD": 0, "JudgeD": 1}
+                "InDD": 0, "InIDD": 0, "JudgeD": 0}
 
 def gen_census(out):
     """one equation per family, from `_CENSUS` — so a family cannot be

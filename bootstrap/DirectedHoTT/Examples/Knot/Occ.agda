@@ -26,17 +26,18 @@ module DirectedHoTT.Examples.Knot.Occ where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; var; lam; app; fst; pair; unit; RTm; IDesc
-        ; ICon; ielim; Nat; _◂_; ilookupD; εwkTy )
+        ; ICon; ielim; Nat; _◂_; ilookupD; εwkTy; snd; Σ' )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; ⊢var; here; there; ⊢fst; ⊢lam; ⊢app
         ; ⊢unit; ⊢ielim; ty-Nat; imethTy; imethsTy; imethsTyFrom
-        ; IConWf; IDescWfFrom )
+        ; IConWf; IDescWfFrom; ⊢snd )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; subst )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢methsAt; ⊢methsCons; Split; spl-nil; spl-step
         ; idwfDrop; splTake )
 open import DirectedHoTT.Lib.IMeths using ( cdTake; cdRest; methsAt )
 open import DirectedHoTT.Lib.NatEq using ( eqNatTm; ⊢eqNat )
+open import DirectedHoTT.Lib.Monus using ( predTm; ⊢pred )
 open import DirectedHoTT.Lib.Strong using ( elAsNat )
 open import DirectedHoTT.Lib.IOcc
   using ( OccTy; ty-OccTy; occMethod; ⊢occMethod )
@@ -134,3 +135,26 @@ occK s n k t = app (ielim KnotD (pair s n) occMethsK t) k
         Γ ⊢ occK s n k t ∷ Nat
 ⊢occK ds dn dk dt =
   ⊢app (⊢ielim KnotWf ty-OccTy (⊢ixP ds dn) ⊢occMethsK dt) dk
+
+------------------------------------------------------------------------
+-- ★★★ `occTm vz c` — THE FORM `⊢tr`'s PREMISE ACTUALLY TAKES.
+--
+-- ⚠⚠ AND IT NEEDS NO SECOND ARGUMENT.  The rule always asks about `vz`,
+--   and in a context of depth `nsuc n` the variable `vz` sits at LEVEL
+--   `n` — which is `pred` of the term's own depth, i.e. `pred (snd ⟨i⟩)`.
+--   So the level is RECOVERABLE FROM THE INDEX and never appears as an
+--   argument.  ⇒ the shape is `fnK ⟨i⟩ c`, byte-for-byte `pwK`'s, and
+--   `tools/gen-knot.py`'s whole `BOOL_PREM` pipeline applies unchanged.
+--
+-- ★ This is the second time levels pay: they made the fold's motive
+--   constant, and now they make the premise's arity one.
+------------------------------------------------------------------------
+
+occVzK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
+occVzK i c = app (ielim KnotD i occMethsK c) (predTm (snd i))
+
+⊢occVzK : {Γ : Ctx} {i c : RTm ⌊ Γ ⌋} →
+          Γ ⊢ i ∷ Σ' Nat Nat → Γ ⊢ c ∷ K i →
+          Γ ⊢ occVzK i c ∷ Nat
+⊢occVzK di dc =
+  ⊢app (⊢ielim KnotWf ty-OccTy di ⊢occMethsK dc) (⊢pred (⊢snd di))
