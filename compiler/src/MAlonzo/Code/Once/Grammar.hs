@@ -77,39 +77,34 @@ data T_GExpr_82
     C_EBinOp_104 T_BinOp_54 T_GExpr_82 T_GExpr_82 |
     C_EUnaryOp_106 T_GExpr_82 | C_ECompose_108 T_GExpr_82 T_GExpr_82 |
     C_EAnnot_110 T_GExpr_82 T_GType_8
--- Once.Grammar.AllocStrategy
-d_AllocStrategy_112 = ()
-data T_AllocStrategy_112
-  = C_Stack_114 | C_Arena_116 | C_Pool_118 | C_Heap_120 | C_Const_122
 -- Once.Grammar.ModulePath
-d_ModulePath_124 :: ()
-d_ModulePath_124 = erased
+d_ModulePath_112 :: ()
+d_ModulePath_112 = erased
 -- Once.Grammar.GDecl
-d_GDecl_126 = ()
-data T_GDecl_126
-  = C_DTypeSig_128 MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_GDecl_114 = ()
+data T_GDecl_114
+  = C_DTypeSig_116 MAlonzo.Code.Agda.Builtin.String.T_String_6
                    T_GType_8 |
-    C_DFunDef_130 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                  [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-                  (Maybe T_AllocStrategy_112) T_GExpr_82 |
-    C_DSignature_132 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DFunDef_118 MAlonzo.Code.Agda.Builtin.String.T_String_6
+                  [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_GExpr_82 |
+    C_DSignature_120 MAlonzo.Code.Agda.Builtin.String.T_String_6
                      T_GType_8 |
-    C_DTypeAlias_134 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DTypeAlias_122 MAlonzo.Code.Agda.Builtin.String.T_String_6
                      [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_GType_8 |
-    C_DImport_136 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+    C_DImport_124 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                   (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
 -- Once.Grammar.GModule
-d_GModule_138 = ()
-newtype T_GModule_138 = C_mkGModule_144 [T_GDecl_126]
+d_GModule_126 = ()
+newtype T_GModule_126 = C_mkGModule_132 [T_GDecl_114]
 -- Once.Grammar.GModule.decls
-d_decls_142 :: T_GModule_138 -> [T_GDecl_126]
-d_decls_142 v0
+d_decls_130 :: T_GModule_126 -> [T_GDecl_114]
+d_decls_130 v0
   = case coe v0 of
-      C_mkGModule_144 v1 -> coe v1
+      C_mkGModule_132 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ValidDeclPair
-d_ValidDeclPair_146 a0 a1 = ()
-data T_ValidDeclPair_146 = C_validPair_158
+d_ValidDeclPair_134 a0 a1 = ()
+data T_ValidDeclPair_134 = C_validPair_144
 -- Once.Grammar.ValidMainType
-d_ValidMainType_160 a0 = ()
-data T_ValidMainType_160 = C_validMain_164
+d_ValidMainType_146 a0 = ()
+data T_ValidMainType_146 = C_validMain_150

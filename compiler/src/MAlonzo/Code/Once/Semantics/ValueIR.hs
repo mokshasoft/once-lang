@@ -41,16 +41,16 @@ d_base'45'coh_32 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_base'45'coh_32 = erased
 -- Once.Semantics.ValueIR.tF-coh
-d_tF'45'coh_54 ::
+d_tF'45'coh_66 ::
   () ->
   () ->
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_tF'45'coh_54 = erased
+d_tF'45'coh_66 = erased
 -- Once.Semantics.ValueIR.coh
-d_coh_68 ::
+d_coh_80 ::
   () ->
   () ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_coh_68 = erased
+d_coh_80 = erased

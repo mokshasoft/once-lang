@@ -4,6 +4,7 @@ module Backend.Common
   , archName
   , backendArches
   , buildAndRunOn
+  , buildAsmOn
   , exitCases
   , runOnceArch
     -- * Test Programs
@@ -40,10 +41,10 @@ module Backend.Common
 import Control.Exception (SomeException, try)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import System.Directory (createDirectoryIfMissing, findExecutable, makeAbsolute, removeDirectoryRecursive)
+import System.Directory (createDirectoryIfMissing, findExecutable, listDirectory, makeAbsolute, removeDirectoryRecursive)
 import System.Environment (getEnvironment)
 import System.Exit (ExitCode (..))
-import System.FilePath ((</>))
+import System.FilePath ((</>), takeExtension)
 import System.IO (IOMode (WriteMode), withFile)
 import qualified Data.ByteString as BS
 import System.Process (proc, env, std_out, StdStream (UseHandle), createProcess,
@@ -131,6 +132,33 @@ buildAndRunOn arch name expected = do
                else Left ("[" ++ tag ++ "] expected exit " ++ show expected
                           ++ " but got " ++ show code
                           ++ (if code == 124 then " (TIMEOUT/hang)" else ""))
+
+-- | Build `test/<name>.once` for `arch` with `--save-temps` and return the
+-- emitted assembly text. Goes through `runOnceArch`, the same build path
+-- `buildAndRunOn` uses, so the two cannot disagree about how a test program is
+-- compiled — which is the whole point of not writing this as a shell script.
+buildAsmOn :: BackendArch -> String -> IO (Either String String)
+buildAsmOn arch name = do
+  let tag     = archName arch
+      testDir = "/tmp/once_asm_" ++ tag ++ "_" ++ name
+      srcFile = testDir </> name ++ ".once"
+      exeFile = testDir </> name
+  createDirectoryIfMissing True testDir
+  source <- TIO.readFile ("test/" ++ name ++ ".once")
+  TIO.writeFile srcFile source
+  (buildExit, _out, buildErr) <- runOnceArch arch
+    ["build", "--target", tag, "--alloc", "heap", "--no-optimize", "--save-temps"
+    , "--exe", srcFile, "-o", exeFile]
+  case buildExit of
+    ExitFailure _ -> cleanupDir testDir >> pure (Left ("[" ++ tag ++ "] build failed: " ++ buildErr))
+    ExitSuccess -> do
+      entries <- listDirectory testDir
+      case filter ((== ".s") . takeExtension) entries of
+        []      -> cleanupDir testDir >> pure (Left ("[" ++ tag ++ "] --save-temps left no .s"))
+        (sf : _) -> do
+          asm <- readFile (testDir </> sf)
+          length asm `seq` cleanupDir testDir
+          pure (Right asm)
 
 -- | One test program → a per-arch test group (each arch is its own case, so a
 -- partial backend shows exactly which arches pass). Reads `test/<name>.once`.

@@ -30,7 +30,6 @@ import qualified MAlonzo.Code.Once.Grammar.FunDefBridge
 import qualified MAlonzo.Code.Once.Grammar.PolyTypeBridge
 import qualified MAlonzo.Code.Once.Parser.Generic.Parser
 import qualified MAlonzo.Code.Once.Parser.Generic.PolyInst
-import qualified MAlonzo.Code.Once.Parser.Module.Alloc
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Parser.Module.DeclTail
 import qualified MAlonzo.Code.Once.Parser.Module.FunDef.Body
@@ -202,7 +201,7 @@ du_complete'45'opChars_158 v0 v1 v2
 d_sound'45'opAfter_200 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -432,130 +431,36 @@ du_sound'45'opAfter_200 v0 v1
                    _ -> MAlonzo.RTE.mazUnreachableError)
          else (let v3
                      = coe
-                         MAlonzo.Code.Once.Parser.Module.FunDef.Def.du_pfd'45'body_52
+                         MAlonzo.Code.Once.Parser.Module.FunDef.Def.du_pfd'45'body_36
                          (coe
-                            MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+                            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                             (coe
                                MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                (coe
-                                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                  MAlonzo.Code.Once.Parser.Module.FunDef.Params.du_pp'45'aw_58
+                                  (coe v1)
                                   (coe
-                                     MAlonzo.Code.Once.Parser.Module.FunDef.Params.du_pp'45'aw_58
-                                     (coe
-                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                        (coe
-                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                           (coe
-                                              MAlonzo.Code.Once.Parser.Module.Alloc.d_tab_70
-                                              (coe v1)
-                                              (coe
-                                                 MAlonzo.Code.Once.Parser.Module.Alloc.d_pab_34
-                                                 (coe v1)
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Module.Alloc.d_allocStrat_12
-                                                    (coe v1))))))
-                                     (coe
-                                        MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118
-                                        (coe
-                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                           (coe
-                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                              (coe
-                                                 MAlonzo.Code.Once.Parser.Module.Alloc.d_tab_70
-                                                 (coe v1)
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Module.Alloc.d_pab_34
-                                                    (coe v1)
-                                                    (coe
-                                                       MAlonzo.Code.Once.Parser.Module.Alloc.d_allocStrat_12
-                                                       (coe v1))))))))))
-                            (coe
-                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                               (coe
-                                  MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                  (coe
-                                     MAlonzo.Code.Once.Parser.Module.Alloc.d_tab_70 (coe v1)
-                                     (coe
-                                        MAlonzo.Code.Once.Parser.Module.Alloc.d_pab_34 (coe v1)
-                                        (coe
-                                           MAlonzo.Code.Once.Parser.Module.Alloc.d_allocStrat_12
-                                           (coe v1)))))))
+                                     MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106
+                                     (coe v1)))))
                          (coe
-                            MAlonzo.Code.Once.Parser.Module.FunDef.Body.d_pfb'45'eq_34 (coe v0)
-                            (coe
-                               MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                               (coe
-                                  MAlonzo.Code.Once.Parser.Module.Alloc.d_tab_70 (coe v1)
-                                  (coe
-                                     MAlonzo.Code.Once.Parser.Module.Alloc.d_pab_34 (coe v1)
-                                     (coe
-                                        MAlonzo.Code.Once.Parser.Module.Alloc.d_allocStrat_12
-                                        (coe v1)))))
+                            MAlonzo.Code.Once.Parser.Module.FunDef.Body.d_pfb'45'eq_32 (coe v0)
                             (coe
                                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                (coe
                                   MAlonzo.Code.Once.Parser.Module.FunDef.Params.du_pp'45'aw_58
+                                  (coe v1)
                                   (coe
-                                     MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                     (coe
-                                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                        (coe
-                                           MAlonzo.Code.Once.Parser.Module.Alloc.d_tab_70 (coe v1)
-                                           (coe
-                                              MAlonzo.Code.Once.Parser.Module.Alloc.d_pab_34
-                                              (coe v1)
-                                              (coe
-                                                 MAlonzo.Code.Once.Parser.Module.Alloc.d_allocStrat_12
-                                                 (coe v1))))))
-                                  (coe
-                                     MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118
-                                     (coe
-                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                        (coe
-                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                           (coe
-                                              MAlonzo.Code.Once.Parser.Module.Alloc.d_tab_70
-                                              (coe v1)
-                                              (coe
-                                                 MAlonzo.Code.Once.Parser.Module.Alloc.d_pab_34
-                                                 (coe v1)
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Module.Alloc.d_allocStrat_12
-                                                    (coe v1)))))))))
+                                     MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v1))))
                             (coe
                                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                (coe
                                   MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                   (coe
                                      MAlonzo.Code.Once.Parser.Module.FunDef.Params.du_pp'45'aw_58
+                                     (coe v1)
                                      (coe
-                                        MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                        (coe
-                                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                           (coe
-                                              MAlonzo.Code.Once.Parser.Module.Alloc.d_tab_70
-                                              (coe v1)
-                                              (coe
-                                                 MAlonzo.Code.Once.Parser.Module.Alloc.d_pab_34
-                                                 (coe v1)
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Module.Alloc.d_allocStrat_12
-                                                    (coe v1))))))
-                                     (coe
-                                        MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118
-                                        (coe
-                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                           (coe
-                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                              (coe
-                                                 MAlonzo.Code.Once.Parser.Module.Alloc.d_tab_70
-                                                 (coe v1)
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Module.Alloc.d_pab_34
-                                                    (coe v1)
-                                                    (coe
-                                                       MAlonzo.Code.Once.Parser.Module.Alloc.d_allocStrat_12
-                                                       (coe v1))))))))))
+                                        MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106
+                                        (coe v1)))))
                             (coe
                                MAlonzo.Code.Once.Parser.Module.FunDef.Body.d_eqHead_10
                                (coe
@@ -564,34 +469,10 @@ du_sound'45'opAfter_200 v0 v1
                                      MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                                      (coe
                                         MAlonzo.Code.Once.Parser.Module.FunDef.Params.du_pp'45'aw_58
+                                        (coe v1)
                                         (coe
-                                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                           (coe
-                                              MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                              (coe
-                                                 MAlonzo.Code.Once.Parser.Module.Alloc.d_tab_70
-                                                 (coe v1)
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Module.Alloc.d_pab_34
-                                                    (coe v1)
-                                                    (coe
-                                                       MAlonzo.Code.Once.Parser.Module.Alloc.d_allocStrat_12
-                                                       (coe v1))))))
-                                        (coe
-                                           MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118
-                                           (coe
-                                              MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                              (coe
-                                                 MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                                 (coe
-                                                    MAlonzo.Code.Once.Parser.Module.Alloc.d_tab_70
-                                                    (coe v1)
-                                                    (coe
-                                                       MAlonzo.Code.Once.Parser.Module.Alloc.d_pab_34
-                                                       (coe v1)
-                                                       (coe
-                                                          MAlonzo.Code.Once.Parser.Module.Alloc.d_allocStrat_12
-                                                          (coe v1)))))))))))) in
+                                           MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106
+                                           (coe v1))))))) in
                coe
                  (case coe v3 of
                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
@@ -602,7 +483,7 @@ du_sound'45'opAfter_200 v0 v1
                                   (coe
                                      MAlonzo.Code.Once.Spec.Grammar.OpDecl.C_poa'45'fun_54
                                      (coe
-                                        MAlonzo.Code.Once.Grammar.FunDefBridge.du_sound'45'fundef_382
+                                        MAlonzo.Code.Once.Grammar.FunDefBridge.du_sound'45'fundef_324
                                         (coe v0) (coe v1)))
                            _ -> MAlonzo.RTE.mazUnreachableError
                     _ -> MAlonzo.RTE.mazUnreachableError)))
@@ -610,7 +491,7 @@ du_sound'45'opAfter_200 v0 v1
 d_complete'45'opAfter_280 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Spec.Grammar.OpDecl.T_ParsesOpAfter_36 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
@@ -823,7 +704,7 @@ du_complete'45'opAfter_280 v0 v1
       MAlonzo.Code.Once.Spec.Grammar.OpDecl.C_poa'45'fun_54 v6
         -> let v7
                  = coe
-                     MAlonzo.Code.Once.Grammar.FunDefBridge.du_complete'45'fundef_502
+                     MAlonzo.Code.Once.Grammar.FunDefBridge.du_complete'45'fundef_406
                      (coe v0) (coe v6) in
            coe
              (case coe v7 of
@@ -838,7 +719,7 @@ du_complete'45'opAfter_280 v0 v1
 -- Once.Grammar.OpDeclBridge.sound-opDecl
 d_sound'45'opDecl_338 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -895,7 +776,7 @@ du_sound'45'opDecl_338 v0
 -- Once.Grammar.OpDeclBridge.complete-opDecl
 d_complete'45'opDecl_394 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Spec.Grammar.OpDecl.T_ParsesOpDecl_56 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14

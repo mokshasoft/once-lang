@@ -56,7 +56,7 @@ d_compileFun'45'main'45'EffUU_76 ::
 d_compileFun'45'main'45'EffUU_76 = erased
 -- Once.Adequacy.MainIRForm.findMain-here-no
 d_findMain'45'here'45'no_138 ::
-  MAlonzo.Code.Once.Compile.T_CompiledFun_230 ->
+  MAlonzo.Code.Once.Compile.T_CompiledFun_246 ->
   Bool ->
   Maybe MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   Maybe MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -73,8 +73,8 @@ d_bare'45'injective_160 ::
 d_bare'45'injective_160 = erased
 -- Once.Adequacy.MainIRForm.findMain-skip
 d_findMain'45'skip_166 ::
-  MAlonzo.Code.Once.Compile.T_CompiledFun_230 ->
-  [MAlonzo.Code.Once.Compile.T_CompiledFun_230] ->
+  MAlonzo.Code.Once.Compile.T_CompiledFun_246 ->
+  [MAlonzo.Code.Once.Compile.T_CompiledFun_246] ->
   (MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
    MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20) ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12

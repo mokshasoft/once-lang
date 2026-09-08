@@ -17,6 +17,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
+import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
@@ -126,3 +127,74 @@ du_valueT_70 ::
   Integer -> AgdaAny
 du_valueT_70 v0 v1
   = coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v0 v1)
+-- Once.Denotation.TraceMonad.bindAt
+d_bindAt_80 ::
+  () ->
+  () ->
+  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_bindAt_80 ~v0 ~v1 v2 v3 v4 = du_bindAt_80 v2 v3 v4
+du_bindAt_80 ::
+  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_bindAt_80 v0 v1 v2
+  = coe
+      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+      (coe
+         MAlonzo.Code.Data.List.Base.du__'43''43'__32
+         (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v2))
+         (coe
+            MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+            (coe v0 (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2)) v1)))
+      (coe
+         MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+         (coe v0 (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v2)) v1))
+-- Once.Denotation.TraceMonad.>>=T-at
+d_'62''62''61'T'45'at_98 ::
+  () ->
+  () ->
+  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'62''62''61'T'45'at_98 = erased
+-- Once.Denotation.TraceMonad.>>=T-cong-at
+d_'62''62''61'T'45'cong'45'at_118 ::
+  () ->
+  () ->
+  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'62''62''61'T'45'cong'45'at_118 = erased
+-- Once.Denotation.TraceMonad.bindAt-cong
+d_bindAt'45'cong_142 ::
+  () ->
+  () ->
+  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_bindAt'45'cong_142 = erased
+-- Once.Denotation.TraceMonad.>>=T-cong₂-at
+d_'62''62''61'T'45'cong'8322''45'at_172 ::
+  () ->
+  () ->
+  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  (Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  Integer ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  (AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12) ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'62''62''61'T'45'cong'8322''45'at_172 = erased

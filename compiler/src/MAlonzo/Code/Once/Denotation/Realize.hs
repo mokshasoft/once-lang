@@ -425,10 +425,18 @@ d_realize_20 v0 v1 v2 v3 v4
              (MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
              (coe MAlonzo.Code.Once.Type.C_Unit_118)
-             (coe
-                MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_208
-                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v2)
-                (coe MAlonzo.Code.Once.IR.C_Heap_8)
+             (MAlonzo.Code.Once.Surface.Elaborate.d_elaborate_370
+                (coe (0 :: Integer))
+                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
+                (coe
+                   MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
+                   (coe
+                      MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
+                      (coe
+                         MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
+                         (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_362 (coe v0))
+                         (coe v10))))
+                (coe v2) (coe MAlonzo.Code.Once.IR.C_Heap_8)
                 (coe
                    d_realize_20
                    (coe
@@ -518,10 +526,18 @@ d_realize'45'infer_30 v0 v1 v2 v3 v4
              (MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                 (coe MAlonzo.Code.Once.TypeCheck.Classify.d_size_354 (coe v0)))
              (coe MAlonzo.Code.Once.Type.C_Unit_118)
-             (coe
-                MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_208
-                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) (coe v2)
-                (coe MAlonzo.Code.Once.IR.C_Heap_8)
+             (MAlonzo.Code.Once.Surface.Elaborate.d_elaborate_370
+                (coe (0 :: Integer))
+                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
+                (coe
+                   MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
+                   (coe
+                      MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
+                      (coe
+                         MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
+                         (coe MAlonzo.Code.Once.TypeCheck.Classify.d_imports_362 (coe v0))
+                         (coe v10))))
+                (coe v2) (coe MAlonzo.Code.Once.IR.C_Heap_8)
                 (coe
                    d_realize_20
                    (coe

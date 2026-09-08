@@ -35,11 +35,11 @@ data T_ParsesDecls_6
 -- Once.Spec.Parsing.ParsesModule
 d_ParsesModule_36 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
 d_ParsesModule_36 = erased
 -- Once.Spec.Parsing.ParsesText
 d_ParsesText_44 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 -> ()
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 -> ()
 d_ParsesText_44 = erased

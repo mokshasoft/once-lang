@@ -33,68 +33,63 @@ import qualified MAlonzo.Code.Once.SigEffect
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
 
--- Once.Parser.Module.Core.AllocStrategy
-d_AllocStrategy_8 = ()
-data T_AllocStrategy_8
-  = C_Stack_10 | C_Heap_12 | C_Pool_14 | C_Arena_16 | C_Const_18
 -- Once.Parser.Module.Core.Import
-d_Import_20 = ()
-data T_Import_20
-  = C_mkImport_30 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_Import_8 = ()
+data T_Import_8
+  = C_mkImport_18 [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                   (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
 -- Once.Parser.Module.Core.Import.path
-d_path_26 ::
-  T_Import_20 -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
-d_path_26 v0
+d_path_14 ::
+  T_Import_8 -> [MAlonzo.Code.Agda.Builtin.String.T_String_6]
+d_path_14 v0
   = case coe v0 of
-      C_mkImport_30 v1 v2 -> coe v1
+      C_mkImport_18 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.Core.Import.alias
-d_alias_28 ::
-  T_Import_20 -> Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_alias_28 v0
+d_alias_16 ::
+  T_Import_8 -> Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_alias_16 v0
   = case coe v0 of
-      C_mkImport_30 v1 v2 -> coe v2
+      C_mkImport_18 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.Core.Decl
-d_Decl_32 = ()
-data T_Decl_32
-  = C_DTypeSig_34 MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_Decl_20 = ()
+data T_Decl_20
+  = C_DTypeSig_22 MAlonzo.Code.Agda.Builtin.String.T_String_6
                   MAlonzo.Code.Once.Type.T_PolyType_240 |
-    C_DFunDef_36 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                 (Maybe T_AllocStrategy_8)
+    C_DFunDef_24 MAlonzo.Code.Agda.Builtin.String.T_String_6
                  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 |
-    C_DSignature_38 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DSignature_26 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     (Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6)
                     MAlonzo.Code.Once.Type.T_PolyType_240
                     (Maybe MAlonzo.Code.Once.SigEffect.T_SigEffect_4) |
-    C_DTypeAlias_40 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DTypeAlias_28 MAlonzo.Code.Agda.Builtin.String.T_String_6
                     [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                     MAlonzo.Code.Once.Type.T_Type_108 |
-    C_DImport_42 T_Import_20
+    C_DImport_30 T_Import_8
 -- Once.Parser.Module.Core.Module
-d_Module_44 = ()
-newtype T_Module_44 = C_mkModule_50 [T_Decl_32]
+d_Module_32 = ()
+newtype T_Module_32 = C_mkModule_38 [T_Decl_20]
 -- Once.Parser.Module.Core.Module.decls
-d_decls_48 :: T_Module_44 -> [T_Decl_32]
-d_decls_48 v0
+d_decls_36 :: T_Module_32 -> [T_Decl_20]
+d_decls_36 v0
   = case coe v0 of
-      C_mkModule_50 v1 -> coe v1
+      C_mkModule_38 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.Core.ParseAtB
-d_ParseAtB_54 ::
+d_ParseAtB_42 ::
   () -> [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
-d_ParseAtB_54 = erased
+d_ParseAtB_42 = erased
 -- Once.Parser.Module.Core.ParseAtB≤
-d_ParseAtB'8804'_66 ::
+d_ParseAtB'8804'_54 ::
   () -> [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> ()
-d_ParseAtB'8804'_66 = erased
+d_ParseAtB'8804'_54 = erased
 -- Once.Parser.Module.Core.parseTypeB-adapt
-d_parseTypeB'45'adapt_82 ::
+d_parseTypeB'45'adapt_70 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseTypeB'45'adapt_82 v0 v1
+d_parseTypeB'45'adapt_70 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
         -> case coe v2 of
@@ -115,19 +110,19 @@ d_parseTypeB'45'adapt_82 v0 v1
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.Core.parseTypeB
-d_parseTypeB_92 ::
+d_parseTypeB_80 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseTypeB_92 v0
+d_parseTypeB_80 v0
   = coe
-      d_parseTypeB'45'adapt_82 (coe v0)
+      d_parseTypeB'45'adapt_70 (coe v0)
       (coe MAlonzo.Code.Once.Parser.Type.du_parseTypeWF_134 (coe v0))
 -- Once.Parser.Module.Core.parseExprB-adapt
-d_parseExprB'45'adapt_102 ::
+d_parseExprB'45'adapt_90 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseExprB'45'adapt_102 v0 v1
+d_parseExprB'45'adapt_90 v0 v1
   = case coe v1 of
       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
         -> case coe v2 of
@@ -148,18 +143,18 @@ d_parseExprB'45'adapt_102 v0 v1
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.Core.parseExprB
-d_parseExprB_112 ::
+d_parseExprB_100 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseExprB_112 v0
+d_parseExprB_100 v0
   = coe
-      d_parseExprB'45'adapt_102 (coe v0)
+      d_parseExprB'45'adapt_90 (coe v0)
       (coe MAlonzo.Code.Once.Parser.Expr.du_parseExprWF_468 (coe v0))
 -- Once.Parser.Module.Core.anyWordB
-d_anyWordB_118 ::
+d_anyWordB_106 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_anyWordB_118 v0
+d_anyWordB_106 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -183,9 +178,9 @@ d_anyWordB_118 v0
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Parser.Module.Core.wordHead
-d_wordHead_124 ::
+d_wordHead_112 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] -> Bool
-d_wordHead_124 v0
+d_wordHead_112 v0
   = coe
       MAlonzo.Code.Data.Maybe.Base.du_is'45'just_20
-      (coe d_anyWordB_118 (coe v0))
+      (coe d_anyWordB_106 (coe v0))

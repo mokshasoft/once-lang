@@ -138,12 +138,12 @@ du_block'45'as'45'ir_46 v0 v1 v2
          MAlonzo.Code.Once.Arith.SigOp.Block.d_block'45'info_520 (coe v0)
          (coe v1) (coe v2))
 -- Once.Arith.Machine.Rewrite.try-lift
-d_try'45'lift_62 ::
+d_try'45'lift_64 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_try'45'lift_62 v0 v1 v2
+d_try'45'lift_64 v0 v1 v2
   = let v3 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v1 of
@@ -225,13 +225,13 @@ d_try'45'lift_62 v0 v1 v2
                    _ -> MAlonzo.RTE.mazUnreachableError)
          _ -> coe v3)
 -- Once.Arith.Machine.Rewrite.rewrite-ir
-d_rewrite'45'ir_200 ::
+d_rewrite'45'ir_202 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_rewrite'45'ir_200 v0 v1 v2
-  = let v3 = d_try'45'lift_62 (coe v0) (coe v1) (coe v2) in
+d_rewrite'45'ir_202 v0 v1 v2
+  = let v3 = d_try'45'lift_64 (coe v0) (coe v1) (coe v2) in
     coe
       (case coe v3 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v4
@@ -244,10 +244,10 @@ d_rewrite'45'ir_200 v0 v1 v2
                           (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-           -> coe du_walk_224 (coe v0) (coe v1) (coe v2)
+           -> coe du_walk_226 (coe v0) (coe v1) (coe v2)
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Arith.Machine.Rewrite._.walk
-d_walk_224 ::
+d_walk_226 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -255,13 +255,13 @@ d_walk_224 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_walk_224 ~v0 ~v1 ~v2 v3 v4 v5 = du_walk_224 v3 v4 v5
-du_walk_224 ::
+d_walk_226 ~v0 ~v1 ~v2 v3 v4 v5 = du_walk_226 v3 v4 v5
+du_walk_226 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_walk_224 v0 v1 v2
+du_walk_226 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.IR.C_id_22
         -> coe
@@ -274,37 +274,36 @@ du_walk_224 v0 v1 v2
              (coe
                 MAlonzo.Code.Once.IR.C__'8728'__30 v4
                 (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                   (coe d_rewrite'45'ir_200 (coe v4) (coe v1) (coe v6)))
+                   (coe d_rewrite'45'ir_202 (coe v4) (coe v1) (coe v6)))
                 (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                   (coe d_rewrite'45'ir_200 (coe v0) (coe v4) (coe v7))))
+                   (coe d_rewrite'45'ir_202 (coe v0) (coe v4) (coe v7))))
              (coe
                 MAlonzo.Code.Data.List.Base.du__'43''43'__32
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                   (coe d_rewrite'45'ir_200 (coe v4) (coe v1) (coe v6)))
+                   (coe d_rewrite'45'ir_202 (coe v4) (coe v1) (coe v6)))
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                   (coe d_rewrite'45'ir_200 (coe v0) (coe v4) (coe v7))))
-      MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v6 v7 v8
+                   (coe d_rewrite'45'ir_202 (coe v0) (coe v4) (coe v7))))
+      MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v6 v7
         -> case coe v1 of
-             MAlonzo.Code.Once.IRTy.C__'42'__20 v9 v10
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
                -> coe
                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                     (coe
                        MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe d_rewrite'45'ir_200 (coe v0) (coe v9) (coe v6)))
+                          (coe d_rewrite'45'ir_202 (coe v0) (coe v8) (coe v6)))
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe d_rewrite'45'ir_200 (coe v0) (coe v10) (coe v7)))
-                       v8)
+                          (coe d_rewrite'45'ir_202 (coe v0) (coe v9) (coe v7))))
                     (coe
                        MAlonzo.Code.Data.List.Base.du__'43''43'__32
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe d_rewrite'45'ir_200 (coe v0) (coe v9) (coe v6)))
+                          (coe d_rewrite'45'ir_202 (coe v0) (coe v8) (coe v6)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe d_rewrite'45'ir_200 (coe v0) (coe v10) (coe v7))))
+                          (coe d_rewrite'45'ir_202 (coe v0) (coe v9) (coe v7))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_fst_44
         -> coe
@@ -334,17 +333,17 @@ du_walk_224 v0 v1 v2
                     (coe
                        MAlonzo.Code.Once.IR.C_case_70
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe d_rewrite'45'ir_200 (coe v8) (coe v1) (coe v6)))
+                          (coe d_rewrite'45'ir_202 (coe v8) (coe v1) (coe v6)))
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe d_rewrite'45'ir_200 (coe v9) (coe v1) (coe v7))))
+                          (coe d_rewrite'45'ir_202 (coe v9) (coe v1) (coe v7))))
                     (coe
                        MAlonzo.Code.Data.List.Base.du__'43''43'__32
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe d_rewrite'45'ir_200 (coe v8) (coe v1) (coe v6)))
+                          (coe d_rewrite'45'ir_202 (coe v8) (coe v1) (coe v6)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe d_rewrite'45'ir_200 (coe v9) (coe v1) (coe v7))))
+                          (coe d_rewrite'45'ir_202 (coe v9) (coe v1) (coe v7))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_terminal_74
         -> coe
@@ -365,14 +364,14 @@ du_walk_224 v0 v1 v2
                        MAlonzo.Code.Once.IR.C_curry_86
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_rewrite'45'ir_200
+                             d_rewrite'45'ir_202
                              (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v8)) (coe v9)
                              (coe v6)))
                        v7)
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                        (coe
-                          d_rewrite'45'ir_200
+                          d_rewrite'45'ir_202
                           (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v8)) (coe v9)
                           (coe v6)))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -402,21 +401,21 @@ du_walk_224 v0 v1 v2
                               MAlonzo.Code.Once.IR.C_Cata_108 v4
                               (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                  (coe
-                                    d_rewrite'45'ir_200
+                                    d_rewrite'45'ir_202
                                     (coe
                                        MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v8)
                                        (coe
-                                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v10)
+                                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v10)
                                           (coe v1)))
                                     (coe v1) (coe v7))))
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                               (coe
-                                 d_rewrite'45'ir_200
+                                 d_rewrite'45'ir_202
                                  (coe
                                     MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v8)
                                     (coe
-                                       MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v10)
+                                       MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v10)
                                        (coe v1)))
                                  (coe v1) (coe v7)))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -430,17 +429,17 @@ du_walk_224 v0 v1 v2
                        MAlonzo.Code.Once.IR.C_Para_114 v4
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_rewrite'45'ir_200
+                             d_rewrite'45'ir_202
                              (coe
-                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v7)
+                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v7)
                                 (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v1)))
                              (coe v1) (coe v6))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                        (coe
-                          d_rewrite'45'ir_200
+                          d_rewrite'45'ir_202
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v7)
+                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v7)
                              (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v1)))
                           (coe v1) (coe v6)))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -463,16 +462,16 @@ du_walk_224 v0 v1 v2
                        MAlonzo.Code.Once.IR.C_Ana_128 v4
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_rewrite'45'ir_200 (coe v0)
+                             d_rewrite'45'ir_202 (coe v0)
                              (coe
-                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v7) (coe v0))
+                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v7) (coe v0))
                              (coe v6))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                        (coe
-                          d_rewrite'45'ir_200 (coe v0)
+                          d_rewrite'45'ir_202 (coe v0)
                           (coe
-                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v7) (coe v0))
+                             MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v7) (coe v0))
                           (coe v6)))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_Hylo_136 v3 v5 v6 v8 v9
@@ -484,24 +483,24 @@ du_walk_224 v0 v1 v2
                        MAlonzo.Code.Once.IR.C_Hylo_136 v3 v5 v6
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_rewrite'45'ir_200
+                             d_rewrite'45'ir_202
                              (coe
-                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v3) (coe v1))
+                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v3) (coe v1))
                              (coe v1) (coe v8)))
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe du_walk'45'nt_230 (coe v10) (coe v3) (coe v9))))
+                          (coe du_walk'45'nt_232 (coe v10) (coe v3) (coe v9))))
                     (coe
                        MAlonzo.Code.Data.List.Base.du__'43''43'__32
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             d_rewrite'45'ir_200
+                             d_rewrite'45'ir_202
                              (coe
-                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v3) (coe v1))
+                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v3) (coe v1))
                              (coe v1) (coe v8)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe du_walk'45'nt_230 (coe v10) (coe v3) (coe v9))))
+                          (coe du_walk'45'nt_232 (coe v10) (coe v3) (coe v9))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_Fuse_144 v3 v5 v6 v8 v9
         -> case coe v0 of
@@ -512,24 +511,24 @@ du_walk_224 v0 v1 v2
                        MAlonzo.Code.Once.IR.C_Fuse_144 v3 v5 v6
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             d_rewrite'45'ir_200
+                             d_rewrite'45'ir_202
                              (coe
-                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v3) (coe v1))
+                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v3) (coe v1))
                              (coe v1) (coe v8)))
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe du_walk'45'nt_230 (coe v10) (coe v3) (coe v9))))
+                          (coe du_walk'45'nt_232 (coe v10) (coe v3) (coe v9))))
                     (coe
                        MAlonzo.Code.Data.List.Base.du__'43''43'__32
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             d_rewrite'45'ir_200
+                             d_rewrite'45'ir_202
                              (coe
-                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v3) (coe v1))
+                                MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v3) (coe v1))
                              (coe v1) (coe v8)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe du_walk'45'nt_230 (coe v10) (coe v3) (coe v9))))
+                          (coe du_walk'45'nt_232 (coe v10) (coe v3) (coe v9))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_free'45'heap_146 v3
         -> coe
@@ -546,7 +545,7 @@ du_walk_224 v0 v1 v2
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Arith.Machine.Rewrite._.walk-nt
-d_walk'45'nt_230 ::
+d_walk'45'nt_232 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -554,13 +553,13 @@ d_walk'45'nt_230 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IR.T_NatTr_18 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_walk'45'nt_230 ~v0 ~v1 ~v2 v3 v4 v5 = du_walk'45'nt_230 v3 v4 v5
-du_walk'45'nt_230 ::
+d_walk'45'nt_232 ~v0 ~v1 ~v2 v3 v4 v5 = du_walk'45'nt_232 v3 v4 v5
+du_walk'45'nt_232 ::
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IR.T_NatTr_18 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_walk'45'nt_230 v0 v1 v2
+du_walk'45'nt_232 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.IR.C_ntId_158
         -> coe
@@ -576,10 +575,10 @@ du_walk'45'nt_230 v0 v1 v2
                            (coe
                               MAlonzo.Code.Once.IR.C_ntK_164
                               (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                 (coe d_rewrite'45'ir_200 (coe v6) (coe v7) (coe v5))))
+                                 (coe d_rewrite'45'ir_202 (coe v6) (coe v7) (coe v5))))
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                              (coe d_rewrite'45'ir_200 (coe v6) (coe v7) (coe v5)))
+                              (coe d_rewrite'45'ir_202 (coe v6) (coe v7) (coe v5)))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntFst_172 v6
@@ -590,10 +589,10 @@ du_walk'45'nt_230 v0 v1 v2
                     (coe
                        MAlonzo.Code.Once.IR.C_ntFst_172
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe du_walk'45'nt_230 (coe v7) (coe v1) (coe v6))))
+                          (coe du_walk'45'nt_232 (coe v7) (coe v1) (coe v6))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                       (coe du_walk'45'nt_230 (coe v7) (coe v1) (coe v6)))
+                       (coe du_walk'45'nt_232 (coe v7) (coe v1) (coe v6)))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntSnd_180 v6
         -> case coe v0 of
@@ -603,10 +602,10 @@ du_walk'45'nt_230 v0 v1 v2
                     (coe
                        MAlonzo.Code.Once.IR.C_ntSnd_180
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe du_walk'45'nt_230 (coe v8) (coe v1) (coe v6))))
+                          (coe du_walk'45'nt_232 (coe v8) (coe v1) (coe v6))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                       (coe du_walk'45'nt_230 (coe v8) (coe v1) (coe v6)))
+                       (coe du_walk'45'nt_232 (coe v8) (coe v1) (coe v6)))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntCase_188 v6 v7
         -> case coe v0 of
@@ -616,17 +615,17 @@ du_walk'45'nt_230 v0 v1 v2
                     (coe
                        MAlonzo.Code.Once.IR.C_ntCase_188
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe du_walk'45'nt_230 (coe v8) (coe v1) (coe v6)))
+                          (coe du_walk'45'nt_232 (coe v8) (coe v1) (coe v6)))
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe du_walk'45'nt_230 (coe v9) (coe v1) (coe v7))))
+                          (coe du_walk'45'nt_232 (coe v9) (coe v1) (coe v7))))
                     (coe
                        MAlonzo.Code.Data.List.Base.du__'43''43'__32
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe du_walk'45'nt_230 (coe v8) (coe v1) (coe v6)))
+                          (coe du_walk'45'nt_232 (coe v8) (coe v1) (coe v6)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe du_walk'45'nt_230 (coe v9) (coe v1) (coe v7))))
+                          (coe du_walk'45'nt_232 (coe v9) (coe v1) (coe v7))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntInl_196 v6
         -> case coe v1 of
@@ -636,10 +635,10 @@ du_walk'45'nt_230 v0 v1 v2
                     (coe
                        MAlonzo.Code.Once.IR.C_ntInl_196
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe du_walk'45'nt_230 (coe v0) (coe v7) (coe v6))))
+                          (coe du_walk'45'nt_232 (coe v0) (coe v7) (coe v6))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                       (coe du_walk'45'nt_230 (coe v0) (coe v7) (coe v6)))
+                       (coe du_walk'45'nt_232 (coe v0) (coe v7) (coe v6)))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntInr_204 v6
         -> case coe v1 of
@@ -649,10 +648,10 @@ du_walk'45'nt_230 v0 v1 v2
                     (coe
                        MAlonzo.Code.Once.IR.C_ntInr_204
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe du_walk'45'nt_230 (coe v0) (coe v8) (coe v6))))
+                          (coe du_walk'45'nt_232 (coe v0) (coe v8) (coe v6))))
                     (coe
                        MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                       (coe du_walk'45'nt_230 (coe v0) (coe v8) (coe v6)))
+                       (coe du_walk'45'nt_232 (coe v0) (coe v8) (coe v6)))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_ntPair_212 v6 v7
         -> case coe v1 of
@@ -662,16 +661,16 @@ du_walk'45'nt_230 v0 v1 v2
                     (coe
                        MAlonzo.Code.Once.IR.C_ntPair_212
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe du_walk'45'nt_230 (coe v0) (coe v8) (coe v6)))
+                          (coe du_walk'45'nt_232 (coe v0) (coe v8) (coe v6)))
                        (MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                          (coe du_walk'45'nt_230 (coe v0) (coe v9) (coe v7))))
+                          (coe du_walk'45'nt_232 (coe v0) (coe v9) (coe v7))))
                     (coe
                        MAlonzo.Code.Data.List.Base.du__'43''43'__32
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe du_walk'45'nt_230 (coe v0) (coe v8) (coe v6)))
+                          (coe du_walk'45'nt_232 (coe v0) (coe v8) (coe v6)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                          (coe du_walk'45'nt_230 (coe v0) (coe v9) (coe v7))))
+                          (coe du_walk'45'nt_232 (coe v0) (coe v9) (coe v7))))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError

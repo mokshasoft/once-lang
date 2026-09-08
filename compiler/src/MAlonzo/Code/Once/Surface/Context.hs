@@ -252,3 +252,370 @@ du_tailUsage_202 v0
 -- Once.Surface.Context.SVar
 d_SVar_210 a0 a1 a2 a3 = ()
 newtype T_SVar_210 = C_svar_218 MAlonzo.Code.Data.Fin.Base.T_Fin_10
+-- Once.Surface.Context.liveCount
+d_liveCount_222 :: Integer -> T_Usage_60 -> Integer
+d_liveCount_222 ~v0 v1 = du_liveCount_222 v1
+du_liveCount_222 :: T_Usage_60 -> Integer
+du_liveCount_222 v0
+  = case coe v0 of
+      C_'91''93'_62 -> coe (0 :: Integer)
+      C__'8759'__66 v2 v3
+        -> case coe v2 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe du_liveCount_222 (coe v3)
+             MAlonzo.Code.Once.Type.C_One_8
+               -> coe addInt (coe (1 :: Integer)) (coe du_liveCount_222 (coe v3))
+             MAlonzo.Code.Once.Type.C_Many_10
+               -> coe addInt (coe (1 :: Integer)) (coe du_liveCount_222 (coe v3))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context._↾_
+d__'8638'__234 :: Integer -> T_Ctx_6 -> T_Usage_60 -> T_Ctx_6
+d__'8638'__234 ~v0 v1 v2 = du__'8638'__234 v1 v2
+du__'8638'__234 :: T_Ctx_6 -> T_Usage_60 -> T_Ctx_6
+du__'8638'__234 v0 v1
+  = case coe v0 of
+      C_'8709'_8 -> coe seq (coe v1) (coe v0)
+      C__'44'_'94'__12 v3 v4 v5
+        -> case coe v1 of
+             C__'8759'__66 v7 v8
+               -> case coe v7 of
+                    MAlonzo.Code.Once.Type.C_Zero_6
+                      -> coe du__'8638'__234 (coe v3) (coe v8)
+                    MAlonzo.Code.Once.Type.C_One_8
+                      -> coe
+                           C__'44'_'94'__12 (coe du__'8638'__234 (coe v3) (coe v8)) v4 v5
+                    MAlonzo.Code.Once.Type.C_Many_10
+                      -> coe
+                           C__'44'_'94'__12 (coe du__'8638'__234 (coe v3) (coe v8)) v4 v5
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context._≤q'_
+d__'8804'q''__260 a0 a1 = ()
+data T__'8804'q''__260
+  = C_z'8804'z_262 | C_z'8804'o_264 | C_z'8804'm_266 |
+    C_o'8804'o_268 | C_o'8804'm_270 | C_m'8804'm_272
+-- Once.Surface.Context._⊑ᵘ_
+d__'8849''7512'__276 a0 a1 a2 = ()
+data T__'8849''7512'__276
+  = C_'8849''91''93'_278 |
+    C__'8849''8759'__290 T__'8804'q''__260 T__'8849''7512'__276
+-- Once.Surface.Context.⊑ᵘ-refl
+d_'8849''7512''45'refl_296 ::
+  Integer -> T_Usage_60 -> T__'8849''7512'__276
+d_'8849''7512''45'refl_296 ~v0 v1 = du_'8849''7512''45'refl_296 v1
+du_'8849''7512''45'refl_296 :: T_Usage_60 -> T__'8849''7512'__276
+du_'8849''7512''45'refl_296 v0
+  = case coe v0 of
+      C_'91''93'_62 -> coe C_'8849''91''93'_278
+      C__'8759'__66 v2 v3
+        -> case coe v2 of
+             MAlonzo.Code.Once.Type.C_Zero_6
+               -> coe
+                    C__'8849''8759'__290 (coe C_z'8804'z_262)
+                    (coe du_'8849''7512''45'refl_296 (coe v3))
+             MAlonzo.Code.Once.Type.C_One_8
+               -> coe
+                    C__'8849''8759'__290 (coe C_o'8804'o_268)
+                    (coe du_'8849''7512''45'refl_296 (coe v3))
+             MAlonzo.Code.Once.Type.C_Many_10
+               -> coe
+                    C__'8849''8759'__290 (coe C_m'8804'm_272)
+                    (coe du_'8849''7512''45'refl_296 (coe v3))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.≤q'-+ˡ
+d_'8804'q'''45''43''737'_308 ::
+  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  MAlonzo.Code.Once.Type.T_Quantity_4 -> T__'8804'q''__260
+d_'8804'q'''45''43''737'_308 v0 v1
+  = case coe v0 of
+      MAlonzo.Code.Once.Type.C_Zero_6
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe C_z'8804'z_262
+             MAlonzo.Code.Once.Type.C_One_8 -> coe C_z'8804'o_264
+             MAlonzo.Code.Once.Type.C_Many_10 -> coe C_z'8804'm_266
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Type.C_One_8
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe C_o'8804'o_268
+             MAlonzo.Code.Once.Type.C_One_8 -> coe C_o'8804'm_270
+             MAlonzo.Code.Once.Type.C_Many_10 -> coe C_o'8804'm_270
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Type.C_Many_10
+        -> coe seq (coe v1) (coe C_m'8804'm_272)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.≤q'-+ʳ
+d_'8804'q'''45''43''691'_314 ::
+  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  MAlonzo.Code.Once.Type.T_Quantity_4 -> T__'8804'q''__260
+d_'8804'q'''45''43''691'_314 v0 v1
+  = case coe v0 of
+      MAlonzo.Code.Once.Type.C_Zero_6
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe C_z'8804'z_262
+             MAlonzo.Code.Once.Type.C_One_8 -> coe C_o'8804'o_268
+             MAlonzo.Code.Once.Type.C_Many_10 -> coe C_m'8804'm_272
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Type.C_One_8
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe C_z'8804'o_264
+             MAlonzo.Code.Once.Type.C_One_8 -> coe C_o'8804'm_270
+             MAlonzo.Code.Once.Type.C_Many_10 -> coe C_m'8804'm_272
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Type.C_Many_10
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe C_z'8804'm_266
+             MAlonzo.Code.Once.Type.C_One_8 -> coe C_o'8804'm_270
+             MAlonzo.Code.Once.Type.C_Many_10 -> coe C_m'8804'm_272
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.⊑ᵘ-+ˡ
+d_'8849''7512''45''43''737'_322 ::
+  Integer -> T_Usage_60 -> T_Usage_60 -> T__'8849''7512'__276
+d_'8849''7512''45''43''737'_322 ~v0 v1 v2
+  = du_'8849''7512''45''43''737'_322 v1 v2
+du_'8849''7512''45''43''737'_322 ::
+  T_Usage_60 -> T_Usage_60 -> T__'8849''7512'__276
+du_'8849''7512''45''43''737'_322 v0 v1
+  = case coe v0 of
+      C_'91''93'_62 -> coe seq (coe v1) (coe C_'8849''91''93'_278)
+      C__'8759'__66 v3 v4
+        -> case coe v1 of
+             C__'8759'__66 v6 v7
+               -> coe
+                    C__'8849''8759'__290
+                    (d_'8804'q'''45''43''737'_308 (coe v3) (coe v6))
+                    (coe du_'8849''7512''45''43''737'_322 (coe v4) (coe v7))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.⊑ᵘ-+ʳ
+d_'8849''7512''45''43''691'_338 ::
+  Integer -> T_Usage_60 -> T_Usage_60 -> T__'8849''7512'__276
+d_'8849''7512''45''43''691'_338 ~v0 v1 v2
+  = du_'8849''7512''45''43''691'_338 v1 v2
+du_'8849''7512''45''43''691'_338 ::
+  T_Usage_60 -> T_Usage_60 -> T__'8849''7512'__276
+du_'8849''7512''45''43''691'_338 v0 v1
+  = case coe v0 of
+      C_'91''93'_62 -> coe seq (coe v1) (coe C_'8849''91''93'_278)
+      C__'8759'__66 v3 v4
+        -> case coe v1 of
+             C__'8759'__66 v6 v7
+               -> coe
+                    C__'8849''8759'__290
+                    (d_'8804'q'''45''43''691'_314 (coe v3) (coe v6))
+                    (coe du_'8849''7512''45''43''691'_338 (coe v4) (coe v7))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.⊑q'-trans
+d_'8849'q'''45'trans_354 ::
+  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  T__'8804'q''__260 -> T__'8804'q''__260 -> T__'8804'q''__260
+d_'8849'q'''45'trans_354 ~v0 ~v1 ~v2 v3 v4
+  = du_'8849'q'''45'trans_354 v3 v4
+du_'8849'q'''45'trans_354 ::
+  T__'8804'q''__260 -> T__'8804'q''__260 -> T__'8804'q''__260
+du_'8849'q'''45'trans_354 v0 v1
+  = case coe v0 of
+      C_z'8804'z_262 -> coe v1
+      C_z'8804'o_264
+        -> case coe v1 of
+             C_o'8804'o_268 -> coe v0
+             C_o'8804'm_270 -> coe C_z'8804'm_266
+             _ -> MAlonzo.RTE.mazUnreachableError
+      C_z'8804'm_266 -> coe seq (coe v1) (coe v0)
+      C_o'8804'o_268 -> coe v1
+      C_o'8804'm_270 -> coe seq (coe v1) (coe v0)
+      C_m'8804'm_272 -> coe seq (coe v1) (coe v0)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context._.z≤-any
+d_z'8804''45'any_364 ::
+  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  T__'8804'q''__260 ->
+  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  T__'8804'q''__260 -> T__'8804'q''__260
+d_z'8804''45'any_364 ~v0 ~v1 ~v2 v3 = du_z'8804''45'any_364 v3
+du_z'8804''45'any_364 :: T__'8804'q''__260 -> T__'8804'q''__260
+du_z'8804''45'any_364 v0 = coe v0
+-- Once.Surface.Context.⊑ᵘ-trans
+d_'8849''7512''45'trans_376 ::
+  Integer ->
+  T_Usage_60 ->
+  T_Usage_60 ->
+  T_Usage_60 ->
+  T__'8849''7512'__276 ->
+  T__'8849''7512'__276 -> T__'8849''7512'__276
+d_'8849''7512''45'trans_376 ~v0 v1 v2 v3 v4 v5
+  = du_'8849''7512''45'trans_376 v1 v2 v3 v4 v5
+du_'8849''7512''45'trans_376 ::
+  T_Usage_60 ->
+  T_Usage_60 ->
+  T_Usage_60 ->
+  T__'8849''7512'__276 ->
+  T__'8849''7512'__276 -> T__'8849''7512'__276
+du_'8849''7512''45'trans_376 v0 v1 v2 v3 v4
+  = case coe v3 of
+      C_'8849''91''93'_278 -> coe seq (coe v4) (coe v3)
+      C__'8849''8759'__290 v10 v11
+        -> case coe v0 of
+             C__'8759'__66 v13 v14
+               -> case coe v1 of
+                    C__'8759'__66 v16 v17
+                      -> case coe v4 of
+                           C__'8849''8759'__290 v23 v24
+                             -> case coe v2 of
+                                  C__'8759'__66 v26 v27
+                                    -> coe
+                                         C__'8849''8759'__290
+                                         (coe du_'8849'q'''45'trans_354 (coe v10) (coe v23))
+                                         (coe
+                                            du_'8849''7512''45'trans_376 (coe v14) (coe v17)
+                                            (coe v27) (coe v11) (coe v24))
+                                  _ -> MAlonzo.RTE.mazUnreachableError
+                           _ -> MAlonzo.RTE.mazUnreachableError
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.⊑ᵘ-*One
+d_'8849''7512''45''42'One_390 ::
+  Integer -> T_Usage_60 -> T__'8849''7512'__276
+d_'8849''7512''45''42'One_390 ~v0 v1
+  = du_'8849''7512''45''42'One_390 v1
+du_'8849''7512''45''42'One_390 ::
+  T_Usage_60 -> T__'8849''7512'__276
+du_'8849''7512''45''42'One_390 v0
+  = case coe v0 of
+      C_'91''93'_62 -> coe C_'8849''91''93'_278
+      C__'8759'__66 v2 v3
+        -> case coe v2 of
+             MAlonzo.Code.Once.Type.C_Zero_6
+               -> coe
+                    C__'8849''8759'__290 (coe C_z'8804'z_262)
+                    (coe du_'8849''7512''45''42'One_390 (coe v3))
+             MAlonzo.Code.Once.Type.C_One_8
+               -> coe
+                    C__'8849''8759'__290 (coe C_o'8804'o_268)
+                    (coe du_'8849''7512''45''42'One_390 (coe v3))
+             MAlonzo.Code.Once.Type.C_Many_10
+               -> coe
+                    C__'8849''8759'__290 (coe C_m'8804'm_272)
+                    (coe du_'8849''7512''45''42'One_390 (coe v3))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.⊑ᵘ-*Many
+d_'8849''7512''45''42'Many_402 ::
+  Integer -> T_Usage_60 -> T__'8849''7512'__276
+d_'8849''7512''45''42'Many_402 ~v0 v1
+  = du_'8849''7512''45''42'Many_402 v1
+du_'8849''7512''45''42'Many_402 ::
+  T_Usage_60 -> T__'8849''7512'__276
+du_'8849''7512''45''42'Many_402 v0
+  = case coe v0 of
+      C_'91''93'_62 -> coe C_'8849''91''93'_278
+      C__'8759'__66 v2 v3
+        -> case coe v2 of
+             MAlonzo.Code.Once.Type.C_Zero_6
+               -> coe
+                    C__'8849''8759'__290 (coe C_z'8804'z_262)
+                    (coe du_'8849''7512''45''42'Many_402 (coe v3))
+             MAlonzo.Code.Once.Type.C_One_8
+               -> coe
+                    C__'8849''8759'__290 (coe C_o'8804'm_270)
+                    (coe du_'8849''7512''45''42'Many_402 (coe v3))
+             MAlonzo.Code.Once.Type.C_Many_10
+               -> coe
+                    C__'8849''8759'__290 (coe C_m'8804'm_272)
+                    (coe du_'8849''7512''45''42'Many_402 (coe v3))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.≤q'-⊔ˡ
+d_'8804'q'''45''8852''737'_414 ::
+  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  MAlonzo.Code.Once.Type.T_Quantity_4 -> T__'8804'q''__260
+d_'8804'q'''45''8852''737'_414 v0 v1
+  = case coe v0 of
+      MAlonzo.Code.Once.Type.C_Zero_6
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe C_z'8804'z_262
+             MAlonzo.Code.Once.Type.C_One_8 -> coe C_z'8804'o_264
+             MAlonzo.Code.Once.Type.C_Many_10 -> coe C_z'8804'm_266
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Type.C_One_8
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe C_o'8804'o_268
+             MAlonzo.Code.Once.Type.C_One_8 -> coe C_o'8804'o_268
+             MAlonzo.Code.Once.Type.C_Many_10 -> coe C_o'8804'm_270
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Type.C_Many_10
+        -> coe seq (coe v1) (coe C_m'8804'm_272)
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.≤q'-⊔ʳ
+d_'8804'q'''45''8852''691'_420 ::
+  MAlonzo.Code.Once.Type.T_Quantity_4 ->
+  MAlonzo.Code.Once.Type.T_Quantity_4 -> T__'8804'q''__260
+d_'8804'q'''45''8852''691'_420 v0 v1
+  = case coe v0 of
+      MAlonzo.Code.Once.Type.C_Zero_6
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe C_z'8804'z_262
+             MAlonzo.Code.Once.Type.C_One_8 -> coe C_o'8804'o_268
+             MAlonzo.Code.Once.Type.C_Many_10 -> coe C_m'8804'm_272
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Type.C_One_8
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe C_z'8804'o_264
+             MAlonzo.Code.Once.Type.C_One_8 -> coe C_o'8804'o_268
+             MAlonzo.Code.Once.Type.C_Many_10 -> coe C_m'8804'm_272
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Type.C_Many_10
+        -> case coe v1 of
+             MAlonzo.Code.Once.Type.C_Zero_6 -> coe C_z'8804'm_266
+             MAlonzo.Code.Once.Type.C_One_8 -> coe C_o'8804'm_270
+             MAlonzo.Code.Once.Type.C_Many_10 -> coe C_m'8804'm_272
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.⊑ᵘ-⊔ˡ
+d_'8849''7512''45''8852''737'_428 ::
+  Integer -> T_Usage_60 -> T_Usage_60 -> T__'8849''7512'__276
+d_'8849''7512''45''8852''737'_428 ~v0 v1 v2
+  = du_'8849''7512''45''8852''737'_428 v1 v2
+du_'8849''7512''45''8852''737'_428 ::
+  T_Usage_60 -> T_Usage_60 -> T__'8849''7512'__276
+du_'8849''7512''45''8852''737'_428 v0 v1
+  = case coe v0 of
+      C_'91''93'_62 -> coe seq (coe v1) (coe C_'8849''91''93'_278)
+      C__'8759'__66 v3 v4
+        -> case coe v1 of
+             C__'8759'__66 v6 v7
+               -> coe
+                    C__'8849''8759'__290
+                    (d_'8804'q'''45''8852''737'_414 (coe v3) (coe v6))
+                    (coe du_'8849''7512''45''8852''737'_428 (coe v4) (coe v7))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.⊑ᵘ-⊔ʳ
+d_'8849''7512''45''8852''691'_444 ::
+  Integer -> T_Usage_60 -> T_Usage_60 -> T__'8849''7512'__276
+d_'8849''7512''45''8852''691'_444 ~v0 v1 v2
+  = du_'8849''7512''45''8852''691'_444 v1 v2
+du_'8849''7512''45''8852''691'_444 ::
+  T_Usage_60 -> T_Usage_60 -> T__'8849''7512'__276
+du_'8849''7512''45''8852''691'_444 v0 v1
+  = case coe v0 of
+      C_'91''93'_62 -> coe seq (coe v1) (coe C_'8849''91''93'_278)
+      C__'8759'__66 v3 v4
+        -> case coe v1 of
+             C__'8759'__66 v6 v7
+               -> coe
+                    C__'8849''8759'__290
+                    (d_'8804'q'''45''8852''691'_420 (coe v3) (coe v6))
+                    (coe du_'8849''7512''45''8852''691'_444 (coe v4) (coe v7))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Context.↾-∅
+d_'8638''45''8709'_454 ::
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'8638''45''8709'_454 = erased

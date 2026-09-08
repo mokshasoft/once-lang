@@ -37,5 +37,5 @@ data T_ParsesDecl_8
     C_pd'45'typealias_24 MAlonzo.Code.Once.Spec.Grammar.TypeAlias.T_ParsesTypeAliasDecl_36 |
     C_pd'45'signature_32 MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesSignature_20 |
     C_pd'45'typesig_42 MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_374 |
-    C_pd'45'fundef_52 MAlonzo.Code.Once.Spec.Grammar.FunDef.T_ParsesFunDef_72 |
+    C_pd'45'fundef_52 MAlonzo.Code.Once.Spec.Grammar.FunDef.T_ParsesFunDef_56 |
     C_pd'45'opdecl_60 MAlonzo.Code.Once.Spec.Grammar.OpDecl.T_ParsesOpDecl_56

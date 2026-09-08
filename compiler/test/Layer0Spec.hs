@@ -21,4 +21,6 @@ layer0Tests = testGroup "Layer0"
   , exitCases "composition of ids (exit 42)"            "layer0-compose"  42
   , exitCases "constant function (exit 7)"              "layer0-neg"      7
   , exitCases "terminal collapses Int to Unit (exit 42)" "layer0-terminal" 42
+    -- Ported from tests/run-exit-tests.sh (2026-09-08).
+  , exitCases "exit takes an integer literal (exit 42)" "layer0-exit-literal" 42
   ]

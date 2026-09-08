@@ -120,3 +120,16 @@ d_'8804''7512''63''45'zero_218 ::
   MAlonzo.Code.Once.Surface.Context.T_Ctx_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_'8804''7512''63''45'zero_218 = erased
+-- Once.Surface.Properties.+ᵘ-idʳ
+d_'43''7512''45'id'691'_232 ::
+  Integer ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_'43''7512''45'id'691'_232 = erased
+-- Once.Surface.Properties.erase-arg-usage
+d_erase'45'arg'45'usage_244 ::
+  Integer ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_erase'45'arg'45'usage_244 = erased

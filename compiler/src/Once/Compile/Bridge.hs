@@ -90,7 +90,7 @@ data CompileResult
 
 -- | Opaque Module handle — a wrapped Agda `Module` AST. Haskell
 -- doesn't introspect the internals except through `moduleImports`.
-newtype Module = Module MMC.T_Module_44
+newtype Module = Module MMC.T_Module_32
 
 -- | An `import` decl seen inside a parsed module. Haskell uses this
 -- to decide which files to load before calling `resolveImports`.
@@ -103,10 +103,10 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_778
-toMStage Parse = MC.C_Parse_780
-toMStage Check = MC.C_Check_782
-toMStage Build = MC.C_Build_784
+toMStage :: Stage -> MC.T_Stage_788
+toMStage Parse = MC.C_Parse_790
+toMStage Check = MC.C_Check_792
+toMStage Build = MC.C_Build_794
 
 -- Single shared `Arch` enum (Once.Target.Arch). The compiler and the verified
 -- pipeline now use the SAME type, so one converter serves both call sites
@@ -125,26 +125,26 @@ textToAgda = unsafeCoerce
 
 fromMFunInfo :: MP.T_FunInfo_96 -> FunSig
 fromMFunInfo fi = FunSig
-  { funSigName = agdaToText (MP.d_funName_108 fi)
+  { funSigName = agdaToText (MP.d_funName_106 fi)
     -- D007: funType is now `Maybe Type` (Nothing = no explicit sig, inferred).
     -- MAlonzo's Maybe is Haskell's Maybe (Just/Nothing pattern synonyms).
-  , funSigType = case MP.d_funType_110 fi of
+  , funSigType = case MP.d_funType_108 fi of
       Just ty -> agdaToText (MT.d_showType_202 ty)
       Nothing -> T.pack "<inferred>"
   }
 
-fromMPolyFunInfo :: MP.T_PolyFunInfo_120 -> PolyFunSig
+fromMPolyFunInfo :: MP.T_PolyFunInfo_116 -> PolyFunSig
 fromMPolyFunInfo pfi = PolyFunSig
-  { polyFunSigName = agdaToText (MP.d_pfunName_130 pfi)
-  , polyFunSigType = agdaToText (MT.d_showPolyType_464 (MP.d_pfunType_132 pfi))
+  { polyFunSigName = agdaToText (MP.d_pfunName_124 pfi)
+  , polyFunSigType = agdaToText (MT.d_showPolyType_464 (MP.d_pfunType_126 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_786 -> CompileResult
-fromMResult (MC.C_Parsed_788 fis pfis) =
+fromMResult :: MC.T_CompileResult_796 -> CompileResult
+fromMResult (MC.C_Parsed_798 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_790 _)  = Checked
-fromMResult (MC.C_Built_792 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_794 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_800 _)  = Checked
+fromMResult (MC.C_Built_802 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_804 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -152,7 +152,7 @@ fromMResult (MC.C_Error_794 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_830 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_840 (toMAllocMode AllocHeap) (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -166,7 +166,7 @@ compile stage doOpt arch source =
 -- silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
-  case MC.d_parseSourceToModule_552 (textToAgda source) of
+  case MC.d_parseSourceToModule_568 (textToAgda source) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 
@@ -174,18 +174,18 @@ parseSource source =
 -- Haskell uses this to decide which files to read + parse next.
 moduleImports :: Module -> [ImportRef]
 moduleImports (Module m) =
-  [ ImportRef (map agdaToText (MMC.d_path_26 i))
-              (fmap agdaToText (MMC.d_alias_28 i))
-  | MMC.C_DImport_42 i <- MMC.d_decls_48 m
+  [ ImportRef (map agdaToText (MMC.d_path_14 i))
+              (fmap agdaToText (MMC.d_alias_16 i))
+  | MMC.C_DImport_30 i <- MMC.d_decls_36 m
   ]
 
 -- | Does the module define a top-level `main`? This — not a CLI flag — is what
 -- distinguishes a PROGRAM (has `main`, gets an entry point via `maybeWrapMain`)
 -- from a LIBRARY (no `main`). Mirrors `moduleImports`' decl inspection.
 moduleHasMain :: Module -> Bool
-moduleHasMain (Module m) = any isMain (MMC.d_decls_48 m)
+moduleHasMain (Module m) = any isMain (MMC.d_decls_36 m)
   where
-    isMain (MMC.C_DFunDef_36 name _ _) = agdaToText name == T.pack "main"
+    isMain (MMC.C_DFunDef_24 name _) = agdaToText name == T.pack "main"
     isMain _                           = False
 
 -- | D123/D116: the rounding warnings this module has AT THIS TARGET, rendered.
@@ -215,7 +215,7 @@ resolveImports
   -> Either Text Module
 resolveImports modMap (Module userMod) =
   let agdaMap = map mapEntry modMap
-      agdaResult = MMR.d_resolveImports_1018 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
+      agdaResult = MMR.d_resolveImports_1008 (unsafeCoerce agdaMap) (unsafeCoerce userMod)
   in case agdaResult of
        MSum.C_inj'8321'_38 err -> Left (agdaToText err)
        MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))

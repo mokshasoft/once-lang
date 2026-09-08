@@ -132,7 +132,7 @@ du_recognise'45'body_44 v0 v1 v2
            -> case coe v7 of
                 MAlonzo.Code.Once.IR.C_const_150 v10 v11
                   -> case coe v10 of
-                       MAlonzo.Code.Once.IRTy.C_fits'45'int_512
+                       MAlonzo.Code.Once.IRTy.C_fits'45'int_528
                          -> let v12 = coe du_is'45'terminal'63'_316 (coe v8) in
                             coe
                               (if coe v12
@@ -140,7 +140,7 @@ du_recognise'45'body_44 v0 v1 v2
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                         (coe MAlonzo.Code.Once.Arith.Machine.IR.C_alit_14 (coe v11))
                                  else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
-                       MAlonzo.Code.Once.IRTy.C_fits'45'float_514
+                       MAlonzo.Code.Once.IRTy.C_fits'45'float_530
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                        _ -> MAlonzo.RTE.mazUnreachableError
                 MAlonzo.Code.Once.IR.C_SigOp_156 v9 v10 v11
@@ -179,7 +179,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                 = d_recognise'45'binop_52
                                                                     (coe v0) (coe v1)
                                                                     (coe
-                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                        (coe v9))
                                                                     (coe v8) in
                                                           coe
@@ -244,7 +244,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                          (coe
                                                                                                             v1)
                                                                                                          (coe
-                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                             (coe
                                                                                                                v9))
                                                                                                          (coe
@@ -324,7 +324,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                               (coe
                                                                                                                                                  v1)
                                                                                                                                               (coe
-                                                                                                                                                 MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                 MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                  (coe
                                                                                                                                                     v9))
                                                                                                                                               (coe
@@ -404,7 +404,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                    (coe
                                                                                                                                                                                       v1)
                                                                                                                                                                                    (coe
-                                                                                                                                                                                      MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                      MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v9))
                                                                                                                                                                                    (coe
@@ -484,7 +484,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                         (coe
                                                                                                                                                                                                                            v1)
                                                                                                                                                                                                                         (coe
-                                                                                                                                                                                                                           MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                           MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v9))
                                                                                                                                                                                                                         (coe
@@ -666,7 +666,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                             v1)
                                                                                                                                                                                                                          (coe
-                                                                                                                                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                v9))
                                                                                                                                                                                                                          (coe
@@ -850,7 +850,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v1)
                                                                                                                                                                                     (coe
-                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v9))
                                                                                                                                                                                     (coe
@@ -930,7 +930,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                             v1)
                                                                                                                                                                                                                          (coe
-                                                                                                                                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                v9))
                                                                                                                                                                                                                          (coe
@@ -1112,7 +1112,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              v1)
                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v9))
                                                                                                                                                                                                                           (coe
@@ -1298,7 +1298,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                (coe
                                                                                                                                                   v1)
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                   (coe
                                                                                                                                                      v9))
                                                                                                                                                (coe
@@ -1378,7 +1378,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v1)
                                                                                                                                                                                     (coe
-                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v9))
                                                                                                                                                                                     (coe
@@ -1458,7 +1458,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                             v1)
                                                                                                                                                                                                                          (coe
-                                                                                                                                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                v9))
                                                                                                                                                                                                                          (coe
@@ -1640,7 +1640,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              v1)
                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v9))
                                                                                                                                                                                                                           (coe
@@ -1824,7 +1824,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -1904,7 +1904,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              v1)
                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v9))
                                                                                                                                                                                                                           (coe
@@ -2086,7 +2086,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v1)
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v9))
                                                                                                                                                                                                                            (coe
@@ -2270,7 +2270,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                           (coe
                                                                                                              v1)
                                                                                                           (coe
-                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                              (coe
                                                                                                                 v9))
                                                                                                           (coe
@@ -2350,7 +2350,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                (coe
                                                                                                                                                   v1)
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                   (coe
                                                                                                                                                      v9))
                                                                                                                                                (coe
@@ -2430,7 +2430,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v1)
                                                                                                                                                                                     (coe
-                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v9))
                                                                                                                                                                                     (coe
@@ -2510,7 +2510,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                             v1)
                                                                                                                                                                                                                          (coe
-                                                                                                                                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                v9))
                                                                                                                                                                                                                          (coe
@@ -2692,7 +2692,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              v1)
                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v9))
                                                                                                                                                                                                                           (coe
@@ -2876,7 +2876,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -2956,7 +2956,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              v1)
                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v9))
                                                                                                                                                                                                                           (coe
@@ -3138,7 +3138,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v1)
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v9))
                                                                                                                                                                                                                            (coe
@@ -3324,7 +3324,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                 (coe
                                                                                                                                                    v1)
                                                                                                                                                 (coe
-                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                    (coe
                                                                                                                                                       v9))
                                                                                                                                                 (coe
@@ -3404,7 +3404,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -3484,7 +3484,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              v1)
                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v9))
                                                                                                                                                                                                                           (coe
@@ -3666,7 +3666,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v1)
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v9))
                                                                                                                                                                                                                            (coe
@@ -3850,7 +3850,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v1)
                                                                                                                                                                                       (coe
-                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                          (coe
                                                                                                                                                                                             v9))
                                                                                                                                                                                       (coe
@@ -3930,7 +3930,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v1)
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v9))
                                                                                                                                                                                                                            (coe
@@ -4112,7 +4112,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                v1)
                                                                                                                                                                                                                             (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                                (coe
                                                                                                                                                                                                                                   v9))
                                                                                                                                                                                                                             (coe
@@ -4293,7 +4293,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                  = d_recognise'45'binop_52
                                                                      (coe v0) (coe v1)
                                                                      (coe
-                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                         (coe v9))
                                                                      (coe v8) in
                                                            coe
@@ -4358,7 +4358,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                           (coe
                                                                                                              v1)
                                                                                                           (coe
-                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                              (coe
                                                                                                                 v9))
                                                                                                           (coe
@@ -4438,7 +4438,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                (coe
                                                                                                                                                   v1)
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                   (coe
                                                                                                                                                      v9))
                                                                                                                                                (coe
@@ -4518,7 +4518,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v1)
                                                                                                                                                                                     (coe
-                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v9))
                                                                                                                                                                                     (coe
@@ -4598,7 +4598,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                          (coe
                                                                                                                                                                                                                             v1)
                                                                                                                                                                                                                          (coe
-                                                                                                                                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                v9))
                                                                                                                                                                                                                          (coe
@@ -4780,7 +4780,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              v1)
                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v9))
                                                                                                                                                                                                                           (coe
@@ -4964,7 +4964,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -5044,7 +5044,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              v1)
                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v9))
                                                                                                                                                                                                                           (coe
@@ -5226,7 +5226,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v1)
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v9))
                                                                                                                                                                                                                            (coe
@@ -5412,7 +5412,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                 (coe
                                                                                                                                                    v1)
                                                                                                                                                 (coe
-                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                    (coe
                                                                                                                                                       v9))
                                                                                                                                                 (coe
@@ -5492,7 +5492,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -5572,7 +5572,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              v1)
                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v9))
                                                                                                                                                                                                                           (coe
@@ -5754,7 +5754,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v1)
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v9))
                                                                                                                                                                                                                            (coe
@@ -5938,7 +5938,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v1)
                                                                                                                                                                                       (coe
-                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                          (coe
                                                                                                                                                                                             v9))
                                                                                                                                                                                       (coe
@@ -6018,7 +6018,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v1)
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v9))
                                                                                                                                                                                                                            (coe
@@ -6200,7 +6200,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                v1)
                                                                                                                                                                                                                             (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                                (coe
                                                                                                                                                                                                                                   v9))
                                                                                                                                                                                                                             (coe
@@ -6384,7 +6384,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                            (coe
                                                                                                               v1)
                                                                                                            (coe
-                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                               (coe
                                                                                                                  v9))
                                                                                                            (coe
@@ -6464,7 +6464,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                 (coe
                                                                                                                                                    v1)
                                                                                                                                                 (coe
-                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                    (coe
                                                                                                                                                       v9))
                                                                                                                                                 (coe
@@ -6544,7 +6544,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -6624,7 +6624,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                           (coe
                                                                                                                                                                                                                              v1)
                                                                                                                                                                                                                           (coe
-                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v9))
                                                                                                                                                                                                                           (coe
@@ -6806,7 +6806,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v1)
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v9))
                                                                                                                                                                                                                            (coe
@@ -6990,7 +6990,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v1)
                                                                                                                                                                                       (coe
-                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                          (coe
                                                                                                                                                                                             v9))
                                                                                                                                                                                       (coe
@@ -7070,7 +7070,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v1)
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v9))
                                                                                                                                                                                                                            (coe
@@ -7252,7 +7252,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                v1)
                                                                                                                                                                                                                             (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                                (coe
                                                                                                                                                                                                                                   v9))
                                                                                                                                                                                                                             (coe
@@ -7438,7 +7438,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                  (coe
                                                                                                                                                     v1)
                                                                                                                                                  (coe
-                                                                                                                                                    MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                    MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                     (coe
                                                                                                                                                        v9))
                                                                                                                                                  (coe
@@ -7518,7 +7518,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v1)
                                                                                                                                                                                       (coe
-                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                          (coe
                                                                                                                                                                                             v9))
                                                                                                                                                                                       (coe
@@ -7598,7 +7598,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                            (coe
                                                                                                                                                                                                                               v1)
                                                                                                                                                                                                                            (coe
-                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                               (coe
                                                                                                                                                                                                                                  v9))
                                                                                                                                                                                                                            (coe
@@ -7780,7 +7780,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                v1)
                                                                                                                                                                                                                             (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                                (coe
                                                                                                                                                                                                                                   v9))
                                                                                                                                                                                                                             (coe
@@ -7964,7 +7964,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v1)
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                           (coe
                                                                                                                                                                                              v9))
                                                                                                                                                                                        (coe
@@ -8044,7 +8044,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                             (coe
                                                                                                                                                                                                                                v1)
                                                                                                                                                                                                                             (coe
-                                                                                                                                                                                                                               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                               MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                                (coe
                                                                                                                                                                                                                                   v9))
                                                                                                                                                                                                                             (coe
@@ -8226,7 +8226,7 @@ du_recognise'45'body_44 v0 v1 v2
                                                                                                                                                                                                                              (coe
                                                                                                                                                                                                                                 v1)
                                                                                                                                                                                                                              (coe
-                                                                                                                                                                                                                                MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                                                                MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                                                                 (coe
                                                                                                                                                                                                                                    v9))
                                                                                                                                                                                                                              (coe
@@ -8403,24 +8403,24 @@ d_recognise'45'binop_52 v0 v1 v2 v3
   = let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v3 of
-         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v8 v9 v10
+         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v8 v9
            -> case coe v2 of
-                MAlonzo.Code.Once.IRTy.C__'42'__20 v11 v12
-                  -> let v13
+                MAlonzo.Code.Once.IRTy.C__'42'__20 v10 v11
+                  -> let v12
                            = coe du_recognise'45'body_44 (coe v0) (coe v1) (coe v8) in
                      coe
-                       (let v14
+                       (let v13
                               = coe du_recognise'45'body_44 (coe v0) (coe v1) (coe v9) in
                         coe
-                          (case coe v13 of
-                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v15
-                               -> case coe v14 of
-                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v16
+                          (case coe v12 of
+                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v14
+                               -> case coe v13 of
+                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v15
                                       -> coe
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                            (coe
-                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v15)
-                                              (coe v16))
+                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v14)
+                                              (coe v15))
                                     _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                              _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                 _ -> coe v4
@@ -8483,9 +8483,9 @@ du_recognise'45'body'45'float_378 v0 v1 v2
            -> case coe v7 of
                 MAlonzo.Code.Once.IR.C_const_150 v10 v11
                   -> case coe v10 of
-                       MAlonzo.Code.Once.IRTy.C_fits'45'int_512
+                       MAlonzo.Code.Once.IRTy.C_fits'45'int_528
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                       MAlonzo.Code.Once.IRTy.C_fits'45'float_514
+                       MAlonzo.Code.Once.IRTy.C_fits'45'float_530
                          -> let v12 = coe du_is'45'terminal'45'f'63'_614 (coe v8) in
                             coe
                               (if coe v12
@@ -8531,7 +8531,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                 = d_recognise'45'binop'45'float_386
                                                                     (coe v0) (coe v1)
                                                                     (coe
-                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                        (coe v9))
                                                                     (coe v8) in
                                                           coe
@@ -8596,7 +8596,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                          (coe
                                                                                                             v1)
                                                                                                          (coe
-                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                            MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                             (coe
                                                                                                                v9))
                                                                                                          (coe
@@ -8676,7 +8676,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                               (coe
                                                                                                                                                  v1)
                                                                                                                                               (coe
-                                                                                                                                                 MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                 MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                  (coe
                                                                                                                                                     v9))
                                                                                                                                               (coe
@@ -8756,7 +8756,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                    (coe
                                                                                                                                                                                       v1)
                                                                                                                                                                                    (coe
-                                                                                                                                                                                      MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                      MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v9))
                                                                                                                                                                                    (coe
@@ -8938,7 +8938,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v1)
                                                                                                                                                                                     (coe
-                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v9))
                                                                                                                                                                                     (coe
@@ -9122,7 +9122,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                (coe
                                                                                                                                                   v1)
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                   (coe
                                                                                                                                                      v9))
                                                                                                                                                (coe
@@ -9202,7 +9202,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v1)
                                                                                                                                                                                     (coe
-                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v9))
                                                                                                                                                                                     (coe
@@ -9384,7 +9384,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -9566,7 +9566,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                           (coe
                                                                                                              v1)
                                                                                                           (coe
-                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                              (coe
                                                                                                                 v9))
                                                                                                           (coe
@@ -9646,7 +9646,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                (coe
                                                                                                                                                   v1)
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                   (coe
                                                                                                                                                      v9))
                                                                                                                                                (coe
@@ -9726,7 +9726,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v1)
                                                                                                                                                                                     (coe
-                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v9))
                                                                                                                                                                                     (coe
@@ -9908,7 +9908,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -10092,7 +10092,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                 (coe
                                                                                                                                                    v1)
                                                                                                                                                 (coe
-                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                    (coe
                                                                                                                                                       v9))
                                                                                                                                                 (coe
@@ -10172,7 +10172,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -10354,7 +10354,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v1)
                                                                                                                                                                                       (coe
-                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                          (coe
                                                                                                                                                                                             v9))
                                                                                                                                                                                       (coe
@@ -10533,7 +10533,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                  = d_recognise'45'binop'45'float_386
                                                                      (coe v0) (coe v1)
                                                                      (coe
-                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                         (coe v9))
                                                                      (coe v8) in
                                                            coe
@@ -10598,7 +10598,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                           (coe
                                                                                                              v1)
                                                                                                           (coe
-                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                             MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                              (coe
                                                                                                                 v9))
                                                                                                           (coe
@@ -10678,7 +10678,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                (coe
                                                                                                                                                   v1)
                                                                                                                                                (coe
-                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                  MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                   (coe
                                                                                                                                                      v9))
                                                                                                                                                (coe
@@ -10758,7 +10758,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                     (coe
                                                                                                                                                                                        v1)
                                                                                                                                                                                     (coe
-                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                       MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v9))
                                                                                                                                                                                     (coe
@@ -10940,7 +10940,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -11124,7 +11124,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                 (coe
                                                                                                                                                    v1)
                                                                                                                                                 (coe
-                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                    (coe
                                                                                                                                                       v9))
                                                                                                                                                 (coe
@@ -11204,7 +11204,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -11386,7 +11386,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v1)
                                                                                                                                                                                       (coe
-                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                          (coe
                                                                                                                                                                                             v9))
                                                                                                                                                                                       (coe
@@ -11568,7 +11568,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                            (coe
                                                                                                               v1)
                                                                                                            (coe
-                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                              MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                               (coe
                                                                                                                  v9))
                                                                                                            (coe
@@ -11648,7 +11648,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                 (coe
                                                                                                                                                    v1)
                                                                                                                                                 (coe
-                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                   MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                    (coe
                                                                                                                                                       v9))
                                                                                                                                                 (coe
@@ -11728,7 +11728,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                      (coe
                                                                                                                                                                                         v1)
                                                                                                                                                                                      (coe
-                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                        MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                         (coe
                                                                                                                                                                                            v9))
                                                                                                                                                                                      (coe
@@ -11910,7 +11910,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v1)
                                                                                                                                                                                       (coe
-                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                          (coe
                                                                                                                                                                                             v9))
                                                                                                                                                                                       (coe
@@ -12094,7 +12094,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                  (coe
                                                                                                                                                     v1)
                                                                                                                                                  (coe
-                                                                                                                                                    MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                    MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                     (coe
                                                                                                                                                        v9))
                                                                                                                                                  (coe
@@ -12174,7 +12174,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                       (coe
                                                                                                                                                                                          v1)
                                                                                                                                                                                       (coe
-                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                         MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                          (coe
                                                                                                                                                                                             v9))
                                                                                                                                                                                       (coe
@@ -12356,7 +12356,7 @@ du_recognise'45'body'45'float_378 v0 v1 v2
                                                                                                                                                                                        (coe
                                                                                                                                                                                           v1)
                                                                                                                                                                                        (coe
-                                                                                                                                                                                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_38
+                                                                                                                                                                                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                                                                                                                                                                                           (coe
                                                                                                                                                                                              v9))
                                                                                                                                                                                        (coe
@@ -12531,26 +12531,26 @@ d_recognise'45'binop'45'float_386 v0 v1 v2 v3
   = let v4 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v3 of
-         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v8 v9 v10
+         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v8 v9
            -> case coe v2 of
-                MAlonzo.Code.Once.IRTy.C__'42'__20 v11 v12
-                  -> let v13
+                MAlonzo.Code.Once.IRTy.C__'42'__20 v10 v11
+                  -> let v12
                            = coe
                                du_recognise'45'body'45'float_378 (coe v0) (coe v1) (coe v8) in
                      coe
-                       (let v14
+                       (let v13
                               = coe
                                   du_recognise'45'body'45'float_378 (coe v0) (coe v1) (coe v9) in
                         coe
-                          (case coe v13 of
-                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v15
-                               -> case coe v14 of
-                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v16
+                          (case coe v12 of
+                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v14
+                               -> case coe v13 of
+                                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v15
                                       -> coe
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                            (coe
-                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v15)
-                                              (coe v16))
+                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v14)
+                                              (coe v15))
                                     _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                              _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                 _ -> coe v4

@@ -125,8 +125,7 @@ d_riscv64'45'functionPrologue_8 v0
 -- Once.Target.RiscV64.riscv64-functionEpilogue
 d_riscv64'45'functionEpilogue_12 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_riscv64'45'functionEpilogue_12
-  = coe ("    ret\n\n" :: Data.Text.Text)
+d_riscv64'45'functionEpilogue_12 = coe ("\n" :: Data.Text.Text)
 -- Once.Target.RiscV64.riscv64-irToAsm
 d_riscv64'45'irToAsm_18 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -146,12 +145,12 @@ d_riscv64'45'irToAsm_18 v0 v1 v2 v3 v4
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                (coe
-                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_772
+                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_782
                   (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
             (coe
                MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                (coe
-                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_772
+                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_782
                   (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))))
       (coe
          MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -165,7 +164,7 @@ d_riscv64'45'irToAsm_18 v0 v1 v2 v3 v4
                   (coe
                      mulInt
                      (coe
-                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_786
+                        MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_772
                         (coe v0) (coe v2) (coe v3) (coe v1) (coe v4))
                      (coe (8 :: Integer)))))
             (coe
@@ -180,238 +179,34 @@ d_riscv64'45'irToAsm_18 v0 v1 v2 v3 v4
                         MAlonzo.Code.Data.Nat.Show.d_show_56
                         (mulInt
                            (coe
-                              MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_786
+                              MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_772
                               (coe v0) (coe v2) (coe v3) (coe v1) (coe v4))
                            (coe (8 :: Integer))))
                      (coe
                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
                         ("(sp)\n" :: Data.Text.Text)
                         (coe
-                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                           (coe
-                              MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_102
-                              (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                 (coe
-                                    MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_248
-                                    (coe v0)
-                                    (coe
-                                       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                       (coe
-                                          MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_772
-                                          (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
-                                    (coe
-                                       MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                       (coe
-                                          MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'from_772
-                                          (coe v0) (coe v2) (coe v3) (coe v1) (coe v4))))))
-                           (coe
-                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                              ("    ld ra, " :: Data.Text.Text)
+                           MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_92
+                           (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                               (coe
-                                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                 MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_248
+                                 (coe v0)
                                  (coe
-                                    MAlonzo.Code.Data.Nat.Show.d_show_56
-                                    (mulInt
-                                       (coe
-                                          MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_786
-                                          (coe v0) (coe v2) (coe v3) (coe v1) (coe v4))
-                                       (coe (8 :: Integer))))
-                                 (coe
-                                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                    ("(sp)\n" :: Data.Text.Text)
+                                    MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                     (coe
-                                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                       ("    addi sp, sp, " :: Data.Text.Text)
-                                       (coe
-                                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                          (coe
-                                             MAlonzo.Code.Data.Nat.Show.d_show_56
-                                             (addInt
-                                                (coe (8 :: Integer))
-                                                (coe
-                                                   mulInt
-                                                   (coe
-                                                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget'45'from_786
-                                                      (coe v0) (coe v2) (coe v3) (coe v1) (coe v4))
-                                                   (coe (8 :: Integer)))))
-                                          ("\n" :: Data.Text.Text)))))))))))))
--- Once.Target.RiscV64.riscv64-irToBodies
-d_riscv64'45'irToBodies_44 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  Integer ->
-  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  MAlonzo.Code.Once.IR.T_IR_16 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_riscv64'45'irToBodies_44 v0 v1 v2 v3 v4
-  = coe
-      du_emit'45'bodies_70 (coe v0)
-      (coe
-         MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-         (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'bodies'45'from_796
-            (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
-      (coe
-         MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-         (coe
-            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'bodies'45'from_796
-            (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
--- Once.Target.RiscV64._.emit-thunk-body
-d_emit'45'thunk'45'body_56 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  Integer ->
-  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  MAlonzo.Code.Once.IR.T_IR_16 ->
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_emit'45'thunk'45'body_56 v0 ~v1 ~v2 ~v3 ~v4 v5 v6
-  = du_emit'45'thunk'45'body_56 v0 v5 v6
-du_emit'45'thunk'45'body_56 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  Integer ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_emit'45'thunk'45'body_56 v0 v1 v2
-  = case coe v2 of
-      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-        -> case coe v4 of
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v5 v6
-               -> coe
-                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                    (coe
-                       MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                       (coe
-                          MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_248
-                          (coe v0) (coe v1) (coe v6)))
-                    (coe
-                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                       (".L_thunk_" :: Data.Text.Text)
-                       (coe
-                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                          (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v3)
-                          (coe
-                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                             (":\n" :: Data.Text.Text)
-                             (coe
-                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                ("    addi sp, sp, -" :: Data.Text.Text)
-                                (coe
-                                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                   (coe
-                                      MAlonzo.Code.Data.Nat.Show.d_show_56
-                                      (addInt
-                                         (coe (8 :: Integer))
-                                         (coe mulInt (coe v5) (coe (8 :: Integer)))))
-                                   (coe
-                                      MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                      ("\n" :: Data.Text.Text)
-                                      (coe
-                                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                         ("    sd ra, " :: Data.Text.Text)
-                                         (coe
-                                            MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                            (coe
-                                               MAlonzo.Code.Data.Nat.Show.d_show_56
-                                               (mulInt (coe v5) (coe (8 :: Integer))))
-                                            (coe
-                                               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                               ("(sp)\n" :: Data.Text.Text)
-                                               (coe
-                                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                  (coe
-                                                     MAlonzo.Code.Once.CCC.Target.RiscV64.Emit.d_programToText_102
-                                                     (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                                                        (coe
-                                                           MAlonzo.Code.Once.CCC.Target.RiscV64.AbstractToRiscV.d_compile'45'trace'45'cnt_248
-                                                           (coe v0) (coe v1) (coe v6))))
-                                                  (coe
-                                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                     ("    ld ra, " :: Data.Text.Text)
-                                                     (coe
-                                                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                        (coe
-                                                           MAlonzo.Code.Data.Nat.Show.d_show_56
-                                                           (mulInt (coe v5) (coe (8 :: Integer))))
-                                                        (coe
-                                                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                           ("(sp)\n" :: Data.Text.Text)
-                                                           (coe
-                                                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                              ("    addi sp, sp, "
-                                                               ::
-                                                               Data.Text.Text)
-                                                              (coe
-                                                                 MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                                 (coe
-                                                                    MAlonzo.Code.Data.Nat.Show.d_show_56
-                                                                    (addInt
-                                                                       (coe (8 :: Integer))
-                                                                       (coe
-                                                                          mulInt (coe v5)
-                                                                          (coe (8 :: Integer)))))
-                                                                 (coe
-                                                                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                                    ("\n" :: Data.Text.Text)
-                                                                    ("    ret\n\n"
-                                                                     ::
-                                                                     Data.Text.Text)))))))))))))))))
-             _ -> MAlonzo.RTE.mazUnreachableError
-      _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Target.RiscV64._.emit-bodies
-d_emit'45'bodies_70 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  Integer ->
-  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
-  MAlonzo.Code.Once.IR.T_IR_16 ->
-  Integer ->
-  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_emit'45'bodies_70 v0 ~v1 ~v2 ~v3 ~v4 v5 v6
-  = du_emit'45'bodies_70 v0 v5 v6
-du_emit'45'bodies_70 ::
-  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  Integer ->
-  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_emit'45'bodies_70 v0 v1 v2
-  = case coe v2 of
-      []
-        -> coe
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
-             (coe ("" :: Data.Text.Text))
-      (:) v3 v4
-        -> coe
-             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe
-                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                (coe
-                   du_emit'45'bodies_70 (coe v0)
-                   (coe
-                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                      (coe du_emit'45'thunk'45'body_56 (coe v0) (coe v1) (coe v3)))
-                   (coe v4)))
-             (coe
-                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                   (coe du_emit'45'thunk'45'body_56 (coe v0) (coe v1) (coe v3)))
-                (MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-                   (coe
-                      du_emit'45'bodies_70 (coe v0)
-                      (coe
-                         MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                         (coe du_emit'45'thunk'45'body_56 (coe v0) (coe v1) (coe v3)))
-                      (coe v4))))
-      _ -> MAlonzo.RTE.mazUnreachableError
+                                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_782
+                                       (coe v0) (coe v2) (coe v3) (coe v1) (coe v4)))
+                                 (coe
+                                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                                    (coe
+                                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_782
+                                       (coe v0) (coe v2) (coe v3) (coe v1) (coe v4))))))))))))
 -- Once.Target.RiscV64.riscv64
-d_riscv64_92 :: MAlonzo.Code.Once.Target.T_Target_4
-d_riscv64_92
+d_riscv64_40 :: MAlonzo.Code.Once.Target.T_Target_4
+d_riscv64_40
   = coe
-      MAlonzo.Code.Once.Target.C_constructor_50
-      (coe d_riscv64'45'irToAsm_18) (coe d_riscv64'45'irToBodies_44)
-      (coe d_riscv64'45'asmHeader_6)
+      MAlonzo.Code.Once.Target.C_constructor_38
+      (coe d_riscv64'45'irToAsm_18) (coe d_riscv64'45'asmHeader_6)
       (coe d_riscv64'45'functionPrologue_8)
       (coe d_riscv64'45'functionEpilogue_12)
       (coe

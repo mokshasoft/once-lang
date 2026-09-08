@@ -58,11 +58,8 @@ d_showMem_10 v0
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rip'43'label_18 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (".L_thunk_" :: Data.Text.Text)
-             (coe
-                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (MAlonzo.Code.Once.CCC.Label.d_showLabelId_248 (coe v1))
-                ("(%rip)" :: Data.Text.Text))
+             (MAlonzo.Code.Once.CCC.Label.d_thunkSym_252 (coe v1))
+             ("(%rip)" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Emit.showOperand
 d_showOperand_22 ::
@@ -81,38 +78,11 @@ d_showOperand_22 v0
              ("$" :: Data.Text.Text)
              (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v1)
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Target.X86-64.Emit.showLabel
-d_showLabel_30 ::
-  MAlonzo.Code.Once.CCC.Label.T_Label_22 ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showLabel_30 v0
-  = case coe v0 of
-      MAlonzo.Code.Once.CCC.Label.C_once_24 v1
-        -> coe
-             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("once_" :: Data.Text.Text)
-             (MAlonzo.Code.Once.CCC.Label.d_showLabelId_248 (coe v1))
-      MAlonzo.Code.Once.CCC.Label.C_sigop_26 v1 v2
-        -> coe
-             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("sigops_" :: Data.Text.Text)
-             (coe
-                MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
-                (coe
-                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                   ("_" :: Data.Text.Text)
-                   (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v2)))
-      MAlonzo.Code.Once.CCC.Label.C_thunk_28 v1
-        -> coe
-             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("_thunk_" :: Data.Text.Text)
-             (MAlonzo.Code.Once.CCC.Label.d_showLabelId_248 (coe v1))
-      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Emit.showInstr
-d_showInstr_40 ::
+d_showInstr_30 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showInstr_40 v0
+d_showInstr_30 v0
   = case coe v0 of
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_mov_30 v1 v2
         -> coe
@@ -179,15 +149,18 @@ d_showInstr_40 v0
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jmp_42 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("    jmp .L" :: Data.Text.Text) (d_showLabel_30 (coe v1))
+             ("    jmp " :: Data.Text.Text)
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_256 (coe v1))
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_je_44 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("    je .L" :: Data.Text.Text) (d_showLabel_30 (coe v1))
+             ("    je " :: Data.Text.Text)
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_256 (coe v1))
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_jne_46 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("    jne .L" :: Data.Text.Text) (d_showLabel_30 (coe v1))
+             ("    jne " :: Data.Text.Text)
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_256 (coe v1))
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_call_48 v1
         -> case coe v1 of
              MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_reg_22 v2
@@ -242,29 +215,27 @@ d_showInstr_40 v0
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_64 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             (".L" :: Data.Text.Text)
-             (coe
-                MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                (d_showLabel_30 (coe v1)) (":" :: Data.Text.Text))
+             (MAlonzo.Code.Once.CCC.Label.d_labelSym_256 (coe v1))
+             (":" :: Data.Text.Text)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Emit.instrToLine
-d_instrToLine_90 ::
+d_instrToLine_80 ::
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_instrToLine_90 v0
+d_instrToLine_80 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
-      (d_showInstr_40 (coe v0)) ("\n" :: Data.Text.Text)
+      (d_showInstr_30 (coe v0)) ("\n" :: Data.Text.Text)
 -- Once.CCC.Target.X86-64.Emit.programToText
-d_programToText_94 ::
+d_programToText_84 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_programToText_94
+d_programToText_84
   = coe
       MAlonzo.Code.Data.List.Base.du_foldr_216
       (coe
          (\ v0 ->
             coe
               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-              (d_instrToLine_90 (coe v0))))
+              (d_instrToLine_80 (coe v0))))
       (coe ("" :: Data.Text.Text))

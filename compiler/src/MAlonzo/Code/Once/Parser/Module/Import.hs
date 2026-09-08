@@ -76,7 +76,7 @@ du_parseModulePath'45'WFB_22 ::
 du_parseModulePath'45'WFB_22 v0
   = coe
       du_pmp'45'aw_32
-      (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0))
+      (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v0))
 -- Once.Parser.Module.Import.pmp-aw
 d_pmp'45'aw_32 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
@@ -204,7 +204,7 @@ d_parseModulePath_136 v0
           = coe
               du_pmp'45'aw_32
               (coe
-                 MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0)) in
+                 MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v0)) in
     coe
       (case coe v1 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
@@ -227,7 +227,7 @@ d_parseImportAliasB_154 ::
 d_parseImportAliasB_154 v0 v1
   = coe
       d_pia'45'head_162 (coe v0) (coe v1)
-      (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v1))
+      (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v1))
 -- Once.Parser.Module.Import.pia-head
 d_pia'45'head_162 ::
   [MAlonzo.Code.Agda.Builtin.String.T_String_6] ->
@@ -254,9 +254,9 @@ d_pia'45'head_162 v0 v1 v2
              (coe
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                 (coe
-                   MAlonzo.Code.Once.Parser.Module.Core.C_DImport_42
+                   MAlonzo.Code.Once.Parser.Module.Core.C_DImport_30
                    (coe
-                      MAlonzo.Code.Once.Parser.Module.Core.C_mkImport_30 (coe v0)
+                      MAlonzo.Code.Once.Parser.Module.Core.C_mkImport_18 (coe v0)
                       (coe v2)))
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
@@ -290,7 +290,7 @@ du_pia'45'as_174 v0 v1 v2 v3 v4
                     seq (coe v6)
                     (coe
                        du_pia'45'w_184 (coe v0) (coe v2) (coe v3)
-                       (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v2)))
+                       (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v2)))
              else coe
                     seq (coe v6)
                     (coe
@@ -298,9 +298,9 @@ du_pia'45'as_174 v0 v1 v2 v3 v4
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe
-                             MAlonzo.Code.Once.Parser.Module.Core.C_DImport_42
+                             MAlonzo.Code.Once.Parser.Module.Core.C_DImport_30
                              (coe
-                                MAlonzo.Code.Once.Parser.Module.Core.C_mkImport_30 (coe v0)
+                                MAlonzo.Code.Once.Parser.Module.Core.C_mkImport_18 (coe v0)
                                 (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)))
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1)
@@ -335,9 +335,9 @@ du_pia'45'w_184 v0 v1 v2 v3
                            (coe
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                               (coe
-                                 MAlonzo.Code.Once.Parser.Module.Core.C_DImport_42
+                                 MAlonzo.Code.Once.Parser.Module.Core.C_DImport_30
                                  (coe
-                                    MAlonzo.Code.Once.Parser.Module.Core.C_mkImport_30 (coe v0)
+                                    MAlonzo.Code.Once.Parser.Module.Core.C_mkImport_18 (coe v0)
                                     (coe MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe v5))))
                               (coe
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)
@@ -361,7 +361,7 @@ d_parseImportAlias_246 v0 v1
           = d_pia'45'head_162
               (coe v0) (coe v1)
               (coe
-                 MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v1)) in
+                 MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v1)) in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
@@ -449,7 +449,7 @@ d_parseImport_324 v0
               (coe
                  du_pmp'45'aw_32
                  (coe
-                    MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0))) in
+                    MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v0))) in
     coe
       (case coe v1 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2

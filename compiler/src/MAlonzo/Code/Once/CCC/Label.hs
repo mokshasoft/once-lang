@@ -343,11 +343,39 @@ d_showLabelId_248 v0
             MAlonzo.Code.Data.String.Base.d__'43''43'__20
             ("_" :: Data.Text.Text)
             (coe MAlonzo.Code.Data.Nat.Show.d_show_56 (d_idx_18 (coe v0)))))
+-- Once.CCC.Label.thunkSym
+d_thunkSym_252 ::
+  T_LabelId_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_thunkSym_252 v0
+  = coe
+      MAlonzo.Code.Data.String.Base.d__'43''43'__20
+      (".L_thunk_" :: Data.Text.Text) (d_showLabelId_248 (coe v0))
+-- Once.CCC.Label.labelSym
+d_labelSym_256 ::
+  T_Label_22 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_labelSym_256 v0
+  = case coe v0 of
+      C_once_24 v1
+        -> coe
+             MAlonzo.Code.Data.String.Base.d__'43''43'__20
+             (".Lonce_" :: Data.Text.Text) (d_showLabelId_248 (coe v1))
+      C_sigop_26 v1 v2
+        -> coe
+             MAlonzo.Code.Data.String.Base.d__'43''43'__20
+             (".Lsigops_" :: Data.Text.Text)
+             (coe
+                MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
+                (coe
+                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                   ("_" :: Data.Text.Text)
+                   (coe MAlonzo.Code.Data.Nat.Show.d_show_56 v2)))
+      C_thunk_28 v1 -> coe d_thunkSym_252 (coe v1)
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Label.ℓ
-d_ℓ_252 ::
+d_ℓ_266 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   Integer -> T_LabelId_6
-d_ℓ_252 v0 v1
+d_ℓ_266 v0 v1
   = coe
       C_mkLabelId_20 (coe v0)
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v1)

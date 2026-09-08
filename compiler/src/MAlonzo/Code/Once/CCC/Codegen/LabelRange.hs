@@ -234,51 +234,28 @@ d_label'45'mono_104 v0 v1 v2 v3 v4 v5
                    (coe
                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
                       (coe v0) (coe v1) (coe v7) (coe v4) (coe v5) (coe v10))))
-      MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v9 v10 v11
+      MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v9 v10
         -> case coe v2 of
-             MAlonzo.Code.Once.IRTy.C__'42'__20 v12 v13
-               -> case coe v11 of
-                    MAlonzo.Code.Once.IR.C_Stack_6
-                      -> coe
-                           MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
-                           (coe
-                              d_label'45'mono_104 (coe v0) (coe v1) (coe v12) (coe v9)
-                              (coe addInt (coe (3 :: Integer)) (coe v4)) (coe v5))
-                           (coe
-                              d_label'45'mono_104 (coe v0) (coe v1) (coe v13) (coe v10)
-                              (coe
-                                 MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                 (coe
-                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
-                                    (coe v0) (coe v1) (coe v12)
-                                    (coe addInt (coe (3 :: Integer)) (coe v4)) (coe v5) (coe v9)))
-                              (coe
-                                 du_label'45'of_40
-                                 (coe
-                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
-                                    (coe v0) (coe v1) (coe v12)
-                                    (coe addInt (coe (3 :: Integer)) (coe v4)) (coe v5) (coe v9))))
-                    MAlonzo.Code.Once.IR.C_Heap_8
-                      -> coe
-                           MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
-                           (coe
-                              d_label'45'mono_104 (coe v0) (coe v1) (coe v12) (coe v9)
-                              (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5))
-                           (coe
-                              d_label'45'mono_104 (coe v0) (coe v1) (coe v13) (coe v10)
-                              (coe
-                                 MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                 (coe
-                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
-                                    (coe v0) (coe v1) (coe v12)
-                                    (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5) (coe v9)))
-                              (coe
-                                 du_label'45'of_40
-                                 (coe
-                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
-                                    (coe v0) (coe v1) (coe v12)
-                                    (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5) (coe v9))))
-                    _ -> MAlonzo.RTE.mazUnreachableError
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v11 v12
+               -> coe
+                    MAlonzo.Code.Data.Nat.Properties.du_'8804''45'trans_2908
+                    (coe
+                       d_label'45'mono_104 (coe v0) (coe v1) (coe v11) (coe v9)
+                       (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5))
+                    (coe
+                       d_label'45'mono_104 (coe v0) (coe v1) (coe v12) (coe v10)
+                       (coe
+                          MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
+                          (coe
+                             MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
+                             (coe v0) (coe v1) (coe v11)
+                             (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5) (coe v9)))
+                       (coe
+                          du_label'45'of_40
+                          (coe
+                             MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
+                             (coe v0) (coe v1) (coe v11)
+                             (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5) (coe v9))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_fst_44
         -> coe
@@ -375,14 +352,14 @@ d_label'45'mono_104 v0 v1 v2 v3 v4 v5
                               (coe
                                  MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v11)
                                  (coe
-                                    MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v13)
+                                    MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v13)
                                     (coe v2)))
                               (coe v2) (coe v10) (coe (0 :: Integer)) (coe v5))
                            (coe
                               du_cata'45'label'45'mono_58
                               (coe
                                  MAlonzo.Code.Once.CCC.Codegen.IRToTrace.du_cata'45'strategy_50
-                                 (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_590 (coe v13)))
+                                 (coe MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_624 (coe v13)))
                               (coe
                                  du_label'45'of_40
                                  (coe
@@ -391,7 +368,7 @@ d_label'45'mono_104 v0 v1 v2 v3 v4 v5
                                     (coe
                                        MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v11)
                                        (coe
-                                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v13)
+                                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v13)
                                           (coe v2)))
                                     (coe v2) (coe (0 :: Integer)) (coe v5) (coe v10))))
                     _ -> MAlonzo.RTE.mazUnreachableError

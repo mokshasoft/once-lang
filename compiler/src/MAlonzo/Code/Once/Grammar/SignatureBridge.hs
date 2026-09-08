@@ -121,7 +121,7 @@ du_complete'45'effAnnot_90 v0 v1
 -- Once.Grammar.SignatureBridge.sound-signature
 d_sound'45'signature_104 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
@@ -133,7 +133,7 @@ du_sound'45'signature_104 ::
   MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesSignature_20
 du_sound'45'signature_104 v0
   = let v1
-          = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0) in
+          = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v0) in
     coe
       (case coe v1 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
@@ -407,7 +407,7 @@ du_sound'45'signature_104 v0
 -- Once.Grammar.SignatureBridge.complete-signature
 d_complete'45'signature_190 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Decl_20 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Spec.Grammar.Signature.T_ParsesSignature_20 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14

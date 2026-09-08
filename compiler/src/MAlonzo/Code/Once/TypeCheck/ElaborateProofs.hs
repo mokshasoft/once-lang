@@ -3760,8 +3760,9 @@ d_compileExprTyped_5500 v0 v1
            -> coe
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                 (coe
-                   MAlonzo.Code.Once.Surface.Elaborate.du_elaborate'45'default_478
-                   (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) v1 v4)
+                   MAlonzo.Code.Once.Surface.Elaborate.d_elaborate'45'default_980
+                   (0 :: Integer) (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
+                   v3 v1 v4)
          MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_326 v3
            -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
          _ -> MAlonzo.RTE.mazUnreachableError)
@@ -3784,8 +3785,9 @@ d_compileExpr_5524 v0
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v2)
                    (coe
-                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate'45'default_478
-                      (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8) v2 v4))
+                      MAlonzo.Code.Once.Surface.Elaborate.d_elaborate'45'default_980
+                      (0 :: Integer) (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
+                      v3 v2 v4))
          MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_302 v2
            -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
          _ -> MAlonzo.RTE.mazUnreachableError)

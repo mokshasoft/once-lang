@@ -48,13 +48,13 @@ d_escape'45'once_20 v0 v1 v2
              du_escape'45'compose_10 (coe v4)
              (coe d_escape'45'once_20 (coe v4) (coe v1) (coe v6))
              (coe d_escape'45'once_20 (coe v0) (coe v4) (coe v7))
-      MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v6 v7 v8
+      MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v6 v7
         -> case coe v1 of
-             MAlonzo.Code.Once.IRTy.C__'42'__20 v9 v10
+             MAlonzo.Code.Once.IRTy.C__'42'__20 v8 v9
                -> coe
                     MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38
-                    (d_escape'45'once_20 (coe v0) (coe v9) (coe v6))
-                    (d_escape'45'once_20 (coe v0) (coe v10) (coe v7)) v8
+                    (d_escape'45'once_20 (coe v0) (coe v8) (coe v6))
+                    (d_escape'45'once_20 (coe v0) (coe v9) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_fst_44 -> coe MAlonzo.Code.Once.IR.C_fst_44
       MAlonzo.Code.Once.IR.C_snd_50 -> coe MAlonzo.Code.Once.IR.C_snd_50
@@ -101,7 +101,7 @@ d_escape'45'once_20 v0 v1 v2
                               (coe
                                  MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v8)
                                  (coe
-                                    MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v10)
+                                    MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v10)
                                     (coe v1)))
                               (coe v1) (coe v7))
                     _ -> MAlonzo.RTE.mazUnreachableError
@@ -113,7 +113,7 @@ d_escape'45'once_20 v0 v1 v2
                     MAlonzo.Code.Once.IR.C_Para_114 v4
                     (d_escape'45'once_20
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v7)
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v7)
                           (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v1)))
                        (coe v1) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -129,7 +129,7 @@ d_escape'45'once_20 v0 v1 v2
                     (d_escape'45'once_20
                        (coe v0)
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v7) (coe v0))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v7) (coe v0))
                        (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_Hylo_136 v3 v5 v6 v8 v9
@@ -139,7 +139,7 @@ d_escape'45'once_20 v0 v1 v2
                     MAlonzo.Code.Once.IR.C_Hylo_136 v3 v5 v6
                     (d_escape'45'once_20
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v3) (coe v1))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v3) (coe v1))
                        (coe v1) (coe v8))
                     (d_escape'45'nt_26 (coe v10) (coe v3) (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -150,7 +150,7 @@ d_escape'45'once_20 v0 v1 v2
                     MAlonzo.Code.Once.IR.C_Fuse_144 v3 v5 v6
                     (d_escape'45'once_20
                        (coe
-                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_68 (coe v3) (coe v1))
+                          MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v3) (coe v1))
                        (coe v1) (coe v8))
                     (d_escape'45'nt_26 (coe v10) (coe v3) (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError
@@ -223,23 +223,23 @@ d_escape'45'nt_26 v0 v1 v2
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Escape.escape-n
-d_escape'45'n_134 ::
+d_escape'45'n_132 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   Integer ->
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
-d_escape'45'n_134 v0 v1 v2 v3
+d_escape'45'n_132 v0 v1 v2 v3
   = case coe v2 of
       0 -> coe v3
       _ -> let v4 = subInt (coe v2) (coe (1 :: Integer)) in
            coe
              (coe
-                d_escape'45'n_134 (coe v0) (coe v1) (coe v4)
+                d_escape'45'n_132 (coe v0) (coe v1) (coe v4)
                 (coe d_escape'45'once_20 (coe v0) (coe v1) (coe v3)))
 -- Once.Escape.escape
-d_escape_146 ::
+d_escape_144 ::
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> MAlonzo.Code.Once.IR.T_IR_16
-d_escape_146 v0 v1
-  = coe d_escape'45'n_134 (coe v0) (coe v1) (coe (10 :: Integer))
+d_escape_144 v0 v1
+  = coe d_escape'45'n_132 (coe v0) (coe v1) (coe (10 :: Integer))

@@ -29,6 +29,7 @@ import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 import qualified MAlonzo.Code.Once.TypeCheck.Judgment
 import qualified MAlonzo.Code.Once.TypeCheck.Raw
+import qualified MAlonzo.Code.Relation.Nullary.Decidable.Core
 
 -- Once.Adequacy.MtIndep.usage0-unique
 d_usage0'45'unique_14 ::
@@ -52,7 +53,7 @@ d_RI0_38 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_RI0_38 = erased
 -- Once.Adequacy.MtIndep.head-main-realize
-d_head'45'main'45'realize_90 ::
+d_head'45'main'45'realize_78 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -67,9 +68,9 @@ d_head'45'main'45'realize_90 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_head'45'main'45'realize_90 = erased
+d_head'45'main'45'realize_78 = erased
 -- Once.Adequacy.MtIndep.mt-den-indep
-d_mt'45'den'45'indep_202 ::
+d_mt'45'den'45'indep_190 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -81,9 +82,9 @@ d_mt'45'den'45'indep_202 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mt'45'den'45'indep_202 = erased
+d_mt'45'den'45'indep_190 = erased
 -- Once.Adequacy.MtIndep._.dispatch2
-d_dispatch2_286 ::
+d_dispatch2_280 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
@@ -104,10 +105,13 @@ d_dispatch2_286 ::
   MAlonzo.Code.Agda.Builtin.Unit.T_'8868'_6 ->
   Integer ->
   AgdaAny ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_dispatch2_286 = erased
+  AgdaAny ->
+  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
+  MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
+  Bool -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_dispatch2_280 = erased
 -- Once.Adequacy.MtIndep._.dispatch
-d_dispatch_316 ::
+d_dispatch_302 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   MAlonzo.Code.Once.Parser.T_FunInfo_96 ->
@@ -130,4 +134,4 @@ d_dispatch_316 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_dispatch_316 = erased
+d_dispatch_302 = erased

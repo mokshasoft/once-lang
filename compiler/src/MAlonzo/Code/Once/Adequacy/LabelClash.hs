@@ -23,7 +23,7 @@ import qualified MAlonzo.Code.Once.Target.Arch
 -- Once.Adequacy.LabelClash.DistinctLabels
 d_DistinctLabels_6 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 -> ()
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 -> ()
 d_DistinctLabels_6 = erased
 -- Once.Adequacy.LabelClash.program-labels-distinct
 d_program'45'labels'45'distinct_16

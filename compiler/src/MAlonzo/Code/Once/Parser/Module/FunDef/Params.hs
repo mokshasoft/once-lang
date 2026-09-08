@@ -75,7 +75,7 @@ du_parseParamsWF_44 ::
 du_parseParamsWF_44 v0
   = coe
       du_pp'45'aw_58 (coe v0)
-      (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0))
+      (coe MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_106 (coe v0))
 -- Once.Parser.Module.FunDef.Params.pp-aw
 d_pp'45'aw_58 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->

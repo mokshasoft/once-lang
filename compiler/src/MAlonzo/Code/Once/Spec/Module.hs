@@ -36,12 +36,12 @@ data T_AllFunsTyped_10
                T_AllFunsTyped_10
 -- Once.Spec.Module.ModuleTyped-ef
 d_ModuleTyped'45'ef_32 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 -> ()
 d_ModuleTyped'45'ef_32 = erased
 -- Once.Spec.Module.ModuleTyped
 d_ModuleTyped_42 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 -> ()
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 -> ()
 d_ModuleTyped_42 = erased
 -- Once.Spec.Module.EffUU
 d_EffUU_46 :: MAlonzo.Code.Once.Type.T_Type_108
@@ -70,15 +70,15 @@ d_MainExists_72 ::
 d_MainExists_72 = erased
 -- Once.Spec.Module.ModuleMainEffUU-ef
 d_ModuleMainEffUU'45'ef_84 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 -> AgdaAny -> ()
 d_ModuleMainEffUU'45'ef_84 = erased
 -- Once.Spec.Module.ModuleMainExists-ef
 d_ModuleMainExists'45'ef_94 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 -> AgdaAny -> ()
 d_ModuleMainExists'45'ef_94 = erased
 -- Once.Spec.Module.HasValidMain-decl
 d_HasValidMain'45'decl_102 ::
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 -> AgdaAny -> ()
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 -> AgdaAny -> ()
 d_HasValidMain'45'decl_102 = erased

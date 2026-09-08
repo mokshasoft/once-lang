@@ -13,12 +13,13 @@ import Layer0Spec (layer0Tests)
 import Layer1Spec (layer1Tests)
 import Layer2Spec (layer2Tests)
 import Layer3Spec (layer3Tests)
+import InferSpec (inferTests)
 import Layer4Spec (layer4Tests)
 import Layer5Spec (layer5Tests)
 import OptimizeSpec (optimizeTests)
 import ParseSpec (parseTests)
 import QttSpec (qttTests)
-import SymbolNameSpec (symbolNameTests)
+import SymbolNameSpec (symbolNameTests, thunkSymbolTests)
 import TraceSpec (traceTests)
 import TypeCheckSpec (typeCheckTests)
 import TypeErrorSpec (typeErrorTests)
@@ -49,5 +50,7 @@ main = defaultMain $ localOption (NumThreads 1) $ testGroup "Once"
   , litRangeTests
   , optimizeTests
   , traceTests
+  , inferTests
   , symbolNameTests
+  , thunkSymbolTests
   ]
