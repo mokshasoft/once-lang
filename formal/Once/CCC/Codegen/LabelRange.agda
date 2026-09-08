@@ -107,8 +107,11 @@ label-mono snd      n l = ≤-refl
 label-mono terminal n l = ≤-refl
 label-mono initial  n l = ≤-refl
 label-mono (g ∘ f)  n l = ≤-trans (label-mono f n l) (label-mono g _ _)
+-- Stage G: the second, byte-identical clause that stood here was the STACK
+-- pair's, left behind when the pair's mode was dropped and both LHSs became
+-- the same. `LabelScope` and `AllocMin` deleted their copies; this one was
+-- missed, and showed up as the apex path's only unreachable-clause warning.
 label-mono (⟨ f , g ⟩) n l = ≤-trans (label-mono f _ l) (label-mono g _ _)
-label-mono (⟨ f , g ⟩)  n l = ≤-trans (label-mono f _ l) (label-mono g _ _)
 -- The closure clauses take TWO labels of their own — the body marker `l` and
 -- the end-of-body join `suc l` — and then hand the body its own range starting
 -- at `suc (suc l)`. (Pre-flip this was one label; the proof shape is unchanged,

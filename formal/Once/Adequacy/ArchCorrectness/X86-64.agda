@@ -91,7 +91,7 @@ import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 -- threading it from the top means the top-level statement says
 -- "for any program bound" explicitly instead of assuming one into existence.
 -- (`--safe` rejects every postulate, so this is on the critical path too.)
-open IRObsCorrectFlatness {x86-64-frame-semantics} program-bound using (ir-obs-correct; MachineRefinesObsF)
+open IRObsCorrectFlatness {x86-64-frame-semantics} program-bound using (ir-obs-correct; MachineRefinesObsF; ValueRealized)
 
 -- The FlatFromObs bundle at the x86-64 params (concrete machine now VISIBLE).
 ------------------------------------------------------------------------
@@ -400,8 +400,15 @@ entry-inv ir = record
 -- The flat adequacy witness for `ir` at event-count `n`: the flat step-fuel that
 -- `traces-agree` guarantees emits the first `n` events. `flat-trace-of` and
 -- `events-agree` both index the flat trace by exactly this `N`.
+-- D159/D160: `traces-agree` is CHAIN-BOUNDED now — one fuel that emits the
+-- whole chain, with `take k` agreeing for every `k` — so there is no
+-- per-`n` existential left to project. The fuel is the witness's own
+-- `steps`, which is exactly what `flat-trace-of` runs at, so the two sides
+-- match definitionally instead of through a chosen `N`.
 Nof : IR Unit Unit → ℕ → ℕ
-Nof ir n = proj₁ (MachineRefinesObsF.traces-agree (FFOx.entry-witness ir (ir-obs-correct ir)) n)
+Nof ir n =
+  ValueRealized.steps
+    (MachineRefinesObsF.value-realized (FFOx.entry-witness ir (ir-obs-correct ir))) + 0
 
 postulate
   -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel seam (D5),

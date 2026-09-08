@@ -92,7 +92,7 @@ open import Once.Memory.StackSlots using (stack-addr)
 -- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND and so is now a
 -- module PARAMETER threaded from the apex.
 open IRObsCorrectFlatness {rv64-frame-semantics} program-bound
-  using (ir-obs-correct; module MachineRefinesObsF)
+  using (ir-obs-correct; module MachineRefinesObsF; module ValueRealized)
 
 ------------------------------------------------------------------------
 -- THE ENTRY FRAME — CONSTRUCTED (plan 0.65 G3, 2026-08-17).
@@ -288,8 +288,15 @@ entry-inv ir = record
   }
 
 -- the flat step-fuel that `traces-agree` guarantees emits the first `n` events
+-- D159/D160: `traces-agree` is CHAIN-BOUNDED now — one fuel that emits the
+-- whole chain, with `take k` agreeing for every `k` — so there is no
+-- per-`n` existential left to project. The fuel is the witness's own
+-- `steps`, which is exactly what `flat-trace-of` runs at, so the two sides
+-- match definitionally instead of through a chosen `N`.
 Nof : IR Unit Unit → ℕ → ℕ
-Nof ir n = proj₁ (MachineRefinesObsF.traces-agree (FFOr.entry-witness ir (ir-obs-correct ir)) n)
+Nof ir n =
+  ValueRealized.steps
+    (MachineRefinesObsF.value-realized (FFOr.entry-witness ir (ir-obs-correct ir))) + 0
 
 postulate
   -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel
