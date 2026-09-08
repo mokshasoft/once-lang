@@ -155,9 +155,8 @@ d_try'45'lift_64 v0 v1 v2
                      -> case coe v5 of
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                             -> let v8
-                                     = coe
-                                         MAlonzo.Code.Once.Arith.Machine.Recognise.du_recognise'45'body_44
-                                         (coe v6) (coe v0) (coe v2) in
+                                     = MAlonzo.Code.Once.Arith.Machine.Recognise.d_recognise'45'body_74
+                                         (coe v6) (coe v0) (coe v1) (coe v2) in
                                coe
                                  (case coe v8 of
                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
@@ -193,9 +192,8 @@ d_try'45'lift_64 v0 v1 v2
                      -> case coe v5 of
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                             -> let v8
-                                     = coe
-                                         MAlonzo.Code.Once.Arith.Machine.Recognise.du_recognise'45'body'45'float_378
-                                         (coe v6) (coe v0) (coe v2) in
+                                     = MAlonzo.Code.Once.Arith.Machine.Recognise.d_recognise'45'body'45'float_448
+                                         (coe v6) (coe v0) (coe v1) (coe v2) in
                                coe
                                  (case coe v8 of
                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9

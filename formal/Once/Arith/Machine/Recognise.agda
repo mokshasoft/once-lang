@@ -66,15 +66,46 @@ open import Once.Arith.Machine.IR
 -- ordered "rightmost first": `snd ∘ fst` is the path `[Fst, Snd]`.
 --
 -- Returns `nothing` for non-projection morphisms.
-recognise-path : ∀ {A B} → IR A B → Maybe InputPath
-recognise-path id        = just []
-recognise-path fst       = just (Fst ∷ [])
-recognise-path snd       = just (Snd ∷ [])
-recognise-path (f ∘ g)   with recognise-path g | recognise-path f
-... | just pg | just pf  = just (pg ++ pf)
-... | just _  | nothing  = nothing
-... | nothing | _        = nothing
-recognise-path _         = nothing
+-- D163: recognition must see terms UP TO THE CCC LAWS, because the elaborator
+-- no longer hands it normal forms. QTT (plan 0.86) wraps every operand in a
+-- usage restriction — `envˡ` / `envʳ`, i.e. `restrictEnv`, which is `fst` where
+-- a variable is dropped and `⟨ … ∘ fst , snd ⟩` where it is kept. That pair is
+-- not a projection, so the old `recognise-path` returned `nothing` for every
+-- arith operand and NO arith block was ever built again. The bare
+-- `arith.<op>.int` SigOp then reached the emitter as a call to a symbol nothing
+-- defines: 19 exit tests and 119 cabal tests, all `undefined reference`.
+--
+-- The fix is PRODUCT BETA — `fst ∘ ⟨a,b⟩ ≡ a`, `snd ∘ ⟨a,b⟩ ≡ b` — applied
+-- while walking, so an environment reshuffle collapses back to the projection
+-- it denotes. `recognise-path-through` carries the path accumulated SO FAR into
+-- the morphism being applied, which is what lets it choose a component: a pair
+-- consumes one step and recurses into that side. Its indices are free, the
+-- `recognise-binop` trick (a pinned product index is unification-stuck).
+recognise-path         : ∀ {A B} → IR A B → Maybe InputPath
+recognise-path-through : ∀ {A B} → IR A B → InputPath → Maybe InputPath
+
+-- `recognise-path-through m p` is the path of `p ∘ m` — apply `m`, then follow
+-- `p`. Everything is one recursion on that, which is what makes the pair case
+-- expressible: a projection step arriving at `⟨a,b⟩` SELECTS a component
+-- instead of extending the path.
+recognise-path m = recognise-path-through m []
+
+recognise-path-through id  p = just p
+recognise-path-through fst p = just (Fst ∷ p)
+recognise-path-through snd p = just (Snd ∷ p)
+-- product beta: `fst ∘ ⟨a,b⟩ ≡ a`, `snd ∘ ⟨a,b⟩ ≡ b`. This is the case QTT's
+-- `restrictEnv` needs — its "variable kept" shape is exactly `⟨ … ∘ fst , snd ⟩`.
+recognise-path-through (⟨ a , b ⟩) (Fst ∷ p) = recognise-path-through a p
+recognise-path-through (⟨ a , b ⟩) (Snd ∷ p) = recognise-path-through b p
+-- landing ON the pair: a product, not an `Int` leaf.
+recognise-path-through (⟨ a , b ⟩) []        = nothing
+-- `p ∘ (f ∘ g)` = apply g, then f, then p — so `f` consumes `p` and `g`
+-- consumes the result. (`f` may itself be a pair; that is why the recursion
+-- goes through here rather than through `recognise-path`.)
+recognise-path-through (f ∘ g) p with recognise-path-through f p
+... | just pf = recognise-path-through g pf
+... | nothing = nothing
+recognise-path-through _ _ = nothing
 
 ------------------------------------------------------------------------
 -- Arith body recognition (type-agnostic on IR's codomain)
@@ -98,10 +129,25 @@ recognise-binop : (sh : InputShape) → ∀ {X Y} → IR X Y → Maybe (MArithIR
 recognise-binop sh (⟨ a , b ⟩) with recognise-body sh a | recognise-body sh b
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
+-- D163: `⟨a,b⟩ ∘ h ≡ ⟨ a ∘ h , b ∘ h ⟩` — composition distributes over pairing.
+-- QTT hands the operand pair an environment restriction `h`, and pushing it
+-- into the components is what lets each one be recognised on its own.
+recognise-binop sh (⟨ a , b ⟩ ∘ h) with recognise-body sh (a ∘ h) | recognise-body sh (b ∘ h)
+... | just ra | just rb = just (ra , rb)
+... | _       | _       = nothing
 recognise-binop sh _ = nothing
 
 -- Binary/unary-op `SigOp si ∘ e` — dispatch on `name si`; `e` stays GENERIC so
 -- the pair operand is recognised by `recognise-binop` (no stuck product index).
+-- D163: RE-ASSOCIATE FIRST. `∘` is a constructor, so `(f ∘ g) ∘ h` is a
+-- different TERM from `f ∘ (g ∘ h)` even though the CCC law identifies them,
+-- and every clause below matches on the right-nested form. QTT (plan 0.86)
+-- composes a usage restriction onto each operand, and `effApp` composes
+-- another on top, so operands arrive left-nested to arbitrary depth —
+-- `((SigOp fdiv ∘ ⟨…⟩) ∘ envˡ) ∘ envʳ`. One clause, applied repeatedly,
+-- normalises all of it; it strictly reduces left-nesting, so it terminates.
+recognise-body sh ((f ∘ g) ∘ h) = recognise-body sh (f ∘ (g ∘ h))
+
 recognise-body sh (SigOp si ∘ e) with name si ≟ᶜ bare "arith.add.int"
 ... | yes _ with recognise-binop sh e
 ...   | just (ra , rb) = just (aadd ra rb)
@@ -128,6 +174,7 @@ recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ | no _ with name 
 ...             | nothing = nothing
 recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ | no _ | no _ = nothing
 
+
 -- Literal: `const fits-int z _ ∘ rhs` where `rhs` is `terminal`
 -- is the surface elaborator's intLit shape. We test rhs via a
 -- Bool helper to keep the case-tree of `recognise-body` from
@@ -135,9 +182,14 @@ recognise-body sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ | no _ | no _ = n
 -- `out-μ`'s codomain unification).
 recognise-body sh (const fits-int v ∘ rhs) with is-terminal? rhs
   where
+    -- D163: `terminal ∘ h` IS `terminal` — every morphism into `Unit` is, by
+    -- terminality. QTT's `envʳ` composes one on: a literal operand arrives as
+    -- `const v ∘ (terminal ∘ envʳ)`, and refusing it here is what stopped
+    -- `alit` being built.
     is-terminal? : ∀ {X Y} → IR X Y → Bool
-    is-terminal? terminal = true
-    is-terminal? _        = false
+    is-terminal? terminal      = true
+    is-terminal? (terminal ∘ _) = true
+    is-terminal? _             = false
 -- D115: `const`'s payload is a `ℤ` now, and `alit` always took one, so the
 -- `+ v` injection is gone. That injection was itself the symptom — it forced
 -- every recognised literal to be non-negative, which is exactly the
@@ -145,6 +197,7 @@ recognise-body sh (const fits-int v ∘ rhs) with is-terminal? rhs
 ... | true  = just (alit v)
 ... | false = nothing
 recognise-body sh (const fits-float _ ∘ _) = nothing
+
 
 -- Otherwise: try projection-chain. The chain gives an UNTYPED path; `typePath?`
 -- establishes that it lands on an `Int` leaf before an `ainput` can be built.
@@ -179,7 +232,14 @@ recognise-binop-float : (sh : InputShape) → ∀ {X Y} → IR X Y
 recognise-binop-float sh (⟨ a , b ⟩) with recognise-body-float sh a | recognise-body-float sh b
 ... | just ra | just rb = just (ra , rb)
 ... | _       | _       = nothing
+-- D163: distribution, the float twin. See the int version.
+recognise-binop-float sh (⟨ a , b ⟩ ∘ h) with recognise-body-float sh (a ∘ h) | recognise-body-float sh (b ∘ h)
+... | just ra | just rb = just (ra , rb)
+... | _       | _       = nothing
 recognise-binop-float sh _ = nothing
+
+-- D163: re-associate first — the float twin. See the int version.
+recognise-body-float sh ((f ∘ g) ∘ h) = recognise-body-float sh (f ∘ (g ∘ h))
 
 recognise-body-float sh (SigOp si ∘ e) with name si ≟ᶜ bare "arith.add.float"
 ... | yes _ with recognise-binop-float sh e
@@ -205,16 +265,20 @@ recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ with name s
 ...           | nothing = nothing
 recognise-body-float sh (SigOp si ∘ e) | no _ | no _ | no _ | no _ | no _ = nothing
 
+
 -- A float LITERAL. The payload stays a `Decimal` — the one rounding happens at
 -- the backend, at the target's format (D117).
 recognise-body-float sh (const fits-float d ∘ rhs) with is-terminal-f? rhs
   where
+    -- D163: `terminal ∘ h` IS terminal (terminality). See the int twin.
     is-terminal-f? : ∀ {X Y} → IR X Y → Bool
-    is-terminal-f? terminal = true
-    is-terminal-f? _        = false
+    is-terminal-f? terminal       = true
+    is-terminal-f? (terminal ∘ _) = true
+    is-terminal-f? _              = false
 ... | true  = just (aflit d)
 ... | false = nothing
 recognise-body-float sh (const fits-int _ ∘ _) = nothing
+
 
 -- The float twin, and the SAME refusal one type over: a chain landing on an
 -- `Int` leaf is not a float input.
