@@ -36,7 +36,7 @@ open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
 open import Data.Maybe using (just)
-open import Relation.Binary.PropositionalEquality using (_≡_)
+open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
@@ -46,7 +46,8 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap)
+open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap
+  ; blocks-layout; blocks-layout-++; LabelId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
@@ -249,13 +250,14 @@ alloc-min-trace' (⟨ f , g ⟩) n l =
       (tt ∷ tt ∷
        ++⁺ (alloc-min-trace' g _ _)
            (tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
--- the flip: the body is inline here, so the walk recurses into it (one line)
+-- D159 UNFLIPPED THIS: the body is a NAMED BLOCK now, not a splice, so these
+-- clauses are the closure's own five/ten instructions and nothing else. The
+-- recursion into the body moved to `alloc-min-blocks` — where it belongs, and
+-- where the discipline is actually claimed of the emitted body.
 alloc-min-trace' (curry b Stack) n l =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-  ++⁺ (alloc-min-trace' b _ _) (tt ∷ tt ∷ [])
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 alloc-min-trace' (curry b Heap)  n l =
-  tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
-  ++⁺ (alloc-min-trace' b _ _) (tt ∷ tt ∷ [])
+  tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 alloc-min-trace' apply n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
@@ -288,13 +290,79 @@ alloc-min-trace' (const fits-int _)   n l = tt ∷ []
 alloc-min-trace' (const fits-float _) n l = tt ∷ []
 
 ------------------------------------------------------------------------
+-- THE BLOCK CHANNEL (D160). `alloc-min-trace'` covers the ENTRY block; the
+-- linked program is `entry ++ c-ret ∷ blocks-layout bodies`, and the emitted
+-- closure bodies allocate too. Without this the discipline was CLAIMED of the
+-- program and PROVED of its first block — which was invisible only while
+-- `bodies` was always empty.
+------------------------------------------------------------------------
+bodies-of : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
+          → List (LabelId × ℕ × AbstractTrace)
+bodies-of (_ , _ , _ , bs) = bs
+
+bud : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → ℕ
+bud (b , _ , _ , _) = b
+
+lab : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → ℕ
+lab (_ , k , _ , _) = k
+
+alloc-min-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ)
+                 → AllocMinTrace (blocks-layout (bodies-of (ir-to-trace' n l ir)))
+alloc-min-blocks id       n l = []
+alloc-min-blocks fst      n l = []
+alloc-min-blocks snd      n l = []
+alloc-min-blocks terminal n l = []
+alloc-min-blocks initial  n l = []
+alloc-min-blocks apply    n l = []
+alloc-min-blocks (inl Stack) n l = []
+alloc-min-blocks (inr Stack) n l = []
+alloc-min-blocks (inl Heap)  n l = []
+alloc-min-blocks (inr Heap)  n l = []
+alloc-min-blocks (In _ _)   n l = []
+alloc-min-blocks (out-μ _)  n l = []
+alloc-min-blocks (Para _ _) n l = []
+alloc-min-blocks (Out _)    n l = []
+alloc-min-blocks (in-ν _ _) n l = []
+alloc-min-blocks (Ana _ _)  n l = []
+alloc-min-blocks (Hylo _ _ _ _) n l = []
+alloc-min-blocks (Fuse _ _ _ _) n l = []
+alloc-min-blocks (free-heap _)  n l = []
+alloc-min-blocks (SigOp _)      n l = []
+alloc-min-blocks (const fits-int _)   n l = []
+alloc-min-blocks (const fits-float _) n l = []
+-- the closure's block: `c-thunk`, the body, `c-ret` — then the body's own
+alloc-min-blocks (curry b Stack) n l =
+  ++⁺ (tt ∷ ++⁺ (alloc-min-trace' b 0 (suc (suc l))) (tt ∷ []))
+      (alloc-min-blocks b 0 (suc (suc l)))
+alloc-min-blocks (curry b Heap) n l =
+  ++⁺ (tt ∷ ++⁺ (alloc-min-trace' b 0 (suc (suc l))) (tt ∷ []))
+      (alloc-min-blocks b 0 (suc (suc l)))
+alloc-min-blocks (g ∘ f) n l =
+  subst AllocMinTrace (sym (blocks-layout-++ (bodies-of F) (bodies-of G)))
+    (++⁺ (alloc-min-blocks f n l) (alloc-min-blocks g (bud F) (lab F)))
+  where F = ir-to-trace' n l f
+        G = ir-to-trace' (bud F) (lab F) g
+alloc-min-blocks (⟨ f , g ⟩) n l =
+  subst AllocMinTrace (sym (blocks-layout-++ (bodies-of F) (bodies-of G)))
+    (++⁺ (alloc-min-blocks f (suc (suc (suc (suc n)))) l)
+         (alloc-min-blocks g (bud F) (lab F)))
+  where F = ir-to-trace' (suc (suc (suc (suc n)))) l f
+        G = ir-to-trace' (bud F) (lab F) g
+alloc-min-blocks (case f g) n l =
+  subst AllocMinTrace (sym (blocks-layout-++ (bodies-of F) (bodies-of G)))
+    (++⁺ (alloc-min-blocks f n (suc (suc l))) (alloc-min-blocks g (bud F) (lab F)))
+  where F = ir-to-trace' n (suc (suc l)) f
+        G = ir-to-trace' (bud F) (lab F) g
+alloc-min-blocks (Cata {F} _ alg) n l = alloc-min-blocks alg 0 l
+
+------------------------------------------------------------------------
 -- Corollaries over the public entry points, and the fetch form the
 -- flat↔x86-64 correspondence consumes.
 ------------------------------------------------------------------------
 alloc-min-at-frontier : ∀ {A B} (ir : IR A B) (n : ℕ)
                       → AllocMinTrace (ir-to-trace-at-frontier n ir)
-alloc-min-at-frontier ir n with ir-to-trace' n 0 ir | alloc-min-trace' ir n 0
-... | _ , _ , _ , _ | am = am
+alloc-min-at-frontier ir n =
+  ++⁺ (alloc-min-trace' ir n 0) (tt ∷ alloc-min-blocks ir n 0)
 
 ir-to-trace-alloc-min : ∀ {A B} (ir : IR A B) → AllocMinTrace (ir-to-trace ir)
 ir-to-trace-alloc-min ir = alloc-min-at-frontier ir 0

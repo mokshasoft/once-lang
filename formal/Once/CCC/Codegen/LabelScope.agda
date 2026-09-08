@@ -74,7 +74,7 @@ open import Once.CCC.Codegen.SlotBudget o using
   (fetch-at; seg-at; SegState; seg-idle?; idle-seg-at
   ; seg-at-++ˡ; seg-at-++ʳ; fetch-++ˡ; fetch-++ʳ; split-pos; seg-fold
   ; idle-neutral; seg-fold-++; idle-++; visit-idle; rebuild-idle
-  ; ok-neu; slots-below; budget-of; mkSeg; cur; saved; seg-step)
+  ; ok-neu; slots-below; budget-of; bodies-of; mkSeg; cur; saved; seg-step)
 
 ------------------------------------------------------------------------
 -- The `once`-namespace label an instruction mentions.
@@ -1294,12 +1294,116 @@ segagree-curry H body ℓ bb e a b' c d idle ls natl saB lsB we b'≤c p q m st 
 -- copy of the algebra there is no longer an alternation to classify, and the
 -- windows those witnesses carried moved here unchanged.
 ------------------------------------------------------------------------
-cata-nat-agree : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace)
-               → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
-               → SegAgree (cata-trace-of (cata-dispatch strat-nat bb n1 l1 at))
-cata-nat-agree lo bb n1 l1 at natl saB lsB =
-  segagree-curry H at (ℓ o bodyL) bb (ℓ o endL) l1 hi lo l1
-    refl H-ls natl saB lsB (L7 , H7) (inj₂ ≤-refl)
+------------------------------------------------------------------------
+-- D160: THE BLOCK SIDE OF SCOPING.
+--
+-- `link` places the named blocks AFTER the entry's terminator, so what the
+-- top level needs is `SegAgree (entry ++ c-ret b ∷ blocks-layout bodies)` —
+-- and everything above covers only the entry half. What follows is the other
+-- half, plus the splice hypothesis that joins them.
+--
+-- WHY `NoCross` AND NOT WINDOWS. A body's labels are drawn from INSIDE its
+-- parent's counter range (`curry` hands the body `l+2` and takes the body's
+-- final counter as its own), so `entry` and `blocks-layout bodies` are never
+-- window-separated. `NoCross` is the fact that is actually true: no label
+-- MENTIONED on one side is `c-label`-DEFINED on the other. At a composite it
+-- comes from the sub-IRs' own `NoCross` recursively, plus window disjointness
+-- ACROSS the two sub-IRs — `f`'s labels sit below `g`'s in both channels.
+--
+-- Carried as ONE record through ONE induction: four separate walks over the
+-- 29 constructors would be four copies of the same case split.
+------------------------------------------------------------------------
+
+-- a label-free trace mentions nothing, at any position
+nolab-men : ∀ (t : AbstractTrace) (r : ℕ) (m : LabelId)
+          → NoLab t → mention-at t r ≡ just m → ⊥
+nolab-men []       r       m _        ()
+nolab-men (i ∷ is) zero    m (e ∷ _)  eq = nothing≢just (trans (sym e) eq)
+  where nothing≢just : ∀ {k : LabelId} → nothing ≡ just k → ⊥
+        nothing≢just ()
+nolab-men (i ∷ is) (suc r) m (_ ∷ xs) eq = nolab-men is r m xs eq
+
+-- a DEFINITION is also a mention
+def-men : ∀ (t : AbstractTrace) (s : ℕ) (m : LabelId)
+        → fetch-at t s ≡ just (instr-ctrl (c-label m)) → mention-at t s ≡ just m
+def-men t s m e rewrite e = refl
+
+nocross-nolabˡ : ∀ (t u : AbstractTrace) → NoLab t → NoCross t u
+nocross-nolabˡ t u nl m r s mr _ = nolab-men t r m nl mr
+
+nocross-nolabʳ : ∀ (t u : AbstractTrace) → NoLab u → NoCross t u
+nocross-nolabʳ t u nl m r s _ ls = nolab-men u s m nl (def-men u s m ls)
+
+-- disjoint WINDOWS are one way to supply `NoCross` (D159): the way every
+-- composite has, ACROSS its two sub-IRs.
+nocross-win : ∀ (t u : AbstractTrace) (a b c d : ℕ)
+            → LabelsIn a b t → LabelsIn c d u
+            → (b ≤ c) ⊎ (d ≤ a) → NoCross t u
+nocross-win t u a b c d lt lu disj m r s mr ls =
+  clash (win-at a b t lt r m mr) (win-at c d u lu s m (def-men u s m ls))
+  where
+    clash : (a ≤ idx m) × (idx m < b) → (c ≤ idx m) × (idx m < d) → ⊥
+    clash (a≤ , <b) (c≤ , <d) = dis disj
+      where dis : (b ≤ c) ⊎ (d ≤ a) → ⊥
+            dis (inj₁ b≤c) = <-asym <b (≤-trans b≤c c≤)
+            dis (inj₂ d≤a) = <-asym <d (≤-trans d≤a a≤)
+
+-- `NoCross` IS closed under `++` on both sides — that is what makes it the
+-- composable form and `SegAgree` not (D159).
+nocross-++ˡ : ∀ (t1 t2 u : AbstractTrace)
+            → NoCross t1 u → NoCross t2 u → NoCross (t1 ++ t2) u
+nocross-++ˡ t1 t2 u nc1 nc2 m r s mr ls = go (split-pos t1 r)
+  where
+    go : (r < length t1) ⊎ (Σ ℕ (λ k → r ≡ length t1 + k)) → ⊥
+    go (inj₁ lt) = nc1 m r s (trans (sym (cong mention-of (fetch-++ˡ t1 t2 r lt))) mr) ls
+    go (inj₂ (k , eq)) =
+      nc2 m k s (trans (sym (cong mention-of (fetch-++ʳ t1 t2 k)))
+                       (subst (λ z → mention-at (t1 ++ t2) z ≡ just m) eq mr)) ls
+
+nocross-++ʳ : ∀ (t u1 u2 : AbstractTrace)
+            → NoCross t u1 → NoCross t u2 → NoCross t (u1 ++ u2)
+nocross-++ʳ t u1 u2 nc1 nc2 m r s mr ls = go (split-pos u1 s)
+  where
+    go : (s < length u1) ⊎ (Σ ℕ (λ k → s ≡ length u1 + k)) → ⊥
+    go (inj₁ lt) = nc1 m r s mr (trans (sym (fetch-++ˡ u1 u2 s lt)) ls)
+    go (inj₂ (k , eq)) =
+      nc2 m r k mr (trans (sym (fetch-++ʳ u1 u2 k))
+                       (subst (λ z → fetch-at (u1 ++ u2) z
+                                     ≡ just (instr-ctrl (c-label m))) eq ls))
+
+nocross-nil-r : ∀ (t : AbstractTrace) → NoCross t []
+nocross-nil-r t = nocross-nolabʳ t [] []
+
+nocross-nil-l : ∀ (t : AbstractTrace) → NoCross [] t
+nocross-nil-l t = nocross-nolabˡ [] t []
+
+-- D160: THE SKELETON DECOMPOSITION, EXTRACTED.
+--
+-- Every strategy's trace is `curry`'s shape — a skeleton `Hs`, then the
+-- algebra in a `c-thunk`/`c-ret` bracket with the join label after it — and
+-- each `cata-*-agree` below used to REDISCOVER that inside its own
+-- `where`-block on the way to `segagree-curry`. The block side (D160) needs
+-- the very same decomposition for `NoCross`, so it becomes the RESULT: one
+-- record per strategy, and every consumer is one application of it.
+record CataSplit (bb l1 : ℕ) (at t : AbstractTrace) : Set where
+  constructor mkSplit
+  field
+    Hs     : AbstractTrace
+    thℓ    : LabelId
+    endℓ   : LabelId
+    hi     : ℕ
+    shape  : Hs ++ instr-ctrl (c-thunk thℓ bb) ∷
+             (at ++ instr-ctrl (c-ret bb) ∷ instr-ctrl (c-label endℓ) ∷ []) ≡ t
+    H-idle : seg-idle? Hs ≡ true
+    H-ls   : LabelsIn l1 hi Hs
+    e-win  : (l1 ≤ idx endℓ) × (idx endℓ < hi)
+-- (NOT opened at top level: `hi` / `H-ls` / `H-idle` are also the
+-- `where`-block names inside each strategy's split, below.)
+
+cata-nat-split : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace)
+               → CataSplit bb l1 at (cata-trace-of (cata-dispatch strat-nat bb n1 l1 at))
+cata-nat-split bb n1 l1 at =
+  mkSplit H (ℓ o bodyL) (ℓ o endL) hi refl refl H-ls (L7 , H7)
   where
     hi    = suc (suc (suc (suc (suc (suc (suc (suc l1)))))))
     bodyL = suc (suc (suc (suc (suc (suc l1)))))
@@ -1369,12 +1473,10 @@ cata-nat-agree lo bb n1 l1 at natl saB lsB =
         (++⁺ I₂ (++⁺ (cata-call-ls l1 hi _ _ _)
          (++⁺ I₃ (li-lab refl L7 H7 ∷ []))))))
 
-cata-lin-agree : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace)
-               → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
-               → SegAgree (cata-trace-of (cata-dispatch strat-linear bb n1 l1 at))
-cata-lin-agree lo bb n1 l1 at natl saB lsB =
-  segagree-curry H at (ℓ o bodyL) bb (ℓ o endL) l1 hi lo l1
-    refl H-ls natl saB lsB (L5 , H5) (inj₂ ≤-refl)
+cata-lin-split : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace)
+               → CataSplit bb l1 at (cata-trace-of (cata-dispatch strat-linear bb n1 l1 at))
+cata-lin-split bb n1 l1 at =
+  mkSplit H (ℓ o bodyL) (ℓ o endL) hi refl refl H-ls (L5 , H5)
   where
     hi    = suc (suc (suc (suc (suc (suc l1)))))
     bodyL = suc (suc (suc (suc l1)))
@@ -1440,13 +1542,10 @@ cata-lin-agree lo bb n1 l1 at natl saB lsB =
 -- Tier 2 calls the algebra ONCE, so its `H` has one call site. The functor
 -- walks are stuck on `F`, so `H ++ body` is NOT definitionally the emitted
 -- trace here — one `++-assoc` at `cata-br-I₁` is the whole difference.
-cata-br-agree : ∀ (F : Functor) (lo bb n1 l1 : ℕ) (at : AbstractTrace)
-              → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
-              → SegAgree (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))
-cata-br-agree F lo bb n1 l1 at natl saB lsB =
-  subst SegAgree assoc
-    (segagree-curry H at (ℓ o bodyL) bb (ℓ o endL) l1 hi2 lo l1
-      H-idle H-ls natl saB lsB (Lend , Hend) (inj₂ ≤-refl))
+cata-br-split : ∀ (F : Functor) (bb n1 l1 : ℕ) (at : AbstractTrace)
+              → CataSplit bb l1 at (cata-trace-of (cata-dispatch (strat-branching F) bb n1 l1 at))
+cata-br-split F bb n1 l1 at =
+  mkSplit H (ℓ o bodyL) (ℓ o endL) hi2 assoc H-idle H-ls (Lend , Hend)
   where
     lv  = l1 + 4
     lr  = lv + lsize F
@@ -1536,12 +1635,10 @@ cata-br-agree F lo bb n1 l1 at natl saB lsB =
 
 -- `strat-const`'s trace is setup ++ call ++ the body bracket: no loop at all,
 -- so `H` is just the two blocks and the jump over the body.
-cata-const-agree : ∀ (lo bb n1 l1 : ℕ) (at : AbstractTrace)
-                 → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
-                 → SegAgree (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
-cata-const-agree lo bb n1 l1 at natl saB lsB =
-  segagree-curry H at (ℓ o l1) bb (ℓ o endL) l1 hi lo l1
-    refl H-ls natl saB lsB (Lend , Hend) (inj₂ ≤-refl)
+cata-const-split : ∀ (bb n1 l1 : ℕ) (at : AbstractTrace)
+                 → CataSplit bb l1 at (cata-trace-of (cata-dispatch strat-const bb n1 l1 at))
+cata-const-split bb n1 l1 at =
+  mkSplit H (ℓ o l1) (ℓ o endL) hi refl refl H-ls (Lend , Hend)
   where
     hi   = l1 + 2
     endL = l1 + 1
@@ -1556,13 +1653,64 @@ cata-const-agree lo bb n1 l1 at natl saB lsB =
                (++⁺ (cata-call-ls l1 hi n1 (n1 + 1) (n1 + 3))
                     (li-lab refl Lend Hend ∷ []))
 
+cata-split : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace)
+           → CataSplit bb l1 at (cata-trace-of (cata-dispatch st bb n1 l1 at))
+cata-split strat-const         bb n1 l1 at = cata-const-split bb n1 l1 at
+cata-split strat-nat           bb n1 l1 at = cata-nat-split   bb n1 l1 at
+cata-split strat-linear        bb n1 l1 at = cata-lin-split   bb n1 l1 at
+cata-split (strat-branching F) bb n1 l1 at = cata-br-split  F bb n1 l1 at
+
+-- Every consumer of a skeleton is now ONE application of its split.
+split-agree : ∀ {bb l1 : ℕ} {at t : AbstractTrace} (sp : CataSplit bb l1 at t) (lo : ℕ)
+            → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
+            → SegAgree t
+split-agree {bb} {l1} {at} sp lo natl saB lsB =
+  subst SegAgree (CataSplit.shape sp)
+    (segagree-curry (CataSplit.Hs sp) at (CataSplit.thℓ sp) bb (CataSplit.endℓ sp)
+      l1 (CataSplit.hi sp) lo l1
+      (CataSplit.H-idle sp) (CataSplit.H-ls sp) natl saB lsB
+      (CataSplit.e-win sp) (inj₂ ≤-refl))
+
+-- …and so is the block side. The skeleton's own labels sit in `[l1, hi)`,
+-- ABOVE the algebra's `[lo, l1)` — so every piece but the algebra is settled
+-- by windows, and the algebra's piece is exactly the sub-IR's hypothesis.
+split-nc-l : ∀ {bb l1 : ℕ} {at t : AbstractTrace} (sp : CataSplit bb l1 at t)
+             (u : AbstractTrace) (lo : ℕ)
+           → LabelsIn lo l1 u → NoCross at u → NoCross t u
+split-nc-l {bb} {l1} {at} sp u lo lu nc =
+  subst (λ z → NoCross z u) (CataSplit.shape sp)
+    (nocross-++ˡ (CataSplit.Hs sp) _ u
+      (nocross-win (CataSplit.Hs sp) u l1 (CataSplit.hi sp) lo l1
+                   (CataSplit.H-ls sp) lu (inj₂ ≤-refl))
+      (nocross-++ˡ (instr-ctrl (c-thunk (CataSplit.thℓ sp) bb) ∷ []) _ u
+        (nocross-nolabˡ _ u (refl ∷ []))
+        (nocross-++ˡ at _ u nc
+          (nocross-win _ u l1 (CataSplit.hi sp) lo l1
+            (li-none refl ∷
+             li-lab refl (proj₁ (CataSplit.e-win sp)) (proj₂ (CataSplit.e-win sp)) ∷ [])
+            lu (inj₂ ≤-refl)))))
+
+split-nc-r : ∀ {bb l1 : ℕ} {at t : AbstractTrace} (sp : CataSplit bb l1 at t)
+             (u : AbstractTrace) (lo : ℕ)
+           → LabelsIn lo l1 u → NoCross u at → NoCross u t
+split-nc-r {bb} {l1} {at} sp u lo lu nc =
+  subst (λ z → NoCross u z) (CataSplit.shape sp)
+    (nocross-++ʳ u (CataSplit.Hs sp) _
+      (nocross-win u (CataSplit.Hs sp) lo l1 l1 (CataSplit.hi sp)
+                   lu (CataSplit.H-ls sp) (inj₁ ≤-refl))
+      (nocross-++ʳ u (instr-ctrl (c-thunk (CataSplit.thℓ sp) bb) ∷ []) _
+        (nocross-nolabʳ u _ (refl ∷ []))
+        (nocross-++ʳ u at _ nc
+          (nocross-win u _ lo l1 l1 (CataSplit.hi sp) lu
+            (li-none refl ∷
+             li-lab refl (proj₁ (CataSplit.e-win sp)) (proj₂ (CataSplit.e-win sp)) ∷ [])
+            (inj₁ ≤-refl)))))
+
 cata-agree : ∀ (st : CataStrategy) (lo bb n1 l1 : ℕ) (at : AbstractTrace)
            → (∀ s → seg-fold at s ≡ s) → SegAgree at → LabelsIn lo l1 at
            → SegAgree (cata-trace-of (cata-dispatch st bb n1 l1 at))
-cata-agree strat-const         lo bb n1 l1 at natl saB lsB = cata-const-agree lo bb n1 l1 at natl saB lsB
-cata-agree strat-nat           lo bb n1 l1 at natl saB lsB = cata-nat-agree lo bb n1 l1 at natl saB lsB
-cata-agree strat-linear        lo bb n1 l1 at natl saB lsB = cata-lin-agree lo bb n1 l1 at natl saB lsB
-cata-agree (strat-branching F) lo bb n1 l1 at natl saB lsB = cata-br-agree F lo bb n1 l1 at natl saB lsB
+cata-agree st lo bb n1 l1 at natl saB lsB =
+  split-agree (cata-split st bb n1 l1 at) lo natl saB lsB
 
 ------------------------------------------------------------------------
 -- THE INDUCTION. Every clause has its tool: leaves have an EMPTY label range,
@@ -1687,6 +1835,372 @@ pair-agree-heap f g n l =
     restH = li-none refl ∷ li-none refl ∷
             ++⁺ (labels-in g nf lf) (ls-weaken (label-mono g nf lf) ≤-refl tailH)
 
+
+------------------------------------------------------------------------
+-- D160: THE BLOCK CHANNEL, PROVED.
+--
+-- `seg-agree` above covers the ENTRY block. `link` puts the named blocks
+-- after it, so the linked program needs three more facts about
+-- `blocks-layout (bodies-of …)` — its label window, its own `SegAgree`, and
+-- `NoCross` in both directions against the entry — and each one's induction
+-- would case-split the same 29 constructors. They travel together, in one
+-- record, through one walk.
+------------------------------------------------------------------------
+record ScopeOK (t : AbstractTrace) (bs : List (LabelId × ℕ × AbstractTrace))
+               (lo hi : ℕ) : Set where
+  constructor mkScope
+  field
+    bl-in    : LabelsIn lo hi (blocks-layout bs)
+    bl-agree : SegAgree (blocks-layout bs)
+    nc-eb    : NoCross t (blocks-layout bs)
+    nc-be    : NoCross (blocks-layout bs) t
+
+-- the 23 constructors that emit no block at all
+scope-nil : ∀ (t : AbstractTrace) (lo hi : ℕ) → ScopeOK t [] lo hi
+scope-nil t lo hi =
+  mkScope [] (segagree-nolab [] []) (nocross-nil-r t) (nocross-nil-l t)
+
+-- a label-free entry (the closure clauses) never crosses ANY block channel
+scope-nolab : ∀ (t : AbstractTrace) (bs : List (LabelId × ℕ × AbstractTrace)) (lo hi : ℕ)
+            → NoLab t
+            → LabelsIn lo hi (blocks-layout bs) → SegAgree (blocks-layout bs)
+            → ScopeOK t bs lo hi
+scope-nolab t bs lo hi nl li sa =
+  mkScope li sa (nocross-nolabˡ t (blocks-layout bs) nl)
+                (nocross-nolabʳ (blocks-layout bs) t nl)
+
+scope-ok : ∀ {A B} (ir : IR A B) (n l : ℕ)
+         → ScopeOK (trace-of (ir-to-trace' n l ir))
+                   (bodies-of (ir-to-trace' n l ir))
+                   l (label-of (ir-to-trace' n l ir))
+curry-bl-in : ∀ {X C} (bd : IR X C) (n l : ℕ)
+            → LabelsIn l (label-of (ir-to-trace' 0 (suc (suc l)) bd))
+                (blocks-layout ((ℓ o l , budget-of (ir-to-trace' 0 (suc (suc l)) bd)
+                                , trace-of (ir-to-trace' 0 (suc (suc l)) bd))
+                                ∷ bodies-of (ir-to-trace' 0 (suc (suc l)) bd)))
+curry-bl-agree : ∀ {X C} (bd : IR X C) (n l : ℕ)
+               → SegAgree (blocks-layout
+                   ((ℓ o l , budget-of (ir-to-trace' 0 (suc (suc l)) bd)
+                           , trace-of (ir-to-trace' 0 (suc (suc l)) bd))
+                    ∷ bodies-of (ir-to-trace' 0 (suc (suc l)) bd)))
+
+scope-ok id                  n l = scope-nil _ _ _
+scope-ok fst                 n l = scope-nil _ _ _
+scope-ok snd                 n l = scope-nil _ _ _
+scope-ok terminal            n l = scope-nil _ _ _
+scope-ok initial             n l = scope-nil _ _ _
+scope-ok apply               n l = scope-nil _ _ _
+scope-ok (inl Stack)         n l = scope-nil _ _ _
+scope-ok (inr Stack)         n l = scope-nil _ _ _
+scope-ok (inl Heap)          n l = scope-nil _ _ _
+scope-ok (inr Heap)          n l = scope-nil _ _ _
+scope-ok (In _ _)            n l = scope-nil _ _ _
+scope-ok (out-μ _)           n l = scope-nil _ _ _
+scope-ok (Para _ _)          n l = scope-nil _ _ _
+scope-ok (Out _)             n l = scope-nil _ _ _
+scope-ok (in-ν _ _)          n l = scope-nil _ _ _
+scope-ok (Ana _ _)           n l = scope-nil _ _ _
+scope-ok (Hylo _ _ _ _)      n l = scope-nil _ _ _
+scope-ok (Fuse _ _ _ _)      n l = scope-nil _ _ _
+scope-ok (free-heap _)       n l = scope-nil _ _ _
+scope-ok (SigOp _)           n l = scope-nil _ _ _
+scope-ok (const fits-int _)  n l = scope-nil _ _ _
+scope-ok (const fits-float _) n l = scope-nil _ _ _
+
+-- ── the closure clauses: the body IS the block, and the entry has no label
+scope-ok (curry bd Stack) n l =
+  scope-nolab _ _ l _
+    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+    (curry-bl-in bd n l) (curry-bl-agree bd n l)
+scope-ok (curry bd Heap) n l =
+  scope-nolab _ _ l _
+    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+    (curry-bl-in bd n l) (curry-bl-agree bd n l)
+
+scope-ok (g ∘ f) n l = mkScope blin blagr nceb ncbe
+  where
+    F  = ir-to-trace' n l f
+    G  = ir-to-trace' (budget-of F) (label-of F) g
+    ft = trace-of F  ; fb = bodies-of F ; BF = blocks-layout fb
+    gt = trace-of G  ; gb = bodies-of G ; BG = blocks-layout gb
+    lf = label-of F  ; lg = label-of G
+    Sf = scope-ok f n l
+    Sg = scope-ok g (budget-of F) lf
+    eq : blocks-layout (fb ++ gb) ≡ BF ++ BG
+    eq = blocks-layout-++ fb gb
+    l≤lf  = label-mono f n l
+    lf≤lg = label-mono g (budget-of F) lf
+    blin : LabelsIn l lg (blocks-layout (fb ++ gb))
+    blin = subst (LabelsIn l lg) (sym eq)
+             (++⁺ (ls-weaken ≤-refl lf≤lg (ScopeOK.bl-in Sf))
+                  (ls-weaken l≤lf ≤-refl (ScopeOK.bl-in Sg)))
+    blagr : SegAgree (blocks-layout (fb ++ gb))
+    blagr = subst SegAgree (sym eq)
+              (segagree-++' BF BG l lf lf lg (ScopeOK.bl-in Sf) (ScopeOK.bl-in Sg)
+                 (inj₁ ≤-refl) (ScopeOK.bl-agree Sf) (ScopeOK.bl-agree Sg))
+    ncf : NoCross ft (BF ++ BG)
+    ncf = nocross-++ʳ ft BF BG (ScopeOK.nc-eb Sf)
+            (nocross-win ft BG l lf lf lg (labels-in f n l) (ScopeOK.bl-in Sg) (inj₁ ≤-refl))
+    ncg : NoCross gt (BF ++ BG)
+    ncg = nocross-++ʳ gt BF BG
+            (nocross-win gt BF lf lg l lf (labels-in g (budget-of F) lf)
+                         (ScopeOK.bl-in Sf) (inj₂ ≤-refl))
+            (ScopeOK.nc-eb Sg)
+    nbf : NoCross BF (ft ++ mov-to-input ∷ gt)
+    nbf = nocross-++ʳ BF ft (mov-to-input ∷ gt) (ScopeOK.nc-be Sf)
+            (nocross-++ʳ BF (mov-to-input ∷ []) gt
+              (nocross-nolabʳ BF _ (refl ∷ []))
+              (nocross-win BF gt l lf lf lg (ScopeOK.bl-in Sf)
+                           (labels-in g (budget-of F) lf) (inj₁ ≤-refl)))
+    nbg : NoCross BG (ft ++ mov-to-input ∷ gt)
+    nbg = nocross-++ʳ BG ft (mov-to-input ∷ gt)
+            (nocross-win BG ft lf lg l lf (ScopeOK.bl-in Sg) (labels-in f n l) (inj₂ ≤-refl))
+            (nocross-++ʳ BG (mov-to-input ∷ []) gt
+              (nocross-nolabʳ BG _ (refl ∷ [])) (ScopeOK.nc-be Sg))
+    nceb : NoCross (ft ++ mov-to-input ∷ gt) (blocks-layout (fb ++ gb))
+    nceb = subst (NoCross (ft ++ mov-to-input ∷ gt)) (sym eq)
+             (nocross-++ˡ ft (mov-to-input ∷ gt) (BF ++ BG) ncf
+               (nocross-++ˡ (mov-to-input ∷ []) gt (BF ++ BG)
+                 (nocross-nolabˡ _ (BF ++ BG) (refl ∷ [])) ncg))
+    ncbe : NoCross (blocks-layout (fb ++ gb)) (ft ++ mov-to-input ∷ gt)
+    ncbe = subst (λ z → NoCross z (ft ++ mov-to-input ∷ gt)) (sym eq)
+             (nocross-++ˡ BF BG (ft ++ mov-to-input ∷ gt) nbf nbg)
+
+scope-ok (⟨ f , g ⟩) n l = mkScope blin blagr nceb ncbe
+  where
+    F  = ir-to-trace' (suc (suc (suc (suc n)))) l f
+    G  = ir-to-trace' (budget-of F) (label-of F) g
+    ft = trace-of F  ; fb = bodies-of F ; BF = blocks-layout fb
+    gt = trace-of G  ; gb = bodies-of G ; BG = blocks-layout gb
+    lf = label-of F  ; lg = label-of G
+    Sf = scope-ok f (suc (suc (suc (suc n)))) l
+    Sg = scope-ok g (budget-of F) lf
+    eq : blocks-layout (fb ++ gb) ≡ BF ++ BG
+    eq = blocks-layout-++ fb gb
+    l≤lf  = label-mono f (suc (suc (suc (suc n)))) l
+    lf≤lg = label-mono g (budget-of F) lf
+    pre  = mov-to-output ∷ store-at-slot n ∷ []
+    mid  = store-at-slot (suc n) ∷ restore-input n ∷ []
+    tail = store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
+           store-at-slot (suc (suc (suc n))) ∷ mov-to-input ∷
+           load-from-slot (suc n) ∷ store-indirect ∷
+           load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
+           load-from-slot (suc (suc (suc n))) ∷ []
+    E = pre ++ (ft ++ (mid ++ (gt ++ tail)))
+    blin : LabelsIn l lg (blocks-layout (fb ++ gb))
+    blin = subst (LabelsIn l lg) (sym eq)
+             (++⁺ (ls-weaken ≤-refl lf≤lg (ScopeOK.bl-in Sf))
+                  (ls-weaken l≤lf ≤-refl (ScopeOK.bl-in Sg)))
+    blagr : SegAgree (blocks-layout (fb ++ gb))
+    blagr = subst SegAgree (sym eq)
+              (segagree-++' BF BG l lf lf lg (ScopeOK.bl-in Sf) (ScopeOK.bl-in Sg)
+                 (inj₁ ≤-refl) (ScopeOK.bl-agree Sf) (ScopeOK.bl-agree Sg))
+    preN : NoLab pre
+    preN = refl ∷ refl ∷ []
+    midN : NoLab mid
+    midN = refl ∷ refl ∷ []
+    tailN : NoLab tail
+    tailN = refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []
+    ncf : NoCross ft (BF ++ BG)
+    ncf = nocross-++ʳ ft BF BG (ScopeOK.nc-eb Sf)
+            (nocross-win ft BG l lf lf lg (labels-in f _ l) (ScopeOK.bl-in Sg) (inj₁ ≤-refl))
+    ncg : NoCross gt (BF ++ BG)
+    ncg = nocross-++ʳ gt BF BG
+            (nocross-win gt BF lf lg l lf (labels-in g (budget-of F) lf)
+                         (ScopeOK.bl-in Sf) (inj₂ ≤-refl))
+            (ScopeOK.nc-eb Sg)
+    s4 = gt ++ tail
+    s3 = mid ++ s4
+    s2 = ft ++ s3
+    nb : ∀ (U : AbstractTrace) → NoCross U ft → NoCross U gt → NoCross U E
+    nb U cf cg =
+      nocross-++ʳ U pre s2 (nocross-nolabʳ U pre preN)
+        (nocross-++ʳ U ft s3 cf
+          (nocross-++ʳ U mid s4 (nocross-nolabʳ U mid midN)
+            (nocross-++ʳ U gt tail cg (nocross-nolabʳ U tail tailN))))
+    nceb : NoCross E (blocks-layout (fb ++ gb))
+    nceb = subst (NoCross E) (sym eq)
+             (nocross-++ˡ pre s2 (BF ++ BG) (nocross-nolabˡ pre (BF ++ BG) preN)
+               (nocross-++ˡ ft s3 (BF ++ BG) ncf
+                 (nocross-++ˡ mid s4 (BF ++ BG) (nocross-nolabˡ mid (BF ++ BG) midN)
+                   (nocross-++ˡ gt tail (BF ++ BG) ncg
+                     (nocross-nolabˡ tail (BF ++ BG) tailN)))))
+    ncbe : NoCross (blocks-layout (fb ++ gb)) E
+    ncbe = subst (λ z → NoCross z E) (sym eq)
+             (nocross-++ˡ BF BG E
+               (nb BF (ScopeOK.nc-be Sf)
+                      (nocross-win BF gt l lf lf lg (ScopeOK.bl-in Sf)
+                                   (labels-in g (budget-of F) lf) (inj₁ ≤-refl)))
+               (nb BG (nocross-win BG ft lf lg l lf (ScopeOK.bl-in Sg)
+                                   (labels-in f _ l) (inj₂ ≤-refl))
+                      (ScopeOK.nc-be Sg)))
+
+scope-ok (case f g) n l = mkScope blin blagr nceb ncbe
+  where
+    l2 = suc (suc l)
+    F  = ir-to-trace' n l2 f
+    G  = ir-to-trace' (budget-of F) (label-of F) g
+    ft = trace-of F  ; fb = bodies-of F ; BF = blocks-layout fb
+    gt = trace-of G  ; gb = bodies-of G ; BG = blocks-layout gb
+    lf = label-of F  ; lg = label-of G
+    Sf = scope-ok f n l2
+    Sg = scope-ok g (budget-of F) lf
+    eq : blocks-layout (fb ++ gb) ≡ BF ++ BG
+    eq = blocks-layout-++ fb gb
+    l2≤lf = label-mono f n l2
+    lf≤lg = label-mono g (budget-of F) lf
+    l≤l2 : l ≤ l2
+    l≤l2 = ≤-step (n≤1+n l)
+    l2≤lg = ≤-trans l2≤lf lf≤lg
+    p1 = instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ load-indirect-suc ∷ mov-to-input ∷ []
+    p3 = instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷
+         load-indirect-suc ∷ mov-to-input ∷ []
+    p5 = instr-ctrl (c-label (ℓ o (suc l))) ∷ []
+    E = p1 ++ (gt ++ (p3 ++ (ft ++ p5)))
+    p1L : LabelsIn l l2 p1
+    p1L = li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷ li-none refl ∷ li-none refl ∷ []
+    p3L : LabelsIn l l2 p3
+    p3L = li-lab refl (n≤1+n l) ≤-refl ∷ li-lab refl ≤-refl (s≤s (n≤1+n l)) ∷
+          li-none refl ∷ li-none refl ∷ []
+    p5L : LabelsIn l l2 p5
+    p5L = li-lab refl (n≤1+n l) ≤-refl ∷ []
+    blin : LabelsIn l lg (blocks-layout (fb ++ gb))
+    blin = subst (LabelsIn l lg) (sym eq)
+             (++⁺ (ls-weaken l≤l2 lf≤lg (ScopeOK.bl-in Sf))
+                  (ls-weaken (≤-trans l≤l2 l2≤lf) ≤-refl (ScopeOK.bl-in Sg)))
+    blagr : SegAgree (blocks-layout (fb ++ gb))
+    blagr = subst SegAgree (sym eq)
+              (segagree-++' BF BG l2 lf lf lg (ScopeOK.bl-in Sf) (ScopeOK.bl-in Sg)
+                 (inj₁ ≤-refl) (ScopeOK.bl-agree Sf) (ScopeOK.bl-agree Sg))
+    -- the four glue labels are `l` / `suc l`; every block sits at `suc (suc l)`
+    -- or above, so the glue is settled by the window alone.
+    glueL : ∀ (p : AbstractTrace) → LabelsIn l l2 p → NoCross p (BF ++ BG)
+    glueL p pL =
+      nocross-++ʳ p BF BG
+        (nocross-win p BF l l2 l2 lf pL (ScopeOK.bl-in Sf) (inj₁ ≤-refl))
+        (nocross-win p BG l l2 lf lg pL (ScopeOK.bl-in Sg) (inj₁ (≤-trans ≤-refl l2≤lf)))
+    glueR : ∀ (U : AbstractTrace) (a b : ℕ) → LabelsIn a b U → l2 ≤ a
+          → ∀ (p : AbstractTrace) → LabelsIn l l2 p → NoCross U p
+    glueR U a b uL le p pL = nocross-win U p a b l l2 uL pL (inj₂ le)
+    ncf : NoCross ft (BF ++ BG)
+    ncf = nocross-++ʳ ft BF BG (ScopeOK.nc-eb Sf)
+            (nocross-win ft BG l2 lf lf lg (labels-in f n l2) (ScopeOK.bl-in Sg) (inj₁ ≤-refl))
+    ncg : NoCross gt (BF ++ BG)
+    ncg = nocross-++ʳ gt BF BG
+            (nocross-win gt BF lf lg l2 lf (labels-in g (budget-of F) lf)
+                         (ScopeOK.bl-in Sf) (inj₂ ≤-refl))
+            (ScopeOK.nc-eb Sg)
+    q4 = ft ++ p5
+    q3 = p3 ++ q4
+    q2 = gt ++ q3
+    nb : ∀ (U : AbstractTrace) (a b : ℕ) → LabelsIn a b U → l2 ≤ a
+       → NoCross U ft → NoCross U gt → NoCross U E
+    nb U a b uL le cf cg =
+      nocross-++ʳ U p1 q2 (glueR U a b uL le p1 p1L)
+        (nocross-++ʳ U gt q3 cg
+          (nocross-++ʳ U p3 q4 (glueR U a b uL le p3 p3L)
+            (nocross-++ʳ U ft p5 cf (glueR U a b uL le p5 p5L))))
+    nceb : NoCross E (blocks-layout (fb ++ gb))
+    nceb = subst (NoCross E) (sym eq)
+             (nocross-++ˡ p1 q2 (BF ++ BG) (glueL p1 p1L)
+               (nocross-++ˡ gt q3 (BF ++ BG) ncg
+                 (nocross-++ˡ p3 q4 (BF ++ BG) (glueL p3 p3L)
+                   (nocross-++ˡ ft p5 (BF ++ BG) ncf (glueL p5 p5L)))))
+    ncbe : NoCross (blocks-layout (fb ++ gb)) E
+    ncbe = subst (λ z → NoCross z E) (sym eq)
+             (nocross-++ˡ BF BG E
+               (nb BF l2 lf (ScopeOK.bl-in Sf) ≤-refl (ScopeOK.nc-be Sf)
+                   (nocross-win BF gt l2 lf lf lg (ScopeOK.bl-in Sf)
+                                (labels-in g (budget-of F) lf) (inj₁ ≤-refl)))
+               (nb BG lf lg (ScopeOK.bl-in Sg) l2≤lf
+                   (nocross-win BG ft lf lg l2 lf (ScopeOK.bl-in Sg)
+                                (labels-in f n l2) (inj₂ ≤-refl))
+                   (ScopeOK.nc-be Sg)))
+
+scope-ok (Cata {F} _ alg) n l = mkScope blin blagr nceb ncbe
+  where
+    A  = ir-to-trace' 0 l alg
+    bb = budget-of A ; l1 = label-of A ; at = trace-of A
+    ab = bodies-of A ; AB = blocks-layout ab
+    st = cata-strategy ⌈ F ⌉F
+    sp = cata-split st bb n l1 at
+    Sa = scope-ok alg 0 l
+    l1≤l2 = cata-label-mono st bb n l1 at
+    blin : LabelsIn l (cata-label-of (cata-dispatch st bb n l1 at)) AB
+    blin = ls-weaken ≤-refl l1≤l2 (ScopeOK.bl-in Sa)
+    blagr : SegAgree AB
+    blagr = ScopeOK.bl-agree Sa
+    nceb = split-nc-l sp AB l (ScopeOK.bl-in Sa) (ScopeOK.nc-eb Sa)
+    ncbe = split-nc-r sp AB l (ScopeOK.bl-in Sa) (ScopeOK.nc-be Sa)
+
+
+------------------------------------------------------------------------
+-- The closure body's own block, spelled once for both modes. Its window is
+-- the BODY's `[l+2, l2)`, and its `SegAgree` is the first place the splice
+-- hypothesis is spent: the body's trace and the body's OWN blocks share a
+-- window, so only `NoCross` can join them.
+------------------------------------------------------------------------
+curry-bl-in bd n l =
+  ++⁺ (li-none refl ∷ ++⁺ (ls-weaken lo≤2 ≤-refl (labels-in bd 0 (suc (suc l))))
+                          (li-none refl ∷ []))
+      (ls-weaken lo≤2 ≤-refl (ScopeOK.bl-in (scope-ok bd 0 (suc (suc l)))))
+  where lo≤2 : l ≤ suc (suc l)
+        lo≤2 = ≤-step (n≤1+n l)
+
+curry-bl-agree bd n l =
+  segagree-++ⁿ blk BB nc1 nc2 blkA (ScopeOK.bl-agree S)
+  where
+    l2' = suc (suc l)
+    D   = ir-to-trace' 0 l2' bd
+    bt  = trace-of D ; bb = budget-of D ; hi = label-of D
+    S   = scope-ok bd 0 l2'
+    BB  = blocks-layout (bodies-of D)
+    tl  = instr-ctrl (c-ret bb) ∷ []
+    blk = instr-ctrl (c-thunk (ℓ o l) bb) ∷ (bt ++ tl)
+    btL : LabelsIn l2' hi (bt ++ tl)
+    btL = ++⁺ (labels-in bd 0 l2') (li-none refl ∷ [])
+    btA : SegAgree (bt ++ tl)
+    btA = segagree-++' bt tl l2' hi 0 0
+            (labels-in bd 0 l2') (nolab-any 0 tl (refl ∷ [])) (inj₂ z≤n)
+            (seg-agree bd 0 l2') (segagree-nolab tl (refl ∷ []))
+    blkA : SegAgree blk
+    blkA = segagree-pre (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) l2' l2' hi
+             (refl ∷ []) btL ≤-refl btA
+    nc1 : NoCross blk BB
+    nc1 = nocross-++ˡ (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) (bt ++ tl) BB
+            (nocross-nolabˡ _ BB (refl ∷ []))
+            (nocross-++ˡ bt tl BB (ScopeOK.nc-eb S) (nocross-nolabˡ tl BB (refl ∷ [])))
+    nc2 : NoCross BB blk
+    nc2 = nocross-++ʳ BB (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) (bt ++ tl)
+            (nocross-nolabʳ BB _ (refl ∷ []))
+            (nocross-++ʳ BB bt tl (ScopeOK.nc-be S) (nocross-nolabʳ BB tl (refl ∷ [])))
+
+
+------------------------------------------------------------------------
+-- D160: THE LINKED PROGRAM AGREES.
+--
+-- `link` is `entry ++ c-ret ∷ blocks-layout bodies`, so the two halves are
+-- spliced by `segagree-++ⁿ` — the ONE combinator whose hypothesis `link` can
+-- actually supply. Windows could not do it: the bodies' labels are drawn from
+-- inside the entry's range. `NoCross` in both directions is what
+-- `scope-ok` carries, and this is what it was carried for.
+------------------------------------------------------------------------
+linked-agree : ∀ {A B} (ir : IR A B) → SegAgree (ir-to-trace ir)
+linked-agree ir =
+  segagree-++ⁿ E TL
+    (nocross-++ʳ E RT BL (nocross-nolabʳ E RT (refl ∷ [])) (ScopeOK.nc-eb S))
+    (nocross-++ˡ RT BL E (nocross-nolabˡ RT E (refl ∷ [])) (ScopeOK.nc-be S))
+    (seg-agree ir 0 0)
+    (segagree-pre RT 0 0 L (refl ∷ []) (ScopeOK.bl-in S) z≤n (ScopeOK.bl-agree S))
+  where
+    T  = ir-to-trace' 0 0 ir
+    E  = trace-of T
+    L  = label-of T
+    S  = scope-ok ir 0 0
+    BL = blocks-layout (bodies-of T)
+    RT = instr-ctrl (c-ret (budget-of T)) ∷ []
+    TL = instr-ctrl (c-ret (budget-of T)) ∷ BL
+
 ------------------------------------------------------------------------
 -- THE TOP-LEVEL STATEMENT (Plan 0.63, obligation (iii)).
 --
@@ -1713,13 +2227,10 @@ module _ {FS : FrameSemantics} where
                           → mention-at (ir-to-trace ir) p ≡ just m
                           → find-label (ir-to-trace ir) m ≡ just q
                           → seg-at (ir-to-trace ir) q st ≡ seg-at (ir-to-trace ir) p st
+  -- D160: over the LINKED program (`entry ++ c-ret ∷ blocks`), not the entry
+  -- block alone. `find-label` scans the whole thing, so a jump could in
+  -- principle land inside a body; `linked-agree` is why it cannot.
   emitted-jump-in-segment ir p q m st mq fl =
-    at-top ir p q m st mq (trans (sym (fetch≡at (ir-to-trace ir) q))
-                                 (find-label-lands (ir-to-trace ir) m q fl))
-    where
-      at-top : ∀ {A B} (ir' : IR A B) (p' q' : ℕ) (m' : LabelId) (st' : SegState)
-             → mention-at (ir-to-trace ir') p' ≡ just m'
-             → fetch-at (ir-to-trace ir') q' ≡ just (instr-ctrl (c-label m'))
-             → seg-at (ir-to-trace ir') q' st' ≡ seg-at (ir-to-trace ir') p' st'
-      at-top ir' p' q' m' st' a b with ir-to-trace' 0 0 ir' | seg-agree ir' 0 0
-      ... | _ , _ , _ , _ | sa = sa p' q' m' st' a b
+    linked-agree ir p q m st mq
+      (trans (sym (fetch≡at (ir-to-trace ir) q))
+             (find-label-lands (ir-to-trace ir) m q fl))

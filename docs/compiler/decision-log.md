@@ -11858,3 +11858,85 @@ an offset unrelated to `apply`'s, so no single placement maps both.
     offset within a BLOCK — from a global quantity to a local one, which is why
     fragment-local statements become possible at all.
   * `apply ∘ curry body` closes for free: the union contains the body's block.
+
+## D160
+
+**LABEL SCOPING COVERS THE LINKED PROGRAM, AND THE HYPOTHESIS THAT MAKES THE
+TWO HALVES COMPOSE IS `NoCross`, NOT DISJOINT WINDOWS.**
+
+### The obligation D159 created
+
+D159 made the emitter produce a `CompUnit` and `link` the single placement:
+
+    ir-to-trace ir = entry u ++ instr-ctrl (c-ret (entry-budget u)) ∷
+                     blocks-layout (blocks u)
+
+Every whole-program invariant then had to be re-stated over *that*, not over
+the entry block. `LabelScope`'s was the last one outstanding:
+`emitted-jump-in-segment` says a jump lands in the segment it left, and
+`find-label` scans the WHOLE linked program — so a jump in the entry could, as
+far as the old proof knew, land on a `c-label` inside a closure body. The old
+proof discharged it with `seg-agree ir 0 0`, which is `SegAgree` of the ENTRY
+BLOCK, applied to a goal about the program.
+
+### Why windows cannot close it
+
+`SegAgree` composes over `++` only when the two halves' label windows are
+disjoint (`segagree-++'`). `link` cannot supply that. A closure body's labels
+are drawn from INSIDE its parent's counter range — `curry` at `l` hands the
+body `l+2` and adopts the body's final counter as its own — so the entry's
+window and the blocks' window always overlap, at every composite.
+
+What is true is weaker and sufficient: **no label MENTIONED on one side is
+`c-label`-DEFINED on the other.**
+
+    NoCross t1 t2 = ∀ m r s → mention-at t1 r ≡ just m
+                  → fetch-at t2 s ≡ just (instr-ctrl (c-label m)) → ⊥
+
+Disjoint windows are ONE WAY to supply `NoCross`; they are not the fact.
+`segagree-++ⁿ` takes the fact. And unlike `SegAgree`, `NoCross` IS closed under
+`++` on both sides (`nocross-++ˡ` / `nocross-++ʳ`), which is what makes it the
+composable form.
+
+### The shape of the proof
+
+One record through one walk, rather than four walks over the same 29
+constructors:
+
+    record ScopeOK (t : AbstractTrace) (bs : Blocks) (lo hi : ℕ) : Set where
+      field bl-in    : LabelsIn lo hi (blocks-layout bs)
+            bl-agree : SegAgree (blocks-layout bs)
+            nc-eb    : NoCross t (blocks-layout bs)
+            nc-be    : NoCross (blocks-layout bs) t
+
+    scope-ok : ∀ ir n l → ScopeOK (trace-of …) (bodies-of …) l (label-of …)
+    linked-agree : ∀ ir → SegAgree (ir-to-trace ir)
+
+Each case spends what it has: the 22 block-free constructors are `scope-nil`;
+the two `curry` clauses have a LABEL-FREE entry (D082 — `c-thunk` and
+`instr-load-code-addr` carry thunk provenance, not `once` labels), so both
+`NoCross` directions are immediate, and it is inside the body's own block that
+the hypothesis is first spent — the body's trace and the body's blocks share a
+window, so only `NoCross` can join them. The composites (`∘`, `⟨_,_⟩`, `case`,
+`Cata`) get theirs from the sub-IRs' `NoCross` recursively PLUS window
+disjointness across the two sub-IRs, which is the one place windows do work:
+`f`'s labels sit below `g`'s in both the entry and the block channel.
+
+### `CataSplit`: the skeleton decomposition became a result
+
+Every cata strategy's trace is `curry`'s shape —
+
+    Hs ++ c-thunk thℓ bb ∷ (at ++ c-ret bb ∷ c-label endℓ ∷ [])
+
+— and each `cata-*-agree` used to REDISCOVER that inside its own `where`-block
+on the way to `segagree-curry`. The block side needs the identical
+decomposition for `NoCross`, so it is now the RESULT of the four strategy
+lemmas (`cata-*-split : CataSplit …`) and every consumer — `split-agree`,
+`split-nc-l`, `split-nc-r` — is one application of it. A shared node-extractor,
+not three copies of a case split.
+
+### Consequence
+
+`emitted-jump-in-segment` is now proved over `ir-to-trace ir` — the linked
+program including its blocks — with no new residual. `LabelScope` was the last
+red module from D159's `link` change.

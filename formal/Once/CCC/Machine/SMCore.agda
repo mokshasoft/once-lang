@@ -34,6 +34,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; sym; trans; subst; inspect; [_])
+open import Data.List.Properties using (++-assoc)
 open import Relation.Nullary using (Dec; yes; no)
 
 -- Import FrameSemantics for Frame type
@@ -1286,6 +1287,16 @@ block-layout (lbl , b , t) =
 blocks-layout : List (LabelId × ℕ × AbstractTrace) → AbstractTrace
 blocks-layout []       = []
 blocks-layout (b ∷ bs) = block-layout b ++ blocks-layout bs
+
+-- The block channel is a `++`-homomorphism: every composite emitter clause
+-- concatenates its sub-IRs' block lists, and every whole-program walk over
+-- `blocks-layout` needs to follow that split (D160).
+blocks-layout-++ : ∀ (bs cs : List (LabelId × ℕ × AbstractTrace))
+                 → blocks-layout (bs ++ cs) ≡ blocks-layout bs ++ blocks-layout cs
+blocks-layout-++ []       cs = refl
+blocks-layout-++ (b ∷ bs) cs =
+  trans (cong (block-layout b ++_) (blocks-layout-++ bs cs))
+        (sym (++-assoc (block-layout b) (blocks-layout bs) (blocks-layout cs)))
 
 -- THE PLACEMENT, and the only one. Mirrors `Compile.agda`'s
 -- `asm ++ functionEpilogue ++ bodies`: the entry block, ITS TERMINATOR, then
