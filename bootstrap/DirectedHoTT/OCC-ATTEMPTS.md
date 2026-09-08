@@ -283,3 +283,43 @@ signature.
    can be bisected directly instead of hypothesised. ⚠ Do not propose a
    fifth mechanism before that diff is read — this file's record on
    mechanisms is 0 for 4.
+
+
+## The `Hom` bisection (attempts 20–24)
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 20 | `cTm-app` — TWO fields, BOTH at depth `D` | ✅ **rc=0**.  Separates the two confounded variables: `Π` passes with `sTy@D, sTy@sucD`, `app` passes with `sTm@D, sTm@D` ⇒ "two fields at the same depth" is NOT the problem |
+| 21 | SPIKE (`tmp/CastSpike.agda`): the n=3 CAST CHAIN standalone | ✅ rc=0 — the one component previously verified only by SHAPE |
+| 22 | regenerate `Hom` cleanly (earlier splices were suspect) | ⚠ same `extR vs x₁ != vs x₁` ⇒ NOT a splice artifact |
+| 23 | SPIKE 5 (`tmp/OccSpike5.agda`): `occSum-red` with `ihs` AND the result `n` both PINNED | ✅ rc=0 at three fields.  Closes spike 19's gap — 19 left `n` a meta, so Agda never had to compute the `occOp` chain |
+| 24 | inspect the generated `aih` for `Hom` directly | ⚠ index peels are IDENTICAL across slots 0,1,2 — and correctly so: `σ_j (vs^j vz)` resolves to `i` at every `j`, so one `βsnd` each |
+
+★★★ **THE BISECTION IS EXHAUSTIVE AND THE FAULT IS STILL NOT LOCATED.**
+
+| component | isolated? | verdict |
+|---|---|---|
+| slot peels 0,1,2 | ✅ spike 18 | sound |
+| `occSum-red`, abstract | ✅ spike 14 | sound |
+| `occSum-red`, concrete `ihs` | ✅ spike 19 | sound |
+| `occSum-red`, `ihs` AND `n` pinned | ✅ spike 23 | sound |
+| n=3 cast chain | ✅ spike 21 | sound |
+| 2 fields @ `D`+`sucD` (`Π`) | ✅ real row | passes |
+| 2 fields @ `D`+`D` (`app`) | ✅ real row | passes |
+| 3 fields (`Hom`) | — | **FAILS** |
+
+⇒ every part is sound in isolation and the composition is not. The only
+thing spike 23 does not do that the row does is CONSTRUCT the `AllIH`
+(spike 23 receives it as a parameter). ⇒ the fault is in building the
+three-deep `aih-ρ` chain, at the point where slot 2's IH proof is checked
+against the child that `iihs` produces at σ-depth 2.
+
+⬜ **NEXT — the one isolation not yet run:** build the `AllIH` for
+   `cTy-Hom` standalone, with the generated peels and the three IHs as
+   PARAMETERS, and no head-red, no cast, no `occSum-red`. That is the
+   exact gap between spike 23 (passes) and the row (fails), and it is the
+   last unbisected step.
+
+⚠ FIVE MECHANISMS HAVE NOW BEEN PROPOSED AND REFUTED.  Do not propose a
+  sixth.  Run the isolation above; if it passes, the fault is in the `»`
+  join to the head-red and nowhere else, which is a two-line surface.
