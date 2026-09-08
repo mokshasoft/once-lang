@@ -1279,6 +1279,22 @@ record CompUnit : Set where
     blocks       : List (LabelId × ℕ × AbstractTrace)
 open CompUnit public
 
+block-layout : LabelId × ℕ × AbstractTrace → AbstractTrace
+block-layout (lbl , b , t) =
+  instr-ctrl (c-thunk lbl b) ∷ t ++ instr-ctrl (c-ret b) ∷ []
+
+blocks-layout : List (LabelId × ℕ × AbstractTrace) → AbstractTrace
+blocks-layout []       = []
+blocks-layout (b ∷ bs) = block-layout b ++ blocks-layout bs
+
+-- THE PLACEMENT, and the only one. Mirrors `Compile.agda`'s
+-- `asm ++ functionEpilogue ++ bodies`: the entry block, ITS TERMINATOR, then
+-- the named blocks. The terminator is what the abstract trace never had — it
+-- ended by falling off, which is only correct while nothing follows it.
+link : CompUnit → AbstractTrace
+link u = entry u ++ instr-ctrl (c-ret (entry-budget u)) ∷ blocks-layout (blocks u)
+
+
 ------------------------------------------------------------------------
 -- Tree-Structured Traces (OCP-0003)
 --

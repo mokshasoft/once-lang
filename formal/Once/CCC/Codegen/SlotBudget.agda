@@ -58,6 +58,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   free-heap; SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.CCC.Machine.SMCore using (blocks-layout)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; Slot; lea-slot;
    mov-to-output; mov-to-input; store-at-slot; load-from-slot;
@@ -66,8 +67,7 @@ open import Once.CCC.Machine.SMCore using
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
-   -- D159: the placement and its pieces
-   blocks-layout; block-layout; link; ir-to-unit; entry; entry-budget; blocks;
+   ir-to-unit;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; fsize; lsize;
    push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-nat-layer

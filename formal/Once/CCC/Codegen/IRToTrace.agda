@@ -95,8 +95,11 @@ import Once.Type as Ty
 
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace;
-         -- D159/Phase B: the program type lives with the machine
+         -- D159/Phase B: the program type AND its placement live with the
+         -- machine — `exec-flat` runs a unit, so both must be visible below
+         -- this module.
          CompUnit; unit; entry-budget; entry; blocks;
+         block-layout; blocks-layout; link;
          mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot;
          store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
@@ -1042,20 +1045,10 @@ ir-to-unit = ir-to-unit-at 0 0
 -- A block, placed: its `c-thunk` marker carries the frame budget and it ends
 -- in `c-ret` — the abstract mirror of `emit-thunk-body`'s
 -- `.L_thunk_<lbl>: subq … / body / addq … / ret`.
-block-layout : LabelId × ℕ × AbstractTrace → AbstractTrace
-block-layout (lbl , b , t) =
-  instr-ctrl (c-thunk lbl b) ∷ t ++ instr-ctrl (c-ret b) ∷ []
-
-blocks-layout : List (LabelId × ℕ × AbstractTrace) → AbstractTrace
-blocks-layout []       = []
-blocks-layout (b ∷ bs) = block-layout b ++ blocks-layout bs
-
--- THE PLACEMENT, and the only one. Mirrors `Compile.agda`'s
--- `asm ++ functionEpilogue ++ bodies`: the entry block, ITS TERMINATOR, then
--- the named blocks. The terminator is what the abstract trace never had — it
--- ended by falling off, which is only correct while nothing follows it.
-link : CompUnit → AbstractTrace
-link u = entry u ++ instr-ctrl (c-ret (entry-budget u)) ∷ blocks-layout (blocks u)
+-- D159/Phase B: `block-layout` / `blocks-layout` / `link` moved DOWN to
+-- `Machine.SMCore`. Re-keying blocks by `LabelId` removed their last use of
+-- `o` (the layout no longer applies `ℓ o`), and the MACHINE needs them: a unit
+-- is what `exec-flat` runs, so the placement must be visible below the emitter.
 
 ir-to-trace : ∀ {A B} → IR A B → AbstractTrace
 ir-to-trace ir = link (ir-to-unit ir)
