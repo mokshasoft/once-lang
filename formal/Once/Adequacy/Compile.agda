@@ -48,7 +48,7 @@ open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 
 open import Once.Denotation.Behavior using (Source; Behavior)
 open import Once.Adequacy.SourceTrace
-  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv)
+  using (⟦_⟧; ⟦⟧-via-module; moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv)
 
 -- Plan 0.49 (route 3): the INDEPENDENT surface denotation `SD.⟦_⟧ˢ` (over the
 -- intrinsically-typed `Expr`, NOT through the compiler's `evalᴰ ∘ moduleToIR`),
@@ -211,11 +211,37 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     -- general trap — a precondition attached to a trust point stays behind when
     -- the trust point moves. The apex supplies this one (`program-labels-
     -- distinct`), so `correct` gains no hypothesis.
+    -- D165 — AND THE RHS IS THE PROGRAM ACTUALLY EMITTED. It used to be
+    -- `flat-trace (moduleToIR m)`, the flat machine on the RAW IR, while `asm`
+    -- is built from `rewrite-ir (directCallIR …)`. So this field was relating
+    -- TWO DIFFERENT PROGRAMS and silently asserting the arith-lifting pass
+    -- preserved meaning — compiler logic inside a toolchain axiom, which is
+    -- D161's fault one level up. The pass is now named (`moduleToIR-emitted`)
+    -- and its preservation is `rewrite-preserves` below, so what THIS field
+    -- trusts is only the assembler/loader/printer round trip.
     asm-trace-correct :
       ∀ (m : P.Module) (asm : String) →
       C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
       DistinctLabels arch m →
-      ∀ (n : ℕ) → asm-sem asm n ≡ flat-trace (moduleToIR m) n
+      ∀ (n : ℕ) → asm-sem asm n ≡ flat-trace (moduleToIR-emitted m) n
+    -- D165 — THE ARITH PASS PRESERVES THE FLAT TRACE. Split out of
+    -- `asm-trace-correct`, where it was invisible.
+    --
+    -- NOT trivial, and not merely about events: `rewrite-ir` replaces a
+    -- recognised arith subtree by one `arith.block.<digest>` SigOp, so the
+    -- block's VALUE must equal the subtree's — an arith result flows into an
+    -- observable SigOp's argument (`exit (f 20)`), and a wrong value is a
+    -- different trace. The event lists agree only because arith SigOps are
+    -- pure (Plan 0.25/0.26) and neither side emits.
+    --
+    -- A NAMED RESIDUAL, class **deferred proof / codegen**. It was ALWAYS being
+    -- assumed; it is now countable, and it is the obligation that would have
+    -- made D163's silent recogniser failure a type error rather than a link
+    -- error — a pass that stops firing must still be trace-equal, and one that
+    -- fires wrongly cannot be.
+    rewrite-preserves :
+      ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (n : ℕ)
+      → flat-trace (map-rewrite mir) n ≡ flat-trace mir n
     -- the flat machine's SigOp trace of a compiled IR equals its `obs`.
     -- D113: at THIS arch's float format. The record is already indexed by
     -- `arch`, so the obligation sharpens without changing shape — the flat
@@ -351,10 +377,13 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
     ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR (arch-numerics arch) n
+  -- D165: three steps now, not two — the middle one is the arith pass, which
+  -- used to be folded into the first.
   codegen-asm-correct arch m asm eq n =
     trans (ArchCorrect.asm-trace-correct (arch-correct arch) m asm eq
              (program-labels-distinct arch m) n)
-          (ArchCorrect.ir-flat-correct  (arch-correct arch) (moduleToIR m) n)
+    (trans (ArchCorrect.rewrite-preserves (arch-correct arch) (moduleToIR m) n)
+           (ArchCorrect.ir-flat-correct  (arch-correct arch) (moduleToIR m) n))
 
   -- Stage 2 — asm trace = SOURCE trace. With `⟦_⟧M = ⟦ moduleToIR m ⟧IR`
   -- (D059/D060: the source meaning IS the denotational `evalᴰ`), this is

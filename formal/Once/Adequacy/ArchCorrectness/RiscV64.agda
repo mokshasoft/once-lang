@@ -61,7 +61,7 @@ open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.CPU using (riscv64; arch-semantics)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
-open import Once.Adequacy.SourceTrace using (moduleToIR)
+open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted)
 open import Once.CCC.Target.RiscV64.FrameInstantiation using (rv64-frame-semantics)
 open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace)
@@ -136,7 +136,7 @@ postulate
     ∀ (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false riscv64 m ≡ C.Built asm →
     DistinctLabels riscv64 m →
-    ∀ (n : ℕ) → FFOr.asm-sem asm n ≡ conc-trace (moduleToIR m) n
+    ∀ (n : ℕ) → FFOr.asm-sem asm n ≡ conc-trace (moduleToIR-emitted m) n
 
 ------------------------------------------------------------------------
 -- THE ENGINE, APPLIED. riscv64's `ConcFlatSim` takes the twelve resource bounds
@@ -354,7 +354,7 @@ riscv64-conc-flat-sim (just ir) n = conc-flat-sim-just ir n
 asm-trace-correct-riscv64 : FFOr.AsmTraceCorrect (FFOr.flat-trace-of ir-obs-correct)
 asm-trace-correct-riscv64 m asm eq dl n =
   trans (riscv64-loader-faithful m asm eq dl n)
-        (riscv64-conc-flat-sim (moduleToIR m) n)
+        (riscv64-conc-flat-sim (moduleToIR-emitted m) n)
 
 riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
 riscv64-correct =

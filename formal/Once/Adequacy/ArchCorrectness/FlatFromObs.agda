@@ -86,7 +86,7 @@ open import Once.IR using (IR; Unit; AllocMode; Stack)
 open import Once.IR.Size using (ir-size)
 open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.Compile using (ArchCorrect)
-open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
+open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR)
 open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Data.List.Properties using (++-identityʳ)
@@ -277,7 +277,10 @@ AsmTraceCorrect ft =
   ∀ (m : P.Module) (asm : String) →
   C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
   DistinctLabels arch m →
-  ∀ (n : ℕ) → asm-sem asm n ≡ ft (moduleToIR m) n
+  -- D165: the EMITTED IR — `rewrite-ir`-lifted, which is what the text was
+  -- generated from. Was `moduleToIR m`, the raw IR, which made this shape
+  -- relate two different programs.
+  ∀ (n : ℕ) → asm-sem asm n ≡ ft (moduleToIR-emitted m) n
 
 ------------------------------------------------------------------------
 -- `ir-flat-correct` — PROVED from `traces-agree` (was a postulate).
@@ -303,6 +306,23 @@ ir-flat-correct-of ioc (just ir) n =
 -- The constructed ArchCorrect record — now CONSUMING `ir-obs-correct`.
 ------------------------------------------------------------------------
 
+-- D165 — THE ARITH PASS PRESERVES THE FLAT TRACE.
+--
+-- `rewrite-ir` swaps a recognised arith subtree for one `arith.block.<digest>`
+-- SigOp. Both sides emit nothing (arith SigOps are pure, Plan 0.25/0.26), so
+-- the EVENT lists agree; what has real content is that the block's VALUE
+-- equals the subtree's, because an arith result reaches an observable SigOp's
+-- argument and a wrong value is a different trace.
+--
+-- Postulated HERE rather than left inside `asm-trace-correct`: it is compiler
+-- logic, not toolchain trust, and it is the obligation D163's regression walked
+-- through. Class **deferred proof / codegen**.
+postulate
+  rewrite-preserves-of :
+    (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+    → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
+    → flat-trace-of ioc (map-rewrite mir) n ≡ flat-trace-of ioc mir n
+
 flat-from-obs :
   (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
   → AsmTraceCorrect (flat-trace-of ioc)
@@ -312,6 +332,9 @@ flat-from-obs ioc atc = record
   ; flat-trace        = flat-trace-of ioc
   ; assemble-correct  = λ _ _ _ _ _ → refl
   ; asm-trace-correct = atc
+  -- D165: a NAMED RESIDUAL — the arith pass preserves the flat trace. It was
+  -- previously folded into `asm-trace-correct`'s two mismatched sides.
+  ; rewrite-preserves = rewrite-preserves-of ioc
   -- the one place `fmt-agree` is spent
   ; ir-flat-correct   = λ mir n →
       subst (λ F → flat-trace-of ioc mir n ≡ ⟦ mir ⟧IR F n)

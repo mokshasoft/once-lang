@@ -50,6 +50,10 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
+-- D165: the arith-block lifting the BACKEND runs before codegen. Imported here
+-- so the IR the emitter actually compiles can be NAMED (`moduleToIR-emitted`).
+open import Once.Arith.Machine.Rewrite using (rewrite-ir)
+open import Data.Product using (proj₁)
 -- Plan 0.52: pull the LEXER+PARSER into the verified front-end — `srcToModule`
 -- runs the executable `parseStrict` on the source TEXT (a front-end bug reds the
 -- apex via `Once.Adequacy.FrontEndBridge`). Plan 0.51: and then the resolver, so
@@ -120,6 +124,32 @@ moduleToIR-aux (inj₂ funs) = findMain funs
 -- resolution is confined to `srcToModule` below, so those proofs are untouched.
 moduleToIR : P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
 moduleToIR mod = moduleToIR-aux (C.compileResolvedModule C.Heap false mod)
+
+------------------------------------------------------------------------
+-- D165: THE IR THE BACKEND ACTUALLY COMPILES.
+--
+-- `moduleToIR` is `main`'s IR as elaborated. It is NOT what the emitter turns
+-- into text: `compileFunWithTarget` runs `directCallIR` and then `rewrite-ir`
+-- — the arith-block lifting — and codegens the RESULT. At `main` the first is
+-- the identity (`main` is entry-wrapped, so `cfType ≡ Unit`, the non-arrow
+-- clause), so the whole difference is `rewrite-ir`.
+--
+-- That difference sat INSIDE `ArchCorrect.asm-trace-correct`, whose two sides
+-- were the emitted text (rewritten) and the flat machine on the raw IR — so a
+-- toolchain axiom was also asserting "and the arith pass preserved the
+-- meaning", which is compiler logic and is not trivially true: lifting must
+-- preserve both the event trace AND the computed values, since an arith result
+-- flows into an observable SigOp's argument. D163's regression lived exactly
+-- there and broke no theorem.
+--
+-- Naming the emitted IR is what lets that assumption be split out and counted.
+------------------------------------------------------------------------
+map-rewrite : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+map-rewrite nothing   = nothing
+map-rewrite (just ir) = just (proj₁ (rewrite-ir ir))
+
+moduleToIR-emitted : P.Module → Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)
+moduleToIR-emitted mod = map-rewrite (moduleToIR mod)
 
 ------------------------------------------------------------------------
 -- IR-level meaning (the source observable).

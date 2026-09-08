@@ -68,7 +68,7 @@ open import Once.Denotation.Behavior using (Behavior)
 open import Once.Adequacy.CPU using (x86-64; arch-semantics)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
-open import Once.Adequacy.SourceTrace using (moduleToIR)
+open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted)
 open import Once.CCC.Target.X86-64.Layout using (InStack; stack-addr)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (X86Frame)
 open import Once.CCC.Target.X86-64.FrameInstantiation using (x86-64-frame-semantics)
@@ -164,7 +164,7 @@ postulate
     ∀ (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false x86-64 m ≡ C.Built asm →
     DistinctLabels x86-64 m →
-    ∀ (n : ℕ) → FFOx.asm-sem asm n ≡ conc-trace (moduleToIR m) n
+    ∀ (n : ℕ) → FFOx.asm-sem asm n ≡ conc-trace (moduleToIR-emitted m) n
 
 -- ── (B) THE SIMULATION, WIRED to the ConcFlatSim assembly.
 -- The apex node `conc-flat-sim-just` is DEFINED via `events-agree`; every gap it
@@ -466,7 +466,7 @@ x86-64-conc-flat-sim (just ir) n = conc-flat-sim-just ir n
 asm-trace-correct-x86-64 : FFOx.AsmTraceCorrect (FFOx.flat-trace-of ir-obs-correct)
 asm-trace-correct-x86-64 m asm eq dl n =
   trans (x86-64-loader-faithful m asm eq dl n)
-        (x86-64-conc-flat-sim (moduleToIR m) n)
+        (x86-64-conc-flat-sim (moduleToIR-emitted m) n)
 
 x86-64-correct : ArchCorrect x86-64 (arch-semantics x86-64)
 x86-64-correct =
