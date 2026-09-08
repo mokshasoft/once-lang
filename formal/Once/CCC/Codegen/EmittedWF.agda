@@ -211,30 +211,54 @@ open EmittedWF public
 --
 -- WHICH SIGOPS OWE AN IMPLEMENTATION. `sem` classifies them (Plan 0.58/D071):
 --
---   * an EFFECT CONTRACT is external — `ld` resolves it against a linked
---     interpretation from `Strata/Interpretations/<mod>.<arch>`, and nothing
---     in this module emits it.
---   * a PROVEN VALUE (`pureV`) is internal, and NOTHING LINKS IT. Its only
---     implementation is the `arith.block.<digest>` body `emitArithBlocks`
---     writes — so a bare internal SigOp surviving to the emitter is a call
---     into thin air.
+--   * an INTERPRETATION's contract is discharged OFF-LINE (D061), and `ld`
+--     resolves its symbol from the linked interpretation object.
+--   * a COMPILER-MINTED one (the arith path) owes the same contract, and its
+--     `impl ⊨ semM` is discharged by being LIFTED into an `arith.block.…`
+--     whose body `emitArithBlocks` writes — so one surviving unlifted reached
+--     codegen with that component undischarged.
 --
 -- That second case is exactly D163: QTT's operand wrappers stopped the arith
 -- recogniser firing, `rewrite-ir` produced no block, and `arith.div.int`
 -- reached the emitter unlifted. 19 exit tests, 119 cabal tests, a green apex.
 ------------------------------------------------------------------------
 
--- The symbols a SigOp invocation OWES this module, by its `sem` (Plan
--- 0.58/D071's three-way split):
+-- WHICH SIGOPS THIS MODULE OWES AN IMPLEMENTATION FOR.
 --
---   `pureV`  — an internal producer. Nothing links it; its only implementation
---              is what this module emits, so its symbol is owed.
---   `emitsV` — external, observable, continues. Linked from an interpretation.
---   `haltsV` — external, observable, terminates. Likewise.
+-- CORRECTED FRAMING (D061/D071, 2026-09-08). An earlier version of this
+-- comment said `pureV` means "an internal producer, so its symbol is owed" —
+-- which is a LINKING story, and restates the very confusion D071 corrected:
+-- SigOp is an FFI/interpretation boundary, and internal definition references
+-- are context projections, never SigOps.
 --
--- So this list is precisely "the symbols the emitted text calls and this
--- module must therefore define", which is what makes the resolvability
--- statement checkable without knowing anything about `Strata`.
+-- D061 is the right frame. A SigOp "escapes CCC structure but not soundness:
+-- it carries a contract (machine semantics `semM` + observable `EffectShape` +
+-- `impl ⊨ semM`) its producer must discharge", and there are two producers:
+--
+--   * an INTERPRETATION discharges its contract OFF-LINE, per (SigOp × target),
+--     proof-or-postulate — all interpretations equal, none special (D061 §2/3).
+--     `ld` resolves its symbol from the linked interpretation object.
+--   * the COMPILER ITSELF mints SigOps for optimisation — the arith path. Those
+--     owe the SAME contract, and their `impl ⊨ semM` is discharged by
+--     `rewrite-ir` lifting the subtree into an `arith.block.<digest>` whose
+--     body `emitArithBlocks` writes (`block-semM`, `PreservesCCCState`).
+--
+-- So `arith.div.int` is NOT contractless — `div-info` carries `div-semM` and
+-- `Pure`. What it lacks on its own is the THIRD component: no target emits an
+-- implementation for it. Lifting is how that is discharged, and D163 is what
+-- happens when lifting silently stops: a SigOp whose `impl ⊨ semM` was never
+-- discharged reaches codegen, and the undefined symbol is the SYMPTOM.
+--
+-- The list below is therefore "SigOps whose implementation THIS module owes",
+-- and the `sem` split is how we tell (an interpretation's contract is an
+-- effect contract; a compiler-minted one is a proven value).
+--
+-- SCOPE, honestly: this reads the split as "pureV ⇒ ours". That holds today
+-- because an interpretation's contract is always `emitsV`/`haltsV` — the core
+-- cannot hold an external's proven value function. A PURE EXTERNAL would
+-- break it, and if one ever becomes expressible the discharge-owner must be
+-- carried explicitly (the `Linkage` field D071 already added, currently
+-- "never read") rather than inferred from `sem`.
 sigop-owed : ∀ {A B} → SigOpInfo A B → List CanonicalName
 sigop-owed {A} {B} si = go (sem si)
   where
