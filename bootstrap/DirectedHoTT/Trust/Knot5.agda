@@ -24,19 +24,19 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot5 where
 
-import DirectedHoTT.Examples.Knot.JudgeWfN
-import DirectedHoTT.Examples.Knot.JudgeWfO
-import DirectedHoTT.Examples.Knot.JudgeWfP
-import DirectedHoTT.Examples.Knot.JudgeWfQ
-import DirectedHoTT.Examples.Knot.JudgeWfR
-import DirectedHoTT.Examples.Knot.JudgeWfS
-import DirectedHoTT.Examples.Knot.JudgeWfT
-import DirectedHoTT.Examples.Knot.JudgeWfU
-import DirectedHoTT.Examples.Knot.JudgeWfV
-import DirectedHoTT.Examples.Knot.JudgeWfW
-import DirectedHoTT.Examples.Knot.JudgeWfX
-import DirectedHoTT.Examples.Knot.JudgeWfY
-import DirectedHoTT.Examples.Knot.JudgeWfZ
+import DirectedHoTT.Examples.Knot.Judge.TyEl
+import DirectedHoTT.Examples.Knot.Judge.TyHom
+import DirectedHoTT.Examples.Knot.Judge.TyIMu
+import DirectedHoTT.Examples.Knot.Judge.TyId
+import DirectedHoTT.Examples.Knot.Judge.TyMu
+import DirectedHoTT.Examples.Knot.Judge.TyNat
+import DirectedHoTT.Examples.Knot.Judge.TyPi
+import DirectedHoTT.Examples.Knot.Judge.TySigma
+import DirectedHoTT.Examples.Knot.Judge.TyU
+import DirectedHoTT.Examples.Knot.Judge.TyUnit
+import DirectedHoTT.Examples.Knot.Judge.Unit
+import DirectedHoTT.Examples.Knot.Judge.Var
+import DirectedHoTT.Examples.Knot.JudgeRows
 import DirectedHoTT.Examples.Knot.KAdapt
 import DirectedHoTT.Examples.Knot.Lookup
 import DirectedHoTT.Examples.Knot.LookupD
