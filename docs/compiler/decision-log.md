@@ -11940,3 +11940,87 @@ not three copies of a case split.
 `emitted-jump-in-segment` is now proved over `ir-to-trace ir` — the linked
 program including its blocks — with no new residual. `LabelScope` was the last
 red module from D159's `link` change.
+
+## D161
+
+**A TOOLCHAIN-TRUST AXIOM MAY NOT CERTIFY COMPILER LOGIC. `link` HAS ONE
+IMPLEMENTATION.**
+
+### The fault
+
+`<arch>-loader-faithful` related two things:
+
+    asm-sem asm     -- the emitted String: compileFunWithTarget builds it as
+                    --   prologue ++ irToAsm ++ functionEpilogue ++ irToBodies
+    conc-trace ir   -- run-trace (compile-trace-cnt o 0 (ir-to-trace ir))
+                    --   …where ir-to-trace = link (ir-to-unit ir)
+
+The right-hand side is the program every theorem is about. The left-hand side
+is a DIFFERENT program, assembled by a hand-written String paste that
+re-implements `link` — entry, then a literal `"    ret\n"`, then the bodies.
+Nothing related the two but the axiom itself.
+
+An axiom is allowed to say "the assembler and loader are faithful". It is not
+allowed to say "and also, this hand-written concatenation equals the placement
+function we proved things about". The second clause is compiler logic, and
+smuggling it in is what let two real defects live:
+
+* **The thunk symbol (D160).** `emit-thunk-body` rendered `".L_thunk_" ++
+  showNat lbl`; every reference rendered `showLabelId`, which carries the
+  CanonicalName path D089 added so a label and its owner read as one identity.
+  Definition `.L_thunk_10`, reference `.L_thunk_once_4main_10`, on all three
+  targets. The agreement was asserted in a COMMENT in `X86-64/Emit.agda`.
+* **riscv64's calling convention.** `emit-thunk-body` allocates `slots b + 8`
+  and spills `ra` into its own frame. `compile-abstract`'s `c-thunk` has since
+  2026-08-16 used CALLER-RESERVES: allocate `slots b`, spill into the caller's
+  word. While `ir-to-bodies` was always `[]` the emitter path was dead and this
+  did not matter; D159 gave blocks a real existence and the emitted callee was
+  suddenly on a different convention from its proved caller.
+
+Both are the same structural fault wearing different clothes. Neither is a
+codegen typo, and no amount of testing the codegen would have located the
+cause — only narrowing the axiom does.
+
+### The decision
+
+The emitter renders the LINKED program and nothing else.
+
+    ir-to-linked-from : ℕ → IR A B → ℕ × AbstractTrace
+    ir-to-linked-from l ir = … , link (unit b t bs)
+
+* every `irToAsm` takes it;
+* the hand-written teardowns go — the trailing `addq`/`addl`, riscv64's
+  `ld ra`/`addi sp`, and `functionEpilogue`'s `ret` — because `c-ret`'s
+  lowering is character-for-character what they pasted on;
+* `irToBodies` is DELETED: the `Target` record field, all three
+  implementations, and `emit-thunk-body` with them;
+* `labels-def` runs over the linked program, so `c-thunk` definitions finally
+  appear in D100's distinctness list. They never had — the claim that the
+  emitted local labels are distinct did not cover the very labels whose
+  duplication caused the 2026-08-06 `already defined` regression.
+
+`asm` is now by construction `programToText` of the lowered program, so the
+axiom certifies only `assemble` and `exec-bytes`.
+
+### Why this shape, and not a test
+
+D160's symbol fix (one `thunkSym`, one `labelSym`) closes the string-drift
+class but not this one: two implementations of a function will drift again,
+somewhere else. The general test is **"is there a second expression of this,
+and what forces them equal?"** — and the answer must be a definition, not a
+comment and not an axiom.
+
+It also makes the axiom DISCHARGEABLE. An arch that later ships a verified
+loader can prove `exec-bytes (assemble (programToText p)) ≡ run-trace p`; it
+could never have proved the old form, because that would have required proving
+a String paste equals `link` — not a loader's business. Each arch supplies the
+same narrow interface: postulate today, proof tomorrow, general proofs
+unchanged.
+
+### Still String-shaped, and therefore still able to drift
+
+The function header (`.globl` + label) and `emitArithBlocks` are concatenated
+outside the trace, and `sigop : String → ℕ → Label` carries a raw name into
+codegen — the identity of an EXTERNAL symbol resolved from
+`Strata/Interpretations/<mod>.<arch>` at link time, which no Agda type reaches.
+Those are the remaining crossings, by the same test.
