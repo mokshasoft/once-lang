@@ -110,8 +110,8 @@ import Once.Parser.Module.Core as P
 open import Once.Adequacy.LabelClash using (DistinctLabels)
 
 open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; in-unit; SpanAt; emitted)
-open FlatMachine {FS} using (mkFlat; fetch)
-open CataIRSlotStable {FS} using (ir-stable)
+open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left)
+open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 open FlatEventTrace {FS} using (flat-events)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
 open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-unit-wf)
@@ -204,19 +204,22 @@ entry-nh = refl
 -- `entry-flat s alloc (SV-Tag 0)` IS `mkFlat s alloc 0` — so every consumer
 -- below (which names the entry state as `mkFlat …`) is untouched by the
 -- interface gaining that component.
--- D158: `main` IS the program, so its placement is the identity one — the
--- span is `fetch prog (k + 0) ≡ fetch prog k`, and the slot-stability premise
--- is the emitter's own `ir-stable` at the entry site. Every fragment below is
--- placed relative to this.
+-- D159: `main` is no longer THE program — it is the ENTRY BLOCK of it. The
+-- linked program is `emitted 0 0 ir ++ c-ret budget ∷ blocks-layout bodies`,
+-- so `main`'s own code is a genuine PREFIX and the placement premise carries
+-- real content at last. Under D158 this was the identity span (`k + 0 ≡ k`)
+-- and said nothing; now it is `fetch-++-left`, i.e. "the entry block sits at
+-- offset 0 of the linked image".
 entry-span : (ir : IR Unit Unit) → SpanAt (ir-to-trace ir) 0 (emitted 0 0 ir)
-entry-span ir k i eq = subst (λ m → fetch (ir-to-trace ir) m ≡ just i)
-                             (sym (+-identityʳ k)) eq
+entry-span ir k i eq =
+  subst (λ m → fetch (ir-to-trace ir) m ≡ just i) (sym (+-identityʳ k))
+        (fetch-++-left (emitted 0 0 ir) _ k i eq)
 
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
               → MachineRefinesObsF (ir-to-trace ir) 0 0 0 ir tt entry-s
                   (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
 entry-witness ir ioc =
-  ioc (entry-size ir) 0 0 (ir-to-trace ir) 0 (ir-stable ir 0 0)
+  ioc (entry-size ir) 0 0 (ir-to-trace ir) 0 (ir-to-trace-slot-stable ir)
       (entry-span ir)
       Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
       (entry-ns (ir-stack-budget ir)) entry-nh
