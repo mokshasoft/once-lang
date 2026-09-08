@@ -97,7 +97,6 @@
 --     extSK-vs   ✅ not a program — the other clause (`Knot/SubExt`).
 --     extSK-vz   ✅ not a program — the SUBSTITUTION twin (`Knot/SubSpec`).
 --     flatK      ⬜ OWED — agreement with `flat?`.
---     head-red   ✅ not owed — a lemma INSIDE `Knot/SzAgree`, not a program.
 --     iatConK    ⬜ OWED — agreement with `iatCon`; a corollary of
 --                `iconSK`'s and `subTyAtK`'s (the latter ✅ 2026-09-06).
 --     iconSK     ⬜ OWED — agreement with `iconS`, VIA the factorisation
