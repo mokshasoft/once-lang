@@ -41,6 +41,8 @@ open import DirectedHoTT.Lib.RedChain using ( _»_ )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.NatMaxNum using ( maxℕ )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ )
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-appˡ )
+open import DirectedHoTT.Lib.Wk using ( sub-w²-single )
 open import DirectedHoTT.Lib.NatMax using ( maxTm )
 import DirectedHoTT.Lib.IOcc as IO
 open IO using ( occZ; occOp; occStep; occTail; occSum; occSumStep )
@@ -70,7 +72,9 @@ data AllIH {Γ : Cx} (k : RTm Γ) : {Δ : Cx} → ℕ → ICon Δ → RTm Γ →
 
 ------------------------------------------------------------------------
 -- ★ ONE FIELD'S CONTRIBUTION.  `occStep true acc h = occOp acc h`, and
---   `app (occOp acc h) k` β-reduces to
+--   `app (occOp acc h) k` = `app (app (app maxFn acc) h) k`, so THREE
+--   βs (`maxFn` is a closed combinator applied to its arguments,
+--   not a `lam` over them — see `Lib/IOcc`), reducing to
 --   `maxTm (app (subTm (single k) (renTm vs acc)) k) (…h…)`, whose two
 --   substitutions collapse by `wk-single`.  That collapse is a
 --   PROPOSITIONAL equation, hence the cast.
@@ -79,10 +83,17 @@ occStep-red : {Γ : Cx} (k : RTm Γ) {acc h : RTm Γ} (a m : ℕ) →
               IHocc k acc a → IHocc k h m →
               IHocc k (occStep true acc h) (maxℕ a m)
 occStep-red k {acc} {h} a m ha hm =
-  step (β _ _)
-    (⟶*-castₗ (cong₂ (λ f g → maxTm (app f k) (app g k))
-                     (wk-single {v = k} acc) (wk-single {v = k} h))
-              (maxTm-red a m ha hm))
+  ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+  ⟶*-appˡ (step (β _ _) done) »
+  step (β _ _) done »
+  -- ⚠ THE ACCUMULATOR IS WEAKENED TWICE, the new child once: `acc` is
+  --   substituted at the FIRST β, so it passes under both remaining
+  --   binders; `h` at the second, so it passes under one.  Hence
+  --   `sub-w²-single` for one and `wk-single` for the other — using the
+  --   same lemma for both is the obvious error and Agda names it.
+  ⟶*-castₗ (cong₂ (λ f g → maxTm (app f k) (app g k))
+                  (sub-w²-single acc) (wk-single {v = k} h))
+           (maxTm-red a m ha hm)
 
 ------------------------------------------------------------------------
 -- ★ THE WALK, once `occSum` has seeded the accumulator.
