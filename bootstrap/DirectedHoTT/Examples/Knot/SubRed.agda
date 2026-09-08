@@ -29,6 +29,7 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing using ( _⟶*_; done; step; ι-ielim )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-appˡ )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
+open import DirectedHoTT.Lib.IHeadRed using ( ihead-red )
 open import DirectedHoTT.Lib.ISub using ( ttsd; ⊤sd; ⊥sd )
 open import DirectedHoTT.Lib.IWk using ( Maybe; just; nothing )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
@@ -79,11 +80,14 @@ sub-head-red :
   subAtK s dd m σ (icon k p) ⟶*
     icon k (isubPay (wOfS k pj) (fst (pair s dd)) (snd (pair s dd)) m σ p
               (iihs KnotD subMethsK (isingle (pair s dd)) (ilookupD KnotD k) p))
+-- ★ THE HEAD STEP IS `Lib/IHeadRed.ihead-red`.  What is left here is
+--   the two outer `app` congruences (this program is applied to `m` and
+--   the renaming/substitution) and the `isubMethod-red` tail — both of
+--   which are genuinely this instantiation's own.
 sub-head-red k msel pj eq s dd m σ p =
   ⟶*-appˡ (⟶*-appˡ
-    (step (ι-ielim KnotD (pair s dd) subMethsK k p)
-          (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ
-            (⟶*-castᵣ eq (isubMeths-sel subDescK 0 k msel))))))) »
+    (ihead-red KnotD subMethsK k (pair s dd) p
+       (⟶*-castᵣ eq (isubMeths-sel subDescK 0 k msel)) done)) »
   isubMethod-red hE-sub hF-sub (wOfS k pj) k _ _ _ _ _
 
 -- ⇒ AND IT IS CALLABLE.

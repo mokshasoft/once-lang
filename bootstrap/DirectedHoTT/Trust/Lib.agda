@@ -38,6 +38,7 @@ import DirectedHoTT.Lib.ICast
 import DirectedHoTT.Lib.IDepth
 import DirectedHoTT.Lib.IFold
 import DirectedHoTT.Lib.IHCall
+import DirectedHoTT.Lib.IHeadRed
 import DirectedHoTT.Lib.IMeths
 import DirectedHoTT.Lib.IOcc
 import DirectedHoTT.Lib.IPay

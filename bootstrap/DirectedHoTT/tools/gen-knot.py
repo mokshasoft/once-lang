@@ -2689,6 +2689,7 @@ open import DirectedHoTT.Metatheory.Canonicity using ( sz )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.IFold using ( rowSort )
 open import DirectedHoTT.Lib.ISzSort using ( szsMethod; szsMeths-sel )
+open import DirectedHoTT.Lib.IHeadRed using ( ihead-red )
 open import DirectedHoTT.Lib.ISzRed
   using ( AllIH; aih-ι; aih-κ; aih-ρ; OK; ok; szsSum-red )
 open import DirectedHoTT.Examples.Knot.Desc
@@ -2719,9 +2720,14 @@ head-red : {Γ' : Cx} (k : ℕ) → k ∈ID KnotD → (i p : RTm Γ') {u : RTm �
            app (app (app (szsMethod (ilookupD KnotD k)) i) p)
                (iihs KnotD szsMethsK (isingle i) (ilookupD KnotD k) p) ⟶* u →
            szsTm i (icon k p) ⟶* u
+-- ★ THE BODY IS `Lib/IHeadRed.ihead-red`.  This step — the ι-rule fires,
+--   then the row's method is selected out of the tuple under three
+--   `app`s — is the SAME in every adequacy proof; it was written out
+--   here, in `Knot/RenRed` and in `Knot/SubRed` before being factored.
+--   What stays local is the STATEMENT, which names this program's own
+--   `szsMethod`/`szsMethsK`.
 head-red k mem i p h =
-  step (ι-ielim KnotD i szsMethsK k p)
-       (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (szsMeths-sel KnotD k mem))) » h)
+  ihead-red KnotD szsMethsK k i p (szsMeths-sel KnotD k mem) h
 
 agree : {Γ Γ' : Cx} (i : RTm Γ') (t : RTm Γ) →
         szsTm i (enTm {Γ} {Γ'} t) ⟶* num (sz t)
@@ -5171,7 +5177,20 @@ _WRAP_LEDGER = {
     # ★ `sz` IS THE ONLY ONE DISCHARGED, and it is discharged twice.
     "szsTm":     "✅ `Knot/SzAgree` — `szsTm i ⌈t⌉ ⟶* num (sz t)`, all 30 rows,\n--                GENERATED.  THE model for every ⬜ below.",
     "szTm":      "✅ `Knot/SzProbe` — same-sort counts, per row, by `refl`.",
-    "head-red":  "✅ not owed — a lemma INSIDE `Knot/SzAgree`, not a program.",
+    # ⚠ `head-red` USED TO BE LISTED HERE, and its entry is gone because
+    #   its BODY moved, not because anything was discharged.  It said
+    #   "not owed — a lemma inside `Knot/SzAgree`, not a program"; the
+    #   scanner only ever saw it because it over-approximates, flagging
+    #   any body that mentions `ielim KnotD`.  That mention now lives in
+    #   `Lib/IHeadRed.ihead-red`, which this scanner does not walk
+    #   (it walks the Knot tree only), so the name is no longer flagged
+    #   and a stale entry trips the assertion below.
+    # ★ SAFE, because the thing that moved is a REDUCTION LEMMA, not a
+    #   program: it owes no adequacy of its own, it IS a step of one.
+    #   ⚠ But note the shape of the risk for next time — moving a body
+    #   into `Lib/` takes it out of this scanner's sight.  Move PROOF
+    #   STEPS there; do not move an object-level PROGRAM there without
+    #   widening the walk to `Lib/` first.
     # ✅ METHOD ROWS of a program above: covered by that program's own
     #   agreement, not owed one each.
     "ihTyRho":   "✅ not owed — a method row of `ihTyK`.",

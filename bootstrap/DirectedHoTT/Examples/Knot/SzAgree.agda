@@ -73,6 +73,7 @@ open import DirectedHoTT.Metatheory.Canonicity using ( sz )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.IFold using ( rowSort )
 open import DirectedHoTT.Lib.ISzSort using ( szsMethod; szsMeths-sel )
+open import DirectedHoTT.Lib.IHeadRed using ( ihead-red )
 open import DirectedHoTT.Lib.ISzRed
   using ( AllIH; aih-ι; aih-κ; aih-ρ; OK; ok; szsSum-red )
 open import DirectedHoTT.Examples.Knot.Desc
@@ -133,9 +134,14 @@ head-red : {Γ' : Cx} (k : ℕ) → k ∈ID KnotD → (i p : RTm Γ') {u : RTm �
            app (app (app (szsMethod (ilookupD KnotD k)) i) p)
                (iihs KnotD szsMethsK (isingle i) (ilookupD KnotD k) p) ⟶* u →
            szsTm i (icon k p) ⟶* u
+-- ★ THE BODY IS `Lib/IHeadRed.ihead-red`.  This step — the ι-rule fires,
+--   then the row's method is selected out of the tuple under three
+--   `app`s — is the SAME in every adequacy proof; it was written out
+--   here, in `Knot/RenRed` and in `Knot/SubRed` before being factored.
+--   What stays local is the STATEMENT, which names this program's own
+--   `szsMethod`/`szsMethsK`.
 head-red k mem i p h =
-  step (ι-ielim KnotD i szsMethsK k p)
-       (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (szsMeths-sel KnotD k mem))) » h)
+  ihead-red KnotD szsMethsK k i p (szsMeths-sel KnotD k mem) h
 
 agree : {Γ Γ' : Cx} (i : RTm Γ') (t : RTm Γ) →
         szsTm i (enTm {Γ} {Γ'} t) ⟶* num (sz t)
