@@ -61,7 +61,8 @@ open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; CataStrategy; strat-const; strat-nat; strat-linear
+  (ir-to-trace'; ir-to-trace; blocks-layout; block-layout; link
+  ; CataStrategy; strat-const; strat-nat; strat-linear
   ; strat-branching; cata-strategy; cata-dispatch; lsize
   ; push2; pop2; wrap-sum; visit-walk; rebuild-walk
   ; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-nat-layer; cata-nat-descend
@@ -801,6 +802,69 @@ segagree-++' t1 t2 a b c d ls1 ls2 disj sa1 sa2 p q m st mq lq =
     go (inj₂ (pk , peq)) (inj₁ ql) =
       ⊥-elim (clash (win t1 a b q ls1 (def→men t1 q (defines₁ q ql lq)))
                     (win t2 c d pk ls2 (mentions₂ pk (subst (λ z → mention-at (t1 ++ t2) z ≡ just m) peq mq))))
+
+------------------------------------------------------------------------
+-- D159: THE SPLICE COMBINATOR, WITH THE HYPOTHESIS THAT IS ACTUALLY TRUE.
+--
+-- `segagree-++'` above asks for disjoint label WINDOWS, and `link` cannot
+-- supply that: the ENTRY block's labels and the BLOCKS' labels interleave in
+-- the counter range. For `g ∘ f` the entry mentions `f`'s and `g`'s labels
+-- while the blocks carry closure-body labels drawn from inside both, so
+-- neither side sits wholly above the other.
+--
+-- What DOES hold is stronger and simpler: no label mentioned on one side is
+-- defined on the other. A jump in the entry never targets a label inside a
+-- body, and a jump inside a body never targets one outside it — which is
+-- exactly what pulling the bodies out of the trace bought, and what block-local
+-- `find-label` will make structural. Windows are ONE WAY to supply that fact;
+-- they are not the fact. So the combinator takes the fact.
+------------------------------------------------------------------------
+NoCross : AbstractTrace → AbstractTrace → Set
+NoCross t1 t2 =
+  ∀ (m : LabelId) (r s : ℕ)
+  → mention-at t1 r ≡ just m
+  → fetch-at t2 s ≡ just (instr-ctrl (c-label m)) → ⊥
+
+segagree-++ⁿ : ∀ (t1 t2 : AbstractTrace)
+             → NoCross t1 t2 → NoCross t2 t1
+             → SegAgree t1 → SegAgree t2
+             → SegAgree (t1 ++ t2)
+segagree-++ⁿ t1 t2 nc12 nc21 sa1 sa2 p q m st mq lq =
+  go (split-pos t1 p) (split-pos t1 q)
+  where
+    mentions₁ : ∀ (r : ℕ) → r < length t1 → mention-at (t1 ++ t2) r ≡ just m → mention-at t1 r ≡ just m
+    mentions₁ r lt e rewrite fetch-++ˡ t1 t2 r lt = e
+    mentions₂ : ∀ (k : ℕ) → mention-at (t1 ++ t2) (length t1 + k) ≡ just m → mention-at t2 k ≡ just m
+    mentions₂ k e rewrite fetch-++ʳ t1 t2 k = e
+    defines₁ : ∀ (r : ℕ) → r < length t1
+             → fetch-at (t1 ++ t2) r ≡ just (instr-ctrl (c-label m))
+             → fetch-at t1 r ≡ just (instr-ctrl (c-label m))
+    defines₁ r lt e = trans (sym (fetch-++ˡ t1 t2 r lt)) e
+    defines₂ : ∀ (k : ℕ) → fetch-at (t1 ++ t2) (length t1 + k) ≡ just (instr-ctrl (c-label m))
+             → fetch-at t2 k ≡ just (instr-ctrl (c-label m))
+    defines₂ k e = trans (sym (fetch-++ʳ t1 t2 k)) e
+    go : (p < length t1) ⊎ (Σ ℕ (λ k → p ≡ length t1 + k))
+       → (q < length t1) ⊎ (Σ ℕ (λ k → q ≡ length t1 + k))
+       → seg-at (t1 ++ t2) q st ≡ seg-at (t1 ++ t2) p st
+    go (inj₁ pl) (inj₁ ql) =
+      trans (seg-at-++ˡ t1 t2 q st ql)
+            (trans (sa1 p q m st (mentions₁ p pl mq) (defines₁ q ql lq))
+                   (sym (seg-at-++ˡ t1 t2 p st pl)))
+    go (inj₂ (pk , peq)) (inj₂ (qk , qeq)) =
+      subst₂ (λ x y → seg-at (t1 ++ t2) y st ≡ seg-at (t1 ++ t2) x st) (sym peq) (sym qeq)
+        (trans (seg-at-++ʳ t1 t2 qk st)
+               (trans (sa2 pk qk m (seg-fold t1 st)
+                           (mentions₂ pk (subst (λ z → mention-at (t1 ++ t2) z ≡ just m) peq mq))
+                           (defines₂ qk (subst (λ z → fetch-at (t1 ++ t2) z ≡ just (instr-ctrl (c-label m))) qeq lq)))
+                      (sym (seg-at-++ʳ t1 t2 pk st))))
+    -- the two CROSS cases: this is where the hypothesis is spent, and it is
+    -- spent directly rather than through a window clash.
+    go (inj₁ pl) (inj₂ (qk , qeq)) =
+      ⊥-elim (nc12 m p qk (mentions₁ p pl mq)
+               (defines₂ qk (subst (λ z → fetch-at (t1 ++ t2) z ≡ just (instr-ctrl (c-label m))) qeq lq)))
+    go (inj₂ (pk , peq)) (inj₁ ql) =
+      ⊥-elim (nc21 m pk q (mentions₂ pk (subst (λ z → mention-at (t1 ++ t2) z ≡ just m) peq mq))
+               (defines₁ q ql lq))
 
 -- …and the no-label discharge, for fragments that mention nothing at all
 -- regardless of how wide their range is (every closure clause, `apply`, the
