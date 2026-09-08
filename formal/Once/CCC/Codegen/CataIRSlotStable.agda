@@ -54,7 +54,7 @@ open import Once.CCC.Machine.SMCore using (AbstractTrace; AbstractInstr;
          instr-reg-op; instr-ctrl; lea-indexed;
          module AbstractExec)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace; ir-to-trace'; cata-strategy; cata-dispatch;
+  using (ir-to-trace; ir-to-trace'; blocks-layout; cata-strategy; cata-dispatch;
          CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
          cata-trace-nat; cata-trace-linear; cata-trace-branching;
          visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂;
@@ -342,14 +342,11 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable terminal        n l = all-stable?-sound _ refl
   ir-stable initial         n l = all-stable?-sound _ refl
   ir-stable apply           n l = all-stable?-sound _ refl
-  -- the flip: the body is inline, so the decider cannot settle the whole
-  -- fragment by itself — the prefix/suffix compute, the body recurses.
-  ir-stable (curry b Stack) n l =
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-    ++⁺ (ir-stable b _ _) (tt ∷ᴬ tt ∷ᴬ []ᴬ)
-  ir-stable (curry b Heap)  n l =
-    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-    ++⁺ (ir-stable b _ _) (tt ∷ᴬ tt ∷ᴬ []ᴬ)
+  -- D159: the body is a NAMED BLOCK now, so the entry block is closed
+  -- straight-line code and the decider settles it — the recursion into the
+  -- body moved to `ir-blocks-stable`, where the body actually lives.
+  ir-stable (curry b Stack) n l = all-stable?-sound _ refl
+  ir-stable (curry b Heap)  n l = all-stable?-sound _ refl
   ir-stable (SigOp _)       n l = all-stable?-sound _ refl
   ir-stable (const fits-int _)   n l = all-stable?-sound _ refl
   ir-stable (const fits-float _) n l = all-stable?-sound _ refl
@@ -382,6 +379,61 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable (Cata {F} _ alg) n l =
     cata-dispatch-slot-stable (cata-strategy ⌈ F ⌉F) _ _ _ _ (ir-stable alg 0 l)
 
-  -- top-level: the trace `ir-to-trace ir` (= `trc (ir-to-trace' 0 0 ir)`).
+  ----------------------------------------------------------------------
+  -- D159: …and the BLOCKS. `AllSlotStable` is a plain `All`, so `link`
+  -- preservation is `++⁺` — no index to thread, unlike `SegOK`.
+  ----------------------------------------------------------------------
+  bds : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
+      → List (ℕ × ℕ × AbstractTrace)
+  bds (_ , _ , _ , bs) = bs
+
+  BlockStable : ℕ × ℕ × AbstractTrace → Set
+  BlockStable (_ , _ , t) = AllSlotStable t
+
+  blocks-stable : ∀ (bs : List (ℕ × ℕ × AbstractTrace))
+                → All BlockStable bs → AllSlotStable (blocks-layout bs)
+  blocks-stable []                   []ᴬ       = []ᴬ
+  blocks-stable ((lb , bb , t) ∷ bs) (q ∷ᴬ qs) =
+    ++⁺ (tt ∷ᴬ ++⁺ q (tt ∷ᴬ []ᴬ)) (blocks-stable bs qs)
+
+  ir-blocks-stable : ∀ {A B} (ir : IR A B) (n l : ℕ)
+                   → All BlockStable (bds (ir-to-trace' n l ir))
+  ir-blocks-stable id                   n l = []ᴬ
+  ir-blocks-stable fst                  n l = []ᴬ
+  ir-blocks-stable snd                  n l = []ᴬ
+  ir-blocks-stable terminal             n l = []ᴬ
+  ir-blocks-stable initial              n l = []ᴬ
+  ir-blocks-stable apply                n l = []ᴬ
+  ir-blocks-stable (curry b Stack)      n l = ir-stable b 0 (suc (suc l))
+                                            ∷ᴬ ir-blocks-stable b 0 (suc (suc l))
+  ir-blocks-stable (curry b Heap)       n l = ir-stable b 0 (suc (suc l))
+                                            ∷ᴬ ir-blocks-stable b 0 (suc (suc l))
+  ir-blocks-stable (SigOp _)            n l = []ᴬ
+  ir-blocks-stable (const fits-int _)   n l = []ᴬ
+  ir-blocks-stable (const fits-float _) n l = []ᴬ
+  ir-blocks-stable (inl Stack)          n l = []ᴬ
+  ir-blocks-stable (inr Stack)          n l = []ᴬ
+  ir-blocks-stable (inl Heap)           n l = []ᴬ
+  ir-blocks-stable (inr Heap)           n l = []ᴬ
+  ir-blocks-stable (In _ _)             n l = []ᴬ
+  ir-blocks-stable (out-μ _)            n l = []ᴬ
+  ir-blocks-stable (Para _ _)           n l = []ᴬ
+  ir-blocks-stable (Out _)              n l = []ᴬ
+  ir-blocks-stable (in-ν _ _)           n l = []ᴬ
+  ir-blocks-stable (Ana _ _)            n l = []ᴬ
+  ir-blocks-stable (Hylo _ _ _ _)       n l = []ᴬ
+  ir-blocks-stable (Fuse _ _ _ _)       n l = []ᴬ
+  ir-blocks-stable (free-heap _)        n l = []ᴬ
+  ir-blocks-stable (g ∘ f)              n l = ++⁺ (ir-blocks-stable f n l)
+                                                  (ir-blocks-stable g _ _)
+  ir-blocks-stable ⟨ f , g ⟩            n l = ++⁺ (ir-blocks-stable f _ l)
+                                                  (ir-blocks-stable g _ _)
+  ir-blocks-stable (case f g)           n l = ++⁺ (ir-blocks-stable f n (suc (suc l)))
+                                                  (ir-blocks-stable g _ _)
+  ir-blocks-stable (Cata {F} _ alg)     n l = ir-blocks-stable alg 0 l
+
+  -- top-level: the LINKED program — entry, its terminator, then the blocks.
   ir-to-trace-slot-stable : ∀ {A B} (ir : IR A B) → AllSlotStable (ir-to-trace ir)
-  ir-to-trace-slot-stable ir = ir-stable ir 0 0
+  ir-to-trace-slot-stable ir =
+    ++⁺ (ir-stable ir 0 0)
+        (tt ∷ᴬ blocks-stable _ (ir-blocks-stable ir 0 0))
