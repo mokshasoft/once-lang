@@ -43,3 +43,4 @@ import DirectedHoTT.Examples.Knot.IMethsTy
 import DirectedHoTT.Examples.Knot.IMethsTyMot
 import DirectedHoTT.Examples.Knot.IPayTy
 import DirectedHoTT.Examples.Knot.IPayTyKap
+import DirectedHoTT.Examples.Knot.IPayTyMot

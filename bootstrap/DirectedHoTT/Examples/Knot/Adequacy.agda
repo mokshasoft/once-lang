@@ -22,7 +22,7 @@
 --   only that each subject it builds is the one the rule names.  A full
 --   `enDeriv` would subsume it.
 --
--- ★ 32 checks.  ⚠ 15 subject(s) SKIPPED and named — a
+-- ★ 32 checks.  ⚠ 16 subject(s) SKIPPED and named — a
 --   translation mentioning the row's DEPTH has no meta-level depth to be
 --   instantiated at, and an `ICon` binder's scope is not named by its
 --   rule:
@@ -30,6 +30,7 @@
 --     ⊢app         applies subTyAtK
 --     ⊢snd         applies subTyAtK
 --     ⊢trU         applies Var-vzK
+--     ⊢tr          applies Var-vzK
 --     ⊢ap          applies subTmAtK
 --     ⊢jsub        applies subTmAtK
 --     ⊢natrec      applies subTyAtK
@@ -136,6 +137,10 @@
 --                step 2's `nrsK-vz`/`-vs` (the row parked at eight
 --                attempts).  ⚠ The two depths differ — `nrs` RAISES, so
 --                the outer `Var-vsK` carries ⌈Γ ∙⌉ and the inner ⌈Γ⌉.
+--     occK       ⬜ OWED — agreement with `occTm`/`occTy`, at a LEVEL.
+--     occVzK     ⬜ OWED — `occK` with the level taken as `pred (snd ⟨i⟩)`;
+--                a COROLLARY of `occK`'s once the level convention is
+--                fixed (`vz` in a depth-`nsuc n` context is level `n`).
 --     payTyK     ⬜ OWED — agreement with `payTy`.
 --     pwBodyK    ⬜ OWED — agreement with `pw?`'s body case.
 --     pwDefault  ⬜ OWED — the default method of `Knot/PwBody`'s tuple.  It
