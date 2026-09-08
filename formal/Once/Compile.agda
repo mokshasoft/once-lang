@@ -535,11 +535,9 @@ compileFunWithTarget target l cf with cfIsPrimitive cf
       (ir' , blks)  = rewrite-ir dcIR
       -- Plan 0.63 (D089): the definition's own identity keys its labels.
       (l₁ , asm)    = irToAsm    target (cfName cf) l ir'
-      (l₂ , bodies) = irToBodies target (cfName cf) l ir'
-  in (l₁ ⊔ l₂) , (functionPrologue target (cfName cf) ++
+  in l₁ , (functionPrologue target (cfName cf) ++
            asm ++
-           functionEpilogue target ++
-           bodies) , blks
+           functionEpilogue target) , blks
   where
     -- Plan 0.29: irToAsm and irToBodies share the thunk-label phase
     -- (l→l', deterministic, so thunk labels agree between call sites
@@ -605,9 +603,12 @@ funLabels-cons false target l cf =
   let (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
       (ir' , _)      = rewrite-ir dcIR
       (l₁ , _)       = irToAsm    target (cfName cf) l ir'
-      (l₂ , _)       = irToBodies target (cfName cf) l ir'
-      (_  , at)      = IRT.ir-to-trace-from (cfName cf) l ir'
-  in (l₁ ⊔ l₂) , labels-def at
+      -- D161: over the LINKED program, so the closure bodies' `c-thunk`
+      -- definitions are in this list. `ir-to-trace-from` (the entry block)
+      -- omitted every thunk label, so D100's distinctness claim never covered
+      -- the labels whose duplication caused the 2026-08-06 regression.
+      (_  , at)      = IRT.ir-to-linked-from (cfName cf) l ir'
+  in l₁ , labels-def at
 
 funLabels : Target → ℕ → CompiledFun → ℕ × List Label
 funLabels target l cf = funLabels-cons (cfIsPrimitive cf) target l cf

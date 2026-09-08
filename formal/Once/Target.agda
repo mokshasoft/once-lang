@@ -34,14 +34,10 @@ record Target : Set₁ where
     -- same module. `compileAllWithTarget` left-folds the counter.
     -- Plan 0.63 (D089): the DEFINITION'S identity, so its labels carry it.
     irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
-    -- | Plan 0.2.4.2 Phase B: assembly text for closure-body labels
-    -- (`.L_thunk_<n>:` blocks) emitted AFTER the parent's `ret`.
-    -- Empty string for IRs containing no `curry` (most non-effectful
-    -- code). Two-pass codegen separates this from `irToAsm` so the
-    -- parent's ret comes between them. Plan 0.12 Layer 1: takes the
-    -- same starting label counter `irToAsm` was called with, so that
-    -- the body-emission's labels match the trace's call sites.
-    irToBodies : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
+    -- (D161: the `irToBodies` field is GONE. Closure bodies are named blocks
+    -- in the linked program `irToAsm` now compiles, so `compile-abstract`'s
+    -- `c-thunk`/`c-ret` lowering emits them — one walk, one renderer, and no
+    -- second copy of `link` to drift from the proved one.)
     -- | Assembly file header (e.g., ".section .text")
     asmHeader : String
     -- | Generate function prologue (label, .globl directive).

@@ -84,7 +84,7 @@ riscv64-functionPrologue fname =
   once-symbol-path fname ++ ":\n"
 
 riscv64-functionEpilogue : String
-riscv64-functionEpilogue = "    ret\n\n"
+riscv64-functionEpilogue = "\n"   -- D161: `ret` comes from the trace's `c-ret`
 
 ------------------------------------------------------------------------
 -- IR → Assembly
@@ -100,17 +100,19 @@ riscv64-functionEpilogue = "    ret\n\n"
 riscv64-irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
 riscv64-irToAsm o l ir =
   let budget        = IRT.ir-stack-budget-from o l ir
-      (l' , trace)  = IRT.ir-to-trace-from o l ir
+      (l' , trace)  = IRT.ir-to-linked-from o l ir
       -- Plan 0.53: compile-trace-cnt o (not compile-trace) so structured
       -- case-on-tag / loop nodes expand with fresh labels; thread the counter.
       (l'' , prog)  = compile-trace-cnt o l' trace
       raOff         = budget * 8
       frame         = raOff + 8   -- +8 for the saved ra
+  -- D161: the `ld ra` / `addi sp` teardown is NOT written here any more — the
+  -- linked program ends in `c-ret budget`, whose lowering is exactly
+  -- `ld ra sp (slots budget) ∷ addi sp sp (slots (suc budget)) ∷ ret`, i.e.
+  -- character for character what this used to paste on by hand.
   in l'' , ("    addi sp, sp, -" ++ showNat frame ++ "\n" ++
             "    sd ra, " ++ showNat raOff ++ "(sp)\n" ++
-            programToText prog ++
-            "    ld ra, " ++ showNat raOff ++ "(sp)\n" ++
-            "    addi sp, sp, " ++ showNat frame ++ "\n")
+            programToText prog)
 
 -- Plan 0.53: closure-body (thunk) emission. For each `(label, budget,
 -- body-trace)` from `ir-to-bodies`, emit:
@@ -121,32 +123,6 @@ riscv64-irToAsm o l ir =
 --       addi sp, sp, budget*8
 --       ret
 --
--- Bodies come AFTER the parent's ret; reachable via `lla a0, .L_thunk_<n>`
--- (instr-load-code-addr) from the parent's curry trace. Each body's slot
--- range is private, physically disjoint from the caller's frame.
-riscv64-irToBodies : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
-riscv64-irToBodies o l ir =
-  let (l' , bodies) = IRT.ir-to-bodies-from o l ir
-  in emit-bodies l' bodies
-  where
-    -- Thread the case/loop label counter through each body's
-    -- compile-trace-cnt o so nested cases inside thunk bodies get unique labels.
-    emit-thunk-body : ℕ → (LabelId × ℕ × AbstractTrace) → ℕ × String
-    emit-thunk-body cl (lbl , budget , body-trace) =
-      let (cl' , prog) = compile-trace-cnt o cl body-trace
-      in cl' , (thunkSym lbl ++ ":\n" ++
-                "    addi sp, sp, -" ++ showNat (budget * 8 + 8) ++ "\n" ++
-                "    sd ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
-                programToText prog ++
-                "    ld ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
-                "    addi sp, sp, " ++ showNat (budget * 8 + 8) ++ "\n" ++
-                "    ret\n\n")
-    emit-bodies : ℕ → List (LabelId × ℕ × AbstractTrace) → ℕ × String
-    emit-bodies cl []       = cl , ""
-    emit-bodies cl (b ∷ bs) =
-      let (cl1 , txt1) = emit-thunk-body cl b
-          (cl2 , txt2) = emit-bodies cl1 bs
-      in cl2 , (txt1 ++ txt2)
 
 ------------------------------------------------------------------------
 -- Target Instance
@@ -157,7 +133,6 @@ open import Once.Target.RiscV64.PhysReg using () renaming (convention to riscv64
 riscv64 : Target
 riscv64 = record
   { irToAsm          = riscv64-irToAsm
-  ; irToBodies       = riscv64-irToBodies
   ; asmHeader        = riscv64-asmHeader
   ; functionPrologue = riscv64-functionPrologue
   ; functionEpilogue = riscv64-functionEpilogue

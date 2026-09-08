@@ -99,7 +99,7 @@ x86-64-functionPrologue fname =
   once-symbol-path fname ++ ":\n"
 
 x86-64-functionEpilogue : String
-x86-64-functionEpilogue = "    ret\n\n"
+x86-64-functionEpilogue = "\n"   -- D161: `ret` comes from the trace's `c-ret`
 
 ------------------------------------------------------------------------
 -- IR → Assembly
@@ -112,17 +112,24 @@ x86-64-functionEpilogue = "    ret\n\n"
 -- returns the next-available counter alongside the assembly text.
 -- The label counter is threaded by `Once.Compile.compileAllWithTarget`
 -- so thunks emitted by separate top-level functions don't collide.
+-- D161: takes the LINKED program (`ir-to-linked-from`) — entry, its `c-ret`
+-- terminator, then the named blocks. The trailing teardown and every closure
+-- body now come from `compile-abstract`'s own `c-ret` / `c-thunk` lowering, so
+-- the emitted text IS `compile-trace` of the program the proofs are about. The
+-- separate `irToBodies` walk that used to paste the bodies on after a
+-- hand-written `ret` is deleted: it was a second implementation of `link`, and
+-- it had drifted (D160's thunk symbol; on riscv64, the callee-allocates
+-- calling convention the caller stopped using in 2026-08-16).
 x86-64-irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
 x86-64-irToAsm o l ir =
   let budget = IRT.ir-stack-budget-from o l ir
-      (l' , trace) = IRT.ir-to-trace-from o l ir
+      (l' , trace) = IRT.ir-to-linked-from o l ir
       -- Plan 0.13.1 Phase 5: thread the label counter through
       -- compile-trace-cnt o so case-on-tag dispatch gets fresh
       -- (globally-unique) labels per function.
       (l'' , prog) = compile-trace-cnt o l' trace
   in l'' , ("    subq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
-            programToText prog ++
-            "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n")
+            programToText prog)
 
 -- | Plan 0.2.4.5 D1: emit closure-body labels for an IR (frameless,
 -- %rsp-relative). For each `(label, body-budget, body-trace)` triple
@@ -153,25 +160,6 @@ emit-thunk-body o cl (lbl , budget , body-trace) =
             "    addq $" ++ showNat (budget * 8) ++ ", %rsp\n" ++
             "    ret\n\n")
 
--- Plan 0.12 Layer 1: takes the same starting label counter as
--- `irToAsm` so the bodies' labels match the call sites in the
--- emitted trace.
--- Plan 0.13.1 Phase 5: also threads case-label counter through the
--- bodies' compile-trace expansions.
-x86-64-irToBodies : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
-x86-64-irToBodies o l ir =
-  let (l' , bodies) = IRT.ir-to-bodies-from o l ir
-  in emit-bodies l' bodies
-  where
-    -- Threading: each emit-thunk-body o consumes & produces a fresh
-    -- case-label counter so nested cases inside thunk bodies get
-    -- globally-unique labels.
-    emit-bodies : ℕ → List (LabelId × ℕ × AbstractTrace) → ℕ × String
-    emit-bodies cl []       = cl , ""
-    emit-bodies cl (b ∷ bs) =
-      let (cl1 , txt1) = emit-thunk-body o cl b
-          (cl2 , txt2) = emit-bodies cl1 bs
-      in cl2 , (txt1 ++ txt2)
 
 ------------------------------------------------------------------------
 -- Target Instance
@@ -182,7 +170,6 @@ open import Once.Target.X86-64.PhysReg using () renaming (convention to x86-64-r
 x86-64 : Target
 x86-64 = record
   { irToAsm          = x86-64-irToAsm
-  ; irToBodies       = x86-64-irToBodies
   ; asmHeader        = x86-64-asmHeader
   ; functionPrologue = x86-64-functionPrologue
   ; functionEpilogue = x86-64-functionEpilogue

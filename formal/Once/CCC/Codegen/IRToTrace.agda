@@ -1107,6 +1107,21 @@ ir-to-trace-from l ir =
 ir-stack-budget-from : ∀ {A B} → ℕ → IR A B → ℕ
 ir-stack-budget-from l ir = proj-budget (ir-to-trace' 0 l ir)
 
+-- | D161: the LINKED program, given a starting label counter — entry, its
+-- terminator, then the named blocks. THE emitter entry point.
+--
+-- `ir-to-trace-from` returns the ENTRY BLOCK only, and the backends used to
+-- pair it with a separate `irToBodies` walk, pasting the two together with a
+-- hand-written `ret` between them. That paste was a SECOND implementation of
+-- `link`, written in Strings at the arch layer, and nothing related it to this
+-- one: every theorem is about `compile-trace (ir-to-trace ir)`, while the bytes
+-- came from the paste. It drifted (the thunk symbol, D160). Backends take this
+-- now, so the text they emit IS the lowering of the program that is proved.
+ir-to-linked-from : ∀ {A B} → ℕ → IR A B → ℕ × AbstractTrace
+ir-to-linked-from l ir =
+  let (b , l' , t , bs) = ir-to-trace' 0 l ir
+  in l' , link (unit b t bs)
+
 -- | Closure bodies + next-label, given a starting label counter.
 ir-to-bodies-from : ∀ {A B} → ℕ → IR A B → ℕ × List (LabelId × ℕ × AbstractTrace)
 ir-to-bodies-from l ir =

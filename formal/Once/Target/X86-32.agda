@@ -73,7 +73,7 @@ x86-32-functionPrologue fname =
   once-symbol-path fname ++ ":\n"
 
 x86-32-functionEpilogue : String
-x86-32-functionEpilogue = "    ret\n\n"
+x86-32-functionEpilogue = "\n"   -- D161: `ret` comes from the trace's `c-ret`
 
 ------------------------------------------------------------------------
 -- IR → Assembly
@@ -95,39 +95,14 @@ x86-32-functionEpilogue = "    ret\n\n"
 x86-32-irToAsm : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
 x86-32-irToAsm o l ir =
   let budget       = IRT.ir-stack-budget-from o l ir
-      (l' , trace) = IRT.ir-to-trace-from o l ir
+      (l' , trace) = IRT.ir-to-linked-from o l ir
       (l'' , prog) = compile-trace-cnt o l' trace
       frame        = budget * 4
   -- The frame IS the reservation: `slot*4(%esp)` indexes up into it, and the
   -- return address sits just above. Same shape as x86-64's.
   in l'' , ("    subl $" ++ showNat frame ++ ", %esp\n" ++
-            programToText prog ++
-            "    addl $" ++ showNat frame ++ ", %esp\n")
+            programToText prog)
 
--- Plan 0.53: closure-body (thunk) emission. Each `.L_thunk_<n>` body gets its
--- own ebp frame + ret; reachable via `movl $.L_thunk_<n>, reg`.
-x86-32-irToBodies : CanonicalName → ℕ → ∀ {A B} → IR A B → ℕ × String
-x86-32-irToBodies o l ir =
-  let (l' , bodies) = IRT.ir-to-bodies-from o l ir
-  in emit-bodies l' bodies
-  where
-    emit-thunk-body : ℕ → (LabelId × ℕ × AbstractTrace) → ℕ × String
-    emit-thunk-body cl (lbl , budget , body-trace) =
-      let (cl' , prog) = compile-trace-cnt o cl body-trace
-      in cl' , (thunkSym lbl ++ ":\n" ++
-                "    pushl %ebp\n" ++
-                "    subl $" ++ showNat (budget * 4) ++ ", %esp\n" ++
-                "    movl %esp, %ebp\n" ++
-                programToText prog ++
-                "    leal " ++ showNat (budget * 4) ++ "(%ebp), %esp\n" ++
-                "    popl %ebp\n" ++
-                "    ret\n\n")
-    emit-bodies : ℕ → List (LabelId × ℕ × AbstractTrace) → ℕ × String
-    emit-bodies cl []       = cl , ""
-    emit-bodies cl (b ∷ bs) =
-      let (cl1 , txt1) = emit-thunk-body cl b
-          (cl2 , txt2) = emit-bodies cl1 bs
-      in cl2 , (txt1 ++ txt2)
 
 ------------------------------------------------------------------------
 -- Target Instance
@@ -138,7 +113,6 @@ open import Once.Target.X86-32.PhysReg using () renaming (convention to x86-32-r
 x86-32 : Target
 x86-32 = record
   { irToAsm          = x86-32-irToAsm
-  ; irToBodies       = x86-32-irToBodies
   ; asmHeader        = x86-32-asmHeader
   ; functionPrologue = x86-32-functionPrologue
   ; functionEpilogue = x86-32-functionEpilogue
