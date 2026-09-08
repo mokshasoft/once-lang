@@ -80,7 +80,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (proj₁; proj₂)
 open import Data.String using (String)
 open import Data.Unit using (tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.IR using (IR; Unit; AllocMode; Stack)
 open import Once.IR.Size using (ir-size)
@@ -89,6 +89,7 @@ open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
+open import Data.List.Properties using (++-identityʳ)
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
 open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable)
@@ -97,7 +98,7 @@ open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; Registers; mkRegs; ValueLocation; AtDynamic; SV-Tag;
          halted)
 open import Once.Memory.HeapAddress using (heap-loc; mkHeapRef)
-open import Data.Nat using (z≤n; s≤s; _≤_)
+open import Data.Nat using (z≤n; s≤s; _≤_; _+_)
 open import Once.CCC.Machine.Allocation
   using (AllocState; mkAllocState; next-slot; module FrontierInvariant)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -109,10 +110,10 @@ import Once.Parser.Module.Core as P
 -- pairwise distinct. Consumed by `AsmTraceCorrect` below.
 open import Once.Adequacy.LabelClash using (DistinctLabels)
 
-open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; in-unit; SpanAt; emitted)
+open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted)
 open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left)
 open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
-open FlatEventTrace {FS} using (flat-events)
+open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
 open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-unit-wf)
 
@@ -231,14 +232,23 @@ entry-witness ir ioc =
       (in-unit refl)
 
 ------------------------------------------------------------------------
--- `flat-trace` — DEFINED (the adequate fuel is `traces-agree`'s ∃-witness).
+-- `flat-trace` — DEFINED. D159: the adequate fuel is the witness's OWN STEP
+-- COUNT, not an existential per observation depth. `traces-agree` is now
+-- bounded by `value-realized`'s chain (a fragment's events are the events along
+-- its chain, not everything a fuel happens to reach), so the fuel that realises
+-- it is exactly `steps` — and it no longer varies with `n`.
 ------------------------------------------------------------------------
+
+entry-vr : (ir : IR Unit Unit) → (∀ {A B} (ir' : IR A B) → IRObsCorrectF ir')
+         → ValueRealized (ir-to-trace ir) 0 0 0 ir tt entry-s
+             (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
+entry-vr ir ioc = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir))
 
 flat-trace-of : (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
               → Maybe (IR Unit Unit) → Behavior
 flat-trace-of ioc nothing   _ = []
 flat-trace-of ioc (just ir) n =
-  take n (flat-events (proj₁ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir)) n))
+  take n (flat-events (ValueRealized.steps (entry-vr ir ioc) + 0)
                       (ir-to-trace ir) (mkFlat entry-s (entry-alloc (ir-stack-budget ir)) 0))
 
 ------------------------------------------------------------------------
@@ -280,8 +290,14 @@ ir-flat-correct-of : (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
                    → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
                    → flat-trace-of ioc mir n ≡ ⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS) n
 ir-flat-correct-of ioc nothing   n = refl
+-- D159: peel the chain off the fuel (`flat-events-steps`), and the leftover is
+-- `flat-events 0`, i.e. `[]`. So the run's events ARE the chain's events, and
+-- the chain's events are what `traces-agree` now speaks about.
 ir-flat-correct-of ioc (just ir) n =
-  proj₂ (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir)) n)
+  trans (cong (take n)
+          (trans (flat-events-steps (ValueRealized.run (entry-vr ir ioc)) 0)
+                 (++-identityʳ (chain-events (ValueRealized.run (entry-vr ir ioc))))))
+        (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir)) n)
 
 ------------------------------------------------------------------------
 -- The constructed ArchCorrect record — now CONSUMING `ir-obs-correct`.
