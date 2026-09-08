@@ -109,6 +109,7 @@ import Once.Parser.Module.Core as P
 -- D100: the assembler's own precondition — the emitted local labels are
 -- pairwise distinct. Consumed by `AsmTraceCorrect` below.
 open import Once.Adequacy.LabelClash using (DistinctLabels)
+open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 
 open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted)
 open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left)
@@ -277,6 +278,9 @@ AsmTraceCorrect ft =
   ∀ (m : P.Module) (asm : String) →
   C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
   DistinctLabels arch m →
+  -- D167: …and the text LINKS — every compiler-minted SigOp it calls has its
+  -- arith block emitted. `ld`'s rejection, which nothing stated before.
+  SymbolsResolvable arch m →
   -- D165: the EMITTED IR — `rewrite-ir`-lifted, which is what the text was
   -- generated from. Was `moduleToIR m`, the raw IR, which made this shape
   -- relate two different programs.

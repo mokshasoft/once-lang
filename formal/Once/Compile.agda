@@ -84,13 +84,15 @@ open import Once.Arith.IR public
 -- accumulated `ArithBlock`s are passed to the target's
 -- `emitArithBlocks` after the main program text.
 open import Once.Arith.Machine.IR using (ArithBlock)
+open Once.Arith.Machine.IR.ArithBlock using (block-body)
+open import Once.Arith.SigOp.Block using (block-name)
 open import Once.Arith.Machine.Rewrite using (rewrite-ir)
 
 -- D100: the emitted LOCAL labels (`moduleLabels`, below) — the `.L…` sibling of
 -- `moduleSyms`. `labels-def` reads them off the abstract trace; the trace walk
 -- itself is telescoped per definition (`IRT.ir-to-trace-from o l ir`).
 open import Once.CCC.Label using (Label)
-open import Once.CCC.Codegen.EmittedWF using (labels-def)
+open import Once.CCC.Codegen.EmittedWF using (labels-def; syms-ref)
 import Once.CCC.Codegen.IRToTrace as IRT
 
 -- Re-export Parser (for module loading)
@@ -625,6 +627,70 @@ moduleLabels-aux target (inj₂ cfs) = emittedLabels target 0 cfs
 moduleLabels : Arch → AllocMode → Bool → Module → List Label
 moduleLabels arch m doOpt mod =
   moduleLabels-aux (archTarget arch) (compileResolvedModule m doOpt mod)
+
+------------------------------------------------------------------------
+-- D167 — THE SAME LIST ONE NAMESPACE UP: the `.globl` symbols the emitted
+-- text CALLS and this module therefore OWES an implementation for.
+--
+-- `moduleLabels` is the `as` side (local labels, D100). This is the `ld` side,
+-- and it did not exist: nothing anywhere stated that an emitted `call`
+-- resolves. D163 walked through the hole — `rewrite-ir` stopped lifting arith
+-- subtrees, so `arith.div.int` reached the emitter with its `impl ⊨ semM`
+-- undischarged (D061) and the text called a symbol nothing defined.
+--
+-- Built from the SAME `ir'` the emitter compiles — `directCallIR` then
+-- `rewrite-ir`, exactly as `funLabels-cons` does — so this list cannot drift
+-- from what the backend emits. That is the whole point: read it off the
+-- program that is generated, never off a re-derivation.
+------------------------------------------------------------------------
+
+funSyms-cons : Bool → Target → ℕ → CompiledFun → ℕ × List CanonicalName
+funSyms-cons true  target l cf = l , []       -- primitive: no body, calls nothing
+funSyms-cons false target l cf =
+  let (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
+      (ir' , _)      = rewrite-ir dcIR
+      (l₁ , _)       = irToAsm    target (cfName cf) l ir'
+      (_  , at)      = IRT.ir-to-linked-from (cfName cf) l ir'
+  in l₁ , syms-ref at
+
+funSyms : Target → ℕ → CompiledFun → ℕ × List CanonicalName
+funSyms target l cf = funSyms-cons (cfIsPrimitive cf) target l cf
+
+emittedSymRefs : Target → ℕ → List CompiledFun → List CanonicalName
+emittedSymRefs target l []         = []
+emittedSymRefs target l (cf ∷ cfs) =
+  proj₂ (funSyms target l cf) DL.++ emittedSymRefs target (proj₁ (funSyms target l cf)) cfs
+
+moduleSymRefs-aux : Target → String ⊎ List CompiledFun → List CanonicalName
+moduleSymRefs-aux target (inj₁ _)   = []
+moduleSymRefs-aux target (inj₂ cfs) = emittedSymRefs target 0 cfs
+
+moduleSymRefs : Arch → AllocMode → Bool → Module → List CanonicalName
+moduleSymRefs arch m doOpt mod =
+  moduleSymRefs-aux (archTarget arch) (compileResolvedModule m doOpt mod)
+
+-- …and what the module DEFINES for them: the arith blocks `emitArithBlocks`
+-- writes. (A user function is not here: D071 — a named definition is a CONTEXT
+-- PROJECTION with a direct-call ABI, not a SigOp, so it never appears in
+-- `syms-ref`.)
+funBlockSyms-cons : Bool → CompiledFun → List CanonicalName
+funBlockSyms-cons true  cf = []
+funBlockSyms-cons false cf =
+  let (_ , _ , dcIR) = directCallIR (cfType cf) (cfIR cf)
+      (_ , blks)     = rewrite-ir dcIR
+  in DL.map (λ b → bare (block-name (block-body b))) blks
+
+emittedSymDefs : List CompiledFun → List CanonicalName
+emittedSymDefs []         = []
+emittedSymDefs (cf ∷ cfs) =
+  funBlockSyms-cons (cfIsPrimitive cf) cf DL.++ emittedSymDefs cfs
+
+moduleSymDefs-aux : String ⊎ List CompiledFun → List CanonicalName
+moduleSymDefs-aux (inj₁ _)   = []
+moduleSymDefs-aux (inj₂ cfs) = emittedSymDefs cfs
+
+moduleSymDefs : AllocMode → Bool → Module → List CanonicalName
+moduleSymDefs m doOpt mod = moduleSymDefs-aux (compileResolvedModule m doOpt mod)
 
 ------------------------------------------------------------------------
 -- Unified compilation entry point

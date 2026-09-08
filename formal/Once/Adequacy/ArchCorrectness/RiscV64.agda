@@ -84,6 +84,7 @@ import Once.Parser.Module.Core as P
 -- D100: the assembler's precondition (distinct emitted local labels), threaded
 -- into this arch's `loader-faithful` axiom.
 open import Once.Adequacy.LabelClash using (DistinctLabels)
+open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Target.RiscV64.Layout using (InStack)
@@ -136,6 +137,9 @@ postulate
     ∀ (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false riscv64 m ≡ C.Built asm →
     DistinctLabels riscv64 m →
+    -- D167: …and it links — every compiler-minted SigOp the text calls has
+    -- its arith block emitted. `ld`'s rejection; nothing stated it before.
+    SymbolsResolvable riscv64 m →
     ∀ (n : ℕ) → FFOr.asm-sem asm n ≡ conc-trace (moduleToIR-emitted m) n
 
 ------------------------------------------------------------------------
@@ -352,8 +356,8 @@ riscv64-conc-flat-sim nothing   n = refl
 riscv64-conc-flat-sim (just ir) n = conc-flat-sim-just ir n
 
 asm-trace-correct-riscv64 : FFOr.AsmTraceCorrect (FFOr.flat-trace-of ir-obs-correct)
-asm-trace-correct-riscv64 m asm eq dl n =
-  trans (riscv64-loader-faithful m asm eq dl n)
+asm-trace-correct-riscv64 m asm eq dl sr n =
+  trans (riscv64-loader-faithful m asm eq dl sr n)
         (riscv64-conc-flat-sim (moduleToIR-emitted m) n)
 
 riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)

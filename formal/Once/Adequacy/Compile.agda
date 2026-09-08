@@ -104,6 +104,7 @@ open import Once.Adequacy.NameClash using (DistinctSymbols; program-no-clash)
 -- `ArchCorrect.asm-trace-correct` and supplied at the apex, exactly as
 -- `program-no-clash` supplies `DistinctSymbols`.
 open import Once.Adequacy.LabelClash using (DistinctLabels; program-labels-distinct)
+open import Once.Adequacy.SymbolClash using (SymbolsResolvable; program-symbols-resolvable)
 
 -- `Arch` (here, via `Once.Adequacy.CPU.Interface`) and `C.Arch` (via
 -- `Once.Compile`) are now the SAME type — both re-export `Once.Target.Arch`
@@ -219,10 +220,18 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     -- D161's fault one level up. The pass is now named (`moduleToIR-emitted`)
     -- and its preservation is `rewrite-preserves` below, so what THIS field
     -- trusts is only the assembler/loader/printer round trip.
+    -- D167 — HONEST PRECONDITION, the third: the emitted text LINKS. `as`
+    -- rejects a duplicate definition (`DistinctSymbols`, `DistinctLabels`);
+    -- `ld` rejects a call to a symbol nothing defines, and THAT half was
+    -- stated nowhere. Without it this field is FALSE, not merely unproved, for
+    -- any program that emits an unlifted compiler-minted SigOp — which is
+    -- precisely what D163 shipped through a green apex. The apex supplies it
+    -- (`program-symbols-resolvable`), so `correct` gains no hypothesis.
     asm-trace-correct :
       ∀ (m : P.Module) (asm : String) →
       C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
       DistinctLabels arch m →
+      SymbolsResolvable arch m →
       ∀ (n : ℕ) → asm-sem asm n ≡ flat-trace (moduleToIR-emitted m) n
     -- D165 — THE ARITH PASS PRESERVES THE FLAT TRACE. Split out of
     -- `asm-trace-correct`, where it was invisible.
@@ -381,7 +390,8 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- used to be folded into the first.
   codegen-asm-correct arch m asm eq n =
     trans (ArchCorrect.asm-trace-correct (arch-correct arch) m asm eq
-             (program-labels-distinct arch m) n)
+             (program-labels-distinct arch m)
+             (program-symbols-resolvable arch m) n)
     (trans (ArchCorrect.rewrite-preserves (arch-correct arch) (moduleToIR m) n)
            (ArchCorrect.ir-flat-correct  (arch-correct arch) (moduleToIR m) n))
 
