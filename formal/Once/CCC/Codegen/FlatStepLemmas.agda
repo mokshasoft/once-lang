@@ -39,7 +39,10 @@ open import Relation.Nullary using (¬_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (halted; regs; readReg; Scratch; AbstractInstr; AbstractTrace;
-         instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero)
+         instr-ctrl; c-label; c-jmp; c-branch-scratch-zero; c-branch-tag-zero;
+         -- D168 / Phase D1: the compilation unit and where a block sits in it.
+         CompUnit; blocks; entry; entry-budget; link; link-pre; link-post;
+         link-block-split; blocks-layout; c-ret; c-thunk; LabelId)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 
 -- `m ≢ n` ⇒ the boolean `m ≡ᵇ n` is `false` (induction on m,n, matching `≡ᵇ`).
@@ -347,6 +350,47 @@ module FlatStepsAPI {FS : FrameSemantics} where
     → FlatSteps (pre ++ (mid ++ post)) k (shift (length pre) fs) (shift (length pre) fs')
   FlatSteps-middle pre mid post agp agr ch =
     FlatSteps-reloc pre (mid ++ post) agr (FlatSteps-prefix mid post agp ch)
+
+  ----------------------------------------------------------------------
+  -- D168 / plan 0.89 Phase D1 — `link-correct`: A BLOCK RUNS IN THE LINKED
+  -- IMAGE EXACTLY AS IT RUNS ALONE.
+  --
+  -- This is what the plan asked for — "ONE global lemma instead of a
+  -- per-composition side condition". `link-block-split` (SMCore) says where
+  -- the body sits; `FlatSteps-middle` relocates it there; `link-pre` IS the
+  -- offset, so the shift is read off the presentation rather than computed by
+  -- hand at each splice.
+  --
+  -- WHAT THIS BUYS. A closure body is emitted once, in the image, and called
+  -- from wherever the closure escaped to. Before D159 the body was INLINED and
+  -- jumped over, so "the body's behaviour" was only ever stated in place; with
+  -- blocks it has to be stated for the body AT ITS OFFSET, which is exactly
+  -- this. `apply ∘ curry body` closes on it (Phase E3).
+  --
+  -- The two side conditions stay per-instruction (D155): the `∀ tg` form is
+  -- unsatisfiable here because the entry block defines labels of its own.
+  ----------------------------------------------------------------------
+  link-block-steps :
+    ∀ (u : CompUnit) (before after : List (LabelId × ℕ × AbstractTrace))
+      (lbl : LabelId) (b : ℕ) (t : AbstractTrace) {k : ℕ} {fs fs' : FlatState}
+    → blocks u ≡ before ++ (lbl , b , t) ∷ after
+    → (∀ (i : AbstractInstr) (pc : ℕ) → fetch t pc ≡ just i
+        → ∀ (st : FlatState)
+        → flat-exec-instr i (t ++ link-post after b) st ≡ flat-exec-instr i t st)
+    → (∀ (i : AbstractInstr) (pc : ℕ) → fetch (t ++ link-post after b) pc ≡ just i
+        → ∀ (st : FlatState)
+        → flat-exec-instr i (link-pre u before lbl b ++ (t ++ link-post after b))
+                            (shift (length (link-pre u before lbl b)) st)
+          ≡ shift (length (link-pre u before lbl b))
+                  (flat-exec-instr i (t ++ link-post after b) st))
+    → FlatSteps t k fs fs'
+    → FlatSteps (link u) k
+        (shift (length (link-pre u before lbl b)) fs)
+        (shift (length (link-pre u before lbl b)) fs')
+  link-block-steps u before after lbl b t eq agp agr ch =
+    subst (λ prog → FlatSteps prog _ _ _)
+          (sym (link-block-split u before after lbl b t eq))
+          (FlatSteps-middle (link-pre u before lbl b) t (link-post after b) agp agr ch)
 
   FlatSteps-++ : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
                → FlatSteps prog k₁ fs₁ fs₂ → FlatSteps prog k₂ fs₂ fs₃

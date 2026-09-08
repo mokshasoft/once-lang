@@ -1305,6 +1305,55 @@ blocks-layout-++ (b ∷ bs) cs =
 link : CompUnit → AbstractTrace
 link u = entry u ++ instr-ctrl (c-ret (entry-budget u)) ∷ blocks-layout (blocks u)
 
+------------------------------------------------------------------------
+-- D168 / plan 0.89 Phase D1 — WHERE A BLOCK'S BODY SITS IN THE LINKED IMAGE.
+--
+-- A closure body is a fragment in the MIDDLE of `link u`: the entry, its
+-- terminator and the earlier blocks precede it; its own `c-ret` and the later
+-- blocks follow. Relocating it therefore needs `link u` presented as
+-- `pre ++ (body ++ post)`, and this is that presentation — pure list algebra,
+-- so it is proved once here rather than re-derived at each use.
+--
+-- `link-pre` is also the block's OFFSET: `length link-pre` is where the body
+-- starts, which is what `FlatSteps-middle` shifts by.
+------------------------------------------------------------------------
+
+link-pre : CompUnit → List (LabelId × ℕ × AbstractTrace) → LabelId → ℕ → AbstractTrace
+link-pre u before lbl b =
+  entry u ++ instr-ctrl (c-ret (entry-budget u)) ∷
+  (blocks-layout before ++ instr-ctrl (c-thunk lbl b) ∷ [])
+
+link-post : List (LabelId × ℕ × AbstractTrace) → ℕ → AbstractTrace
+link-post after b = instr-ctrl (c-ret b) ∷ blocks-layout after
+
+link-block-split :
+  ∀ (u : CompUnit) (before after : List (LabelId × ℕ × AbstractTrace))
+    (lbl : LabelId) (b : ℕ) (t : AbstractTrace)
+  → blocks u ≡ before ++ (lbl , b , t) ∷ after
+  → link u ≡ link-pre u before lbl b ++ (t ++ link-post after b)
+link-block-split u before after lbl b t eq =
+  trans (cong (λ bs → entry u ++ instr-ctrl (c-ret (entry-budget u)) ∷ blocks-layout bs) eq)
+  (trans (cong (λ z → entry u ++ instr-ctrl (c-ret (entry-budget u)) ∷ z) inner)
+         -- …and pull `entry u` back out: the goal's right-hand side is
+         -- `(entry u ++ X) ++ Y`, not `entry u ++ _`.
+         (sym (++-assoc (entry u)
+                 (instr-ctrl (c-ret (entry-budget u)) ∷
+                   (blocks-layout before ++ instr-ctrl (c-thunk lbl b) ∷ []))
+                 (t ++ link-post after b))))
+  where
+    -- `blocks-layout (before ++ blk ∷ after)` unfolded, then re-associated so
+    -- the body `t` is the middle factor.
+    inner : blocks-layout (before ++ (lbl , b , t) ∷ after)
+          ≡ (blocks-layout before ++ instr-ctrl (c-thunk lbl b) ∷ [])
+            ++ (t ++ (instr-ctrl (c-ret b) ∷ blocks-layout after))
+    inner =
+      trans (blocks-layout-++ before ((lbl , b , t) ∷ after))
+        (trans (cong (blocks-layout before ++_)
+                 (++-assoc (instr-ctrl (c-thunk lbl b) ∷ t) (instr-ctrl (c-ret b) ∷ [])
+                           (blocks-layout after)))
+               (sym (++-assoc (blocks-layout before) (instr-ctrl (c-thunk lbl b) ∷ [])
+                              (t ++ (instr-ctrl (c-ret b) ∷ blocks-layout after)))))
+
 
 ------------------------------------------------------------------------
 -- Tree-Structured Traces (OCP-0003)
