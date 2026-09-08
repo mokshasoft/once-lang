@@ -38,9 +38,9 @@ import DirectedHoTT.Examples.Knot.InDWf
 import DirectedHoTT.Examples.Knot.InIDRows
 import DirectedHoTT.Examples.Knot.InIDWf
 import DirectedHoTT.Examples.Knot.IxD
-import DirectedHoTT.Examples.Knot.JudgeRows
-import DirectedHoTT.Examples.Knot.JudgeWfA
-import DirectedHoTT.Examples.Knot.JudgeWfAA
-import DirectedHoTT.Examples.Knot.JudgeWfAB
-import DirectedHoTT.Examples.Knot.JudgeWfAC
-import DirectedHoTT.Examples.Knot.JudgeWfAD
+import DirectedHoTT.Examples.Knot.Judge.Absurd
+import DirectedHoTT.Examples.Knot.Judge.Ap
+import DirectedHoTT.Examples.Knot.Judge.App
+import DirectedHoTT.Examples.Knot.Judge.CodeBase
+import DirectedHoTT.Examples.Knot.Judge.CodeHom
+import DirectedHoTT.Examples.Knot.Judge.CodeIMu

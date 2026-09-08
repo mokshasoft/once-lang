@@ -2361,12 +2361,47 @@ def write_mutual(out, CT):
     #   per module (four OOM-killed under `-c`), and one row per module is
     #   51 parts — past `Z`.  ⚠ The first 26 keep their single letters, so
     #   only the tail churns.
-    def _pn(i):
-        return (chr(ord("A") + i) if i < 26
-                else chr(ord("A") + i // 26 - 1) + chr(ord("A") + i % 26))
-    if len(_bounds) > 26 * 27:
-        sys.exit("  ⇒ %d parts: even AA–ZZ is exhausted." % len(_bounds))
-    _parts = [_pn(i) for i in range(len(_units))]
+    # ========================================================================
+    # ★★★ PARTS ARE NAMED AFTER THEIR RULE, NOT COUNTED OFF IN LETTERS.
+    #
+    # ⚠⚠ THE LETTERS WERE NEVER STABLE, WHICH WAS THE ARGUMENT FOR THEM.
+    #   `JudgeWfZ` names position 26, so inserting ONE rule before it
+    #   renames it and everything after — which is exactly what the
+    #   `⊢tr` sub-split did (56 parts -> 58, and `AA`..`BD` all shifted).
+    #   A rule's NAME does not move when a neighbour is added, so
+    #   `Judge.Tr` is strictly more stable than `JudgeWfZ` ever was.
+    #
+    # ★ AND THE SWEEP BECOMES READABLE: "KILLED: Knot.Judge.Tr" says what
+    #   broke; "KILLED: JudgeWfZ" says where it sat in an ordering.
+    #
+    # ⚠ `⌜X⌝` MARKS A TYPE **CODE**, and the mark is load-bearing in the
+    #   name: `⊢⌜Unit⌝` (the code) and `⊢unit` (the term) are different
+    #   rules that both ASCII-ise to `Unit`.  Codes take a `Code` prefix,
+    #   so the collision cannot arise for any rule, present or future.
+    # ========================================================================
+    _GREEK = {"ι": "Iota", "κ": "Kappa", "ρ": "Rho",
+              "Π": "Pi", "Σ": "Sigma", "μ": "Mu"}
+    def _ascii_rule(r):
+        code = "⌜" in r
+        t = r.replace("⊢", "").replace("⌜", "").replace("⌝", "")
+        for _k, _v in _GREEK.items(): t = t.replace(_k, _v)
+        t = "".join(w[:1].upper() + w[1:] for w in t.split("-") if w)
+        return ("Code" + t) if code else t
+
+    _uc = {}
+    for _u in _units: _uc[_u["lo"]] = _uc.get(_u["lo"], 0) + 1
+    _seen_sub, _parts = {}, []
+    for _u in _units:
+        _base = _ascii_rule(rows[_u["lo"]][0])
+        if _u["hi"] - _u["lo"] > 1:          # a multi-row chunk (JWF_ROWS>1)
+            _base += "Etc%d" % (_u["hi"] - _u["lo"])
+        if _uc[_u["lo"]] > 1:                # a sub-split rule: chain order
+            _seen_sub[_u["lo"]] = _seen_sub.get(_u["lo"], 0) + 1
+            _base += "ABCDEFGH"[_seen_sub[_u["lo"]] - 1]
+        _parts.append(_base)
+    if len(set(_parts)) != len(_parts):
+        _dup = sorted(n for n in set(_parts) if _parts.count(n) > 1)
+        sys.exit("  ⇒ duplicate part name(s): %s" % _dup)
     # ★★★ AND REMOVE THE PARTS A PREVIOUS RUN LEFT BEHIND.
     #
     # ⚠⚠ THE `>26` GUARD ABOVE DOES NOT COVER THIS, and I found out by
@@ -2380,10 +2415,18 @@ def write_mutual(out, CT):
     #   it would have gone green on a width the tree no longer uses.
     # ⚠ GLOB, don't enumerate: with two-letter parts the unused names are
     #   no longer a contiguous tail of the alphabet.
-    _keep = set("JudgeWf%s.agda" % q for q in _parts)
+    # ★ the parts live in `Knot/Judge/`; stale removal follows them there,
+    #   and ALSO sweeps the old flat `JudgeWf*.agda` from before the rename
+    #   — a left-behind part is a real file the sweep would still check.
+    _jdir = os.path.join(out, "Judge")
+    os.makedirs(_jdir, exist_ok=True)
+    _keep = set("%s.agda" % q for q in _parts)
+    for _f in sorted(os.listdir(_jdir)):
+        if _f.endswith(".agda") and _f not in _keep:
+            os.remove(os.path.join(_jdir, _f)); print("  removed stale Judge/", _f[:-5])
     for _f in sorted(os.listdir(out)):
-        if _f.startswith("JudgeWf") and _f.endswith(".agda") and _f not in _keep:
-            os.remove(os.path.join(out, _f)); print("  removed stale", _f[:-5])
+        if _f.startswith("JudgeWf") and _f.endswith(".agda"):
+            os.remove(os.path.join(out, _f)); print("  removed pre-rename", _f[:-5])
     for _pi, (part, _u) in enumerate(zip(_parts, _units)):
         lo, hi = _u['lo'], _u['hi']
         # ★★★ NO PREDECESSOR IMPORTS.  A part imports NONE of the earlier
@@ -2427,12 +2470,12 @@ def write_mutual(out, CT):
         #   ⇒ the chain shrinks from n(n-1)/2 = 1540 edges to n-1 = 55:
         #     every part but the last imports NONE of its predecessors.
         _is_last = (_pi == len(_units) - 1)
-        _prev = ("".join("\nopen import DirectedHoTT.Examples.Knot.JudgeWf%s" % q
+        _prev = ("".join("\nopen import DirectedHoTT.Examples.Knot.Judge.%s" % q
                          for q in _parts[:_pi]) if _is_last else "")
         # ★ a sub-split continuation imports the part holding the rungs
         #   ABOVE it — one real edge, and the only one it needs.
         if _u['chain'] and not _is_last:
-            _prev = "\nopen import DirectedHoTT.Examples.Knot.JudgeWf%s" % _parts[_pi - 1]
+            _prev = "\nopen import DirectedHoTT.Examples.Knot.Judge.%s" % _parts[_pi - 1]
         # ⚠⚠ THE BODY IS BUILT BEFORE THE HEADER, so the header can ask
         #   it which step-5 imports it actually needs.  Emitting them all
         #   OOM-KILLED `JudgeWfAA`…`AD` — see `_OPT_IMPORT`.
@@ -2473,12 +2516,12 @@ def write_mutual(out, CT):
         _body = "\n".join(W)
         _hdr = JHDR % dict(gc=GC_NOTE, data="_⊢ty_ / _⊢_∷_",
                            what=" IS A WELL-FORMED DESCRIPTION.",
-                           mod="JudgeWf" + part,
+                           mod="Judge." + part,
                            extra=MUT_EXTRA
                            + "\nopen import DirectedHoTT.Examples.Knot.JudgeRows"
                            + _prev,
                            opt=_opt_imports(_body))
-        open(os.path.join(out, "JudgeWf%s.agda" % part), "w").write(
+        open(os.path.join(_jdir, "%s.agda" % part), "w").write(
             _hdr + "\n" + _body + "\n")
     return rows
 
@@ -5206,9 +5249,16 @@ def scan_object_programs(out):
       each owes exactly the lemma `wkK` fails."""
     import os, re, io
     progs = {}
-    for f in sorted(os.listdir(out)):
-        if not f.endswith(".agda"): continue
-        t = io.open(os.path.join(out, f), encoding="utf-8").read()
+    # ★ WALK, DO NOT LIST — same reason as the emitted-row scan above:
+    #   `Judge/` is a subdirectory since 2026-09-08, and a flat listdir
+    #   would drop it silently.  This scan is what NOTICES a new
+    #   object-level program, so a gap here does not fail loudly — it
+    #   just stops asking for the adequacy lemma the program owes.
+    _all = []
+    for _dp, _dn, _fn in os.walk(out):
+        _all += [os.path.join(_dp, f) for f in _fn if f.endswith(".agda")]
+    for f in sorted(_all):
+        t = io.open(f, encoding="utf-8").read()
         t = re.sub(r"(?m)^--.*$", "", t)
         for m in re.finditer(r"(?m)^([A-Za-zε][A-Za-z0-9\u1d40\u1d57'\-]*)\s+[^=\n]*=\s*(.*)$", t):
             nm, start = m.group(1), m.end()
@@ -5243,11 +5293,30 @@ def scan_emitted_wrappers(out):
       wrong."""
     import os, re, io
     heads = {}
-    for f in sorted(os.listdir(out)):
-        if not (f.endswith("Rows.agda") or f.startswith("JudgeWf")
-                or f.startswith("RedWf") or f.endswith("Wf.agda")):
-            continue
-        t = io.open(os.path.join(out, f), encoding="utf-8").read()
+    # ★★★ WALK, DO NOT LIST.  The judgement parts live in `Judge/` since
+    #   the 2026-09-08 rename; a flat `os.listdir` stops seeing them and
+    #   this scanner would then keep reporting happily over FEWER FILES.
+    #   A ledger that silently covers less than it claims is worse than
+    #   no ledger — `verification-that-covers-less-than-it-claims`.
+    #
+    # ⚠ SO THE COUNT IS ASSERTED, NOT ASSUMED.  `_scanned` is compared
+    #   against the file set below; if a future layout change hides
+    #   files from this walk again, the generator STOPS rather than
+    #   quietly narrowing its own claim.
+    _files = []
+    for _dp, _dn, _fn in os.walk(out):
+        for f in _fn:
+            if not f.endswith(".agda"):
+                continue
+            if not (f.endswith("Rows.agda") or f.startswith("JudgeWf")
+                    or os.path.basename(_dp) == "Judge"
+                    or f.startswith("RedWf") or f.endswith("Wf.agda")):
+                continue
+            _files.append(os.path.join(_dp, f))
+    _scanned = 0
+    for f in sorted(_files):
+        _scanned += 1
+        t = io.open(f, encoding="utf-8").read()
         # ⚠ AFTER THE IMPORTS.  Module names (`JudgeWfK`) end in `K` too.
         k = t.find("\nmodule ")
         body = t[t.index("\n\n", k):] if k >= 0 and "\n\n" in t[k:] else t

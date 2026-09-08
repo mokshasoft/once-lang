@@ -24,23 +24,23 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot3 where
 
-import DirectedHoTT.Examples.Knot.JudgeWfAE
-import DirectedHoTT.Examples.Knot.JudgeWfAF
-import DirectedHoTT.Examples.Knot.JudgeWfAG
-import DirectedHoTT.Examples.Knot.JudgeWfAH
-import DirectedHoTT.Examples.Knot.JudgeWfAI
-import DirectedHoTT.Examples.Knot.JudgeWfAJ
-import DirectedHoTT.Examples.Knot.JudgeWfAK
-import DirectedHoTT.Examples.Knot.JudgeWfAL
-import DirectedHoTT.Examples.Knot.JudgeWfAM
-import DirectedHoTT.Examples.Knot.JudgeWfAN
-import DirectedHoTT.Examples.Knot.JudgeWfAO
-import DirectedHoTT.Examples.Knot.JudgeWfAP
-import DirectedHoTT.Examples.Knot.JudgeWfAQ
-import DirectedHoTT.Examples.Knot.JudgeWfAR
-import DirectedHoTT.Examples.Knot.JudgeWfAS
-import DirectedHoTT.Examples.Knot.JudgeWfAT
-import DirectedHoTT.Examples.Knot.JudgeWfAU
-import DirectedHoTT.Examples.Knot.JudgeWfAV
-import DirectedHoTT.Examples.Knot.JudgeWfAW
-import DirectedHoTT.Examples.Knot.JudgeWfAX
+import DirectedHoTT.Examples.Knot.Judge.CodeId
+import DirectedHoTT.Examples.Knot.Judge.CodeMu
+import DirectedHoTT.Examples.Knot.Judge.CodeNat
+import DirectedHoTT.Examples.Knot.Judge.CodePi
+import DirectedHoTT.Examples.Knot.Judge.CodeSigma
+import DirectedHoTT.Examples.Knot.Judge.CodeUnit
+import DirectedHoTT.Examples.Knot.Judge.Con
+import DirectedHoTT.Examples.Knot.Judge.Conv
+import DirectedHoTT.Examples.Knot.Judge.DwfCons
+import DirectedHoTT.Examples.Knot.Judge.DwfIota
+import DirectedHoTT.Examples.Knot.Judge.DwfKappa
+import DirectedHoTT.Examples.Knot.Judge.DwfNil
+import DirectedHoTT.Examples.Knot.Judge.DwfRho
+import DirectedHoTT.Examples.Knot.Judge.Elim
+import DirectedHoTT.Examples.Knot.Judge.Fst
+import DirectedHoTT.Examples.Knot.Judge.Hrefl
+import DirectedHoTT.Examples.Knot.Judge.Icon
+import DirectedHoTT.Examples.Knot.Judge.IcwClo
+import DirectedHoTT.Examples.Knot.Judge.IcwFord
+import DirectedHoTT.Examples.Knot.Judge.IcwImu
