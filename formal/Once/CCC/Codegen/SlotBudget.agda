@@ -66,6 +66,8 @@ open import Once.CCC.Machine.SMCore using
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-stack-budget;
+   -- D159: the placement and its pieces
+   blocks-layout; block-layout; link; ir-to-unit; entry; entry-budget; blocks;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; fsize; lsize;
    push2; pop2; wrap-sum; visit-walk; rebuild-walk; cata-nat-layer
@@ -405,6 +407,46 @@ segok-thunk {B} ℓ bb e body bok = mkSegOK inner neu
                    -- the pop restores `mkSeg (cur st) (saved st)`, which IS `st`
                    -- (record eta) — so the marker pair cancels exactly.
                    refl)
+
+------------------------------------------------------------------------
+-- D159: A BLOCK, PLACED. `segok-thunk`'s label-free twin — the inline layout
+-- ended with `c-label end` (the target of the jump that skipped the body);
+-- a named block has no such jump and no such label. The `c-thunk`/`c-ret`
+-- pair is still what makes a block NEUTRAL, which is why it composes.
+------------------------------------------------------------------------
+segok-block : ∀ {B : ℕ} (ℓ : LabelId) (bb : ℕ) (body : AbstractTrace) → SegOK bb body
+            → SegOK B (instr-ctrl (c-thunk ℓ bb) ∷ body ++ instr-ctrl (c-ret bb) ∷ [])
+segok-block {B} ℓ bb body bok = mkSegOK inner neu
+  where
+    inner : ∀ {sv : List ℕ}
+          → AllSeg (mkSeg B sv) (instr-ctrl (c-thunk ℓ bb) ∷
+                                 body ++ instr-ctrl (c-ret bb) ∷ [])
+    inner {sv} =
+      sb-none refl
+      ∷ allseg-++ (ok-all bok)
+          (subst (λ z → AllSeg z (instr-ctrl (c-ret bb) ∷ []))
+                 (sym (ok-neu bok (mkSeg bb (B ∷ sv))))
+                 (sb-none refl ∷ []))
+    neu : ∀ (st : SegState)
+        → seg-fold (instr-ctrl (c-thunk ℓ bb) ∷ body ++ instr-ctrl (c-ret bb) ∷ []) st ≡ st
+    neu st =
+      trans (seg-fold-++ body (instr-ctrl (c-ret bb) ∷ [])
+                         (mkSeg bb (cur st ∷ saved st)))
+            (trans (cong (seg-fold (instr-ctrl (c-ret bb) ∷ []))
+                         (ok-neu bok (mkSeg bb (cur st ∷ saved st))))
+                   -- the pop restores `mkSeg (cur st) (saved st)`, which IS
+                   -- `st` by record eta — the marker pair cancels exactly.
+                   refl)
+
+-- …and a whole block list. Each block is neutral, so the list is.
+BlockOK : ℕ × ℕ × AbstractTrace → Set
+BlockOK (_ , bb , t) = SegOK bb t
+
+segok-blocks : ∀ {B : ℕ} (bs : List (ℕ × ℕ × AbstractTrace))
+             → All BlockOK bs → SegOK B (blocks-layout bs)
+segok-blocks []                 []       = segok-idle [] refl []
+segok-blocks ((lbl , bb , t) ∷ bs) (q ∷ qs) =
+  segok-++ (segok-block (ℓ o lbl) bb t q) (segok-blocks bs qs)
 
 ------------------------------------------------------------------------
 -- THE FRONTIER NEVER RETREATS.
@@ -1155,17 +1197,73 @@ allseg-at (x ∷ xs) zero     (p ∷ ps) refl = p
 allseg-at (x ∷ xs) (suc pc) (p ∷ ps) eq   = allseg-at xs pc ps eq
 
 ------------------------------------------------------------------------
--- …and the form the correspondence consumes: at the top the enclosing stack is
--- empty and the segment in force is the emitter's own budget — which is what
--- the per-arch backend turns into `subq $budget*8, %rsp`.
+-- D159: …AND EVERY EMITTED BLOCK IS `SegOK` AT ITS OWN BUDGET.
+--
+-- `slots-below` covers the ENTRY block. This is its companion over the block
+-- list, and together they are what the linked program needs — the entry's
+-- budget no longer being claimed to govern a body that has its own.
 ------------------------------------------------------------------------
-ir-slots-below-seg : ∀ {A B} (ir : IR A B)
-                   → SegOK (ir-stack-budget ir) (ir-to-trace ir)
-ir-slots-below-seg ir with ir-to-trace' 0 0 ir | slots-below ir 0 0
-... | _ , _ , _ , _ | sb = sb
+bodies-of : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace)
+          → List (ℕ × ℕ × AbstractTrace)
+bodies-of (_ , _ , _ , bs) = bs
+
+blocks-below : ∀ {A B} (ir : IR A B) (n l : ℕ)
+             → All BlockOK (bodies-of (ir-to-trace' n l ir))
+blocks-below id                  n l = []
+blocks-below fst                 n l = []
+blocks-below snd                 n l = []
+blocks-below terminal            n l = []
+blocks-below initial             n l = []
+blocks-below (g ∘ f)             n l = ++⁺ (blocks-below f n l) (blocks-below g _ _)
+blocks-below (⟨ f , g ⟩)         n l = ++⁺ (blocks-below f _ l) (blocks-below g _ _)
+-- the two shapes that CREATE a block
+blocks-below (curry b Stack)     n l = slots-below b 0 (suc (suc l))
+                                     ∷ blocks-below b 0 (suc (suc l))
+blocks-below (curry b Heap)      n l = slots-below b 0 (suc (suc l))
+                                     ∷ blocks-below b 0 (suc (suc l))
+blocks-below apply               n l = []
+blocks-below (inl Stack)         n l = []
+blocks-below (inr Stack)         n l = []
+blocks-below (inl Heap)          n l = []
+blocks-below (inr Heap)          n l = []
+blocks-below (case f g)          n l = ++⁺ (blocks-below f n (suc (suc l)))
+                                           (blocks-below g _ _)
+blocks-below (In _ _)            n l = []
+blocks-below (out-μ _)           n l = []
+blocks-below (Cata {F} _ alg)    n l = blocks-below alg 0 l
+blocks-below (Para _ _)          n l = []
+blocks-below (Out _)             n l = []
+blocks-below (in-ν _ _)          n l = []
+blocks-below (Ana _ _)           n l = []
+blocks-below (Hylo _ _ _ _)      n l = []
+blocks-below (Fuse _ _ _ _)      n l = []
+blocks-below (free-heap _)       n l = []
+blocks-below (SigOp _)           n l = []
+blocks-below (const fits-int _)  n l = []
+blocks-below (const fits-float _) n l = []
+
+------------------------------------------------------------------------
+-- …and the form the correspondence consumes.
+--
+-- D159: this is `AllSeg`, NOT `SegOK`. The linked program is NOT segment-
+-- neutral: it ends in the entry block's `c-ret`, whose matching push is the
+-- PROLOGUE (`subq $budget*8, %rsp`) — outside the trace entirely. `pop-with []`
+-- is the identity, so at the top (`saved ≡ []`) that unmatched pop is harmless,
+-- but demanding neutrality of the whole program would be demanding something
+-- false. Neutrality stays what it always was: the property of a FRAGMENT, used
+-- to compose. `emitted-slot-seg` — the only consumer — never wanted more.
+------------------------------------------------------------------------
+ir-slots-below-all : ∀ {A B} (ir : IR A B)
+                   → AllSeg (mkSeg (ir-stack-budget ir) []) (ir-to-trace ir)
+ir-slots-below-all ir =
+  allseg-++ (ok-all (slots-below ir 0 0))
+    (subst (λ z → AllSeg z (instr-ctrl (c-ret (ir-stack-budget ir)) ∷
+                            blocks-layout (bodies-of (ir-to-trace' 0 0 ir))))
+           (sym (ok-neu (slots-below ir 0 0) (mkSeg (ir-stack-budget ir) [])))
+           (sb-none refl ∷ ok-all (segok-blocks _ (blocks-below ir 0 0))))
 
 emitted-slot-seg : ∀ {A B} (ir : IR A B) (pc : ℕ) (i : AbstractInstr) (slot : Slot)
                  → trace-lookup (ir-to-trace ir) pc ≡ just i → slot-of i ≡ just slot
                  → slot < cur (seg-at (ir-to-trace ir) pc (mkSeg (ir-stack-budget ir) []))
 emitted-slot-seg ir pc i slot ftq soq =
-  below (allseg-at (ir-to-trace ir) pc (ok-all (ir-slots-below-seg ir)) ftq) slot soq
+  below (allseg-at (ir-to-trace ir) pc (ir-slots-below-all ir) ftq) slot soq
