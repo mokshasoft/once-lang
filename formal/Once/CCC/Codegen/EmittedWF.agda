@@ -41,6 +41,8 @@ open import Data.List.Relation.Unary.AllPairs using (AllPairs)
 open import Relation.Binary.PropositionalEquality using (_≢_)
 
 open import Once.CCC.Label using (Label; once; thunk; LabelId)
+open import Once.CanonicalName using (CanonicalName)
+open import Once.SigOp.Info using (SigOpInfo; name; sem; SigOpSem; pureV; emitsV; haltsV)
 open import Once.CCC.Machine.SMCore using
   ( AbstractInstr; AbstractTrace
   ; instr-ctrl; instr-load-code-addr
@@ -143,15 +145,10 @@ labels-ref-i (instr-ctrl (c-ret _))                  = []
 labels-ref-i (instr-load-code-addr m)                = thunk m ∷ []
 labels-ref-i (instr-case-on-tag f g)                 = labels-ref f ++ labels-ref g
 labels-ref-i (instr-loop b)                          = labels-ref b
--- D164: A SIGOP INVOCATION REFERENCES A SYMBOL — AND IT IS NOT ONE OF THESE.
--- `instr-sigop si` lowers to `call <once-symbol-path (name si)>`, a `.globl`
--- symbol resolved by `ld` against this module's arith blocks or an external
--- interpretation. `labels-def` collects only `c-label` / `c-thunk`, so listing
--- it here would make `labels-resolvable` FALSE rather than useful. It belongs
--- in a SIBLING statement over `CanonicalName`s with its own resolution rule,
--- which does not exist yet — and its absence is what let D163's regression
--- ship a `call` to a symbol nothing defined. Recorded here rather than left
--- to a catch-all, so the gap is written down at the point it is skipped.
+-- D164/D166: a SigOp invocation references a `.globl` SYMBOL, not one of these
+-- local labels — `labels-def` collects only `c-label`/`c-thunk`, so listing it
+-- here would make `labels-resolvable` false rather than useful. It has its own
+-- list, `syms-ref` below.
 labels-ref-i (instr-sigop _)                         = []
 labels-ref-i mov-to-output                            = []
 labels-ref-i mov-to-input                             = []
@@ -203,3 +200,93 @@ record EmittedWF (at : AbstractTrace) : Set where
     labels-resolvable : All (_∈ labels-def at) (labels-ref at)
 
 open EmittedWF public
+
+------------------------------------------------------------------------
+-- D166: THE OTHER NAMESPACE — the `.globl` symbols the text CALLS.
+--
+-- `instr-sigop si` lowers to `call <once-symbol-path (name si)>`. Whether that
+-- call resolves is `ld`'s other rejection, and NOTHING stated it: `EmittedWF`
+-- above covers the `.L` locals, `DistinctSymbols` covers the "already defined"
+-- half one namespace up, and the "undefined reference" half did not exist.
+--
+-- WHICH SIGOPS OWE AN IMPLEMENTATION. `sem` classifies them (Plan 0.58/D071):
+--
+--   * an EFFECT CONTRACT is external — `ld` resolves it against a linked
+--     interpretation from `Strata/Interpretations/<mod>.<arch>`, and nothing
+--     in this module emits it.
+--   * a PROVEN VALUE (`pureV`) is internal, and NOTHING LINKS IT. Its only
+--     implementation is the `arith.block.<digest>` body `emitArithBlocks`
+--     writes — so a bare internal SigOp surviving to the emitter is a call
+--     into thin air.
+--
+-- That second case is exactly D163: QTT's operand wrappers stopped the arith
+-- recogniser firing, `rewrite-ir` produced no block, and `arith.div.int`
+-- reached the emitter unlifted. 19 exit tests, 119 cabal tests, a green apex.
+------------------------------------------------------------------------
+
+-- The symbols a SigOp invocation OWES this module, by its `sem` (Plan
+-- 0.58/D071's three-way split):
+--
+--   `pureV`  — an internal producer. Nothing links it; its only implementation
+--              is what this module emits, so its symbol is owed.
+--   `emitsV` — external, observable, continues. Linked from an interpretation.
+--   `haltsV` — external, observable, terminates. Likewise.
+--
+-- So this list is precisely "the symbols the emitted text calls and this
+-- module must therefore define", which is what makes the resolvability
+-- statement checkable without knowing anything about `Strata`.
+sigop-owed : ∀ {A B} → SigOpInfo A B → List CanonicalName
+sigop-owed {A} {B} si = go (sem si)
+  where
+    go : SigOpSem A B → List CanonicalName
+    go (pureV _)  = name si ∷ []
+    go (emitsV _) = []
+    go (haltsV _) = []
+
+syms-ref   : AbstractTrace → List CanonicalName
+syms-ref-i : AbstractInstr → List CanonicalName
+
+syms-ref []       = []
+syms-ref (i ∷ is) = syms-ref-i i ++ syms-ref is
+
+-- ENUMERATED, like the two walks above: a new instruction must be given a
+-- verdict rather than defaulting to "calls nothing".
+syms-ref-i (instr-sigop si)                          = sigop-owed si
+syms-ref-i (instr-case-on-tag f g)                   = syms-ref f ++ syms-ref g
+syms-ref-i (instr-loop b)                            = syms-ref b
+syms-ref-i (instr-ctrl (c-label _))                  = []
+syms-ref-i (instr-ctrl (c-thunk _ _))                = []
+syms-ref-i (instr-ctrl (c-jmp _))                    = []
+syms-ref-i (instr-ctrl (c-branch-scratch-zero _))    = []
+syms-ref-i (instr-ctrl (c-branch-tag-zero _))        = []
+syms-ref-i (instr-ctrl (c-ret _))                    = []
+-- a closure-body address is a LOCAL label (`labels-ref` has it), not a symbol
+syms-ref-i (instr-load-code-addr _)                  = []
+syms-ref-i mov-to-output                             = []
+syms-ref-i mov-to-input                              = []
+syms-ref-i load-indirect                             = []
+syms-ref-i load-indirect-suc                         = []
+syms-ref-i store-indirect                            = []
+syms-ref-i store-indirect-suc                        = []
+syms-ref-i instr-pop-frame                           = []
+-- the closure call is INDIRECT (through the closure's code cell), so it names
+-- no symbol; the cell was loaded by `instr-load-code-addr`.
+syms-ref-i instr-call-closure                        = []
+syms-ref-i instr-save-closure-reg                    = []
+syms-ref-i (load-from-slot _)                        = []
+syms-ref-i (store-at-slot _)                         = []
+syms-ref-i (lea-slot _)                              = []
+syms-ref-i (restore-input _)                         = []
+syms-ref-i (instr-alloc-stack _)                     = []
+syms-ref-i (instr-dealloc-stack _)                   = []
+syms-ref-i (instr-reclaim-to _)                      = []
+syms-ref-i (instr-push-frame _)                      = []
+syms-ref-i (worklist-init _)                         = []
+syms-ref-i (worklist-push _)                         = []
+syms-ref-i (worklist-pop _)                          = []
+syms-ref-i (worklist-check _)                        = []
+syms-ref-i (instr-load-tag-lit _)                    = []
+syms-ref-i (instr-alloc-heap _)                      = []
+syms-ref-i (instr-reg-op _)                          = []
+syms-ref-i (lea-indexed _)                           = []
+syms-ref-i (instr-load-const _ _)                    = []
