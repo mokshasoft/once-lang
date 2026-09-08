@@ -12,6 +12,48 @@ attempts that fail for the same reason are one attempt.
 
 ---
 
+## ★★★ THE LESSON: DON'T FIGHT THE PROOFS, FIGHT THE ABSTRACTIONS
+
+This file's 34 attempts are one long demonstration of a single mistake and
+its remedy. **The failing proof was never the problem. The definition it
+was proving things about was.**
+
+`occOp f g = lam (maxTm (app (renTm vs f) (var vz)) …)` puts the fold's
+accumulator under a lambda. A fold CHAINS its accumulator, so from the
+third recursive field on every goal carried an `extR` — and thirty-odd
+attempts went into peels, casts, naturality lemmas and index machinery
+trying to DISCHARGE that `extR`. Making `occOp` a closed combinator
+applied to its arguments deleted it:
+
+    renTm vs (occOp (occOp a b) c) ≡ occOp (occOp (w a) (w b)) (w c)   -- refl
+
+**Nothing left to prove.** Option A (prove the commutation as a naturality
+lemma) was a day of real work aimed at a self-inflicted obligation.
+
+★ THE SAME SESSION PRODUCED THREE MORE INSTANCES OF THE SAME SHAPE:
+
+| symptom fought | abstraction fixed instead |
+|---|---|
+| `⊢tr` OOM at 5.5 GB — RTS flags, collectors, caps | SPLIT THE RULE (`JWF_SUBSPLIT`); the row-chunker had bottomed out at one rule per module |
+| 1540 dead import edges slowing every Judge module | the generator emitted a chain nobody read — DELETE it, not optimise it |
+| the head reduction re-derived in every adequacy proof | `Lib/IHeadRed` — extract it once, 3 clients |
+| an index peel needed at every row | the ROW STATEMENT pinned the index; quantify it and the peel vanishes |
+
+★ AND THE TELL IS ALWAYS THE SAME: *the working analogue does not have
+this problem.* `Knot/SzAgree` has no weakening to cancel, no index peel,
+and no `extR` — because `plusTm` builds no lambda and `agree i t` takes
+its index as a parameter. Every time a proof needs a step its nearest
+working sibling does not, the difference is in the DEFINITIONS, and that
+is where to look first.
+
+⚠ THE COST OF NOT DOING THIS: six mechanisms proposed and refuted (12,
+13, 16, and three more), each plausible, three of them reproducing the
+observed boundary exactly. A mechanism that explains the symptom is not a
+diagnosis. The abstraction question — *why does the working version not
+need this?* — would have reached the answer on day one.
+
+---
+
 ## Step A — `occ` rows (`occK` agrees with `occTm`/`occTy`)
 
 Developed in `bootstrap/tmp/OccAgreeTmp.agda` (outside the sweep root, so it
@@ -420,3 +462,56 @@ Spike 5 never saw it: its `occSum` came from a TYPE, not from βs.
    there is no row in `SzAgree` to copy — the template runs out here, and
    that is exactly why every mechanism that assumed symmetry with `sz`
    was wrong.
+
+
+## ★★★ CLOSED (attempts 32–34) — `occOp` must not build a lambda
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 32 | SPIKE (`tmp/MaxFnSpike.agda`): does a CLOSED-combinator `occOp` make renaming distribute through a chained accumulator? | ✅ **`refl`** — definitionally |
+| 33 | implement it: `Lib/IOcc.occOp f g = app (app maxFn f) g`, `maxFn` closed; `⊢occOp = ⊢app (⊢app ⊢maxFn da) db` | ✅ rc=0 |
+| 34 | adapt `Lib/IOccRed.occStep-red` (now THREE βs) and rerun `Hom` | ✅ **rc=0 — the 3-field row passes** |
+
+★★★ **THE FIX WAS A DEFINITION, NOT A LEMMA.**
+
+```agda
+-- was: the accumulator sits under a `lam`
+occOp f g = lam (maxTm (app (renTm vs f) (var vz)) (app (renTm vs g) (var vz)))
+-- now: `f`/`g` are ARGUMENTS of a closed combinator
+maxFn     = lam (lam (lam (maxTm (app (var (vs (vs vz))) (var vz))
+                                 (app (var (vs vz))      (var vz)))))
+occOp f g = app (app maxFn f) g
+```
+
+A fold CHAINS its accumulator, so with the old definition
+`renTm vs (occOp a b)` was `lam (renTm (extR vs) …)` and every goal from
+the THIRD recursive field on carried an `extR` nothing could discharge.
+With `maxFn` closed,
+
+    renTm vs (occOp (occOp a b) c) ≡ occOp (occOp (w a) (w b)) (w c)
+
+holds by `refl`. **No naturality lemma was needed — there was nothing
+left to prove.** Option A (prove the commutation) would have been real
+work for a problem that a better definition deletes.
+
+⚠ TWO RESIDUES, both small and both named by Agda:
+  · `occStep-red` now does THREE βs, not one;
+  · the accumulator is weakened TWICE and the new child once — `acc` is
+    substituted at the FIRST β so it passes under both remaining binders.
+    ⇒ `Lib/Wk.sub-w²-single` for `acc`, `wk-single` for `h`.  Using one
+    lemma for both is the obvious error, and the error message says so.
+
+★ AND `Lib/ISz` NEVER MET ANY OF THIS: its `op = plusTm` builds no
+  lambda, so `Knot/SzAgree` has no weakening to cancel anywhere. That is
+  why six mechanisms assuming symmetry with `sz` were wrong, and why the
+  template genuinely ran out here — this was the one place `occ` needed
+  something `sz` does not.
+
+★ It also improves the term-size story: `maxTm a b = plusTm a (monusTm b
+  a)` mentions `a` twice, and that duplication now lives inside a CLOSED
+  `Def` (shared) instead of being inlined at every application. See
+  `maxtm-is-non-linear`, which predicted this cost and can now be
+  updated: the linear formulation was also the correct one.
+
+⇒ ALL FOUR ROW SHAPES NOW PASS: `base` (0 fields), `El` (1, cross-sort),
+  `Π` (2, one under a binder), `app` (2, same depth), `Hom` (3).

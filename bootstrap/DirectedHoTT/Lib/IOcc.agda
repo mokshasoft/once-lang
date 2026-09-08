@@ -32,7 +32,7 @@ module DirectedHoTT.Lib.IOcc where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; RTy; vz; vs; var; lam; app; Π; Nat; nzero; renTm )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; ⊢lam; ⊢app; ⊢nzero
+  using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢lam; ⊢app; ⊢nzero
         ; ty-Π; ty-Nat )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true )
@@ -54,15 +54,48 @@ occZ = lam nzero
 ⊢occZ : {Γ : Ctx} → Γ ⊢ occZ ∷ OccTy
 ⊢occZ = ⊢lam ty-Nat ⊢nzero
 
+-- ★★★ `maxFn` IS CLOSED, AND THAT IS THE POINT.
+--
+-- ⚠⚠ THE OBVIOUS DEFINITION DOES NOT WORK, and cost a long investigation:
+--       occOp f g = lam (maxTm (app (renTm vs f) (var vz)) …)
+--   puts the accumulator UNDER A `lam`, so `renTm vs (occOp a b)` is
+--   `lam (renTm (extR vs) …)`.  A fold CHAINS its accumulator
+--   (`occOp (occOp a b) c`), so from the THIRD recursive field on, every
+--   goal carries an `extR` that nothing can discharge.  `Lib/ISz` never
+--   meets this: its `op = plusTm` builds no lambda, so `Knot/SzAgree`'s
+--   rows have no weakening to cancel and were no guide here.
+--
+-- ★ WITH `f` AND `g` AS ARGUMENTS OF A CLOSED COMBINATOR, a renaming
+--   distributes over the `app`s and stops at `maxFn` itself:
+--
+--       renTm vs (occOp (occOp a b) c)
+--         ≡ occOp (occOp (renTm vs a) (renTm vs b)) (renTm vs c)
+--
+--   holds by `refl` — DEFINITIONALLY.  No naturality lemma is needed;
+--   there is nothing left to prove.
+--
+-- ★ It also improves the term-size story: `maxTm a b = plusTm a (monusTm
+--   b a)` mentions `a` twice, and that duplication now sits inside a
+--   CLOSED `Def` (shared) rather than being inlined per application.
+--   See `maxtm-is-non-linear`.
+maxFn : {Γ : Cx} → RTm Γ
+maxFn = lam (lam (lam (maxTm (app (var (vs (vs vz))) (var vz))
+                             (app (var (vs vz))      (var vz)))))
+
+⊢maxFn : {Γ : Ctx} → Γ ⊢ maxFn ∷ Π OccTy (Π OccTy OccTy)
+⊢maxFn =
+  ⊢lam ty-OccTy
+   (⊢lam ty-OccTy
+     (⊢lam ty-Nat
+       (⊢max (⊢app (⊢var (there (there here))) (⊢var here))
+             (⊢app (⊢var (there here))         (⊢var here)))))
+
 occOp : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
-occOp f g = lam (maxTm (app (renTm vs f) (var vz))
-                       (app (renTm vs g) (var vz)))
+occOp f g = app (app maxFn f) g
 
 ⊢occOp : {Γ : Ctx} {a b : RTm ⌊ Γ ⌋} →
          Γ ⊢ a ∷ OccTy → Γ ⊢ b ∷ OccTy → Γ ⊢ occOp a b ∷ OccTy
-⊢occOp da db =
-  ⊢lam ty-Nat (⊢max (⊢app (⊢wk da) (⊢var here))
-                    (⊢app (⊢wk db) (⊢var here)))
+⊢occOp da db = ⊢app (⊢app ⊢maxFn da) db
 
 -- ⚠ `nd` IS THE IDENTITY, where `sz`/`depth` use `nsuc`.  A node
 --   contributes nothing to whether a VARIABLE occurs — only its children
