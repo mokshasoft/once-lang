@@ -136,3 +136,49 @@ generalisation.
    `_fstat(r)` vs `_fstat(j)` split — the RECURSIVE index `r` and the FIELD
    index `j` counted separately — is the same distinction and is probably
    the shape to copy.
+
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 13 | read the FULL error text instead of its first line | ⚠ **attempt 12's diagnosis was WRONG** — see below |
+
+★★★ **ATTEMPT 12 WAS MISDIAGNOSED, AND THE LOG IS WHY IT WAS CAUGHT.**
+Attempt 12 read `extR vs x₁ != vs x₁`, saw that `Π` (2 fields) passed and
+`Hom` (3) failed, and concluded the INDEX PEEL was position-dependent —
+because field `j` names `var (vs^j vz)`. That story is tidy and false:
+
+* `iihs` EXTENDS its substitution per field —
+  `iihs D ms σ (iρ j C) p = pair (ielim D (subTm σ j) ms (fst p))
+                                 (iihs D ms (iext σ (fst p)) C (snd p))` —
+  and `iext`'s clauses reduce on the variable pattern, so the `vs^j`
+  chain COMPUTES. There is nothing position-dependent to peel.
+* the error is at `Var ((Θ ∙) ∙)` — **two binders in Θ**, the ENCODING
+  context, not in the row's own telescope.
+
+⇒ **THE REAL MECHANISM.** `Lib/IOcc.occOp` WEAKENS both arguments:
+
+```agda
+occOp f g = lam (maxTm (app (renTm vs f) (var vz))
+                       (app (renTm vs g) (var vz)))
+```
+
+and `renTm ρ (lam t) = lam (renTm (extR ρ) t)` (`Spec/Syntax:294`). So
+chaining the accumulator — `occOp (occOp a b) c` — puts a `lam` inside a
+`renTm vs` and produces `renTm (extR vs)`. That happens at EXACTLY two
+levels of chaining, i.e. at the THIRD recursive field. `Π` has two fields
+and one `occOp`; `Hom` has three and two.
+
+★ SO THE BOUNDARY IS REAL AND THE EXPLANATION WAS NOT.  Both stories
+predict "breaks at 3 fields", which is why the wrong one survived a whole
+attempt. ⚠ The lesson is the one this file opens with: the useful column
+is WHY, and a *why* that merely reproduces the observed boundary has not
+been tested. Two mechanisms predicted the same symptom.
+
+⬜ NEXT: the fix is in `Lib/IOccRed`, NOT in the emitter's peel. Either
+   · state `occStep-red` so the accumulator's weakening is absorbed
+     (a `renTm`-naturality step for `occOp`), or
+   · give `Lib/IOcc` an `occOp` that does not weaken — but that changes
+     the fold's own definition and every `⊢occOp` client, so measure
+     first.
+   ⚠ Do NOT build the position-dependent peel of attempt 12; it solves
+     a problem that does not exist.
