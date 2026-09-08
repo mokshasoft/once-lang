@@ -25,7 +25,7 @@ open import Data.Nat.Show using () renaming (show to showNat)
 -- D159/Phase B: a closure body's symbol is rendered from its LabelId on BOTH
 -- sides now — the reference already was; the definition used `showNat` on a
 -- bare counter and produced a DIFFERENT symbol.
-open import Once.CCC.Label using (LabelId; showLabelId)
+open import Once.CCC.Label using (LabelId; showLabelId; thunkSym)
 open import Data.List using (List; []; _∷_)
 open import Data.Product using (_×_; _,_)
 
@@ -134,7 +134,7 @@ riscv64-irToBodies o l ir =
     emit-thunk-body : ℕ → (LabelId × ℕ × AbstractTrace) → ℕ × String
     emit-thunk-body cl (lbl , budget , body-trace) =
       let (cl' , prog) = compile-trace-cnt o cl body-trace
-      in cl' , (".L_thunk_" ++ showLabelId lbl ++ ":\n" ++
+      in cl' , (thunkSym lbl ++ ":\n" ++
                 "    addi sp, sp, -" ++ showNat (budget * 8 + 8) ++ "\n" ++
                 "    sd ra, " ++ showNat (budget * 8) ++ "(sp)\n" ++
                 programToText prog ++

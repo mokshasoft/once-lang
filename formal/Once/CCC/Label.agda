@@ -162,6 +162,42 @@ showLabelId : LabelId → String
 showLabelId lid =
   once-symbol-path (owner lid) ++ˢ showPath (path lid) ++ˢ "_" ++ˢ showNat (idx lid)
 
+------------------------------------------------------------------------
+-- THE CLOSURE-BODY SYMBOL, AND THE ONLY ONE.
+--
+-- A thunk's symbol is written in three places — the DEFINITION
+-- (`emit-thunk-body`), the code-address operand that references it
+-- (`rip+label` / `mov-code` / `lla`), and the `c-thunk` marker's label when the
+-- linked program is lowered (`showLabel (thunk _)`). They must agree
+-- CHARACTER FOR CHARACTER: the assembler resolves them by string.
+--
+-- They did not. `emit-thunk-body` rendered `showNat lbl` (`.L_thunk_10`) while
+-- every reference rendered `showLabelId` (`.L_thunk_once_4main_10`), on all
+-- three targets — the definition dropped the CanonicalName path that D089 put
+-- there precisely so a label and its owner read as one identity. The agreement
+-- was asserted in a COMMENT (`X86-64/Emit.agda`: "renders exactly the
+-- `.L_thunk_<n>` that `emit-thunk-body` … already use") and the comment was
+-- false. Nothing else could see it: the definition text comes from
+-- `irToBodies` and the references from `compile-trace`, two different walks
+-- that only `<arch>-loader-faithful` relates.
+--
+-- So the symbol is a FUNCTION, named once here, and every site calls it. The
+-- divergence is now unsayable rather than merely untested — the string cannot
+-- differ between definition and reference because there is only one of it.
+------------------------------------------------------------------------
+thunkSym : LabelId → String
+thunkSym n = ".L_thunk_" ++ˢ showLabelId n
+
+-- …and the same argument one level out. All three `Emit` modules carried a
+-- byte-identical `showLabel` returning the symbol MINUS its `.L` prefix, with
+-- every call site pasting the prefix back on — three copies of a convention,
+-- which is three chances to drift. `labelSym` returns the WHOLE symbol, so a
+-- jump, a definition and a code-address operand cannot spell one differently.
+labelSym : Label → String
+labelSym (once n)     = ".Lonce_" ++ˢ showLabelId n
+labelSym (sigop nm k) = ".Lsigops_" ++ˢ nm ++ˢ "_" ++ˢ showNat k
+labelSym (thunk n)    = thunkSym n
+
 -- Build a label identity in the CURRENT context. Sub-step A keeps `path`
 -- empty — the splice-aware paths arrive with sub-step B, which is what
 -- actually makes a cata's two copies of its algebra distinct.

@@ -16,7 +16,7 @@ open import Data.Nat.Show using () renaming (show to showNat)
 open import Data.String using (String; _++_)
 open import Data.List using (List; []; _∷_; foldr)
 
-open import Once.CCC.Label using (showLabelId)
+open import Once.CCC.Label using (showLabelId; thunkSym; labelSym)
 open import Once.CCC.Target.X86-32.Syntax
 
 ------------------------------------------------------------------------
@@ -52,10 +52,6 @@ showOperand (imm n) = "$" ++ showNat n
 -- once rather than per arch.
 ------------------------------------------------------------------------
 
-showLabel : Label → String
-showLabel (once n)     = "once_" ++ showLabelId n
-showLabel (sigop nm k) = "sigops_" ++ nm ++ "_" ++ showNat k
-showLabel (thunk n)    = "_thunk_" ++ showLabelId n
 
 ------------------------------------------------------------------------
 -- Instructions (AT&T syntax: src, dst order; `l` = 32-bit operand size)
@@ -71,8 +67,8 @@ showInstr (test op1 op2) = "    testl " ++ showOperand op2 ++ ", " ++ showOperan
 showInstr (jmp (reg r))  = "    jmp *" ++ showReg r
 showInstr (jmp (mem m))  = "    jmp *" ++ showMem m
 showInstr (jmp (imm n))  = "    jmp " ++ showNat n
-showInstr (jne n)        = "    jne .L" ++ showLabel n
-showInstr (je n)         = "    je .L"  ++ showLabel n
+showInstr (jne n)        = "    jne " ++ labelSym n
+showInstr (je n)         = "    je "  ++ labelSym n
 showInstr (call (reg r)) = "    call *" ++ showReg r
 showInstr (call (mem m)) = "    call *" ++ showMem m
 showInstr (call (imm n)) = "    call "  ++ showNat n
@@ -84,9 +80,9 @@ showInstr (push (imm n)) = "    pushl $" ++ showNat n
 showInstr (pop r)        = "    popl "  ++ showReg r
 showInstr nop            = "    nop"
 showInstr ud2            = "    ud2"
-showInstr (label n)      = ".L" ++ showLabel n ++ ":"
-showInstr (mov-code r n) = "    movl $.L_thunk_" ++ showLabelId n ++ ", " ++ showReg r
-showInstr (jmp-l n)      = "    jmp .L" ++ showLabel n
+showInstr (label n)      = labelSym n ++ ":"
+showInstr (mov-code r n) = "    movl $" ++ thunkSym n ++ ", " ++ showReg r
+showInstr (jmp-l n)      = "    jmp " ++ labelSym n
 
 ------------------------------------------------------------------------
 -- Program emission

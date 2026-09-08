@@ -18,7 +18,7 @@ open import Data.List using (List; []; _∷_; foldr)
 
 -- Import X86-64 syntax
 open import Once.CCC.Target.X86-64.Syntax
-open import Once.CCC.Label using (Label; once; sigop; thunk; showLabelId)
+open import Once.CCC.Label using (Label; once; sigop; thunk; showLabelId; thunkSym; labelSym)
 
 ------------------------------------------------------------------------
 -- Register names
@@ -35,7 +35,7 @@ showMem : Mem → String
 showMem (base r) = "(" ++ showReg r ++ ")"
 showMem (base+disp r n) = showNat n ++ "(" ++ showReg r ++ ")"
 showMem (rip+disp n) = showNat n ++ "(%rip)"
-showMem (rip+label n) = ".L_thunk_" ++ showLabelId n ++ "(%rip)"
+showMem (rip+label n) = thunkSym n ++ "(%rip)"
 
 ------------------------------------------------------------------------
 -- Operands (AT&T syntax: $ for immediates)
@@ -52,13 +52,6 @@ showOperand (imm n) = "$" ++ showNat n
 
 -- Plan 0.33: render provenance into the assembly symbol so compiler
 -- (`once`) and SigOp (`sigop`) labels never collide in the object file.
-showLabel : Label → String
-showLabel (once n)       = "once_" ++ showLabelId n
-showLabel (sigop nm k)   = "sigops_" ++ nm ++ "_" ++ showNat k
--- Plan 0.63 (D082): a closure-body entry. The ".L" prefix is added by the
--- call sites, so this renders exactly the `.L_thunk_<n>` that
--- `emit-thunk-body` and the `rip+label` operand already use.
-showLabel (thunk n)      = "_thunk_" ++ showLabelId n
 
 showInstr : Instr → String
 showInstr (mov dst src) =
@@ -74,11 +67,11 @@ showInstr (cmp op1 op2) =
 showInstr (test op1 op2) =
   "    testq " ++ showOperand op2 ++ ", " ++ showOperand op1
 showInstr (jmp n) =
-  "    jmp .L" ++ showLabel n
+  "    jmp " ++ labelSym n
 showInstr (je n) =
-  "    je .L" ++ showLabel n
+  "    je " ++ labelSym n
 showInstr (jne n) =
-  "    jne .L" ++ showLabel n
+  "    jne " ++ labelSym n
 showInstr (call (reg r)) =
   "    call *" ++ showReg r
 showInstr (call (mem m)) =
@@ -104,7 +97,7 @@ showInstr ud2 =
 showInstr syscall =
   "    syscall"
 showInstr (label n) =
-  ".L" ++ showLabel n ++ ":"
+  labelSym n ++ ":"
 
 ------------------------------------------------------------------------
 -- Program emission

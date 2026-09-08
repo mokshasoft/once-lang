@@ -18,7 +18,7 @@ open import Data.Integer.Show using () renaming (show to showInt)
 open import Data.String using (String; _++_)
 open import Data.List using (List; []; _∷_; foldr)
 
-open import Once.CCC.Label using (showLabelId)
+open import Once.CCC.Label using (showLabelId; thunkSym; labelSym)
 open import Once.CCC.Target.RiscV64.Syntax
 
 ------------------------------------------------------------------------
@@ -35,10 +35,6 @@ open import Once.Target.RiscV64.PhysReg using (showReg)
 -- is what lets the naming be reasoned about once rather than per arch.
 ------------------------------------------------------------------------
 
-showLabel : Label → String
-showLabel (once n)     = "once_" ++ showLabelId n
-showLabel (sigop nm k) = "sigops_" ++ nm ++ "_" ++ showNat k
-showLabel (thunk n)    = "_thunk_" ++ showLabelId n
 
 ------------------------------------------------------------------------
 -- Instructions
@@ -52,19 +48,19 @@ showInstr (sub  rd rs1 rs2)   = "    sub "   ++ showReg rd ++ ", " ++ showReg rs
 showInstr (addi rd rs i)      = "    addi "  ++ showReg rd ++ ", " ++ showReg rs  ++ ", " ++ showInt i
 showInstr (li   rd i)         = "    li "    ++ showReg rd ++ ", " ++ showInt i
 showInstr (auipc rd i)        = "    auipc " ++ showReg rd ++ ", " ++ showNat i
-showInstr (lla  rd n)         = "    lla "   ++ showReg rd ++ ", .L_thunk_" ++ showLabelId n
+showInstr (lla  rd n)         = "    lla "   ++ showReg rd ++ ", " ++ thunkSym n
 showInstr (mv   rd rs)        = "    mv "    ++ showReg rd ++ ", " ++ showReg rs
-showInstr (beq  rs1 rs2 o)    = "    beq "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", .L" ++ showLabel o
-showInstr (bne  rs1 rs2 o)    = "    bne "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", .L" ++ showLabel o
-showInstr (jal  rd o)         = "    jal "   ++ showReg rd ++ ", .L" ++ showLabel o
+showInstr (beq  rs1 rs2 o)    = "    beq "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", " ++ labelSym o
+showInstr (bne  rs1 rs2 o)    = "    bne "   ++ showReg rs1 ++ ", " ++ showReg rs2 ++ ", " ++ labelSym o
+showInstr (jal  rd o)         = "    jal "   ++ showReg rd ++ ", " ++ labelSym o
 showInstr (jalr rd rs o)      = "    jalr "  ++ showReg rd ++ ", " ++ showReg rs ++ ", " ++ showNat o
-showInstr (j    o)            = "    j .L"   ++ showLabel o
+showInstr (j    o)            = "    j "   ++ labelSym o
 showInstr ret                 = "    ret"
 showInstr (call o)            = "    call "  ++ showNat o
 showInstr (call-sym name)     = "    call "  ++ name
 showInstr nop                 = "    nop"
 showInstr unimp               = "    unimp"
-showInstr (label n)           = ".L" ++ showLabel n ++ ":"
+showInstr (label n)           = labelSym n ++ ":"
 
 ------------------------------------------------------------------------
 -- Program emission
