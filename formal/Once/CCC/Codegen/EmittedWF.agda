@@ -46,7 +46,17 @@ open import Once.CCC.Machine.SMCore using
   ; instr-ctrl; instr-load-code-addr
   ; instr-case-on-tag; instr-loop
   ; FlatCtrl; c-label; c-jmp; c-thunk; c-ret
-  ; c-branch-scratch-zero; c-branch-tag-zero )
+  ; c-branch-scratch-zero; c-branch-tag-zero
+  -- D164: the rest of `AbstractInstr`, so both walks can be ENUMERATED
+  -- instead of resting on a catch-all.
+  ; mov-to-output; mov-to-input; load-indirect; load-indirect-suc
+  ; store-indirect; store-indirect-suc; instr-pop-frame; instr-call-closure
+  ; instr-save-closure-reg
+  ; load-from-slot; store-at-slot; lea-slot; restore-input; instr-alloc-stack
+  ; instr-dealloc-stack; instr-reclaim-to; instr-push-frame; worklist-init
+  ; worklist-push; worklist-pop; worklist-check; instr-load-tag-lit
+  ; instr-alloc-heap; instr-reg-op; lea-indexed
+  ; instr-sigop; instr-load-const )
 
 ------------------------------------------------------------------------
 -- THE DEFINING OCCURRENCES — the symbols the emitted text DEFINES.
@@ -67,12 +77,45 @@ labels-def-i : AbstractInstr → List Label
 labels-def []       = []
 labels-def (i ∷ is) = labels-def-i i ++ labels-def is
 
-labels-def-i (instr-ctrl (c-label m))   = once  m ∷ []
-labels-def-i (instr-ctrl (c-thunk m _)) = thunk m ∷ []
-labels-def-i (instr-case-on-tag f g)    = labels-def f ++ labels-def g
-labels-def-i (instr-loop b)             = labels-def b
-{-# CATCHALL #-}
-labels-def-i _                          = []
+-- D164: ENUMERATED, not a catch-all. A new instruction must now be given a
+-- verdict here rather than silently defining nothing.
+labels-def-i (instr-ctrl (c-label m))                = once  m ∷ []
+labels-def-i (instr-ctrl (c-thunk m _))              = thunk m ∷ []
+labels-def-i (instr-ctrl (c-jmp _))                  = []
+labels-def-i (instr-ctrl (c-branch-scratch-zero _))  = []
+labels-def-i (instr-ctrl (c-branch-tag-zero _))      = []
+labels-def-i (instr-ctrl (c-ret _))                  = []
+labels-def-i (instr-case-on-tag f g)                 = labels-def f ++ labels-def g
+labels-def-i (instr-loop b)                          = labels-def b
+labels-def-i (instr-load-code-addr _)                = []
+-- a SigOp INVOCATION defines nothing.
+labels-def-i (instr-sigop _)                         = []
+labels-def-i mov-to-output                            = []
+labels-def-i mov-to-input                             = []
+labels-def-i load-indirect                            = []
+labels-def-i load-indirect-suc                        = []
+labels-def-i store-indirect                           = []
+labels-def-i store-indirect-suc                       = []
+labels-def-i instr-pop-frame                          = []
+labels-def-i instr-call-closure                       = []
+labels-def-i instr-save-closure-reg                   = []
+labels-def-i (load-from-slot _)                     = []
+labels-def-i (store-at-slot _)                      = []
+labels-def-i (lea-slot _)                           = []
+labels-def-i (restore-input _)                      = []
+labels-def-i (instr-alloc-stack _)                  = []
+labels-def-i (instr-dealloc-stack _)                = []
+labels-def-i (instr-reclaim-to _)                   = []
+labels-def-i (instr-push-frame _)                   = []
+labels-def-i (worklist-init _)                      = []
+labels-def-i (worklist-push _)                      = []
+labels-def-i (worklist-pop _)                       = []
+labels-def-i (worklist-check _)                     = []
+labels-def-i (instr-load-tag-lit _)                 = []
+labels-def-i (instr-alloc-heap _)                   = []
+labels-def-i (instr-reg-op _)                       = []
+labels-def-i (lea-indexed _)                        = []
+labels-def-i (instr-load-const _ _)                    = []
 
 ------------------------------------------------------------------------
 -- THE REFERENCING OCCURRENCES — the symbols the emitted text MENTIONS.
@@ -89,14 +132,53 @@ labels-ref-i : AbstractInstr → List Label
 labels-ref []       = []
 labels-ref (i ∷ is) = labels-ref-i i ++ labels-ref is
 
-labels-ref-i (instr-ctrl (c-jmp m))                 = once  m ∷ []
-labels-ref-i (instr-ctrl (c-branch-scratch-zero m)) = once  m ∷ []
-labels-ref-i (instr-ctrl (c-branch-tag-zero m))     = once  m ∷ []
-labels-ref-i (instr-load-code-addr m)               = thunk m ∷ []
-labels-ref-i (instr-case-on-tag f g)                = labels-ref f ++ labels-ref g
-labels-ref-i (instr-loop b)                         = labels-ref b
-{-# CATCHALL #-}
-labels-ref-i _                                      = []
+-- D164: ENUMERATED, not a catch-all — same reason, and here it also forced
+-- the `instr-sigop` question to be answered in writing.
+labels-ref-i (instr-ctrl (c-jmp m))                  = once  m ∷ []
+labels-ref-i (instr-ctrl (c-branch-scratch-zero m))  = once  m ∷ []
+labels-ref-i (instr-ctrl (c-branch-tag-zero m))      = once  m ∷ []
+labels-ref-i (instr-ctrl (c-label _))                = []
+labels-ref-i (instr-ctrl (c-thunk _ _))              = []
+labels-ref-i (instr-ctrl (c-ret _))                  = []
+labels-ref-i (instr-load-code-addr m)                = thunk m ∷ []
+labels-ref-i (instr-case-on-tag f g)                 = labels-ref f ++ labels-ref g
+labels-ref-i (instr-loop b)                          = labels-ref b
+-- D164: A SIGOP INVOCATION REFERENCES A SYMBOL — AND IT IS NOT ONE OF THESE.
+-- `instr-sigop si` lowers to `call <once-symbol-path (name si)>`, a `.globl`
+-- symbol resolved by `ld` against this module's arith blocks or an external
+-- interpretation. `labels-def` collects only `c-label` / `c-thunk`, so listing
+-- it here would make `labels-resolvable` FALSE rather than useful. It belongs
+-- in a SIBLING statement over `CanonicalName`s with its own resolution rule,
+-- which does not exist yet — and its absence is what let D163's regression
+-- ship a `call` to a symbol nothing defined. Recorded here rather than left
+-- to a catch-all, so the gap is written down at the point it is skipped.
+labels-ref-i (instr-sigop _)                         = []
+labels-ref-i mov-to-output                            = []
+labels-ref-i mov-to-input                             = []
+labels-ref-i load-indirect                            = []
+labels-ref-i load-indirect-suc                        = []
+labels-ref-i store-indirect                           = []
+labels-ref-i store-indirect-suc                       = []
+labels-ref-i instr-pop-frame                          = []
+labels-ref-i instr-call-closure                       = []
+labels-ref-i instr-save-closure-reg                   = []
+labels-ref-i (load-from-slot _)                     = []
+labels-ref-i (store-at-slot _)                      = []
+labels-ref-i (lea-slot _)                           = []
+labels-ref-i (restore-input _)                      = []
+labels-ref-i (instr-alloc-stack _)                  = []
+labels-ref-i (instr-dealloc-stack _)                = []
+labels-ref-i (instr-reclaim-to _)                   = []
+labels-ref-i (instr-push-frame _)                   = []
+labels-ref-i (worklist-init _)                      = []
+labels-ref-i (worklist-push _)                      = []
+labels-ref-i (worklist-pop _)                       = []
+labels-ref-i (worklist-check _)                     = []
+labels-ref-i (instr-load-tag-lit _)                 = []
+labels-ref-i (instr-alloc-heap _)                   = []
+labels-ref-i (instr-reg-op _)                       = []
+labels-ref-i (lea-indexed _)                        = []
+labels-ref-i (instr-load-const _ _)                    = []
 
 ------------------------------------------------------------------------
 -- THE PREDICATE.
