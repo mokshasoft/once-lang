@@ -1254,6 +1254,32 @@ AbstractTrace : Set
 AbstractTrace = List AbstractInstr
 
 ------------------------------------------------------------------------
+-- D159 / plan 0.89 Phase B: A PROGRAM IS A COMPILATION UNIT.
+--
+-- The type lives HERE, beside `AbstractTrace`, and not in the emitter where
+-- D159 first put it. A program is what the MACHINE runs; the emitter merely
+-- produces one. Phase B is what showed this: `Machine.Flat` must take a unit
+-- (so `fetch` can be block-relative and `find-label` block-LOCAL), and `Flat`
+-- is below `IRToTrace`, so the emitter cannot be the type's home.
+--
+-- `entry-budget` is the entry block's frame reservation — the terminator
+-- `c-ret` carries it, mirroring the concrete `functionEpilogue`. `blocks` are
+-- the called bodies, NAMED: `(label , frame budget , trace)`, exactly the shape
+-- the three backends' `emit-thunk-body` already consumes. No global positions
+-- appear anywhere in this type; that is the whole point.
+--
+-- No `CanonicalName` is needed: block labels are raw `ℕ` here. `link` and
+-- `block-layout`, which build `ℓ o lbl`, stay in the emitter.
+------------------------------------------------------------------------
+record CompUnit : Set where
+  constructor unit
+  field
+    entry-budget : ℕ
+    entry        : AbstractTrace
+    blocks       : List (ℕ × ℕ × AbstractTrace)
+open CompUnit public
+
+------------------------------------------------------------------------
 -- Tree-Structured Traces (OCP-0003)
 --
 -- For recursion schemes, we need traces that can represent recursive

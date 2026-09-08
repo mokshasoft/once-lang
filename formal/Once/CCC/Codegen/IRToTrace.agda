@@ -95,6 +95,8 @@ import Once.Type as Ty
 
 open import Once.CCC.Machine.SMCore
   using (AbstractInstr; AbstractTrace;
+         -- D159/Phase B: the program type lives with the machine
+         CompUnit; unit; entry-budget; entry; blocks;
          mov-to-output; mov-to-input; load-indirect; load-indirect-suc; load-from-slot;
          store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
@@ -1023,17 +1025,10 @@ private
 -- label counter, which is threading state rather than output. So the emitter
 -- already returned a unit; what was missing was a name for the placement.
 ------------------------------------------------------------------------
-record CompUnit : Set where
-  constructor unit
-  field
-    -- the entry block's frame budget — the terminator carries it
-    entry-budget : ℕ
-    -- the entry block; its positions are block-LOCAL
-    entry        : AbstractTrace
-    -- the called bodies, NAMED: `(label , frame budget , trace)` — exactly
-    -- what the backends' `emit-thunk-body` already consumes
-    blocks       : List (ℕ × ℕ × AbstractTrace)
-open CompUnit public
+-- D159 / Phase B: `CompUnit` itself moved DOWN to `Machine.SMCore`, beside
+-- `AbstractTrace` — a program is what the machine runs, and the machine is
+-- below this module. What stays here is the emitter's production of one, and
+-- the placement (`link`), which needs `o` and the machine does not.
 
 ir-to-unit-at : ∀ {A B} → ℕ → ℕ → IR A B → CompUnit
 ir-to-unit-at n l ir =
