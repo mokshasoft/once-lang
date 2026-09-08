@@ -33,14 +33,36 @@
 -- trap, and it is why this premise is attached to `asm-trace-correct`, which is
 -- where the toolchain is actually trusted today.
 --
--- STATUS: `program-labels-distinct` is a NAMED RESIDUAL, class
--- **deferred proof / codegen**, and it is FALSE for the emitter as it stands —
--- `cata-dispatch` uses the IH for its algebra trace TWICE at the same label
--- range, which is exactly D099's defect. That is the point: the invariant is
--- what forces the cata fix rather than letting the assembler silently drop one
--- copy of the label. Route: the disjoint-range argument at every splice, on
--- `Once.CCC.Codegen.LabelRange`'s existing bricks (counter monotonicity DONE,
--- containment/`LabelScope` DONE, uniqueness next).
+-- STATUS (CORRECTED 2026-09-08, plan 0.89 Phase D2). This block used to say
+-- the residual "is FALSE for the emitter as it stands — `cata-dispatch` uses
+-- the IH for its algebra trace TWICE at the same label range". THAT IS NO
+-- LONGER SO, and the note was stale for a month: D099/C1 (2026-08-10) made the
+-- algebra a CALLED BODY generated once, and all four strategies now splice
+-- `at` exactly once, inside `cata-body` — checked, `cata-trace-{nat,linear,
+-- branching,const}`. The invariant did its job: it forced the cata fix, which
+-- landed.
+--
+-- So `program-labels-distinct` is a NAMED RESIDUAL, class **deferred proof /
+-- codegen**, and it is now BELIEVED TRUE. Every label is drawn from the
+-- monotone counter and consumed once — `curry` takes `l`, `l+1` and hands the
+-- body `l+2`; `case` takes `l`, `l+1` and compiles its branches above them;
+-- `cata` takes from `l1` on — and D161 made the cross-function threading one
+-- walk (`irToAsm` now compiles the LINKED program, so its counter advance
+-- already covers the bodies' labels; the old `l₁ ⊔ l₂` reconciliation of two
+-- walks is gone).
+--
+-- ROUTE, unchanged in shape: the disjoint-range argument at every splice, on
+-- `Once.CCC.Codegen.LabelRange`'s bricks — counter monotonicity DONE
+-- (`label-mono`), containment DONE (`LabelScope.labels-in`), and since D160 the
+-- entry-vs-blocks separation DONE too (`scope-ok`, which carries exactly the
+-- window and `NoCross` facts a uniqueness proof needs). Uniqueness is next.
+--
+-- PHASE D2's QUESTION, answered: the plan asked whether the invariant needs
+-- restating "once on the unit" before investing. It does not. The module-level
+-- form is already the one wired into `asm-trace-correct`, it is read off the
+-- same `ir'` the backend compiles so it cannot drift, and a unit-level restatement
+-- would add a second expression of the same fact — the exact disease this
+-- branch exists to remove. The investment belongs in the DISCHARGE.
 ------------------------------------------------------------------------
 
 module Once.Adequacy.LabelClash where
