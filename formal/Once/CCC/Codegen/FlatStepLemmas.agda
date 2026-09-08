@@ -319,6 +319,35 @@ module FlatStepsAPI {FS : FrameSemantics} where
             (sym (ag i (fpc fs) f fs))
             (FlatSteps-reloc t₁ t₂ ag rest)
 
+  ----------------------------------------------------------------------
+  -- D168 / plan 0.89 Phase D1 — A FRAGMENT IN THE MIDDLE.
+  --
+  -- `link u = entry ++ c-ret ∷ blocks-layout bs`, so a closure body is neither
+  -- at the front nor at the back: it has the entry (and the earlier blocks)
+  -- before it and the later blocks after it. `FlatSteps-prefix` covers the
+  -- front case and `FlatSteps-reloc` the back case; a BLOCK needs both, and
+  -- composing them is the whole content — run the fragment, extend it
+  -- rightwards by `post` (coordinates unchanged), then shift it rightwards
+  -- past `pre`.
+  --
+  -- This is what Phase D1 asks for: ONE global lemma, rather than a
+  -- per-composition side condition rediscovered at each splice. The side
+  -- conditions stay PER-INSTRUCTION for D155's reason — the `∀ tg` form
+  -- `exec-flat-reloc` wants is unsatisfiable once `pre` defines a label of its
+  -- own, which the entry block always does.
+  ----------------------------------------------------------------------
+  FlatSteps-middle : ∀ (pre mid post : AbstractTrace) {k : ℕ} {fs fs' : FlatState}
+    → (∀ (i : AbstractInstr) (pc : ℕ) → fetch mid pc ≡ just i
+        → ∀ (st : FlatState) → flat-exec-instr i (mid ++ post) st ≡ flat-exec-instr i mid st)
+    → (∀ (i : AbstractInstr) (pc : ℕ) → fetch (mid ++ post) pc ≡ just i
+        → ∀ (st : FlatState)
+        → flat-exec-instr i (pre ++ (mid ++ post)) (shift (length pre) st)
+          ≡ shift (length pre) (flat-exec-instr i (mid ++ post) st))
+    → FlatSteps mid k fs fs'
+    → FlatSteps (pre ++ (mid ++ post)) k (shift (length pre) fs) (shift (length pre) fs')
+  FlatSteps-middle pre mid post agp agr ch =
+    FlatSteps-reloc pre (mid ++ post) agr (FlatSteps-prefix mid post agp ch)
+
   FlatSteps-++ : ∀ {prog k₁ k₂ fs₁ fs₂ fs₃}
                → FlatSteps prog k₁ fs₁ fs₂ → FlatSteps prog k₂ fs₂ fs₃
                → FlatSteps prog (k₁ + k₂) fs₁ fs₃
