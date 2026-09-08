@@ -12024,3 +12024,91 @@ outside the trace, and `sigop : String → ℕ → Label` carries a raw name int
 codegen — the identity of an EXTERNAL symbol resolved from
 `Strata/Interpretations/<mod>.<arch>` at link time, which no Agda type reaches.
 Those are the remaining crossings, by the same test.
+
+## D170
+
+**A CLOSURE VALUE CARRIES ITS CODE'S ADDRESS, NOT ITS CODE'S BEHAVIOUR.
+`valid-closure-wf` DROPS `BodyCorrect`; `apply` LOOKS THE BODY UP.**
+
+### The symptom
+
+Plan 0.89 Phase E1 asks that `valid-closure-wf` carry "a `ValueRealized` over
+the body's block" in place of `BodyCorrect`. That cannot be written:
+`ValueRealized` lives in `IRObsCorrectFlat`, which IMPORTS
+`ClosureWellFormed`; and it cannot move down, because `ValueRealized.place`
+needs `ResultPlace`, which is inside `ClosureWellFormed`'s mutual block and
+cannot be extracted — it references `ValidAtWF` itself.
+
+The reflex is to call that a moduling problem and look for a common part to
+break out, or to invert the two modules. Neither is right.
+
+### The fault
+
+`ValidAtWF` and `ResultPlace` belong together: both are REPRESENTATION — where
+a value lives and whether the state represents it. Their mutual recursion is
+honest (a pair's validity needs its components'; a result place carries a
+validity). `IRResultAWF` and `ValueRealized` are EXECUTION — running an IR
+produces a state satisfying those predicates. Execution above representation is
+the CORRECT direction, and `IRObsCorrectFlat`'s import of `ClosureWellFormed`
+is therefore right.
+
+The one thing crossing the layers is `BodyCorrect`, and it crosses DOWNWARD:
+`valid-closure-wf` — a statement about how a closure VALUE is represented —
+carries a proof about how its body EXECUTES. `CurryStackWF` builds it,
+`ApplyWF` consumes it (`BodyCorrect.execute body-correct arg …`), so the value
+is a COURIER for an execution fact.
+
+That single edge is:
+
+* the only cycle in the block — `IRResultAWF` never mentions `ValidAtWF`
+  directly, so `ValidAtWF → BodyCorrect → {ValidAtWF, IRResultAWF}` is it;
+* why the block needs `NO_POSITIVITY_CHECK` (it sits in a constructor while
+  mentioning `ValidAtWF` negatively in `execute`'s premise);
+* and why `ValueRealized` cannot be moved down.
+
+**The layering error is the type system reporting a design error.** A closure
+value has no business carrying its body's behaviour.
+
+### The decision
+
+`valid-closure-wf` carries only REPRESENTATION:
+
+    readLoc s closure-loc            ≡ just (SV-Ptr  env-loc)
+    readLoc s (sucLoc closure-loc)   ≡ just (SV-Code body-label)
+    ValidAtWF mEnv alloc env env-loc s
+
+— all three of which it ALREADY has. The `BodyCorrect` field is deleted. The
+body's behaviour is obtained where it is used: at `apply`, the code cell names
+block `body-label`, the unit's block table maps it to the body, and
+`link-block-steps` (D168) relocates that block's chain to wherever `link` put
+it.
+
+### Why this is possible only now
+
+Before D159 a closure body was INLINED and NAMELESS — there was no table to
+look anything up in, so the value had to carry its behaviour. D159 made bodies
+named blocks of the `CompUnit`; D168 made a block's run relocate to its
+placement. The courier became removable exactly when the address became
+meaningful.
+
+### Consequences
+
+* the mutual block splits along the honest seam; `NO_POSITIVITY_CHECK` goes.
+* `ValueRealized` does NOT move — it stays in the flat layer where it belongs,
+  and Phase E1's blocked module-move is not needed at all.
+* strictly less work than the plan's E1: no migration, one field deleted, and
+  `ApplyWF`'s `BodyCorrect.execute` call replaced by a block lookup.
+* it is what Phase E2 already described ("`obs-correct-apply` consumes it via
+  block lookup"). The plan kept the carrying AND added the lookup; only the
+  lookup is needed.
+* E3 (`apply ∘ curry body`, the D157 counterexample) closes for the stated
+  reason — the union contains the body's block — rather than by threading a
+  witness through the value.
+
+### The general rule
+
+A VALUE's well-formedness may mention only what is true of the value in the
+state. If it carries a proof about what happens when the value is USED, the
+predicate has absorbed an execution obligation, and the first symptom is a
+mutual block that needs a positivity escape hatch. Look for the address, not
+the behaviour.
