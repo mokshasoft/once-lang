@@ -32,6 +32,7 @@ import DirectedHoTT.Lib.Arith
 import DirectedHoTT.Lib.ArithComm
 import DirectedHoTT.Lib.ArithLe
 import DirectedHoTT.Lib.ArithMonus
+import DirectedHoTT.Lib.BoolNum
 import DirectedHoTT.Lib.Dvd
 import DirectedHoTT.Lib.DvdArith
 import DirectedHoTT.Lib.ICast
