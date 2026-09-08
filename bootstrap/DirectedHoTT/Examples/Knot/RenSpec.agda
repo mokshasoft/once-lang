@@ -53,15 +53,14 @@ open import DirectedHoTT.Spec.Typing using ( ι-ielim; βfst; βsnd; jsub-refl; 
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-jsubᵖ ; ⟶*-idreflᵃ; ⟶*-nsuc )
 open import DirectedHoTT.Lib.IMeths
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
   using ( methsFrom-sel; methsFrom-past; cdTake; inCD; tt
         ; sel-here; sel-there; sel-here≡; sel-there≡ )
 
 -- ★ transitivity, spelled as an operator — `Knot/SzAgree` defines the
 --   same one locally; a third customer moves it to a reduction lib.
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done      » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain` — it was re-implemented here
+--   (and in 13 other modules) against `Metatheory/RedCong`.
 
 ------------------------------------------------------------------------
 -- ★★★ `vs`, AND IT IS ONE β-STEP.

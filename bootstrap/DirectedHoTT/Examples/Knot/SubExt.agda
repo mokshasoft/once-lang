@@ -60,12 +60,11 @@ open import DirectedHoTT.Examples.Knot.SubAgree using ( Represents )
 open import DirectedHoTT.Examples.Knot.SubMot
   using ( extNK; extSK; extMethsK; extTail; extVs )
 open import DirectedHoTT.Examples.Knot.SubSpec
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
   using ( constMethsFrom-past; wkTmK-agree; extNK-vz; wkTmK-sub )
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain` — it was re-implemented here
+--   (and in 13 other modules) against `Metatheory/RedCong`.
 
 cong₃' : {Γ : Cx} {a a' b b' c c' : RTm Γ} (f : RTm Γ → RTm Γ → RTm Γ → RTm Γ) →
          a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'

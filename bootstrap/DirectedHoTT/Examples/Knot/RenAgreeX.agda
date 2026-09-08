@@ -64,11 +64,10 @@ open import DirectedHoTT.Examples.Knot.RenTm using ( renTmAtK )
 open import DirectedHoTT.Examples.Knot.RenRed using ( ren-head-red )
 open import DirectedHoTT.Examples.Knot.SubAgree using ( RepresentsR )
 open import DirectedHoTT.Examples.Knot.RenClosed using ( ren-Desc-id; ren-IDesc-id )
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain` — it was re-implemented here
+--   (and in 13 other modules) against `Metatheory/RedCong`.
 
 ------------------------------------------------------------------------
 -- ★ `cTm-cMu` (k=38) — ONE cross-sort field, `sDesc@D`.  The slot is a

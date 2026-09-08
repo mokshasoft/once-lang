@@ -54,12 +54,11 @@ open import DirectedHoTT.Lib.ISub using ( ttsd; ⊤sd; ⊥sd )
 open import DirectedHoTT.Lib.IWk using ( Maybe; just; nothing )
 open import DirectedHoTT.Examples.Knot.RenMot using ( extRNK )
 open import DirectedHoTT.Examples.Knot.RenTm using ( renSmap; renDecStable; renFordMap )
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 open IS.Sub extRNK renSmap renDecStable renFordMap
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain` — it was re-implemented here
+--   (and in 13 other modules) against `Metatheory/RedCong`.
 
 ------------------------------------------------------------------------
 -- ★ THE PER-ROW HEAD REDUCTION — half 1 then half 2, and the five-arg

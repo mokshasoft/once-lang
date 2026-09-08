@@ -47,11 +47,10 @@ open import DirectedHoTT.Examples.Knot.SubMot
 open IS.Sub extNK sortMap decStableK fordMapK
 open import DirectedHoTT.Examples.Knot.SubAgree using ( Represents )
 open import DirectedHoTT.Examples.Knot.SubClosed using ( sub-Desc-id; sub-IDesc-id )
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain` — it was re-implemented here
+--   (and in 13 other modules) against `Metatheory/RedCong`.
 
 row-cMu : {Γ Δ Θ : Cx} {σ : Sub Γ Δ} {s : RTm Θ} →
           Represents σ s → (D : Desc) →

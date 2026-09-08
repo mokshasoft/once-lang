@@ -150,8 +150,6 @@
 --     ren-head-give ✅ not a program — `ren-head-red`'s twin for a GIVEN
 --                row, whose method is hand-written and so is not an
 --                `isubMethod` at all (`Knot/RenAgreeX`, `cTm-var`).
---     ren-head-red ✅ not a program — the per-row head reduction INSIDE
---                `Knot/RenRed`, i.e. a step of `renTmK`'s own adequacy.
 --     renTmAtK   ✅ DISCHARGED — the applied form; same theorem.
 --     renTmK     ✅ DISCHARGED — `Knot/RenAgreeTie.ren-agree`, ALL 30 `RTm`
 --                rows: `renTmAtK sTm ⌈Γ⌉ ⌈Δ⌉ r ⌈t⌉ ⟶* ⌈ renTm ρ t ⌉`
@@ -169,8 +167,6 @@
 --     stkCK      ⬜ OWED — agreement with `stkC?`.
 --     sub-head-give ✅ not a program — `ren-head-give`'s twin for the GIVEN
 --                row at the substitution instantiation.
---     sub-head-red ✅ not a program — `ren-head-red`'s twin at the
---                SUBSTITUTION instantiation (`Knot/SubRed`).
 --     subAtK     ✅ DISCHARGED — `Knot/SubAgreeTie.sub-agree`, ALL 30 `RTm`
 --                rows: `subAtK sTm ⌈Γ⌉ ⌈Δ⌉ s ⌈t⌉ ⟶* ⌈ subTm σ t ⌉` given
 --                `Represents σ s`.  25 generated (`Knot/SubAgreeRows`),

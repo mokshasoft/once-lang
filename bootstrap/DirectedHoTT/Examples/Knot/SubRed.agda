@@ -38,12 +38,11 @@ open import DirectedHoTT.Examples.Knot.SubMot
   using ( extNK; sortMap; decStableK; fordMapK; subTmK; subMethsK; subDescK; giveK )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subAtK )
 open import DirectedHoTT.Examples.Knot.SubNat using ( extNK-sub; fordMapK-sub )
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 open IS.Sub extNK sortMap decStableK fordMapK
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain` — it was re-implemented here
+--   (and in 13 other modules) against `Metatheory/RedCong`.
 
 -- ★ the two hypotheses, at THIS instantiation.
 hE-sub : ExtNSub

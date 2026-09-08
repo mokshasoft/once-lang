@@ -115,9 +115,9 @@ open import DirectedHoTT.Examples.Knot.Map using ( enTm )
 open import DirectedHoTT.Examples.Knot.SzS using ( szsTm; szsMethsK )
 
 -- chaining, so a row reads as the sequence of steps it is
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-_»_ = ⟶*-trans
+-- ★ `_»_` comes from `Lib/RedChain`: it was emitted (and hand-written)
+--   into 15 modules, 14 of them RE-IMPLEMENTING `⟶*-trans`.
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 
 ------------------------------------------------------------------------
 -- ★ EVERY ROW OPENS THE SAME WAY, so this much is proved ONCE: the
