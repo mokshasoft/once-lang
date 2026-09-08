@@ -759,13 +759,12 @@ ir-to-trace' n l (curry body Stack) =
                      store-at-slot closure-slot ∷
                      instr-load-code-addr (ℓ o this-label) ∷
                      store-at-slot (suc closure-slot) ∷
-                     lea-slot closure-slot ∷
-                     instr-ctrl (c-jmp (ℓ o end-label)) ∷
-                     instr-ctrl (c-thunk (ℓ o this-label) body-budget) ∷ []) ++
-                    body-trace ++
-                    (instr-ctrl (c-ret body-budget) ∷
-                     instr-ctrl (c-label (ℓ o end-label)) ∷ [])
-      all-bodies  = body-bodies
+                     lea-slot closure-slot ∷ [])
+      -- D159: the body is a NAMED BLOCK, not a splice. The `c-jmp end` that
+      -- used to jump over it, and `end-label` itself, existed only because of
+      -- the inlining. (`end-label` stays RESERVED for now so label arithmetic
+      -- does not shift in the same step; reclaiming it is a follow-up.)
+      all-bodies  = (this-label , body-budget , body-trace) ∷ body-bodies
   in next , l2 , this-trace , all-bodies
 
 -- Heap mode: closure record bump-allocated on the heap (2 cells:
@@ -789,13 +788,9 @@ ir-to-trace' n l (curry body Heap) =
                      store-indirect ∷
                      instr-load-code-addr (ℓ o this-label) ∷
                      store-indirect-suc ∷
-                     load-from-slot closure-stash ∷
-                     instr-ctrl (c-jmp (ℓ o end-label)) ∷
-                     instr-ctrl (c-thunk (ℓ o this-label) body-budget) ∷ []) ++
-                    body-trace ++
-                    (instr-ctrl (c-ret body-budget) ∷
-                     instr-ctrl (c-label (ℓ o end-label)) ∷ [])
-      all-bodies  = body-bodies
+                     load-from-slot closure-stash ∷ [])
+      -- D159: see the Stack clause — the body is a named block.
+      all-bodies  = (this-label , body-budget , body-trace) ∷ body-bodies
   in next , l2 , this-trace , all-bodies
 
 -- ────────────────────────────────────────────────────────────────────
@@ -1017,8 +1012,58 @@ private
   proj-budget : ℕ × ℕ × AbstractTrace × List (ℕ × ℕ × AbstractTrace) → ℕ
   proj-budget (n , _ , _ , _) = n
 
+------------------------------------------------------------------------
+-- D159: THE EMITTER'S CODOMAIN IS A COMPILATION UNIT, NOT A PLACEMENT.
+--
+-- A list IS a placement. A `CompUnit` NAMES its blocks instead, so there is no
+-- position-dependent statement to write about it (OCP-0005: the violation is
+-- unsayable, not asserted-and-checked).
+--
+-- The shape is `ir-to-trace'`'s components 1, 3 and 4 — component 2 is the
+-- label counter, which is threading state rather than output. So the emitter
+-- already returned a unit; what was missing was a name for the placement.
+------------------------------------------------------------------------
+record CompUnit : Set where
+  constructor unit
+  field
+    -- the entry block's frame budget — the terminator carries it
+    entry-budget : ℕ
+    -- the entry block; its positions are block-LOCAL
+    entry        : AbstractTrace
+    -- the called bodies, NAMED: `(label , frame budget , trace)` — exactly
+    -- what the backends' `emit-thunk-body` already consumes
+    blocks       : List (ℕ × ℕ × AbstractTrace)
+open CompUnit public
+
+ir-to-unit-at : ∀ {A B} → ℕ → ℕ → IR A B → CompUnit
+ir-to-unit-at n l ir =
+  unit (proj-budget (ir-to-trace' n l ir))
+       (proj-trace  (ir-to-trace' n l ir))
+       (proj-bodies (ir-to-trace' n l ir))
+
+ir-to-unit : ∀ {A B} → IR A B → CompUnit
+ir-to-unit = ir-to-unit-at 0 0
+
+-- A block, placed: its `c-thunk` marker carries the frame budget and it ends
+-- in `c-ret` — the abstract mirror of `emit-thunk-body`'s
+-- `.L_thunk_<lbl>: subq … / body / addq … / ret`.
+block-layout : ℕ × ℕ × AbstractTrace → AbstractTrace
+block-layout (lbl , b , t) =
+  instr-ctrl (c-thunk (ℓ o lbl) b) ∷ t ++ instr-ctrl (c-ret b) ∷ []
+
+blocks-layout : List (ℕ × ℕ × AbstractTrace) → AbstractTrace
+blocks-layout []       = []
+blocks-layout (b ∷ bs) = block-layout b ++ blocks-layout bs
+
+-- THE PLACEMENT, and the only one. Mirrors `Compile.agda`'s
+-- `asm ++ functionEpilogue ++ bodies`: the entry block, ITS TERMINATOR, then
+-- the named blocks. The terminator is what the abstract trace never had — it
+-- ended by falling off, which is only correct while nothing follows it.
+link : CompUnit → AbstractTrace
+link u = entry u ++ instr-ctrl (c-ret (entry-budget u)) ∷ blocks-layout (blocks u)
+
 ir-to-trace : ∀ {A B} → IR A B → AbstractTrace
-ir-to-trace ir = proj-trace (ir-to-trace' 0 0 ir)
+ir-to-trace ir = link (ir-to-unit ir)
 
 -- | Plan 0.14 (2026-05-17): trace-at-frontier entry point. The
 -- runtime path uses `ir-to-trace = ir-to-trace-at-frontier 0` since
@@ -1030,7 +1075,7 @@ ir-to-trace ir = proj-trace (ir-to-trace' 0 0 ir)
 -- `next-slot alloc = 0`, so `ir-to-trace-at-frontier 0 ≡ ir-to-trace`
 -- and the runtime and proof paths agree.
 ir-to-trace-at-frontier : ∀ {A B} → ℕ → IR A B → AbstractTrace
-ir-to-trace-at-frontier n ir = proj-trace (ir-to-trace' n 0 ir)
+ir-to-trace-at-frontier n ir = link (ir-to-unit-at n 0 ir)
 
 -- | Plan 0.2.4.5 D1: slot budget for an IR's main trace.
 -- Used by per-arch codegen to emit `subq budget*8, %rsp` / `addq` around

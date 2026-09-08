@@ -999,21 +999,22 @@ slots-below (⟨ f , g ⟩) n l =
   where h : suc (suc (suc (suc n))) ≤ budget-of (ir-to-trace' n l (⟨ f , g ⟩))
         h = ≤-trans (frontier-mono f _ l) (frontier-mono g _ _)
 -- THE FLIP: the closure construction, then the body's own segment.
+-- D159: the ENTRY BLOCK only. The body is a named block now, so its `SegOK`
+-- is discharged at the block, AT ITS OWN BUDGET, rather than being folded into
+-- the parent's segment here. That is the point: `SegOK (ir-stack-budget ir)`
+-- applied the entry block's budget to the whole program, which is wrong for
+-- any program with a body.
 slots-below (curry b Stack) n l =
-  segok-pre _ refl
+  segok-idle _ refl
     (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
      sb-slot refl ≤-refl (λ _ ()) ∷
      -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
-     sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷
-     sb-none refl ∷ [])
-    (segok-thunk (ℓ o l) _ (ℓ o (suc l)) _ (slots-below b 0 (suc (suc l))))
+     sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ [])
 slots-below (curry b Heap) n l =
-  segok-pre _ refl
+  segok-idle _ refl
     (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
      sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
-     sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷
-     sb-none refl ∷ [])
-    (segok-thunk (ℓ o l) _ (ℓ o (suc l)) _ (slots-below b 0 (suc (suc l))))
+     sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 slots-below apply n l = segok-idle _ refl
   (sb-none refl ∷ sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
   sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
