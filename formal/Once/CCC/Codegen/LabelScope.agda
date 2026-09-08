@@ -560,25 +560,15 @@ labels-in (⟨ f , g ⟩) n l =
            (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
             li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
             li-none refl ∷ []))
--- POST-FLIP the closure clauses DO mention a once label: the jump over the
--- inlined body and its landing `c-label`, both `suc l`. The body marker and
--- the code address stay invisible here — `thunk` provenance (D082) — and the
--- body's own labels start at `suc (suc l)`, above the join.
+-- D159: POST-UNFLIP the closure clauses mention NO once label at all. The jump
+-- over the inlined body and its landing `c-label` were the only two, and both
+-- existed solely because the body was spliced in. The body marker and the code
+-- address stay invisible as they always did — `thunk` provenance (D082).
 labels-in (curry b Stack) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-lab refl (n≤1+n l) join<hi ∷ li-none refl ∷
-  ++⁺ (ls-weaken (≤-trans (n≤1+n l) (n≤1+n (suc l))) ≤-refl (labels-in b 0 (suc (suc l))))
-      (li-none refl ∷ li-lab refl (n≤1+n l) join<hi ∷ [])
-  where join<hi : suc l < label-of (ir-to-trace' n l (curry b Stack))
-        join<hi = label-mono b 0 (suc (suc l))
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 labels-in (curry b Heap) n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-  li-lab refl (n≤1+n l) join<hi ∷ li-none refl ∷
-  ++⁺ (ls-weaken (≤-trans (n≤1+n l) (n≤1+n (suc l))) ≤-refl (labels-in b 0 (suc (suc l))))
-      (li-none refl ∷ li-lab refl (n≤1+n l) join<hi ∷ [])
-  where join<hi : suc l < label-of (ir-to-trace' n l (curry b Heap))
-        join<hi = label-mono b 0 (suc (suc l))
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 labels-in apply n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
@@ -1547,21 +1537,14 @@ seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])
 -- POST-FLIP: the body is inline inside a `c-thunk`/`c-ret` bracket, so this is
 -- `segagree-curry` — the construction plus the jump-over is the (idle) outer
 -- piece, and the join label `suc l` sits below the body's range.
+-- D159: the entry block is now LABEL-FREE straight-line code — no jump over a
+-- body, no landing label — so the bracket combinator `segagree-curry` is not
+-- needed here at all. The body's own agreement moved to the block.
 seg-agree (curry bd Stack) n l =
-  segagree-curry _ _ (ℓ o l) _ (ℓ o (suc l)) l (suc (suc l)) (suc (suc l)) _
-    refl (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-          li-lab refl (n≤1+n l) ≤-refl ∷ [])
-    (λ s → ok-neu (slots-below bd 0 (suc (suc l))) s)
-    (seg-agree bd 0 (suc (suc l))) (labels-in bd 0 (suc (suc l)))
-    (n≤1+n l , ≤-refl) (inj₁ ≤-refl)
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree (curry bd Heap)  n l =
-  segagree-curry _ _ (ℓ o l) _ (ℓ o (suc l)) l (suc (suc l)) (suc (suc l)) _
-    refl (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-          li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
-          li-lab refl (n≤1+n l) ≤-refl ∷ [])
-    (λ s → ok-neu (slots-below bd 0 (suc (suc l))) s)
-    (seg-agree bd 0 (suc (suc l))) (labels-in bd 0 (suc (suc l)))
-    (n≤1+n l , ≤-refl) (inj₁ ≤-refl)
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree apply n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
      refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
