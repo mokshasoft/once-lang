@@ -3349,6 +3349,63 @@ def gen_renagree(sort, tag, lo, hi):
                k, K["s"], pay, " »\n".join(chains)))
     return "\n".join(L) + "\n"
 
+
+# ====================== `occ`-AGREE ROWS, GENERATED ========================
+# ★★★ THE `occ` TWIN OF `gen_szagree`, and it differs in four ways that the
+#   two hand-validated rows (`base`, `El`) settled:
+#
+#   1. A LOCAL, SPECIALISED `occ-head-red`.  The generic
+#      `Lib/IHeadRed.ihead-red` leaves `mth` to be solved from the
+#      selection proof, which pins nothing downstream and every β then
+#      fails on unsolved metas.  Naming `occAt k` in the statement pins
+#      them — which is exactly why `Knot/SzAgree` has its own `head-red`.
+#
+#   2. NO `counted` SPECIAL CASE.  `nd = id`, so after the three βs the
+#      body IS `occSum …`, and `occSum-red` handles the empty fold and the
+#      recursive one alike.  `sz` needed a split because `nd = nsuc`.
+#
+#   3. THE IH TAKES TWO PEELS AT DIFFERENT DEPTHS, and a THIRD step before
+#      them: `fst (pair a b)` is NOT definitional — `βfst` is a REDUCTION
+#      rule — so the peel PROJECTS first, then fixes the child's INDEX
+#      (`snd (pair s n)` ⇒ `n`) and its SCRUTINEE.
+#
+#   4. `ihs` MUST BE PINNED.  `A » B` leaves the midpoint a meta, so
+#      `occSum-red`'s IH tuple is supplied explicitly per row.
+#
+# ⚠ SORTS: `occ`'s fold is ALL-SORT, so it descends into the closed sorts
+#   too.  `occTy`/`occTm` say nothing there (`occTy x (Mu D) = false`), so
+#   those get "gives 0" statements rather than agreement ones.
+# ============================================================================
+
+_OCC_SORT = {"cTy-": "sTy", "cTm-": "sTm", "cDesc-": "sDesc",
+             "cDCon-": "sDCon", "cIDesc-": "sIDesc", "cICon-": "sICon",
+             "cVar-": "sVar"}
+
+def _occ_sort(nm):
+    for p, s in _OCC_SORT.items():
+        if nm.startswith(p): return s
+    raise AssertionError("unknown sort for " + nm)
+
+def _occ_peel(k):
+    """the IH's chain: project the k-th tuple slot, then fix the child's
+    index and scrutinee.  `k` is the slot among the RECURSIVE fields."""
+    proj = "step (βfst _ _) done" if k == 0 else \
+           "(" + " » ".join(["step (βsnd _ _) done"] * k) + " » step (βfst _ _) done)"
+    return proj
+
+def gen_occagree_probe():
+    "diagnostic: how the 53 rows split by sort and by recursive-field count"
+    import collections
+    bysort = collections.Counter()
+    crosses = collections.Counter()
+    for nm, decl, f in KNOT:
+        s = _occ_sort(nm)
+        bysort[s] += 1
+        for x in f:
+            if x[0] == "rec" and x[1] != s:
+                crosses[(s, x[1])] += 1
+    return bysort, crosses
+
 def gen_szagree():
     rows = [(nm, decl, f) for nm, decl, f in KNOT if nm.startswith("cTm-")]
     assert len(rows) == 30, f"expected 30 RTm rows, got {len(rows)}"
