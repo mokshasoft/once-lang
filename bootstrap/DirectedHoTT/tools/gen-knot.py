@@ -5142,7 +5142,7 @@ _WRAP_LEDGER = {
     "nrsSK-vs":  "✅ not a program — the other clause.",
     "extRNK-vz": "✅ not a program — a clause of `extRNK`'s adequacy\n--                (`Knot/RenSpec`), which `extR-Represents` assembles.",
     "extRNK-vs": "✅ not a program — the other clause.",
-    "pwDefault": "⬜ OWED — the default method of `Knot/PwBody`'s tuple.  It\n--                REBUILDS `icon k p` and renames, so its adequacy is a\n--                corollary of `renTmK`'s; blocked on the same five\n--                cross-sort rows.",
+    "pwDefault": "⬜ OWED — the default method of `Knot/PwBody`'s tuple.\n--                ⚠ ITS OLD NOTE SAID \"blocked on the same five cross-sort\n--                rows\" — THAT IS STALE: `renTmK` is discharged for ALL 30.\n--                What actually blocks it is different in KIND: `pwDefault`\n--                is a METHOD (`lam (lam (lam …))` over index, payload and\n--                the IH tuple), not a directly-applied program, so its\n--                adequacy only means anything relative to `pwK`'s fold —\n--                and `pwK` is itself OWED.  It is NOT a composition\n--                corollary like `iinstK`/`wkTyUnderK`, despite the\n--                callee list looking the same.",
     # ⬜ OWED — a commutation lemma, `Knot/SzAgree`'s shape.
     # ⚠ `wkK` HAS NO ENTRY ANY MORE, and that is correct: it was moved to
     #   `Negative/WkK.agda`, which the scanner does not walk, so a ledger
@@ -5208,7 +5208,7 @@ _WRAP_LEDGER = {
     "ipayTyRho": "✅ not owed — a method row of `ipayTyK`.",
     "ipayTyKap": "✅ not owed — a method row of `ipayTyK`.",
     "atConK":    "⬜ OWED — agreement with `atCon`.",
-    "wkTyUnderK":"⬜ OWED — agreement with `renTy (extR vs)`.",
+    "wkTyUnderK": "✅ DISCHARGED — `Knot/WkTyAgree.wkTyUnder-agree`:\n--                `wkTyUnderK ⌈|Γ|⌉ ⌈A⌉ ⟶* ⌈ renTy (extR vs) A ⌉`.\n--                One line: `ren-agree-ty` over\n--                `extR-Represents _ wk-Represents`.",
     # ⬜ the eliminators the wrappers above are built from.
     "extSK":     "⬜ OWED — with `subTmK`.",
     "singleSK":  "⬜ OWED — `singleK`'s core.",
@@ -5241,7 +5241,7 @@ _WRAP_LEDGER = {
     "iihTyK":        "⬜ OWED — agreement with `iihTy`.",
     "imethsTyFromK": "⬜ OWED — agreement with `imethsTyFrom`.",
     "imethsTyK":     "⬜ OWED — `imethsTyFromK` at `j = 0`; a corollary.",
-    "wkTyUnder2K":   "⬜ OWED — agreement with `renTy (extR (extR vs))`.\n--                ⚠ The TWO-binder weakening; `wkTyUnderK` is the\n--                one-binder form and nothing needed this until `imethTy`.",
+    "wkTyUnder2K": "✅ DISCHARGED — `Knot/WkTyAgree.wkTyUnder2-agree`,\n--                at `renTy (extR (extR vs))`.  Same one line with\n--                `extR-Represents` applied twice.  ⚠ It is ONE renaming\n--                by `extR (extR vs)`, not two weakenings.",
     # ★ not programs — pieces of the eliminators above.
     "iihTyMotK": "✅ not a program — `iihTyK`'s MOTIVE.",
     "iihAppK":   "✅ not a program — the descent through `iihTyMotK`'s four\n--                Π binders, i.e. a step of `iihTyK`'s own definition.",
