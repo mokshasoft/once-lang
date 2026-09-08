@@ -151,10 +151,16 @@
 --                fixed (`vz` in a depth-`nsuc n` context is level `n`).
 --     payTyK     ⬜ OWED — agreement with `payTy`.
 --     pwBodyK    ⬜ OWED — agreement with `pw?`'s body case.
---     pwDefault  ⬜ OWED — the default method of `Knot/PwBody`'s tuple.  It
---                REBUILDS `icon k p` and renames, so its adequacy is a
---                corollary of `renTmK`'s; blocked on the same five
---                cross-sort rows.
+--     pwDefault  ⬜ OWED — the default method of `Knot/PwBody`'s tuple.
+--                ⚠ ITS OLD NOTE SAID "blocked on the same five cross-sort
+--                rows" — THAT IS STALE: `renTmK` is discharged for ALL 30.
+--                What actually blocks it is different in KIND: `pwDefault`
+--                is a METHOD (`lam (lam (lam …))` over index, payload and
+--                the IH tuple), not a directly-applied program, so its
+--                adequacy only means anything relative to `pwK`'s fold —
+--                and `pwK` is itself OWED.  It is NOT a composition
+--                corollary like `iinstK`/`wkTyUnderK`, despite the
+--                callee list looking the same.
 --     pwK        ⬜ OWED — agreement with `pw?`.
 --     ren-head-give ✅ not a program — `ren-head-red`'s twin for a GIVEN
 --                row, whose method is hand-written and so is not an
@@ -210,10 +216,14 @@
 --     wkTyK      ✅ DISCHARGED — `Knot/TyAgree.wkTyK-agree`:
 --                `ren-agree-ty` at the renaming `vs`, exactly as `wkTmK`
 --                is `ren-agree` at it.  The cost was opening the sort.
---     wkTyUnder2K ⬜ OWED — agreement with `renTy (extR (extR vs))`.
---                ⚠ The TWO-binder weakening; `wkTyUnderK` is the
---                one-binder form and nothing needed this until `imethTy`.
---     wkTyUnderK ⬜ OWED — agreement with `renTy (extR vs)`.
+--     wkTyUnder2K ✅ DISCHARGED — `Knot/WkTyAgree.wkTyUnder2-agree`,
+--                at `renTy (extR (extR vs))`.  Same one line with
+--                `extR-Represents` applied twice.  ⚠ It is ONE renaming
+--                by `extR (extR vs)`, not two weakenings.
+--     wkTyUnderK ✅ DISCHARGED — `Knot/WkTyAgree.wkTyUnder-agree`:
+--                `wkTyUnderK ⌈|Γ|⌉ ⌈A⌉ ⟶* ⌈ renTy (extR vs) A ⌉`.
+--                One line: `ren-agree-ty` over
+--                `extR-Represents _ wk-Represents`.
 --     εwkK       ✅ not owed — its argument is CLOSED, and every weakening
 --                agrees on a closed term.  This is exactly why `Knot/PayTy`
 --                may use `wkK` and `Knot/IhTyRho` may not.
