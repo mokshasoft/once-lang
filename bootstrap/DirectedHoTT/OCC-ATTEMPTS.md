@@ -323,3 +323,60 @@ against the child that `iihs` produces at σ-depth 2.
 ⚠ FIVE MECHANISMS HAVE NOW BEEN PROPOSED AND REFUTED.  Do not propose a
   sixth.  Run the isolation above; if it passes, the fault is in the `»`
   join to the head-red and nowhere else, which is a two-line surface.
+
+
+## ★★★ RESOLVED (attempts 25–28) — the IH must be QUANTIFIED OVER THE INDEX
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 25 | read `Knot/SzAgree`'s WORKING 3- and 5-field rows | ★ they have TWO peels, not three — **no index peel at all**, because each child is discharged by `agree _ y0`, the `_` being the index |
+| 26 | restate the row with the index quantified, `occ-head-red` using `_` placeholders | ⚠ >120s then **rc=143, ZERO errors** — killed, not refuted.  `meta-standing-for-a-computation`: three `_` in a signature |
+| 27 | same, every `_` spelled out | ⚠ 2s (from >120s!) — and the SAME `extR` error, so the index peel was not the cause either |
+| 28 | SPIKE (`tmp/AihSpike.agda`): CONSTRUCT the `AllIH` alone — no head-red, no cast, no `occSum-red` | ⚠ then ✅ — see below |
+
+★★★ **ATTEMPT 28 IS THE ANSWER.** Constructing the `AllIH` in isolation
+reported the mismatch in plain terms:
+
+```
+i != pair (subTm (isingle i) sTy) (subTm (isingle i) (snd (var vz)))
+```
+
+**the child's index is not `i`.** `iihs` builds it as
+`subTm (isingle i) (pair s (snd (var vz)))`. An IH pinned at a particular
+index therefore CANNOT apply to any child. Quantifying the IH —
+
+```agda
+((i' : RTm Γ) → IHocc k (ielim KnotD i' occMethsK a) m) → …
+```
+
+— makes it apply at every child, and the 3-field `AllIH` type-checks in
+**1s**.
+
+★ AND THAT IS EXACTLY WHAT `SzAgree` DOES.  `agree i t` takes the index as
+a PARAMETER, so its rows write `agree _ y0` and the `_` unifies with
+whatever `iihs` produced. It never peels an index because it never needs
+one to be anything in particular.
+
+⚠⚠ **THE ROOT ERROR WAS IN THE STATEMENT, MADE ON DAY ONE.** The first
+note in this file's Step A records: *"`sz`'s agreement quantifies the
+INDEX universally … `occ` depends on BOTH, so the index must be TIED to
+the context, not quantified away."* That is true of the FINAL theorem and
+FALSE of the ROWS. Pinning the index in the row statement created the
+need for an index peel, which had no counterpart in the working proof,
+and every subsequent mechanism (12, 13, 16, and the peel machinery for
+`D`/`sucD`/`lit`/`fld`) was investigating a self-inflicted symptom.
+
+★ SIX MECHANISMS PROPOSED, SIX REFUTED, and the answer came from READING
+  THE WORKING PROOF rather than from any of them. ⇒ before hypothesising
+  about a generated proof, diff it against the nearest proof that already
+  works. `gen_szagree` was 40 lines away the entire time.
+
+⬜ CONSEQUENCES FOR THE EMITTER:
+   · DELETE `peel_ix` and all the depth-annotation machinery
+     (`D` / `sucD n` / `lit` / `fld`) — it exists only to serve a pinned
+     index and is not needed;
+   · the row body becomes `SzAgree`'s shape plus the `⟶*-appˡ` that
+     `occ`'s function-valued motive requires;
+   · the ROW-LEVEL statements quantify the index; the TOP-LEVEL theorem
+     ties it. Those are different statements and conflating them is what
+     cost this whole investigation.
