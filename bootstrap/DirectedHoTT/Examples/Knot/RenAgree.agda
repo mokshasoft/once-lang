@@ -90,10 +90,9 @@ open import DirectedHoTT.Examples.Knot.RenTm using ( renTmAtK )
 open import DirectedHoTT.Examples.Knot.RenRed using ( ren-head-red )
 open import DirectedHoTT.Examples.Knot.SubAgree using ( RepresentsR; extR-Represents )
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain`: it was emitted (and hand-written)
+--   into 15 modules, 14 of them RE-IMPLEMENTING `⟶*-trans`.
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 
 row-lam : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r → (y0 : RTm (Γ ∙)) →

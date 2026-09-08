@@ -32,11 +32,10 @@ open import DirectedHoTT.Examples.Knot.Map using ( enDesc; enDCon; enTy; enIDesc
 open import DirectedHoTT.Examples.Knot.Sorts using ( num; sDesc; sDCon; sIDesc )
 open import DirectedHoTT.Examples.Knot.SubApp using ( subAtK )
 open import DirectedHoTT.Examples.Knot.SubRed using ( sub-head-red )
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain` — it was re-implemented here
+--   (and in 13 other modules) against `Metatheory/RedCong`.
 
 id-dnil : {Θ : Cx} (n m : ℕ) (σ : RTm Θ) → 
           subAtK sDesc (num n) (num m) σ (enDesc dnil) ⟶* enDesc {Θ} dnil

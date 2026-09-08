@@ -41,6 +41,7 @@ open import DirectedHoTT.Spec.Typing using ( nrs )
 open import DirectedHoTT.Examples.Knot.RenSpec
   using ( singleK-vz; singleK-vs; extRNK-vz; extRNK-vs; inVsX; nrsK-vz; nrsK-vs )
 open import DirectedHoTT.Examples.Knot.RenMot using ( extRNK )
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 
 ------------------------------------------------------------------------
 -- ★ THE REPRESENTATION RELATION.
@@ -69,10 +70,8 @@ single-Represents {Γ = Γ} n {u = u} vz     = singleK-vz n (enTm u) (num (len �
 single-Represents {Γ = Γ} n {u = u} (vs x) =
   singleK-vs n (enTm u) (num (len Γ)) (enVar x)
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain` — it was re-implemented here
+--   (and in 13 other modules) against `Metatheory/RedCong`.
 
 ------------------------------------------------------------------------
 -- ★★★ THE RENAMING'S REPRESENTATION RELATION.

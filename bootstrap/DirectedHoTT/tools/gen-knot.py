@@ -2701,9 +2701,9 @@ open import DirectedHoTT.Examples.Knot.Map using ( enTm )
 open import DirectedHoTT.Examples.Knot.SzS using ( szsTm; szsMethsK )
 
 -- chaining, so a row reads as the sequence of steps it is
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-_»_ = ⟶*-trans
+-- ★ `_»_` comes from `Lib/RedChain`: it was emitted (and hand-written)
+--   into 15 modules, 14 of them RE-IMPLEMENTING `⟶*-trans`.
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 
 ------------------------------------------------------------------------
 -- ★ EVERY ROW OPENS THE SAME WAY, so this much is proved ONCE: the
@@ -2809,10 +2809,9 @@ open import DirectedHoTT.Examples.Knot.RenTm using ( renTmAtK )
 open import DirectedHoTT.Examples.Knot.RenRed using ( ren-head-red )
 open import DirectedHoTT.Examples.Knot.SubAgree using ( RepresentsR; extR-Represents )
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain`: it was emitted (and hand-written)
+--   into 15 modules, 14 of them RE-IMPLEMENTING `⟶*-trans`.
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 """
 
 # ====================== ren-agree ROWS, GENERATED =========================
@@ -2941,10 +2940,9 @@ open import DirectedHoTT.Examples.Knot.SubRed using ( sub-head-red )
 open import DirectedHoTT.Examples.Knot.SubAgree using ( Represents )
 open import DirectedHoTT.Examples.Knot.SubExt using ( extS-Represents )
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain`: it was emitted (and hand-written)
+--   into 15 modules, 14 of them RE-IMPLEMENTING `⟶*-trans`.
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 """
 
 def _extS(d):
@@ -5116,13 +5114,25 @@ _WRAP_LEDGER = {
     #   step of one.  Listed rather than special-cased in the scanner, so
     #   that a genuinely new PROGRAM cannot hide behind a loosened rule.
     "ren-head-give": "✅ not a program — `ren-head-red`'s twin for a GIVEN\n--                row, whose method is hand-written and so is not an\n--                `isubMethod` at all (`Knot/RenAgreeX`, `cTm-var`).",
-    "ren-head-red": "✅ not a program — the per-row head reduction INSIDE\n--                `Knot/RenRed`, i.e. a step of `renTmK`'s own adequacy.",
+    # ⚠ `ren-head-red` AND `sub-head-red` USED TO BE LISTED HERE, and
+    #   both entries are gone for the same reason `head-red`'s was: the
+    #   bodies now call `Lib/IHeadRed.ihead-red`, so they no longer
+    #   mention `ielim KnotD` and this scanner (which walks the Knot
+    #   tree only) stops flagging them.  Both said "not a program",
+    #   so nothing is discharged by their removal.
+    #
+    # ⚠⚠ AND NOTE HOW LATE THIS WAS FOUND.  The retrofit that moved
+    #   those two bodies passed a FULL SWEEP — ALL GREEN, 291 modules
+    #   — while leaving this generator unable to run, because
+    #   `sweep.sh` type-checks the tree and never invokes
+    #   `gen-knot.py`.  A green sweep does NOT cover the generator's
+    #   own assertions.  ⇒ after ANY change to a body the ledger
+    #   scans, re-run the generator BEFORE trusting the sweep.
     "extRK-vz":  "✅ not a program — a clause of `extRK`'s adequacy.",
     "extSK-vz":  "✅ not a program — the SUBSTITUTION twin (`Knot/SubSpec`).",
     "extSK-vs":  "✅ not a program — the other clause (`Knot/SubExt`).",
     "wkTmK-sub": "✅ not a program — `wkTmK`'s substitution naturality\n--                (`Knot/SubSpec`), needed because `extVs`'s body puts a\n--                `wkTmK` under five binders.",
     "sub-head-give": "✅ not a program — `ren-head-give`'s twin for the GIVEN\n--                row at the substitution instantiation.",
-    "sub-head-red": "✅ not a program — `ren-head-red`'s twin at the\n--                SUBSTITUTION instantiation (`Knot/SubRed`).",
     "extSK-sub": "✅ not a program — `extSK`'s substitution naturality\n--                (`Knot/SubNat`), i.e. `ExtNSub` for `extNK`.",
     "extRK-vs":  "✅ not a program — the other clause.",
     "extRK-sub": "✅ not a program — `extRK`'s substitution naturality\n--                (`Knot/RenNat`), the hypothesis `isubMethod-red` takes.",

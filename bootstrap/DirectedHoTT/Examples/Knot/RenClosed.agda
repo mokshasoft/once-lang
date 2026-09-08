@@ -55,11 +55,10 @@ open import DirectedHoTT.Examples.Knot.Map using ( enDesc; enDCon; enTy; enIDesc
 open import DirectedHoTT.Examples.Knot.Sorts using ( num; len; sDesc; sDCon; sIDesc )
 open import DirectedHoTT.Examples.Knot.RenTm using ( renTmAtK )
 open import DirectedHoTT.Examples.Knot.RenRed using ( ren-head-red )
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
 
-infixr 5 _»_
-_»_ : {Γ : Cx} {t u v : RTm Γ} → t ⟶* u → u ⟶* v → t ⟶* v
-done       » q = q
-(step r p) » q = step r (p » q)
+-- ★ `_»_` comes from `Lib/RedChain` — it was re-implemented here
+--   (and in 13 other modules) against `Metatheory/RedCong`.
 
 -- ★ PROBE — prove `done` first, to READ the goal.
 id-dnil : {Θ : Cx} (n m : ℕ) (rn : RTm Θ) →
