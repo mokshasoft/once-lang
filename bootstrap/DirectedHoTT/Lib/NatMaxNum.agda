@@ -29,6 +29,7 @@ open import DirectedHoTT.Lib.Monus
   using ( predTm; monusTm; pred-zero; pred-suc; monus-zero; monus-suc )
 open import DirectedHoTT.Lib.ArithMonus using ( pred* )
 open import DirectedHoTT.Lib.NatMax using ( maxTm )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; trans; sym )
 
 -- ★ `pred` on ℕ, written out: `Agda.Builtin.Nat` has no `pred`.
 predℕ : ℕ → ℕ
@@ -72,3 +73,74 @@ maxTm-red p q ha hb =
   ⟶*-natrecⁿ ha »                -- `a`: the outer plus's scrutinee
   ⟶*-natrecᶻ (⟶*-natrecⁿ ha) »   -- `a` AGAIN: the inner monus's scrutinee
   max-num p q
+
+
+------------------------------------------------------------------------
+-- ★★★ `maxℕ`'s ALGEBRAIC LAWS — it had none, and `occK` needs one.
+--
+-- ⚠ WHY: `Spec/Variance._∨_` is `infixr 5`, so a row with three children
+--   nests its META side RIGHT — `A ∨ (t ∨ u)` — while
+--   `Lib/IOccRed.AllIH` accumulates LEFT: `maxℕ (maxℕ A t) u`.  THIRTEEN
+--   of `occK`'s 53 rows have three or more recursive fields
+--   (`cTm-ordtr` has five), and every one of them needs associativity.
+--
+-- ★ NOT PROVED DIRECTLY ON `maxℕ a b = a + monusℕ b a`, which is real
+--   arithmetic.  Via a case-defined `max'`: it associates by a
+--   three-case induction with no `+`/`∸`, and the bridge `maxℕ ≡ max'`
+--   is where the three non-definitional steps are paid, once.
+--
+-- ⚠ THOSE THREE STEPS ARE THE WHOLE CONTENT, and each is a different
+--   recursion direction biting:
+--     `_+_`    recurses on its FIRST  argument ⇒ `a + zero` is stuck
+--     `monusℕ` recurses on its SECOND argument ⇒ `monusℕ zero (suc n)`
+--       is stuck, and so is stepping BOTH arguments down at once
+------------------------------------------------------------------------
+max' : ℕ → ℕ → ℕ
+max' zero    b       = b
+max' (suc a) zero    = suc a
+max' (suc a) (suc b) = suc (max' a b)
+
+max'-assoc : (a b c : ℕ) → max' (max' a b) c ≡ max' a (max' b c)
+max'-assoc zero    b       c       = refl
+max'-assoc (suc a) zero    c       = refl
+max'-assoc (suc a) (suc b) zero    = refl
+max'-assoc (suc a) (suc b) (suc c) = cong suc (max'-assoc a b c)
+
+-- ⚠ TWO STEPS THAT ARE NOT DEFINITIONAL, and both bite at `b = zero`:
+--   `_+_` recurses on its FIRST argument so `a + zero` is stuck, and
+--   `monusℕ` on its SECOND so `monusℕ zero (suc n)` is stuck.
++-zeroʳ : (a : ℕ) → (a + zero) ≡ a
++-zeroʳ zero    = refl
++-zeroʳ (suc a) = cong suc (+-zeroʳ a)
+
+monusℕ-zeroˡ : (n : ℕ) → monusℕ zero n ≡ zero
+monusℕ-zeroˡ zero    = refl
+monusℕ-zeroˡ (suc n) = cong predℕ (monusℕ-zeroˡ n)
+
+-- ⚠ AND A THIRD: `monusℕ` recurses on its SECOND argument, so stepping
+--   BOTH down at once is a lemma, not a computation.
+monusℕ-suc : (a b : ℕ) → monusℕ (suc a) (suc b) ≡ monusℕ a b
+monusℕ-suc a zero    = refl
+monusℕ-suc a (suc b) = cong predℕ (monusℕ-suc a b)
+
+-- ★ the bridge: `maxℕ a b = a + monusℕ b a` computes to `max'`.
+maxℕ≡max' : (a b : ℕ) → maxℕ a b ≡ max' a b
+maxℕ≡max' zero    b       = refl
+maxℕ≡max' (suc a) zero    =
+  trans (cong (λ z → suc a + z) (monusℕ-zeroˡ (suc a)))
+        (+-zeroʳ (suc a))
+maxℕ≡max' (suc a) (suc b) =
+  cong suc (trans (cong (λ z → a + z) (monusℕ-suc b a))
+                  (maxℕ≡max' a b))
+
+------------------------------------------------------------------------
+-- ★★★ WHAT THE 13 ROWS NEED.  `_∨_` is `infixr 5` so a three-child row's
+--   META side nests RIGHT, while `Lib/IOccRed.AllIH` accumulates LEFT.
+------------------------------------------------------------------------
+maxℕ-assoc : (a b c : ℕ) → maxℕ (maxℕ a b) c ≡ maxℕ a (maxℕ b c)
+maxℕ-assoc a b c =
+  trans (maxℕ≡max' (maxℕ a b) c)
+  (trans (cong (λ z → max' z c) (maxℕ≡max' a b))
+  (trans (max'-assoc a b c)
+  (trans (sym (cong (max' a) (maxℕ≡max' b c)))
+         (sym (maxℕ≡max' a (maxℕ b c))))))
