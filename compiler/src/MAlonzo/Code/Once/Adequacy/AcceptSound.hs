@@ -259,10 +259,11 @@ du_caf'45'go'45'cf'45'sound_294 ::
   MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10
 du_caf'45'go'45'cf'45'sound_294 v0 v1 v2 v3 v4 v5 v6
   = let v7
-          = MAlonzo.Code.Once.Compile.d_compileFun'45'aux_190
-              (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v0) (coe v5) (coe v1)
-              (coe v2) (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v3))
-              (coe v6) (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v3))
+          = coe
+              MAlonzo.Code.Once.Compile.du_compileFun'45'aux_190 (coe v0)
+              (coe v5) (coe v1) (coe v2)
+              (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v3)) (coe v6)
+              (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v3))
               (coe
                  MAlonzo.Code.Relation.Nullary.Decidable.Core.du_isYes_132
                  (coe

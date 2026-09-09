@@ -112,20 +112,20 @@ d_eval'7472'_12 v0 v1 v2 v3 v4
                             MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                             (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v4)))
                 _ -> coe v5
-         MAlonzo.Code.Once.IR.C_inl_56 v8
+         MAlonzo.Code.Once.IR.C_inl_56
            -> case coe v2 of
-                MAlonzo.Code.Once.IRTy.C__'43'__22 v9 v10
+                MAlonzo.Code.Once.IRTy.C__'43'__22 v8 v9
                   -> coe
-                       (\ v11 ->
+                       (\ v10 ->
                           coe
                             MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                             (coe MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 (coe v4)))
                 _ -> coe v5
-         MAlonzo.Code.Once.IR.C_inr_62 v8
+         MAlonzo.Code.Once.IR.C_inr_62
            -> case coe v2 of
-                MAlonzo.Code.Once.IRTy.C__'43'__22 v9 v10
+                MAlonzo.Code.Once.IRTy.C__'43'__22 v8 v9
                   -> coe
-                       (\ v11 ->
+                       (\ v10 ->
                           coe
                             MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                             (coe MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 (coe v4)))
@@ -148,22 +148,22 @@ d_eval'7472'_12 v0 v1 v2 v3 v4
                    coe
                      MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                      (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-         MAlonzo.Code.Once.IR.C_curry_86 v9 v10
+         MAlonzo.Code.Once.IR.C_curry_86 v9
            -> case coe v2 of
-                MAlonzo.Code.Once.IRTy.C__'8667'__24 v11 v12
+                MAlonzo.Code.Once.IRTy.C__'8667'__24 v10 v11
                   -> coe
-                       (\ v13 ->
+                       (\ v12 ->
                           coe
                             MAlonzo.Code.Once.Denotation.TraceMonad.du_returnT_12
                             (coe
-                               (\ v14 ->
+                               (\ v13 ->
                                   d_eval'7472'_12
                                     (coe v0)
-                                    (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v11))
-                                    (coe v12) (coe v9)
+                                    (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v10))
+                                    (coe v11) (coe v9)
                                     (coe
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v4)
-                                       (coe v14)))))
+                                       (coe v13)))))
                 _ -> coe v5
          MAlonzo.Code.Once.IR.C_apply_92
            -> case coe v1 of

@@ -255,7 +255,7 @@ du_ealg_398 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_ealg_398 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.d_elaborate_370
+      MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_370
       (coe (0 :: Integer))
       (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
       (coe
@@ -269,7 +269,7 @@ du_ealg_398 v0 v1 v2 v3
             MAlonzo.Code.Once.Type.C_mk'45'kind_50
             (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v2))
          (coe v1))
-      (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3)
+      (coe v3)
 -- Once.Adequacy.FaithfulLemmas._.cataM'
 d_cataM''_400 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
@@ -291,8 +291,8 @@ du_cataM''_400 ::
   MAlonzo.Code.Once.IR.T_IR_16
 du_cataM''_400 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Surface.Elaborate.d_cataM_350 (coe v0) (coe v1)
-      (coe v2) (coe MAlonzo.Code.Once.IR.C_Heap_8)
+      MAlonzo.Code.Once.Surface.Elaborate.du_cataM_350 (coe v0) (coe v1)
+      (coe v2)
 -- Once.Adequacy.FaithfulLemmas._.liftCataM
 d_liftCataM_402 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
@@ -478,7 +478,8 @@ du_p_510 v0 v1 v2 v3
                      (coe
                         MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                         (coe (0 :: Integer))))))
-            (MAlonzo.Code.Once.Surface.Elaborate.d_elaborate_370
+            (coe
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_370
                (coe (0 :: Integer))
                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                (coe
@@ -491,7 +492,7 @@ du_p_510 v0 v1 v2 v3
                      (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v2))
                   (coe
                      MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1)))
-               (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3))
+               (coe v3))
             (coe MAlonzo.Code.Once.IR.C_terminal_74))
          (coe MAlonzo.Code.Once.IR.C_id_22))
 -- Once.Adequacy.FaithfulLemmas._.seed-e
@@ -803,7 +804,8 @@ du_coalgIR_654 v0 v1 v2 v3
                      (coe
                         MAlonzo.Code.Once.Surface.Context.d_zeroUsage_70
                         (coe (0 :: Integer))))))
-            (MAlonzo.Code.Once.Surface.Elaborate.d_elaborate_370
+            (coe
+               MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_370
                (coe (0 :: Integer))
                (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
                (coe
@@ -816,7 +818,7 @@ du_coalgIR_654 v0 v1 v2 v3
                      (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v2))
                   (coe
                      MAlonzo.Code.Once.Type.d_'10214'_'10215'T_162 (coe v0) (coe v1)))
-               (coe MAlonzo.Code.Once.IR.C_Heap_8) (coe v3))
+               (coe v3))
             (coe MAlonzo.Code.Once.IR.C_terminal_74))
          (coe MAlonzo.Code.Once.IR.C_id_22))
 -- Once.Adequacy.FaithfulLemmas._.coalg'

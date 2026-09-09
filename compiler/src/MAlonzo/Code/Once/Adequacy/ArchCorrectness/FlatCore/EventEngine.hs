@@ -8604,7 +8604,7 @@ du_event'45'of_1200 ::
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 du_event'45'of_1200 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.FlatEvents.d_event'45'of_428 (coe v0)
+      MAlonzo.Code.Once.Adequacy.FlatEvents.d_event'45'of_432 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.flat-events
 d_flat'45'events_1202 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -8632,7 +8632,7 @@ du_flat'45'events_1202 ::
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 du_flat'45'events_1202 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.FlatEvents.d_flat'45'events_434 (coe v0)
+      MAlonzo.Code.Once.Adequacy.FlatEvents.d_flat'45'events_438 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.events-running-end
 d_events'45'running'45'end_1226 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->

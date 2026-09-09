@@ -1614,8 +1614,7 @@ du_specInl_666 :: MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
 du_specInl_666
   = coe
       MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
-      (coe
-         MAlonzo.Code.Once.IR.C_inl_56 (coe MAlonzo.Code.Once.IR.C_Heap_8))
+      (coe MAlonzo.Code.Once.IR.C_inl_56)
 -- Once.TypeCheck.Elaborate.specInr
 d_specInr_676 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
@@ -1626,8 +1625,7 @@ du_specInr_676 :: MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
 du_specInr_676
   = coe
       MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
-      (coe
-         MAlonzo.Code.Once.IR.C_inr_62 (coe MAlonzo.Code.Once.IR.C_Heap_8))
+      (coe MAlonzo.Code.Once.IR.C_inr_62)
 -- Once.TypeCheck.Elaborate.specUnitGen
 d_specUnitGen_682 :: MAlonzo.Code.Once.Surface.Syntax.T_Expr_8
 d_specUnitGen_682 = coe MAlonzo.Code.Once.Surface.Syntax.C_unit_152
@@ -8661,11 +8659,7 @@ du_checkElabV'45'RApp'45'dispatch_1768 v0 v1 v2 v3 v4
                                               (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v10)))
                                         (coe
                                            MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v10
-                                           v5
-                                           (coe
-                                              MAlonzo.Code.Once.IR.C_inl_56
-                                              (coe MAlonzo.Code.Once.IR.C_Heap_8))
-                                           v11)
+                                           v5 (coe MAlonzo.Code.Once.IR.C_inl_56) v11)
                                         (coe addInt (coe (1 :: Integer)) (coe v12)) (coe v13))
                                      (coe
                                         MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'inl'45'app'45'check_584
@@ -8773,11 +8767,7 @@ du_checkElabV'45'RApp'45'dispatch_1768 v0 v1 v2 v3 v4
                                               (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v10)))
                                         (coe
                                            MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v10
-                                           v6
-                                           (coe
-                                              MAlonzo.Code.Once.IR.C_inr_62
-                                              (coe MAlonzo.Code.Once.IR.C_Heap_8))
-                                           v11)
+                                           v6 (coe MAlonzo.Code.Once.IR.C_inr_62) v11)
                                         (coe addInt (coe (1 :: Integer)) (coe v12)) (coe v13))
                                      (coe
                                         MAlonzo.Code.Once.TypeCheck.Judgment.C_t'45'inr'45'app'45'check_596
@@ -10373,9 +10363,7 @@ d_checkElabV'45'RVar'45'bbc'45'inl'45'failure'45'aux_1830 v0 v1 v2
                                                                (coe v0)))
                                                          (coe
                                                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
-                                                            (coe
-                                                               MAlonzo.Code.Once.IR.C_inl_56
-                                                               (coe MAlonzo.Code.Once.IR.C_Heap_8)))
+                                                            (coe MAlonzo.Code.Once.IR.C_inl_56))
                                                          (coe (0 :: Integer))
                                                          (coe
                                                             MAlonzo.Code.Once.TypeCheck.Classify.d_freshCounter_360
@@ -10544,9 +10532,7 @@ d_checkElabV'45'RVar'45'bbc'45'inr'45'failure'45'aux_1838 v0 v1 v2
                                                                (coe v0)))
                                                          (coe
                                                             MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
-                                                            (coe
-                                                               MAlonzo.Code.Once.IR.C_inr_62
-                                                               (coe MAlonzo.Code.Once.IR.C_Heap_8)))
+                                                            (coe MAlonzo.Code.Once.IR.C_inr_62))
                                                          (coe (0 :: Integer))
                                                          (coe
                                                             MAlonzo.Code.Once.TypeCheck.Classify.d_freshCounter_360

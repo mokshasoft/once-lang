@@ -267,7 +267,7 @@ du_ir'45'stack'45'budget_552 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
 du_ir'45'stack'45'budget_552 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_742
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_698
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.ir-to-trace
 d_ir'45'to'45'trace_554 ::
@@ -289,7 +289,7 @@ du_ir'45'to'45'trace_554 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218]
 du_ir'45'to'45'trace_554 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_724
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_680
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.StackPtrOK
 d_StackPtrOK_600 ::
@@ -355,7 +355,7 @@ du_mention'45'at_1020 ::
   Integer -> Maybe MAlonzo.Code.Once.CCC.Label.T_LabelId_6
 du_mention'45'at_1020
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.LabelScope.du_mention'45'at_1188
+      MAlonzo.Code.Once.CCC.Codegen.LabelScope.du_mention'45'at_1174
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.once-label-of
 d_once'45'label'45'of_1048 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -417,7 +417,7 @@ du_seg'45'at_1310 ::
   MAlonzo.Code.Once.CCC.Codegen.SlotBudget.T_SegState_224 ->
   MAlonzo.Code.Once.CCC.Codegen.SlotBudget.T_SegState_224
 du_seg'45'at_1310
-  = coe MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_seg'45'at_2254
+  = coe MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_seg'45'at_2208
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.seg-step
 d_seg'45'step_1330 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -450,7 +450,7 @@ du_trace'45'lookup_1354 ::
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218
 du_trace'45'lookup_1354
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_trace'45'lookup_2244
+      MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_trace'45'lookup_2198
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.SegState.cur
 d_cur_1398 ::
   MAlonzo.Code.Once.CCC.Codegen.SlotBudget.T_SegState_224 -> Integer
@@ -561,7 +561,7 @@ du_frame'45'op'45'absurd_1530 v0 v1 v2 v3
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
         -> coe
-             MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_fetch'45'frame'45'free_1268
+             MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_fetch'45'frame'45'free_1240
              v0 (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
              (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v4 v3
              (MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v1)) erased
@@ -597,7 +597,7 @@ du_emitted'45'slot'45'below'45'budget_1566 ::
   Integer -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
 du_emitted'45'slot'45'below'45'budget_1566 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_emitted'45'slot'45'seg_2686
+      MAlonzo.Code.Once.CCC.Codegen.SlotBudget.du_emitted'45'slot'45'seg_2626
       (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
       (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v1) (coe v2) (coe v3)
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF.ff→seg-id
@@ -1084,7 +1084,7 @@ du_B'8320'_1988 v0 v1
   = coe
       MAlonzo.Code.Once.CCC.Codegen.SlotBudget.C_mkSeg_234
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_742
+         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_698
          (coe v0) (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16) (coe v1))
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
@@ -2839,7 +2839,7 @@ du_emitted'45'alloc'45'min_3336 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
         -> coe
-             MAlonzo.Code.Once.CCC.Codegen.AllocMin.du_fetch'45'alloc'45'min_1158
+             MAlonzo.Code.Once.CCC.Codegen.AllocMin.du_fetch'45'alloc'45'min_1130
              v0 (coe MAlonzo.Code.Once.IRTy.C_Unit_16)
              (coe MAlonzo.Code.Once.IRTy.C_Unit_16) v3
              (MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v1)) erased
@@ -3316,10 +3316,10 @@ du_st_3992 ::
   MAlonzo.Code.Once.CCC.Codegen.ShapeTable.T_Expect_24
 du_st_3992 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_980
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_974
       (coe du_env_3988 (coe v0) (coe v1) (coe v2) (coe v5))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_962
+         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_956
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16))
       (coe v3) (coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v4))
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.claim
@@ -3396,7 +3396,7 @@ du_load'45'indirect'45'target'45'ptr_4006 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_load'45'indirect'45'target'45'ptr_4006 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'load'45'ptr_2316
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'load'45'ptr_2310
       (coe
          MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_e'45'in1_32
          (coe
@@ -3491,10 +3491,10 @@ du_st_4026 ::
   MAlonzo.Code.Once.CCC.Codegen.ShapeTable.T_Expect_24
 du_st_4026 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_980
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_974
       (coe du_env_4022 (coe v0) (coe v1) (coe v2) (coe v5))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_962
+         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_956
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16))
       (coe v3) (coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v4))
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.ok
@@ -3534,7 +3534,7 @@ du_load'45'indirect'45'suc'45'target'45'ptr_4036 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_load'45'indirect'45'suc'45'target'45'ptr_4036 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'load'45'ptr_2316
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'load'45'ptr_2310
       (coe
          MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_e'45'in1_32
          (coe
@@ -3629,10 +3629,10 @@ du_st_4056 ::
   MAlonzo.Code.Once.CCC.Codegen.ShapeTable.T_Expect_24
 du_st_4056 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_980
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_974
       (coe du_env_4052 (coe v0) (coe v1) (coe v2) (coe v5))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_962
+         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_956
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16))
       (coe v3) (coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v4))
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.ok
@@ -3670,7 +3670,7 @@ du_store'45'indirect'45'target'45'ptr_4066 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_store'45'indirect'45'target'45'ptr_4066 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'store'45'ptr_3160
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'store'45'ptr_3154
       (coe
          MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_e'45'in1_32
          (coe
@@ -3765,10 +3765,10 @@ du_st_4086 ::
   MAlonzo.Code.Once.CCC.Codegen.ShapeTable.T_Expect_24
 du_st_4086 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_980
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_974
       (coe du_env_4082 (coe v0) (coe v1) (coe v2) (coe v5))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_962
+         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_956
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16))
       (coe v3) (coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v4))
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.ok
@@ -3808,7 +3808,7 @@ du_store'45'indirect'45'suc'45'target'45'ptr_4096 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_store'45'indirect'45'suc'45'target'45'ptr_4096 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'store'45'ptr_3160
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'store'45'ptr_3154
       (coe
          MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_e'45'in1_32
          (coe
@@ -3903,10 +3903,10 @@ du_st_4116 ::
   MAlonzo.Code.Once.CCC.Codegen.ShapeTable.T_Expect_24
 du_st_4116 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_980
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_974
       (coe du_env_4112 (coe v0) (coe v1) (coe v2) (coe v5))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_962
+         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_956
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16))
       (coe v3) (coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v4))
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.ok
@@ -4042,7 +4042,7 @@ du_branch'45'tag'45'scrutinee'45'wf_4186 v0 v1 v2 v3 v4 v5
   = coe
       du_repack_4220
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'branch'45'tag_2488
+         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'branch'45'tag_2482
          (coe
             MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_e'45'in1_32
             (coe
@@ -4143,10 +4143,10 @@ du_st_4208 ::
   MAlonzo.Code.Once.CCC.Codegen.ShapeTable.T_Expect_24
 du_st_4208 v0 v1 v2 v3 v4 v5
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_980
+      MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_974
       (coe du_env_4204 (coe v0) (coe v1) (coe v2) (coe v5))
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_962
+         MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_956
          (coe MAlonzo.Code.Once.IRTy.C_Unit_16))
       (coe v3) (coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v4))
 -- Once.Adequacy.ArchCorrectness.FlatCore.RunWF._.ok
@@ -4281,14 +4281,14 @@ du_load'45'indirect'45'target'45'wf_4278 ::
 du_load'45'indirect'45'target'45'wf_4278 v0 v1 v2 v3 v4 v5
   = let v6
           = coe
-              MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'load'45'ptr_2316
+              MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'load'45'ptr_2310
               (coe
                  MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_e'45'in1_32
                  (coe
-                    MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_980
+                    MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_974
                     (coe du_env_4022 (coe v0) (coe v1) (coe v2) (coe v5))
                     (coe
-                       MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_962
+                       MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_956
                        (coe MAlonzo.Code.Once.IRTy.C_Unit_16))
                     (coe v3)
                     (coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v4))))
@@ -4344,14 +4344,14 @@ du_load'45'indirect'45'suc'45'target'45'wf_4316 ::
 du_load'45'indirect'45'suc'45'target'45'wf_4316 v0 v1 v2 v3 v4 v5
   = let v6
           = coe
-              MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'load'45'ptr_2316
+              MAlonzo.Code.Once.CCC.Codegen.ShapeTable.du_site'45'load'45'ptr_2310
               (coe
                  MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_e'45'in1_32
                  (coe
-                    MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_980
+                    MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_state'45'at_974
                     (coe du_env_4052 (coe v0) (coe v1) (coe v2) (coe v5))
                     (coe
-                       MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_962
+                       MAlonzo.Code.Once.CCC.Codegen.ShapeTable.d_entry'45'expect_956
                        (coe MAlonzo.Code.Once.IRTy.C_Unit_16))
                     (coe v3)
                     (coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v4))))

@@ -428,9 +428,7 @@ d_morphToIR_200 v0 v1 v2 v3
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe
-                                    MAlonzo.Code.Once.IR.C_inl_56
-                                    (coe MAlonzo.Code.Once.IR.C_Heap_8))
+                                 (coe MAlonzo.Code.Once.IR.C_inl_56)
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v7
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)
@@ -445,9 +443,7 @@ d_morphToIR_200 v0 v1 v2 v3
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v8
                             -> coe
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                 (coe
-                                    MAlonzo.Code.Once.IR.C_inr_62
-                                    (coe MAlonzo.Code.Once.IR.C_Heap_8))
+                                 (coe MAlonzo.Code.Once.IR.C_inr_62)
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v7
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 _ -> coe v4)

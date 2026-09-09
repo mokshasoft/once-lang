@@ -346,7 +346,6 @@ library
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
       MAlonzo.Code.Once.Compile
       MAlonzo.Code.Once.Compiler
-      MAlonzo.Code.Once.Escape
       MAlonzo.Code.Once.Semantics.Functor
       MAlonzo.Code.Once.Functor.Decide
       MAlonzo.Code.Once.Functor.Translate
@@ -526,6 +525,7 @@ library
       MAlonzo.Code.Once.Adequacy.FlatEvents
       MAlonzo.Code.Once.Denotation.SourceDenote
       MAlonzo.Code.Once.Adequacy.SourceFaithful
+      MAlonzo.Code.Once.Adequacy.SymbolClash
       MAlonzo.Code.Once.Adequacy.SourceTrace
       MAlonzo.Code.Once.Denotation.Admissible
       MAlonzo.Code.Once.Denotation.Trace

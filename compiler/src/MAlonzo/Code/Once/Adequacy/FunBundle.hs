@@ -323,8 +323,7 @@ du_cgb'45'rf_342 v0 v1 v2 v3 v4 v5
              du_cgb'45'cf_360 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
              (coe v6)
              (coe
-                MAlonzo.Code.Once.Compile.d_compileFun_228
-                (coe MAlonzo.Code.Once.IR.C_Heap_8)
+                MAlonzo.Code.Once.Compile.du_compileFun_228
                 (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v4) (coe v0)
                 (coe v1) (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v2))
                 (coe v6) (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v2)))

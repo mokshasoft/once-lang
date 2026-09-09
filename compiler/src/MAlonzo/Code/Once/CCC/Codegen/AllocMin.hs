@@ -175,7 +175,7 @@ d_ir'45'to'45'trace_40 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218]
 d_ir'45'to'45'trace_40 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_724
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_680
       (coe v0)
 -- Once.CCC.Codegen.AllocMin._.ir-to-trace'
 d_ir'45'to'45'trace''_42 ::
@@ -200,7 +200,7 @@ d_ir'45'to'45'trace'45'at'45'frontier_44 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218]
 d_ir'45'to'45'trace'45'at'45'frontier_44 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'at'45'frontier_732
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace'45'at'45'frontier_688
       (coe v0)
 -- Once.CCC.Codegen.AllocMin._.pop2
 d_pop2_48 ::
@@ -3193,112 +3193,72 @@ d_alloc'45'min'45'trace''_512 v0 v1 v2 v3 v4 v5
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
-      MAlonzo.Code.Once.IR.C_inl_56 v8
-        -> case coe v8 of
-             MAlonzo.Code.Once.IR.C_Stack_6
-               -> coe
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                    (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                    (coe
-                       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                       (coe
-                          MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                          (coe
-                             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                             (coe
-                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))
-             MAlonzo.Code.Once.IR.C_Heap_8
-               -> coe
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                    (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                    (coe
-                       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                       (coe
-                          MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                          (coe du_am2_88)
-                          (coe
-                             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                             (coe
-                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                (coe
-                                   MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                   (coe
-                                      MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                      (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                      (coe
-                                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                         (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                         (coe
-                                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                            (coe
-                                               MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                               (coe
-                                                  MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))
-             _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_inr_62 v8
-        -> case coe v8 of
-             MAlonzo.Code.Once.IR.C_Stack_6
-               -> coe
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                    (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                    (coe
-                       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                       (coe
-                          MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                          (coe
-                             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                             (coe
-                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))
-             MAlonzo.Code.Once.IR.C_Heap_8
-               -> coe
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                    (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                    (coe
-                       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                       (coe
-                          MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                          (coe du_am2_88)
-                          (coe
-                             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                             (coe
-                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                (coe
-                                   MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                   (coe
-                                      MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                      (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                      (coe
-                                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                         (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                         (coe
-                                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                            (coe
-                                               MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                               (coe
-                                                  MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))
-             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.IR.C_inl_56
+        -> coe
+             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+             (coe
+                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                (coe
+                   MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                   (coe du_am2_88)
+                   (coe
+                      MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                      (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                      (coe
+                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                         (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                         (coe
+                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                            (coe
+                               MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                               (coe
+                                  MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                  (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                  (coe
+                                     MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                     (coe
+                                        MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                        (coe
+                                           MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))
+      MAlonzo.Code.Once.IR.C_inr_62
+        -> coe
+             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+             (coe
+                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                (coe
+                   MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                   (coe du_am2_88)
+                   (coe
+                      MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                      (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                      (coe
+                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                         (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                         (coe
+                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                            (coe
+                               MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                               (coe
+                                  MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                  (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                  (coe
+                                     MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                     (coe
+                                        MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                        (coe
+                                           MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))
       MAlonzo.Code.Once.IR.C_case_70 v9 v10
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C__'43'__22 v11 v12
@@ -3432,59 +3392,39 @@ d_alloc'45'min'45'trace''_512 v0 v1 v2 v3 v4 v5
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
-      MAlonzo.Code.Once.IR.C_curry_86 v9 v10
-        -> case coe v10 of
-             MAlonzo.Code.Once.IR.C_Stack_6
-               -> coe
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                    (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                    (coe
-                       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                       (coe
-                          MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                          (coe
-                             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                             (coe
-                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)))))
-             MAlonzo.Code.Once.IR.C_Heap_8
-               -> coe
-                    MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                    (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                    (coe
-                       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                       (coe
-                          MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                          (coe du_am2_88)
-                          (coe
-                             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                             (coe
-                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                (coe
-                                   MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                   (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                   (coe
-                                      MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                      (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                      (coe
-                                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                         (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                         (coe
-                                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                            (coe
-                                               MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                               (coe
-                                                  MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))
-             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.IR.C_curry_86 v9
+        -> coe
+             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+             (coe
+                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                (coe
+                   MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                   (coe du_am2_88)
+                   (coe
+                      MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                      (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                      (coe
+                         MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                         (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                         (coe
+                            MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                            (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                            (coe
+                               MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                               (coe
+                                  MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                  (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                  (coe
+                                     MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                     (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                     (coe
+                                        MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                                        (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                                        (coe
+                                           MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))))))))
       MAlonzo.Code.Once.IR.C_apply_92
         -> coe
              MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
@@ -3630,15 +3570,15 @@ d_alloc'45'min'45'trace''_512 v0 v1 v2 v3 v4 v5
              (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.AllocMin.bodies-of
-d_bodies'45'of_646 ::
+d_bodies'45'of_632 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-d_bodies'45'of_646 ~v0 v1 = du_bodies'45'of_646 v1
-du_bodies'45'of_646 ::
+d_bodies'45'of_632 ~v0 v1 = du_bodies'45'of_632 v1
+du_bodies'45'of_632 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
-du_bodies'45'of_646 v0
+du_bodies'45'of_632 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
         -> case coe v2 of
@@ -3649,12 +3589,12 @@ du_bodies'45'of_646 v0
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.AllocMin.bud
-d_bud_650 ::
+d_bud_636 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_bud_650 ~v0 v1 = du_bud_650 v1
-du_bud_650 :: MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-du_bud_650 v0
+d_bud_636 ~v0 v1 = du_bud_636 v1
+du_bud_636 :: MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
+du_bud_636 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
         -> case coe v2 of
@@ -3663,12 +3603,12 @@ du_bud_650 v0
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.AllocMin.lab
-d_lab_654 ::
+d_lab_640 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-d_lab_654 ~v0 v1 = du_lab_654 v1
-du_lab_654 :: MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
-du_lab_654 v0
+d_lab_640 ~v0 v1 = du_lab_640 v1
+du_lab_640 :: MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> Integer
+du_lab_640 v0
   = case coe v0 of
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v1 v2
         -> case coe v2 of
@@ -3677,14 +3617,14 @@ du_lab_654 v0
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.AllocMin.alloc-min-blocks
-d_alloc'45'min'45'blocks_668 ::
+d_alloc'45'min'45'blocks_654 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_alloc'45'min'45'blocks_668 v0 v1 v2 v3 v4 v5
+d_alloc'45'min'45'blocks_654 v0 v1 v2 v3 v4 v5
   = case coe v3 of
       MAlonzo.Code.Once.IR.C_id_22
         -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
@@ -3694,23 +3634,23 @@ d_alloc'45'min'45'blocks_668 v0 v1 v2 v3 v4 v5
              (coe
                 MAlonzo.Code.Once.CCC.Machine.SMCore.d_blocks'45'layout_2316
                 (coe
-                   du_bodies'45'of_646
+                   du_bodies'45'of_632
                    (coe
                       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
                       (coe v0) (coe v1) (coe v7) (coe v4) (coe v5) (coe v10))))
              (coe
-                d_alloc'45'min'45'blocks_668 (coe v0) (coe v1) (coe v7) (coe v10)
+                d_alloc'45'min'45'blocks_654 (coe v0) (coe v1) (coe v7) (coe v10)
                 (coe v4) (coe v5))
              (coe
-                d_alloc'45'min'45'blocks_668 (coe v0) (coe v7) (coe v2) (coe v9)
+                d_alloc'45'min'45'blocks_654 (coe v0) (coe v7) (coe v2) (coe v9)
                 (coe
-                   du_bud_650
+                   du_bud_636
                    (coe
-                      du_F_782 (coe v0) (coe v1) (coe v7) (coe v10) (coe v4) (coe v5)))
+                      du_F_754 (coe v0) (coe v1) (coe v7) (coe v10) (coe v4) (coe v5)))
                 (coe
-                   du_lab_654
+                   du_lab_640
                    (coe
-                      du_F_782 (coe v0) (coe v1) (coe v7) (coe v10) (coe v4) (coe v5))))
+                      du_F_754 (coe v0) (coe v1) (coe v7) (coe v10) (coe v4) (coe v5))))
       MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_38 v9 v10
         -> case coe v2 of
              MAlonzo.Code.Once.IRTy.C__'42'__20 v11 v12
@@ -3719,37 +3659,33 @@ d_alloc'45'min'45'blocks_668 v0 v1 v2 v3 v4 v5
                     (coe
                        MAlonzo.Code.Once.CCC.Machine.SMCore.d_blocks'45'layout_2316
                        (coe
-                          du_bodies'45'of_646
+                          du_bodies'45'of_632
                           (coe
                              MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
                              (coe v0) (coe v1) (coe v11)
                              (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5) (coe v9))))
                     (coe
-                       d_alloc'45'min'45'blocks_668 (coe v0) (coe v1) (coe v11) (coe v9)
+                       d_alloc'45'min'45'blocks_654 (coe v0) (coe v1) (coe v11) (coe v9)
                        (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5))
                     (coe
-                       d_alloc'45'min'45'blocks_668 (coe v0) (coe v1) (coe v12) (coe v10)
+                       d_alloc'45'min'45'blocks_654 (coe v0) (coe v1) (coe v12) (coe v10)
                        (coe
-                          du_bud_650
+                          du_bud_636
                           (coe
-                             du_F_798 (coe v0) (coe v1) (coe v11) (coe v9) (coe v4) (coe v5)))
+                             du_F_770 (coe v0) (coe v1) (coe v11) (coe v9) (coe v4) (coe v5)))
                        (coe
-                          du_lab_654
+                          du_lab_640
                           (coe
-                             du_F_798 (coe v0) (coe v1) (coe v11) (coe v9) (coe v4) (coe v5))))
+                             du_F_770 (coe v0) (coe v1) (coe v11) (coe v9) (coe v4) (coe v5))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_fst_44
         -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
       MAlonzo.Code.Once.IR.C_snd_50
         -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
-      MAlonzo.Code.Once.IR.C_inl_56 v8
-        -> coe
-             seq (coe v8)
-             (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
-      MAlonzo.Code.Once.IR.C_inr_62 v8
-        -> coe
-             seq (coe v8)
-             (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50)
+      MAlonzo.Code.Once.IR.C_inl_56
+        -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
+      MAlonzo.Code.Once.IR.C_inr_62
+        -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
       MAlonzo.Code.Once.IR.C_case_70 v9 v10
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C__'43'__22 v11 v12
@@ -3758,105 +3694,101 @@ d_alloc'45'min'45'blocks_668 v0 v1 v2 v3 v4 v5
                     (coe
                        MAlonzo.Code.Once.CCC.Machine.SMCore.d_blocks'45'layout_2316
                        (coe
-                          du_bodies'45'of_646
+                          du_bodies'45'of_632
                           (coe
                              MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
                              (coe v0) (coe v11) (coe v2) (coe v4)
                              (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9))))
                     (coe
-                       d_alloc'45'min'45'blocks_668 (coe v0) (coe v11) (coe v2) (coe v9)
+                       d_alloc'45'min'45'blocks_654 (coe v0) (coe v11) (coe v2) (coe v9)
                        (coe v4) (coe addInt (coe (2 :: Integer)) (coe v5)))
                     (coe
-                       d_alloc'45'min'45'blocks_668 (coe v0) (coe v12) (coe v2) (coe v10)
+                       d_alloc'45'min'45'blocks_654 (coe v0) (coe v12) (coe v2) (coe v10)
                        (coe
-                          du_bud_650
+                          du_bud_636
                           (coe
-                             du_F_814 (coe v0) (coe v2) (coe v11) (coe v9) (coe v4) (coe v5)))
+                             du_F_786 (coe v0) (coe v2) (coe v11) (coe v9) (coe v4) (coe v5)))
                        (coe
-                          du_lab_654
+                          du_lab_640
                           (coe
-                             du_F_814 (coe v0) (coe v2) (coe v11) (coe v9) (coe v4) (coe v5))))
+                             du_F_786 (coe v0) (coe v2) (coe v11) (coe v9) (coe v4) (coe v5))))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_terminal_74
         -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
       MAlonzo.Code.Once.IR.C_initial_78
         -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
-      MAlonzo.Code.Once.IR.C_curry_86 v9 v10
+      MAlonzo.Code.Once.IR.C_curry_86 v9
         -> case coe v2 of
-             MAlonzo.Code.Once.IRTy.C__'8667'__24 v11 v12
+             MAlonzo.Code.Once.IRTy.C__'8667'__24 v10 v11
                -> coe
-                    seq (coe v10)
+                    MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
                     (coe
-                       MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
+                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe
-                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                          MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2286
                           (coe
-                             MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2286
+                             MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'thunk_2214
+                             (coe MAlonzo.Code.Once.CCC.Label.d_ℓ_266 (coe v0) (coe v5))
                              (coe
-                                MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'thunk_2214
-                                (coe MAlonzo.Code.Once.CCC.Label.d_ℓ_266 (coe v0) (coe v5))
-                                (coe
-                                   MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                   (coe
-                                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
-                                      (coe v0)
-                                      (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v11))
-                                      (coe v12) (coe (0 :: Integer))
-                                      (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9)))))
-                          (coe
-                             MAlonzo.Code.Data.List.Base.du__'43''43'__32
-                             (coe
-                                MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_trace'45'of_76
+                                MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                 (coe
                                    MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
                                    (coe v0)
-                                   (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v11))
-                                   (coe v12) (coe (0 :: Integer))
-                                   (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9)))
+                                   (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v10))
+                                   (coe v11) (coe (0 :: Integer))
+                                   (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9)))))
+                       (coe
+                          MAlonzo.Code.Data.List.Base.du__'43''43'__32
+                          (coe
+                             MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_trace'45'of_76
                              (coe
-                                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                                MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
+                                (coe v0)
+                                (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v10))
+                                (coe v11) (coe (0 :: Integer))
+                                (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9)))
+                          (coe
+                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                             (coe
+                                MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2286
                                 (coe
-                                   MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'ctrl_2286
+                                   MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'ret_2216
                                    (coe
-                                      MAlonzo.Code.Once.CCC.Machine.SMCore.C_c'45'ret_2216
+                                      MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                                       (coe
-                                         MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
-                                         (coe
-                                            MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
-                                            (coe v0)
-                                            (coe
-                                               MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1)
-                                               (coe v11))
-                                            (coe v12) (coe (0 :: Integer))
-                                            (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9)))))
-                                (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
+                                         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
+                                         (coe v0)
+                                         (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v10))
+                                         (coe v11) (coe (0 :: Integer))
+                                         (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9)))))
+                             (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16))))
+                    (coe
+                       MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
                        (coe
-                          MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                          MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
                           (coe
-                             MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
+                             MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_trace'45'of_76
                              (coe
-                                MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace.du_trace'45'of_76
-                                (coe
-                                   MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
-                                   (coe v0)
-                                   (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v11))
-                                   (coe v12) (coe (0 :: Integer))
-                                   (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9)))
-                             (coe
-                                d_alloc'45'min'45'trace''_512 (coe v0)
-                                (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v11))
-                                (coe v12) (coe v9) (coe (0 :: Integer))
-                                (coe addInt (coe (2 :: Integer)) (coe v5)))
-                             (coe
-                                MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
-                                (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-                                (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))
-                       (coe
-                          d_alloc'45'min'45'blocks_668 (coe v0)
-                          (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v11))
-                          (coe v12) (coe v9) (coe (0 :: Integer))
-                          (coe addInt (coe (2 :: Integer)) (coe v5))))
+                                MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
+                                (coe v0)
+                                (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v10))
+                                (coe v11) (coe (0 :: Integer))
+                                (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v9)))
+                          (coe
+                             d_alloc'45'min'45'trace''_512 (coe v0)
+                             (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v10))
+                             (coe v11) (coe v9) (coe (0 :: Integer))
+                             (coe addInt (coe (2 :: Integer)) (coe v5)))
+                          (coe
+                             MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
+                             (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                             (coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50))))
+                    (coe
+                       d_alloc'45'min'45'blocks_654 (coe v0)
+                       (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v1) (coe v10))
+                       (coe v11) (coe v9) (coe (0 :: Integer))
+                       (coe addInt (coe (2 :: Integer)) (coe v5)))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_apply_92
         -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
@@ -3870,7 +3802,7 @@ d_alloc'45'min'45'blocks_668 v0 v1 v2 v3 v4 v5
                -> case coe v12 of
                     MAlonzo.Code.Once.IRTy.C_μ'45'type_26 v13
                       -> coe
-                           d_alloc'45'min'45'blocks_668 (coe v0)
+                           d_alloc'45'min'45'blocks_654 (coe v0)
                            (coe
                               MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v11)
                               (coe
@@ -3900,7 +3832,7 @@ d_alloc'45'min'45'blocks_668 v0 v1 v2 v3 v4 v5
         -> coe MAlonzo.Code.Data.List.Relation.Unary.All.C_'91''93'_50
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.AllocMin._.F
-d_F_782 ::
+d_F_754 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -3908,19 +3840,19 @@ d_F_782 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_F_782 v0 v1 ~v2 v3 ~v4 v5 v6 v7 = du_F_782 v0 v1 v3 v5 v6 v7
-du_F_782 ::
+d_F_754 v0 v1 ~v2 v3 ~v4 v5 v6 v7 = du_F_754 v0 v1 v3 v5 v6 v7
+du_F_754 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_F_782 v0 v1 v2 v3 v4 v5
+du_F_754 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
       (coe v0) (coe v1) (coe v2) (coe v4) (coe v5) (coe v3)
 -- Once.CCC.Codegen.AllocMin._.G
-d_G_784 ::
+d_G_756 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -3928,21 +3860,21 @@ d_G_784 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_G_784 v0 v1 v2 v3 v4 v5 v6 v7
+d_G_756 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
       (coe v0) (coe v3) (coe v2)
       (coe
-         du_bud_650
+         du_bud_636
          (coe
-            du_F_782 (coe v0) (coe v1) (coe v3) (coe v5) (coe v6) (coe v7)))
+            du_F_754 (coe v0) (coe v1) (coe v3) (coe v5) (coe v6) (coe v7)))
       (coe
-         du_lab_654
+         du_lab_640
          (coe
-            du_F_782 (coe v0) (coe v1) (coe v3) (coe v5) (coe v6) (coe v7)))
+            du_F_754 (coe v0) (coe v1) (coe v3) (coe v5) (coe v6) (coe v7)))
       (coe v4)
 -- Once.CCC.Codegen.AllocMin._.F
-d_F_798 ::
+d_F_770 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -3950,20 +3882,20 @@ d_F_798 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_F_798 v0 v1 v2 ~v3 v4 ~v5 v6 v7 = du_F_798 v0 v1 v2 v4 v6 v7
-du_F_798 ::
+d_F_770 v0 v1 v2 ~v3 v4 ~v5 v6 v7 = du_F_770 v0 v1 v2 v4 v6 v7
+du_F_770 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_F_798 v0 v1 v2 v3 v4 v5
+du_F_770 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
       (coe v0) (coe v1) (coe v2)
       (coe addInt (coe (4 :: Integer)) (coe v4)) (coe v5) (coe v3)
 -- Once.CCC.Codegen.AllocMin._.G
-d_G_800 ::
+d_G_772 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -3971,21 +3903,21 @@ d_G_800 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_G_800 v0 v1 v2 v3 v4 v5 v6 v7
+d_G_772 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
       (coe v0) (coe v1) (coe v3)
       (coe
-         du_bud_650
+         du_bud_636
          (coe
-            du_F_798 (coe v0) (coe v1) (coe v2) (coe v4) (coe v6) (coe v7)))
+            du_F_770 (coe v0) (coe v1) (coe v2) (coe v4) (coe v6) (coe v7)))
       (coe
-         du_lab_654
+         du_lab_640
          (coe
-            du_F_798 (coe v0) (coe v1) (coe v2) (coe v4) (coe v6) (coe v7)))
+            du_F_770 (coe v0) (coe v1) (coe v2) (coe v4) (coe v6) (coe v7)))
       (coe v5)
 -- Once.CCC.Codegen.AllocMin._.F
-d_F_814 ::
+d_F_786 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -3993,20 +3925,20 @@ d_F_814 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_F_814 v0 v1 v2 ~v3 v4 ~v5 v6 v7 = du_F_814 v0 v1 v2 v4 v6 v7
-du_F_814 ::
+d_F_786 v0 v1 v2 ~v3 v4 ~v5 v6 v7 = du_F_786 v0 v1 v2 v4 v6 v7
+du_F_786 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_F_814 v0 v1 v2 v3 v4 v5
+du_F_786 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
       (coe v0) (coe v2) (coe v1) (coe v4)
       (coe addInt (coe (2 :: Integer)) (coe v5)) (coe v3)
 -- Once.CCC.Codegen.AllocMin._.G
-d_G_816 ::
+d_G_788 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -4014,27 +3946,27 @@ d_G_816 ::
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_G_816 v0 v1 v2 v3 v4 v5 v6 v7
+d_G_788 v0 v1 v2 v3 v4 v5 v6 v7
   = coe
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace''_402
       (coe v0) (coe v3) (coe v1)
       (coe
-         du_bud_650
+         du_bud_636
          (coe
-            du_F_814 (coe v0) (coe v1) (coe v2) (coe v4) (coe v6) (coe v7)))
+            du_F_786 (coe v0) (coe v1) (coe v2) (coe v4) (coe v6) (coe v7)))
       (coe
-         du_lab_654
+         du_lab_640
          (coe
-            du_F_814 (coe v0) (coe v1) (coe v2) (coe v4) (coe v6) (coe v7)))
+            du_F_786 (coe v0) (coe v1) (coe v2) (coe v4) (coe v6) (coe v7)))
       (coe v5)
 -- Once.CCC.Codegen.AllocMin.alloc-min-at-frontier
-d_alloc'45'min'45'at'45'frontier_834 ::
+d_alloc'45'min'45'at'45'frontier_806 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_alloc'45'min'45'at'45'frontier_834 v0 v1 v2 v3 v4
+d_alloc'45'min'45'at'45'frontier_806 v0 v1 v2 v3 v4
   = coe
       MAlonzo.Code.Data.List.Relation.Unary.All.Properties.du_'43''43''8314'_580
       (coe
@@ -4048,34 +3980,34 @@ d_alloc'45'min'45'at'45'frontier_834 v0 v1 v2 v3 v4
       (coe
          MAlonzo.Code.Data.List.Relation.Unary.All.C__'8759'__60
          (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
-         (d_alloc'45'min'45'blocks_668
+         (d_alloc'45'min'45'blocks_654
             (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe (0 :: Integer))))
 -- Once.CCC.Codegen.AllocMin.ir-to-trace-alloc-min
-d_ir'45'to'45'trace'45'alloc'45'min_846 ::
+d_ir'45'to'45'trace'45'alloc'45'min_818 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
-d_ir'45'to'45'trace'45'alloc'45'min_846 v0 v1 v2 v3
+d_ir'45'to'45'trace'45'alloc'45'min_818 v0 v1 v2 v3
   = coe
-      d_alloc'45'min'45'at'45'frontier_834 (coe v0) (coe v1) (coe v2)
+      d_alloc'45'min'45'at'45'frontier_806 (coe v0) (coe v1) (coe v2)
       (coe v3) (coe (0 :: Integer))
 -- Once.CCC.Codegen.AllocMin._._.fetch
-d_fetch_942 ::
+d_fetch_914 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218
-d_fetch_942 ~v0 ~v1 = du_fetch_942
-du_fetch_942 ::
+d_fetch_914 ~v0 ~v1 = du_fetch_914
+du_fetch_914 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218
-du_fetch_942 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_214
+du_fetch_914 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_214
 -- Once.CCC.Codegen.AllocMin._.fetch-alloc-min
-d_fetch'45'alloc'45'min_1158 ::
+d_fetch'45'alloc'45'min_1130 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -4084,22 +4016,22 @@ d_fetch'45'alloc'45'min_1158 ::
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
-d_fetch'45'alloc'45'min_1158 v0 ~v1 v2 v3 v4 v5 ~v6
-  = du_fetch'45'alloc'45'min_1158 v0 v2 v3 v4 v5
-du_fetch'45'alloc'45'min_1158 ::
+d_fetch'45'alloc'45'min_1130 v0 ~v1 v2 v3 v4 v5 ~v6
+  = du_fetch'45'alloc'45'min_1130 v0 v2 v3 v4 v5
+du_fetch'45'alloc'45'min_1130 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 -> AgdaAny
-du_fetch'45'alloc'45'min_1158 v0 v1 v2 v3 v4 v5
+du_fetch'45'alloc'45'min_1130 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch'45'All_3874
       (coe
-         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_724
+         MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_680
          (coe v0) (coe v1) (coe v2) (coe v3))
       (coe v4)
       (coe
-         d_ir'45'to'45'trace'45'alloc'45'min_846 (coe v0) (coe v1) (coe v2)
+         d_ir'45'to'45'trace'45'alloc'45'min_818 (coe v0) (coe v1) (coe v2)
          (coe v3))

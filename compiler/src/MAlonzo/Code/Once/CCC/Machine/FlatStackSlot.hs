@@ -40,7 +40,7 @@ du_exec'45'load'45'from'45'slot'45'with'45'value_100 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'load'45'from'45'slot'45'with'45'value_100
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'load'45'from'45'slot'45'with'45'value_2550
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'load'45'from'45'slot'45'with'45'value_2606
 -- Once.CCC.Machine.FlatStackSlot._.exec-restore-input-with-value
 d_exec'45'restore'45'input'45'with'45'value_110 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -57,7 +57,7 @@ du_exec'45'restore'45'input'45'with'45'value_110 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'restore'45'input'45'with'45'value_110
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'restore'45'input'45'with'45'value_2562
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'restore'45'input'45'with'45'value_2618
 -- Once.CCC.Machine.FlatStackSlot._.FlatState
 d_FlatState_174 a0 = ()
 -- Once.CCC.Machine.FlatStackSlot._.do-branch

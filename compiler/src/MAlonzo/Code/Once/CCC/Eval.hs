@@ -54,9 +54,9 @@ d_eval_12 v0 v1 v2 v3 v4
         -> coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'fst_310 (coe v4)
       MAlonzo.Code.Once.IR.C_snd_50
         -> coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'snd_316 (coe v4)
-      MAlonzo.Code.Once.IR.C_inl_56 v7
+      MAlonzo.Code.Once.IR.C_inl_56
         -> coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'inl_332 v4
-      MAlonzo.Code.Once.IR.C_inr_62 v7
+      MAlonzo.Code.Once.IR.C_inr_62
         -> coe MAlonzo.Code.Once.Semantics.Value.du_sem'45'inr_338 v4
       MAlonzo.Code.Once.IR.C_case_70 v8 v9
         -> case coe v0 of
@@ -68,17 +68,17 @@ d_eval_12 v0 v1 v2 v3 v4
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_terminal_74
         -> coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8
-      MAlonzo.Code.Once.IR.C_curry_86 v8 v9
+      MAlonzo.Code.Once.IR.C_curry_86 v8
         -> case coe v1 of
-             MAlonzo.Code.Once.IRTy.C__'8667'__24 v10 v11
+             MAlonzo.Code.Once.IRTy.C__'8667'__24 v9 v10
                -> coe
-                    (\ v12 ->
+                    (\ v11 ->
                        d_eval_12
-                         (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v10))
-                         (coe v11) (coe v2) (coe v8)
+                         (coe MAlonzo.Code.Once.IRTy.C__'42'__20 (coe v0) (coe v9))
+                         (coe v10) (coe v2) (coe v8)
                          (coe
                             MAlonzo.Code.Once.Semantics.Value.du_sem'45'pair_322 (coe v4)
-                            (coe v12)))
+                            (coe v11)))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_apply_92
         -> case coe v4 of

@@ -35,9 +35,8 @@ data T_IR_16
   = C_id_22 |
     C__'8728'__30 MAlonzo.Code.Once.IRTy.T_IRTy_6 T_IR_16 T_IR_16 |
     C_'10216'_'44'_'10217'_38 T_IR_16 T_IR_16 | C_fst_44 | C_snd_50 |
-    C_inl_56 T_AllocMode_4 | C_inr_62 T_AllocMode_4 |
-    C_case_70 T_IR_16 T_IR_16 | C_terminal_74 | C_initial_78 |
-    C_curry_86 T_IR_16 T_AllocMode_4 | C_apply_92 |
+    C_inl_56 | C_inr_62 | C_case_70 T_IR_16 T_IR_16 | C_terminal_74 |
+    C_initial_78 | C_curry_86 T_IR_16 | C_apply_92 |
     C_In_96 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 T_AllocMode_4 |
     C_out'45'μ_100 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 |
     C_Cata_108 MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 T_IR_16 |

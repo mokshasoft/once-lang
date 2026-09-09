@@ -8963,7 +8963,7 @@ du_ir'45'stack'45'budget_1178 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
 du_ir'45'stack'45'budget_1178 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_742
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_698
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch._.Frame
 d_Frame_1184 ::
@@ -10543,7 +10543,7 @@ du_event'45'of_1360 ::
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 du_event'45'of_1360 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.FlatEvents.d_event'45'of_428 (coe v0)
+      MAlonzo.Code.Once.Adequacy.FlatEvents.d_event'45'of_432 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch._.flat-events
 d_flat'45'events_1362 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -10571,7 +10571,7 @@ du_flat'45'events_1362 ::
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 du_flat'45'events_1362 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.FlatEvents.d_flat'45'events_434 (coe v0)
+      MAlonzo.Code.Once.Adequacy.FlatEvents.d_flat'45'events_438 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch._.flat-events-fetch
 d_flat'45'events'45'fetch_1364 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -10602,7 +10602,7 @@ du_flat'45'events'45'fetch_1364 ::
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 du_flat'45'events'45'fetch_1364 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.FlatEvents.d_flat'45'events'45'fetch_438
+      MAlonzo.Code.Once.Adequacy.FlatEvents.d_flat'45'events'45'fetch_442
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch._.flat-events-step
 d_flat'45'events'45'step_1368 ::
@@ -10634,7 +10634,7 @@ du_flat'45'events'45'step_1368 ::
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 du_flat'45'events'45'step_1368 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.FlatEvents.d_flat'45'events'45'step_436
+      MAlonzo.Code.Once.Adequacy.FlatEvents.d_flat'45'events'45'step_440
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch.call≢thunk
 d_call'8802'thunk_1374 ::

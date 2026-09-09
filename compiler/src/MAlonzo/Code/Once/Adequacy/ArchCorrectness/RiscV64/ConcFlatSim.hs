@@ -28841,7 +28841,7 @@ du_event'45'of_1568 ::
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 du_event'45'of_1568 v0
   = coe
-      MAlonzo.Code.Once.Adequacy.FlatEvents.d_event'45'of_428 (coe v0)
+      MAlonzo.Code.Once.Adequacy.FlatEvents.d_event'45'of_432 (coe v0)
 -- Once.Adequacy.ArchCorrectness.RiscV64.ConcFlatSim._.BlockStep
 d_BlockStep_1596 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->

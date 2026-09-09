@@ -83,15 +83,15 @@ du_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 v7
              (coe
                 MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v2)
                 (coe
-                   MAlonzo.Code.Once.Optimize.d_optimize_4190
+                   MAlonzo.Code.Once.Optimize.d_optimize_4052
                    (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                       (coe
                          MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
                          (coe v1)))
                    (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52 (coe v6))
-                   (MAlonzo.Code.Once.Surface.Elaborate.d_elaborateFull_962
-                      (coe v0) (coe v1) (coe v8) (coe v6)
-                      (coe MAlonzo.Code.Once.IR.C_Heap_8)
+                   (coe
+                      MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_962 (coe v0)
+                      (coe v1) (coe v8) (coe v6)
                       (coe
                          MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
                          (coe v0) (coe v1) (coe v6) (coe v4)
@@ -105,8 +105,8 @@ du_cfb'45'aux'45'doOpt_28 v0 v1 v2 v3 v4 v5 v6 v7
                             (coe v3))
                          (coe (0 :: Integer)) (coe v9))))
                 (coe
-                   MAlonzo.Code.Once.Surface.Elaborate.d_elaborateFull_962 (coe v0)
-                   (coe v1) (coe v8) (coe v6) (coe MAlonzo.Code.Once.IR.C_Heap_8)
+                   MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_962 (coe v0)
+                   (coe v1) (coe v8) (coe v6)
                    (coe
                       MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
                       (coe v0) (coe v1) (coe v6) (coe v4)
@@ -306,8 +306,8 @@ du_caf'45'go'45'cf'45'doOpt_274 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_caf'45'go'45'cf'45'doOpt_274 v0 v1 v2 v3 v4 v5 v6
   = let v7
-          = MAlonzo.Code.Once.Compile.d_compileFun'45'aux_190
-              (coe MAlonzo.Code.Once.IR.C_Heap_8)
+          = coe
+              MAlonzo.Code.Once.Compile.du_compileFun'45'aux_190
               (coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8) (coe v5) (coe v1)
               (coe v2) (coe MAlonzo.Code.Once.Parser.d_funName_106 (coe v3))
               (coe v6) (coe MAlonzo.Code.Once.Parser.d_funBody_110 (coe v3))
@@ -520,9 +520,9 @@ du_cfm'45'built'45'gated_546 v0 v1 v2
                        (coe
                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
                           (MAlonzo.Code.Once.Target.d_asmHeader_28
-                             (coe MAlonzo.Code.Once.Compile.d_archTarget_658 (coe v0)))
-                          (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_694
-                             (coe MAlonzo.Code.Once.Compile.d_archTarget_658 (coe v0))
+                             (coe MAlonzo.Code.Once.Compile.d_archTarget_626 (coe v0)))
+                          (MAlonzo.Code.Once.Compile.d_compileAllWithTarget_662
+                             (coe MAlonzo.Code.Once.Compile.d_archTarget_626 (coe v0))
                              (coe v2)))
                        erased)
              else coe

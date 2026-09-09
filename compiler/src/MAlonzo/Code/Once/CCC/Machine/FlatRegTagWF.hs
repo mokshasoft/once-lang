@@ -139,7 +139,7 @@ d_exec'45'abstract_90 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'abstract_90 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_2864
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_2920
       (coe v0)
 -- Once.CCC.Machine.FlatRegTagWF._.exec-case-dispatch
 d_exec'45'case'45'dispatch_94 ::
@@ -152,7 +152,7 @@ d_exec'45'case'45'dispatch_94 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'case'45'dispatch_94 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'case'45'dispatch_2870
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'case'45'dispatch_2926
       (coe v0)
 -- Once.CCC.Machine.FlatRegTagWF._.exec-load-from-slot-with-value
 d_exec'45'load'45'from'45'slot'45'with'45'value_100 ::
@@ -170,7 +170,7 @@ du_exec'45'load'45'from'45'slot'45'with'45'value_100 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'load'45'from'45'slot'45'with'45'value_100
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'load'45'from'45'slot'45'with'45'value_2550
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'load'45'from'45'slot'45'with'45'value_2606
 -- Once.CCC.Machine.FlatRegTagWF._.exec-loop-run
 d_exec'45'loop'45'run_104 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -192,7 +192,7 @@ du_exec'45'loop'45'run_104 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'loop'45'run_104
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'loop'45'run_2798
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'loop'45'run_2854
 -- Once.CCC.Machine.FlatRegTagWF._.exec-restore-input-with-value
 d_exec'45'restore'45'input'45'with'45'value_110 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -209,7 +209,7 @@ du_exec'45'restore'45'input'45'with'45'value_110 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_exec'45'restore'45'input'45'with'45'value_110
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'restore'45'input'45'with'45'value_2562
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_exec'45'restore'45'input'45'with'45'value_2618
 -- Once.CCC.Machine.FlatRegTagWF._.exec-trace
 d_exec'45'trace_120 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -219,7 +219,7 @@ d_exec'45'trace_120 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 d_exec'45'trace_120 v0
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_2866 (coe v0)
+      MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_2922 (coe v0)
 -- Once.CCC.Machine.FlatRegTagWF._.loop-reanchor-alloc
 d_loop'45'reanchor'45'alloc_148 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -234,7 +234,7 @@ du_loop'45'reanchor'45'alloc_148 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_488
 du_loop'45'reanchor'45'alloc_148
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_loop'45'reanchor'45'alloc_2792
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_loop'45'reanchor'45'alloc_2848
 -- Once.CCC.Machine.FlatRegTagWF._.loop-reanchor-loc
 d_loop'45'reanchor'45'loc_150 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
@@ -248,7 +248,7 @@ du_loop'45'reanchor'45'loc_150 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402
 du_loop'45'reanchor'45'loc_150
   = coe
-      MAlonzo.Code.Once.CCC.Machine.SMCore.du_loop'45'reanchor'45'loc_2786
+      MAlonzo.Code.Once.CCC.Machine.SMCore.du_loop'45'reanchor'45'loc_2842
 -- Once.CCC.Machine.FlatRegTagWF._.CallPost
 d_CallPost_172 a0 a1 a2 = ()
 -- Once.CCC.Machine.FlatRegTagWF._.FlatState
@@ -838,11 +838,11 @@ d_regtag'45'loop'45'run'45'go_902 v0 v1 v2 v3 v4 v5 v6
   = coe
       d_regtag'45'loop'45'run_888 (coe v0) (coe v1) (coe v2)
       (coe
-         MAlonzo.Code.Once.CCC.Machine.SMCore.du_loop'45'reanchor'45'loc_2786
+         MAlonzo.Code.Once.CCC.Machine.SMCore.du_loop'45'reanchor'45'loc_2842
          (coe v3)
          (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v1 v3 v4)))
       (coe
-         MAlonzo.Code.Once.CCC.Machine.SMCore.du_loop'45'reanchor'45'alloc_2792
+         MAlonzo.Code.Once.CCC.Machine.SMCore.du_loop'45'reanchor'45'alloc_2848
          (coe v4)
          (coe MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30 (coe v1 v3 v4)))
       (coe v5) (coe du_regtag'45'transport_552 (coe v5 v3 v4 v6))
@@ -1019,7 +1019,7 @@ d_regtag'45'abstract_1038 v0 v1 v2 v3 v4
         -> coe
              d_regtag'45'case_1058 (coe v0)
              (coe
-                MAlonzo.Code.Once.CCC.Machine.SMCore.du_case'45'tag'45'at_2770
+                MAlonzo.Code.Once.CCC.Machine.SMCore.du_case'45'tag'45'at_2826
                 (coe v2))
              (coe v5) (coe v6) (coe v2) (coe v3) (coe v4)
       MAlonzo.Code.Once.CCC.Machine.SMCore.C_instr'45'alloc'45'heap_2280 v5
@@ -1030,7 +1030,7 @@ d_regtag'45'abstract_1038 v0 v1 v2 v3 v4
         -> coe
              d_regtag'45'loop'45'run_888 (coe v0)
              (coe
-                MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_2866 (coe v0)
+                MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'trace_2922 (coe v0)
                 (coe v5))
              (coe (1000000 :: Integer)) (coe v2) (coe v3)
              (coe d_regtag'45'trace_1046 (coe v0) (coe v5)) (coe v4)
@@ -1110,12 +1110,12 @@ d_regtag'45'trace_1046 v0 v1 v2 v3 v4
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                           (coe
-                             MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_2864
+                             MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_2920
                              (coe v0) (coe v5) (coe v2) (coe v3)))
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                           (coe
-                             MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_2864
+                             MAlonzo.Code.Once.CCC.Machine.SMCore.d_exec'45'abstract_2920
                              (coe v0) (coe v5) (coe v2) (coe v3)))
                        (coe
                           d_regtag'45'abstract_1038 (coe v0) (coe v5) (coe v2) (coe v3)

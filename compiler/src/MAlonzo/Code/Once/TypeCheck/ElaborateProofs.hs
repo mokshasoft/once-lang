@@ -859,8 +859,7 @@ du_checkElab'45'fallback'45'RVar'45'inl_2114 v0 v1
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe
                              MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
-                             (coe
-                                MAlonzo.Code.Once.IR.C_inl_56 (coe MAlonzo.Code.Once.IR.C_Heap_8)))
+                             (coe MAlonzo.Code.Once.IR.C_inl_56))
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                              (coe
@@ -898,8 +897,7 @@ du_checkElab'45'fallback'45'RVar'45'inr_2154 v0 v1
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe
                              MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
-                             (coe
-                                MAlonzo.Code.Once.IR.C_inr_62 (coe MAlonzo.Code.Once.IR.C_Heap_8)))
+                             (coe MAlonzo.Code.Once.IR.C_inr_62))
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (0 :: Integer))
                              (coe

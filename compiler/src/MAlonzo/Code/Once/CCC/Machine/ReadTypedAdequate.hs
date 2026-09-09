@@ -20,7 +20,6 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.String
-import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Once.CCC.FrameSemantics
 import qualified MAlonzo.Code.Once.CCC.Label
 import qualified MAlonzo.Code.Once.CCC.Machine.Allocation
@@ -49,36 +48,36 @@ du_readTyped_94 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   Maybe AgdaAny
 du_readTyped_94
-  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readTyped_2644
+  = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readTyped_2700
 -- Once.CCC.Machine.ReadTypedAdequate._.ClosureWellFormedDef.ValidAtWF
 d_ValidAtWF_212 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 = ()
 -- Once.CCC.Machine.ReadTypedAdequate._.ValidAtWF
-d_ValidAtWF_776 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
+d_ValidAtWF_772 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
 -- Once.CCC.Machine.ReadTypedAdequate.Readable
-d_Readable_814 a0 a1 a2 a3 = ()
-data T_Readable_814
-  = C_r'45'unit_816 | C_r'45'int_818 |
-    C_r'45'pair_824 T_Readable_814 T_Readable_814
+d_Readable_810 a0 a1 a2 a3 = ()
+data T_Readable_810
+  = C_r'45'unit_812 | C_r'45'int_814 |
+    C_r'45'pair_820 T_Readable_810 T_Readable_810
 -- Once.CCC.Machine.ReadTypedAdequate.readable?
-d_readable'63'_828 ::
+d_readable'63'_824 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
-  MAlonzo.Code.Once.Type.T_Type_108 -> Maybe T_Readable_814
-d_readable'63'_828 ~v0 ~v1 ~v2 v3 = du_readable'63'_828 v3
-du_readable'63'_828 ::
-  MAlonzo.Code.Once.Type.T_Type_108 -> Maybe T_Readable_814
-du_readable'63'_828 v0
+  MAlonzo.Code.Once.Type.T_Type_108 -> Maybe T_Readable_810
+d_readable'63'_824 ~v0 ~v1 ~v2 v3 = du_readable'63'_824 v3
+du_readable'63'_824 ::
+  MAlonzo.Code.Once.Type.T_Type_108 -> Maybe T_Readable_810
+du_readable'63'_824 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
          MAlonzo.Code.Once.Type.C_Unit_118
            -> coe
-                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'unit_816)
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'unit_812)
          MAlonzo.Code.Once.Type.C__'42'__122 v2 v3
-           -> let v4 = coe du_readable'63'_828 (coe v2) in
+           -> let v4 = coe du_readable'63'_824 (coe v2) in
               coe
-                (let v5 = coe du_readable'63'_828 (coe v3) in
+                (let v5 = coe du_readable'63'_824 (coe v3) in
                  coe
                    (case coe v4 of
                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
@@ -86,15 +85,15 @@ du_readable'63'_828 v0
                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
                                -> coe
                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                                    (coe C_r'45'pair_824 v6 v7)
+                                    (coe C_r'45'pair_820 v6 v7)
                              _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                       _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
          MAlonzo.Code.Once.Type.C_Int_132
            -> coe
-                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'int_818)
+                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 (coe C_r'45'int_814)
          _ -> coe v1)
 -- Once.CCC.Machine.ReadTypedAdequate.subst-×-cong₂
-d_subst'45''215''45'cong'8322'_866 ::
+d_subst'45''215''45'cong'8322'_862 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -106,14 +105,14 @@ d_subst'45''215''45'cong'8322'_866 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   AgdaAny ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_subst'45''215''45'cong'8322'_866 = erased
+d_subst'45''215''45'cong'8322'_862 = erased
 -- Once.CCC.Machine.ReadTypedAdequate.readTyped-adequate
-d_readTyped'45'adequate_884 ::
+d_readTyped'45'adequate_880 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
-  T_Readable_814 ->
+  T_Readable_810 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   MAlonzo.Code.Once.IR.T_AllocMode_4 ->
@@ -121,4 +120,4 @@ d_readTyped'45'adequate_884 ::
   AgdaAny ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_570 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_readTyped'45'adequate_884 = erased
+d_readTyped'45'adequate_880 = erased

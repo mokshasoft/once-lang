@@ -10,7 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-overlapping-patterns #-}
 
-module MAlonzo.Code.Once.Adequacy.LabelClash where
+module MAlonzo.Code.Once.Adequacy.SymbolClash where
 
 import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     quotInt, remInt, geqInt, ltInt, eqInt, add64, sub64, mul64, quot64,
@@ -20,21 +20,12 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Once.Parser.Module.Core
 import qualified MAlonzo.Code.Once.Target.Arch
 
--- Once.Adequacy.LabelClash.DistinctLabels
-d_DistinctLabels_6 ::
+-- Once.Adequacy.SymbolClash.SymbolsResolvable
+d_SymbolsResolvable_6 ::
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 -> ()
-d_DistinctLabels_6 = erased
--- Once.Adequacy.LabelClash.LabelsResolvable
-d_LabelsResolvable_12 ::
-  MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
-  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 -> ()
-d_LabelsResolvable_12 = erased
--- Once.Adequacy.LabelClash.program-labels-resolvable
-d_program'45'labels'45'resolvable_24
+d_SymbolsResolvable_6 = erased
+-- Once.Adequacy.SymbolClash.program-symbols-resolvable
+d_program'45'symbols'45'resolvable_18
   = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.LabelClash.program-labels-resolvable"
--- Once.Adequacy.LabelClash.program-labels-distinct
-d_program'45'labels'45'distinct_30
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.LabelClash.program-labels-distinct"
+      "MAlonzo Runtime Error: postulate evaluated: Once.Adequacy.SymbolClash.program-symbols-resolvable"

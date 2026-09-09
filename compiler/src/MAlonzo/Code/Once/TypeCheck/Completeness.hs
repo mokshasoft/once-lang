@@ -3076,9 +3076,7 @@ du_completeness'45'gap'45'inl'45'app'45'check'45'eq_2762 v0 v1 v2
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v6 v2
-                          (coe
-                             MAlonzo.Code.Once.IR.C_inl_56 (coe MAlonzo.Code.Once.IR.C_Heap_8))
-                          v7)
+                          (coe MAlonzo.Code.Once.IR.C_inl_56) v7)
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe addInt (coe (1 :: Integer)) (coe v8))
@@ -3119,9 +3117,7 @@ du_completeness'45'gap'45'inr'45'app'45'check'45'eq_2810 v0 v1 v2
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_morph'45'app_426 v6 v2
-                          (coe
-                             MAlonzo.Code.Once.IR.C_inr_62 (coe MAlonzo.Code.Once.IR.C_Heap_8))
-                          v7)
+                          (coe MAlonzo.Code.Once.IR.C_inr_62) v7)
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                           (coe addInt (coe (1 :: Integer)) (coe v8))
