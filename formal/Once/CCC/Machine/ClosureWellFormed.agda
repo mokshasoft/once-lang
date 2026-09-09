@@ -183,6 +183,30 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     --   Heap  → must use boxed constructors
     --------------------------------------------------------------------
 
+    -- D172: A CELL REPRESENTS A VALUE, IN ONE OF TWO WAYS.
+    --
+    -- Every compound witness here demanded that its components be BOXED —
+    -- `readLoc s cell ≡ just (SV-Ptr loc)` and validity at `loc`. The emitter
+    -- does not do that. `⟨ f , g ⟩` stores whatever `f`/`g` produced, and
+    -- `inl`/`inr` store whatever the payload was: a POINTER for a compound,
+    -- a LITERAL for a register-fitting primitive (`prim-sv fit v`, which is
+    -- exactly what `valid-int-wf`/`valid-float-wf` witness). So the witnesses
+    -- excluded the representation the machine actually uses, and that — one
+    -- cause — is why `obs-correct-pair`, `obs-correct-inl` and
+    -- `obs-correct-inr` are all still axioms.
+    --
+    -- `Represents` is the missing notion, and it is the dual of `InputAt`'s
+    -- `in-loc`/`in-reg` split one level in: a component cell either POINTS AT
+    -- the value or HOLDS it.
+    --
+    -- Not a weakening. `rep-inline` still demands full `ValidAtWF` — at the
+    -- cell itself, which for a literal is precisely `valid-int-wf`'s
+    -- `readLoc s loc ≡ just (prim-sv fits-int n)`. Nothing is assumed that
+    -- was previously proved; a representation the machine produces stops
+    -- being unsayable.
+    data Represents : AllocMode → AllocState {FS} →
+                      ∀ {A : IRTy} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set
+
     data ValidAtWF : AllocMode → AllocState {FS} →
          {A : IRTy} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set where
 
@@ -445,6 +469,22 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- mental model. The field never represented heap reclamation
     -- (heap blocks aren't freed by IRs), only the caller's
     -- continuation view of consumed resources.
+    -- D172: the two ways a component cell carries its value.
+    data Represents where
+      -- BOXED: the cell points at the value, which lives elsewhere.
+      rep-ptr : ∀ {m alloc A} {a : ⟦ A ⟧} {cell loc s}
+              → readLoc s cell ≡ just (SV-Ptr loc)
+              → BeforeFrontier alloc loc
+              → ValidAtWF m alloc a loc s
+              → Represents m alloc {A} a cell s
+      -- INLINE: the cell IS where the value lives. For a register-fitting
+      -- primitive that is `valid-int-wf`/`valid-float-wf`, whose content is
+      -- exactly `readLoc s cell ≡ just (prim-sv fit v)` — the thing `inl` and
+      -- `⟨_,_⟩` actually store when the component fits in a register.
+      rep-inline : ∀ {m alloc A} {a : ⟦ A ⟧} {cell s}
+                 → ValidAtWF m alloc a cell s
+                 → Represents m alloc {A} a cell s
+
     data ResultPlace : (B : IRTy) (m : AllocMode)
                        (alloc continuation-alloc : AllocState {FS})
                        (v : ⟦ B ⟧) (s : LocState FS) → Set where
