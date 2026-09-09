@@ -80,7 +80,10 @@ open import Once.CCC.Machine.SMCore
          instr-sigop; mov-to-output; mov-to-input; instr-load-const; SV-Lit; writeReg; writeReg-same; AbstractTrace;
          -- D155: the closure register's type — the entry state's one open
          -- component (see `entry-flat`).
-         StoredValue; AbstractInstr; module AbstractExec; module MemOps)
+         StoredValue; AbstractInstr; module AbstractExec; module MemOps;
+         -- D171: the store instruction and the location vocabulary its
+         -- read-back needs.
+         store-at-slot; AtStack; current-frame)
 open import Once.CCC.Machine.Validity using (module ValidityDef)
 open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; module FrontierInvariant)
@@ -639,6 +642,30 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- ── `free-heap` — DISCHARGED. `IR Unit Unit`, a semantic no-op that still
   -- compiles to `mov-to-output ∷ []` (copy through, so the register discipline
   -- holds). Unit codomain ⇒ `unit-result`; no event on either side.
+  -- D171 / Phase E2: THE FLAT LAYER'S READ-BACK FOR A STORE.
+  --
+  -- Every discharged `obs-correct-*` clause so far touches at most
+  -- `mov-to-output`; NONE handles `store-at-slot`. That — not four separate
+  -- difficulties — is why `obs-correct-{pair,inl,inr,curry}` are all still
+  -- axioms: they share one missing foundation, the flat layer's store/read
+  -- vocabulary. The `LocState` half already exists (`SMCore`'s
+  -- `writeLoc-read-same-stack` and its disjoint-location sibling); what was
+  -- missing is the bridge from `flat-exec-instr` to `writeLoc`, and
+  -- `store-at-slot` goes through `flat-step-straight`, so it is definitional.
+  flat-store-floc : ∀ (slot : ℕ) (prog : AbstractTrace) (fs : FlatState)
+    → floc (flat-exec-instr (store-at-slot slot) prog fs)
+      ≡ MemOps.writeLoc (floc fs) (AtStack (current-frame (falloc fs)) slot)
+                 (readReg (regs (floc fs)) Output)
+  flat-store-floc slot prog fs = refl
+
+  flat-store-falloc : ∀ (slot : ℕ) (prog : AbstractTrace) (fs : FlatState)
+    → falloc (flat-exec-instr (store-at-slot slot) prog fs) ≡ falloc fs
+  flat-store-falloc slot prog fs = refl
+
+  flat-store-fpc : ∀ (slot : ℕ) (prog : AbstractTrace) (fs : FlatState)
+    → fpc (flat-exec-instr (store-at-slot slot) prog fs) ≡ suc (fpc fs)
+  flat-store-fpc slot prog fs = refl
+
   -- D170 / Phase E2 probe: the DENOTATION half of `obs-correct-curry`.
   -- `curry` builds a value; it invokes no SigOp, so its trace is empty at every
   -- depth. Named here because it is one of the two halves the discharge needs,
