@@ -819,7 +819,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} Zero _ e) dγ k =
                            (liftFn-∘ {B = ⟦ Γ ↾ Ψ ⟧ᶜ} {C = B} {A = ⟦ Γ ↾ Ψ ⟧ᶜ * Unit} ee fst))
                      (cong (λ t → (t (dγ , u) >>=T liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {B} ee) j)
                            (liftFn-fst {⟦ Γ ↾ Ψ ⟧ᶜ} {Unit}))
-    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Zero pure ] B} (curry eeF C.Heap) dγ
+    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Zero pure ] B} (curry eeF) dγ
           ≡ returnT (λ u → liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ * Unit} {B} eeF (dγ , u))
     red = trans (subst-T-returnT (cong (λ y → ⟦ Unit ⟧ᴰ → T y) (cohᴰ B))
                                  (λ u → evalᴰ fmt eeF (dγ' , u)))
@@ -843,7 +843,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} One _ e) dγ k =
                            (liftFn-∘ {B = ⟦ Γ ↾ Ψ ⟧ᶜ} {C = B} {A = ⟦ Γ ↾ Ψ ⟧ᶜ * A} ee fst))
                      (cong (λ t → (t (dγ , a) >>=T liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {B} ee) j)
                            (liftFn-fst {⟦ Γ ↾ Ψ ⟧ᶜ} {A}))
-    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind One pure ] B} (curry eeF C.Heap) dγ
+    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind One pure ] B} (curry eeF) dγ
           ≡ returnT (λ a → liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ * A} {B} eeF (dγ , a))
     red = trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B))
                                  (λ a → evalᴰ fmt eeF (dγ' , a)))
@@ -867,7 +867,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Zero} {A = A} {B = B} Many _ e) dγ k =
                            (liftFn-∘ {B = ⟦ Γ ↾ Ψ ⟧ᶜ} {C = B} {A = ⟦ Γ ↾ Ψ ⟧ᶜ * A} ee fst))
                      (cong (λ t → (t (dγ , a) >>=T liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {B} ee) j)
                            (liftFn-fst {⟦ Γ ↾ Ψ ⟧ᶜ} {A}))
-    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many pure ] B} (curry eeF C.Heap) dγ
+    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many pure ] B} (curry eeF) dγ
           ≡ returnT (λ a → liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ * A} {B} eeF (dγ , a))
     red = trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B))
                                  (λ a → evalᴰ fmt eeF (dγ' , a)))
@@ -883,7 +883,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = One} {A = A} {B = B} One _ e) dγ k =
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
     ee = elaborate C.Heap e
-    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind One pure ] B} (curry ee C.Heap) dγ
+    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind One pure ] B} (curry ee) dγ
           ≡ returnT (λ a → liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ * A} {B} ee (dγ , a))
     red = trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B))
                                  (λ a → evalᴰ fmt ee (dγ' , a)))
@@ -899,7 +899,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = One} {A = A} {B = B} Many _ e) dγ k =
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
     ee = elaborate C.Heap e
-    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many pure ] B} (curry ee C.Heap) dγ
+    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many pure ] B} (curry ee) dγ
           ≡ returnT (λ a → liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ * A} {B} ee (dγ , a))
     red = trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B))
                                  (λ a → evalᴰ fmt ee (dγ' , a)))
@@ -915,7 +915,7 @@ faithful (lam {Γ = Γ} {Ψ = Ψ} {q' = Many} {A = A} {B = B} Many _ e) dγ k =
   where
     dγ' = subst id (sym (cohᴰ ⟦ Γ ↾ Ψ ⟧ᶜ)) dγ
     ee = elaborate C.Heap e
-    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many pure ] B} (curry ee C.Heap) dγ
+    red : liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ} {A ⇒[ mk-kind Many pure ] B} (curry ee) dγ
           ≡ returnT (λ a → liftFn fmt {⟦ Γ ↾ Ψ ⟧ᶜ * A} {B} ee (dγ , a))
     red = trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ B))
                                  (λ a → evalᴰ fmt ee (dγ' , a)))
@@ -1004,7 +1004,7 @@ faithful (effApp {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {A = A} {B = B} f x) 
                     , elaborate C.Heap x ∘ restrictEnv {Γ = Γ} C.Heap leX ⟩
     body = inner ∘ fst
     liftFn-curry-reduce-effApp :
-      liftFn fmt {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {Unit ⇒[ mk-kind Many eff ] B} (curry body C.Heap) dγ
+      liftFn fmt {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {Unit ⇒[ mk-kind Many eff ] B} (curry body) dγ
       ≡ returnT (λ _ → liftFn fmt {⟦ Γ ↾ (Ψ₁ +ᵘ Ψ₂) ⟧ᶜ} {B} inner dγ)
     liftFn-curry-reduce-effApp =
       trans (subst-T-returnT (cong₂ (λ u v → u → T v) (cohᴰ Unit) (cohᴰ B))

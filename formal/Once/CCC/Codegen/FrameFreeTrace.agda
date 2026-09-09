@@ -289,13 +289,7 @@ frame-free-trace' ⟨ f , g ⟩ (hf , hg) n l =
       (tt ∷ tt ∷
        ++⁺ (frame-free-trace' g hg _ _)
            (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
-frame-free-trace' (curry b Stack) (() , _) n l
--- D159: the body is a NAMED BLOCK, so this clause covers the ENTRY only and
--- the recursion into the body moved to `frame-free-blocks'`. That IS the
--- "strengthened main AND every body induction" this comment used to name as
--- the alternative — `link` makes it the only honest one, because the statement
--- is now about the whole program rather than the main block.
-frame-free-trace' (curry b Heap)  (_ , hb) n l =
+frame-free-trace' (curry b)  hb n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 frame-free-trace' apply hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
@@ -362,8 +356,7 @@ frame-free-blocks' (g ∘ f)  (hf , hg) n l =
   ++⁺ (frame-free-blocks' f hf n l) (frame-free-blocks' g hg _ _)
 frame-free-blocks' ⟨ f , g ⟩ (hf , hg) n l =
   ++⁺ (frame-free-blocks' f hf _ l) (frame-free-blocks' g hg _ _)
-frame-free-blocks' (curry b Stack) (() , _) n l
-frame-free-blocks' (curry b Heap)  (_ , hb) n l =
+frame-free-blocks' (curry b)  hb n l =
   frame-free-trace' b hb 0 (suc (suc l)) ∷ frame-free-blocks' b hb 0 (suc (suc l))
 frame-free-blocks' apply hm n l = []
 frame-free-blocks' (inl Stack) () n l

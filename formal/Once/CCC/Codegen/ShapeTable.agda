@@ -470,7 +470,9 @@ HeapModed (g ∘ f)   = HeapModed f × HeapModed g
 -- Stage G: a pair carries NO mode any more, so it contributes no `IsHeap`
 -- obligation — only its components can be heap-moded.
 HeapModed ⟨ f , g ⟩ = HeapModed f × HeapModed g
-HeapModed (curry b m)   = IsHeap m × HeapModed b
+-- 0.86 stage G: `curry` has no mode, so there is no `IsHeap` to demand —
+-- the heap lowering is the only one.
+HeapModed (curry b)   = HeapModed b
 HeapModed (inl m)   = IsHeap m
 HeapModed (inr m)   = IsHeap m
 HeapModed (case f g) = HeapModed f × HeapModed g

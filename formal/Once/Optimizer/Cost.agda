@@ -49,7 +49,7 @@ cost (inr _)       = 1                        -- sum allocation
 cost (case f g)    = cost f ℕ+ cost g
 cost terminal      = 0
 cost initial       = 0
-cost (curry f _)   = 1 ℕ+ cost f              -- closure allocation
+cost (curry f)   = 1 ℕ+ cost f              -- closure allocation
 cost apply         = 0
 cost arr           = 0
 -- Recursion schemes (OCP-0003)

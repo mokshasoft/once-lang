@@ -116,9 +116,7 @@ label-mono (⟨ f , g ⟩) n l = ≤-trans (label-mono f _ l) (label-mono g _ _)
 -- the end-of-body join `suc l` — and then hand the body its own range starting
 -- at `suc (suc l)`. (Pre-flip this was one label; the proof shape is unchanged,
 -- which is why this brick was worth landing ahead of the flip.)
-label-mono (curry b Stack) n l =
-  ≤-trans (n≤1+n l) (≤-trans (n≤1+n (suc l)) (label-mono b 0 (suc (suc l))))
-label-mono (curry b Heap)  n l =
+label-mono (curry b)  n l =
   ≤-trans (n≤1+n l) (≤-trans (n≤1+n (suc l)) (label-mono b 0 (suc (suc l))))
 label-mono apply n l = ≤-refl
 label-mono (inl Stack) n l = ≤-refl

@@ -136,7 +136,7 @@ evalᴰ fmt (case f g)    (inj₁ a) = evalᴰ fmt f a
 evalᴰ fmt (case f g)    (inj₂ b) = evalᴰ fmt g b
 evalᴰ fmt terminal      _        = returnT tt
 evalᴰ fmt initial       ()
-evalᴰ fmt (curry f _)   a        = returnT (λ b → evalᴰ fmt f (a , b))
+evalᴰ fmt (curry f)   a        = returnT (λ b → evalᴰ fmt f (a , b))
 evalᴰ fmt apply         p        = proj₁ p (proj₂ p)
 evalᴰ fmt (SigOp {A} {B} si) a   = λ n →
   ( emit-D si (subst (λ z → z) (coh A) (forget a))

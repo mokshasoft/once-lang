@@ -486,8 +486,7 @@ frontier-mono (⟨ f , g ⟩) n l =
             (≤-trans (n≤1+n (suc n))
               (≤-trans (n≤1+n (suc (suc n))) (n≤1+n (suc (suc (suc n)))))))
           (≤-trans (frontier-mono f _ l) (frontier-mono g _ _))
-frontier-mono (curry b Stack) n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
-frontier-mono (curry b Heap)  n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
+frontier-mono (curry b)  n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono apply n l = ≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (n≤1+n (suc (suc n))))
 frontier-mono (inl Stack) n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (inr Stack) n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
@@ -542,7 +541,7 @@ cata-nat-layer-below n1 tag b p<b s<b =
 -- D099 / C1: the algebra is a CALLED BODY, so its slots live in ITS OWN frame
 -- and its `SegOK` is taken at its own budget `bb`, not the cata's.
 -- `segok-thunk` is exactly the combinator for that — it was built for `curry`'s
--- inline body (`slots-below (curry b m) n l` feeds it `slots-below b 0 …`), and
+-- inline body (`slots-below (curry b) n l` feeds it `slots-below b 0 …`), and
 -- the cata's body bracket is the same `c-thunk … / c-ret … / c-label` shape.
 --
 -- Second place C1 SIMPLIFIES: the old witnesses had to `segok-weaken` the
@@ -1046,13 +1045,7 @@ slots-below (⟨ f , g ⟩) n l =
 -- the parent's segment here. That is the point: `SegOK (ir-stack-budget ir)`
 -- applied the entry block's budget to the whole program, which is wrong for
 -- any program with a body.
-slots-below (curry b Stack) n l =
-  segok-idle _ refl
-    (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-     sb-slot refl ≤-refl (λ _ ()) ∷
-     -- the record/pair base: `lea-slot n`, with `suc n` reserved beside it
-     sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ [])
-slots-below (curry b Heap) n l =
+slots-below (curry b) n l =
   segok-idle _ refl
     (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
      sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
@@ -1217,9 +1210,7 @@ blocks-below initial             n l = []
 blocks-below (g ∘ f)             n l = ++⁺ (blocks-below f n l) (blocks-below g _ _)
 blocks-below (⟨ f , g ⟩)         n l = ++⁺ (blocks-below f _ l) (blocks-below g _ _)
 -- the two shapes that CREATE a block
-blocks-below (curry b Stack)     n l = slots-below b 0 (suc (suc l))
-                                     ∷ blocks-below b 0 (suc (suc l))
-blocks-below (curry b Heap)      n l = slots-below b 0 (suc (suc l))
+blocks-below (curry b)      n l = slots-below b 0 (suc (suc l))
                                      ∷ blocks-below b 0 (suc (suc l))
 blocks-below apply               n l = []
 blocks-below (inl Stack)         n l = []

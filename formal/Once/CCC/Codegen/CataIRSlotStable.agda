@@ -346,8 +346,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   -- D159: the body is a NAMED BLOCK now, so the entry block is closed
   -- straight-line code and the decider settles it — the recursion into the
   -- body moved to `ir-blocks-stable`, where the body actually lives.
-  ir-stable (curry b Stack) n l = all-stable?-sound _ refl
-  ir-stable (curry b Heap)  n l = all-stable?-sound _ refl
+  ir-stable (curry b)  n l = all-stable?-sound _ refl
   ir-stable (SigOp _)       n l = all-stable?-sound _ refl
   ir-stable (const fits-int _)   n l = all-stable?-sound _ refl
   ir-stable (const fits-float _) n l = all-stable?-sound _ refl
@@ -405,9 +404,7 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-blocks-stable terminal             n l = []ᴬ
   ir-blocks-stable initial              n l = []ᴬ
   ir-blocks-stable apply                n l = []ᴬ
-  ir-blocks-stable (curry b Stack)      n l = ir-stable b 0 (suc (suc l))
-                                            ∷ᴬ ir-blocks-stable b 0 (suc (suc l))
-  ir-blocks-stable (curry b Heap)       n l = ir-stable b 0 (suc (suc l))
+  ir-blocks-stable (curry b)       n l = ir-stable b 0 (suc (suc l))
                                             ∷ᴬ ir-blocks-stable b 0 (suc (suc l))
   ir-blocks-stable (SigOp _)            n l = []ᴬ
   ir-blocks-stable (const fits-int _)   n l = []ᴬ

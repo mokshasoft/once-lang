@@ -5,6 +5,14 @@
 -- Once.Escape
 --
 -- Escape analysis for Once IR.
+-- 0.86 stage G (2026-09-09): THE RULES BELOW ARE HISTORY, NOT CODE. They were
+-- already documentation rather than implementation — several mention
+-- `⟨ f , g ⟩ m`, which has not typechecked since the pair lost its mode — and
+-- `curry` has now lost its mode too, so `curry f Stack` is unsayable. The pass
+-- itself (`escape-once`) is a structural walk that rebuilds the IR unchanged.
+-- Kept as the record of what an escape analysis WOULD rewrite, if allocation
+-- were still mode-selected; D142 says it is not.
+--
 -- Rewrites AllocMode from Heap to Stack where allocations are
 -- immediately consumed, making stack allocation safe.
 --
@@ -97,7 +105,7 @@ escape-once initial = initial
 
 -- Curry: recurse into body, preserve mode
 -- (Mode may be optimized when this closure is consumed in a composition)
-escape-once (curry f m) = curry (escape-once f) m
+escape-once (curry f) = curry (escape-once f)
 
 -- Apply: no allocation in apply itself
 escape-once apply = apply

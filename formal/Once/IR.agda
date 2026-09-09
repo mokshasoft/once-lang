@@ -157,7 +157,12 @@ data IR where
   -- Exponential (A ⇛ B) — the UNGRADED arrow object (Plan 0.52 M2).
   -- The grade lived only on the surface `Type`; here it is erased, so
   -- there is one exponential object per (A, B) and no pure/eff distinction.
-  curry : ∀ {A B C} → IR (A * B) C → AllocMode → IR A (B ⇛ C)
+  -- 0.86 stage G (D147): `AllocMode` leaves `curry`. SIGNATURE-ONLY — `Stack`
+  -- was already unreachable: the elaborator threads `Heap`, the apex compiles
+  -- at `doOpt = false`, and `Once.Escape`'s Heap→Stack rules are a header
+  -- comment rather than code. The heap lowering was the only one a program
+  -- could select, so deleting the Stack clause preserves behaviour.
+  curry : ∀ {A B C} → IR (A * B) C → IR A (B ⇛ C)
   apply : ∀ {A B} → IR ((A ⇛ B) * A) B
 
   -- `arr` RETIRED (Plan 0.52 M2): it coerced `A ⇒[pure] B` to

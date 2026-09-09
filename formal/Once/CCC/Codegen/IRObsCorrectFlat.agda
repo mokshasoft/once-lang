@@ -673,7 +673,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- Class-B shaped rather than label-bearing.
   curry-denot-[] : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
                    {x : ⟦ A ⟧} (k : ℕ)
-                 → projTrace (evalᴰ (curry body m) (inject x)) k ≡ []
+                 → projTrace (evalᴰ (curry body) (inject x)) k ≡ []
   curry-denot-[] body m k = refl
 
   obs-correct-free-heap : ∀ (r : HeapRef) → IRObsCorrectF (free-heap r)
@@ -975,7 +975,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- `⟦curry⟧` requires that the parent's jump lands on THIS clause's
     -- `c-label end`". D159 deleted that shape. `curry` now emits FIVE
     -- instructions (ten in Heap mode), the body is a NAMED BLOCK reached by
-    -- `link`, and `labels-in (curry b _)` is `li-none` throughout — the clause
+    -- `link`, and `labels-in (curry b)` is `li-none` throughout — the clause
     -- mentions no label at all. There is no jump to land, so the converse of
     -- `find-label-sound` is not needed and this is not `labels-unique`'s
     -- consumer.
@@ -995,8 +995,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- from inside the clause that merely BUILDS the closure record. With the
     -- value carrying only its representation, the witness is exactly what
     -- `store-at-slot` / `instr-load-code-addr` just wrote.
-    obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
-                      → IRObsCorrectF (curry body m)
+    obs-correct-curry : ∀ {A B C} (body : IR (A * B) C)
+                      → IRObsCorrectF (curry body)
     obs-correct-case  : ∀ {A B C} (f : IR A C) (g : IR B C)
                       → IRObsCorrectF (case f g)
 
@@ -1560,7 +1560,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-obs-correct terminal            = obs-correct-terminal
   ir-obs-correct initial             = obs-correct-initial
   -- exponentials — THE LABEL-BEARING PAIR
-  ir-obs-correct (curry body m)      = obs-correct-curry body m
+  ir-obs-correct (curry body)      = obs-correct-curry body
   ir-obs-correct apply               = obs-correct-apply
   -- μ / ν structure
   ir-obs-correct (In wf m)           = obs-correct-In wf m

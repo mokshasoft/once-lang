@@ -237,10 +237,10 @@ distribute : ∀ {Γ A B} → AllocMode → IR (Γ * (A + B)) ((Γ * A) + (Γ * 
 distribute {Γ} {A} {B} m = distrib' ∘ swap' m
   where
     curryInlSwap : IR A (Γ ⇛ ((Γ * A) + (Γ * B)))
-    curryInlSwap = curry (inl m ∘ swap' m) m
+    curryInlSwap = curry (inl m ∘ swap' m)
 
     curryInrSwap : IR B (Γ ⇛ ((Γ * A) + (Γ * B)))
-    curryInrSwap = curry (inr m ∘ swap' m) m
+    curryInrSwap = curry (inr m ∘ swap' m)
 
     curryDistrib : IR (A + B) (Γ ⇛ ((Γ * A) + (Γ * B)))
     curryDistrib = case curryInlSwap curryInrSwap
@@ -279,26 +279,26 @@ swapIR m = ⟨ snd , fst ⟩
 
 distribIR : ∀ {G A B} → (m : AllocMode) → IR (G * (A + B)) ((G * A) + (G * B))
 distribIR m =
-  apply ∘ ⟨ case (curry (inl m ∘ swapIR m) m) (curry (inr m ∘ swapIR m) m) ∘ snd
+  apply ∘ ⟨ case (curry (inl m ∘ swapIR m)) (curry (inr m ∘ swapIR m)) ∘ snd
           , fst ⟩
 
 -- D127: the four combinator morphisms. CLOSED — they mention no arm, so an
 -- arm's effects happen once, where `⟨_,_⟩` runs it, and not per call.
 compIR : ∀ {A B C} → (m : AllocMode) → IR ((B ⇛ C) * (A ⇛ B)) (A ⇛ C)
-compIR m = curry (apply ∘ ⟨ fst ∘ fst , apply ∘ ⟨ snd ∘ fst , snd ⟩ ⟩) m
+compIR m = curry (apply ∘ ⟨ fst ∘ fst , apply ∘ ⟨ snd ∘ fst , snd ⟩ ⟩)
 
 copairIR : ∀ {A B C} → (m : AllocMode) → IR ((A ⇛ C) * (B ⇛ C)) ((A + B) ⇛ C)
 copairIR m =
   curry (case (apply ∘ ⟨ fst ∘ fst , snd ⟩)
               (apply ∘ ⟨ snd ∘ fst , snd ⟩)
-         ∘ distribIR m) m
+         ∘ distribIR m)
 
 forkIR : ∀ {A B C} → (m : AllocMode) → IR ((A ⇛ B) * (A ⇛ C)) (A ⇛ (B * C))
 forkIR m = curry (⟨ apply ∘ ⟨ fst ∘ fst , snd ⟩
-                  , apply ∘ ⟨ snd ∘ fst , snd ⟩ ⟩) m
+                  , apply ∘ ⟨ snd ∘ fst , snd ⟩ ⟩)
 
 curryIR : ∀ {A B C} → (m : AllocMode) → IR ((A * B) ⇛ C) (A ⇛ (B ⇛ C))
-curryIR m = curry (curry (apply ∘ ⟨ fst ∘ fst , ⟨ snd ∘ fst , snd ⟩ ⟩) m) m
+curryIR m = curry (curry (apply ∘ ⟨ fst ∘ fst , ⟨ snd ∘ fst , snd ⟩ ⟩))
 
 cataM : ∀ {F : Functor} {A : Type} → WellFormedF F → AllocMode
       → IR (⌊ ⟦ F ⟧T A ⌋ ⇛ ⌊ A ⌋) (⌊ μ-type F ⌋ ⇛ ⌊ A ⌋)
@@ -306,7 +306,7 @@ cataM {F} {A} wfF m =
   curry (Cata (wf-⌊⌋ wfF)
               (subst (λ o → IR ((⌊ ⟦ F ⟧T A ⌋ ⇛ ⌊ A ⌋) * o) ⌊ A ⌋)
                      (⌊⟧T-commute F A)
-                     (apply ∘ ⟨ fst , snd ⟩))) m
+                     (apply ∘ ⟨ fst , snd ⟩)))
 
 
 -- D142 / plan 0.86 step B: the environment is `Γ ↾ Ψ` — EXACTLY the variables
@@ -332,12 +332,12 @@ elaborate {Γ = Γ} m (var i) = projUsed {Γ = Γ} i
 -- `q' ≤q q` (the lam's own premise) makes the off-diagonal cases impossible:
 -- an erased arrow cannot have a body that uses its argument. Those clauses are
 -- absent rather than absurd — Agda sees the constraint through the premise.
-elaborate {Γ = Γ} m (lam {q' = Zero} Zero _ e) = curry (elaborate m e ∘ fst) m
-elaborate {Γ = Γ} m (lam {q' = Zero} One  _ e) = curry (elaborate m e ∘ fst) m
-elaborate {Γ = Γ} m (lam {q' = Zero} Many _ e) = curry (elaborate m e ∘ fst) m
-elaborate {Γ = Γ} m (lam {q' = One}  One  _ e) = curry (elaborate m e) m
-elaborate {Γ = Γ} m (lam {q' = One}  Many _ e) = curry (elaborate m e) m
-elaborate {Γ = Γ} m (lam {q' = Many} Many _ e) = curry (elaborate m e) m
+elaborate {Γ = Γ} m (lam {q' = Zero} Zero _ e) = curry (elaborate m e ∘ fst)
+elaborate {Γ = Γ} m (lam {q' = Zero} One  _ e) = curry (elaborate m e ∘ fst)
+elaborate {Γ = Γ} m (lam {q' = Zero} Many _ e) = curry (elaborate m e ∘ fst)
+elaborate {Γ = Γ} m (lam {q' = One}  One  _ e) = curry (elaborate m e)
+elaborate {Γ = Γ} m (lam {q' = One}  Many _ e) = curry (elaborate m e)
+elaborate {Γ = Γ} m (lam {q' = Many} Many _ e) = curry (elaborate m e)
 
 -- D127: the categorical combinators — CLOSED morphisms composed with the
 -- pairing of the arms.
@@ -386,13 +386,13 @@ elaborate {Γ = Γ} m (app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} f x) =
 -- three existing IR primitives:
 --   `applyEff ∘ ⟨f, x⟩`  : IR Γ B                  -- run f on x
 --   (…) ∘ fst            : IR (Γ * Unit) B         -- ignore Unit input
---   curry (…) m          : IR Γ (Unit ⇒[Many] B)    -- abstract the Unit
---   curry (…) m          : IR Γ (Unit ⇛ B)          -- Plan 0.52 M2: ungraded
+--   curry (…)          : IR Γ (Unit ⇒[Many] B)    -- abstract the Unit
+--   curry (…)          : IR Γ (Unit ⇛ B)          -- Plan 0.52 M2: ungraded
 -- Built from the existing IR constructors alone. (`arr` retired: pure and
 -- eff arrows are the same ungraded `⇛` object, so no tag needed.)
 elaborate {Γ = Γ} m (effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
   curry ((apply ∘ ⟨ elaborate m f ∘ envˡ {Γ = Γ} m Ψ₁ Ψ₂
-                  , elaborate m x ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩) ∘ fst) m
+                  , elaborate m x ∘ envʳ {Γ = Γ} m Ψ₁ Ψ₂ ⟩) ∘ fst)
 
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate {Γ = Γ} m (pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
@@ -522,11 +522,11 @@ elaborate {Γ = Γ} m (ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} e₁ e₂) = neIR ∘ 
 -- an `arrow-info` call (there is no `⌊Dom⌋` to pass). It degenerates to the
 -- VALUE case: the slot is `Unit`, and the symbol produces the result from it.
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Zero π ] Cod)} name (con-fun bDom cCod)) =
-  curry (SigOp (value-info name base-Unit cCod) ∘ snd) m
+  curry (SigOp (value-info name base-Unit cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom cCod)) =
-  curry (SigOp (arrow-info (mk-kind One π) name bDom cCod) ∘ snd) m
+  curry (SigOp (arrow-info (mk-kind One π) name bDom cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod)) =
-  curry (SigOp (arrow-info (mk-kind Many π) name bDom cCod) ∘ snd) m
+  curry (SigOp (arrow-info (mk-kind Many π) name bDom cCod) ∘ snd)
 elaborate {Γ = Γ} m (sigOp name conc) = SigOp (value-info name base-Unit conc) ∘ terminal
 -- Plan 0.19: user-defined closure reference.
 --
@@ -552,10 +552,10 @@ elaborate {A = A} m (poly name _) = SigOp (internal-info {A = A} (bare name)) �
 -- Plan 0.2.4.5 D2: morphism realm.
 -- A `lift-morphism morph` used as a value (e.g. assigned to a variable
 -- or returned from a branch) is curry'd over a discarded environment:
--- `curry (morph ∘ snd) m : IR ⟦Γ⟧ᶜ (A ⇒ B)`. When the typechecker
+-- `curry (morph ∘ snd) : IR ⟦Γ⟧ᶜ (A ⇒ B)`. When the typechecker
 -- knows it is immediately applied, it emits `morph-app` instead,
 -- bypassing this curry/apply round-trip and the closure ABI.
-elaborate m (lift-morphism morph) = curry (morph ∘ snd) m
+elaborate m (lift-morphism morph) = curry (morph ∘ snd)
 
 -- Plan 0.2.4.5 D2: morphism-realm application.
 -- `morph-app morph x` lowers as the pure CCC compose `morph ∘ elaborate x` —
@@ -590,7 +590,7 @@ elaborate m (cata {F = F} {A = A} wfF alg) =
 -- `Ana wfF coalgebra : IR A (νF)`; `∘ snd` projects the seed from the curry's
 -- `(env, seed)`; `curry … m : IR Γ (A ⇒ νF)`.
 elaborate m (ana {F = F} {A = A} wfF coalg) =
-  curry (Ana (wf-⌊⌋ wfF) (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) (apply ∘ ⟨ elaborate m coalg ∘ terminal , id ⟩)) ∘ snd) m
+  curry (Ana (wf-⌊⌋ wfF) (subst (λ o → IR ⌊ A ⌋ o) (⌊⟧T-commute F A) (apply ∘ ⟨ elaborate m coalg ∘ terminal , id ⟩)) ∘ snd)
 
 -- | `erase` — THE PHASE PROJECTION, from the FULL environment (every binding)
 --   to the RUNTIME one (only what the term uses). This is `NbEPQTT.erase`

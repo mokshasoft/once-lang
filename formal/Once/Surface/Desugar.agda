@@ -78,7 +78,7 @@ desugar m S.terminal = C.terminal
 desugar m S.initial = C.initial
 
 -- Exponential
-desugar m (S.curry f) = C.curry (desugar m f) m
+desugar m (S.curry f) = C.curry (desugar m f)
 desugar m S.apply = C.apply
 
 -- OCP-0003: fold/unfold removed

@@ -88,7 +88,7 @@ eval fmt (inr _) x = sem-inr x
 eval fmt (case f g) x = sem-case (eval fmt f) (eval fmt g) x
 eval fmt terminal x = tt
 eval fmt initial ()
-eval fmt (curry f _) x = λ y → eval fmt f (sem-pair x y)
+eval fmt (curry f) x = λ y → eval fmt f (sem-pair x y)
 eval fmt apply (closure , arg) = closure arg
 eval fmt (free-heap _) x = x
 -- Constants (global elements 1 → A for primitive A): ignore the

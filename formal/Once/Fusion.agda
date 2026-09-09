@@ -148,7 +148,7 @@ fusion-once terminal = terminal
 fusion-once initial = initial
 
 -- Curry: recurse into body, preserve mode
-fusion-once (curry f m) = curry (fusion-once f) m
+fusion-once (curry f) = curry (fusion-once f) m
 
 -- Apply: nothing to fuse
 fusion-once apply = apply

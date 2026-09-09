@@ -182,9 +182,9 @@ rewrite-ir ir with try-lift ir
       in case f' g' , (bf ++ bg)
     walk terminal          = terminal , []
     walk initial           = initial , []
-    walk (curry f m)       =
+    walk (curry f)       =
       let (f' , bf) = rewrite-ir f
-      in (curry f' m) , bf
+      in (curry f') , bf
     walk apply             = apply , []
     walk (In w m)          = In w m , []
     walk (out-μ w)         = out-μ w , []

@@ -33,7 +33,7 @@ ir-size (inr _) = 1
 ir-size (case f g) = 1 +ℕ ir-size f +ℕ ir-size g
 ir-size terminal = 1
 ir-size initial = 1
-ir-size (curry f _) = 2 +ℕ ir-size f
+ir-size (curry f) = 2 +ℕ ir-size f
 ir-size apply = 1
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 -- Recursion schemes (OCP-0003) - WellFormedF proofs are ignored for size
@@ -78,7 +78,7 @@ ir-size-nt (ntPair t u) = 1 +ℕ ir-size-nt t +ℕ ir-size-nt u
 ⟨,⟩-g-smaller : ∀ {A B C} (f : IR A B) (g : IR A C) → ir-size g < ir-size ⟨ f , g ⟩
 ⟨,⟩-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
-curry-smaller : ∀ {A B C} (f : IR (A * B) C) {m : AllocMode} → ir-size f < ir-size (curry f m)
+curry-smaller : ∀ {A B C} (f : IR (A * B) C) {m : AllocMode} → ir-size f < ir-size (curry f)
 curry-smaller f {m} = m≤n⇒m≤1+n (n<1+n (ir-size f))
 
 case-f-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) → ir-size f < ir-size (case f g)

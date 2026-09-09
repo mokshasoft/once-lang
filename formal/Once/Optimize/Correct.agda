@@ -216,7 +216,7 @@ mutual
           (optimize-once-correct g b)
   optimize-once-structural-correct terminal x = refl
   optimize-once-structural-correct initial ()
-  optimize-once-structural-correct (curry f m) x =
+  optimize-once-structural-correct (curry f) x =
     funext (λ b → optimize-once-correct f (x , b))
   optimize-once-structural-correct apply x = refl
   optimize-once-structural-correct arr x = refl

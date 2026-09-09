@@ -254,9 +254,7 @@ alloc-min-trace' (⟨ f , g ⟩) n l =
 -- clauses are the closure's own five/ten instructions and nothing else. The
 -- recursion into the body moved to `alloc-min-blocks` — where it belongs, and
 -- where the discipline is actually claimed of the emitted body.
-alloc-min-trace' (curry b Stack) n l =
-  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-alloc-min-trace' (curry b Heap)  n l =
+alloc-min-trace' (curry b)  n l =
   tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 alloc-min-trace' apply n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷
@@ -331,10 +329,7 @@ alloc-min-blocks (SigOp _)      n l = []
 alloc-min-blocks (const fits-int _)   n l = []
 alloc-min-blocks (const fits-float _) n l = []
 -- the closure's block: `c-thunk`, the body, `c-ret` — then the body's own
-alloc-min-blocks (curry b Stack) n l =
-  ++⁺ (tt ∷ ++⁺ (alloc-min-trace' b 0 (suc (suc l))) (tt ∷ []))
-      (alloc-min-blocks b 0 (suc (suc l)))
-alloc-min-blocks (curry b Heap) n l =
+alloc-min-blocks (curry b) n l =
   ++⁺ (tt ∷ ++⁺ (alloc-min-trace' b 0 (suc (suc l))) (tt ∷ []))
       (alloc-min-blocks b 0 (suc (suc l)))
 alloc-min-blocks (g ∘ f) n l =

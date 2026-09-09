@@ -565,9 +565,7 @@ labels-in (⟨ f , g ⟩) n l =
 -- over the inlined body and its landing `c-label` were the only two, and both
 -- existed solely because the body was spliced in. The body marker and the code
 -- address stay invisible as they always did — `thunk` provenance (D082).
-labels-in (curry b Stack) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-labels-in (curry b Heap) n l =
+labels-in (curry b) n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 labels-in apply n l =
@@ -1752,9 +1750,7 @@ seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])
 -- D159: the entry block is now LABEL-FREE straight-line code — no jump over a
 -- body, no landing label — so the bracket combinator `segagree-curry` is not
 -- needed here at all. The body's own agreement moved to the block.
-seg-agree (curry bd Stack) n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (curry bd Heap)  n l =
+seg-agree (curry bd)  n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
                     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree apply n l =
@@ -1908,11 +1904,7 @@ scope-ok (const fits-int _)  n l = scope-nil _ _ _
 scope-ok (const fits-float _) n l = scope-nil _ _ _
 
 -- ── the closure clauses: the body IS the block, and the entry has no label
-scope-ok (curry bd Stack) n l =
-  scope-nolab _ _ l _
-    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-    (curry-bl-in bd n l) (curry-bl-agree bd n l)
-scope-ok (curry bd Heap) n l =
+scope-ok (curry bd) n l =
   scope-nolab _ _ l _
     (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
     (curry-bl-in bd n l) (curry-bl-agree bd n l)

@@ -43,7 +43,7 @@ depth (inr _)       = 0
 depth (case f g)    = suc (depth f ⊔ depth g)
 depth terminal      = 0
 depth initial       = 0
-depth (curry f _)   = suc (depth f)
+depth (curry f)   = suc (depth f)
 depth apply         = 0
 depth arr           = 0
 -- Recursion schemes (OCP-0003)

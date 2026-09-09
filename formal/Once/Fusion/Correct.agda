@@ -101,7 +101,7 @@ fusion-once-correct (case f g) (inj₁ a) = fusion-once-correct f a
 fusion-once-correct (case f g) (inj₂ b) = fusion-once-correct g b
 fusion-once-correct terminal x = refl
 fusion-once-correct initial ()
-fusion-once-correct (curry f m) x =
+fusion-once-correct (curry f) x =
   funext (λ b → fusion-once-correct f (x , b))
 fusion-once-correct apply x = refl
 fusion-once-correct arr x = refl

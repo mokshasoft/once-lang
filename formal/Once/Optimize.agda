@@ -376,7 +376,7 @@ ir-head (inr _) = h-inr
 ir-head (case _ _) = h-case
 ir-head terminal = h-terminal
 ir-head initial = h-initial
-ir-head (curry _ _) = h-curry
+ir-head (curry _) = h-curry
 ir-head apply = h-apply
 ir-head (In _ _) = h-In
 ir-head (out-μ _) = h-out-μ
@@ -584,13 +584,13 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ≟IRH-case-aux f₁ f₂ g₁ g₂ (no np)    (yes _)    = no (λ { refl → np refl })
 ≟IRH-case-aux f₁ f₂ g₁ g₂ (no np)    (no _)     = no (λ { refl → np refl })
 
-≟IRH-curry-aux : ∀ {A B C} (f₁ f₂ : IR (A * B) C) (m₁ m₂ : AllocMode)
-               → Dec (f₁ ≡ f₂) → Dec (m₁ ≡ m₂)
-               → Dec (curry {A} {B} {C} f₁ m₁ ≡ curry f₂ m₂)
-≟IRH-curry-aux f₁ f₂ m₁ m₂ (yes refl) (yes refl) = yes refl
-≟IRH-curry-aux f₁ f₂ m₁ m₂ (yes refl) (no nm)    = no (λ { refl → nm refl })
-≟IRH-curry-aux f₁ f₂ m₁ m₂ (no np)    (yes _)    = no (λ { refl → np refl })
-≟IRH-curry-aux f₁ f₂ m₁ m₂ (no np)    (no _)     = no (λ { refl → np refl })
+≟IRH-curry-aux : ∀ {A B C} (f₁ f₂ : IR (A * B) C)
+               → Dec (f₁ ≡ f₂)
+               → Dec (curry {A} {B} {C} f₁ ≡ curry f₂)
+≟IRH-curry-aux f₁ f₂ (yes refl) = yes refl
+
+≟IRH-curry-aux f₁ f₂ (no np)    = no (λ { refl → np refl })
+
 
 -- Hylo helper: takes both alg and coalg Dec results; uses rewrite
 -- on WellFormedFI-irrelevant for the matched-functor case.
@@ -655,8 +655,8 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ≟IRH-diag terminal terminal _ refl refl = yes refl
 ≟IRH-diag initial initial _ refl refl = yes refl
 
-≟IRH-diag (curry f₁ m₁) (curry f₂ m₂) _ refl refl =
-  ≟IRH-curry-aux f₁ f₂ m₁ m₂ (≟IRH f₁ f₂ refl refl) (m₁ ≟AllocMode m₂)
+≟IRH-diag (curry f₁) (curry f₂) _ refl refl =
+  ≟IRH-curry-aux f₁ f₂ (≟IRH f₁ f₂ refl refl)
 
 ≟IRH-diag apply apply _ refl refl = yes refl
 
@@ -950,7 +950,7 @@ pairView-gen (inr m)         eq = is-other-pair (subst (IR _) eq (inr m))
 pairView-gen (case f g)      eq = is-other-pair (subst (IR _) eq (case f g))
 pairView-gen terminal        eq = is-other-pair (subst (IR _) eq terminal)
 pairView-gen initial         eq = is-other-pair (subst (IR _) eq initial)
-pairView-gen (curry f m)     eq = is-other-pair (subst (IR _) eq (curry f m))
+pairView-gen (curry f)       eq = is-other-pair (subst (IR _) eq (curry f))
 pairView-gen apply           eq = is-other-pair (subst (IR _) eq apply)
 pairView-gen (In wf m)       eq = is-other-pair (subst (IR _) eq (In wf m))
 pairView-gen (out-μ wf)      eq = is-other-pair (subst (IR _) eq (out-μ wf))
@@ -981,7 +981,7 @@ coprodView-gen snd             eq = is-other-coprod (subst (IR _) eq snd)
 coprodView-gen (case f g)      eq = is-other-coprod (subst (IR _) eq (case f g))
 coprodView-gen terminal        eq = is-other-coprod (subst (IR _) eq terminal)
 coprodView-gen initial         eq = is-other-coprod (subst (IR _) eq initial)
-coprodView-gen (curry f m)     eq = is-other-coprod (subst (IR _) eq (curry f m))
+coprodView-gen (curry f)       eq = is-other-coprod (subst (IR _) eq (curry f))
 coprodView-gen apply           eq = is-other-coprod (subst (IR _) eq apply)
 coprodView-gen (In wf m)       eq = is-other-coprod (subst (IR _) eq (In wf m))
 coprodView-gen (out-μ wf)      eq = is-other-coprod (subst (IR _) eq (out-μ wf))
@@ -1017,7 +1017,7 @@ composeFirstView (⟨ f , g ⟩)   = cf-other (⟨ f , g ⟩)
 composeFirstView (inl m)         = cf-other (inl m)
 composeFirstView (inr m)         = cf-other (inr m)
 composeFirstView initial         = cf-other initial
-composeFirstView (curry f m)     = cf-other (curry f m)
+composeFirstView (curry f)       = cf-other (curry f)
 composeFirstView apply           = cf-other apply
 composeFirstView (In wf m)       = cf-other (In wf m)
 composeFirstView (out-μ wf)      = cf-other (out-μ wf)
@@ -1043,7 +1043,7 @@ composeSecondView (inl m)        = cs-other (inl m)
 composeSecondView (inr m)        = cs-other (inr m)
 composeSecondView (case f g)     = cs-other (case f g)
 composeSecondView terminal       = cs-other terminal
-composeSecondView (curry f m)    = cs-other (curry f m)
+composeSecondView (curry f)      = cs-other (curry f)
 composeSecondView apply          = cs-other apply
 composeSecondView (In wf m)      = cs-other (In wf m)
 composeSecondView (out-μ wf)     = cs-other (out-μ wf)
@@ -1069,7 +1069,7 @@ fstSndView (inr m)         = fsv-other (inr m)
 fstSndView (case f g)      = fsv-other (case f g)
 fstSndView terminal        = fsv-other terminal
 fstSndView initial         = fsv-other initial
-fstSndView (curry f m)     = fsv-other (curry f m)
+fstSndView (curry f)       = fsv-other (curry f)
 fstSndView apply           = fsv-other apply
 fstSndView (In wf m)       = fsv-other (In wf m)
 fstSndView (out-μ wf)      = fsv-other (out-μ wf)
@@ -1095,7 +1095,7 @@ inlInrView snd             = iiv-other snd
 inlInrView (case f g)      = iiv-other (case f g)
 inlInrView terminal        = iiv-other terminal
 inlInrView initial         = iiv-other initial
-inlInrView (curry f m)     = iiv-other (curry f m)
+inlInrView (curry f)       = iiv-other (curry f)
 inlInrView apply           = iiv-other apply
 inlInrView (In wf m)       = iiv-other (In wf m)
 inlInrView (out-μ wf)      = iiv-other (out-μ wf)
@@ -1136,7 +1136,7 @@ has-effect? (inr _)         = false
 has-effect? (case f g)      = has-effect? f ∨ has-effect? g
 has-effect? terminal        = false
 has-effect? initial         = false
-has-effect? (curry f _)     = has-effect? f
+has-effect? (curry f)       = has-effect? f
 -- `apply` invokes a closure that is only known at runtime; that closure may
 -- contain any SigOp (e.g. an `exit`/`emit` action threaded through a thunk),
 -- so an `apply` is conservatively treated as potentially effectful. This is
@@ -1286,7 +1286,7 @@ mutual
   optimize-once-structural (case f g) = optimize-case (optimize-once f) (optimize-once g)
   optimize-once-structural terminal = terminal
   optimize-once-structural initial = initial
-  optimize-once-structural (curry f m) = curry (optimize-once f) m
+  optimize-once-structural (curry f) = curry (optimize-once f)
   optimize-once-structural apply = apply
   -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
   -- | SigOp with Void source is equivalent to initial (no inhabitants)

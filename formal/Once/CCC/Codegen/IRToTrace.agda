@@ -753,30 +753,11 @@ ir-to-trace' n l ⟨ f , g ⟩ =
 -- see at all). Inlining HERE rather than in the public `ir-to-trace` wrapper
 -- is what keeps every emitter walk a one-line change: they already recurse
 -- into `body` at this clause.
-ir-to-trace' n l (curry body Stack) =
-  let this-label = l
-      end-label  = suc l
-      l1         = suc (suc l)
-      closure-slot = n
-      next        = suc (suc closure-slot)
-      (body-budget , l2 , body-trace , body-bodies) = ir-to-trace' 0 l1 body
-      this-trace  = (mov-to-output ∷
-                     store-at-slot closure-slot ∷
-                     instr-load-code-addr (ℓ o this-label) ∷
-                     store-at-slot (suc closure-slot) ∷
-                     lea-slot closure-slot ∷ [])
-      -- D159: the body is a NAMED BLOCK, not a splice. The `c-jmp end` that
-      -- used to jump over it, and `end-label` itself, existed only because of
-      -- the inlining. (`end-label` stays RESERVED for now so label arithmetic
-      -- does not shift in the same step; reclaiming it is a follow-up.)
-      all-bodies  = (ℓ o this-label , body-budget , body-trace) ∷ body-bodies
-  in next , l2 , this-trace , all-bodies
-
--- Heap mode: closure record bump-allocated on the heap (2 cells:
--- env-ptr at offset 0, code-address at offset 8). Mirrors
--- CurryAllocWF.curry-heap-trace. Uses 2 scratch slots
--- (env-stash, closure-stash).
-ir-to-trace' n l (curry body Heap) =
+-- 0.86 stage G (D147): ONE lowering. The `Stack` clause that stood above this
+-- one is deleted — `AllocMode` has left `curry`, and `Stack` was unreachable
+-- anyway (the elaborator threads `Heap`; `Once.Escape`'s Heap→Stack rules are
+-- a header comment, not code). This is the heap lowering, unchanged.
+ir-to-trace' n l (curry body) =
   let this-label    = l
       end-label     = suc l
       l1            = suc (suc l)

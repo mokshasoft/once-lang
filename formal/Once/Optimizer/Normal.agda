@@ -131,7 +131,7 @@ mutual
   optimize-compose-structural-normal (inr m) id ng _ = ng
   optimize-compose-structural-normal (case f g) id ng _ = ng
   optimize-compose-structural-normal terminal id ng _ = ng
-  optimize-compose-structural-normal (curry f m) id ng _ = ng
+  optimize-compose-structural-normal (curry f) id ng _ = ng
   optimize-compose-structural-normal apply id ng _ = ng
   optimize-compose-structural-normal (fold _) id ng _ = ng
   optimize-compose-structural-normal unfold id ng _ = ng
@@ -224,7 +224,7 @@ mutual
         npairinner = normal-pair normal-id ng (λ ())
         ninner = optimize-compose-normal _ (⟨ id , g ⟩) nk npairinner
     in optimize-compose-normal h _ nh ninner
-  optimize-compose-structural-normal apply (⟨ curry (h ∘ (curry _ _)) _ , g ⟩) _ npair =
+  optimize-compose-structural-normal apply (⟨ curry (h ∘ (curry _)) _ , g ⟩) _ npair =
     let ncomp = normal-curry-body (normal-pair-fst npair)
         nh = normal-compose-left ncomp
         nk = normal-compose-right ncomp
@@ -312,7 +312,7 @@ mutual
   optimize-compose-structural-normal terminal (inr _) _ _ = normal-terminal
   optimize-compose-structural-normal terminal (case _ _) _ _ = normal-terminal
   optimize-compose-structural-normal terminal terminal _ _ = normal-terminal
-  optimize-compose-structural-normal terminal (curry _ _) _ _ = normal-terminal
+  optimize-compose-structural-normal terminal (curry _) _ _ = normal-terminal
   optimize-compose-structural-normal terminal apply _ _ = normal-terminal
   optimize-compose-structural-normal terminal (fold _) _ _ = normal-terminal
   optimize-compose-structural-normal terminal unfold _ _ = normal-terminal
@@ -329,7 +329,7 @@ mutual
   optimize-compose-structural-normal (inr _) initial _ _ = normal-initial
   optimize-compose-structural-normal (case _ _) initial _ _ = normal-initial
   optimize-compose-structural-normal terminal initial _ _ = normal-initial
-  optimize-compose-structural-normal (curry _ _) initial _ _ = normal-initial
+  optimize-compose-structural-normal (curry _) initial _ _ = normal-initial
   optimize-compose-structural-normal apply initial _ _ = normal-initial
   optimize-compose-structural-normal (fold _) initial _ _ = normal-initial
   optimize-compose-structural-normal unfold initial _ _ = normal-initial
@@ -463,7 +463,7 @@ mutual
   optimize-compose-structural-normal (inl m) (inr _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (inl m) (case _ _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (inl m) terminal ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (inl m) (curry _ _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (inl m) (curry _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (inl m) apply ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (inl m) (fold _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (inl m) unfold ng nf = normal-compose ng nf (λ ())
@@ -478,7 +478,7 @@ mutual
   optimize-compose-structural-normal (inr m) (inr _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (inr m) (case _ _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (inr m) terminal ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (inr m) (curry _ _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (inr m) (curry _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (inr m) apply ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (inr m) (fold _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (inr m) unfold ng nf = normal-compose ng nf (λ ())
@@ -493,20 +493,20 @@ mutual
   optimize-compose-structural-normal (case f g) apply ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (case f g) unfold ng nf = normal-compose ng nf (λ ())
   -- curry ∘ f cases (explicit enumeration for type checking)
-  optimize-compose-structural-normal (curry f m) (_ ∘ _) ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) fst ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) snd ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) (⟨ _ , _ ⟩) ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) (inl _) ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) (inr _) ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) (case _ _) ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) terminal ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) (curry _ _) ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) apply ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) (fold _) ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) unfold ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) arr ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (curry f m) (SigOp _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) (_ ∘ _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) fst ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) snd ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) (⟨ _ , _ ⟩) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) (inl _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) (inr _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) (case _ _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) terminal ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) (curry _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) apply ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) (fold _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) unfold ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) arr ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (curry f) (SigOp _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal apply fst ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal apply snd ng nf = normal-compose ng nf (λ ())
   -- apply ∘ ⟨ f , g ⟩ - first component must have function type target (not Eff, product, sum, etc.)
@@ -521,7 +521,7 @@ mutual
   -- apply ∘ ⟨ unfold , _ ⟩ - unfold could produce function type if F produces functions
   optimize-compose-structural-normal apply (⟨ unfold , f ⟩) ng nf = normal-compose ng nf (λ ())
   -- apply ∘ ⟨ curry (curry ...) , _ ⟩ - nested curry, default case produces curry ∘ ⟨ id , g ⟩
-  optimize-compose-structural-normal apply (⟨ curry (curry _ _) _ , g ⟩) _ npair =
+  optimize-compose-structural-normal apply (⟨ curry (curry _) _ , g ⟩) _ npair =
     let ncurry = normal-curry-body (normal-pair-fst npair)
         ng = normal-pair-snd npair
     in normal-compose ncurry (normal-pair normal-id ng (λ ())) (λ ())
@@ -539,7 +539,7 @@ mutual
   optimize-compose-structural-normal (fold _) (inl _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (fold _) (inr _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (fold _) terminal ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (fold _) (curry _ _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (fold _) (curry _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (fold _) apply ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (fold _) arr ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (fold _) (SigOp _) ng nf = normal-compose ng nf (λ ())
@@ -563,7 +563,7 @@ mutual
   -- ⟨_,_⟩, inl, inr produce products/sums, not arrow types - type impossible
   optimize-compose-structural-normal arr (case _ _) ng nf = normal-compose ng nf (λ ())
   -- terminal produces Unit, not arrow type - type impossible
-  optimize-compose-structural-normal arr (curry _ _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal arr (curry _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal arr apply ng nf = normal-compose ng nf (λ ())
   -- unfold could produce an arrow type if functor F produces arrow types
   optimize-compose-structural-normal arr unfold ng nf = normal-compose ng nf (λ ())
@@ -576,7 +576,7 @@ mutual
   optimize-compose-structural-normal (SigOp n) (inr _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (SigOp n) (case _ _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (SigOp n) terminal ng nf = normal-compose ng nf (λ ())
-  optimize-compose-structural-normal (SigOp n) (curry _ _) ng nf = normal-compose ng nf (λ ())
+  optimize-compose-structural-normal (SigOp n) (curry _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (SigOp n) apply ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (SigOp n) (fold _) ng nf = normal-compose ng nf (λ ())
   optimize-compose-structural-normal (SigOp n) unfold ng nf = normal-compose ng nf (λ ())
@@ -616,7 +616,7 @@ mutual
     optimize-case-normal (optimize-once f) (optimize-once g)
       (optimize-once-normal f) (optimize-once-normal g)
   -- Curry: normal-curry with recursive call
-  optimize-once-structural-normal (curry f m) = normal-curry (optimize-once-normal f)
+  optimize-once-structural-normal (curry f) = normal-curry (optimize-once-normal f)
   -- inl: check for Void source
   optimize-once-structural-normal (inl {A} {B} m) with A ≟Type Void
   ... | yes refl = normal-initial
@@ -808,7 +808,7 @@ mutual
             (+-mono-≤ (optimize-once-cost-le f) (optimize-once-cost-le g))
   optimize-once-structural-cost-le terminal = ≤-refl
   optimize-once-structural-cost-le initial = ≤-refl
-  optimize-once-structural-cost-le (curry f m) = s≤s (optimize-once-cost-le f)
+  optimize-once-structural-cost-le (curry f) = s≤s (optimize-once-cost-le f)
   optimize-once-structural-cost-le apply = ≤-refl
   optimize-once-structural-cost-le ((fold _) {F}) with F ≟Type Void
   ... | yes refl = z≤n
@@ -1048,7 +1048,7 @@ ir-size (inr _)       = 1
 ir-size (case f g)     = suc (ir-size f ℕ+ ir-size g)
 ir-size terminal      = 1
 ir-size initial       = 1
-ir-size (curry f _)   = suc (ir-size f)
+ir-size (curry f)   = suc (ir-size f)
 ir-size apply         = 1
 ir-size (fold _)          = 1
 ir-size unfold        = 1
@@ -1232,7 +1232,7 @@ optimize-complete {A} {B} t t' eq = go t' eq
     -- curry: Use normal-minimal since optimize t is normal.
     -- Even if curry f' m is not normal, normal-minimal works because
     -- it only requires the first argument to be normal.
-    go (curry f' m) eq' = normal-minimal (optimize t) (curry f' m) (optimize-normal t)
+    go (curry f') eq' = normal-minimal (optimize t) (curry f') (optimize-normal t)
       (λ x → trans (optimize-correct t x) (eq' x))
 
 -- Then coherent-cost follows from completeness applied both directions
