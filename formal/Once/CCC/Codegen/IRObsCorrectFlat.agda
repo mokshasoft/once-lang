@@ -943,18 +943,27 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- proof effort closes it: the WITNESS and the EMITTER disagree about what a
     -- sum's payload cell contains when the payload fits in a register.
     --
-    -- Two resolutions, and this is a SPEC CHOICE:
-    --   (a) the emitter BOXES a register-resident payload — `inl`/`inr`
-    --       allocate a cell for it — so the payload cell always holds a
-    --       pointer and the witness is right as it stands; or
-    --   (b) `valid-inl-wf`/`valid-inr-wf` gain a literal-payload case, the way
-    --       `valid-primitive-wf` already dispatches on `FitsInReg`.
+    -- RESOLVED (2026-09-09) — and the EMITTER IS RIGHT, the witness is wrong.
     --
-    -- Deferred with the case named, per this module's own gate (see
-    -- `obs-correct-In`: "adding it is a spec change, and the discharge dictates
-    -- it rather than a guess ahead of time"). The discharge has now dictated
-    -- it; what it has not done is choose, because that is a codegen/model
-    -- decision and not a proof one.
+    -- First, a distinction worth keeping: a SUM never fits in a register
+    -- (`FitsInReg` has only `fits-int`/`fits-float`), so a sum value is always
+    -- memory-resident, two cells, tag and payload. It is only the PAYLOAD that
+    -- may be a register-fitting primitive.
+    --
+    -- And the round trip is coherent. `case` reads the payload back with
+    -- `load-indirect-suc ∷ mov-to-input` — the payload CELL'S CONTENT goes into
+    -- `Input1` for the branch body — and that body's `InputAt` accepts EITHER
+    -- residence: `in-reg` for a literal, `in-loc` for a pointer. So `inl`
+    -- storing a literal and `case` loading it back is exactly right, and
+    -- `valid-inl-wf`'s `SV-Ptr` demand is what excludes it.
+    --
+    -- So: `valid-inl-wf`/`valid-inr-wf` gain a LITERAL-PAYLOAD case, following
+    -- `valid-int-wf` (which already carries a `readLoc` equation for a
+    -- literal) and `valid-primitive-wf` (which already dispatches on
+    -- `FitsInReg`). The alternative — boxing a register-resident payload —
+    -- would ADD an allocation the emitter deliberately avoids and make `case`
+    -- load a pointer where it now loads a value: changing working codegen to
+    -- satisfy an over-strict proof, which is backwards.
     obs-correct-inl  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inl {A} {B} m)
     obs-correct-inr  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inr {A} {B} m)
 
