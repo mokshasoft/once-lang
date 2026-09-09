@@ -1493,3 +1493,100 @@ so `Π Nat Nat` is substitution-stable DEFINITIONALLY, exactly as `Nat` is.
 sanctions, not the index-dependent one. ★ See also the levels-vs-indices
 entry above: this is a second, independent place where levels are the
 cheaper representation.
+
+## LIBRARIES CONSTRAIN TYPING AND NOTHING ELSE — audited 2026-09-09
+
+Provoked by a question after `occK` turned out unfaithful: *"is this the
+client setting a constraint or the provider forcing the client to prove it
+follows correct usage? … lets look for all similar obligations we already
+have in the libraries and encode the sensible set."*
+
+### The measurement
+
+Across `Lib/` + `Spec/` + `Metatheory/`: 12 genuinely parametrised
+modules, **57 parameters that are laws — every one of them a TYPING or
+STABILITY law** (`⊢z`, `⊢op`, `tyA`, `subA`, `renA`, `dstp`, …). Exactly
+**one semantic law exists in the whole library tree**:
+
+```agda
+ISub.Sub (decStable : (k : ℕ) → Maybe (smap (num k) ⟶* num k))
+```
+
+and it returns `Maybe`, so a client may decline it. **Nine
+behaviour-determining parameters carry no law at all** — `IFold.Fold`'s
+`rsum`/`pick`, `ISub.Sub`'s `extN`/`smap`/`fordMap`, `ISub.Typing`'s
+`STy`, plus `IFold`'s `z`/`op`/`nd`, which have typing laws but no
+algebraic ones (`op` has no associativity or unit law, which is why
+`maxℕ-assoc` had to be proved separately on the meta side for every
+three-child row).
+
+⇒ **the libraries constrain what will type-check and say nothing about
+what anything means.** Same sentence as category D′'s: *a function that is
+only ever type-checked and never reduced has no evidence behind its name.*
+
+### ⚠ AND THE PROVIDER CANNOT SIMPLY STATE THE LAW — measured
+
+The obvious fix is a `pick-sound` parameter on `Lib/IFold.Fold`. The tree
+refutes it:
+
+| client | `pick` | agreement |
+|---|---|---|
+| `ISzSort` → `szsTm` | `sameSortAt` | ✅ proved, `Knot/SzAgree`, 30 rows |
+| `ISz` → `szTm` | `λ _ → true` | none claimed |
+| `IDepth` | `λ _ → true` | none needed — a termination measure |
+| `IOcc` → `occK` | `λ _ → true` | ❌ claimed and FALSE |
+
+**The same `pick` value is correct in two clients and fatal in a third**,
+because the correct filter is a function of what the client MEANS.
+`szb (⌜Mu⌝ D) = zero` — the meta `sz` treats a description as an atom, so
+`szsTm` is faithful precisely BECAUSE it filters. A generic provider
+cannot know that.
+
+### ⇒ THE SHAPE THAT WORKS: two tiers, pitched at `ielim`
+
+```
+proved ONCE, generically:   an object-level `ielim` over the encoded
+                            family agrees with the corresponding
+                            meta-level eliminator
+owed by each client:        my meta function ≡ that generic fold
+                            — an ordinary equation, no reductions
+```
+
+The second obligation is **false for `occTy` at `λ _ → true`, visibly and
+immediately**; it would have failed the day `Lib/IOcc` was written, at the
+instantiation site. The provider states the SHAPE of the obligation; the
+client supplies the content. That is the only arrangement consistent with
+the table above.
+
+⚠⚠ **PITCH IT AT `ielim`, NOT AT `IFold`.** At `IFold` it covers three of
+the ledger's 31 OWED entries; `wkK` comes from `Lib/IWk` and `subTmK` from
+`Lib/ISub`. The ledger's own scan criterion — *"a top-level definition
+whose body applies `ielim KnotD`"* — means **every one of the 31 is an
+`ielim` application**, so an `ielim`-level theorem covers all of them by
+construction. It also stops being proof-organisation and becomes *the
+adequacy of the kernel's indexed eliminator*, which is what the POC exists
+to get right.
+
+### For Once
+
+An `ielim`-level adequacy theorem is a **simulation between two instances
+of the same eliminator, one level apart** — which is what the old POC
+handoff already called *"the Once-in-Once moral: 'Once+' = same tower, one
+universe level up"*. Shaped this way the work transfers; shaped as "prove
+`occTy` equals an Agda fold" it does not.
+
+⚠ Two honest caveats. (1) Tier 2 is cheap now because the meta level is
+Agda, where these equations fall to definitional equality; when the outer
+level is Once, that depends on Once's outer definitional equality — the
+open `Code Γ A` question, measured at the same 40×. The SHAPE transfers,
+the ECONOMICS are unproven. (2) It does not unblock PLAN-JUDGEMENT step 4,
+which goes through `⊢amrec`, not `ielim`.
+
+### ⬜ AND A SEPARATE COST DATUM — a description is not extensible in place
+
+Found while spiking: `IConWf D I Δ C` is indexed by the **whole**
+description, so adding ONE row to `Examples/Scoped` invalidated
+`varWf`/`lamWf`/`appWf` and they had to be re-proved verbatim at the
+four-row description. This compounds the 40× already recorded for indices
+that accumulate, and it is an argument for descriptions being *values*
+rather than *indices* wherever the choice exists.

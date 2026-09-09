@@ -139,6 +139,53 @@ sameSortAt (someℕ r) j with fieldSort j
 ... | someℕ f = eqℕ r f
 ... | noℕ     = false
 
+------------------------------------------------------------------------
+-- ★★★ THE SCOPE TEST — A THIRD `pick`, AND `occ` IS WHAT NEEDS IT.
+--
+--     λ _ → true    keep EVERY child      `Lib/ISz`, `Lib/IDepth`
+--     sameSortAt    keep SAME-SORT only   `Lib/ISzSort`
+--     scopeAt       keep AMBIENT-SCOPE    `Lib/IOcc`          ← here
+--
+-- ⚠ AN OCCURRENCE CHECK CAN USE NEITHER OF THE OTHER TWO.  It must
+--   descend CROSS-SORT — `El : Ty → Tm` carries a variable, so
+--   `sameSortAt` is too strong — but it must NOT descend into
+--   sub-syntax that RESTARTS THE SCOPE, so `λ _ → true` is too weak.
+--   `Lib/IOcc` took the second and became unfaithful: `occK` answered
+--   1 for a variable bound INSIDE a closed description, because
+--   `enVar {Γ ∙} vz = Var-vzK (num (len Γ))` puts a description's own
+--   `vz` at level 0 — the same node as an ambient free variable at
+--   level 0.  See `OCC-ATTEMPTS.md` §35.
+--
+-- ★★ AND THE DISTINCTION IS ALREADY IN THE INDEX — no re-indexing.
+--   A child in the AMBIENT scope has an index MENTIONING the index
+--   variable (`⟨n⟩`, `nsuc ⟨n⟩`, a field reference), so it is not a
+--   closed numeral.  A child that RESTARTS the scope is PINNED to a
+--   literal by its typing rule:
+--
+--     ⊢Ty-IMuK     a1 ∷ K (pair sTy   (num 0))   -- IMu's index type
+--     ⊢Tm-cIMuK    a1 ∷ K (pair sTy   (num 0))
+--     ⊢DCon-kapK   a0 ∷ K (pair sTy   (num 0))   -- dκ's field type
+--     ⊢IDesc-consK a0 ∷ K (pair sICon (num 1))   -- a description's ICon
+--
+--   Exactly four of the knot's 82 recursive children, verified by
+--   `Examples/Knot/PickScope`.  `numVal` — already here, for sort tags
+--   — is the whole test.
+------------------------------------------------------------------------
+
+-- ⚠ THE INDEX MAY OR MAY NOT BE A PAIR.  The knot's is `pair sort depth`
+--   and the scope lives in the SECOND component; `Examples/Scoped`'s is
+--   a bare depth.  Fall through to the index itself so both work.
+depthAt : {Δ : Cx} → RTm Δ → Maybeℕ
+depthAt (pair s d) = numVal d
+depthAt t          = numVal t
+
+-- ⚠ THE ROW SUMMARY IS IGNORED: unlike `sameSortAt`, the scope test is a
+--   property of the CHILD alone, so it needs nothing read off the row.
+scopeAt : {R : Set} {Δ : Cx} → R → RTm Δ → 𝔹
+scopeAt _ j with depthAt j
+... | someℕ _ = false   -- literal depth ⇒ a FRESH scope ⇒ do not descend
+... | noℕ     = true    -- mentions the ambient index ⇒ same scope
+
 -- ★★ HOW MANY CHILDREN A SAME-SORT MEASURE WOULD COUNT.
 countSameAt : {Δ : Cx} → Maybeℕ → ICon Δ → ℕ
 countSameAt r iι       = zero
