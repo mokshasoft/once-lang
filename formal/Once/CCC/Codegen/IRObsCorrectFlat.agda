@@ -639,6 +639,16 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- ── `free-heap` — DISCHARGED. `IR Unit Unit`, a semantic no-op that still
   -- compiles to `mov-to-output ∷ []` (copy through, so the register discipline
   -- holds). Unit codomain ⇒ `unit-result`; no event on either side.
+  -- D170 / Phase E2 probe: the DENOTATION half of `obs-correct-curry`.
+  -- `curry` builds a value; it invokes no SigOp, so its trace is empty at every
+  -- depth. Named here because it is one of the two halves the discharge needs,
+  -- and because it is `refl` — which is the evidence that the clause is
+  -- Class-B shaped rather than label-bearing.
+  curry-denot-[] : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
+                   {x : ⟦ A ⟧} (k : ℕ)
+                 → projTrace (evalᴰ (curry body m) (inject x)) k ≡ []
+  curry-denot-[] body m k = refl
+
   obs-correct-free-heap : ∀ (r : HeapRef) → IRObsCorrectF (free-heap r)
   obs-correct-free-heap r _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
       { traces-agree = λ k → cong (take k) (sym (denot-[] k))
@@ -895,12 +905,34 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     obs-correct-inl  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inl {A} {B} m)
     obs-correct-inr  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inr {A} {B} m)
 
-    -- CLASS D — LABEL-BEARING. Step 2/3: these are the obligations that force
-    -- the label discipline. `curry` emits `c-jmp end ∷ c-thunk this bb ∷ body
-    -- ++ c-ret bb ∷ c-label end ∷ []` in one literal list, so matching
+    -- CLASS D — LABEL-BEARING.
+    --
+    -- `obs-correct-curry` IS NO LONGER IN THIS CLASS (reclassified 2026-09-09).
+    -- The justification here read: "`curry` emits `c-jmp end ∷ c-thunk this bb
+    -- ∷ body ++ c-ret bb ∷ c-label end ∷ []` in one literal list, so matching
     -- `⟦curry⟧` requires that the parent's jump lands on THIS clause's
-    -- `c-label end` — which needs the CONVERSE of `find-label-sound`, false
-    -- without label uniqueness. `EmittedWF.labels-unique`'s real consumer.
+    -- `c-label end`". D159 deleted that shape. `curry` now emits FIVE
+    -- instructions (ten in Heap mode), the body is a NAMED BLOCK reached by
+    -- `link`, and `labels-in (curry b _)` is `li-none` throughout — the clause
+    -- mentions no label at all. There is no jump to land, so the converse of
+    -- `find-label-sound` is not needed and this is not `labels-unique`'s
+    -- consumer.
+    --
+    -- WHAT IT NEEDS NOW, and it is Class-B shaped (allocate, no control flow):
+    --   * `traces-agree` — both sides empty; `curry` emits no event and the
+    --     denotation of a value construction emits none either. Same shape as
+    --     `obs-correct-free-heap`.
+    --   * `value-realized` — a 5-step (resp. 10-step) straight-line chain, with
+    --     `place` a `ResultPlace (A ⇛ B)` whose `ValidAtWF` is
+    --     `valid-closure-wf` applied to the two `readLoc` equations those
+    --     instructions establish (`SV-Ptr env-loc` at the closure cell,
+    --     `SV-Code (ℓ o this-label)` at its successor) plus the env's validity.
+    --
+    -- D170 IS WHAT MAKES THAT REACHABLE. Building `valid-closure-wf` used to
+    -- require producing a `BodyCorrect` — a full behavioural proof of the body,
+    -- from inside the clause that merely BUILDS the closure record. With the
+    -- value carrying only its representation, the witness is exactly what
+    -- `store-at-slot` / `instr-load-code-addr` just wrote.
     obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
                       → IRObsCorrectF (curry body m)
     obs-correct-case  : ∀ {A B C} (f : IR A C) (g : IR B C)
