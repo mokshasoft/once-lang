@@ -12260,3 +12260,39 @@ flat layer has no such alloc: `falloc` is the runtime one, and it never moves.
 the deeper question of whether the flat machine should model slot allocation at
 all, which D150 left open. Not chosen here: the discharge has named it, and
 choosing is a model decision.
+
+### D173 — SCOPE CORRECTED, and a third resolution (2026-09-09)
+
+Two corrections to the entry above.
+
+**It does not apply to `pair`.** I wrote "every clause whose result is a FRESH
+STACK CELL hits it identically — `obs-correct-pair` (pair record at `n`)". The
+pair record is NOT a stack cell: Stage G made `⟨_,_⟩` mode-free
+(`⟨_,_⟩ : IR A B → IR A C → IR A (B * C)`) and heap-only, its trace contains
+`instr-alloc-heap 2`, and `exec-abstract (instr-alloc-heap n)` DOES advance the
+frontier — `record alloc { next-heap-ref = new-state }` — while writing
+`SV-Ptr (AtDynamic addr)`. So `heap-before` is available and `at-loc` goes
+through. `obs-correct-pair` is an axiom for some other reason; this is not it.
+
+**The obstacle is STACK-MODE-SPECIFIC.** It applies to `inl Stack`,
+`inr Stack` and `curry _ Stack`, whose results are `AtStack` cells at the
+emission frontier that nothing bumps past. Their Heap variants allocate, so
+they are already fine.
+
+**Which makes the real resolution PLAN 0.86, not either option recorded above.**
+D142's whole content is that allocation is mechanical and the surface/IR mode
+goes away — "bounded internals go to frontier scratch, unbounded internals to
+the heap". `⟨_,_⟩` has already made that transition; `inl`, `inr` and `curry`
+still carry `AllocMode` (`IR.agda` 147/148/160) and are what remains.
+
+Finishing 0.86 for those three dissolves the obstacle rather than working
+around it: with no Stack variant there is no `AtStack` result, the allocation
+bumps `next-heap-ref`, and `heap-before` discharges what `stack-before` cannot.
+That is preferable to both options above — (1) teaching the flat machine to bump
+`next-slot` would model an allocation the language is removing, and (2)
+re-indexing `ValueRealized.place` would carry the Stack case in the interface
+after the language stops having one.
+
+So the obstacle is not a proof gap to be closed where it appears; it is an
+UNFINISHED MIGRATION showing through. The order is: finish 0.86 for
+`inl`/`inr`/`curry`, then discharge.
