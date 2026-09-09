@@ -120,13 +120,13 @@ liftFn-snd {A} {B} = extensionality λ ab →
 liftFn-terminal : liftFn fmt {A} {Unit} terminal ≡ (λ _ → returnT tt)
 liftFn-terminal {A} = extensionality λ a → subst-T-returnT refl tt
 
-liftFn-inl : liftFn fmt {A} {A + B} (IR.inl IR.Heap) ≡ (λ a → returnT (inj₁ a))
+liftFn-inl : liftFn fmt {A} {A + B} (IR.inl) ≡ (λ a → returnT (inj₁ a))
 liftFn-inl {A} {B} = extensionality λ a →
   trans (subst-T-returnT (cohᴰ (A + B)) (inj₁ (subst id (sym (cohᴰ A)) a)))
         (cong returnT (trans (push⊎₁ (cohᴰ A) (cohᴰ B) (subst id (sym (cohᴰ A)) a))
                              (cong inj₁ (subst-subst-sym (cohᴰ A)))))
 
-liftFn-inr : liftFn fmt {B} {A + B} (IR.inr IR.Heap) ≡ (λ b → returnT (inj₂ b))
+liftFn-inr : liftFn fmt {B} {A + B} (IR.inr) ≡ (λ b → returnT (inj₂ b))
 liftFn-inr {B} {A} = extensionality λ b →
   trans (subst-T-returnT (cohᴰ (A + B)) (inj₂ (subst id (sym (cohᴰ B)) b)))
         (cong returnT (trans (push⊎₂ (cohᴰ A) (cohᴰ B) (subst id (sym (cohᴰ B)) b))

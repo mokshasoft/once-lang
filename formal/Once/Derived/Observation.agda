@@ -107,7 +107,7 @@ obs {A} wfStream wfList =
         -- Zero case: Unit → (Stream A ⇒ List A)
         -- Produces a function that returns Nil regardless of stream input
         zeroCase : IR Unit (Stream A ⇒[ Many ] List A)
-        zeroCase = curry (In wfList Stack ∘ inl Stack ∘ terminal)
+        zeroCase = curry (In wfList Stack ∘ inl ∘ terminal)
 
         -- Suc case: (Nat × (Stream A ⇒ List A)) → (Stream A ⇒ List A)
         -- Input1: pair of (predecessor Nat, recursive continuation)
@@ -115,7 +115,7 @@ obs {A} wfStream wfList =
         -- The predecessor Nat (fst) is unused - we only need the continuation (snd)
         sucCase : IR (Nat * (Stream A ⇒[ Many ] List A)) (Stream A ⇒[ Many ] List A)
         sucCase = curry
-          (In wfList Stack ∘ inr Stack ∘
+          (In wfList Stack ∘ inr ∘
            ⟨ fst ∘ Out wfStream ∘ snd                    -- head of stream
            , apply ∘ ⟨ snd ∘ fst                         -- continuation (rec)
                     , snd ∘ Out wfStream ∘ snd ⟩   -- tail of stream

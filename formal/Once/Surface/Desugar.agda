@@ -69,8 +69,8 @@ desugar m S.snd = C.snd
 desugar m S.⟨ f , g ⟩ = C.⟨ desugar m f , desugar m g ⟩
 
 -- Coproducts
-desugar m S.inl = C.inl m
-desugar m S.inr = C.inr m
+desugar m S.inl = C.inl
+desugar m S.inr = C.inr
 desugar m S.[ f , g ] = C.case (desugar m f) (desugar m g)
 
 -- Terminal/Initial

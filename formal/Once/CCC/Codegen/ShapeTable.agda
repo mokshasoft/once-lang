@@ -473,8 +473,10 @@ HeapModed ⟨ f , g ⟩ = HeapModed f × HeapModed g
 -- 0.86 stage G: `curry` has no mode, so there is no `IsHeap` to demand —
 -- the heap lowering is the only one.
 HeapModed (curry b)   = HeapModed b
-HeapModed (inl m)   = IsHeap m
-HeapModed (inr m)   = IsHeap m
+-- 0.86 stage G: the injections have no mode, so no `IsHeap` obligation —
+-- the heap lowering is the only one.
+HeapModed inl       = ⊤
+HeapModed inr       = ⊤
 HeapModed (case f g) = HeapModed f × HeapModed g
 HeapModed (In _ m)  = IsHeap m
 HeapModed (out-μ _) = ⊤

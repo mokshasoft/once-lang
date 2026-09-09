@@ -144,8 +144,13 @@ data IR where
   snd : ∀ {A B} → IR (A * B) B
 
   -- Coproduct (A + B)
-  inl : ∀ {A B} → AllocMode → IR A (A + B)
-  inr : ∀ {A B} → AllocMode → IR B (A + B)
+  -- 0.86 stage G (D147): `AllocMode` leaves the injections, as it left the
+  -- pair and `curry`. SIGNATURE-ONLY, and `Stack` was already unreachable —
+  -- the elaborator threads `Heap` and the apex compiles at `doOpt = false`.
+  -- The one pass that claimed to rewrite Heap→Stack here (`Once.Escape`
+  -- rules 3 and 4) was a header comment rather than code, and is deleted.
+  inl : ∀ {A B} → IR A (A + B)
+  inr : ∀ {A B} → IR B (A + B)
   case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
 
   -- Terminal object (Unit)
@@ -158,10 +163,11 @@ data IR where
   -- The grade lived only on the surface `Type`; here it is erased, so
   -- there is one exponential object per (A, B) and no pure/eff distinction.
   -- 0.86 stage G (D147): `AllocMode` leaves `curry`. SIGNATURE-ONLY — `Stack`
-  -- was already unreachable: the elaborator threads `Heap`, the apex compiles
-  -- at `doOpt = false`, and `Once.Escape`'s Heap→Stack rules are a header
-  -- comment rather than code. The heap lowering was the only one a program
-  -- could select, so deleting the Stack clause preserves behaviour.
+  -- was already unreachable: the elaborator threads `Heap` and the apex
+  -- compiles at `doOpt = false`. The one pass that claimed to rewrite
+  -- Heap→Stack was `Once.Escape`, whose rules were a header comment rather
+  -- than code; it is DELETED. The heap lowering was the only one a program
+  -- could select, so dropping the Stack clause preserves behaviour.
   curry : ∀ {A B C} → IR (A * B) C → IR A (B ⇛ C)
   apply : ∀ {A B} → IR ((A ⇛ B) * A) B
 

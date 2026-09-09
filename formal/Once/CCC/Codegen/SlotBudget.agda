@@ -488,10 +488,8 @@ frontier-mono (⟨ f , g ⟩) n l =
           (≤-trans (frontier-mono f _ l) (frontier-mono g _ _))
 frontier-mono (curry b)  n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono apply n l = ≤-trans (n≤1+n n) (≤-trans (n≤1+n (suc n)) (n≤1+n (suc (suc n))))
-frontier-mono (inl Stack) n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
-frontier-mono (inr Stack) n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
-frontier-mono (inl Heap)  n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
-frontier-mono (inr Heap)  n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
+frontier-mono inl n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
+frontier-mono inr n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (case f g)  n l =
   ≤-trans (frontier-mono f n (suc (suc l))) (frontier-mono g _ _)
 frontier-mono (In _ _)    n l = ≤-refl
@@ -1057,19 +1055,11 @@ slots-below apply n l = segok-idle _ refl
   sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl (≤-step (≤-step ≤-refl)) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-slots-below (inl Stack) n l = segok-idle _ refl
-  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl (λ _ ()) ∷
-  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ [])
-slots-below (inr Stack) n l = segok-idle _ refl
-  (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
-  sb-slot refl ≤-refl (λ _ ()) ∷
-  sb-slot refl (≤-step ≤-refl) (λ { _ refl → ≤-refl }) ∷ [])
-slots-below (inl Heap) n l = segok-idle _ refl
+slots-below inl n l = segok-idle _ refl
   (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
   sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
-slots-below (inr Heap) n l = segok-idle _ refl
+slots-below inr n l = segok-idle _ refl
   (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
   sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷
   sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
@@ -1213,10 +1203,8 @@ blocks-below (⟨ f , g ⟩)         n l = ++⁺ (blocks-below f _ l) (blocks-be
 blocks-below (curry b)      n l = slots-below b 0 (suc (suc l))
                                      ∷ blocks-below b 0 (suc (suc l))
 blocks-below apply               n l = []
-blocks-below (inl Stack)         n l = []
-blocks-below (inr Stack)         n l = []
-blocks-below (inl Heap)          n l = []
-blocks-below (inr Heap)          n l = []
+blocks-below inl                 n l = []
+blocks-below inr                 n l = []
 blocks-below (case f g)          n l = ++⁺ (blocks-below f n (suc (suc l)))
                                            (blocks-below g _ _)
 blocks-below (In _ _)            n l = []

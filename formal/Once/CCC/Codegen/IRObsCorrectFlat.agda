@@ -964,8 +964,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- would ADD an allocation the emitter deliberately avoids and make `case`
     -- load a pointer where it now loads a value: changing working codegen to
     -- satisfy an over-strict proof, which is backwards.
-    obs-correct-inl  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inl {A} {B} m)
-    obs-correct-inr  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inr {A} {B} m)
+    obs-correct-inl  : ∀ {A B} → IRObsCorrectF (inl {A} {B})
+    obs-correct-inr  : ∀ {A B} → IRObsCorrectF (inr {A} {B})
 
     -- CLASS D — LABEL-BEARING.
     --
@@ -1553,8 +1553,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-obs-correct fst                 = obs-correct-fst
   ir-obs-correct snd                 = obs-correct-snd
   -- sums
-  ir-obs-correct (inl m)             = obs-correct-inl m
-  ir-obs-correct (inr m)             = obs-correct-inr m
+  ir-obs-correct inl                 = obs-correct-inl
+  ir-obs-correct inr                 = obs-correct-inr
   ir-obs-correct (case f g)          = obs-correct-case f g
   -- terminal / initial
   ir-obs-correct terminal            = obs-correct-terminal

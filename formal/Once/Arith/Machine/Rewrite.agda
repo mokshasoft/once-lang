@@ -174,8 +174,8 @@ rewrite-ir ir with try-lift ir
       let (f' , bf) = rewrite-ir f
           (g' , bg) = rewrite-ir g
       in ⟨ f' , g' ⟩ , (bf ++ bg)
-    walk (inl m)           = inl m , []
-    walk (inr m)           = inr m , []
+    walk inl                = inl , []
+    walk inr                = inr , []
     walk (case f g)        =
       let (f' , bf) = rewrite-ir f
           (g' , bg) = rewrite-ir g

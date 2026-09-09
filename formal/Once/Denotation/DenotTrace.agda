@@ -130,8 +130,8 @@ evalᴰ fmt (g ∘ f)       a        = evalᴰ fmt f a >>=T evalᴰ fmt g
 evalᴰ fmt (⟨ f , g ⟩) a        = evalᴰ fmt f a >>=T λ b → evalᴰ fmt g a >>=T λ c → returnT (b , c)
 evalᴰ fmt fst           p        = returnT (proj₁ p)
 evalᴰ fmt snd           p        = returnT (proj₂ p)
-evalᴰ fmt (inl _)       a        = returnT (inj₁ a)
-evalᴰ fmt (inr _)       b        = returnT (inj₂ b)
+evalᴰ fmt inl           a        = returnT (inj₁ a)
+evalᴰ fmt inr           b        = returnT (inj₂ b)
 evalᴰ fmt (case f g)    (inj₁ a) = evalᴰ fmt f a
 evalᴰ fmt (case f g)    (inj₂ b) = evalᴰ fmt g b
 evalᴰ fmt terminal      _        = returnT tt

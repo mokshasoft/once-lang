@@ -294,11 +294,9 @@ frame-free-trace' (curry b)  hb n l =
 frame-free-trace' apply hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (inl Stack) () n l
-frame-free-trace' (inr Stack) () n l
-frame-free-trace' (inl Heap)  hm n l =
+frame-free-trace' inl hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (inr Heap)  hm n l =
+frame-free-trace' inr hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 -- case is FLAT CONTROL since item 6 — plain splices, no depth obligation.
 frame-free-trace' (case f g) (hf , hg) n l =
@@ -359,10 +357,8 @@ frame-free-blocks' ⟨ f , g ⟩ (hf , hg) n l =
 frame-free-blocks' (curry b)  hb n l =
   frame-free-trace' b hb 0 (suc (suc l)) ∷ frame-free-blocks' b hb 0 (suc (suc l))
 frame-free-blocks' apply hm n l = []
-frame-free-blocks' (inl Stack) () n l
-frame-free-blocks' (inr Stack) () n l
-frame-free-blocks' (inl Heap)  hm n l = []
-frame-free-blocks' (inr Heap)  hm n l = []
+frame-free-blocks' inl hm n l = []
+frame-free-blocks' inr hm n l = []
 frame-free-blocks' (case f g) (hf , hg) n l =
   ++⁺ (frame-free-blocks' f hf n (suc (suc l))) (frame-free-blocks' g hg _ _)
 frame-free-blocks' (In _ _)  hm n l = []

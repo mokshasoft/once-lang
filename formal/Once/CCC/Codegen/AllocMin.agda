@@ -259,11 +259,9 @@ alloc-min-trace' (curry b)  n l =
 alloc-min-trace' apply n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ am2 ∷ tt ∷
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-alloc-min-trace' (inl Stack) n l = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-alloc-min-trace' (inr Stack) n l = tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-alloc-min-trace' (inl Heap)  n l =
+alloc-min-trace' inl n l =
   tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-alloc-min-trace' (inr Heap)  n l =
+alloc-min-trace' inr n l =
   tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 -- case is FLAT CONTROL since item 6 — plain splices.
 alloc-min-trace' (case f g) n l =
@@ -312,10 +310,8 @@ alloc-min-blocks snd      n l = []
 alloc-min-blocks terminal n l = []
 alloc-min-blocks initial  n l = []
 alloc-min-blocks apply    n l = []
-alloc-min-blocks (inl Stack) n l = []
-alloc-min-blocks (inr Stack) n l = []
-alloc-min-blocks (inl Heap)  n l = []
-alloc-min-blocks (inr Heap)  n l = []
+alloc-min-blocks inl n l = []
+alloc-min-blocks inr n l = []
 alloc-min-blocks (In _ _)   n l = []
 alloc-min-blocks (out-μ _)  n l = []
 alloc-min-blocks (Para _ _) n l = []

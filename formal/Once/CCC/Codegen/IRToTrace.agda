@@ -755,8 +755,9 @@ ir-to-trace' n l ⟨ f , g ⟩ =
 -- into `body` at this clause.
 -- 0.86 stage G (D147): ONE lowering. The `Stack` clause that stood above this
 -- one is deleted — `AllocMode` has left `curry`, and `Stack` was unreachable
--- anyway (the elaborator threads `Heap`; `Once.Escape`'s Heap→Stack rules are
--- a header comment, not code). This is the heap lowering, unchanged.
+-- anyway (the elaborator threads `Heap`; the only pass that claimed to select
+-- it, `Once.Escape`, was a header comment rather than code and is now
+-- deleted). This is the heap lowering, unchanged.
 ir-to-trace' n l (curry body) =
   let this-label    = l
       end-label     = suc l
@@ -851,33 +852,17 @@ ir-to-trace' n l (const fits-float v) = n , l , (instr-load-const Ty.fits-float 
 -- Mirrors SumRecWF.run-inl / run-inr's expected trace shape (Phase 3).
 -- ────────────────────────────────────────────────────────────────────
 
--- Stack mode: 5-instruction stack lowering at slots [n, n+1].
-ir-to-trace' n l (inl Stack) =
-  let sum-slot = n
-      next     = suc (suc sum-slot)
-  in next , l ,
-     (instr-load-tag-lit 0 ∷
-      store-at-slot sum-slot ∷
-      mov-to-output ∷
-      store-at-slot (suc sum-slot) ∷
-      lea-slot sum-slot ∷ []) ,
-     []
-
-ir-to-trace' n l (inr Stack) =
-  let sum-slot = n
-      next     = suc (suc sum-slot)
-  in next , l ,
-     (instr-load-tag-lit 1 ∷
-      store-at-slot sum-slot ∷
-      mov-to-output ∷
-      store-at-slot (suc sum-slot) ∷
-      lea-slot sum-slot ∷ []) ,
-     []
-
--- Heap mode: bump-allocate a 2-cell heap block, write [tag, payload-ptr].
+-- 0.86 stage G (D147): ONE lowering each. The two `Stack` clauses that stood
+-- above these — a 5-instruction lowering into slots [n, n+1] — are deleted.
+-- `AllocMode` has left the injections, and `Stack` was unreachable anyway (the
+-- elaborator threads `Heap`; the only pass that claimed to select it,
+-- `Once.Escape` rules 3 and 4, was a header comment rather than code and is
+-- now deleted). These are the heap lowerings, unchanged.
+--
+-- Bump-allocate a 2-cell heap block, write [tag, payload-ptr].
 -- Mirrors SumInlAllocWF.inl-heap-trace / SumInrAllocWF.inr-heap-trace.
 -- Uses 2 scratch slots for stashing: payload-stash = n, sum-stash = n+1.
-ir-to-trace' n l (inl Heap) =
+ir-to-trace' n l inl =
   let payload-stash = n
       sum-stash     = suc payload-stash
       next          = suc sum-stash
@@ -894,7 +879,7 @@ ir-to-trace' n l (inl Heap) =
       load-from-slot sum-stash ∷ []) ,
      []
 
-ir-to-trace' n l (inr Heap) =
+ir-to-trace' n l inr =
   let payload-stash = n
       sum-stash     = suc payload-stash
       next          = suc sum-stash

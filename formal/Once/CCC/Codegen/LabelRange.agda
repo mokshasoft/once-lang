@@ -119,10 +119,8 @@ label-mono (⟨ f , g ⟩) n l = ≤-trans (label-mono f _ l) (label-mono g _ _)
 label-mono (curry b)  n l =
   ≤-trans (n≤1+n l) (≤-trans (n≤1+n (suc l)) (label-mono b 0 (suc (suc l))))
 label-mono apply n l = ≤-refl
-label-mono (inl Stack) n l = ≤-refl
-label-mono (inr Stack) n l = ≤-refl
-label-mono (inl Heap)  n l = ≤-refl
-label-mono (inr Heap)  n l = ≤-refl
+label-mono inl n l = ≤-refl
+label-mono inr n l = ≤-refl
 -- `case` takes two (the inl entry and the join) then both branches
 label-mono (case f g)  n l =
   ≤-trans (n≤1+n l)

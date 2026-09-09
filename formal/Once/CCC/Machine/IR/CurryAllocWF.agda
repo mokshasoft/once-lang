@@ -125,15 +125,15 @@ module CurryAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   ----------------------------------------------------------------------
 
   run-curry-heap : ∀ {A B C k} (mIn : AllocMode) (f : IR (A * B) C)
-    (ir<bound : ir-size (curry {k = k} f Heap) < program-bound)
-    (rec-wf : RecDispatcherWF (ir-size (curry {k = k} f Heap)))
+    (ir<bound : ir-size (curry f) < program-bound)
+    (rec-wf : RecDispatcherWF (ir-size (curry f)))
     (x : ⟦ A ⟧ᴵ) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    IRResultAWF Heap (curry {k = k} f Heap) x s alloc
+    IRResultAWF Heap (curry f) x s alloc
   run-curry-heap {A} {B} {C} {k} mIn f ir<bound rec-wf x input-loc s alloc
                  input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
@@ -231,7 +231,7 @@ module CurryAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Pattern follows PairWF: step-through proof of the trace.
       ------------------------------------------------------------------
       closure-valid-final : ValidAtWF Heap alloc-final
-                             (eval (curry {k = k} f Heap) x) closure-loc s-final
+                             (eval (curry f) x) closure-loc s-final
       closure-valid-final = SMP.!!
 
       closure-before-final : BeforeFrontier alloc-final closure-loc
@@ -245,7 +245,7 @@ module CurryAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                                         ; next-heap-ref = next-heap-ref alloc-final }
 
       closure-valid-cont : ValidAtWF Heap closure-cont-alloc
-                            (eval (curry {k = k} f Heap) x) closure-loc s-final
+                            (eval (curry f) x) closure-loc s-final
       closure-valid-cont = SMP.!!
 
       closure-before-cont : BeforeFrontier closure-cont-alloc closure-loc

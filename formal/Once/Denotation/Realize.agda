@@ -103,8 +103,8 @@ realize (t-fst-check)            = lift-morphism IR.fst
 realize (t-snd-check)            = lift-morphism IR.snd
 realize (t-terminal-morph-check) = lift-morphism IR.terminal
 realize (t-initial-morph-check)  = lift-morphism IR.initial
-realize (t-inl-morph-check)      = lift-morphism (IR.inl IR.Heap)
-realize (t-inr-morph-check)      = lift-morphism (IR.inr IR.Heap)
+realize (t-inl-morph-check)      = lift-morphism (IR.inl)
+realize (t-inr-morph-check)      = lift-morphism (IR.inr)
 realize (t-compose-check _ df dg)    = comp'   (realize df) (realize dg)
 realize (t-case-copair-check df dg)  = copair' (realize df) (realize dg)
 realize (t-pair-morph-check df dg)   = fork'   (realize df) (realize dg)
@@ -116,8 +116,8 @@ realize (t-pair-lit-check da db) = pair (realize da) (realize db)
 realize (t-In-app-check {F = F} wfF d) =
   morph-app (subst (λ o → IR o ⌊ μ-type F ⌋) (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)) (realize d)
 realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
-realize (t-inl-app-check d)     = morph-app (IR.inl IR.Heap) (realize d)
-realize (t-inr-app-check d)     = morph-app (IR.inr IR.Heap) (realize d)
+realize (t-inl-app-check d)     = morph-app (IR.inl) (realize d)
+realize (t-inr-app-check d)     = morph-app (IR.inr) (realize d)
 realize (t-initial-app-check d) = morph-app IR.initial (realize d)
 realize (t-subsume d)           = arr' (realize d)
 realize (t-arg-driven-app-check _ darg df) = app (realize df) (realize-infer darg)

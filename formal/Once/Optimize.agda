@@ -371,8 +371,8 @@ ir-head (_ ∘ _) = h-∘
 ir-head (⟨ _ , _ ⟩) = h-⟨,⟩
 ir-head fst = h-fst
 ir-head snd = h-snd
-ir-head (inl _) = h-inl
-ir-head (inr _) = h-inr
+ir-head inl = h-inl
+ir-head inr = h-inr
 ir-head (case _ _) = h-case
 ir-head terminal = h-terminal
 ir-head initial = h-initial
@@ -641,13 +641,8 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ≟IRH-diag fst fst _ refl refl = yes refl
 ≟IRH-diag snd snd _ refl refl = yes refl
 
-≟IRH-diag (inl m₁) (inl m₂) _ refl refl with m₁ ≟AllocMode m₂
-... | yes refl = yes refl
-... | no nm    = no (λ { refl → nm refl })
-
-≟IRH-diag (inr m₁) (inr m₂) _ refl refl with m₁ ≟AllocMode m₂
-... | yes refl = yes refl
-... | no nm    = no (λ { refl → nm refl })
+≟IRH-diag inl inl _ refl refl = yes refl
+≟IRH-diag inr inr _ refl refl = yes refl
 
 ≟IRH-diag (case f₁ g₁) (case f₂ g₂) _ refl refl =
   ≟IRH-case-aux f₁ f₂ g₁ g₂ (≟IRH f₁ f₂ refl refl) (≟IRH g₁ g₂ refl refl)
@@ -888,8 +883,8 @@ data PairView : ∀ {A B C : IRTy} → IR A (B * C) → Set where
 -- View: classify IR terms targeting a coproduct type
 -- Note: inl : IR A (A + B), inr : IR B (A + B) - source must match component
 data CoprodView : ∀ {A B D : IRTy} → IR D (A + B) → Set where
-  is-inl : ∀ {A B} m → CoprodView {A} {B} {A} (inl m)
-  is-inr : ∀ {A B} m → CoprodView {A} {B} {B} (inr m)
+  is-inl : ∀ {A B} → CoprodView {A} {B} {A} inl
+  is-inr : ∀ {A B} → CoprodView {A} {B} {B} inr
   is-other-coprod : ∀ {A B D} (f : IR D (A + B)) → CoprodView f
 
 -- View: classify IR by optimization-relevant structure (first argument of compose)
@@ -915,8 +910,8 @@ data FstSndView : ∀ {A B : IRTy} → IR A B → Set where
 
 -- View: classify IR as inl, inr, or other (for case eta law)
 data InlInrView : ∀ {A B : IRTy} → IR A B → Set where
-  iiv-inl : ∀ {X Y} m → InlInrView {X} {X + Y} (inl m)
-  iiv-inr : ∀ {X Y} m → InlInrView {Y} {X + Y} (inr m)
+  iiv-inl : ∀ {X Y} → InlInrView {X} {X + Y} inl
+  iiv-inr : ∀ {X Y} → InlInrView {Y} {X + Y} inr
   iiv-other : ∀ {A B} (f : IR A B) → InlInrView f
 
 ------------------------------------------------------------------------
@@ -945,8 +940,8 @@ pairView-gen id              eq = is-other-pair (subst (IR _) eq id)
 pairView-gen (f ∘ g)         eq = is-other-pair (subst (IR _) eq (f ∘ g))
 pairView-gen fst             eq = is-other-pair (subst (IR _) eq fst)
 pairView-gen snd             eq = is-other-pair (subst (IR _) eq snd)
-pairView-gen (inl m)         eq = is-other-pair (subst (IR _) eq (inl m))
-pairView-gen (inr m)         eq = is-other-pair (subst (IR _) eq (inr m))
+pairView-gen inl             eq = is-other-pair (subst (IR _) eq inl)
+pairView-gen inr             eq = is-other-pair (subst (IR _) eq inr)
 pairView-gen (case f g)      eq = is-other-pair (subst (IR _) eq (case f g))
 pairView-gen terminal        eq = is-other-pair (subst (IR _) eq terminal)
 pairView-gen initial         eq = is-other-pair (subst (IR _) eq initial)
@@ -971,8 +966,8 @@ pairView f = pairView-gen f refl
 -- CoprodView: target is A + B (same stuck-unification pattern as PairView)
 coprodView-gen : ∀ {D B'} (f : IR D B') → ∀ {A B} → (eq : B' ≡ A + B)
                → CoprodView {A} {B} {D} (subst (IR D) eq f)
-coprodView-gen (inl m) refl = is-inl m
-coprodView-gen (inr m) refl = is-inr m
+coprodView-gen inl refl = is-inl
+coprodView-gen inr refl = is-inr
 coprodView-gen id              eq = is-other-coprod (subst (IR _) eq id)
 coprodView-gen (f ∘ g)         eq = is-other-coprod (subst (IR _) eq (f ∘ g))
 coprodView-gen (⟨ f , g ⟩)   eq = is-other-coprod (subst (IR _) eq (⟨ f , g ⟩))
@@ -1014,8 +1009,8 @@ composeFirstView snd             = cf-snd
 composeFirstView (case h k)      = cf-case h k
 composeFirstView (g ∘ h)         = cf-other (g ∘ h)
 composeFirstView (⟨ f , g ⟩)   = cf-other (⟨ f , g ⟩)
-composeFirstView (inl m)         = cf-other (inl m)
-composeFirstView (inr m)         = cf-other (inr m)
+composeFirstView inl             = cf-other inl
+composeFirstView inr             = cf-other inr
 composeFirstView initial         = cf-other initial
 composeFirstView (curry f)       = cf-other (curry f)
 composeFirstView apply           = cf-other apply
@@ -1039,8 +1034,8 @@ composeSecondView (f ∘ g)        = cs-other (f ∘ g)
 composeSecondView (⟨ f , g ⟩)  = cs-other (⟨ f , g ⟩)
 composeSecondView fst            = cs-other fst
 composeSecondView snd            = cs-other snd
-composeSecondView (inl m)        = cs-other (inl m)
-composeSecondView (inr m)        = cs-other (inr m)
+composeSecondView inl            = cs-other inl
+composeSecondView inr            = cs-other inr
 composeSecondView (case f g)     = cs-other (case f g)
 composeSecondView terminal       = cs-other terminal
 composeSecondView (curry f)      = cs-other (curry f)
@@ -1064,8 +1059,8 @@ fstSndView snd             = fsv-snd
 fstSndView id              = fsv-other id
 fstSndView (f ∘ g)         = fsv-other (f ∘ g)
 fstSndView (⟨ f , g ⟩)   = fsv-other (⟨ f , g ⟩)
-fstSndView (inl m)         = fsv-other (inl m)
-fstSndView (inr m)         = fsv-other (inr m)
+fstSndView inl             = fsv-other inl
+fstSndView inr             = fsv-other inr
 fstSndView (case f g)      = fsv-other (case f g)
 fstSndView terminal        = fsv-other terminal
 fstSndView initial         = fsv-other initial
@@ -1085,8 +1080,8 @@ fstSndView (SigOp si)      = fsv-other (SigOp si)
 fstSndView (const p v) = fsv-other (const p v)
 
 inlInrView : ∀ {A B} → (f : IR A B) → InlInrView f
-inlInrView (inl m)         = iiv-inl m
-inlInrView (inr m)         = iiv-inr m
+inlInrView inl             = iiv-inl
+inlInrView inr             = iiv-inr
 inlInrView id              = iiv-other id
 inlInrView (f ∘ g)         = iiv-other (f ∘ g)
 inlInrView (⟨ f , g ⟩)   = iiv-other (⟨ f , g ⟩)
@@ -1131,8 +1126,8 @@ has-effect? (g ∘ f)         = has-effect? g ∨ has-effect? f
 has-effect? fst             = false
 has-effect? snd             = false
 has-effect? (⟨ f , g ⟩)   = has-effect? f ∨ has-effect? g
-has-effect? (inl _)         = false
-has-effect? (inr _)         = false
+has-effect? inl             = false
+has-effect? inr             = false
 has-effect? (case f g)      = has-effect? f ∨ has-effect? g
 has-effect? terminal        = false
 has-effect? initial         = false
@@ -1180,8 +1175,8 @@ optimize-snd f with pairView f
 -- When f = inl, D = A; when f = inr, D = B
 optimize-post-case : ∀ {A B C D} → IR A C → IR B C → IR D (A + B) → IR D C
 optimize-post-case {A} {B} {C} {D} h k f with coprodView f
-... | is-inl _ = h    -- D = A, so IR D C = IR A C
-... | is-inr _ = k    -- D = B, so IR D C = IR B C
+... | is-inl   = h    -- D = A, so IR D C = IR A C
+... | is-inr   = k    -- D = B, so IR D C = IR B C
 ... | is-other-coprod f = case h k ∘ f
 
 -- Helper: handle second argument after first is classified as "other"
@@ -1238,14 +1233,14 @@ optimize-pair f g = optimize-pair-aux f g (fstSndView f) (fstSndView g)
 --   [ inl , inr ] = id (eta)
 optimize-case-aux : ∀ {A B C} (f : IR A C) (g : IR B C)
                   → InlInrView f → InlInrView g → IR (A + B) C
-optimize-case-aux f g (iiv-inl _)   (iiv-inr _)   = id
-optimize-case-aux f g (iiv-inl _)   (iiv-inl _)   = case f g
-optimize-case-aux f g (iiv-inl _)   (iiv-other _) = case f g
-optimize-case-aux f g (iiv-inr _)   (iiv-inl _)   = case f g
-optimize-case-aux f g (iiv-inr _)   (iiv-inr _)   = case f g
-optimize-case-aux f g (iiv-inr _)   (iiv-other _) = case f g
-optimize-case-aux f g (iiv-other _) (iiv-inl _)   = case f g
-optimize-case-aux f g (iiv-other _) (iiv-inr _)   = case f g
+optimize-case-aux f g iiv-inl         iiv-inr         = id
+optimize-case-aux f g iiv-inl         iiv-inl         = case f g
+optimize-case-aux f g iiv-inl         (iiv-other _) = case f g
+optimize-case-aux f g iiv-inr         iiv-inl         = case f g
+optimize-case-aux f g iiv-inr         iiv-inr         = case f g
+optimize-case-aux f g iiv-inr         (iiv-other _) = case f g
+optimize-case-aux f g (iiv-other _) iiv-inl         = case f g
+optimize-case-aux f g (iiv-other _) iiv-inr         = case f g
 optimize-case-aux f g (iiv-other _) (iiv-other _) = case f g
 
 optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
@@ -1276,13 +1271,13 @@ mutual
   optimize-once-structural snd = snd
   optimize-once-structural ⟨ f , g ⟩ = optimize-pair (optimize-once f) (optimize-once g)
   -- | inl with Void source is equivalent to initial (no inhabitants)
-  optimize-once-structural (inl {A} {B} m) with A ≟IRTy II.Void
+  optimize-once-structural (inl {A} {B}) with A ≟IRTy II.Void
   ... | yes refl = initial
-  ... | no _     = inl m
+  ... | no _     = inl
   -- | inr with Void source is equivalent to initial (no inhabitants)
-  optimize-once-structural (inr {A} {B} m) with B ≟IRTy II.Void
+  optimize-once-structural (inr {A} {B}) with B ≟IRTy II.Void
   ... | yes refl = initial
-  ... | no _     = inr m
+  ... | no _     = inr
   optimize-once-structural (case f g) = optimize-case (optimize-once f) (optimize-once g)
   optimize-once-structural terminal = terminal
   optimize-once-structural initial = initial

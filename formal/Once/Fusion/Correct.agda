@@ -95,8 +95,8 @@ fusion-once-correct fst x = refl
 fusion-once-correct snd x = refl
 fusion-once-correct (⟨ f , g ⟩) x =
   cong₂ _,_ (fusion-once-correct f x) (fusion-once-correct g x)
-fusion-once-correct (inl m) x = refl
-fusion-once-correct (inr m) x = refl
+fusion-once-correct inl x = refl
+fusion-once-correct inr x = refl
 fusion-once-correct (case f g) (inj₁ a) = fusion-once-correct f a
 fusion-once-correct (case f g) (inj₂ b) = fusion-once-correct g b
 fusion-once-correct terminal x = refl

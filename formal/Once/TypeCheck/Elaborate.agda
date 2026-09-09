@@ -571,10 +571,10 @@ specSnd : (A B : Type) → SExpr S∅ Surface.zeroUsage (A Once.Type.* B ⇒ B)
 specSnd A B = Surface.lift-morphism IR.snd
 
 specInl : (A B : Type) → SExpr S∅ Surface.zeroUsage (A ⇒ (A Once.Type.+ B))
-specInl A B = Surface.lift-morphism (IR.inl IR.Heap)
+specInl A B = Surface.lift-morphism (IR.inl)
 
 specInr : (A B : Type) → SExpr S∅ Surface.zeroUsage (B ⇒ (A Once.Type.+ B))
-specInr A B = Surface.lift-morphism (IR.inr IR.Heap)
+specInr A B = Surface.lift-morphism (IR.inr)
 
 specUnitGen : SExpr S∅ Surface.zeroUsage Unit
 specUnitGen = Surface.unit
@@ -2360,7 +2360,7 @@ mutual
   ... | (A Once.Type.+ B) with checkElabV ctx arg A
   ...   | failure err , _ = failure err , tt
   ...   | success Ψ argE d fr , w =
-          success _ (Surface.morph-app (IR.inl IR.Heap) argE) (suc d) fr , t-inl-app-check w
+          success _ (Surface.morph-app (IR.inl) argE) (suc d) fr , t-inl-app-check w
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Unit = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Void = failure InlNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inl _ | Int = failure InlNeedsSumType , tt
@@ -2376,7 +2376,7 @@ mutual
   ... | (A Once.Type.+ B) with checkElabV ctx arg B
   ...   | failure err , _ = failure err , tt
   ...   | success Ψ argE d fr , w =
-          success _ (Surface.morph-app (IR.inr IR.Heap) argE) (suc d) fr , t-inr-app-check w
+          success _ (Surface.morph-app (IR.inr) argE) (suc d) fr , t-inr-app-check w
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Unit = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Void = failure InrNeedsSumType , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-inr _ | Int = failure InrNeedsSumType , tt
@@ -2562,7 +2562,7 @@ mutual
   -- bbc-inl: canonical T = A ⇒[Many,pure] (A' + B)
   checkElabV-RVar-bbc-inl-failure-aux ctx (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A' Once.Type.+ B)) err with A ≟T A'
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism (IR.inl IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-inl-morph-check
+        success Surface.zeroUsage (Surface.lift-morphism (IR.inl)) 0 (NamedCtx.freshCounter ctx) , t-inl-morph-check
   ... | no _ = failure (BuiltinTypeMismatch "inl") , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx Unit err = failure err , tt
   checkElabV-RVar-bbc-inl-failure-aux ctx Void err = failure err , tt
@@ -2590,7 +2590,7 @@ mutual
   -- bbc-inr: canonical T = B ⇒[Many,pure] (A + B')
   checkElabV-RVar-bbc-inr-failure-aux ctx (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (A Once.Type.+ B')) err with B ≟T B'
   ... | yes refl =
-        success Surface.zeroUsage (Surface.lift-morphism (IR.inr IR.Heap)) 0 (NamedCtx.freshCounter ctx) , t-inr-morph-check
+        success Surface.zeroUsage (Surface.lift-morphism (IR.inr)) 0 (NamedCtx.freshCounter ctx) , t-inr-morph-check
   ... | no _ = failure (BuiltinTypeMismatch "inr") , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx Unit err = failure err , tt
   checkElabV-RVar-bbc-inr-failure-aux ctx Void err = failure err , tt

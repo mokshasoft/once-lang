@@ -424,7 +424,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (s : LocState FS) (alloc : AllocState {FS}) →
     InputPlace mIn alloc x s →
     halted s ≡ false →
-    IRResultAWF Stack (inl {A} {B} Stack) x s alloc
+    IRResultAWF Stack (inl {A} {B}) x s alloc
 
   run-inl {A} {B} mIn x s alloc ip not-halted =
     -- Plan 0.17: bump = mkBump sum-slots 0 (stack-only). SMP.!! bridge
@@ -442,7 +442,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       _
       (record
         { max-slot-written = next-slot alloc +ℕ sum-slots
-        ; stack-budget = ir-stack-requirement (inl {A} {B} Stack)
+        ; stack-budget = ir-stack-requirement (inl {A} {B})
         ; bump-fits-stack-budget = ≤-refl
         ; max-slot-geq-final = ≤-reflexive (+-comm sum-slots (next-slot alloc))
         ; max-slot-usage-bound = reclaim-size-bound-inl
@@ -452,10 +452,10 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
                                suc<+2 (next-slot alloc) , tt
         ; trace-slot-reads-below = tt
-        ; scratch-budget = ir-scratch-requirement (inl {A} {B} Stack)
+        ; scratch-budget = ir-scratch-requirement (inl {A} {B})
         ; scratch-bounded =
             ≤-trans (≤-reflexive (+-comm (next-slot alloc) sum-slots))
-                    (m≤m+n (sum-slots +ℕ next-slot alloc) (ir-scratch-requirement (inl {A} {B} Stack)))
+                    (m≤m+n (sum-slots +ℕ next-slot alloc) (ir-scratch-requirement (inl {A} {B})))
         })
       (record
         { heap-budget = 0
@@ -574,7 +574,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inl-reclaim-preserves-validity = inl-valid-wf-final
 
       -- reclaim-size-bound: sum-slots = 2 = ir-stack-requirement (inl Stack)
-      reclaim-size-bound-inl : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inl {A} {B} Stack)
+      reclaim-size-bound-inl : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inl {A} {B})
       reclaim-size-bound-inl = ≤-refl
 
       -- Inl trace: store payload pointer to sucLoc sum-loc, then set Output to sum address
@@ -615,7 +615,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (s : LocState FS) (alloc : AllocState {FS}) →
     InputPlace mIn alloc x s →
     halted s ≡ false →
-    IRResultAWF Stack (inr {A} {B} Stack) x s alloc
+    IRResultAWF Stack (inr {A} {B}) x s alloc
 
   run-inr {A} {B} mIn x s alloc ip not-halted =
     mk-IRResultAWF-via-bump
@@ -631,7 +631,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       _
       (record
         { max-slot-written = next-slot alloc +ℕ sum-slots
-        ; stack-budget = ir-stack-requirement (inr {A} {B} Stack)
+        ; stack-budget = ir-stack-requirement (inr {A} {B})
         ; bump-fits-stack-budget = ≤-refl
         ; max-slot-geq-final = ≤-reflexive (+-comm sum-slots (next-slot alloc))
         ; max-slot-usage-bound = reclaim-size-bound-inr
@@ -641,10 +641,10 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; trace-writes-below = <-trans (n<1+n (next-slot alloc)) (suc<+2 (next-slot alloc)) ,
                                suc<+2 (next-slot alloc) , tt
         ; trace-slot-reads-below = tt
-        ; scratch-budget = ir-scratch-requirement (inr {A} {B} Stack)
+        ; scratch-budget = ir-scratch-requirement (inr {A} {B})
         ; scratch-bounded =
             ≤-trans (≤-reflexive (+-comm (next-slot alloc) sum-slots))
-                    (m≤m+n (sum-slots +ℕ next-slot alloc) (ir-scratch-requirement (inr {A} {B} Stack)))
+                    (m≤m+n (sum-slots +ℕ next-slot alloc) (ir-scratch-requirement (inr {A} {B})))
         })
       (record
         { heap-budget = 0
@@ -748,7 +748,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       inr-reclaim-preserves-validity = inr-valid-wf-final
 
       -- reclaim-size-bound: sum-slots = 2 = ir-stack-requirement (inr Stack)
-      reclaim-size-bound-inr : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inr {A} {B} Stack)
+      reclaim-size-bound-inr : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inr {A} {B})
       reclaim-size-bound-inr = ≤-refl
 
       -- Inr trace (Stack mode): 5-instr tag-aware, tag = 1.

@@ -116,11 +116,11 @@ morphToIR mr-snd (P * Q) A with Q ≡T? A
 ... | nothing   = nothing
 morphToIR mr-snd _ _ = nothing
 morphToIR mr-inl X (L + R) with X ≡T? L
-... | just refl = just (IR.inl {A = ⌊ X ⌋} {B = ⌊ R ⌋} Heap)
+... | just refl = just (IR.inl {A = ⌊ X ⌋} {B = ⌊ R ⌋})
 ... | nothing   = nothing
 morphToIR mr-inl _ _ = nothing
 morphToIR mr-inr X (L + R) with X ≡T? R
-... | just refl = just (IR.inr {A = ⌊ L ⌋} {B = ⌊ X ⌋} Heap)
+... | just refl = just (IR.inr {A = ⌊ L ⌋} {B = ⌊ X ⌋})
 ... | nothing   = nothing
 morphToIR mr-inr _ _ = nothing
 morphToIR mr-terminal X Unit = just IR.terminal

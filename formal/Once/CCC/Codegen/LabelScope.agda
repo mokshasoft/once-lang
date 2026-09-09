@@ -573,14 +573,10 @@ labels-in apply n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ []
-labels-in (inl Stack) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-labels-in (inr Stack) n l =
-  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-labels-in (inl Heap) n l =
+labels-in inl n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-labels-in (inr Heap) n l =
+labels-in inr n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 -- `case` owns `l` (the inl entry) and `suc l` (the join); both branches are
@@ -1756,13 +1752,9 @@ seg-agree (curry bd)  n l =
 seg-agree apply n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
      refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (inl Stack) n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (inr Stack) n l =
-  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (inl Heap)  n l =
+seg-agree inl n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (inr Heap)  n l =
+seg-agree inr n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree (g ∘ f) n l =
   segagree-++' _ _ l (label-of (ir-to-trace' n l f)) (label-of (ir-to-trace' n l f)) _
@@ -1886,10 +1878,8 @@ scope-ok snd                 n l = scope-nil _ _ _
 scope-ok terminal            n l = scope-nil _ _ _
 scope-ok initial             n l = scope-nil _ _ _
 scope-ok apply               n l = scope-nil _ _ _
-scope-ok (inl Stack)         n l = scope-nil _ _ _
-scope-ok (inr Stack)         n l = scope-nil _ _ _
-scope-ok (inl Heap)          n l = scope-nil _ _ _
-scope-ok (inr Heap)          n l = scope-nil _ _ _
+scope-ok inl                 n l = scope-nil _ _ _
+scope-ok inr                 n l = scope-nil _ _ _
 scope-ok (In _ _)            n l = scope-nil _ _ _
 scope-ok (out-μ _)           n l = scope-nil _ _ _
 scope-ok (Para _ _)          n l = scope-nil _ _ _

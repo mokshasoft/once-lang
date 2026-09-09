@@ -137,8 +137,8 @@ fusion-once snd = snd
 fusion-once (⟨ f , g ⟩) = ⟨ fusion-once f , fusion-once g ⟩
 
 -- Injections: preserve mode
-fusion-once (inl m) = inl m
-fusion-once (inr m) = inr m
+fusion-once inl = inl
+fusion-once inr = inr
 
 -- Case: recurse into branches
 fusion-once (case f g) = case (fusion-once f) (fusion-once g)

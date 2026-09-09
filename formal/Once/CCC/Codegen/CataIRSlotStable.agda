@@ -350,10 +350,8 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable (SigOp _)       n l = all-stable?-sound _ refl
   ir-stable (const fits-int _)   n l = all-stable?-sound _ refl
   ir-stable (const fits-float _) n l = all-stable?-sound _ refl
-  ir-stable (inl Stack)     n l = all-stable?-sound _ refl
-  ir-stable (inr Stack)     n l = all-stable?-sound _ refl
-  ir-stable (inl Heap)      n l = all-stable?-sound _ refl
-  ir-stable (inr Heap)      n l = all-stable?-sound _ refl
+  ir-stable inl             n l = all-stable?-sound _ refl
+  ir-stable inr             n l = all-stable?-sound _ refl
   ir-stable (In _ _)        n l = all-stable?-sound _ refl
   ir-stable (out-μ _)       n l = all-stable?-sound _ refl
   ir-stable (Para _ _)      n l = all-stable?-sound _ refl
@@ -409,10 +407,8 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-blocks-stable (SigOp _)            n l = []ᴬ
   ir-blocks-stable (const fits-int _)   n l = []ᴬ
   ir-blocks-stable (const fits-float _) n l = []ᴬ
-  ir-blocks-stable (inl Stack)          n l = []ᴬ
-  ir-blocks-stable (inr Stack)          n l = []ᴬ
-  ir-blocks-stable (inl Heap)           n l = []ᴬ
-  ir-blocks-stable (inr Heap)           n l = []ᴬ
+  ir-blocks-stable inl                  n l = []ᴬ
+  ir-blocks-stable inr                  n l = []ᴬ
   ir-blocks-stable (In _ _)             n l = []ᴬ
   ir-blocks-stable (out-μ _)            n l = []ᴬ
   ir-blocks-stable (Para _ _)           n l = []ᴬ

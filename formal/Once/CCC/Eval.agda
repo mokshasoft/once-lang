@@ -83,8 +83,8 @@ eval fmt (g ∘ f) x = eval fmt g (eval fmt f x)
 eval fmt (⟨ f , g ⟩) x = sem-pair (eval fmt f x) (eval fmt g x)
 eval fmt fst x = sem-fst x
 eval fmt snd x = sem-snd x
-eval fmt (inl _) x = sem-inl x
-eval fmt (inr _) x = sem-inr x
+eval fmt inl x = sem-inl x
+eval fmt inr x = sem-inr x
 eval fmt (case f g) x = sem-case (eval fmt f) (eval fmt g) x
 eval fmt terminal x = tt
 eval fmt initial ()

@@ -93,7 +93,7 @@ module SumInrAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    IRResultAWF Heap (inr {A} {B} Heap) x s alloc
+    IRResultAWF Heap (inr {A} {B}) x s alloc
   run-inr-heap {A} {B} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
       s-final alloc-final inr-heap-trace (mkBump 0 1) refl

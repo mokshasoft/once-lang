@@ -237,10 +237,10 @@ distribute : ∀ {Γ A B} → AllocMode → IR (Γ * (A + B)) ((Γ * A) + (Γ * 
 distribute {Γ} {A} {B} m = distrib' ∘ swap' m
   where
     curryInlSwap : IR A (Γ ⇛ ((Γ * A) + (Γ * B)))
-    curryInlSwap = curry (inl m ∘ swap' m)
+    curryInlSwap = curry (inl ∘ swap' m)
 
     curryInrSwap : IR B (Γ ⇛ ((Γ * A) + (Γ * B)))
-    curryInrSwap = curry (inr m ∘ swap' m)
+    curryInrSwap = curry (inr ∘ swap' m)
 
     curryDistrib : IR (A + B) (Γ ⇛ ((Γ * A) + (Γ * B)))
     curryDistrib = case curryInlSwap curryInrSwap
@@ -279,7 +279,7 @@ swapIR m = ⟨ snd , fst ⟩
 
 distribIR : ∀ {G A B} → (m : AllocMode) → IR (G * (A + B)) ((G * A) + (G * B))
 distribIR m =
-  apply ∘ ⟨ case (curry (inl m ∘ swapIR m)) (curry (inr m ∘ swapIR m)) ∘ snd
+  apply ∘ ⟨ case (curry (inl ∘ swapIR m)) (curry (inr ∘ swapIR m)) ∘ snd
           , fst ⟩
 
 -- D127: the four combinator morphisms. CLOSED — they mention no arm, so an
@@ -404,8 +404,8 @@ elaborate m (fst' p) = fst ∘ elaborate m p
 elaborate m (snd' p) = snd ∘ elaborate m p
 
 -- Sum introduction
-elaborate m (inl' a) = inl m ∘ elaborate m a
-elaborate m (inr' b) = inr m ∘ elaborate m b
+elaborate m (inl' a) = inl ∘ elaborate m a
+elaborate m (inr' b) = inr ∘ elaborate m b
 
 -- Case: distribute environment over sum, then case on result
 -- s : Expr Γ (A + B), l : Expr (Γ,A) C, r : Expr (Γ,B) C
