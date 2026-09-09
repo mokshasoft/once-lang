@@ -237,7 +237,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         BeforeFrontier alloc env-loc →
         BeforeFrontier alloc (sucLoc closure-loc) →
         ValidAtWF mEnv alloc env env-loc s →
-        BodyCorrect body env env-loc program-bound →
+        -- D170: the `BodyCorrect` field STOOD HERE. A closure value's
+        -- well-formedness may say only what is true of the VALUE in the state
+        -- — its env cell holds a valid env, its code cell holds the body's
+        -- NAME. What the body DOES when applied is not a property of the
+        -- value, and carrying it made representation depend on execution: the
+        -- one cycle in this block, the reason it needed a positivity escape
+        -- hatch, and the reason the whole `program-bound` / `ir-size` /
+        -- `RecDispatcherWF` apparatus exists — up to and including the apex
+        -- theorem taking a size bound as a parameter.
+        --
+        -- `apply` obtains the body from the unit's block table by
+        -- `body-label`, and `link-block-steps` (D168) relocates it to wherever
+        -- `link` placed it. Possible only since D159 gave bodies names.
         ValidAtWF m alloc {A ⇛ B} (λ arg → eval body (pair env arg)) closure-loc s
 
       valid-inl-wf : ∀ {m A B} {a : ⟦ A ⟧}
@@ -819,7 +831,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- Output mode comes from body's actual output.
     --------------------------------------------------------------------
 
-    {-# NO_POSITIVITY_CHECK #-}
     record BodyCorrect {EnvType A B : IRTy}
                        (body : IR (EnvType * A) B)
                        (env : ⟦ EnvType ⟧)
@@ -926,8 +937,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       env-before : BeforeFrontier alloc env-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
       env-valid : ValidAtWF mEnv alloc env env-loc s
-      -- THE KEY: body-correct is extracted with program-bound!
-      body-correct : BodyCorrect body env env-loc program-bound
+      -- D170: `body-correct : BodyCorrect …` stood here, mirroring the
+      -- constructor field. Gone for the same reason — this record DECOMPOSES a
+      -- closure value, so it may expose only what the value carries: the
+      -- environment and the body's NAME (`body-label`, right above). The
+      -- behaviour is looked up from that name at `apply`.
       f-is-closure : f ≡ (λ arg → eval body (pair env arg))
 
   -- Closures are always Heap mode.  Plan 0.52 M2: the ungraded `A ⇛ B` has a
@@ -935,7 +949,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   decomposeClosureWF : ∀ {m alloc A B} {f : ⟦ A ⇛ B ⟧} {loc s} →
     ValidAtWF m alloc {A ⇛ B} f loc s → ClosureValidWF alloc f loc s
   decomposeClosureWF (valid-closure-wf {_} {EnvType} {_} {_} {body} {env} {_}
-                       bb {_} {el} {_} {mE} {bl} lmm ep cp eb slb ev bc) = record
+                       bb {_} {el} {_} {mE} {bl} lmm ep cp eb slb ev) = record
     { EnvType = EnvType
     ; body = body
     ; env = env
@@ -948,7 +962,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; env-before = eb
     ; sucLoc-before = slb
     ; env-valid = ev
-    ; body-correct = bc
     ; f-is-closure = refl
     }
 
@@ -1225,8 +1238,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' = validityWF-mem-only b sl s₁ s₂ stack-eq heap-eq sv
 
   validityWF-mem-only {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
-    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
-    valid-closure-wf bb lmm ep' cp' eb slb ev' bc
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev) =
+    valid-closure-wf {body = body} {env = env} bb lmm ep' cp' eb slb ev'
     where
       ep' : readLoc s₂ loc ≡ just (SV-Ptr el)
       ep' = trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) ep
@@ -1319,8 +1332,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' = validityWF-write-at-frontier b sl s val sb sv
 
   validityWF-write-at-frontier {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s val loc-before
-    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
-    valid-closure-wf bb lmm ep' cp' eb slb ev' bc
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev) =
+    valid-closure-wf {body = body} {env = env} bb lmm ep' cp' eb slb ev'
     where
       ep' = trans (write-at-frontier-preserves-before s alloc loc val loc-before) ep
       cp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp
@@ -1394,8 +1407,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' = validityWF-write-at-suc-frontier b sl s val sb sv
 
   validityWF-write-at-suc-frontier {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s val loc-before
-    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
-    valid-closure-wf bb lmm ep' cp' eb slb ev' bc
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev) =
+    valid-closure-wf {body = body} {env = env} bb lmm ep' cp' eb slb ev'
     where
       ep' = trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) ep
       cp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp
@@ -1482,8 +1495,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' = validityWF-write-sv-at-frontier b sl s stored sb sv
 
   validityWF-write-sv-at-frontier {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s stored loc-before
-    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
-    valid-closure-wf bb lmm ep' cp' eb slb ev' bc
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev) =
+    valid-closure-wf {body = body} {env = env} bb lmm ep' cp' eb slb ev'
     where
       ep' = trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) ep
       cp' = trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp
@@ -1564,8 +1577,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' = validityWF-write-sv-at-suc-frontier b sl s stored sb sv
 
   validityWF-write-sv-at-suc-frontier {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s stored loc-before
-    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
-    valid-closure-wf bb lmm ep' cp' eb slb ev' bc
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev) =
+    valid-closure-wf {body = body} {env = env} bb lmm ep' cp' eb slb ev'
     where
       ep' = trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) ep
       cp' = trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp
@@ -1649,8 +1662,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' = validityWF-alloc-advance b sl s n sv
 
   validityWF-alloc-advance {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s n
-    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
-    valid-closure-wf bb lmm ep cp eb' slb' ev' bc
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev) =
+    valid-closure-wf {body = body} {env = env} bb lmm ep cp eb' slb' ev'
     where
       eb' = stack-alloc-advances alloc n el eb
       slb' = stack-alloc-advances alloc n (sucLoc loc) slb
@@ -1732,8 +1745,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' = validityWF-frontier-advance b sl s cf-eq slot-≤ heap-≤ sv
 
   validityWF-frontier-advance {_} {alloc} {alloc'} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s cf-eq slot-≤ heap-≤
-    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
-    valid-closure-wf bb lmm ep cp eb' slb' ev' bc
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev) =
+    valid-closure-wf {body = body} {env = env} bb lmm ep cp eb' slb' ev'
     where
       eb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ el eb
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
@@ -1812,9 +1825,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Closure
   validityWF-with-bf-transfer {_} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s a₁ a₂ bf
-    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
-    valid-closure-wf bb lmm ep cp (bf el eb) (bf (sucLoc loc) slb)
-      (validityWF-with-bf-transfer env el s a₁ a₂ bf ev) bc
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev) =
+    valid-closure-wf {body = body} {env = env} bb lmm ep cp (bf el eb) (bf (sucLoc loc) slb)
+      (validityWF-with-bf-transfer env el s a₁ a₂ bf ev)
 
   -- Kind-coerced closure
 
@@ -1887,8 +1900,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' = validityWF-mem-preserved b sl s₁ s₂ sb mem-eq sv
 
   validityWF-mem-preserved {_} {alloc} {A ⇛ B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ loc-before mem-eq
-    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev bc) =
-    valid-closure-wf bb lmm ep' cp' eb slb ev' bc
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} lmm ep cp eb slb ev) =
+    valid-closure-wf {body = body} {env = env} bb lmm ep' cp' eb slb ev'
     where
       ep' = trans (mem-eq loc loc-before) ep
       cp' = trans (mem-eq (sucLoc loc) slb) cp
@@ -2094,7 +2107,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     LocsInRegions ib fs fv ×
     LocsInRegions ib fs sv
   LocsInRegions {alloc = alloc} ib fs
-    (valid-closure-wf bb {closure-loc = cl} lmm ep cp eb slb ev bc) =
+    (valid-closure-wf bb {closure-loc = cl} lmm ep cp eb slb ev) =
     LocInRegions alloc ib fs cl ×
     LocInRegions alloc ib fs (sucLoc cl) ×
     LocsInRegions ib fs ev
@@ -2208,9 +2221,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     .(λ arg → eval body (pair env arg)) loc ib fs s₁ s₂
     loc-before ib≤fs fs≤next ir fr hr ar
     (valid-closure-wf {body = body} {env = env} bb
-      {closure-loc = clo} {env-loc = el} lmm ep cp eb slb ev bc)
+      {closure-loc = clo} {env-loc = el} lmm ep cp eb slb ev)
     (cl-ir , scl-ir , elocs) =
-    valid-closure-wf bb lmm ep' cp' eb slb ev' bc
+    valid-closure-wf {body = body} {env = env} bb lmm ep' cp' eb slb ev'
     where
       cl-eq  = loc-mem-eq-from-regions ir fr hr ar cl-ir
       scl-eq = loc-mem-eq-from-regions ir fr hr ar scl-ir

@@ -58,9 +58,9 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
   validAtWF-set-halted {s = s} b (valid-pair-wf {pair-loc = pl} lm r1 r2 bf1 bf2 bf3 va vb) =
     valid-pair-wf lm (trans (rl s b pl) r1) (trans (rl s b (sucLoc pl)) r2) bf1 bf2 bf3
       (validAtWF-set-halted b va) (validAtWF-set-halted b vb)
-  validAtWF-set-halted {s = s} b (valid-closure-wf body<bound {closure-loc = cl} lm r1 r2 bf1 bf2 venv bodyc) =
-    valid-closure-wf body<bound lm (trans (rl s b cl) r1) (trans (rl s b (sucLoc cl)) r2) bf1 bf2
-      (validAtWF-set-halted b venv) bodyc
+  validAtWF-set-halted {s = s} b (valid-closure-wf {body = body} body<bound {closure-loc = cl} lm r1 r2 bf1 bf2 venv) =
+    valid-closure-wf {body = body} body<bound lm (trans (rl s b cl) r1) (trans (rl s b (sucLoc cl)) r2) bf1 bf2
+      (validAtWF-set-halted b venv)
   validAtWF-set-halted {s = s} b (valid-inl-wf {sum-loc = sl} lm tg r bf1 bf2 va) =
     valid-inl-wf lm (transport-SumTag (rl s b sl) tg) (trans (rl s b (sucLoc sl)) r) bf1 bf2 (validAtWF-set-halted b va)
   validAtWF-set-halted {s = s} b (valid-inr-wf {sum-loc = sl} lm tg r bf1 bf2 vb) =
