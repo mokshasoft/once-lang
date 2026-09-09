@@ -12195,3 +12195,68 @@ The `in-reg` observation is true but useless — `inl` on a register-resident
 payload is witnessed by `valid-inl-reg-wf`, not by `valid-inl-wf`. So the
 sum-payload question is NOT why `obs-correct-inl` is an axiom, and that cause
 remains unfound.
+
+## D173
+
+**THE ACTUAL OBSTACLE FOR `obs-correct-inl` (and `pair`, `inr`, `curry`):
+`ResultPlace.at-loc` IS REFUTABLE FOR A FRESH STACK RESULT, BECAUSE THE FLAT
+MACHINE NEVER ADVANCES `next-slot`.**
+
+Established by enumerating constructors, after D172 was retracted for inferring
+instead of enumerating.
+
+### The obstacle
+
+`ValueRealized.place : ResultPlace B out-mode (falloc settle) cont-alloc`, and
+for a sum only `at-loc` is available — `unit-result` needs `B ≡ Unit`, `at-reg`
+needs `FitsInRegI (A + B)` and `FitsInReg` has only `fits-int`/`fits-float`.
+
+`at-loc` demands `BeforeFrontier (falloc settle) loc`. `BeforeFrontier` has
+exactly three constructors, and for `inl`'s result at
+`AtStack (current-frame alloc) sum-slot` every one fails:
+
+* `stack-before` needs `sum-slot < next-slot alloc`. But `sum-slot = n` and the
+  obligation's own premise is `next-slot alloc ≤ n`, so this asks for `n < n`.
+* `stack-ancestor` needs `current-frame alloc ≺ f`, and `f` IS
+  `current-frame alloc` — the frames are equal, not strictly ordered.
+* `heap-before` is about `AtDynamic`, not `AtStack`.
+
+And nothing rescues it by moving the frontier: all four instructions `inl`
+emits — `instr-load-tag-lit`, `store-at-slot`, `mov-to-output`, `lea-slot` —
+return `, alloc` UNCHANGED. So `falloc settle ≡ alloc`, and the demand is
+`n < next-slot alloc ≤ n`.
+
+**The obligation is not hard, it is FALSE as stated.** Same class as D148 and
+D150: fix the model, not the statement.
+
+### Why it is shared
+
+Every clause whose result is a FRESH STACK CELL hits it identically —
+`obs-correct-pair` (pair record at `n`), `obs-correct-inl`/`inr` (sum record at
+`n`), and `obs-correct-curry` (closure record at `n`). Four axioms, one cause,
+and it is NOT the payload question D172 wrongly proposed.
+
+### The tension it comes from
+
+D150 already recorded the halves: "`next-slot` never moves at run time, while
+the emission frontier advances through the program". The WF layer lives with it
+by threading a CONSTRUCTION-TIME bumped alloc — `SumInlAllocWF` proves
+`BeforeFrontier alloc-final sum-loc`, not `BeforeFrontier alloc sum-loc`. The
+flat layer has no such alloc: `falloc` is the runtime one, and it never moves.
+
+### The two resolutions
+
+1. **The machine bumps.** `flat-exec-instr` advances `next-slot` when the
+   emitter writes a fresh result cell, so `falloc settle` is genuinely past the
+   result and `stack-before` holds. A model change, and it must not break
+   `AllSlotStable` / the arch correspondences, which currently rely on
+   `next-slot` being invariant.
+2. **`place` takes the bumped alloc.** `ValueRealized.place`'s FIRST alloc
+   stops being `falloc settle` and becomes a chosen post-alloc, the way the WF
+   layer's `result-place` already takes `alloc-final`. The clause already
+   chooses `cont-alloc` freely; this makes the pair symmetric.
+
+(2) is the smaller change and matches what the WF layer already does. (1) is
+the deeper question of whether the flat machine should model slot allocation at
+all, which D150 left open. Not chosen here: the discharge has named it, and
+choosing is a model decision.
