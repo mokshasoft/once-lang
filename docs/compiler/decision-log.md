@@ -12150,3 +12150,48 @@ state. If it carries a proof about what happens when the value is USED, the
 predicate has absorbed an execution obligation, and the first symptom is a
 mutual block that needs a positivity escape hatch. Carry the NAME, and look the
 behaviour up where it is used.
+
+## D172 — RAISED AND RETRACTED THE SAME DAY (2026-09-09)
+
+**Recorded so the number is not a dangling reference: two commits mention D172,
+and its claim was FALSE.**
+
+D172 claimed that every compound-value witness demands its components be BOXED
+(`readLoc s cell ≡ just (SV-Ptr loc)`), so the inline literal the emitter stores
+for a register-fitting component was unsayable — and introduced `Represents`
+(`rep-ptr` / `rep-inline`) to close the gap.
+
+Both halves were wrong, and a `grep` would have shown it:
+
+* `ValidAtWF` ALREADY has `valid-inl-reg-wf` / `valid-inr-reg-wf`
+  (`ClosureWellFormed`), whose premise is
+  `readLoc s (sucLoc sum-loc) ≡ just (inline-sv rep a)` with
+  `rep : InlineRep A` — exactly the inline case claimed to be missing.
+* `PayloadAt` ALREADY exists, with `payload-at-loc` / `payload-in-reg` — the
+  same two-way split as `Represents`, notion for notion.
+
+`Represents` was therefore a SECOND EXPRESSION OF AN EXISTING CONCEPT, which is
+the fault D161, D162, D165 and D170 each removed an instance of. It is deleted;
+nothing depended on it.
+
+### The method error, which is the part worth keeping
+
+The conclusion came from reading ONE constructor (`valid-inl-wf`), seeing it
+demand `SV-Ptr`, and inferring that the witness excluded the literal case —
+without checking for sibling constructors. This log's own rule is
+check-then-assert, and it was skipped twice in one session: first framing the
+SigOp obligation without reading D061/D071, then this.
+
+**Before concluding that a witness cannot express something, enumerate the
+constructors of the thing that would express it.**
+
+### What survives
+
+`flat-store-floc` / `-falloc` / `-fpc` (D171) are independent and stand: the
+flat layer's store read-back was genuinely missing and is genuinely needed by
+every `obs-correct-*` clause that writes memory.
+
+The `in-reg` observation is true but useless — `inl` on a register-resident
+payload is witnessed by `valid-inl-reg-wf`, not by `valid-inl-wf`. So the
+sum-payload question is NOT why `obs-correct-inl` is an axiom, and that cause
+remains unfound.
