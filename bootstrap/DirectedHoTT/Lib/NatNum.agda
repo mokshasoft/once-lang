@@ -18,7 +18,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.NatNum where
-open import normalizer.Syntax.Types using ( _≡_; refl; cong )
+open import normalizer.Syntax.Types using ( _≡_; refl; cong; trans )
 open import Agda.Builtin.Nat using ( zero; suc; _+_ ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; Ren; Sub; renTm; subTm; nzero; nsuc; natrec; var; vz; Nat )
@@ -63,3 +63,20 @@ plus-num zero    b = step (natrec-zero (num b) (nsuc (var vz))) done
 plus-num (suc a) b =
   step (natrec-suc (num b) (nsuc (var vz)) (num a))
        (⟶*-nsuc (plus-num a b))
+
+-- ★ A NUMERAL SURVIVES ANY MIX OF RENAMINGS AND SUBSTITUTIONS, so a
+--   payload's `num` field comes back however many binders it has passed.
+--
+-- ⚠ THE INNER TWO ARE RENAMINGS, NOT SUBSTITUTIONS, and a `subTm`-only
+--   chain does not match: `Lib/IPay`'s method telescope weakens the
+--   payload past the two remaining binders with `renTm vs`, and only the
+--   outer two are `subTm`.  Agda names it —
+--   `renTm vs (renTm vs (num n)) != subTm _ρ (num n)`.
+--   `Knot/OccAgree`'s `cVar-vz` row is the customer.
+num-stable : {Γ Δ Θ Ξ Ω : Cx}
+             (σ : Sub Θ Ω) (τ : Sub Ξ Θ) (ρ₁ : Ren Δ Ξ) (ρ₂ : Ren Γ Δ) (n : ℕ) →
+             subTm σ (subTm τ (renTm ρ₁ (renTm ρ₂ (num n)))) ≡ num n
+num-stable σ τ ρ₁ ρ₂ n =
+  trans (cong (λ z → subTm σ (subTm τ (renTm ρ₁ z))) (num-ren ρ₂ n))
+  (trans (cong (λ z → subTm σ (subTm τ z)) (num-ren ρ₁ n))
+  (trans (cong (subTm σ) (num-sub τ n)) (num-sub σ n)))

@@ -31,7 +31,9 @@ import DirectedHoTT.Examples.Knot.NoNatCRows
 import DirectedHoTT.Examples.Knot.NoNatCWf
 import DirectedHoTT.Examples.Knot.Nrs
 import DirectedHoTT.Examples.Knot.Occ
+import DirectedHoTT.Examples.Knot.OccAgree
 import DirectedHoTT.Examples.Knot.OccLvl
+import DirectedHoTT.Examples.Knot.OccLvlEq
 import DirectedHoTT.Examples.Knot.PayTy
 import DirectedHoTT.Examples.Knot.PickScope
 import DirectedHoTT.Examples.Knot.Pw
@@ -42,5 +44,3 @@ import DirectedHoTT.Examples.Knot.RedWfB
 import DirectedHoTT.Examples.Knot.RenAgree
 import DirectedHoTT.Examples.Knot.RenAgreeTie
 import DirectedHoTT.Examples.Knot.RenAgreeTy
-import DirectedHoTT.Examples.Knot.RenAgreeTyTie
-import DirectedHoTT.Examples.Knot.RenAgreeX

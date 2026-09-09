@@ -166,7 +166,18 @@
 --                step 2's `nrsK-vz`/`-vs` (the row parked at eight
 --                attempts).  ⚠ The two depths differ — `nrs` RAISES, so
 --                the outer `Var-vsK` carries ⌈Γ ∙⌉ and the inner ⌈Γ⌉.
---     occK       ⬜ OWED — agreement with `occTm`/`occTy`, at a LEVEL.
+--     occK       ✅ DISCHARGED — `Knot/OccAgree`, ALL 53 ROWS, generated:
+--                `app (ielim KnotD i occMethsK ⌈A⌉) ⟨lvl x⟩ ⟶*
+--                 ⌈b2n (occTy x A)⌉`, and the same for terms.
+--                ⚠ PROVING IT FOUND A DEFECT: `occK` was NOT
+--                faithful, because the fold descended into CLOSED
+--                sub-syntax whose bound variables collide on
+--                LEVELS with ambient ones.  Fixed by
+--                `Lib/IFold.scopeAt`; `Knot/PickScope` pins the
+--                four skipped edges.  `OCC-ATTEMPTS.md` §35-36.
+--                The `Var` rows carry the real content —
+--                `Knot/OccLvlEq.eqv-lvl`, i.e. `lvl` is INJECTIVE
+--                on `Var Γ`.  `LVL-ATTEMPTS.md`.
 --     occVzK     ⬜ OWED — `occK` with the level taken as `pred (snd ⟨i⟩)`;
 --                a COROLLARY of `occK`'s once the level convention is
 --                fixed (`vz` in a depth-`nsuc n` context is level `n`).

@@ -3406,6 +3406,268 @@ def gen_occagree_probe():
                 crosses[(s, x[1])] += 1
     return bysort, crosses
 
+
+# ======================================================================
+# ★★★ `Knot/OccAgree` — `occK`'s ADEQUACY, ALL 53 ROWS.
+#
+# The `occ` twin of `gen_szagree`, and the second instantiation of the
+# "an encoded FUNCTION agrees with the meta-level function it names"
+# shape.  ⚠ Two rows are NOT generated and one sort is UNREACHABLE:
+#
+#   cVar-vz / cVar-vs  hand-written (`_OCCAGREE_VAR`).  Their `nat`
+#     field is the ENCODED DEPTH `len Γ`, not an Agda constructor
+#     argument, and `cVar-vz` is the ONE row spliced with `occVz`
+#     rather than folded — `occSum-red` does not apply to it.
+#   cICon-*            unreachable: the only edge into an `ICon` is
+#     `cIDesc-cons`'s, pinned to `lit(1)` and therefore skipped by
+#     `Lib/IFold.scopeAt`.  Hence SIX mutual statements, not nine.
+# ======================================================================
+def _occ_snds(k):
+    """`snd^k` — RECURSIVE, not a flat chain: the inner `snd`s reduce
+       under `⟶*-snd` congruences.  This is `gen_szagree`'s `_peelR`;
+       a flat `βsnd » βsnd` type-checks at k=1 and fails at k=2."""
+    return "done" if k == 0 else "(⟶*-snd %s » step (βsnd _ _) done)" % _occ_snds(k-1)
+
+def _occ_peel_slot(k):
+    """project the k-th tuple slot.  ⚠ `⟶*-fst` must reduce INSIDE the
+       projection before `βfst` fires — `gen_szagree`'s `_fstat` shape."""
+    if k == 0: return "step (βfst _ _) done"
+    return "(⟶*-fst %s » step (βfst _ _) done)" % _occ_snds(k)
+
+# ★★★ `peel_ix` DELETED (2026-09-08).  It existed only because the row
+#   statements PINNED the child's index.  `iihs` builds that index as
+#   `subTm (isingle i) (pair s (snd (var vz)))`, so no pinned index can
+#   ever match; the fix is to QUANTIFY the IH over the index, as
+#   `Knot/SzAgree.agree i t` does — its rows write `agree _ y0` and never
+#   peel an index at all.  The whole `D`/`sucD n`/`lit`/`fld` depth
+#   machinery served that pinned index and is not needed.
+#   ⚠ Row statements quantify the index; the TOP-LEVEL theorem ties it.
+
+
+# ★ WHAT ONE RECURSIVE FIELD OWES, after the `scopeAt` fix.
+#
+# ⚠ THE SKIP RULE IS `d[0] == "lit"` and nothing else.  `Lib/IFold.scopeAt`
+#   descends into a child whose index depth MENTIONS the ambient index
+#   (`('D',)` → `snd ⟨i⟩`, `('sucD',n)` → `suc^n (snd ⟨i⟩)`, `('fld',j)` →
+#   a field reference) and skips one pinned to a NUMERAL.  Only `lit` is a
+#   numeral.  Four of the knot's 82 children — `Knot/PickScope` pins them
+#   by `refl` at rows 10/39/45/47, independently of this table.
+#
+# ⚠ `sICon` NEVER APPEARS as a descended-into child: the only edge into an
+#   ICon is `cIDesc-cons`'s, which is `lit(1)` and therefore skipped.  So
+#   there is no `zero-icon`, and no `zero-ty-closed`/`zero-tm-closed`
+#   either — a closed child is SKIPPED, not proved to be zero.
+_OCC_ZERO = {"sDesc": "zero-desc", "sDCon": "zero-dcon", "sIDesc": "zero-idesc"}
+
+def _occ_child(x, nm_arg):
+    """(numeral meta value, RAW 𝔹 expr or None, IH term, skipped?).
+
+    The raw 𝔹 expression is what the CAST CHAIN needs: `b2n-∨` is stated
+    about `_∨_` on 𝔹, not about the numerals.  A child contributing
+    `zero` — a description sort, or a skipped one — has no `∨` summand at
+    all, which is why it is `None` rather than `false`.
+    """
+    s_, d = x[1], x[2]
+    if d[0] == "lit":
+        return ("zero", None, "ok", True)
+    n  = d[1] if d[0] == "sucD" else 0
+    xv = "(vs " * n + "x" + ")" * n if n else "x"
+    if s_ == "sTy":
+        raw = "(occTy %s %s)" % (xv, nm_arg)
+        return ("(b2n %s)" % raw, raw, "agree-ty %s %s _" % (xv, nm_arg), False)
+    if s_ == "sTm":
+        raw = "(occTm %s %s)" % (xv, nm_arg)
+        return ("(b2n %s)" % raw, raw, "agree-tm %s %s _" % (xv, nm_arg), False)
+    if s_ == "sVar":
+        raw = "(eqv x %s)" % nm_arg
+        # ★ `agree-var` answers in LEVELS (`eqℕ k (lvl y)`): its `vs`
+        #   row cannot be stated with two variables of one context.
+        #   `eqv-lvl` — `lvl` is INJECTIVE on `Var Γ` — brings it back
+        #   to `eqv` HERE, at the one use site.
+        return ("(b2n %s)" % raw, raw,
+                "⟶*-castᵣ (cong num (sym (cong b2n (eqv-lvl x %s))))\n"
+                "                 (agree-var (lvl x) %s _)" % (nm_arg, nm_arg),
+                False)
+    if s_ not in _OCC_ZERO:
+        # ⚠ `sICon` LANDS HERE ONLY IF SOMETHING GENERATES `cICon-*` ROWS,
+        #   and nothing should: the only edge into an `ICon` is
+        #   `cIDesc-cons`'s, which is `lit(1)` and therefore SKIPPED, so
+        #   `zero-idesc` never calls into an ICon.  Six statements, not
+        #   seven.  If this fires, the skip analysis changed.
+        raise SystemExit("no zero-lemma for sort %s (child %s) — see "
+                         "Knot/PickScope" % (s_, nm_arg))
+    return ("zero", None, "%s x %s _" % (_OCC_ZERO[s_], nm_arg), False)
+
+def _occ_aih_of(nm, f, mvals):
+    """the AllIH spine, built INSIDE OUT from the field list.
+
+    ⚠ EVERY `iρ` GETS A NODE, descended-into or not: `Lib/IFold.ifTail`
+      steps `snd` either way, so dropping a skipped field's node would
+      read the NEXT field's IH as this one's.
+    ★ A SKIPPED node carries NO PEEL — its obligation is `OK`, which no
+      reduction has to reach — and passes `m` explicitly as `zero`,
+      because `IHof false` and `maxIf false` mention `m` nowhere and it
+      would otherwise be an unsolved meta.
+    """
+    aih, r = "aih-ι", sum(1 for x in f if x[0] == "rec")
+    for j in range(len(f)-1, -1, -1):
+        x = f[j]
+        if x[0] in ("nat", "ford"):
+            aih = "(aih-κ %s)" % aih
+        else:
+            r -= 1
+            m, _raw, ih, skipped = mvals[r]
+            if skipped:
+                aih = "(aih-ρ zero ok\n       %s)" % aih
+            else:
+                # ⚠ THE INDEX PEEL LIVES UNDER `⟶*-ielimⁱ`.  Caught by
+                #   diffing this emitter against the hand-proved rows.
+                ihp = ("(⟶*-appˡ (%s »\n              ⟶*-ielimᵗ (%s)) » %s)"
+                       % (_occ_peel_slot(r), _occ_peel_slot(j), ih))
+                aih = "(aih-ρ %s\n       %s\n       %s)" % (m, ihp, aih)
+    return aih
+
+
+# ★★★ THE CAST CHAIN — the fold accumulates LEFT, `_∨_` nests RIGHT.
+#
+#   `Lib/IOccRed.occSum-red` seeds with the first descended field and
+#   folds `maxℕ` leftwards:      maxℕ (maxℕ (maxℕ v₁ v₂) v₃) v₄
+#   `Spec/Variance._∨_` is `infixr 5`:   v₁ ∨ (v₂ ∨ (v₃ ∨ v₄))
+#
+# ⚠ ZEROES NEED NO WORK.  A description child and a skipped child both
+#   contribute `zero`, and every such child comes BEFORE the non-zero
+#   ones in every affected row (`cTy-IMu`, `cTm-elim`, `cTm-ielim`, …).
+#   `maxℕ 0 m = 0 + monusℕ m 0 = m` DEFINITIONALLY, so a leading zero
+#   absorbs on its own.  A TRAILING zero would not — `maxℕ m 0` is real
+#   arithmetic — and the generator asserts none occurs rather than
+#   assuming it.
+def _occ_L(vs):
+    """the fold's left-nested `maxℕ` over the raw 𝔹 exprs."""
+    out = "(b2n %s)" % vs[0]
+    for v in vs[1:]:
+        out = "(maxℕ %s (b2n %s))" % (out, v)
+    return out
+
+def _occ_shift(vs):
+    """`maxℕ (b2n v₁) L(v₂…) ≡ L(v₁…)` — pure re-association."""
+    if len(vs) <= 2:
+        return "refl"
+    head, last = vs[:-1], vs[-1]
+    inner = _occ_shift(head)
+    if len(vs) == 3:                       # the common case: one `assoc`
+        return "(sym (maxℕ-assoc (b2n %s) (b2n %s) (b2n %s)))" % (vs[0], vs[1], vs[2])
+    return ("(trans (sym (maxℕ-assoc (b2n %s) %s (b2n %s)))\n"
+            "        (cong (λ z → maxℕ z (b2n %s)) %s))"
+            % (vs[0], _occ_L(vs[1:-1]), last, last, inner))
+
+def _occ_chain(vs):
+    """`b2n (v₁ ∨ … ∨ vₙ) ≡ L(v₁…vₙ)`, by induction on the right nesting."""
+    if len(vs) == 1:
+        return "refl"
+    if len(vs) == 2:                       # `b2n-∨` IS the whole bridge
+        return "(b2n-∨ %s %s)" % (vs[0], vs[1])
+    rest = "(" + " ∨ ".join(vs[1:]) + ")"
+    return ("(trans (b2n-∨ %s %s)\n"
+            "        (trans (cong (maxℕ (b2n %s)) %s)\n"
+            "               %s))" % (vs[0], rest, vs[0], _occ_chain(vs[1:]), _occ_shift(vs)))
+
+def _occ_cast_chain(mvals):
+    """the outer `⟶*-castᵣ`, or "" when the two sides already agree."""
+    vs = [m[1] for m in mvals if m[1] is not None]
+    if len(vs) <= 1:
+        return None            # `refl` — nothing to bridge
+    return "cong num (sym %s)" % _occ_chain(vs)
+
+def _occ_assert_no_trailing_zero(nm, mvals):
+    seen_nz = False
+    for m in mvals:
+        if m[1] is not None: seen_nz = True
+        elif seen_nz:
+            raise SystemExit("%s: a zero child AFTER a non-zero one — "
+                             "`maxℕ m 0` is not definitional, the chain "
+                             "needs a `maxℕ-zeroʳ` step" % nm)
+
+
+_OCC_ENC = {"sTy":"enTy","sTm":"enTm","sDesc":"enDesc","sDCon":"enDCon",
+       "sIDesc":"enIDesc","sICon":"enICon","sVar":"enVar"}
+
+def _occ_payload_of(f, an):
+    """the row's payload term, right-nested, from the field list:
+       an encoded arg per `rec`, the ℕ per `nat`, an `idrefl` per `ford`."""
+    parts = []
+    for j, x in enumerate(f):
+        if x[0] == "rec":    parts.append("(%s %s)" % (_OCC_ENC[x[1]], an[j]))
+        elif x[0] == "nat":  parts.append("(num %s)" % an[j])
+        else:                parts.append("(idrefl ⌜Nat⌝ %s)" % x[2][1])
+    out = "unit"
+    for p in reversed(parts): out = "(pair %s %s)" % (p, out)
+    return out
+
+def _occ_row_body(nm, decl, f, an, mvals, ctor_pat):
+    """one clause, in the shape validated by `tmp/HomFinal.agda`.
+
+    ⚠ THE INDEX IS THE QUANTIFIED PARAMETER `i`, NOT REBUILT.  `iihs`
+      gives each child `subTm (isingle i) (pair s (snd (var vz)))`, so a
+      row that pins its index can never match a child — that was the
+      whole `peel_ix` detour.  `Knot/SzAgree.agree i t` does the same.
+    ⚠ NO `{ihs = …}` PIN and the `ICon` written as `ilookupD KnotD tag`,
+      which is the form the head-red's own output carries."""
+    tag = "tag" + nm[1:]
+    pay = _occ_payload_of(f, an)
+    # ⚠ A ROW WITH NO RECURSIVE FIELD LEAVES `ihs` UNSOLVED.  `aih-ι`'s
+    #   `ihs` is implicit and such a row mentions it nowhere, so nothing
+    #   determines it — 12 of the 53 rows, and `--allow-unsolved-metas`
+    #   hid every one of them for a run.  `iihs` walks the κ chain down
+    #   to `iihs D ms σ iι p = unit`, so `unit` is the value.
+    pin = "" if any(x[0] == "rec" for x in f) else " {ihs = unit}"
+    sel = ("(methsAt-sel (cdTake 51 KnotD) {mth = occAt} 0 %s\n"
+           "                 (inCD (cdTake 51 KnotD) %s tt))" % (tag, tag))
+    return (
+      "  ⟶*-appˡ (occ-head-red %s\n"
+      "    %s\n"
+      "    i\n"
+      "    %s\n"
+      "    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »\n"
+      "     ⟶*-appˡ (step (β _ _) done) »\n"
+      "     step (β _ _) done)) »\n"
+      "  occSum-red (num (lvl x)) (ilookupD KnotD %s)%s\n"
+      "    %s"
+      % (tag, sel, pay, tag, pin, _occ_aih_of(nm, f, mvals)))
+
+def _occ_gen_sort(prefix, fname):
+    """every row of one sort, as clauses of `fname`."""
+    out = []
+    for nm, decl, f in KNOT:
+        if not nm.startswith(prefix): continue
+        c = _ctor(decl)
+        nargs = [j for j, x in enumerate(f) if x[0] in ("rec", "nat")]
+        an = _names(c, nargs)
+        recs = [(j, x) for j, x in enumerate(f) if x[0] == "rec"]
+        mv = [_occ_child(x, an[j]) for j, x in recs]
+        _occ_assert_no_trailing_zero(nm, mv)
+        body = _occ_row_body(nm, decl, f, an, mv, "")
+        cast = _occ_cast_chain(mv)
+        if cast:
+            body = "  ⟶*-castᵣ (%s)\n   (%s)" % (cast, body.strip())
+        out.append("%s x %s i =\n%s" % (fname, _pat(c, nargs, an), body))
+    return "\n".join(out)
+
+_OCCAGREE_HDR = "------------------------------------------------------------------------\n-- OCP-0009 · KNOT — ★★★ `occK`'s ADEQUACY, ALL 53 ROWS.\n--\n-- ⚠ GENERATED by `tools/gen-knot.py`.  Do not hand-edit.\n--\n--   agree-ty  : app (ielim KnotD i occMethsK ⌈A⌉) ⟨lvl x⟩ ⟶* ⌈b2n (occTy x A)⌉\n--   agree-tm  : … for terms          agree-var : … for variables\n--   zero-desc / zero-dcon / zero-idesc : a description has no ambient\n--                                        variable, so it answers 0\n--\n-- ★ SIX, NOT NINE.  `Lib/IFold.scopeAt` SKIPS a child pinned to a\n--   literal depth, so a closed `RTy ε` is never entered and owes `ok`\n--   rather than a `zero-ty-closed` proof; and the only edge into an\n--   `ICon` is `cIDesc-cons`'s `lit(1)`, so there is no `zero-icon`.\n------------------------------------------------------------------------\n\n-- ⚠ NO `--allow-unsolved-metas`.  It was on by accident for one run and\n--   would have masked exactly the gaps this module exists to find —\n--   12 rows with no recursive field leave `ihs` unsolved and it\n--   reported rc=0 on every one.\n--\n-- ★ ALL 53 ROWS.  48 generated; the two `Var` rows hand-written below\n--   (`cVar-vz` is spliced with `occVz`, not folded); the three `ICon`\n--   rows are UNREACHABLE — `cIDesc-cons`'s edge is `lit(1)`, skipped.\n{-# OPTIONS --safe #-}\nmodule DirectedHoTT.Examples.Knot.OccAgree where\n\nopen import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )\nopen import DirectedHoTT.Spec.Syntax\n  using ( Cx; ε; _∙; RTm; RTy; Var; vz; vs; var; lam; app; pair; unit; idrefl\n        ; fst; snd; absurd; ordtr; ⌜base⌝; ⌜Π⌝; ⌜Σ⌝; ⌜Hom⌝; hrefl; tr; ap\n        ; ⌜Id⌝; ⌜Nat⌝; ⌜Unit⌝; ⌜Mu⌝; ⌜IMu⌝; jsub; nzero; nsuc; natrec\n        ; con; elim; icon; ielim; base; U; Π; Σ'; El; Hom; Id; Unit; Nat\n        ; Mu; IMu; Desc; DCon; IDesc; dnil; _◃_; dι; dρ; dκ; inil; _◂_\n        ; iihs; isingle; sel; ilookupD )\nopen import DirectedHoTT.Spec.Typing using ( _⟶*_; step; done; β; βfst; βsnd )\nopen import DirectedHoTT.Spec.Variance using ( 𝔹; _∨_; occTm; occTy; eqv )\nopen import DirectedHoTT.Lib.IFold using ( eqℕ )\nopen import DirectedHoTT.Lib.IMeths using ( methsAt-past )\nopen import DirectedHoTT.Lib.IHeadRed using ( ihead-red )\nopen import DirectedHoTT.Lib.NatEq using ( eqNatTm )\nopen import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; Var-vsK )\nopen import DirectedHoTT.Spec.Typing using ( ξ-fst )\nopen import DirectedHoTT.Examples.Knot.Occ using ( occVz; occTail )\nopen import DirectedHoTT.Lib.NatEqNum using ( eqNat-red )\nopen import DirectedHoTT.Lib.NatNum using ( num-stable )\nopen import DirectedHoTT.Examples.Knot.OccLvlEq using ( eqv-lvl )\nopen import normalizer.Syntax.Types using ( _≡_; refl; sym; cong; trans )\nopen import DirectedHoTT.Metatheory.RedCong\n  using ( ⟶*-appˡ; ⟶*-fst; ⟶*-snd; ⟶*-ielimᵗ )\nopen import DirectedHoTT.Lib.RedChain using ( _»_ )\nopen import DirectedHoTT.Lib.NatNum using ( num )\nopen import DirectedHoTT.Lib.BoolNum using ( b2n; b2n-∨ )\nopen import DirectedHoTT.Lib.NatMaxNum using ( maxℕ; maxℕ-assoc )\nopen import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )\nopen import DirectedHoTT.Lib.IMeths using ( cdTake; methsAt-sel; inCD; tt )\nopen import DirectedHoTT.Lib.IHeadRed using ( ihead-red )\nopen import DirectedHoTT.Lib.IOccRed\n  using ( IHocc; AllIH; aih-ι; aih-κ; aih-ρ; occSum-red; ok )\nopen import DirectedHoTT.Examples.Knot.Desc using ( KnotD )\nopen import DirectedHoTT.Examples.Knot.Sorts using ( sTy; sTm; sDesc; sDCon; sIDesc; sVar; len )\nopen import DirectedHoTT.Examples.Knot.Tags\nopen import DirectedHoTT.Examples.Knot.Map\n  using ( enTy; enTm; enDesc; enDCon; enIDesc; enICon; enVar )\nopen import DirectedHoTT.Examples.Knot.Occ using ( occMethsK; occAt )\nopen import DirectedHoTT.Examples.Knot.OccLvl using ( lvl )\n\n-- ⚠ every `_` spelled out (`meta-standing-for-a-computation`)\nocc-head-red : {Γ' : Cx} (k : ℕ) → sel k (occMethsK {Γ'}) ⟶* occAt k →\n               (i p : RTm Γ') {u : RTm Γ'} →\n               app (app (app (occAt k) i) p)\n                   (iihs KnotD occMethsK (isingle i) (ilookupD KnotD k) p) ⟶* u →\n               ielim KnotD i occMethsK (icon k p) ⟶* u\nocc-head-red k sp i p h = ihead-red KnotD occMethsK k i p sp h\n\n------------------------------------------------------------------------\n-- THE SIX STATEMENTS.\n--\n-- ⚠ THE INDEX `i` IS A PARAMETER, not rebuilt: `iihs` hands each child\n--   `subTm (isingle i) (pair s (snd (var vz)))`, so a row that PINNED\n--   its index could never match a child.  `Knot/SzAgree.agree i t` does\n--   the same.\n------------------------------------------------------------------------\nagree-ty : {Γ Θ : Cx} (x : Var Γ) (A : RTy Γ) (i : RTm Θ) →\n           IHocc (num (lvl x)) (ielim KnotD i occMethsK (enTy {Γ} {Θ} A))\n                 (b2n (occTy x A))\nagree-tm : {Γ Θ : Cx} (x : Var Γ) (t : RTm Γ) (i : RTm Θ) →\n           IHocc (num (lvl x)) (ielim KnotD i occMethsK (enTm {Γ} {Θ} t))\n                 (b2n (occTm x t))\n-- ⚠ QUANTIFIES THE LEVEL, NOT A SECOND VARIABLE — the `(x y : Var Γ)`\n--   form is UNPROVABLE at `cVar-vs`.  `LVL-ATTEMPTS.md`.\nagree-var : {Γ Θ : Cx} (k : ℕ) (y : Var Γ) (i : RTm Θ) →\n            IHocc (num k) (ielim KnotD i occMethsK (enVar {Γ} {Θ} y))\n                  (b2n (eqℕ k (lvl y)))\nzero-desc : {Γ Θ : Cx} (x : Var Γ) (D : Desc) (i : RTm Θ) →\n            IHocc (num (lvl x)) (ielim KnotD i occMethsK (enDesc {Θ} D)) 0\nzero-dcon : {Γ Θ : Cx} (x : Var Γ) (C : DCon) (i : RTm Θ) →\n            IHocc (num (lvl x)) (ielim KnotD i occMethsK (enDCon {Θ} C)) 0\nzero-idesc : {Γ Θ : Cx} (x : Var Γ) (E : IDesc) (i : RTm Θ) →\n             IHocc (num (lvl x)) (ielim KnotD i occMethsK (enIDesc {Θ} E)) 0\n\n"
+
+_OCCAGREE_VAR = "\nsel-vz : {Γ : Cx} → sel tagVar-vz (occMethsK {Γ}) ⟶* occVz\nsel-vz = methsAt-past (cdTake 51 KnotD) {mth = occAt} {tl = occTail} 0 0 » step (βfst _ _) done\n\nsel-vs : {Γ : Cx} → sel tagVar-vs (occMethsK {Γ}) ⟶* occAt tagVar-vs\n-- ⚠ `sel 1 t = fst (snd t)`, so the `βsnd` redex sits UNDER a `fst` and\n--   needs `ξ-fst`.  A bare `step (βsnd _ _)` is looking at the wrong\n--   position — Agda names it: `snd (pair _ _) != fst (snd (pair …))`.\nsel-vs = methsAt-past (cdTake 51 KnotD) {mth = occAt} {tl = occTail} 0 1\n       » step (ξ-fst (βsnd _ _)) done » step (βfst _ _) done\n\n------------------------------------------------------------------------\n-- ROW 1 — `cVar-vz`, the SPLICED row.  `occVz` has FOUR binders\n--   (i, p, ihs, k); the head reduction consumes three and the level\n--   argument the fourth.\n------------------------------------------------------------------------\n------------------------------------------------------------------------\n-- ★★★ THE STATEMENT QUANTIFIES THE LEVEL, NOT A SECOND VARIABLE.\n--   `agree-var x y i` with both in `Var Γ` is UNPROVABLE: `cVar-vs`\n--   descends to `enVar y'` with `y' : Var Γ` while `x : Var (Γ ∙)`, and\n--   a `vz` has no counterpart in `Γ`.  See `LVL-ATTEMPTS.md`.\n------------------------------------------------------------------------\nagree-var {Γ ∙} k vz i =\n  ⟶*-appˡ (ihead-red KnotD occMethsK tagVar-vz i\n             (pair (num (len Γ))\n                   (pair (idrefl ⌜Nat⌝ sVar)\n                         (pair (idrefl ⌜Nat⌝ (nsuc (num (len Γ)))) unit)))\n             sel-vz\n             (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »\n              ⟶*-appˡ (step (β _ _) done) »\n              step (β _ _) done))\n  » step (β _ _) done\n  -- ⚠ `fst p` has passed THREE binders, so it is not literally\n  --   `num (len Γ)` — it only REDUCES there.  `eqNat-red` takes the\n  --   reduction; `eqNat-num` (literal numerals) cannot be used, and\n  --   cannot be patched at the call site because `eqNatTm` mentions its\n  --   argument twice.\n  » eqNat-red k (len Γ) done\n      (step (βfst _ _) done » ⟶*-castᵣ (num-stable _ _ _ _ (len _)) done)\n\n-- ★ `cVar-vs` IS GENERIC — `lvl (vs y) = lvl y`, which is exactly what\n--   the fold returns, so there is no cast at all.  (With de Bruijn\n--   INDICES this row would have needed a shift; `Knot/Occ`'s header\n--   says so, and this is where it is cashed.)\nagree-var {Γ ∙} k (vs y) i =\n  ⟶*-appˡ (ihead-red KnotD occMethsK tagVar-vs i\n             (pair (num (len Γ))\n                   (pair (enVar y)\n                         (pair (idrefl ⌜Nat⌝ sVar)\n                               (pair (idrefl ⌜Nat⌝ (nsuc (num (len Γ)))) unit))))\n             sel-vs\n             (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »\n              ⟶*-appˡ (step (β _ _) done) »\n              step (β _ _) done))\n  » occSum-red (num k) (ilookupD KnotD tagVar-vs)\n      (aih-κ (aih-ρ (b2n (eqℕ k (lvl y)))\n                (⟶*-appˡ (step (βfst _ _) done »\n                       ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done)\n                                   » step (βfst _ _) done)))\n                 » agree-var k y _)\n                (aih-κ (aih-κ aih-ι))))\n"
+
+def gen_occagree():
+    body = "\n".join(_occ_gen_sort(p, s) for p, s in
+                     [("cTy-", "agree-ty"), ("cTm-", "agree-tm"),
+                      ("cDesc-", "zero-desc"), ("cDCon-", "zero-dcon"),
+                      ("cIDesc-", "zero-idesc")])
+    # ⚠ COUNT THE CLAUSES.  A silently-dropped sort would still emit a
+    #   well-formed module that fails only at the mutual block.
+    n = sum(1 for nm, _, _ in KNOT
+            if nm.split("-")[0] in ("cTy", "cTm", "cDesc", "cDCon", "cIDesc"))
+    assert n == 48, "expected 48 generated occ rows, got %d" % n
+    return _OCCAGREE_HDR + body + _OCCAGREE_VAR
+
 def gen_szagree():
     rows = [(nm, decl, f) for nm, decl, f in KNOT if nm.startswith("cTm-")]
     assert len(rows) == 30, f"expected 30 RTm rows, got {len(rows)}"
@@ -5290,7 +5552,7 @@ _WRAP_LEDGER = {
     #   of the rows are the COMPUTED fold, so the agreement should follow
     #   `Lib/ISzRed`'s pattern — one lemma about the fold plus one real
     #   row — rather than 53 chains.  `cVar-vz` is the real row.
-    "occK":   "⬜ OWED — agreement with `occTm`/`occTy`, at a LEVEL.",
+    "occK":   "✅ DISCHARGED — `Knot/OccAgree`, ALL 53 ROWS, generated:\n--                `app (ielim KnotD i occMethsK ⌈A⌉) ⟨lvl x⟩ ⟶*\n--                 ⌈b2n (occTy x A)⌉`, and the same for terms.\n--                ⚠ PROVING IT FOUND A DEFECT: `occK` was NOT\n--                faithful, because the fold descended into CLOSED\n--                sub-syntax whose bound variables collide on\n--                LEVELS with ambient ones.  Fixed by\n--                `Lib/IFold.scopeAt`; `Knot/PickScope` pins the\n--                four skipped edges.  `OCC-ATTEMPTS.md` §35-36.\n--                The `Var` rows carry the real content —\n--                `Knot/OccLvlEq.eqv-lvl`, i.e. `lvl` is INJECTIVE\n--                on `Var Γ`.  `LVL-ATTEMPTS.md`.",
     "occVzK": "⬜ OWED — `occK` with the level taken as `pred (snd ⟨i⟩)`;\n--                a COROLLARY of `occK`'s once the level convention is\n--                fixed (`vz` in a depth-`nsuc n` context is level `n`).",
     # ★★★ `⊢ielim`'s FIVE PROGRAMS, 2026-09-06.
     "iextK":         "⬜ OWED — agreement with `iext`, VIA its factorisation\n--                `iext σ t ≡ single t ∘ extS σ` (the same two-step debt\n--                `iconSK` carries).",
@@ -5645,6 +5907,7 @@ if __name__ == "__main__":
     open(os.path.join(out, "CtorsV.agda"), "w").write(gen_ctorsv())
     open(os.path.join(out, "Map.agda"),   "w").write(gen_map())
     open(os.path.join(out, "SzAgree.agda"), "w").write(gen_szagree())
+    open(os.path.join(out, "OccAgree.agda"), "w").write(gen_occagree())
     # ⚠⚠ NOT SPLIT, AND THE FIRST ATTEMPT TO SPLIT IT WAS A MISREADING.
     #   The 25-row module was OOM-killed at 234s (and 260s under `-c`), so
     #   it was split like `RedWfA`/`RedWfB`.  ★ THOSE TIMES WERE THE COLD
