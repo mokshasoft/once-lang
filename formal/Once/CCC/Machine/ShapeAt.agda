@@ -240,7 +240,7 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
   valid→shape valid-unit-wf = shape-unit
   valid→shape (valid-pair-wf lm r1 r2 b1 b2 b3 va vb) =
     shape-pair lm r1 r2 b1 b2 b3 (valid→shape va) (valid→shape vb)
-  valid→shape (valid-closure-wf b< lm r1 r2 b1 b2 venv) =
+  valid→shape (valid-closure-wf lm r1 r2 b1 b2 venv) =
     shape-closure lm r1 r2 b1 b2 (valid→shape venv)
   valid→shape (valid-inl-wf {m = m} lm tg r b1 b2 vp) =
     shape-inl lm (tag-of m 0 _ _ tg) r b1 b2 (valid→shape vp)
