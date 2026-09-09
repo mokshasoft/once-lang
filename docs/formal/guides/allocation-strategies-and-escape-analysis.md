@@ -569,7 +569,18 @@ The combinations:
 
 ### Why This Matters for Once
 
-The escape analysis infrastructure we built (`Once/Escape.agda`) identifies which allocations don't escape. This information is **representation-agnostic** - the proofs hold regardless of boxing.
+> **Superseded (2026-09-09, plan 0.86 stage G).** `Once/Escape.agda` and its
+> correctness proofs are DELETED. The pass never rewrote anything: its ten
+> Heap→Stack rules lived in the module header as prose, while `escape-once`
+> was a structural walk that rebuilt the IR unchanged. Several rules were not
+> even sayable any more — they matched on `⟨ f , g ⟩ m` and `curry f m`, and
+> `AllocMode` has since left both constructors (D142/D147). The pass was also
+> off the real path: the apex compiles through `optimize`, never through the
+> `pipeline` alias that called `escape`. The rest of this document is retained
+> as the design record for what an escape analysis WOULD do, should Once
+> reintroduce one on a placement pass rather than on a mode annotation.
+
+The escape analysis described here identifies which allocations don't escape. This information is **representation-agnostic** - the proofs hold regardless of boxing.
 
 For escape analysis to deliver significant performance gains, Once needs:
 
@@ -636,9 +647,9 @@ Some types cannot be unboxed:
 
 | Component | Status |
 |-----------|--------|
-| Escape analysis rules | Implemented (`Once/Escape.agda`) |
-| Correctness proofs | Complete (`Once/Escape/Correct.agda`) |
-| AllocMode in IR | Present (Stack/Heap annotations) |
+| Escape analysis rules | REMOVED — documented in a header, never implemented (deleted 2026-09-09) |
+| Correctness proofs | REMOVED — they proved the identity walk correct (deleted 2026-09-09) |
+| AllocMode in IR | Being removed (plan 0.86 stage G); gone from pairs and `curry` |
 | Unboxed representation | Not yet implemented |
 | Full optimization benefit | Requires unboxing in backend |
 

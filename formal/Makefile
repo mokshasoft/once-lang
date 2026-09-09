@@ -7,13 +7,12 @@
 #   make compiler     - Build all targets
 #
 # Pipeline steps (target-independent):
-#   make frontend     - Parse → TypeCheck → Elaborate → Desugar → Optimize → Escape → Fusion
+#   make frontend     - Parse → TypeCheck → Elaborate → Desugar → Optimize → Fusion
 #   make parser       - Parser
 #   make typecheck    - Verified type checker
 #   make elaborate    - Surface → IR elaboration
 #   make desugar      - Desugaring
 #   make optimize     - Optimizer
-#   make escape       - Escape analysis
 #   make fusion       - Fusion/deforestation
 #
 # Standalone proofs (not part of compilation pipeline):
@@ -109,18 +108,13 @@ optimize:
 	@echo "Type-checking optimizer..."
 	@sh -c '$(AGDA_CMD) Once/Optimize/Correct.agda'
 
-.PHONY: escape
-escape:
-	@echo "Type-checking escape analysis..."
-	@sh -c '$(AGDA_CMD) Once/Escape/Correct.agda'
-
 .PHONY: fusion
 fusion:
 	@echo "Type-checking fusion/deforestation..."
 	@sh -c '$(AGDA_CMD) Once/Fusion/Correct.agda'
 
 .PHONY: frontend
-frontend: parser typecheck elaborate desugar optimize escape fusion
+frontend: parser typecheck elaborate desugar optimize fusion
 	@echo "Frontend proofs type-check successfully!"
 
 #-----------------------------------------------------------------------------

@@ -69,10 +69,6 @@ open import Once.Surface.Desugar public
 open import Once.Optimize public
   using (optimize; optimize-once; optimize-n)
 
--- Re-export escape analysis (stack allocation optimization)
-open import Once.Escape public
-  using (escape; escape-once; escape-n)
-
 -- Re-export Arith types and IR (OCP-0001: Orthogonal Arithmetic Compiler)
 open import Once.Arith.Type public
 open import Once.Arith.IR public
@@ -444,36 +440,6 @@ moduleSyms-aux (inj₂ cfs) = emittedSyms cfs
 
 moduleSyms : AllocMode → Bool → Module → List String
 moduleSyms m doOpt mod = moduleSyms-aux (compileResolvedModule m doOpt mod)
-
-------------------------------------------------------------------------
--- Pipeline composition (SurfaceIR → IR)
-------------------------------------------------------------------------
-
--- | IR pipeline: desugar → optimize → escape
---
--- Transforms SurfaceIR to optimized Core IR.
--- Pipeline stages:
---   1. desugar  - Convert SurfaceIR to Core IR (let-binding elimination)
---   2. optimize - Apply categorical laws + fusion (beta/eta, fold/unfold, map fusion)
---   3. escape   - Rewrite Heap → Stack where allocations don't escape
---
--- Plan 0.14 follow-up (2026-05-18): desugar is now parameterized on
--- the default AllocMode. Callers thread the user's --alloc choice from
--- the CLI; backwards-compatible aliases (-default suffix) preserve Heap
--- as the previous hardcoded behavior.
-pipeline : ∀ {A B} → AllocMode → SurfaceIR A B → IR ⌊ A ⌋ ⌊ B ⌋
-pipeline m ir = escape (optimize (desugar m ir))
-
-pipeline-default : ∀ {A B} → SurfaceIR A B → IR ⌊ A ⌋ ⌊ B ⌋
-pipeline-default = pipeline Heap
-
--- | Pipeline without escape analysis (for comparison/debugging)
-pipeline-no-escape : ∀ {A B} → AllocMode → SurfaceIR A B → IR ⌊ A ⌋ ⌊ B ⌋
-pipeline-no-escape m ir = optimize (desugar m ir)
-
--- | Pipeline without optimization (for debugging)
-pipeline-no-opt : ∀ {A B} → AllocMode → SurfaceIR A B → IR ⌊ A ⌋ ⌊ B ⌋
-pipeline-no-opt = desugar
 
 ------------------------------------------------------------------------
 -- Target selection and compilation

@@ -562,8 +562,6 @@ Use Agda's reflection capabilities to automate proof generation:
 
 - `formal/Once/Optimize.agda` - Main optimizer
 - `formal/Once/Optimize/Correct.agda` - Correctness proofs
-- `formal/Once/Escape.agda` - Escape analysis
-- `formal/Once/Escape/Correct.agda` - Escape analysis proofs
 - `formal/Once/IR.agda` - IR definition with AllocMode
 - `formal/Once/Semantics.agda` - Denotational semantics
 
