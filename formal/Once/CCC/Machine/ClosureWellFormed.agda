@@ -288,14 +288,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- Stage F: a sum whose payload FITS A REGISTER is stored INLINE — the
       -- payload cell holds the VALUE, not a pointer to it.
       --
-      -- The emitted trace already does this and always did:
-      --   instr-load-tag-lit t ∷ store-at-slot sum-slot ∷
-      --   mov-to-output ∷ store-at-slot (suc sum-slot) ∷ lea-slot sum-slot
-      -- `store-at-slot (suc sum-slot)` stores whatever `Output` holds, and
-      -- after `mov-to-output` that is the INPUT's stored value — a pointer if
-      -- the input was in memory, the value itself if it was in a register.
-      -- Only the model assumed a pointer, which is why `run-inl`/`run-inr`
-      -- could not be handed an `in-at-reg` input.
+      -- The emitted trace already does this and always did. UPDATED for 0.86
+      -- stage G (2026-09-09): this used to quote the 5-instruction STACK
+      -- lowering, which that stage DELETED along with `AllocMode` on `inl`/
+      -- `inr`. The surviving heap build is
+      --   mov-to-output ∷ store-at-slot payload-stash ∷ instr-alloc-heap 2 ∷
+      --   store-at-slot sum-stash ∷ mov-to-input ∷ instr-load-tag-lit t ∷
+      --   store-indirect ∷ load-from-slot payload-stash ∷
+      --   store-indirect-suc ∷ load-from-slot sum-stash
+      -- and the argument is unchanged in substance: `store-indirect-suc` writes
+      -- the payload cell from whatever `mov-to-output` put in `Output` — the
+      -- INPUT's stored value, a pointer if the input was in memory, the value
+      -- itself if it was in a register. (`store-at-slot (suc sum-slot)` played
+      -- that role in the deleted lowering.) Only the model assumed a pointer,
+      -- which is why `run-inl`/`run-inr` could not be handed an `in-at-reg`
+      -- input.
       --
       -- No `payload-loc`, no payload `ValidAtWF`: an inline payload has no
       -- cell of its own to be valid at. Same reason `at-reg` carries neither.

@@ -957,13 +957,26 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- storing a literal and `case` loading it back is exactly right, and
     -- `valid-inl-wf`'s `SV-Ptr` demand is what excludes it.
     --
-    -- So: `valid-inl-wf`/`valid-inr-wf` gain a LITERAL-PAYLOAD case, following
-    -- `valid-int-wf` (which already carries a `readLoc` equation for a
-    -- literal) and `valid-primitive-wf` (which already dispatches on
-    -- `FitsInReg`). The alternative — boxing a register-resident payload —
-    -- would ADD an allocation the emitter deliberately avoids and make `case`
-    -- load a pointer where it now loads a value: changing working codegen to
-    -- satisfy an over-strict proof, which is backwards.
+    -- …AND THAT CASE ALREADY EXISTS. The paragraph that stood here prescribed
+    -- it as future work — "`valid-inl-wf`/`valid-inr-wf` gain a LITERAL-PAYLOAD
+    -- case, following `valid-int-wf`". It landed on 2026-09-05 in 0.86 F (9/n)
+    -- as `valid-inl-reg-wf`/`valid-inr-reg-wf` (`ClosureWellFormed:303`), with
+    -- `PayloadAt`'s two constructors (`payload-at-loc`, `payload-in-reg`) and
+    -- `decomposeInlWF` dispatching on them. Writing the prescription without
+    -- checking was the D172 mistake a second time: concluding a witness cannot
+    -- express something without enumerating the constructors that would.
+    --
+    -- SO WHAT ACTUALLY BLOCKS THIS IS NOW UNKNOWN, and that is the honest
+    -- state. Two of the three recorded obstacles are gone:
+    --   * the literal payload — solved by stage F, above;
+    --   * D173's frontier — dissolved by 0.86 stage G. A Stack result landed in
+    --     an `AtStack` cell at a frontier nothing bumps, so `BeforeFrontier`
+    --     had no constructor to offer; the surviving lowering allocates with
+    --     `instr-alloc-heap 2`, which advances `next-heap-ref`, so
+    --     `heap-before` applies.
+    -- The remaining obligation must be re-derived against the trace that now
+    -- exists — the 10-instruction heap build — rather than inherited from prose
+    -- about the 5-instruction stack lowering, which stage G deleted.
     obs-correct-inl  : ∀ {A B} → IRObsCorrectF (inl {A} {B})
     obs-correct-inr  : ∀ {A B} → IRObsCorrectF (inr {A} {B})
 
