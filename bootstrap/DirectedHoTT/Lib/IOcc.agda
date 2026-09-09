@@ -107,10 +107,25 @@ occNd a = a
 ⊢occNd : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ OccTy → Γ ⊢ occNd a ∷ OccTy
 ⊢occNd d = d
 
--- ★★★ EVERY CHILD COUNTS — `rsum`/`pick` are `Lib/ISz`'s, not
---   `Lib/ISzSort`'s: an occurrence in a cross-sort child is still an
---   occurrence.
-open IF.Fold 𝔹 (λ _ → true) (λ b _ → b)
+-- ★★★ AMBIENT-SCOPE CHILDREN ONLY — `pick` is `IF.scopeAt`, which is
+--   neither of the other two.
+--
+-- ⚠⚠ THE HEADER THIS REPLACES WAS HALF-RIGHT, AND THAT IS WHY IT WAS
+--   WRONG.  It read:
+--
+--     ★★★ EVERY CHILD COUNTS — `rsum`/`pick` are `Lib/ISz`'s, not
+--       `Lib/ISzSort`'s: an occurrence in a cross-sort child is still
+--       an occurrence.
+--
+--   The premise is true — `El : Ty → Tm` carries a variable, so
+--   `sameSortAt` really is too strong.  The conclusion does not follow:
+--   "not same-sort" is not "everything".  `occ` needs a THIRD filter,
+--   and taking the nearest existing one made `occK` unfaithful — it
+--   answered 1 for a variable bound inside a CLOSED description, whose
+--   encoding is the level-0 node an ambient variable also occupies.
+--   `OCC-ATTEMPTS.md` §35; the four skipped edges are pinned in
+--   `Examples/Knot/PickScope`.
+open IF.Fold 𝔹 (λ _ → true) IF.scopeAt
              OccTy ty-OccTy refl refl
              occZ occOp occNd ⊢occZ ⊢occOp ⊢occNd public
   renaming ( ifStep    to occStep    ; ⊢ifStep    to ⊢occStep

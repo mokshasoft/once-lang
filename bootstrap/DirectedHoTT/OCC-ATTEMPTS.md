@@ -515,3 +515,150 @@ work for a problem that a better definition deletes.
 
 ⇒ ALL FOUR ROW SHAPES NOW PASS: `base` (0 fields), `El` (1, cross-sort),
   `Π` (2, one under a binder), `app` (2, same depth), `Hom` (3).
+
+------------------------------------------------------------------------
+## 35. `agree-ty` / `agree-tm` ARE FALSE AS STATED — `occK` is not faithful
+
+**Not an attempt that failed — a statement that cannot be proved.** Found
+while generating the remaining 48 rows, by working out what each row's
+children owe.
+
+`Knot/Occ`'s header justifies the constant rows as
+
+> `Mu D` → `0`, because `Desc` is a closed sort with no variables
+
+`Desc` is closed **with respect to `Γ`**. It is not variable-free:
+
+```agda
+dκ : RTy ε → DCon → DCon        -- takes a CLOSED type …
+leaky = Π Nat (El (var vz))     -- … and a closed type binds its OWN vars
+```
+
+`occK` compares raw **levels**, and `enVar {Γ ∙} vz = Var-vzK (num (len Γ))`,
+so the `vz` bound inside `leaky` encodes to `Var-vzK (num 0)` — the same
+node as a free level-0 variable of `Γ`. `occVz = eqNatTm k (fst p)` answers
+1 for both.
+
+```agda
+occTy vz (Mu (dκ leaky dι ◃ dnil)) ≡ false      -- checked by refl
+occK  … at level 0                  ⟶* num 1    -- by the 7 steps below
+```
+
+`tmp/OccCex.agda` checks the `refl`-decidable halves —
+`occTy vz (Mu (dκ leaky dι ◃ dnil)) ≡ false` and
+`enVar {ε ∙} vz ≡ Var-vzK (num 0)`. The object side is a
+reduction, so it is argued, not computed: (1) every row but `cVar-vz` uses
+`occMethod`, i.e. the fold at `pick = λ _ → true`, so **every `iρ` counts**;
+(2) `cTy-Mu`'s one `iρ` child has sort `sDesc`; (3) `cDCon-kap`'s has sort
+`sTy`; (4) that `RTy ε` contains `Var-vzK (num 0)`; (5) `occVz` matches it;
+(6) `op = max`; (7) the meta side is `false`.
+
+**Affected rows** — every one with a description-sort or `('lit', 0)` child:
+`cTy-Mu`, `cTy-IMu`, `cTm-cMu`, `cTm-cIMu`, `cTm-elim`, `cTm-ielim`,
+`cDesc-cons`, `cDCon-rho`, `cDCon-kap`, `cIDesc-cons`, `cICon-rho`,
+`cICon-kap`. The five proved rows (`base`, `El`, `Π`, `app`, `Hom`) are
+sound — they have no such child.
+
+### ⚠ THE SIMPLIFICATION WAS THE DEFECT
+
+`Lib/IOccRed`'s header presents the missing filter as an advantage:
+
+> SIMPLER — `Lib/IOcc` instantiates the fold at `(λ _ → true)`, so
+> `pick (rsum C) j` is ALWAYS `true`: every recursive field counts.
+> None of `ISzRed`'s `sameSortAt` / `false` cases exist.
+
+That *is* the bug. `Lib/ISzSort` kept the filter; `Lib/IOcc` dropped it and
+became unfaithful. **Fight the abstraction:** the fix is `pick`, not a
+cleverer proof — no proof can close a false statement.
+
+### THE FIX  ⚠ SUPERSEDED BY §36 — the sort clause turned out unnecessary
+
+`pick j = descendable (fst j) ∧ not (literalZero (snd j))`, where
+`descendable` keeps `sTy`/`sTm`/`sVar` and drops the four description
+sorts. The depth clause is what drops `IMu`'s closed `RTy ε` index type,
+which `occTy` also ignores; closed children are pinned to a literal
+`num 0` by their ford, while ambient ones are `snd (var vz)`, so the test
+is syntactic and decidable. `pick`'s interface (`{Δ} → R → RTm Δ → 𝔹`, with
+`fieldSort` already in `Lib/IFold`) needs no change.
+
+Cost: `Lib/IOccRed.AllIH` gains the skipped-child constructor `ISzRed`
+already has, so all rows carry the filter — modest churn on the five
+proved rows. Skipping a depth-0 child is sound because `Var ε` is empty.
+
+### ⚠ WHAT THIS SAYS ABOUT THE LEDGER
+
+`occK`'s row typechecked green, and `check-formers.sh` is satisfied: the
+defect is in what the program *computes*, which no type in this
+development mentions. Same mechanism as
+`typechecking-cannot-see-an-encoding` — and this time the adequacy lemma
+is what caught it. **The faithfulness gap is doing its job.**
+
+
+------------------------------------------------------------------------
+## 36. FIXED — and the fix is HALF of what §35 proposed
+
+§35 proposed a two-clause `pick`: drop the four description sorts, AND
+drop children pinned to a literal depth. **The sort clause is not needed.**
+A spike (`tmp/ScopeHazard.agda`) settled it, since promoted to
+`Examples/Knot/PickScope` — which is the TRACKED artifact, and the one
+the library comments cite:
+
+```agda
+scopeAt _ j with depthAt j
+... | someℕ _ = false   -- literal depth ⇒ a FRESH scope ⇒ do not descend
+... | noℕ     = true    -- mentions the ambient index ⇒ same scope
+```
+
+**Why one clause suffices.** Descending into a `Desc`/`IDesc` at the
+ambient depth is harmless, because neither can *reach* a variable without
+crossing a literal-pinned edge:
+
+* `Desc` contains no `RTm` at all — only `dρ` markers and `dκ`'s
+  `RTy ε`, and `⊢DCon-kapK` pins that to `num 0`.
+* `IDesc`'s only variable-bearing content is inside `ICon`s, and
+  `⊢IDesc-consK` pins the `ICon` child to `num 1`.
+
+⇒ exactly **four** of the knot's 82 recursive children restart a scope,
+and Agda names them:
+
+```agda
+knot-skips     : skipD KnotD ≡ 4                                    -- refl
+knot-skip-rows : skipRows 0 KnotD
+               ≡ rcons 10 (rcons 39 (rcons 45 (rcons 47 rnil)))     -- refl
+--   10 cTy-IMu   39 cTm-cIMu   45 cDCon-kap   47 cIDesc-cons
+```
+Controlled: changing one index gives `45 != 44`.
+
+### ★★★ AND THE SCOPE-INDEX REDESIGN WAS NOT NEEDED
+
+The proposed design fix (`FUTURE.md` D′: *index by the SCOPE rather than
+its LENGTH*) would have been a rewrite of `Knot/Map` and every `⊢…K`
+signature. **The information was already in the depth index.** A child in
+the ambient scope has an index mentioning the index VARIABLE, so it is
+not a closed numeral; a scope-restarting child is pinned to a literal by
+its own typing rule. `Lib/IFold.numVal` — already present, for sort tags
+— is the entire test.
+
+⚠ Do not read this as "D′ was wrong". D′ is about `wkK`, where two
+DIFFERENT renamings share a type; that class is real and still open. It
+is this bug that D′ does not describe.
+
+### WHAT IT COST
+
+| | |
+|---|---|
+| `Lib/IFold` | `depthAt` + `scopeAt`, ~12 lines |
+| `Lib/IOcc` | one parameter changed; **typing derivations unchanged** — `⊢ifMethod` is parameterised over `pick`, as designed |
+| `Lib/IOccRed` | `IHof`/`maxIf`/skipped case restored, mirroring `Lib/ISzRed` |
+| the 5 proved rows | ★ **zero edits.** Their children are all ambient, so `scopeAt true j` reduces to `true`, `IHof true` is `IHocc`, `maxIf true` is `maxℕ` |
+
+★ **The last row is the sign the abstraction was right:** a fix that is
+invisible at every use site that was already correct.
+
+### ⬜ STILL OWED
+
+`PickScope` says WHICH children the fold skips. It does **not** say those
+are exactly the ones `Spec/Variance.occTy`/`occTm` decline to recurse
+into — that correspondence is what licenses adequacy, and it is
+discharged row by row by `agree-ty`/`agree-tm`. The 48 remaining rows are
+unblocked, not written.
