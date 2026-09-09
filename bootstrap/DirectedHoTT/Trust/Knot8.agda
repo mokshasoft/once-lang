@@ -24,6 +24,8 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot8 where
 
+import DirectedHoTT.Examples.Knot.SubMot
+import DirectedHoTT.Examples.Knot.SubNat
 import DirectedHoTT.Examples.Knot.SubRed
 import DirectedHoTT.Examples.Knot.SubSpec
 import DirectedHoTT.Examples.Knot.Sz
