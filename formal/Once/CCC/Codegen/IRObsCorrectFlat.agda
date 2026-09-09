@@ -929,6 +929,32 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- CLASS B — allocating, no control flow. Step 1; adds the frontier thread.
     obs-correct-pair : ∀ {A B C} (f : IR A B) (g : IR A C)
                      → IRObsCorrectF ⟨ f , g ⟩
+    -- D171: THE DISCHARGE DICTATED A SPEC QUESTION — named, not guessed.
+    --
+    -- With `flat-store-floc` (above) the store read-back is no longer the
+    -- obstacle, so the `in-loc` residence goes through: the payload cell holds
+    -- `SV-Ptr loc` and `valid-inl-wf` is exactly what the two stores wrote.
+    --
+    -- The `in-reg` residence does NOT. `InputAt`'s `in-reg fit` says `Input1`
+    -- holds `prim-sv fit v` — a LITERAL — so `mov-to-output` then
+    -- `store-at-slot` writes a literal into the payload cell, while
+    -- `valid-inl-wf` demands `readLoc s (sucLoc sum-loc) ≡ just (SV-Ptr
+    -- payload-loc)`. A pointer. There is nothing to build, and no amount of
+    -- proof effort closes it: the WITNESS and the EMITTER disagree about what a
+    -- sum's payload cell contains when the payload fits in a register.
+    --
+    -- Two resolutions, and this is a SPEC CHOICE:
+    --   (a) the emitter BOXES a register-resident payload — `inl`/`inr`
+    --       allocate a cell for it — so the payload cell always holds a
+    --       pointer and the witness is right as it stands; or
+    --   (b) `valid-inl-wf`/`valid-inr-wf` gain a literal-payload case, the way
+    --       `valid-primitive-wf` already dispatches on `FitsInReg`.
+    --
+    -- Deferred with the case named, per this module's own gate (see
+    -- `obs-correct-In`: "adding it is a spec change, and the discharge dictates
+    -- it rather than a guess ahead of time"). The discharge has now dictated
+    -- it; what it has not done is choose, because that is a codegen/model
+    -- decision and not a proof one.
     obs-correct-inl  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inl {A} {B} m)
     obs-correct-inr  : ∀ {A B} (m : AllocMode) → IRObsCorrectF (inr {A} {B} m)
 
