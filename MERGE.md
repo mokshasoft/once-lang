@@ -195,6 +195,44 @@ Proof-only branches skip this step — but check the "proof-only" claim by
 reading the diff (step 1), not the commit messages: a "proof" commit that
 edits a function definition in an extracted module IS a codegen change.
 
+## 4b. Reachability gate (the trust base must not grow silently)
+
+Dump the AST and trust base reachable from the apex for BOTH refs and compare:
+
+    ./run-ast-dumps.v2.sh                 # master and the branch
+    HEAP=6G COMPACT=-c20 ./run-ast-dumps.v2.sh <ref>   # if a module OOMs
+
+It is slow (tens of minutes per ref) and resumes from cached interfaces, so
+start it during step 1 and read it here. Three checks, in order of severity:
+
+- **The trust base must not grow without a decision.** Compare `counts.trustBase`
+  and the per-marker split. A new `postulate`, `TERMINATING` or
+  `NO_POSITIVITY_CHECK` on the proof path is a residual, and step 2 owes it an
+  entry. A postulate SPLITTING is fine and shows up as +1/-1 (`comp-step` became
+  `comp-traces-agree` plus a proved `value-realized`); a postulate APPEARING is
+  not.
+
+- **A module must not LEAVE `reachable` unremarked.** This is the check that
+  matters most, because nothing else in the build performs it. When a proof
+  stops being used the tree stays green — that is how seven `Once/Optimizer/*`
+  modules rotted unnoticed from 2026-07-14, and how the parked `*WF` cluster
+  accrued D159 rot from a change made on its own branch. Removing the last
+  consumer of a proof is a real event; it should be intentional.
+
+- **Deletions must be checked against `reachable`, never against imports.**
+  Unreachable means "contributes no declaration to the apex's proof term". It
+  does NOT mean deletable: re-export shells contribute nothing, and a module
+  can be needed to COMPILE without being on the proof path. Classify an orphan
+  three ways before cutting — superseded (something on the path replaced it),
+  unwired prize (it proves what the apex postulates: plan 0.64's content test),
+  or never wired.
+
+READ THE COUNTS CORRECTLY. `counts` are DECLARATIONS, not source sites, and the
+gap is large: 202 `terminating-pragma` entries in one dump were 22 actual
+pragmas — one pragma covers a mutual block, and Agda's generated `-invert*`
+helpers each inherit the marker. Quote source-level numbers in a decision entry;
+declaration counts are for detecting CHANGE, not for stating size.
+
 ## 5. Merge
 
 - Fast-forward or `--no-ff` per repo convention; do not squash away the
