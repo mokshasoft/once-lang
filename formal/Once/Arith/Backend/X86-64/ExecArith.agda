@@ -12,7 +12,7 @@
 -- entry rsp), and `scratch-below` discharges `rsp + 8·slot < rsp + N` from the
 -- slot bound (`+-monoʳ-<`). The abstract machine has no stack-growth direction;
 -- this arch instance picks additive addressing, making the slot→address map
--- unconditionally injective (see ArithSimX86-64's `sa-inj`, no frontier bound).
+-- unconditionally injective — `sa-inj` needs no frontier bound.
 -- `mem-effect`/`mem-preserves` come from MemEffectCore, the block fold from
 -- ExecArithCore.
 ------------------------------------------------------------------------

@@ -82,8 +82,7 @@ open import Data.Maybe using (just; nothing)
 -- it at `r ∈ writes i`, so single-target instructions ignore `r`.
 -- Exposed (not private): `scratch-addr` / `path-load` are the memory addresses
 -- `val` reads, so the concrete↔abstract R-scratch / R-input correspondences
--- (Once.Adequacy.ArchCorrectness.ArithSimX86-64, B2.3) must be stated against
--- exactly them.
+-- (B2.3) are stated against exactly them.
 rd : State → XReg → X64.Word
 rd s x = readReg (regs s) (arith-reg x)
 

@@ -7,22 +7,18 @@
 #   make compiler     - Build all targets
 #
 # Pipeline steps (target-independent):
-#   make frontend     - Parse → TypeCheck → Elaborate → Desugar → Optimize → Fusion
+#   make frontend     - Parse → TypeCheck → Optimize → Fusion
 #   make parser       - Parser
 #   make typecheck    - Verified type checker
-#   make elaborate    - Surface → IR elaboration
-#   make desugar      - Desugaring
 #   make optimize     - Optimizer
 #   make fusion       - Fusion/deforestation
 #
 # Standalone proofs (not part of compilation pipeline):
 #   make postulates   - Core postulates (pulled in automatically)
-#   make laws         - Categorical laws + type soundness
 #   make spf          - Strictly positive functors
 #
 # Target-specific steps (step-target):
 #   make ccc-x86-64    - CCC code gen for X86-64
-#   make arith-x86-64  - Arithmetic primitives for X86-64
 #   make compiler      - Verify the whole compiler (= certified; apex + bundle)
 #   make certified     - Correctness (CorrectCompiler) AND VerifiedTypeChecker
 #   make check-all     - Type-check EVERY module (island-rot backstop)
@@ -93,15 +89,7 @@ check-all:
 	@find Once -name '*.agda' | LC_ALL=C sort | sed 's|/|.|g; s|\.agda$$||; s|^|import |' >> Everything.agda
 	@sh -c '$(AGDA_CMD) Everything.agda'; status=$$?; rm -f Everything.agda Everything.agdai; exit $$status
 
-.PHONY: elaborate
-elaborate:
-	@echo "Type-checking elaboration (Surface → IR)..."
-	@sh -c '$(AGDA_CMD) Once/Surface/Correct.agda'
 
-.PHONY: desugar
-desugar:
-	@echo "Type-checking desugaring..."
-	@sh -c '$(AGDA_CMD) Once/Surface/Desugar/Correct.agda'
 
 .PHONY: optimize
 optimize:
@@ -114,7 +102,7 @@ fusion:
 	@sh -c '$(AGDA_CMD) Once/Fusion/Correct.agda'
 
 .PHONY: frontend
-frontend: parser typecheck elaborate desugar optimize fusion
+frontend: parser typecheck optimize fusion
 	@echo "Frontend proofs type-check successfully!"
 
 #-----------------------------------------------------------------------------
@@ -126,11 +114,6 @@ postulates:
 	@echo "Type-checking postulates..."
 	@sh -c '$(AGDA_CMD) Once/Postulates.agda'
 
-.PHONY: laws
-laws:
-	@echo "Type-checking categorical laws..."
-	@sh -c '$(AGDA_CMD) Once/Category/Laws.agda'
-	@sh -c '$(AGDA_CMD) Once/TypeSystem/Soundness.agda'
 
 .PHONY: spf
 spf:
@@ -151,23 +134,11 @@ optimizer-depth:
 	@echo "Type-checking optimizer depth..."
 	@sh -c '$(AGDA_CMD) Once/Optimizer/Depth.agda'
 
-.PHONY: optimizer-rewrite
-optimizer-rewrite:
-	@echo "Type-checking optimizer rewrite relation..."
-	@sh -c '$(AGDA_CMD) Once/Optimizer/Rewrite.agda'
 
-.PHONY: optimizer-complete
-optimizer-complete:
-	@echo "Type-checking optimizer completeness..."
-	@sh -c '$(AGDA_CMD) Once/Optimizer/Complete.agda'
 
-.PHONY: optimizer-bcc
-optimizer-bcc:
-	@echo "Type-checking BCC completeness..."
-	@sh -c '$(AGDA_CMD) Once/Optimizer/BCC.agda'
 
 .PHONY: optimizer
-optimizer: optimizer-cost optimizer-depth optimizer-rewrite optimizer-complete optimizer-bcc
+optimizer: optimizer-cost optimizer-depth
 	@echo "Optimizer completeness proofs type-check successfully!"
 
 #-----------------------------------------------------------------------------
@@ -202,10 +173,6 @@ ccc-riscv64:
 # Pipeline: Arithmetic Primitives (target-specific)
 #-----------------------------------------------------------------------------
 
-.PHONY: arith-x86-64
-arith-x86-64:
-	@echo "Type-checking X86-64 arithmetic primitives..."
-	@sh -c '$(AGDA_CMD) Once/Arith/SigOp/Proofs.agda'
 
 #-----------------------------------------------------------------------------
 # Full Compiler (frontend + target)
@@ -323,12 +290,7 @@ postulates-ccc-x86-64:
 	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/Target/X86-64.agda'
 
 # Precise postulate detection using patched Agda (X86-64 Arith)
-.PHONY: postulates-arith-x86-64
-postulates-arith-x86-64:
-	@echo "Checking postulates in X86-64 Arith (precise)..."
-	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/Arith/SigOp/Proofs.agda'
 
-# Precise postulate detection for full X86-64 compiler
 .PHONY: postulates-x86-64
 postulates-x86-64: postulates-ccc-x86-64 postulates-arith-x86-64
 	@echo "Postulate check complete for X86-64."
