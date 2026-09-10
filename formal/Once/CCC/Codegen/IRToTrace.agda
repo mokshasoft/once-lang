@@ -41,7 +41,7 @@
 --
 -- D141: the per-case `*WF` modules under `Once.CCC.Machine.IR` analyse these
 -- very trace shapes operationally (`SimpleWF.run-id`/`run-fst`,
--- `CurryStackWF.curry-trace`, `ApplyWF.apply-setup-trace`, …), on the
+-- `ApplyWF.apply-setup-trace`, …), on the
 -- STRUCTURED machine. They are ISLANDS — nothing imports them, so they are
 -- documentation of intent, not a dependency, and they carry plan-0.52 M2 rot
 -- because no gate ever built them.
@@ -707,7 +707,7 @@ ir-to-trace' n l ⟨ f , g ⟩ =
 
 -- ────────────────────────────────────────────────────────────────────
 -- curry — closure construction.
--- Mirror CurryStackWF.curry-trace closure-slot:
+-- The closure record, at `closure-slot`:
 --   mov-to-output ∷                       -- Output := Input1 (env ptr)
 --   store-at-slot closure-slot ∷          -- closure[0] := env
 --   lea-slot (suc closure-slot) ∷         -- Output := &closure[1]

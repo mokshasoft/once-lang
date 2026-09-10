@@ -216,13 +216,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- addresses are categorically distinct from data pointers
       -- (StoredValue already reflects this via SV-Code). This change
       -- removes the lying `SV-Ptr code-loc` invariant — the self-
-      -- reference "fiction" CurryStackWF and CurryAllocWF used to invent
-      -- a `code-loc` to satisfy the type. Runtime emits
-      -- `instr-load-code-addr this-label` which produces SV-Code.
-      -- Plan 0.17.2 follow-up (2026-05-23): made mode-polymorphic.
-      -- Closures live on both stack and heap per ARCHITECTURE.md —
-      -- the m index now tracks the closure-loc's storage class.
-      -- CurryStackWF uses m = Stack; CurryAllocWF uses m = Heap.
+      -- reference "fiction" the curry witnesses used to invent a `code-loc`
+      -- to satisfy the type. Runtime emits `instr-load-code-addr this-label`
+      -- which produces SV-Code.
+      -- The `m` index tracks the closure-loc's storage class. Since 0.86
+      -- stage G a closure is built by one lowering and lives on the heap, so
+      -- `CurryAllocWF.run-curry-heap` is the sole producer; `m` stays
+      -- polymorphic because `valid-closure-wf` is also consumed at locations
+      -- a caller supplies.
       valid-closure-wf : ∀ {m EnvType A B}
         {body : IR (EnvType * A) B}
         {env : ⟦ EnvType ⟧}

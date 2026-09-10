@@ -26,32 +26,16 @@
 --   10. store-indirect-suc             ; *(sucLoc closure-loc) := SV-Code <id>
 --   11. load-from-slot closure-stash   ; Output := SV-Ptr closure-loc
 --
--- ARCHITECTURAL OPEN (flagged for user review):
---   `valid-closure-wf` (in ClosureWellFormed.agda) requires
---   `readLoc s (sucLoc closure-loc) ≡ just (SV-Ptr code-loc)` —
---   an SV-Ptr at closure[1]. But `instr-load-code-addr n` produces
---   `SV-Code n` (a tag-like value, not a pointer). The existing
---   Stack-mode `CurryStackWF` sidesteps this by using `lea-slot
---   (suc closure-slot)` to store a *self-pointer* at closure[1],
---   which satisfies the type-checker but means code-loc is
---   semantically the stack-slot address, not a real code address.
+-- CLOSURE[1] HOLDS A CODE LABEL. `valid-closure-wf` reads it as
+-- `readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label)`, which is what
+-- `instr-load-code-addr this-label` writes. Code addresses are categorically
+-- distinct from data pointers and `StoredValue` reflects that, so the witness
+-- and the emitter agree on the cell's contents directly.
 --
---   For heap-mode, the same trick isn't directly available (no
---   `lea-heap` instruction to derive `SV-Ptr (AtDynamic (heap-loc
---   fresh 1))`). Three possible resolutions:
---     (a) Add a new instruction `instr-lea-heap-suc` that converts
---         the heap pointer in Output to a pointer to the next cell.
---     (b) Weaken `valid-closure-wf` to accept either SV-Ptr or
---         SV-Code at closure[1], and have a separate consumer-side
---         derivation.
---     (c) Accept the closure self-reference at closure[0]
---         (closure[1] := closure-loc itself) — type-checks,
---         semantically meaningless.
---
---   For now this file uses (c) at the abstract-trace level via
---   `lea-slot closure-stash` to produce SV-Ptr (AtStack closure-stash),
---   matching the Stack-mode shape. Real code-address linkage is a
---   codegen concern that will be addressed in Phase D.
+-- (A header here used to pose this as an open question with three candidate
+-- resolutions, on the premise that the field demanded `SV-Ptr code-loc` and a
+-- self-pointer had to be faked to satisfy it. Plan 0.14's post-Phase-D change
+-- removed that demand — see `ClosureWellFormed`'s note on the same field.)
 ------------------------------------------------------------------------
 
 -- Plan 0.63 (D089): parameterised by the DEFINITION'S identity, which keys its
@@ -64,6 +48,7 @@ module Once.CCC.Machine.IR.CurryAllocWF (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
+open import Once.CCC.Label using (ℓ)
 open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
@@ -124,7 +109,7 @@ module CurryAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Returned IRResultAWF Heap, matching curry's IR-level mode = Heap.
   ----------------------------------------------------------------------
 
-  run-curry-heap : ∀ {A B C k} (mIn : AllocMode) (f : IR (A * B) C)
+  run-curry-heap : ∀ {A B C} (mIn : AllocMode) (f : IR (A * B) C)
     (ir<bound : ir-size (curry f) < program-bound)
     (rec-wf : RecDispatcherWF (ir-size (curry f)))
     (x : ⟦ A ⟧ᴵ) (input-loc : ValueLocation FS)
@@ -134,7 +119,7 @@ module CurryAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) Input1 ≡ SV-Ptr input-loc →
     IRResultAWF Heap (curry f) x s alloc
-  run-curry-heap {A} {B} {C} {k} mIn f ir<bound rec-wf x input-loc s alloc
+  run-curry-heap {A} {B} {C} mIn f ir<bound rec-wf x input-loc s alloc
                  input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
       s-final alloc-final curry-heap-trace (mkBump 0 1) refl
@@ -206,8 +191,14 @@ module CurryAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ∷ mov-to-input
         ∷ load-from-slot env-stash
         ∷ store-indirect
-        ∷ instr-load-code-addr 0       -- Output := SV-Code 0 (label)
-        ∷ store-indirect-suc           -- closure[1] := SV-Code 0
+        -- D089: the code address is a STRUCTURED label keyed by the
+        -- definition's identity `o`, as the emitter builds it (`IRToTrace`:
+        -- `instr-load-code-addr (ℓ o this-label)`). The label is NOT free
+        -- here: `trace-eq` below pins this trace to
+        -- `ir-to-trace-at-frontier o (next-slot alloc) (curry f)`, which
+        -- compiles the body at label 0, so 0 is the only inhabitant.
+        ∷ instr-load-code-addr (ℓ o 0)
+        ∷ store-indirect-suc           -- closure[1] := SV-Code (ℓ o 0)
         ∷ load-from-slot closure-stash
         ∷ []
 
