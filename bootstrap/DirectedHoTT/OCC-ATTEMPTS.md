@@ -83,7 +83,7 @@ field and still type-checks.
 
 ---
 
-## Step B — `conSSK` (the `Var`-eliminator core) ⬜ OPEN
+## Step B — `conSSK` (the `Var`-eliminator core) ✅ **CLOSED 2026-09-10**
 
 Developed in `bootstrap/tmp/ConSAgreeTmp.agda`.
 
@@ -107,16 +107,76 @@ substituted into*:
 | Step A (`occ`) | GENERIC — `occMethod C = lam(lam(lam(nd (ifSum (rsum C) C (var vz)))))`, and `ifSum` RECURSES ON THE CONCRETE `C` | compute away |
 | Step B (`conS`) | HAND-WRITTEN — `conSVz`/`conSVs`, whose bodies are `jsub`/`symN` TRANSPORTS over projections | stay stuck |
 
-⇒ **the blocker is not the β spine and not the peel depth — it is that a
-hand-written method body is a neutral term `subTm` cannot compute through.**
-Exactly `SUBTM-ATTEMPTS.md`'s verdict for `isubPay`: *"the β spine was never
-the problem … it is a neutral meta-level call and `subTm` cannot compute
-through it"*, whose content was a **naturality lemma**.
+⚠⚠ **THE NEXT TWO PARAGRAPHS ARE REFUTED — kept because the reasoning is the
+lesson.  Read the "✅ CLOSED" section below before believing them.**
 
-⬜ **NEXT FOR STEP B:** a naturality lemma for the hand-written methods —
-`subTm τ (conSVs-body …) ≡ conSVs-body (subTm τ …)` — stated with the METHOD
-TUPLE ABSTRACTED. Letting the concrete `conSMeths` into the statement is the
-`abstract-the-substituted-terms` trap, measured 87× in `SUBTM-ATTEMPTS.md`.
+> ⇒ **the blocker is not the β spine and not the peel depth — it is that a
+> hand-written method body is a neutral term `subTm` cannot compute through.**
+> Exactly `SUBTM-ATTEMPTS.md`'s verdict for `isubPay`: *"the β spine was never
+> the problem … it is a neutral meta-level call and `subTm` cannot compute
+> through it"*, whose content was a **naturality lemma**.
+>
+> ⬜ **NEXT FOR STEP B:** a naturality lemma for the hand-written methods —
+> `subTm τ (conSVs-body …) ≡ conSVs-body (subTm τ …)` — stated with the METHOD
+> TUPLE ABSTRACTED. Letting the concrete `conSMeths` into the statement is the
+> `abstract-the-substituted-terms` trap, measured 87× in `SUBTM-ATTEMPTS.md`.
+
+★★★ **WHY THE ANALOGY TO `isubPay` FAILED.** `isubPay`'s residue was a
+`subTm` applied to a **meta-level CALL** (`ipayTy D C …`), which really is
+neutral — Agda has nothing to unfold.  `conSVs`'s residue is a `subTm`
+applied to a **term built from `pair`**, which is not neutral at all.  The two
+print alike because Agda's error display stops at the same depth.  ⇒ an
+analogy between two stuck residues is only as good as the reason each one is
+stuck; compare the HEAD, not the shape.
+
+---
+
+### ✅ CLOSED — attempts 6–8, and the blocker was a MISDIAGNOSIS
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 6 | the `singleK-vs` chain with jsub nesting **2** and the corrected target, ending in `done` to print the residue | ✅ **the jsub peels FIRED.** The error moved from the middle of the chain to its last line — so `sel-there`/`sel-here` DID apply to the β-substituted payload, which attempt 4 had concluded they could not |
+| 7 | add two congruences for the level + one `sub-w²-single` cast | ✅ **rc=0** — `conSK-vs` |
+| 8 | the `vz` row: ford one field shallower (`sel 2`), tag carried | ✅ **rc=0** — `conSK-vz` |
+| — | restate at `conSSK`, the ledger's own name; `conSK` as one β on top | ✅ rc=0 — `conSSK-vz`/`-vs`, `conSK-vz`/`-vs`, `conS-Represents` |
+
+★★★ **THE 2026-09-08 VERDICT WAS RIGHT IN ITS EVIDENCE AND WRONG IN ITS
+CONCLUSION.** The residue really did print as
+
+```
+fst (subTm (single …) (subTm (extS (single …)) (var (vs (vs vz)))))
+```
+
+and the inference drawn from it — *"a hand-written method body is a neutral
+term `subTm` cannot compute through, so a naturality lemma is owed"* — does
+not follow. **`subTm`/`renTm` distribute over `pair` DEFINITIONALLY**, so the
+β-substituted payload *is* a literal pair and `sel-here` applies to it
+unchanged. What was actually stuck was the object-level **`fst` REDEX sitting
+on top of it**, and a redex wants a reduction step.
+
+⇒ **`⟶*` and `≡` were being asked to do each other's jobs.** The projections
+are REDUCTIONS (`sel-here`/`sel-there`); the leftover weakenings are
+EQUALITIES (`Lib/Wk.sub-w²-single`). Split the residue that way and each half
+is one line. ⚠ **Before writing a new lemma for a stuck residue, ask which
+half of it reduces and which half is merely equal.** The printed term looks
+the same either way — that is why four attempts read it as one thing.
+
+★★ **AND THE COMPARISON TABLE ABOVE IS STILL WRONG IN ONE COLUMN.** Step B's
+"stay stuck" is not a property of hand-written bodies: `Knot/RenSpec`'s
+`singleK-vs` has an equally hand-written body (`jsub`/`symN`/`predN`) and
+closes. What made step B look harder was the THREE differences that each cost
+an attempt — the rebuilt target, the nesting count, and the level occurring
+TWICE — none of which is about computation.
+
+### What DID transfer from the log, unchanged
+
+* attempt 2's finding — **the `singleK` template's statement is FALSE here** —
+  is load-bearing and was carried into the final statement;
+* attempt 3's nesting count (two, not three) is exactly right;
+* both head reductions from attempt 1 are used verbatim.
+
+⇒ three of the five earlier attempts are IN the closed proof. The log paid for
+itself; only the verdict line needed replacing.
 
 ---
 
