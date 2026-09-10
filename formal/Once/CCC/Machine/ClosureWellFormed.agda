@@ -221,7 +221,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- which produces SV-Code.
       -- The `m` index tracks the closure-loc's storage class. Since 0.86
       -- stage G a closure is built by one lowering and lives on the heap, so
-      -- `CurryAllocWF.run-curry-heap` is the sole producer; `m` stays
+      -- `CurryWF.run-curry-heap` is the sole producer; `m` stays
       -- polymorphic because `valid-closure-wf` is also consumed at locations
       -- a caller supplies.
       valid-closure-wf : ∀ {m EnvType A B}

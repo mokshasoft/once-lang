@@ -2,29 +2,34 @@
 -- Copyright (C) 2025-2026 Jonas Claesson
 
 ------------------------------------------------------------------------
--- Once.CCC.Machine.IR.CurryAllocWF
+-- Once.CCC.Machine.IR.CurryWF
 --
--- Heap-mode curry handler (Plan 0.14 Phase B).
+-- THE curry handler. `curry` has one lowering (0.86 stage G, D147): the
+-- closure record is `instr-alloc-heap 2`, so it lives at a fresh `AtDynamic`
+-- and its validity is `heap-before`. Scratch slots still carry the env
+-- pointer across the alloc and stash the closure pointer for the final load.
 --
--- Allocates the closure on the heap via `instr-alloc-heap 2` rather
--- than on the stack. Scratch slots are still used (saving the env
--- pointer across the alloc, stashing the closure heap pointer for the
--- final load), but the closure itself lives at a fresh `AtDynamic`
--- and validity is `heap-before`.
+-- Named `CurryWF` since stage E collapsed the per-mode pair: with no
+-- `AllocMode` on `curry` there is one witness, not a Stack one and a Heap
+-- one (D147, plan 0.86 §5).
 --
--- Trace skeleton (parallel to PairWF):
+-- Trace skeleton — ten instructions, matching `curry-heap-trace` below and
+-- `IRToTrace`'s `curry` clause instruction for instruction (`trace-eq` pins
+-- them together, so a drift here is a type error, not a stale comment):
 --
 --    1. mov-to-output                  ; Output := SV-Ptr env-loc (= input)
 --    2. store-at-slot env-stash        ; stash env-ptr for re-use after alloc
---    3. instr-alloc-stack 2            ; reserve scratch (env-stash + closure-stash)
---    4. instr-alloc-heap 2             ; Output := SV-Ptr (AtDynamic fresh)
---    5. store-at-slot closure-stash    ; stash closure heap-ptr
---    6. mov-to-input                   ; Input1 := SV-Ptr closure-loc (for store-indirect)
---    7. load-from-slot env-stash       ; Output := SV-Ptr env-loc
---    8. store-indirect                 ; *closure-loc := SV-Ptr env-loc
---    9. instr-load-code-addr <id>      ; Output := SV-Code <id>   ⟵ ARCHITECTURAL: see below
---   10. store-indirect-suc             ; *(sucLoc closure-loc) := SV-Code <id>
---   11. load-from-slot closure-stash   ; Output := SV-Ptr closure-loc
+--    3. instr-alloc-heap 2             ; Output := SV-Ptr (AtDynamic fresh)
+--    4. store-at-slot closure-stash    ; stash closure heap-ptr
+--    5. mov-to-input                   ; Input1 := SV-Ptr closure-loc (for store-indirect)
+--    6. load-from-slot env-stash       ; Output := SV-Ptr env-loc
+--    7. store-indirect                 ; *closure-loc := SV-Ptr env-loc
+--    8. instr-load-code-addr (ℓ o 0)   ; Output := SV-Code (ℓ o 0)
+--    9. store-indirect-suc             ; *(sucLoc closure-loc) := SV-Code (ℓ o 0)
+--   10. load-from-slot closure-stash   ; Output := SV-Ptr closure-loc
+--
+-- The frame is reserved by the BACKEND around the whole body (one
+-- `subq $budget*8, %rsp`), not by an `instr-alloc-stack` in the trace.
 --
 -- CLOSURE[1] HOLDS A CODE LABEL. `valid-closure-wf` reads it as
 -- `readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label)`, which is what
@@ -44,7 +49,7 @@
 -- UNCHANGED: the emitter is imported APPLIED, so each call site reads as before.
 open import Once.CanonicalName using (CanonicalName)
 
-module Once.CCC.Machine.IR.CurryAllocWF (o : CanonicalName) where
+module Once.CCC.Machine.IR.CurryWF (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
 open import Data.Bool using (false)
@@ -73,10 +78,10 @@ import Once.CCC.Machine.SMPrimitives as SMP
 import Once.CCC.Machine.SMPrimitives.Heap as SMPH
 
 ------------------------------------------------------------------------
--- CurryAllocWF Implementation
+-- CurryWF Implementation
 ------------------------------------------------------------------------
 
-module CurryAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
   -- has no format-free machine value. Inside a module already fixed to this
   -- target's `FrameSemantics`, THE evaluator is the one at its float format,
