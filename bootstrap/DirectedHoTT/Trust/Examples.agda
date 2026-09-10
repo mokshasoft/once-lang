@@ -77,6 +77,7 @@ import DirectedHoTT.Examples.Overview
 import DirectedHoTT.Examples.PairC
 import DirectedHoTT.Examples.PairIx
 import DirectedHoTT.Examples.PairLib
+import DirectedHoTT.Examples.ScopeHazard
 import DirectedHoTT.Examples.Scoped
 import DirectedHoTT.Examples.ScopedDepth
 import DirectedHoTT.Examples.ScopedSize

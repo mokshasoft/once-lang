@@ -958,3 +958,51 @@ agree-var {Γ ∙} k (vs y) i =
                                    » step (βfst _ _) done)))
                  » agree-var k y _)
                 (aih-κ (aih-κ aih-ι))))
+
+
+------------------------------------------------------------------------
+-- ★★★ AND AT THE NAMES THE LEDGER TRACKS.
+--
+--     occK   s n k t = app (ielim KnotD (pair s n) occMethsK t) k
+--     occVzK i c     = app (ielim KnotD i occMethsK c) (predTm (snd i))
+--
+-- ⚠ THE ROWS ABOVE ARE ABOUT `ielim KnotD i occMethsK`, which is what
+--   they induct on.  These tie that to the two PROGRAMS, because a
+--   ledger entry reading "discharged" about a name no theorem contains
+--   is the shape of claim this development keeps catching itself in.
+------------------------------------------------------------------------
+open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-appʳ; ⟶*-natrecⁿ )
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
+open import DirectedHoTT.Lib.NatNum using ( num )
+open import DirectedHoTT.Lib.BoolNum using ( b2n )
+open import DirectedHoTT.Lib.NatMaxNum using ( pred-num )
+open import DirectedHoTT.Examples.Knot.Sorts using ( len )
+open import DirectedHoTT.Examples.Knot.Map using ( enTy; enTm )
+open import DirectedHoTT.Examples.Knot.Occ using ( occK; occVzK )
+open import DirectedHoTT.Examples.Knot.OccLvl using ( lvl )
+
+-- ★ `occK` ITSELF, at both syntactic sorts.
+occK-agree-ty : {Γ Θ : Cx} (x : Var Γ) (A : RTy Γ) (s n : RTm Θ) →
+                occK s n (num (lvl x)) (enTy {Γ} {Θ} A)
+                ⟶* num (b2n (occTy x A))
+occK-agree-ty x A s n = agree-ty x A (pair s n)
+
+occK-agree-tm : {Γ Θ : Cx} (x : Var Γ) (t : RTm Γ) (s n : RTm Θ) →
+                occK s n (num (lvl x)) (enTm {Γ} {Θ} t)
+                ⟶* num (b2n (occTm x t))
+occK-agree-tm x t s n = agree-tm x t (pair s n)
+
+-- ★★★ `occVzK` — the LEDGER PREDICTED THIS IS A COROLLARY, and it is.
+--   It takes the level from the INDEX (`pred (snd ⟨i⟩)`) rather than as
+--   an argument, so the only work is reducing that to `num (lvl vz)`:
+--   `βsnd` off the index pair, then `pred-num`.  `lvl {Γ ∙} vz = len Γ`,
+--   and the index's depth is `suc (len Γ)` — the level convention the
+--   ledger entry said had to be fixed first.
+occVzK-agree : {Γ Θ : Cx} (t : RTm (Γ ∙)) (s : RTm Θ) →
+               occVzK (pair s (num (suc (len Γ)))) (enTm {Γ ∙} {Θ} t)
+               ⟶* num (b2n (occTm vz t))
+occVzK-agree {Γ} t s =
+  -- ⚠ `predTm m = natrec nzero (var (vs vz)) m`, so the `βsnd` redex is
+  --   the natrec's SCRUTINEE, not the whole term.
+  ⟶*-appʳ (⟶*-natrecⁿ (step (βsnd _ _) done) » pred-num (suc (len Γ)))
+  » agree-tm vz t (pair s (num (suc (len Γ))))
