@@ -24,6 +24,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot2 where
 
+import DirectedHoTT.Examples.Knot.IPayTyKap
 import DirectedHoTT.Examples.Knot.IPayTyMot
 import DirectedHoTT.Examples.Knot.IPayTyRho
 import DirectedHoTT.Examples.Knot.ISubRedControl
@@ -43,4 +44,3 @@ import DirectedHoTT.Examples.Knot.Judge.Absurd
 import DirectedHoTT.Examples.Knot.Judge.Ap
 import DirectedHoTT.Examples.Knot.Judge.App
 import DirectedHoTT.Examples.Knot.Judge.CodeBase
-import DirectedHoTT.Examples.Knot.Judge.CodeHom

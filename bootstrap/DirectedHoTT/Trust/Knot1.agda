@@ -28,6 +28,7 @@ import DirectedHoTT.Examples.Knot.Adequacy
 import DirectedHoTT.Examples.Knot.Build
 import DirectedHoTT.Examples.Knot.Census
 import DirectedHoTT.Examples.Knot.ConS
+import DirectedHoTT.Examples.Knot.ConSAgree
 import DirectedHoTT.Examples.Knot.ConvRows
 import DirectedHoTT.Examples.Knot.ConvWf
 import DirectedHoTT.Examples.Knot.Ctors
@@ -43,4 +44,3 @@ import DirectedHoTT.Examples.Knot.IMethTy
 import DirectedHoTT.Examples.Knot.IMethsTy
 import DirectedHoTT.Examples.Knot.IMethsTyMot
 import DirectedHoTT.Examples.Knot.IPayTy
-import DirectedHoTT.Examples.Knot.IPayTyKap

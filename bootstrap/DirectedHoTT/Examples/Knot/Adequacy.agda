@@ -74,28 +74,26 @@
 --     IxIDescK   ✅ not owed — a constructor of `IxD`.
 --     IxNoneK    ✅ not owed — a constructor of `IxD`.
 --     atConK     ⬜ OWED — agreement with `atCon`.
---     conSSK     ⬜ OWED — `conSK`/`atConK`'s core.  ★ THE CHEAPEST of
---                the 20 recursive entries: it eliminates at the `Var`
---                SORT, so the meta side is TWO clauses
---                (`conS k vz = con k (var vz)`, `conS k (vs x) =
---                var (vs x)`) and `conSTail` has two real methods, 51 junk.
---                ★ CASCADE: conSSK -> conSK -> atConK, and `iconSSK` is
---                its clone, giving iconSSK -> icSK -> iconSK -> iatConK.
---                Six entries hang off this shape.
---                ⚠⚠ ATTEMPTED 2026-09-08, PARTIAL.  Both HEAD reductions
---                are done and type-check (via `Lib/IHeadRed.ihead-red`).
---                What is left is the WRAPPER's `symN`/`jsub` transport.
---                ⚠ AND THE TEMPLATE MISLEADS: copying
---                `Knot/RenSpec.singleK-vs` gives a FALSE statement —
---                `conSVs` REBUILDS the variable
---                (`Var-vsK (fst _) (fst (snd _))`) where `singleVs`
---                returns the lowered `x`.  The target is
---                `Tm-varK (Var-vsK m x)`, not `Tm-varK x` — that is
---                `Knot/ConS`'s own "single lowers, nrs raises, conS
---                neither", and it must be carried into the STATEMENT.
---                `singleK-vs` also nests three `⟶*-jsubᵖ`, so `singleVs`
---                has nested `jsub`s that `conSVs` does not; the tail of
---                that proof does not transfer.
+--     conSSK     ✅ DISCHARGED — `Knot/ConSAgree.conSSK-vz`/`-vs`, BOTH
+--                rows:  `conSSK i (Var-vzK m) k ⟶* Tm-conK k (Tm-varK
+--                (Var-vzK m))` and `conSSK i (Var-vsK m x) k ⟶* Tm-varK
+--                (Var-vsK m x)`, which is `conS` (`Spec/Typing:107`)
+--                read back.  Packaged as `conS-Represents`, and `conSK`
+--                falls out as ONE β on top (`conSK-vz`/`-vs`).
+--                ★★★ THE 2026-09-08 BLOCKER WAS A MISDIAGNOSIS.  The
+--                residue really did read `fst (subTm … (var (vs (vs
+--                vz))))`, but the inference that `subTm` cannot compute
+--                through a hand-written method body did NOT follow:
+--                `subTm`/`renTm` distribute over `pair` definitionally,
+--                so the payload IS a literal pair and `sel-here` applies
+--                to it.  What was stuck was the object-level `fst` REDEX
+--                on top, which wants a reduction step.  ⇒ no naturality
+--                lemma was owed; `⟶*` and `≡` were being asked to do
+--                each other's jobs.  See `Knot/ConSAgree`'s header.
+--                ⚠ THE `singleK` TEMPLATE IS STILL FALSE HERE — `conSVs`
+--                REBUILDS `Var-vsK m x` where `singleVs` returns the
+--                lowered `x` — and the corrected target is what makes
+--                the chain close.
 --     extNK      ✅ DISCHARGED — `Knot/SubExt.extS-Represents`.  ⚠ Its `vs`
 --                case composes with `wkTmK-agree`, i.e. with `ren-agree`:
 --                `extS σ (vs x) = renTm vs (σ x)` WEAKENS.
