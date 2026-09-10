@@ -177,10 +177,18 @@
 --                four skipped edges.  `OCC-ATTEMPTS.md` §35-36.
 --                The `Var` rows carry the real content —
 --                `Knot/OccLvlEq.eqv-lvl`, i.e. `lvl` is INJECTIVE
---                on `Var Γ`.  `LVL-ATTEMPTS.md`.
---     occVzK     ⬜ OWED — `occK` with the level taken as `pred (snd ⟨i⟩)`;
---                a COROLLARY of `occK`'s once the level convention is
---                fixed (`vz` in a depth-`nsuc n` context is level `n`).
+--                on `Var Γ`.  `LVL-ATTEMPTS.md`.  ⚠ And it is
+--                stated at `occK`'s OWN name by
+--                `occK-agree-ty`/`occK-agree-tm`, not only at
+--                the `ielim` form the rows induct on.
+--     occVzK     ✅ DISCHARGED — `Knot/OccAgree.occVzK-agree`.  Exactly the
+--                COROLLARY this entry predicted: the level comes from
+--                the INDEX rather than as an argument, so the only
+--                work is reducing `predTm (snd ⟨i⟩)` to `num (lvl vz)`
+--                — one `βsnd` in the natrec SCRUTINEE, then
+--                `pred-num`.  The level convention it said had to be
+--                fixed first is `lvl {Γ ∙} vz = len Γ` against an
+--                index depth of `suc (len Γ)`.
 --     payTyK     ⬜ OWED — agreement with `payTy`.
 --     pwBodyK    ⬜ OWED — agreement with `pw?`'s body case.
 --     pwDefault  ⬜ OWED — the default method of `Knot/PwBody`'s tuple.
