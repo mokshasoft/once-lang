@@ -73,7 +73,18 @@
 --     IxIConK    ✅ not owed — a constructor of `IxD`.
 --     IxIDescK   ✅ not owed — a constructor of `IxD`.
 --     IxNoneK    ✅ not owed — a constructor of `IxD`.
---     atConK     ⬜ OWED — agreement with `atCon`.
+--     atConK     ✅ DISCHARGED — `Knot/ConSAgree.atCon-agree`:
+--                `atConK ⌈|Γ|⌉ ⟨k⟩ ⌈M⌉ ⟶* ⌈ atCon k M ⌉`.  A ONE-LINE
+--                corollary of `conS-Represents` and
+--                `Knot/SubAgreeTyTie.sub-agree-ty` (all 11 `RTy` rows),
+--                which is exactly the cascade `conSSK`'s entry
+--                predicted.
+--                ⚠ THE DEPTH IS FORCED: `sub-agree-ty` reads
+--                `num (len Γ)` off the ENCODING and `atConK`'s two
+--                depths are both `nsuc n`, so `n := num (len Γ)` is the
+--                only choice that types.  Same rule as
+--                `extR-Represents` — a depth may only be stated where
+--                the encoding uses it.
 --     conSSK     ✅ DISCHARGED — `Knot/ConSAgree.conSSK-vz`/`-vs`, BOTH
 --                rows:  `conSSK i (Var-vzK m) k ⟶* Tm-conK k (Tm-varK
 --                (Var-vzK m))` and `conSSK i (Var-vsK m x) k ⟶* Tm-varK

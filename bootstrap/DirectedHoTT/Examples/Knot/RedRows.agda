@@ -9,9 +9,16 @@
 --   variable of the right type.  The Agda-former → knot-constructor map
 --   comes from `KNOT`'s own `decl` strings, so nothing is typed twice.
 --
--- ★ AND THE SKIPPED RULES ARE NAMED BELOW.  Emitting 65 of 73 rows
---   without saying so would be exactly
+-- ★ AND THE SKIPPED RULES ARE NAMED BELOW, WITH THEIR COUNT.  Emitting a
+--   subset silently would be exactly
 --   `verification-that-covers-less-than-it-claims`.
+--
+-- ⚠ THE COUNT IS NOT RESTATED HERE, DELIBERATELY.  It lives in the
+--   `NOT EMITTED` block below, which is COMPUTED from the rules that
+--   actually failed to translate.  A hand-written copy of it in this
+--   header read "65 of 73" for long enough that the real number became
+--   71 — a coverage claim that had itself gone stale, which is the
+--   failure this whole header exists to prevent.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
