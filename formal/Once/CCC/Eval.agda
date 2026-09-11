@@ -120,7 +120,7 @@ eval fmt (SigOp {A} {B} si) x = subst (λ z → z) (sym (coh B)) (semM si fmt (s
 -- surface `sem-*`/`coerce-functor` helpers run at `⌈F⌉F`; `wf-⌈⌉` transports the
 -- WellFormedFI proof and `subst (λ T → ⟦T⟧) (⌈⟧TI-commute …)` transports the
 -- `⟦F⟧TI`-shaped operands (results are `⟦μ⟧⌈F⌉F` definitionally — no transport).
-eval fmt (In {F} _ _) x =
+eval fmt (In {F} _) x =
   sem-In ⌈ F ⌉F (coerce-functor ⌈ F ⌉F ⌈ μ-type F ⌉ (subst (λ T → ⟦ T ⟧) (⌈⟧TI-commute F (μ-type F)) x))
 eval fmt (out-μ {F} wf) x =
   subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F))) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F ⌉ (sem-Out (wf-⌈⌉ wf) x))
@@ -135,7 +135,7 @@ eval fmt (Para {F} wf {A} alg) x =
   sem-para (wf-⌈⌉ wf) (λ fx → eval fmt alg (subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F * A))) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F * A ⌉ fx))) x
 eval fmt (Out {F} wf) x =
   subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute F (ν-type F))) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ ν-type F ⌉ (sem-CoOut (wf-⌈⌉ wf) x))
-eval fmt (in-ν {F} _ _) x =
+eval fmt (in-ν {F} _) x =
   sem-CoIn ⌈ F ⌉F (coerce-functor ⌈ F ⌉F ⌈ ν-type F ⌉ (subst (λ T → ⟦ T ⟧) (⌈⟧TI-commute F (ν-type F)) x))
 eval fmt (Ana {F} wf {A} coalg) x =
   sem-ana ⌈ F ⌉F (λ a → coerce-functor ⌈ F ⌉F ⌈ A ⌉ (subst (λ T → ⟦ T ⟧) (⌈⟧TI-commute F A) (eval fmt coalg a))) x

@@ -44,13 +44,12 @@ open import Data.Maybe.Properties using (just-injective)
 
 ------------------------------------------------------------------------
 -- Equality decision (needed for eta laws)
+--
+-- 0.86 stage G: `_≟AllocMode_` stood here and is DELETED. It existed so
+-- `≟IRH-diag` could compare the modes of two IR nodes; with all six
+-- constructors mode-free there is nothing left to compare, and every clause
+-- that used it collapsed to the functor/well-formedness comparison alone.
 ------------------------------------------------------------------------
-
-_≟AllocMode_ : (m₁ m₂ : AllocMode) → Dec (m₁ ≡ m₂)
-Stack ≟AllocMode Stack = yes refl
-Stack ≟AllocMode Heap  = no (λ ())
-Heap  ≟AllocMode Stack = no (λ ())
-Heap  ≟AllocMode Heap  = yes refl
 
 -- | Functor equality (forward declared, defined after Type equality)
 _≟Functor_ : (F G : Functor) → Dec (F ≡ G)
@@ -378,12 +377,12 @@ ir-head terminal = h-terminal
 ir-head initial = h-initial
 ir-head (curry _) = h-curry
 ir-head apply = h-apply
-ir-head (In _ _) = h-In
+ir-head (In _) = h-In
 ir-head (out-μ _) = h-out-μ
 ir-head (Cata _ _) = h-Cata
 ir-head (Para _ _) = h-Para
 ir-head (Out _) = h-Out
-ir-head (in-ν _ _) = h-in-ν
+ir-head (in-ν _) = h-in-ν
 ir-head (Ana _ _) = h-Ana
 ir-head (Hylo _ _ _ _) = h-Hylo
 ir-head (Fuse _ _ _ _) = h-Fuse
@@ -656,11 +655,10 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ≟IRH-diag apply apply _ refl refl = yes refl
 
 -- In: eqB : μ-type F ≡ μ-type F' gives the Functor tag
-≟IRH-diag (In {F} wf₁ m₁) (In {F'} wf₂ m₂) _ eqA eqB with F ≟IRFun F'
+≟IRH-diag (In {F} wf₁) (In {F'} wf₂) _ eqA eqB with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (μ-inj eqB))
-... | yes refl with m₁ ≟AllocMode m₂ | eqA | eqB
-...   | yes refl | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
-...   | no nm    | refl | refl = no (λ { refl → nm refl })
+... | yes refl with eqA | eqB
+...   | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 
 -- out-μ: eqA : μ-type F ≡ μ-type F'
 ≟IRH-diag (out-μ {F} wf₁) (out-μ {F'} wf₂) _ eqA eqB with F ≟IRFun F'
@@ -694,12 +692,11 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ...   | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 
 -- in-ν: eqB : ν-type F ≡ ν-type F'
-≟IRH-diag (in-ν {F} wf₁ m₁) (in-ν {F'} wf₂ m₂) _ eqA eqB
+≟IRH-diag (in-ν {F} wf₁) (in-ν {F'} wf₂) _ eqA eqB
   with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (ν-inj eqB))
-... | yes refl with m₁ ≟AllocMode m₂ | eqA | eqB
-...   | yes refl | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
-...   | no nm    | refl | refl = no (λ { refl → nm refl })
+... | yes refl with eqA | eqB
+...   | refl | refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 
 -- Ana: eqB : ν-type F ≡ ν-type F'
 ≟IRH-diag (Ana {F} wf₁ coalg₁) (Ana {F'} wf₂ coalg₂) _ eqA eqB
@@ -947,12 +944,12 @@ pairView-gen terminal        eq = is-other-pair (subst (IR _) eq terminal)
 pairView-gen initial         eq = is-other-pair (subst (IR _) eq initial)
 pairView-gen (curry f)       eq = is-other-pair (subst (IR _) eq (curry f))
 pairView-gen apply           eq = is-other-pair (subst (IR _) eq apply)
-pairView-gen (In wf m)       eq = is-other-pair (subst (IR _) eq (In wf m))
+pairView-gen (In wf)       eq = is-other-pair (subst (IR _) eq (In wf))
 pairView-gen (out-μ wf)      eq = is-other-pair (subst (IR _) eq (out-μ wf))
 pairView-gen (Cata wf alg)   eq = is-other-pair (subst (IR _) eq (Cata wf alg))
 pairView-gen (Para wf alg)   eq = is-other-pair (subst (IR _) eq (Para wf alg))
 pairView-gen (Out wf)        eq = is-other-pair (subst (IR _) eq (Out wf))
-pairView-gen (in-ν wf m)     eq = is-other-pair (subst (IR _) eq (in-ν wf m))
+pairView-gen (in-ν wf)     eq = is-other-pair (subst (IR _) eq (in-ν wf))
 pairView-gen (Ana wf coalg)  eq = is-other-pair (subst (IR _) eq (Ana wf coalg))
 pairView-gen (Hylo wfF wfG alg coalg) eq = is-other-pair (subst (IR _) eq (Hylo wfF wfG alg coalg))
 pairView-gen (Fuse wfF wfG alg tr)    eq = is-other-pair (subst (IR _) eq (Fuse wfF wfG alg tr))
@@ -978,12 +975,12 @@ coprodView-gen terminal        eq = is-other-coprod (subst (IR _) eq terminal)
 coprodView-gen initial         eq = is-other-coprod (subst (IR _) eq initial)
 coprodView-gen (curry f)       eq = is-other-coprod (subst (IR _) eq (curry f))
 coprodView-gen apply           eq = is-other-coprod (subst (IR _) eq apply)
-coprodView-gen (In wf m)       eq = is-other-coprod (subst (IR _) eq (In wf m))
+coprodView-gen (In wf)       eq = is-other-coprod (subst (IR _) eq (In wf))
 coprodView-gen (out-μ wf)      eq = is-other-coprod (subst (IR _) eq (out-μ wf))
 coprodView-gen (Cata wf alg)   eq = is-other-coprod (subst (IR _) eq (Cata wf alg))
 coprodView-gen (Para wf alg)   eq = is-other-coprod (subst (IR _) eq (Para wf alg))
 coprodView-gen (Out wf)        eq = is-other-coprod (subst (IR _) eq (Out wf))
-coprodView-gen (in-ν wf m)     eq = is-other-coprod (subst (IR _) eq (in-ν wf m))
+coprodView-gen (in-ν wf)     eq = is-other-coprod (subst (IR _) eq (in-ν wf))
 coprodView-gen (Ana wf coalg)  eq = is-other-coprod (subst (IR _) eq (Ana wf coalg))
 coprodView-gen (Hylo wfF wfG alg coalg) eq = is-other-coprod (subst (IR _) eq (Hylo wfF wfG alg coalg))
 coprodView-gen (Fuse wfF wfG alg tr)    eq = is-other-coprod (subst (IR _) eq (Fuse wfF wfG alg tr))
@@ -1014,12 +1011,12 @@ composeFirstView inr             = cf-other inr
 composeFirstView initial         = cf-other initial
 composeFirstView (curry f)       = cf-other (curry f)
 composeFirstView apply           = cf-other apply
-composeFirstView (In wf m)       = cf-other (In wf m)
+composeFirstView (In wf)       = cf-other (In wf)
 composeFirstView (out-μ wf)      = cf-other (out-μ wf)
 composeFirstView (Cata wf alg)   = cf-other (Cata wf alg)
 composeFirstView (Para wf alg)   = cf-other (Para wf alg)
 composeFirstView (Out wf)        = cf-other (Out wf)
-composeFirstView (in-ν wf m)     = cf-other (in-ν wf m)
+composeFirstView (in-ν wf)     = cf-other (in-ν wf)
 composeFirstView (Ana wf coalg)  = cf-other (Ana wf coalg)
 composeFirstView (Hylo wfF wfG alg coalg) = cf-other (Hylo wfF wfG alg coalg)
 composeFirstView (Fuse wfF wfG alg tr)    = cf-other (Fuse wfF wfG alg tr)
@@ -1040,12 +1037,12 @@ composeSecondView (case f g)     = cs-other (case f g)
 composeSecondView terminal       = cs-other terminal
 composeSecondView (curry f)      = cs-other (curry f)
 composeSecondView apply          = cs-other apply
-composeSecondView (In wf m)      = cs-other (In wf m)
+composeSecondView (In wf)      = cs-other (In wf)
 composeSecondView (out-μ wf)     = cs-other (out-μ wf)
 composeSecondView (Cata wf alg)  = cs-other (Cata wf alg)
 composeSecondView (Para wf alg)  = cs-other (Para wf alg)
 composeSecondView (Out wf)       = cs-other (Out wf)
-composeSecondView (in-ν wf m)    = cs-other (in-ν wf m)
+composeSecondView (in-ν wf)    = cs-other (in-ν wf)
 composeSecondView (Ana wf coalg) = cs-other (Ana wf coalg)
 composeSecondView (Hylo wfF wfG alg coalg) = cs-other (Hylo wfF wfG alg coalg)
 composeSecondView (Fuse wfF wfG alg tr)    = cs-other (Fuse wfF wfG alg tr)
@@ -1066,12 +1063,12 @@ fstSndView terminal        = fsv-other terminal
 fstSndView initial         = fsv-other initial
 fstSndView (curry f)       = fsv-other (curry f)
 fstSndView apply           = fsv-other apply
-fstSndView (In wf m)       = fsv-other (In wf m)
+fstSndView (In wf)       = fsv-other (In wf)
 fstSndView (out-μ wf)      = fsv-other (out-μ wf)
 fstSndView (Cata wf alg)   = fsv-other (Cata wf alg)
 fstSndView (Para wf alg)   = fsv-other (Para wf alg)
 fstSndView (Out wf)        = fsv-other (Out wf)
-fstSndView (in-ν wf m)     = fsv-other (in-ν wf m)
+fstSndView (in-ν wf)     = fsv-other (in-ν wf)
 fstSndView (Ana wf coalg)  = fsv-other (Ana wf coalg)
 fstSndView (Hylo wfF wfG alg coalg) = fsv-other (Hylo wfF wfG alg coalg)
 fstSndView (Fuse wfF wfG alg tr)    = fsv-other (Fuse wfF wfG alg tr)
@@ -1092,12 +1089,12 @@ inlInrView terminal        = iiv-other terminal
 inlInrView initial         = iiv-other initial
 inlInrView (curry f)       = iiv-other (curry f)
 inlInrView apply           = iiv-other apply
-inlInrView (In wf m)       = iiv-other (In wf m)
+inlInrView (In wf)       = iiv-other (In wf)
 inlInrView (out-μ wf)      = iiv-other (out-μ wf)
 inlInrView (Cata wf alg)   = iiv-other (Cata wf alg)
 inlInrView (Para wf alg)   = iiv-other (Para wf alg)
 inlInrView (Out wf)        = iiv-other (Out wf)
-inlInrView (in-ν wf m)     = iiv-other (in-ν wf m)
+inlInrView (in-ν wf)     = iiv-other (in-ν wf)
 inlInrView (Ana wf coalg)  = iiv-other (Ana wf coalg)
 inlInrView (Hylo wfF wfG alg coalg) = iiv-other (Hylo wfF wfG alg coalg)
 inlInrView (Fuse wfF wfG alg tr)    = iiv-other (Fuse wfF wfG alg tr)
@@ -1141,12 +1138,12 @@ has-effect? apply           = true
 has-effect? (SigOp _)       = true
 has-effect? (const _ _)   = false
 has-effect? (free-heap _)   = true
-has-effect? (In _ _)        = false
+has-effect? (In _)        = false
 has-effect? (out-μ _)       = false
 has-effect? (Cata _ alg)    = has-effect? alg
 has-effect? (Para _ alg)    = has-effect? alg
 has-effect? (Out _)         = false
-has-effect? (in-ν _ _)      = false
+has-effect? (in-ν _)      = false
 has-effect? (Ana _ coalg)   = has-effect? coalg
 has-effect? (Hylo _ _ alg t) = has-effect? alg ∨ has-effect?-nt t
 has-effect? (Fuse _ _ alg t) = has-effect? alg ∨ has-effect?-nt t
@@ -1303,12 +1300,12 @@ mutual
   -- are documented but not automatically applied at the IR level.
   -- The semantic equivalence is proven in the laws module.
   --
-  optimize-once-structural (In wf m) = In wf m
+  optimize-once-structural (In wf) = In wf
   optimize-once-structural (out-μ wf) = out-μ wf
   optimize-once-structural (Cata {F} wf alg) = Cata {F} wf (optimize-once alg)
   optimize-once-structural (Para {F} wf alg) = Para {F} wf (optimize-once alg)
   optimize-once-structural (Out wf) = Out wf
-  optimize-once-structural (in-ν wf m) = in-ν wf m
+  optimize-once-structural (in-ν wf) = in-ν wf
   optimize-once-structural (Ana {F} wf coalg) = Ana {F} wf (optimize-once coalg)
   optimize-once-structural (Hylo {F} {G} wfF wfG alg t) = Hylo {F} {G} wfF wfG (optimize-once alg) (optimize-nt t)
   -- Fuse: μ-anchored fusion (correct by construction)

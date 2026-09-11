@@ -192,7 +192,11 @@ data IR where
 
   -- Initial algebra operations (inductive types, total recursion)
   -- In: F(μF) → μF (constructor)
-  In : ∀ {F} → WellFormedFI F → AllocMode → IR (⟦ F ⟧TI (μ-type F)) (μ-type F)
+  -- 0.86 stage G (D147), the LAST of the six: `AllocMode` leaves `In` and
+  -- `in-ν`. Signature-only, and `Stack` was unreachable here as everywhere —
+  -- the elaborator threads `Heap` (`morph-app (IR.In wfF Heap) argE`) and the
+  -- apex compiles at `doOpt = false`.
+  In : ∀ {F} → WellFormedFI F → IR (⟦ F ⟧TI (μ-type F)) (μ-type F)
 
   -- out-μ: μF → F(μF) (destructor, inverse of In)
   -- By Lambek's Lemma, In is an isomorphism, so its inverse exists.
@@ -233,7 +237,7 @@ data IR where
   -- in-ν: F(νF) → νF (constructor, inverse of Out)
   -- By Lambek's Lemma (dual), Out is an isomorphism, so its inverse exists.
   -- Provides symmetry with μ-type operations.
-  in-ν : ∀ {F} → WellFormedFI F → AllocMode → IR (⟦ F ⟧TI (ν-type F)) (ν-type F)
+  in-ν : ∀ {F} → WellFormedFI F → IR (⟦ F ⟧TI (ν-type F)) (ν-type F)
 
   -- Ana: given IR morphism (A → F(A)), produce A → νF
   -- Productivity follows from IR totality: coalgebras are IR morphisms,

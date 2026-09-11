@@ -126,7 +126,7 @@ label-mono (case f g)  n l =
   ≤-trans (n≤1+n l)
     (≤-trans (n≤1+n (suc l))
       (≤-trans (label-mono f n (suc (suc l))) (label-mono g _ _)))
-label-mono (In _ _)    n l = ≤-refl
+label-mono (In _)    n l = ≤-refl
 label-mono (out-μ _)   n l = ≤-refl
 -- C1: the algebra is generated at frontier 0, so its own label advance is
 -- taken there; the skeleton then advances further from `l1`.
@@ -134,7 +134,7 @@ label-mono (Cata {F} _ alg) n l =
   ≤-trans (label-mono alg 0 l) (cata-label-mono (cata-strategy ⌈ F ⌉F) _ _ _ _)
 label-mono (Para _ _)     n l = ≤-refl
 label-mono (Out _)        n l = ≤-refl
-label-mono (in-ν _ _)     n l = ≤-refl
+label-mono (in-ν _)     n l = ≤-refl
 label-mono (Ana _ _)      n l = ≤-refl
 label-mono (Hylo _ _ _ _) n l = ≤-refl
 label-mono (Fuse _ _ _ _) n l = ≤-refl

@@ -226,7 +226,7 @@ mutual
   -- const is opaque (no optimization), so structural identity holds.
   optimize-once-structural-correct (const _ _) x = refl
   optimize-once-structural-correct (free-heap h) x = refl
-  optimize-once-structural-correct (In wf m) x = refl
+  optimize-once-structural-correct (In wf) x = refl
   optimize-once-structural-correct (out-μ wf) x = refl
   -- For Cata/Para/Ana/Hylo/Fuse, optimize-once descends into algebras/coalgebras.
   -- Evaluation uses `eval alg` in a lambda. Funext on the pointwise IH gives
@@ -238,7 +238,7 @@ mutual
     eval-Para-cong wf (optimize-once alg) alg x
                    (funext (λ y → optimize-once-correct alg y))
   optimize-once-structural-correct (Out wf) x = refl
-  optimize-once-structural-correct (in-ν wf m) x = refl
+  optimize-once-structural-correct (in-ν wf) x = refl
   optimize-once-structural-correct (Ana {F} wf coalg) x =
     eval-Ana-cong wf (optimize-once coalg) coalg x
                    (funext (λ y → optimize-once-correct coalg y))

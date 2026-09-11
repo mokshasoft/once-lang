@@ -304,7 +304,7 @@ frame-free-trace' (case f g) (hf , hg) n l =
       (++⁺ (frame-free-trace' g hg _ _)
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
                 (++⁺ (frame-free-trace' f hf _ _) (tt ∷ []))))
-frame-free-trace' (In _ _)  hm n l = tt ∷ []
+frame-free-trace' (In _)  hm n l = tt ∷ []
 frame-free-trace' (out-μ _) hm n l = tt ∷ []
 -- C1: the algebra is generated at frontier 0 (its own frame), so its IH is
 -- taken there rather than at the caller's `n`.
@@ -312,7 +312,7 @@ frame-free-trace' (Cata {F} _ alg) hm n l =
   cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ _ (frame-free-trace' alg hm 0 l)
 frame-free-trace' (Para _ _)     hm n l = []
 frame-free-trace' (Out _)        hm n l = tt ∷ []
-frame-free-trace' (in-ν _ _)     hm n l = []
+frame-free-trace' (in-ν _)     hm n l = []
 frame-free-trace' (Ana _ _)      hm n l = []
 frame-free-trace' (Hylo _ _ _ _) hm n l = []
 frame-free-trace' (Fuse _ _ _ _) hm n l = []
@@ -361,12 +361,12 @@ frame-free-blocks' inl hm n l = []
 frame-free-blocks' inr hm n l = []
 frame-free-blocks' (case f g) (hf , hg) n l =
   ++⁺ (frame-free-blocks' f hf n (suc (suc l))) (frame-free-blocks' g hg _ _)
-frame-free-blocks' (In _ _)  hm n l = []
+frame-free-blocks' (In _)  hm n l = []
 frame-free-blocks' (out-μ _) hm n l = []
 frame-free-blocks' (Cata {F} _ alg) hm n l = frame-free-blocks' alg hm 0 l
 frame-free-blocks' (Para _ _)     hm n l = []
 frame-free-blocks' (Out _)        hm n l = []
-frame-free-blocks' (in-ν _ _)     hm n l = []
+frame-free-blocks' (in-ν _)     hm n l = []
 frame-free-blocks' (Ana _ _)      hm n l = []
 frame-free-blocks' (Hylo _ _ _ _) hm n l = []
 frame-free-blocks' (Fuse _ _ _ _) hm n l = []

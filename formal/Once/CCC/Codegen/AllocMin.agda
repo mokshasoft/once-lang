@@ -269,14 +269,14 @@ alloc-min-trace' (case f g) n l =
       (++⁺ (alloc-min-trace' g _ _)
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
                 (++⁺ (alloc-min-trace' f _ _) (tt ∷ []))))
-alloc-min-trace' (In _ _)  n l = tt ∷ []
+alloc-min-trace' (In _)  n l = tt ∷ []
 alloc-min-trace' (out-μ _) n l = tt ∷ []
 -- C1: the algebra is generated at frontier 0 (its own frame).
 alloc-min-trace' (Cata {F} _ alg) n l =
   cata-dispatch-am (cata-strategy ⌈ F ⌉F) _ _ _ _ (alloc-min-trace' alg 0 l)
 alloc-min-trace' (Para _ _)     n l = []
 alloc-min-trace' (Out _)        n l = tt ∷ []
-alloc-min-trace' (in-ν _ _)     n l = []
+alloc-min-trace' (in-ν _)     n l = []
 alloc-min-trace' (Ana _ _)      n l = []
 alloc-min-trace' (Hylo _ _ _ _) n l = []
 alloc-min-trace' (Fuse _ _ _ _) n l = []
@@ -312,11 +312,11 @@ alloc-min-blocks initial  n l = []
 alloc-min-blocks apply    n l = []
 alloc-min-blocks inl n l = []
 alloc-min-blocks inr n l = []
-alloc-min-blocks (In _ _)   n l = []
+alloc-min-blocks (In _)   n l = []
 alloc-min-blocks (out-μ _)  n l = []
 alloc-min-blocks (Para _ _) n l = []
 alloc-min-blocks (Out _)    n l = []
-alloc-min-blocks (in-ν _ _) n l = []
+alloc-min-blocks (in-ν _) n l = []
 alloc-min-blocks (Ana _ _)  n l = []
 alloc-min-blocks (Hylo _ _ _ _) n l = []
 alloc-min-blocks (Fuse _ _ _ _) n l = []

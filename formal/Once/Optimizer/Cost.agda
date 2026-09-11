@@ -53,12 +53,12 @@ cost (curry f)   = 1 ℕ+ cost f              -- closure allocation
 cost apply         = 0
 cost arr           = 0
 -- Recursion schemes (OCP-0003)
-cost (In _ _)      = 1                        -- μ-type wrapper allocation
+cost (In _)      = 1                        -- μ-type wrapper allocation
 cost (out-μ _)     = 0                        -- destructor is free
 cost (Cata _ alg)  = cost alg                 -- cost of algebra
 cost (Para _ alg)  = cost alg                 -- cost of algebra
 cost (Out _)       = 0                        -- observation is free
-cost (in-ν _ _)    = 1                        -- ν-type wrapper allocation
+cost (in-ν _)    = 1                        -- ν-type wrapper allocation
 cost (Ana _ coalg) = cost coalg               -- cost of coalgebra
 cost (Hylo _ _ alg t) = cost alg ℕ+ cost-nt t  -- fusion: algebra + natural transform
 cost (Fuse _ _ alg t) = cost alg ℕ+ cost-nt t  -- fusion: algebra + natural transform

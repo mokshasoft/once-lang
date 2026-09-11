@@ -345,7 +345,7 @@ open import Once.Postulates using (extensionality)
 -- Note: Requires a WellFormedF proof.
 --
 eval-cata-In-id : ∀ {F : Functor} → (wf : WellFormedF F) → (m : AllocMode) (x : ⟦ μ-type F ⟧)
-                → eval (Cata {F} wf (In {F} wf m)) x ≡ x
+                → eval (Cata {F} wf (In {F} wf)) x ≡ x
 eval-cata-In-id {F} wf m x =
   let -- The algebra used by Cata evaluation: λ fa → eval (In m) (coerce⁻¹ fa)
       -- which equals λ fa → sem-In F (coerce (coerce⁻¹ fa))
@@ -455,7 +455,7 @@ fmap-coerce-coherence′ F f y = trans (fmap-struct-coherence′ F f y) (sym (fm
 --
 eval-cata-In : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
                (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
-             → eval (Cata {F} wf alg ∘ In {F} wf m) x ≡
+             → eval (Cata {F} wf alg ∘ In {F} wf) x ≡
                eval alg (fmap-Type F (eval (Cata {F} wf alg)) x)
 eval-cata-In {F} wf {A} alg m x =
   let -- The algebra lifted to Set level

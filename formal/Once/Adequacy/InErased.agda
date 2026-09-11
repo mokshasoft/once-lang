@@ -65,7 +65,7 @@ subst-diag refl z = refl
 In-ir : ∀ {F : Functor} → WellFormedF F → IR.IR ⌊ ⟦ F ⟧T (μ-type F) ⌋ ⌊ μ-type F ⌋
 In-ir {F} wfF = subst (λ o → IR.IR o ⌊ μ-type F ⌋)
                       (sym (⌊⟧T-commute F (μ-type F)))
-                      (IR.In (wf-⌊⌋ wfF) IR.Heap)
+                      (IR.In (wf-⌊⌋ wfF))
 
 -- `⟨_⟩` (the μS "in" constructor) commutes with a subst over the functor eq.
 -- Match-to-refl.
@@ -95,7 +95,7 @@ in-trace {F} wfF v n =
   trans (subst-T-projTrace (cong μS (tF-coh F))
           (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n)
         (cong (λ hh → projTrace hh n)
-          (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)
+          (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))
                            (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
 
 -- VALUE half — the coherence (PROBE: refl to read the goal).
@@ -105,10 +105,10 @@ in-value-erase {F} wfF v n =
   trans (cong proj₂ (subst-T-apply (cong μS (tF-coh F))
                       (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n))
   (trans (cong (λ hh → subst id (cong μS (tF-coh F)) (proj₂ (hh n)))
-               (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)
+               (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))
                                 (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
   (trans (cong (λ arg → subst id (cong μS (tF-coh F))
-                         (proj₂ (evalᴰ fmt (IR.In (wf-⌊⌋ wfF) IR.Heap) arg n)))
+                         (proj₂ (evalᴰ fmt (IR.In (wf-⌊⌋ wfF)) arg n)))
                (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (μ-type F)) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
   (trans (subst-id-μS (tF-coh F) _)
   (trans (⟨⟩-subst-nat (tF-coh F) _)

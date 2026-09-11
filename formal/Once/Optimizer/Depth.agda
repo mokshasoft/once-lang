@@ -47,12 +47,12 @@ depth (curry f)   = suc (depth f)
 depth apply         = 0
 depth arr           = 0
 -- Recursion schemes (OCP-0003)
-depth (In _ _)      = 0
+depth (In _)      = 0
 depth (out-μ _)     = 0
 depth (Cata _ alg)  = suc (depth alg)
 depth (Para _ alg)  = suc (depth alg)
 depth (Out _)       = 0
-depth (in-ν _ _)    = 0
+depth (in-ν _)    = 0
 depth (Ana _ coalg) = suc (depth coalg)
 depth (Hylo _ _ alg t) = suc (depth alg ⊔ depth-nt t)
 depth (Fuse _ _ alg t) = suc (depth alg ⊔ depth-nt t)

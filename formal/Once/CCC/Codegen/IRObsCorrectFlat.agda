@@ -923,8 +923,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- result, no residence claimed". Adding it is a spec change, and per this
     -- plan's own gate the discharge dictates it rather than a guess ahead of
     -- time — deferred with the case named.
-    obs-correct-In        : ∀ {F} (wf : WellFormedFI F) (m : AllocMode)
-                          → IRObsCorrectF (In wf m)
+    obs-correct-In        : ∀ {F} (wf : WellFormedFI F)
+                          → IRObsCorrectF (In wf)
 
     -- CLASS B — allocating, no control flow. Step 1; adds the frontier thread.
     obs-correct-pair : ∀ {A B C} (f : IR A B) (g : IR A C)
@@ -1025,8 +1025,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- it needs a decision-log entry either way). Named so the choice is forced.
     obs-correct-Para : ∀ {F} (wf : WellFormedFI F) {A} (f : IR (⟦ F ⟧TI (μ-type F * A)) A)
                      → IRObsCorrectF (Para wf f)
-    obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F) (m : AllocMode)
-                     → IRObsCorrectF (in-ν wf m)
+    obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F)
+                     → IRObsCorrectF (in-ν wf)
     obs-correct-Ana  : ∀ {F} (wf : WellFormedFI F) {A} (f : IR A (⟦ F ⟧TI A))
                      → IRObsCorrectF (Ana wf f)
     obs-correct-Hylo : ∀ {F G} (wfF : WellFormedFI F) (wfG : WellFormedFI G) {B}
@@ -1576,12 +1576,12 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-obs-correct (curry body)      = obs-correct-curry body
   ir-obs-correct apply               = obs-correct-apply
   -- μ / ν structure
-  ir-obs-correct (In wf m)           = obs-correct-In wf m
+  ir-obs-correct (In wf)           = obs-correct-In wf
   ir-obs-correct (out-μ wf)          = obs-correct-out-μ wf
   ir-obs-correct (Cata wf alg)       = cata-correct wf alg (ir-obs-correct alg)
   ir-obs-correct (Para wf f)         = obs-correct-Para wf f
   ir-obs-correct (Out wf)            = obs-correct-Out wf
-  ir-obs-correct (in-ν wf m)         = obs-correct-in-ν wf m
+  ir-obs-correct (in-ν wf)         = obs-correct-in-ν wf
   ir-obs-correct (Ana wf f)          = obs-correct-Ana wf f
   ir-obs-correct (Hylo wfF wfG a nt) = obs-correct-Hylo wfF wfG a nt
   ir-obs-correct (Fuse wfF wfG a nt) = obs-correct-Fuse wfF wfG a nt

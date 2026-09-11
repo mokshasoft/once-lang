@@ -167,7 +167,7 @@ evalᴰ fmt ir            a        = λ n → (rec-trace-D fmt ir (forget a) n ,
 -- event-prefix `take` is applied once, at the observable (⟦_⟧IR / traces-agree).
 rec-trace-D fmt (Cata {F} wf {E} {C} alg)   x n = proj₁ (sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt {F} {E} {C} n alg (inject (proj₁ x))) (proj₂ x))
 rec-trace-D fmt (Ana {F} wf {A} coalg)  x n = ana-events fmt {F} {A} coalg x n
-rec-trace-D fmt (In wf m)               x n = []
+rec-trace-D fmt (In wf)               x n = []
 rec-trace-D fmt (Out wf)                x n = []
 -- Pure non-recursion-scheme constructors: no observable SigOp ⇒ no events.
 rec-trace-D fmt (out-μ wf)              x n = []

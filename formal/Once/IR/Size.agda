@@ -37,12 +37,12 @@ ir-size (curry f) = 2 +ℕ ir-size f
 ir-size apply = 1
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 -- Recursion schemes (OCP-0003) - WellFormedF proofs are ignored for size
-ir-size (In _ _) = 1
+ir-size (In _) = 1
 ir-size (out-μ _) = 1             -- Lambek isomorphism inverse
 ir-size (Cata _ alg) = 2 +ℕ ir-size alg  -- Similar to curry: contains body
 ir-size (Para _ alg) = 2 +ℕ ir-size alg  -- Paramorphism body
 ir-size (Out _) = 1
-ir-size (in-ν _ _) = 1            -- Lambek isomorphism inverse
+ir-size (in-ν _) = 1            -- Lambek isomorphism inverse
 ir-size (Ana _ coalg) = 2 +ℕ ir-size coalg  -- Contains coalgebra body
 ir-size (Hylo _ _ alg t) = 2 +ℕ ir-size alg +ℕ ir-size-nt t
 -- Fuse: μ-anchored fusion (correct by construction)

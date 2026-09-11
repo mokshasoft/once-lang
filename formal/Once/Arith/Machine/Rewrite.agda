@@ -186,7 +186,7 @@ rewrite-ir ir with try-lift ir
       let (f' , bf) = rewrite-ir f
       in (curry f') , bf
     walk apply             = apply , []
-    walk (In w m)          = In w m , []
+    walk (In w)          = In w , []
     walk (out-μ w)         = out-μ w , []
     walk (Cata w f)        =
       let (f' , bf) = rewrite-ir f
@@ -195,7 +195,7 @@ rewrite-ir ir with try-lift ir
       let (f' , bf) = rewrite-ir f
       in Para w f' , bf
     walk (Out w)           = Out w , []
-    walk (in-ν w m)        = in-ν w m , []
+    walk (in-ν w)        = in-ν w , []
     walk (Ana w f)         =
       let (f' , bf) = rewrite-ir f
       in Ana w f' , bf

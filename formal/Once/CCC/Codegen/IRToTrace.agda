@@ -935,7 +935,7 @@ ir-to-trace' n l (case f g) =
 -- pointer through, matching `out-μ` (its inverse) and the heap-identity
 -- `run-In` (SumRecWF). Plan 0.27 Phase B: was `[]` (a stub correct only
 -- when Output happened to be pre-loaded by a preceding sub-IR).
-ir-to-trace' n l (In _ _)       = n , l , (mov-to-output ∷ []) , []
+ir-to-trace' n l (In _)       = n , l , (mov-to-output ∷ []) , []
 -- out-μ and Out: ν/μ Lambek inverses; semantically Output := Input1.
 -- run-X uses `mov-to-output ∷ []`; mirror it so the discharge falls
 -- out via the same `transport-trivial` pattern as id/arr/free-heap.
@@ -956,7 +956,7 @@ ir-to-trace' n l (Cata {F} _ alg) =
   in next , l2 , trace , ab
 ir-to-trace' n l (Para _ _)     = n , l , [] , []
 ir-to-trace' n l (Out _)        = n , l , (mov-to-output ∷ []) , []
-ir-to-trace' n l (in-ν _ _)     = n , l , [] , []
+ir-to-trace' n l (in-ν _)     = n , l , [] , []
 ir-to-trace' n l (Ana _ _)      = n , l , [] , []
 ir-to-trace' n l (Hylo _ _ _ _) = n , l , [] , []
 ir-to-trace' n l (Fuse _ _ _ _) = n , l , [] , []

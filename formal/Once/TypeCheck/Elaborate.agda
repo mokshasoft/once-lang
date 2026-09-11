@@ -1548,7 +1548,7 @@ mutual
   checkInGo ctx arg F (just wfF) eqW with checkElabV ctx arg (⟦ F ⟧T (Once.Type.μ-type F))
   ... | failure err , _ = failure err , tt
   ... | success Ψ argE d fr , wArg =
-        success _ (Surface.morph-app (subst (λ o → IR o ⌊ Once.Type.μ-type F ⌋) (sym (⌊⟧T-commute F (Once.Type.μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)) argE) (suc d) fr , t-In-app-check wfF wArg
+        success _ (Surface.morph-app (subst (λ o → IR o ⌊ Once.Type.μ-type F ⌋) (sym (⌊⟧T-commute F (Once.Type.μ-type F))) (IR.In (wf-⌊⌋ wfF))) argE) (suc d) fr , t-In-app-check wfF wArg
 
   -- Plan 0.28 Commit 2: `cata alg` (catamorphism) check-mode at
   -- `μ-type F ⇒[Many] A`. The algebra is compiled by the self-contained

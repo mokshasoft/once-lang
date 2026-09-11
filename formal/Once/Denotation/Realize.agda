@@ -114,7 +114,7 @@ realize (t-embed d)             = realize-infer d
 realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)
 realize (t-pair-lit-check da db) = pair (realize da) (realize db)
 realize (t-In-app-check {F = F} wfF d) =
-  morph-app (subst (λ o → IR o ⌊ μ-type F ⌋) (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF) IR.Heap)) (realize d)
+  morph-app (subst (λ o → IR o ⌊ μ-type F ⌋) (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))) (realize d)
 realize (t-apply-check dp)      = morph-app IR.apply (realize-infer dp)
 realize (t-inl-app-check d)     = morph-app (IR.inl) (realize d)
 realize (t-inr-app-check d)     = morph-app (IR.inr) (realize d)

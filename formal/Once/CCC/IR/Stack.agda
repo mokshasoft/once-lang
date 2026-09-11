@@ -100,7 +100,7 @@ ir-stack-requirement apply = pair-slots
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 -- Recursion schemes (OCP-0003) - WellFormedFI proofs are ignored for stack
 -- In: constructs μ-value, similar to fold
-ir-stack-requirement (In _ _) = 1
+ir-stack-requirement (In _) = 1
 -- out-μ: destructs μ-value (Lambek inverse of In), constant
 ir-stack-requirement (out-μ _) = 0
 -- Cata: tail-recursive consumption, needs stack for intermediate results
@@ -115,7 +115,7 @@ ir-stack-requirement (Para wfF alg) = product-depth wfF +ℕ (sum-depth wfF *ℕ
 -- Out: extracts from ν-value, constant
 ir-stack-requirement (Out _) = 0
 -- in-ν: constructs ν-value (Lambek inverse of Out)
-ir-stack-requirement (in-ν _ _) = 1
+ir-stack-requirement (in-ν _) = 1
 -- Ana: produces ν-value lazily, needs stack for coalgebra
 ir-stack-requirement (Ana _ coalg) = ir-stack-requirement coalg +ℕ pair-slots
 -- Hylo: fused cata ∘ ana, combines both requirements

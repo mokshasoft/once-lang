@@ -108,7 +108,7 @@ fusion-once-correct arr x = refl
 fusion-once-correct (SigOp n) x = refl
 fusion-once-correct (const _ _) x = refl
 fusion-once-correct (free-heap h) x = refl
-fusion-once-correct (In wf m) x = refl
+fusion-once-correct (In wf) x = refl
 fusion-once-correct (out-μ wf) x = refl
 fusion-once-correct (Cata wf alg) x =
   fusion-Cata-cong wf (fusion-once alg) alg x
@@ -117,7 +117,7 @@ fusion-once-correct (Para wf alg) x =
   fusion-Para-cong wf (fusion-once alg) alg x
                    (funext (λ y → fusion-once-correct alg y))
 fusion-once-correct (Out wf) x = refl
-fusion-once-correct (in-ν wf m) x = refl
+fusion-once-correct (in-ν wf) x = refl
 fusion-once-correct (Ana wf coalg) x =
   fusion-Ana-cong wf (fusion-once coalg) coalg x
                    (funext (λ y → fusion-once-correct coalg y))

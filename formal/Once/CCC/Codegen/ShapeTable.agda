@@ -474,16 +474,18 @@ HeapModed ⟨ f , g ⟩ = HeapModed f × HeapModed g
 -- the heap lowering is the only one.
 HeapModed (curry b)   = HeapModed b
 -- 0.86 stage G: the injections have no mode, so no `IsHeap` obligation —
--- the heap lowering is the only one.
+-- the heap lowering is the only one. Since the whole of stage G landed, the
+-- same holds for `In`/`in-ν`: `IsHeap` now has NO producer among the IR
+-- constructors, and `HeapModed` is a conjunction of `⊤`s over the structure.
 HeapModed inl       = ⊤
 HeapModed inr       = ⊤
 HeapModed (case f g) = HeapModed f × HeapModed g
-HeapModed (In _ m)  = IsHeap m
+HeapModed (In _)  = ⊤
 HeapModed (out-μ _) = ⊤
 HeapModed (Cata _ alg) = HeapModed alg
 HeapModed (Para _ alg) = HeapModed alg
 HeapModed (Out _)   = ⊤
-HeapModed (in-ν _ m) = IsHeap m
+HeapModed (in-ν _) = ⊤
 HeapModed (Ana _ coalg) = HeapModed coalg
 HeapModed (Hylo _ _ alg _) = HeapModed alg
 HeapModed (Fuse _ _ alg _) = HeapModed alg

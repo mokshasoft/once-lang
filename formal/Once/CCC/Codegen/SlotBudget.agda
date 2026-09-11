@@ -492,7 +492,7 @@ frontier-mono inl n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono inr n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (case f g)  n l =
   ≤-trans (frontier-mono f n (suc (suc l))) (frontier-mono g _ _)
-frontier-mono (In _ _)    n l = ≤-refl
+frontier-mono (In _)    n l = ≤-refl
 frontier-mono (out-μ _)   n l = ≤-refl
 -- C1: the algebra runs in its OWN frame (generated at frontier 0), so the
 -- caller's frontier is not advanced by it at all — the dispatch takes `n`
@@ -500,7 +500,7 @@ frontier-mono (out-μ _)   n l = ≤-refl
 frontier-mono (Cata {F} _ alg) n l = cata-mono (cata-strategy ⌈ F ⌉F) _ _ _ _
 frontier-mono (Para _ _)     n l = ≤-refl
 frontier-mono (Out _)        n l = ≤-refl
-frontier-mono (in-ν _ _)     n l = ≤-refl
+frontier-mono (in-ν _)     n l = ≤-refl
 frontier-mono (Ana _ _)      n l = ≤-refl
 frontier-mono (Hylo _ _ _ _) n l = ≤-refl
 frontier-mono (Fuse _ _ _ _) n l = ≤-refl
@@ -1071,7 +1071,7 @@ slots-below (case f g) n l =
            (segok-pre _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
                 (segok-++ (segok-weaken (frontier-mono g _ _) (slots-below f n (suc (suc l))))
                      (segok-idle _ refl (sb-none refl ∷ [])))))
-slots-below (In _ _)   n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below (In _)   n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (out-μ _)  n l = segok-idle _ refl (sb-none refl ∷ [])
 -- C1: the algebra is generated at frontier 0 — its slots are its own frame's,
 -- so its witness is taken there and `segok-thunk` (inside `cata-body-below`)
@@ -1080,7 +1080,7 @@ slots-below (Cata {F} _ alg) n l =
   cata-slots-below (cata-strategy ⌈ F ⌉F) _ _ _ _ (slots-below alg 0 l)
 slots-below (Para _ _)     n l = segok-idle _ refl []
 slots-below (Out _)        n l = segok-idle _ refl (sb-none refl ∷ [])
-slots-below (in-ν _ _)     n l = segok-idle _ refl []
+slots-below (in-ν _)     n l = segok-idle _ refl []
 slots-below (Ana _ _)      n l = segok-idle _ refl []
 slots-below (Hylo _ _ _ _) n l = segok-idle _ refl []
 slots-below (Fuse _ _ _ _) n l = segok-idle _ refl []
@@ -1207,12 +1207,12 @@ blocks-below inl                 n l = []
 blocks-below inr                 n l = []
 blocks-below (case f g)          n l = ++⁺ (blocks-below f n (suc (suc l)))
                                            (blocks-below g _ _)
-blocks-below (In _ _)            n l = []
+blocks-below (In _)            n l = []
 blocks-below (out-μ _)           n l = []
 blocks-below (Cata {F} _ alg)    n l = blocks-below alg 0 l
 blocks-below (Para _ _)          n l = []
 blocks-below (Out _)             n l = []
-blocks-below (in-ν _ _)          n l = []
+blocks-below (in-ν _)          n l = []
 blocks-below (Ana _ _)           n l = []
 blocks-below (Hylo _ _ _ _)      n l = []
 blocks-below (Fuse _ _ _ _)      n l = []

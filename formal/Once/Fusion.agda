@@ -148,7 +148,7 @@ fusion-once terminal = terminal
 fusion-once initial = initial
 
 -- Curry: recurse into body, preserve mode
-fusion-once (curry f) = curry (fusion-once f) m
+fusion-once (curry f) = curry (fusion-once f)
 
 -- Apply: nothing to fuse
 fusion-once apply = apply
@@ -166,12 +166,12 @@ fusion-once apply = apply
 -- which causes SplitError.UnificationStuck. The rules are proven semantically
 -- in Category/Laws.agda (eval-cata-In, eval-hylo-unfold, eval-ana-Out-id).
 --
-fusion-once (In wf m) = In wf m
+fusion-once (In wf) = In wf
 fusion-once (out-μ wf) = out-μ wf
 fusion-once (Cata {F} wf alg) = Cata {F} wf (fusion-once alg)
 fusion-once (Para {F} wf alg) = Para {F} wf (fusion-once alg)
 fusion-once (Out wf) = Out wf
-fusion-once (in-ν wf m) = in-ν wf m
+fusion-once (in-ν wf) = in-ν wf
 fusion-once (Ana {F} wf coalg) = Ana {F} wf (fusion-once coalg)
 fusion-once (Hylo {F} {G} wfF wfG alg t) = Hylo {F} {G} wfF wfG (fusion-once alg) (fusion-nt t)
 -- Fuse: μ-anchored fusion (correct by construction)
