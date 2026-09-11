@@ -1967,8 +1967,54 @@ only new obligation, is REASONING OVER A 7 000-LINE LOGICAL RELATION
 FROM THREE DEFINITIONS — it should be checked before anyone commits to
 the change.
 
-⬜ NEXT, IF PURSUED: try to prove
-`IDInterp Γ i D → i ⟶* i' → IDInterp Γ i' D` for the CURRENT
-(unindexed) definition's moral equivalent. If that is hard, the
-parameter row is hard for the same reason and the POC's answer is
-"first-class descriptions cannot carry parameters in this kernel."
+### ✅✅ THE STABILITY PROPERTY IS **PROVED** — `bootstrap/tmp/ParamStable.agda`
+
+```agda
+param-stable : {Γ : Cx} {i i' : RTm Γ} →
+               i ⟶* i' → ⊩₀ (El (fst i)) → ⊩₀ (El (fst i'))
+param-stable r R = fwd₀ (⟶ᵀ*-El (⟶*-fst r)) R
+```
+
+Three lines, `rc=0`, no holes or postulates, and every ingredient
+already existed:
+
+| | |
+|---|---|
+| `⟶*-fst` | reduction is a congruence for `fst` |
+| `⟶ᵀ*-El` | …and lifts to TYPE reduction through `El` |
+| `fwd₀` | **`⊩₀` is forward-closed under type reduction** |
+
+★★★ **AND THE HARDER VERSION IS ALREADY IN THE TREE.**
+`Metatheory/LogicalRelation:4409`:
+
+```agda
+irrelIMu : (di₁ di₂ : IDInterp Γ D)
+           {i i' v : RTm Γ} → i ⟶* v → i' ⟶* v →
+           IMuMem D I (ipredsOf di₁) i t → IMuMem D I (ipredsOf di₂) i' t
+```
+
+Membership already transports across indices that JOIN, with two
+DIFFERENT interpretations — its own comment says *"the only additions
+are the index-reduction witnesses threaded through, and the κ slot's
+conversion"*, and that κ conversion is `ienv-conv`, built on the same
+`⟶ᵀ*-El (subTm-monoˢ …)`. ⇒ the index-reduction machinery this change
+needs is not hypothetical; it is deployed.
+
+### ⇒ CONCLUSION
+
+**The blocking concern is removed.** What looked like "one row plus an
+open metatheory question" is **one row plus a property that is three
+lines from existing lemmas**, in a relation that already does the harder
+indexed transfer.
+
+⚠ **WHAT IS PROVED AND WHAT IS NOT.** Proved: the stability property at
+the shape a parameter needs, `El (fst i)`. NOT done: the `icw-par` row
+itself, its `⊩₀` clause, and the `IKInterp` refinement that fixes the
+ambient component. Those are ordinary work; nothing now suggests a wall.
+
+⚠ Note the property is proved for a PROJECTION OF THE INDEX — exactly
+the parameter case — not for an arbitrary index-dependent code. That
+restriction is the point: it is what keeps the row on the right side of
+§10.1, which excluded `⌜Π⌝`/`⌜Σ⌝`/`⌜Hom⌝` because `⊩₀` cannot interpret
+them at an arbitrary environment. A projection needs no interpretation
+of its own — `fwd₀` carries it.
