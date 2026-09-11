@@ -2258,6 +2258,68 @@ relief lands on `iihs` — the one that was killed — and not everywhere.
 no motive application, hence nothing for `towerA`/`towerJ` to undo. The
 next measurement is to rebuild ONE real function both ways and compare.
 
+### ✅✅✅ REBUILT AND MEASURED, 2026-09-11 — `iihs`'s `iρ` ROW
+
+`bootstrap/tmp/IihsRhoATmp.agda` against `tmp/IihsRho2Tmp.agda`, same
+row, cold, same RTS (`-M5G -A64m -c`), no contention:
+
+| | passengers | lams | wall | peak RSS |
+|---|---|---|---|---|
+| baseline (`D`/`ms` bundled into a `Σ'`) | 4 | 7 | 2:11.99 | **4.24 GB** |
+| ambient (`n`/`D`/`ms` in `Γ`) | **2** | **5** | **1:41.27** | **1.46 GB** |
+
+⇒ **23% faster and 2.9× less memory** — and the memory figure is the one
+that matters, because the 5-passenger version was KILLED at the 5.5 GB
+cap and 4.24 GB is most of the way back to it. ⚠ 2.9× is far outside the
+±12% RSS noise floor; the 23% is not.
+
+★ AND THE COMPARISON IS HANDICAPPED AGAINST THE NEW VERSION: the
+baseline's motive lives in a sibling module (deserialised), the ambient
+one is elaborated in-module, and the ambient file additionally defines
+the two `peel` lemmas the baseline gets from `Lib/Wk`. Both end in the
+same state — one site with unsolved metas at `⊢iihsIH`'s application,
+which the baseline's own header already records as un-pinnable.
+
+### ★★★ THE RUNGS CHANGED IN KIND, NOT JUST IN COUNT
+
+| slot | baseline | ambient |
+|---|---|---|
+| `n` | — (motive-local) | — (ambient) |
+| `σ'` | `towerA` (3 rungs) + `subBwd` | **`towerP` (2 rungs)** + `subBwd` |
+| `D`/`ms` | `wk-single` + `sub-w-single` | **gone** |
+| `p` | `sub-w²-single` | 3-rung `pw^` chain |
+| result | `towerJ` | 4-rung **`pw^`** chain |
+
+⇒ the baseline's `n` sits INSIDE the tower and must be EXTRACTED, which
+is what the hand-LISTED `towerA`/`towerJ`/`towerJ⁵` family is for — and
+`Lib/Wk:487` already flags that family as *"iterates of one lemma [that]
+want INDEXING, not listing. Two rungs is where it stops being worth
+it."* An ambient `nn` is a Γ-VARIABLE, BELOW every binder, so every
+substitution merely WEAKENS past it and **`pw^ k` — the INDEXED lemma
+already in `Lib/Wk` — discharges every rung at every depth.**
+★ So the encoding that removes the passengers also lands the tower on
+the lemma the library already wanted to be using.
+
+### ⚠⚠ AND THE PRICE, MEASURED — THE AMBIENT TERMS MUST BE **VARIABLES**
+
+Stated generically over `{nn : RTm ⌊ Γ ⌋}` the row FAILS at `⊢methLam`:
+
+```
+vs x != extR vs x
+```
+
+`renTy (extR (extR vs))` cannot compute through an abstract
+`renTm vs (renTm vs nn)`. With `nn` a VARIABLE it computes, because
+renaming a variable is a variable. ⇒ **the motive may mention the ambient
+context, but only through variables** — which is exactly what a PARAMETER
+is, and exactly the restriction Agda and Coq impose by construction.
+So the row must be stated at a concrete `Γa`, and the generic-in-`Γ`
+form is lost.
+
+⬜ NOT DONE: the other 52 rows, the junk row, the tuple, and the wrapper
+`iihsK`. The measurement is ONE row — the expensive one — and the rest is
+the ordinary work.
+
 ### ⇒ SO: NO KERNEL CHANGE IS NEEDED FOR THE KNOT
 
 The `ielim`-arity change (95 hand-written files) is **not** justified by
