@@ -2315,7 +2315,7 @@ already in `Lib/Wk` — discharges every rung at every depth.**
 ★ So the encoding that removes the passengers also lands the tower on
 the lemma the library already wanted to be using.
 
-### ⚠⚠ AND THE PRICE, MEASURED — THE AMBIENT TERMS MUST BE **VARIABLES**
+### ⚠ THE PRICE — AND THE FIRST VERSION OF THIS SECTION WAS WRONG
 
 Stated generically over `{nn : RTm ⌊ Γ ⌋}` the row FAILS at `⊢methLam`:
 
@@ -2324,12 +2324,45 @@ vs x != extR vs x
 ```
 
 `renTy (extR (extR vs))` cannot compute through an abstract
-`renTm vs (renTm vs nn)`. With `nn` a VARIABLE it computes, because
-renaming a variable is a variable. ⇒ **the motive may mention the ambient
-context, but only through variables** — which is exactly what a PARAMETER
-is, and exactly the restriction Agda and Coq impose by construction.
-So the row must be stated at a concrete `Γa`, and the generic-in-`Γ`
-form is lost.
+`renTm vs (renTm vs nn)`, and I concluded *"the ambient terms must be
+VARIABLES"* and retreated to a concrete `Γa`.
+
+⚠⚠ **THAT CONCLUSION WAS WRONG, AND THE RETREAT WAS THE MOVE THIS
+PROJECT HAS REPEATEDLY MEASURED AS THE BAD ONE** —
+[[half-generalization-is-worst]], [[narrow-twin-shadows-general-form]].
+Prompted by the user asking why a SPECIALISATION was winning when
+generalisation usually does. `bootstrap/tmp/MotRen.agda`, **rc=0 first
+try**:
+
+```agda
+motA-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (nn : RTm Γ) →
+           renTy (extR (extR ρ)) (motA nn) ≡ motA (renTm ρ nn)
+motA-ren {ρ = ρ} nn =
+  cong₂ (λ a b → Π (Π (K (pair sVar (snd (var (vs vz))))) (K (pair sTm a)))
+                   (Π (K (pair sTm a)) (K (pair sTm b))))
+        (ren-w³ {ρ = ρ} nn) (ren-w⁴ {ρ = ρ} nn)
+```
+
+★ **the ambient motive IS natural in `⊢methLam`'s transport** — four
+lines, and `Lib/Wk` already had `ren-w³`; only the fourth iterate was
+missing. ⇒ ambient references do NOT have to be variables.
+
+### ⬜ WHAT ACTUALLY BLOCKS THE GENERIC FORM — and it is one lemma
+
+`tmp/IihsRhoAGen.agda` still fails, but NOT for the reason above: the
+method's CONTEXT carries `iihTy … (renTy (extR² vs) (renTy (extR² vs) M))`
+un-normalised, so the very first `⊢lam` cannot match its domain against
+the nice `motA (w (w nn))` form. Casting the goal does not help — the
+mismatch is in the ARGUMENT type `⊢methLam` demands.
+
+⇒ **the transport belongs INSIDE `⊢methLam`**, which should take an
+`M'` and the equation `renTy (extR² vs) (renTy (extR² vs) M) ≡ M'` and
+state the body at `M'`. That is a change to the SHARED PROLOGUE in
+`Lib/IPay` — paid ONCE, not per row — i.e. *generalise the CONSUMER*,
+exactly what [[half-generalization-is-worst]] prescribes.
+
+⚠ NOT DONE, so the generic-in-Γ ambient row is UNPROVEN. What is proven
+is that the blocker is this one lemma and not the encoding.
 
 ⬜ NOT DONE: the other 52 rows, the junk row, the tuple, and the wrapper
 `iihsK`. The measurement is ONE row — the expensive one — and the rest is
