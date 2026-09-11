@@ -158,6 +158,21 @@
 --                `iconSK` carries).
 --     ihTyK      ⬜ OWED — agreement with `ihTy`.
 --     ihTyRho    ✅ not owed — a method row of `ihTyK`.
+--     ihsK       ⬜ OWED — agreement with `ihs` (`Spec/Syntax:981`).
+--                ★ NEW PROGRAM, not a newly-found gap: `_⟶_`'s two
+--                unemitted rules (`ι-elim`, `ι-ielim`) need an
+--                object-level `sel`/`fields`/`ihs`, and this is the
+--                `ihs` third.  `Knot/Sel.selK` and `Knot/Ihs.fieldsK`
+--                are the other two and are NOT ledger-tracked — `selK`
+--                is a `natrec` (no `ielim`) and `fieldsK` just applies
+--                this one.
+--                ★ `selK` SHIPS WITH ITS ADEQUACY ALREADY
+--                (`Knot/Sel.selK-agree`); this one does not, which is
+--                why it is OWED rather than discharged.
+--                ⚠ SPLIT ACROSS FIVE MODULES FOR SIZE, and the split is
+--                measured: `dι`+`dρ` together fit at 4.9 GB, adding
+--                `dκ` blew the 5.5 GB cap.  `Knot/IhTyRho`/`IhTyKap`
+--                are split for the same reason.
 --     iihAppK    ✅ not a program — the descent through `iihTyMotK`'s four
 --                Π binders, i.e. a step of `iihTyK`'s own definition.
 --     iihTyK     ⬜ OWED — agreement with `iihTy`.
