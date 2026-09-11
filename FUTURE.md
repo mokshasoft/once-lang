@@ -2012,6 +2012,38 @@ the shape a parameter needs, `El (fst i)`. NOT done: the `icw-par` row
 itself, its `⊩₀` clause, and the `IKInterp` refinement that fixes the
 ambient component. Those are ordinary work; nothing now suggests a wall.
 
+### ⚠ THE `IKInterp` REFINEMENT IS REQUIRED, AND IT PULLS IN `icw-imu`
+
+Measured: **`iκW` (`Metatheory/Fundamental:322`) is the ONLY eliminator
+of `ICodeWf` in the tree** — three clauses, one function. So the row
+itself is nearly free. But `iκW`'s type is
+
+```agda
+ICodeWf κ → … → (σ : Sub Θ Γ) → ⊩₀ (El (subTm σ κ))
+```
+
+with σ **arbitrary**, so a parameter code gives `fst (σ v)` — an
+arbitrary code, the `⌜Π⌝` problem again. The three existing rows each
+dodge it: `icw-clo` because σ cannot disturb a closed term, `icw-ford`
+because `⊩₀Id` needs no interpretation of `c`, `icw-imu` because —
+in its own words — *"the `IDInterp` does NOT mention the index, so
+`subTm σ` moving the index is invisible to it."*
+
+⇒ the refinement (fix σ's ambient component, index `IKInterp`/`IDInterp`
+by `i`) is REQUIRED. Blast radius measured: `IKInterp`/`IDInterp`/
+`ikpredsOf`/`ipredsOf`/`IMuMem`, ~115 mentions across ~5 files — against
+**87 hand-written files** for the `ielim`-arity alternative.
+
+⚠⚠ **BUT IT BREAKS `icw-imu`'s INVARIANT.** Its nested index is
+`i : RTm Θ` — in the TELESCOPE — so `subTm σ` genuinely moves it, and the
+clause survives today only because `IDInterp` is index-free. Index it
+and `interpID` must build the interpretation at `subTm σ i`, which for a
+parameter-carrying description needs that parameter's interpretation AT
+that index — which `icw-imu` does not carry.
+
+⇒ `icw-imu`'s signature changes too. NOT a wall, but a SECOND change,
+and not verified.
+
 ⚠ Note the property is proved for a PROJECTION OF THE INDEX — exactly
 the parameter case — not for an arbitrary index-dependent code. That
 restriction is the point: it is what keeps the row on the right side of
