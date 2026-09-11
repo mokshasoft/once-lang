@@ -268,16 +268,25 @@ singleSK-vz i m =
        (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ
          (methsFrom-past (cdTake 51 KnotD) zero » step (βfst _ _) done))))
 
+-- ★★★ THE CORE, AT THE LEDGER'S OWN NAME.  `singleSK` is the entry the
+--   ledger tracks; `singleK` is this plus one β and one `wk-single`.
+--   ⚠ A ledger entry reading "discharged" about a name no theorem
+--     CONTAINS is the shape of claim this development keeps catching
+--     itself in — so the chain is stated here and the wrapper derived.
+singleSK-agree-vz : {Γ : Cx} (i m u : RTm Γ) →
+                    app (singleSK i (Var-vzK m)) u ⟶* u
+singleSK-agree-vz i m u =
+  ⟶*-appˡ (singleSK-vz _ _) »
+  ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
+  ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+  ⟶*-appˡ (step (β _ _) done) »
+  step (β _ _) done
+
 singleK-vz : {Γ : Cx} (n u m : RTm Γ) →
              app (singleK n u) (Var-vzK m) ⟶* u
 singleK-vz n u m =
   ⟶*-castᵣ (wk-single {v = Var-vzK m} u)
-    (step (β _ _)
-      (⟶*-appˡ (singleSK-vz _ _) »
-       ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
-       ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-       ⟶*-appˡ (step (β _ _) done) »
-       step (β _ _) done))
+    (step (β _ _) (singleSK-agree-vz _ _ _))
 
 ------------------------------------------------------------------------
 -- ★★★ `single u (vs x) = var x` — the transports again, one binder up.
@@ -301,11 +310,10 @@ singleSK-vs i m x =
 inVar : {Γ : Cx} {x x' : RTm Γ} → x ⟶* x' → Tm-varK x ⟶* Tm-varK x'
 inVar r = ⟶*-icon (⟶*-pairˡ r)
 
-singleK-vs : {Γ : Cx} (n u m x : RTm Γ) →
-             app (singleK n u) (Var-vsK m x) ⟶* Tm-varK x
-singleK-vs n u m x =
-  step (β _ _)
-    (⟶*-appˡ (singleSK-vs _ _ _) »
+singleSK-agree-vs : {Γ : Cx} (i m x u : RTm Γ) →
+                    app (singleSK i (Var-vsK m x)) u ⟶* Tm-varK x
+singleSK-agree-vs i m x u =
+  (⟶*-appˡ (singleSK-vs _ _ _) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
@@ -316,6 +324,10 @@ singleK-vs n u m x =
      inVar (⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done)) »
      inVar (step (jsub-refl _ _ _ _) done) »
      inVar (⟶*-castᵣ (sub-w²-single x) (sel-there 0 _ _ (sel-here _ _))))
+
+singleK-vs : {Γ : Cx} (n u m x : RTm Γ) →
+             app (singleK n u) (Var-vsK m x) ⟶* Tm-varK x
+singleK-vs n u m x = step (β _ _) (singleSK-agree-vs _ _ _ _)
 
 ------------------------------------------------------------------------
 -- ★★★ `nrs vz = nsuc (var (vs vz))` AND `nrs (vs x) = var (vs (vs x))`
@@ -462,12 +474,11 @@ nrsSK-vs i m x =
 -- which `wk-single` collapses.  Three lams ⇒ βs peel 2·1·0.
 ------------------------------------------------------------------------
 
-nrsK-vs : {Γ : Cx} (d m x : RTm Γ) →
-          app (nrsSubK d) (Var-vsK m x) ⟶* Tm-varK (Var-vsK d (Var-vsK m x))
-nrsK-vs {Γ} d m x =
-  step (β _ _)
-    (⟶*-castₗ (cong (λ z → nrsK (pair sVar z) (Var-vsK m x))
-                    (wk-single {v = Var-vsK m x} d))
+-- ★★★ THE CORE, AT THE LEDGER'S OWN NAME — `nrsK` is the entry tracked;
+--   `nrsSubK` is this plus one β and one `wk-single`.
+nrsK-agree-vs : {Γ : Cx} (d m x : RTm Γ) →
+          nrsK (pair sVar d) (Var-vsK m x) ⟶* Tm-varK (Var-vsK d (Var-vsK m x))
+nrsK-agree-vs {Γ} d m x =
       (nrsSK-vs _ _ _ »
        ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
        ⟶*-appˡ (step (β _ _) done) »
@@ -488,7 +499,7 @@ nrsK-vs {Γ} d m x =
        --   the innermost substitution leaves `var (vs vz)` alone, so what
        --   remains is exactly `Lib/Wk.towerP`'s 2-tower.
        inVar (inVsX (inVsD (sel-here≡ (towerP IH P)))) »
-       inVar (inVsX (inVsX (sel-there≡ 0 (towerP IH P) (sel-here≡ refl))))))
+       inVar (inVsX (inVsX (sel-there≡ 0 (towerP IH P) (sel-here≡ refl)))))
   where
     -- ⚠⚠ PINNED, NOT `_`.  Half 2 cost four rounds of
     --   `UnsolvedConstraints` learning this: on a substitution tower the
@@ -527,12 +538,9 @@ nrsSK-vz i m =
        (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ
          (methsFrom-past (cdTake 51 KnotD) zero » sel-here≡ refl))))
 
-nrsK-vz : {Γ : Cx} (d m : RTm Γ) →
-          app (nrsSubK d) (Var-vzK m) ⟶* Tm-nsucK (Tm-varK (Var-vsK d (Var-vzK m)))
-nrsK-vz {Γ} d m =
-  step (β _ _)
-    (⟶*-castₗ (cong (λ z → nrsK (pair sVar z) (Var-vzK m))
-                    (wk-single {v = Var-vzK m} d))
+nrsK-agree-vz : {Γ : Cx} (d m : RTm Γ) →
+          nrsK (pair sVar d) (Var-vzK m) ⟶* Tm-nsucK (Tm-varK (Var-vsK d (Var-vzK m)))
+nrsK-agree-vz {Γ} d m =
       (nrsSK-vz _ _ »
        ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
        ⟶*-appˡ (step (β _ _) done) »
@@ -543,9 +551,29 @@ nrsK-vz {Γ} d m =
          (sel-there≡ 1 (towerP IH P) (sel-there≡ 0 refl (sel-here≡ refl))))))) »
        inNsuc (inVar (inVsX (⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done)))) »
        inNsuc (inVar (inVsX (step (jsub-refl _ _ _ _) done))) »
-       inNsuc (inVar (inVsX (inVzD (sel-here≡ (towerP IH P)))))))
+       inNsuc (inVar (inVsX (inVzD (sel-here≡ (towerP IH P))))))
   where
     P : RTm Γ
     P = pair m (pair (idrefl ⌜Nat⌝ sVar) (pair (idrefl ⌜Nat⌝ (nsuc m)) unit))
     IH : RTm Γ
     IH = iihs KnotD nrsMeths (isingle (pair sVar d)) cVar-vz P
+
+-- ★ …and the two WRAPPERS, each one β and one `wk-single` on top of its
+--   core.  `nrsSubK` has NO passenger, so unlike `singleK` there is no
+--   outer `app` to peel: after the β the term IS `nrsK i' (Var-…K …)`,
+--   and `i'`'s `subTm (single _) (w d)` is what the cast collapses.
+nrsK-vs : {Γ : Cx} (d m x : RTm Γ) →
+          app (nrsSubK d) (Var-vsK m x) ⟶* Tm-varK (Var-vsK d (Var-vsK m x))
+nrsK-vs d m x =
+  step (β _ _)
+    (⟶*-castₗ (cong (λ z → nrsK (pair sVar z) (Var-vsK m x))
+                    (wk-single {v = Var-vsK m x} d))
+              (nrsK-agree-vs d m x))
+
+nrsK-vz : {Γ : Cx} (d m : RTm Γ) →
+          app (nrsSubK d) (Var-vzK m) ⟶* Tm-nsucK (Tm-varK (Var-vsK d (Var-vzK m)))
+nrsK-vz d m =
+  step (β _ _)
+    (⟶*-castₗ (cong (λ z → nrsK (pair sVar z) (Var-vzK m))
+                    (wk-single {v = Var-vzK m} d))
+              (nrsK-agree-vz d m))

@@ -44,3 +44,4 @@ import DirectedHoTT.Examples.Knot.Judge.Absurd
 import DirectedHoTT.Examples.Knot.Judge.Ap
 import DirectedHoTT.Examples.Knot.Judge.App
 import DirectedHoTT.Examples.Knot.Judge.CodeBase
+import DirectedHoTT.Examples.Knot.Judge.CodeHom

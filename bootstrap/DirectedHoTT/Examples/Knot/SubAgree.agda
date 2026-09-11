@@ -122,3 +122,31 @@ nrs-Represents : {Γ Θ : Cx} →
                  Represents {Γ = Γ ∙} {Θ = Θ} nrs (nrsSubK (num (len (Γ ∙))))
 nrs-Represents {Γ} vz     = nrsK-vz (num (len (Γ ∙))) (num (len Γ))
 nrs-Represents {Γ} (vs x) = nrsK-vs (num (len (Γ ∙))) (num (len Γ)) (enVar x)
+
+------------------------------------------------------------------------
+-- ★★★ AND `isingle`'s HALF — the CHEAPEST of the four, and for a
+--   structural reason: `isingleK i = lam (renTm vs i)` IGNORES its
+--   argument, so there is no case analysis to do.
+--
+--     isingle : RTm Γ → Sub (ε ∙) Γ        -- `Spec/Syntax:1122`
+--     isingle i vz      = i
+--     isingle i (vs ())
+--
+-- ★ ONE CLAUSE PLUS A REFUTATION.  The domain is `ε ∙`, which has
+--   exactly one variable, so `vs ()` is absurd — the only `Represents`
+--   in this file whose second clause is discharged by the CONTEXT rather
+--   than by a law.  ⇒ one β and one `wk-single`.
+------------------------------------------------------------------------
+
+open import DirectedHoTT.Spec.Syntax using ( isingle )
+open import DirectedHoTT.Spec.Typing using ( wk-single; β )
+open import DirectedHoTT.Examples.Knot.EWk using ( isingleK )
+open import DirectedHoTT.Lib.ICast using ( ⟶*-castᵣ )
+
+isingle-Represents : {Γ Θ : Cx} (i : RTm Γ) →
+                     Represents {Γ = ε ∙} {Θ = Θ} (isingle i)
+                                (isingleK (enTm {Γ} {Θ} i))
+isingle-Represents {Γ} {Θ} i vz =
+  ⟶*-castᵣ (wk-single {v = enVar {ε ∙} {Θ} vz} (enTm {Γ} {Θ} i))
+           (step (β _ _) done)
+isingle-Represents i (vs ())
