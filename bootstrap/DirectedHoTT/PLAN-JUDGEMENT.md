@@ -37,17 +37,29 @@ Three facts from those that shape everything below:
 
 ⚠ Read this before quoting §1 at anyone.
 
-* Object-level **substitution is not built**. §1d shows the kernel does
-  not block it; it does not show the code exists.
-* `extS` needs a **`Fin` eliminator** to case on `vz`/`vs`. That is
-  `WkFin`-shaped and known to work, but is not written.
+* ~~Object-level **substitution is not built**.~~ ✅ **BUILT** — step 2
+  below, CLOSED 2026-09-06, both sorts and both halves (`subTmK`,
+  `⊢subTmK`, `Knot/SubMot`). ⚠ This bullet and the next contradicted
+  step 2 in this same file from 2026-09-06 until 2026-09-10; §2 is the
+  half that was stale.
+* ~~`extS` needs a **`Fin` eliminator** to case on `vz`/`vs`.~~ ✅ built
+  (`Knot/SubMot`, 51 no-op methods + 2 real).
 * ~~**`Ctx` is not encoded.**~~ ✅ DONE — step 0 below. ⚠ But **not as
   the 8th sort**: it is its OWN 2-row family over a bare depth,
   `Examples/Knot/CtxD`. It was the 8th sort for one day; `Negative/WkEmp`
   is what that cost.
 * Reduction is tested only at **small concrete inputs**. Nothing is known
   about `ielim` reduction at knot scale.
-* The **168 rows** are not written.
+* ~~The **168 rows** are not written.~~ 🟡 **MOSTLY WRITTEN** — see
+  `TODO.md` §D for the live counts. `_⊢ty_`/`_⊢_∷_` is 56/56, `_⟶ᵀ_`
+  26/26, `_≅ᵀ_` 4/4, `_∋_∷_` 2/2; `_⟶_` is **71 of 73** (`ι-elim` and
+  `ι-ielim` want an object-level method selector) and `Canon`/`Prog`
+  (**20 rows**) are not started.
+* ⚠ **AND EMITTED + WELL-FORMED IS NOT ENCODED.** There is no
+  `enJudge` — the judgement families have no adequacy map, so nothing
+  says the 56 rows are the RIGHT 56. `Knot/Map`/`SzAgree`/`OccAgree` do
+  that job for the SYNTAX and have no judgement-side counterpart
+  (`JUDGEMENT-ATTEMPTS.md:1362`). This is §6's warning, unpaid.
 
 ## 3. BUILD ORDER
 

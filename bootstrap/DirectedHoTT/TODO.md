@@ -2,7 +2,7 @@
 
 ⚠ **Tracking list.** The narrative lives in `PLAN-JUDGEMENT.md` and the
 dated `HANDOFF-2026-08-NN.md`; the rules in `LESSONS.md`. This file is
-just the checklist, newest state as of **2026-09-01**.
+just the checklist, newest state as of **2026-09-10**.
 
 Legend: ✅ done · 🟡 partly done, state recorded in the module header · ⬜ not started
 
@@ -64,17 +64,18 @@ gated on `subTm`**.
 | 🟡 | `_⟶_` | **71 of 73** — the 2 left are `ι-elim`/`ι-ielim`, which want an object-level METHOD SELECTOR (`sel`/`fields`/`lookupD`) |
 | ✅ | `_⟶ᵀ_` | **26 of 26** |
 | ✅ | `_≅ᵀ_` | **4 of 4** |
-| 🟡 | `_⊢ty_` + `_⊢_∷_` (mutual) | **34 of 43** — `⊢natrec` landed 2026-09-01, closing the `singleK` job (item 1) |
-| ⬜ | `Canon`, `Prog` | 20 |
+| ✅ | `_⊢ty_` + `_⊢_∷_` (mutual) | **ALL 56 EMITTED** — `JudgeRows.agda:97`, computed, nothing skipped. ⚠ This row read "34 of 43 🟡" until 2026-09-10; the count AND the denominator were both stale |
+| ⬜ | `Canon`, `Prog` | 20 — not started |
 
-⚠ **The 9 still not emitted are three jobs, not nine problems** — the
-`NOT EMITTED` block at the head of `Knot/JudgeRows` names each:
+~~⚠ **The 9 still not emitted are three jobs, not nine problems.**~~
+✅ **ALL NINE LANDED.** `Knot/JudgeRows` now reports *"ALL 56 RULES
+EMITTED — nothing in this family is skipped"*, and that line is COMPUTED.
+The three jobs were: the small judgements (`DescWf`/`IDescWf` as
+premises — 7 rules), a boolean function over syntax (`NoNatC`, for
+`⊢tr` — which is why the generator now sub-splits `⊢tr` into 3 parts),
+and a motive annotation the sort inference declined (`⊢ielim`).
 
-| job | rules |
-|---|---|
-| the small judgements (`DescWf`/`IDescWf` as premises) | `ty-Mu`, `ty-IMu`, `⊢⌜Mu⌝`, `⊢⌜IMu⌝`, `⊢con`, `⊢elim`, `⊢icon` — **7** |
-| a boolean function over syntax (`NoNatC`) | `⊢tr` — **1** |
-| a motive annotation the sort inference declines | `⊢ielim` — **1** |
+⚠ **The only family still short is `_⟶_`**, at 71 of 73.
 
 ★ **The ratchet is the witness, not the verdict.** `_FLOOR` in
 `gen-knot.py` asserts these counts where they are computed; a row set

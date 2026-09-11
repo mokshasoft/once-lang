@@ -232,3 +232,33 @@ conS-Represents : {Γ Θ : Cx} (n : RTm Θ) (k : ℕ) →
                   Represents {Γ = Γ ∙} {Θ = Θ} (conS k) (conSK n (num k))
 conS-Represents {Γ = Γ} n k vz     = conSK-vz n (num k) (num (len Γ))
 conS-Represents {Γ = Γ} n k (vs x) = conSK-vs n (num k) (num (len Γ)) (enVar x)
+
+------------------------------------------------------------------------
+-- ★★★ STEP 6 — `atConK`, THE NEXT LEDGER ENTRY, AND IT IS A COROLLARY.
+--
+--     atCon k M  = subTy (conS k) M            -- `Spec/Typing:111`
+--     atConK n k = subTyAtK (nsuc n) (nsuc n) (conSK n k)
+--
+-- ★ `subTyAtK`'s adequacy is `Knot/SubAgreeTyTie.sub-agree-ty`, all 11
+--   `RTy` rows, and it consumes exactly a `Represents`.  Step 5 supplies
+--   one.  ⇒ the entry costs a line, which is what the cascade in
+--   `conSSK`'s ledger entry predicted.
+--
+-- ⚠ THE DEPTH IS FORCED, and that is why `n` is not free here as it is
+--   in step 5: `sub-agree-ty` reads `num (len Γ)` off the ENCODING, and
+--   `atConK`'s two depths are both `nsuc n`.  `num (suc m) = nsuc (num m)`
+--   holds definitionally, so `n := num (len Γ)` is the only choice that
+--   types — the same "the depth may only be stated where the encoding
+--   uses it" as `extR-Represents`.
+------------------------------------------------------------------------
+
+open import DirectedHoTT.Spec.Syntax using ( RTy )
+open import DirectedHoTT.Spec.Typing using ( atCon )
+open import DirectedHoTT.Examples.Knot.Map using ( enTy )
+open import DirectedHoTT.Examples.Knot.ConS using ( atConK )
+open import DirectedHoTT.Examples.Knot.SubAgreeTyTie using ( sub-agree-ty )
+
+atCon-agree : {Γ Θ : Cx} (k : ℕ) (M : RTy (Γ ∙)) →
+              atConK (num (len Γ)) (num k) (enTy {Γ ∙} {Θ} M)
+              ⟶* enTy {Γ ∙} {Θ} (atCon k M)
+atCon-agree {Γ} k M = sub-agree-ty (conS-Represents (num (len Γ)) k) M
