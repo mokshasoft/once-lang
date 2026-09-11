@@ -1643,10 +1643,32 @@ that traverse an `ICon` telescope. The non-indexed twins (`payTy`,
 `iihs`; it is the standing cost of the telescope design, paid by every
 object-level `ICon` traversal.
 
-### ★★★ THE FINDING: `D` AND `ms` ARE NEVER USED APART
+### ★★★ THE FINDING: `D` AND `ms` TRAVEL TOGETHER AND ARE OPENED ONCE
 
-In `iihs` — and in `ifields`, and in `ι-ielim` itself — the description
-and the method tuple occur only together:
+⚠⚠ **AN EARLIER DRAFT OF THIS SECTION SAID "NEVER USED APART" AND THAT IS
+FALSE** — caught by a reader's question, not by me. The ι-rules use each
+half ALONE, and they are the rules this whole line of work is heading
+toward:
+
+```agda
+ι-ielim : ielim D i ms (icon k p) ⟶ ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p
+ι-elim  : elim  D ms  (con  k p) ⟶ fields  D ms             (lookupD  D k) (sel k ms) p
+```
+
+`ilookupD D k` is `D` alone; `sel k ms` is `ms` alone.
+
+★ **BUT THE CORRECTED STATEMENT IS BETTER, NOT WEAKER.** The two halves
+are destructured at exactly ONE site, and by the SAME selection: `k`,
+applied to each. So `(D , ms)` is not "a pair that happens to move
+together" — it is a value with a single elimination form, *select the
+k-th (telescope, method)*. Every other site carries it whole.
+
+⇒ the bundle survives the counterexample: the ι-rule projects, and a
+kernel `Σ'` projection is `⊢fst`/`⊢snd`. What changes is the design
+claim — an ALGEBRA with one eliminator, rather than an inseparable pair.
+
+In `iihs` — and in `ifields` — the description and the method tuple
+occur only together:
 
 ```agda
 iihs D ms σ (iρ j C) p = pair (ielim D (subTm σ j) ms (fst p)) …
@@ -1663,12 +1685,21 @@ is an encoding change, not a proof trick, and it reaches `ielim` itself.
 
 ### What to check before believing it
 
-1. **Does bundling actually pay?** The saving is one binder; the cost is
-   two projections IN THE BODY, and the body is where the cost is
-   (measured: same row, trivial body, 8.8 s; real body, over the cap).
-   ⚠ A cheap TEST exists and should come before any redesign: build
-   `iihsK` with `D`/`ms` bundled and compare. That is a temp-module
-   experiment, not a kernel change.
+1. ~~**Does bundling actually pay?**~~ ✅ **TESTED 2026-09-11, AND IT
+   DOES — categorically, not marginally.** Same row, same hoists, same
+   `-c`:
+
+   | | |
+   |---|---|
+   | 5 passengers (`n`, `σ`, `D`, `ms`, `p`) | **killed** at 4:39 |
+   | 4 passengers (`D`/`ms` bundled as `Σ'`) | **completes**, 1:53–2:06 |
+
+   The five-passenger version never finished elaborating; the
+   four-passenger one is down to a single unsolved meta. ⚠ And an
+   INVERSE of `meta-standing-for-a-computation` fell out: pinning
+   `⊢iihsIH`'s `i`/`q` took it from 1:53-with-one-meta to a KILL at
+   2:56. A pinned BIG TERM is re-elaborated where a meta was solved
+   once — the other edge of that rule.
 
    ★★★ AND THE BUNDLE MUST BE A **KERNEL `Σ'`, NOT A `Tm-pairK`.**
    `D : K (pair sIDesc n)` and `ms : K (pair sTm n)` are at DIFFERENT
