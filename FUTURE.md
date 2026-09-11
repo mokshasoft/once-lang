@@ -2044,6 +2044,60 @@ that index — which `icw-imu` does not carry.
 ⇒ `icw-imu`'s signature changes too. NOT a wall, but a SECOND change,
 and not verified.
 
+### ✅✅ AND THEN THE DIAGNOSIS CHANGED — `bootstrap/tmp/ParWSpike.agda`
+
+Indexing by `i` was the WRONG refinement. The real obstruction is that
+`iki-κ` and `ILift` thread a **BARE `Sub Θ Γ`**. Give them a SEMANTIC
+environment and `fund` supplies the interpretation directly — PROVED:
+
+```agda
+parW : Γ ⊢ i ∷ Σ' U X → (x₀ : Var Ξ) → Γ ⊩ˢ σ →
+       ⊩₀ (El (fst (subTm σ i)))
+```
+
+`rc=0`, no holes, modelled on `elW` but at a GENERAL `ρ : Γ ⊩ˢ σ`
+instead of `⊩ˢ-ε`, and on `⊢fst di` instead of a closed code.
+
+★★★ **SO §10.1 IS ABOUT THE ENVIRONMENT, NOT THE CODE.** *"`Θ ⊢ κ ∷ U`
+does not give one"* is true for a bare `Sub` and FALSE for a `⊩ˢ`. With a
+semantic environment the parameter row needs no indexing of `IDInterp`,
+so `icw-imu`'s invariant is untouched and the second change evaporates.
+
+⇒ `icw-par` should carry **the index's TYPING derivation**, exactly as
+`icw-clo` carries `◇ ⊢ c ∷ U` — a SYNTACTIC witness carried, the
+SEMANTIC interpretation derived. Layering stays clean and the
+termination argument is `icw-clo`'s, unchanged.
+
+### ⬜ THE ONE REMAINING UNKNOWN, precisely
+
+```agda
+ILift (iκ κ C) (ikp-κ Q ikp) P σ t =
+  SN t × (Q σ (fst t) × ILift C ikp P (iext σ (fst t)) (snd t))
+```
+
+`ILift` threads a bare σ and extends it with `iext σ (fst t)`. Making it
+semantic means extending with each field's OWN membership witness —
+which for a κ field is exactly `Q σ (fst t)`, already to hand. That is
+the standard semantic-environment construction, so the SHAPE is known.
+
+⚠ THE RISK IS UNIVERSES, not logic: `IKPred`/`IDPred` are already in
+`Set₁`, and `LogicalRelation`'s own header records what a level bump
+cost last time — *"with no cumulativity that means `Lift`-wrapping every
+`⊩₁` clause across five modules."*
+
+### ⇒ RECOMMENDATION: TAKE THE CHANGE
+
+Scope: `icw-par` (additive) · one clause in `iκW` (the sole `ICodeWf`
+eliminator) · semantic threading in `ILift`/`IKPred`/`IDPred`/`IMuMem`
+(~115 mentions, ~5 files). Both hard-looking sub-obligations are PROVED
+(`param-stable`, `parW`); the remainder is a known construction with a
+universe caveat.
+
+Against: `Scope A` (bundle `D`/`ms` in `iihsK`) is one module but builds
+on an encoding this investigation concluded is wrong, and does not
+generalise. The `ielim`-arity alternative is 87 hand-written files and is
+not needed.
+
 ⚠ Note the property is proved for a PROJECTION OF THE INDEX — exactly
 the parameter case — not for an arbitrary index-dependent code. That
 restriction is the point: it is what keeps the row on the right side of
