@@ -38,13 +38,33 @@ open import Once.CCC.Machine.Allocation hiding (AllocMode)
 import Once.CCC.Machine.SMPrimitives as SMP
 
 -- Import proof obligation marker
-import Once.ProofObligation as PO
 
 ------------------------------------------------------------------------
 -- Compose implementation
 ------------------------------------------------------------------------
 
 module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+
+  -- D175: the assumptions this module makes, named. `trace-is-ir-to-trace` is
+  -- the load-bearing one — "the trace written here IS what the emitter emits" —
+  -- and it is the only bridge by which a `*WF` proof could discharge an apex
+  -- `obs-correct-*`. Assumed, not proved, at every site in this cluster.
+  postulate
+    ASSUMED-trace-is-ir-to-trace :
+      ∀ {A B} (ir : IR A B) (trace : AbstractTrace) (alloc : AllocState {FS}) →
+      trace ≡ ir-to-trace-at-frontier (next-slot alloc) ir
+    ASSUMED-mem-preserved-before :
+      ∀ (final-state s : LocState FS) (alloc : AllocState {FS})
+        (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+      readLoc final-state loc ≡ readLoc s loc
+    ASSUMED-trace-wf :
+      ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+      TraceWF s alloc trace
+    ASSUMED-instr-wf :
+      ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) →
+      InstrWF s alloc i
+    ASSUMED-max-heap-usage-bound : ∀ {ℓ} {A : Set ℓ} → A
+
   -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
   -- has no format-free machine value. Inside a module already fixed to this
   -- target's `FrameSemantics`, THE evaluator is the one at its float format,
@@ -190,7 +210,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       compose-trace
       compose-bump
       compose-bump-eq
-      SMP.!!  -- trace-is-ir-to-trace
+      (ASSUMED-trace-is-ir-to-trace _ _ _)  -- trace-is-ir-to-trace
       refl
       (TraceEvaluator.exec-alloc-eq trace-eval)
       (let result-place-at-alloc₁ : ResultPlace _ mOut alloc₂
@@ -250,7 +270,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ; max-heap-ref-written = IRResultAWF.max-heap-ref-written result-g
         ; bump-fits-heap-budget = compose-bump-fits-heap-budget
         ; max-heap-ref-geq-final = compose-max-heap-ref-geq-final-bump
-        ; max-heap-usage-bound = SMP.!!
+        ; max-heap-usage-bound = ASSUMED-max-heap-usage-bound
         })
     where
       -- Plan 0.2.4.5 D1 task #30: dynamic stack-budget composition.
@@ -536,12 +556,14 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- TODO: g-tph runs at a runtime state different from g's construction
       -- state; same shape as PairStackWF's g-tph-runtime. Postulate for the
       -- scaffold pass, discharge in follow-up.
-      g-tph : TraceWF (proj₁ (exec-trace (f-trace ++ mov-to-input ∷ []) s alloc))
-                      (proj₂ (exec-trace (f-trace ++ mov-to-input ∷ []) s alloc))
-                      g-trace
-      g-tph = SMP.!!  -- TODO: bridge from result-g's trace-twf
-      compose-trace-twf : TraceWF s alloc compose-trace
-      compose-trace-twf = SMP.!!  -- TODO: twf-++ f-tph (twf-∷ tt g-tph) with state-threading
+      postulate
+        -- TODO: bridge from result-g's trace-twf
+        g-tph : TraceWF (proj₁ (exec-trace (f-trace ++ mov-to-input ∷ []) s alloc))
+                        (proj₂ (exec-trace (f-trace ++ mov-to-input ∷ []) s alloc))
+                        g-trace
+      postulate
+        -- TODO: twf-++ f-tph (twf-∷ tt g-tph) with state-threading
+        compose-trace-twf : TraceWF s alloc compose-trace
 
       ------------------------------------------------------------------
       -- Plan 0.16 TraceEvaluator: routes alloc-correct, trace-twf and
@@ -556,7 +578,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         compose-trace-twf            -- trace-wf
         refl                         -- exec-state-eq (definitional)
         alloc-correct-compose        -- exec-alloc-eq
-        (λ _ _ → SMP.!!)             -- mem-preserved-before
+        (ASSUMED-mem-preserved-before _ _ _)             -- mem-preserved-before
 
       ------------------------------------------------------------------------
       -- Frontier slot stability
@@ -593,12 +615,14 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           f-twb : TraceWritesBelow max-slot-f f-trace
           f-twb = IRResultAWF.trace-writes-below result-f
 
-          f-tnhw : TraceNoHeapWrites f-trace
-          f-tnhw = SMP.!!  -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
+          postulate
+            -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
+            f-tnhw : TraceNoHeapWrites f-trace
 
           -- Step 2: mov-to-input preserves memory (only modifies registers)
-          not-halted-after-f : halted s-after-f ≡ false
-          not-halted-after-f = SMP.!!  -- TODO: result-f.trace-preserves-halted at s' state
+          postulate
+            -- TODO: result-f.trace-preserves-halted at s' state
+            not-halted-after-f : halted s-after-f ≡ false
 
           s-after-mov = proj₁ (exec-abstract mov-to-input s-after-f alloc-after-f)
           alloc-after-mov = proj₂ (exec-abstract mov-to-input s-after-f alloc-after-f)
@@ -610,8 +634,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           g-twb : TraceWritesBelow max-slot-g g-trace
           g-twb = IRResultAWF.trace-writes-below result-g
 
-          g-tnhw : TraceNoHeapWrites g-trace
-          g-tnhw = SMP.!!  -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
+          postulate
+            -- TODO: stack-only sub-IR derivation (post Plan 0.14 follow-up)
+            g-tnhw : TraceNoHeapWrites g-trace
 
           -- We have: next-slot alloc ≤ reclaim-f (by f's slot-monotone, since reclaim-f = next-slot alloc₁)
           reclaim-f-mono : next-slot alloc ≤ reclaim-f

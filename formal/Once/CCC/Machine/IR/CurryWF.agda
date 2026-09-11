@@ -223,26 +223,28 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-final = record alloc { next-heap-ref = suc (next-heap-ref alloc) }
 
       ------------------------------------------------------------------
-      -- Validity, rax-eq, before — all SMP.!! pending Phase C analogue.
+      -- Validity, rax-eq, before — all ev-trace-wf pending Phase C analogue.
       -- Pattern follows PairWF: step-through proof of the trace.
       ------------------------------------------------------------------
-      closure-valid-final : ValidAtWF Heap alloc-final
-                             (eval (curry f) x) closure-loc s-final
-      closure-valid-final = SMP.!!
+      postulate
+        -- D175: was `SMP.!!`. Same statement, named so the assumption is
+        -- visible on its own rather than as an anonymous hole.
+        closure-valid-final : ValidAtWF Heap alloc-final
+                               (eval (curry f) x) closure-loc s-final
 
       closure-before-final : BeforeFrontier alloc-final closure-loc
       closure-before-final = heap-before ≤-refl
 
-      closure-rax-eq : readReg (regs s-final) Output ≡ SV-Ptr closure-loc
-      closure-rax-eq = SMP.!!
+      postulate
+        closure-rax-eq : readReg (regs s-final) Output ≡ SV-Ptr closure-loc
 
       closure-cont-alloc : AllocState {FS}
       closure-cont-alloc = record alloc { next-slot     = next-slot     alloc-final
                                         ; next-heap-ref = next-heap-ref alloc-final }
 
-      closure-valid-cont : ValidAtWF Heap closure-cont-alloc
-                            (eval (curry f) x) closure-loc s-final
-      closure-valid-cont = SMP.!!
+      postulate
+        closure-valid-cont : ValidAtWF Heap closure-cont-alloc
+                              (eval (curry f) x) closure-loc s-final
 
       closure-before-cont : BeforeFrontier closure-cont-alloc closure-loc
       closure-before-cont = heap-before ≤-refl
@@ -253,13 +255,20 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- derives automatically from `trace-wf`.
       ------------------------------------------------------------------
       trace-eval : TraceEvaluator curry-heap-trace s alloc
+      -- D175: the three fields this evaluator does not prove, named.
+      postulate
+        ev-trace-wf   : TraceWF s alloc curry-heap-trace
+        ev-alloc-eq   : proj₂ (exec-trace curry-heap-trace s alloc) ≡ alloc-final
+        ev-mem-before : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+                        readLoc s-final loc ≡ readLoc s loc
+
       trace-eval = mk-trace-evaluator
         s-final
         alloc-final
-        SMP.!!                       -- trace-wf
+        ev-trace-wf                  -- trace-wf
         refl                         -- exec-state-eq (definitional)
-        SMP.!!                       -- exec-alloc-eq
-        (λ _ _ → SMP.!!)             -- mem-preserved-before
+        ev-alloc-eq                  -- exec-alloc-eq
+        ev-mem-before             -- mem-preserved-before
 
       ------------------------------------------------------------------
       -- Structural slot-bound discharges (Phase C, mirror SumInlAllocWF).

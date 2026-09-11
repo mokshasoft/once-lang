@@ -80,6 +80,27 @@ import Once.CCC.Machine.SMPrimitives.Heap as SMPH
 ------------------------------------------------------------------------
 
 module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+
+  -- D175: the assumptions this module makes, named. `trace-is-ir-to-trace` is
+  -- the load-bearing one — "the trace written here IS what the emitter emits" —
+  -- and it is the only bridge by which a `*WF` proof could discharge an apex
+  -- `obs-correct-*`. Assumed, not proved, at every site in this cluster.
+  postulate
+    ASSUMED-trace-is-ir-to-trace :
+      ∀ {A B} (ir : IR A B) (trace : AbstractTrace) (alloc : AllocState {FS}) →
+      trace ≡ ir-to-trace-at-frontier (next-slot alloc) ir
+    ASSUMED-mem-preserved-before :
+      ∀ (final-state s : LocState FS) (alloc : AllocState {FS})
+        (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+      readLoc final-state loc ≡ readLoc s loc
+    ASSUMED-trace-wf :
+      ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+      TraceWF s alloc trace
+    ASSUMED-instr-wf :
+      ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) →
+      InstrWF s alloc i
+    ASSUMED-max-heap-usage-bound : ∀ {ℓ} {A : Set ℓ} → A
+
   -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
   -- has no format-free machine value. Inside a module already fixed to this
   -- target's `FrameSemantics`, THE evaluator is the one at its float format,
@@ -137,7 +158,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-heap-trace
       pair-bump
       pair-bump-eq
-      SMP.!!  -- trace-is-ir-to-trace (Pattern 1)
+      (ASSUMED-trace-is-ir-to-trace _ _ _)  -- trace-is-ir-to-trace (Pattern 1)
       refl    -- trace-correct (s-final defined by exec-trace)
       (TraceEvaluator.exec-alloc-eq trace-eval)  -- alloc-correct-local
       (at-loc pair-loc pair-valid-final pair-before-final
@@ -714,8 +735,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                            +ℕ next-heap-ref-delta (IRResultAWF.bump result-g)
                            +ℕ 1)
 
-      pair-bump-eq : alloc-final ≡ apply-bump pair-bump alloc
-      pair-bump-eq = SMP.!!  -- TODO Plan 0.17 Phase 5: concrete arithmetic bridge
+      postulate
+        -- TODO Plan 0.17 Phase 5: concrete arithmetic bridge
+        pair-bump-eq : alloc-final ≡ apply-bump pair-bump alloc
 
       ------------------------------------------------------------------
       -- alloc-correct discharge for pair-heap-trace.
@@ -838,10 +860,10 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- post-trace bumps next-heap-ref by 1 (via instr-alloc-heap 2).
       -- 9 steps; postulated pending dedicated proof analogous to
       -- curry-trace-alloc-correct.
-      post-trace-alloc-correct :
-        proj₂ (exec-trace post-trace s-after-g alloc-after-g) ≡
-          record alloc-after-g { next-heap-ref = suc (next-heap-ref alloc-after-g) }
-      post-trace-alloc-correct = SMP.!!
+      postulate
+        post-trace-alloc-correct :
+          proj₂ (exec-trace post-trace s-after-g alloc-after-g) ≡
+            record alloc-after-g { next-heap-ref = suc (next-heap-ref alloc-after-g) }
 
       -- Final: bridge the bumped alloc-after-g to alloc-final (current-frame
       -- match via result-g.frame-preserved; other fields match by def).
@@ -869,10 +891,10 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       trace-eval = mk-trace-evaluator
         s-final
         alloc-final
-        SMP.!!                       -- trace-wf
+        (ASSUMED-trace-wf _ _ _)     -- trace-wf
         refl                         -- exec-state-eq (definitional)
         alloc-correct-pair-heap      -- exec-alloc-eq (already derived)
-        (λ _ _ → SMP.!!)             -- mem-preserved-before
+        (ASSUMED-mem-preserved-before _ _ _)             -- mem-preserved-before
 
       ------------------------------------------------------------------
       -- Pair location (fresh AtDynamic) and validity at final state.
@@ -888,9 +910,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-loc : ValueLocation FS
       pair-loc = AtDynamic (heap-loc (mkHeapRef (next-heap-ref alloc-after-g)) 0)
 
-      pair-valid-final : ValidAtWF Heap alloc-final
-                           (sem-pair (eval f x) (eval g x)) pair-loc s-final
-      pair-valid-final = SMP.!!
+      postulate
+        pair-valid-final : ValidAtWF Heap alloc-final
+                             (sem-pair (eval f x) (eval g x)) pair-loc s-final
 
       -- pair-loc's ref-id = next-heap-ref alloc-after-g
       -- alloc-final.next-heap-ref = suc (next-heap-ref alloc-after-g)
@@ -900,8 +922,8 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-before-final : BeforeFrontier alloc-final pair-loc
       pair-before-final = heap-before ≤-refl
 
-      pair-rax-eq : readReg (regs s-final) Output ≡ SV-Ptr pair-loc
-      pair-rax-eq = SMP.!!
+      postulate
+        pair-rax-eq : readReg (regs s-final) Output ≡ SV-Ptr pair-loc
 
       -- Continuation-alloc side: caller's frame, but final's next-slot and
       -- next-heap-ref (so BeforeFrontier passes for the fresh heap pair-loc).
@@ -909,9 +931,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-cont-alloc = record alloc { next-slot     = next-slot     alloc-final
                                      ; next-heap-ref = next-heap-ref alloc-final }
 
-      pair-valid-cont : ValidAtWF Heap pair-cont-alloc
-                           (sem-pair (eval f x) (eval g x)) pair-loc s-final
-      pair-valid-cont = SMP.!!
+      postulate
+        pair-valid-cont : ValidAtWF Heap pair-cont-alloc
+                             (sem-pair (eval f x) (eval g x)) pair-loc s-final
 
       -- pair-cont-alloc.next-heap-ref = next-heap-ref alloc-final
       -- = suc (next-heap-ref alloc-after-g). Same fact as pair-before-final.

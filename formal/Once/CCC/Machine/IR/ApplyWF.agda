@@ -96,6 +96,25 @@ module BFTransfer {FS : FrameSemantics} where
 -- the parent's frame and survive trivially across the apply.
 module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   where
+
+  -- D175: the assumptions this module makes, named. `trace-is-ir-to-trace` is
+  -- the load-bearing one — "the trace written here IS what the emitter emits" —
+  -- and it is the only bridge by which a `*WF` proof could discharge an apex
+  -- `obs-correct-*`. Assumed, not proved, at every site in this cluster.
+  postulate
+    ASSUMED-trace-is-ir-to-trace :
+      ∀ {A B} (ir : IR A B) (trace : AbstractTrace) (alloc : AllocState {FS}) →
+      trace ≡ ir-to-trace-at-frontier (next-slot alloc) ir
+    ASSUMED-mem-preserved-before :
+      ∀ (final-state s : LocState FS) (alloc : AllocState {FS})
+        (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+      readLoc final-state loc ≡ readLoc s loc
+    ASSUMED-trace-wf :
+      ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+      TraceWF s alloc trace
+    ASSUMED-instr-wf :
+      ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) →
+      InstrWF s alloc i
   -- Plan 0.52 M2 / D113: `Ev.eval` now takes the target numerics. Same local
   -- shim SimpleWF and PairWF already use, so the body reads unchanged.
   eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
@@ -292,12 +311,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       trace
       apply-bump-value
       apply-bump-eq
-      SMP.!!  -- trace-is-ir-to-trace (Pattern 1: drop instr-alloc-stack)
+      (ASSUMED-trace-is-ir-to-trace _ _ _)  -- trace-is-ir-to-trace (Pattern 1: drop instr-alloc-stack)
       refl
       alloc-correct-apply-local
       result-place-final
       not-halted'
-      (λ _ _ → SMP.!!)  -- mem-preserved-before (TODO)
+      (ASSUMED-mem-preserved-before _ _ _)  -- mem-preserved-before (TODO)
       trace-twf'
       (exec-trace-preserves-halted-WF trace)
       (SMP.trace-no-frame-ops-append (apply-setup-trace pair-slot) body-trace _
@@ -745,7 +764,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                   input-after-s12 input-loc-readable-after-s12)
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ (SMP.!!) twf-[])))))) -- load-indirect: env-ptr witness (pos 7, TODO)
+        (twf-∷ (ASSUMED-instr-wf _ _ _) twf-[])))))) -- load-indirect: env-ptr witness (pos 7, TODO)
 
       not-halted-after-prefix-for-env : halted (proj₁ (exec-trace prefix-for-env s alloc)) ≡ false
       not-halted-after-prefix-for-env = exec-trace-preserves-halted-WF prefix-for-env s alloc not-halted prefix-for-env-tph
@@ -827,7 +846,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                                input-after-s12 input-loc-readable-after-s12)
                       (twf-∷ tt
                       (twf-∷ tt
-                      (twf-∷ (SMP.!!) twf-[])))  -- TODO: load-indirect witness at s345
+                      (twf-∷ (ASSUMED-instr-wf _ _ _) twf-[])))  -- TODO: load-indirect witness at s345
 
       not-halted-s345 : halted (proj₁ (exec-trace prefix345 s12 alloc12)) ≡ false
       not-halted-s345 = exec-trace-preserves-halted-WF prefix345 s12 alloc12 not-halted-s12 prefix345-tph
@@ -842,8 +861,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- TODO (post-scaffold): rederive via a TraceWF-shaped
       -- prefix-store-preserve. Original proof used the tph chain.
-      pair-env-ptr : readLoc s-after-setup pair-input-loc ≡ just (SV-Ptr env-loc)
-      pair-env-ptr = SMP.!!
+      postulate
+        pair-env-ptr : readLoc s-after-setup pair-input-loc ≡ just (SV-Ptr env-loc)
 
       -- Input1 register points to pair after setup
       -- Decompose setup-trace as prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
@@ -906,7 +925,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         (twf-∷ pos4-witness      -- load-indirect at chain-form pos-4 (= s12 via subst)
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (late, pos 7)
+        (twf-∷ (ASSUMED-instr-wf _ _ _)          -- TODO: load-indirect witness (late, pos 7)
         (twf-∷ tt twf-[])))))))
 
       not-halted-after-prefix : halted (proj₁ (exec-trace setup-prefix s alloc)) ≡ false
@@ -917,10 +936,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         let eq1 : apply-setup-trace pair-slot ≡
                   setup-prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
             eq1 = setup-decomp
-            eq2 : readReg (regs (proj₁ (exec-trace (setup-prefix ++
-                           (lea-slot pair-slot ∷ mov-to-input ∷ [])) s alloc))) Input1 ≡
-                  SV-Ptr (AtStack (current-frame alloc) pair-slot)
-            eq2 = SMP.!!  -- TODO: exec-trace-final-lea-mov-input under StoredValue
+            postulate
+              -- TODO: exec-trace-final-lea-mov-input under StoredValue
+              eq2 : readReg (regs (proj₁ (exec-trace (setup-prefix ++
+                             (lea-slot pair-slot ∷ mov-to-input ∷ [])) s alloc))) Input1 ≡
+                    SV-Ptr (AtStack (current-frame alloc) pair-slot)
         in subst (λ t → readReg (regs (proj₁ (exec-trace t s alloc))) Input1 ≡
                         SV-Ptr (AtStack (current-frame alloc) pair-slot))
                  (sym eq1) eq2
@@ -969,7 +989,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         (twf-∷ pos4-witness      -- load-indirect at chain-form pos-4 (= s12 via subst)
         (twf-∷ tt
         (twf-∷ tt
-        (twf-∷ (SMP.!!)          -- TODO: load-indirect witness (late, pos 7)
+        (twf-∷ (ASSUMED-instr-wf _ _ _)          -- TODO: load-indirect witness (late, pos 7)
         (twf-∷ tt
         (twf-∷ tt
         (twf-∷ tt twf-[])))))))))
@@ -980,8 +1000,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- Pair validity in alloc' (same frame as parent, frontier
       -- advanced past the (env, arg) pair).
-      pair-input-valid-child : ValidAtWF Heap child-alloc {EnvType * A} (pair env arg) pair-input-loc s-after-setup
-      pair-input-valid-child = SMP.!!
+      postulate
+        pair-input-valid-child : ValidAtWF Heap child-alloc {EnvType * A} (pair env arg) pair-input-loc s-after-setup
 
       -- Pair is before frontier in alloc' (same frame, slot index
       -- pair-slot < next-slot alloc + pair-slots).
@@ -1043,7 +1063,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- TODO: body-trace's TraceWF is at (s-after-setup-via-child-alloc, child-alloc);
       -- need to bridge through frame-eq to (s-after-setup, alloc-after-setup).
       trace-twf' : TraceWF s alloc trace
-      trace-twf' = twf-++ not-halted setup-tph (SMP.!!)  -- TODO: body-trace's twf at runtime state
+      trace-twf' = twf-++ not-halted setup-tph (ASSUMED-trace-wf _ _ _)  -- TODO: body-trace's twf at runtime state
 
       ------------------------------------------------------------------
       -- Plan 0.14: alloc-correct discharge for apply trace.
@@ -1057,8 +1077,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Bridge: proj₂ (exec-trace apply-setup-trace s alloc) ≡ child-alloc.
       -- 10-instr chain; instr-alloc-stack at the start bumps next-slot;
       -- the remaining 9 preserve alloc.
-      alloc-setup-eq-child : proj₂ (exec-trace (apply-setup-trace pair-slot) s alloc) ≡ child-alloc
-      alloc-setup-eq-child = SMP.!!  -- 10-step chain pending dedicated proof
+      postulate
+        -- 10-step chain pending dedicated proof
+        alloc-setup-eq-child : proj₂ (exec-trace (apply-setup-trace pair-slot) s alloc) ≡ child-alloc
 
       -- Plan 0.17: alloc-correct-local stays at the producer's natural
       -- shape `alloc'` (= body-result.final-alloc). The bridge to
@@ -1414,14 +1435,17 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
           (eval (apply {A} {B}) x) s'
       at-loc-final loc = at-loc loc valid before rax cont-valid cont-before
         where
-          rax : readReg (regs s') Output ≡ SV-Ptr loc
-          rax = SMP.!!  -- TODO: cascade the body's `place-rax` through s'-eq
+          postulate
+            -- TODO: cascade the body's `place-rax` through s'-eq
+            rax : readReg (regs s') Output ≡ SV-Ptr loc
 
-          before : BeforeFrontier alloc' loc
-          before = SMP.!!  -- TODO: the body's frontier fact at alloc' = final-alloc body
+          postulate
+            -- TODO: the body's frontier fact at alloc' = final-alloc body
+            before : BeforeFrontier alloc' loc
 
-          valid : ValidAtWF mBody alloc' (eval (apply {A} {B}) x) loc s'
-          valid = SMP.!!  -- TODO: the body's validity, across s'-eq and eval-apply-eq
+          postulate
+            -- TODO: the body's validity, across s'-eq and eval-apply-eq
+            valid : ValidAtWF mBody alloc' (eval (apply {A} {B}) x) loc s'
 
           cont-before : BeforeFrontier continuation-alloc loc
           cont-before = bf-same-frame-slot alloc' continuation-alloc

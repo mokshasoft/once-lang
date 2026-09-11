@@ -443,6 +443,19 @@ private
 
 -- Core lemma: layer-capacity wfF wfG alg ≤ ir-stack-requirement (Cata wfG alg)
 -- for any sub-functor wfF of wfG
+-- D175: the two cases this induction does not prove, named. They were
+-- `SMP.!!`; the comments above each clause below explain why the bound
+-- overcounts for a nested Sum/Prod layer.
+postulate
+  sum-layer-cap-bound : ∀ {F₁ F₂ G E A}
+    (wfL : WellFormedFI F₁) (wfR : WellFormedFI F₂)
+    (wfG : WellFormedFI G) (alg : IR (E * ⟦ G ⟧TI A) A) →
+    layer-capacity (wf-Sum wfL wfR) wfG alg ≤ ir-stack-requirement (Cata wfG alg)
+  prod-layer-cap-bound : ∀ {F₁ F₂ G E A}
+    (wfL : WellFormedFI F₁) (wfR : WellFormedFI F₂)
+    (wfG : WellFormedFI G) (alg : IR (E * ⟦ G ⟧TI A) A) →
+    layer-capacity (wf-Prod wfL wfR) wfG alg ≤ ir-stack-requirement (Cata wfG alg)
+
 layer-cap-bound : ∀ {F G E A}
   (wfF : WellFormedFI F) (wfG : WellFormedFI G) (alg : IR (E * ⟦ G ⟧TI A) A) →
   layer-capacity wfF wfG alg ≤ ir-stack-requirement (Cata wfG alg)
@@ -473,7 +486,7 @@ layer-cap-bound wf-Id wfG alg = ≤-refl
 --
 -- The issue: layer-capacity for Id gives full cata capacity, but when nested
 -- inside Sum, the Sum's wrapper slots (2) add more, causing overcounting.
-layer-cap-bound (wf-Sum wfL wfR) wfG alg = SMP.!!
+layer-cap-bound (wf-Sum wfL wfR) wfG alg = sum-layer-cap-bound wfL wfR wfG alg
 -- Prod case: 1 + (capL ⊔ capR) ≤ ir-req
 -- BLOCKED: This is false when children contain Id!
 --
@@ -493,7 +506,7 @@ layer-cap-bound (wf-Sum wfL wfR) wfG alg = SMP.!!
 -- 1. Changing layer-capacity wf-Id to not include full ir-req, or
 -- 2. Tracking "remaining capacity" instead of "required capacity", or
 -- 3. A more sophisticated capacity model that accounts for data depth
-layer-cap-bound (wf-Prod wfL wfR) wfG alg = SMP.!!
+layer-cap-bound (wf-Prod wfL wfR) wfG alg = prod-layer-cap-bound wfL wfR wfG alg
 
 -- Main conversion lemma
 ir-stack-req-geq-layer-cap : ∀ {G E A}

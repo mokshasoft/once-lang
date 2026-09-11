@@ -151,10 +151,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- load-indirect state equality: executing load-indirect dereferences Input1
   -- TODO (post-scaffold): under StoredValue, exec-abstract load-indirect
   -- splits on sv-as-loc Input1; restate accordingly.
-  load-indirect-state-eq : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
-    halted s ≡ false →
-    proj₁ (exec-trace (load-indirect ∷ []) s alloc) ≡ exec (load Output (IndReg Input1)) s
-  load-indirect-state-eq s alloc not-halted = SMP.!!
+  postulate
+    -- D175: was `= SMP.!!`. Under `StoredValue`, `exec-abstract load-indirect`
+    -- splits on `sv-as-loc Input1`, so this needs restating before it can be
+    -- proved; named rather than holed in the meantime.
+    load-indirect-state-eq : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+      halted s ≡ false →
+      proj₁ (exec-trace (load-indirect ∷ []) s alloc) ≡ exec (load Output (IndReg Input1)) s
 
   -- Postulate: trace correctness for inl/inr (Plan 0.13.1 tag-aware shape).
   --
@@ -285,6 +288,30 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- OCP-0003: sem-fold-injective removed (fold/unfold replaced by recursion schemes)
 
   -- Helper: sem-inl is injective
+  -- D175: THE CLUSTER'S CENTRAL ASSUMPTION, NAMED.
+  --
+  -- `trace-is-ir-to-trace` is the field that says "the trace this module
+  -- hand-writes IS what the emitter emits". It is the only thing that would
+  -- let a `*WF` proof discharge an apex `obs-correct-*`, and it is ASSUMED at
+  -- every runner here — six sites below, plus `ComposeWF`, `ApplyWF` and
+  -- `PairWF`. (`SimpleWF` and `CurryWF` try to prove it with `refl` and are
+  -- red since D159 made `ir-to-trace-at-frontier` return a LINKED image.)
+  --
+  -- Stated generically because the six uses differ only in the IR and trace;
+  -- naming it is the point — as `SMP.!!` this was invisible, and the layer
+  -- appeared to establish a correspondence it never had.
+  postulate
+    ASSUMED-trace-is-ir-to-trace :
+      ∀ {A B} (ir : IR A B) (trace : AbstractTrace) (alloc : AllocState {FS}) →
+      trace ≡ ir-to-trace-at-frontier (next-slot alloc) ir
+    ASSUMED-mem-preserved-before :
+      ∀ (final-state s : LocState FS) (alloc : AllocState {FS})
+        (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+      readLoc final-state loc ≡ readLoc s loc
+    ASSUMED-trace-wf :
+      ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+      TraceWF s alloc trace
+
   sem-inl-injective : ∀ {A B} {a b : ⟦ A ⟧} → sem-inl {A} {B} a ≡ sem-inl {A} {B} b → a ≡ b
   sem-inl-injective refl = refl
 
@@ -359,7 +386,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       case-inl-trace
       (IRResultAWF.bump result-f)
       refl
-      SMP.!!                       -- trace-is-ir-to-trace
+      (ASSUMED-trace-is-ir-to-trace _ _ _)                       -- trace-is-ir-to-trace
       case-inl-trace-correct
       case-inl-alloc-correct
       (IRResultAWF.result-place result-f)
@@ -500,10 +527,10 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       case-inl-trace-eval = mk-trace-evaluator
         (IRResultAWF.final-state result-f)
         (IRResultAWF.final-alloc result-f)
-        SMP.!!                       -- trace-wf
+        (ASSUMED-trace-wf _ _ _)     -- trace-wf
         case-inl-trace-correct       -- exec-state-eq
         case-inl-alloc-correct       -- exec-alloc-eq
-        (λ _ _ → SMP.!!)             -- mem-preserved-before
+        (ASSUMED-mem-preserved-before _ _ _)             -- mem-preserved-before
 
       -- Frontier slot stability for case (inl branch)
       -- Return uncertain (inj₂ (inj₂ tt)) since f may allocate at the frontier slot.
@@ -525,7 +552,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       case-inr-trace
       (IRResultAWF.bump result-g)
       refl
-      SMP.!!                       -- trace-is-ir-to-trace
+      (ASSUMED-trace-is-ir-to-trace _ _ _)                       -- trace-is-ir-to-trace
       case-inr-trace-correct
       case-inr-alloc-correct
       (IRResultAWF.result-place result-g)
@@ -657,10 +684,10 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       case-inr-trace-eval = mk-trace-evaluator
         (IRResultAWF.final-state result-g)
         (IRResultAWF.final-alloc result-g)
-        SMP.!!                       -- trace-wf
+        (ASSUMED-trace-wf _ _ _)     -- trace-wf
         case-inr-trace-correct       -- exec-state-eq
         case-inr-alloc-correct       -- exec-alloc-eq
-        (λ _ _ → SMP.!!)             -- mem-preserved-before
+        (ASSUMED-mem-preserved-before _ _ _)             -- mem-preserved-before
 
       -- Frontier slot stability for case (inr branch)
       -- Return uncertain (inj₂ (inj₂ tt)) since g may allocate at the frontier slot.
@@ -725,12 +752,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   run-In {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
       s' alloc in-trace bump-0 refl
-      SMP.!!                       -- trace-is-ir-to-trace (mov-to-output; upgrade to refl once proj-trace frontier reduces)
+      (ASSUMED-trace-is-ir-to-trace _ _ _)                       -- trace-is-ir-to-trace (mov-to-output; upgrade to refl once proj-trace frontier reduces)
       refl
       (cong proj₂ (exec-trace-single mov-to-output s alloc not-halted))
       (at-loc input-loc result-valid input-before rax-eq result-valid input-before)
       not-halted'
-      (λ _ _ → SMP.!!)
+      (ASSUMED-mem-preserved-before _ _ _)
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF in-trace)
       _
@@ -811,12 +838,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   run-out-μ {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
       s' alloc out-μ-trace bump-0 refl
-      SMP.!!                       -- trace-is-ir-to-trace
+      (ASSUMED-trace-is-ir-to-trace _ _ _)                       -- trace-is-ir-to-trace
       refl
       (cong proj₂ (exec-trace-single mov-to-output s alloc not-halted))
       (at-loc input-loc result-valid input-before rax-eq result-valid input-before)
       not-halted'
-      (λ _ _ → SMP.!!)
+      (ASSUMED-mem-preserved-before _ _ _)
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF out-μ-trace)
       _
@@ -902,12 +929,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   run-Out {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
       s' alloc out-trace bump-0 refl
-      SMP.!!                       -- trace-is-ir-to-trace
+      (ASSUMED-trace-is-ir-to-trace _ _ _)                       -- trace-is-ir-to-trace
       refl
       (cong proj₂ (exec-trace-single mov-to-output s alloc not-halted))
       (at-loc input-loc result-valid input-before rax-eq result-valid input-before)
       not-halted'
-      (λ _ _ → SMP.!!)
+      (ASSUMED-mem-preserved-before _ _ _)
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF out-trace)
       _
@@ -989,12 +1016,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   run-in-ν {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mk-IRResultAWF-via-bump
       s' alloc in-ν-trace bump-0 refl
-      SMP.!!                       -- trace-is-ir-to-trace
+      (ASSUMED-trace-is-ir-to-trace _ _ _)                       -- trace-is-ir-to-trace
       refl
       (cong proj₂ (exec-trace-single mov-to-output s alloc not-halted))
       (at-loc input-loc result-valid input-before rax-eq result-valid input-before)
       not-halted'
-      (λ _ _ → SMP.!!)
+      (ASSUMED-mem-preserved-before _ _ _)
       (twf-∷ tt twf-[])
       (exec-trace-preserves-halted-WF in-ν-trace)
       _

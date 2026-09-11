@@ -164,21 +164,21 @@ module SumInlAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       alloc-final : AllocState {FS}
       alloc-final = record alloc { next-heap-ref = suc (next-heap-ref alloc) }
 
-      sum-valid-final : ValidAtWF Heap alloc-final (sem-inl {A} {B} x) sum-loc s-final
-      sum-valid-final = SMP.!!
+      postulate
+        sum-valid-final : ValidAtWF Heap alloc-final (sem-inl {A} {B} x) sum-loc s-final
 
       sum-before-final : BeforeFrontier alloc-final sum-loc
       sum-before-final = heap-before ≤-refl
 
-      sum-rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
-      sum-rax-eq = SMP.!!
+      postulate
+        sum-rax-eq : readReg (regs s-final) Output ≡ SV-Ptr sum-loc
 
       sum-cont-alloc : AllocState {FS}
       sum-cont-alloc = record alloc { next-slot     = next-slot     alloc-final
                                     ; next-heap-ref = next-heap-ref alloc-final }
 
-      sum-valid-cont : ValidAtWF Heap sum-cont-alloc (sem-inl {A} {B} x) sum-loc s-final
-      sum-valid-cont = SMP.!!
+      postulate
+        sum-valid-cont : ValidAtWF Heap sum-cont-alloc (sem-inl {A} {B} x) sum-loc s-final
 
       sum-before-cont : BeforeFrontier sum-cont-alloc sum-loc
       sum-before-cont = heap-before ≤-refl
@@ -194,13 +194,20 @@ module SumInlAllocWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- `exec-trace-preserves-halted-WF`.
       ------------------------------------------------------------------
       trace-eval : TraceEvaluator inl-heap-trace s alloc
+      -- D175: the three fields this evaluator does not prove, named.
+      postulate
+        ev-trace-wf   : TraceWF s alloc inl-heap-trace
+        ev-alloc-eq   : proj₂ (exec-trace inl-heap-trace s alloc) ≡ alloc-final
+        ev-mem-before : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc →
+                        readLoc s-final loc ≡ readLoc s loc
+
       trace-eval = mk-trace-evaluator
         s-final
         alloc-final
-        SMP.!!    -- trace-wf : TraceWF s alloc inl-heap-trace
+        ev-trace-wf    -- trace-wf : TraceWF s alloc inl-heap-trace
         refl      -- exec-state-eq : proj₁ (exec-trace …) ≡ s-final  (by definition)
-        SMP.!!    -- exec-alloc-eq : proj₂ (exec-trace …) ≡ alloc-final
-        (λ _ _ → SMP.!!)  -- mem-preserved-before
+        ev-alloc-eq    -- exec-alloc-eq : proj₂ (exec-trace …) ≡ alloc-final
+        ev-mem-before  -- mem-preserved-before
 
       ------------------------------------------------------------------
       -- Structural slot-bound discharges (Phase C, 2026-05-17).

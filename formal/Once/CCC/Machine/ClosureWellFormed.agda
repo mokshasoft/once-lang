@@ -2047,21 +2047,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   --   - Input1 data is at slots < gap-slot
   --   - Fresh allocations are at slots ≥ suc gap-slot
   --   - gap-slot falls between these ranges
-  validityWF-mem-preserved-excluding :
-    ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
-      (gap-frame : Frame) (gap-slot : ℕ)
-      (s₁ s₂ : LocState FS) →
-    -- Location is before frontier
-    BeforeFrontier alloc loc →
-    -- Memory agrees on all BeforeFrontier locations except the gap
-    (∀ (loc' : ValueLocation FS) →
-       BeforeFrontier alloc loc' →
-       loc' ≢ AtStack gap-frame gap-slot →
-       readLoc s₁ loc' ≡ readLoc s₂ loc') →
-    -- Validity transfers
-    ValidAtWF m alloc v loc s₁ →
-    ValidAtWF m alloc v loc s₂
-  validityWF-mem-preserved-excluding = SMP.!!
+  postulate
+    validityWF-mem-preserved-excluding :
+      ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
+        (gap-frame : Frame) (gap-slot : ℕ)
+        (s₁ s₂ : LocState FS) →
+      -- Location is before frontier
+      BeforeFrontier alloc loc →
+      -- Memory agrees on all BeforeFrontier locations except the gap
+      (∀ (loc' : ValueLocation FS) →
+         BeforeFrontier alloc loc' →
+         loc' ≢ AtStack gap-frame gap-slot →
+         readLoc s₁ loc' ≡ readLoc s₂ loc') →
+      -- Validity transfers
+      ValidAtWF m alloc v loc s₁ →
+      ValidAtWF m alloc v loc s₂
 
   ------------------------------------------------------------------------
   -- Validity preservation with positive region bounds
@@ -2310,25 +2310,25 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- UNSAFE version (still a proof gap): no LocsInRegions hypothesis.
   -- Existing callers (PairStackWF's 5 sites) use this. Migrate to the strong
   -- version above (taking a LocsInRegions witness) to discharge this.
-  validityWF-mem-preserved-in-regions :
-    ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
-      (input-bound fresh-start : ℕ)
-      (s₁ s₂ : LocState FS) →
-    BeforeFrontier alloc loc →
-    input-bound ≤ fresh-start →
-    fresh-start ≤ next-slot alloc →
-    (∀ slot → slot < input-bound →
-      readLoc s₂ (AtStack (current-frame alloc) slot) ≡
-      readLoc s₁ (AtStack (current-frame alloc) slot)) →
-    (∀ slot → fresh-start ≤ slot → slot < next-slot alloc →
-      readLoc s₂ (AtStack (current-frame alloc) slot) ≡
-      readLoc s₁ (AtStack (current-frame alloc) slot)) →
-    (∀ h → readLoc s₂ (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)) →
-    (∀ f k → current-frame alloc ≺ f →
-      readLoc s₂ (AtStack f k) ≡ readLoc s₁ (AtStack f k)) →
-    ValidAtWF m alloc v loc s₁ →
-    ValidAtWF m alloc v loc s₂
-  validityWF-mem-preserved-in-regions = SMP.!!
+  postulate
+    validityWF-mem-preserved-in-regions :
+      ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
+        (input-bound fresh-start : ℕ)
+        (s₁ s₂ : LocState FS) →
+      BeforeFrontier alloc loc →
+      input-bound ≤ fresh-start →
+      fresh-start ≤ next-slot alloc →
+      (∀ slot → slot < input-bound →
+        readLoc s₂ (AtStack (current-frame alloc) slot) ≡
+        readLoc s₁ (AtStack (current-frame alloc) slot)) →
+      (∀ slot → fresh-start ≤ slot → slot < next-slot alloc →
+        readLoc s₂ (AtStack (current-frame alloc) slot) ≡
+        readLoc s₁ (AtStack (current-frame alloc) slot)) →
+      (∀ h → readLoc s₂ (AtDynamic h) ≡ readLoc s₁ (AtDynamic h)) →
+      (∀ f k → current-frame alloc ≺ f →
+        readLoc s₂ (AtStack f k) ≡ readLoc s₁ (AtStack f k)) →
+      ValidAtWF m alloc v loc s₁ →
+      ValidAtWF m alloc v loc s₂
 
   ------------------------------------------------------------------------
   -- Stack Reclamation

@@ -50,11 +50,23 @@ open import Once.Type using (FitsInReg)
 open import Once.CCC.Machine.SMCore public
 
 ------------------------------------------------------------------------
--- Proof obligation marker (to be replaced with actual proofs)
+-- D175: THE `!!` HATCH IS GONE.
+--
+-- `postulate !! : ∀ {ℓ} {A : Set ℓ} → A` stood here, and
+-- `Once.ProofObligation` exported an identical one. Every use is now a NAMED
+-- postulate carrying its own type, so each assumption appears in the trust
+-- base on its own and the AST dump can tell them apart — an anonymous `!!`
+-- reachable from everywhere is one node, which is no ledger at all.
+--
+-- Naming them also separated kinds the hole had flattened: an interface
+-- obligation the design intends (`sigop-preserves-halted` — a SigOp MAY halt
+-- per its `EffectShape`), ordinary deferred proofs, and two REFUTABLE-prefixed
+-- assumptions that are FALSE at `instr-alloc-heap` and were being supplied in
+-- ARGUMENT position, where a hole reads as an ordinary application.
+--
+-- Removing the definition is what keeps it gone: no future proof can reach
+-- for `!!` without declaring what it is assuming.
 ------------------------------------------------------------------------
-
-postulate
-  !! : ∀ {ℓ} {A : Set ℓ} → A
 
 private
   variable
@@ -900,6 +912,13 @@ module InstrPrimitives {FS : FrameSemantics} where
 
   -- Instructions that don't write to stack preserve all stack slots
   -- These instructions only modify registers, heap, or nothing
+  -- D175: the one case this function does not prove, named.
+  postulate
+    worklist-push-preserves-stack-slot :
+      ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
+      readLoc (proj₁ (exec-abstract (worklist-push k) s alloc)) (AtStack f slot)
+        ≡ readLoc s (AtStack f slot)
+
   exec-abstract-preserves-stack-slot : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
     InstrNoHeapWrite i →
@@ -951,7 +970,8 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- OCP-0003: Worklist instructions
   exec-abstract-preserves-stack-slot (worklist-init _) s alloc f slot _ _ = refl
   -- worklist-push is like store-at-slot - need to handle separately with slot bounds
-  exec-abstract-preserves-stack-slot (worklist-push k) s alloc f slot _ _ = !!  -- TODO: needs slot bound reasoning
+  -- (needs slot-bound reasoning; see the named postulate above)
+  exec-abstract-preserves-stack-slot (worklist-push k) s alloc f slot _ _ = worklist-push-preserves-stack-slot k s alloc f slot
   exec-abstract-preserves-stack-slot (worklist-pop k) s alloc f slot _ _
     with readLoc s (AtStack (current-frame alloc) k)
   ... | just _  = refl
@@ -1001,6 +1021,24 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- determined by (s, current-frame alloc) — i.e., not eff-heap-alloc
   -- (which reads next-heap-ref into the output). The instr-alloc-heap
   -- clause has an absurd precondition.
+  -- D175: THE PREMISE THE `!!` WITNESSES SUPPLIED — AND IT IS REFUTABLE.
+  --
+  -- Three call sites passed `!!` for this argument. In argument position a
+  -- hole reads as an ordinary application, so nothing at the call site showed
+  -- that a premise was being invented — which is precisely what naming it
+  -- fixes.
+  --
+  -- It is NOT a deferred proof. `EffectStateOnlyDependsOnFrame eff-heap-alloc`
+  -- is `⊥` (see `exec-abstract-same-frame (instr-alloc-heap _) … ()` below),
+  -- so this postulate is FALSE at `instr-alloc-heap` and a `⊥` is derivable
+  -- from it. The callers are sound only for alloc-heap-free traces; the honest
+  -- fix is the trace-level precondition those sites already name as pending,
+  -- not this assumption. Named so the refutability is visible in the trust
+  -- base rather than buried in a comment.
+  postulate
+    REFUTABLE-effect-state-only-frame-dep :
+      ∀ (i : AbstractInstr) → EffectStateOnlyDependsOnFrame (instr-effect i)
+
   exec-abstract-same-frame : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc₁ alloc₂ : AllocState {FS}) →
     EffectStateOnlyDependsOnFrame (instr-effect i) →
@@ -1122,6 +1160,17 @@ module InstrPrimitives {FS : FrameSemantics} where
   next-slot-update-preserves-heap-ref _ _ = refl
 
   -- The main lemma: state output is independent of alloc.next-slot.
+  -- D175: the two cases this function does not prove, named.
+  postulate
+    case-on-tag-state-next-slot-invariant :
+      ∀ (f g : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) (n : ℕ) →
+      proj₁ (exec-abstract (instr-case-on-tag f g) s alloc) ≡
+        proj₁ (exec-abstract (instr-case-on-tag f g) s (record alloc { next-slot = n }))
+    loop-state-next-slot-invariant :
+      ∀ (body : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) (n : ℕ) →
+      proj₁ (exec-abstract (instr-loop body) s alloc) ≡
+        proj₁ (exec-abstract (instr-loop body) s (record alloc { next-slot = n }))
+
   exec-abstract-state-next-slot-invariant :
     ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) (n : ℕ) →
     proj₁ (exec-abstract i s alloc) ≡
@@ -1198,11 +1247,12 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- `exec-trace-state-next-slot-invariant` — the SAME obligation as the
   -- pre-existing instr-loop hole (Plan 0.29 M4). Both discharge together
   -- once that 4-way mutual induction (trace/abstract/dispatch/loop) lands.
-  exec-abstract-state-next-slot-invariant (instr-case-on-tag _ _) s _ _ = !!
+  exec-abstract-state-next-slot-invariant (instr-case-on-tag f g) s alloc n = case-on-tag-state-next-slot-invariant f g s alloc n
   -- instr-alloc-heap: state writes (SV-Ptr (heap-loc (mkHeapRef
   -- (next-heap-ref alloc)) 0)) to Output. Reads next-heap-ref, NOT
   -- next-slot. The record update preserves next-heap-ref.
-  exec-abstract-state-next-slot-invariant (instr-loop _)          s _ _ = !!  -- Plan 0.29: next-slot-independence is heap-mode-only; discharge at M4
+  -- Plan 0.29: next-slot-independence is heap-mode-only; discharge at M4.
+  exec-abstract-state-next-slot-invariant (instr-loop body)       s alloc n = loop-state-next-slot-invariant body s alloc n
   exec-abstract-state-next-slot-invariant (instr-alloc-heap _)    s _ _ = refl
 
 ------------------------------------------------------------------------
@@ -2079,56 +2129,56 @@ module TracePrimitives {FS : FrameSemantics} where
   -- (B) INDEPENDENCE - trace version
   -- If loc is disjoint from all reads and writes, writeLoc commutes with trace
   -- Case 1: slot is ABOVE all reads and writes
-  exec-trace-independent : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
-    (f : Frame FS) (slot : ℕ) (val : StoredValue FS) →
-    -- slot is above all reads
-    TraceSlotReadsBelow slot trace →
-    -- slot is above all writes
-    TraceWritesBelow slot trace →
-    -- trace has no heap writes
-    TraceNoHeapWrites trace →
-    -- frame matches
-    current-frame alloc ≡ f →
-    -- Then writeLoc commutes
-    proj₁ (exec-trace trace (writeLoc s (AtStack f slot) val) alloc) ≡
-    writeLoc (proj₁ (exec-trace trace s alloc)) (AtStack f slot) val
-  exec-trace-independent = !!
+  postulate
+    exec-trace-independent : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
+      (f : Frame FS) (slot : ℕ) (val : StoredValue FS) →
+      -- slot is above all reads
+      TraceSlotReadsBelow slot trace →
+      -- slot is above all writes
+      TraceWritesBelow slot trace →
+      -- trace has no heap writes
+      TraceNoHeapWrites trace →
+      -- frame matches
+      current-frame alloc ≡ f →
+      -- Then writeLoc commutes
+      proj₁ (exec-trace trace (writeLoc s (AtStack f slot) val) alloc) ≡
+      writeLoc (proj₁ (exec-trace trace s alloc)) (AtStack f slot) val
 
   -- Case 2: slot is BELOW all reads and writes
-  exec-trace-independent-below : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
-    (f : Frame FS) (slot : ℕ) (val : StoredValue FS) (n : ℕ) →
-    -- slot is below bound n
-    slot < n →
-    -- reads are above bound n
-    TraceSlotReadsAbove n trace →
-    -- writes are above bound n
-    TraceWritesAbove n trace →
-    -- trace has no heap writes
-    TraceNoHeapWrites trace →
-    -- frame matches
-    current-frame alloc ≡ f →
-    -- Then writeLoc commutes
-    proj₁ (exec-trace trace (writeLoc s (AtStack f slot) val) alloc) ≡
-    writeLoc (proj₁ (exec-trace trace s alloc)) (AtStack f slot) val
-  exec-trace-independent-below = !!
+  postulate
+    exec-trace-independent-below : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
+      (f : Frame FS) (slot : ℕ) (val : StoredValue FS) (n : ℕ) →
+      -- slot is below bound n
+      slot < n →
+      -- reads are above bound n
+      TraceSlotReadsAbove n trace →
+      -- writes are above bound n
+      TraceWritesAbove n trace →
+      -- trace has no heap writes
+      TraceNoHeapWrites trace →
+      -- frame matches
+      current-frame alloc ≡ f →
+      -- Then writeLoc commutes
+      proj₁ (exec-trace trace (writeLoc s (AtStack f slot) val) alloc) ≡
+      writeLoc (proj₁ (exec-trace trace s alloc)) (AtStack f slot) val
 
   -- (C) DETERMINISM - trace version
   -- If two states agree on all reads, trace produces same result
-  exec-trace-deterministic : ∀ (trace : AbstractTrace) (s₁ s₂ : LocState FS) (alloc : AllocState {FS}) →
-    -- Registers agree
-    regs s₁ ≡ regs s₂ →
-    -- Halted flags agree
-    halted s₁ ≡ halted s₂ →
-    -- Slots in read range agree
-    (∀ k → TraceSlotReadsAbove k trace →
-           readLoc s₁ (AtStack (current-frame alloc) k) ≡ readLoc s₂ (AtStack (current-frame alloc) k)) →
-    -- Heap agrees (for load-indirect)
-    heapMem s₁ ≡ heapMem s₂ →
-    -- Stack structure agrees
-    stackMem s₁ ≡ stackMem s₂ →
-    -- Then results are equal
-    proj₁ (exec-trace trace s₁ alloc) ≡ proj₁ (exec-trace trace s₂ alloc)
-  exec-trace-deterministic = !!
+  postulate
+    exec-trace-deterministic : ∀ (trace : AbstractTrace) (s₁ s₂ : LocState FS) (alloc : AllocState {FS}) →
+      -- Registers agree
+      regs s₁ ≡ regs s₂ →
+      -- Halted flags agree
+      halted s₁ ≡ halted s₂ →
+      -- Slots in read range agree
+      (∀ k → TraceSlotReadsAbove k trace →
+             readLoc s₁ (AtStack (current-frame alloc) k) ≡ readLoc s₂ (AtStack (current-frame alloc) k)) →
+      -- Heap agrees (for load-indirect)
+      heapMem s₁ ≡ heapMem s₂ →
+      -- Stack structure agrees
+      stackMem s₁ ≡ stackMem s₂ →
+      -- Then results are equal
+      proj₁ (exec-trace trace s₁ alloc) ≡ proj₁ (exec-trace trace s₂ alloc)
 
   -- (D) FRAME PRESERVATION - trace version
   -- Plan 0.30: moved up into the mutual block with
@@ -2167,7 +2217,7 @@ module TracePrimitives {FS : FrameSemantics} where
       -- eff-heap-alloc). For alloc-heap-containing traces this lemma is
       -- genuinely false; localized here pending trace-level precondition
       -- migration.
-      state-eq = exec-abstract-same-frame i s alloc₁ alloc₂ !! frame-eq
+      state-eq = exec-abstract-same-frame i s alloc₁ alloc₂ (REFUTABLE-effect-state-only-frame-dep i) frame-eq
 
       -- After one instruction, frames are still equal
       alloc₁' = proj₂ (exec-abstract i s alloc₁)
@@ -2201,7 +2251,7 @@ module TracePrimitives {FS : FrameSemantics} where
   -- iph-store-indirect, iph-store-indirect-suc. These were unsound:
   -- they asserted unconditional halt-preservation for instructions
   -- with a real runtime halt path (non-pointer in Input1 / missing
-  -- memory cell). The corresponding `*-preserves-halted = !!`
+  -- memory cell). The corresponding `*-preserves-halted`
   -- postulates also went. Halt preservation for these instructions
   -- now lives in `exec-abstract-preserves-halted-WF` under a state-aware
   -- `InstrWF` precondition (Phase b above).
@@ -2305,7 +2355,7 @@ module TracePrimitives {FS : FrameSemantics} where
   --
   -- This replaces the unsound iph-load-indirect / iph-load-from-slot /
   -- iph-restore-input / iph-worklist-pop / iph-store-indirect[-suc]
-  -- and their backing `*-preserves-halted = !!` postulates, which
+  -- and their backing `*-preserves-halted` postulates, which
   -- claimed unconditional halt preservation that is provably false
   -- under StoredValue semantics (e.g. Input1 holding SV-Tag 0 makes
   -- load-indirect halt).
@@ -2386,6 +2436,32 @@ module TracePrimitives {FS : FrameSemantics} where
   -- For unconditional instructions InstrWF = ⊤ and the proof falls back
   -- on the existing exec-abstract-preserves-halted with the appropriate iph.
   -- For conditional ones the InstrWF witness rules out the halt branch.
+  -- D175: THE THREE CASES THIS FUNCTION DOES NOT PROVE, NAMED.
+  --
+  -- They were `= !!` clauses, which is worse than a deferred theorem: the
+  -- function reads as proved at every use site while three of its cases are
+  -- assumed. Named here so each assumption travels with its case and appears
+  -- in the trust base on its own, with its own type.
+  --
+  -- `instr-sigop` is the honest one — a SigOp MAY halt, per its own
+  -- `EffectShape`, so this is not a gap to close but a premise the caller owes
+  -- (`InstrWF` is `⊤` here, which is why the clause cannot discharge it).
+  -- The other two are real deferred proofs: `instr-case-on-tag` runs a
+  -- sub-trace, and `instr-loop` can halt on fuel-out (plan 0.29, M4).
+  postulate
+    sigop-preserves-halted :
+      ∀ {A B} (si : SigOpInfo A B) (s : LocState FS) (alloc : AllocState {FS}) →
+      halted s ≡ false →
+      halted (proj₁ (exec-abstract (instr-sigop si) s alloc)) ≡ false
+    case-on-tag-preserves-halted :
+      ∀ (f g : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+      halted s ≡ false →
+      halted (proj₁ (exec-abstract (instr-case-on-tag f g) s alloc)) ≡ false
+    loop-preserves-halted :
+      ∀ (body : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+      halted s ≡ false →
+      halted (proj₁ (exec-abstract (instr-loop body) s alloc)) ≡ false
+
   exec-abstract-preserves-halted-WF : ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     InstrWF s alloc i →
@@ -2447,12 +2523,12 @@ module TracePrimitives {FS : FrameSemantics} where
   -- aren't currently named in InstrWF; fall back on ⊤. SigOp may halt
   -- per its own postulate so InstrWF = ⊤ would be unsound — leave it
   -- for the SigOp-aware lift in 0.13.3 Phase c.
-  exec-abstract-preserves-halted-WF (instr-sigop _)         s alloc h-eq _ = !!
+  exec-abstract-preserves-halted-WF (instr-sigop si)        s alloc h-eq _ = sigop-preserves-halted si s alloc h-eq
   exec-abstract-preserves-halted-WF (instr-load-const _ _)  s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (instr-load-tag-lit _)  s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted-WF (instr-load-code-addr _) s alloc h-eq _ = h-eq
-  exec-abstract-preserves-halted-WF (instr-case-on-tag _ _) s alloc h-eq _ = !!
-  exec-abstract-preserves-halted-WF (instr-loop _)          s alloc h-eq _ = !!  -- Plan 0.29: loop can halt on fuel-out; needs WF-termination; M4
+  exec-abstract-preserves-halted-WF (instr-case-on-tag f g) s alloc h-eq _ = case-on-tag-preserves-halted f g s alloc h-eq
+  exec-abstract-preserves-halted-WF (instr-loop body)       s alloc h-eq _ = loop-preserves-halted body s alloc h-eq
   exec-abstract-preserves-halted-WF (instr-alloc-heap _)    s alloc h-eq _ = h-eq
 
   -- Universal trace-level halt preservation under TraceWF.
@@ -2658,7 +2734,7 @@ module TracePrimitives {FS : FrameSemantics} where
   ... | false =
     let s-eq : proj₁ (exec-abstract i s alloc) ≡ proj₁ (exec-abstract i s alloc')
         -- Phase A.2: `!!` as the witness; same caveat as exec-trace-same-frame.
-        s-eq = exec-abstract-state-frame-eq i s alloc alloc' !! fe
+        s-eq = exec-abstract-state-frame-eq i s alloc alloc' (REFUTABLE-effect-state-only-frame-dep i) fe
         fe-after : current-frame (proj₂ (exec-abstract i s alloc)) ≡
                    current-frame (proj₂ (exec-abstract i s alloc'))
         fe-after = trans (exec-abstract-preserves-frame i s alloc)
@@ -2681,7 +2757,7 @@ module TracePrimitives {FS : FrameSemantics} where
   TraceWF-frame-eq {i ∷ rest} {s} {alloc} {alloc'} fe (twf-∷ iwf rest-twf) =
     twf-∷ (InstrWF-frame-eq i s alloc alloc' fe iwf)
       (subst (λ st → TraceWF st (proj₂ (exec-abstract i s alloc')) rest)
-             (exec-abstract-state-frame-eq i s alloc alloc' !! fe)
+             (exec-abstract-state-frame-eq i s alloc alloc' (REFUTABLE-effect-state-only-frame-dep i) fe)
              (TraceWF-frame-eq fe-after rest-twf))
     where
       fe-after : current-frame (proj₂ (exec-abstract i s alloc)) ≡ current-frame (proj₂ (exec-abstract i s alloc'))
@@ -3184,21 +3260,22 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
   -- and traces only read from those slots, then Output is the same.
   -- Note: m bounds reads (TraceSlotReadsBelow m), so memory agreement
   -- is only needed for slots in [n, m), not all slots ≥ n.
-  exec-trace-output-deterministic : ∀ (trace : AbstractTrace)
-    (s₁ s₂ : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) (n m : ℕ) →
-    halted s₁ ≡ false →
-    halted s₂ ≡ false →
-    current-frame alloc₁ ≡ current-frame alloc₂ →
-    readReg (regs s₁) Input1 ≡ readReg (regs s₂) Input1 →
-    TraceSlotReadsAbove n trace →
-    TraceSlotReadsBelow m trace →
-    TraceWritesAbove n trace →
-    TraceNoHeapWrites trace →
-    (∀ slot → n ≤ slot → slot < m →
-      readLoc s₁ (AtStack (current-frame alloc₁) slot) ≡
-      readLoc s₂ (AtStack (current-frame alloc₂) slot)) →
-    readReg (regs (proj₁ (exec-trace trace s₁ alloc₁))) Output ≡
-    readReg (regs (proj₁ (exec-trace trace s₂ alloc₂))) Output
+  postulate
+    exec-trace-output-deterministic : ∀ (trace : AbstractTrace)
+      (s₁ s₂ : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) (n m : ℕ) →
+      halted s₁ ≡ false →
+      halted s₂ ≡ false →
+      current-frame alloc₁ ≡ current-frame alloc₂ →
+      readReg (regs s₁) Input1 ≡ readReg (regs s₂) Input1 →
+      TraceSlotReadsAbove n trace →
+      TraceSlotReadsBelow m trace →
+      TraceWritesAbove n trace →
+      TraceNoHeapWrites trace →
+      (∀ slot → n ≤ slot → slot < m →
+        readLoc s₁ (AtStack (current-frame alloc₁) slot) ≡
+        readLoc s₂ (AtStack (current-frame alloc₂) slot)) →
+      readReg (regs (proj₁ (exec-trace trace s₁ alloc₁))) Output ≡
+      readReg (regs (proj₁ (exec-trace trace s₂ alloc₂))) Output
   -- Proof sketch: by induction on trace
   -- Each instruction either:
   --   1. Reads from Input1 (same in both) → same result
@@ -3206,7 +3283,6 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
   --   3. Reads from Output (must track that Output stays synchronized)
   -- The key is that if reads are the same, computations are the same,
   -- and since writes are above n, memory at [n, m) stays synchronized.
-  exec-trace-output-deterministic = !!
 
   ------------------------------------------------------------------------
   -- Memory Determinism
@@ -3226,6 +3302,16 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
   -- memory at [n, m) stay synchronized. Key insight: writes only happen via
   -- store-at-slot which writes Output, and Output stays synced because
   -- instructions that set Output read from Input1 or memory (both synced).
+  -- D175: the cons-case this induction does not prove, named. The `[]` case
+  -- is real; every instruction case is the deferred one, so this is the
+  -- induction step, assumed.
+  postulate
+    mem-deterministic-step : ∀ (i : AbstractInstr) (rest : AbstractTrace)
+      (s₁ s₂ : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) (n m : ℕ) →
+      ∀ slot → n ≤ slot → slot < m →
+        readLoc (proj₁ (exec-trace (i ∷ rest) s₁ alloc₁)) (AtStack (current-frame alloc₁) slot) ≡
+        readLoc (proj₁ (exec-trace (i ∷ rest) s₂ alloc₂)) (AtStack (current-frame alloc₂) slot)
+
   exec-trace-mem-deterministic : ∀ (trace : AbstractTrace)
     (s₁ s₂ : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) (n m : ℕ) →
     halted s₁ ≡ false →
@@ -3254,10 +3340,11 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
   -- All non-writing, non-frame-changing instructions follow a common pattern:
   -- Memory is preserved, Input1 is preserved (except mov-to-input, restore-input)
   -- Memory is preserved, Input1 is preserved (except restore-input)
-  -- We use !! for complex sub-cases that require detailed Output tracking
+  -- The instruction cases are assumed (`mem-deterministic-step`); they need
 
   exec-trace-mem-deterministic (i ∷ rest) s₁ s₂ alloc₁ alloc₂ n m nh₁ nh₂ frame-eq input-eq
-      rsra rsrb twa twb tnhw mem-agree slot n≤slot slot<m = !!
+      rsra rsrb twa twb tnhw mem-agree slot n≤slot slot<m =
+        mem-deterministic-step i rest s₁ s₂ alloc₁ alloc₂ n m slot n≤slot slot<m
 
 ------------------------------------------------------------------------
 -- Recursion Scheme Semantic Correctness
@@ -4161,7 +4248,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   -- (everything except eff-heap-alloc). The instr-alloc-heap case is an
   -- absurd pattern: its EffectPreservesNextHeapRef precondition is ⊥.
   --
-  -- The corresponding trace-level wrapper below keeps an internal !! for
+  -- The corresponding trace-level wrapper below assumes its cons-case for
   -- the instr-alloc-heap cons-case so external callers (6 sites in
   -- PairStackWF/RecTrace) don't need updating. Real fix: weaken the
   -- trace-level wrapper to take TraceEffectsPreservesNextHeapRef and
@@ -4235,7 +4322,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-preserves-heap-ref (instr-alloc-heap _)     s alloc ()
 
   -- exec-trace preserves next-heap-ref (Phase A.2: unchanged signature;
-  -- the cons-case for instr-alloc-heap has a localised !! placeholder
+  -- the cons-case for instr-alloc-heap is a named postulate
   -- since the trace's precondition isn't threaded through yet —
   -- TraceEffectsPreservesNextHeapRef + caller migration is the next step).
   --
@@ -4243,6 +4330,23 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   -- branch can pass the right `tt` precondition to the restricted
   -- instruction-level lemma. Verbose (~28 instruction cases) but
   -- mechanical; per-instruction the witness is `tt`.
+  -- D175: the three cons-cases this fold does not prove, named. The
+  -- `instr-alloc-heap` one is the interesting one — that instruction BUMPS
+  -- `next-heap-ref`, so the statement is false for it unless the trace-level
+  -- precondition (`TraceEffectsPreservesNextHeapRef`, named as pending at the
+  -- instruction-level lemma above) is threaded. The instruction-level
+  -- `exec-abstract-preserves-heap-ref` is clean; only this wrapper is holed.
+  postulate
+    case-on-tag-trace-preserves-heap-ref :
+      ∀ (f g : AbstractTrace) (t : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+      next-heap-ref (proj₂ (exec-trace (instr-case-on-tag f g ∷ t) s alloc)) ≡ next-heap-ref alloc
+    loop-trace-preserves-heap-ref :
+      ∀ (body : AbstractTrace) (t : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+      next-heap-ref (proj₂ (exec-trace (instr-loop body ∷ t) s alloc)) ≡ next-heap-ref alloc
+    REFUTABLE-alloc-heap-trace-preserves-heap-ref :
+      ∀ (n : ℕ) (t : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+      next-heap-ref (proj₂ (exec-trace (instr-alloc-heap n ∷ t) s alloc)) ≡ next-heap-ref alloc
+
   exec-trace-preserves-heap-ref : ∀ (t : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
     next-heap-ref (proj₂ (exec-trace t s alloc)) ≡ next-heap-ref alloc
   exec-trace-preserves-heap-ref [] s alloc = refl
@@ -4360,13 +4464,13 @@ module RecSchemeSemantics {FS : FrameSemantics} where
                       (exec-abstract-preserves-heap-ref instr-save-closure-reg s alloc tt)
   -- Plan 0.30: case-on-tag (now eff-heap-alloc) bumps next-heap-ref via
   -- its branch, so this trace-level claim is genuinely false here — same
-  -- localised !! as instr-alloc-heap / instr-loop below.
-  exec-trace-preserves-heap-ref (instr-case-on-tag f g ∷ t) s alloc = !!
+  -- named postulates, as instr-alloc-heap / instr-loop below.
+  exec-trace-preserves-heap-ref (instr-case-on-tag f g ∷ t) s alloc = case-on-tag-trace-preserves-heap-ref f g t s alloc
   -- instr-alloc-heap: this trace-level claim is genuinely false here
   -- (the instruction bumps next-heap-ref). Localised !!.
   -- Real fix: trace-level precondition + caller migration.
-  exec-trace-preserves-heap-ref (instr-loop _ ∷ t) s alloc = !!
-  exec-trace-preserves-heap-ref (instr-alloc-heap _ ∷ t) s alloc = !!
+  exec-trace-preserves-heap-ref (instr-loop body ∷ t) s alloc = loop-trace-preserves-heap-ref body t s alloc
+  exec-trace-preserves-heap-ref (instr-alloc-heap n ∷ t) s alloc = REFUTABLE-alloc-heap-trace-preserves-heap-ref n t s alloc
 
   ------------------------------------------------------------------------
   -- Product Left Setup Trace (4-instruction: save + setup)
@@ -4385,7 +4489,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   --   mov-to-input: only changes regs
   --
   -- Note: This requires stepping through and showing halted preserved at each step.
-  -- For now, use !! as placeholder; the proof pattern follows exec-trace-preserves-halted.
+  -- Assumed for now; the proof pattern follows exec-trace-preserves-halted.
   prod-left-setup-alloc-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     proj₂ (exec-trace (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc) ≡ alloc
@@ -4551,12 +4655,12 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   -- alloc-preservation being definitional through load-indirect, which
   -- the new with-block on sv-as-loc broke. Postulated for now;
   -- re-discharge under TraceWF + lifted preserves-alloc lemmas.
-  prod-left-setup-mem-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
-    (loc : ValueLocation FS) →
-    halted s ≡ false →
-    loc ≢ AtStack (current-frame alloc) save-slot →
-    readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc)) loc ≡ readLoc s loc
-  prod-left-setup-mem-helper = !!
+  postulate
+    prod-left-setup-mem-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+      (loc : ValueLocation FS) →
+      halted s ≡ false →
+      loc ≢ AtStack (current-frame alloc) save-slot →
+      readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc)) loc ≡ readLoc s loc
 
   ------------------------------------------------------------------------
   -- Additional Product Setup Helpers
@@ -4570,13 +4674,13 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   -- Steps 3-4 don't modify stack[save-slot]
   -- Plan 0.13.2: Input1 lifted; precondition becomes `≡ SV-Ptr input-loc`,
   -- and the slot now stores StoredValue. Postulated; re-prove after Phase d.
-  prod-left-setup-saves-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
-    (input-loc : ValueLocation FS) →
-    halted s ≡ false →
-    readReg (regs s) Input1 ≡ SV-Ptr input-loc →
-    let (s' , _) = exec-trace (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc
-    in readLoc s' (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
-  prod-left-setup-saves-input = !!
+  postulate
+    prod-left-setup-saves-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+      (input-loc : ValueLocation FS) →
+      halted s ≡ false →
+      readReg (regs s) Input1 ≡ SV-Ptr input-loc →
+      let (s' , _) = exec-trace (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc
+      in readLoc s' (AtStack (current-frame alloc) save-slot) ≡ just (SV-Ptr input-loc)
 
   ------------------------------------------------------------------------
 

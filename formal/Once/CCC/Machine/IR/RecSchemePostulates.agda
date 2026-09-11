@@ -84,10 +84,10 @@ module RecSchemePostulatesImpl {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- See RecSchemeProof.agda for full architectural analysis.
   ------------------------------------------------------------------------
-  rec-scheme-semantic : ∀ {A B} (ir : IR A B) (alloc : AllocState {FS})
-    (x : ⟦ A ⟧) (result-loc : ValueLocation FS) (s : LocState FS) →
-    ValidAtWF Heap alloc (eval ir x) result-loc s
-  rec-scheme-semantic = SMP.!!
+  postulate
+    rec-scheme-semantic : ∀ {A B} (ir : IR A B) (alloc : AllocState {FS})
+      (x : ⟦ A ⟧) (result-loc : ValueLocation FS) (s : LocState FS) →
+      ValidAtWF Heap alloc (eval ir x) result-loc s
 
   ------------------------------------------------------------------------
   -- Lambek Isomorphism Semantic Correctness
