@@ -135,3 +135,17 @@ open IF.Fold 𝔹 (λ _ → true) IF.scopeAt
            ; ifMethod  to occMethod  ; ⊢ifMethod  to ⊢occMethod
            ; ifMeths   to occMeths   ; ⊢ifMeths   to ⊢occMeths
            ; ifMeths-sel to occMeths-sel )
+
+------------------------------------------------------------------------
+-- ★ AND THE REDUCTION TWIN, AT THE SAME 13 ARGUMENTS — `Lib/ISzSort`'s
+--   `SzR` exactly, one instantiation over.  It lives here for the same
+--   scope reason: `OccTy`, `occOp`, `⊢occNd` … are in scope here, and
+--   `FoldRed` must be applied to what `IF.Fold` was applied to or its
+--   `ifTail`/`ifSum` are different functions.  The reduction knobs are
+--   `OccR.Red`'s and `Lib/IOccRed` supplies them.
+------------------------------------------------------------------------
+import DirectedHoTT.Lib.IFoldRed as IFR
+
+module OccR = IFR.FoldRed 𝔹 (λ _ → true) IF.scopeAt
+                          OccTy ty-OccTy refl refl
+                          occZ occOp occNd ⊢occZ ⊢occOp ⊢occNd

@@ -69,57 +69,34 @@ open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 --   `OCC-ATTEMPTS.md` §35.
 ------------------------------------------------------------------------
 
-data OK : Set where
-  ok : OK
+------------------------------------------------------------------------
+-- ★★★ `AllIH` AND THE THREE LEMMAS OVER IT NOW COME FROM
+--   `Lib/IFoldRed`.  This module and `Lib/ISzRed` carried two copies
+--   until 2026-09-11, identical line for line and differing in four
+--   knobs: the parameter, the filter, the fold op, and the per-field
+--   predicate.  ⇒ what is left here is `occStep-red`, the client's own
+--   arithmetic — and it is four lines rather than `ISzRed`'s one for the
+--   reason the header gives: `maxTm` mentions its first argument TWICE.
+------------------------------------------------------------------------
 
--- ★ "denotes `m`" — the motive is `Π Nat Nat`, so a fold result is a
---   FUNCTION and every lemma carries the level `k`.
-IHocc : {Γ : Cx} → RTm Γ → RTm Γ → ℕ → Set
+open import DirectedHoTT.Lib.IFoldRed as IFR using ( OK; ok; comb; IHof )
+open import DirectedHoTT.Lib.IOcc using ( module OccR )
+open import normalizer.Syntax.Types using ( refl )
+open IFR using ( OK; ok ) public
+
+-- ★ the occurrence fold's own `Holds`: the IH is a FUNCTION of the
+--   level, so it must be APPLIED before it is a numeral.  `sz`'s is
+--   `h ⟶* num m` with no application — that difference is the whole
+--   reason the two `Ext`s differ.
+OccExt : Cx → Set
+OccExt Γ = RTm Γ
+
+IHocc : {Γ : Cx} → OccExt Γ → RTm Γ → ℕ → Set
 IHocc k h m = app h k ⟶* num m
 
--- ⚠ A SKIPPED FIELD OWES NOTHING and CONTRIBUTES NOTHING, but it still
---   occupies a slot in the IH tuple — `Lib/IFold.ifTail` steps `snd`
---   either way.
-IHof : {Γ : Cx} → 𝔹 → RTm Γ → RTm Γ → ℕ → Set
-IHof true  k h m = IHocc k h m
-IHof false k h m = OK
-
-maxIf : 𝔹 → ℕ → ℕ → ℕ
-maxIf true  a m = maxℕ a m
-maxIf false a m = a
-
-------------------------------------------------------------------------
--- THE HYPOTHESES A ROW SUPPLIES: one node per FIELD.
---
--- ⚠ `m` IS EXPLICIT.  At a skipped field `IHof false _ _ m` is `OK` and
---   `maxIf false a m` is `a`, so nothing mentions `m`; left implicit it
---   would be a meta with nothing to solve it.  Skipped fields pass `0`.
-------------------------------------------------------------------------
-data AllIH {Γ : Cx} (k : RTm Γ) : {Δ : Cx} → ℕ → ICon Δ → RTm Γ → ℕ → Set where
-  aih-ι : {a : ℕ} {Δ : Cx} {ihs : RTm Γ} → AllIH k a (iι {Δ}) ihs a
-  aih-κ : {a : ℕ} {Δ : Cx} {κ : RTm Δ} {C : ICon (Δ ∙)} {ihs : RTm Γ} {n : ℕ} →
-          AllIH k a C ihs n → AllIH k a (iκ κ C) ihs n
-  aih-ρ : {a : ℕ} {Δ : Cx} {j : RTm Δ} {C : ICon (Δ ∙)} {ihs : RTm Γ} {n : ℕ}
-          (m : ℕ) →
-          IHof (scopeAt true j) k (fst ihs) m →
-          AllIH k (maxIf (scopeAt true j) a m) C (snd ihs) n →
-          AllIH k a (iρ j C) ihs n
-
-------------------------------------------------------------------------
--- ★ ONE FIELD'S CONTRIBUTION.  `occStep true acc h = occOp acc h`, and
---   `app (occOp acc h) k` = `app (app (app maxFn acc) h) k`, so THREE
---   βs (`maxFn` is a closed combinator applied to its arguments, not a
---   `lam` over them — see `Lib/IOcc`), reducing to
---   `maxTm (app (subTm (single k) (renTm vs acc)) k) (…h…)`, whose two
---   substitutions collapse by `wk-single`.  That collapse is a
---   PROPOSITIONAL equation, hence the cast.
---
---   `occStep false acc h = acc`: a skipped field leaves the accumulator
---   untouched, so its case is the hypothesis itself.
-------------------------------------------------------------------------
 occStep-red : {Γ : Cx} (b : 𝔹) (k : RTm Γ) {acc h : RTm Γ} (a m : ℕ) →
-              IHocc k acc a → IHof b k h m →
-              IHocc k (occStep b acc h) (maxIf b a m)
+              IHocc k acc a → IHof IHocc b k h m →
+              IHocc k (occStep b acc h) (comb maxℕ b a m)
 occStep-red true k {acc} {h} a m ha hm =
   ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
   ⟶*-appˡ (step (β _ _) done) »
@@ -137,39 +114,9 @@ occStep-red false k a m ha ok = ha
 ------------------------------------------------------------------------
 -- ★ THE WALK, once `occSum` has seeded the accumulator.
 ------------------------------------------------------------------------
-occTail-red : {Γ : Cx} (k : RTm Γ) {Δ : Cx} (C : ICon Δ)
-              {acc ihs : RTm Γ} {a n : ℕ} →
-              IHocc k acc a → AllIH k a C ihs n →
-              IHocc k (occTail true C acc ihs) n
-occTail-red k iι       ha aih-ι          = ha
-occTail-red k (iκ κ C) ha (aih-κ h)      = occTail-red k C ha h
-occTail-red k (iρ j C) ha (aih-ρ m hm h) =
-  occTail-red k C (occStep-red (scopeAt true j) k _ m ha hm) h
 
-------------------------------------------------------------------------
--- ★ THE ENTRY POINT.  `occSum` SEEDS the accumulator with the first
---   DESCENDED-INTO field rather than starting at `occZ`, exactly as
---   `szsSum` does — which is why `maxℕ 0 m` must be `m`, and it is:
---   `maxℕ 0 m = 0 + monusℕ m 0 = m`, definitionally.
---
--- ⚠ The `iι` case is a β step, not `done`: `occZ = lam nzero`, so the
---   empty fold is a FUNCTION that must be applied to `k` before it is a
---   numeral.  `sz`'s `z = nzero` needed no such step.  A row whose
---   every field is SKIPPED lands here too, and answers 0 — which is
---   exactly what `occTy x (Mu D) = false` says.
-------------------------------------------------------------------------
-occSum-red : {Γ : Cx} (k : RTm Γ) {Δ : Cx} (C : ICon Δ)
-             {ihs : RTm Γ} {n : ℕ} →
-             AllIH k 0 C ihs n → IHocc k (occSum true C ihs) n
-occSumStep-red : {Γ : Cx} (b : 𝔹) (k : RTm Γ) {Δ : Cx} (C : ICon (Δ ∙))
-                 {ihs : RTm Γ} (m : ℕ) {n : ℕ} →
-                 IHof b k (fst ihs) m →
-                 AllIH k (maxIf b 0 m) C (snd ihs) n →
-                 IHocc k (occSumStep b true C ihs) n
-
-occSum-red k iι       aih-ι          = step (β nzero k) done
-occSum-red k (iκ κ C) (aih-κ h)      = occSum-red k C h
-occSum-red k (iρ j C) (aih-ρ m hm h) = occSumStep-red (scopeAt true j) k C m hm h
-
-occSumStep-red true  k C m hm h = occTail-red k C hm h
-occSumStep-red false k C m hm h = occSum-red k C h
+open OccR.Red OccExt IHocc maxℕ occStep-red
+              (λ k → step (β nzero k) done) (λ m → refl) public
+  renaming ( ifTail-red    to occTail-red
+           ; ifSum-red     to occSum-red
+           ; ifSumStep-red to occSumStep-red )

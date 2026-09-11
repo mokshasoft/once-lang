@@ -38,6 +38,7 @@ import DirectedHoTT.Lib.DvdArith
 import DirectedHoTT.Lib.ICast
 import DirectedHoTT.Lib.IDepth
 import DirectedHoTT.Lib.IFold
+import DirectedHoTT.Lib.IFoldRed
 import DirectedHoTT.Lib.IHCall
 import DirectedHoTT.Lib.IHeadRed
 import DirectedHoTT.Lib.IMeths
