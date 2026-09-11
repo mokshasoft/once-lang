@@ -2136,6 +2136,93 @@ same block. Agda's polarity analysis accepts it. ⚠ The spike quantifies
 rejected *naming* "the third clause in the definition of `ILift`", so the
 test demonstrably bites.
 
+### ⬜ CAN PARAMETERS SIMPLIFY THE KNOT? — evidence gathered 2026-09-11
+
+⚠ FIRST, WHICH ROUTE. The two routes to parameters are not
+interchangeable, and only ONE of them targets the Knot:
+
+| route | buys | Knot? |
+|---|---|---|
+| `icw-par` (description-side) — a κ field may read the index | `Vec A n` becomes writable | **NO.** `A` becomes an INDEX; the motive still takes it, the towers still get built |
+| `ielim` parameters (eliminator-side) | data fixed across the recursion leaves the motive | **this is the one** |
+
+★ THE COST LAW, IN THE TREE'S OWN WORDS. `Lib/Wk:591` — *"the count is
+the number of binders that follow the payload in the METHOD, **which is
+one per motive passenger** plus the IH tuple."* And `IhITyMot:95` —
+*"EACH PASSENGER PAYS A DIFFERENT RUNG, and the count is positional:
+passenger 2 reads `n` definitionally, 3 needs `wk-single`, 4 needs
+`towerA`, and the RESULT needs `towerJ`."* ⇒ rungs = passengers + 1.
+
+★ THE PASSENGER CENSUS — **17 motives, 39 `Π`s.** Of the 7 whose
+passenger lists are documented (23 `Π`s), **14 are FIXED across the
+recursion**, i.e. parameter-eligible:
+
+| motive | passengers | fixed |
+|---|---|---|
+| `imethsTyMotK` | n, D, I, M, j | D, I, M |
+| `iihs` (the KILLED one) | n, D, ms, σ, p | n, D, ms |
+| `ipayTyMotK` | n, σ, D, I | D, I |
+| `ihsMotK` | n, D, ms, p | n, D, ms |
+| `iihTyMotK` | n, σ, q, M | n, M |
+| `methsTyMotK` | D, M, j | D, M |
+| `ihTyMotK` | q, M | M |
+
+⇒ **`iihs` would go 5 passengers → 2**, under the measured 4-ceiling, so
+the bundling hack would be unnecessary. That is the headline claim.
+
+### ⚠⚠ BUT FIRST CHECK WHETHER THE KERNEL ALREADY ALLOWS IT
+
+**`ihsK`'s own definition round-trips its fixed data:**
+
+```agda
+ihsK n C D ms p =
+  app (app (app (app (ielim KnotD (pair sDCon n) ihsMethsK C) n) D) ms) p
+```
+
+`n`/`D`/`ms` are Agda arguments — **already free terms at the ambient
+`Γ`** — that leave through the motive as `Π`s and are applied straight
+back. Four converging pieces of evidence say the motive could just
+mention them:
+
+- `⊢ielim`'s rule states the motive at the AMBIENT context —
+  `((Γ ▹ εwkTy I) ▹ IMu D I (var vz)) ⊢ty M` — not at `ε`;
+- `⊢methLam`'s method body is typed at `Γ ▹ … ▹ … ▹ …`, so `Γ` is in
+  scope for the method too;
+- `⊢methLam` transports the motive in by `renTy (extR (extR vs))`,
+  **twice** — a renaming that weakens the `Γ`-part while fixing the top
+  two slots, which is exactly and only what a `Γ`-mentioning `M` needs;
+- the tree ALREADY does this at `natrec`: `Lib/Arith`'s
+  `plusMonoMot : {Γ : Cx} (x y : RTm Γ) → RTy (Γ ∙)` takes ambient terms
+  and weakens them with `w`/`⊢wk`.
+
+⚠ AGAINST IT, and it is a direct assertion: `IPayTyMot:16` — *"a free
+variable of `Γ` cannot be used — `⊢methLam` fixes the motive at a `Γ`
+the wrapper does not get to choose — so all four ride."* ⚠ **ALL 17 Knot
+motives are `{Γ : Cx} → RTy ((Γ ∙) ∙)`, Γ-POLYMORPHIC**, so none of them
+*could* mention an ambient term; whether that is forced or habitual is
+not recorded anywhere, and no counter-example exists in the tree because
+no `elim`/`ielim` motive has ever been tried at a concrete `Γ`.
+
+### ⇒ THE SPIKE THAT SETTLES IT, and it must come FIRST
+
+Take ONE small Knot elimination with a fixed passenger — `payTyMotK`
+(Π=1, its only passenger `D` is fixed) is the cheapest — restate its
+motive as `RTm ⌊ Γ ⌋ → RTy ((⌊ Γ ⌋ ∙) ∙)` at a CONCRETE `Γ`, and see
+whether `⊢methLam` + `⊢ielim` still go through.
+
+- **passes** ⇒ the passenger wall is SELF-INFLICTED, the 609-line ladder
+  is largely avoidable, and **no kernel change is needed at all**. That
+  is a bigger result than the kernel change, and a cheaper one.
+- **fails** ⇒ record the exact obstruction; *that* is the precise
+  statement of the missing feature, and the `ielim`-arity change is
+  justified — **95 hand-written files mention `ielim`** (measured; the
+  earlier "87" was the right order).
+
+⚠ Do NOT cost or start the `ielim`-arity change before this spike. Per
+`stale-blockers-recheck-first`, `IPayTyMot:16`'s assertion is a single
+undated remark and the four pieces of evidence above all point the other
+way.
+
 ### ⇒ RECOMMENDATION: TAKE THE CHANGE
 
 Scope: `icw-par` (additive) · one clause in `iκW` (the sole `ICodeWf`
