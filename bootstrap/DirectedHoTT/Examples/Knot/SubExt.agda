@@ -86,16 +86,24 @@ extSK-vs i m x =
 
 -- ★ PROBE — the `vs` case, with the jsub chain that already worked, and
 --   `done` at the wrapper so the remaining goal is legible.
-extS-Represents :
+------------------------------------------------------------------------
+-- ★★★ THE CORE, AT THE LEDGER'S OWN NAME.  `extSK` is the entry tracked;
+--   `extNK` is this plus one β and one `wk-single` per slot.
+--
+-- ⚠ `extSK` is GENERIC in its index, but `extNK` only ever calls it at
+--   `pair sVar (nsuc …)` — the `sVar` SORT — so `extSK-agree-vz` and this
+--   cover every use, exactly as two rows do for `conSSK`.
+--
+-- ⚠ THE HYPOTHESIS TRAVELS.  Unlike the `vz` row, this one reads `σ` at
+--   `x`, so the core still takes the `Represents` witness; what it does
+--   NOT take is `extNK`'s wrapper.
+------------------------------------------------------------------------
+extSK-agree-vs :
   {Γ Δ Θ : Cx} {σ : Sub Γ Δ} {s : RTm Θ} (d : RTm Θ) →
-  Represents σ s → Represents (extS σ) (extNK d (num (len Δ)) s)
-extS-Represents d h vz = extNK-vz d _ _ _
-extS-Represents {Γ} {Δ} {Θ} {σ = σ} {s = s} d h (vs x) =
-  step (β _ _)
-    (⟶*-castₗ (cong₃' (λ a b c → app (app (extSK (pair sVar (nsuc a)) (enVar (vs x))) b) c)
-                      (wk-single {v = enVar (vs x)} d)
-                      (wk-single {v = enVar (vs x)} (num (len Δ)))
-                      (wk-single {v = enVar (vs x)} s))
+  Represents σ s → (x : Var Γ) →
+  app (app (extSK (pair sVar (nsuc d)) (enVar {Γ ∙} {Θ} (vs x))) (num (len Δ))) s
+  ⟶* enTm {Δ ∙} {Θ} (extS σ (vs x))
+extSK-agree-vs {Γ} {Δ} {Θ} {σ = σ} {s = s} d h x =
       (⟶*-appˡ (⟶*-appˡ (extSK-vs _ _ _)) »
        ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)))) »
        ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
@@ -120,7 +128,7 @@ extS-Represents {Γ} {Δ} {Θ} {σ = σ} {s = s} d h (vs x) =
           h x))) »
        -- ★ and the DEPTH.  `wkTmK` mentions it three times, so it moves by
        --   an EQUALITY over the whole wrapper, not by reductions.
-       ⟶*-castₗ (cong (λ z → wkTmK z (enTm (σ x))) tn) (wkTmK-agree (σ x)))))
+       ⟶*-castₗ (cong (λ z → wkTmK z (enTm (σ x))) tn) (wkTmK-agree (σ x))))
   where
     P : RTm Θ
     P = pair (num (len Γ)) (pair (enVar x) (pair (idrefl ⌜Nat⌝ sVar)
@@ -175,3 +183,15 @@ extS-Represents {Γ} {Δ} {Θ} {σ = σ} {s = s} d h (vs x) =
 
     tn : subTm τ (var (vs vz)) ≡ num (len Δ)
     tn = trans (sym (unc (var (vs vz)))) (pw^ {u = s} 0 (num (len Δ)))
+
+extS-Represents :
+  {Γ Δ Θ : Cx} {σ : Sub Γ Δ} {s : RTm Θ} (d : RTm Θ) →
+  Represents σ s → Represents (extS σ) (extNK d (num (len Δ)) s)
+extS-Represents d h vz = extNK-vz d _ _ _
+extS-Represents {Γ} {Δ} {Θ} {σ = σ} {s = s} d h (vs x) =
+  step (β _ _)
+    (⟶*-castₗ (cong₃' (λ a b c → app (app (extSK (pair sVar (nsuc a)) (enVar (vs x))) b) c)
+                      (wk-single {v = enVar (vs x)} d)
+                      (wk-single {v = enVar (vs x)} (num (len Δ)))
+                      (wk-single {v = enVar (vs x)} s))
+      (extSK-agree-vs d h x))
