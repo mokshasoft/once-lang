@@ -2355,14 +2355,55 @@ un-normalised, so the very first `⊢lam` cannot match its domain against
 the nice `motA (w (w nn))` form. Casting the goal does not help — the
 mismatch is in the ARGUMENT type `⊢methLam` demands.
 
-⇒ **the transport belongs INSIDE `⊢methLam`**, which should take an
-`M'` and the equation `renTy (extR² vs) (renTy (extR² vs) M) ≡ M'` and
-state the body at `M'`. That is a change to the SHARED PROLOGUE in
-`Lib/IPay` — paid ONCE, not per row — i.e. *generalise the CONSUMER*,
-exactly what [[half-generalization-is-worst]] prescribes.
+### ✅✅✅ DONE — THE `Lib/IPay` PATTERN WINS, AND BY THE LARGEST MARGIN YET
 
-⚠ NOT DONE, so the generic-in-Γ ambient row is UNPROVEN. What is proven
-is that the blocker is this one lemma and not the encoding.
+`tmp/MethLamN.agda` is `⊢methLam` with the motive transport as a
+PARAMETER, and it needs no transport machinery at all — matching both
+equations as `refl` lets Agda solve `M₁`/`M₂` by unification and the body
+argument then IS `⊢methLam`'s:
+
+```agda
+⊢methLamN D I k C refl refl wD wC tI wM db = ⊢methLam D I k C wD wC tI wM db
+```
+
+⇒ THE OBLIGATION IS A SMALL FAMILY OF NATURALITY LEMMAS, one per motive,
+stated ONCE and used by all 53 rows — where a Γ-polymorphic motive gets
+them free as identities:
+
+| lemma | what it unsticks | lines |
+|---|---|---|
+| `motA-ren` | the prologue's two `renTy (extR² vs)` | 4 |
+| `motA-at` | the body's `renTy vs (iatCon k (var vz) M)` | 10 |
+| `ren-SubTy` | `SubTy d n` hides a `renTm vs n` under its own `Π` | 3 |
+
+★ AND `⊢methLamN` + ONE `⊢-cast` through `motA-at` mean the body is built
+at the NICE form throughout, instead of every sub-proof fighting an
+un-normalised `renTy vs (iatCon …)`.
+
+**THE MEASUREMENT** — same row, cold, same RTS, no contention, deps
+verified cold:
+
+| | passengers | generic in Γ | wall | peak RSS |
+|---|---|---|---|---|
+| baseline, split module | 4 | yes | 2:11.99 | 4.04 GB |
+| baseline, INLINED (control) | 4 | yes | 2:00.22 | 4.21 GB |
+| ambient, concrete `Γ` | 2 | **NO** | 1:41.27 | 1.39 GB |
+| **ambient, generic `Γ` (IPay)** | **2** | **yes** | **0:35.92** | **0.55 GB** |
+
+⇒ against the control: **7.6× less memory and 3.3× faster** — and the
+result is MORE general than the baseline, not less.
+
+★★★ **SO THE SPECIALISATION WAS NEVER THE WIN.** The concrete-`Γ` row
+(1:41 / 1.39 GB) is the HALF-GENERALISED middle, and it is 2.8× worse on
+memory than the fully general one — [[half-generalization-is-worst]]
+measured a third time, in the direction the memory predicts.
+
+⚠ WHAT IS STILL OPEN: **neither version closes.** The baseline ends with
+one `UnsolvedMetaVariables` site; the generic ambient row ends with that
+plus an `UnsolvedConstraints`, both at `⊢iihsIHA`'s application — so on
+RESIDUE it is arguably one worse. Pinning `i`/`q` changes nothing
+(36.21s), and pinning `M` to `motA (w⁵ nn)` is the wrong term. ⬜ And
+this is still ONE row of 53, with the tuple and the wrapper unbuilt.
 
 ⬜ NOT DONE: the other 52 rows, the junk row, the tuple, and the wrapper
 `iihsK`. The measurement is ONE row — the expensive one — and the rest is
