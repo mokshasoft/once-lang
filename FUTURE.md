@@ -2273,12 +2273,27 @@ that matters, because the 5-passenger version was KILLED at the 5.5 GB
 cap and 4.24 GB is most of the way back to it. ⚠ 2.9× is far outside the
 ±12% RSS noise floor; the 23% is not.
 
-★ AND THE COMPARISON IS HANDICAPPED AGAINST THE NEW VERSION: the
-baseline's motive lives in a sibling module (deserialised), the ambient
-one is elaborated in-module, and the ambient file additionally defines
-the two `peel` lemmas the baseline gets from `Lib/Wk`. Both end in the
-same state — one site with unsolved metas at `⊢iihsIH`'s application,
-which the baseline's own header already records as un-pinnable.
+⚠ THE MODULE-SPLIT CONFOUND, KILLED BY A CONTROL. The baseline's motive
+lives in a SIBLING module (deserialised) where the ambient one is
+elaborated IN-module, so `tmp/IihsRho2Inline.agda` re-runs the baseline
+with its motive inlined — same structure as the ambient version:
+
+| | wall | peak RSS |
+|---|---|---|
+| baseline, split module | 2:11.99 | 4.24 GB |
+| baseline, **inlined (control)** | 2:00.22 | 4.42 GB |
+| ambient, inlined | **1:41.27** | **1.46 GB** |
+
+⇒ inlining moves the baseline by −9% time / +4% memory, both inside
+noise. **The memory result survives at 3.0×.** ⚠⚠ BUT THE TIME RESULT
+DOES NOT SURVIVE AS A CLAIM: against the control it is 16% on ONE sample,
+inside the band where [[agda-rss-noise-floor]] says a single run proves
+nothing. ⇒ **claim the memory, not the speed.**
+
+★ Both end in the same state — one site with unsolved metas at
+`⊢iihsIH`'s application, which the baseline's own header already records
+as un-pinnable. ⚠ So NEITHER version closes, and `iihsK` is not done by
+this.
 
 ### ★★★ THE RUNGS CHANGED IN KIND, NOT JUST IN COUNT
 
