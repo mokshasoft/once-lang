@@ -121,7 +121,18 @@
 --     extRNK-vs  ✅ not a program — the other clause.
 --     extRNK-vz  ✅ not a program — a clause of `extRNK`'s adequacy
 --                (`Knot/RenSpec`), which `extR-Represents` assembles.
---     extSK      ⬜ OWED — with `subTmK`.
+--     extSK      ✅ DISCHARGED — `Knot/SubSpec.extSK-agree-vz` and
+--                `Knot/SubExt.extSK-agree-vs`, stated at the CORE name.
+--                ★ The chains already existed inside `extNK-vz` and
+--                `extS-Represents`'s `vs` clause; both open with
+--                `step (β _ _)`, the wrapper's β, and everything after
+--                it IS the core.  Fourth time this factoring has paid
+--                (`singleSK`, `nrsK`, `conSSK`, now `extSK`).
+--                ⚠ `extSK` is GENERIC in its index, but `extNK` only
+--                ever calls it at `pair sVar (nsuc …)` — the `sVar`
+--                SORT — so two rows cover every use.
+--                ⚠ The `vs` core still takes the `Represents` witness
+--                (it reads `σ` at `x`); what it drops is the wrapper.
 --     extSK-sub  ✅ not a program — `extSK`'s substitution naturality
 --                (`Knot/SubNat`), i.e. `ExtNSub` for `extNK`.
 --     extSK-vs   ✅ not a program — the other clause (`Knot/SubExt`).

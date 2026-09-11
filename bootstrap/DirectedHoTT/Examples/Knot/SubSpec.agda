@@ -99,13 +99,14 @@ extSK-vz i m =
 -- ★ `extS σ vz = var vz`, object-level.  `extVz`'s body is
 --   `Tm-varK (Var-vzK n)`, so the five βs land on the answer directly —
 --   no projection, no jsub.  ⚠ Contrast `extVs` below.
-extNK-vz : {Γ : Cx} (d n σ m : RTm Γ) →
-           app (extNK d n σ) (Var-vzK m) ⟶* Tm-varK (Var-vzK n)
-extNK-vz {Γ} d n σ m =
-  step (β _ _)
-    (⟶*-castₗ (cong₂ (λ a b → app (app (extSK (pair sVar (nsuc a)) (Var-vzK m)) b)
-                                   (subTm (single (Var-vzK m)) (w σ)))
-                     (wk-single {v = Var-vzK m} d) (wk-single {v = Var-vzK m} n))
+-- ★★★ THE CORE, AT THE LEDGER'S OWN NAME.  `extSK` is the entry tracked;
+--   `extNK` is this plus one β and one `wk-single` per slot.
+--   ⚠ `extSK` is GENERIC in its index, but `extNK` only ever calls it at
+--     `pair sVar (nsuc …)` — the `sVar` SORT — so two rows cover every
+--     use, exactly as for `conSSK`.
+extSK-agree-vz : {Γ : Cx} (i m n σ' : RTm Γ) →
+                 app (app (extSK i (Var-vzK m)) n) σ' ⟶* Tm-varK (Var-vzK n)
+extSK-agree-vz i m n σ' =
       (⟶*-appˡ (⟶*-appˡ (extSK-vz _ _)) »
        ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)))) »
        ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
@@ -116,9 +117,17 @@ extNK-vz {Γ} d n σ m =
        --   lams `var (vs vz)` is the TARGET DEPTH `n`.  Three of the five
        --   substitutions leave it alone; the fourth weakens and the fifth
        --   cancels — `pw^ 0`, i.e. one `wk-single`.
-       ⟶*-castᵣ (cong (λ z → Tm-varK (Var-vzK z))
-                      (pw^ {u = subTm (single (Var-vzK m)) (w σ)} 0 n))
-                done))
+       ⟶*-castᵣ (cong (λ z → Tm-varK (Var-vzK z)) (pw^ {u = σ'} 0 n))
+                done)
+
+extNK-vz : {Γ : Cx} (d n σ m : RTm Γ) →
+           app (extNK d n σ) (Var-vzK m) ⟶* Tm-varK (Var-vzK n)
+extNK-vz {Γ} d n σ m =
+  step (β _ _)
+    (⟶*-castₗ (cong₂ (λ a b → app (app (extSK (pair sVar (nsuc a)) (Var-vzK m)) b)
+                                   (subTm (single (Var-vzK m)) (w σ)))
+                     (wk-single {v = Var-vzK m} d) (wk-single {v = Var-vzK m} n))
+              (extSK-agree-vz _ _ _ _))
 
 ------------------------------------------------------------------------
 -- ★★★ AND `wkTmK` IS NOW A COROLLARY OF `ren-agree`.
