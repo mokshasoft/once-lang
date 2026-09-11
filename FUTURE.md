@@ -1862,3 +1862,50 @@ outcomes and all three are informative:
 
 ⚠ Do it at `Vec`, NOT at the knot. The knot's 53 rows would confound the
 measurement with everything else that is expensive about it.
+
+### ✅ THE SPIKE WAS RUN, 2026-09-11 — OUTCOME 2, AND IT IS ONE ROW
+
+`bootstrap/tmp/VecASpike.agda`. **Everything except one thing works.**
+The paired index `Σ' U (El ⌜Nat⌝)` is accepted; `nil`'s ford on
+`snd ⟨i⟩` is accepted; `cons`'s `iρ` at `pair (fst ⟨i⟩) m` is accepted;
+the whole `IConWf` skeleton type-checks. **`Vec A n` is exactly ONE
+`ICodeWf` row away** — so pairing the index is NOT the obstacle, and
+the knot's `pair sort depth` trick does generalise.
+
+The gap, named by Agda:
+
+```agda
+icw-clo : (c : RTm ε) → ◇ ⊢ c ∷ U → ICodeWf (εwkTm c)
+-- _Γ_96 ∙ != ε of type Cx
+```
+
+`icw-clo` demands the code live in the EMPTY context; a parameter read
+from the index is `fst (var (vs vz))`, a variable. `icw-ford` wants a
+`⌜Id⌝`, `icw-imu` a `⌜IMu⌝`. None of the three fits.
+
+⚠⚠ **BUT THE ROW IS NOT FREE, AND §10 ALREADY SAYS WHY.** Both admitted
+rows are admitted because neither needs the code INTERPRETED —
+`icw-clo`'s witness is `elW` at the empty environment, and `icw-ford`
+works because `El (⌜Id⌝ c a b)` reduces to `Id (El c) a b` and `⊩₀Id`
+needs only that chain, *"no interpretation of `c`"*. A parameter field's
+type is `El (fst ⟨i⟩)` and `⊩₀` **does** have to interpret that code —
+which is exactly why `⌜Π⌝`/`⌜Σ⌝`/`⌜Hom⌝` are excluded.
+
+★ **WHAT IS STILL PROMISING** — and what the spike does NOT settle: the
+index is PART OF THE TYPE. At a concrete `IMu D I i` the code `fst i` is
+DETERMINED, so the interpretation is not arbitrary the way a `⌜Π⌝`
+domain is. Whether `⊩₀`'s structure can exploit that is a question about
+the LOGICAL RELATION, not about the description language.
+
+⇒ **THE DECISION NOW RESTS ON ONE READ**: can `⊩₀` interpret a code that
+is a projection of the ambient index? If yes, the kernel change is a
+single `ICodeWf` constructor plus its `⊩₀` clause — minimal, motivated,
+and it removes the parameter workaround everywhere at once. If no, then
+first-class descriptions genuinely cannot carry parameters in this
+kernel, and THAT is the POC result.
+
+⚠ Note what this is NOT: it is not a 53-row rewrite, and not the
+`ielim`-arity change costed above at 87 hand-written files. The spike
+narrowed the question from "should the kernel interface change" to "is
+one `ICodeWf` row admissible", which is answerable by reading
+`Metatheory/LogicalRelation`'s `⊩₀` clauses.
