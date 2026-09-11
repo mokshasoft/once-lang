@@ -90,7 +90,8 @@ open import Once.CCC.Machine.SMCore
          -- D174: the rest of `inl`/`inr`'s heap build — the first discharge in
          -- this file that ALLOCATES, so these are new to its vocabulary.
          instr-alloc-heap; instr-load-tag-lit; store-indirect; store-indirect-suc;
-         load-from-slot; AtDynamic; sucLoc; SV-Tag; SV-Code; writeReg-preserves; _≟HL_)
+         load-from-slot; load-indirect; load-indirect-suc;
+         AtDynamic; sucLoc; SV-Tag; SV-Code; writeReg-preserves; _≟HL_)
 open import Once.CCC.Machine.Validity using (module ValidityDef)
 open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; next-heap-ref; module FrontierInvariant)
@@ -130,8 +131,10 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- `flat-step-straight` threads `exec-abstract` definitionally, so the
   -- structured machine's halt lemmas apply to a flat chain unchanged — the
   -- conditional form is the one `inl`'s indirect stores and slot loads need.
-  open TracePrimitives {FS} using (InstrWF; exec-abstract-preserves-halted-WF)
+  open TracePrimitives {FS} using (InstrWF; exec-abstract-preserves-halted-WF; load-indirect-twf; load-indirect-suc-twf)
   open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-heapMem)
+  open RecSchemeSemantics {FS} using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-preserves-mem;
+                                     exec-abstract-load-indirect-suc-output; exec-abstract-load-indirect-suc-preserves-mem)
   open Once.CCC.Machine.SMPrimitives using (nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-load-from-slot; InstrNoHeapWrite)
   open RecSchemeSemantics {FS} using (exec-abstract-preserves-heap-ref)
 
@@ -151,6 +154,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           -- `validityWF-frontier-advance` carries a witness across the
           -- allocation this clause performs.
           ; valid-inl-wf; valid-inl-reg-wf; valid-inr-wf; valid-inr-reg-wf
+          ; module PairValidWF; decomposePairWF
           ; InlineRep; rep-prim; rep-unit
           ; validityWF-frontier-advance)
   open MemOps {FS} using (readLoc)
@@ -854,6 +858,100 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       denot-[] : ∀ k → projTrace (evalᴰ (free-heap r) (inject x)) k ≡ []
       denot-[] k = refl
 
+  -- ── `fst` / `snd` — DISCHARGED (D178). One instruction each,
+  -- `load-indirect` / `load-indirect-suc`, and the witness is already carried
+  -- by the INPUT: `valid-pair-wf` holds `readLoc s pair-loc ≡ just (SV-Ptr
+  -- fst-loc)` together with that component's own `BeforeFrontier` and
+  -- `ValidAtWF`, so `decomposePairWF` hands over exactly what `at-loc` wants.
+  --
+  -- The other two input residences are absurd, as for `out-μ`: `in-reg`
+  -- carries `FitsInRegI (A * B)` and `FitsInRegI` has only `fits-int` /
+  -- `fits-float`; `in-unit` claims `A * B ≡ Unit`, refuted by constructor
+  -- disjointness. So only the pointer residence survives.
+  --
+  -- Memory is untouched (`load-indirect` writes the Output REGISTER — see
+  -- `instr-writes-mem load-indirect … = nothing`), so the component's validity
+  -- transports by `validityWF-mem-preserved` over a register write.
+  obs-correct-fst : ∀ {A B} → IRObsCorrectF (fst {A} {B})
+  obs-correct-fst {A} {B} _ n l prog base _ span mIn x s alloc cl _ nh inp = mr-of inp
+    where
+      fs₁ = flat-exec-instr load-indirect prog (entry-flat base s alloc cl)
+
+      denot-[] : ∀ k → projTrace (evalᴰ (fst {A} {B}) (inject x)) k ≡ []
+      denot-[] k = refl
+
+      mem-eq : ∀ loc' → readLoc (floc fs₁) loc' ≡ readLoc s loc'
+      mem-eq loc' = exec-abstract-load-indirect-preserves-mem s alloc loc'
+
+      -- THE WHOLE RECORD is built per input-residence, not just its
+      -- `value-realized` field: `traces-agree` is stated over
+      -- `chain-events (ValueRealized.run value-realized)`, which cannot
+      -- reduce while the run is a function of an undestructured `inp`. And
+      -- the RESULT's mode is the COMPONENT's (`mA` inside the pair
+      -- witness), never the input's — `at-loc`'s mode is fixed by the
+      -- `ValidAtWF` handed to it.
+      mr-of : InputAt mIn alloc x s
+            → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl
+      mr-of (in-loc pair-loc pv bf eq) =
+        let d     = decomposePairWF pv
+            cloc  = PairValidWF.fst-loc d
+            cbef  = PairValidWF.fst-before d
+            cval  = validityWF-mem-preserved (proj₁ x) cloc s (floc fs₁) cbef
+                      (λ loc' _ → mem-eq loc') (PairValidWF.fst-valid d)
+            live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
+                      (load-indirect-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq (PairValidWF.fst-ptr d))
+        in record
+             { traces-agree = λ k → cong (take k) (sym (denot-[] k))
+             ; value-realized =
+                 realized 1 fs₁ (PairValidWF.mA d) (falloc fs₁)
+                   ((nh , span 0 _ refl) ∷ []) live' refl refl refl
+                   (at-loc cloc cval cbef
+                      (exec-abstract-load-indirect-output s alloc pair-loc (SV-Ptr cloc) eq (PairValidWF.fst-ptr d))
+                      cval cbef)
+             }
+      mr-of (in-reg () _)
+      mr-of (in-unit ())
+
+  obs-correct-snd : ∀ {A B} → IRObsCorrectF (snd {A} {B})
+  obs-correct-snd {A} {B} _ n l prog base _ span mIn x s alloc cl _ nh inp = mr-of inp
+    where
+      fs₁ = flat-exec-instr load-indirect-suc prog (entry-flat base s alloc cl)
+
+      denot-[] : ∀ k → projTrace (evalᴰ (snd {A} {B}) (inject x)) k ≡ []
+      denot-[] k = refl
+
+      mem-eq : ∀ loc' → readLoc (floc fs₁) loc' ≡ readLoc s loc'
+      mem-eq loc' = exec-abstract-load-indirect-suc-preserves-mem s alloc loc'
+
+      -- THE WHOLE RECORD is built per input-residence, not just its
+      -- `value-realized` field: `traces-agree` is stated over
+      -- `chain-events (ValueRealized.run value-realized)`, which cannot
+      -- reduce while the run is a function of an undestructured `inp`. And
+      -- the RESULT's mode is the COMPONENT's (`mB` inside the pair
+      -- witness), never the input's — `at-loc`'s mode is fixed by the
+      -- `ValidAtWF` handed to it.
+      mr-of : InputAt mIn alloc x s
+            → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl
+      mr-of (in-loc pair-loc pv bf eq) =
+        let d     = decomposePairWF pv
+            cloc  = PairValidWF.snd-loc d
+            cbef  = PairValidWF.snd-before d
+            cval  = validityWF-mem-preserved (proj₂ x) cloc s (floc fs₁) cbef
+                      (λ loc' _ → mem-eq loc') (PairValidWF.snd-valid d)
+            live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
+                      (load-indirect-suc-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq (PairValidWF.snd-ptr d))
+        in record
+             { traces-agree = λ k → cong (take k) (sym (denot-[] k))
+             ; value-realized =
+                 realized 1 fs₁ (PairValidWF.mB d) (falloc fs₁)
+                   ((nh , span 0 _ refl) ∷ []) live' refl refl refl
+                   (at-loc cloc cval cbef
+                      (exec-abstract-load-indirect-suc-output s alloc pair-loc (SV-Ptr cloc) eq (PairValidWF.snd-ptr d))
+                      cval cbef)
+             }
+      mr-of (in-reg () _)
+      mr-of (in-unit ())
+
   -- ── `out-μ` / `Out` — DISCHARGED. Both are Lambek inverses compiling to the
   -- same `mov-to-output ∷ []` as `id`, and both are DOMAIN-RESTRICTED in a way
   -- that kills two of the three input residences outright:
@@ -1062,8 +1160,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
         writeReg-same (regs s) Output (SV-Lit fits-floatˢ (round (FrameSemantics.float-format FS) v))
 
   postulate
-    obs-correct-fst       : ∀ {A B} → IRObsCorrectF (fst {A} {B})
-    obs-correct-snd       : ∀ {A B} → IRObsCorrectF (snd {A} {B})
+    -- (`obs-correct-fst`/`-snd` MOVED OUT — discharged above, D178.)
     -- `In` — the ONE class-A constructor that did NOT fall to the `id`
     -- template, and the reason is a SPEC gap, not a missing lemma. Its domain
     -- is `⟦ F ⟧TI (μ-type F)`, a stuck application: unlike `out-μ`/`Out` (whose
