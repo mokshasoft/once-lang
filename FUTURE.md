@@ -1590,3 +1590,110 @@ description, so adding ONE row to `Examples/Scoped` invalidated
 four-row description. This compounds the 40× already recorded for indices
 that accumulate, and it is an argument for descriptions being *values*
 rather than *indices* wherever the choice exists.
+
+---
+
+## Once: A DESCRIPTION AND ITS METHOD TUPLE ARE ONE THING — the passenger wall, measured 2026-09-11
+
+A FIFTH design finding of the shape `HANDOFF-2026-08-24` §1 records for
+the other four: *"found by trying to PROVE something, never by reading
+the rules."* It came out of building `iihsK`, the object-level `iihs`.
+
+### The wall, and it is a COUNT
+
+An object-level fold's methods are CLOSED terms, so everything the
+meta-level function takes must ride as a `Π` passenger in the motive.
+Measured, same techniques throughout (compacting collector, local
+Def-hoists, per-row modules):
+
+| program | passengers | |
+|---|---|---|
+| `ipayTyK` — `n`, `σ`, `D`, `I` | **4** | ✅ compiles (in the tree) |
+| `ihsK` — `n`, `D`, `ms`, `p` | **4** | ✅ built 2026-09-11 |
+| `iihsK` — `n`, `σ`, `D`, `ms`, `p` | **5** | ❌ does not fit |
+
+`iihsRho` was tried plain (5:38, killed), with its first component
+hoisted (4:22), with the five-app spine hoisted (4:13), and with the IH
+pick hoisted as well (4:39) — all killed at the 5.5 GB cap. The same
+module WITHOUT that one row checks in **4.3 s**, so the row is the whole
+cost and hoisting its pieces does not reduce it: the definitions move
+out, the INSTANTIATION against the method context stays.
+
+⚠ **Four fits and five does not** is two data points either side of a
+line, not a mechanism. Treat it as the live hypothesis, not a law.
+
+### Where the fifth passenger comes from — and why it cannot simply go
+
+`σ` is the telescope ENVIRONMENT. `iρ j C` puts a recursive field's index
+`j` in the telescope context `Δ`, so every traversal threads
+`σ : Sub Δ Γ` and extends it per field (`iext σ (fst p)`). At the meta
+level σ is an Agda function and free; at the object level it is a
+passenger.
+
+⚠ **THAT DESIGN WAS ALREADY A REVISION AND IT WAS FORCED.**
+`HANDOFF-2026-08-24` §9.2: *"`iρ f` could not express §3's own `Vec` →
+telescope."* A field's index can depend on EARLIER FIELDS, which a closed
+function of the ambient index cannot see. So "drop the environment" is
+not available — that door was measured shut.
+
+★ Exactly TWO motives in the knot carry a `SubTy` passenger —
+`Knot/IPayTyMot` and `Knot/IhITyMot` — and they are precisely the two
+that traverse an `ICon` telescope. The non-indexed twins (`payTy`,
+`ihTy`, `ihs`) carry none. So the environment is not incidental to
+`iihs`; it is the standing cost of the telescope design, paid by every
+object-level `ICon` traversal.
+
+### ★★★ THE FINDING: `D` AND `ms` ARE NEVER USED APART
+
+In `iihs` — and in `ifields`, and in `ι-ielim` itself — the description
+and the method tuple occur only together:
+
+```agda
+iihs D ms σ (iρ j C) p = pair (ielim D (subTm σ j) ms (fst p)) …
+ifields D i ms σ C m p = app (app (app m i) p) (iihs D ms σ C p)
+ι-ielim : ielim D i ms (icon k p) ⟶ ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p
+```
+
+`(D , ms)` is the ELIMINATOR'S ALGEBRA. The encoding splits it into two
+passengers; nothing ever reads one without the other.
+
+⇒ **if a description and its method tuple were ONE object, `iihs` would
+have four passengers** and land on the compiling side of the wall. That
+is an encoding change, not a proof trick, and it reaches `ielim` itself.
+
+### What to check before believing it
+
+1. **Does bundling actually pay?** The saving is one binder; the cost is
+   two projections IN THE BODY, and the body is where the cost is
+   (measured: same row, trivial body, 8.8 s; real body, over the cap).
+   ⚠ A cheap TEST exists and should come before any redesign: build
+   `iihsK` with `D`/`ms` bundled and compare. That is a temp-module
+   experiment, not a kernel change.
+
+   ★★★ AND THE BUNDLE MUST BE A **KERNEL `Σ'`, NOT A `Tm-pairK`.**
+   `D : K (pair sIDesc n)` and `ms : K (pair sTm n)` are at DIFFERENT
+   SORTS, so they cannot be paired as an object term at all — the only
+   bundle available is the kernel's own `Σ'`. That is the good case:
+   projecting it is `⊢fst`/`⊢snd`, a two-line derivation, where
+   `Tm-fstK`/`Tm-sndK` are `⊢icon` + nested `ty-Σ` towers (`⊢Tm-elimKv`
+   alone is 35 lines). ⇒ my earlier objection to bundling — *"it moves
+   work INTO the body, and the body is the cost"* — was about the WRONG
+   bundle, and does not apply to the `Σ'` one.
+2. **Is four really the line?** Two points. A dummy fifth passenger on
+   `ihsK` — body unchanged — would say whether the count or the body
+   drives it. ⚠ I attempted this twice and broke the file both times;
+   it needs the de Bruijn reindexing done mechanically, with assertions.
+3. **What would an algebra former cost?** Bundling at the `ielim` level
+   means `ielim` takes one argument where it took two, which touches the
+   53-row table, `⊢ielim`, `ι-ielim`, and every client. `IConWf D I Δ C`
+   is already indexed by the WHOLE description (see the cost datum
+   above), so this is the same blast radius.
+
+### For Once
+
+The general shape is worth stating independently of this bug: **an
+eliminator's algebra is one value, and splitting it across arguments
+costs at every site that carries it.** Once's own `elim`/`ielim` should
+decide this deliberately rather than inherit Agda's habit of currying —
+and the POC has now paid for the evidence twice, once in `IConWf`'s
+whole-description index and once here.
