@@ -2203,7 +2203,72 @@ motives are `{Γ : Cx} → RTy ((Γ ∙) ∙)`, Γ-POLYMORPHIC**, so none of the
 not recorded anywhere, and no counter-example exists in the tree because
 no `elim`/`ielim` motive has ever been tried at a concrete `Γ`.
 
-### ⇒ THE SPIKE THAT SETTLES IT, and it must come FIRST
+### ✅✅✅ THE SPIKE WAS RUN, 2026-09-11 — **THE WALL IS SELF-INFLICTED**
+
+Four files in `bootstrap/tmp`, each one variable apart from the last.
+
+| file | what it changes | rc |
+|---|---|---|
+| `AmbientMotC.agda` | **CONTROL** — `D` as `payTyMotK`'s `Π` passenger | **0** |
+| `AmbientMot.agda` | `D` ambient, motive still reads `snd ⟨i⟩` | **FAILS** |
+| `AmbientMotN.agda` | `D` ambient, motive reads the ambient `n` | **0** |
+| `AmbientMotIH.agda` | …and the **IH** taken under that motive | **0** |
+
+⇒ **AN AMBIENT `Γ`-TERM IS USABLE IN A METHOD BODY.** `IPayTyMot:16`'s
+*"a free variable of `Γ` cannot be used"* is FALSE as stated;
+`PayTy:11`'s *"it could equally be a free variable of the method tuple"*
+is right. What is true is narrower, and `AmbientMot.agda` pins it:
+
+★ **an ambient term cannot satisfy a demand stated at `snd ⟨i⟩`** —
+`⟨i⟩` is bound by the method, an ambient term's index is not, and
+`vs _x != vz`. So the motive must stop reading the index; once it does,
+the ambient term goes through.
+
+### ★★★ AND HERE IS WHY NOBODY NOTICED — `renTy (extR (extR vs))`
+
+`AmbientMotIH` needed the motive written out at THREE sites — the IH
+binder, the IH's type inside the binder, and `⊢ihHere`'s `M` — each a
+`renTy (extR (extR vs))` transport, plus the method context `Γm` pinned
+because Agda can no longer solve it from the motive.
+
+**Every one of those is the IDENTITY for a `Γ`-POLYMORPHIC motive.**
+That is the entire reason all 17 Knot motives are
+`{Γ : Cx} → RTy ((Γ ∙) ∙)`: it makes the transports vanish. The
+`Π`-passenger encoding is what you get for free once you have made that
+choice — nobody chose the passengers, they chose the polymorphism.
+
+⇒ **THE TRADE, AND IT IS A TRADE, NOT A WALL:**
+
+| | Γ-polymorphic motive (today) | Γ-mentioning motive |
+|---|---|---|
+| motive transports | free (identity) | 3 explicit `renTy (extR² vs)` per IH use, context pinned |
+| passengers | one `Π` per fixed argument | **none** |
+| tower rungs | **one per passenger, at every application** | none to climb |
+| ceiling | **4 passengers** (measured) | no passenger count to cap |
+
+⚠ SCOPE — this applies to the DEPTH-PRESERVING recursions only. The
+spike's motive reads the ambient `n` instead of `snd ⟨i⟩`, which is
+sound exactly when the recursion does not move the depth. `ihs`,
+`iihs` and `iihTy` all qualify (`iext σ (fst p)` is a CONS and
+`IhITyMot:12` records that the target is unchanged); **`ipayTy` does
+NOT** — its `extS σ` raises, so its IH is taken at `nsuc n`. ⇒ the
+relief lands on `iihs` — the one that was killed — and not everywhere.
+
+⚠ AND THE RUNG SAVING IS INFERRED, NOT MEASURED: no passengers means
+no motive application, hence nothing for `towerA`/`towerJ` to undo. The
+next measurement is to rebuild ONE real function both ways and compare.
+
+### ⇒ SO: NO KERNEL CHANGE IS NEEDED FOR THE KNOT
+
+The `ielim`-arity change (95 hand-written files) is **not** justified by
+the passenger wall. Neither is `icw-par`, which was about expressivity
+and is in any case dissolved by the existential above. What the Knot
+needs is a different MOTIVE DISCIPLINE, and that is ordinary work in
+`Examples/Knot` with no kernel surface touched at all.
+
+### ⬜ THE ORIGINAL PLAN FOR THE SPIKE, kept for the record
+
+
 
 Take ONE small Knot elimination with a fixed passenger — `payTyMotK`
 (Π=1, its only passenger `D` is fixed) is the cheapest — restate its
