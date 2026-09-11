@@ -40,14 +40,14 @@ open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; inject; forget; coerce-functor⁻¹-D)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; seqF)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0; lookupᴰUsed)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.CCC.Eval as Val using ()
-open import Data.List using (List) renaming (_++_ to _++ₗ_)
+open import Data.List using (List; take) renaming (_++_ to _++ₗ_)
 open import Data.Nat using (ℕ)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; svar; SVar; Usage; _↾_; _⊑ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; zeroUsage; _∷_) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ; lookup to lookupᵗ)
 open import Once.TypeCheck.Classify using (NamedCtx)
@@ -82,18 +82,17 @@ open import Once.TypeCheck.Judgment
 -- of SD's `cata-ev-algᴰ` (`evalᴰ alg` replaced by the direct algebra `dalg`).
 -- DEFINITIONALLY matches `evalᴰ (Cata wf alg)` when `dalg = evalᴰ alg`, so the
 -- `bridgeᵈ` cata case reduces to the (recursive) morphism bridge.
-cata-ev-algᴰ-D : ∀ {F : Functor} {A : Type} → ℕ → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
-               → ⟦ F ⟧F (List SigOpEvent × ⟦ A ⟧ᴰ) → List SigOpEvent × ⟦ A ⟧ᴰ
-cata-ev-algᴰ-D {F} {A} n dalg fc =
-  ( events-F F proj₁ fc ++ₗ projTrace (dalg z) n
-  , valueT (dalg z) n )
-  where z = coerce-functor⁻¹-D F A (sem-fmap F proj₂ fc)
+-- D179: carrier is a COMPUTATION and the layer is sequenced (`seqF`) before
+-- the algebra runs, so the children share ONE budget. The `ℕ` is gone — it
+-- lives in `T` now. Mirrors `DenotTrace.cata-ev-algᴰ` exactly.
+cata-ev-algᴰ-D : ∀ {F : Functor} {A : Type} → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ)
+               → ⟦ F ⟧F (T ⟦ A ⟧ᴰ) → T ⟦ A ⟧ᴰ
+cata-ev-algᴰ-D {F} {A} dalg fc =
+  seqF F fc >>=T λ layer → dalg (coerce-functor⁻¹-D F A layer)
 
 cata-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
          → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T ⟦ A ⟧ᴰ
-cata-sem {F} {A} wf dalg v = λ n →
-  let r = sem-cata wf (cata-ev-algᴰ-D {F} {A} n dalg) (forget v)
-  in (proj₁ r , proj₂ r)
+cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} dalg) (forget v)
 
 -- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level.
 -- DEFINITIONALLY `eval (In wf Heap) ∘ forget` (first-order data is pure), so the
@@ -107,7 +106,7 @@ in-value {F} x = sem-In F (coerce-functor F (μ-type F) (forget x))
 -- Plan 0.74 J5: takes the target's numerics, because `semM` does now.
 named-sem : ∀ {A B : Type} → TargetNum → CanonicalName → IsBaseType A → IsConcrete B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
 named-sem {A} {B} fmt cn bA cB a =
-  λ _ → (emit-D (value-info {A} {B} cn bA cB) (forget a) , inject (semM (value-info {A} {B} cn bA cB) fmt (forget a)))
+  λ n → (emit-Dᵇ (value-info {A} {B} cn bA cB) (forget a) n , inject (semM (value-info {A} {B} cn bA cB) fmt (forget a)))
 
 
 ------------------------------------------------------------------------
@@ -130,7 +129,7 @@ svarᴰRun {Γ = Γ} (svar i) dγ = lookupᴰUsed Γ i dγ
 
 -- A closed named/sigop value reference (matches SD's `poly`/`closure`), IR-free.
 sigOpValᴰ : ∀ {B} → TargetNum → SigOpInfo Unit B → T ⟦ B ⟧ᴰ
-sigOpValᴰ fmt si = λ _ → (emit-D si tt , inject (semM si fmt tt))
+sigOpValᴰ fmt si = λ n → (emit-Dᵇ si tt n , inject (semM si fmt tt))
 
 -- An EXTERNAL sigop reference (`t-var-qualified/resolved/import`, realized to
 -- SD's `sigOp`). DISPATCHES ON RESULT-TYPE SHAPE exactly like SD's `sigOp`: at
@@ -148,13 +147,13 @@ sigOpRefᴰ {A = A} fmt cn (con-base ib) = sigOpValᴰ fmt (value-info {Unit} {A
 -- receives its argument — the meaning takes none — so the reference degenerates
 -- to the value form, exactly as it does in `Elaborate` and `SourceDenote`.
 sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero π} bDom cCod) =
-  returnT (λ _ → λ n → ( emit-D (value-info cn base-Unit cCod) tt
+  returnT (λ _ → λ n → ( emit-Dᵇ (value-info cn base-Unit cCod) tt n
                        , inject (semM (value-info cn base-Unit cCod) fmt tt) ))
 sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom cCod) =
-  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) (forget arg)
+  returnT (λ arg → λ n → ( emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) (forget arg) n
                          , inject (semM (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) fmt (forget arg)) ))
 sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom cCod) =
-  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) (forget arg)
+  returnT (λ arg → λ n → ( emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) (forget arg) n
                          , inject (semM (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) fmt (forget arg)) ))
 
 -- D142/D143: the RUNTIME environment of a derivation.

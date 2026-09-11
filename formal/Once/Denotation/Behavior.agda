@@ -77,8 +77,12 @@
 
 module Once.Denotation.Behavior where
 
-open import Data.Nat using (ℕ)
-open import Data.List using (List)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; z≤n; s≤s)
+open import Data.Nat.Properties using (m≤n⇒m<n∨m≡n)
+open import Data.List using (List; []; _∷_; _++_; length; take)
+open import Data.Product using (∃-syntax; _,_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
 open import Once.Denotation.Trace using (SigOpEvent)
 import Once.Grammar as G
@@ -102,8 +106,95 @@ import Once.Grammar as G
 -- productivity-avoidance compromise — see D058.)
 ------------------------------------------------------------------------
 
-Behavior : Set
-Behavior = ℕ → List SigOpEvent
+-- D179: the index's meaning is now STRUCTURAL, not documented.
+--
+-- The header above has always said `Behavior n` is "the first `n` events", and
+-- that any step-fuel is internal and "never this index". Nothing enforced it:
+-- `ℕ → List SigOpEvent` admits families that RETRACT — where observing further
+-- rewrites what was already observed — which is not a trace of anything.
+--
+-- `extends` says the only thing a prefix family may do: observing one event
+-- further APPENDS. That is what makes the index an observation count rather
+-- than an interpreter's fuel, and it is what lets composition thread a BUDGET
+-- (f consumes some of it, g gets the rest) instead of capping each component
+-- at the same `n` and then being unable to join the halves.
+--
+-- This is a SPEC change of the OCP-0005 kind: it does not alter what the spec
+-- CLAIMS, it makes the claim unsayable to violate (cf. D159's relocatable
+-- codomain). `TraceMonad` stays OUTSIDE the spec — it is HOW this family is
+-- computed, and it must support `extends` or `runMainᵈ` will not typecheck.
+record Behavior : Set where
+  constructor mkBehavior
+  field
+    at      : ℕ → List SigOpEvent
+    -- "the first `n` events" entails BOTH of these, and the header has always
+    -- claimed it. They are not chosen for what a downstream proof needs —
+    -- they are what the sentence above says.
+    extends : ∀ n → ∃[ rest ] (at (suc n) ≡ at n ++ rest)
+    bounded : ∀ n → length (at n) ≤ n
+    -- D179: a family that has not filled its budget is FINISHED.
+    --
+    -- Without this the other two still admit a family that produces at the
+    -- wrong RATE: `at₁ n` = the first `min n ∣L∣` events and `at₂ n` = the
+    -- first `min (n/2) ∣L∣` are both bounded chains converging on the same
+    -- trace `L`, yet they differ at `n = 1`. Since `_≋_` is pointwise, the two
+    -- would count as different behaviours — so `≋` would be comparing rate as
+    -- well as trace, and a compiler could be observationally correct and still
+    -- fail it for reaching its third event one index later than the meaning.
+    --
+    -- With it, `at` is pinned to ONE family per trace (`at-stable` below), so
+    -- pointwise equality IS trace equality — the inductive stand-in for
+    -- bisimilarity this header has always claimed, now earned rather than
+    -- asserted. Still no co-data and no completion.
+    saturates : ∀ n → length (at n) < n → at (suc n) ≡ at n
+
+open Behavior public
+
+------------------------------------------------------------------------
+-- Canonicity: `at n` IS "the first `n` events" of what you would see later.
+--
+-- This is the whole reason `saturates` is a field. It says the family is
+-- determined by its limit, so two Behaviors agree pointwise exactly when they
+-- are prefix families of the same trace.
+--
+-- Each field is used exactly once, which is the evidence that the three are
+-- the right set rather than a set: `bounded` for the base case, `extends`
+-- when the later index has already passed `n`, `saturates` when it has not.
+------------------------------------------------------------------------
+
+private
+  take-all : ∀ n (xs : List SigOpEvent) → length xs ≤ n → take n xs ≡ xs
+  take-all zero    []       _       = refl
+  take-all (suc n) []       _       = refl
+  take-all (suc n) (x ∷ xs) (s≤s h) = cong (x ∷_) (take-all n xs h)
+
+  take-++-≤ : ∀ n (xs ys : List SigOpEvent) → n ≤ length xs → take n (xs ++ ys) ≡ take n xs
+  take-++-≤ zero    xs       ys _       = refl
+  take-++-≤ (suc n) (x ∷ xs) ys (s≤s h) = cong (x ∷_) (take-++-≤ n xs ys h)
+
+  -- One index further leaves everything already observed untouched.
+  step : ∀ (b : Behavior) n m → n ≤ m → take n (at b m) ≡ take n (at b (suc m))
+  step b n m n≤m = go (m≤n⇒m<n∨m≡n (bounded b m))
+    where
+      go : length (at b m) < m ⊎ length (at b m) ≡ m
+         → take n (at b m) ≡ take n (at b (suc m))
+      -- `b` has not filled its budget at `m`, so it is finished: nothing moves.
+      go (inj₁ lt) = cong (take n) (sym (saturates b m lt))
+      -- `b` filled its budget, so `n ≤ m = length (at b m)`: the new events
+      -- land beyond what `take n` can see.
+      go (inj₂ eq) with extends b m
+      ... | r , ext = sym (trans (cong (take n) ext)
+                                 (take-++-≤ n (at b m) r (subst (n ≤_) (sym eq) n≤m)))
+
+at-stable : ∀ (b : Behavior) n m → n ≤ m → at b n ≡ take n (at b m)
+-- `n ≤ 0` forces `n ≡ 0` (matching `z≤n`), and `bounded` then forces
+-- `at b 0 ≡ []`, which is what `take 0` gives.
+at-stable b .zero zero z≤n = sym (take-all zero (at b zero) (bounded b zero))
+at-stable b n (suc m) n≤sm = go (m≤n⇒m<n∨m≡n n≤sm)
+  where
+    go : n < suc m ⊎ n ≡ suc m → at b n ≡ take n (at b (suc m))
+    go (inj₁ (s≤s n≤m)) = trans (at-stable b n m n≤m) (step b n m n≤m)
+    go (inj₂ refl)      = sym (take-all n (at b n) (bounded b n))
 
 ------------------------------------------------------------------------
 -- Source — a COMPLETE compilation unit, anchored at the raw program TEXT

@@ -33,7 +33,7 @@ import Data.List as DL
 -- denotations themselves take it as an explicit argument.
 module Once.Adequacy.RealizeAgrees (fmt : TargetNum) where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-reflexive; ≤-trans; +-mono-<; +-mono-≤; m≤m+n; m≤n+m; +-suc; n≤1+n)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
@@ -94,7 +94,10 @@ private
 bind2-agree : ∀ {X Y : Set} (mR mU : T X) (gR gU : X → T Y)
   → (∀ j → mR j ≡ mU j) → (∀ v j → gR v j ≡ gU v j)
   → ∀ j → (mR >>=T gR) j ≡ (mU >>=T gU) j
-bind2-agree mR mU gR gU me ge j rewrite me j | ge (proj₂ (mU j)) j = refl
+-- The continuation runs at the budget `m` LEFT (`_>>=T_` threads), and the
+-- pointwise premise covers every budget, so it covers that one.
+bind2-agree mR mU gR gU me ge j
+  rewrite me j | ge (proj₂ (mU j)) (j ∸ DL.length (proj₁ (mU j))) = refl
 
 -- | The BINARY-OPERAND shape, shared by every two-operand node. Both sides run
 -- the same continuation `g`; they differ only in the two operand denotations,

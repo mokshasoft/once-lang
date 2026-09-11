@@ -32,7 +32,7 @@ open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 -- not apply. The denotations themselves take it as an explicit argument.
 module Once.Adequacy.ResolveFaithful (fmt : TargetNum) where
 
-open import Data.Nat using (ℕ; _<_)
+open import Data.Nat using (ℕ; _<_; _∸_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.List using ([]; length)
 open import Data.Unit using (tt)
@@ -46,10 +46,10 @@ open import Once.Type using (Type; Int; Float; Unit; _+_; Quantity; Zero; One; M
 import Once.Type as T
 open import Once.Functor.Translate using (IsConcrete)
 open import Once.Surface.Syntax as Srf using (Expr; Usage; ⟦_⟧ᶜ)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; inject; forget; evalᴰ; cohᴰ)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; inject; forget; evalᴰ; cohᴰ; anaFᵈ; coerce-functor-D)
 open import Once.SigOp.Info using (semM)
 open import Once.Arith.SigOp.Builders
-open import Once.Denotation.TraceMonad using (T; _>>=T_; valueT; returnT)
+open import Once.Denotation.TraceMonad using (T; _>>=T_; valueT; returnT; fmapT)
 open import Once.Semantics.Machine using (sem-cata; sem-ana; coerce-functor)
 import Once.Denotation.SourceDenote as SD
 open import Once.TypeCheck.ElaborateProofs using (resolveExpr; PolyCtx; Imports;
@@ -104,13 +104,14 @@ resolveExpr-poly-faithful {A = A} polys pAcc imps userFns fresh x (just (schema 
 ... | CheckElabResult.success Ψ0 eE d f =
       resolveExpr-poly-splice-faithful polys pAcc imps userFns fresh x eqLP dγ k
 
--- Two-sided bind congruence at each fuel: `>>=T` at `j` consumes only `m j`
--- (and the continuation at `proj₂ (m j)`), so pointwise equalities of BOTH the
--- monad value and the continuation transfer.
+-- Two-sided bind congruence at each budget: `>>=T` at `j` reads `m j`, then
+-- runs the continuation at what `m` LEFT (`j ∸ length (proj₁ (m j))`). The
+-- continuation premise is pointwise at every budget, so it covers that one.
 bind2-faithful : ∀ {X Y} (mR mU : T X) (gR gU : X → T Y)
   → (∀ j → mR j ≡ mU j) → (∀ v j → gR v j ≡ gU v j)
   → ∀ j → (mR >>=T gR) j ≡ (mU >>=T gU) j
-bind2-faithful mR mU gR gU me ge j rewrite me j | ge (proj₂ (mU j)) j = refl
+bind2-faithful mR mU gR gU me ge j
+  rewrite me j | ge (proj₂ (mU j)) (j ∸ length (proj₁ (mU j))) = refl
 
 -- | The BINARY-OPERAND shape, shared by every two-operand constructor: `comp'`,
 --   `pair`, `copair'`, `fork'` and the fifteen arithmetic ops. Operand `a` runs
@@ -507,17 +508,16 @@ resolveExpr-faithful polys imps userFns fresh
 -- over fuel). The bind is why the trace is no longer syntactically `[]`.
 resolveExpr-faithful polys imps userFns fresh (Srf.cata {F = F} {A = A} wf alg) dγ k =
   cong (λ ac → (ac >>=T λ valg →
-                  returnT (λ x → λ n →
-                    let r = sem-cata wf (SD.cata-ev-algˢ {F} {A} n (returnT valg)) x
-                    in (proj₁ r , proj₂ r))) k)
+                  returnT (λ x → sem-cata wf (SD.cata-ev-algˢ {F} {A} (returnT valg)) x)) k)
        (extensionality (λ j → resolveExpr-faithful polys imps userFns fresh alg tt j))
--- ana: dual of cata — a closure over the CLOSED coalgebra `⟦coalg⟧ˢ tt` (appears
--- in both `ana-eventsˢ` and `sem-ana`). One `cong` over the coalgebra denotation.
+-- ana: dual of cata — a closure over the CLOSED coalgebra `⟦coalg⟧ˢ tt`.
+-- D179: the coalgebra now appears ONCE (inside the suspension) instead of
+-- twice (in `ana-eventsˢ` for the trace and in `sem-ana` for the value), so
+-- this is a single `cong` over the coalgebra denotation with nothing to
+-- reconcile between the halves.
 resolveExpr-faithful polys imps userFns fresh (Srf.ana {F = F} {A = A} wf coalg) dγ k =
-  cong (λ ac → [] , (λ a → λ n →
-         ( SD.ana-eventsˢ {F} {A} ac (forget a) n
-         , inject (sem-ana F (λ a' → coerce-functor F _
-                     (forget (valueT (valueT ac 0 (inject a')) 0))) (forget a)) )))
+  cong (λ ac → [] , (λ a → returnT (anaFᵈ F
+         (λ a' → fmapT (coerce-functor-D F A) (ac >>=T λ clo → clo a')) a)))
        (extensionality (λ j → resolveExpr-faithful polys imps userFns fresh coalg tt j))
 -- sigOp: the resolver rewrites to `closure` iff the name is a user fn (else
 -- unchanged). nothing ⇒ refl; just ⇒ the narrow sigOp→closure denotational no-op.

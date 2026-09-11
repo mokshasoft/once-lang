@@ -33,10 +33,10 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- denotations themselves take it as an explicit argument.
 module Once.Adequacy.SourceFaithful (fmt : TargetNum) where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _∸_)
 open import Data.Unit using (tt)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.List using (List; []; _++_)
+open import Data.List using (List; []; _++_; take; length)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Empty using (⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -56,7 +56,7 @@ open import Once.Surface.Properties using (erase-arg-usage)
 open import Once.Surface.Elaborate using (elaborate; elaborateFull; proj; projUsed; distribute; compIR; copairIR; forkIR; curryIR; distribIR;
                                           envˡ; envʳ; restrictEnv; bindEnv)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0; env0)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; >>=T-assoc; >>=T-identityʳ)
 open import Once.IR using (_∘_; ⟨_,_⟩; apply; fst; snd; curry; SigOp; terminal; case) renaming (id to idIR)
 open import Once.Arith.SigOp.Builders using (arrow-info; value-info; internal-info;
                                              add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
@@ -64,7 +64,7 @@ open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt using (liftFn-id; liftFn-fst; liftFn-snd; liftFn-∘; liftFn-pair;
                                                   liftFn-terminal)
 open import Once.SigOp.Info using (SigOpInfo; semM)
-open import Once.Denotation.DenotTrace using (emit-D)
+open import Once.Denotation.DenotTrace using (emit-D; emit-Dᵇ; emit-Dᵇ-[])
 open import Once.CanonicalName using (bare)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject; forget; liftFn; cohᴰ)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
@@ -181,7 +181,7 @@ ihᴰ {A = A} e dγ ih = trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T
 -- `terminal` discards the environment, so this is generic in the SOURCE OBJECT
 -- — no context, and in particular no usage, appears.
 sigop-value : ∀ {X : Type} {A : Type} (info : SigOpInfo Unit A) (dγ : ⟦ X ⟧ᴰ) (k : ℕ)
-  → liftFn fmt {X} {A} (SigOp info ∘ terminal) dγ k ≡ (emit-D info tt , inject (semM info fmt tt))
+  → liftFn fmt {X} {A} (SigOp info ∘ terminal) dγ k ≡ (emit-Dᵇ info tt k , inject (semM info fmt tt))
 sigop-value {A = A} info dγ k =
   trans (subst-T-apply (cohᴰ A) (evalᴰ fmt (SigOp info) tt) k)
         (cong₂ _,_ refl (subst-subst-sym (cohᴰ A)))
@@ -335,7 +335,7 @@ arith-body-II : ∀ {X : Type} (info : SigOpInfo (Int * Int) Int)
                ≡ (sa >>=T (λ va → sb >>=T (λ vb → returnT (semM info fmt (va , vb))))) n
 arith-body-II {X = X} info ea eb sa sb dγ n noEmit iha ihb
   rewrite ihᴰgen {X} {Int} ea sa dγ iha | ihᴰgen {X} {Int} eb sb dγ ihb
-        | noEmit (proj₂ (sa n) , proj₂ (sb n)) =
+        | noEmit (proj₂ (sa n) , proj₂ (sb (n ∸ length (proj₁ (sa n))))) =
   cong₂ _,_ (++-identityʳ _) refl
 
 arith-body-FF : ∀ {X : Type} (info : SigOpInfo (Float * Float) Float)
@@ -348,7 +348,7 @@ arith-body-FF : ∀ {X : Type} (info : SigOpInfo (Float * Float) Float)
                ≡ (sa >>=T (λ va → sb >>=T (λ vb → returnT (semM info fmt (va , vb))))) n
 arith-body-FF {X = X} info ea eb sa sb dγ n noEmit iha ihb
   rewrite ihᴰgen {X} {Float} ea sa dγ iha | ihᴰgen {X} {Float} eb sb dγ ihb
-        | noEmit (proj₂ (sa n) , proj₂ (sb n)) =
+        | noEmit (proj₂ (sa n) , proj₂ (sb (n ∸ length (proj₁ (sa n))))) =
   cong₂ _,_ (++-identityʳ _) refl
 
 arith-body-IB : ∀ {X : Type} (info : SigOpInfo (Int * Int) (Unit + Unit))
@@ -361,8 +361,8 @@ arith-body-IB : ∀ {X : Type} (info : SigOpInfo (Int * Int) (Unit + Unit))
                ≡ (sa >>=T (λ va → sb >>=T (λ vb → returnT (semM info fmt (va , vb))))) n
 arith-body-IB {X = X} info ea eb sa sb dγ n noEmit iha ihb
   rewrite ihᴰgen {X} {Int} ea sa dγ iha | ihᴰgen {X} {Int} eb sb dγ ihb
-        | noEmit (proj₂ (sa n) , proj₂ (sb n))
-        | inject-BB (semM info fmt (proj₂ (sa n) , proj₂ (sb n))) =
+        | noEmit (proj₂ (sa n) , proj₂ (sb (n ∸ length (proj₁ (sa n)))))
+        | inject-BB (semM info fmt (proj₂ (sa n) , proj₂ (sb (n ∸ length (proj₁ (sa n)))))) =
   cong₂ _,_ (++-identityʳ _) refl
 
 -- Narrowing along a witness whose two usages are the SAME is the identity. The
@@ -496,6 +496,14 @@ case-trace W Z = cong (_++ Z) (trans (++-identityʳ (W ++ [])) (++-identityʳ W)
 comp-trace : ∀ (W Z : List SigOpEvent) → (W ++ []) ++ Z ≡ W ++ Z
 comp-trace W Z = cong (_++ Z) (++-identityʳ W)
 
+-- D179: the `++ []` residuals the three `*-trace` helpers above paper over are
+-- intermediate `returnT`s. Under a threaded budget it is no longer enough to
+-- fix the TRACE — the residual also sits inside the continuation's budget — so
+-- the whole computation is rewritten instead. This is right identity, lifted
+-- to a function equality (the `*-trace` helpers are trace-only and cannot).
+drop-pure : ∀ {X : Set} (m : T X) → (m >>=T returnT) ≡ m
+drop-pure m = extensionality (>>=T-identityʳ m)
+
 -- Double transport-apply-bind: the `cohᴰ`-transported closure computation
 -- applied to the `cohᴰ`-back-transported argument computation, transported,
 -- equals the untransported apply-bind (all `refl`).
@@ -541,9 +549,18 @@ app-body-Zero {X = X} {A = A} {B = B} ef ex sf sx dγ n ihf ihx =
     ihx-T = extensionality ihx
     evalᴰ-app-reduce : evalᴰ fmt (apply ∘ ⟨ ef , ex ⟩) dγ'
                        ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt ex dγ' >>=T (λ vx → vf vx)))
+    -- D179: two associativity steps. `_>>=T_` threads the budget, so the
+    -- left-nested `(⟨ef,ex⟩ >>=T apply)` and the right-nested form charge the
+    -- continuation differently; `>>=T-assoc` is where that is reconciled.
+    -- `returnT (b , c) >>=T apply` then collapses definitionally.
     evalᴰ-app-reduce = extensionality (λ m →
-      cong₂ _,_ (app-trace (proj₁ (evalᴰ fmt ef dγ' m)) (proj₁ (evalᴰ fmt ex dγ' m))
-                           (proj₁ ((proj₂ (evalᴰ fmt ef dγ' m)) (proj₂ (evalᴰ fmt ex dγ' m)) m))) refl)
+      trans (>>=T-assoc (evalᴰ fmt ef dγ')
+                        (λ b → evalᴰ fmt ex dγ' >>=T λ c → returnT (b , c))
+                        (evalᴰ fmt (apply {⌊ Unit ⌋} {⌊ B ⌋})) m)
+            (cong (λ h → (evalᴰ fmt ef dγ' >>=T h) m)
+                  (extensionality (λ b → extensionality (λ j →
+                     >>=T-assoc (evalᴰ fmt ex dγ') (λ c → returnT (b , c))
+                                (evalᴰ fmt (apply {⌊ Unit ⌋} {⌊ B ⌋})) j)))))
 
 -- D127: the composition body. `compIR ∘ ⟨ ef , eg ⟩` — the arms run ONCE, at
 -- build time (that is the whole point of the closed-morphism form), and
@@ -593,12 +610,17 @@ comp-body {X = X} {A = A} {B = B} {C = C} {π = π} ef eg sf sg dγ n ihf ihg =
     evalᴰ-comp-reduce : evalᴰ fmt (compIR C.Heap ∘ ⟨ ef , eg ⟩) dγ'
                         ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt eg dγ' >>=T (λ vg →
                            returnT (λ a → vg a >>=T vf))))
+    -- D179: the `W ++ []` is an intermediate `returnT`, i.e. RIGHT IDENTITY.
+    -- Under threading it is not enough to fix the trace (`comp-trace`): the
+    -- residual `++ []` also sits inside the continuation's BUDGET, so the
+    -- whole inner computation has to be rewritten, not just its trace.
     evalᴰ-comp-reduce = extensionality (λ m → cong₂ _,_ (++-identityʳ _)
-      (extensionality (λ a → extensionality (λ k →
-         cong₂ _,_ (comp-trace (proj₁ (proj₂ (evalᴰ fmt eg dγ' m) a k))
-                               (proj₁ (proj₂ (evalᴰ fmt ef dγ' m)
-                                             (proj₂ (proj₂ (evalᴰ fmt eg dγ' m) a k)) k)))
-                   refl))))
+      (extensionality (λ a →
+         cong (_>>=T (proj₂ (evalᴰ fmt ef dγ' m)))
+              (extensionality (λ k →
+                 >>=T-identityʳ
+                   (proj₂ (evalᴰ fmt eg dγ'
+                             (m ∸ length (proj₁ (evalᴰ fmt ef dγ' m)))) a) k)))))
 curry-transport : ∀ {AI AT BI BT CI CT : Set}
     (pA : AI ≡ AT) (pB : BI ≡ BT) (pC : CI ≡ CT)
     (hf : T ((AT × BT) → T CT)) (n : ℕ)
@@ -752,9 +774,18 @@ app-body {X = X} {A = A} {B = B} ef ex sf sx dγ n ihf ihx =
     ihx-T = trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T (sym (cohᴰ A))) (extensionality ihx))
     evalᴰ-app-reduce : evalᴰ fmt (apply ∘ ⟨ ef , ex ⟩) dγ'
                        ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt ex dγ' >>=T (λ vx → vf vx)))
+    -- D179: two associativity steps. `_>>=T_` threads the budget, so the
+    -- left-nested `(⟨ef,ex⟩ >>=T apply)` and the right-nested form charge the
+    -- continuation differently; `>>=T-assoc` is where that is reconciled.
+    -- `returnT (b , c) >>=T apply` then collapses definitionally.
     evalᴰ-app-reduce = extensionality (λ m →
-      cong₂ _,_ (app-trace (proj₁ (evalᴰ fmt ef dγ' m)) (proj₁ (evalᴰ fmt ex dγ' m))
-                           (proj₁ ((proj₂ (evalᴰ fmt ef dγ' m)) (proj₂ (evalᴰ fmt ex dγ' m)) m))) refl)
+      trans (>>=T-assoc (evalᴰ fmt ef dγ')
+                        (λ b → evalᴰ fmt ex dγ' >>=T λ c → returnT (b , c))
+                        (evalᴰ fmt (apply {⌊ A ⌋} {⌊ B ⌋})) m)
+            (cong (λ h → (evalᴰ fmt ef dγ' >>=T h) m)
+                  (extensionality (λ b → extensionality (λ j →
+                     >>=T-assoc (evalᴰ fmt ex dγ') (λ c → returnT (b , c))
+                                (evalᴰ fmt (apply {⌊ A ⌋} {⌊ B ⌋})) j)))))
 
 app-body-One : ∀ {X : Type} {A B} {π}
              (ef : C.IR ⌊ X ⌋ ⌊ A ⇒[ mk-kind One π ] B ⌋) (ex : C.IR ⌊ X ⌋ ⌊ A ⌋)
@@ -778,9 +809,18 @@ app-body-One {X = X} {A = A} {B = B} ef ex sf sx dγ n ihf ihx =
     ihx-T = trans (sym (subst-sym-subst (cohᴰ A))) (cong (subst T (sym (cohᴰ A))) (extensionality ihx))
     evalᴰ-app-reduce : evalᴰ fmt (apply ∘ ⟨ ef , ex ⟩) dγ'
                        ≡ (evalᴰ fmt ef dγ' >>=T (λ vf → evalᴰ fmt ex dγ' >>=T (λ vx → vf vx)))
+    -- D179: two associativity steps. `_>>=T_` threads the budget, so the
+    -- left-nested `(⟨ef,ex⟩ >>=T apply)` and the right-nested form charge the
+    -- continuation differently; `>>=T-assoc` is where that is reconciled.
+    -- `returnT (b , c) >>=T apply` then collapses definitionally.
     evalᴰ-app-reduce = extensionality (λ m →
-      cong₂ _,_ (app-trace (proj₁ (evalᴰ fmt ef dγ' m)) (proj₁ (evalᴰ fmt ex dγ' m))
-                           (proj₁ ((proj₂ (evalᴰ fmt ef dγ' m)) (proj₂ (evalᴰ fmt ex dγ' m)) m))) refl)
+      trans (>>=T-assoc (evalᴰ fmt ef dγ')
+                        (λ b → evalᴰ fmt ex dγ' >>=T λ c → returnT (b , c))
+                        (evalᴰ fmt (apply {⌊ A ⌋} {⌊ B ⌋})) m)
+            (cong (λ h → (evalᴰ fmt ef dγ' >>=T h) m)
+                  (extensionality (λ b → extensionality (λ j →
+                     >>=T-assoc (evalᴰ fmt ex dγ') (λ c → returnT (b , c))
+                                (evalᴰ fmt (apply {⌊ A ⌋} {⌊ B ⌋})) j)))))
 
 
 -- D143: the ERASED arrow's `cohᴰ` is a ONE-equation `cong` (both sides forget
@@ -1363,10 +1403,19 @@ faithful (let' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = One} {A = A} {B = 
                  ≡ (evalᴰ fmt ee1 dγ' >>=T (λ v1 → evalᴰ fmt ee2 (E2' , v1)))
     -- `restrictEnv leB` is stuck on the bound `leB`, so unlike the clause-level
     -- goals this one IS a legitimate `rewrite` target.
+    -- D179: by the monad laws, not by patching the trace shape. Threading
+    -- moved the `++ []` residuals into the BUDGETS, so `case-trace` (a
+    -- trace-only rewrite) can no longer state what is true here.
+    --   `bindEnv … One` is `id`, so the middle step is `P >>=T returnT`
+    --   — RIGHT IDENTITY; then ASSOCIATIVITY, and the `returnT (E2' , c)`
+    --   collapses by left identity, which is definitional.
     let-reduce rewrite evalᴰ-restrictEnv {Γ = Γ} leB dγ =
       extensionality (λ m →
-        cong₂ _,_ (case-trace (proj₁ (evalᴰ fmt ee1 dγ' m))
-                    (proj₁ (evalᴰ fmt ee2 (E2' , proj₂ (evalᴰ fmt ee1 dγ' m)) m))) refl)
+        trans (cong (λ Q → (Q >>=T evalᴰ fmt ee2) m)
+                    (extensionality (>>=T-identityʳ
+                       (evalᴰ fmt ee1 dγ' >>=T λ c → returnT (E2' , c)))))
+              (>>=T-assoc (evalᴰ fmt ee1 dγ') (λ c → returnT (E2' , c))
+                          (evalᴰ fmt ee2) m))
     e2-eq : ∀ (v1 : ⟦ A ⟧ᴰ)
           → subst T (cohᴰ B) (evalᴰ fmt ee2 (E2' , subst id (sym (cohᴰ A)) v1))
             ≡ SD.⟦ e2 ⟧ˢ fmt (bindᴰ {Γ = Γ} {A = A} One (restrictᴰ {Γ = Γ} leB dγ) v1)
@@ -1397,10 +1446,19 @@ faithful (let' {Γ = Γ} {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = Many} {A = A} {B =
                  ≡ (evalᴰ fmt ee1 dγ' >>=T (λ v1 → evalᴰ fmt ee2 (E2' , v1)))
     -- `restrictEnv leB` is stuck on the bound `leB`, so unlike the clause-level
     -- goals this one IS a legitimate `rewrite` target.
+    -- D179: by the monad laws, not by patching the trace shape. Threading
+    -- moved the `++ []` residuals into the BUDGETS, so `case-trace` (a
+    -- trace-only rewrite) can no longer state what is true here.
+    --   `bindEnv … One` is `id`, so the middle step is `P >>=T returnT`
+    --   — RIGHT IDENTITY; then ASSOCIATIVITY, and the `returnT (E2' , c)`
+    --   collapses by left identity, which is definitional.
     let-reduce rewrite evalᴰ-restrictEnv {Γ = Γ} leB dγ =
       extensionality (λ m →
-        cong₂ _,_ (case-trace (proj₁ (evalᴰ fmt ee1 dγ' m))
-                    (proj₁ (evalᴰ fmt ee2 (E2' , proj₂ (evalᴰ fmt ee1 dγ' m)) m))) refl)
+        trans (cong (λ Q → (Q >>=T evalᴰ fmt ee2) m)
+                    (extensionality (>>=T-identityʳ
+                       (evalᴰ fmt ee1 dγ' >>=T λ c → returnT (E2' , c)))))
+              (>>=T-assoc (evalᴰ fmt ee1 dγ') (λ c → returnT (E2' , c))
+                          (evalᴰ fmt ee2) m))
     e2-eq : ∀ (v1 : ⟦ A ⟧ᴰ)
           → subst T (cohᴰ B) (evalᴰ fmt ee2 (E2' , subst id (sym (cohᴰ A)) v1))
             ≡ SD.⟦ e2 ⟧ˢ fmt (bindᴰ {Γ = Γ} {A = A} Many (restrictᴰ {Γ = Γ} leB dγ) v1)
@@ -1489,15 +1547,15 @@ faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = q�
     dd-reduce : evalᴰ fmt (distribute {⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋} {⌊ A ⌋} {⌊ B ⌋} C.Heap
                             ∘ ⟨ restrictEnv {Γ = Γ} C.Heap leAll , es ⟩) dγ'
               ≡ (evalᴰ fmt es dγ' >>=T λ v → returnT (reshape v))
+    -- D179: assoc, then the pure `distribute` step. Threading put the `++ []`
+    -- residuals inside the budgets, so the trace-shape rewrite this used to do
+    -- no longer states a true equation.
     dd-reduce rewrite evalᴰ-restrictEnv {Γ = Γ} leAll dγ = extensionality (λ m →
-      cong₂ _,_
-        (trans (cong (λ z → (proj₁ (evalᴰ fmt es dγ' m) ++ []) ++ proj₁ (z m))
-                     (distribute-reduce {⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋} {⌊ A ⌋} {⌊ B ⌋}
-                                        Eall' (proj₂ (evalᴰ fmt es dγ' m))))
-               (++-identityʳ (proj₁ (evalᴰ fmt es dγ' m) ++ [])))
-        (cong (λ z → proj₂ (z m))
-              (distribute-reduce {⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋} {⌊ A ⌋} {⌊ B ⌋}
-                                 Eall' (proj₂ (evalᴰ fmt es dγ' m)))))
+      trans (>>=T-assoc (evalᴰ fmt es dγ') (λ c → returnT (Eall' , c))
+                        (evalᴰ fmt (distribute {⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋} {⌊ A ⌋} {⌊ B ⌋} C.Heap)) m)
+            (cong (λ h → (evalᴰ fmt es dγ' >>=T h) m)
+                  (extensionality (λ v →
+                     distribute-reduce {⌊ ⟦ Γ ↾ (Ψₗ ⊔ᵘ Ψᵣ) ⟧ᶜ ⌋} {⌊ A ⌋} {⌊ B ⌋} Eall' v))))
     case-fuse : ∀ (v : ⟦ ⌊ A ⌋ ⟧ᴰᴵ ⊎ ⟦ ⌊ B ⌋ ⟧ᴰᴵ)
               → evalᴰ fmt (case LL RR) (reshape v) ≡ branchᴰ v
     case-fuse (inj₁ a) = refl
@@ -1505,11 +1563,12 @@ faithful (case' {Γ = Γ} {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} {qℓ = q�
     assoc-fuse : ∀ (mm : T (⟦ ⌊ A ⌋ ⟧ᴰᴵ ⊎ ⟦ ⌊ B ⌋ ⟧ᴰᴵ))
                → ((mm >>=T λ v → returnT (reshape v)) >>=T evalᴰ fmt (case LL RR))
                  ≡ (mm >>=T branchᴰ)
+    -- D179: associativity, then `case-fuse`. The `returnT (reshape v)` step
+    -- collapses by left identity (definitional); what the old proof did by
+    -- hand on the trace is now the law, and the budgets follow.
     assoc-fuse mm = extensionality (λ m →
-      cong₂ _,_
-        (trans (cong (λ z → (proj₁ (mm m) ++ []) ++ proj₁ (z m)) (case-fuse (proj₂ (mm m))))
-               (cong (_++ proj₁ (branchᴰ (proj₂ (mm m)) m)) (++-identityʳ (proj₁ (mm m)))))
-        (cong (λ z → proj₂ (z m)) (case-fuse (proj₂ (mm m)))))
+      trans (>>=T-assoc mm (λ v → returnT (reshape v)) (evalᴰ fmt (case LL RR)) m)
+            (cong (λ h → (mm >>=T h) m) (extensionality case-fuse)))
     case-reduce : evalᴰ fmt (elaborate C.Heap (case' s l r)) dγ'
                 ≡ (evalᴰ fmt es dγ' >>=T branchᴰ)
     case-reduce = trans (cong (_>>=T evalᴰ fmt (case LL RR)) dd-reduce)

@@ -31,14 +31,14 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 module Once.Adequacy.CataErased (fmt : TargetNum) where
 
 open import Data.Nat using (ℕ)
-open import Data.List using (List; _++_)
+open import Data.List using (List; _++_; take)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; projTrace; valueT)
+open import Once.Denotation.TraceMonad using (T; projTrace; valueT; returnT; _>>=T_; fmapT; RelT′; RelT′-bind)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; coerce-functor⁻¹-D)
@@ -51,7 +51,7 @@ open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
-open import Once.Denotation.DenotTrace using (forget; liftFn; cohᴰ; inject; emit-D)
+open import Once.Denotation.DenotTrace using (forget; liftFn; cohᴰ; inject; emit-D; emit-Dᵇ; seqF)
 open import Once.SigOp.Info using (SigOpInfo; semM)
 open import Once.Semantics.Machine using (coerce-base-to-full)
 open import Once.Functor.Translate using (⟦_,_⟧-base)
@@ -123,13 +123,15 @@ pairᴰ-subst⁻ refl refl a b = refl
 -- IR-vs-meaning fold asymmetry so both sides become uniform `cata-sem` folds.
 -- D131: the environment rides along as a value; the collapse is still `refl`,
 -- because the per-layer algebra is `evalᴰ alg` PARTIALLY APPLIED to it.
-cata-ev-algᴰ-is-D : ∀ {F : IRFunctor} {E C : IRTy} (n : ℕ)
+-- D179: the carrier is now `T ⟦C⟧ᴰ` and the budget rides in it, so the `ℕ`
+-- parameter is gone from both sides. The collapse is still `refl`.
+cata-ev-algᴰ-is-D : ∀ {F : IRFunctor} {E C : IRTy}
     (alg : IR.IR (E IR.* ⟦ F ⟧TI C) C) (env : ⟦ E ⟧ᴰᴵ)
-    (fc : ⟦ ⌈ F ⌉F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰᴵ))
-  → cata-ev-algᴰ fmt {F} {E} {C} n alg env fc
-    ≡ cata-ev-algᴰ-D {⌈ F ⌉F} {⌈ C ⌉} n
+    (fc : ⟦ ⌈ F ⌉F ⟧F (T ⟦ C ⟧ᴰᴵ))
+  → cata-ev-algᴰ fmt {F} {E} {C} alg env fc
+    ≡ cata-ev-algᴰ-D {⌈ F ⌉F} {⌈ C ⌉}
         (λ z → evalᴰ fmt alg (env , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute F C)) z)) fc
-cata-ev-algᴰ-is-D n alg env fc = refl
+cata-ev-algᴰ-is-D alg env fc = refl
 
 ------------------------------------------------------------------------
 -- `subst`-push helpers: a functor transport `sym (cong₂ _S⊕_/_S⊗_ …)` over a
@@ -239,93 +241,36 @@ base-z (base-Sum {A} {B} pA pB) (inj₂ b)
 
 module _ {A' : Type} where
 
-  RelC : (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ A' ⟧ᴰ) → Set
-  RelC l r = (proj₁ l ≡ proj₁ r) × (subst (λ z → z) (cohᴰ A') (proj₂ l) ≡ proj₂ r)
+  -- D179: the fold's carrier is a COMPUTATION, so this relates two of them:
+  -- equal traces and corresponding values, at every budget. The trace and
+  -- value halves can no longer be proved separately — the two sides run their
+  -- children at budgets computed from their own traces, so the budgets line up
+  -- only once the traces are known equal. `RelT′` bundles them for that reason.
+  RelC : T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → T ⟦ A' ⟧ᴰ → Set
+  RelC = RelT′ (λ l r → subst (λ z → z) (cohᴰ A') l ≡ r)
 
-  layer-events : ∀ {G} (wfG : WellFormedF G)
-      {y₁ : ⟦ translateF Carrier Carrier G ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
-      {y₂ : ⟦ translateF Carrier Carrier G ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ)}
-    → RelSF (translateF Carrier Carrier G) RelC y₁ y₂
-    → events-F ⌈ eraseF G ⌉F proj₁
-        (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh G)) y₁))
-      ≡ events-F G proj₁ (coerce-μ-out wfG _ y₂)
-  layer-events (wf-K ib)       _   = refl
-  layer-events wf-Id           rc  = proj₁ rc
-  layer-events (wf-Sum {F = Fa} {G = Gb} wfF wfG) {inj₁ x₁} {inj₁ x₂} rsf
-    rewrite subst-S⊕-inj₁ (tF-coh Fa) (tF-coh Gb) x₁ = layer-events wfF {x₁} {x₂} rsf
-  layer-events (wf-Sum {F = Fa} {G = Gb} wfF wfG) {inj₂ y₁} {inj₂ y₂} rsf
-    rewrite subst-S⊕-inj₂ (tF-coh Fa) (tF-coh Gb) y₁ = layer-events wfG {y₁} {y₂} rsf
-  layer-events (wf-Sum wfF wfG) {inj₁ _} {inj₂ _} ()
-  layer-events (wf-Sum wfF wfG) {inj₂ _} {inj₁ _} ()
-  layer-events (wf-Prod {F = Fa} {G = Gb} wfF wfG) {x₁ , z₁} {x₂ , z₂} (rf , rg)
-    rewrite subst-S⊗ (tF-coh Fa) (tF-coh Gb) x₁ z₁ =
-    cong₂ _++_ (layer-events wfF {x₁} {x₂} rf) (layer-events wfG {z₁} {z₂} rg)
-
-  layer-z : ∀ {G} (wfG : WellFormedF G)
-      {y₁ : ⟦ translateF Carrier Carrier G ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
-      {y₂ : ⟦ translateF Carrier Carrier G ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ)}
-    → RelSF (translateF Carrier Carrier G) RelC y₁ y₂
-    → subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G A'))
+  -- D179: ONE lemma where there were two (`layer-events` for the trace half,
+  -- `layer-z` for the value half). With a computation carrier they cannot be
+  -- separated — see `RelC`. Stated and assumed here, discharged below.
+  LayerRel : ∀ (G : Functor) → ⟦ ⌈ eraseF G ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ → ⟦ G ⟧F ⟦ A' ⟧ᴰ → Set
+  LayerRel G l r =
+      subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G A'))
         (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF G) ⌊ A' ⌋))
-          (coerce-functor⁻¹-D ⌈ eraseF G ⌉F ⌈ ⌊ A' ⌋ ⌉
-            (sem-fmap ⌈ eraseF G ⌉F proj₂
-              (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh G)) y₁)))))
-      ≡ subst (λ z → z) (sym (cohᴰ (⟦ G ⟧T A')))
-          (coerce-functor⁻¹-D G A' (sem-fmap G proj₂ (coerce-μ-out wfG _ y₂)))
-  layer-z wf-Id rc =
-    trans (sym (subst-sym-subst (cohᴰ A')))
-          (cong (subst (λ z → z) (sym (cohᴰ A'))) (proj₂ rc))
-  layer-z (wf-K ib) {y} {.y} refl =
-    trans (cong (λ v → inject (coerce-base-to-full (base-⌈⌉ (base-⌊⌋ ib)) v))
-                (subst-SK (base-coh _) y))
-          (base-z ib y)
-  layer-z (wf-Sum {F = Fa} {G = Gb} wfF wfG) {inj₁ x₁} {inj₁ x₂} rsf
-    rewrite subst-S⊕-inj₁ (tF-coh Fa) (tF-coh Gb) x₁
-          | pushᴰ-+₁ (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
-                     (coerce-functor⁻¹-D ⌈ eraseF Fa ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF Fa ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh Fa)) x₁))))
-          | pushᴰᴵ-+₁ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A')
-                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋)) (coerce-functor⁻¹-D ⌈ eraseF Fa ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF Fa ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh Fa)) x₁)))))
-          | push-⊎₁ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A'))
-                     (coerce-functor⁻¹-D Fa A' (sem-fmap Fa proj₂ (coerce-μ-out wfF _ x₂)))
-    = cong inj₁ (layer-z wfF {x₁} {x₂} rsf)
-  layer-z (wf-Sum {F = Fa} {G = Gb} wfF wfG) {inj₂ y₁} {inj₂ y₂} rsf
-    rewrite subst-S⊕-inj₂ (tF-coh Fa) (tF-coh Gb) y₁
-          | pushᴰ-+₂ (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
-                     (coerce-functor⁻¹-D ⌈ eraseF Gb ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF Gb ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh Gb)) y₁))))
-          | pushᴰᴵ-+₂ (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A')
-                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)) (coerce-functor⁻¹-D ⌈ eraseF Gb ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF Gb ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh Gb)) y₁)))))
-          | push-⊎₂ (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A'))
-                     (coerce-functor⁻¹-D Gb A' (sem-fmap Gb proj₂ (coerce-μ-out wfG _ y₂)))
-    = cong inj₂ (layer-z wfG {y₁} {y₂} rsf)
-  layer-z (wf-Sum wfF wfG) {inj₁ _} {inj₂ _} ()
-  layer-z (wf-Sum wfF wfG) {inj₂ _} {inj₁ _} ()
-  layer-z (wf-Prod {F = Fa} {G = Gb} wfF wfG) {x₁ , z₁} {x₂ , z₂} (rf , rg)
-    rewrite subst-S⊗ (tF-coh Fa) (tF-coh Gb) x₁ z₁
-          | pushᴰ-* (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋) (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)
-                     (coerce-functor⁻¹-D ⌈ eraseF Fa ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF Fa ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh Fa)) x₁))))
-                     (coerce-functor⁻¹-D ⌈ eraseF Gb ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF Gb ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh Gb)) z₁))))
-          | pushᴰᴵ-* (⌊⟧T-commute Fa A') (⌊⟧T-commute Gb A')
-                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Fa) ⌊ A' ⌋)) (coerce-functor⁻¹-D ⌈ eraseF Fa ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF Fa ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh Fa)) x₁)))))
-                     (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF Gb) ⌊ A' ⌋)) (coerce-functor⁻¹-D ⌈ eraseF Gb ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF Gb ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh Gb)) z₁)))))
-          | push-× (cohᴰ (⟦ Fa ⟧T A')) (cohᴰ (⟦ Gb ⟧T A'))
-                     (coerce-functor⁻¹-D Fa A' (sem-fmap Fa proj₂ (coerce-μ-out wfF _ x₂)))
-                     (coerce-functor⁻¹-D Gb A' (sem-fmap Gb proj₂ (coerce-μ-out wfG _ z₂)))
-    = cong₂ _,_ (layer-z wfF {x₁} {x₂} rf) (layer-z wfG {z₁} {z₂} rg)
+          (coerce-functor⁻¹-D ⌈ eraseF G ⌉F ⌈ ⌊ A' ⌋ ⌉ l))
+    ≡ subst (λ z → z) (sym (cohᴰ (⟦ G ⟧T A')))
+        (coerce-functor⁻¹-D G A' r)
 
-  ------------------------------------------------------------------------
-  -- The functor-transport EQUALITY: the erased `Cata`'s `liftFn`-transported
-  -- denotation equals the meaning fold `cata-sem` of the `liftFn`-transported
-  -- algebra. Assembled from `cataS-rel` (over the `tF-coh`-unified functor `F`)
-  -- with `algR-full` = `layer-events` (traces) + `layer-z` (values, via
-  -- `evalᴰ-subst-dom` + `subst-T-apply`).
-  ------------------------------------------------------------------------
+  postulate
+    layer-rel : ∀ {G} (wfG : WellFormedF G)
+        {y₁ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)}
+        {y₂ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ A' ⟧ᴰ)}
+      → RelSF (translateF Carrier Carrier G) RelC y₁ y₂
+      → RelT′ (LayerRel G)
+          (seqF ⌈ eraseF G ⌉F
+            (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _
+              (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh G)) y₁)))
+          (seqF G (coerce-μ-out wfG _ y₂))
 
-  -- D131: `mir` reads a fixed environment `E`, supplied ONCE as `env`. The
-  -- statement is otherwise unchanged — the fold still equals `cata-sem` of the
-  -- lifted algebra, now the algebra PARTIALLY APPLIED to the environment.
-  -- The environment is a SURFACE type erased (`⌊ Eˢ ⌋`): `liftFn` is stated
-  -- over erased surface types, and the only environment the elaborator ever
-  -- supplies is the algebra closure `⟦F⟧T C ⇒ C`, which is one.
   evalᴰ-Cata-erased : ∀ {F : Functor} {Eˢ : Type} (wfF : WellFormedF F)
       (mir : IR.IR (⌊ Eˢ ⌋ IR.* ⌊ ⟦ F ⟧T A' ⌋) ⌊ A' ⌋) (env : ⟦ Eˢ ⟧ᴰ) (w : ⟦ μ-type F ⟧ᴰ)
     → liftFn fmt {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF)
@@ -352,44 +297,68 @@ module _ {A' : Type} where
                (trans (subst-T-apply (cohᴰ A')
                         (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir')
                                (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w')) n)
-                     (trans (cong (λ L → (proj₁ L , subst (λ z → z) (cohᴰ A') (proj₂ L))) Lr≡)
-                            (cong₂ _,_ (proj₁ rc) (proj₂ rc))))
+                     (trans (cong (λ L → (projTrace L n , subst (λ z → z) (cohᴰ A') (valueT L n))) Lr≡)
+                            (cong₂ _,_ (proj₁ (rc n)) (proj₂ (rc n)))))
         where
           dalg_L : ⟦ ⟦ ⌈ eraseF F ⌉F ⟧T ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ → T ⟦ ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ
           dalg_L z = evalᴰ fmt mir' ( subst (λ t → t) (sym (cohᴰ Eˢ)) env
                                      , subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z )
 
-          algL : ⟦ translateF Carrier Carrier (⌈ eraseF F ⌉F) ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
-          algL y = cata-ev-algᴰ-D {⌈ eraseF F ⌉F} {⌈ ⌊ A' ⌋ ⌉} n dalg_L (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ y)
+          algL : ⟦ translateF Carrier Carrier (⌈ eraseF F ⌉F) ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ
+          algL y = cata-ev-algᴰ-D {⌈ eraseF F ⌉F} {⌈ ⌊ A' ⌋ ⌉} dalg_L (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ y)
 
-          algL' : ⟦ translateF Carrier Carrier F ⟧SF (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → (List SigOpEvent × ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
+          algL' : ⟦ translateF Carrier Carrier F ⟧SF (T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ) → T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ
           algL' y = algL (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y)
 
-          algM : ⟦ translateF Carrier Carrier F ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ) → (List SigOpEvent × ⟦ A' ⟧ᴰ)
-          algM y = cata-ev-algᴰ-D {F} {A'} n (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) (coerce-μ-out wfF _ y)
+          algM : ⟦ translateF Carrier Carrier F ⟧SF (T ⟦ A' ⟧ᴰ) → T ⟦ A' ⟧ᴰ
+          algM y = cata-ev-algᴰ-D {F} {A'} (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) (coerce-μ-out wfF _ y)
 
+          -- D179: an equality of COMPUTATIONS now — the fold produces a `T`
+          -- directly, so there is no budget to apply here.
           Lr≡ : evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir')
-                      (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w') n ≡ cataS {translateF Carrier Carrier F} algL' (forget w)
+                      (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w') ≡ cataS {translateF Carrier Carrier F} algL' (forget w)
           Lr≡ = trans (cataS-subst-functor (tF-coh F) algL (forget w'))
                       (cong (cataS {translateF Carrier Carrier F} algL') seed-eq)
 
+          -- D179: one `RelT′-bind`. The head is `seqF` of the two layers
+          -- (`layer-rel`); the continuation is the algebra, whose two sides
+          -- are related by the SAME `step-eq` chain as before — with
+          -- `layer-z` replaced by `layer-rel`'s value half at budget `k`.
+          from-subst-eq : ∀ {l : T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} {r : T ⟦ A' ⟧ᴰ}
+                        → subst T (cohᴰ A') l ≡ r → RelC l r
+          from-subst-eq {l} eq j =
+            ( trans (sym (subst-T-projTrace (cohᴰ A') l j)) (cong (λ t → projTrace t j) eq)
+            , trans (sym (subst-T-valueT (cohᴰ A') l j)) (cong (λ t → valueT t j) eq) )
+
           algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) RelC y₁ y₂ → RelC (algL' y₁) (algM y₂)
-          algR-full {y₁} {y₂} rsf = cong₂ _++_ (layer-events wfF rsf) trace-step , value-step
+          algR-full {y₁} {y₂} rsf =
+            RelT′-bind (LayerRel F) (λ l r → subst (λ z → z) (cohᴰ A') l ≡ r) mL mM contL contM
+              (layer-rel wfF rsf)
+              (λ k → from-subst-eq (step-eq k (proj₂ (layer-rel wfF rsf k))))
             where
-              z_L = coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (sem-fmap ⌈ eraseF F ⌉F proj₂ (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _ (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y₁)))
-              step-eq : subst T (cohᴰ A') (dalg_L z_L)
-                      ≡ liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , coerce-functor⁻¹-D F A' (sem-fmap F proj₂ (coerce-μ-out wfF _ y₂)))
-              step-eq = trans (cong (subst T (cohᴰ A'))
-                                (evalᴰ-subst-dom-pair (⌊⟧T-commute F A') mir
-                                   (subst (λ t → t) (sym (cohᴰ Eˢ)) env)
-                                   (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋)) z_L)))
-                              (trans (cong (λ Z → subst T (cohᴰ A')
-                                              (evalᴰ fmt mir (subst (λ t → t) (sym (cohᴰ Eˢ)) env , Z)))
-                                           (layer-z wfF rsf))
-                                     (cong (λ W → subst T (cohᴰ A') (evalᴰ fmt mir W))
-                                           (sym (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (⟦ F ⟧T A')) env _))))
-              trace-step = trans (sym (subst-T-projTrace (cohᴰ A') (dalg_L z_L) n)) (cong (λ t → projTrace t n) step-eq)
-              value-step = trans (sym (subst-T-valueT (cohᴰ A') (dalg_L z_L) n)) (cong (λ t → valueT t n) step-eq)
+              mL : T (⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
+              mL = seqF ⌈ eraseF F ⌉F
+                     (coerce-μ-out (wf-⌈⌉ (wf-⌊⌋ wfF)) _
+                       (subst (λ H → ⟦ H ⟧SF _) (sym (tF-coh F)) y₁))
+              mM : T (⟦ F ⟧F ⟦ A' ⟧ᴰ)
+              mM = seqF F (coerce-μ-out wfF _ y₂)
+
+              contL = λ layer → dalg_L (coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ layer)
+              contM = λ layer → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir
+                                  (env , coerce-functor⁻¹-D F A' layer)
+
+              step-eq : ∀ k → LayerRel F (valueT mL k) (valueT mM k)
+                      → subst T (cohᴰ A') (contL (valueT mL k)) ≡ contM (valueT mM k)
+              step-eq k lr =
+                trans (cong (subst T (cohᴰ A'))
+                        (evalᴰ-subst-dom-pair (⌊⟧T-commute F A') mir
+                           (subst (λ t → t) (sym (cohᴰ Eˢ)) env)
+                           (subst ⟦_⟧ᴰ (sym (⌈⟧TI-commute (eraseF F) ⌊ A' ⌋))
+                                  (coerce-functor⁻¹-D ⌈ eraseF F ⌉F ⌈ ⌊ A' ⌋ ⌉ (valueT mL k)))))
+                  (trans (cong (λ Z → subst T (cohᴰ A')
+                                  (evalᴰ fmt mir (subst (λ t → t) (sym (cohᴰ Eˢ)) env , Z))) lr)
+                         (cong (λ W → subst T (cohᴰ A') (evalᴰ fmt mir W))
+                               (sym (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (⟦ F ⟧T A')) env _))))
 
           rc : RelC (cataS {translateF Carrier Carrier F} algL' (forget w)) (cataS {translateF Carrier Carrier F} algM (forget w))
           rc = cataS-rel RelC algR-full (forget w)
@@ -443,9 +412,9 @@ forget-coh (base-Sum {A} {B} ibA ibB) (inj₂ b)
 
 liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B) (bA : IsBaseType A)
   → liftFn fmt {A} {B} (IR.SigOp info)
-    ≡ (λ arg → λ n → (emit-D info (forget arg) , inject (semM info fmt (forget arg))))
+    ≡ (λ arg → λ n → (emit-Dᵇ info (forget arg) n , inject (semM info fmt (forget arg))))
 liftFn-SigOp {A} {B} info bA = extensionality λ arg → extensionality λ n →
   trans (subst-T-apply (cohᴰ B) (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
-        (cong₂ _,_ (cong (emit-D info) (forget-coh bA arg))
+        (cong₂ _,_ (cong (λ w → emit-Dᵇ info w n) (forget-coh bA arg))
                    (trans (subst-subst-sym {P = λ z → z} (cohᴰ B))
                           (cong (λ w → inject (semM info fmt w)) (forget-coh bA arg))))

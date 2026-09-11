@@ -23,10 +23,10 @@
 module Once.Denotation.SourceDenote where
 
 open import Data.Fin using (Fin) renaming (zero to fzero; suc to fsuc)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _∸_)
 open import Data.Integer using (ℤ)
 import Once.Word as OnceWord
-open import Data.List using (List; []; _++_)
+open import Data.List using (List; []; _++_; length; take)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 open import Data.Unit using (⊤; tt)
@@ -37,9 +37,9 @@ open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Type
   using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type; Quantity; Zero; One; Many; mk-kind)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT; fmapT)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; coerce-functor⁻¹-D; cohᴰ; liftFn)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; emit-Dᵇ; coerce-functor⁻¹-D; coerce-functor-D; cohᴰ; liftFn; anaFᵈ; seqF)
 open import Once.Float.Dyadic using (encode)
 open import Once.Float.Decimal using (Decimal; decimalOf; round)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
@@ -87,33 +87,15 @@ lookupᴰ (Γ , A ^ q) (fsuc i) dγ = lookupᴰ Γ i (proj₁ dγ)
 -- `faithful`'s cata case follow from the algebra IH + monad-assoc alone, and
 -- handles an effectful build correctly — the trace agrees per layer on both
 -- sides.)
-cata-ev-algˢ : ∀ {F C} → ℕ → T (⟦ ⟦ F ⟧T C ⟧ᴰ → T ⟦ C ⟧ᴰ)
-             → ⟦ F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰ) → List SigOpEvent × ⟦ C ⟧ᴰ
-cata-ev-algˢ {F} {C} n algComp fc =
-  ( events-F F proj₁ fc ++ projTrace step n
-  , valueT step n )
-  where z    = coerce-functor⁻¹-D F C (sem-fmap F proj₂ fc)
-        step = algComp >>=T λ algClo → algClo z
-
-------------------------------------------------------------------------
--- The `Ana` depth-bounded unfold TRACE over a ⟦_⟧ˢ coalgebra CLOSURE — the
--- elaborate-free analogue of `DenotTrace.ana-events`. At depth `suc m`: emit the
--- coalgebra step's events then recurse at `m` on the functor's recursive
--- positions (`events-F`). Structural on `m` (Agda certifies termination of the
--- TRACE prefix; the produced codata is productive — `sem-ana` for the value).
-------------------------------------------------------------------------
-
--- Threads the coalgebra COMPUTATION `T (closure)` (= `⟦coalg⟧ˢ tt`) per step
--- (`coalgComp >>=T λ coalgClo → coalgClo (inject a)`), mirroring `DenotTrace`'s
--- `ana-events` (`evalᴰ coalg (inject a)`) — same per-layer build threading as
--- `cata-ev-algˢ`, removing the discard that forced `build-pure`.
-ana-eventsˢ : ∀ {F A} → T (⟦ A ⟧ᴰ → T ⟦ ⟦ F ⟧T A ⟧ᴰ) → Val.⟦ A ⟧ → ℕ → List SigOpEvent
-ana-eventsˢ coalgComp a zero    = []
-ana-eventsˢ {F} {A} coalgComp a (suc m) =
-  projTrace step m
-    ++ events-F F (λ seed → ana-eventsˢ {F} {A} coalgComp seed m) layer
-  where step  = coalgComp >>=T λ coalgClo → coalgClo (inject a)
-        layer = coerce-functor F A (forget (valueT step m))
+-- D179: carrier is a COMPUTATION and the layer is sequenced (`seqF`) before
+-- the algebra runs, mirroring `DenotTrace.cata-ev-algᴰ`. The `ℕ` is gone —
+-- the budget lives in `T`, so the children share it instead of each getting
+-- the full `n` and having their traces concatenated.
+cata-ev-algˢ : ∀ {F C} → T (⟦ ⟦ F ⟧T C ⟧ᴰ → T ⟦ C ⟧ᴰ)
+             → ⟦ F ⟧F (T ⟦ C ⟧ᴰ) → T ⟦ C ⟧ᴰ
+cata-ev-algˢ {F} {C} algComp fc =
+  seqF F fc >>=T λ layer →
+    algComp >>=T λ algClo → algClo (coerce-functor⁻¹-D F C layer)
 
 ------------------------------------------------------------------------
 -- `liftD` — the surface denotation of a PRE-BUILT CCC morphism `ir : IR ⌊A⌋ ⌊B⌋`
@@ -305,17 +287,21 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt {A} {B} ir)
 -- follows (D130) and matches both `⟦_⟧ᶜ` and the elaboration (`cataM ∘ ealg`).
 ⟦ cata {Γ = Γ} {F = F} {A = A} wf alg ⟧ˢ fmt dγ =
   ⟦ alg ⟧ˢ fmt tt >>=T λ valg →
-  returnT (λ x → λ n →
-    let r = sem-cata wf (cata-ev-algˢ {F} {A} n (returnT valg)) x
-    in (proj₁ r , proj₂ r))
+  returnT (λ x → sem-cata wf (cata-ev-algˢ {F} {A} (returnT valg)) x)
 -- Ana: the productive unfold. Coalgebra CLOSED (∅) → `⟦coalg⟧ˢ tt` is the
 -- closure. TRACE via `ana-eventsˢ` (depth-bounded prefix, the SOLE T-ℕ consumer);
 -- VALUE via `sem-ana` (the codata), mirroring `eval (Ana …)` but elaborate-free.
+-- D179: mirrors `evalᴰ (Ana …)` exactly — BUILD the suspension, emit nothing.
+-- The coalgebra runs when `out` forces a layer. The old clause read the
+-- coalgebra at budget `0` for its value (effects DISCARDED, since a pure `ν`
+-- could not hold them) and re-invented them as an eager unfold in
+-- `ana-eventsˢ`; the two traversals disagree at a functor with more than one
+-- recursive position.
 ⟦ ana {Γ = Γ} {F = F} {A = A} wf coalg ⟧ˢ fmt dγ =
-  returnT (λ a → λ n →
-    ( ana-eventsˢ {F} {A} (⟦ coalg ⟧ˢ fmt tt) (forget a) n
-    , inject (sem-ana F (λ a' → coerce-functor F _
-                  (forget (valueT (valueT (⟦ coalg ⟧ˢ fmt tt) 0 (inject a')) 0))) (forget a)) ))
+  returnT (λ a → returnT (anaFᵈ F
+            (λ a' → fmapT (coerce-functor-D F A)
+                          (⟦ coalg ⟧ˢ fmt tt >>=T λ clo → clo a'))
+            a))
 -- Effect primitives (sigOp/closure/poly): named external ops resolved to
 -- `generic-info name`, emitting + valued via the SAME emit-D/semM the IR uses
 -- (definitionally = elaborate's `SigOp (generic-info name) ∘ terminal`). sigOp
@@ -326,19 +312,19 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt {A} {B} ir)
 -- receives its argument, so the closure's parameter is the unit — the same
 -- degeneration the elaborator makes (`arrow-info` -> `value-info` there).
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero π ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt dγ =
-  returnT (λ _ → λ n → ( emit-D (value-info name base-Unit cCod) tt
+  returnT (λ _ → λ n → ( emit-Dᵇ (value-info name base-Unit cCod) tt n
                        , inject (semM (value-info name base-Unit cCod) fmt tt) ))
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt dγ =
-  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} (mk-kind One π) name bDom cCod) (forget arg)
+  returnT (λ arg → λ n → ( emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom cCod) (forget arg) n
                          , inject (semM (arrow-info {Dom} {Cod} (mk-kind One π) name bDom cCod) fmt (forget arg)) ))
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt dγ =
-  returnT (λ arg → λ n → ( emit-D (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom cCod) (forget arg)
+  returnT (λ arg → λ n → ( emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom cCod) (forget arg) n
                          , inject (semM (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom cCod) fmt (forget arg)) ))
 -- VALUE-position references (non-arrow sigOp, closure, poly): `Pure` via
 -- `value-info` (effects live on arrows, fire on application — D018), so they
 -- emit `[]` at build. This is what makes `build-pure` hold for these leaves;
 -- interpretation-agnostic (no `classify-name`). Matches elaborate's
 -- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
-⟦ sigOp {Γ = Γ} {A = A} name conc ⟧ˢ fmt   dγ = λ n → (emit-D (value-info {Unit} {A} name base-Unit conc) tt , inject (semM (value-info {Unit} {A} name base-Unit conc) fmt tt))
-⟦ closure {Γ = Γ} {A = A} name ⟧ˢ fmt dγ = λ n → (emit-D (internal-info {A} (bare name)) tt , inject (semM (internal-info {A} (bare name)) fmt tt))
-⟦ poly name PT ⟧ˢ fmt         dγ = λ n → (emit-D (internal-info {PT} (bare name)) tt , inject (semM (internal-info {PT} (bare name)) fmt tt))
+⟦ sigOp {Γ = Γ} {A = A} name conc ⟧ˢ fmt   dγ = λ n → (emit-Dᵇ (value-info {Unit} {A} name base-Unit conc) tt n , inject (semM (value-info {Unit} {A} name base-Unit conc) fmt tt))
+⟦ closure {Γ = Γ} {A = A} name ⟧ˢ fmt dγ = λ n → (emit-Dᵇ (internal-info {A} (bare name)) tt n , inject (semM (internal-info {A} (bare name)) fmt tt))
+⟦ poly name PT ⟧ˢ fmt         dγ = λ n → (emit-Dᵇ (internal-info {PT} (bare name)) tt n , inject (semM (internal-info {PT} (bare name)) fmt tt))

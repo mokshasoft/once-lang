@@ -32,9 +32,9 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Data.Nat using (ℕ)
-open import Data.List using (_++_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂)
+open import Data.Nat using (ℕ; _∸_)
+open import Data.List using (_++_; length)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; subst)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
@@ -91,11 +91,31 @@ RelT-return rv n = refl , rv
 -- Bind preserves the relation: related computations sequenced with related
 -- continuations stay related. `_>>=T_` concatenates the two traces, so the
 -- trace equality is `cong₂ _++_` of the two halves.
+--
+-- The two sides run their continuations at their OWN remaining budgets
+-- (`_>>=T_` threads). Those budgets are computed from the two head traces,
+-- which the relation already equates — so `keq` transports the right half
+-- from the left's budget to its own. Nothing new is assumed: the budget
+-- agreement IS the trace agreement.
 RelT-bind : ∀ {A B} {t₁ t₂ : T ⟦ A ⟧ᴰ} {f g : ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ}
           → RelT A t₁ t₂
           → (∀ {a b} → RelV A a b → RelT B (f a) (g b))
           → RelT B (t₁ >>=T f) (t₂ >>=T g)
-RelT-bind rt rk n =
-  let (tr-eq  , v-rel)  = rt n
-      (tr-eq' , v-rel') = rk v-rel n
-  in cong₂ _++_ tr-eq tr-eq' , v-rel'
+RelT-bind {A} {B} {t₁} {t₂} {f} {g} rt rk n =
+    cong₂ _++_ tr-eq (trans (proj₁ inner) (cong (projTrace gb) keq))
+  , subst (λ k → RelV B (valueT fa k₁) (valueT gb k)) keq (proj₂ inner)
+  where
+    tr-eq : projTrace t₁ n ≡ projTrace t₂ n
+    tr-eq = proj₁ (rt n)
+
+    fa = f (valueT t₁ n)
+    gb = g (valueT t₂ n)
+
+    k₁ = n ∸ length (projTrace t₁ n)
+    k₂ = n ∸ length (projTrace t₂ n)
+
+    keq : k₁ ≡ k₂
+    keq = cong (λ es → n ∸ length es) tr-eq
+
+    inner : (projTrace fa k₁ ≡ projTrace gb k₁) × RelV B (valueT fa k₁) (valueT gb k₁)
+    inner = rk (proj₂ (rt n)) k₁

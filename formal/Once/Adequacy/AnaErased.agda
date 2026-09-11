@@ -34,8 +34,8 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.List using (List; _++_)
-open import Data.Nat using (zero)
+open import Data.List using (List; _++_; length)
+open import Data.Nat using (ℕ; zero; _∸_)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst₂; subst-subst-sym; subst-sym-subst)
 
@@ -57,7 +57,9 @@ open import Once.IRTy using (⌊_⌋; ⌈_⌉)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.TraceMonad using (T; valueT; returnT)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; inject; cohᴰ)
+open import Once.Denotation.ValueDomain
+  using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; inject; cohᴰ; injectν-coh; forgetν-coh;
+         νᵈ; forgetν; injectν; mapForgetν; mapInjectν; coerce-functor-D)
 open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
@@ -270,7 +272,9 @@ mutual
   forget-coh-gen Buffer     arg = refl
   forget-coh-gen Void       ()
   forget-coh-gen (μ-type F) arg = subst-subst-sym (coh (μ-type F))
-  forget-coh-gen (ν-type F) arg = subst-subst-sym (coh (ν-type F))
+  -- D179: no longer `subst-subst-sym` — ν's two domains differ, so this is
+  -- the naturality square for `forgetν` rather than a transport cancelling.
+  forget-coh-gen (ν-type F) arg = forgetν-coh (tF-coh F) arg
   forget-coh-gen (A * B) (a , b) =
     trans (cong (λ p → subst id (coh (A * B)) (forget p)) (push×⁻ (cohᴰ A) (cohᴰ B) a b))
       (trans (push× (coh A) (coh B) (forget (subst id (sym (cohᴰ A)) a))
@@ -326,7 +330,8 @@ mutual
   inject-coh-nat Buffer     v = refl
   inject-coh-nat Void       ()
   inject-coh-nat (μ-type F) v = refl
-  inject-coh-nat (ν-type F) v = refl
+  -- ν is no longer the identity on either side of the square (D179).
+  inject-coh-nat (ν-type F) v = injectν-coh (tF-coh F) v
   inject-coh-nat (A * B) (a , b) =
     trans (cong (λ p → inject p) (push×⁻ (coh A) (coh B) a b))
       (trans (cong₂ _,_ (inject-coh-nat A a) (inject-coh-nat B b))
@@ -615,3 +620,172 @@ coerce-νin-erase (G₁ TT.⊗ G₂) A (x0 , y0) =
         (trans (cong₂ _,_ (coerce-νin-erase G₁ A x0) (coerce-νin-erase G₂ A y0))
                (sym (cong (λ z → coerce-ν-in (G₁ TT.⊗ G₂) ⟦ A ⟧ (coerce-functor (G₁ TT.⊗ G₂) A z))
                           (vs-split⊗ G₁ G₂ A x0 y0))))))
+
+------------------------------------------------------------------------
+-- D179: `forget ∘ inject ≡ id` AT ν.
+--
+-- While ν's monadic meaning WAS its pure meaning, this was `refl`. Now the
+-- round trip goes `νS → νᵈ → νS`, rebuilding every layer, so it is a
+-- COINDUCTIVE equality. Both sides land back in `νS`, so it discharges
+-- through the codebase's EXISTING `bisimS-to-eq` — no new axiom, and the same
+-- precedent as `sem-CoIn-CoOut`.
+--
+-- The structural map is INLINED rather than routed through the existing
+-- `sfmap-∼S-refl`: `--guardedness` rejects a corecursive call passed to a
+-- defined function (D062), so a corecursive proof must place its own map
+-- structurally at `SId`. That is a constraint, not duplication by choice.
+------------------------------------------------------------------------
+
+mutual
+  forgetν-injectν-bisim : ∀ {F : SFunctor} (v : νS F) → forgetν (injectν v) ∼S v
+  unfoldS-∼ (forgetν-injectν-bisim {F} v) = forgetν-injectν-rel F F (unfoldS v)
+
+  forgetν-injectν-rel : ∀ (F G : SFunctor) (x : ⟦ G ⟧SF (νS F))
+                      → ⟦ G ⟧SF-rel (_∼S_ {F}) (mapForgetν F G (mapInjectν F G x)) x
+  forgetν-injectν-rel F (SK B)     x        = refl
+  forgetν-injectν-rel F SId        x        = forgetν-injectν-bisim x
+  forgetν-injectν-rel F (G₁ S⊕ G₂) (inj₁ x) = forgetν-injectν-rel F G₁ x
+  forgetν-injectν-rel F (G₁ S⊕ G₂) (inj₂ y) = forgetν-injectν-rel F G₂ y
+  forgetν-injectν-rel F (G₁ S⊗ G₂) (x , y)  =
+    (forgetν-injectν-rel F G₁ x , forgetν-injectν-rel F G₂ y)
+
+forgetν-injectν : ∀ {F : SFunctor} (v : νS F) → forgetν (injectν v) ≡ v
+forgetν-injectν v = bisimS-to-eq _ v (forgetν-injectν-bisim v)
+
+------------------------------------------------------------------------
+-- D179: the `ᴰ`-level analogue of `coerce-νin-erase`. The coalgebra is now
+-- EFFECTFUL, so `ana`-faithfulness needs the erasure round-trip in the
+-- MONADIC domain `⟦_⟧ᴰ`, not in `Val.⟦_⟧`.
+--
+-- Stated first and assumed, to check it is what `ana-body` actually needs
+-- before it is proved (the statement is the risky part, not the induction).
+------------------------------------------------------------------------
+
+VE0ᴰ : ∀ (G : Functor) (A : TT.Type) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ)
+     → ⟦ TT.⟦ ⌈ eraseF G ⌉F ⟧T ⌈ ⌊ A ⌋ ⌉ ⟧ᴰ
+VE0ᴰ G A v0 = subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF G) ⌊ A ⌋)
+                    (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G A)) v0)
+
+-- ᴰ-carrier push lemmas (the `⟦_⟧ᴰ` mirrors of `pushⱽ*`).
+pushᴰ+₁ : ∀ {X Y X' Y' : TT.Type} (p : X ≡ X') (q : Y ≡ Y') (w : ⟦ X ⟧ᴰ)
+  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (cong₂ TT._+_ p q) (inj₁ w) ≡ inj₁ (subst (λ Ty → ⟦ Ty ⟧ᴰ) p w)
+pushᴰ+₁ refl refl w = refl
+
+pushᴰ+₂ : ∀ {X Y X' Y' : TT.Type} (p : X ≡ X') (q : Y ≡ Y') (w : ⟦ Y ⟧ᴰ)
+  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (cong₂ TT._+_ p q) (inj₂ w) ≡ inj₂ (subst (λ Ty → ⟦ Ty ⟧ᴰ) q w)
+pushᴰ+₂ refl refl w = refl
+
+pushᴰ* : ∀ {X Y X' Y' : TT.Type} (p : X ≡ X') (q : Y ≡ Y') (u : ⟦ X ⟧ᴰ) (w : ⟦ Y ⟧ᴰ)
+  → subst (λ Ty → ⟦ Ty ⟧ᴰ) (cong₂ TT._*_ p q) (u , w)
+    ≡ (subst (λ Ty → ⟦ Ty ⟧ᴰ) p u , subst (λ Ty → ⟦ Ty ⟧ᴰ) q w)
+pushᴰ* refl refl u w = refl
+
+-- `VE0ᴰ` distributes over the constructors. The Val-level `ve-split*` had to
+-- commute a `forget` past both transports as well; here there is none.
+ve-split⊕₁ᴰ : ∀ (G₁ G₂ : Functor) (A : TT.Type) (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ)
+  → VE0ᴰ (G₁ TT.⊕ G₂) A (inj₁ x0) ≡ inj₁ (VE0ᴰ G₁ A x0)
+ve-split⊕₁ᴰ G₁ G₂ A x0 =
+  trans (cong (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF (G₁ TT.⊕ G₂)) ⌊ A ⌋))
+              (pushᴵ+₁ (⌊⟧T-commute G₁ A) (⌊⟧T-commute G₂ A) x0))
+        (pushᴰ+₁ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋)
+                 (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₁ A)) x0))
+
+ve-split⊕₂ᴰ : ∀ (G₁ G₂ : Functor) (A : TT.Type) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
+  → VE0ᴰ (G₁ TT.⊕ G₂) A (inj₂ y0) ≡ inj₂ (VE0ᴰ G₂ A y0)
+ve-split⊕₂ᴰ G₁ G₂ A y0 =
+  trans (cong (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF (G₁ TT.⊕ G₂)) ⌊ A ⌋))
+              (pushᴵ+₂ (⌊⟧T-commute G₁ A) (⌊⟧T-commute G₂ A) y0))
+        (pushᴰ+₂ (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋)
+                 (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₂ A)) y0))
+
+ve-split⊗ᴰ : ∀ (G₁ G₂ : Functor) (A : TT.Type)
+               (x0 : ⟦ ⌊ TT.⟦ G₁ ⟧T A ⌋ ⟧ᴰᴵ) (y0 : ⟦ ⌊ TT.⟦ G₂ ⟧T A ⌋ ⟧ᴰᴵ)
+  → VE0ᴰ (G₁ TT.⊗ G₂) A (x0 , y0) ≡ (VE0ᴰ G₁ A x0 , VE0ᴰ G₂ A y0)
+ve-split⊗ᴰ G₁ G₂ A x0 y0 =
+  trans (cong (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF (G₁ TT.⊗ G₂)) ⌊ A ⌋))
+              (pushᴵ* (⌊⟧T-commute G₁ A) (⌊⟧T-commute G₂ A) x0 y0))
+        (pushᴰ* (⌈⟧TI-commute (eraseF G₁) ⌊ A ⌋) (⌈⟧TI-commute (eraseF G₂) ⌊ A ⌋)
+                (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₁ A)) x0)
+                (subst id (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute G₂ A)) y0))
+
+private
+  infixr 5 _⟫_
+  _⟫_ : ∀ {X : Set} {a b c : X} → a ≡ b → b ≡ c → a ≡ c
+  _⟫_ = trans
+
+-- Structural on `G`, mirroring `coerce-νin-erase` — but SIMPLER, because
+-- `coerce-functor-D` forgets only at `K`: the `Id` positions carry the
+-- monadic carrier straight through, with no `forget` to commute past the
+-- transports. The carrier-polymorphic `push*` helpers above are reused as-is.
+coerce-νin-erase-D : ∀ (G : Functor) (A : TT.Type) (v0 : ⟦ ⌊ TT.⟦ G ⟧T A ⌋ ⟧ᴰᴵ)
+  → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh G)
+       (coerce-ν-in ⌈ eraseF G ⌉F ⟦ A ⟧ᴰ
+         (subst (λ Z → ⟦ ⌈ eraseF G ⌉F ⟧F Z) (cohᴰ A)
+           (coerce-functor-D ⌈ eraseF G ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G A v0))))
+    ≡ coerce-ν-in G ⟦ A ⟧ᴰ
+        (coerce-functor-D G A (subst id (cohᴰ (TT.⟦ G ⟧T A)) v0))
+-- At `K` the ᴰ chain goes through `forget` exactly as the pure one does
+-- (`coerce-functor-D (K _) = forget`), so this is the same proof — `base-in`
+-- is reused unchanged.
+coerce-νin-erase-D (TT.K B) A v0 =
+    cong (subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (TT.K B)))
+         (cong (coerce-ν-in ⌈ eraseF (TT.K B) ⌉F ⟦ A ⟧ᴰ)
+               (subst-KF-const (cohᴰ A) (forget v0)))
+  ⟫ pushSK (base-coh B) (coerce-full-to-base ⌈ ⌊ B ⌋ ⌉ (forget v0))
+  ⟫ base-in B v0
+coerce-νin-erase-D TT.Id A v0 = refl
+coerce-νin-erase-D (G₁ TT.⊕ G₂) A (inj₁ x0) =
+    cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
+           (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ
+             (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟧F Z) (cohᴰ A)
+               (coerce-functor-D ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⌈ ⌊ A ⌋ ⌉ z))))
+         (ve-split⊕₁ᴰ G₁ G₂ A x0)
+  ⟫ cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
+           (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ z))
+         (push-⊎fam₁ (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (cohᴰ A)
+                     (coerce-functor-D ⌈ eraseF G₁ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₁ A x0)))
+  ⟫ pushS⊕₁ (tF-coh G₁) (tF-coh G₂)
+      (coerce-ν-in ⌈ eraseF G₁ ⌉F ⟦ A ⟧ᴰ
+        (subst (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (cohᴰ A)
+          (coerce-functor-D ⌈ eraseF G₁ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₁ A x0))))
+  ⟫ cong inj₁ (coerce-νin-erase-D G₁ A x0)
+  ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (G₁ TT.⊕ G₂) A z))
+              (push⊎₁ (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) x0))
+coerce-νin-erase-D (G₁ TT.⊕ G₂) A (inj₂ y0) =
+    cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
+           (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ
+             (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟧F Z) (cohᴰ A)
+               (coerce-functor-D ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⌈ ⌊ A ⌋ ⌉ z))))
+         (ve-split⊕₂ᴰ G₁ G₂ A y0)
+  ⟫ cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊕ G₂))
+           (coerce-ν-in ⌈ eraseF (G₁ TT.⊕ G₂) ⌉F ⟦ A ⟧ᴰ z))
+         (push-⊎fam₂ (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (cohᴰ A)
+                     (coerce-functor-D ⌈ eraseF G₂ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₂ A y0)))
+  ⟫ pushS⊕₂ (tF-coh G₁) (tF-coh G₂)
+      (coerce-ν-in ⌈ eraseF G₂ ⌉F ⟦ A ⟧ᴰ
+        (subst (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (cohᴰ A)
+          (coerce-functor-D ⌈ eraseF G₂ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₂ A y0))))
+  ⟫ cong inj₂ (coerce-νin-erase-D G₂ A y0)
+  ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊕ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (G₁ TT.⊕ G₂) A z))
+              (push⊎₂ (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) y0))
+coerce-νin-erase-D (G₁ TT.⊗ G₂) A (x0 , y0) =
+    cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊗ G₂))
+           (coerce-ν-in ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟦ A ⟧ᴰ
+             (subst (λ Z → ⟦ ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟧F Z) (cohᴰ A)
+               (coerce-functor-D ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⌈ ⌊ A ⌋ ⌉ z))))
+         (ve-split⊗ᴰ G₁ G₂ A x0 y0)
+  ⟫ cong (λ z → subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh (G₁ TT.⊗ G₂))
+           (coerce-ν-in ⌈ eraseF (G₁ TT.⊗ G₂) ⌉F ⟦ A ⟧ᴰ z))
+         (push-×fam (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (cohᴰ A)
+                    (coerce-functor-D ⌈ eraseF G₁ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₁ A x0))
+                    (coerce-functor-D ⌈ eraseF G₂ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₂ A y0)))
+  ⟫ pushS⊗ (tF-coh G₁) (tF-coh G₂)
+      (coerce-ν-in ⌈ eraseF G₁ ⌉F ⟦ A ⟧ᴰ
+        (subst (λ Z → ⟦ ⌈ eraseF G₁ ⌉F ⟧F Z) (cohᴰ A)
+          (coerce-functor-D ⌈ eraseF G₁ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₁ A x0))))
+      (coerce-ν-in ⌈ eraseF G₂ ⌉F ⟦ A ⟧ᴰ
+        (subst (λ Z → ⟦ ⌈ eraseF G₂ ⌉F ⟧F Z) (cohᴰ A)
+          (coerce-functor-D ⌈ eraseF G₂ ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ G₂ A y0))))
+  ⟫ cong₂ _,_ (coerce-νin-erase-D G₁ A x0) (coerce-νin-erase-D G₂ A y0)
+  ⟫ sym (cong (λ z → coerce-ν-in (G₁ TT.⊗ G₂) ⟦ A ⟧ᴰ (coerce-functor-D (G₁ TT.⊗ G₂) A z))
+              (push× (cohᴰ (TT.⟦ G₁ ⟧T A)) (cohᴰ (TT.⟦ G₂ ⟧T A)) x0 y0))

@@ -49,8 +49,8 @@ open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-P
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
 open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F)
 open import Once.Semantics.Functor using (μS; cataS; ⟦_⟧SF)
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.TraceMonad using (T; projTrace; valueT)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; seqF)
+open import Once.Denotation.TraceMonad using (T; projTrace; valueT; RelT′; RelT′-bind)
 open import Once.Denotation.DenotTrace using (evalᴰ; forget; inject; coerce-functor⁻¹-D; cata-ev-algᴰ; liftFn)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -61,6 +61,7 @@ open import Relation.Binary.PropositionalEquality using (subst)
 import Once.IR as IR
 open import Once.Adequacy.MeaningRelation fmt using (RelV; RelT)
 open import Once.Adequacy.CataRel using (RelSF; cataS-rel)
+open import Once.Adequacy.SeqRel using (RelF; seqF-rel)
 open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased)
 
 ------------------------------------------------------------------------
@@ -96,39 +97,55 @@ cata-bridge : ∀ {F} {A'} {wfF : WellFormedF F}
               {a b : ⟦ μ-type F ⟧ᴰ} → RelV (μ-type F) a b
             → RelT A' (cata-sem wfF dalg₁ a) (cata-sem wfF dalg₂ b)
 cata-bridge {F} {A'} {wfF} dalg₁ dalg₂ algR {a} {.a} refl n =
-  cataS-rel RelC algR-full (forget a)
+  cataS-rel RelC algR-full (forget a) n
   where
-    -- The product relation the fold threads: equal traces + related values.
-    RelC : (List SigOpEvent × ⟦ A' ⟧ᴰ) → (List SigOpEvent × ⟦ A' ⟧ᴰ) → Set
-    RelC r₁ r₂ = (proj₁ r₁ ≡ proj₁ r₂) × RelV A' (proj₂ r₁) (proj₂ r₂)
+    -- D179: the fold's carrier is a computation, and `RelT A'` already IS
+    -- "equal traces + related values at every budget" — so the relation the
+    -- fold threads is literally the computation relation.
+    RelC : T ⟦ A' ⟧ᴰ → T ⟦ A' ⟧ᴰ → Set
+    RelC = RelT A'
 
-    -- Structural: a related functor layer (`RelSF`) coerces down to equal
-    -- child-events and a `RelV (⟦G⟧T A')`-related folded argument `z`.
-    layer-lemma : ∀ {G} (wf : WellFormedF G)
-        {y₁ y₂ : ⟦ translateF Carrier Carrier G ⟧SF (List SigOpEvent × ⟦ A' ⟧ᴰ)}
+    -- A related SF-layer coerces to a `RelF`-related F-layer. (The old
+    -- `layer-lemma` also had to prove the child TRACES equal; `seqF-rel` now
+    -- gives that, so only the structural dispatch is left here.)
+    out-rel : ∀ {G} (wf : WellFormedF G)
+        {y₁ y₂ : ⟦ translateF Carrier Carrier G ⟧SF (T ⟦ A' ⟧ᴰ)}
       → RelSF (translateF Carrier Carrier G) RelC y₁ y₂
-      → (events-F G proj₁ (coerce-μ-out wf _ y₁) ≡ events-F G proj₁ (coerce-μ-out wf _ y₂))
-      × RelV (⟦ G ⟧T A')
-          (coerce-functor⁻¹-D G A' (sem-fmap G proj₂ (coerce-μ-out wf _ y₁)))
-          (coerce-functor⁻¹-D G A' (sem-fmap G proj₂ (coerce-μ-out wf _ y₂)))
-    layer-lemma (wf-K {A = Ak} ib) {y₁} {y₂} feq rewrite feq = refl , base-refl ib _
-    layer-lemma wf-Id rc = proj₁ rc , proj₂ rc
-    layer-lemma (wf-Sum wfF' wfG') {inj₁ _} {inj₁ _} rsf = layer-lemma wfF' rsf
-    layer-lemma (wf-Sum wfF' wfG') {inj₂ _} {inj₂ _} rsf = layer-lemma wfG' rsf
-    layer-lemma (wf-Sum wfF' wfG') {inj₁ _} {inj₂ _} rsf = ⊥-elim rsf
-    layer-lemma (wf-Sum wfF' wfG') {inj₂ _} {inj₁ _} rsf = ⊥-elim rsf
-    layer-lemma (wf-Prod wfF' wfG') {_ , _} {_ , _} (rf , rg) =
-      let lf = layer-lemma wfF' rf
-          lg = layer-lemma wfG' rg
-      in cong₂ _++_ (proj₁ lf) (proj₁ lg) , (proj₂ lf , proj₂ lg)
+      → RelF G RelC (coerce-μ-out wf _ y₁) (coerce-μ-out wf _ y₂)
+    out-rel (wf-K ib) {y₁} {y₂} feq rewrite feq = refl
+    out-rel wf-Id     rc = rc
+    out-rel (wf-Sum wfF' wfG') {inj₁ _} {inj₁ _} rsf = out-rel wfF' rsf
+    out-rel (wf-Sum wfF' wfG') {inj₂ _} {inj₂ _} rsf = out-rel wfG' rsf
+    out-rel (wf-Sum wfF' wfG') {inj₁ _} {inj₂ _} rsf = ⊥-elim rsf
+    out-rel (wf-Sum wfF' wfG') {inj₂ _} {inj₁ _} rsf = ⊥-elim rsf
+    out-rel (wf-Prod wfF' wfG') {_ , _} {_ , _} (rf , rg) =
+      (out-rel wfF' rf , out-rel wfG' rg)
 
-    -- Algebra preservation: the two per-layer algebras produce `RelC`-related
-    -- outputs — child events equal (`layer-lemma`) and the algebra step bridged
-    -- by `algR` (= `bridge-m alg`) on the `RelV`-related folded argument.
+    -- The value half of the old `layer-lemma`: a related layer coerces to a
+    -- `RelV`-related fold argument.
+    z-rel : ∀ {G} (wf : WellFormedF G) {l r : ⟦ G ⟧F ⟦ A' ⟧ᴰ}
+          → RelF G (RelV A') l r
+          → RelV (⟦ G ⟧T A') (coerce-functor⁻¹-D G A' l) (coerce-functor⁻¹-D G A' r)
+    z-rel (wf-K ib) {l} {r} eq rewrite eq = base-refl ib _
+    z-rel wf-Id     rel = rel
+    z-rel (wf-Sum wfF' wfG') {inj₁ _} {inj₁ _} rel = z-rel wfF' rel
+    z-rel (wf-Sum wfF' wfG') {inj₂ _} {inj₂ _} rel = z-rel wfG' rel
+    z-rel (wf-Sum wfF' wfG') {inj₁ _} {inj₂ _} rel = ⊥-elim rel
+    z-rel (wf-Sum wfF' wfG') {inj₂ _} {inj₁ _} rel = ⊥-elim rel
+    z-rel (wf-Prod wfF' wfG') {_ , _} {_ , _} (rf , rg) =
+      (z-rel wfF' rf , z-rel wfG' rg)
+
+    -- Algebra preservation: one `RelT′-bind`. The head is `seqF` of the two
+    -- layers (`seqF-rel`), the continuation is the bridged algebra step.
     algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) RelC y₁ y₂
-              → RelC (cata-ev-algᴰ-D {F} {A'} n dalg₁ (coerce-μ-out wfF _ y₁))
-                     (cata-ev-algᴰ-D {F} {A'} n dalg₂ (coerce-μ-out wfF _ y₂))
-    algR-full rsf =
-      let (ev-eq , z-rel) = layer-lemma wfF rsf
-          (tr-eq , v-rel) = algR z-rel n
-      in cong₂ _++_ ev-eq tr-eq , v-rel
+              → RelC (cata-ev-algᴰ-D {F} {A'} dalg₁ (coerce-μ-out wfF _ y₁))
+                     (cata-ev-algᴰ-D {F} {A'} dalg₂ (coerce-μ-out wfF _ y₂))
+    algR-full {y₁} {y₂} rsf =
+      RelT′-bind (RelF F (RelV A')) (RelV A')
+        (seqF F (coerce-μ-out wfF _ y₁)) (seqF F (coerce-μ-out wfF _ y₂))
+        (λ layer → dalg₁ (coerce-functor⁻¹-D F A' layer))
+        (λ layer → dalg₂ (coerce-functor⁻¹-D F A' layer))
+        sq
+        (λ k → algR (z-rel wfF (proj₂ (sq k))))
+      where
+        sq = seqF-rel F (RelV A') (out-rel wfF rsf)

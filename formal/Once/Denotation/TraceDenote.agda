@@ -21,8 +21,8 @@
 
 module Once.Denotation.TraceDenote where
 
-open import Data.List using (List; []; _∷_; _++_)
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.Nat using (ℕ; zero; suc; _∸_)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
 

@@ -27,8 +27,8 @@
 
 module Once.Denotation.DenotTrace where
 
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.List using (List; []; _∷_; _++_; take)
+open import Data.Nat using (ℕ; zero; suc; _∸_)
+open import Data.List using (List; []; _∷_; _++_; take; length)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -54,11 +54,11 @@ open import Once.SigOp.Info
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-para; sem-In; sem-fuseNat-events;
-         sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F; coh)
+         sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F; coh; coerce-ν-out)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace; fmapT)
 open import Once.Denotation.TraceDenote using (events-F)
 
 -- Plan 0.58 (OCP-0006): the IR-FREE value domain `⟦_⟧ᴰ` + `forget`/`inject` +
@@ -72,14 +72,15 @@ open import Once.Denotation.ValueDomain public
 --   * `Cata` — a `cata-ev-alg`-style post-order fold (`sem-cata`) whose
 --     per-layer events come from the NATIVE `evalᴰ alg` (effects hidden
 --     inside a fold algebra, even behind closures, are captured).
---   * `Ana` — the depth-bounded unfold (`ana-events`): at depth `suc m`,
---     emit the coalgebra step's events (`evalᴰ coalg`) then recurse at `m`
---     on the functor's recursive positions in canonical order (`events-F`).
---     The observation depth is the unfold depth — a semantic, commensurable
---     notion (one machine loop iteration per layer), NOT machine steps.
---     Total by structural recursion on the depth; handles silent/sparse
---     unfolds (no "accumulate until n events" divergence).
---   * `In`/`Out` — pure constructor/destructor (`[]`).
+--   * `Ana` — BUILDS a suspension (`anaᵈ`) and emits nothing, exactly as
+--     `curry` builds a closure and emits nothing. Effects fire on DEMAND.
+--   * `In` — pure constructor (`[]`).
+--   * `Out` — the ν DESTRUCTOR, and the emitter of the `Ana` pair: forcing one
+--     layer runs the coalgebra once and emits that layer's events. `Out` is to
+--     `Ana` what `apply` is to `curry`. The trace order is therefore the order
+--     the program forces layers, which is the order the machine runs them —
+--     no traversal is chosen by the semantics, which is what lets a functor
+--     with several recursive positions have a well-defined trace at all.
 --   * `Para`/`Hylo`/`Fuse` — DERIVED schemes, defined DENOTATIONALLY by their
 --     `cata`/`ana` composition (they are not structured-recursion primitives;
 --     `Cata`+`Ana` are the basis). Their trace is the trace of that fold,
@@ -112,8 +113,13 @@ rec-trace-D  : (fmt : TargetNum) → ∀ {A B} → IR A B → Val.⟦ ⌈ A ⌉ 
 -- to `Val.⟦C⟧`) so an effectful-arrow carrier keeps its apply-time effects.
 -- D131: the algebra reads a fixed environment, so the trace algebra takes the
 -- environment VALUE — obtained once by the caller, outside the fold.
-cata-ev-algᴰ : (fmt : TargetNum) → ∀ {F E C} → ℕ → IR (E * ⟦ F ⟧TI C) C → ⟦ E ⟧ᴰᴵ
-             → ⟦ ⌈ F ⌉F ⟧F (List SigOpEvent × ⟦ C ⟧ᴰᴵ) → List SigOpEvent × ⟦ C ⟧ᴰᴵ
+-- D179: the fold's carrier is a COMPUTATION, and the layer is sequenced
+-- (`seqF`) before the algebra runs. The `ℕ` is gone: the budget now lives in
+-- `T` and is threaded by `_>>=T_`, so the children share one budget instead of
+-- each receiving the full `n` and having their traces concatenated. That
+-- concatenation is what made `length (at n) ≤ n` false for a `k`-layer fold.
+cata-ev-algᴰ : (fmt : TargetNum) → ∀ {F E C} → IR (E * ⟦ F ⟧TI C) C → ⟦ E ⟧ᴰᴵ
+             → ⟦ ⌈ F ⌉F ⟧F (T ⟦ C ⟧ᴰᴵ) → T ⟦ C ⟧ᴰᴵ
 -- `Para`'s trace algebra. `sem-para`'s algebra sees `⟦F⟧F (μF × A)` (each
 -- child: its substructure `μF` + its folded result `A`); we fold into
 -- `A = List × value`, applying the para-algebra `alg` to the `(μF , value)`
@@ -121,9 +127,6 @@ cata-ev-algᴰ : (fmt : TargetNum) → ∀ {F E C} → ℕ → IR (E * ⟦ F ⟧
 para-ev-algᴰ : (fmt : TargetNum) → ∀ {F C} → ℕ → IR (⟦ F ⟧TI (μ-type F * C)) C
              → ⟦ ⌈ F ⌉F ⟧F (Val.⟦ ⌈ μ-type F ⌉ ⟧ × (List SigOpEvent × Val.⟦ ⌈ C ⌉ ⟧))
              → List SigOpEvent × Val.⟦ ⌈ C ⌉ ⟧
--- The depth-bounded unfold trace: events of the first `n` unfold layers,
--- in canonical (functor left-to-right) order, from the seed `a`.
-ana-events   : (fmt : TargetNum) → ∀ {F A} → IR A (⟦ F ⟧TI A) → Val.⟦ ⌈ A ⌉ ⟧ → ℕ → List SigOpEvent
 
 evalᴰ fmt id            a        = returnT a
 evalᴰ fmt (g ∘ f)       a        = evalᴰ fmt f a >>=T evalᴰ fmt g
@@ -139,7 +142,7 @@ evalᴰ fmt initial       ()
 evalᴰ fmt (curry f)   a        = returnT (λ b → evalᴰ fmt f (a , b))
 evalᴰ fmt apply         p        = proj₁ p (proj₂ p)
 evalᴰ fmt (SigOp {A} {B} si) a   = λ n →
-  ( emit-D si (subst (λ z → z) (coh A) (forget a))
+  ( emit-Dᵇ si (subst (λ z → z) (coh A) (forget a)) n
   , subst (λ z → z) (sym (cohᴰ B)) (inject (semM si fmt (subst (λ z → z) (coh A) (forget a)))) )
 -- Recursion schemes: VALUE comes from this denotation's OWN trace-fold, NOT a
 -- parallel pure `eval` — `⟦_⟧ᴰ` has ONE model (the trace semantics), exactly
@@ -150,25 +153,38 @@ evalᴰ fmt (SigOp {A} {B} si) a   = λ n →
 -- coalgebra's OWN (forgotten) trace-value. Structurally identical to `⟦_⟧ˢ`.
 -- D131: `a` is the pair `(env , μ-value)`. The environment is projected ONCE,
 -- here, and closed over by the per-layer algebra — the fold never rebuilds it.
-evalᴰ fmt (Cata {F} wf {E} {C} alg)  a = λ n →
-  let r = sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt {F} {E} {C} n alg (proj₁ a)) (forget (proj₂ a))
-  in (proj₁ r , proj₂ r)
-evalᴰ fmt (Ana {F} wf {A} coalg) a = λ n →
-  ( ana-events fmt {F} {A} coalg (forget a) n
-  , inject (sem-ana ⌈ F ⌉F (λ a' → coerce-functor ⌈ F ⌉F ⌈ A ⌉
-              (subst (λ T → Val.⟦ T ⟧) (⌈⟧TI-commute F A)
-                (forget (valueT (evalᴰ fmt coalg (inject a')) 0)))) (forget a)) )
+evalᴰ fmt (Cata {F} wf {E} {C} alg)  a =
+  sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt {F} {E} {C} alg (proj₁ a)) (forget (proj₂ a))
+-- D179: `Ana` BUILDS the suspension and emits NOTHING — exactly as `curry`
+-- builds a closure and emits nothing, with `apply` firing the effects. The
+-- coalgebra runs when a layer is FORCED, at `Out`.
+--
+-- What this replaces: the value used to be `sem-ana` over the coalgebra read
+-- at budget `0` (i.e. with its effects DISCARDED, because a pure `ν` could not
+-- carry them), and the discarded effects were then re-invented by `ana-events`
+-- as an eager left-to-right unfold to depth `n`. Those two traversals disagree
+-- whenever the functor has more than one recursive position, because the
+-- left child's newly-discovered events DISPLACE the right child's. No order
+-- is invented here, so nothing can disagree.
+evalᴰ fmt (Ana {F} wf {A} coalg) a =
+  returnT (anaFᵈ ⌈ F ⌉F
+            (λ a' → fmapT (λ x → coerce-functor-D ⌈ F ⌉F ⌈ A ⌉
+                                   (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F A) x))
+                          (evalᴰ fmt coalg a'))
+            a)
+-- D179: `Out` is the EMITTER. Forcing one layer runs the coalgebra once, and
+-- its events are that layer's. The trace order is therefore the order the
+-- program forces layers — which is the order the machine runs them.
+evalᴰ fmt (Out {F} wf) v =
+  fmapT (λ layer → subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (ν-type F)))
+                     (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ ν-type F ⌉
+                       (coerce-ν-out (wf-⌈⌉ wf) _ layer)))
+        (forceᵈ v)
 evalᴰ fmt ir            a        = λ n → (rec-trace-D fmt ir (forget a) n , inject (eval fmt ir (forget a)))
 
--- Cata is FINITE: emit its FULL fold trace (the observation depth `n` never
--- truncates a terminating fold — it bounds only the productive `Ana`). This is
--- what makes Cata and Ana COMPOSE: a Cata nested in an Ana layer emits fully,
--- matching the machine that runs that layer's fold to completion. The
--- event-prefix `take` is applied once, at the observable (⟦_⟧IR / traces-agree).
-rec-trace-D fmt (Cata {F} wf {E} {C} alg)   x n = proj₁ (sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt {F} {E} {C} n alg (inject (proj₁ x))) (proj₂ x))
-rec-trace-D fmt (Ana {F} wf {A} coalg)  x n = ana-events fmt {F} {A} coalg x n
+-- `Cata` and `Out` have their own `evalᴰ` clauses, so they never reach this
+-- fallback. What remains here is the genuinely event-free tail.
 rec-trace-D fmt (In wf)               x n = []
-rec-trace-D fmt (Out wf)                x n = []
 -- Pure non-recursion-scheme constructors: no observable SigOp ⇒ no events.
 rec-trace-D fmt (out-μ wf)              x n = []
 -- DERIVED schemes — the trace of the `cata`/`fuse` fold that DEFINES them
@@ -198,10 +214,10 @@ rec-trace-D fmt (const f v)         x n = []
 -- `evalᴰ` clauses), and emit no recursion-scheme events ⇒ `[]`.
 rec-trace-D fmt _                       x n = []
 
-cata-ev-algᴰ fmt {F} {E} {C} n alg env fc =
-  ( events-F ⌈ F ⌉F proj₁ fc ++ projTrace (evalᴰ fmt alg (env , z)) n
-  , valueT (evalᴰ fmt alg (env , z)) n )
-  where z = subst (λ T → ⟦ T ⟧ᴰ) (sym (⌈⟧TI-commute F C)) (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ C ⌉ (sem-fmap ⌈ F ⌉F proj₂ fc))
+cata-ev-algᴰ fmt {F} {E} {C} alg env fc =
+  seqF ⌈ F ⌉F fc >>=T λ layer →
+    evalᴰ fmt alg (env , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F C))
+                             (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ C ⌉ layer))
 
 -- `Para`'s fold. Children events come from each child's `List` part
 -- (`proj₁ ∘ proj₂`); the algebra runs on the `(μF , value)` layer
@@ -212,13 +228,6 @@ para-ev-algᴰ fmt {F} {C} n alg fc =
   where z = coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F * C ⌉
               (sem-fmap ⌈ F ⌉F (λ p → (proj₁ p , proj₂ (proj₂ p))) fc)
         z' = subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F * C))) z
-
-ana-events fmt         coalg a zero    = []
-ana-events fmt {F} {A} coalg a (suc m) =
-  projTrace step m ++ events-F ⌈ F ⌉F (λ seed → ana-events fmt {F} {A} coalg seed m) layer
-  where
-    step  = evalᴰ fmt coalg (inject a)
-    layer = coerce-functor ⌈ F ⌉F ⌈ A ⌉ (subst (λ T → Val.⟦ T ⟧) (⌈⟧TI-commute F A) (forget (valueT step m)))
 
 ------------------------------------------------------------------------
 -- `liftFn` — the erasure-transported IR morphism denotation as a surface
