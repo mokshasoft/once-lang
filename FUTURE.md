@@ -1909,3 +1909,66 @@ kernel, and THAT is the POC result.
 narrowed the question from "should the kernel interface change" to "is
 one `ICodeWf` row admissible", which is answerable by reading
 `Metatheory/LogicalRelation`'s `⊩₀` clauses.
+
+### ✅ `⊩₀` READ, 2026-09-11 — IT IS **NOT** ONE ROW, AND HERE IS WHY
+
+```agda
+iki-κ : {Θ : Cx} {κ : RTm Θ} {C : ICon (Θ ∙)} →
+        ((σ : Sub Θ Γ) → ⊩₀ (El (subTm σ κ))) →     -- ← a FAMILY, per environment
+        IKInterp Γ C → IKInterp Γ (iκ κ C)
+```
+
+and the forward declaration says why it is a family:
+
+> ⚠ `IKInterp` is indexed by the TELESCOPE, and the `iκ` row's
+> interpretation is a FUNCTION OF THE ENVIRONMENT — `iκ`'s field type is
+> `El (subTm σ κ)`, which **depends on the earlier fields**, so there is
+> no single `⊩₀` to hand over. … this is the one place the indexed
+> interpretation is genuinely bigger, and **it is the price of §9.2**.
+
+★ **A PARAMETER IS DIFFERENT IN KIND, and that is the opening.** §9.2's
+case is a field type depending on EARLIER FIELDS. A parameter's code
+depends on the AMBIENT INDEX — and in every real use `σ`'s action on the
+ambient variable IS the actual index `i`, which `⊩₀IMu` already knows
+(`A ⟶ᵀ* IMu D I i`). So the family-over-`σ` is more general than a
+parameter needs: fix the ambient component, quantify only over the field
+prefix, and `⊩₀ (El (fst i))` becomes a SINGLE obligation, dischargeable
+where `⊩₀IMu` is built.
+
+⚠⚠ **AND HERE IS WHAT THAT COSTS.** Fixing the ambient component means
+indexing `IKInterp`/`IDInterp` by `i` — and the index is a TERM THAT
+REDUCES:
+
+```agda
+IMu-reduct : IMu D I i ⟶ᵀ* C → IMuRed D I i C
+-- ⚠ the index is only ≅, not ≡ — it is a TERM and it reduces.  That is
+--   the whole difference from `Mu-inj`, and it is why `⊢ielim` can
+--   retype its scrutinee across `ξ-ielimⁱ`.
+```
+
+⇒ an `IDInterp` indexed by `i` must be STABLE UNDER INDEX REDUCTION —
+`IDInterp Γ i D → i ⟶* i' → IDInterp Γ i' D` — a new property of the
+logical relation, in the same class as `⊢ielim` retyping its scrutinee.
+`⊩₀IMu`'s own comment already flags the phenomenon: *"two reducts of the
+same type can differ in their index and `IMu-reduct` is what relates
+them."*
+
+### ⇒ THE ANSWER, AS PRECISE AS THIS INVESTIGATION GETS
+
+**One `ICodeWf` row PLUS an index-stability property for `IDInterp`.**
+Not a 53-row rewrite; not the 87-file `ielim`-arity change; but not free
+either, and the stability property is a genuine metatheory question
+rather than an afternoon's plumbing.
+
+⚠ CONFIDENCE: the `iki-κ` signature, the forward-declaration note and
+`IMu-reduct` are quoted verbatim and are solid. The inference that
+fixing the ambient component would suffice, and that stability is the
+only new obligation, is REASONING OVER A 7 000-LINE LOGICAL RELATION
+FROM THREE DEFINITIONS — it should be checked before anyone commits to
+the change.
+
+⬜ NEXT, IF PURSUED: try to prove
+`IDInterp Γ i D → i ⟶* i' → IDInterp Γ i' D` for the CURRENT
+(unindexed) definition's moral equivalent. If that is hard, the
+parameter row is hard for the same reason and the POC's answer is
+"first-class descriptions cannot carry parameters in this kernel."
