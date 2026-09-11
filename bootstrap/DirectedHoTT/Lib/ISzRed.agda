@@ -57,83 +57,46 @@ addIf false a m = a
 --   chosen to avoid.
 ------------------------------------------------------------------------
 
-data OK : Set where
-  ok : OK
-
-IHof : {Γ : Cx} → 𝔹 → RTm Γ → ℕ → Set
-IHof true  h m = h ⟶* num m
-IHof false h m = OK
-
 ------------------------------------------------------------------------
--- THE HYPOTHESES A ROW SUPPLIES: one node per FIELD.
+-- ★★★ THE `AllIH` FAMILY AND THE THREE LEMMAS OVER IT NOW COME FROM
+--   `Lib/IFoldRed`, which is `Lib/IFold`'s reduction twin.  This module
+--   carried its own copy until 2026-09-11 and `Lib/IOccRed` a second,
+--   differing in FOUR knobs; the bodies were identical line for line.
+--   ⇒ what is left here is the ONE client-specific lemma, `szsStep-red`,
+--     which is where the arithmetic lives.
 --
--- ⚠ EVERY `iρ` GETS A NODE, COUNTED OR NOT.  The IH tuple has a slot
---   per recursive field regardless of `pick`, and the walk has to step
---   past the slot either way — `addIf` and `IHof` decide only what the
---   slot CONTRIBUTES, never whether it is THERE.
---
--- ⚠ `m` IS EXPLICIT.  At a skipped field `IHof false _ m` is `OK` and
---   `addIf false a m` is `a`, so nothing mentions `m` — left implicit
---   it is a meta with nothing to solve it.  Skipped fields pass `0`.
+-- ★ AND THE UNIT LAW THIS FILE ALREADY KNEW ABOUT.  The old `szsSum-red`
+--   note read: *"`addIf true 0 m` is `0 + m`, and that is `m`
+--   definitionally"* — true here and for `maxℕ`, and false for an
+--   abstract `nop`.  `Lib/IFoldRed` takes it as `nop-unitˡ`, which is
+--   the first ALGEBRAIC law in this library tree (`FUTURE.md`'s audit
+--   found 57 laws and every one a TYPING law).
 ------------------------------------------------------------------------
 
-data AllIH {Γ : Cx} (r : Maybeℕ) : {Δ : Cx} → ℕ → ICon Δ → RTm Γ → ℕ → Set where
-  aih-ι : {a : ℕ} {Δ : Cx} {ihs : RTm Γ} → AllIH r a (iι {Δ}) ihs a
-  aih-κ : {a : ℕ} {Δ : Cx} {κ : RTm Δ} {C : ICon (Δ ∙)} {ihs : RTm Γ} {n : ℕ} →
-          AllIH r a C ihs n → AllIH r a (iκ κ C) ihs n
-  aih-ρ : {a : ℕ} {Δ : Cx} {j : RTm Δ} {C : ICon (Δ ∙)} {ihs : RTm Γ} {n : ℕ}
-          (m : ℕ) →
-          IHof (sameSortAt r j) (fst ihs) m →
-          AllIH r (addIf (sameSortAt r j) a m) C (snd ihs) n →
-          AllIH r a (iρ j C) ihs n
+open import DirectedHoTT.Lib.IFoldRed as IFR using ( OK; ok; comb; IHof )
+-- ★ re-exported: `Knot/SzAgree`'s skipped-field rows are written `ok`.
+open IFR using ( OK; ok ) public
+open import normalizer.Syntax.Types using ( refl )
 
-------------------------------------------------------------------------
--- ⚠ THE BOOLEAN IS TAKEN AS AN ARGUMENT, exactly as in `Lib/IFold`.
---   `szsStep b` and this lemma must reduce on the SAME `b`.  A `with`
---   would abstract over a different one, and `rewrite` is unavailable:
---   this project's `_≡_` is not bound as `BUILTIN EQUALITY`.
---
---   Applied to `sameSortAt r j`, each of these has exactly the type the
---   corresponding clause's goal unfolds to — so no transport is needed
---   anywhere in this file.
-------------------------------------------------------------------------
+SzExt : Cx → Set
+SzExt _ = OK
 
-szsStep-red : {Γ : Cx} (b : 𝔹) {acc h : RTm Γ} {a m : ℕ} →
-              acc ⟶* num a → IHof b h m →
-              szsStep b acc h ⟶* num (addIf b a m)
-szsStep-red true  {a = a} {m = m} ha hm =
-  -- `plusTm acc h = natrec h _ acc` — the accumulator is the SCRUTINEE
-  -- and the new child is the ZERO branch, so they reduce through
-  -- different congruences before `plus-num` finishes the addition.
+SzHolds : {Γ : Cx} → SzExt Γ → RTm Γ → ℕ → Set
+SzHolds _ h m = h ⟶* num m
+
+szsStep-red : {Γ : Cx} (b : 𝔹) (e : SzExt Γ) {acc h : RTm Γ} (a m : ℕ) →
+              SzHolds e acc a → IHof SzHolds b e h m →
+              SzHolds e (szsStep b acc h) (comb _+_ b a m)
+-- `plusTm acc h = natrec h _ acc` — the accumulator is the SCRUTINEE and
+-- the new child is the ZERO branch, so they reduce through different
+-- congruences before `plus-num` finishes the addition.
+szsStep-red true  e a m ha hm =
   ⟶*-trans (⟶*-natrecⁿ ha) (⟶*-trans (⟶*-natrecᶻ hm) (plus-num a m))
-szsStep-red false ha ok = ha
+szsStep-red false e a m ha ok = ha
 
-szsTail-red : {Γ : Cx} (r : Maybeℕ) {Δ : Cx} (C : ICon Δ)
-              {acc ihs : RTm Γ} {a n : ℕ} →
-              acc ⟶* num a → AllIH r a C ihs n →
-              szsTail r C acc ihs ⟶* num n
-szsTail-red r iι       ha aih-ι         = ha
-szsTail-red r (iκ κ C) ha (aih-κ h)     = szsTail-red r C ha h
-szsTail-red r (iρ j C) ha (aih-ρ m hm h) =
-  szsTail-red r C (szsStep-red (sameSortAt r j) ha hm) h
+open import DirectedHoTT.Lib.ISzSort using ( module SzR )
 
--- ⚠ `szsSum` SEEDS with the first COUNTED field instead of starting at
---   `nzero`, which is what keeps a trailing `+ 0` out of the emitted
---   term.  It costs nothing here: `addIf true 0 m` is `0 + m`, and that
---   is `m` definitionally.
-szsSum-red : {Γ : Cx} (r : Maybeℕ) {Δ : Cx} (C : ICon Δ)
-             {ihs : RTm Γ} {n : ℕ} →
-             AllIH r 0 C ihs n → szsSum r C ihs ⟶* num n
-szsSumStep-red : {Γ : Cx} (b : 𝔹) (r : Maybeℕ) {Δ : Cx}
-                 (C : ICon (Δ ∙)) {ihs : RTm Γ} (m : ℕ) {n : ℕ} →
-                 IHof b (fst ihs) m →
-                 AllIH r (addIf b 0 m) C (snd ihs) n →
-                 szsSumStep b r C ihs ⟶* num n
-
-szsSum-red r iι       aih-ι              = done
-szsSum-red r (iκ κ C) (aih-κ h)          = szsSum-red r C h
-szsSum-red r (iρ j C) (aih-ρ m hm h)     =
-  szsSumStep-red (sameSortAt r j) r C m hm h
-
-szsSumStep-red true  r C m hm h = szsTail-red r C hm h
-szsSumStep-red false r C m hm h = szsSum-red r C h
+open SzR.Red SzExt SzHolds _+_ szsStep-red (λ _ → done) (λ m → refl) public
+  renaming ( ifTail-red    to szsTail-red
+           ; ifSum-red     to szsSum-red
+           ; ifSumStep-red to szsSumStep-red )

@@ -156,7 +156,7 @@ agree i (lam y0) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-lam) cTm-lam
+     ⟶*-nsuc (szsSum-red (rowSort cTm-lam) ok cTm-lam
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-κ aih-ι))))
@@ -165,7 +165,7 @@ agree i (app y0 y1) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-app) cTm-app
+     ⟶*-nsuc (szsSum-red (rowSort cTm-app) ok cTm-app
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -176,7 +176,7 @@ agree i (pair y0 y1) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-pair) cTm-pair
+     ⟶*-nsuc (szsSum-red (rowSort cTm-pair) ok cTm-pair
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -187,7 +187,7 @@ agree i (absurd y0 y1) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-absurd) cTm-absurd
+     ⟶*-nsuc (szsSum-red (rowSort cTm-absurd) ok cTm-absurd
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -198,7 +198,7 @@ agree i (ordtr y0 y1 y2 y3 y4) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-ordtr) cTm-ordtr
+     ⟶*-nsuc (szsSum-red (rowSort cTm-ordtr) ok cTm-ordtr
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -215,7 +215,7 @@ agree i (fst y0) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-fst) cTm-fst
+     ⟶*-nsuc (szsSum-red (rowSort cTm-fst) ok cTm-fst
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-κ aih-ι))))
@@ -224,7 +224,7 @@ agree i (snd y0) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-snd) cTm-snd
+     ⟶*-nsuc (szsSum-red (rowSort cTm-snd) ok cTm-snd
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-κ aih-ι))))
@@ -238,7 +238,7 @@ agree i (⌜Π⌝ y0 y1) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-cPi) cTm-cPi
+     ⟶*-nsuc (szsSum-red (rowSort cTm-cPi) ok cTm-cPi
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -249,7 +249,7 @@ agree i (⌜Σ⌝ y0 y1) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-cSg) cTm-cSg
+     ⟶*-nsuc (szsSum-red (rowSort cTm-cSg) ok cTm-cSg
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -260,7 +260,7 @@ agree i (⌜Hom⌝ y0 y1 y2) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-cHom) cTm-cHom
+     ⟶*-nsuc (szsSum-red (rowSort cTm-cHom) ok cTm-cHom
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -273,7 +273,7 @@ agree i (hrefl y0 y1) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-hrefl) cTm-hrefl
+     ⟶*-nsuc (szsSum-red (rowSort cTm-hrefl) ok cTm-hrefl
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -284,7 +284,7 @@ agree i (tr y0 y1 y2) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-tr) cTm-tr
+     ⟶*-nsuc (szsSum-red (rowSort cTm-tr) ok cTm-tr
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -297,7 +297,7 @@ agree i (ap y0 y1 y2) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-ap) cTm-ap
+     ⟶*-nsuc (szsSum-red (rowSort cTm-ap) ok cTm-ap
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -310,7 +310,7 @@ agree i (⌜Id⌝ y0 y1 y2) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-cId) cTm-cId
+     ⟶*-nsuc (szsSum-red (rowSort cTm-cId) ok cTm-cId
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -323,7 +323,7 @@ agree i (idrefl y0 y1) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-idrefl) cTm-idrefl
+     ⟶*-nsuc (szsSum-red (rowSort cTm-idrefl) ok cTm-idrefl
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -334,7 +334,7 @@ agree i (jsub y0 y1 y2) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-jsub) cTm-jsub
+     ⟶*-nsuc (szsSum-red (rowSort cTm-jsub) ok cTm-jsub
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -357,7 +357,7 @@ agree i (nsuc y0) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-nsuc) cTm-nsuc
+     ⟶*-nsuc (szsSum-red (rowSort cTm-nsuc) ok cTm-nsuc
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-κ aih-ι))))
@@ -366,7 +366,7 @@ agree i (natrec y0 y1 y2) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-natrec) cTm-natrec
+     ⟶*-nsuc (szsSum-red (rowSort cTm-natrec) ok cTm-natrec
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-ρ (sz y1)
@@ -379,7 +379,7 @@ agree i (con y0 y1) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-con) cTm-con
+     ⟶*-nsuc (szsSum-red (rowSort cTm-con) ok cTm-con
      (aih-κ (aih-ρ (sz y1)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y1)
      (aih-κ aih-ι)))))
@@ -388,7 +388,7 @@ agree i (elim y0 y1 y2) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-elim) cTm-elim
+     ⟶*-nsuc (szsSum-red (rowSort cTm-elim) ok cTm-elim
      (aih-ρ 0 ok (aih-ρ (sz y1)
      ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y1)
      (aih-ρ (sz y2)
@@ -399,7 +399,7 @@ agree i (icon y0 y1) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-icon) cTm-icon
+     ⟶*-nsuc (szsSum-red (rowSort cTm-icon) ok cTm-icon
      (aih-κ (aih-ρ (sz y1)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y1)
      (aih-κ aih-ι)))))
@@ -408,7 +408,7 @@ agree i (ielim y0 y1 y2 y3) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-ielim) cTm-ielim
+     ⟶*-nsuc (szsSum-red (rowSort cTm-ielim) ok cTm-ielim
      (aih-ρ 0 ok (aih-ρ (sz y1)
      ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y1)
      (aih-ρ (sz y2)
@@ -431,7 +431,7 @@ agree i (⌜IMu⌝ y0 y1 y2) =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done »
-     ⟶*-nsuc (szsSum-red (rowSort cTm-cIMu) cTm-cIMu
+     ⟶*-nsuc (szsSum-red (rowSort cTm-cIMu) ok cTm-cIMu
      (aih-ρ 0 ok (aih-ρ 0 ok (aih-ρ (sz y2)
      ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
      (aih-κ aih-ι))))))

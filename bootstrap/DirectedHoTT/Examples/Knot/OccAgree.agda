@@ -34,7 +34,7 @@ open import DirectedHoTT.Spec.Syntax
         ; Mu; IMu; Desc; DCon; IDesc; dnil; _◃_; dι; dρ; dκ; inil; _◂_
         ; iihs; isingle; sel; ilookupD )
 open import DirectedHoTT.Spec.Typing using ( _⟶*_; step; done; β; βfst; βsnd )
-open import DirectedHoTT.Spec.Variance using ( 𝔹; _∨_; occTm; occTy; eqv )
+open import DirectedHoTT.Spec.Variance using ( 𝔹; true; _∨_; occTm; occTy; eqv )
 open import DirectedHoTT.Lib.IFold using ( eqℕ )
 open import DirectedHoTT.Lib.IMeths using ( methsAt-past )
 open import DirectedHoTT.Lib.IHeadRed using ( ihead-red )
@@ -108,7 +108,7 @@ agree-ty x base i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-base) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-base) {ihs = unit}
     (aih-κ aih-ι)
 agree-ty x U i =
   ⟶*-appˡ (occ-head-red tagTy-U
@@ -119,7 +119,7 @@ agree-ty x U i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-U) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-U) {ihs = unit}
     (aih-κ aih-ι)
 agree-ty x (Π y0 y1) i =
   ⟶*-castᵣ (cong num (sym (b2n-∨ (occTy x y0) (occTy (vs x) y1))))
@@ -131,7 +131,7 @@ agree-ty x (Π y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-Pi)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Pi)
     (aih-ρ (b2n (occTy x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-ty x y0 _)
@@ -149,7 +149,7 @@ agree-ty x (Σ' y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-Sg)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Sg)
     (aih-ρ (b2n (occTy x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-ty x y0 _)
@@ -166,7 +166,7 @@ agree-ty x (El y0) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-El)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-El)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -183,7 +183,7 @@ agree-ty x (Hom y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-Hom)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Hom)
     (aih-ρ (b2n (occTy x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-ty x y0 _)
@@ -203,7 +203,7 @@ agree-ty x Unit i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-Unit) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Unit) {ihs = unit}
     (aih-κ aih-ι)
 agree-ty x Nat i =
   ⟶*-appˡ (occ-head-red tagTy-Nat
@@ -214,7 +214,7 @@ agree-ty x Nat i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-Nat) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Nat) {ihs = unit}
     (aih-κ aih-ι)
 agree-ty x (Id y0 y1 y2) i =
   ⟶*-castᵣ (cong num (sym (trans (b2n-∨ (occTy x y0) ((occTm x y1) ∨ (occTm x y2)))
@@ -228,7 +228,7 @@ agree-ty x (Id y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-Id)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Id)
     (aih-ρ (b2n (occTy x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-ty x y0 _)
@@ -248,7 +248,7 @@ agree-ty x (Mu y0) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-Mu)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Mu)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-desc x y0 _)
@@ -262,7 +262,7 @@ agree-ty x (IMu y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTy-IMu)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-IMu)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-idesc x y0 _)
@@ -280,7 +280,7 @@ agree-tm x (var y0) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-var)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-var)
     (aih-ρ (b2n (eqv x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » ⟶*-castᵣ (cong num (sym (cong b2n (eqv-lvl x y0))))
@@ -295,7 +295,7 @@ agree-tm x (lam y0) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-lam)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-lam)
     (aih-ρ (b2n (occTm (vs x) y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm (vs x) y0 _)
@@ -310,7 +310,7 @@ agree-tm x (app y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-app)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-app)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -328,7 +328,7 @@ agree-tm x (pair y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-pair)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-pair)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -346,7 +346,7 @@ agree-tm x (absurd y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-absurd)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-absurd)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -373,7 +373,7 @@ agree-tm x (ordtr y0 y1 y2 y3 y4) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-ordtr)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-ordtr)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -399,7 +399,7 @@ agree-tm x (fst y0) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-fst)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-fst)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -413,7 +413,7 @@ agree-tm x (snd y0) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-snd)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-snd)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -427,7 +427,7 @@ agree-tm x ⌜base⌝ i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-cbase) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cbase) {ihs = unit}
     (aih-κ aih-ι)
 agree-tm x (⌜Π⌝ y0 y1) i =
   ⟶*-castᵣ (cong num (sym (b2n-∨ (occTm x y0) (occTm (vs x) y1))))
@@ -439,7 +439,7 @@ agree-tm x (⌜Π⌝ y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-cPi)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cPi)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -457,7 +457,7 @@ agree-tm x (⌜Σ⌝ y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-cSg)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cSg)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -477,7 +477,7 @@ agree-tm x (⌜Hom⌝ y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-cHom)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cHom)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -498,7 +498,7 @@ agree-tm x (hrefl y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-hrefl)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-hrefl)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -518,7 +518,7 @@ agree-tm x (tr y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-tr)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-tr)
     (aih-ρ (b2n (occTm (vs x) y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm (vs x) y0 _)
@@ -541,7 +541,7 @@ agree-tm x (ap y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-ap)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-ap)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -564,7 +564,7 @@ agree-tm x (⌜Id⌝ y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-cId)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cId)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -585,7 +585,7 @@ agree-tm x (idrefl y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-idrefl)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-idrefl)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -605,7 +605,7 @@ agree-tm x (jsub y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-jsub)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-jsub)
     (aih-ρ (b2n (occTm (vs x) y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm (vs x) y0 _)
@@ -625,7 +625,7 @@ agree-tm x unit i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-unit) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-unit) {ihs = unit}
     (aih-κ aih-ι)
 agree-tm x nzero i =
   ⟶*-appˡ (occ-head-red tagTm-nzero
@@ -636,7 +636,7 @@ agree-tm x nzero i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-nzero) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-nzero) {ihs = unit}
     (aih-κ aih-ι)
 agree-tm x (nsuc y0) i =
   ⟶*-appˡ (occ-head-red tagTm-nsuc
@@ -647,7 +647,7 @@ agree-tm x (nsuc y0) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-nsuc)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-nsuc)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -664,7 +664,7 @@ agree-tm x (natrec y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-natrec)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-natrec)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
@@ -684,7 +684,7 @@ agree-tm x (con y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-con)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-con)
     (aih-κ (aih-ρ (b2n (occTm x y1))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
@@ -699,7 +699,7 @@ agree-tm x (elim y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-elim)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-elim)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-desc x y0 _)
@@ -719,7 +719,7 @@ agree-tm x (icon y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-icon)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-icon)
     (aih-κ (aih-ρ (b2n (occTm x y1))
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
@@ -736,7 +736,7 @@ agree-tm x (ielim y0 y1 y2 y3) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-ielim)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-ielim)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-idesc x y0 _)
@@ -759,7 +759,7 @@ agree-tm x ⌜Nat⌝ i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-cNat) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cNat) {ihs = unit}
     (aih-κ aih-ι)
 agree-tm x (⌜Mu⌝ y0) i =
   ⟶*-appˡ (occ-head-red tagTm-cMu
@@ -770,7 +770,7 @@ agree-tm x (⌜Mu⌝ y0) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-cMu)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cMu)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-desc x y0 _)
@@ -784,7 +784,7 @@ agree-tm x (⌜IMu⌝ y0 y1 y2) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-cIMu)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cIMu)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-idesc x y0 _)
@@ -802,7 +802,7 @@ agree-tm x ⌜Unit⌝ i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagTm-cUnit) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cUnit) {ihs = unit}
     (aih-κ aih-ι)
 zero-desc x dnil i =
   ⟶*-appˡ (occ-head-red tagDesc-nil
@@ -813,7 +813,7 @@ zero-desc x dnil i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagDesc-nil) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagDesc-nil) {ihs = unit}
     (aih-κ aih-ι)
 zero-desc x (c ◃ d) i =
   ⟶*-appˡ (occ-head-red tagDesc-cons
@@ -824,7 +824,7 @@ zero-desc x (c ◃ d) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagDesc-cons)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagDesc-cons)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-dcon x c _)
@@ -841,7 +841,7 @@ zero-dcon x dι i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagDCon-i) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagDCon-i) {ihs = unit}
     (aih-κ aih-ι)
 zero-dcon x (dρ y0) i =
   ⟶*-appˡ (occ-head-red tagDCon-rho
@@ -852,7 +852,7 @@ zero-dcon x (dρ y0) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagDCon-rho)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagDCon-rho)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-dcon x y0 _)
@@ -866,7 +866,7 @@ zero-dcon x (dκ y0 y1) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagDCon-kap)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagDCon-kap)
     (aih-ρ zero ok
        (aih-ρ zero
        (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
@@ -881,7 +881,7 @@ zero-idesc x inil i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagIDesc-nil) {ihs = unit}
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagIDesc-nil) {ihs = unit}
     (aih-κ aih-ι)
 zero-idesc x (c ◂ e) i =
   ⟶*-appˡ (occ-head-red tagIDesc-cons
@@ -892,7 +892,7 @@ zero-idesc x (c ◂ e) i =
     (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
      ⟶*-appˡ (step (β _ _) done) »
      step (β _ _) done)) »
-  occSum-red (num (lvl x)) (ilookupD KnotD tagIDesc-cons)
+  occSum-red true (num (lvl x)) (ilookupD KnotD tagIDesc-cons)
     (aih-ρ zero ok
        (aih-ρ zero
        (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
@@ -951,7 +951,7 @@ agree-var {Γ ∙} k (vs y) i =
              (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
               ⟶*-appˡ (step (β _ _) done) »
               step (β _ _) done))
-  » occSum-red (num k) (ilookupD KnotD tagVar-vs)
+  » occSum-red true (num k) (ilookupD KnotD tagVar-vs)
       (aih-κ (aih-ρ (b2n (eqℕ k (lvl y)))
                 (⟶*-appˡ (step (βfst _ _) done »
                        ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done)

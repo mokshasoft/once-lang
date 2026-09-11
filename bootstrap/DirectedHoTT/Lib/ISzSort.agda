@@ -49,3 +49,19 @@ open IF.Fold Maybeℕ rowSort sameSortAt
            ; ifMethod to szsMethod ; ⊢ifMethod to ⊢szsMethod
            ; ifMeths  to szsMeths  ; ⊢ifMeths  to ⊢szsMeths
            ; ifMeths-sel to szsMeths-sel )
+
+------------------------------------------------------------------------
+-- ★ AND THE REDUCTION TWIN, AT THE SAME 13 ARGUMENTS.  It lives here
+--   rather than in `Lib/ISzRed` for a scope reason and nothing deeper:
+--   `Nat`, `ty-Nat`, `plusTm`, `⊢plus` … are all already in scope here,
+--   and `Lib/IFoldRed.FoldRed` must be applied to exactly what
+--   `IF.Fold` was applied to or its `ifTail`/`ifSum` are different
+--   functions.  ⚠ Only the FOLD half is fixed here; the reduction
+--   knobs are `SzR.Red`'s, and `Lib/ISzRed` supplies them (it owns
+--   `szsStep-red`, so instantiating there would be a cycle).
+------------------------------------------------------------------------
+import DirectedHoTT.Lib.IFoldRed as IFR
+
+module SzR = IFR.FoldRed Maybeℕ rowSort sameSortAt
+                         Nat ty-Nat refl refl
+                         nzero plusTm nsuc ⊢nzero ⊢plus ⊢nsuc
