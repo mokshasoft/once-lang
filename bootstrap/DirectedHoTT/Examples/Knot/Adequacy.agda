@@ -131,8 +131,17 @@
 --                `iconSK`'s and `subTyAtK`'s (the latter ✅ 2026-09-06).
 --     iconSK     ⬜ OWED — agreement with `iconS`, VIA the factorisation
 --                above.
---     iconSSK    ⬜ OWED — `icS k`'s core, the one-level `Var` eliminator.
---                A clone of `conSSK` with `icon` for `con`.
+--     iconSSK    ✅ DISCHARGED — `Knot/IConSAgree.iconSSK-vz`/`-vs`, plus
+--                `icSK-vz`/`-vs`.  A CLONE of `Knot/ConSAgree`, and
+--                tighter than this entry predicted: `Knot/IConS` reuses
+--                `conSMotK`, `conSJunk` AND `conSVs` VERBATIM, so only
+--                the `vz` row differs and only in `Tm-iconK`.
+--                ⚠⚠ AND THIS IS WHERE THE CASCADE STOPS CLONING: the
+--                meta `iconS` has THREE clauses (`Spec/Typing:169`), not
+--                two.  `iconSSK`/`icSK` are the ONE-LEVEL `Var`-sort
+--                part; the third clause is `iconSK`'s job, which is why
+--                it composes with `extNK`.  ⇒ `iconSK`/`iatConK` are NOT
+--                corollaries of this.
 --     iextK      ⬜ OWED — agreement with `iext`, VIA its factorisation
 --                `iext σ t ≡ single t ∘ extS σ` (the same two-step debt
 --                `iconSK` carries).
@@ -160,15 +169,27 @@
 --     ipayTyK    ⬜ OWED — agreement with `ipayTy`.
 --     ipayTyKap  ✅ not owed — a method row of `ipayTyK`.
 --     ipayTyRho  ✅ not owed — a method row of `ipayTyK`.
---     isingleK   ⬜ OWED — `Represents (isingle i) (isingleK ⌈i⌉)`, one
---                clause (`vz`) plus a refutation; see the note above.
+--     isingleK   ✅ DISCHARGED — `Knot/SubAgree.isingle-Represents`:
+--                `Represents (isingle i) (isingleK ⌈i⌉)`, exactly the
+--                one clause plus a refutation this entry predicted.
+--                ★ THE CHEAPEST ENTRY IN THE LEDGER, structurally:
+--                `isingleK i = lam (renTm vs i)` IGNORES its argument,
+--                so there is no case analysis — one β and one
+--                `wk-single` — and the domain `ε ∙` has a single
+--                variable, so `vs ()` is discharged by the CONTEXT.
 --     lookupDK   ⬜ OWED — agreement with `lookupD`.
 --     methsTyFromK ⬜ OWED — agreement with `methsTyFrom`.  ⚠ It also owes
 --                the closed-sort identity for `methTyK`'s `wkAtK sDCon`:
 --                the object level weakens `C` to reach `ihTy`'s ambient
 --                where the spec does not, because `DCon` carries no
 --                context at all.
---     nrsK       ⬜ OWED — `nrsSubK`'s core.
+--     nrsK       ✅ DISCHARGED — `Knot/RenSpec.nrsK-agree-vz`/`-vs`:
+--                `nrsK (pair sVar d) (Var-vzK m) ⟶* Tm-nsucK (Tm-varK
+--                (Var-vsK d (Var-vzK m)))` and the `vs` twin.  Same
+--                factoring as `singleSK` — the chains were already
+--                inside `nrsK-vz`/`-vs`, only the NAME was missing.
+--                ⚠ `nrsSubK` has no passenger, so the wrapper is one β
+--                and a `⟶*-castₗ`, not an `app` peel.
 --     nrsSK-vs   ✅ not a program — the other clause.
 --     nrsSK-vz   ✅ not a program — a clause of `nrsSubK`'s adequacy.
 --     nrsSubK    ✅ DISCHARGED — `Knot/SubAgree.nrs-Represents`, packaging
@@ -224,7 +245,13 @@
 --     singleK    ✅ DISCHARGED — `Knot/SubAgree.single-Represents`:
 --                `Represents (single u) (singleK n ⌈u⌉)`, from step 2's
 --                `singleK-vz`/`-vs`.
---     singleSK   ⬜ OWED — `singleK`'s core.
+--     singleSK   ✅ DISCHARGED — `Knot/RenSpec.singleSK-agree-vz`/`-vs`:
+--                `app (singleSK i (Var-vzK m)) u ⟶* u` and
+--                `app (singleSK i (Var-vsK m x)) u ⟶* Tm-varK x`, which
+--                is `single` (`Spec/Typing`) read back.
+--                ★ The CHAINS ALREADY EXISTED inside `singleK-vz`/`-vs`;
+--                all that was owed was stating them at the CORE name.
+--                `singleK` is now one β and one `wk-single` on top.
 --     singleSK-vs ✅ not a program — the other clause.
 --     singleSK-vz ✅ not a program — a clause of `singleK`'s adequacy.
 --     stkAK      ⬜ OWED — agreement with `stkA?`.
