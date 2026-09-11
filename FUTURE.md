@@ -2085,6 +2085,57 @@ the standard semantic-environment construction, so the SHAPE is known.
 cost last time — *"with no cumulativity that means `Lift`-wrapping every
 `⊩₁` clause across five modules."*
 
+### ★★★ AND THEN IT INVERTED — THE CHANGE IS A *REMOVAL*
+
+`bootstrap/tmp/ExistLiftPos.agda` (rc=0) + `ExistLiftNeg.agda` (control,
+correctly REJECTED).
+
+`⊩₀_ : RTy Γ → Set` — **`Set`, not `Set₁`** (`LogicalRelation:4153`). The
+universe caveat above is simply false, and with it goes the reason to
+thread a semantic environment at all. Because then this is legal:
+
+```agda
+ILift (iκ κ C) P σ t =
+  SN t × (Σ (⊩₀ (El (subTm σ κ))) (λ r → r ⊩₀∋ fst t)
+          × ILift C P (iext σ (fst t)) (snd t))
+```
+
+★ **the interpretation is carried BY THE MEMBER, not supplied uniformly
+by the description.** And `iki-κ`'s σ-FAMILY — the thing `ICodeWf` exists
+to inhabit — is then carrying nothing anybody reads.
+
+**⇒ WHAT THAT DELETES:** `IKPred` · `IDPred` · `ikpredsOf` · `ipredsOf` ·
+`ilookupP` · `ipayInterp` · `IMuMem`'s `dp` parameter (so `irrelIMu`
+becomes `id`) · `iki-κ`'s field ⇒ `IKInterp`/`IDInterp` go contentless ⇒
+**`ICodeWf`, `iκW` and `interpIK` have nothing left to do.**
+
+⇒⇒ **SO `icw-par` NEVER GETS WRITTEN.** `icw-clo`'s closed-code
+restriction is not relaxed — it is *deleted*, and `Vec A n` needs no new
+kernel row. The parameter wall was never a missing row; it was a uniform
+interpretation demanded one layer too early.
+
+**The two directions, checked against the real code:**
+
+| | site | verdict |
+|---|---|---|
+| build | `ipayLiftK` (`Indexed:187`) | **strictly simpler** — it already computes `dfst m₁`, the field's own interp, and throws it away through `irrel₁`. Keep it instead. |
+| consume | `iliftPay` (`Indexed:167`) | takes `R : ⊩₁ (ipayTy …)` as an ARGUMENT, mirroring `ipayLiftK`, instead of building `ipayInterp`. |
+
+⚠ THE ONE UNVERIFIED LINK: `iliftPay`'s caller must project that `R` out
+of the method's own `⊩₁Π` (`Fundamental:820`, `app1'`). That needs a
+`Π-dom : ⊩₁ (Π F G) → ⊩₁ F` — which does not exist yet, but is `⊩₁-app`'s
+own case analysis with every non-Π case absurd via `Π-reduct`. Mechanical,
+not free.
+
+★ POSITIVITY WAS THE REAL RISK AND IT PASSED. The existential creates a
+cycle `IMuMem → ILift → _⊩₀∋_ → ⊩₀ → IMuMem`: a datatype whose
+constructor mentions a function defined by recursion on a datatype in the
+same block. Agda's polarity analysis accepts it. ⚠ The spike quantifies
+`C` so `ILift C p` is STUCK — with a concrete `iι` the checker unfolds to
+`SN p` and reads no κ clause at all — and the negative control is
+rejected *naming* "the third clause in the definition of `ILift`", so the
+test demonstrably bites.
+
 ### ⇒ RECOMMENDATION: TAKE THE CHANGE
 
 Scope: `icw-par` (additive) · one clause in `iκW` (the sole `ICodeWf`
