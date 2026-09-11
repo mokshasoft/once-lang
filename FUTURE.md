@@ -1728,3 +1728,137 @@ costs at every site that carries it.** Once's own `elim`/`ielim` should
 decide this deliberately rather than inherit Agda's habit of currying —
 and the POC has now paid for the evidence twice, once in `IConWf`'s
 whole-description index and once here.
+
+---
+
+## Once: THE ELIMINATOR HAS NO PARAMETERS — and the substitution ladder is the bill
+
+⚠⚠ **THIS REFRAMES THE PASSENGER WALL ABOVE AS A SYMPTOM.** Provoked by
+the question *"are we working around a kernel limitation with constructs
+like bundling? … the metatheory proofs were difficult, but not nearly as
+difficult as the Knot."*
+
+### The measurement
+
+Uses of substitution-tower-undoing lemmas in `Examples/Knot` alone:
+
+| lemma | uses |
+|---|---|
+| `wk-single` | **262** |
+| `towerA` | 43 |
+| `pw^` | 40 |
+| `towerJ` | 35 |
+| `sub-w²-single` · `sub-w³-single` · `towerJ⁵` | 21 |
+
+`Lib/Wk` is 609 lines and is essentially all of this — `peel¹²³`,
+`pw1..pw5` plus an indexed `pw^`, `towerA`/`towerJ`/`towerJ⁵`/`towerP`,
+`sub-w`/`w²`/`w³`, `wᶠ¹²³-single`, `wkGen`/`wkGenR`, `extS^`. **A ladder
+indexed by depth**, which that file's own header already flags as the
+tell that something wants indexing rather than listing.
+
+### The mechanism, and it is ONE thing
+
+`ielim` hands a method exactly three things: the index, the payload, the
+IH tuple. **Everything else the meta-level function needs must become a
+`Π` in the MOTIVE.** Applying a k-`Π` motive to k arguments produces a
+**k-rung substitution tower at every slot**, and undoing those towers is
+what the whole ladder is for. The tower count grows with the passenger
+count — which is precisely the 4-fits/5-does-not wall measured above.
+
+⇒ the ladder is not incidental library work. It is the price of one
+missing feature.
+
+### THE MISSING FEATURE: no parameters
+
+In Agda or Coq, an eliminator's **parameters** — the `A` in `Vec A n` —
+are fixed across the recursion, may be mentioned by the motive, and are
+NOT arguments. Only indices vary. Here there is no such notion:
+everything is either the index or a `Π`-passenger.
+
+For `iihs`, `n`/`D`/`ms` are fixed across the entire recursion and only
+`σ`/`p` vary — **two** passengers with parameters, five without.
+★ And bundling `D`/`ms` (the fix that made it compile) is exactly a
+hand-rolled partial parameter mechanism: grouping what does not vary so
+it costs one binder instead of two.
+
+### ★★★ THE EVIDENCE IS IN THIS POC'S OWN ACCEPTANCE TEST
+
+`Examples/Vec` is the acceptance test for indexed descriptions
+(PLAN-INDEXED §3). Its `cons` row reads:
+
+```agda
+consC = iκ ⌜Nat⌝                  -- m
+          (iκ ⌜Nat⌝               -- the element   ← a CLOSED code
+            (iρ (var (vs vz)) …)) -- Vec m
+```
+
+**It is `Vec n`, a vector of Nats — not `Vec A n`.** The element type is
+the closed code `⌜Nat⌝`, discharged by `icw-clo`. The parameter was not
+rejected; it was silently dropped, because `ICodeWf` admits a κ field
+only as a CLOSED small type, a FORDING constraint, or a nested `IMu`.
+
+⚠ That is `typechecking-cannot-see-an-encoding` again: the file is
+green, it genuinely demonstrates §9.2 and §10, and it demonstrates a
+WEAKER type than its name invites everyone to read.
+
+★ And the knot itself already pays the workaround: its index is
+`pair sort depth`, i.e. **a parameter encoded as an index**, carried
+through every `K (pair s n)`, every motive and every passenger in the
+tree.
+
+### ⚠ WHY §10.1 SAYS THIS IS NOT FREE
+
+`ICodeWf` is restricted for a recorded reason: *"`iki-κ` demands a
+κ-interpretation at EVERY environment, and `Θ ⊢ κ ∷ U` does not give
+one"*, and the header adds that it is *"NOT CLOSED UNDER
+`⌜Π⌝`/`⌜Σ⌝`/`⌜Hom⌝`, deliberately"* because `⊩₀` needs a real
+interpretation the environment cannot supply.
+
+★ **But a PARAMETER may be the tractable special case.** §10.1 failed on
+fields interpreted at EVERY environment; a parameter is interpreted
+ONCE, fixed for the whole elimination. That difference is exactly the
+one `icw-clo` already exploits for closed codes — a parameter is
+`icw-clo` with the "closed" weakened to "fixed per use".
+
+### ⚠ AND THE FAIR COMPARISON WITH AGDA/COQ
+
+They have parameters — but they have them because **datatypes are a
+kernel primitive with declaration syntax**, checked once, outside the
+term language. This POC deliberately makes descriptions FIRST-CLASS
+VALUES (`⌜IMu⌝` is a term former, `KnotD` is a term). Once descriptions
+are values, the parameter/index split must be ENCODED and interpreted at
+arbitrary environments — which is the wall §10.1 hit.
+
+⇒ so the honest question is NOT "did Agda get it right and we did not".
+It is: **is the 609-line ladder and the 4-passenger ceiling the price of
+first-class descriptions?** If so that is a POC RESULT, arguably worth
+more than closing the Knot — a measured price for a design goal, which
+Once can then choose to pay, or avoid by making descriptions values but
+elimination primitive.
+
+⚠ Neither system is clean on its own terms either: Agda does not use
+eliminators internally at all (pattern matching → case trees; deriving
+them without K is its own research problem), and Coq's parameter/index
+distinction has known rough edges. ⚠⚠ These two paragraphs are recalled,
+NOT verified against sources from inside the session — check before
+citing.
+
+### ⬜ THE SPIKE THAT WOULD DECIDE IT
+
+**Write `Vec A n` — a genuine parameter — in the current encoding, and
+record exactly what breaks.** It is the right spike because it is small
+(one description, two rows), it is the POC's own acceptance test so the
+result is directly comparable to `Vec n`, and it has three possible
+outcomes and all three are informative:
+
+1. **It works as an INDEX** (`IMu VecD I (pair A n)`, the knot's own
+   `pair sort depth` trick). Then parameters are expressible and the
+   question becomes COST — measure the towers against `Vec n`.
+2. **It needs a new `ICodeWf` row.** Then write that row and see whether
+   `⊩₀` can interpret it at a fixed-per-use code; if it can, that is the
+   kernel change, minimal and motivated.
+3. **It cannot be done.** Then first-class descriptions genuinely cost
+   parameters, and THAT is the result to report.
+
+⚠ Do it at `Vec`, NOT at the knot. The knot's 53 rows would confound the
+measurement with everything else that is expensive about it.
