@@ -12710,3 +12710,89 @@ has. That is the honest content of the axiom.
 Net: one whole-clause axiom replaced by one program-level invariant, with the
 seventeen-instruction setup, its memory preservation, the label resolution, the
 callee's input witness and the trace concatenation all proved.
+
+## D189 — A ν IS A SUSPENSION, AND THE OLD `Out` PROOF WAS VACUOUS (2026-09-12)
+
+**The defect.** D180 deleted `valid-ν-wf` because a Kleisli ν has no available
+layer — correct. What was not checked is the postulates and proofs whose
+*codomain* is a ν. With no ν constructor left in `ValidAtWF`, the lemma
+`ν-not-resident : ValidAtWF m alloc {ν-type F} x loc s → ⊥` became *provable*,
+and `obs-correct-Out` was discharged by applying it. The ⊥-probe
+
+```agda
+refute : ResultPlace (ν-type F) m a ca v st → ⊥
+refute (at-loc loc v _ _ _ _) = ν-not-resident v
+refute (at-reg () _)
+```
+
+compiled. `Out`'s correctness was therefore a theorem about the empty case, and
+what made the case empty was the *emitter's own silence*: `ir-to-trace'` mapped
+`Ana` and `in-ν` to `[]`, so the machine could not build a ν to feed it. A
+proof that holds only because the compiler does not implement the feature is
+not a proof of the compiler.
+
+**The decision: implement it, do not delete it.** The alternative on the table
+was removing `Ana`/`in-ν` from the IR. Rejected: `ν` is Once's codata — the
+top-level event loop is an unfold — and the absence of an emitter is a gap to
+close, not a language change to make.
+
+**The representation.** A ν is a *suspension*: two heap cells, the seed in cell
+0 and the coalgebra's code address in cell 1.
+
+```agda
+valid-ν-susp-wf : LocMatchesMode Heap ν-loc
+                → CellAt alloc A seed ν-loc s
+                → readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label)
+                → BeforeFrontier alloc (sucLoc ν-loc)
+                → ValidAtWF Heap alloc {ν-type F}
+                    (TM.valueT (evalᴰ (Ana wf coalg) seed) 0) ν-loc s
+```
+
+This is `valid-closure-wf` with the env replaced by the seed and the body by
+the coalgebra, and that is the whole point: **a closure and a suspension are
+the same machine object** — a value plus the code that consumes it. `Out`
+forces a layer by calling cell 1 on cell 0, which is what `apply` does to a
+closure. The seed's cell is a D187 `CellAt`, so a pointer seed, a
+register-sized seed and a `Unit` seed are one constructor, where `curry` still
+needs `valid-closure-wf`/`valid-closure-reg-wf` to say the same thing twice.
+
+**`as-sum` no longer unfolds a ν.** A branch-tag site may not read a ν
+directly: its cell holds the seed, not a tag. It must be `Out`-ed first, and
+the result of `Out` carries the `⟦ F ⟧TI (ν-type F)` expectation, which is
+where the sum becomes readable. `ShapeAt`'s `shape-ν` (which mirrored the
+deleted `valid-ν-wf` and claimed a resident layer) is replaced by
+`shape-ν-susp`, and `site-branch-tag`'s ν clause is now refuted by `ok`.
+
+**What this costs.** `obs-correct-Out` returns to the postulate block. That is
+a *regression in count and an improvement in honesty*: it was a theorem about
+nothing, and it is now a named obligation against a machine that actually
+forces. It is `obs-correct-apply`'s argument (D188) applied to the coalgebra's
+block, which is why the emitter lowers the force as a call rather than
+inventing a second calling convention.
+
+**The recurrence guard.** `ana` exists in `Once.Surface.Syntax` and elaborates
+(`curry (Ana … ∘ snd)`), but no *concrete syntax* produces it — `RAna` is
+marked internal and the parser never emits it. That is the same gap `cata` has,
+and it is why a broken ν path could sit unnoticed: no exit test could reach it.
+Surface syntax for `ana`/`cata` plus an exit test that runs an unfold is the
+follow-on, and it is what actually prevents a repeat.
+
+## D190 — THE TWO-CELL HEAP BUILD, FACTORED (2026-09-12)
+
+`curry` and `Ana` emit the *same ten instructions* — `mov-to-output`,
+`store-at-slot n`, `instr-alloc-heap 2`, `store-at-slot (suc n)`,
+`mov-to-input`, `load-from-slot n`, `store-indirect`, `instr-load-code-addr`,
+`store-indirect-suc`, `load-from-slot (suc n)` — because they build the same
+object. `TwoCellBuild` is that build, once: the ten states, the `FlatSteps`
+run, the ten `halted ≡ false` obligations, the object's location and frontier
+facts, the two cell read-backs, the result pointer, and `valid-transport` (the
+input's own validity carried across the ten steps via D182's `TenStepPres`).
+
+Each clause supplies only its `ResultPlace` — `curry` picks
+`valid-closure-wf`/`valid-closure-reg-wf` by residence, `Ana` picks
+`valid-ν-susp-wf` over one `CellAt`. `obs-correct-Ana` is consequently about
+fifty lines rather than three hundred, and a fix to the build is a fix to both.
+
+`emitted n l (curry body)` and `emitted n l (Ana wf coalg)` both reduce to
+`two-cell-trace n l`, so each clause's `SpanAt` premise passes into the module
+unchanged — no relocation lemma, in keeping with D158.

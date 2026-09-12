@@ -955,9 +955,64 @@ ir-to-trace' n l (Cata {F} _ alg) =
       (next , l2 , trace) = cata-dispatch (cata-strategy ⌈ F ⌉F) bb n l1 at
   in next , l2 , trace , ab
 ir-to-trace' n l (Para _ _)     = n , l , [] , []
-ir-to-trace' n l (Out _)        = n , l , (mov-to-output ∷ []) , []
+-- ────────────────────────────────────────────────────────────────────
+-- D189: `Out` — FORCING A SUSPENSION, which is a CALL.
+--
+-- `Out` used to be `mov-to-output ∷ []`: it moved the ν pointer to the
+-- output and called that a layer. With `Ana` emitting nothing, no ν existed
+-- to expose the lie. Now one does, so the destructor has to do the work:
+--
+--     instr-save-closure-reg   -- closure-reg := the ν pointer (Input1)
+--     load-indirect            -- Output     := ν[0], the seed
+--     mov-to-input             -- Input1     := the seed
+--     instr-call-closure       -- call ν[1] with the seed
+--
+-- This is `apply`'s tail with the pair-packing dropped: a suspension IS the
+-- callee record, so cell 0 is already the argument and cell 1 already the
+-- code. `do-call` reads the code from `sucHL` of the CLOSURE REGISTER, which
+-- is why the register is saved before the seed overwrites `Input1`.
+ir-to-trace' n l (Out _)        = n , l ,
+  (instr-save-closure-reg ∷ load-indirect ∷ mov-to-input ∷
+   instr-call-closure ∷ []) , []
 ir-to-trace' n l (in-ν _)     = n , l , [] , []
-ir-to-trace' n l (Ana _ _)      = n , l , [] , []
+-- ────────────────────────────────────────────────────────────────────
+-- D189: `Ana` — SUSPENSION CONSTRUCTION, and it is `curry`'s clause with
+-- the coalgebra in the code cell.
+--
+-- A ν is not an available layer; it is a not-yet-run computation. The
+-- machine representation says exactly that, in two cells:
+--
+--     ν[0] := seed        -- the `A` this unfold was started from
+--     ν[1] := &coalg      -- the code that produces ONE layer from a seed
+--
+-- which is the same pair of cells a closure uses (`env`, `&body`), for the
+-- same reason: both are "a value plus the code that consumes it". `Out`
+-- forces one layer by calling ν[1] on ν[0] — which is what `apply` does to
+-- a closure. That correspondence is the whole design: no new machinery,
+-- and `valid-ν-susp-wf` mirrors `valid-closure-wf` cell for cell.
+--
+-- The coalgebra is a NAMED BLOCK, generated at frontier 0 exactly as
+-- `curry`'s body is: it runs in its own frame when forced, so its slots do
+-- not extend the constructing frame.
+ir-to-trace' n l (Ana _ coalg) =
+  let this-label  = l
+      l1          = suc l
+      seed-stash  = n
+      susp-stash  = suc seed-stash
+      next        = suc susp-stash
+      (coalg-budget , l2 , coalg-trace , coalg-bodies) = ir-to-trace' 0 l1 coalg
+      this-trace  = (mov-to-output ∷
+                     store-at-slot seed-stash ∷
+                     instr-alloc-heap 2 ∷
+                     store-at-slot susp-stash ∷
+                     mov-to-input ∷
+                     load-from-slot seed-stash ∷
+                     store-indirect ∷
+                     instr-load-code-addr (ℓ o this-label) ∷
+                     store-indirect-suc ∷
+                     load-from-slot susp-stash ∷ [])
+      all-bodies  = (ℓ o this-label , coalg-budget , coalg-trace) ∷ coalg-bodies
+  in next , l2 , this-trace , all-bodies
 ir-to-trace' n l (Hylo _ _ _ _) = n , l , [] , []
 ir-to-trace' n l (Fuse _ _ _ _) = n , l , [] , []
 

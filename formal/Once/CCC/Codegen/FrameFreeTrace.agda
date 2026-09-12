@@ -311,9 +311,13 @@ frame-free-trace' (out-μ _) hm n l = tt ∷ []
 frame-free-trace' (Cata {F} _ alg) hm n l =
   cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ _ (frame-free-trace' alg hm 0 l)
 frame-free-trace' (Para _ _)     hm n l = []
-frame-free-trace' (Out _)        hm n l = tt ∷ []
+frame-free-trace' (Out _)        hm n l = tt ∷ tt ∷ tt ∷ tt ∷ []
 frame-free-trace' (in-ν _)     hm n l = []
-frame-free-trace' (Ana _ _)      hm n l = []
+-- D189: the ν suspension is `curry`'s closure record cell for cell, so
+-- its walk clause is `curry`'s. The coalgebra is a named block, like the
+-- closure body, emitted at frontier 0 under the ν's own label.
+frame-free-trace' (Ana _ c)      hm n l =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 frame-free-trace' (Hylo _ _ _ _) hm n l = []
 frame-free-trace' (Fuse _ _ _ _) hm n l = []
 frame-free-trace' (free-heap _)  hm n l = tt ∷ []
@@ -367,7 +371,8 @@ frame-free-blocks' (Cata {F} _ alg) hm n l = frame-free-blocks' alg hm 0 l
 frame-free-blocks' (Para _ _)     hm n l = []
 frame-free-blocks' (Out _)        hm n l = []
 frame-free-blocks' (in-ν _)     hm n l = []
-frame-free-blocks' (Ana _ _)      hm n l = []
+frame-free-blocks' (Ana _ c)      hc n l =
+  frame-free-trace' c hc 0 (suc l) ∷ frame-free-blocks' c hc 0 (suc l)
 frame-free-blocks' (Hylo _ _ _ _) hm n l = []
 frame-free-blocks' (Fuse _ _ _ _) hm n l = []
 frame-free-blocks' (free-heap _)  hm n l = []

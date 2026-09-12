@@ -501,7 +501,10 @@ frontier-mono (Cata {F} _ alg) n l = cata-mono (cata-strategy ⌈ F ⌉F) _ _ _ 
 frontier-mono (Para _ _)     n l = ≤-refl
 frontier-mono (Out _)        n l = ≤-refl
 frontier-mono (in-ν _)     n l = ≤-refl
-frontier-mono (Ana _ _)      n l = ≤-refl
+-- D189: the ν suspension is `curry`'s closure record cell for cell, so
+-- its walk clause is `curry`'s. The coalgebra is a named block, like the
+-- closure body, emitted at frontier 0 under the ν's own label.
+frontier-mono (Ana _ c)      n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (Hylo _ _ _ _) n l = ≤-refl
 frontier-mono (Fuse _ _ _ _) n l = ≤-refl
 frontier-mono (free-heap _)  n l = ≤-refl
@@ -1079,9 +1082,14 @@ slots-below (out-μ _)  n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (Cata {F} _ alg) n l =
   cata-slots-below (cata-strategy ⌈ F ⌉F) _ _ _ _ (slots-below alg 0 l)
 slots-below (Para _ _)     n l = segok-idle _ refl []
-slots-below (Out _)        n l = segok-idle _ refl (sb-none refl ∷ [])
+slots-below (Out _)        n l =
+  segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
 slots-below (in-ν _)     n l = segok-idle _ refl []
-slots-below (Ana _ _)      n l = segok-idle _ refl []
+slots-below (Ana _ c) n l =
+  segok-idle _ refl
+    (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
+     sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 slots-below (Hylo _ _ _ _) n l = segok-idle _ refl []
 slots-below (Fuse _ _ _ _) n l = segok-idle _ refl []
 slots-below (free-heap _)  n l = segok-idle _ refl (sb-none refl ∷ [])
@@ -1213,7 +1221,8 @@ blocks-below (Cata {F} _ alg)    n l = blocks-below alg 0 l
 blocks-below (Para _ _)          n l = []
 blocks-below (Out _)             n l = []
 blocks-below (in-ν _)          n l = []
-blocks-below (Ana _ _)           n l = []
+blocks-below (Ana _ c)           n l = slots-below c 0 (suc l)
+                                     ∷ blocks-below c 0 (suc l)
 blocks-below (Hylo _ _ _ _)      n l = []
 blocks-below (Fuse _ _ _ _)      n l = []
 blocks-below (free-heap _)       n l = []

@@ -205,12 +205,20 @@ data ShapeAt where
     ShapeAt m alloc (⟦ F ⟧TI (μ-type F)) loc s →
     ShapeAt m alloc (μ-type F) loc s
 
-  shape-ν : ∀ {m F}
+  -- D189: a ν is a SUSPENSION, not an available layer — seed cell plus
+  -- coalgebra code cell, mirroring `shape-closure`. The seed's cell is a
+  -- `CellShapeAt`, so a seed small enough to live inline (an `Int`, say)
+  -- needs no separate heap object. This REPLACES the old `shape-ν`, which
+  -- mirrored the deleted `valid-ν-wf` and claimed a layer was resident.
+  shape-ν-susp : ∀ {m F A}
     {alloc : AllocState {FS}}
-    {loc : ValueLocation FS} {s : LocState FS}
-    (wf : WellFormedFI F) →
-    ShapeAt m alloc (⟦ F ⟧TI (ν-type F)) loc s →
-    ShapeAt m alloc (ν-type F) loc s
+    {ν-loc : ValueLocation FS} {s : LocState FS}
+    {coalg-label : LabelId} →
+    LocMatchesMode m ν-loc →
+    CellShapeAt alloc A ν-loc s →
+    readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label) →
+    BeforeFrontier alloc (sucLoc ν-loc) →
+    ShapeAt m alloc (ν-type F) ν-loc s
 
   shape-int : ∀ {m}
     {alloc : AllocState {FS}}
@@ -253,7 +261,8 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
     using (ValidAtWF; valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf;
            rep-prim; rep-unit;
-           valid-μ-wf; valid-closure-reg-wf; CellAt; cell-ptr; cell-inline;
+           valid-μ-wf; valid-ν-susp-wf;
+           valid-closure-reg-wf; CellAt; cell-ptr; cell-inline;
            valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
            SumTag)
 
@@ -308,6 +317,9 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
   valid→shape (valid-inr-reg-wf {m = m} {b = bv} lm tg (rep-unit u sv) r b) =
     shape-inr-reg {b = bv} lm (tag-of m 1 _ _ tg) (rep-unit-at u sv) r b
   valid→shape (valid-μ-wf wf x lv) = shape-μ wf (valid→shape lv)
+  -- D189: the suspension projects cell-wise, exactly as the closure does.
+  valid→shape (valid-ν-susp-wf wf lm sc cp slb) =
+    shape-ν-susp lm (cell→shape sc) cp slb
   valid→shape (valid-int-wf b r)   = shape-int b r
   valid→shape (valid-float-wf b r) = shape-float b r
   valid→shape (valid-str-wf b)     = shape-str b

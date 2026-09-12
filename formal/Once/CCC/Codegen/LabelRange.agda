@@ -135,7 +135,10 @@ label-mono (Cata {F} _ alg) n l =
 label-mono (Para _ _)     n l = ≤-refl
 label-mono (Out _)        n l = ≤-refl
 label-mono (in-ν _)     n l = ≤-refl
-label-mono (Ana _ _)      n l = ≤-refl
+-- D189: the ν suspension is `curry`'s closure record cell for cell, so
+-- its walk clause is `curry`'s. The coalgebra is a named block, like the
+-- closure body, emitted at frontier 0 under the ν's own label.
+label-mono (Ana _ c)      n l = ≤-trans (n≤1+n l) (label-mono c 0 (suc l))
 label-mono (Hylo _ _ _ _) n l = ≤-refl
 label-mono (Fuse _ _ _ _) n l = ≤-refl
 label-mono (free-heap _)  n l = ≤-refl

@@ -54,16 +54,20 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
   validAtWF-set-halted : ∀ {m alloc A} {v : ⟦ A ⟧} {loc s} (b : Bool)
     → ValidAtWF m alloc {A} v loc s
     → ValidAtWF m alloc {A} v loc (record s { halted = b })
+  -- D187: the two pair cells transport the same way, and since D189 the ν's
+  -- seed cell does too, so one mutual helper serves all three.
+  cellAt-set-halted : ∀ {alloc C} {c : ⟦ C ⟧} {s} (b : Bool)
+    (cl : ValueLocation FS)
+    → CellAt alloc C c cl s → CellAt alloc C c cl (record s { halted = b })
+  cellAt-set-halted {s = s} b cl (cell-ptr r cb v) =
+    cell-ptr (trans (rl s b cl) r) cb (validAtWF-set-halted b v)
+  cellAt-set-halted {s = s} b cl (cell-inline rep r) =
+    cell-inline rep (trans (rl s b cl) r)
+
   validAtWF-set-halted b valid-unit-wf = valid-unit-wf
-  -- D187: the two cells transport the same way, so one helper serves both.
-  validAtWF-set-halted {s = s} b (valid-pair-wf {pair-loc = pl} lm slb fc sc) =
-    valid-pair-wf lm slb (go pl fc) (go (sucLoc pl) sc)
-    where
-      go : ∀ {alloc C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
-         → CellAt alloc C c cl s → CellAt alloc C c cl (record s { halted = b })
-      go cl (cell-ptr {comp-loc = pl'} r cb v) =
-        cell-ptr (trans (rl s b cl) r) cb (validAtWF-set-halted b v)
-      go cl (cell-inline rep r) = cell-inline rep (trans (rl s b cl) r)
+  validAtWF-set-halted b (valid-pair-wf {pair-loc = pl} lm slb fc sc) =
+    valid-pair-wf lm slb (cellAt-set-halted b pl fc)
+                         (cellAt-set-halted b (sucLoc pl) sc)
   validAtWF-set-halted {s = s} b (valid-closure-wf {body = body} {closure-loc = cl} lm r1 r2 bf1 bf2 venv) =
     valid-closure-wf {body = body} lm (trans (rl s b cl) r1) (trans (rl s b (sucLoc cl)) r2) bf1 bf2
       (validAtWF-set-halted b venv)
@@ -83,6 +87,13 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
       (trans (rl s b cl) r1) (trans (rl s b (sucLoc cl)) r2) bf
   validAtWF-set-halted b (valid-μ-wf wf x v) =
     valid-μ-wf wf x (validAtWF-set-halted b v)
+  -- D189: seed cell + code cell, transported exactly as the closure's are.
+  -- `coalg`/`seed` are pinned for the usual D180 reason: the conclusion's
+  -- value index is an `evalᴰ` application, which determines neither.
+  validAtWF-set-halted {s = s} b
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} {ν-loc = nl} lm sc cp slb) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lm (cellAt-set-halted b nl sc)
+      (trans (rl s b (sucLoc nl)) cp) slb
   validAtWF-set-halted {s = s} b (valid-int-wf {loc = loc} bf r) = valid-int-wf bf (trans (rl s b loc) r)
   validAtWF-set-halted {s = s} b (valid-float-wf {loc = loc} bf r) = valid-float-wf bf (trans (rl s b loc) r)
   validAtWF-set-halted b (valid-str-wf bf) = valid-str-wf bf

@@ -466,6 +466,32 @@ Deleted in the same change, and worth recording as residuals that went away:
 `Ana`/`in-ν`) and `ν-layer-iso` (its inversion). `obs-correct-Out` is now
 discharged by `⊥-elim (ν-input-absurd …)` — see D180.
 
+> **RETRACTED by D189 (2026-09-12).** That last sentence is the defect. The
+> `⊥-elim` discharge was sound only because the emitter produced no
+> instructions for `Ana`, so no ν could ever be built to reach it. See the
+> D189 row below.
+
+### D189 — the ν suspension: one vacuous proof out, one honest obligation in
+
+| # | residual | class | what discharges it |
+|---|---|---|---|
+| N1 | `obs-correct-Out` — forcing a layer | **deferred proof** | D188's argument applied to the coalgebra's block. The emitter lowers the force as a CALL (`instr-save-closure-reg`, `load-indirect`, `mov-to-input`, `instr-call-closure`), so the premise is `CalleeRuns`, already in the interface |
+| N2 | `obs-correct-in-ν` — a ν built from an available layer | **deferred proof** | same two-cell build with an identity block: the seed IS the layer and the code returns it |
+
+**What went the other way.** `obs-correct-Ana` left the postulate block — it is
+a proof (D190's shared build plus one `CellAt`). `ν-not-resident` is gone: it
+was provable, and what made it provable was the missing emitter.
+
+**Counting honestly:** this change is *+1 postulate* (`obs-correct-Out` back,
+`obs-correct-Ana` out) and *−1 false theorem*. The postulate count is not the
+metric; what changed is that no proof in the tree now depends on a feature
+being unimplemented.
+
+**The gap this leaves open** is not in the ledger's usual sense: `ana` has no
+concrete syntax, so no exit test can reach the ν path at all. That is why the
+defect survived. Surface syntax for `ana` (and `cata`, which has the same gap)
+plus an unfold exit test is the recurrence guard, tracked with D189.
+
 ### D188 — `obs-correct-apply` DISCHARGED; one whole-clause axiom → one invariant
 
 `obs-correct-apply` was an axiom for the entire clause. It is now a proof

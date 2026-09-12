@@ -183,7 +183,12 @@ as-sum-of-inv (a +ᵗ b) refl = refl
 as-sum : RegExpect → Maybe (IRTy × IRTy)
 as-sum (e-repr (a +ᵗ b))   = just (a , b)
 as-sum (e-repr (μ-type f)) = as-sum-of (⟦ f ⟧TI (μ-type f))
-as-sum (e-repr (ν-type f)) = as-sum-of (⟦ f ⟧TI (ν-type f))
+-- D189: a ν is a SUSPENSION — its cell holds the seed, not a tag — so a
+-- branch-tag site may NOT read one directly. It must be `Out`-ed first; the
+-- result of `Out` carries the `⟦ F ⟧TI (ν-type F)` expectation, and THAT is
+-- where the sum (and so the tag) becomes readable. The μ line above stays
+-- unfolded because a μ IS its layer.
+as-sum (e-repr (ν-type f)) = nothing
 as-sum _ = nothing
 
 -- is this claim certainly a pointer? (the load/store site requirement)
@@ -569,7 +574,7 @@ module Sem (FS : FrameSemantics) where
      shape-unit; shape-pair; shape-closure; shape-inl; shape-inr;
      CellShapeAt; cell-shape-ptr; cell-shape-inline;
      shape-inl-reg; shape-inr-reg;
-     shape-μ; shape-ν; shape-int; shape-float; shape-str; shape-buffer;
+     shape-μ; shape-ν-susp; shape-int; shape-float; shape-str; shape-buffer;
      shape-closure-reg)
   open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
   open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
@@ -951,15 +956,8 @@ module Sem (FS : FrameSemantics) where
          → Σ ℕ λ t → readLoc ls loc' ≡ just (SV-Tag t)
       go T (just (a , b)) as-eq ok' sh = tag-of-μ T as-eq sh
       go T nothing        as-eq () sh
-  site-branch-tag (e-repr (ν-type f)) ok (rs-ptr {loc = loc} (shape-ν wf layer)) =
-    loc , refl , go (⟦ f ⟧TI (ν-type f)) (as-sum-of (⟦ f ⟧TI (ν-type f))) refl ok layer
-    where
-      go : ∀ T (ms : Maybe (IRTy × IRTy)) → as-sum-of T ≡ ms
-         → is-just ms ≡ true
-         → ∀ {m alloc loc' ls} → ShapeAt m alloc T loc' ls
-         → Σ ℕ λ t → readLoc ls loc' ≡ just (SV-Tag t)
-      go T (just (a , b)) as-eq ok' sh = tag-of-μ T as-eq sh
-      go T nothing        as-eq () sh
+  -- D189: refuted by `as-sum`, which no longer unfolds a ν's functor.
+  site-branch-tag (e-repr (ν-type f)) () _
   site-branch-tag e-any           () _
   site-branch-tag (e-tag _)       () _
   site-branch-tag (e-fresh nothing c₁) () _
@@ -1047,7 +1045,9 @@ module Sem (FS : FrameSemantics) where
   shape-uw {m = m} {ls = ls} hl' v' uw (shape-inr-reg {sum-loc = sl} lm tg fit r b) =
     shape-inr-reg lm (tag-uw m 1 hl' v' uw tg) fit (read-uw ls hl' v' (sucLoc sl) uw r) b
   shape-uw hl' v' uw (shape-μ wf sh) = shape-μ wf (shape-uw hl' v' uw sh)
-  shape-uw hl' v' uw (shape-ν wf sh) = shape-ν wf (shape-uw hl' v' uw sh)
+  shape-uw {ls = ls} hl' v' uw (shape-ν-susp {ν-loc = nl} lm sc cp b) =
+    shape-ν-susp lm (cell-uw nl hl' v' uw sc)
+                    (read-uw ls hl' v' (sucLoc nl) uw cp) b
   shape-uw {loc = l} {ls = ls} hl' v' uw (shape-int b r)   = shape-int b (read-uw ls hl' v' l uw r)
   shape-uw {loc = l} {ls = ls} hl' v' uw (shape-float b r) = shape-float b (read-uw ls hl' v' l uw r)
   shape-uw hl' v' uw (shape-str b)    = shape-str b

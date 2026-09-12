@@ -603,9 +603,15 @@ labels-in (out-μ _)  n l = li-none refl ∷ []
 labels-in (Cata {F} _ alg) n l =
   cata-ls (cata-strategy ⌈ F ⌉F) l _ _ _ _ (label-mono alg 0 l) (labels-in alg 0 l)
 labels-in (Para _ _)     n l = []
-labels-in (Out _)        n l = li-none refl ∷ []
+labels-in (Out _)        n l =
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 labels-in (in-ν _)     n l = []
-labels-in (Ana _ _)      n l = []
+-- D189: the ν suspension is `curry`'s closure record cell for cell, so
+-- its walk clause is `curry`'s. The coalgebra is a named block, like the
+-- closure body, emitted at frontier 0 under the ν's own label.
+labels-in (Ana _ c) n l =
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 labels-in (Hylo _ _ _ _) n l = []
 labels-in (Fuse _ _ _ _) n l = []
 labels-in (free-heap _)  n l = li-none refl ∷ []
@@ -1731,9 +1737,11 @@ seg-agree initial n l = segagree-nolab _ (refl ∷ [])
 seg-agree (In w) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (out-μ w) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (Para w x) n l = segagree-nolab _ []
-seg-agree (Out w) n l = segagree-nolab _ (refl ∷ [])
+seg-agree (Out w) n l = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree (in-ν w) n l = segagree-nolab _ []
-seg-agree (Ana w x) n l = segagree-nolab _ []
+seg-agree (Ana w c) n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree (Hylo w x y z) n l = segagree-nolab _ []
 seg-agree (Fuse w x y z) n l = segagree-nolab _ []
 seg-agree (free-heap w) n l = segagree-nolab _ (refl ∷ [])
@@ -1861,16 +1869,22 @@ scope-ok : ∀ {A B} (ir : IR A B) (n l : ℕ)
          → ScopeOK (trace-of (ir-to-trace' n l ir))
                    (bodies-of (ir-to-trace' n l ir))
                    l (label-of (ir-to-trace' n l ir))
-curry-bl-in : ∀ {X C} (bd : IR X C) (n l : ℕ)
-            → LabelsIn l (label-of (ir-to-trace' 0 (suc (suc l)) bd))
-                (blocks-layout ((ℓ o l , budget-of (ir-to-trace' 0 (suc (suc l)) bd)
-                                , trace-of (ir-to-trace' 0 (suc (suc l)) bd))
-                                ∷ bodies-of (ir-to-trace' 0 (suc (suc l)) bd)))
-curry-bl-agree : ∀ {X C} (bd : IR X C) (n l : ℕ)
+-- D189: parameterized over the BODY'S START LABEL `lb`. `curry` reserves two
+-- ids and starts its body at `suc (suc l)`; `Ana` reserves one and starts its
+-- coalgebra at `suc l`. The block construct is the same either way — a
+-- `c-thunk (ℓ o l)` header, the body, a `c-ret` — so the two clauses differ
+-- only in `lb` and in the `l ≤ lb` the window needs, which is now an argument
+-- rather than the hardwired `≤-step (n≤1+n l)`.
+body-bl-in : ∀ {X C} (bd : IR X C) (n l lb : ℕ) → l ≤ lb
+            → LabelsIn l (label-of (ir-to-trace' 0 lb bd))
+                (blocks-layout ((ℓ o l , budget-of (ir-to-trace' 0 lb bd)
+                                , trace-of (ir-to-trace' 0 lb bd))
+                                ∷ bodies-of (ir-to-trace' 0 lb bd)))
+body-bl-agree : ∀ {X C} (bd : IR X C) (n l lb : ℕ)
                → SegAgree (blocks-layout
-                   ((ℓ o l , budget-of (ir-to-trace' 0 (suc (suc l)) bd)
-                           , trace-of (ir-to-trace' 0 (suc (suc l)) bd))
-                    ∷ bodies-of (ir-to-trace' 0 (suc (suc l)) bd)))
+                   ((ℓ o l , budget-of (ir-to-trace' 0 lb bd)
+                           , trace-of (ir-to-trace' 0 lb bd))
+                    ∷ bodies-of (ir-to-trace' 0 lb bd)))
 
 scope-ok id                  n l = scope-nil _ _ _
 scope-ok fst                 n l = scope-nil _ _ _
@@ -1885,7 +1899,10 @@ scope-ok (out-μ _)           n l = scope-nil _ _ _
 scope-ok (Para _ _)          n l = scope-nil _ _ _
 scope-ok (Out _)             n l = scope-nil _ _ _
 scope-ok (in-ν _)          n l = scope-nil _ _ _
-scope-ok (Ana _ _)           n l = scope-nil _ _ _
+scope-ok (Ana _ c) n l =
+  scope-nolab _ _ l _
+    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+    (body-bl-in c n l (suc l) (n≤1+n l)) (body-bl-agree c n l (suc l))
 scope-ok (Hylo _ _ _ _)      n l = scope-nil _ _ _
 scope-ok (Fuse _ _ _ _)      n l = scope-nil _ _ _
 scope-ok (free-heap _)       n l = scope-nil _ _ _
@@ -1897,7 +1914,8 @@ scope-ok (const fits-float _) n l = scope-nil _ _ _
 scope-ok (curry bd) n l =
   scope-nolab _ _ l _
     (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-    (curry-bl-in bd n l) (curry-bl-agree bd n l)
+    (body-bl-in bd n l (suc (suc l)) (≤-step (n≤1+n l)))
+    (body-bl-agree bd n l (suc (suc l)))
 
 scope-ok (g ∘ f) n l = mkScope blin blagr nceb ncbe
   where
@@ -2122,17 +2140,15 @@ scope-ok (Cata {F} _ alg) n l = mkScope blin blagr nceb ncbe
 -- hypothesis is spent: the body's trace and the body's OWN blocks share a
 -- window, so only `NoCross` can join them.
 ------------------------------------------------------------------------
-curry-bl-in bd n l =
-  ++⁺ (li-none refl ∷ ++⁺ (ls-weaken lo≤2 ≤-refl (labels-in bd 0 (suc (suc l))))
+body-bl-in bd n l lb l≤lb =
+  ++⁺ (li-none refl ∷ ++⁺ (ls-weaken l≤lb ≤-refl (labels-in bd 0 lb))
                           (li-none refl ∷ []))
-      (ls-weaken lo≤2 ≤-refl (ScopeOK.bl-in (scope-ok bd 0 (suc (suc l)))))
-  where lo≤2 : l ≤ suc (suc l)
-        lo≤2 = ≤-step (n≤1+n l)
+      (ls-weaken l≤lb ≤-refl (ScopeOK.bl-in (scope-ok bd 0 lb)))
 
-curry-bl-agree bd n l =
+body-bl-agree bd n l lb =
   segagree-++ⁿ blk BB nc1 nc2 blkA (ScopeOK.bl-agree S)
   where
-    l2' = suc (suc l)
+    l2' = lb
     D   = ir-to-trace' 0 l2' bd
     bt  = trace-of D ; bb = budget-of D ; hi = label-of D
     S   = scope-ok bd 0 l2'

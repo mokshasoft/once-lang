@@ -275,9 +275,13 @@ alloc-min-trace' (out-μ _) n l = tt ∷ []
 alloc-min-trace' (Cata {F} _ alg) n l =
   cata-dispatch-am (cata-strategy ⌈ F ⌉F) _ _ _ _ (alloc-min-trace' alg 0 l)
 alloc-min-trace' (Para _ _)     n l = []
-alloc-min-trace' (Out _)        n l = tt ∷ []
+alloc-min-trace' (Out _)        n l = tt ∷ tt ∷ tt ∷ tt ∷ []
 alloc-min-trace' (in-ν _)     n l = []
-alloc-min-trace' (Ana _ _)      n l = []
+-- D189: the ν suspension is `curry`'s closure record cell for cell, so
+-- its walk clause is `curry`'s. The coalgebra is a named block, like the
+-- closure body, emitted at frontier 0 under the ν's own label.
+alloc-min-trace' (Ana _ c)      n l =
+  tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 alloc-min-trace' (Hylo _ _ _ _) n l = []
 alloc-min-trace' (Fuse _ _ _ _) n l = []
 alloc-min-trace' (free-heap _)  n l = tt ∷ []
@@ -317,7 +321,9 @@ alloc-min-blocks (out-μ _)  n l = []
 alloc-min-blocks (Para _ _) n l = []
 alloc-min-blocks (Out _)    n l = []
 alloc-min-blocks (in-ν _) n l = []
-alloc-min-blocks (Ana _ _)  n l = []
+alloc-min-blocks (Ana _ c)  n l =
+  ++⁺ (tt ∷ ++⁺ (alloc-min-trace' c 0 (suc l)) (tt ∷ []))
+      (alloc-min-blocks c 0 (suc l))
 alloc-min-blocks (Hylo _ _ _ _) n l = []
 alloc-min-blocks (Fuse _ _ _ _) n l = []
 alloc-min-blocks (free-heap _)  n l = []

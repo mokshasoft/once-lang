@@ -354,6 +354,42 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         BeforeFrontier alloc (sucLoc closure-loc) →
         ValidAtWF Heap alloc {A ⇛ B} (λ arg → evalᴰ body (env , arg)) closure-loc s
 
+      ------------------------------------------------------------------------
+      -- D189: A ν IS A SUSPENSION — the seed it was built from, and the
+      -- coalgebra that unfolds it. Exactly `curry`'s record, for exactly
+      -- `curry`'s reason: `Ana` builds a value whose MEANING is a computation,
+      -- so the machine stores what that computation NEEDS, not what it
+      -- produces. (`valid-closure-wf` stores env + code; this stores seed +
+      -- code.)
+      --
+      -- WHY THIS HAD TO COME BACK, AND WHY NOT AS `valid-ν-wf`. D180 deleted
+      -- the old ν constructor, which claimed a ν had an already-available
+      -- LAYER in memory — false for a Kleisli ν, where forcing is a
+      -- computation. But deleting it left `ValidAtWF … {ν-type F} …`
+      -- uninhabited, and `Ana`'s codomain IS `ν-type F`, so
+      -- `ResultPlace (ν-type F) …` became uninhabited too — making
+      -- `obs-correct-Ana` and `obs-correct-in-ν` INCONSISTENT rather than
+      -- merely unproved (a `⊥`-probe confirmed it). The repair is not to
+      -- restore the layer claim but to store what a suspension actually is.
+      --
+      -- The seed is a `CellAt` (D187): the emitter copies whatever the seed's
+      -- cell held, so a `Unit` or register-literal seed lands inline, exactly
+      -- as a closure's environment does.
+      ------------------------------------------------------------------------
+      valid-ν-susp-wf : ∀ {F A}
+        (wf : WellFormedFI F)
+        {coalg : IR A (⟦ F ⟧TI A)}
+        {seed : ⟦ A ⟧}
+        {alloc : AllocState {FS}}
+        {ν-loc : ValueLocation FS} {s : LocState FS}
+        {coalg-label : LabelId} →
+        LocMatchesMode Heap ν-loc →
+        CellAt alloc A seed ν-loc s →
+        readLoc s (sucLoc ν-loc) ≡ just (SV-Code coalg-label) →
+        BeforeFrontier alloc (sucLoc ν-loc) →
+        ValidAtWF Heap alloc {ν-type F}
+          (TM.valueT (evalᴰ (Ana wf coalg) seed) 0) ν-loc s
+
       valid-inl-wf : ∀ {m A B} {a : ⟦ A ⟧}
         {alloc : AllocState {FS}}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS}
@@ -1396,6 +1432,22 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       (trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) ep)
       (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) cp) slb
 
+  -- D189: the ν suspension. Its SEED is a cell (D187), so it transports the
+  -- same way a pair's component does.
+  validityWF-mem-only {_} {alloc} {ν-type F} .(TM.valueT (evalᴰ (Ana wf coalg) seed) 0)
+    loc s₁ s₂ stack-eq heap-eq
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc sc)
+      (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) cp) slb
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
+         → CellAt alloc C c cl s₁ → CellAt alloc C c cl s₂
+      go cl (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (readLoc-stack-heap-eq s₂ s₁ cl stack-eq heap-eq) r) bf
+                 (validityWF-mem-only _ pl s₁ s₂ stack-eq heap-eq v)
+      go cl (cell-inline rep r) =
+        cell-inline rep (trans (readLoc-stack-heap-eq s₂ s₁ cl stack-eq heap-eq) r)
+
   -- Kind-coerced closure: recurse on underlying validity, re-coerce.
 
   -- Eff (effectful morphism): recurse on underlying closure validity
@@ -1493,6 +1545,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       (trans (write-at-frontier-preserves-before s alloc loc val loc-before) ep)
       (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
 
+  validityWF-write-at-frontier {_} {alloc} {ν-type F} .(TM.valueT (evalᴰ (Ana wf coalg) seed) 0) loc s val loc-before
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc loc-before sc)
+      (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
+         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
+      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (write-at-frontier-preserves-before s alloc cl val cb) r) bf (validityWF-write-at-frontier _ pl s val bf v)
+      go cl cb (cell-inline rep r) =
+        cell-inline rep (trans (write-at-frontier-preserves-before s alloc cl val cb) r)
+
   -- Kind-coerced closure
 
   -- inl (any mode)
@@ -1573,6 +1637,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-closure-reg-wf {body = body} {env = env} lmm rep
       (trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) ep)
       (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
+
+  validityWF-write-at-suc-frontier {_} {alloc} {ν-type F} .(TM.valueT (evalᴰ (Ana wf coalg) seed) 0) loc s val loc-before
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc loc-before sc)
+      (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
+         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
+      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (write-at-suc-frontier-preserves-before s alloc cl val cb) r) bf (validityWF-write-at-suc-frontier _ pl s val bf v)
+      go cl cb (cell-inline rep r) =
+        cell-inline rep (trans (write-at-suc-frontier-preserves-before s alloc cl val cb) r)
 
   -- Kind-coerced closure
 
@@ -1668,6 +1744,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       (trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) ep)
       (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
 
+  validityWF-write-sv-at-frontier {_} {alloc} {ν-type F} .(TM.valueT (evalᴰ (Ana wf coalg) seed) 0) loc s stored loc-before
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc loc-before sc)
+      (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
+         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
+      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (write-sv-at-frontier-preserves-before s alloc cl stored cb) r) bf (validityWF-write-sv-at-frontier _ pl s stored bf v)
+      go cl cb (cell-inline rep r) =
+        cell-inline rep (trans (write-sv-at-frontier-preserves-before s alloc cl stored cb) r)
+
   -- Kind-coerced closure
 
   -- inl (any mode)
@@ -1755,6 +1843,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-closure-reg-wf {body = body} {env = env} lmm rep
       (trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) ep)
       (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
+
+  validityWF-write-sv-at-suc-frontier {_} {alloc} {ν-type F} .(TM.valueT (evalᴰ (Ana wf coalg) seed) 0) loc s stored loc-before
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc loc-before sc)
+      (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
+         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
+      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (write-sv-at-suc-frontier-preserves-before s alloc cl stored cb) r) bf (validityWF-write-sv-at-suc-frontier _ pl s stored bf v)
+      go cl cb (cell-inline rep r) =
+        cell-inline rep (trans (write-sv-at-suc-frontier-preserves-before s alloc cl stored cb) r)
 
   -- Kind-coerced closure
 
@@ -1847,6 +1947,17 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp
       (stack-alloc-advances alloc n (sucLoc loc) slb)
 
+  validityWF-alloc-advance {_} {alloc} {ν-type F} .(TM.valueT (evalᴰ (Ana wf coalg) seed) 0) loc s n
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc sc) cp
+      (stack-alloc-advances alloc n (sucLoc loc) slb)
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → CellAt alloc C c cl s
+         → CellAt (record alloc { next-slot = next-slot alloc +ℕ n }) C c cl s
+      go cl (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr r (stack-alloc-advances alloc n pl bf) (validityWF-alloc-advance _ pl s n v)
+      go cl (cell-inline rep r) = cell-inline rep r
+
   -- Kind-coerced closure
 
   -- inl (any mode)
@@ -1935,6 +2046,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp
       (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
 
+  validityWF-frontier-advance {_} {alloc} {alloc'} {ν-type F} .(TM.valueT (evalᴰ (Ana wf coalg) seed) 0) loc s cf-eq slot-≤ heap-≤
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc sc) cp
+      (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
+         → CellAt alloc C c cl s → CellAt alloc' C c cl s
+      go cl (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr r (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ pl bf)
+                 (validityWF-frontier-advance _ pl s cf-eq slot-≤ heap-≤ v)
+      go cl (cell-inline rep r) = cell-inline rep r
+
   -- Kind-coerced closure
 
   -- inl (any mode)
@@ -2018,6 +2141,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
     valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp (bf (sucLoc loc) slb)
 
+  validityWF-with-bf-transfer {_} {ν-type F} .(TM.valueT (evalᴰ (Ana wf coalg) seed) 0) loc s a₁ a₂ bf
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc sc) cp (bf (sucLoc loc) slb)
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
+         → CellAt a₁ C c cl s → CellAt a₂ C c cl s
+      go cl (cell-ptr {comp-loc = pl} r cb v) =
+        cell-ptr r (bf pl cb) (validityWF-with-bf-transfer _ pl s a₁ a₂ bf v)
+      go cl (cell-inline rep r) = cell-inline rep r
+
   -- Kind-coerced closure
 
   -- inl (any mode)
@@ -2099,6 +2232,17 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
     valid-closure-reg-wf {body = body} {env = env} lmm rep
       (trans (mem-eq loc loc-before) ep) (trans (mem-eq (sucLoc loc) slb) cp) slb
+
+  validityWF-mem-preserved {_} {alloc} {ν-type F} .(TM.valueT (evalᴰ (Ana wf coalg) seed) 0) loc s₁ s₂ loc-before mem-eq
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm (go loc loc-before sc)
+      (trans (mem-eq (sucLoc loc) slb) cp) slb
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
+         → CellAt alloc C c cl s₁ → CellAt alloc C c cl s₂
+      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (mem-eq cl cb) r) bf (validityWF-mem-preserved _ pl s₁ s₂ bf mem-eq v)
+      go cl cb (cell-inline rep r) = cell-inline rep (trans (mem-eq cl cb) r)
 
   -- Kind-coerced closure
 
@@ -2312,6 +2456,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-closure-reg-wf {closure-loc = cl} lmm _ _ _ _) =
     LocInRegions alloc ib fs cl ×
     LocInRegions alloc ib fs (sucLoc cl)
+  -- D189: the ν's own two cells, plus whatever its SEED cell constrains.
+  LocsInRegions {alloc = alloc} ib fs
+    (valid-ν-susp-wf wf {ν-loc = nl} lmm sc _ _) =
+    LocInRegions alloc ib fs nl ×
+    LocInRegions alloc ib fs (sucLoc nl) ×
+    CellLocsInRegions ib fs sc
   LocsInRegions {alloc = alloc} ib fs
     (valid-inl-wf {sum-loc = sl} lmm _ pp pb slb pv) =
     LocInRegions alloc ib fs sl ×                  -- tag slot
@@ -2451,6 +2601,25 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-closure-reg-wf {body = body} {env = env} lmm rep
       (trans (loc-mem-eq-from-regions ir fr hr ar cl-ir) ep)
       (trans (loc-mem-eq-from-regions ir fr hr ar scl-ir) cp) slb
+
+  validityWF-mem-preserved-in-regions-strong alloc
+    .(TM.valueT (evalᴰ (Ana wf coalg) seed) 0) loc ib fs s₁ s₂
+    loc-before ib≤fs fs≤next ir fr hr ar
+    (valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm sc cp slb)
+    (nl-ir , snl-ir , slocs) =
+    valid-ν-susp-wf wf {coalg = coalg} {seed = seed} lmm
+      (go loc (loc-mem-eq-from-regions ir fr hr ar nl-ir) sc slocs)
+      (trans (loc-mem-eq-from-regions ir fr hr ar snl-ir) cp) slb
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
+         → readLoc s₂ cl ≡ readLoc s₁ cl
+         → (ca : CellAt alloc C c cl s₁) → CellLocsInRegions ib fs ca
+         → CellAt alloc C c cl s₂
+      go cl eq (cell-ptr {comp-loc = pl} r bf v) locs =
+        cell-ptr (trans eq r) bf
+                 (validityWF-mem-preserved-in-regions-strong alloc _ pl ib fs s₁ s₂
+                    bf ib≤fs fs≤next ir fr hr ar v locs)
+      go cl eq (cell-inline rep r) _ = cell-inline rep (trans eq r)
 
 
   -- Stage F: the region evidence is a PAIR here, not a triple — there is no

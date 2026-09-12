@@ -159,7 +159,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           -- D181: the CLOSURE witnesses. `valid-closure-reg-wf` is the
           -- inline-env form the `curry` discharge needs for a register-literal
           -- or `Unit` environment.
-          ; valid-closure-wf; valid-closure-reg-wf; valid-pair-wf
+          ; valid-closure-wf; valid-closure-reg-wf; valid-pair-wf; valid-ν-susp-wf
           -- D187: the pair's cells, each carrying its own residence.
           ; CellAt; cell-ptr; cell-inline
           ; module PairValidWF; decomposePairWF
@@ -191,17 +191,13 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   μ-layer-iso wf x (valid-μ-wf wf′ .x layer-v)
     rewrite WellFormedFI-irrelevant wf wf′ = layer-v
 
-  -- Plan 0.90: the ν analogue is GONE, and what replaces it is its negation.
-  -- `valid-ν-wf` used to carry a ν's layer validity — it could, because the
-  -- PURE domain made a ν a first-order value with an already-available layer.
-  -- A Kleisli ν has no layer until it is FORCED, which is a computation, so no
-  -- memory-shape invariant can state one. And the machine agrees: Class G emits
-  -- NO instructions for `Ana`/`in-ν`, so it never builds a ν. The honest
-  -- statement is therefore that a ν-typed value is never machine-resident.
-  ν-not-resident : ∀ {m F} {x : DT.⟦ ν-type F ⟧ᴰᴵ}
-                   {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
-                 → ValidAtWF m alloc {ν-type F} x loc s → ⊥
-  ν-not-resident ()
+  -- D189 RETRACTS `ν-not-resident`. It said a ν-typed value is never
+  -- machine-resident, and it was provable only because the machine could not
+  -- build one: `Ana` emitted no instructions. That made `obs-correct-Out` a
+  -- theorem about an empty case — the audit's finding, and the reason this
+  -- lemma is gone rather than weakened. A ν IS resident now, as a SUSPENSION
+  -- (seed cell + coalgebra code cell — `valid-ν-susp-wf`), so `Out` owes a
+  -- real proof against a machine that forces, not one that moves a pointer.
 
   -- D152: the trace the compiler ACTUALLY emits for `ir` at emission site
   -- `(n , l)`. (`IRToTrace.proj-trace` is `private`, so the projection is
@@ -1939,8 +1935,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       place (in-reg () _)
       place (in-unit ())
 
-  -- ── `Out` — DISCHARGED BY ABSURDITY, and the absurdity is the honest
-  -- content. A ν is now a KLEISLI value: forcing a layer is a computation, so
+  -- ── `Out` — NO LONGER DISCHARGED (D189), and the retraction is the point.
+  -- What stood here was a proof by absurdity whose absurdity was the emitter's
+  -- own silence. It read: A ν is now a KLEISLI value: forcing a layer is a computation, so
   -- `evalᴰ (Out wf) x = forceᵈ x` may EMIT. The machine's `Out` is one
   -- `mov-to-output`, which emits nothing — so if a ν could reach this
   -- instruction, the obligation would be FALSE, not provable.
@@ -1954,15 +1951,6 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- `Out` and was a theorem about `inject x`, a ν that could not emit. When
   -- `Ana` gets an emitter, THIS case is the one that must be reproved for real
   -- — against a machine that forces layers, not one that moves a pointer.
-  ν-input-absurd : ∀ {F mIn alloc s} {x : DT.⟦ ν-type F ⟧ᴰᴵ}
-                 → InputAt mIn alloc x s → ⊥
-  ν-input-absurd (in-loc _ v _ _) = ν-not-resident v
-  ν-input-absurd (in-reg () _)
-  ν-input-absurd (in-unit ())
-
-  obs-correct-Out : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
-  obs-correct-Out {F} wf _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =
-    ⊥-elim (ν-input-absurd rdi-eq)
 
   -- ── `const` — DISCHARGED, and it is the first REGISTER-resident result of
   -- class A. `emitted n l (const fit v) = instr-load-const fitˢ v ∷ []`, whose
@@ -2161,8 +2149,13 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                      → IRObsCorrectF (Para wf f)
     obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F)
                      → IRObsCorrectF (in-ν wf)
-    obs-correct-Ana  : ∀ {F} (wf : WellFormedFI F) {A} (f : IR A (⟦ F ⟧TI A))
-                     → IRObsCorrectF (Ana wf f)
+    -- D189: `obs-correct-Ana` LEFT this class — the emitter exists and the
+    -- case is discharged below. `obs-correct-Out` JOINED it, from the other
+    -- direction: it was a vacuous proof, and forcing a suspension is a CALL,
+    -- so it owes `obs-correct-apply`'s argument against the coalgebra's block.
+    -- This is the one residual D189 adds, and it is a deferred proof, not a
+    -- model gap: the machine now forces, the proof has not been written.
+    obs-correct-Out  : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
     obs-correct-Hylo : ∀ {F G} (wfF : WellFormedFI F) (wfG : WellFormedFI G) {B}
                        (alg : IR (⟦ F ⟧TI B) B) (nt : NatTr G F)
                      → IRObsCorrectF (Hylo wfF wfG alg nt)
@@ -3142,272 +3135,323 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- the re-index the two sides named different semantics and no amount of
   -- machine reasoning could have closed the gap.
   ------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- D190: THE TWO-CELL HEAP BUILD, ONCE.
+  --
+  -- `curry` and `Ana` emit the SAME ten instructions. That is not a
+  -- coincidence to be noted in a comment: a closure and a ν-suspension are
+  -- the same machine object — a value cell plus the code that consumes it —
+  -- and the only thing that differs is which `ValidAtWF` constructor the
+  -- resulting two cells witness. So everything up to that choice lives here,
+  -- and each clause supplies only its `ResultPlace`.
+  --
+  -- WHAT THIS EXPORTS is the full straight-line story: the ten states, the
+  -- run, `halted ≡ false` throughout, the object's location and the fact it
+  -- is before the frontier, the two cell reads (`cell0-fs10`, `code-fs10`),
+  -- the result pointer (`out-eq`), and `valid-transport` — the input's own
+  -- validity carried across the ten steps via D182's `TenStepPres`.
+  ------------------------------------------------------------------------
+  two-cell-trace : ℕ → ℕ → AbstractTrace
+  two-cell-trace n l =
+    mov-to-output ∷ store-at-slot n ∷ instr-alloc-heap 2 ∷ store-at-slot (suc n) ∷
+    mov-to-input ∷ load-from-slot n ∷ store-indirect ∷
+    instr-load-code-addr (ℓ o l) ∷ store-indirect-suc ∷ load-from-slot (suc n) ∷ []
+
+  module TwoCellBuild
+    (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
+    (span : SpanAt prog base (two-cell-trace n l))
+    where
+
+    cell0-stash obj-stash : ℕ
+    cell0-stash     = n
+    obj-stash = suc n
+
+    -- D182: this clause's instance of the shared ten-step invariant — the
+    -- same shape as `inl`'s, with the two middle rows swapped.
+    module TSP = TenStepPres n (load-from-slot n) (instr-load-code-addr (ℓ o l))
+                             prog base s alloc cl
+
+    code-lbl : LabelId
+    code-lbl = ℓ o l
+
+    fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
+    fs0  = entry-flat base s alloc cl
+    fs1  = flat-exec-instr mov-to-output                  prog fs0
+    fs2  = flat-exec-instr (store-at-slot cell0-stash)      prog fs1
+    fs3  = flat-exec-instr (instr-alloc-heap 2)           prog fs2
+    fs4  = flat-exec-instr (store-at-slot obj-stash)  prog fs3
+    fs5  = flat-exec-instr mov-to-input                   prog fs4
+    fs6  = flat-exec-instr (load-from-slot cell0-stash)     prog fs5
+    fs7  = flat-exec-instr store-indirect                 prog fs6
+    fs8  = flat-exec-instr (instr-load-code-addr code-lbl) prog fs7
+    fs9  = flat-exec-instr store-indirect-suc             prog fs8
+    fs10 = flat-exec-instr (load-from-slot obj-stash) prog fs9
+
+    obj-hl : HeapLocation
+    obj-hl = heap-loc (mkHeapRef (next-heap-ref (falloc fs2))) 0
+
+    obj-loc : ValueLocation FS
+    obj-loc = AtDynamic obj-hl
+
+    -- ── ROW 6: the env value, stashed at fs1→fs2 and loaded back at fs5.
+    -- The only intervening STACK write targets `suc n`, so `n < suc n` keeps
+    -- it away; the allocation and `mov-to-input` touch no stack cell.
+    cell0v : StoredValue FS
+    cell0v = readReg (regs (floc fs1)) Output
+
+    cf-fs5 : current-frame (falloc fs5) ≡ current-frame (falloc fs1)
+    cf-fs5 =
+      trans (exec-abstract-preserves-frame mov-to-input (floc fs4) (falloc fs4))
+     (trans (exec-abstract-preserves-frame (store-at-slot obj-stash) (floc fs3) (falloc fs3))
+     (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
+            (exec-abstract-preserves-frame (store-at-slot cell0-stash) (floc fs1) (falloc fs1))))
+
+    read-cell0-fs2 : MemOps.readLoc (floc fs2)
+                     (AtStack (current-frame (falloc fs1)) cell0-stash) ≡ just cell0v
+    read-cell0-fs2 =
+      MemOps.writeLoc-read-same-stack (floc fs1) (current-frame (falloc fs1)) cell0-stash cell0v
+
+    read-cell0-fs5 : MemOps.readLoc (floc fs5)
+                     (AtStack (current-frame (falloc fs1)) cell0-stash) ≡ just cell0v
+    read-cell0-fs5 =
+      trans (exec-abstract-preserves-stack-slot mov-to-input (floc fs4) (falloc fs4)
+               (current-frame (falloc fs1)) cell0-stash nhw-mov-to-input refl)
+     (trans (store-at-slot-preserves-below cell0-stash obj-stash (floc fs3) (falloc fs3) (n<1+n _))
+     (trans (exec-abstract-preserves-stack-slot (instr-alloc-heap 2) (floc fs2) (falloc fs2)
+               (current-frame (falloc fs1)) cell0-stash nhw-instr-alloc-heap refl)
+            read-cell0-fs2))
+
+    wf-load-cell0 : InstrWF (floc fs5) (falloc fs5) (load-from-slot cell0-stash)
+    wf-load-cell0 =
+      cell0v , subst (λ f → MemOps.readLoc (floc fs5) (AtStack f cell0-stash) ≡ just cell0v)
+                 (sym cf-fs5) read-cell0-fs5
+
+    -- ── ROW 7: the closure pointer must survive the env load.
+    rdi-fs5 : sv-as-loc (readReg (regs (floc fs5)) Input1) ≡ just obj-loc
+    rdi-fs5 = refl
+
+    input-fs6 : readReg (regs (floc fs6)) Input1 ≡ readReg (regs (floc fs5)) Input1
+    input-fs6 = load-slot-preserves-input cell0-stash (floc fs5) (falloc fs5) cell0v
+                  (proj₂ wf-load-cell0)
+
+    rdi-fs6 : sv-as-loc (readReg (regs (floc fs6)) Input1) ≡ just obj-loc
+    rdi-fs6 = trans (cong sv-as-loc input-fs6) rdi-fs5
+
+    wf-store-ind : InstrWF (floc fs6) (falloc fs6) store-indirect
+    wf-store-ind = obj-loc , rdi-fs6
+
+    -- ── ROW 9: …and past the indirect store and the code-address load.
+    -- `instr-load-code-addr` writes `Output` and nothing else, so reading
+    -- `Input1` through it is definitional.
+    input-fs7 : readReg (regs (floc fs7)) Input1 ≡ readReg (regs (floc fs6)) Input1
+    input-fs7 = store-ind-preserves-input (floc fs6) (falloc fs6) obj-loc rdi-fs6
+
+    input-fs8 : readReg (regs (floc fs8)) Input1 ≡ readReg (regs (floc fs7)) Input1
+    input-fs8 = refl
+
+    rdi-fs8 : sv-as-loc (readReg (regs (floc fs8)) Input1) ≡ just obj-loc
+    rdi-fs8 = trans (cong sv-as-loc (trans input-fs8 input-fs7)) rdi-fs6
+
+    wf-store-ind-suc : InstrWF (floc fs8) (falloc fs8) store-indirect-suc
+    wf-store-ind-suc = obj-loc , rdi-fs8
+
+    -- ── ROW 10: the CLOSURE pointer, stashed at fs3→fs4 and read at fs9.
+    cf-fs9 : current-frame (falloc fs9) ≡ current-frame (falloc fs3)
+    cf-fs9 =
+      trans (exec-abstract-preserves-frame store-indirect-suc (floc fs8) (falloc fs8))
+     (trans (exec-abstract-preserves-frame (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7))
+     (trans (exec-abstract-preserves-frame store-indirect (floc fs6) (falloc fs6))
+     (trans (exec-abstract-preserves-frame (load-from-slot cell0-stash) (floc fs5) (falloc fs5))
+     (trans (exec-abstract-preserves-frame mov-to-input (floc fs4) (falloc fs4))
+            (exec-abstract-preserves-frame (store-at-slot obj-stash) (floc fs3) (falloc fs3))))))
+
+    objv : StoredValue FS
+    objv = readReg (regs (floc fs3)) Output
+
+    read-obj-fs4 : MemOps.readLoc (floc fs4)
+                     (AtStack (current-frame (falloc fs3)) obj-stash) ≡ just objv
+    read-obj-fs4 =
+      MemOps.writeLoc-read-same-stack (floc fs3) (current-frame (falloc fs3)) obj-stash objv
+
+    read-obj-fs9 : MemOps.readLoc (floc fs9)
+                     (AtStack (current-frame (falloc fs3)) obj-stash) ≡ just objv
+    read-obj-fs9 =
+      trans (store-ind-suc-preserves-slot (floc fs8) (falloc fs8) obj-hl obj-stash rdi-fs8)
+     (trans (exec-abstract-preserves-stack-slot (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7)
+               (current-frame (falloc fs3)) obj-stash nhw-instr-load-code-addr refl)
+     (trans (store-ind-preserves-slot (floc fs6) (falloc fs6) obj-hl obj-stash rdi-fs6)
+     (trans (exec-abstract-preserves-stack-slot (load-from-slot cell0-stash) (floc fs5) (falloc fs5)
+               (current-frame (falloc fs3)) obj-stash nhw-load-from-slot refl)
+     (trans (exec-abstract-preserves-stack-slot mov-to-input (floc fs4) (falloc fs4)
+               (current-frame (falloc fs3)) obj-stash nhw-mov-to-input refl)
+            read-obj-fs4))))
+
+    wf-load-obj : InstrWF (floc fs9) (falloc fs9) (load-from-slot obj-stash)
+    wf-load-obj =
+      objv , subst (λ f → MemOps.readLoc (floc fs9) (AtStack f obj-stash) ≡ just objv)
+                 (sym cf-fs9) read-obj-fs9
+
+    -- ── The ten `halted ≡ false` obligations.
+    nh0 : halted (floc fs0) ≡ false
+    nh0 = nh
+    nh1 : halted (floc fs1) ≡ false
+    nh1 = exec-abstract-preserves-halted-WF mov-to-output (floc fs0) (falloc fs0) nh0 tt
+    nh2 : halted (floc fs2) ≡ false
+    nh2 = exec-abstract-preserves-halted-WF (store-at-slot cell0-stash) (floc fs1) (falloc fs1) nh1 tt
+    nh3 : halted (floc fs3) ≡ false
+    nh3 = exec-abstract-preserves-halted-WF (instr-alloc-heap 2) (floc fs2) (falloc fs2) nh2 tt
+    nh4 : halted (floc fs4) ≡ false
+    nh4 = exec-abstract-preserves-halted-WF (store-at-slot obj-stash) (floc fs3) (falloc fs3) nh3 tt
+    nh5 : halted (floc fs5) ≡ false
+    nh5 = exec-abstract-preserves-halted-WF mov-to-input (floc fs4) (falloc fs4) nh4 tt
+    nh6 : halted (floc fs6) ≡ false
+    nh6 = exec-abstract-preserves-halted-WF (load-from-slot cell0-stash) (floc fs5) (falloc fs5) nh5 wf-load-cell0
+    nh7 : halted (floc fs7) ≡ false
+    nh7 = exec-abstract-preserves-halted-WF store-indirect (floc fs6) (falloc fs6) nh6 wf-store-ind
+    nh8 : halted (floc fs8) ≡ false
+    nh8 = exec-abstract-preserves-halted-WF (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7) nh7 tt
+    nh9 : halted (floc fs9) ≡ false
+    nh9 = exec-abstract-preserves-halted-WF store-indirect-suc (floc fs8) (falloc fs8) nh8 wf-store-ind-suc
+    nh10 : halted (floc fs10) ≡ false
+    nh10 = exec-abstract-preserves-halted-WF (load-from-slot obj-stash) (floc fs9) (falloc fs9) nh9 wf-load-obj
+
+    run : FlatSteps prog 10 fs0 fs10
+    run = (nh0 , span 0 _ refl) ∷ (nh1 , span 1 _ refl) ∷ (nh2 , span 2 _ refl)
+        ∷ (nh3 , span 3 _ refl) ∷ (nh4 , span 4 _ refl) ∷ (nh5 , span 5 _ refl)
+        ∷ (nh6 , span 6 _ refl) ∷ (nh7 , span 7 _ refl) ∷ (nh8 , span 8 _ refl)
+        ∷ (nh9 , span 9 _ refl) ∷ []
+
+    -- ── The frontier: the allocation hands out `next-heap-ref (falloc fs2)`
+    -- and moves past it, so the record is BEFORE the frontier it leaves.
+    heapref-fs10 : next-heap-ref (falloc fs10) ≡ suc (next-heap-ref (falloc fs2))
+    heapref-fs10 =
+      trans (exec-abstract-preserves-heap-ref (load-from-slot obj-stash) (floc fs9) (falloc fs9) tt)
+     (trans (exec-abstract-preserves-heap-ref store-indirect-suc (floc fs8) (falloc fs8) tt)
+     (trans (exec-abstract-preserves-heap-ref (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7) tt)
+     (trans (exec-abstract-preserves-heap-ref store-indirect (floc fs6) (falloc fs6) tt)
+     (trans (exec-abstract-preserves-heap-ref (load-from-slot cell0-stash) (floc fs5) (falloc fs5) tt)
+     (trans (exec-abstract-preserves-heap-ref mov-to-input (floc fs4) (falloc fs4) tt)
+            (exec-abstract-preserves-heap-ref (store-at-slot obj-stash) (floc fs3) (falloc fs3) tt))))))
+
+    before : BeforeFrontier (falloc fs10) obj-loc
+    before = BeforeFrontier.heap-before
+               (subst (λ m → next-heap-ref (falloc fs2) < m) (sym heapref-fs10) (n<1+n _))
+
+    before-suc : BeforeFrontier (falloc fs10) (sucLoc obj-loc)
+    before-suc = BeforeFrontier.heap-before
+                   (subst (λ m → next-heap-ref (falloc fs2) < m) (sym heapref-fs10) (n<1+n _))
+
+    -- ── THE ENV CELL, written by `store-indirect` at fs6→fs7 and carried to
+    -- fs10 past the code-address load (registers only) and the second heap
+    -- write (a DIFFERENT cell).
+    cell0out-fs6 : readReg (regs (floc fs6)) Output ≡ cell0v
+    cell0out-fs6 = load-slot-result cell0-stash (floc fs5) (falloc fs5) cell0v (proj₂ wf-load-cell0)
+
+    cell0-fs7 : MemOps.readLoc (floc fs7) obj-loc ≡ just cell0v
+    cell0-fs7 = trans (store-ind-result (floc fs6) (falloc fs6) obj-hl rdi-fs6)
+                    (cong just cell0out-fs6)
+
+    cell0-fs10 : MemOps.readLoc (floc fs10) obj-loc ≡ just cell0v
+    cell0-fs10 =
+      trans (heap-untouched (load-from-slot obj-stash) (floc fs9) (falloc fs9)
+               obj-hl nhw-load-from-slot)
+     (trans (store-ind-suc-preserves-heap (floc fs8) (falloc fs8) obj-hl obj-hl
+               rdi-fs8 (sucHL-≢ obj-hl))
+     (trans (heap-untouched (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7)
+               obj-hl nhw-instr-load-code-addr)
+            cell0-fs7))
+
+    -- ── THE CODE CELL, written by `store-indirect-suc` at fs8→fs9.
+    codeout-fs8 : readReg (regs (floc fs8)) Output ≡ SV-Code code-lbl
+    codeout-fs8 = writeReg-same (regs (floc fs7)) Output (SV-Code code-lbl)
+
+    code-fs10 : MemOps.readLoc (floc fs10) (sucLoc obj-loc) ≡ just (SV-Code code-lbl)
+    code-fs10 =
+      trans (heap-untouched (load-from-slot obj-stash) (floc fs9) (falloc fs9)
+               (sucHL obj-hl) nhw-load-from-slot)
+     (trans (store-ind-suc-result (floc fs8) (falloc fs8) obj-hl rdi-fs8)
+            (cong just codeout-fs8))
+
+    -- ── THE RESULT POINTER.
+    cv≡ptr : objv ≡ SV-Ptr obj-loc
+    cv≡ptr = writeReg-same (regs (floc fs2)) Output (SV-Ptr (AtDynamic obj-hl))
+
+    out-eq : readReg (regs (floc fs10)) Output ≡ SV-Ptr obj-loc
+    out-eq = trans (load-slot-result obj-stash (floc fs9) (falloc fs9) objv
+                      (proj₂ wf-load-obj)) cv≡ptr
+
+    cf-fs10 : current-frame (falloc fs10) ≡ current-frame alloc
+    cf-fs10 =
+      trans (exec-abstract-preserves-frame (load-from-slot obj-stash) (floc fs9) (falloc fs9))
+     (trans cf-fs9
+     (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
+     (trans (exec-abstract-preserves-frame (store-at-slot cell0-stash) (floc fs1) (falloc fs1))
+            (exec-abstract-preserves-frame mov-to-output (floc fs0) (falloc fs0)))))
+
+    nextslot-fs10 : next-slot (falloc fs10) ≡ next-slot alloc
+    nextslot-fs10 =
+      trans (exec-abstract-preserves-next-slot (load-from-slot obj-stash) (floc fs9) (falloc fs9) tt)
+     (trans (exec-abstract-preserves-next-slot store-indirect-suc (floc fs8) (falloc fs8) tt)
+     (trans (exec-abstract-preserves-next-slot (instr-load-code-addr code-lbl) (floc fs7) (falloc fs7) tt)
+     (trans (exec-abstract-preserves-next-slot store-indirect (floc fs6) (falloc fs6) tt)
+     (trans (exec-abstract-preserves-next-slot (load-from-slot cell0-stash) (floc fs5) (falloc fs5) tt)
+     (trans (exec-abstract-preserves-next-slot mov-to-input (floc fs4) (falloc fs4) tt)
+     (trans (exec-abstract-preserves-next-slot (store-at-slot obj-stash) (floc fs3) (falloc fs3) tt)
+     (trans (exec-abstract-preserves-next-slot (instr-alloc-heap 2) (floc fs2) (falloc fs2) tt)
+     (trans (exec-abstract-preserves-next-slot (store-at-slot cell0-stash) (floc fs1) (falloc fs1) tt)
+            (exec-abstract-preserves-next-slot mov-to-output (floc fs0) (falloc fs0) tt)))))))))
+
+    nextslot-≤ : next-slot alloc ≤ next-slot (falloc fs10)
+    nextslot-≤ = ≤-reflexive (sym nextslot-fs10)
+
+    heapref-≤ : next-heap-ref alloc ≤ next-heap-ref (falloc fs10)
+    heapref-≤ = subst (λ m → next-heap-ref alloc ≤ m) (sym heapref-fs10) (n≤1+n _)
+
+    bf-advance : ∀ {lc : ValueLocation FS} → BeforeFrontier alloc lc
+               → BeforeFrontier (falloc fs10) lc
+    bf-advance (BeforeFrontier.stack-before f≡cf k<ns) =
+      BeforeFrontier.stack-before (trans f≡cf (sym cf-fs10)) (<-≤-trans k<ns nextslot-≤)
+    bf-advance (BeforeFrontier.stack-ancestor cf≺f src) =
+      BeforeFrontier.stack-ancestor
+        (subst (λ c → Once.CCC.FrameSemantics.FrameSemantics._≺_ FS c _)
+               (sym cf-fs10) cf≺f) src
+    bf-advance (BeforeFrontier.heap-before r<h) =
+      BeforeFrontier.heap-before (<-≤-trans r<h heapref-≤)
+
+
+    -- The input's validity, carried from the entry state to `fs10`. This is
+    -- the one place `TenStepPres` is spent, and both consumers spend it the
+    -- same way — the pointer residence is the only one that has a sub-value.
+    -- `{A}` is PINNED at every application: `⟦_⟧ᴰᴵ` is not constructor-headed
+    -- (D180), so nothing here determines it from the value's type.
+    valid-transport : ∀ {mIn A} (x : DT.⟦ A ⟧ᴰᴵ) (loc : ValueLocation FS)
+                    → BeforeFrontier alloc loc
+                    → ValidAtWF mIn alloc {A} x loc s
+                    → ValidAtWF mIn (falloc fs10) {A} x loc (floc fs10)
+    valid-transport {A = A} x loc bf valid =
+      validityWF-frontier-advance {A = A} x loc (floc fs10)
+        cf-fs10 nextslot-≤ heapref-≤
+        (validityWF-mem-preserved {A = A} x loc s (floc fs10) bf
+           (TSP.mem-pres nhw-load-from-slot refl nhw-instr-load-code-addr refl
+              n≤ rdi-fs6 rdi-fs8)
+           valid)
+
   obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF (curry body)
   obs-correct-curry {A} {B} {C} body _ n l prog base _ cr span mIn x s alloc cl n≤ nh inp k =
     record
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
-          realized 10 fs10 Heap (falloc fs10) run nh10 refl refl refl place
+          realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run TCB.nh10 refl refl refl place
       }
     where
-      env-stash closure-stash : ℕ
-      env-stash     = n
-      closure-stash = suc n
-
-      -- D182: this clause's instance of the shared ten-step invariant — the
-      -- same shape as `inl`'s, with the two middle rows swapped.
-      module TSP = TenStepPres n (load-from-slot n) (instr-load-code-addr (ℓ o l))
-                               prog base s alloc cl
-
-      body-lbl : LabelId
-      body-lbl = ℓ o l
-
-      fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
-      fs0  = entry-flat base s alloc cl
-      fs1  = flat-exec-instr mov-to-output                  prog fs0
-      fs2  = flat-exec-instr (store-at-slot env-stash)      prog fs1
-      fs3  = flat-exec-instr (instr-alloc-heap 2)           prog fs2
-      fs4  = flat-exec-instr (store-at-slot closure-stash)  prog fs3
-      fs5  = flat-exec-instr mov-to-input                   prog fs4
-      fs6  = flat-exec-instr (load-from-slot env-stash)     prog fs5
-      fs7  = flat-exec-instr store-indirect                 prog fs6
-      fs8  = flat-exec-instr (instr-load-code-addr body-lbl) prog fs7
-      fs9  = flat-exec-instr store-indirect-suc             prog fs8
-      fs10 = flat-exec-instr (load-from-slot closure-stash) prog fs9
+      -- D190: the ten-instruction build is shared with `Ana`; `emitted n l
+      -- (curry body)` IS `two-cell-trace n l`, so `span` passes straight in.
+      module TCB = TwoCellBuild n l prog base s alloc cl n≤ nh span
 
       denot-[] : ∀ k → projTrace (evalᴰ (curry body) x) k ≡ []
       denot-[] k = refl
-
-      clo-hl : HeapLocation
-      clo-hl = heap-loc (mkHeapRef (next-heap-ref (falloc fs2))) 0
-
-      clo-loc : ValueLocation FS
-      clo-loc = AtDynamic clo-hl
-
-      -- ── ROW 6: the env value, stashed at fs1→fs2 and loaded back at fs5.
-      -- The only intervening STACK write targets `suc n`, so `n < suc n` keeps
-      -- it away; the allocation and `mov-to-input` touch no stack cell.
-      ev : StoredValue FS
-      ev = readReg (regs (floc fs1)) Output
-
-      cf-fs5 : current-frame (falloc fs5) ≡ current-frame (falloc fs1)
-      cf-fs5 =
-        trans (exec-abstract-preserves-frame mov-to-input (floc fs4) (falloc fs4))
-       (trans (exec-abstract-preserves-frame (store-at-slot closure-stash) (floc fs3) (falloc fs3))
-       (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
-              (exec-abstract-preserves-frame (store-at-slot env-stash) (floc fs1) (falloc fs1))))
-
-      read-env-fs2 : MemOps.readLoc (floc fs2)
-                       (AtStack (current-frame (falloc fs1)) env-stash) ≡ just ev
-      read-env-fs2 =
-        MemOps.writeLoc-read-same-stack (floc fs1) (current-frame (falloc fs1)) env-stash ev
-
-      read-env-fs5 : MemOps.readLoc (floc fs5)
-                       (AtStack (current-frame (falloc fs1)) env-stash) ≡ just ev
-      read-env-fs5 =
-        trans (exec-abstract-preserves-stack-slot mov-to-input (floc fs4) (falloc fs4)
-                 (current-frame (falloc fs1)) env-stash nhw-mov-to-input refl)
-       (trans (store-at-slot-preserves-below env-stash closure-stash (floc fs3) (falloc fs3) (n<1+n _))
-       (trans (exec-abstract-preserves-stack-slot (instr-alloc-heap 2) (floc fs2) (falloc fs2)
-                 (current-frame (falloc fs1)) env-stash nhw-instr-alloc-heap refl)
-              read-env-fs2))
-
-      wf-load-env : InstrWF (floc fs5) (falloc fs5) (load-from-slot env-stash)
-      wf-load-env =
-        ev , subst (λ f → MemOps.readLoc (floc fs5) (AtStack f env-stash) ≡ just ev)
-                   (sym cf-fs5) read-env-fs5
-
-      -- ── ROW 7: the closure pointer must survive the env load.
-      rdi-fs5 : sv-as-loc (readReg (regs (floc fs5)) Input1) ≡ just clo-loc
-      rdi-fs5 = refl
-
-      input-fs6 : readReg (regs (floc fs6)) Input1 ≡ readReg (regs (floc fs5)) Input1
-      input-fs6 = load-slot-preserves-input env-stash (floc fs5) (falloc fs5) ev
-                    (proj₂ wf-load-env)
-
-      rdi-fs6 : sv-as-loc (readReg (regs (floc fs6)) Input1) ≡ just clo-loc
-      rdi-fs6 = trans (cong sv-as-loc input-fs6) rdi-fs5
-
-      wf-store-ind : InstrWF (floc fs6) (falloc fs6) store-indirect
-      wf-store-ind = clo-loc , rdi-fs6
-
-      -- ── ROW 9: …and past the indirect store and the code-address load.
-      -- `instr-load-code-addr` writes `Output` and nothing else, so reading
-      -- `Input1` through it is definitional.
-      input-fs7 : readReg (regs (floc fs7)) Input1 ≡ readReg (regs (floc fs6)) Input1
-      input-fs7 = store-ind-preserves-input (floc fs6) (falloc fs6) clo-loc rdi-fs6
-
-      input-fs8 : readReg (regs (floc fs8)) Input1 ≡ readReg (regs (floc fs7)) Input1
-      input-fs8 = refl
-
-      rdi-fs8 : sv-as-loc (readReg (regs (floc fs8)) Input1) ≡ just clo-loc
-      rdi-fs8 = trans (cong sv-as-loc (trans input-fs8 input-fs7)) rdi-fs6
-
-      wf-store-ind-suc : InstrWF (floc fs8) (falloc fs8) store-indirect-suc
-      wf-store-ind-suc = clo-loc , rdi-fs8
-
-      -- ── ROW 10: the CLOSURE pointer, stashed at fs3→fs4 and read at fs9.
-      cf-fs9 : current-frame (falloc fs9) ≡ current-frame (falloc fs3)
-      cf-fs9 =
-        trans (exec-abstract-preserves-frame store-indirect-suc (floc fs8) (falloc fs8))
-       (trans (exec-abstract-preserves-frame (instr-load-code-addr body-lbl) (floc fs7) (falloc fs7))
-       (trans (exec-abstract-preserves-frame store-indirect (floc fs6) (falloc fs6))
-       (trans (exec-abstract-preserves-frame (load-from-slot env-stash) (floc fs5) (falloc fs5))
-       (trans (exec-abstract-preserves-frame mov-to-input (floc fs4) (falloc fs4))
-              (exec-abstract-preserves-frame (store-at-slot closure-stash) (floc fs3) (falloc fs3))))))
-
-      cv : StoredValue FS
-      cv = readReg (regs (floc fs3)) Output
-
-      read-clo-fs4 : MemOps.readLoc (floc fs4)
-                       (AtStack (current-frame (falloc fs3)) closure-stash) ≡ just cv
-      read-clo-fs4 =
-        MemOps.writeLoc-read-same-stack (floc fs3) (current-frame (falloc fs3)) closure-stash cv
-
-      read-clo-fs9 : MemOps.readLoc (floc fs9)
-                       (AtStack (current-frame (falloc fs3)) closure-stash) ≡ just cv
-      read-clo-fs9 =
-        trans (store-ind-suc-preserves-slot (floc fs8) (falloc fs8) clo-hl closure-stash rdi-fs8)
-       (trans (exec-abstract-preserves-stack-slot (instr-load-code-addr body-lbl) (floc fs7) (falloc fs7)
-                 (current-frame (falloc fs3)) closure-stash nhw-instr-load-code-addr refl)
-       (trans (store-ind-preserves-slot (floc fs6) (falloc fs6) clo-hl closure-stash rdi-fs6)
-       (trans (exec-abstract-preserves-stack-slot (load-from-slot env-stash) (floc fs5) (falloc fs5)
-                 (current-frame (falloc fs3)) closure-stash nhw-load-from-slot refl)
-       (trans (exec-abstract-preserves-stack-slot mov-to-input (floc fs4) (falloc fs4)
-                 (current-frame (falloc fs3)) closure-stash nhw-mov-to-input refl)
-              read-clo-fs4))))
-
-      wf-load-clo : InstrWF (floc fs9) (falloc fs9) (load-from-slot closure-stash)
-      wf-load-clo =
-        cv , subst (λ f → MemOps.readLoc (floc fs9) (AtStack f closure-stash) ≡ just cv)
-                   (sym cf-fs9) read-clo-fs9
-
-      -- ── The ten `halted ≡ false` obligations.
-      nh0 : halted (floc fs0) ≡ false
-      nh0 = nh
-      nh1 : halted (floc fs1) ≡ false
-      nh1 = exec-abstract-preserves-halted-WF mov-to-output (floc fs0) (falloc fs0) nh0 tt
-      nh2 : halted (floc fs2) ≡ false
-      nh2 = exec-abstract-preserves-halted-WF (store-at-slot env-stash) (floc fs1) (falloc fs1) nh1 tt
-      nh3 : halted (floc fs3) ≡ false
-      nh3 = exec-abstract-preserves-halted-WF (instr-alloc-heap 2) (floc fs2) (falloc fs2) nh2 tt
-      nh4 : halted (floc fs4) ≡ false
-      nh4 = exec-abstract-preserves-halted-WF (store-at-slot closure-stash) (floc fs3) (falloc fs3) nh3 tt
-      nh5 : halted (floc fs5) ≡ false
-      nh5 = exec-abstract-preserves-halted-WF mov-to-input (floc fs4) (falloc fs4) nh4 tt
-      nh6 : halted (floc fs6) ≡ false
-      nh6 = exec-abstract-preserves-halted-WF (load-from-slot env-stash) (floc fs5) (falloc fs5) nh5 wf-load-env
-      nh7 : halted (floc fs7) ≡ false
-      nh7 = exec-abstract-preserves-halted-WF store-indirect (floc fs6) (falloc fs6) nh6 wf-store-ind
-      nh8 : halted (floc fs8) ≡ false
-      nh8 = exec-abstract-preserves-halted-WF (instr-load-code-addr body-lbl) (floc fs7) (falloc fs7) nh7 tt
-      nh9 : halted (floc fs9) ≡ false
-      nh9 = exec-abstract-preserves-halted-WF store-indirect-suc (floc fs8) (falloc fs8) nh8 wf-store-ind-suc
-      nh10 : halted (floc fs10) ≡ false
-      nh10 = exec-abstract-preserves-halted-WF (load-from-slot closure-stash) (floc fs9) (falloc fs9) nh9 wf-load-clo
-
-      run : FlatSteps prog 10 fs0 fs10
-      run = (nh0 , span 0 _ refl) ∷ (nh1 , span 1 _ refl) ∷ (nh2 , span 2 _ refl)
-          ∷ (nh3 , span 3 _ refl) ∷ (nh4 , span 4 _ refl) ∷ (nh5 , span 5 _ refl)
-          ∷ (nh6 , span 6 _ refl) ∷ (nh7 , span 7 _ refl) ∷ (nh8 , span 8 _ refl)
-          ∷ (nh9 , span 9 _ refl) ∷ []
-
-      -- ── The frontier: the allocation hands out `next-heap-ref (falloc fs2)`
-      -- and moves past it, so the record is BEFORE the frontier it leaves.
-      heapref-fs10 : next-heap-ref (falloc fs10) ≡ suc (next-heap-ref (falloc fs2))
-      heapref-fs10 =
-        trans (exec-abstract-preserves-heap-ref (load-from-slot closure-stash) (floc fs9) (falloc fs9) tt)
-       (trans (exec-abstract-preserves-heap-ref store-indirect-suc (floc fs8) (falloc fs8) tt)
-       (trans (exec-abstract-preserves-heap-ref (instr-load-code-addr body-lbl) (floc fs7) (falloc fs7) tt)
-       (trans (exec-abstract-preserves-heap-ref store-indirect (floc fs6) (falloc fs6) tt)
-       (trans (exec-abstract-preserves-heap-ref (load-from-slot env-stash) (floc fs5) (falloc fs5) tt)
-       (trans (exec-abstract-preserves-heap-ref mov-to-input (floc fs4) (falloc fs4) tt)
-              (exec-abstract-preserves-heap-ref (store-at-slot closure-stash) (floc fs3) (falloc fs3) tt))))))
-
-      before : BeforeFrontier (falloc fs10) clo-loc
-      before = BeforeFrontier.heap-before
-                 (subst (λ m → next-heap-ref (falloc fs2) < m) (sym heapref-fs10) (n<1+n _))
-
-      before-suc : BeforeFrontier (falloc fs10) (sucLoc clo-loc)
-      before-suc = BeforeFrontier.heap-before
-                     (subst (λ m → next-heap-ref (falloc fs2) < m) (sym heapref-fs10) (n<1+n _))
-
-      -- ── THE ENV CELL, written by `store-indirect` at fs6→fs7 and carried to
-      -- fs10 past the code-address load (registers only) and the second heap
-      -- write (a DIFFERENT cell).
-      envout-fs6 : readReg (regs (floc fs6)) Output ≡ ev
-      envout-fs6 = load-slot-result env-stash (floc fs5) (falloc fs5) ev (proj₂ wf-load-env)
-
-      env-fs7 : MemOps.readLoc (floc fs7) clo-loc ≡ just ev
-      env-fs7 = trans (store-ind-result (floc fs6) (falloc fs6) clo-hl rdi-fs6)
-                      (cong just envout-fs6)
-
-      env-fs10 : MemOps.readLoc (floc fs10) clo-loc ≡ just ev
-      env-fs10 =
-        trans (heap-untouched (load-from-slot closure-stash) (floc fs9) (falloc fs9)
-                 clo-hl nhw-load-from-slot)
-       (trans (store-ind-suc-preserves-heap (floc fs8) (falloc fs8) clo-hl clo-hl
-                 rdi-fs8 (sucHL-≢ clo-hl))
-       (trans (heap-untouched (instr-load-code-addr body-lbl) (floc fs7) (falloc fs7)
-                 clo-hl nhw-instr-load-code-addr)
-              env-fs7))
-
-      -- ── THE CODE CELL, written by `store-indirect-suc` at fs8→fs9.
-      codeout-fs8 : readReg (regs (floc fs8)) Output ≡ SV-Code body-lbl
-      codeout-fs8 = writeReg-same (regs (floc fs7)) Output (SV-Code body-lbl)
-
-      code-fs10 : MemOps.readLoc (floc fs10) (sucLoc clo-loc) ≡ just (SV-Code body-lbl)
-      code-fs10 =
-        trans (heap-untouched (load-from-slot closure-stash) (floc fs9) (falloc fs9)
-                 (sucHL clo-hl) nhw-load-from-slot)
-       (trans (store-ind-suc-result (floc fs8) (falloc fs8) clo-hl rdi-fs8)
-              (cong just codeout-fs8))
-
-      -- ── THE RESULT POINTER.
-      cv≡ptr : cv ≡ SV-Ptr clo-loc
-      cv≡ptr = writeReg-same (regs (floc fs2)) Output (SV-Ptr (AtDynamic clo-hl))
-
-      out-eq : readReg (regs (floc fs10)) Output ≡ SV-Ptr clo-loc
-      out-eq = trans (load-slot-result closure-stash (floc fs9) (falloc fs9) cv
-                        (proj₂ wf-load-clo)) cv≡ptr
-
-      cf-fs10 : current-frame (falloc fs10) ≡ current-frame alloc
-      cf-fs10 =
-        trans (exec-abstract-preserves-frame (load-from-slot closure-stash) (floc fs9) (falloc fs9))
-       (trans cf-fs9
-       (trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc fs2) (falloc fs2))
-       (trans (exec-abstract-preserves-frame (store-at-slot env-stash) (floc fs1) (falloc fs1))
-              (exec-abstract-preserves-frame mov-to-output (floc fs0) (falloc fs0)))))
-
-      nextslot-fs10 : next-slot (falloc fs10) ≡ next-slot alloc
-      nextslot-fs10 =
-        trans (exec-abstract-preserves-next-slot (load-from-slot closure-stash) (floc fs9) (falloc fs9) tt)
-       (trans (exec-abstract-preserves-next-slot store-indirect-suc (floc fs8) (falloc fs8) tt)
-       (trans (exec-abstract-preserves-next-slot (instr-load-code-addr body-lbl) (floc fs7) (falloc fs7) tt)
-       (trans (exec-abstract-preserves-next-slot store-indirect (floc fs6) (falloc fs6) tt)
-       (trans (exec-abstract-preserves-next-slot (load-from-slot env-stash) (floc fs5) (falloc fs5) tt)
-       (trans (exec-abstract-preserves-next-slot mov-to-input (floc fs4) (falloc fs4) tt)
-       (trans (exec-abstract-preserves-next-slot (store-at-slot closure-stash) (floc fs3) (falloc fs3) tt)
-       (trans (exec-abstract-preserves-next-slot (instr-alloc-heap 2) (floc fs2) (falloc fs2) tt)
-       (trans (exec-abstract-preserves-next-slot (store-at-slot env-stash) (floc fs1) (falloc fs1) tt)
-              (exec-abstract-preserves-next-slot mov-to-output (floc fs0) (falloc fs0) tt)))))))))
-
-      nextslot-≤ : next-slot alloc ≤ next-slot (falloc fs10)
-      nextslot-≤ = ≤-reflexive (sym nextslot-fs10)
-
-      heapref-≤ : next-heap-ref alloc ≤ next-heap-ref (falloc fs10)
-      heapref-≤ = subst (λ m → next-heap-ref alloc ≤ m) (sym heapref-fs10) (n≤1+n _)
-
-      bf-advance : ∀ {lc : ValueLocation FS} → BeforeFrontier alloc lc
-                 → BeforeFrontier (falloc fs10) lc
-      bf-advance (BeforeFrontier.stack-before f≡cf k<ns) =
-        BeforeFrontier.stack-before (trans f≡cf (sym cf-fs10)) (<-≤-trans k<ns nextslot-≤)
-      bf-advance (BeforeFrontier.stack-ancestor cf≺f src) =
-        BeforeFrontier.stack-ancestor
-          (subst (λ c → Once.CCC.FrameSemantics.FrameSemantics._≺_ FS c _)
-                 (sym cf-fs10) cf≺f) src
-      bf-advance (BeforeFrontier.heap-before r<h) =
-        BeforeFrontier.heap-before (<-≤-trans r<h heapref-≤)
 
       -- ── THE THREE INPUT RESIDENCES. The env cell receives whatever `Input1`
       -- held, so each residence picks the matching closure witness: a POINTER
@@ -3415,54 +3459,102 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- D181's `valid-closure-reg-wf`. Without that constructor the last two —
       -- and a unit env is `main`'s — would be unprovable.
       place-of : InputAt mIn alloc x s
-               → ResultPlace (B IRTy.⇛ C) Heap (falloc fs10) (falloc fs10)
-                             (TM.valueT (evalᴰ (curry body) x) k) (floc fs10)
+               → ResultPlace (B IRTy.⇛ C) Heap (falloc TCB.fs10) (falloc TCB.fs10)
+                             (TM.valueT (evalᴰ (curry body) x) k) (floc TCB.fs10)
       place-of (in-reg fit eq) =
-        at-loc clo-loc (mk-valid eq) before out-eq (mk-valid eq) before
+        at-loc TCB.obj-loc (mk-valid eq) TCB.before TCB.out-eq (mk-valid eq) TCB.before
         where
-          ev≡in : ev ≡ readReg (regs s) Input1
+          ev≡in : TCB.cell0v ≡ readReg (regs s) Input1
           ev≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ prim-sv fit x)
-                   → ValidAtWF Heap (falloc fs10)
-                       (TM.valueT (evalᴰ (curry body) x) 0) clo-loc (floc fs10)
+                   → ValidAtWF Heap (falloc TCB.fs10)
+                       (TM.valueT (evalᴰ (curry body) x) 0) TCB.obj-loc (floc TCB.fs10)
           mk-valid e =
             valid-closure-reg-wf {body = body} {env = x} tt (rep-prim fit)
-              (trans env-fs10 (cong just (trans ev≡in e))) code-fs10 before-suc
+              (trans TCB.cell0-fs10 (cong just (trans ev≡in e))) TCB.code-fs10 TCB.before-suc
       place-of (in-unit refl) =
-        at-loc clo-loc mk-valid before out-eq mk-valid before
+        at-loc TCB.obj-loc mk-valid TCB.before TCB.out-eq mk-valid TCB.before
         where
-          mk-valid : ValidAtWF Heap (falloc fs10)
-                       (TM.valueT (evalᴰ (curry body) x) 0) clo-loc (floc fs10)
+          mk-valid : ValidAtWF Heap (falloc TCB.fs10)
+                       (TM.valueT (evalᴰ (curry body) x) 0) TCB.obj-loc (floc TCB.fs10)
           mk-valid =
-            valid-closure-reg-wf {body = body} {env = x} tt (rep-unit refl ev)
-              env-fs10 code-fs10 before-suc
+            valid-closure-reg-wf {body = body} {env = x} tt (rep-unit refl TCB.cell0v)
+              TCB.cell0-fs10 TCB.code-fs10 TCB.before-suc
       place-of (in-loc loc valid bf eq) =
-        at-loc clo-loc (mk-valid eq) before out-eq (mk-valid eq) before
+        at-loc TCB.obj-loc (mk-valid eq) TCB.before TCB.out-eq (mk-valid eq) TCB.before
         where
-          ev≡ptr : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc) → ev ≡ SV-Ptr loc
+          ev≡ptr : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc) → TCB.cell0v ≡ SV-Ptr loc
           ev≡ptr e = trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) e
 
-          valid' : ValidAtWF mIn (falloc fs10) x loc (floc fs10)
-          valid' =
-            validityWF-frontier-advance x loc (floc fs10)
-              cf-fs10 nextslot-≤ heapref-≤
-              (validityWF-mem-preserved x loc s (floc fs10) bf
-                 (TSP.mem-pres nhw-load-from-slot refl nhw-instr-load-code-addr refl
-                    n≤ rdi-fs6 rdi-fs8)
-                 valid)
-
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
-                   → ValidAtWF Heap (falloc fs10)
-                       (TM.valueT (evalᴰ (curry body) x) 0) clo-loc (floc fs10)
+                   → ValidAtWF Heap (falloc TCB.fs10)
+                       (TM.valueT (evalᴰ (curry body) x) 0) TCB.obj-loc (floc TCB.fs10)
           mk-valid e =
             valid-closure-wf {body = body} {env = x} tt
-              (trans env-fs10 (cong just (ev≡ptr e))) code-fs10
-              (bf-advance bf) before-suc valid'
+              (trans TCB.cell0-fs10 (cong just (ev≡ptr e))) TCB.code-fs10
+              (TCB.bf-advance bf) TCB.before-suc (TCB.valid-transport x loc bf valid)
 
-      place : ResultPlace (B IRTy.⇛ C) Heap (falloc fs10) (falloc fs10)
-                          (TM.valueT (evalᴰ (curry body) x) k) (floc fs10)
+      place : ResultPlace (B IRTy.⇛ C) Heap (falloc TCB.fs10) (falloc TCB.fs10)
+                          (TM.valueT (evalᴰ (curry body) x) k) (floc TCB.fs10)
       place = place-of inp
+
+  ------------------------------------------------------------------------
+  -- D189: `Ana` — DISCHARGED, and it is `obs-correct-curry` with the other
+  -- witness.
+  --
+  -- That is the whole content of the representation decision. A ν is a
+  -- suspension: the seed in cell 0, the coalgebra's code address in cell 1.
+  -- A closure is a suspension too — the env in cell 0, the body's code
+  -- address in cell 1 — so the ten instructions are the same ten, the run is
+  -- the same run, and the two clauses differ only in which `ValidAtWF`
+  -- constructor they hand the two cells to. `TwoCellBuild` (D190) is
+  -- everything before that choice; this clause is the choice.
+  --
+  -- The seed's residence is where D187's `CellAt` pays: a pointer seed, a
+  -- register-sized seed and a `Unit` seed are ONE constructor here, whereas
+  -- `curry` still needs `valid-closure-wf`/`valid-closure-reg-wf` to say the
+  -- same thing twice.
+  ------------------------------------------------------------------------
+  obs-correct-Ana : ∀ {F} (wf : WellFormedFI F) {A} (coalg : IR A (⟦ F ⟧TI A))
+                  → IRObsCorrectF (Ana wf coalg)
+  obs-correct-Ana {F} wf {A} coalg _ n l prog base _ cr span mIn x s alloc cl n≤ nh inp k =
+    record
+      { traces-agree   = cong (take k) (sym (denot-[] k))
+      ; value-realized =
+          realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run TCB.nh10 refl refl refl place
+      }
+    where
+      module TCB = TwoCellBuild n l prog base s alloc cl n≤ nh span
+
+      -- Building a suspension RUNS NOTHING: the coalgebra is stored, not
+      -- called, so neither side emits. (`Out` is where the events appear.)
+      denot-[] : ∀ k → projTrace (evalᴰ (Ana wf coalg) x) k ≡ []
+      denot-[] k = refl
+
+      cell0v≡in : TCB.cell0v ≡ readReg (regs s) Input1
+      cell0v≡in = writeReg-same (regs s) Output (readReg (regs s) Input1)
+
+      -- THE SEED CELL — one clause per residence, one constructor for all three.
+      cell-of : InputAt mIn alloc x s
+              → CellAt (falloc TCB.fs10) A x TCB.obj-loc (floc TCB.fs10)
+      cell-of (in-reg fit eq) =
+        cell-inline (rep-prim fit)
+          (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))
+      cell-of (in-unit refl) =
+        cell-inline (rep-unit refl TCB.cell0v) TCB.cell0-fs10
+      cell-of (in-loc loc valid bf eq) =
+        cell-ptr (trans TCB.cell0-fs10 (cong just (trans cell0v≡in eq)))
+                 (TCB.bf-advance bf) (TCB.valid-transport x loc bf valid)
+
+      mk-valid : ValidAtWF Heap (falloc TCB.fs10)
+                   (TM.valueT (evalᴰ (Ana wf coalg) x) 0) TCB.obj-loc (floc TCB.fs10)
+      mk-valid = valid-ν-susp-wf wf {coalg = coalg} {seed = x} tt
+                   (cell-of inp) TCB.code-fs10 TCB.before-suc
+
+      place : ResultPlace (ν-type F) Heap (falloc TCB.fs10) (falloc TCB.fs10)
+                          (TM.valueT (evalᴰ (Ana wf coalg) x) k) (floc TCB.fs10)
+      place = at-loc TCB.obj-loc mk-valid TCB.before TCB.out-eq mk-valid TCB.before
 
   ------------------------------------------------------------------------
   -- D188: `apply` — DISCHARGED against the block-table premise.
@@ -3623,15 +3715,34 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                       (entry-flat base s alloc cl) (CalleeRun.settle crun)
               run = FlatSteps-++ run17 (CalleeRun.run crun)
 
+              -- D189 (repair): the callee's obligations are stated at
+              -- `evalᴰ body (env , arg)`, the caller's at `evalᴰ apply x`
+              -- (i.e. `proj₁ x (proj₂ x)`). Those agree by the closure
+              -- record's OWN equation — `f-is-closure` — and that equation is
+              -- propositional, so it is spent here rather than assumed to
+              -- hold definitionally. It used to typecheck without this while
+              -- `ValidAtWF` had exactly two constructors at `A ⇛ B`; adding
+              -- `valid-ν-susp-wf` made `decomposeClosureWF` stop reducing far
+              -- enough for the coincidence to survive. The decomposition
+              -- hands over the equation for exactly this purpose.
+              denot-eq : evalᴰ body (env , proj₂ x) ≡ evalᴰ (apply {A} {B}) x
+              denot-eq = cong (λ g → g (proj₂ x))
+                              (sym (ClosureValidWF.f-is-closure cvw))
+
               place : ResultPlace B (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
                         (TM.valueT (evalᴰ (apply {A} {B}) x) k)
                         (floc (CalleeRun.settle crun))
-              place = CalleeRun.place crun
+              place = subst (λ d → ResultPlace B (CalleeRun.out-mode crun)
+                                     (falloc (CalleeRun.settle crun))
+                                     (CalleeRun.cont-alloc crun)
+                                     (TM.valueT d k) (floc (CalleeRun.settle crun)))
+                            denot-eq (CalleeRun.place crun)
 
               trc : take k (chain-events run) ≡ take k (projTrace (evalᴰ (apply {A} {B}) x) k)
               trc = trans (cong (take k) (chain-events-++ run17 (CalleeRun.run crun)))
-                          (CalleeRun.events crun)
+                          (trans (CalleeRun.events crun)
+                                 (cong (λ d → take k (projTrace d k)) denot-eq))
 
   obs-correct-sigop : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
   -- Route on BOTH the codomain (register-resident result) and the domain
