@@ -1898,6 +1898,54 @@ the wrong MAGNITUDE; do not quote 50×.
 `Lib/IPay` while `imethsTyFrom2-wf` is elaborated from `tmp/MethsTy2` in
 the run. That handicaps the NEW form, so the bound is conservative.
 
+### ⛔⛔ AND THEN THE DIAGNOSIS COLLAPSED — IT IS THE **MOTIVE**, NOT THE TAIL
+
+Re-run the SAME 53-row recursion at a CONSTANT motive (`Nat`), where
+`renTy ρ Nat = Nat` definitionally so every per-row renaming vanishes:
+
+| motive | OLD (tail renaming) | NEW (motive renaming) |
+|---|---|---|
+| **`Nat` — constant** | **0.98 s / 0.15 GB** | **1.02 s / 0.15 GB** |
+| ambient `motA nn` (abstract) | >248.8 s KILLED | 72.9 s / 2.33 GB |
+
+★★★ **AT A CONSTANT MOTIVE THE TWO FORMS ARE INDISTINGUISHABLE** —
+0.98 s against 1.02 s, inside noise. **The tail renaming costs NOTHING.**
+The entire cost of both shapes is the MOTIVE.
+
+⇒ **DO NOT CHANGE `Spec/Typing`.** `imethsTyFrom2` was a fix for a defect
+that does not exist. It looked like a ≥3.4× win only because it happens
+to handle an ambient motive less badly, and the ambient motive is itself
+the problem.
+
+### ★★★ THE REAL LAW — COST IS WHAT SITS IN THE MOTIVE
+
+Same recursion, 44–53 rows, only the motive changes:
+
+| motive | cost |
+|---|---|
+| `Nat` — CONSTANT (`renTy ρ A ≡ A`) | **~1 s** |
+| a **VARIABLE** (`tmp/TupleAVar`) | 6.6 s |
+| Γ-polymorphic CONCRETE (`tmp/TupleP`, `payTyMotK`) | 43.9 s |
+| ABSTRACT ambient (`tmp/TupleA`, `motA nn`) | 173.6 s |
+
+**~250× end to end**, and it is [[variable-is-the-cheapest-position]]
+sharpened: a renaming is free when the motive is CONSTANT, O(1) when it
+is a VARIABLE, O(|M|) when CONCRETE, and STUCK — accumulating — when
+ABSTRACT. ⚠ Note a variable beats a concrete Γ-polymorphic motive:
+renaming a variable is one step, renaming a concrete term walks it.
+
+★ SO `Lib/IFold`'s `renA`/`subA` INVARIANCE HYPOTHESES ARE NOT A
+LIMITATION — they are the performance design, and its header saying the
+motive generalisation *"HAS to thread `subTy σ A ≡ A`"* was recording
+exactly this cost.
+
+⚠⚠ AND IT PUTS A PRICE ON THE `iihs` AMBIENT-MOTIVE WORK. That conversion
+measured 7.7× BETTER than the passenger baseline at the ROW, and it buys
+the worst motive class at the TUPLE. The mixed formulation (generic
+lemma, instantiated at a VARIABLE) already avoids the worst of it — 6.6 s
+against 173.6 s — which is why that combination won, and this is the
+mechanism behind it.
+
 ⛔ Do NOT pursue the ford collapse: it was justified by the refuted depth
 law.
 
