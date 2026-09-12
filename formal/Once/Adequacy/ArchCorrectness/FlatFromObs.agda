@@ -114,7 +114,7 @@ import Once.Parser.Module.Core as P
 open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
 open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 
-open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted)
+open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; CalleeRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted)
 open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left)
 open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
@@ -222,12 +222,40 @@ entry-span ir k i eq =
 
 -- D180: …AT AN OBSERVATION DEPTH. The obligation is depth-indexed (one run per
 -- depth, D058's shape), so the entry witness is too.
+------------------------------------------------------------------------
+-- D188: THE BLOCK TABLE, assumed here — the apex's one new axiom, and the
+-- whole of what `obs-correct-apply` could not prove.
+--
+-- It says: a closure that is VALIDLY RESIDENT in a reachable state names a
+-- label whose block implements its body, and running that block from the
+-- post-call state returns with the body's value and the body's events.
+--
+-- Two halves, and only the second is a real assumption:
+--
+--   * "every block of `ir-to-unit ir` IS `emitted 0 l body` for the body its
+--     label was minted for" is TRUE BY CONSTRUCTION of the emitter — the
+--     `curry` clause puts `(ℓ o this-label , _ , body-trace)` in `all-bodies`
+--     — and is provable by induction over `ir-to-trace'`;
+--   * that the closure a RUNTIME state holds was built by one of those
+--     `curry`s is a REACHABILITY invariant. It is true (the entry heap is
+--     empty, so every resident closure was built by an earlier `curry` in the
+--     same run), and proving it needs an induction over runs that nothing
+--     here has. That is the honest content of this axiom.
+--
+-- Class **deferred proof**. It replaces `obs-correct-apply`, which was an
+-- axiom for the WHOLE clause: the seventeen-instruction setup, its memory
+-- preservation, the call's label resolution and all three input residences
+-- are now PROVED (D183/D185/D188), and only the callee's own run is assumed.
+------------------------------------------------------------------------
+postulate
+  callee-runs : (ir : IR Unit Unit) → CalleeRuns (ir-to-trace ir)
+
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir → (k : ℕ)
               → MachineRefinesObsF (ir-to-trace ir) 0 0 0 ir tt entry-s
                   (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
 entry-witness ir ioc k =
   ioc (entry-size ir) 0 0 (ir-to-trace ir) 0 (ir-to-trace-slot-stable ir)
-      (entry-span ir)
+      (callee-runs ir) (entry-span ir)
       Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
       (entry-ns (ir-stack-budget ir)) entry-nh
       -- D153: ONE residence premise. `main : IR Unit Unit`, so its input has

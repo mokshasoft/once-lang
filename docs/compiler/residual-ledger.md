@@ -466,6 +466,22 @@ Deleted in the same change, and worth recording as residuals that went away:
 `Ana`/`in-ν`) and `ν-layer-iso` (its inversion). `obs-correct-Out` is now
 discharged by `⊥-elim (ν-input-absurd …)` — see D180.
 
+### D188 — `obs-correct-apply` DISCHARGED; one whole-clause axiom → one invariant
+
+`obs-correct-apply` was an axiom for the entire clause. It is now a proof
+against `callee-runs` (FlatFromObs), which is a PROGRAM-level invariant:
+
+| half | status |
+|---|---|
+| every block of the unit IS `emitted 0 l body` for the body its label was minted for | **provable** — true by construction of the emitter, by induction over `ir-to-trace'` |
+| the closure a RUNTIME state holds was built by one of those `curry`s | **the real assumption** — a reachability invariant (the entry heap is empty, so it is true), needing an induction over runs |
+
+Proved in the clause and no longer assumed: the seventeen-instruction setup and
+all its `InstrWF`/`halted` obligations, its memory preservation, the two
+off-pointer input residences (refuted), the closure's heap residence (refuted
+for `AtStack`), the call's label resolution spelled out through `callView`'s
+three levels, the callee's input witness, and the trace concatenation.
+
 ### D187 — the pair split: the third instance of one defect class
 
 `valid-pair-wf` demanded pointers in both cells; `apply` made that refutable

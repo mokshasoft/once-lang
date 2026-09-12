@@ -1071,6 +1071,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- D170: `body<bound` removed with the constructor's — a size bound is a
       -- recursion measure, not something the value carries.
       body-label : LabelId
+      -- D188: the closure's residence, which `apply` needs: `LocMatchesMode
+      -- Heap` forces `AtDynamic`, and that is the shape `do-call` enters on.
+      loc-mode : LocMatchesMode Heap closure-loc
       -- D181: WHERE the environment lives, as ONE field carrying its own
       -- evidence (D153's rule). It used to be four — `env-loc`, `mEnv`,
       -- `env-ptr`, `env-before`, `env-valid` — which could only describe a
@@ -1095,6 +1098,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; body = body
     ; env = env
     ; body-label = bl
+    ; loc-mode = lmm
     ; env-at = env-at-loc {mEnv = mE} el ep eb ev
     ; code-ptr = cp
     ; sucLoc-before = slb
@@ -1106,6 +1110,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; body = body
     ; env = env
     ; body-label = bl
+    ; loc-mode = lmm
     ; env-at = env-in-cell rep ep
     ; code-ptr = cp
     ; sucLoc-before = slb

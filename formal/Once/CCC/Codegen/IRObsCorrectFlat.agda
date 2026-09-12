@@ -90,7 +90,8 @@ open import Once.CCC.Machine.SMCore
          store-at-slot; AtStack; current-frame;
          -- D174: the rest of `inl`/`inr`'s heap build — the first discharge in
          -- this file that ALLOCATES, so these are new to its vocabulary.
-         instr-alloc-heap; instr-load-tag-lit; instr-load-code-addr; SV-Code; store-indirect; store-indirect-suc;
+         instr-alloc-heap; instr-load-tag-lit; instr-load-code-addr; SV-Code;
+         instr-call-closure; do-call; do-call-sv; do-call-code; do-call-at; enter-call; store-indirect; store-indirect-suc;
          load-from-slot; load-indirect; load-indirect-suc;
          AtDynamic; sucLoc; SV-Tag; SV-Code; writeReg-preserves; _≟HL_)
 open import Once.CCC.Machine.Validity using (module ValidityDef)
@@ -158,15 +159,19 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           -- D181: the CLOSURE witnesses. `valid-closure-reg-wf` is the
           -- inline-env form the `curry` discharge needs for a register-literal
           -- or `Unit` environment.
-          ; valid-closure-wf; valid-closure-reg-wf
+          ; valid-closure-wf; valid-closure-reg-wf; valid-pair-wf
           -- D187: the pair's cells, each carrying its own residence.
           ; CellAt; cell-ptr; cell-inline
           ; module PairValidWF; decomposePairWF
-          ; InlineRep; rep-prim; rep-unit
+          -- D188: the closure decomposition, which `apply` reads the body, the
+          -- environment, the label and the residence off.
+          ; module ClosureValidWF; decomposeClosureWF
+          ; EnvAt; env-at-loc; env-in-cell
+          ; InlineRep; rep-prim; rep-unit; inline-sv
           ; validityWF-frontier-advance)
   open MemOps {FS} using (readLoc)
   open ValidityDef {FS} program-bound using (readLoc-stack-heap-eq)
-  open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil)
+  open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++)
   open RTA o {FS} program-bound using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate)
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable)
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable)
@@ -415,6 +420,70 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- Same preconditions as `compile-correct-flat`'s semantic side (entry
   -- frontier 0), minus `StraightIR` (loops are allowed); conclusion is
   -- the flat refinement.
+  ------------------------------------------------------------------------
+  -- D188: THE CALLEE'S RUN, at the state the call leaves.
+  --
+  -- `apply` cannot reuse the body's own `MachineRefinesObsF`: that one starts
+  -- from an `entry-flat`, whose `fret` is `[]`, while the call leaves one
+  -- pending return address — and `Shifted` relates only stacks of the SAME
+  -- length, so nothing bridges them. There is no `fret`-weakening lemma, and
+  -- writing one needs a "balanced return stack" invariant (`c-ret` on an empty
+  -- `fret` HALTS, so a run that would underflow behaves differently under a
+  -- deeper stack). Stating the obligation where the machine actually IS avoids
+  -- inventing that.
+  ------------------------------------------------------------------------
+  record CalleeRun (prog : AbstractTrace) (fs : FlatState) (ret-pc : ℕ)
+                   {E A B : IRTy} (body : IR (E IRTy.* A) B) (envArg : ⟦ E IRTy.* A ⟧)
+                   (k : ℕ) : Set where
+    constructor callee-run
+    field
+      steps      : ℕ
+      settle     : FlatState
+      out-mode   : AllocMode
+      cont-alloc : AllocState {FS}
+      run        : FlatSteps prog steps fs settle
+      live       : halted (floc settle) ≡ false
+      -- …and it RETURNED: the block ends in `c-ret`, which pops the address
+      -- the call pushed and leaves the caller's own (empty) stack behind.
+      returned   : fpc settle ≡ ret-pc
+      no-ret     : fret settle ≡ []
+      no-link    : flink settle ≡ nothing
+      place      : ResultPlace B out-mode (falloc settle) cont-alloc
+                     (TM.valueT (evalᴰ body envArg) k) (floc settle)
+      events     : take k (chain-events run)
+                   ≡ take k (projTrace (evalᴰ body envArg) k)
+
+  ------------------------------------------------------------------------
+  -- D188: THE BLOCK TABLE, as the machine needs it — the one fact `apply`
+  -- cannot get from the value.
+  --
+  -- The value↔label link is NOT missing: `callView` reads the label out of the
+  -- closure's code cell, and `valid-closure-wf` says both what that cell holds
+  -- and what the closure MEANS. What no value can say is that the program's
+  -- block table implements that label — D170 removed the value's ability to
+  -- carry it on purpose. So it arrives here, conditioned on the closure
+  -- witness so the body and the label are the SAME ONES the witness names.
+  ------------------------------------------------------------------------
+  CalleeRuns : AbstractTrace → Set
+  CalleeRuns prog =
+    ∀ {E A B : IRTy} (body : IR (E IRTy.* A) B) (env : ⟦ E ⟧) (ℓ : LabelId)
+      {m : AllocMode} {alloc' : AllocState {FS}}
+      {cloc : ValueLocation FS} {st : LocState FS}
+    → ValidAtWF m alloc' {A IRTy.⇛ B} (λ arg → evalᴰ body (env , arg)) cloc st
+    → MemOps.readLoc st (sucLoc cloc) ≡ just (SV-Code ℓ)
+    → ∃[ j ]
+        ( (find-thunk prog ℓ ≡ just j)
+        -- The argument's residence is stated at the CALLER's frontier, and the
+        -- call's frame entry named separately: `enter-call` SHIFTS the frame,
+        -- so a caller-resident component is an ancestor afterwards, and that
+        -- transfer belongs with the callee's proof, not at every call site.
+        × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})
+             (envArg : ⟦ E IRTy.* A ⟧) (ret-pc k : ℕ) (mIn' : AllocMode)
+           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
+           → falloc fs ≡ enter-call pre-alloc
+           → InputAt {E IRTy.* A} mIn' pre-alloc envArg (floc fs)
+           → CalleeRun prog fs ret-pc body envArg k))
+
   IRObsCorrectF : ∀ {A B} → IR A B → Set
   IRObsCorrectF {A} {B} ir =
     ir-size ir < program-bound →
@@ -428,6 +497,11 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- preservation needs once the run is no longer confined to `emitted`.
       (prog : AbstractTrace) (base : ℕ) →
       AllSlotStable prog →
+      -- D188: …and the program's BLOCK TABLE implements the labels its
+      -- closures name. Every other premise here is about the fragment; this
+      -- one is about the whole image, and it is the only thing `apply` needs
+      -- that no value can supply (D170 removed that ability on purpose).
+      CalleeRuns prog →
       SpanAt prog base (emitted n l ir) →
     -- D179 (top-down): the input ranges over the MONADIC domain. While it was
     -- `⟦ A ⟧` (pure), `inject x` made every closure trace-free and every ν a
@@ -595,7 +669,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- is stuck on `halted s` until `nh` fires, so the reduction is done ONCE and
   -- every component rewrites by it, instead of each re-deriving the run.
   obs-correct-id : ∀ {A} → IRObsCorrectF (id {A})
-  obs-correct-id {A} _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =
+  obs-correct-id {A} _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =
     record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
@@ -676,7 +750,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- result place is `unit-result` — which asserts nothing about the state,
   -- exactly because a unit result has no residence (D074).
   obs-correct-terminal : ∀ {A} → IRObsCorrectF (terminal {A})
-  obs-correct-terminal {A} _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =
+  obs-correct-terminal {A} _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =
     record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
@@ -699,7 +773,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- absurd pattern. The emitter's `mov-to-output` is never reached because the
   -- state it would run from cannot exist.
   obs-correct-initial : ∀ {A} → IRObsCorrectF (initial {A})
-  obs-correct-initial _ n l prog base _ span mIn ()
+  obs-correct-initial _ n l prog base _ cr span mIn ()
 
   -- ── `free-heap` — DISCHARGED. `IR Unit Unit`, a semantic no-op that still
   -- compiles to `mov-to-output ∷ []` (copy through, so the register discipline
@@ -1252,15 +1326,17 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- value itself for a register literal or `Unit`. `load-indirect` at row 6
     -- reads the cell either way, so nothing here needs to know which.
     ------------------------------------------------------------------------
+    -- D188: the ARGUMENT is taken as a STORED VALUE too. D187 made a pair cell
+    -- either a pointer or the component itself, and row 1 only needs SOMETHING
+    -- to be there.
     module Obligations
-      (pair-loc fst-loc snd-loc : ValueLocation FS)
-      (env-sv : StoredValue FS)
+      (pair-loc fst-loc : ValueLocation FS)
+      (arg-sv env-sv : StoredValue FS)
       (rdi      : readReg (regs s) Input1 ≡ SV-Ptr pair-loc)
       (fst-cell : MemOps.readLoc s pair-loc ≡ just (SV-Ptr fst-loc))
-      (snd-cell : MemOps.readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc))
+      (snd-cell : MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-sv)
       (env-cell : MemOps.readLoc s fst-loc ≡ just env-sv)
       (bf-pair  : BeforeFrontier alloc pair-loc)
-      (bf-pair' : BeforeFrontier alloc (sucLoc pair-loc))
       (bf-fst   : BeforeFrontier alloc fst-loc)
       (ns≤n     : next-slot alloc ≤ n)
       (nh       : halted s ≡ false)
@@ -1268,11 +1344,11 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- ROW 1: the argument pointer, out of the input pair's second cell.
       wf1 : InstrWF (floc a0) (falloc a0) load-indirect-suc
-      wf1 = pair-loc , cong sv-as-loc rdi , SV-Ptr snd-loc , snd-cell
+      wf1 = pair-loc , cong sv-as-loc rdi , arg-sv , snd-cell
 
       -- ROW 3: the closure pointer, out of its first cell.
       wf3 : InstrWF (floc a2) (falloc a2) load-indirect
-      wf3 = pair-loc , cong sv-as-loc (input1-a2 pair-loc (SV-Ptr snd-loc) rdi snd-cell)
+      wf3 = pair-loc , cong sv-as-loc (input1-a2 pair-loc arg-sv rdi snd-cell)
           , SV-Ptr fst-loc , trans (pair-cell-a2 pair-loc ns≤n bf-pair) fst-cell
 
       -- ROW 6: the environment, out of the closure's first cell. `Input1` was
@@ -1281,7 +1357,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       input1-a5 =
         trans (writeReg-same (regs (floc a3)) Input1 (readReg (regs (floc a3)) Output))
               (exec-abstract-load-indirect-output (floc a2) (falloc a2) pair-loc
-                 (SV-Ptr fst-loc) (input1-a2 pair-loc (SV-Ptr snd-loc) rdi snd-cell)
+                 (SV-Ptr fst-loc) (input1-a2 pair-loc arg-sv rdi snd-cell)
                  (trans (pair-cell-a2 pair-loc ns≤n bf-pair) fst-cell))
 
       env-cell-a5 : MemOps.readLoc (floc a5) fst-loc ≡ just env-sv
@@ -1380,15 +1456,15 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                  input1-a10)
 
       -- (i) the ARGUMENT, stashed at row 2 and reloaded at row 13.
-      arg-sv : StoredValue FS
-      arg-sv = readReg (regs (floc a1)) Output
+      arg-stashed : StoredValue FS
+      arg-stashed = readReg (regs (floc a1)) Output
 
       arg-a2 : MemOps.readLoc (floc a2) (AtStack (current-frame (falloc a1)) arg-stash)
-               ≡ just arg-sv
-      arg-a2 = MemOps.writeLoc-read-same-stack (floc a1) (current-frame (falloc a1)) arg-stash arg-sv
+               ≡ just arg-stashed
+      arg-a2 = MemOps.writeLoc-read-same-stack (floc a1) (current-frame (falloc a1)) arg-stash arg-stashed
 
       arg-a12 : MemOps.readLoc (floc a12) (AtStack (current-frame (falloc a1)) arg-stash)
-                ≡ just arg-sv
+                ≡ just arg-stashed
       arg-a12 =
         trans (store-ind-preserves-slot (floc a11) (falloc a11) ahl arg-stash rdi12')
        (trans (exec-abstract-preserves-stack-slot (load-from-slot env-stash) (floc a10) (falloc a10)
@@ -1409,14 +1485,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
               arg-a2))))))))
 
       wf13 : InstrWF (floc a12) (falloc a12) (load-from-slot arg-stash)
-      wf13 = arg-sv
-           , subst (λ f → MemOps.readLoc (floc a12) (AtStack f arg-stash) ≡ just arg-sv)
+      wf13 = arg-stashed
+           , subst (λ f → MemOps.readLoc (floc a12) (AtStack f arg-stash) ≡ just arg-stashed)
                    (trans cf-a1 (sym cf-a12)) arg-a12
 
       rdi14' : sv-as-loc (readReg (regs (floc a13)) Input1) ≡ just (AtDynamic ahl)
       rdi14' =
         cong sv-as-loc
-          (trans (load-slot-preserves-input arg-stash (floc a12) (falloc a12) arg-sv (proj₂ wf13))
+          (trans (load-slot-preserves-input arg-stash (floc a12) (falloc a12) arg-stashed (proj₂ wf13))
           (trans (store-ind-preserves-input (floc a11) (falloc a11) (AtDynamic ahl) rdi12')
                  (trans (load-slot-preserves-input env-stash (floc a10) (falloc a10) env-sv'
                            (proj₂ wf11))
@@ -1465,6 +1541,130 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       nh16 : halted (floc a16) ≡ false
       nh16 = exec-abstract-preserves-halted-WF mov-to-input (floc a15) (falloc a15) nh15 tt
 
+      ------------------------------------------------------------------------
+      -- D188: THE CALLEE'S PAIR, as the call leaves it. `Input1` points at it,
+      -- its first cell holds what the CLOSURE's first cell held and its second
+      -- what the caller's pair held — whatever those were (D187).
+      ------------------------------------------------------------------------
+      input1-a16 : readReg (regs (floc a16)) Input1 ≡ SV-Ptr (AtDynamic ahl)
+      input1-a16 =
+        trans (writeReg-same (regs (floc a15)) Input1 (readReg (regs (floc a15)) Output))
+        (trans (load-slot-result pair-stash (floc a14) (falloc a14) newpair-sv (proj₂ wf15))
+               alloc-out)
+
+      env-sv'≡ : env-sv' ≡ env-sv
+      env-sv'≡ =
+        exec-abstract-load-indirect-output (floc a5) (falloc a5) fst-loc env-sv
+          input1-a5 env-cell-a5
+
+      arg-stashed≡ : arg-stashed ≡ arg-sv
+      arg-stashed≡ =
+        exec-abstract-load-indirect-suc-output (floc a0) (falloc a0) pair-loc arg-sv
+          rdi snd-cell
+
+      envout-a11 : readReg (regs (floc a11)) Output ≡ env-sv'
+      envout-a11 = load-slot-result env-stash (floc a10) (falloc a10) env-sv' (proj₂ wf11)
+
+      argout-a13 : readReg (regs (floc a13)) Output ≡ arg-stashed
+      argout-a13 = load-slot-result arg-stash (floc a12) (falloc a12) arg-stashed (proj₂ wf13)
+
+      pair-fst-a16 : MemOps.readLoc (floc a16) (AtDynamic ahl) ≡ just env-sv
+      pair-fst-a16 =
+        trans (mem-untouched mov-to-input (floc a15) (falloc a15) (AtDynamic ahl)
+                 nhw-mov-to-input refl)
+       (trans (mem-untouched (load-from-slot pair-stash) (floc a14) (falloc a14)
+                 (AtDynamic ahl) nhw-load-from-slot refl)
+       (trans (store-ind-suc-preserves-heap (floc a13) (falloc a13) ahl ahl rdi14'
+                 (sucHL-≢ ahl))
+       (trans (mem-untouched (load-from-slot arg-stash) (floc a12) (falloc a12)
+                 (AtDynamic ahl) nhw-load-from-slot refl)
+       (trans (store-ind-result (floc a11) (falloc a11) ahl rdi12')
+              (cong just (trans envout-a11 env-sv'≡))))))
+
+      pair-snd-a16 : MemOps.readLoc (floc a16) (sucLoc (AtDynamic ahl)) ≡ just arg-sv
+      pair-snd-a16 =
+        trans (mem-untouched mov-to-input (floc a15) (falloc a15) (AtDynamic (sucHL ahl))
+                 nhw-mov-to-input refl)
+       (trans (mem-untouched (load-from-slot pair-stash) (floc a14) (falloc a14)
+                 (AtDynamic (sucHL ahl)) nhw-load-from-slot refl)
+       (trans (store-ind-suc-result (floc a13) (falloc a13) ahl rdi14')
+              (cong just (trans argout-a13 arg-stashed≡))))
+
+      ------------------------------------------------------------------------
+      -- The frontier the call hands on, and the transport it licenses.
+      ------------------------------------------------------------------------
+      heapref-a16 : next-heap-ref (falloc a16) ≡ suc (next-heap-ref (falloc a7))
+      heapref-a16 =
+        trans (exec-abstract-preserves-heap-ref mov-to-input (floc a15) (falloc a15) tt)
+       (trans (exec-abstract-preserves-heap-ref (load-from-slot pair-stash) (floc a14) (falloc a14) tt)
+       (trans (exec-abstract-preserves-heap-ref store-indirect-suc (floc a13) (falloc a13) tt)
+       (trans (exec-abstract-preserves-heap-ref (load-from-slot arg-stash) (floc a12) (falloc a12) tt)
+       (trans (exec-abstract-preserves-heap-ref store-indirect (floc a11) (falloc a11) tt)
+       (trans (exec-abstract-preserves-heap-ref (load-from-slot env-stash) (floc a10) (falloc a10) tt)
+       (trans (exec-abstract-preserves-heap-ref mov-to-input (floc a9) (falloc a9) tt)
+              (exec-abstract-preserves-heap-ref (store-at-slot pair-stash) (floc a8) (falloc a8) tt)))))))
+
+      before-ahl : BeforeFrontier (falloc a16) (AtDynamic ahl)
+      before-ahl = BeforeFrontier.heap-before
+                     (subst (λ m → next-heap-ref (falloc a7) < m) (sym heapref-a16) (n<1+n _))
+
+      before-ahl-suc : BeforeFrontier (falloc a16) (sucLoc (AtDynamic ahl))
+      before-ahl-suc = BeforeFrontier.heap-before
+                         (subst (λ m → next-heap-ref (falloc a7) < m) (sym heapref-a16) (n<1+n _))
+
+      cf-a16 : current-frame (falloc a16) ≡ current-frame alloc
+      cf-a16 =
+        trans (exec-abstract-preserves-frame mov-to-input (floc a15) (falloc a15))
+       (trans (exec-abstract-preserves-frame (load-from-slot pair-stash) (floc a14) (falloc a14))
+              cf-a14)
+
+      nextslot-a16 : next-slot (falloc a16) ≡ next-slot alloc
+      nextslot-a16 =
+        trans (exec-abstract-preserves-next-slot mov-to-input (floc a15) (falloc a15) tt)
+       (trans (exec-abstract-preserves-next-slot (load-from-slot pair-stash) (floc a14) (falloc a14) tt)
+       (trans (exec-abstract-preserves-next-slot store-indirect-suc (floc a13) (falloc a13) tt)
+       (trans (exec-abstract-preserves-next-slot (load-from-slot arg-stash) (floc a12) (falloc a12) tt)
+       (trans (exec-abstract-preserves-next-slot store-indirect (floc a11) (falloc a11) tt)
+       (trans (exec-abstract-preserves-next-slot (load-from-slot env-stash) (floc a10) (falloc a10) tt)
+       (trans (exec-abstract-preserves-next-slot mov-to-input (floc a9) (falloc a9) tt)
+       (trans (exec-abstract-preserves-next-slot (store-at-slot pair-stash) (floc a8) (falloc a8) tt)
+       (trans (exec-abstract-preserves-next-slot (instr-alloc-heap 2) (floc a7) (falloc a7) tt)
+       (trans (exec-abstract-preserves-next-slot (store-at-slot env-stash) (floc a6) (falloc a6) tt)
+       (trans (exec-abstract-preserves-next-slot load-indirect (floc a5) (falloc a5) tt)
+       (trans (exec-abstract-preserves-next-slot mov-to-input (floc a3) (falloc a3) tt)
+       (trans (exec-abstract-preserves-next-slot load-indirect (floc a2) (falloc a2) tt)
+       (trans (exec-abstract-preserves-next-slot (store-at-slot arg-stash) (floc a1) (falloc a1) tt)
+              (exec-abstract-preserves-next-slot load-indirect-suc (floc a0) (falloc a0) tt))))))))))))))
+
+      nextslot-a16-≤ : next-slot alloc ≤ next-slot (falloc a16)
+      nextslot-a16-≤ = ≤-reflexive (sym nextslot-a16)
+
+      heapref-a16-≤ : next-heap-ref alloc ≤ next-heap-ref (falloc a16)
+      heapref-a16-≤ =
+        subst (λ m → next-heap-ref alloc ≤ m) (sym heapref-a16)
+              (subst (λ m → next-heap-ref alloc ≤ suc m) (sym heapref-a7) (n≤1+n _))
+
+      bf-advance : ∀ {lc : ValueLocation FS} → BeforeFrontier alloc lc
+                 → BeforeFrontier (falloc a16) lc
+      bf-advance (BeforeFrontier.stack-before f≡cf j<ns) =
+        BeforeFrontier.stack-before (trans f≡cf (sym cf-a16)) (<-≤-trans j<ns nextslot-a16-≤)
+      bf-advance (BeforeFrontier.stack-ancestor cf≺f src) =
+        BeforeFrontier.stack-ancestor
+          (subst (λ c → Once.CCC.FrameSemantics.FrameSemantics._≺_ FS c _)
+                 (sym cf-a16) cf≺f) src
+      bf-advance (BeforeFrontier.heap-before r<h) =
+        BeforeFrontier.heap-before (<-≤-trans r<h heapref-a16-≤)
+
+      -- A component that was valid for the caller is valid for the callee: the
+      -- setup writes only fresh cells and the frontier only advances.
+      carry : ∀ {mC C} (c : ⟦ C ⟧) (lc : ValueLocation FS)
+            → BeforeFrontier alloc lc → ValidAtWF mC alloc {C} c lc s
+            → ValidAtWF mC (falloc a16) {C} c lc (floc a16)
+      carry c lc cb v =
+        validityWF-frontier-advance c lc (floc a16) cf-a16 nextslot-a16-≤ heapref-a16-≤
+          (validityWF-mem-preserved c lc s (floc a16) cb
+             (setup-mem-pres ns≤n rdi12' rdi14') v)
+
       -- The two premises `setup-mem-pres` and `code-cell` ask for, discharged
       -- here rather than at the call site: they are facts about THIS run.
       mem-pres : (loc : ValueLocation FS) → BeforeFrontier alloc loc
@@ -1472,16 +1672,16 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       mem-pres = setup-mem-pres ns≤n rdi12' rdi14'
 
     -- The closure register, at the call.
-    closure-reg : ∀ (pair-loc fst-loc : ValueLocation FS) (arg-sv : StoredValue FS)
+    closure-reg : ∀ (pair-loc fst-loc : ValueLocation FS) (arg-stashed : StoredValue FS)
                 → next-slot alloc ≤ n → BeforeFrontier alloc pair-loc
                 → readReg (regs s) Input1 ≡ SV-Ptr pair-loc
-                → MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-sv
+                → MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-stashed
                 → MemOps.readLoc s pair-loc ≡ just (SV-Ptr fst-loc)
                 → fclosure a16 ≡ SV-Ptr fst-loc
-    closure-reg pair-loc fst-loc arg-sv ns≤n bf rdi snd-cell cell =
+    closure-reg pair-loc fst-loc arg-stashed ns≤n bf rdi snd-cell cell =
       trans (writeReg-same (regs (floc a3)) Input1 (readReg (regs (floc a3)) Output))
             (exec-abstract-load-indirect-output (floc a2) (falloc a2) pair-loc
-               (SV-Ptr fst-loc) (input1-a2 pair-loc arg-sv rdi snd-cell)
+               (SV-Ptr fst-loc) (input1-a2 pair-loc arg-stashed rdi snd-cell)
                (trans (pair-cell-a2 pair-loc ns≤n bf) cell))
 
     -- …and the code cell it points at, carried across the setup.
@@ -1506,7 +1706,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   curry-denot-[] body m k = refl
 
   obs-correct-free-heap : ∀ (r : HeapRef) → IRObsCorrectF (free-heap r)
-  obs-correct-free-heap r _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =    record
+  obs-correct-free-heap r _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl unit-result
@@ -1539,7 +1739,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- `instr-writes-mem load-indirect … = nothing`), so the component's validity
   -- transports by `validityWF-mem-preserved` over a register write.
   obs-correct-fst : ∀ {A B} → IRObsCorrectF (fst {A} {B})
-  obs-correct-fst {A} {B} _ n l prog base _ span mIn x s alloc cl _ nh inp k = mr-of inp
+  obs-correct-fst {A} {B} _ n l prog base _ cr span mIn x s alloc cl _ nh inp k = mr-of inp
     where
       fs₁ = flat-exec-instr load-indirect prog (entry-flat base s alloc cl)
 
@@ -1606,7 +1806,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       mr-of (in-unit ())
 
   obs-correct-snd : ∀ {A B} → IRObsCorrectF (snd {A} {B})
-  obs-correct-snd {A} {B} _ n l prog base _ span mIn x s alloc cl _ nh inp k = mr-of inp
+  obs-correct-snd {A} {B} _ n l prog base _ cr span mIn x s alloc cl _ nh inp k = mr-of inp
     where
       fs₁ = flat-exec-instr load-indirect-suc prog (entry-flat base s alloc cl)
 
@@ -1678,7 +1878,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- the layer iso: `valid-μ-wf`/`valid-ν-wf` CARRY the layer's own `ValidAtWF`
   -- (Plan 0.27 Option 3), so destructing one yields what `at-loc` wants.
   obs-correct-out-μ : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
-  obs-correct-out-μ {F} wf _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =    record
+  obs-correct-out-μ {F} wf _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
@@ -1761,7 +1961,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ν-input-absurd (in-unit ())
 
   obs-correct-Out : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
-  obs-correct-Out {F} wf _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =
+  obs-correct-Out {F} wf _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =
     ⊥-elim (ν-input-absurd rdi-eq)
 
   -- ── `const` — DISCHARGED, and it is the first REGISTER-resident result of
@@ -1774,7 +1974,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- bodies are identical.
   obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ ℤ , Decimal ⟧-baseI A)
                     → IRObsCorrectF (const fit v)
-  obs-correct-const fits-int v _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =    record
+  obs-correct-const fits-int v _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
@@ -1805,7 +2005,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       out-lit =
         writeReg-same (regs s) Output (SV-Lit fits-intˢ (AbstractExec.lit-value {FS} fits-intˢ v))
 
-  obs-correct-const fits-float v _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =    record
+  obs-correct-const fits-float v _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
@@ -1950,10 +2150,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     obs-correct-case  : ∀ {A B C} (f : IR A C) (g : IR B C)
                       → IRObsCorrectF (case f g)
 
-    -- CLASS E — resolution-consuming. `instr-call-closure` jumps to the code
-    -- address a `curry` put in the closure record, so it needs the same
-    -- discipline from the other side (`find-thunk`, D082's provenance).
-    obs-correct-apply : ∀ {A B} → IRObsCorrectF (apply {A} {B})
+    -- (`obs-correct-apply` MOVED OUT — discharged below, D188.)
 
     -- CLASS G — THE EMITTER IS MISSING. Each of these compiles to `[]`, so the
     -- obligation is refutable whenever the denotation emits an event. NOT a
@@ -2135,7 +2332,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
     → effect si ≡ Pure → IRObsCorrectF (SigOp si)
   pure-obs-correct-sigop {A} {B} si fitness rA pure-eq
-    _ n l prog base _ span mIn x s alloc cl _ not-halted rdi-eq k =
+    _ n l prog base _ cr span mIn x s alloc cl _ not-halted rdi-eq k =
     record
       { traces-agree =
           trans (cong (take k)
@@ -2220,7 +2417,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- obligations, read off the goal rather than guessed at.
   ------------------------------------------------------------------------
   obs-correct-inl : ∀ {A B} → IRObsCorrectF (inl {A} {B})
-  obs-correct-inl {A} {B} _ n l prog base _ span mIn x s alloc cl n≤ nh inp k =
+  obs-correct-inl {A} {B} _ n l prog base _ cr span mIn x s alloc cl n≤ nh inp k =
     record
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
@@ -2574,7 +2771,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       place = place-of inp
 
   obs-correct-inr : ∀ {A B} → IRObsCorrectF (inr {A} {B})
-  obs-correct-inr {A} {B} _ n l prog base _ span mIn x s alloc cl n≤ nh inp k =
+  obs-correct-inr {A} {B} _ n l prog base _ cr span mIn x s alloc cl n≤ nh inp k =
     record
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
@@ -2946,7 +3143,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- machine reasoning could have closed the gap.
   ------------------------------------------------------------------------
   obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF (curry body)
-  obs-correct-curry {A} {B} {C} body _ n l prog base _ span mIn x s alloc cl n≤ nh inp k =
+  obs-correct-curry {A} {B} {C} body _ n l prog base _ cr span mIn x s alloc cl n≤ nh inp k =
     record
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
@@ -3267,6 +3464,175 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                           (TM.valueT (evalᴰ (curry body) x) k) (floc fs10)
       place = place-of inp
 
+  ------------------------------------------------------------------------
+  -- D188: `apply` — DISCHARGED against the block-table premise.
+  --
+  -- Sixteen instructions build the callee's `(env , arg)` pair on the heap and
+  -- point `Input1` at it; the seventeenth calls. Everything about those
+  -- seventeen is proved (D183/D185); what the premise supplies is the callee's
+  -- own run, and nothing else.
+  ------------------------------------------------------------------------
+  obs-correct-apply : ∀ {A B} → IRObsCorrectF (apply {A} {B})
+  -- A PAIR fits no register and is not `Unit`, so the two off-pointer input
+  -- residences are refuted outright.
+  obs-correct-apply _ n l prog base _ cr span mIn x s alloc cl n≤ nh (in-reg () _) k
+  obs-correct-apply _ n l prog base _ cr span mIn x s alloc cl n≤ nh (in-unit ()) k
+  obs-correct-apply {A} {B} _ n l prog base _ cr span mIn x s alloc cl n≤ nh
+    (in-loc pair-loc valid bf rdi) k =
+    go (PairValidWF.fst-cell d) (PairValidWF.snd-cell d)
+    where
+      d = decomposePairWF valid
+      module ASP = ApplySetupPres n prog base s alloc cl
+
+      -- A CLOSURE is never inline (`InlineRep (A ⇛ B)` needs `FitsInRegI` or
+      -- `≡ Unit`, both absurd), and D184 pins it to the HEAP — which is also
+      -- the only shape `do-call` enters on, so the `AtStack` case is refuted
+      -- by the witness's own `LocMatchesMode`.
+      go : CellAt alloc (A IRTy.⇛ B) (proj₁ x) pair-loc s
+         → CellAt alloc A (proj₂ x) (sucLoc pair-loc) s
+         → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl k
+      go (cell-inline (rep-prim ()) _) _
+      go (cell-inline (rep-unit () _) _) _
+      go (cell-ptr {comp-loc = AtStack _ _} _ _ fv) _ =
+        ⊥-elim (ClosureValidWF.loc-mode (decomposeClosureWF fv))
+      go (cell-ptr {comp-loc = AtDynamic chl} fst-cell fst-bf fst-valid) sc =
+        assemble (ClosureValidWF.env-at cvw) sc
+        where
+          fst-loc = AtDynamic {FS} chl
+          cvw     = decomposeClosureWF fst-valid
+
+          E    = ClosureValidWF.EnvType cvw
+          body = ClosureValidWF.body cvw
+          env  = ClosureValidWF.env cvw
+          blbl    = ClosureValidWF.body-label cvw
+
+          -- Each residence contributes a STORED VALUE and the cell equation;
+          -- the callee's cell is rebuilt from the same split (D187).
+          env-sv-of : EnvAt alloc {E} env fst-loc s → StoredValue FS
+          env-sv-of (env-at-loc el _ _ _) = SV-Ptr el
+          env-sv-of (env-in-cell rep _)   = inline-sv rep env
+
+          env-cell-of : (ea : EnvAt alloc {E} env fst-loc s)
+                      → MemOps.readLoc s fst-loc ≡ just (env-sv-of ea)
+          env-cell-of (env-at-loc _ ep _ _) = ep
+          env-cell-of (env-in-cell _ ep)    = ep
+
+          arg-sv-of : CellAt alloc A (proj₂ x) (sucLoc pair-loc) s → StoredValue FS
+          arg-sv-of (cell-ptr {comp-loc = al} _ _ _) = SV-Ptr al
+          arg-sv-of (cell-inline rep _)              = inline-sv rep (proj₂ x)
+
+          arg-cell-of : (c : CellAt alloc A (proj₂ x) (sucLoc pair-loc) s)
+                      → MemOps.readLoc s (sucLoc pair-loc) ≡ just (arg-sv-of c)
+          arg-cell-of (cell-ptr ap _ _)  = ap
+          arg-cell-of (cell-inline _ ap) = ap
+
+          assemble : EnvAt alloc {E} env fst-loc s
+                   → CellAt alloc A (proj₂ x) (sucLoc pair-loc) s
+                   → MachineRefinesObsF prog base n l (apply {A} {B}) x s alloc cl k
+          assemble ea sc' = record
+            { value-realized =
+                realized (17 + CalleeRun.steps crun) (CalleeRun.settle crun)
+                         (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
+                         run (CalleeRun.live crun)
+                         (CalleeRun.returned crun) (CalleeRun.no-ret crun)
+                         (CalleeRun.no-link crun) place
+            ; traces-agree = trc
+            }
+            where
+              module OB = ASP.Obligations pair-loc fst-loc (arg-sv-of sc') (env-sv-of ea)
+                            rdi fst-cell (arg-cell-of sc') (env-cell-of ea) bf fst-bf n≤ nh
+
+              callee-env : (ea' : EnvAt alloc {E} env fst-loc s)
+                         → MemOps.readLoc (floc ASP.a16) (AtDynamic ASP.ahl)
+                           ≡ just (env-sv-of ea')
+                         → CellAt (falloc ASP.a16) E env (AtDynamic ASP.ahl) (floc ASP.a16)
+              callee-env (env-at-loc el ep eb ev) q =
+                cell-ptr q (OB.bf-advance eb) (OB.carry env el eb ev)
+              callee-env (env-in-cell rep ep) q = cell-inline rep q
+
+              callee-arg : (c : CellAt alloc A (proj₂ x) (sucLoc pair-loc) s)
+                         → MemOps.readLoc (floc ASP.a16) (sucLoc (AtDynamic ASP.ahl))
+                           ≡ just (arg-sv-of c)
+                         → CellAt (falloc ASP.a16) A (proj₂ x)
+                             (sucLoc (AtDynamic ASP.ahl)) (floc ASP.a16)
+              callee-arg (cell-ptr ap abf av) q =
+                cell-ptr q (OB.bf-advance abf) (OB.carry (proj₂ x) _ abf av)
+              callee-arg (cell-inline rep ap) q = cell-inline rep q
+
+              callee-in : InputAt {E IRTy.* A} Heap (falloc ASP.a16)
+                            (env , proj₂ x) (floc ASP.a16)
+              callee-in = in-loc (AtDynamic ASP.ahl)
+                            (valid-pair-wf tt OB.before-ahl-suc
+                              (callee-env ea OB.pair-fst-a16)
+                              (callee-arg sc' OB.pair-snd-a16))
+                            OB.before-ahl OB.input1-a16
+
+              cinfo = cr body env blbl
+                        (subst (λ f → ValidAtWF _ alloc {A IRTy.⇛ B} f fst-loc s)
+                               (ClosureValidWF.f-is-closure cvw) fst-valid)
+                        (ClosureValidWF.code-ptr cvw)
+
+              j      = proj₁ cinfo
+              feq    = proj₁ (proj₂ cinfo)
+              runner = proj₂ (proj₂ cinfo)
+
+              -- THE CALL. `callView`'s three levels, spelled out from the
+              -- three facts the setup and the witness already give.
+              call-eq : flat-exec-instr instr-call-closure prog ASP.a16
+                      ≡ record ASP.a16
+                          { falloc = enter-call (falloc ASP.a16)
+                          ; fret   = suc (fpc ASP.a16) ∷ fret ASP.a16
+                          ; flink  = just (suc (fpc ASP.a16))
+                          ; fpc    = j }
+              call-eq =
+                trans (cong (λ z → do-call-sv prog z ASP.a16)
+                         (ASP.closure-reg pair-loc fst-loc (arg-sv-of sc') n≤ bf rdi
+                            (arg-cell-of sc') fst-cell))
+                (trans (cong (λ z → do-call-code prog z ASP.a16)
+                         (ASP.code-cell fst-loc blbl n≤ OB.rdi12' OB.rdi14'
+                            (ClosureValidWF.sucLoc-before cvw) (ClosureValidWF.code-ptr cvw)))
+                       (cong (λ z → do-call-at z ASP.a16) feq))
+
+              crun : CalleeRun prog (flat-exec-instr instr-call-closure prog ASP.a16)
+                       (suc (fpc ASP.a16)) body (env , proj₂ x) k
+              crun = runner (flat-exec-instr instr-call-closure prog ASP.a16)
+                       (falloc ASP.a16) (env , proj₂ x) (suc (fpc ASP.a16)) k Heap
+                       (trans (cong fpc call-eq) refl)
+                       (trans (cong (λ st → halted (floc st)) call-eq) OB.nh16)
+                       (trans (cong fret call-eq) refl)
+                       (trans (cong falloc call-eq) refl)
+                       -- the call does not touch `floc`, but `do-call` is
+                       -- stuck until `call-eq` says which branch it took.
+                       (subst (λ st → InputAt {E IRTy.* A} Heap (falloc ASP.a16)
+                                        (env , proj₂ x) st)
+                              (sym (cong floc call-eq)) callee-in)
+
+              run17 : FlatSteps prog 17 (entry-flat base s alloc cl)
+                        (flat-exec-instr instr-call-closure prog ASP.a16)
+              run17 = (OB.nh0 , span 0 _ refl) ∷ (OB.nh1 , span 1 _ refl)
+                    ∷ (OB.nh2 , span 2 _ refl) ∷ (OB.nh3 , span 3 _ refl)
+                    ∷ (OB.nh4 , span 4 _ refl) ∷ (OB.nh5 , span 5 _ refl)
+                    ∷ (OB.nh6 , span 6 _ refl) ∷ (OB.nh7 , span 7 _ refl)
+                    ∷ (OB.nh8 , span 8 _ refl) ∷ (OB.nh9 , span 9 _ refl)
+                    ∷ (OB.nh10 , span 10 _ refl) ∷ (OB.nh11 , span 11 _ refl)
+                    ∷ (OB.nh12 , span 12 _ refl) ∷ (OB.nh13 , span 13 _ refl)
+                    ∷ (OB.nh14 , span 14 _ refl) ∷ (OB.nh15 , span 15 _ refl)
+                    ∷ (OB.nh16 , span 16 _ refl) ∷ []
+
+              run : FlatSteps prog (17 + CalleeRun.steps crun)
+                      (entry-flat base s alloc cl) (CalleeRun.settle crun)
+              run = FlatSteps-++ run17 (CalleeRun.run crun)
+
+              place : ResultPlace B (CalleeRun.out-mode crun)
+                        (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
+                        (TM.valueT (evalᴰ (apply {A} {B}) x) k)
+                        (floc (CalleeRun.settle crun))
+              place = CalleeRun.place crun
+
+              trc : take k (chain-events run) ≡ take k (projTrace (evalᴰ (apply {A} {B}) x) k)
+              trc = trans (cong (take k) (chain-events-++ run17 (CalleeRun.run crun)))
+                          (CalleeRun.events crun)
+
   obs-correct-sigop : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
   -- Route on BOTH the codomain (register-resident result) and the domain
   -- (readable input ⇒ the machine can materialise it and apply `semM`). A Pure
@@ -3434,7 +3800,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- call that leaves the fragment. Quantifying over placement (D158) removes
   -- the question rather than answering it — `f` and `g` are witnessed IN THE SAME
   -- PROGRAM, at `base` and at `base + length ft + 1`, so there is no second
-  -- program for their scans to disagree with. `find-thunk prog ℓ` is the same
+  -- program for their scans to disagree with. `find-thunk prog blbl` is the same
   -- scan on both sides, which is exactly what `apply ∘ curry body` needs.
   -- ══════════════════════════════════════════════════════════════════════
   comp-value-realized-of :
@@ -3443,10 +3809,11 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     → ir-size g < program-bound
     → next-slot alloc ≤ n
     → AllSlotStable prog
+    → CalleeRuns prog
     → SpanAt prog base (emitted n l (g ∘ f))
     → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
     → ValueRealized prog base n l (g ∘ f) x s alloc cl k
-  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k szg ns ss span ihg mf =
+  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k szg ns ss cr span ihg mf =
     go (MachineRefinesObsF.value-realized mf)
     where
       module VR = ValueRealized
@@ -3514,7 +3881,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           vg : ValueRealized prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
                              (floc fsM) (falloc fsM) (fclosure fsM) kg
           vg = MachineRefinesObsF.value-realized
-                 (ihg szg n1 l1 prog base' ss span-g mOutf (TM.valueT (evalᴰ f x) k)
+                 (ihg szg n1 l1 prog base' ss cr span-g mOutf (TM.valueT (evalᴰ f x) k)
                       (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM kg)
 
           movStep : FlatSteps prog 1 fsF fsM
@@ -3556,10 +3923,11 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
         (prog : AbstractTrace) (base n l k : ℕ)
         (szg : ir-size g < program-bound) (ns : next-slot alloc ≤ n)
-        (ss : AllSlotStable prog) (span : SpanAt prog base (emitted n l (g ∘ f)))
+        (ss : AllSlotStable prog) (cr : CalleeRuns prog)
+        (span : SpanAt prog base (emitted n l (g ∘ f)))
         (ihg : IRObsCorrectF g) (mf : MachineRefinesObsF prog base n l f x s alloc cl k)
       → take k (chain-events (ValueRealized.run
-                  (comp-value-realized-of prog base n l k szg ns ss span ihg mf)))
+                  (comp-value-realized-of prog base n l k szg ns ss cr span ihg mf)))
           ≡ take k (projTrace (evalᴰ (g ∘ f) x) k)
 
   comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
@@ -3567,19 +3935,20 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
             → ir-size g < program-bound
             → next-slot alloc ≤ n
             → AllSlotStable prog
+            → CalleeRuns prog
             → SpanAt prog base (emitted n l (g ∘ f))
             → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
             → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-  comp-step prog base n l k szg ns ss span ihg mf = record
-    { value-realized = comp-value-realized-of prog base n l k szg ns ss span ihg mf
-    ; traces-agree   = comp-traces-agree      prog base n l k szg ns ss span ihg mf
+  comp-step prog base n l k szg ns ss cr span ihg mf = record
+    { value-realized = comp-value-realized-of prog base n l k szg ns ss cr span ihg mf
+    ; traces-agree   = comp-traces-agree      prog base n l k szg ns ss cr span ihg mf
     }
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
-  comp-obs-correct {g = g} {f} ihg ihf sz n l prog base ss span mIn x s alloc cl ns nh inp k =
-    comp-step prog base n l k (comp-size-g {g = g} {f} sz) ns ss span ihg
-      (ihf (comp-size-f {g = g} {f} sz) n l prog base ss
+  comp-obs-correct {g = g} {f} ihg ihf sz n l prog base ss cr span mIn x s alloc cl ns nh inp k =
+    comp-step prog base n l k (comp-size-g {g = g} {f} sz) ns ss cr span ihg
+      (ihf (comp-size-f {g = g} {f} sz) n l prog base ss cr
            (comp-span-f g f prog base n l span) mIn x s alloc cl ns nh inp k)
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has

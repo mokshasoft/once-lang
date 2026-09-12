@@ -12671,3 +12671,42 @@ with the label match, the callee's input witness (now constructible — it is
 the caller's pair cell), and `traces-agree` over the concatenated chain. Four
 residence combinations share one assembly, which wants the shared part factored
 into a module rather than repeated.
+
+## D188 (completed) — `obs-correct-apply` IS A PROOF (2026-09-12)
+
+`apply` was the last whole-clause axiom in its class. It is now discharged
+against one named premise, and every mechanical part of it is proved.
+
+**The clause.** Two of the three input residences are refuted outright — a pair
+fits no register and is not `Unit`. The third decomposes: the pair's first cell
+must be a `cell-ptr` (a closure is never inline: `InlineRep (A ⇛ B)` needs
+`FitsInRegI` or `≡ Unit`, both absurd) and must be `AtDynamic` (D184's `Heap`
+pin, refuting the `AtStack` case by the witness's own `LocMatchesMode` — which
+is also the only shape `do-call` enters on). What is left is the closure, and
+`decomposeClosureWF` hands over the body, the environment, the label and the
+residence.
+
+**The call is spelled out, not dispatched.** `callView`'s three levels
+(`do-call-sv` / `do-call-code` / `do-call-at`) are congruences over three facts
+the setup and the witness already give: the closure register holds the pointer
+row 3 read out of the input pair (`ASP.closure-reg`), the cell it points at
+holds the label (`ASP.code-cell`), and the premise resolves that label
+(`find-thunk`). No branch of the dispatch has to be refuted separately.
+
+**D187 is what makes the callee's input constructible.** The callee's argument
+is `valid-pair-wf` over two `CellAt`s — one rebuilt from the closure's `EnvAt`,
+one from the caller's own pair cell — and each is a pointer or inline
+independently. Under the old pointer-only witness this step was impossible for
+a `Unit` environment, which is `main`'s.
+
+**What is assumed** is `callee-runs` (FlatFromObs), and it splits into a
+provable half and a real one: "every block of the unit IS `emitted 0 l body`
+for the body its label was minted for" is true by construction of the emitter
+and provable by induction over `ir-to-trace'`; that the closure a RUNTIME state
+holds was built by one of those `curry`s is a reachability invariant — true
+(the entry heap is empty) but needing an induction over runs that nothing here
+has. That is the honest content of the axiom.
+
+Net: one whole-clause axiom replaced by one program-level invariant, with the
+seventeen-instruction setup, its memory preservation, the label resolution, the
+callee's input witness and the trace concatenation all proved.
