@@ -466,6 +466,24 @@ Deleted in the same change, and worth recording as residuals that went away:
 `Ana`/`in-ν`) and `ν-layer-iso` (its inversion). `obs-correct-Out` is now
 discharged by `⊥-elim (ν-input-absurd …)` — see D180.
 
+### D183 / D184 — `apply`, in progress: setup proved, two witness defects fixed
+
+`obs-correct-apply` is still a whole-clause postulate, but it is now the ONLY
+one left in its class and its shape is known:
+
+* **proved** — `ApplySetupPres.setup-mem-pres`, the sixteen instructions before
+  the call (D182's three lemmas, first try);
+* **fixed on the way** — D184: the closure witness was mode-POLYMORPHIC, and a
+  `Stack`-resident closure makes `do-call` halt while the denotation runs the
+  body. Refutable, not merely unproved. Both closure constructors now conclude
+  at `Heap`, which is also exactly what the call needs to enter;
+* **named, not yet stated in Agda** — the block table. `callView` already ties
+  the call to the closure's code cell and `valid-closure-wf` already says what
+  that cell holds and what the closure means, so the value↔label link is NOT
+  missing. What is missing is that `find-thunk`'s block at that label
+  implements that body. D170 removed the value's ability to carry it on
+  purpose, so it enters as a program-level premise (`CalleeFaithful`, D183).
+
 ### D182 — the ten-step invariant: THREE residuals retired, none added
 
 `inl-mem-pres`, `inr-mem-pres` and `curry-mem-pres` are GONE, replaced by the

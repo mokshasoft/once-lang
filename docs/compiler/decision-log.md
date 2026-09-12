@@ -12516,3 +12516,34 @@ theorem about `ValidAtWF` as it stands. Naming it is what turns
 `obs-correct-apply` from a whole-clause axiom into a proof against one premise;
 the alternative — putting a program index on the closure witness — would
 re-create exactly the dependency D170 removed.
+
+## D184 — THE CLOSURE WITNESS IS `Heap`-MODED; polymorphism there was refutable (2026-09-12)
+
+`valid-closure-wf`'s mode index carried this note: "`m` stays polymorphic
+because `valid-closure-wf` is also consumed at locations a caller supplies".
+Writing `apply` showed that permission is not merely unused — it is FALSE.
+
+`do-call` dispatches on the closure register's shape (`callView`, Flat):
+
+```
+go-sv (SV-Ptr (AtDynamic hl)) … = -- read the code cell, find-thunk, ENTER
+go-sv (SV-Ptr (AtStack _ _))  … = cp-halt
+```
+
+So a `Stack`-resident closure HALTS the machine, while its denotation runs the
+body and may emit. `obs-correct-apply` would be false — not unproved — for any
+witness the polymorphic index permitted. And no such closure is ever built:
+0.86 stage G left ONE lowering for `curry` and it allocates on the heap
+(D181's discharge produces `Heap` and nothing else can).
+
+So both closure constructors now conclude at `Heap`, and their
+`LocMatchesMode Heap closure-loc` premise forces `AtDynamic` — which is exactly
+the shape the call needs to enter. The change costs nothing downstream: every
+consumer is either mode-polymorphic (the transport lemmas, which simply get a
+refined index) or already at `Heap`.
+
+This is D181's finding in the opposite direction. There the witness was too
+NARROW and excluded a state the machine does produce (a unit environment);
+here it was too WIDE and admitted one the machine cannot handle. Both were
+found the same way — by writing the first real producer and the first real
+consumer of a witness that had neither.

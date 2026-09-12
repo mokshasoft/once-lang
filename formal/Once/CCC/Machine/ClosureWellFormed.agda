@@ -233,12 +233,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- reference "fiction" the curry witnesses used to invent a `code-loc`
       -- to satisfy the type. Runtime emits `instr-load-code-addr this-label`
       -- which produces SV-Code.
-      -- The `m` index tracks the closure-loc's storage class. Since 0.86
-      -- stage G a closure is built by one lowering and lives on the heap, so
-      -- `CurryWF.run-curry-heap` is the sole producer; `m` stays
-      -- polymorphic because `valid-closure-wf` is also consumed at locations
-      -- a caller supplies.
-      valid-closure-wf : ∀ {m EnvType A B}
+      -- D184: THE MODE IS `Heap`, NOT POLYMORPHIC. The note here used to say
+      -- "`m` stays polymorphic because `valid-closure-wf` is also consumed at
+      -- locations a caller supplies" — and that permission is refutable.
+      --
+      -- `do-call` reads the closure register and dispatches on its shape
+      -- (`callView`, Flat): `SV-Ptr (AtDynamic hl)` ENTERS, and
+      -- `SV-Ptr (AtStack _ _)` HALTS. So a `Stack`-resident closure makes the
+      -- machine stop while the denotation runs the body and may emit — i.e.
+      -- `obs-correct-apply` would be FALSE, not merely unproved, for a witness
+      -- this index permitted. No such closure is ever built (0.86 stage G left
+      -- ONE lowering, and it allocates on the heap), so the permission was
+      -- describing a state the machine cannot handle and the emitter cannot
+      -- produce. `LocMatchesMode Heap` forces `AtDynamic`, which is exactly
+      -- what the call needs.
+      valid-closure-wf : ∀ {EnvType A B}
         {body : IR (EnvType * A) B}
         {env : ⟦ EnvType ⟧}
         {alloc : AllocState {FS}}
@@ -254,7 +263,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         {closure-loc env-loc : ValueLocation FS} {s : LocState FS}
         {mEnv : AllocMode}
         {body-label : LabelId} →
-        LocMatchesMode m closure-loc →
+        LocMatchesMode Heap closure-loc →
         readLoc s closure-loc ≡ just (SV-Ptr env-loc) →
         readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
         BeforeFrontier alloc env-loc →
@@ -277,7 +286,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- when applied may EMIT. The FIELDS are unchanged (env valid, code
         -- cell holds the body's name), so D170's rule still holds: this says
         -- only what is true of the VALUE in the state, and no cycle returns.
-        ValidAtWF m alloc {A ⇛ B} (λ arg → evalᴰ body (env , arg)) closure-loc s
+        ValidAtWF Heap alloc {A ⇛ B} (λ arg → evalᴰ body (env , arg)) closure-loc s
 
       ------------------------------------------------------------------------
       -- D181: a closure whose ENVIRONMENT is stored INLINE — the env cell
@@ -304,18 +313,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- No `env-loc`, no env `ValidAtWF`: an inline environment has no cell of
       -- its own to be valid at. Same reason `valid-inl-reg-wf` carries neither.
       ------------------------------------------------------------------------
-      valid-closure-reg-wf : ∀ {m EnvType A B}
+      valid-closure-reg-wf : ∀ {EnvType A B}
         {body : IR (EnvType * A) B}
         {env : ⟦ EnvType ⟧}
         {alloc : AllocState {FS}}
         {closure-loc : ValueLocation FS} {s : LocState FS}
         {body-label : LabelId} →
-        LocMatchesMode m closure-loc →
+        LocMatchesMode Heap closure-loc →
         (rep : InlineRep EnvType) →
         readLoc s closure-loc ≡ just (inline-sv rep env) →
         readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
         BeforeFrontier alloc (sucLoc closure-loc) →
-        ValidAtWF m alloc {A ⇛ B} (λ arg → evalᴰ body (env , arg)) closure-loc s
+        ValidAtWF Heap alloc {A ⇛ B} (λ arg → evalᴰ body (env , arg)) closure-loc s
 
       valid-inl-wf : ∀ {m A B} {a : ⟦ A ⟧}
         {alloc : AllocState {FS}}
@@ -1052,7 +1061,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- single closure witness (`valid-coerce-kind-wf` retired), so there is one clause.
   decomposeClosureWF : ∀ {m alloc A B} {f : ⟦ A ⇛ B ⟧} {loc s} →
     ValidAtWF m alloc {A ⇛ B} f loc s → ClosureValidWF alloc {A} {B} f loc s
-  decomposeClosureWF (valid-closure-wf {_} {EnvType} {_} {_} {body} {env} {_}
+  decomposeClosureWF (valid-closure-wf {EnvType} {_} {_} {body} {env} {_}
                        {_} {el} {_} {mE} {bl} lmm ep cp eb slb ev) = record
     { EnvType = EnvType
     ; body = body
@@ -1063,7 +1072,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; sucLoc-before = slb
     ; f-is-closure = refl
     }
-  decomposeClosureWF (valid-closure-reg-wf {_} {EnvType} {_} {_} {body} {env} {_}
+  decomposeClosureWF (valid-closure-reg-wf {EnvType} {_} {_} {body} {env} {_}
                        {_} {_} {bl} lmm rep ep cp slb) = record
     { EnvType = EnvType
     ; body = body
