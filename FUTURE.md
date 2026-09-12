@@ -2485,9 +2485,42 @@ the third time in this investigation that generalising the LEMMA and
 specialising the USE beat both pure alternatives —
 [[half-generalization-is-worst]], now with the mixed point measured.
 
-⬜ NOT YET VERIFIED: that instantiating the generic row at a variable
-inside the real tuple costs the row's GENERIC price and not its concrete
-one. That is step 2's first check.
+### ⇒ STEP 2, AS FAR AS IT GOT — and the residue is PRE-EXISTING
+
+| artifact | state |
+|---|---|
+| `tmp/MotAt` — `motA` + `motA-ren` + `motA-at` | **rc=0** |
+| `tmp/MethLamN` — the transport-parameterised prologue | **rc=0** |
+| `tmp/JunkA` — the junk method at `motA` | **rc=0** |
+| `tmp/TupleAVar` — the 53-row tuple at a variable | **rc=0** |
+| `tmp/IihsRhoAGen` — the `iρ` row, generic | **2 error sites** |
+
+★ **AND `iihs` WAS NEVER CLOSED.** The 4-passenger baseline
+(`tmp/IihsRho2Tmp`) ends with one `UnsolvedMetaVariables`; the 5-passenger
+version was KILLED outright. So the residue is a PRE-EXISTING open item,
+not something the conversion introduced — the conversion moved the same
+gap from 164 s / 4.21 GB to 43 s / 0.55 GB.
+
+⬜ **THE ONE UNCLOSED JOIN**, precisely: `⊢iihsIHA`'s output meeting
+`⊢iihsAppA`'s input. Ruled out, each by a run:
+
+- **not naturality** — `ihEq nn = refl` typechecks, so
+  `renTy vs³ (iihTy … (motA (w² nn))) ≡ iihTy … (motA (w⁵ nn))` holds
+  DEFINITIONALLY;
+- **not `i`/`q`** — pinning both changes nothing (36.21 s, same 2 sites);
+- **not `SubTy`'s hidden `renTm vs`** — inlining it into `motA` changes
+  nothing;
+- **not the `subTm` in the conclusion** — restating `⊢iihsIHA` at its
+  reduct `iinst (pair sICon (nsuc (snd i))) (fst (snd q)) M` typechecks
+  and changes nothing.
+
+⇒ what is left is `renTm (extR vs) _b != subTm … (w⁸ nn)`: Agda inverting
+a renaming against a meta it cannot solve. ⚠ Four hypotheses tested and
+refuted; I did not find the fifth, and stopped rather than keep guessing
+at pins.
+
+⬜ ALSO NOT DONE: the `iκ`/`iι` rows, the real (non-junk) tuple, and the
+wrapper `iihsK`.
 
 ### ⚠ WHAT IS STILL OPEN: **neither version closes.** The baseline ends with
 one `UnsolvedMetaVariables` site; the generic ambient row ends with that
