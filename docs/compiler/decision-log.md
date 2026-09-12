@@ -12796,3 +12796,37 @@ fifty lines rather than three hundred, and a fix to the build is a fix to both.
 `emitted n l (curry body)` and `emitted n l (Ana wf coalg)` both reduce to
 `two-cell-trace n l`, so each clause's `SpanAt` premise passes into the module
 unchanged — no relocation lemma, in keeping with D158.
+
+## D191 — `Nu` IS SURFACE SYNTAX, AND `NoNu` IS RETRACTED (2026-09-12)
+
+D189 found a vacuous proof on the ν path and traced it to the emitter. This
+entry is about why nothing caught it: **a ν could not be written down.** The
+type grammar had `Mu <functorSum>` and no `Nu`, so no annotation could mention
+a final coalgebra, so no source program could contain an `ana`, so no exit test
+could reach the ν codegen at all. The defect was not merely unproved; it was
+unreachable, which is worse, because unreachable code cannot fail a test.
+
+**What was added** is the `Mu` mirror, everywhere `Mu` appears: `GNu` in the
+grammar AST, `Nu ( … )` in the printer, `pa-nu` in the parse relation, the
+`name ≟ "Nu"` clause in the WF parser, the completeness clause in
+`ParserBridge`, both directions of `Convert` and both round-trip proofs.
+Twelve sites, one to three lines each — the footprint `Mu` already had.
+
+**What was retracted** is `NoNu`, and it deserves naming. It was a proven
+cross-stage invariant — "`parseType` only produces types satisfying `NoNu`",
+i.e. the parser never emits a ν — and its stated purpose was that "downstream
+stages (elaboration, IR lowering) can rely on the absence of `ν-type` in parser
+output". That reliance is exactly what has to go: the ν half of the language is
+not a degenerate case to be excluded, it is Once's codata, and the top-level
+event loop is an unfold.
+
+The predicate itself survives as `Expressible` / `ExpressibleF`, because its
+CONTENT was always the useful part — a structural characterisation of when
+`typeToGType` succeeds, independent of the partial conversion function. It
+gains `ex-nu` and loses a name that no longer described it. (It already
+allowed μ, so the name had been half-wrong since `GMu` landed.) What is still
+inexpressible is an effect arrow at a `Zero` or `One` multiplicity, which the
+grammar has no token for — that, not ν, is what the predicate now rules out.
+
+`Nu` is a prerequisite, not the whole guard: the guard is an exit test that
+runs an unfold, and that needs the `ana` term as well (D192).

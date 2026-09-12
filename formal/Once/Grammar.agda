@@ -65,6 +65,12 @@ mutual
   -- Initial algebra of a polynomial functor: Mu F.
   GMu     : GFunctor → GType
 
+  -- D191: FINAL coalgebra of a polynomial functor: Nu F. The dual of `GMu`,
+  -- and the reason it exists now: without a ν TYPE there is no way to write
+  -- the annotation an `ana` needs, so the corecursive half of the language
+  -- was unreachable from source. See D189.
+  GNu     : GFunctor → GType
+
   -- Type variable (for polymorphism and aliases)
   TVar    : UpperIdent → GType
 

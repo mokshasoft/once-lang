@@ -266,6 +266,13 @@ mutual
     rewrite eqF
     = _ , refl
 
+  -- D191: Nu F — same functor sub-grammar, so the clause is `Mu`'s verbatim.
+  complete-atomWFraw (pa-nu dF) (acc rec)
+    with complete-functorSumWFraw dF (rec (s≤s ≤-refl))
+  ... | dF' , eqF
+    rewrite eqF
+    = _ , refl
+
   -- Product level
   complete-prodWFraw (pp-mk dA dTail) (acc rec)
     with complete-atomWFraw dA (acc rec)

@@ -29,118 +29,119 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
                              _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff;
-                             Functor; K; Id; _⊕_; _⊗_; μ-type)
+                             Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseType; parseTypeAtom)
 open import Once.Parser.TypeRelation
-open import Once.Grammar.Convert using (NoNu;
-                                         nnu-unit; nnu-void; nnu-int;
-                                         nnu-float; nnu-str; nnu-buffer;
-                                         nnu-prod; nnu-sum; nnu-fun; nnu-eff;
-                                         nnu-mu;
-                                         NoNuF; nnuf-k; nnuf-id;
-                                         nnuf-sum; nnuf-prod)
+open import Once.Grammar.Convert using (Expressible;
+                                         ex-unit; ex-void; ex-int;
+                                         ex-float; ex-str; ex-buffer;
+                                         ex-prod; ex-sum; ex-fun; ex-eff;
+                                         ex-mu; ex-nu;
+                                         ExpressibleF; exf-k; exf-id;
+                                         exf-sum; exf-prod)
 open import Once.Grammar.ParserBridge using (sound-type; sound-atom)
 
 ------------------------------------------------------------------------
--- Structural NoNu extraction per precedence level. With the functor
+-- Structural Expressible extraction per precedence level. With the functor
 -- sub-grammar, `pa-mu` produces a μ-type, which is grammar-expressible
--- (NoNu allows μ); the functor body's expressibility is established by
--- the mutual `Parses*Functor*-NoNuF` lemmas.
+-- (Expressible allows μ); the functor body's expressibility is established by
+-- the mutual `Parses*Functor*-ExpressibleF` lemmas.
 ------------------------------------------------------------------------
 
 mutual
 
-  ParsesAtom-NoNu : ∀ {toks T rest} → ParsesAtom toks T rest → NoNu T
-  ParsesAtom-NoNu (pa-unit   _) = nnu-unit
-  ParsesAtom-NoNu (pa-void   _) = nnu-void
-  ParsesAtom-NoNu (pa-int    _) = nnu-int
-  ParsesAtom-NoNu (pa-float  _) = nnu-float
-  ParsesAtom-NoNu (pa-buffer _) = nnu-buffer
-  ParsesAtom-NoNu (pa-string _) = nnu-str
-  ParsesAtom-NoNu (pa-eff dA dB) =
-    nnu-eff (ParsesAtom-NoNu dA) (ParsesAtom-NoNu dB)
-  ParsesAtom-NoNu (pa-io dA) =
-    nnu-eff nnu-unit (ParsesAtom-NoNu dA)
-  ParsesAtom-NoNu (pa-paren dT refl) = ParsesType-NoNu dT
-  ParsesAtom-NoNu (pa-mu dF) = nnu-mu (ParsesFunctorSum-NoNuF dF)
+  ParsesAtom-Expressible : ∀ {toks T rest} → ParsesAtom toks T rest → Expressible T
+  ParsesAtom-Expressible (pa-unit   _) = ex-unit
+  ParsesAtom-Expressible (pa-void   _) = ex-void
+  ParsesAtom-Expressible (pa-int    _) = ex-int
+  ParsesAtom-Expressible (pa-float  _) = ex-float
+  ParsesAtom-Expressible (pa-buffer _) = ex-buffer
+  ParsesAtom-Expressible (pa-string _) = ex-str
+  ParsesAtom-Expressible (pa-eff dA dB) =
+    ex-eff (ParsesAtom-Expressible dA) (ParsesAtom-Expressible dB)
+  ParsesAtom-Expressible (pa-io dA) =
+    ex-eff ex-unit (ParsesAtom-Expressible dA)
+  ParsesAtom-Expressible (pa-paren dT refl) = ParsesType-Expressible dT
+  ParsesAtom-Expressible (pa-mu dF) = ex-mu (ParsesFunctorSum-ExpressibleF dF)
+  ParsesAtom-Expressible (pa-nu dF) = ex-nu (ParsesFunctorSum-ExpressibleF dF)
 
-  ParsesProd-NoNu : ∀ {toks T rest} → ParsesProd toks T rest → NoNu T
-  ParsesProd-NoNu (pp-mk dA dTail) =
-    ParsesProdTail-NoNu dTail (ParsesAtom-NoNu dA)
+  ParsesProd-Expressible : ∀ {toks T rest} → ParsesProd toks T rest → Expressible T
+  ParsesProd-Expressible (pp-mk dA dTail) =
+    ParsesProdTail-Expressible dTail (ParsesAtom-Expressible dA)
 
-  ParsesProdTail-NoNu :
+  ParsesProdTail-Expressible :
     ∀ {left toks T rest} → ParsesProdTail left toks T rest
-    → NoNu left → NoNu T
-  ParsesProdTail-NoNu (ppt-done _) nmL = nmL
-  ParsesProdTail-NoNu (ppt-star dB dTail) nmL =
-    ParsesProdTail-NoNu dTail (nnu-prod nmL (ParsesAtom-NoNu dB))
+    → Expressible left → Expressible T
+  ParsesProdTail-Expressible (ppt-done _) nmL = nmL
+  ParsesProdTail-Expressible (ppt-star dB dTail) nmL =
+    ParsesProdTail-Expressible dTail (ex-prod nmL (ParsesAtom-Expressible dB))
 
-  ParsesSum-NoNu : ∀ {toks T rest} → ParsesSum toks T rest → NoNu T
-  ParsesSum-NoNu (ps-mk dA dTail) =
-    ParsesSumTail-NoNu dTail (ParsesProd-NoNu dA)
+  ParsesSum-Expressible : ∀ {toks T rest} → ParsesSum toks T rest → Expressible T
+  ParsesSum-Expressible (ps-mk dA dTail) =
+    ParsesSumTail-Expressible dTail (ParsesProd-Expressible dA)
 
-  ParsesSumTail-NoNu :
+  ParsesSumTail-Expressible :
     ∀ {left toks T rest} → ParsesSumTail left toks T rest
-    → NoNu left → NoNu T
-  ParsesSumTail-NoNu (pst-done _) nmL = nmL
-  ParsesSumTail-NoNu (pst-plus dB dTail) nmL =
-    ParsesSumTail-NoNu dTail (nnu-sum nmL (ParsesProd-NoNu dB))
+    → Expressible left → Expressible T
+  ParsesSumTail-Expressible (pst-done _) nmL = nmL
+  ParsesSumTail-Expressible (pst-plus dB dTail) nmL =
+    ParsesSumTail-Expressible dTail (ex-sum nmL (ParsesProd-Expressible dB))
 
-  ParsesArrowTail-NoNu :
+  ParsesArrowTail-Expressible :
     ∀ {left toks T rest} → ParsesArrowTail left toks T rest
-    → NoNu left → NoNu T
-  ParsesArrowTail-NoNu (pat-done _) nmL = nmL
-  ParsesArrowTail-NoNu (pat-arrow-g dT) nmL =
-    nnu-fun nmL (ParsesType-NoNu dT)
-  ParsesArrowTail-NoNu (pat-arrow dT) nmL =
-    nnu-fun nmL (ParsesType-NoNu dT)
+    → Expressible left → Expressible T
+  ParsesArrowTail-Expressible (pat-done _) nmL = nmL
+  ParsesArrowTail-Expressible (pat-arrow-g dT) nmL =
+    ex-fun nmL (ParsesType-Expressible dT)
+  ParsesArrowTail-Expressible (pat-arrow dT) nmL =
+    ex-fun nmL (ParsesType-Expressible dT)
 
-  ParsesType-NoNu : ∀ {toks T rest} → ParsesType toks T rest → NoNu T
-  ParsesType-NoNu (pt-mk dS dA) =
-    ParsesArrowTail-NoNu dA (ParsesSum-NoNu dS)
+  ParsesType-Expressible : ∀ {toks T rest} → ParsesType toks T rest → Expressible T
+  ParsesType-Expressible (pt-mk dS dA) =
+    ParsesArrowTail-Expressible dA (ParsesSum-Expressible dS)
 
-  -- Functor sub-grammar: each level preserves NoNuF.
-  ParsesFunctorAtom-NoNuF :
-    ∀ {toks F rest} → ParsesFunctorAtom toks F rest → NoNuF F
-  ParsesFunctorAtom-NoNuF (pfa-id _) = nnuf-id
-  ParsesFunctorAtom-NoNuF (pfa-k dA) = nnuf-k (ParsesAtom-NoNu dA)
-  ParsesFunctorAtom-NoNuF (pfa-paren dF refl) = ParsesFunctorSum-NoNuF dF
+  -- Functor sub-grammar: each level preserves ExpressibleF.
+  ParsesFunctorAtom-ExpressibleF :
+    ∀ {toks F rest} → ParsesFunctorAtom toks F rest → ExpressibleF F
+  ParsesFunctorAtom-ExpressibleF (pfa-id _) = exf-id
+  ParsesFunctorAtom-ExpressibleF (pfa-k dA) = exf-k (ParsesAtom-Expressible dA)
+  ParsesFunctorAtom-ExpressibleF (pfa-paren dF refl) = ParsesFunctorSum-ExpressibleF dF
 
-  ParsesFunctorProd-NoNuF :
-    ∀ {toks F rest} → ParsesFunctorProd toks F rest → NoNuF F
-  ParsesFunctorProd-NoNuF (pfp-mk dA dTail) =
-    ParsesFunctorProdTail-NoNuF dTail (ParsesFunctorAtom-NoNuF dA)
+  ParsesFunctorProd-ExpressibleF :
+    ∀ {toks F rest} → ParsesFunctorProd toks F rest → ExpressibleF F
+  ParsesFunctorProd-ExpressibleF (pfp-mk dA dTail) =
+    ParsesFunctorProdTail-ExpressibleF dTail (ParsesFunctorAtom-ExpressibleF dA)
 
-  ParsesFunctorProdTail-NoNuF :
+  ParsesFunctorProdTail-ExpressibleF :
     ∀ {left toks F rest} → ParsesFunctorProdTail left toks F rest
-    → NoNuF left → NoNuF F
-  ParsesFunctorProdTail-NoNuF (pfpt-done _) nmL = nmL
-  ParsesFunctorProdTail-NoNuF (pfpt-star dB dTail) nmL =
-    ParsesFunctorProdTail-NoNuF dTail (nnuf-prod nmL (ParsesFunctorAtom-NoNuF dB))
+    → ExpressibleF left → ExpressibleF F
+  ParsesFunctorProdTail-ExpressibleF (pfpt-done _) nmL = nmL
+  ParsesFunctorProdTail-ExpressibleF (pfpt-star dB dTail) nmL =
+    ParsesFunctorProdTail-ExpressibleF dTail (exf-prod nmL (ParsesFunctorAtom-ExpressibleF dB))
 
-  ParsesFunctorSum-NoNuF :
-    ∀ {toks F rest} → ParsesFunctorSum toks F rest → NoNuF F
-  ParsesFunctorSum-NoNuF (pfs-mk dA dTail) =
-    ParsesFunctorSumTail-NoNuF dTail (ParsesFunctorProd-NoNuF dA)
+  ParsesFunctorSum-ExpressibleF :
+    ∀ {toks F rest} → ParsesFunctorSum toks F rest → ExpressibleF F
+  ParsesFunctorSum-ExpressibleF (pfs-mk dA dTail) =
+    ParsesFunctorSumTail-ExpressibleF dTail (ParsesFunctorProd-ExpressibleF dA)
 
-  ParsesFunctorSumTail-NoNuF :
+  ParsesFunctorSumTail-ExpressibleF :
     ∀ {left toks F rest} → ParsesFunctorSumTail left toks F rest
-    → NoNuF left → NoNuF F
-  ParsesFunctorSumTail-NoNuF (pfst-done _) nmL = nmL
-  ParsesFunctorSumTail-NoNuF (pfst-plus dB dTail) nmL =
-    ParsesFunctorSumTail-NoNuF dTail (nnuf-sum nmL (ParsesFunctorProd-NoNuF dB))
+    → ExpressibleF left → ExpressibleF F
+  ParsesFunctorSumTail-ExpressibleF (pfst-done _) nmL = nmL
+  ParsesFunctorSumTail-ExpressibleF (pfst-plus dB dTail) nmL =
+    ParsesFunctorSumTail-ExpressibleF dTail (exf-sum nmL (ParsesFunctorProd-ExpressibleF dB))
 
 ------------------------------------------------------------------------
--- Function-level invariant: compose soundness with structural NoNu.
+-- Function-level invariant: compose soundness with structural Expressible.
 ------------------------------------------------------------------------
 
-parseType-NoNu :
+parseType-Expressible :
   ∀ (toks : List Token) {t : Type} {rest : List Token}
-  → parseType toks ≡ just (t , rest) → NoNu t
-parseType-NoNu toks eq = ParsesType-NoNu (sound-type eq)
+  → parseType toks ≡ just (t , rest) → Expressible t
+parseType-Expressible toks eq = ParsesType-Expressible (sound-type eq)
 
-parseTypeAtom-NoNu :
+parseTypeAtom-Expressible :
   ∀ (toks : List Token) {t : Type} {rest : List Token}
-  → parseTypeAtom toks ≡ just (t , rest) → NoNu t
-parseTypeAtom-NoNu toks eq = ParsesAtom-NoNu (sound-atom eq)
+  → parseTypeAtom toks ≡ just (t , rest) → Expressible t
+parseTypeAtom-Expressible toks eq = ParsesAtom-Expressible (sound-atom eq)

@@ -29,7 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
                              _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff;
-                             Functor; K; Id; _⊕_; _⊗_; μ-type)
+                             Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
 
 ------------------------------------------------------------------------
@@ -119,6 +119,12 @@ mutual
     pa-mu : ∀ {toks rest} {F : Functor}
           → ParsesFunctorSum toks F rest
           → ParsesAtom (TWord "Mu" ∷ toks) (μ-type F) rest
+
+    -- D191: 'Nu' functor — FINAL coalgebra, the dual. Same functor
+    -- sub-grammar, so the shrink and bridge lemmas are `pa-mu`'s verbatim.
+    pa-nu : ∀ {toks rest} {F : Functor}
+          → ParsesFunctorSum toks F rest
+          → ParsesAtom (TWord "Nu" ∷ toks) (ν-type F) rest
 
   -- prod ::= atom ('*' atom)*
   data ParsesProd : List Token → Type → List Token → Set where
@@ -240,6 +246,8 @@ mutual
   ParsesAtom-shrinks (pa-paren dT refl) =
     <-trans (s≤s ≤-refl)
             (<-trans (ParsesType-shrinks dT) (s≤s ≤-refl))
+  ParsesAtom-shrinks (pa-nu dF) =
+    <-trans (ParsesFunctorSum-shrinks dF) (s≤s ≤-refl)
   ParsesAtom-shrinks (pa-mu dF) =
     <-trans (ParsesFunctorSum-shrinks dF) (s≤s ≤-refl)
 

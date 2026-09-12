@@ -77,6 +77,9 @@ mutual
   gtypeToType (G.GMu gf) with gfunctorToFunctor gf
   ... | just F  = just (T.μ-type F)
   ... | nothing = nothing
+  gtypeToType (G.GNu gf) with gfunctorToFunctor gf
+  ... | just F  = just (T.ν-type F)
+  ... | nothing = nothing
   gtypeToType (G.TVar _) = nothing
 
   -- | Convert a grammar-level functor to an internal `Functor`.
@@ -126,7 +129,9 @@ mutual
   typeToGType (T.μ-type F) with functorToGFunctor F
   ... | just gf = just (G.GMu gf)
   ... | nothing = nothing
-  typeToGType (T.ν-type _) = nothing
+  typeToGType (T.ν-type F) with functorToGFunctor F
+  ... | just gf = just (G.GNu gf)
+  ... | nothing = nothing
 
   -- | Convert an internal `Functor` to a grammar-level functor.
   -- Fails iff a constant `K t` holds a non-expressible `t` (e.g. ν).
@@ -181,6 +186,10 @@ typeToGType-gtypeToType (A T.⇒[ T.mk-kind T.Many T.eff ] B) .(G.TEff gA gB) re
 typeToGType-gtypeToType (T.μ-type F) g eq with functorToGFunctor F in eqF
 typeToGType-gtypeToType (T.μ-type F) .(G.GMu gf) refl | just gf
   rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
+-- D191: the ν row, the μ row's mirror.
+typeToGType-gtypeToType (T.ν-type F) g eq with functorToGFunctor F in eqF
+typeToGType-gtypeToType (T.ν-type F) .(G.GNu gf) refl | just gf
+  rewrite functorToGFunctor-gfunctorToFunctor F gf eqF = refl
 
 functorToGFunctor-gfunctorToFunctor (T.K t) g eq with typeToGType t in eqt
 functorToGFunctor-gfunctorToFunctor (T.K t) .(G.GFK gt) refl | just gt
@@ -228,6 +237,9 @@ gtypeToType-typeToGType (G.TEff A B) .(tA T.⇒[ T.mk-kind T.Many T.eff ] tB) re
         | gtypeToType-typeToGType B tB eqB = refl
 gtypeToType-typeToGType (G.GMu gf) t eq with gfunctorToFunctor gf in eqG
 gtypeToType-typeToGType (G.GMu gf) .(T.μ-type F) refl | just F
+  rewrite gfunctorToFunctor-functorToGFunctor gf F eqG = refl
+gtypeToType-typeToGType (G.GNu gf) t eq with gfunctorToFunctor gf in eqG
+gtypeToType-typeToGType (G.GNu gf) .(T.ν-type F) refl | just F
   rewrite gfunctorToFunctor-functorToGFunctor gf F eqG = refl
 
 gfunctorToFunctor-functorToGFunctor (G.GFK g) F eq with gtypeToType g in eqg
@@ -318,77 +330,95 @@ _ : typeToGType (T.μ-type (T.K T.Unit T.⊕ T.Id))
       ≡ just (G.GMu (G.GFSum (G.GFK G.TUnit) G.GFId))
 _ = refl
 
--- ν-type is still rejected (no surface syntax):
-_ : typeToGType (T.ν-type (T.K T.Int)) ≡ nothing
+-- D191: ν-type is expressible too, via `GNu` — the line above used to read
+-- "ν-type is still rejected (no surface syntax)", and that absence is what
+-- made an `ana` unwritable and so the ν path untestable (D189).
+_ : typeToGType (T.ν-type (T.K T.Int)) ≡ just (G.GNu (G.GFK G.TInt))
+_ = refl
+
+-- A stream, `ν (K Int ⊗ Id)`, round-trips:
+_ : typeToGType (T.ν-type (T.K T.Int T.⊗ T.Id))
+      ≡ just (G.GNu (G.GFProd (G.GFK G.TInt) G.GFId))
 _ = refl
 
 ------------------------------------------------------------------------
 -- Grammar-expressibility characterisation
 --
--- An internal `Type` is grammar-expressible exactly when it avoids
--- the `μ-type` / `ν-type` constructors (the two Type constructors
--- without corresponding `GType` constructors). This predicate +
--- lemma pair provides a structural characterisation independent
--- of the partial conversion function.
+-- D191: this predicate WAS `NoNu` — "`t` contains no `ν-type`" — and it
+-- backed a cross-stage invariant (`ParserInvariant`) saying the parser never
+-- produces a ν. `GNu` retracts that invariant on purpose: without a ν type
+-- there is no annotation an `ana` can be written against, so the corecursive
+-- half of the language was unreachable from source and no test could reach
+-- the ν codegen path at all (D189 is what that hid).
+--
+-- What survives is the useful half — a STRUCTURAL characterisation of when
+-- `typeToGType` succeeds, independent of the partial conversion function —
+-- so the predicate keeps its content and loses its misleading name. Both
+-- fixpoints are expressible now; what is still not is an effect arrow at a
+-- `Zero` or `One` multiplicity, which the grammar has no token for.
 ------------------------------------------------------------------------
 
--- `NoNu t`: `t` contains no `ν-type` (μ-type is allowed — it is now
--- grammar-expressible via `GMu`). `NoNuF` is the functor analogue,
--- mutual because `μ-type` carries a `Functor` and `K` carries a `Type`.
+-- `Expressible t`: `typeToGType t` succeeds. `ExpressibleF` is the functor
+-- analogue, mutual because `μ-type`/`ν-type` carry a `Functor` and `K`
+-- carries a `Type`.
 mutual
-  data NoNu : Type → Set where
-    nnu-unit   : NoNu T.Unit
-    nnu-void   : NoNu T.Void
-    nnu-int    : NoNu T.Int
-    nnu-float  : NoNu T.Float
-    nnu-str    : NoNu T.Str
-    nnu-buffer : NoNu T.Buffer
-    nnu-prod   : ∀ {A B} → NoNu A → NoNu B → NoNu (A T.* B)
-    nnu-sum    : ∀ {A B} → NoNu A → NoNu B → NoNu (A T.+ B)
-    nnu-fun    : ∀ {A B q} → NoNu A → NoNu B → NoNu (A T.⇒[ T.mk-kind q T.pure ] B)
-    nnu-eff    : ∀ {A B} → NoNu A → NoNu B → NoNu (A T.⇒[ T.mk-kind T.Many T.eff ] B)
-    nnu-mu     : ∀ {F} → NoNuF F → NoNu (T.μ-type F)
+  data Expressible : Type → Set where
+    ex-unit   : Expressible T.Unit
+    ex-void   : Expressible T.Void
+    ex-int    : Expressible T.Int
+    ex-float  : Expressible T.Float
+    ex-str    : Expressible T.Str
+    ex-buffer : Expressible T.Buffer
+    ex-prod   : ∀ {A B} → Expressible A → Expressible B → Expressible (A T.* B)
+    ex-sum    : ∀ {A B} → Expressible A → Expressible B → Expressible (A T.+ B)
+    ex-fun    : ∀ {A B q} → Expressible A → Expressible B → Expressible (A T.⇒[ T.mk-kind q T.pure ] B)
+    ex-eff    : ∀ {A B} → Expressible A → Expressible B → Expressible (A T.⇒[ T.mk-kind T.Many T.eff ] B)
+    ex-mu     : ∀ {F} → ExpressibleF F → Expressible (T.μ-type F)
+    ex-nu     : ∀ {F} → ExpressibleF F → Expressible (T.ν-type F)
 
-  data NoNuF : T.Functor → Set where
-    nnuf-k    : ∀ {t} → NoNu t → NoNuF (T.K t)
-    nnuf-id   : NoNuF T.Id
-    nnuf-sum  : ∀ {F G'} → NoNuF F → NoNuF G' → NoNuF (F T.⊕ G')
-    nnuf-prod : ∀ {F G'} → NoNuF F → NoNuF G' → NoNuF (F T.⊗ G')
+  data ExpressibleF : T.Functor → Set where
+    exf-k    : ∀ {t} → Expressible t → ExpressibleF (T.K t)
+    exf-id   : ExpressibleF T.Id
+    exf-sum  : ∀ {F G'} → ExpressibleF F → ExpressibleF G' → ExpressibleF (F T.⊕ G')
+    exf-prod : ∀ {F G'} → ExpressibleF F → ExpressibleF G' → ExpressibleF (F T.⊗ G')
 
--- | `NoNu t` suffices for `typeToGType t` to return `just _`.
-typeToGType-NoNu :
-  ∀ {t : Type} → NoNu t → Σ[ g ∈ GType ] typeToGType t ≡ just g
-functorToGFunctor-NoNuF :
-  ∀ {F : T.Functor} → NoNuF F → Σ[ gf ∈ G.GFunctor ] functorToGFunctor F ≡ just gf
-typeToGType-NoNu nnu-unit   = G.TUnit   , refl
-typeToGType-NoNu nnu-void   = G.TVoid   , refl
-typeToGType-NoNu nnu-int    = G.TInt    , refl
-typeToGType-NoNu nnu-float  = G.TFloat  , refl
-typeToGType-NoNu nnu-str    = G.TString , refl
-typeToGType-NoNu nnu-buffer = G.TBuffer , refl
-typeToGType-NoNu (nnu-prod nrA nrB)
-  with typeToGType-NoNu nrA | typeToGType-NoNu nrB
+-- | `Expressible t` suffices for `typeToGType t` to return `just _`.
+typeToGType-Expressible :
+  ∀ {t : Type} → Expressible t → Σ[ g ∈ GType ] typeToGType t ≡ just g
+functorToGFunctor-ExpressibleF :
+  ∀ {F : T.Functor} → ExpressibleF F → Σ[ gf ∈ G.GFunctor ] functorToGFunctor F ≡ just gf
+typeToGType-Expressible ex-unit   = G.TUnit   , refl
+typeToGType-Expressible ex-void   = G.TVoid   , refl
+typeToGType-Expressible ex-int    = G.TInt    , refl
+typeToGType-Expressible ex-float  = G.TFloat  , refl
+typeToGType-Expressible ex-str    = G.TString , refl
+typeToGType-Expressible ex-buffer = G.TBuffer , refl
+typeToGType-Expressible (ex-prod nrA nrB)
+  with typeToGType-Expressible nrA | typeToGType-Expressible nrB
 ... | gA , eqA | gB , eqB rewrite eqA | eqB = (gA G.⊗ gB) , refl
-typeToGType-NoNu (nnu-sum nrA nrB)
-  with typeToGType-NoNu nrA | typeToGType-NoNu nrB
+typeToGType-Expressible (ex-sum nrA nrB)
+  with typeToGType-Expressible nrA | typeToGType-Expressible nrB
 ... | gA , eqA | gB , eqB rewrite eqA | eqB = (gA G.⊕ gB) , refl
-typeToGType-NoNu (nnu-fun {q = q} nrA nrB)
-  with typeToGType-NoNu nrA | typeToGType-NoNu nrB
+typeToGType-Expressible (ex-fun {q = q} nrA nrB)
+  with typeToGType-Expressible nrA | typeToGType-Expressible nrB
 ... | gA , eqA | gB , eqB rewrite eqA | eqB = (gA G.⇒[ q ] gB) , refl
-typeToGType-NoNu (nnu-eff nrA nrB)
-  with typeToGType-NoNu nrA | typeToGType-NoNu nrB
+typeToGType-Expressible (ex-eff nrA nrB)
+  with typeToGType-Expressible nrA | typeToGType-Expressible nrB
 ... | gA , eqA | gB , eqB rewrite eqA | eqB = G.TEff gA gB , refl
-typeToGType-NoNu (nnu-mu nf)
-  with functorToGFunctor-NoNuF nf
+typeToGType-Expressible (ex-mu nf)
+  with functorToGFunctor-ExpressibleF nf
 ... | gf , eqf rewrite eqf = G.GMu gf , refl
+typeToGType-Expressible (ex-nu nf)
+  with functorToGFunctor-ExpressibleF nf
+... | gf , eqf rewrite eqf = G.GNu gf , refl
 
-functorToGFunctor-NoNuF (nnuf-k nt)
-  with typeToGType-NoNu nt
+functorToGFunctor-ExpressibleF (exf-k nt)
+  with typeToGType-Expressible nt
 ... | g , eq rewrite eq = G.GFK g , refl
-functorToGFunctor-NoNuF nnuf-id = G.GFId , refl
-functorToGFunctor-NoNuF (nnuf-sum nf ng)
-  with functorToGFunctor-NoNuF nf | functorToGFunctor-NoNuF ng
+functorToGFunctor-ExpressibleF exf-id = G.GFId , refl
+functorToGFunctor-ExpressibleF (exf-sum nf ng)
+  with functorToGFunctor-ExpressibleF nf | functorToGFunctor-ExpressibleF ng
 ... | gf , eqf | gg , eqg rewrite eqf | eqg = G.GFSum gf gg , refl
-functorToGFunctor-NoNuF (nnuf-prod nf ng)
-  with functorToGFunctor-NoNuF nf | functorToGFunctor-NoNuF ng
+functorToGFunctor-ExpressibleF (exf-prod nf ng)
+  with functorToGFunctor-ExpressibleF nf | functorToGFunctor-ExpressibleF ng
 ... | gf , eqf | gg , eqg rewrite eqf | eqg = G.GFProd gf gg , refl

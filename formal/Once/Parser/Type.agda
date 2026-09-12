@@ -49,7 +49,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
                              _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff;
-                             Functor; K; Id; _⊕_; _⊗_; μ-type)
+                             Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.Parser.Token
 open import Once.Parser.Core
 open import Once.Parser.TypeRelation
@@ -226,9 +226,17 @@ parseTypeAtomWF (TWord name ∷ rest) (acc rec)
 ... | yes refl with parseFunctorSumWF rest (rec (s≤s ≤-refl))
 ...   | nothing = nothing
 ...   | just (F , rest1 , dF) = just (μ-type F , rest1 , pa-mu dF)
+-- D191: Nu F — the FINAL coalgebra, `Mu`'s mirror. Without this the ν half
+-- of the language had no surface type, so an `ana` could not be annotated
+-- and the ν codegen path was unreachable from source (D189).
+parseTypeAtomWF (TWord name ∷ rest) (acc rec)
+  | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Nu"
+... | yes refl with parseFunctorSumWF rest (rec (s≤s ≤-refl))
+...   | nothing = nothing
+...   | just (F , rest1 , dF) = just (ν-type F , rest1 , pa-nu dF)
 -- Non-keyword TWord: no derivation exists.
 parseTypeAtomWF (TWord name ∷ rest) _
-  | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
+  | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
 
 -- TLParen: delegate to the named helper.
 parseTypeAtomWF (TLParen ∷ rest) (acc rec) = parseTypeAtomWF-TLParen rest (rec (s≤s ≤-refl))
