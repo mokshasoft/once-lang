@@ -466,6 +466,19 @@ Deleted in the same change, and worth recording as residuals that went away:
 `Ana`/`in-ν`) and `ν-layer-iso` (its inversion). `obs-correct-Out` is now
 discharged by `⊥-elim (ν-input-absurd …)` — see D180.
 
+### D187 — the pair split: the third instance of one defect class
+
+`valid-pair-wf` demanded pointers in both cells; `apply` made that refutable
+(it copies the closure's env cell into the callee's argument pair, and a
+`Unit` env — `main`'s — is not a pointer). `CellAt` replaces the two pointer
+triples: `cell-ptr` OR `cell-inline`, one constructor covering both cells.
+
+Reached, in order, exactly as far as the assumption had: `ShapeAt` (a mutual
+`CellShapeAt`), `readTyped` (it returned `nothing` for precisely the pairs the
+old witness could not describe), and `obs-correct-fst`/`-snd` (a POINTER cell
+still places `at-loc`, an INLINE one `at-reg`). No new residual; no postulate
+added.
+
 ### D183 / D184 — `apply`, in progress: setup proved, two witness defects fixed
 
 `obs-correct-apply` is still a whole-clause postulate, but it is now the ONLY

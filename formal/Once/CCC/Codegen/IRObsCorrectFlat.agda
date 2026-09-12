@@ -159,6 +159,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           -- inline-env form the `curry` discharge needs for a register-literal
           -- or `Unit` environment.
           ; valid-closure-wf; valid-closure-reg-wf
+          -- D187: the pair's cells, each carrying its own residence.
+          ; CellAt; cell-ptr; cell-inline
           ; module PairValidWF; decomposePairWF
           ; InlineRep; rep-prim; rep-unit
           ; validityWF-frontier-advance)
@@ -1556,23 +1558,50 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- `ValidAtWF` handed to it.
       mr-of : InputAt mIn alloc x s
             → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl k
-      mr-of (in-loc pair-loc pv bf eq) =
-        let d     = decomposePairWF pv
-            cloc  = PairValidWF.fst-loc d
-            cbef  = PairValidWF.fst-before d
-            cval  = validityWF-mem-preserved (proj₁ x) cloc s (floc fs₁) cbef
-                      (λ loc' _ → mem-eq loc') (PairValidWF.fst-valid d)
-            live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
-                      (load-indirect-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq (PairValidWF.fst-ptr d))
-        in record
-             { traces-agree = cong (take k) (sym (denot-[] k))
-             ; value-realized =
-                 realized 1 fs₁ (PairValidWF.mA d) (falloc fs₁)
-                   ((nh , span 0 _ refl) ∷ []) live' refl refl refl
-                   (at-loc cloc cval cbef
-                      (exec-abstract-load-indirect-output s alloc pair-loc (SV-Ptr cloc) eq (PairValidWF.fst-ptr d))
-                      cval cbef)
-             }
+      -- D187: the pair's first CELL, and `load-indirect` reads it whatever it
+      -- holds. A POINTER cell still places the result in memory; an INLINE one
+      -- lands the component in `Output` as a literal, so its place is `at-reg`
+      -- — the same split stage F gave the sums, arriving here because the
+      -- witness can finally describe it.
+      mr-of (in-loc pair-loc pv bf eq) = go (PairValidWF.fst-cell (decomposePairWF pv))
+        where
+          go : CellAt alloc A (proj₁ x) pair-loc s
+             → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl k
+          go (cell-ptr {comp-loc = cloc} cp cbef cv) =
+            let cval  = validityWF-mem-preserved (proj₁ x) cloc s (floc fs₁) cbef
+                          (λ loc' _ → mem-eq loc') cv
+                live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
+                          (load-indirect-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq cp)
+            in record
+                 { traces-agree = cong (take k) (sym (denot-[] k))
+                 ; value-realized =
+                     realized 1 fs₁ _ (falloc fs₁)
+                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl
+                       (at-loc cloc cval cbef
+                          (exec-abstract-load-indirect-output s alloc pair-loc (SV-Ptr cloc) eq cp)
+                          cval cbef)
+                 }
+          go (cell-inline (rep-prim fit) cp) =
+            let live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
+                          (load-indirect-twf {alloc = alloc} pair-loc (prim-sv fit (proj₁ x)) eq cp)
+            in record
+                 { traces-agree = cong (take k) (sym (denot-[] k))
+                 ; value-realized =
+                     realized 1 fs₁ mIn (falloc fs₁)
+                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl
+                       (at-reg fit
+                          (exec-abstract-load-indirect-output s alloc pair-loc
+                             (prim-sv fit (proj₁ x)) eq cp))
+                 }
+          go (cell-inline (rep-unit refl sv) cp) =
+            let live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
+                          (load-indirect-twf {alloc = alloc} pair-loc sv eq cp)
+            in record
+                 { traces-agree = cong (take k) (sym (denot-[] k))
+                 ; value-realized =
+                     realized 1 fs₁ mIn (falloc fs₁)
+                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl unit-result
+                 }
       mr-of (in-reg () _)
       mr-of (in-unit ())
 
@@ -1596,23 +1625,46 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- `ValidAtWF` handed to it.
       mr-of : InputAt mIn alloc x s
             → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl k
-      mr-of (in-loc pair-loc pv bf eq) =
-        let d     = decomposePairWF pv
-            cloc  = PairValidWF.snd-loc d
-            cbef  = PairValidWF.snd-before d
-            cval  = validityWF-mem-preserved (proj₂ x) cloc s (floc fs₁) cbef
-                      (λ loc' _ → mem-eq loc') (PairValidWF.snd-valid d)
-            live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
-                      (load-indirect-suc-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq (PairValidWF.snd-ptr d))
-        in record
-             { traces-agree = cong (take k) (sym (denot-[] k))
-             ; value-realized =
-                 realized 1 fs₁ (PairValidWF.mB d) (falloc fs₁)
-                   ((nh , span 0 _ refl) ∷ []) live' refl refl refl
-                   (at-loc cloc cval cbef
-                      (exec-abstract-load-indirect-suc-output s alloc pair-loc (SV-Ptr cloc) eq (PairValidWF.snd-ptr d))
-                      cval cbef)
-             }
+      -- D187: the `fst` mirror at the pair's SECOND cell.
+      mr-of (in-loc pair-loc pv bf eq) = go (PairValidWF.snd-cell (decomposePairWF pv))
+        where
+          go : CellAt alloc B (proj₂ x) (sucLoc pair-loc) s
+             → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl k
+          go (cell-ptr {comp-loc = cloc} cp cbef cv) =
+            let cval  = validityWF-mem-preserved (proj₂ x) cloc s (floc fs₁) cbef
+                          (λ loc' _ → mem-eq loc') cv
+                live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
+                          (load-indirect-suc-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq cp)
+            in record
+                 { traces-agree = cong (take k) (sym (denot-[] k))
+                 ; value-realized =
+                     realized 1 fs₁ _ (falloc fs₁)
+                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl
+                       (at-loc cloc cval cbef
+                          (exec-abstract-load-indirect-suc-output s alloc pair-loc (SV-Ptr cloc) eq cp)
+                          cval cbef)
+                 }
+          go (cell-inline (rep-prim fit) cp) =
+            let live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
+                          (load-indirect-suc-twf {alloc = alloc} pair-loc (prim-sv fit (proj₂ x)) eq cp)
+            in record
+                 { traces-agree = cong (take k) (sym (denot-[] k))
+                 ; value-realized =
+                     realized 1 fs₁ mIn (falloc fs₁)
+                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl
+                       (at-reg fit
+                          (exec-abstract-load-indirect-suc-output s alloc pair-loc
+                             (prim-sv fit (proj₂ x)) eq cp))
+                 }
+          go (cell-inline (rep-unit refl sv) cp) =
+            let live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
+                          (load-indirect-suc-twf {alloc = alloc} pair-loc sv eq cp)
+            in record
+                 { traces-agree = cong (take k) (sym (denot-[] k))
+                 ; value-realized =
+                     realized 1 fs₁ mIn (falloc fs₁)
+                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl unit-result
+                 }
       mr-of (in-reg () _)
       mr-of (in-unit ())
 

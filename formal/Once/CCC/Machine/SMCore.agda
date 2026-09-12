@@ -1578,11 +1578,34 @@ module AbstractExec {FS : FrameSemantics} where
   readTyped-int (just (SV-Lit fits-int v)) = just v
   readTyped-int _                          = nothing
 
+  -- D187: A PAIR CELL IS A POINTER **OR** THE COMPONENT ITSELF. The emitter
+  -- does not box: every compound build copies whatever the source cell held,
+  -- so a component that arrived as a register literal lands in the cell as
+  -- itself (`SV-Lit`). Following a pointer unconditionally made `readTyped`
+  -- return `nothing` for exactly those pairs — which the old pointer-only
+  -- `valid-pair-wf` hid, because no witness could describe them.
+  --
+  -- `readCell` is the one dispatch: a pointer is followed, a literal is read
+  -- where it lies (that is `readReg-typed`'s job, and it already exists for
+  -- the register-resident case — same three shapes, same answers).
+  -- ENUMERATED, not a catch-all: under `--exact-split` a catch-all over
+  -- `StoredValue` is not preserved as a definitional equality, and the
+  -- adequacy proof's inline case reduces through exactly this dispatch.
+  readTyped-cell : ∀ {A : Type} → (ValueLocation FS → Maybe ⟦ A ⟧)
+                 → (StoredValue FS → Maybe ⟦ A ⟧)
+                 → Maybe (StoredValue FS) → Maybe ⟦ A ⟧
+  readTyped-cell rA rr (just (SV-Ptr l))   = rA l
+  readTyped-cell rA rr (just (SV-Tag t))   = rr (SV-Tag t)
+  readTyped-cell rA rr (just (SV-Lit f v)) = rr (SV-Lit f v)
+  readTyped-cell rA rr (just (SV-Code lb)) = rr (SV-Code lb)
+  readTyped-cell rA rr nothing             = nothing
+
   readTyped-pair : ∀ {A B : Type}
                  → (ValueLocation FS → Maybe ⟦ A ⟧) → (ValueLocation FS → Maybe ⟦ B ⟧)
+                 → (StoredValue FS → Maybe ⟦ A ⟧) → (StoredValue FS → Maybe ⟦ B ⟧)
                  → Maybe (StoredValue FS) → Maybe (StoredValue FS) → Maybe ⟦ A * B ⟧
-  readTyped-pair rA rB (just (SV-Ptr fl)) (just (SV-Ptr sl)) = combine-typed (rA fl) (rB sl)
-  readTyped-pair rA rB _                  _                  = nothing
+  readTyped-pair rA rB rrA rrB mf ms =
+    combine-typed (readTyped-cell rA rrA mf) (readTyped-cell rB rrB ms)
 
   -- Read a register-resident value of type `A` straight out of a register cell
   -- (the input-side dual of `readTyped`, which follows a pointer into memory).
@@ -1599,6 +1622,7 @@ module AbstractExec {FS : FrameSemantics} where
   readTyped Int     loc s = readTyped-int (readLoc s loc)
   readTyped (A * B) loc s =
     readTyped-pair (λ l → readTyped A l s) (λ l → readTyped B l s)
+      (readReg-typed A) (readReg-typed B)
       (readLoc s loc) (readLoc s (sucLoc loc))
   readTyped _       loc s = nothing
 

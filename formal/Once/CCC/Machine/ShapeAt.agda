@@ -80,24 +80,38 @@ inline-sv-at : ∀ {A : IRTy} → InlineRepAt A → ⟦ A ⟧ᴵ → StoredValue
 inline-sv-at (rep-prim-at fit)  a = prim-sv-at fit a
 inline-sv-at (rep-unit-at _ sv) _ = sv
 
+-- D187: the shape mirror of `CellAt` — what a compound's CELL holds, which
+-- since the pair split is a pointer OR the component itself. Forward-declared
+-- so the two datatypes can be mutual, exactly as `CellAt`/`ValidAtWF` are.
+data CellShapeAt (alloc : AllocState {FS}) :
+     IRTy → ValueLocation FS → LocState FS → Set
 data ShapeAt : AllocMode → AllocState {FS} →
-     IRTy → ValueLocation FS → LocState FS → Set where
+     IRTy → ValueLocation FS → LocState FS → Set
+
+data CellShapeAt alloc where
+  cell-shape-ptr : ∀ {C : IRTy} {cl comp-loc : ValueLocation FS} {s : LocState FS}
+                     {mC : AllocMode} →
+                   readLoc s cl ≡ just (SV-Ptr comp-loc) →
+                   BeforeFrontier alloc comp-loc →
+                   ShapeAt mC alloc C comp-loc s →
+                   CellShapeAt alloc C cl s
+  cell-shape-inline : ∀ {C : IRTy} {cl : ValueLocation FS} {s : LocState FS}
+                        {c : ⟦ C ⟧ᴵ} (rep : InlineRepAt C) →
+                      readLoc s cl ≡ just (inline-sv-at rep c) →
+                      CellShapeAt alloc C cl s
+
+data ShapeAt where
 
   shape-unit : ∀ {m alloc loc s} →
     ShapeAt m alloc Unit loc s
 
   shape-pair : ∀ {m A B}
     {alloc : AllocState {FS}}
-    {pair-loc fst-loc snd-loc : ValueLocation FS} {s : LocState FS}
-    {mA mB : AllocMode} →
+    {pair-loc : ValueLocation FS} {s : LocState FS} →
     LocMatchesMode m pair-loc →
-    readLoc s pair-loc ≡ just (SV-Ptr fst-loc) →
-    readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc) →
-    BeforeFrontier alloc fst-loc →
-    BeforeFrontier alloc snd-loc →
     BeforeFrontier alloc (sucLoc pair-loc) →
-    ShapeAt mA alloc A fst-loc s →
-    ShapeAt mB alloc B snd-loc s →
+    CellShapeAt alloc A pair-loc s →
+    CellShapeAt alloc B (sucLoc pair-loc) s →
     ShapeAt m alloc (A * B) pair-loc s
 
   -- a closure's shape: env-pointer cell + code cell + the env's shape (at
@@ -239,7 +253,7 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
     using (ValidAtWF; valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf;
            rep-prim; rep-unit;
-           valid-μ-wf; valid-closure-reg-wf;
+           valid-μ-wf; valid-closure-reg-wf; CellAt; cell-ptr; cell-inline;
            valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
            SumTag)
 
@@ -248,12 +262,16 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
   tag-of Heap  t s loc st = st
   tag-of Stack t s loc st = st
 
+  -- D187: mutual with the cell-level map, exactly as the two datatypes are.
+  cell→shape : ∀ {alloc : AllocState {FS}} {C : IRTy} {c}
+                 {cl : ValueLocation FS} {s : LocState FS}
+             → CellAt alloc C c cl s → CellShapeAt alloc C cl s
   valid→shape : ∀ {m} {alloc : AllocState {FS}} {A : IRTy} {x}
                   {loc : ValueLocation FS} {s : LocState FS}
               → ValidAtWF m alloc {A} x loc s → ShapeAt m alloc A loc s
   valid→shape valid-unit-wf = shape-unit
-  valid→shape (valid-pair-wf lm r1 r2 b1 b2 b3 va vb) =
-    shape-pair lm r1 r2 b1 b2 b3 (valid→shape va) (valid→shape vb)
+  valid→shape (valid-pair-wf lm slb fc sc) =
+    shape-pair lm slb (cell→shape fc) (cell→shape sc)
   valid→shape (valid-closure-wf lm r1 r2 b1 b2 venv) =
     shape-closure lm r1 r2 b1 b2 (valid→shape venv)
   -- Split on the rep for the same reason the sum's inline clauses do: with the
@@ -294,3 +312,12 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
   valid→shape (valid-float-wf b r) = shape-float b r
   valid→shape (valid-str-wf b)     = shape-str b
   valid→shape (valid-buffer-wf b)  = shape-buffer b
+
+  -- Split on the rep for the same reason the sum's inline clauses do: with the
+  -- rep abstract neither `inline-sv` reduces and the read equation would not
+  -- typecheck across the two restatements.
+  cell→shape (cell-ptr r bf v)                  = cell-shape-ptr r bf (valid→shape v)
+  cell→shape (cell-inline (rep-prim fits-int)   r) = cell-shape-inline (rep-prim-at fits-int)   r
+  cell→shape (cell-inline (rep-prim fits-float) r) = cell-shape-inline (rep-prim-at fits-float) r
+  cell→shape {c = c} (cell-inline (rep-unit u sv) r) =
+    cell-shape-inline {c = c} (rep-unit-at u sv) r

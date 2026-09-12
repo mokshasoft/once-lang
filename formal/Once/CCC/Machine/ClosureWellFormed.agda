@@ -188,6 +188,39 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   inline-sv (rep-unit _ sv) _ = sv
 
   mutual
+
+    ------------------------------------------------------------------------
+    -- D187: WHERE A COMPOUND'S COMPONENT LIVES — the cell, and what it holds.
+    --
+    -- `valid-pair-wf` demanded `SV-Ptr` in BOTH cells. The emitter does not
+    -- box: every compound build copies whatever the source cell held, so a
+    -- component that was a register literal or `Unit` lands in the cell as
+    -- ITSELF. `apply` is where that becomes refutable rather than merely
+    -- incomplete: it copies the closure's env cell into the callee's argument
+    -- pair, and D181 established that cell is a pointer only for a BOXED
+    -- environment — `main`'s is `Unit`.
+    --
+    -- So the same split `PayloadAt` (sums) and `EnvAt` (closures) already
+    -- carry, made a FIELD of the constructor rather than a decomposition view:
+    -- one residence, carrying its own evidence (D153). One constructor covers
+    -- both cells independently, where splitting the constructor would have
+    -- needed four.
+    ------------------------------------------------------------------------
+    data CellAt (alloc : AllocState {FS}) :
+         (C : IRTy) → ⟦ C ⟧ → ValueLocation FS → LocState FS → Set where
+      cell-ptr : ∀ {C} {c : ⟦ C ⟧} {cell-loc comp-loc : ValueLocation FS}
+                   {s : LocState FS} {mC : AllocMode} →
+                 readLoc s cell-loc ≡ just (SV-Ptr comp-loc) →
+                 BeforeFrontier alloc comp-loc →
+                 ValidAtWF mC alloc {C} c comp-loc s →
+                 CellAt alloc C c cell-loc s
+      -- An INLINE component has no cell of its own to be valid at — same
+      -- reason `valid-inl-reg-wf` and `valid-closure-reg-wf` carry neither a
+      -- location nor a validity.
+      cell-inline : ∀ {C} {c : ⟦ C ⟧} {cell-loc : ValueLocation FS}
+                      {s : LocState FS} (rep : InlineRep C) →
+                 readLoc s cell-loc ≡ just (inline-sv rep c) →
+                 CellAt alloc C c cell-loc s
     --------------------------------------------------------------------
     -- ValidAtWF: Mode-indexed validity
     --
@@ -213,16 +246,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       -- discipline is surfaced into the proof here.
       valid-pair-wf : ∀ {m A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧}
         {alloc : AllocState {FS}}
-        {pair-loc fst-loc snd-loc : ValueLocation FS} {s : LocState FS}
-        {mA mB : AllocMode} →
+        {pair-loc : ValueLocation FS} {s : LocState FS} →
         LocMatchesMode m pair-loc →
-        readLoc s pair-loc ≡ just (SV-Ptr fst-loc) →
-        readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc) →
-        BeforeFrontier alloc fst-loc →
-        BeforeFrontier alloc snd-loc →
         BeforeFrontier alloc (sucLoc pair-loc) →
-        ValidAtWF mA alloc {A} a fst-loc s →
-        ValidAtWF mB alloc {B} b snd-loc s →
+        CellAt alloc A a pair-loc s →
+        CellAt alloc B b (sucLoc pair-loc) s →
         ValidAtWF m alloc {A * B} (a , b) pair-loc s
 
       -- Plan 0.14 (post-Phase-D, 2026-05-17): closure[1] holds an
@@ -1196,7 +1224,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
   -- Decomposition for ValidAtWF pairs (any mode)
   --
-  -- Reference-based model: two pointers at pair-loc and sucLoc pair-loc
+  -- D187: TWO CELLS, each carrying its own residence. The five fields that
+  -- described a POINTER pair (`fst-loc`/`snd-loc`/`mA`/`mB`/`fst-ptr`/…) are
+  -- gone with the constructor's; what a consumer gets is what the cell holds,
+  -- and it splits on that only if it cares.
   ------------------------------------------------------------------------
 
   record PairValidWF (alloc : AllocState {FS}) {A B : IRTy}
@@ -1204,33 +1235,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                      (pair-loc : ValueLocation FS)
                      (s : LocState FS) : Set where
     field
-      fst-loc : ValueLocation FS
-      snd-loc : ValueLocation FS
-      mA : AllocMode  -- Component A mode
-      mB : AllocMode  -- Component B mode
-      fst-ptr : readLoc s pair-loc ≡ just (SV-Ptr fst-loc)
-      snd-ptr : readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc)
-      fst-before : BeforeFrontier alloc fst-loc
-      snd-before : BeforeFrontier alloc snd-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc pair-loc)
-      fst-valid : ValidAtWF mA alloc {A} (proj₁ p) fst-loc s
-      snd-valid : ValidAtWF mB alloc {B} (proj₂ p) snd-loc s
+      fst-cell : CellAt alloc A (proj₁ p) pair-loc s
+      snd-cell : CellAt alloc B (proj₂ p) (sucLoc pair-loc) s
 
   decomposePairWF : ∀ {m alloc A B} {p : ⟦ A * B ⟧} {loc s} →
     ValidAtWF m alloc {A * B} p loc s → PairValidWF alloc {A} {B} p loc s
-  decomposePairWF (valid-pair-wf {_} {_} {_} {_} {_} {_} {_} {fl} {sl} {_} {mA} {mB}
-                    lmm fp sp fb sb slb fv sv) = record
-    { fst-loc = fl
-    ; snd-loc = sl
-    ; mA = mA
-    ; mB = mB
-    ; fst-ptr = fp
-    ; snd-ptr = sp
-    ; fst-before = fb
-    ; snd-before = sb
-    ; sucLoc-before = slb
-    ; fst-valid = fv
-    ; snd-valid = sv
+  decomposePairWF (valid-pair-wf lmm slb fc sc) = record
+    { sucLoc-before = slb
+    ; fst-cell = fc
+    ; snd-cell = sc
     }
 
   ------------------------------------------------------------------------
@@ -1343,18 +1357,20 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-unit-wf
 
   -- Pair (any mode)
+  -- D187: the two cells transport the same way, so the clause carries ONE
+  -- helper and applies it twice. `cell-inline` has no sub-derivation to
+  -- recurse into — an inline component has no cell of its own.
   validityWF-mem-only {m} {alloc} {A * B} (a , b) loc s₁ s₂ stack-eq heap-eq
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
-    valid-pair-wf lmm fp' sp' fb sb slb fv' sv'
+    (valid-pair-wf lmm slb fc sc) =
+    valid-pair-wf lmm slb (go loc fc) (go (sucLoc loc) sc)
     where
-      fp' : readLoc s₂ loc ≡ just (SV-Ptr fl)
-      fp' = trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) fp
-
-      sp' : readLoc s₂ (sucLoc loc) ≡ just (SV-Ptr sl)
-      sp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) sp
-
-      fv' = validityWF-mem-only a fl s₁ s₂ stack-eq heap-eq fv
-      sv' = validityWF-mem-only b sl s₁ s₂ stack-eq heap-eq sv
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
+         → CellAt alloc C c cl s₁ → CellAt alloc C c cl s₂
+      go cl (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (readLoc-stack-heap-eq s₂ s₁ cl stack-eq heap-eq) r) bf
+                 (validityWF-mem-only _ pl s₁ s₂ stack-eq heap-eq v)
+      go cl (cell-inline rep r) =
+        cell-inline rep (trans (readLoc-stack-heap-eq s₂ s₁ cl stack-eq heap-eq) r)
 
   validityWF-mem-only {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s₁ s₂ stack-eq heap-eq
     (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
@@ -1448,13 +1464,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Pair (any mode)
   validityWF-write-at-frontier {m} {alloc} {A * B} (a , b) loc s val loc-before
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
-    valid-pair-wf lmm fp' sp' fb sb slb fv' sv'
+    (valid-pair-wf lmm slb fc sc) =
+    valid-pair-wf lmm slb (go loc loc-before fc) (go (sucLoc loc) slb sc)
     where
-      fp' = trans (write-at-frontier-preserves-before s alloc loc val loc-before) fp
-      sp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) sp
-      fv' = validityWF-write-at-frontier a fl s val fb fv
-      sv' = validityWF-write-at-frontier b sl s val sb sv
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
+         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
+      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (write-at-frontier-preserves-before s alloc cl val cb) r) bf (validityWF-write-at-frontier _ pl s val bf v)
+      go cl cb (cell-inline rep r) =
+        cell-inline rep (trans (write-at-frontier-preserves-before s alloc cl val cb) r)
 
   validityWF-write-at-frontier {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s val loc-before
     (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
@@ -1527,13 +1545,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Pair (any mode)
   validityWF-write-at-suc-frontier {m} {alloc} {A * B} (a , b) loc s val loc-before
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
-    valid-pair-wf lmm fp' sp' fb sb slb fv' sv'
+    (valid-pair-wf lmm slb fc sc) =
+    valid-pair-wf lmm slb (go loc loc-before fc) (go (sucLoc loc) slb sc)
     where
-      fp' = trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) fp
-      sp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) sp
-      fv' = validityWF-write-at-suc-frontier a fl s val fb fv
-      sv' = validityWF-write-at-suc-frontier b sl s val sb sv
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
+         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
+      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (write-at-suc-frontier-preserves-before s alloc cl val cb) r) bf (validityWF-write-at-suc-frontier _ pl s val bf v)
+      go cl cb (cell-inline rep r) =
+        cell-inline rep (trans (write-at-suc-frontier-preserves-before s alloc cl val cb) r)
 
   validityWF-write-at-suc-frontier {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s val loc-before
     (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
@@ -1619,13 +1639,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Pair (any mode)
   validityWF-write-sv-at-frontier {m} {alloc} {A * B} (a , b) loc s stored loc-before
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
-    valid-pair-wf lmm fp' sp' fb sb slb fv' sv'
+    (valid-pair-wf lmm slb fc sc) =
+    valid-pair-wf lmm slb (go loc loc-before fc) (go (sucLoc loc) slb sc)
     where
-      fp' = trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) fp
-      sp' = trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) sp
-      fv' = validityWF-write-sv-at-frontier a fl s stored fb fv
-      sv' = validityWF-write-sv-at-frontier b sl s stored sb sv
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
+         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
+      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (write-sv-at-frontier-preserves-before s alloc cl stored cb) r) bf (validityWF-write-sv-at-frontier _ pl s stored bf v)
+      go cl cb (cell-inline rep r) =
+        cell-inline rep (trans (write-sv-at-frontier-preserves-before s alloc cl stored cb) r)
 
   validityWF-write-sv-at-frontier {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s stored loc-before
     (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
@@ -1705,13 +1727,15 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Pair (any mode)
   validityWF-write-sv-at-suc-frontier {m} {alloc} {A * B} (a , b) loc s stored loc-before
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
-    valid-pair-wf lmm fp' sp' fb sb slb fv' sv'
+    (valid-pair-wf lmm slb fc sc) =
+    valid-pair-wf lmm slb (go loc loc-before fc) (go (sucLoc loc) slb sc)
     where
-      fp' = trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) fp
-      sp' = trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) sp
-      fv' = validityWF-write-sv-at-suc-frontier a fl s stored fb fv
-      sv' = validityWF-write-sv-at-suc-frontier b sl s stored sb sv
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
+         → CellAt alloc C c cl s → CellAt alloc C c cl (writeLoc s (AtStack (current-frame alloc) _) _)
+      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (write-sv-at-suc-frontier-preserves-before s alloc cl stored cb) r) bf (validityWF-write-sv-at-suc-frontier _ pl s stored bf v)
+      go cl cb (cell-inline rep r) =
+        cell-inline rep (trans (write-sv-at-suc-frontier-preserves-before s alloc cl stored cb) r)
 
   validityWF-write-sv-at-suc-frontier {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s stored loc-before
     (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
@@ -1793,14 +1817,17 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Pair (any mode)
   validityWF-alloc-advance {m} {alloc} {A * B} (a , b) loc s n
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
-    valid-pair-wf lmm fp sp fb' sb' slb' fv' sv'
+    (valid-pair-wf lmm slb fc sc) =
+    valid-pair-wf lmm (stack-alloc-advances alloc n (sucLoc loc) slb)
+                  (go loc fc) (go (sucLoc loc) sc)
     where
-      fb' = stack-alloc-advances alloc n fl fb
-      sb' = stack-alloc-advances alloc n sl sb
-      slb' = stack-alloc-advances alloc n (sucLoc loc) slb
-      fv' = validityWF-alloc-advance a fl s n fv
-      sv' = validityWF-alloc-advance b sl s n sv
+      -- Only the ALLOC moves, so a cell's read equation is untouched and an
+      -- inline component transports unchanged.
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → CellAt alloc C c cl s
+         → CellAt (record alloc { next-slot = next-slot alloc +ℕ n }) C c cl s
+      go cl (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr r (stack-alloc-advances alloc n pl bf) (validityWF-alloc-advance _ pl s n v)
+      go cl (cell-inline rep r) = cell-inline rep r
 
   validityWF-alloc-advance {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s n
     (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
@@ -1879,14 +1906,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Pair (any mode)
   validityWF-frontier-advance {m} {alloc} {alloc'} {A * B} (a , b) loc s cf-eq slot-≤ heap-≤
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
-    valid-pair-wf lmm fp sp fb' sb' slb' fv' sv'
+    (valid-pair-wf lmm slb fc sc) =
+    valid-pair-wf lmm (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
+                  (go loc fc) (go (sucLoc loc) sc)
     where
-      fb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ fl fb
-      sb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ sl sb
-      slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
-      fv' = validityWF-frontier-advance a fl s cf-eq slot-≤ heap-≤ fv
-      sv' = validityWF-frontier-advance b sl s cf-eq slot-≤ heap-≤ sv
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
+         → CellAt alloc C c cl s → CellAt alloc' C c cl s
+      go cl (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr r (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ pl bf)
+                 (validityWF-frontier-advance _ pl s cf-eq slot-≤ heap-≤ v)
+      go cl (cell-inline rep r) = cell-inline rep r
 
   validityWF-frontier-advance {_} {alloc} {alloc'} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s cf-eq slot-≤ heap-≤
     (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
@@ -1965,10 +1994,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Pair (any mode)
   validityWF-with-bf-transfer {m} {A * B} (a , b) loc s a₁ a₂ bf
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
-    valid-pair-wf lmm fp sp (bf fl fb) (bf sl sb) (bf (sucLoc loc) slb)
-      (validityWF-with-bf-transfer a fl s a₁ a₂ bf fv)
-      (validityWF-with-bf-transfer b sl s a₁ a₂ bf sv)
+    (valid-pair-wf lmm slb fc sc) =
+    valid-pair-wf lmm (bf (sucLoc loc) slb) (go loc fc) (go (sucLoc loc) sc)
+    where
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
+         → CellAt a₁ C c cl s → CellAt a₂ C c cl s
+      go cl (cell-ptr {comp-loc = pl} r cb v) =
+        cell-ptr r (bf pl cb) (validityWF-with-bf-transfer _ pl s a₁ a₂ bf v)
+      go cl (cell-inline rep r) = cell-inline rep r
 
   -- Closure
   validityWF-with-bf-transfer {_} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s a₁ a₂ bf
@@ -2040,13 +2073,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Pair (any mode)
   validityWF-mem-preserved {m} {alloc} {A * B} (a , b) loc s₁ s₂ loc-before mem-eq
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv) =
-    valid-pair-wf lmm fp' sp' fb sb slb fv' sv'
+    (valid-pair-wf lmm slb fc sc) =
+    valid-pair-wf lmm slb (go loc loc-before fc) (go (sucLoc loc) slb sc)
     where
-      fp' = trans (mem-eq loc loc-before) fp
-      sp' = trans (mem-eq (sucLoc loc) slb) sp
-      fv' = validityWF-mem-preserved a fl s₁ s₂ fb mem-eq fv
-      sv' = validityWF-mem-preserved b sl s₁ s₂ sb mem-eq sv
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS) → BeforeFrontier alloc cl
+         → CellAt alloc C c cl s₁ → CellAt alloc C c cl s₂
+      go cl cb (cell-ptr {comp-loc = pl} r bf v) =
+        cell-ptr (trans (mem-eq cl cb) r) bf (validityWF-mem-preserved _ pl s₁ s₂ bf mem-eq v)
+      go cl cb (cell-inline rep r) = cell-inline rep (trans (mem-eq cl cb) r)
 
   validityWF-mem-preserved {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s₁ s₂ loc-before mem-eq
     (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
@@ -2242,6 +2276,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- existentials (fst-loc, snd-loc, env-loc, ...) are shared. Recurses
   -- structurally; at each pointer-read site we carry a LocInRegions
   -- witness for the loc being read.
+  -- D187: the cell-level companion, mutual with the derivation-level one.
+  CellLocsInRegions : ∀ {C} {c : ⟦ C ⟧} {cl s} {alloc : AllocState {FS}}
+                      (input-bound fresh-start : ℕ) →
+                      CellAt alloc C c cl s → Set
   LocsInRegions : ∀ {m A} {v : ⟦ A ⟧} {loc s} {alloc : AllocState {FS}}
                   (input-bound fresh-start : ℕ) →
                   ValidAtWF m alloc {A} v loc s → Set
@@ -2253,11 +2291,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   LocsInRegions {alloc = alloc} ib fs (valid-inr-reg-wf {sum-loc = sl} lmm _ _ _ _) =
     LocInRegions alloc ib fs sl × LocInRegions alloc ib fs (sucLoc sl)
   LocsInRegions {alloc = alloc} ib fs
-    (valid-pair-wf {pair-loc = pl} lmm fp sp fb sb slb fv sv) =
+    (valid-pair-wf {pair-loc = pl} lmm slb fc sc) =
     LocInRegions alloc ib fs pl ×
     LocInRegions alloc ib fs (sucLoc pl) ×
-    LocsInRegions ib fs fv ×
-    LocsInRegions ib fs sv
+    CellLocsInRegions ib fs fc ×
+    CellLocsInRegions ib fs sc
   LocsInRegions {alloc = alloc} ib fs
     (valid-closure-wf {closure-loc = cl} lmm ep cp eb slb ev) =
     LocInRegions alloc ib fs cl ×
@@ -2288,6 +2326,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   LocsInRegions {alloc = alloc} ib fs (valid-float-wf {loc = loc} bf rl)  = LocInRegions alloc ib fs loc
   LocsInRegions ib fs (valid-str-wf bf)    = ⊤
   LocsInRegions ib fs (valid-buffer-wf bf) = ⊤
+
+  -- A POINTER cell constrains the component it points at; an INLINE cell has
+  -- no cell of its own to place in a region (the pair's own two cells are
+  -- already constrained by the clause above).
+  CellLocsInRegions ib fs (cell-ptr {comp-loc = pl} r bf v) = LocsInRegions ib fs v
+  CellLocsInRegions ib fs (cell-inline rep r)               = ⊤
 
   -- Helper: derive a mem-eq at a particular loc from the four region
   -- predicates and a LocInRegions witness.
@@ -2361,18 +2405,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
   validityWF-mem-preserved-in-regions-strong alloc (a , b) loc ib fs s₁ s₂
     loc-before ib≤fs fs≤next ir fr hr ar
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv)
+    (valid-pair-wf lmm slb fc sc)
     (pl-ir , spl-ir , flocs , slocs) =
-    valid-pair-wf lmm fp' sp' fb sb slb fv' sv'
+    valid-pair-wf lmm slb
+      (go loc (loc-mem-eq-from-regions ir fr hr ar pl-ir) fc flocs)
+      (go (sucLoc loc) (loc-mem-eq-from-regions ir fr hr ar spl-ir) sc slocs)
     where
-      pl-eq  = loc-mem-eq-from-regions ir fr hr ar pl-ir
-      spl-eq = loc-mem-eq-from-regions ir fr hr ar spl-ir
-      fp'    = trans pl-eq fp
-      sp'    = trans spl-eq sp
-      fv'    = validityWF-mem-preserved-in-regions-strong alloc a fl ib fs s₁ s₂
-                 fb ib≤fs fs≤next ir fr hr ar fv flocs
-      sv'    = validityWF-mem-preserved-in-regions-strong alloc b sl ib fs s₁ s₂
-                 sb ib≤fs fs≤next ir fr hr ar sv slocs
+      go : ∀ {C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
+         → readLoc s₂ cl ≡ readLoc s₁ cl
+         → (ca : CellAt alloc C c cl s₁) → CellLocsInRegions ib fs ca
+         → CellAt alloc C c cl s₂
+      go cl eq (cell-ptr {comp-loc = pl} r bf v) locs =
+        cell-ptr (trans eq r) bf
+                 (validityWF-mem-preserved-in-regions-strong alloc _ pl ib fs s₁ s₂
+                    bf ib≤fs fs≤next ir fr hr ar v locs)
+      go cl eq (cell-inline rep r) _ = cell-inline rep (trans eq r)
 
   validityWF-mem-preserved-in-regions-strong alloc
     .(λ arg → evalᴰ body (env , arg)) loc ib fs s₁ s₂

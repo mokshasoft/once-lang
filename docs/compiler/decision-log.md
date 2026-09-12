@@ -12578,3 +12578,46 @@ What is left for `obs-correct-apply` is the callee: the `FlatSteps` chain (the
 fetches come from the clause's `span`, not from this module), the call step,
 the block's own run relocated by `link-block-steps` (D168), the `c-ret`, and
 the result place. All of it is gated on the one fact D183 named.
+
+## D187 — A COMPOUND'S CELL HOLDS A POINTER **OR** THE COMPONENT (2026-09-12)
+
+`valid-pair-wf` demanded `SV-Ptr` in both cells. `apply` is where that became
+REFUTABLE rather than merely incomplete: it copies the closure's environment
+cell into the callee's argument pair, and D181 established that cell is a
+pointer only for a BOXED environment — `main`'s is `Unit`, so the callee's
+argument pair was unwitnessable on the main path.
+
+That is the third instance of one defect class. D181: the closure witness too
+NARROW, excluding a state the machine produces. D184: too WIDE, admitting one
+it cannot handle. Here: too narrow again, and for D181's exact reason — the
+emitter does not box. Every compound build copies whatever the source cell
+held, so a component that arrived as a register literal lands in the cell as
+itself.
+
+**`CellAt`** is the fix, mutual with `ValidAtWF` (as `PayloadAt`/`EnvAt` are
+views beside it): `cell-ptr` carries the pointer, the component's frontier and
+its validity; `cell-inline` carries an `InlineRep` and the read equation, and
+NOTHING else — an inline component has no cell of its own to be valid at.
+`valid-pair-wf` takes two of them, which covers both cells independently where
+splitting the constructor would have needed four combinations.
+
+**What it reached.** The split propagated exactly as far as the assumption had:
+
+* `ShapeAt` gets `CellShapeAt`, forward-declared so the two are mutual, and
+  `cell→shape`/`cell-uw` mirror `valid→shape`/`shape-uw`.
+* `readTyped` (SMCore) followed pointers unconditionally, so it returned
+  `nothing` for precisely the pairs the old witness could not describe. It now
+  dispatches per cell (`readTyped-cell`), reusing `readReg-typed` for the
+  inline case — the same three shapes and the same answers the register-
+  resident path already had. Enumerated rather than catch-all: under
+  `--exact-split` a `StoredValue` catch-all is not preserved as a definitional
+  equality, and the adequacy proof reduces through exactly this dispatch.
+* `obs-correct-fst`/`-snd` gain the residence split, and it is the natural one:
+  `load-indirect` reads the cell whatever it holds, so a POINTER cell still
+  places the result in memory (`at-loc`) while an INLINE one lands the
+  component in `Output` as a literal (`at-reg`) — stage F's own shape, arriving
+  here only because the witness can finally describe it.
+
+The eight `ValidAtWF` transport lemmas each carry one local cell-transporter
+applied twice, so the recursion stays structural and `cell-inline` simply has
+no sub-derivation to recurse into.

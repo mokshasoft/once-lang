@@ -567,6 +567,7 @@ module Sem (FS : FrameSemantics) where
   open import Once.CCC.Machine.ShapeAt FS using
     (ShapeAt; TagAt; tag-at-read;
      shape-unit; shape-pair; shape-closure; shape-inl; shape-inr;
+     CellShapeAt; cell-shape-ptr; cell-shape-inline;
      shape-inl-reg; shape-inr-reg;
      shape-μ; shape-ν; shape-int; shape-float; shape-str; shape-buffer;
      shape-closure-reg)
@@ -788,9 +789,10 @@ module Sem (FS : FrameSemantics) where
           | sym (ty-eq-sound p a (proj₁ (∧-split (ty-eq p a) _ ok)))
           | sym (ty-eq-sound q b (proj₂ (∧-split (ty-eq p a) _ ok))) =
     rs-ptr {m = Heap}
-      (shape-pair tt fc-eq sc-eq fbf sbf
+      (shape-pair tt
         (heap-before (subst (ref-id (heap-ref hl) <_) suc-nhr ≤-refl))
-        fshape sshape)
+        (cell-shape-ptr fc-eq fbf fshape)
+        (cell-shape-ptr sc-eq sbf sshape))
 
   slot-just : ∀ e {alloc v ls} → MeetsSlot e alloc (just v) ls → MeetsR e alloc v ls
   slot-just e-any       m = tt
@@ -1010,15 +1012,20 @@ module Sem (FS : FrameSemantics) where
   tag-uw Heap  t {ls} hl' v' {loc} uw tg = read-uw ls hl' v' loc uw tg
   tag-uw Stack t {ls} hl' v' {loc} uw tg = read-uw ls hl' v' loc uw tg
 
+  -- D187: mutual with the cell-level transport, as the datatypes are.
+  cell-uw : ∀ {alloc : AllocState {FS}} {C} {ls : LocState FS}
+              (cl : ValueLocation FS) (hl' : HeapLocation) (v' : StoredValue FS)
+          → heapMem ls hl' ≡ nothing
+          → CellShapeAt alloc C cl ls
+          → CellShapeAt alloc C cl (writeLocToHeap ls hl' v')
   shape-uw : ∀ {m} {alloc : AllocState {FS}} {A loc} {ls : LocState FS}
                (hl' : HeapLocation) (v' : StoredValue FS)
            → heapMem ls hl' ≡ nothing
            → ShapeAt m alloc A loc ls
            → ShapeAt m alloc A loc (writeLocToHeap ls hl' v')
   shape-uw hl' v' uw shape-unit = shape-unit
-  shape-uw {ls = ls} hl' v' uw (shape-pair {pair-loc = pl} lm r1 r2 b1 b2 b3 sa sb) =
-    shape-pair lm (read-uw ls hl' v' pl uw r1) (read-uw ls hl' v' (sucLoc pl) uw r2)
-               b1 b2 b3 (shape-uw hl' v' uw sa) (shape-uw hl' v' uw sb)
+  shape-uw {ls = ls} hl' v' uw (shape-pair {pair-loc = pl} lm b3 sa sb) =
+    shape-pair lm b3 (cell-uw pl hl' v' uw sa) (cell-uw (sucLoc pl) hl' v' uw sb)
   shape-uw {ls = ls} hl' v' uw (shape-closure {closure-loc = cl} lm r1 r2 b1 b2 senv) =
     shape-closure lm (read-uw ls hl' v' cl uw r1) (read-uw ls hl' v' (sucLoc cl) uw r2)
                   b1 b2 (shape-uw hl' v' uw senv)
@@ -1045,6 +1052,11 @@ module Sem (FS : FrameSemantics) where
   shape-uw {loc = l} {ls = ls} hl' v' uw (shape-float b r) = shape-float b (read-uw ls hl' v' l uw r)
   shape-uw hl' v' uw (shape-str b)    = shape-str b
   shape-uw hl' v' uw (shape-buffer b) = shape-buffer b
+
+  cell-uw {ls = ls} cl hl' v' uw (cell-shape-ptr r bf sh) =
+    cell-shape-ptr (read-uw ls hl' v' cl uw r) bf (shape-uw hl' v' uw sh)
+  cell-uw {ls = ls} cl hl' v' uw (cell-shape-inline rep r) =
+    cell-shape-inline rep (read-uw ls hl' v' cl uw r)
 
   ------------------------------------------------------------------------
   -- Claim transports under the two machine effects the transfer tracks:

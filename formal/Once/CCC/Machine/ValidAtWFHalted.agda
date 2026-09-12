@@ -55,9 +55,15 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
     → ValidAtWF m alloc {A} v loc s
     → ValidAtWF m alloc {A} v loc (record s { halted = b })
   validAtWF-set-halted b valid-unit-wf = valid-unit-wf
-  validAtWF-set-halted {s = s} b (valid-pair-wf {pair-loc = pl} lm r1 r2 bf1 bf2 bf3 va vb) =
-    valid-pair-wf lm (trans (rl s b pl) r1) (trans (rl s b (sucLoc pl)) r2) bf1 bf2 bf3
-      (validAtWF-set-halted b va) (validAtWF-set-halted b vb)
+  -- D187: the two cells transport the same way, so one helper serves both.
+  validAtWF-set-halted {s = s} b (valid-pair-wf {pair-loc = pl} lm slb fc sc) =
+    valid-pair-wf lm slb (go pl fc) (go (sucLoc pl) sc)
+    where
+      go : ∀ {alloc C} {c : ⟦ C ⟧} (cl : ValueLocation FS)
+         → CellAt alloc C c cl s → CellAt alloc C c cl (record s { halted = b })
+      go cl (cell-ptr {comp-loc = pl'} r cb v) =
+        cell-ptr (trans (rl s b cl) r) cb (validAtWF-set-halted b v)
+      go cl (cell-inline rep r) = cell-inline rep (trans (rl s b cl) r)
   validAtWF-set-halted {s = s} b (valid-closure-wf {body = body} {closure-loc = cl} lm r1 r2 bf1 bf2 venv) =
     valid-closure-wf {body = body} lm (trans (rl s b cl) r1) (trans (rl s b (sucLoc cl)) r2) bf1 bf2
       (validAtWF-set-halted b venv)

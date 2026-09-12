@@ -34,7 +34,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Function using (id)
 
 open import Once.Type using (Type; Unit; Int; _*_)
-open import Once.IRTy using (⌊_⌋)
+import Once.Type
+open import Once.IRTy using (⌊_⌋; fits-int)
 open import Once.Semantics.Machine using (⟦_⟧; coh)
 open import Once.Denotation.ValueDomain using (forget) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
@@ -42,7 +43,8 @@ open AbstractExec {FS}
 open MemOps {FS}
 open import Once.CCC.Machine.ClosureWellFormed o
 open ClosureWellFormedDef {FS} program-bound
-  using (ValidAtWF; valid-unit-wf; valid-int-wf; valid-pair-wf; prim-sv)
+  using (ValidAtWF; valid-unit-wf; valid-int-wf; valid-pair-wf; prim-sv;
+         CellAt; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv)
 
 -- Readable types: Unit, Int, and products thereof — the arith input shapes.
 data Readable : Type → Set where
@@ -77,12 +79,40 @@ subst-×-cong₂ refl refl a b = refl
 -- (`subst id (coh A) (forget a)`, DenotTrace:145). Stating adequacy in that
 -- same form is what lets the consumer's `rewrite` close by `refl`; a
 -- separately-invented coherence would have needed a bridge lemma to `coh`.
+readTyped-cell-adequate : ∀ {A} (r : Readable A) → ∀ {cl s alloc} {c : ⟦ ⌊ A ⌋ ⟧ᴵ}
+                        → CellAt alloc ⌊ A ⌋ c cl s
+                        → readTyped-cell (λ l → readTyped A l s) (readReg-typed A)
+                            (readLoc s cl)
+                          ≡ just (subst id (coh A) (forget c))
 readTyped-adequate : ∀ {A} (r : Readable A) → ∀ {loc s m alloc} {v : ⟦ ⌊ A ⌋ ⟧ᴵ}
                    → ValidAtWF m alloc {⌊ A ⌋} v loc s
                    → readTyped A loc s ≡ just (subst id (coh A) (forget v))
 readTyped-adequate r-unit valid-unit-wf = refl
 readTyped-adequate r-int (valid-int-wf bf rl) rewrite rl = refl
-readTyped-adequate (r-pair rA rB)
-  (valid-pair-wf {fst-loc = fl} {snd-loc = sl} lmm fp sp fb sb slb fv sv)
-  rewrite fp | sp | readTyped-adequate rA fv | readTyped-adequate rB sv =
+readTyped-adequate (r-pair rA rB) (valid-pair-wf lmm slb fc sc)
+  rewrite readTyped-cell-adequate rA fc | readTyped-cell-adequate rB sc =
   cong just (sym (subst-×-cong₂ (coh _) (coh _) _ _))
+
+-- D187: the CELL-level half. A pair cell is a pointer or the component
+-- itself, and `readTyped-cell` dispatches on exactly that — so this lemma has
+-- one clause per residence and neither invents anything.
+readTyped-cell-adequate r-unit (cell-ptr r bf v)    rewrite r = refl
+readTyped-cell-adequate r-unit {s = s} (cell-inline rep r)  rewrite r = unit-cell rep
+  where
+    unit-cell : ∀ {c} (rep : InlineRep ⌊ Unit ⌋)
+              → readTyped-cell (λ l → readTyped Unit l s) (readReg-typed Unit)
+                  (just (inline-sv rep c))
+                ≡ just tt
+    unit-cell (rep-prim ())
+    unit-cell (rep-unit _ (SV-Ptr _))   = refl
+    unit-cell (rep-unit _ (SV-Tag _))   = refl
+    unit-cell (rep-unit _ (SV-Lit _ _)) = refl
+    unit-cell (rep-unit _ (SV-Code _))  = refl
+readTyped-cell-adequate r-int  (cell-ptr r bf v)
+  rewrite r = readTyped-adequate r-int v
+readTyped-cell-adequate r-int  (cell-inline (rep-prim fits-int) r) rewrite r = refl
+readTyped-cell-adequate r-int  (cell-inline (rep-unit () _) r)
+readTyped-cell-adequate (r-pair rA rB) (cell-ptr r bf v)
+  rewrite r = readTyped-adequate (r-pair rA rB) v
+readTyped-cell-adequate (r-pair rA rB) (cell-inline (rep-prim ()) r)
+readTyped-cell-adequate (r-pair rA rB) (cell-inline (rep-unit () _) r)
