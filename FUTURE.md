@@ -2433,11 +2433,61 @@ constraint — the 5.5 GB cgroup cap is what KILLED the 5-passenger row in
 the first place, so a 4.21 → 1.11 GB peak is the result that matters and
 a 28% time regression is affordable.
 
-⬜ **FIX THE TUPLE BEFORE CONVERTING ANYTHING.** The 4× is the per-row
-`renTy vs` failing to reduce, and the fix is the move that already worked
-once: hoist an `imethsTyFrom` naturality lemma into the `Lib/IPay`
-prologue beside `⊢methLamN`, so the stack is peeled ONCE instead of
-re-normalised 44 times. Not attempted.
+### ✅ STEP 1 — AND THE FIX IS NOT A LEMMA, IT IS WHERE YOU INSTANTIATE
+
+⚠⚠ **FIRST, A BAD MEASUREMENT OF MY OWN.** The 11/22/44 growth curve
+(187/178/174 s) varied `cdTake n` — how many rows the TERM builds. The
+TYPE was `imethsTy … KnotD`, all 53 rows, in every run, so the stack
+depth never moved and the curve was flat BY CONSTRUCTION. Another
+[[verification-that-covers-less-than-it-claims]], this time in a
+diagnostic I designed to test my own hypothesis.
+
+Varying the TYPE instead (`tmp/TupleAShort.agda`):
+
+| result type | wall |
+|---|---|
+| 7-row (`imethsTyFrom … 46 D46`) | **3.12s** |
+| 53-row (`imethsTy … KnotD`) | **173.64s** |
+
+⇒ 56× for 7.6× the rows — **QUADRATIC in stack depth.** Each of the 53
+`renTy vs` pushes through the whole remaining tail and cannot reduce on
+an abstract `renTm vs (… nn)`.
+
+★★★ **SO A CALL-SITE LEMMA WAS THE WRONG FIX** — the cost is inside
+Agda's normalisation of `imethsTyFrom`, which no lemma at the use site
+can reach. But ONE THING RENAMES IN A SINGLE STEP: a VARIABLE.
+`tmp/TupleAVar.agda`, `nn := var vz`, same 53-row type:
+
+**6.64s · 0.50 GB · rc=0** — against 173.64s · 1.11 GB. **26×.**
+
+### ⇒ THE TWO LAYERS WANT OPPOSITE THINGS, AND A GENERIC LEMMA GIVES BOTH
+
+| | wall | peak RSS |
+|---|---|---|
+| row · generic (abstract `nn`) | **0:35.92** | **0.55 GB** |
+| row · concrete (variable `nn`) | 1:41.27 | 1.39 GB |
+| tuple · abstract `nn` | 2:53.64 | 1.11 GB |
+| tuple · **variable** `nn` | **0:06.64** | **0.50 GB** |
+
+The ROW wants `nn` abstract; the TUPLE wants it a variable. **There is no
+conflict** — a generic lemma is a SUPERSET, so state the row generically
+and INSTANTIATE it at a variable when building the tuple:
+
+| combination | row + tuple | peak |
+|---|---|---|
+| baseline (4 passengers) | 164 s | 4.21 GB |
+| all-abstract | 210 s | 1.11 GB |
+| all-concrete | 108 s | 1.39 GB |
+| **MIXED — generic row @ a variable** | **43 s** | **0.55 GB** |
+
+⇒ **3.8× faster AND 7.7× less memory than the baseline.** ★ And this is
+the third time in this investigation that generalising the LEMMA and
+specialising the USE beat both pure alternatives —
+[[half-generalization-is-worst]], now with the mixed point measured.
+
+⬜ NOT YET VERIFIED: that instantiating the generic row at a variable
+inside the real tuple costs the row's GENERIC price and not its concrete
+one. That is step 2's first check.
 
 ### ⚠ WHAT IS STILL OPEN: **neither version closes.** The baseline ends with
 one `UnsolvedMetaVariables` site; the generic ambient row ends with that
