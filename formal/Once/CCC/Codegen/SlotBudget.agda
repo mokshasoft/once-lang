@@ -56,7 +56,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (blocks-layout)
 open import Once.CCC.Machine.SMCore using
@@ -500,7 +500,8 @@ frontier-mono (out-μ _)   n l = ≤-refl
 frontier-mono (Cata {F} _ alg) n l = cata-mono (cata-strategy ⌈ F ⌉F) _ _ _ _
 frontier-mono (Para _ _)     n l = ≤-refl
 frontier-mono (Out _)        n l = ≤-refl
-frontier-mono (in-ν _)     n l = ≤-refl
+-- D189: the same two-cell build as `Ana`, with `id` as the block.
+frontier-mono (in-ν _)     n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
@@ -1084,7 +1085,11 @@ slots-below (Cata {F} _ alg) n l =
 slots-below (Para _ _)     n l = segok-idle _ refl []
 slots-below (Out _)        n l =
   segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
-slots-below (in-ν _)     n l = segok-idle _ refl []
+slots-below (in-ν _) n l =
+  segok-idle _ refl
+    (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
+     sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 slots-below (Ana _ c) n l =
   segok-idle _ refl
     (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
@@ -1220,7 +1225,7 @@ blocks-below (out-μ _)           n l = []
 blocks-below (Cata {F} _ alg)    n l = blocks-below alg 0 l
 blocks-below (Para _ _)          n l = []
 blocks-below (Out _)             n l = []
-blocks-below (in-ν _)          n l = []
+blocks-below (in-ν _)          n l = segok-idle _ refl (sb-none refl ∷ []) ∷ []
 blocks-below (Ana _ c)           n l = slots-below c 0 (suc l)
                                      ∷ blocks-below c 0 (suc l)
 blocks-below (Hylo _ _ _ _)      n l = []

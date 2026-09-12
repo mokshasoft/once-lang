@@ -55,7 +55,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -605,7 +605,10 @@ labels-in (Cata {F} _ alg) n l =
 labels-in (Para _ _)     n l = []
 labels-in (Out _)        n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-labels-in (in-ν _)     n l = []
+-- D189: the same two-cell build as `Ana`, with `id` as the block.
+labels-in (in-ν _) n l =
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
@@ -1738,7 +1741,9 @@ seg-agree (In w) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (out-μ w) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (Para w x) n l = segagree-nolab _ []
 seg-agree (Out w) n l = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (in-ν w) n l = segagree-nolab _ []
+seg-agree (in-ν w) n l =
+  segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
+                    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree (Ana w c) n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
                     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
@@ -1875,12 +1880,23 @@ scope-ok : ∀ {A B} (ir : IR A B) (n l : ℕ)
 -- `c-thunk (ℓ o l)` header, the body, a `c-ret` — so the two clauses differ
 -- only in `lb` and in the `l ≤ lb` the window needs, which is now an argument
 -- rather than the hardwired `≤-step (n≤1+n l)`.
+-- …and over the BODY'S OWN `ScopeOK`, passed in rather than looked up. For
+-- `curry` that argument is `scope-ok bd 0 (suc (suc l))`, a structural call.
+-- For `in-ν` the block is a fixed one-instruction stub, not a sub-IR, so its
+-- scope is `scope-nil` outright — and taking it as an argument is what keeps
+-- `scope-ok` from calling itself at a term that is not a subterm of its own.
 body-bl-in : ∀ {X C} (bd : IR X C) (n l lb : ℕ) → l ≤ lb
+            → ScopeOK (trace-of (ir-to-trace' 0 lb bd))
+                      (bodies-of (ir-to-trace' 0 lb bd))
+                      lb (label-of (ir-to-trace' 0 lb bd))
             → LabelsIn l (label-of (ir-to-trace' 0 lb bd))
                 (blocks-layout ((ℓ o l , budget-of (ir-to-trace' 0 lb bd)
                                 , trace-of (ir-to-trace' 0 lb bd))
                                 ∷ bodies-of (ir-to-trace' 0 lb bd)))
 body-bl-agree : ∀ {X C} (bd : IR X C) (n l lb : ℕ)
+               → ScopeOK (trace-of (ir-to-trace' 0 lb bd))
+                         (bodies-of (ir-to-trace' 0 lb bd))
+                         lb (label-of (ir-to-trace' 0 lb bd))
                → SegAgree (blocks-layout
                    ((ℓ o l , budget-of (ir-to-trace' 0 lb bd)
                            , trace-of (ir-to-trace' 0 lb bd))
@@ -1898,11 +1914,16 @@ scope-ok (In _)            n l = scope-nil _ _ _
 scope-ok (out-μ _)           n l = scope-nil _ _ _
 scope-ok (Para _ _)          n l = scope-nil _ _ _
 scope-ok (Out _)             n l = scope-nil _ _ _
-scope-ok (in-ν _)          n l = scope-nil _ _ _
+scope-ok (in-ν {F} _) n l =
+  scope-nolab _ _ l _
+    (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
+    (body-bl-in (id {⟦ F ⟧TI (ν-type F)}) n l (suc l) (n≤1+n l) (scope-nil _ _ _))
+    (body-bl-agree (id {⟦ F ⟧TI (ν-type F)}) n l (suc l) (scope-nil _ _ _))
 scope-ok (Ana _ c) n l =
   scope-nolab _ _ l _
     (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-    (body-bl-in c n l (suc l) (n≤1+n l)) (body-bl-agree c n l (suc l))
+    (body-bl-in c n l (suc l) (n≤1+n l) (scope-ok c 0 (suc l)))
+    (body-bl-agree c n l (suc l) (scope-ok c 0 (suc l)))
 scope-ok (Hylo _ _ _ _)      n l = scope-nil _ _ _
 scope-ok (Fuse _ _ _ _)      n l = scope-nil _ _ _
 scope-ok (free-heap _)       n l = scope-nil _ _ _
@@ -1914,8 +1935,9 @@ scope-ok (const fits-float _) n l = scope-nil _ _ _
 scope-ok (curry bd) n l =
   scope-nolab _ _ l _
     (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-    (body-bl-in bd n l (suc (suc l)) (≤-step (n≤1+n l)))
-    (body-bl-agree bd n l (suc (suc l)))
+    (body-bl-in bd n l (suc (suc l)) (≤-step (n≤1+n l))
+                (scope-ok bd 0 (suc (suc l))))
+    (body-bl-agree bd n l (suc (suc l)) (scope-ok bd 0 (suc (suc l))))
 
 scope-ok (g ∘ f) n l = mkScope blin blagr nceb ncbe
   where
@@ -2140,18 +2162,17 @@ scope-ok (Cata {F} _ alg) n l = mkScope blin blagr nceb ncbe
 -- hypothesis is spent: the body's trace and the body's OWN blocks share a
 -- window, so only `NoCross` can join them.
 ------------------------------------------------------------------------
-body-bl-in bd n l lb l≤lb =
+body-bl-in bd n l lb l≤lb S =
   ++⁺ (li-none refl ∷ ++⁺ (ls-weaken l≤lb ≤-refl (labels-in bd 0 lb))
                           (li-none refl ∷ []))
-      (ls-weaken l≤lb ≤-refl (ScopeOK.bl-in (scope-ok bd 0 lb)))
+      (ls-weaken l≤lb ≤-refl (ScopeOK.bl-in S))
 
-body-bl-agree bd n l lb =
+body-bl-agree bd n l lb S =
   segagree-++ⁿ blk BB nc1 nc2 blkA (ScopeOK.bl-agree S)
   where
     l2' = lb
     D   = ir-to-trace' 0 l2' bd
     bt  = trace-of D ; bb = budget-of D ; hi = label-of D
-    S   = scope-ok bd 0 l2'
     BB  = blocks-layout (bodies-of D)
     tl  = instr-ctrl (c-ret bb) ∷ []
     blk = instr-ctrl (c-thunk (ℓ o l) bb) ∷ (bt ++ tl)

@@ -46,7 +46,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (LabelId; AbstractInstr; AbstractTrace)
 open import Once.CCC.Codegen.IRToTrace o using
@@ -134,7 +134,8 @@ label-mono (Cata {F} _ alg) n l =
   ≤-trans (label-mono alg 0 l) (cata-label-mono (cata-strategy ⌈ F ⌉F) _ _ _ _)
 label-mono (Para _ _)     n l = ≤-refl
 label-mono (Out _)        n l = ≤-refl
-label-mono (in-ν _)     n l = ≤-refl
+-- D189: the same two-cell build as `Ana`, with `id` as the block.
+label-mono (in-ν _)     n l = n≤1+n l
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.

@@ -43,7 +43,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap
@@ -276,7 +276,9 @@ alloc-min-trace' (Cata {F} _ alg) n l =
   cata-dispatch-am (cata-strategy ⌈ F ⌉F) _ _ _ _ (alloc-min-trace' alg 0 l)
 alloc-min-trace' (Para _ _)     n l = []
 alloc-min-trace' (Out _)        n l = tt ∷ tt ∷ tt ∷ tt ∷ []
-alloc-min-trace' (in-ν _)     n l = []
+-- D189: the same two-cell build as `Ana`, with `id` as the block.
+alloc-min-trace' (in-ν _)     n l =
+  tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
@@ -320,7 +322,7 @@ alloc-min-blocks (In _)   n l = []
 alloc-min-blocks (out-μ _)  n l = []
 alloc-min-blocks (Para _ _) n l = []
 alloc-min-blocks (Out _)    n l = []
-alloc-min-blocks (in-ν _) n l = []
+alloc-min-blocks (in-ν _) n l = tt ∷ tt ∷ tt ∷ []
 alloc-min-blocks (Ana _ c)  n l =
   ++⁺ (tt ∷ ++⁺ (alloc-min-trace' c 0 (suc l)) (tt ∷ []))
       (alloc-min-blocks c 0 (suc l))

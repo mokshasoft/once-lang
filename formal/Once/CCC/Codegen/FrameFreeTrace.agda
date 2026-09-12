@@ -56,7 +56,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (blocks-layout)
@@ -312,7 +312,9 @@ frame-free-trace' (Cata {F} _ alg) hm n l =
   cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ _ (frame-free-trace' alg hm 0 l)
 frame-free-trace' (Para _ _)     hm n l = []
 frame-free-trace' (Out _)        hm n l = tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (in-ν _)     hm n l = []
+-- D189: the same two-cell build as `Ana`, with `id` as the block.
+frame-free-trace' (in-ν _)     hm n l =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
@@ -370,7 +372,7 @@ frame-free-blocks' (out-μ _) hm n l = []
 frame-free-blocks' (Cata {F} _ alg) hm n l = frame-free-blocks' alg hm 0 l
 frame-free-blocks' (Para _ _)     hm n l = []
 frame-free-blocks' (Out _)        hm n l = []
-frame-free-blocks' (in-ν _)     hm n l = []
+frame-free-blocks' (in-ν _)     hm n l = (tt ∷ []) ∷ []
 frame-free-blocks' (Ana _ c)      hc n l =
   frame-free-trace' c hc 0 (suc l) ∷ frame-free-blocks' c hc 0 (suc l)
 frame-free-blocks' (Hylo _ _ _ _) hm n l = []
