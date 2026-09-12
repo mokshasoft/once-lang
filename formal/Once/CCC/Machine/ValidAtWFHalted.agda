@@ -71,6 +71,10 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
     valid-inl-reg-wf lm (transport-SumTag (rl s b sl) tg) fit (trans (rl s b (sucLoc sl)) r) bf
   validAtWF-set-halted {s = s} b (valid-inr-reg-wf {sum-loc = sl} lm tg fit r bf) =
     valid-inr-reg-wf lm (transport-SumTag (rl s b sl) tg) fit (trans (rl s b (sucLoc sl)) r) bf
+  validAtWF-set-halted {s = s} b
+    (valid-closure-reg-wf {body = body} {env = env} {closure-loc = cl} lm rep r1 r2 bf) =
+    valid-closure-reg-wf {body = body} {env = env} lm rep
+      (trans (rl s b cl) r1) (trans (rl s b (sucLoc cl)) r2) bf
   validAtWF-set-halted b (valid-μ-wf wf x v) =
     valid-μ-wf wf x (validAtWF-set-halted b v)
   validAtWF-set-halted {s = s} b (valid-int-wf {loc = loc} bf r) = valid-int-wf bf (trans (rl s b loc) r)

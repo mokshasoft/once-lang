@@ -279,6 +279,44 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- only what is true of the VALUE in the state, and no cycle returns.
         ValidAtWF m alloc {A ⇛ B} (λ arg → evalᴰ body (env , arg)) closure-loc s
 
+      ------------------------------------------------------------------------
+      -- D181: a closure whose ENVIRONMENT is stored INLINE — the env cell
+      -- holds the value itself, not a pointer to it.
+      --
+      -- This is the sum payload's split (`valid-inl-reg-wf` below) at the
+      -- closure's first cell, and it is forced by the same emitter. `curry`
+      -- builds its record with
+      --   mov-to-output ∷ store-at-slot env-stash ∷ instr-alloc-heap 2 ∷ …
+      --   load-from-slot env-stash ∷ store-indirect ∷ …
+      -- so the env cell receives WHATEVER `Input1` held: a pointer when the
+      -- environment was in memory, the value itself when it was a register
+      -- literal, and the unconstrained tag filler when the environment is
+      -- `Unit` (D074 — a unit input has no residence, so nothing says what
+      -- `Input1` contains).
+      --
+      -- Without this constructor `curry` is UNPROVABLE for a unit environment,
+      -- which is the top-level case: `main`'s env is `Unit`, so the very first
+      -- closure a program builds could not be witnessed. The pointer-only
+      -- constructor was not merely incomplete — it was stated for the part of
+      -- the domain that excludes the common case, which is exactly where a
+      -- restricted lemma hides a defect.
+      --
+      -- No `env-loc`, no env `ValidAtWF`: an inline environment has no cell of
+      -- its own to be valid at. Same reason `valid-inl-reg-wf` carries neither.
+      ------------------------------------------------------------------------
+      valid-closure-reg-wf : ∀ {m EnvType A B}
+        {body : IR (EnvType * A) B}
+        {env : ⟦ EnvType ⟧}
+        {alloc : AllocState {FS}}
+        {closure-loc : ValueLocation FS} {s : LocState FS}
+        {body-label : LabelId} →
+        LocMatchesMode m closure-loc →
+        (rep : InlineRep EnvType) →
+        readLoc s closure-loc ≡ just (inline-sv rep env) →
+        readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
+        BeforeFrontier alloc (sucLoc closure-loc) →
+        ValidAtWF m alloc {A ⇛ B} (λ arg → evalᴰ body (env , arg)) closure-loc s
+
       valid-inl-wf : ∀ {m A B} {a : ⟦ A ⟧}
         {alloc : AllocState {FS}}
         {sum-loc payload-loc : ValueLocation FS} {s : LocState FS}
@@ -968,6 +1006,23 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Decomposition for ValidAtWF closures
   ------------------------------------------------------------------------
 
+  ------------------------------------------------------------------------
+  -- D181: WHERE a closure's ENVIRONMENT lives, read out of the closure's
+  -- first cell. The exact shape `PayloadAt` has for a sum's payload, asked one
+  -- cell earlier — and for the same reason: the emitter writes whatever
+  -- `Input1` held, so the cell may hold a pointer OR the value itself.
+  ------------------------------------------------------------------------
+  data EnvAt (alloc : AllocState {FS}) {E : IRTy} (env : ⟦ E ⟧)
+             (closure-loc : ValueLocation FS) (s : LocState FS) : Set where
+    env-at-loc  : ∀ {mEnv : AllocMode} (env-loc : ValueLocation FS)
+                → readLoc s closure-loc ≡ just (SV-Ptr env-loc)
+                → BeforeFrontier alloc env-loc
+                → ValidAtWF mEnv alloc {E} env env-loc s
+                → EnvAt alloc env closure-loc s
+    env-in-cell : (rep : InlineRep E)
+                → readLoc s closure-loc ≡ just (inline-sv rep env)
+                → EnvAt alloc env closure-loc s
+
   record ClosureValidWF (alloc : AllocState {FS}) {A B : IRTy}
                         (f : ⟦ A ⇛ B ⟧)
                         (closure-loc : ValueLocation FS)
@@ -978,14 +1033,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       env : ⟦ EnvType ⟧
       -- D170: `body<bound` removed with the constructor's — a size bound is a
       -- recursion measure, not something the value carries.
-      env-loc : ValueLocation FS
       body-label : LabelId
-      mEnv : AllocMode  -- Mode of env
-      env-ptr : readLoc s closure-loc ≡ just (SV-Ptr env-loc)
+      -- D181: WHERE the environment lives, as ONE field carrying its own
+      -- evidence (D153's rule). It used to be four — `env-loc`, `mEnv`,
+      -- `env-ptr`, `env-before`, `env-valid` — which could only describe a
+      -- POINTER env, so the decomposition could not see an inline one.
+      env-at : EnvAt alloc {EnvType} env closure-loc s
       code-ptr : readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label)
-      env-before : BeforeFrontier alloc env-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
-      env-valid : ValidAtWF mEnv alloc {EnvType} env env-loc s
       -- D170: `body-correct : BodyCorrect …` stood here, mirroring the
       -- constructor field. Gone for the same reason — this record DECOMPOSES a
       -- closure value, so it may expose only what the value carries: the
@@ -1002,14 +1057,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     { EnvType = EnvType
     ; body = body
     ; env = env
-    ; env-loc = el
     ; body-label = bl
-    ; mEnv = mE
-    ; env-ptr = ep
+    ; env-at = env-at-loc {mEnv = mE} el ep eb ev
     ; code-ptr = cp
-    ; env-before = eb
     ; sucLoc-before = slb
-    ; env-valid = ev
+    ; f-is-closure = refl
+    }
+  decomposeClosureWF (valid-closure-reg-wf {_} {EnvType} {_} {_} {body} {env} {_}
+                       {_} {_} {bl} lmm rep ep cp slb) = record
+    { EnvType = EnvType
+    ; body = body
+    ; env = env
+    ; body-label = bl
+    ; env-at = env-in-cell rep ep
+    ; code-ptr = cp
+    ; sucLoc-before = slb
     ; f-is-closure = refl
     }
 
@@ -1296,6 +1358,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
       ev' = validityWF-mem-only env el s₁ s₂ stack-eq heap-eq ev
 
+  -- D181: the INLINE-env mirror. Same transports, minus the two fields an
+  -- inline environment does not have (its own location and validity).
+  validityWF-mem-only {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s₁ s₂ stack-eq heap-eq
+    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
+    valid-closure-reg-wf {body = body} {env = env} lmm rep
+      (trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) ep)
+      (trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) cp) slb
+
   -- Kind-coerced closure: recurse on underlying validity, re-coerce.
 
   -- Eff (effectful morphism): recurse on underlying closure validity
@@ -1385,6 +1455,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       cp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp
       ev' = validityWF-write-at-frontier env el s val eb ev
 
+  validityWF-write-at-frontier {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s val loc-before
+    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
+    valid-closure-reg-wf {body = body} {env = env} lmm rep
+      (trans (write-at-frontier-preserves-before s alloc loc val loc-before) ep)
+      (trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
+
   -- Kind-coerced closure
 
   -- inl (any mode)
@@ -1457,6 +1533,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ep' = trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) ep
       cp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp
       ev' = validityWF-write-at-suc-frontier env el s val eb ev
+
+  validityWF-write-at-suc-frontier {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s val loc-before
+    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
+    valid-closure-reg-wf {body = body} {env = env} lmm rep
+      (trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) ep)
+      (trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp) slb
 
   -- Kind-coerced closure
 
@@ -1544,6 +1626,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       cp' = trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp
       ev' = validityWF-write-sv-at-frontier env el s stored eb ev
 
+  validityWF-write-sv-at-frontier {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s stored loc-before
+    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
+    valid-closure-reg-wf {body = body} {env = env} lmm rep
+      (trans (write-sv-at-frontier-preserves-before s alloc loc stored loc-before) ep)
+      (trans (write-sv-at-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
+
   -- Kind-coerced closure
 
   -- inl (any mode)
@@ -1623,6 +1711,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ep' = trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) ep
       cp' = trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp
       ev' = validityWF-write-sv-at-suc-frontier env el s stored eb ev
+
+  validityWF-write-sv-at-suc-frontier {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s stored loc-before
+    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
+    valid-closure-reg-wf {body = body} {env = env} lmm rep
+      (trans (write-sv-at-suc-frontier-preserves-before s alloc loc stored loc-before) ep)
+      (trans (write-sv-at-suc-frontier-preserves-before s alloc (sucLoc loc) stored slb) cp) slb
 
   -- Kind-coerced closure
 
@@ -1707,6 +1801,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       slb' = stack-alloc-advances alloc n (sucLoc loc) slb
       ev' = validityWF-alloc-advance env el s n ev
 
+  validityWF-alloc-advance {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s n
+    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
+    valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp
+      (stack-alloc-advances alloc n (sucLoc loc) slb)
+
   -- Kind-coerced closure
 
   -- inl (any mode)
@@ -1788,6 +1887,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
       ev' = validityWF-frontier-advance env el s cf-eq slot-≤ heap-≤ ev
 
+  validityWF-frontier-advance {_} {alloc} {alloc'} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s cf-eq slot-≤ heap-≤
+    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
+    valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp
+      (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb)
+
   -- Kind-coerced closure
 
   -- inl (any mode)
@@ -1862,6 +1966,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-closure-wf {body = body} {env = env} {env-loc = el} lmm ep cp eb slb ev) =
     valid-closure-wf {body = body} {env = env} lmm ep cp (bf el eb) (bf (sucLoc loc) slb)
       (validityWF-with-bf-transfer env el s a₁ a₂ bf ev)
+
+  validityWF-with-bf-transfer {_} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s a₁ a₂ bf
+    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
+    valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp (bf (sucLoc loc) slb)
 
   -- Kind-coerced closure
 
@@ -1938,6 +2046,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ep' = trans (mem-eq loc loc-before) ep
       cp' = trans (mem-eq (sucLoc loc) slb) cp
       ev' = validityWF-mem-preserved env el s₁ s₂ eb mem-eq ev
+
+  validityWF-mem-preserved {_} {alloc} {A ⇛ B} .(λ arg → evalᴰ body (env , arg)) loc s₁ s₂ loc-before mem-eq
+    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb) =
+    valid-closure-reg-wf {body = body} {env = env} lmm rep
+      (trans (mem-eq loc loc-before) ep) (trans (mem-eq (sucLoc loc) slb) cp) slb
 
   -- Kind-coerced closure
 
@@ -2141,6 +2254,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     LocInRegions alloc ib fs cl ×
     LocInRegions alloc ib fs (sucLoc cl) ×
     LocsInRegions ib fs ev
+  -- D181: an INLINE environment has no cell of its own, so there is no third
+  -- conjunct — only the closure's own two cells are constrained.
+  LocsInRegions {alloc = alloc} ib fs
+    (valid-closure-reg-wf {closure-loc = cl} lmm _ _ _ _) =
+    LocInRegions alloc ib fs cl ×
+    LocInRegions alloc ib fs (sucLoc cl)
   LocsInRegions {alloc = alloc} ib fs
     (valid-inl-wf {sum-loc = sl} lmm _ pp pb slb pv) =
     LocInRegions alloc ib fs sl ×                  -- tag slot
@@ -2260,6 +2379,17 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       cp'    = trans scl-eq cp
       ev'    = validityWF-mem-preserved-in-regions-strong alloc env el ib fs s₁ s₂
                  eb ib≤fs fs≤next ir fr hr ar ev elocs
+
+  -- D181: the region evidence is a PAIR here too — an inline environment has
+  -- no cell of its own to place in a region.
+  validityWF-mem-preserved-in-regions-strong alloc
+    .(λ arg → evalᴰ body (env , arg)) loc ib fs s₁ s₂
+    loc-before ib≤fs fs≤next ir fr hr ar
+    (valid-closure-reg-wf {body = body} {env = env} lmm rep ep cp slb)
+    (cl-ir , scl-ir) =
+    valid-closure-reg-wf {body = body} {env = env} lmm rep
+      (trans (loc-mem-eq-from-regions ir fr hr ar cl-ir) ep)
+      (trans (loc-mem-eq-from-regions ir fr hr ar scl-ir) cp) slb
 
 
   -- Stage F: the region evidence is a PAIR here, not a triple — there is no

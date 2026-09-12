@@ -466,6 +466,15 @@ Deleted in the same change, and worth recording as residuals that went away:
 `Ana`/`in-ν`) and `ν-layer-iso` (its inversion). `obs-correct-Out` is now
 discharged by `⊥-elim (ν-input-absurd …)` — see D180.
 
+### D181 — `obs-correct-curry` discharged; one residual replaces one
+
+`obs-correct-curry` was a whole-clause postulate. It is now a proof, and what
+remains is `curry-mem-pres`: the same shape as `inl-mem-pres`/`inr-mem-pres` (a
+heap-allocating ten-instruction run preserves every location the caller can
+name), consumed only by the `in-loc` input residence — `in-reg` and `in-unit`
+are postulate-free. All three are instances of ONE unwritten generalisation;
+writing it retires three residuals at once and is the obvious next reduction.
+
 ### Known-red ISLAND (not a residual, and not from plan 0.90): `Once.Category.Laws`
 
 `make check-all` (the island-rot backstop) fails on `Once/Category/Laws.agda`,

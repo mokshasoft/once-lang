@@ -568,7 +568,8 @@ module Sem (FS : FrameSemantics) where
     (ShapeAt; TagAt; tag-at-read;
      shape-unit; shape-pair; shape-closure; shape-inl; shape-inr;
      shape-inl-reg; shape-inr-reg;
-     shape-μ; shape-ν; shape-int; shape-float; shape-str; shape-buffer)
+     shape-μ; shape-ν; shape-int; shape-float; shape-str; shape-buffer;
+     shape-closure-reg)
   open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
   open import Once.CCC.Machine.Allocation using (module FrontierInvariant)
   open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
@@ -1027,6 +1028,11 @@ module Sem (FS : FrameSemantics) where
   shape-uw {m = m} {ls = ls} hl' v' uw (shape-inr {sum-loc = sl} lm tg r b1 b2 sp) =
     shape-inr lm (tag-uw m 1 hl' v' uw tg) (read-uw ls hl' v' (sucLoc sl) uw r)
               b1 b2 (shape-uw hl' v' uw sp)
+  -- D181: likewise for an inline ENVIRONMENT — no env shape to carry, just
+  -- the closure's own two cell reads.
+  shape-uw {ls = ls} hl' v' uw (shape-closure-reg {closure-loc = cl} lm rep r1 r2 b) =
+    shape-closure-reg lm rep (read-uw ls hl' v' cl uw r1)
+                      (read-uw ls hl' v' (sucLoc cl) uw r2) b
   -- Stage F: the inline variants have no payload SHAPE to carry through the
   -- heap write, so there is no recursive call — just the two cell reads.
   shape-uw {m = m} {ls = ls} hl' v' uw (shape-inl-reg {sum-loc = sl} lm tg fit r b) =

@@ -12388,3 +12388,48 @@ That is the audit's finding made mechanical: the old proof looked like a
 theorem about `Out` and was a theorem about `inject x`, a ν that could not
 emit. When `Ana` gets an emitter, THIS case is the one to reprove — against a
 machine that forces layers, not one that moves a pointer.
+
+## D181 — A CLOSURE'S ENVIRONMENT NEED NOT BE A POINTER (2026-09-12)
+
+`obs-correct-curry` is the FIRST producer of `valid-closure-wf` — nothing in
+the tree built one before, only transported and decomposed them. Writing it
+found the constructor stated for the part of its domain that excludes the
+common case.
+
+`curry`'s emitter builds the closure record with the same ten-instruction heap
+build `inl` uses, and its env cell receives whatever `Input1` held:
+
+```
+mov-to-output ∷ store-at-slot env ∷ instr-alloc-heap 2 ∷ store-at-slot clo ∷
+mov-to-input ∷ load-from-slot env ∷ store-indirect ∷
+instr-load-code-addr (ℓ o l) ∷ store-indirect-suc ∷ load-from-slot clo
+```
+
+`valid-closure-wf` demanded `readLoc s closure-loc ≡ just (SV-Ptr env-loc)` —
+a POINTER env. That holds only for the `in-loc` input residence. For `in-reg`
+the cell holds a register literal, and for `in-unit` it holds the tag filler,
+which D074 says is unconstrained. So `curry` was unprovable for a `Unit`
+environment — and a `Unit` environment is `main`'s, which makes the very first
+closure a program builds the one that could not be witnessed.
+
+The fix is stage F's, at the closure's first cell instead of the sum's second:
+`valid-closure-reg-wf`, carrying an `InlineRep` and no env location or env
+validity (an inline env has no cell of its own to be valid at), exactly as
+`valid-inl-reg-wf` carries none for an inline payload. The decomposition side
+gets `EnvAt` — the `PayloadAt` view one cell earlier — which collapses
+`ClosureValidWF`'s `env-loc`/`mEnv`/`env-ptr`/`env-before`/`env-valid` into one
+field carrying its own evidence (D153's rule).
+
+WHAT MADE THE VALUE HALF LAND AT ALL is D179. `evalᴰ (curry body) x` is
+`returnT (λ b → evalᴰ body (x , b))` and the constructor's index is
+`λ arg → evalᴰ body (env , arg)` — the same term with `env := x`, so the place
+is definitional. While `ValidAtWF` was indexed on the PURE domain the two sides
+named different semantics and no machine reasoning could have bridged them.
+
+`obs-correct-curry` is now discharged in full: the ten-step chain, the halting
+obligations, the frontier, both cells, the result pointer and all three input
+residences. One named residual remains, `curry-mem-pres` — the same
+memory-preservation invariant `inl`/`inr` each name, consumed only by the
+`in-loc` residence, and all three are instances of one generalisation (a
+heap-allocating straight-line run preserves everything the caller can name)
+that is still unwritten.

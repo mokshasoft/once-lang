@@ -148,6 +148,20 @@ data ShapeAt : AllocMode → AllocState {FS} →
   -- mention a value it does not index on. That keeps `valid→shape` a plain
   -- projection, which is D076's constraint on this layer — these say neither
   -- more nor less than `valid-inl-reg-wf` / `valid-inr-reg-wf` do.
+  -- D181: a closure whose ENVIRONMENT is inline — its first cell holds the
+  -- value, not a pointer, so there is no env SHAPE to recurse into.
+  shape-closure-reg : ∀ {m EnvType A B}
+    {alloc : AllocState {FS}}
+    {closure-loc : ValueLocation FS} {s : LocState FS}
+    {env : ⟦ EnvType ⟧ᴵ}
+    {body-label : LabelId} →
+    LocMatchesMode m closure-loc →
+    (rep : InlineRepAt EnvType) →
+    readLoc s closure-loc ≡ just (inline-sv-at rep env) →
+    readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label) →
+    BeforeFrontier alloc (sucLoc closure-loc) →
+    ShapeAt m alloc (A ⇛ B) closure-loc s
+
   shape-inl-reg : ∀ {m A B}
     {alloc : AllocState {FS}}
     {sum-loc : ValueLocation FS} {s : LocState FS}
@@ -225,7 +239,7 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
     using (ValidAtWF; valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf;
            rep-prim; rep-unit;
-           valid-μ-wf;
+           valid-μ-wf; valid-closure-reg-wf;
            valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
            SumTag)
 
@@ -242,6 +256,15 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
     shape-pair lm r1 r2 b1 b2 b3 (valid→shape va) (valid→shape vb)
   valid→shape (valid-closure-wf lm r1 r2 b1 b2 venv) =
     shape-closure lm r1 r2 b1 b2 (valid→shape venv)
+  -- Split on the rep for the same reason the sum's inline clauses do: with the
+  -- rep abstract neither `inline-sv` reduces and the read equation would not
+  -- typecheck across the two restatements.
+  valid→shape (valid-closure-reg-wf lm (rep-prim fits-int)   r1 r2 b) =
+    shape-closure-reg lm (rep-prim-at fits-int)   r1 r2 b
+  valid→shape (valid-closure-reg-wf lm (rep-prim fits-float) r1 r2 b) =
+    shape-closure-reg lm (rep-prim-at fits-float) r1 r2 b
+  valid→shape (valid-closure-reg-wf {env = e} lm (rep-unit u sv) r1 r2 b) =
+    shape-closure-reg {env = e} lm (rep-unit-at u sv) r1 r2 b
   valid→shape (valid-inl-wf {m = m} lm tg r b1 b2 vp) =
     shape-inl lm (tag-of m 0 _ _ tg) r b1 b2 (valid→shape vp)
   valid→shape (valid-inr-wf {m = m} lm tg r b1 b2 vp) =
