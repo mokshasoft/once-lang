@@ -1867,19 +1867,36 @@ Every proof that unfolds `imethsTyFrom` moves with it (`⊢methsFrom`,
 `⊢methsCons`, `imethsTyFrom-wf`, and whatever in the metatheory matches
 on it), and `⊢ielim`'s premise changes shape.
 
-### ⛔ AND THE A/B IS **UNMEASURED** — THE BOX COULD NOT RUN IT
+### ✅ MEASURED — AS **BOUNDS**, because the old form cannot complete
 
 `tmp/ProbeOld` / `tmp/ProbeNew` drive `imethsTyFrom-wf` /
 `imethsTyFrom2-wf` over the whole of `KnotD` at an ambient motive — the
-same recursion `⊢methsFrom` does per row. Four attempts, **all four
-killed for low memory**: 7.6 GB box, ~3 GB available, with three
-`claude` processes at 1.15 GB and firefox at 0.5 GB. One run also left an
-ORPHANED `agda` that survived the task kill and kept growing.
+same recursion `⊢methsFrom` does per row, and what `Judge/Elim` and
+`Judge/Ielim` pay. Cold, same RTS, one at a time:
 
-⚠ Per [[exit-143-is-not-evidence-about-cost]] and
-[[agda-rss-noise-floor]], nothing about cost may be concluded from a
-contended run. ⇒ **the speed claim is OPEN.** Re-run
-`ProbeOld`/`ProbeNew` cold, one at a time, on a quiet box.
+| | outcome | wall | peak RSS |
+|---|---|---|---|
+| **ProbeNew** — renaming on the MOTIVE | **COMPLETED rc=0** | **72.9 s** | **2.33 GB** |
+| ProbeOld — renaming on the TAIL | **KILLED (137)** | >248.8 s | >2.96 GB |
+
+⇒ **time ≥ 3.4× · memory ≥ 1.27× — LOWER BOUNDS, not a ratio.** A killed
+run bounds the cost from below; the true ratio is larger. `ProbeOld` was
+killed at 2.2 GB and again at 2.7 GB, so it needs more than this 7.6 GB
+box has free.
+
+★ AND THAT INDEPENDENTLY EXPLAINS THE JUDGE NUMBERS: `Judge/Ielim` peaks
+at **4.29 GB**, which is exactly the regime a tail-renaming `imethsTyFrom`
+puts it in.
+
+⚠⚠ **MY PREDICTION WAS WRONG BY 24×.** I said `ProbeNew` would land near
+3 s, from the morning's 3.12 s-at-7-rows figure. It is **72.9 s**. So the
+new form still does substantial work, and whatever that 73 s is, it is
+NOT the tail renaming. ⇒ the O(n²)→O(n) story is the right DIRECTION and
+the wrong MAGNITUDE; do not quote 50×.
+
+⚠ ONE ASYMMETRY, unquantified: `imethsTyFrom-wf` is deserialised from
+`Lib/IPay` while `imethsTyFrom2-wf` is elaborated from `tmp/MethsTy2` in
+the run. That handicaps the NEW form, so the bound is conservative.
 
 ⛔ Do NOT pursue the ford collapse: it was justified by the refuted depth
 law.
