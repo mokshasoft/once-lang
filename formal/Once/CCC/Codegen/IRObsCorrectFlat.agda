@@ -74,7 +74,7 @@ fits-erase fits-floatˢ = fits-float
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂; _≢_)
 open import Once.IR.Size using (ir-size)
-open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; +-identityʳ; +-assoc; +-suc; +-comm)
+open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; +-identityʳ; +-assoc; +-suc; +-comm; <-irrefl)
 open import Function using (case_of_)
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
@@ -133,10 +133,10 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- structured machine's halt lemmas apply to a flat chain unchanged — the
   -- conditional form is the one `inl`'s indirect stores and slot loads need.
   open TracePrimitives {FS} using (InstrWF; exec-abstract-preserves-halted-WF; load-indirect-twf; load-indirect-suc-twf)
-  open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-heapMem)
+  open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor)
   open RecSchemeSemantics {FS} using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-preserves-mem;
                                      exec-abstract-load-indirect-suc-output; exec-abstract-load-indirect-suc-preserves-mem)
-  open Once.CCC.Machine.SMPrimitives using (nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite)
+  open Once.CCC.Machine.SMPrimitives using (nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output; nhw-store-indirect; nhw-store-indirect-suc)
   open RecSchemeSemantics {FS} using (exec-abstract-preserves-heap-ref)
 
   open FlatMachine {FS}
@@ -860,6 +860,187 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     MemOps.writeLoc-preserves-other s (sucLoc (AtDynamic hl)) (AtStack f slot)
       (readReg (regs s) Output) (λ ())
 
+  ------------------------------------------------------------------------
+  -- D182: the `*-mem-pres` vocabulary, stated at an ARBITRARY `BeforeFrontier`
+  -- location instead of at a named cell. `inl`, `inr` and `curry` each
+  -- postulated the same invariant about the same ten-instruction heap build;
+  -- these three lemmas are what turns it into a ten-step `trans` chain.
+  --
+  -- The reason it could not be `derive-mem-preserved` (ClosureWellFormed) is
+  -- that that one bans heap writes outright (`TraceNoHeapWrites`), and this run
+  -- writes the heap twice. What makes those writes invisible is not their
+  -- ABSENCE but their FRESHNESS — they land in a block allocated during the
+  -- run, whose ref-id is at or above the frontier the caller's locations are
+  -- bounded by. Freshness is a runtime fact about `Input1`, which is why no
+  -- static trace predicate expresses it and why it enters as a premise here.
+  ------------------------------------------------------------------------
+
+  -- (1) An instruction that writes NO memory preserves every location.
+  mem-untouched : ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS})
+      (loc : ValueLocation FS)
+    → InstrNoHeapWrite i → instr-writes-slot i ≡ nothing
+    → MemOps.readLoc (proj₁ (exec-abstract i s alloc)) loc ≡ MemOps.readLoc s loc
+  mem-untouched i s alloc (AtStack f slot) nhw nws =
+    exec-abstract-preserves-stack-slot i s alloc f slot nhw nws
+  mem-untouched i s alloc (AtDynamic hl)   nhw nws = heap-untouched i s alloc hl nhw
+
+  -- (2) A stack write AT OR ABOVE the frontier misses everything the caller can
+  -- name. `next-slot alloc ≤ k` is exactly the emitter's own premise (D155).
+  -- The step's `alloc'` is separate from the caller's `alloc`: the frame does
+  -- not move during the run, and the equation says so.
+  store-slot-preserves-before : ∀ (k : ℕ) (st : LocState FS)
+      (alloc alloc' : AllocState {FS}) (loc : ValueLocation FS)
+    → current-frame alloc' ≡ current-frame alloc
+    → next-slot alloc ≤ k
+    → BeforeFrontier alloc loc
+    → MemOps.readLoc (proj₁ (exec-abstract (store-at-slot k) st alloc')) loc
+      ≡ MemOps.readLoc st loc
+  store-slot-preserves-before k st alloc alloc' .(AtStack _ _) cf-eq ns≤k
+    (BeforeFrontier.stack-before {f} {j} f≡cf j<ns) =
+    subst (λ f' → MemOps.readLoc (proj₁ (exec-abstract (store-at-slot k) st alloc')) (AtStack f' j)
+                  ≡ MemOps.readLoc st (AtStack f' j))
+          (trans cf-eq (sym f≡cf))
+          (store-at-slot-preserves-below j k st alloc' (<-≤-trans j<ns ns≤k))
+  store-slot-preserves-before k st alloc alloc' .(AtStack _ _) cf-eq ns≤k
+    (BeforeFrontier.stack-ancestor {f} {j} cf≺f _) =
+    store-at-slot-preserves-ancestor k st alloc' f j
+      (subst (λ c → Once.CCC.FrameSemantics.FrameSemantics._≺_ FS c f) (sym cf-eq) cf≺f)
+  store-slot-preserves-before k st alloc alloc' .(AtDynamic _) cf-eq ns≤k
+    (BeforeFrontier.heap-before {hl} _) =
+    MemOps.writeLoc-preserves-other st (AtStack (current-frame alloc') k) (AtDynamic hl)
+      (readReg (regs st) Output) (λ ())
+
+  -- (3) A heap write into a FRESH block misses everything the caller can name:
+  -- a stack cell is a different KIND of location, and a heap cell the caller
+  -- can name has `ref-id < next-heap-ref alloc ≤ ref-id` of the block written.
+  -- `sucHL` keeps the REF (`heap-loc r o ↦ heap-loc r (suc o)`), so a bound on
+  -- the block's ref-id serves both its cells.
+  sucHL-ref : ∀ (hl : HeapLocation) → ref-id (heap-ref (sucHL hl)) ≡ ref-id (heap-ref hl)
+  sucHL-ref (heap-loc r o) = refl
+
+  fresh-heap-≢ : ∀ (alloc : AllocState {FS}) (hl h : HeapLocation)
+               → next-heap-ref alloc ≤ ref-id (heap-ref hl)
+               → ref-id (heap-ref h) < next-heap-ref alloc
+               → AtDynamic {FS} hl ≢ AtDynamic h
+  fresh-heap-≢ alloc hl h fresh h<f refl = <-irrefl refl (≤-<-trans fresh h<f)
+
+  store-ind-preserves-before : ∀ (st : LocState FS) (alloc alloc' : AllocState {FS})
+      (hl : HeapLocation) (loc : ValueLocation FS)
+    → sv-as-loc (readReg (regs st) Input1) ≡ just (AtDynamic hl)
+    → next-heap-ref alloc ≤ ref-id (heap-ref hl)
+    → BeforeFrontier alloc loc
+    → MemOps.readLoc (proj₁ (exec-abstract store-indirect st alloc')) loc
+      ≡ MemOps.readLoc st loc
+  store-ind-preserves-before st alloc alloc' hl .(AtStack _ _) rdi fresh
+    (BeforeFrontier.stack-before {f} {j} _ _) = store-ind-preserves-slot st alloc' hl j rdi
+  store-ind-preserves-before st alloc alloc' hl .(AtStack _ _) rdi fresh
+    (BeforeFrontier.stack-ancestor {f} {j} _ _) = store-ind-preserves-slot st alloc' hl j rdi
+  store-ind-preserves-before st alloc alloc' hl .(AtDynamic _) rdi fresh
+    (BeforeFrontier.heap-before {h} h<f)
+    with sv-as-loc (readReg (regs st) Input1) | rdi
+  ... | .(just (AtDynamic hl)) | refl =
+    MemOps.writeLoc-preserves-other st (AtDynamic hl) (AtDynamic h)
+      (readReg (regs st) Output) (fresh-heap-≢ alloc hl h fresh h<f)
+
+  store-ind-suc-preserves-before : ∀ (st : LocState FS) (alloc alloc' : AllocState {FS})
+      (hl : HeapLocation) (loc : ValueLocation FS)
+    → sv-as-loc (readReg (regs st) Input1) ≡ just (AtDynamic hl)
+    → next-heap-ref alloc ≤ ref-id (heap-ref hl)
+    → BeforeFrontier alloc loc
+    → MemOps.readLoc (proj₁ (exec-abstract store-indirect-suc st alloc')) loc
+      ≡ MemOps.readLoc st loc
+  store-ind-suc-preserves-before st alloc alloc' hl .(AtStack _ _) rdi fresh
+    (BeforeFrontier.stack-before {f} {j} _ _) = store-ind-suc-preserves-slot st alloc' hl j rdi
+  store-ind-suc-preserves-before st alloc alloc' hl .(AtStack _ _) rdi fresh
+    (BeforeFrontier.stack-ancestor {f} {j} _ _) = store-ind-suc-preserves-slot st alloc' hl j rdi
+  store-ind-suc-preserves-before st alloc alloc' hl .(AtDynamic _) rdi fresh
+    (BeforeFrontier.heap-before {h} h<f) =
+    -- `sucHL` keeps the REF, so the successor cell is fresh by the same bound.
+    store-ind-suc-preserves-heap st alloc' hl h rdi
+      (fresh-heap-≢ alloc (sucHL hl) h (subst (λ r → next-heap-ref alloc ≤ r) (sym (sucHL-ref hl)) fresh) h<f)
+
+  ------------------------------------------------------------------------
+  -- D182: THE TEN-STEP INVARIANT, ONCE. `inl`, `inr` and `curry` emit the SAME
+  -- heap build and differed only in rows 6 and 8 — a tag literal vs an env
+  -- load, a payload load vs a code address — none of which touches memory. So
+  -- the invariant is one lemma over that shape, and the three clauses are its
+  -- instances.
+  --
+  -- Every state is `flat-step-straight`: all ten instructions are non-`ctrl`,
+  -- so `flat-exec-instr i prog` reduces to it for each concrete instruction and
+  -- the clauses' own nests ARE these states, definitionally. (Writing them with
+  -- `flat-exec-instr` and a variable `i6` would not reduce — its catch-all is
+  -- stuck on a variable, which is exactly what `StraightStep` exists to work
+  -- around.)
+  ------------------------------------------------------------------------
+  module TenStepPres
+    (n : ℕ) (i6 i8 : AbstractInstr) (prog : AbstractTrace) (base : ℕ)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    where
+
+    t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 : FlatState
+    t0  = entry-flat base s alloc cl
+    t1  = flat-step-straight mov-to-output            t0
+    t2  = flat-step-straight (store-at-slot n)        t1
+    t3  = flat-step-straight (instr-alloc-heap 2)     t2
+    t4  = flat-step-straight (store-at-slot (suc n))  t3
+    t5  = flat-step-straight mov-to-input             t4
+    t6  = flat-step-straight i6                       t5
+    t7  = flat-step-straight store-indirect           t6
+    t8  = flat-step-straight i8                       t7
+    t9  = flat-step-straight store-indirect-suc       t8
+    t10 = flat-step-straight (load-from-slot (suc n)) t9
+
+    -- The block the two indirect stores write. `alloc-impl` hands out
+    -- `heap-loc (mkHeapRef (next-heap-ref …)) 0` at `t2`, which is where the
+    -- three clauses each name it too.
+    hl : HeapLocation
+    hl = heap-loc (mkHeapRef (next-heap-ref (falloc t2))) 0
+
+    -- …and it is FRESH: rows 1-2 do not allocate, so the ref-id the allocator
+    -- hands out IS the caller's frontier. That is the whole reason the two heap
+    -- writes are invisible to the caller.
+    heapref-t2 : next-heap-ref (falloc t2) ≡ next-heap-ref alloc
+    heapref-t2 =
+      trans (exec-abstract-preserves-heap-ref (store-at-slot n) (floc t1) (falloc t1) tt)
+            (exec-abstract-preserves-heap-ref mov-to-output (floc t0) (falloc t0) tt)
+
+    fresh : next-heap-ref alloc ≤ ref-id (heap-ref hl)
+    fresh = ≤-reflexive (sym heapref-t2)
+
+    -- The frame does not move: none of the ten is a frame op.
+    cf-t1 : current-frame (falloc t1) ≡ current-frame alloc
+    cf-t1 = exec-abstract-preserves-frame mov-to-output (floc t0) (falloc t0)
+
+    cf-t3 : current-frame (falloc t3) ≡ current-frame alloc
+    cf-t3 =
+      trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc t2) (falloc t2))
+     (trans (exec-abstract-preserves-frame (store-at-slot n) (floc t1) (falloc t1))
+            cf-t1)
+
+    mem-pres :
+        InstrNoHeapWrite i6 → instr-writes-slot i6 ≡ nothing
+      → InstrNoHeapWrite i8 → instr-writes-slot i8 ≡ nothing
+      → next-slot alloc ≤ n
+      → sv-as-loc (readReg (regs (floc t6)) Input1) ≡ just (AtDynamic hl)
+      → sv-as-loc (readReg (regs (floc t8)) Input1) ≡ just (AtDynamic hl)
+      → (loc : ValueLocation FS) → BeforeFrontier alloc loc
+      → MemOps.readLoc (floc t10) loc ≡ MemOps.readLoc s loc
+    mem-pres nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf =
+      trans (mem-untouched (load-from-slot (suc n)) (floc t9) (falloc t9) loc
+               nhw-load-from-slot refl)
+     (trans (store-ind-suc-preserves-before (floc t8) alloc (falloc t8) hl loc rdi8 fresh bf)
+     (trans (mem-untouched i8 (floc t7) (falloc t7) loc nhw8 nws8)
+     (trans (store-ind-preserves-before (floc t6) alloc (falloc t6) hl loc rdi6 fresh bf)
+     (trans (mem-untouched i6 (floc t5) (falloc t5) loc nhw6 nws6)
+     (trans (mem-untouched mov-to-input (floc t4) (falloc t4) loc nhw-mov-to-input refl)
+     (trans (store-slot-preserves-before (suc n) (floc t3) alloc (falloc t3) loc
+               cf-t3 (≤-trans ns≤n (n≤1+n n)) bf)
+     (trans (mem-untouched (instr-alloc-heap 2) (floc t2) (falloc t2) loc
+               nhw-instr-alloc-heap refl)
+     (trans (store-slot-preserves-before n (floc t1) alloc (falloc t1) loc cf-t1 ns≤n bf)
+            (mem-untouched mov-to-output (floc t0) (falloc t0) loc nhw-mov-to-output refl)))))))))
+
   -- D170 / Phase E2 probe: the DENOTATION half of `obs-correct-curry`.
   -- `curry` builds a value; it invokes no SigOp, so its trace is empty at every
   -- depth. Named here because it is one of the two halves the discharge needs,
@@ -1511,83 +1692,24 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- this clause never touches.
     --
     -- So every location the CALLER can name reads the same before and after —
-    -- which is precisely what `BeforeFrontier` exists to say. Discharging it
-    -- is a three-case split mirroring `derive-mem-preserved-at`, which proves
-    -- the same statement for traces with NO heap writes
-    -- (`TraceNoHeapWrites`); `inl` is the first run that allocates, so it
-    -- needs the heap-writing sibling. That generalisation is the work, and it
-    -- serves `pair`, `curry` and `case` identically.
+    -- which is precisely what `BeforeFrontier` exists to say.
+    --
+    -- D182 — WRITTEN, AND IT RETIRED THREE POSTULATES AT ONCE. The note here
+    -- used to end "that generalisation is the work, and it serves `pair`,
+    -- `curry` and `case` identically", with `inl-mem-pres`, `inr-mem-pres` and
+    -- `curry-mem-pres` standing as three statements of the SAME invariant about
+    -- the SAME ten-instruction shape. `TenStepPres.mem-pres` (above) proves it
+    -- once and each clause instantiates it at its own two middle rows — which
+    -- touch no memory, so they are the only thing that had to be abstracted.
+    --
+    -- It could not reuse `derive-mem-preserved` (ClosureWellFormed): that one
+    -- bans heap writes outright, and this run writes the heap twice. What makes
+    -- those writes invisible is not their ABSENCE but their FRESHNESS.
     --
     -- WHAT IT REPLACED. Before this, `obs-correct-inl` was an axiom for the
     -- WHOLE clause — the run, its events, its halting, its frontier, its tag
-    -- and payload cells, and all three input residences. All of those are now
-    -- PROVED; only this invariant is assumed, and only the `in-loc` residence
-    -- consumes it (`in-reg` and `in-unit` are postulate-free).
-    inl-mem-pres :
-      ∀ (n : ℕ) (prog : AbstractTrace) (base : ℕ) (s : LocState FS)
-        (alloc : AllocState {FS}) (cl : StoredValue FS)
-      → next-slot alloc ≤ n
-      → (loc' : ValueLocation FS) → BeforeFrontier alloc loc'
-      → readLoc
-          (floc (flat-exec-instr (load-from-slot (suc n)) prog
-                (flat-exec-instr store-indirect-suc prog
-                (flat-exec-instr (load-from-slot n) prog
-                (flat-exec-instr store-indirect prog
-                (flat-exec-instr (instr-load-tag-lit 0) prog
-                (flat-exec-instr mov-to-input prog
-                (flat-exec-instr (store-at-slot (suc n)) prog
-                (flat-exec-instr (instr-alloc-heap 2) prog
-                (flat-exec-instr (store-at-slot n) prog
-                (flat-exec-instr mov-to-output prog
-                  (entry-flat base s alloc cl))))))))))))
-          loc'
-        ≡ readLoc s loc'
-
-    -- D181: the `curry` mirror. Same ten-instruction heap build, so the same
-    -- invariant, with rows 6 and 8 swapped (`load-from-slot n` writes the env
-    -- cell, `instr-load-code-addr` the code cell). The generalisation the `inl`
-    -- note calls for — one lemma about a heap-allocating straight-line run —
-    -- would subsume all three; until it is written each clause names its own.
-    curry-mem-pres :
-      ∀ (n : ℕ) (lbl : LabelId) (prog : AbstractTrace) (base : ℕ) (s : LocState FS)
-        (alloc : AllocState {FS}) (cl : StoredValue FS)
-      → next-slot alloc ≤ n
-      → (loc' : ValueLocation FS) → BeforeFrontier alloc loc'
-      → readLoc
-          (floc (flat-exec-instr (load-from-slot (suc n)) prog
-                (flat-exec-instr store-indirect-suc prog
-                (flat-exec-instr (instr-load-code-addr lbl) prog
-                (flat-exec-instr store-indirect prog
-                (flat-exec-instr (load-from-slot n) prog
-                (flat-exec-instr mov-to-input prog
-                (flat-exec-instr (store-at-slot (suc n)) prog
-                (flat-exec-instr (instr-alloc-heap 2) prog
-                (flat-exec-instr (store-at-slot n) prog
-                (flat-exec-instr mov-to-output prog
-                  (entry-flat base s alloc cl))))))))))))
-          loc'
-        ≡ readLoc s loc'
-
-    -- D177: the `inr` mirror of the above; same shape, tag 1.
-    inr-mem-pres :
-      ∀ (n : ℕ) (prog : AbstractTrace) (base : ℕ) (s : LocState FS)
-        (alloc : AllocState {FS}) (cl : StoredValue FS)
-      → next-slot alloc ≤ n
-      → (loc' : ValueLocation FS) → BeforeFrontier alloc loc'
-      → readLoc
-          (floc (flat-exec-instr (load-from-slot (suc n)) prog
-                (flat-exec-instr store-indirect-suc prog
-                (flat-exec-instr (load-from-slot n) prog
-                (flat-exec-instr store-indirect prog
-                (flat-exec-instr (instr-load-tag-lit 1) prog
-                (flat-exec-instr mov-to-input prog
-                (flat-exec-instr (store-at-slot (suc n)) prog
-                (flat-exec-instr (instr-alloc-heap 2) prog
-                (flat-exec-instr (store-at-slot n) prog
-                (flat-exec-instr mov-to-output prog
-                  (entry-flat base s alloc cl))))))))))))
-          loc'
-        ≡ readLoc s loc'
+    -- and payload cells, and all three input residences. Now the clause, and
+    -- its `inr` and `curry` siblings, are postulate-free.
 
   ------------------------------------------------------------------------
   -- CLASS B, in progress: `inl` / `inr`. Skeleton only — the holes are the
@@ -1604,6 +1726,10 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       payload-stash sum-stash : ℕ
       payload-stash = n
       sum-stash     = suc n
+
+      -- D182: this clause's instance of the shared ten-step invariant.
+      module TSP = TenStepPres n (instr-load-tag-lit 0) (load-from-slot n)
+                               prog base s alloc cl
 
       -- The ten instructions, in emission order (`IRToTrace`'s heap build).
       fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
@@ -1929,7 +2055,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
             validityWF-frontier-advance x loc (floc fs10)
               cf-fs10 nextslot-≤ heapref-≤
               (validityWF-mem-preserved x loc s (floc fs10) bf
-                 (inl-mem-pres n prog base s alloc cl n≤) valid)
+                 (TSP.mem-pres nhw-instr-load-tag-lit refl nhw-load-from-slot refl
+                    n≤ rdi-fs6 rdi-fs8)
+                 valid)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
                    → ValidAtWF Heap (falloc fs10) (TM.valueT (evalᴰ (inl {A} {B}) x) 0) sum-loc (floc fs10)
@@ -1952,6 +2080,10 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       payload-stash sum-stash : ℕ
       payload-stash = n
       sum-stash     = suc n
+
+      -- D182: this clause's instance of the shared ten-step invariant.
+      module TSP = TenStepPres n (instr-load-tag-lit 1) (load-from-slot n)
+                               prog base s alloc cl
 
       -- The ten instructions, in emission order (`IRToTrace`'s heap build).
       fs0 fs1 fs2 fs3 fs4 fs5 fs6 fs7 fs8 fs9 fs10 : FlatState
@@ -2277,7 +2409,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
             validityWF-frontier-advance x loc (floc fs10)
               cf-fs10 nextslot-≤ heapref-≤
               (validityWF-mem-preserved x loc s (floc fs10) bf
-                 (inr-mem-pres n prog base s alloc cl n≤) valid)
+                 (TSP.mem-pres nhw-instr-load-tag-lit refl nhw-load-from-slot refl
+                    n≤ rdi-fs6 rdi-fs8)
+                 valid)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
                    → ValidAtWF Heap (falloc fs10) (TM.valueT (evalᴰ (inr {A} {B}) x) 0) sum-loc (floc fs10)
@@ -2318,6 +2452,11 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       env-stash closure-stash : ℕ
       env-stash     = n
       closure-stash = suc n
+
+      -- D182: this clause's instance of the shared ten-step invariant — the
+      -- same shape as `inl`'s, with the two middle rows swapped.
+      module TSP = TenStepPres n (load-from-slot n) (instr-load-code-addr (ℓ o l))
+                               prog base s alloc cl
 
       body-lbl : LabelId
       body-lbl = ℓ o l
@@ -2608,7 +2747,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
             validityWF-frontier-advance x loc (floc fs10)
               cf-fs10 nextslot-≤ heapref-≤
               (validityWF-mem-preserved x loc s (floc fs10) bf
-                 (curry-mem-pres n body-lbl prog base s alloc cl n≤) valid)
+                 (TSP.mem-pres nhw-load-from-slot refl nhw-instr-load-code-addr refl
+                    n≤ rdi-fs6 rdi-fs8)
+                 valid)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
                    → ValidAtWF Heap (falloc fs10)

@@ -12433,3 +12433,45 @@ memory-preservation invariant `inl`/`inr` each name, consumed only by the
 `in-loc` residence, and all three are instances of one generalisation (a
 heap-allocating straight-line run preserves everything the caller can name)
 that is still unwritten.
+
+## D182 — ONE INVARIANT, NOT THREE: the ten-step memory-preservation lemma (2026-09-12)
+
+`inl`, `inr` and `curry` each carried a postulate — `inl-mem-pres`,
+`inr-mem-pres`, `curry-mem-pres` — saying that their run leaves every location
+the caller can name unchanged. They were three statements of ONE invariant
+about ONE shape: the same ten-instruction heap build, differing only in rows 6
+and 8 (a tag literal vs an env load; a payload load vs a code address), none of
+which touches memory.
+
+`TenStepPres.mem-pres` proves it once, abstracted over exactly those two rows,
+and each clause instantiates it. All three postulates are gone and no new one
+replaces them.
+
+**Why it could not reuse `derive-mem-preserved`.** That lemma (ClosureWellFormed)
+proves the same statement for traces with NO heap writes (`TraceNoHeapWrites`),
+and this run writes the heap twice. What makes those writes invisible to the
+caller is not their ABSENCE but their FRESHNESS: they land in a block allocated
+during the run, whose `ref-id` is at or above the frontier that bounds every
+location the caller can name (`heap-before`). Freshness is a RUNTIME fact — the
+target is read from `Input1` — so no static trace predicate can express it, and
+a `TraceHeapWritesAbove` in the style of `TraceWritesAbove` would have been
+unstatable. It enters as the premise `rdi6`/`rdi8` instead, which is exactly
+what each clause already proved for its own cells.
+
+**The three lemmas it is built from** are the generic form of what the clauses
+were already doing per-cell:
+
+* `mem-untouched` — an instruction that writes no memory preserves EVERY
+  location (the two halves already existed: `exec-abstract-preserves-stack-slot`
+  and `heap-untouched`);
+* `store-slot-preserves-before` — a stack write at or above the frontier misses
+  every `BeforeFrontier` location, by the three-way split;
+* `store-ind-preserves-before` / `-suc-` — a heap write into a fresh block does
+  the same, with `fresh-heap-≢` doing the ref-id arithmetic and `sucHL-ref`
+  carrying the bound to the block's second cell.
+
+Every state in the lemma is written with `flat-step-straight` rather than
+`flat-exec-instr`: all ten instructions are non-`ctrl`, so each clause's own
+nest IS these states definitionally, while `flat-exec-instr`'s catch-all would
+be stuck on the abstract rows 6 and 8 — the same obstacle `StraightStep` exists
+to work around.

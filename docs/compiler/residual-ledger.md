@@ -466,6 +466,18 @@ Deleted in the same change, and worth recording as residuals that went away:
 `Ana`/`in-ν`) and `ν-layer-iso` (its inversion). `obs-correct-Out` is now
 discharged by `⊥-elim (ν-input-absurd …)` — see D180.
 
+### D182 — the ten-step invariant: THREE residuals retired, none added
+
+`inl-mem-pres`, `inr-mem-pres` and `curry-mem-pres` are GONE, replaced by the
+proof `TenStepPres.mem-pres`. They were three statements of one invariant about
+one ten-instruction shape; abstracting the two rows that differ (both
+memory-free) makes it a single lemma. `obs-correct-inl`, `obs-correct-inr` and
+`obs-correct-curry` are now postulate-free in full.
+
+See D182 for why `derive-mem-preserved` could not serve: it bans heap writes,
+while what makes this run's two heap writes invisible is their FRESHNESS — a
+runtime fact about `Input1`, unstatable as a trace predicate.
+
 ### D181 — `obs-correct-curry` discharged; one residual replaces one
 
 `obs-correct-curry` was a whole-clause postulate. It is now a proof, and what
@@ -474,6 +486,7 @@ heap-allocating ten-instruction run preserves every location the caller can
 name), consumed only by the `in-loc` input residence — `in-reg` and `in-unit`
 are postulate-free. All three are instances of ONE unwritten generalisation;
 writing it retires three residuals at once and is the obvious next reduction.
+**Done — see D182 above; this paragraph is history.**
 
 ### Known-red ISLAND (not a residual, and not from plan 0.90): `Once.Category.Laws`
 
