@@ -12475,3 +12475,44 @@ Every state in the lemma is written with `flat-step-straight` rather than
 nest IS these states definitionally, while `flat-exec-instr`'s catch-all would
 be stuck on the abstract rows 6 and 8 — the same obstacle `StraightStep` exists
 to work around.
+
+## D183 — `apply`'s setup is proved; the call is where the missing fact lives (2026-09-12)
+
+`apply` emits sixteen straight-line instructions and then `instr-call-closure`.
+The sixteen are the same kind of run D182 generalised — three stack stashes
+instead of two, two cells read out of the input pair and the closure, then the
+callee's `(env , arg)` pair built on the heap — so `ApplySetupPres.setup-mem-pres`
+falls straight out of D182's three lemmas. Row 5 (`instr-save-closure-reg`) is
+the one step that is not `flat-step-straight`: `do-save-closure` writes the flat
+closure REGISTER, which is `FlatState` and not `LocState`, so it moves no memory
+and its preservation is definitional.
+
+**The value↔label link already exists, and it is not the gap.** `callView`
+(Flat) enumerates the call once: it either halts or ENTERS at
+`find-thunk prog ℓ ≡ just j`, where `ℓ` is read from the closure's SECOND CELL
+(`heapMem (floc fs) (sucHL hl)`), and the closure register it dereferences was
+set at row 5 from `Input1`. `valid-closure-wf` says exactly what that cell
+holds — `SV-Code body-label` — and its index says what the closure MEANS —
+`λ arg → evalᴰ body (env , arg)`. So the witness ties the label to the body.
+
+**What is missing is the block table.** Nothing says the block `find-thunk`
+finds at `body-label` implements `body`. That is a fact about the PROGRAM, and
+D170 deliberately removed the value's ability to carry it (`BodyCorrect` was
+the cycle that forced `program-bound` through the whole apex). So `apply` needs
+it as a named premise of the shape
+
+```agda
+CalleeFaithful prog =
+  ∀ {E A B} (body : IR (E * A) B) (env : ⟦ E ⟧) (ℓ : LabelId) {m alloc cloc st}
+  → ValidAtWF m alloc {A ⇛ B} (λ arg → evalᴰ body (env , arg)) cloc st
+  → readLoc st (sucLoc cloc) ≡ just (SV-Code ℓ)
+  → ∃[ j ] ∃[ l ] (find-thunk prog ℓ ≡ just j × SpanAt prog j (emitted 0 l body))
+```
+
+— "every closure validly resident in a state names a label whose block
+implements its body". It is an invariant the machine maintains (`curry` is its
+only producer, and D181's discharge is where it would be established), not a
+theorem about `ValidAtWF` as it stands. Naming it is what turns
+`obs-correct-apply` from a whole-clause axiom into a proof against one premise;
+the alternative — putting a program index on the closure witness — would
+re-create exactly the dependency D170 removed.

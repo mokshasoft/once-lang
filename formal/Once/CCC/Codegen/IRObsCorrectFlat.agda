@@ -136,7 +136,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor)
   open RecSchemeSemantics {FS} using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-preserves-mem;
                                      exec-abstract-load-indirect-suc-output; exec-abstract-load-indirect-suc-preserves-mem)
-  open Once.CCC.Machine.SMPrimitives using (nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output; nhw-store-indirect; nhw-store-indirect-suc)
+  open Once.CCC.Machine.SMPrimitives using (nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-save-closure-reg; nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output; nhw-store-indirect; nhw-store-indirect-suc)
   open RecSchemeSemantics {FS} using (exec-abstract-preserves-heap-ref)
 
   open FlatMachine {FS}
@@ -1040,6 +1040,122 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                nhw-instr-alloc-heap refl)
      (trans (store-slot-preserves-before n (floc t1) alloc (falloc t1) loc cf-t1 ns≤n bf)
             (mem-untouched mov-to-output (floc t0) (falloc t0) loc nhw-mov-to-output refl)))))))))
+
+  ------------------------------------------------------------------------
+  -- D183: `apply`'s SETUP, the sixteen instructions before the call.
+  --
+  -- Same shape as the ten-step build and proved from the same three lemmas —
+  -- it just has three stack stashes instead of two and reads two cells out of
+  -- the input pair and the closure before building the callee's (env , arg)
+  -- pair on the heap. Every row is concrete, so nothing needs abstracting.
+  --
+  -- Row 5 (`instr-save-closure-reg`) is the one step that is NOT
+  -- `flat-step-straight`: `do-save-closure` writes the flat closure REGISTER,
+  -- which is `FlatState` rather than `LocState`, so it moves no memory at all
+  -- and its preservation is `refl`. (That register is what `do-call` reads at
+  -- row 17 — see `callView`.)
+  --
+  -- This is the part of `apply` that holds under every design for the call. It
+  -- says nothing about the callee, which is the piece that needs the program's
+  -- block table (D184).
+  ------------------------------------------------------------------------
+  module ApplySetupPres
+    (n : ℕ) (prog : AbstractTrace) (base : ℕ)
+    (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+    where
+
+    arg-stash env-stash pair-stash : ℕ
+    arg-stash  = n
+    env-stash  = suc n
+    pair-stash = suc (suc n)
+
+    a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 : FlatState
+    a0  = entry-flat base s alloc cl
+    a1  = flat-step-straight load-indirect-suc            a0
+    a2  = flat-step-straight (store-at-slot arg-stash)    a1
+    a3  = flat-step-straight load-indirect                a2
+    a4  = flat-step-straight mov-to-input                 a3
+    a5  = do-save-closure                                 a4
+    a6  = flat-step-straight load-indirect                a5
+    a7  = flat-step-straight (store-at-slot env-stash)    a6
+    a8  = flat-step-straight (instr-alloc-heap 2)         a7
+    a9  = flat-step-straight (store-at-slot pair-stash)   a8
+    a10 = flat-step-straight mov-to-input                 a9
+    a11 = flat-step-straight (load-from-slot env-stash)   a10
+    a12 = flat-step-straight store-indirect               a11
+    a13 = flat-step-straight (load-from-slot arg-stash)   a12
+    a14 = flat-step-straight store-indirect-suc           a13
+    a15 = flat-step-straight (load-from-slot pair-stash)  a14
+    a16 = flat-step-straight mov-to-input                 a15
+
+    -- The callee's (env , arg) pair, as the allocator hands it out at a8.
+    ahl : HeapLocation
+    ahl = heap-loc (mkHeapRef (next-heap-ref (falloc a7))) 0
+
+    heapref-a7 : next-heap-ref (falloc a7) ≡ next-heap-ref alloc
+    heapref-a7 =
+      trans (exec-abstract-preserves-heap-ref (store-at-slot env-stash) (floc a6) (falloc a6) tt)
+     (trans (exec-abstract-preserves-heap-ref load-indirect (floc a5) (falloc a5) tt)
+     (trans (exec-abstract-preserves-heap-ref mov-to-input (floc a3) (falloc a3) tt)
+     (trans (exec-abstract-preserves-heap-ref load-indirect (floc a2) (falloc a2) tt)
+     (trans (exec-abstract-preserves-heap-ref (store-at-slot arg-stash) (floc a1) (falloc a1) tt)
+            (exec-abstract-preserves-heap-ref load-indirect-suc (floc a0) (falloc a0) tt)))))
+
+    fresh-a : next-heap-ref alloc ≤ ref-id (heap-ref ahl)
+    fresh-a = ≤-reflexive (sym heapref-a7)
+
+    -- The frame does not move: none of the sixteen is a frame op. (Row 5 is
+    -- `do-save-closure`, which does not touch `falloc` at all.)
+    cf-a1 : current-frame (falloc a1) ≡ current-frame alloc
+    cf-a1 = exec-abstract-preserves-frame load-indirect-suc (floc a0) (falloc a0)
+
+    cf-a6 : current-frame (falloc a6) ≡ current-frame alloc
+    cf-a6 =
+      trans (exec-abstract-preserves-frame load-indirect (floc a5) (falloc a5))
+     (trans (exec-abstract-preserves-frame mov-to-input (floc a3) (falloc a3))
+     (trans (exec-abstract-preserves-frame load-indirect (floc a2) (falloc a2))
+     (trans (exec-abstract-preserves-frame (store-at-slot arg-stash) (floc a1) (falloc a1))
+            cf-a1)))
+
+    cf-a8 : current-frame (falloc a8) ≡ current-frame alloc
+    cf-a8 =
+      trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc a7) (falloc a7))
+     (trans (exec-abstract-preserves-frame (store-at-slot env-stash) (floc a6) (falloc a6))
+            cf-a6)
+
+    -- THE SETUP PRESERVES EVERYTHING THE CALLER CAN NAME. The three stashes sit
+    -- at `n`, `n+1`, `n+2`, all at or above the frontier; the two heap writes
+    -- land in the block allocated at row 8.
+    setup-mem-pres :
+        next-slot alloc ≤ n
+      → sv-as-loc (readReg (regs (floc a11)) Input1) ≡ just (AtDynamic ahl)
+      → sv-as-loc (readReg (regs (floc a13)) Input1) ≡ just (AtDynamic ahl)
+      → (loc : ValueLocation FS) → BeforeFrontier alloc loc
+      → MemOps.readLoc (floc a16) loc ≡ MemOps.readLoc s loc
+    setup-mem-pres ns≤n rdi12 rdi14 loc bf =
+      trans (mem-untouched mov-to-input (floc a15) (falloc a15) loc nhw-mov-to-input refl)
+     (trans (mem-untouched (load-from-slot pair-stash) (floc a14) (falloc a14) loc
+               nhw-load-from-slot refl)
+     (trans (store-ind-suc-preserves-before (floc a13) alloc (falloc a13) ahl loc rdi14 fresh-a bf)
+     (trans (mem-untouched (load-from-slot arg-stash) (floc a12) (falloc a12) loc
+               nhw-load-from-slot refl)
+     (trans (store-ind-preserves-before (floc a11) alloc (falloc a11) ahl loc rdi12 fresh-a bf)
+     (trans (mem-untouched (load-from-slot env-stash) (floc a10) (falloc a10) loc
+               nhw-load-from-slot refl)
+     (trans (mem-untouched mov-to-input (floc a9) (falloc a9) loc nhw-mov-to-input refl)
+     (trans (store-slot-preserves-before pair-stash (floc a8) alloc (falloc a8) loc
+               cf-a8 (≤-trans ns≤n (≤-trans (n≤1+n n) (n≤1+n (suc n)))) bf)
+     (trans (mem-untouched (instr-alloc-heap 2) (floc a7) (falloc a7) loc
+               nhw-instr-alloc-heap refl)
+     (trans (store-slot-preserves-before env-stash (floc a6) alloc (falloc a6) loc
+               cf-a6 (≤-trans ns≤n (n≤1+n n)) bf)
+     (trans (mem-untouched load-indirect (floc a5) (falloc a5) loc nhw-load-indirect refl)
+     (trans (mem-untouched mov-to-input (floc a3) (falloc a3) loc nhw-mov-to-input refl)
+     (trans (mem-untouched load-indirect (floc a2) (falloc a2) loc nhw-load-indirect refl)
+     (trans (store-slot-preserves-before arg-stash (floc a1) alloc (falloc a1) loc
+               cf-a1 ns≤n bf)
+            (mem-untouched load-indirect-suc (floc a0) (falloc a0) loc
+               nhw-load-indirect-suc refl))))))))))))))
 
   -- D170 / Phase E2 probe: the DENOTATION half of `obs-correct-curry`.
   -- `curry` builds a value; it invokes no SigOp, so its trace is empty at every
