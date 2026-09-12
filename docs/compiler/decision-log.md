@@ -12886,3 +12886,57 @@ Parked rather than forced: postulating `ana-bridge` itself would assert that
 related coalgebras give propositionally EQUAL coinductive values, which is not
 merely unproven but probably false — exactly the kind of postulate D189 was
 about removing.
+
+## D193 — THE EFFECTFUL ν GETS ITS BISIMULATION; D192 CLOSES (2026-09-12)
+
+D192 was parked one site short, on `bridge-c`'s `ana` clause. This is that
+site, and the fix is the one the parking note predicted.
+
+**The obstacle, restated.** `RelV (ν-type F) x y = x ≡ y`. `bridge-c` must
+produce PROPOSITIONAL EQUALITY of two `anaFᵈ` values built from coalgebras the
+logical relation merely RELATES. Relatedness is strictly weaker than equality,
+so no structural argument closes it. `CataBridge` never meets this: a fold runs
+over a value both sides SHARE (`RelV (μ-type F)` is also `≡`, so both folds
+traverse the same `μS`), and only the per-layer step differs. An unfold shares
+nothing — it BUILDS its result.
+
+**The missing principle is coalgebraic extensionality**, and the pure side has
+had it since plan 0.47: `νS` carries `_∼S_`, `unfoldS-∼` and the `bisimS-to-eq`
+postulate. The effectful `νᵈ` carried none of them, and `ValueDomain` says why:
+"No bisimulation and no axiom, because `anaᵈ` is indexed by the SFunctor". That
+is TRUE of erasure — `anaᵈ-erase` only ever needs `cong` over a coalgebra
+EQUALITY — and false of every relational statement about a ν.
+
+**`Once.Denotation.ValueDomainLaws`** gives `νᵈ` the same three, split from the
+kernel for the same reason `Semantics.Functor.Laws` is split from
+`Semantics.Functor`: so a module that only needs `anaᵈ` does not import an
+axiom. `_∼ᵈ_` differs from `_∼S_` in exactly the way `νᵈ` differs from `νS` —
+the layer is a COMPUTATION, so bisimilarity asks for equal TRACES as well as
+related layers, at every budget. Without the trace field it would relate values
+that emit differently and `RelT`'s first component could not be recovered.
+
+`anaᵈ-∼` (related seeds unfold to bisimilar values) is the coinductive core and
+is mutual with `mapAnaᵈ-∼` exactly as `anaᵈ` is with `mapAnaᵈ`; guardedness
+goes through because the corecursive call sits under a structural recursion on
+the shape functor.
+
+**`Once.Adequacy.AnaBridge`** is then short: `base-eq` (the converse of
+`CataBridge.base-refl` — at a `K`-position `⟦ SK _ ⟧SF-rel` wants equality of
+the two constants), `in-rel` (the mirror of `z-rel`: `z-rel` brings a
+functor-lifted relation OUT of a layer the fold produced, `in-rel` pushes
+`RelV (⟦ G ⟧T A)` INTO the layer the unfold consumes), and `ana-bridge`
+itself — one `anaᵈ-rel-eq`, because both `fmapT`s are transparent on trace and
+value.
+
+**One new axiom, and it is not a new kind.** `bisimᵈ-to-eq` is `bisimS-to-eq`
+at the effectful ν: standard coalgebra, provable in Cubical Agda. The
+alternative considered and rejected was postulating `ana-bridge` directly,
+which would assert that related coalgebras give propositionally EQUAL
+coinductive values — not merely unproven but probably false, and exactly the
+kind of postulate D189 spent this branch removing.
+
+**What this closes.** Surface `ana` is landed end to end: `ana coalg` parses
+(no new syntax — `"ana"` was already a `genWord`), checks against `A -> Nu F`
+with `F` read from the annotation D191 made writable, elaborates to
+`curry (Ana wfF … ∘ snd)`, and compiles to D189's two-cell suspension. The ν
+half of the language is reachable from source for the first time.

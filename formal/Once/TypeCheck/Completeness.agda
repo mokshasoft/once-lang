@@ -85,6 +85,7 @@ open import Once.TypeCheck.ElaborateProofs using (
   checkComposeGo; checkCaseGo; VerifiedCheckResult; inferElabV-RVar-fail-bridge;
   inspectWellFormedF; wfv-no; wfv-yes;
   checkCataGo; cata-go-canonical; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success;
+  checkAnaGo; checkAnaGo-J; checkAnaGoV-J; checkAnaGo-just-success;
   checkCata-eff-strong-hlp;
   -- the literal view the negation dispatch takes (plan 0.74 J6 step 3 for
   -- `RInt`, plan 0.73 F3 for `RFloat`)
@@ -1634,6 +1635,16 @@ mutual
   ...     | eqGo
             rewrite trans (checkCataGo-J ctx alg F A T.eff (just wfF) eqW) eqGo =
             _ , _ , _ , refl
+  -- D192: ana. One clause, not two: `checkAna` is grade-generic, so there is
+  -- no pure/eff dispatch to bridge — the coalgebra's grade IS the unfold's.
+  check-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} {π = π} wfF dcoalg)
+    with wellFormedF?-complete-at wfF
+  ... | eqW
+    with check-completeV dcoalg
+  ... | (_ , _ , _ , W , eqA)
+        with checkAnaGo-just-success ctx coalg F A π wfF eqW eqA
+  ...     | eqGo = _ , _ , _ ,
+            cong proj₁ (trans (checkAnaGoV-J ctx coalg F A π (just wfF) eqW) eqGo)
   check-complete (t-In-app-check {arg = arg} {F = F} wfF dArg) =
     let (_ , _ , _ , eqA) = check-complete dArg
     -- PLAN 0.80 A1: witness in, decider equation recovered (as for cata).
@@ -1729,6 +1740,15 @@ mutual
         with checkCataGo-just-success ctx alg F A T.eff wfF eqW eqA
   ...     | eqGo
             rewrite trans (checkCataGo-J ctx alg F A T.eff (just wfF) eqW) eqGo =
+            _ , _ , _ , refl
+  subsume-complete {ctx} (t-ana-check {coalg = coalg} {F = F} {A = A} wfF dcoalg)
+    with wellFormedF?-complete-at wfF
+  ... | eqW
+    with subsume-completeV dcoalg
+  ... | (_ , _ , _ , W , eqA)
+        with checkAnaGo-just-success ctx coalg F A T.eff wfF eqW eqA
+  ...     | eqGo
+            rewrite trans (checkAnaGo-J ctx coalg F A T.eff (just wfF) eqW) eqGo =
             _ , _ , _ , refl
   subsume-complete {ctx} (t-pair-morph-check df dg)
     with check-completeV df | check-completeV dg

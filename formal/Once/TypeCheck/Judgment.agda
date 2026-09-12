@@ -41,7 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 import Once.Type
 open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
                       _*_; _+_; _⇒_; _⇒[_]_; Quantity;
-                      Functor; μ-type; ⟦_⟧T)
+                      Functor; μ-type; ν-type; ⟦_⟧T)
 open import Once.Float.Dyadic using (Dyadic)
 
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; con-fun)
@@ -583,6 +583,27 @@ mutual
                  → ctx ⊢ᶜ RApp (RResolved (gen "cata")) alg
                          ∶ ((μ-type F) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
                          ⨾ Surface.zeroUsage
+
+    -- D192: `ana coalg` in check mode at `A ⇒ ν-type F` — `t-cata-check`'s
+    -- DUAL, and stated as its exact mirror so the two schemes cannot drift.
+    -- The coalgebra runs the arrow the other way (`A → ⟦F⟧T A` rather than
+    -- `⟦F⟧T A → A`) and the conclusion produces a ν where the cata consumes a
+    -- μ; everything else — the cleared context, the `zeroUsage`, the
+    -- `WellFormedF` property rather than the decider's equation — is
+    -- `t-cata-check`'s, for `t-cata-check`'s reasons.
+    --
+    -- `F` is read from the EXPECTED type, which is what makes `ana` need no
+    -- syntax of its own: it is an ordinary applied builtin, like `cata`, and
+    -- D191's `Nu` is what lets the annotation that determines `F` be written.
+    t-ana-check : ∀ {ctx : NamedCtx} {coalg : RawExpr} {F : Functor} {A : Type}
+                  {π : Once.Type.Purity}
+                → WellFormedF F
+                → ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+                    ⊢ᶜ coalg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (⟦ F ⟧T A))
+                    ⨾ Surface.zeroUsage
+                → ctx ⊢ᶜ RApp (RResolved (gen "ana")) coalg
+                        ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (ν-type F))
+                        ⨾ Surface.zeroUsage
 
     t-embed : ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
               {Ψ : Surface.Usage (NamedCtx.size ctx)}

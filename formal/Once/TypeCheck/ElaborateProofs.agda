@@ -1375,6 +1375,46 @@ checkCataGo-just-success ctx alg F A π wfF eqW eqAlgV
                   alg (Once.Type.⟦ F ⟧T A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A) | eqAlgV
 ... | (success Surface.[] _ _ _ , w) | refl = refl
 
+-- D192: the ANA bridges. `checkAna` has no eff/pure split — it is grade-
+-- generic in one clause, because the coalgebra's grade IS the unfold's and
+-- there is no morphism witness to recover — so it needs TWO helpers where the
+-- cata needs five: the dispatch bridge at any grade, and the success lemma.
+checkAnaGo-J :
+  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    (π : Once.Type.Purity)
+    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+  → checkAnaGo ctx coalg F A π (wellFormedF? F) refl ≡ checkAnaGo ctx coalg F A π mw eq
+checkAnaGo-J ctx coalg F A π .(wellFormedF? F) refl = refl
+
+checkAnaGoV-J :
+  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type)
+    (π : Once.Type.Purity)
+    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+  → checkElabV ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
+              (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.ν-type F)
+      ≡ checkAnaGo ctx coalg F A π mw eq
+checkAnaGoV-J ctx coalg F A π .(wellFormedF? F) refl = refl
+
+checkAnaGo-just-success :
+  ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type) (π : Once.Type.Purity)
+    (wfF : Once.Functor.Translate.WellFormedF F) (eqW : wellFormedF? F ≡ just wfF)
+    {coalgE : SExpr (NamedCtx.debruijn (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)))
+                  Surface.zeroUsage (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)}
+    {d fr : ℕ}
+    {w : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)
+           ⊢ᶜ coalg ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)
+           ⨾ Surface.zeroUsage}
+  → checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+              coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A)
+      ≡ (success Surface.zeroUsage coalgE d fr , w)
+  → checkAnaGo ctx coalg F A π (just wfF) eqW
+      ≡ (success Surface.zeroUsage (Surface.ana wfF coalgE) (suc d) (NamedCtx.freshCounter ctx)
+          , t-ana-check wfF w)
+checkAnaGo-just-success ctx coalg F A π wfF eqW eqCoalgV
+  with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+                  coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.⟦ F ⟧T A) | eqCoalgV
+... | (success Surface.[] _ _ _ , w) | refl = refl
+
 -- Plan 0.54: cata at EFF with a GENUINELY-eff algebra. `checkCata`'s eff clause
 -- first tries the eff-Go and passes it through on success. Given the eff-Go IS the
 -- `m-cata` success (the algebra elaborated at eff with a morphism witness), reduce

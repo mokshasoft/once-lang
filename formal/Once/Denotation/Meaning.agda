@@ -37,10 +37,10 @@ open import Data.String using (String; _++_)
 open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity; mk-kind; Quantity; Zero; One; Many)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace; fmapT)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; seqF)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; seqF)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0; lookupᴰUsed)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
@@ -63,7 +63,7 @@ open import Once.TypeCheck.Judgment
          t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
          t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
          t-compose-check; t-case-copair-check; t-pair-morph-check;
-         t-curry-check; t-cata-check;
+         t-curry-check; t-cata-check; t-ana-check;
          t-embed; t-lam; t-pair-lit-check;
          t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
          t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
@@ -93,6 +93,22 @@ cata-ev-algᴰ-D {F} {A} dalg fc =
 cata-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
          → (⟦ ⟦ F ⟧T A ⟧ᴰ → T ⟦ A ⟧ᴰ) → ⟦ μ-type F ⟧ᴰ → T ⟦ A ⟧ᴰ
 cata-sem {F} {A} wf dalg v = sem-cata wf (cata-ev-algᴰ-D {F} {A} dalg) (forget v)
+
+-- D192: the DUAL of `cata-sem`. A ν is a suspension in the meaning too — the
+-- coalgebra is stored, not run, so this emits nothing and `out` is where the
+-- events appear. Mirrors `⟦ ana … ⟧ˢ` (SourceDenote) exactly, which is what
+-- the two-meanings agreement will need.
+-- The coalgebra arrives as a COMPUTATION and is bound INSIDE the suspension,
+-- not outside. That is deliberate and it is not the cata's shape: `⟦ ana ⟧ˢ`
+-- and `evalᴰ (Ana …)` both read the closed coalgebra at the budget the layer
+-- is forced at, and `FaithfulLemmas` relates the surface node to `IR.Ana`
+-- through exactly that. Binding it outside would make this clause disagree
+-- with both.
+ana-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
+        → T (⟦ A ⟧ᴰ → T ⟦ ⟦ F ⟧T A ⟧ᴰ) → ⟦ A ⟧ᴰ → T ⟦ Once.Type.ν-type F ⟧ᴰ
+ana-sem {F} {A} wf cT a =
+  returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D F A)
+                             (cT >>=T λ clo → clo a')) a)
 
 -- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level.
 -- DEFINITIONALLY `eval (In wf Heap) ∘ forget` (first-order data is pure), so the
@@ -218,6 +234,8 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
 -- `tt` the telescope rules use.
 ⟦_⟧ᶜ {ctx = ctx} (t-cata-check wfF dalg) fmt dγ =
   (⟦ dalg ⟧ᶜ fmt) tt >>=T λ valg → returnT (cata-sem wfF valg)
+⟦_⟧ᶜ {ctx = ctx} (t-ana-check wfF dcoalg) fmt dγ =
+  returnT (ana-sem wfF ((⟦ dcoalg ⟧ᶜ fmt) tt))
 ⟦_⟧ᶜ {ctx = ctx} (t-embed d) fmt dγ = (⟦ d ⟧ᵢ fmt) dγ
 -- D143: the arrow's declared quantity `q` decides whether the meaning receives
 -- an argument; the binder's usage `q'` decides whether it enters the body's

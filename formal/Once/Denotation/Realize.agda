@@ -44,7 +44,7 @@ open import Once.TypeCheck.Judgment
   using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_; t-id-check; t-fst-check; t-snd-check;
          t-terminal-morph-check; t-initial-morph-check; t-inl-morph-check;
          t-inr-morph-check; t-compose-check; t-case-copair-check;
-         t-pair-morph-check; t-curry-check; t-cata-check; t-int; t-float; t-str;
+         t-pair-morph-check; t-curry-check; t-cata-check; t-ana-check; t-int; t-float; t-str;
          t-unit; t-unit-var; t-var-local; t-var-qualified; t-var-resolved;
          t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
@@ -59,7 +59,7 @@ open import Once.Surface.Thinning using (weaken)
 open import Once.Surface.Syntax using (Expr; Usage; zeroUsage; var; svar; svar→expr;
   lam; app; effApp; pair; neg; let'; case'; int; float; str; unit;
   add; sub; mul; div; mod'; fadd; fsub; fmul; fdiv; i2f; lt; le; gt; ge; eq; ne; sigOp; poly;
-  lift-morphism; morph-app; arr'; cata; comp'; copair'; fork'; curry')
+  lift-morphism; morph-app; arr'; cata; ana; comp'; copair'; fork'; curry')
 open import Once.Surface.Elaborate using (intLit; floatLit; elaborate)
 open import Once.Arith.SigOp.Builders using (value-info)
 open import Once.CanonicalName using (bare)
@@ -110,6 +110,10 @@ realize (t-case-copair-check df dg)  = copair' (realize df) (realize dg)
 realize (t-pair-morph-check df dg)   = fork'   (realize df) (realize dg)
 realize (t-curry-check df)           = curry'  (realize df)
 realize (t-cata-check wfF dalg) = cata wfF (realize dalg)
+-- D192: the dual, and it is the same line — `Surface.ana` already existed and
+-- already elaborated (`curry (Ana … ∘ snd)`); what it lacked was a typing rule
+-- to be produced BY.
+realize (t-ana-check wfF dcoalg) = ana wfF (realize dcoalg)
 realize (t-embed d)             = realize-infer d
 realize (t-lam {q = q} ≤p d)    = lam q ≤p (realize d)
 realize (t-pair-lit-check da db) = pair (realize da) (realize db)

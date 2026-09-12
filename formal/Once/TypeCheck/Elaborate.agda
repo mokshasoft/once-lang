@@ -1049,6 +1049,17 @@ mutual
               → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "cata")) alg)
                                         (Once.Type.μ-type F Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] A)
 
+  -- D192: `ana coalg` — `checkCata`'s dual, declared beside it so the mirror
+  -- is visible. `F` is read from the expected `A ⇒ ν-type F`, exactly as the
+  -- cata reads it from `μ-type F ⇒ A`.
+  checkAna : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
+           → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) arg) T
+  checkAnaGo : (ctx : NamedCtx) (coalg : RawExpr) (F : Once.Type.Functor) (A : Type)
+               (π : Once.Type.Purity)
+             → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
+             → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "ana")) coalg)
+                                       (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.ν-type F)
+
   -- Plan 0.4 T0 Option A: hoist the `ahv-other` (generic application)
   -- branch of `inferElab RApp` into its own top-level mutual member.
   -- The body is structurally identical to the previous in-place
@@ -1599,6 +1610,22 @@ mutual
             -- what it computed, and `eqW` is now only bookkeeping for the
             -- completeness proof's `J`-style helpers.
             , t-cata-check wfF wArg
+
+  -- D192: the unfold. Same three moves as the fold — read `F` from the
+  -- expected type, decide `WellFormedF F`, check the coalgebra CLOSED in the
+  -- cleared context — with the coalgebra's arrow pointing the other way.
+  checkAna ctx coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] Once.Type.ν-type F) =
+    checkAnaGo ctx coalg F A π (wellFormedF? F) refl
+  checkAna _ _ _ = failure (BuiltinTypeMismatch "ana") , tt
+
+  checkAnaGo ctx coalg F A π nothing _ = failure (BuiltinTypeMismatch "ana") , tt
+  checkAnaGo ctx coalg F A π (just wfF) eqW
+    with checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+                    coalg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] ⟦ F ⟧T A)
+  ... | failure err , _ = failure err , tt
+  ... | success Surface.[] coalgE d fr , wArg =
+          success _ (Surface.ana wfF coalgE) (suc d) (NamedCtx.freshCounter ctx)
+            , t-ana-check wfF wArg
 
   -- Body for the hoisted `ahv-other` (generic application) branch.
   inferElab-RApp-other ctx f x with asFun (inferElab ctx f)
@@ -2332,6 +2359,7 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-case-applied    _ = failure (BuiltinTypeMismatch "case") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-In              _ = failure (BuiltinTypeMismatch "In") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-cata            _ = failure (BuiltinTypeMismatch "cata") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-ana             _ = failure (BuiltinTypeMismatch "ana") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-curry           _ = failure (BuiltinTypeMismatch "curry") , tt
   -- ahv-other : generic application via `inferElabV-RApp-other`.
   inferElabV-RApp-dispatch ctx f arg ahv-other _ = inferElabV-RApp-other ctx f arg
@@ -2398,6 +2426,7 @@ mutual
   checkElabV-RApp-dispatch ctx f arg T ahv-case-applied _ = checkCase ctx f arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-In _ = checkIn ctx arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-cata _ = checkCata ctx arg T
+  checkElabV-RApp-dispatch ctx f arg T ahv-ana _ = checkAna ctx arg T
   checkElabV-RApp-dispatch ctx f arg T ahv-curry _ = checkCurry ctx arg T
   -- Plan 0.52 (OCP-0008): `apply p` infers (t-apply-app-infer), so route its
   -- CHECK through the named embedOrSubsume — this ADDS the subsume case (apply at

@@ -61,7 +61,7 @@ open import Data.Unit using (tt)
 open import Data.Sum using (inj₁; inj₂; [_,_]′)
 open import Once.Adequacy.ResolveFaithful fmt using (bind2-faithful)
 open import Data.Maybe.Properties using (just-injective)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_)
+open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; fmapT)
 open import Once.Postulates using (extensionality)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Once.TypeCheck.Judgment using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-int; t-str; t-unit; t-pair; t-neg; t-neg-float; t-let; t-binop-arith; t-binop-cmp)
@@ -70,7 +70,7 @@ open import Once.TypeCheck.Soundness using (check-sound)
 open import Once.Surface.Syntax as Surface using (Expr; Usage; ⟦_⟧ᶜ; pair; neg; let'; sigOp; lift-morphism; app; lam)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
-open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ)
+open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; anaFᵈ; coerce-functor-D)
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.SigOp.Info using (mk-info'; haltsV; emitsV; pureV; ffi-concrete; semM)
 open import Once.Arith.SigOp.Builders using (generic-semM; i2f-info; add-info; sub-info; mul-info; div-info; mod-info; fadd-info; fsub-info; fmul-info; fdiv-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info)
@@ -1651,6 +1651,38 @@ agree-checkCataGo ctx alg F A π (just wfF) eqW disp algIH dγ k
 ... | success Surface.[] algE dA frA , wArg | refl
       rewrite algIH eqAlg tt k = refl
 
+-- D192: the ana mirror. ONE clause where the cata needs two, because
+-- `checkAna` is grade-generic — there is no eff-then-pure fallback to follow.
+agree-checkAnaGo : ∀ (ctx : NamedCtx) (coalg : RawExpr) (F : Functor) (A : Type) (π : Purity)
+    (mw : Maybe (WellFormedF F)) (eqW : wellFormedF? F ≡ mw)
+    {Ψ : Usage (NamedCtx.size ctx)}
+    {se : Expr (NamedCtx.debruijn ctx) Ψ (A ⇒[ mk-kind Many π ] ν-type F)}
+    {d fr : ℕ}
+    {w : ctx ⊢ᶜ Raw.RApp (Raw.RResolved (gen "ana")) coalg ∶ (A ⇒[ mk-kind Many π ] ν-type F) ⨾ Ψ}
+  → E.checkAnaGo ctx coalg F A π mw eqW ≡ (success Ψ se d fr , w)
+  → (coalgIH : ∀ {T' Ψ' eE' d' fr'}
+       {w' : ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx) ⊢ᶜ coalg ∶ T' ⨾ Ψ'}
+       → E.checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) coalg T'
+           ≡ (success Ψ' eE' d' fr' , w')
+       → ∀ dγ k → SD.⟦ eE' ⟧ˢ fmt dγ k ≡ SD.⟦ realize w' ⟧ˢ fmt dγ k)
+  → ∀ (dγ : Env ctx Ψ) (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize w ⟧ˢ fmt dγ k
+agree-checkAnaGo ctx coalg F A π nothing eqW () coalgIH
+agree-checkAnaGo ctx coalg F A π (just wfF) eqW disp coalgIH dγ k
+  with E.checkElabV (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx))
+                    coalg (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A) in eqCoalg | disp
+... | failure _ , _ | ()
+-- The cata rewrites POINTWISE at `k` because `⟦ cata ⟧ˢ` binds its algebra
+-- once, outside. `⟦ ana ⟧ˢ` binds the coalgebra INSIDE the suspension's
+-- lambda — deliberately, because that is what `evalᴰ (Ana …)` does and what
+-- `FaithfulLemmas` relates it to — so the coalgebra is read at inner budgets
+-- and the agreement is needed at ALL of them. `extensionality` over the
+-- budget supplies exactly that; `ResolveFaithful`'s `ana` clause spends the
+-- same funext for the same reason.
+... | success Surface.[] coalgE dA frA , wArg | refl =
+      cong (λ ac → (returnT (λ a → returnT (anaFᵈ F
+              (λ a' → fmapT (coerce-functor-D F A) (ac >>=T λ clo → clo a')) a))) k)
+           (extensionality (λ j → coalgIH eqCoalg tt j))
+
 agree-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr w}
   (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
   → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
@@ -1830,6 +1862,10 @@ agree-check-RApp ctx f arg T E.ahv-other veq disp inferIH argCheckIH argInferIH 
 -- `arr'`/`t-subsume`; both `arr'` wrappers are denotationally transparent
 -- (`⟦arr' x⟧ = ⟦x⟧`, `realize (t-subsume w) = arr' (realize w)`), so each branch is
 -- the corresponding `agree-checkCataGo`.
+agree-check-RApp ctx f arg (A ⇒[ mk-kind Many π ] ν-type F) E.ahv-ana veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
+  agree-checkAnaGo ctx arg F A π (wellFormedF? F) refl disp
+    (subIH (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) arg
+           (μ<-r (μ f) (μ arg))) dγ k
 agree-check-RApp ctx f arg (μ-type F ⇒[ mk-kind Many pure ] A) E.ahv-cata veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k =
   agree-checkCataGo ctx arg F A pure (wellFormedF? F) refl disp
     (subIH (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) arg

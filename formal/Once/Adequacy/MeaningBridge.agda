@@ -35,7 +35,7 @@ open import Data.List.Properties using (++-identityʳ)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 
-open import Once.Type using (Type; Purity; Quantity; mk-kind; Zero; One; Many; pure; eff; _⇒[_]_; _+_; _*_; μ-type; ⟦_⟧T; Functor; Int; Float; Unit)
+open import Once.Type using (Type; Purity; Quantity; mk-kind; Zero; One; Many; pure; eff; _⇒[_]_; _+_; _*_; μ-type; ν-type; ⟦_⟧T; Functor; Int; Float; Unit)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
   IsConcrete; con-base; con-fun)
@@ -63,7 +63,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-id-check; t-fst-check; t-snd-check; t-terminal-morph-check;
   t-initial-morph-check; t-inl-morph-check; t-inr-morph-check;
   t-compose-check; t-case-copair-check; t-pair-morph-check;
-  t-curry-check; t-cata-check;
+  t-curry-check; t-cata-check; t-ana-check;
   t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
@@ -92,6 +92,7 @@ import Once.Denotation.SourceDenote as SD
 open import Once.Adequacy.MeaningRelation fmt
   using (RelV; RelT; RelT-return; RelT-bind)
 open import Once.Adequacy.CataBridge fmt using (cata-bridge)
+open import Once.Adequacy.AnaBridge fmt using (ana-bridge)
 
 -- Move a codomain-subst on `f` across `g ∘_` into a domain-subst on `g`.
 -- Match-to-refl.  (`realize-global (g-In) = In ∘ subst(⌊⟧T)(rg) = In-ir ∘ rg`.)
@@ -867,6 +868,22 @@ bridge-c (t-cata-check {F = F} {A = A} {π = π} wfF dalg) re =
               {x = cata-sem wfF c₁}
               {y = λ x → sem-cata wfF (SD.cata-ev-algˢ {F} {A} (returnT c₂)) x}
               (λ {a} {b} rv → cata-bridge {A' = A} {wfF = wfF} c₁ c₂ ralg rv))
+-- D193: the unfold. Both sides are `returnT (λ a → returnT (anaFᵈ …))` with
+-- the SAME continuation shape — `⟦_⟧ᶜ`'s ana clause is `⟦ ana ⟧ˢ`'s, bind
+-- inside and all — so the whole clause is two `RelT-return`s around
+-- `ana-bridge`, whose premise is the coalgebra's own bridge bound through
+-- `RelT-bind`. The equality at the ν (which is what `RelV` asks for there)
+-- comes from coalgebraic extensionality, not from structural work.
+bridge-c (t-ana-check {F = F} {A = A} {π = π} wfF dcoalg) re =
+  RelT-return {A = A ⇒[ mk-kind Many π ] ν-type F}
+    (λ {a} {b} rab →
+      RelT-return {A = ν-type F}
+        (ana-bridge wfF
+          (λ {x} {y} rxy →
+            RelT-bind {A = A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} {B = ⟦ F ⟧T A}
+                      (bridge-c dcoalg (mk↾ tt))
+                      (λ {f} {g} rfg → rfg rxy))
+          rab))
 bridge-c (t-embed d) re = bridge-i d re
 -- D143: `q` (the arrow) decides whether the RELATION supplies an argument;
 -- `q'` (the binder) decides whether it enters the environment. Six clauses,
