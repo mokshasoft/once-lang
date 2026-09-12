@@ -12997,3 +12997,32 @@ Parked rather than committed behind a postulate. `out-app-bridge` is certainly
 TRUE — unlike D192's `ana-bridge`, which would have been probably false — but
 it is provable with a validated template, and this branch's standard is not to
 postulate what the template can discharge.
+
+**Second pass (same day): the lemma is now one step from done.**
+`Once.Adequacy.OutErased` is written and carries:
+
+* `Out-ir`, and `evalᴰ-subst-cod` — the CODOMAIN mirror of
+  `CataErased.evalᴰ-subst-dom`, which the `In` side never needed because
+  `In-ir`'s transport is on the domain.
+* `subst-TI-projTrace` / `subst-TI-valueT`, `subst-id-νᵈ`,
+  `force-subst-trace` / `force-subst-value` — forcing a transported ν, all
+  match-to-refl.
+* **`out-trace` — PROVED.** The trace half is not `[]` as `In`'s is (`Out`
+  emits whatever forcing emits), so it is an equality between the two sides'
+  traces, and it closes through the four transports.
+* **`out-value` — PROVED down to one named residual**, `out-coh`.
+
+`out-coh` is the whole remaining content:
+
+```agda
+subst id (cohᴰ (⟦ F ⟧T (ν-type F)))
+  (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F)))
+    (valueT (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F))) v)) n))
+≡ coerce-functor⁻¹-D F (ν-type F) (coerce-ν-out wfF _ (valueT (forceᵈ v) n))
+```
+
+— `AnaErased.coerce-νin-erase-D` read backwards. Discharging it needs the
+LAYER generalised first: the two sides' layers differ by a `tF-coh` transport,
+and the `wf-*` induction needs a layer it can case-split, which
+`valueT (forceᵈ v) n` is not. After that it is that lemma's five clauses
+inverted. Everything else in the `Out` path is proved.
