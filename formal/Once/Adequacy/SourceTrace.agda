@@ -33,12 +33,12 @@
 module Once.Adequacy.SourceTrace where
 
 open import Data.Bool using (Bool; false; true)
-open import Data.Nat using (ℕ)
-open import Data.List using (List; []; _∷_; take)
+open import Data.Nat using (ℕ; suc; _<_; z≤n)
+open import Data.List using (List; []; _∷_; take; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Maybe.Properties using (just-injective)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; _,_; Σ-syntax)
+open import Data.Product using (_×_; _,_; Σ-syntax; proj₂)
 open import Data.Unit using (tt)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Once.CanonicalName using (CanonicalName; bare) renaming (_≟ᶜ_ to _≟cn_)
@@ -60,13 +60,15 @@ open import Data.Product using (proj₁)
 -- `moduleToIR` compiles the SAME (resolved) module the binary runs.
 open import Once.Parser using (parseStrict)
 open import Once.Parser.Module.Resolve using (resolveImports; ModuleMap)
-open import Once.Denotation.Behavior using (Source; Behavior)
+open import Once.Denotation.Behavior using (Source; Behavior; mkBehavior; silent)
 open import Once.Denotation.DenotTrace using (evalᴰ)
 -- Plan 0.73 (D113): the meaning is target-relative at `Float`, so the format
 -- is threaded in. An explicit ARGUMENT, not a module parameter — these are
 -- recursive and a parameterised module stops reducing at a variable instance.
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
-open import Once.Denotation.TraceMonad using (projTrace)
+open import Once.Denotation.TraceMonad
+  using (projTrace; PrefixFamily; bnd; sat; coh)
+open import Once.Denotation.DenotPrefix using (evalᴰ-good)
 
 ------------------------------------------------------------------------
 -- Source → IR of `main` (option (a): reuse the compiler's elaborator).
@@ -158,9 +160,23 @@ moduleToIR-emitted mod = map-rewrite (moduleToIR mod)
 -- The SigOp trace the denotational `evalᴰ` reads off `main`'s IR (the
 -- elaborated meaning), at observation depth `n` (Plan 0.46: the monadic
 -- `⟦_⟧ᴰ` is THE source observable; the operational `otrace` is retired).
+-- D179: `Behavior` is a RECORD — the three laws travel with the family, so a
+-- producer must supply them. They are not new obligations invented here: they
+-- are exactly `PrefixFamily`, which `evalᴰ-good` proves for every IR. (`take n`
+-- has gone from `at`: `bounded` says the prefix is already short enough, so the
+-- cap was doing nothing but obscuring which family this is.)
 ⟦_⟧IR : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋) → TargetNum → Behavior
-⟦ just ir ⟧IR fmt = λ n → take n (projTrace (evalᴰ fmt ir tt) n)
-⟦ nothing ⟧IR _   = λ _ → []
+⟦ just ir ⟧IR fmt = mkBehavior (projTrace m) (coh pf) (bnd pf) sat'
+  where
+    m  = evalᴰ fmt ir tt
+    pf : PrefixFamily m
+    pf = proj₁ (evalᴰ-good fmt ir tt tt)
+
+    sat' : ∀ n → length (projTrace m n) < n → projTrace m (suc n) ≡ projTrace m n
+    sat' n lt = cong proj₁ (sat pf n lt)
+-- A module with no `main` observes nothing, at every depth — the empty family,
+-- whose three laws are immediate.
+⟦ nothing ⟧IR _   = silent
 
 ------------------------------------------------------------------------
 -- The verified front-end (Plan 0.51): parse the user's grammar module,
@@ -234,7 +250,7 @@ srcToModule-inv src mR eq =
 -- `⟦⟧-via-module` below can `rewrite` the parse equation through it.
 sourceTrace-aux : Maybe P.Module → TargetNum → Behavior
 sourceTrace-aux (just m) fmt = ⟦ moduleToIR m ⟧IR fmt
-sourceTrace-aux nothing  _   = λ _ → []
+sourceTrace-aux nothing  _   = silent
 
 sourceTrace : Source → TargetNum → Behavior
 sourceTrace src fmt = sourceTrace-aux (srcToModule src) fmt

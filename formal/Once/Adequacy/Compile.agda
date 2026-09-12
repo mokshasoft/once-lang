@@ -46,7 +46,7 @@ open import Once.IR using (IR)
 open import Once.IRTy using (⌊_⌋)
 open import Once.Type using (Unit; Type; _⇒[_]_; mk-kind; Many; eff)
 
-open import Once.Denotation.Behavior using (Source; Behavior)
+open import Once.Denotation.Behavior using (Source; Behavior; at; behavior-by)
 open import Once.Adequacy.SourceTrace
   using (⟦_⟧; ⟦⟧-via-module; moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR; srcToModule; srcToModule-just; srcToModule-inv)
 
@@ -200,7 +200,7 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
       C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
       DistinctSymbols m →
       ∀ (n : ℕ) →
-      ArchSemantics.exec-bytes as (ArchSemantics.assemble as asm) n ≡ asm-sem asm n
+      at (ArchSemantics.exec-bytes as (ArchSemantics.assemble as asm)) n ≡ at (asm-sem asm) n
     -- the emitted asm's meaning equals the flat trace of the compiled IR.
     -- D100 — HONEST PRECONDITION, the second one: the emitted LOCAL labels are
     -- pairwise distinct. This is where the toolchain is trusted TODAY (each
@@ -233,7 +233,7 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
       DistinctLabels arch m →
       LabelsResolvable arch m →
       SymbolsResolvable arch m →
-      ∀ (n : ℕ) → asm-sem asm n ≡ flat-trace (moduleToIR-emitted m) n
+      ∀ (n : ℕ) → at (asm-sem asm) n ≡ at (flat-trace (moduleToIR-emitted m)) n
     -- D165 — THE ARITH PASS PRESERVES THE FLAT TRACE. Split out of
     -- `asm-trace-correct`, where it was invisible.
     --
@@ -251,14 +251,14 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
     -- fires wrongly cannot be.
     rewrite-preserves :
       ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (n : ℕ)
-      → flat-trace (map-rewrite mir) n ≡ flat-trace mir n
+      → at (flat-trace (map-rewrite mir)) n ≡ at (flat-trace mir) n
     -- the flat machine's SigOp trace of a compiled IR equals its `obs`.
     -- D113: at THIS arch's float format. The record is already indexed by
     -- `arch`, so the obligation sharpens without changing shape — the flat
     -- machine's trace must match the denotation the SAME target means.
     ir-flat-correct :
       ∀ (mir : Maybe (IR ⌊ Unit ⌋ ⌊ Unit ⌋)) (n : ℕ)
-      → flat-trace mir n ≡ ⟦ mir ⟧IR (arch-numerics arch) n
+      → at (flat-trace mir) n ≡ at (⟦ mir ⟧IR (arch-numerics arch)) n
 
 -- (The former `no-main-empty` library-case postulate is gone: with
 -- `⟦_⟧M = ⟦ moduleToIR m ⟧IR`, the library case `moduleToIR m ≡ nothing` is
@@ -278,9 +278,9 @@ record ArchCorrect (arch : Arch) (as : ArchSemantics) : Set where
 gmoduleToModule-correct :
   ∀ (src : Source) (m : P.Module) →
   srcToModule src ≡ just m →
-  ∀ (arch : Arch) (n : ℕ) → ⟦ m ⟧M arch n ≡ ⟦ src ⟧ (arch-numerics arch) n
+  ∀ (arch : Arch) (n : ℕ) → at (⟦ m ⟧M arch) n ≡ at (⟦ src ⟧ (arch-numerics arch)) n
 gmoduleToModule-correct src m eq arch n =
-  sym (cong (λ b → b n) (⟦⟧-via-module src m eq (arch-numerics arch)))
+  sym (cong (λ b → at b n) (⟦⟧-via-module src m eq (arch-numerics arch)))
 
 -- `main⇒built` (Plan 0.48): a module with a compilable `main`
 -- (`moduleToIR m ≡ just ir`) Builds for EVERY `doOpt` — PROVEN (no longer a
@@ -375,7 +375,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   string-to-bytes-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ (⟦ arch ⟧A asm) n
+    ∀ (n : ℕ) → at (exec arch (string-to-bytes arch asm)) n ≡ at (⟦ arch ⟧A asm) n
   string-to-bytes-correct arch m asm cf n =
     ArchCorrect.assemble-correct (arch-correct arch) m asm cf
       (program-no-clash m) n
@@ -386,7 +386,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   codegen-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ moduleToIR m ⟧IR (arch-numerics arch) n
+    ∀ (n : ℕ) → at (⟦ arch ⟧A asm) n ≡ at (⟦ moduleToIR m ⟧IR (arch-numerics arch)) n
   -- D165: three steps now, not two — the middle one is the arith pass, which
   -- used to be folded into the first.
   codegen-asm-correct arch m asm eq n =
@@ -406,7 +406,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   module-to-asm-correct :
     ∀ (arch : Arch) (m : P.Module) (asm : String) →
     C.compileFromModule C.Heap C.Build false arch m ≡ C.Built asm →
-    ∀ (n : ℕ) → (⟦ arch ⟧A asm) n ≡ ⟦ m ⟧M arch n
+    ∀ (n : ℕ) → at (⟦ arch ⟧A asm) n ≡ at (⟦ m ⟧M arch) n
   module-to-asm-correct arch m asm eq n = codegen-asm-correct arch m asm eq n
 
   --------------------------------------------------------------------
@@ -501,12 +501,12 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
     opt-trace : ∀ (arch : Arch) (m : P.Module) (asm : String) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
       C.compileFromModule C.Heap C.Build true arch m ≡ C.Built asm →
       moduleToIR m ≡ just ir →
-      ∀ (n : ℕ) → exec arch (string-to-bytes arch asm) n ≡ ⟦ just ir ⟧IR (arch-numerics arch) n
+      ∀ (n : ℕ) → at (exec arch (string-to-bytes arch asm)) n ≡ at (⟦ just ir ⟧IR (arch-numerics arch)) n
 
   -- Behavioural equivalence (matches the record's `_≈_`); the trace witnesses
   -- below are exactly proofs at this relation.
   _≋_ : Behavior → Behavior → Set
-  b₁ ≋ b₂ = ∀ (n : ℕ) → b₁ n ≡ b₂ n
+  b₁ ≋ b₂ = ∀ (n : ℕ) → at b₁ n ≡ at b₂ n
 
   -- The Built-case trace obligation, abstracted: GIVEN a `main` (`moduleToIR m
   -- ≡ just ir`) and that the pipeline Builds `asm`, the bytes' trace equals the
@@ -646,7 +646,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   correct arch false src = correct-gm arch false (srcToModule src)
     (λ m _ ir mi asm cf n → trans (string-to-bytes-correct arch m asm cf n)
                                    (trans (module-to-asm-correct arch m asm cf n)
-                                          (cong (λ x → ⟦ x ⟧IR (arch-numerics arch) n) mi)))
+                                          (cong (λ x → at (⟦ x ⟧IR (arch-numerics arch)) n) mi)))
   correct arch true src = correct-gm arch true (srcToModule src)
     (λ m _ ir mi asm cf n → opt-trace arch m asm ir cf mi n)
 
@@ -738,21 +738,33 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
 
   -- D113: the INDEPENDENT meaning takes the arch, mirroring `exec`. The
   -- format is the only thing it uses the arch for.
+  -- D179: the surface meaning is a `Behavior` BY ITS AGREEMENT with the IR
+  -- meaning — `sd-eq` below, which is exactly the content `sd-bridge` used to
+  -- state. So `⟦_⟧ˢ` carries the three laws without a prefix-family induction
+  -- over the SURFACE semantics: the compiler's own theorem supplies them.
+  sd-eq : ∀ (arch : Arch) (tp : Typed) (n : ℕ)
+        → at (⟦ moduleToIR (proj₁ tp) ⟧IR (arch-numerics arch)) n
+          ≡ ME.runMainˢ (arch-numerics arch) (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))) n
+  sd-eq arch (m , mt , hvm) n =
+    trans (trans (cong (λ x → at (⟦ x ⟧IR (arch-numerics arch)) n) (proj₂ (MC.moduleToIR-complete m mt hvm)))
+                 (proj₂ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m
+                   (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))) n))
+          (main-realize-agrees arch m mt hvm
+            (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)) n)
+
   ⟦_⟧ˢ : Arch → Typed → Behavior
-  ⟦ arch ⟧ˢ (m , mt , hvm) =
-    ME.runMainˢ (arch-numerics arch) (proj₂ (MC.mainRealized m mt hvm))
+  ⟦ arch ⟧ˢ tp =
+    behavior-by (⟦ moduleToIR (proj₁ tp) ⟧IR (arch-numerics arch))
+                (ME.runMainˢ (arch-numerics arch)
+                  (proj₂ (MC.mainRealized (proj₁ tp) (proj₁ (proj₂ tp)) (proj₂ (proj₂ tp)))))
+                (sd-eq arch tp)
 
   -- The SD bridge — a PROOF: the compiled `main` IR's denotational trace equals
   -- `main`'s INDEPENDENT surface meaning. Reuses `ME.source-meaningᴰ (arch-numerics arch)` (=
   -- `wrap-trace` ∘ `faithful` ∘ `main-ir-form`). Row-2 (`elaborate`) is FORCED.
   sd-bridge : ∀ (arch : Arch) (tp : Typed)
             → ⟦ moduleToIR (proj₁ tp) ⟧IR (arch-numerics arch) ≋ ⟦ arch ⟧ˢ tp
-  sd-bridge arch (m , mt , hvm) n =
-    trans (trans (cong (λ x → ⟦ x ⟧IR (arch-numerics arch) n) (proj₂ (MC.moduleToIR-complete m mt hvm)))
-                 (proj₂ (proj₂ (ME.source-meaningᴰ (arch-numerics arch) m
-                   (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)))) n))
-          (main-realize-agrees arch m mt hvm
-            (proj₁ (MC.moduleToIR-complete m mt hvm)) (proj₂ (MC.moduleToIR-complete m mt hvm)) n)
+  sd-bridge arch tp n = sd-eq arch tp n
 
   pw-just-rel : ∀ {x y : Behavior} → Pointwise _≋_ (just x) (just y) → x ≋ y
   pw-just-rel (PW.just r) = r
@@ -903,7 +915,7 @@ module WithCPU (arch-sem : Arch → ArchSemantics)
   -- over the shared `mainRealized`/`mainMeaningᵈ` dispatch and bottoms in
   -- `bridge-c` at `main : EffUU` (env `∅`, thunk `tt`). The residual content is
   -- the seven narrow leaf postulates in `Once.Adequacy.MeaningBridge`.
-  bridgeᵈ : ∀ (arch : Arch) (tp : Typed) (n : ℕ) → ⟦ arch ⟧ˢ tp n ≡ ⟦ arch ⟧ᵈ tp n
+  bridgeᵈ : ∀ (arch : Arch) (tp : Typed) (n : ℕ) → at (⟦ arch ⟧ˢ tp) n ≡ at (⟦ arch ⟧ᵈ tp) n
   bridgeᵈ arch (m , mt , hvm) n = MMB.main-bridge (arch-numerics arch) m mt hvm n
 
   -- D115/D116: which programs this target owes an answer for. `Typed` is

@@ -16,19 +16,20 @@ open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ-syntax; _,_; _×_; proj₁; proj₂)
 open import Data.List using (List; take)
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Data.Unit using (tt)
 open import Relation.Nullary using (yes; no; Dec)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Type; Unit)
 open import Once.Surface.Syntax using (Expr; ∅; Usage)
 open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelfAndPolys; PolyCtx; _≟T_)
 open import Once.TypeCheck.Classify using (SigEffectCtx; NamedCtx)
 open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_)
-open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
+open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace; PrefixFamily; bnd; sat; coh)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
-open import Once.Denotation.Behavior using (Behavior)
+open import Once.Denotation.Behavior using (Behavior; mkBehavior)
 open import Once.Surface.Context using (∅) renaming (⟦_⟧ᶜ to ⟦_⟧ᶜᵗ)
 open import Once.Denotation.Phase using (env0)
 open import Once.Denotation.Meaning using (⟦_⟧ᶜ)
@@ -89,9 +90,33 @@ mainMeaningᵈ fmt m mt (amu , me) =
 -- Run the direct closure to a Behavior (mirrors `MainExtract.runMainˢ`).
 ------------------------------------------------------------------------
 
-runMainᵈ : MClo → Behavior
-runMainᵈ dclo n = take n (projTrace (dclo tt >>=T (λ clo → clo tt)) n)
+-- D179: the depth-indexed trace FAMILY, not yet a `Behavior`. `Behavior` now
+-- carries its three laws, and only the apex reference meaning below needs
+-- them; every bridge lemma compares this family POINTWISE, so making the
+-- intermediate a record would oblige each of them to rebuild the laws for a
+-- closure it only passes through. (`take n` is gone with the cap: `bounded`
+-- says the prefix is already that short.)
+runMainᵈ : MClo → ℕ → List SigOpEvent
+runMainᵈ dclo n = projTrace (dclo tt >>=T (λ clo → clo tt)) n
+
+-- D179 (deferred proof, NOT an axiom): the direct meaning is a prefix family.
+--
+-- This is the `⟦_⟧ᶜ` analogue of `evalᴰ-good` (DenotPrefix), which proves
+-- exactly this for the IR semantics by induction with `>>=T-pf` at each bind.
+-- The same induction over TYPED DERIVATIONS discharges it — `⟦_⟧ᶜ`/`⟦_⟧ᵢ` are
+-- built from the same `returnT`/`>>=T`/`emit` combinators — and until that
+-- induction is written the statement is assumed HERE, about this chain, rather
+-- than as a property of an arbitrary `MClo` (which would be FALSE: a bare
+-- function may be any family at all).
+postulate
+  mainMeaningᵈ-pf :
+    ∀ (fmt : TargetNum) (m : C.Module) (mt : ModuleTyped m) (hvm : HasValidMain-decl m mt)
+    → PrefixFamily (proj₂ (mainMeaningᵈ fmt m mt hvm) tt >>=T (λ clo → clo tt))
 
 -- THE direct reference meaning (discharges the apex `⟦_⟧ᵈ`).
 meaningᵈ : ∀ (fmt : TargetNum) (m : C.Module) (mt : ModuleTyped m) → HasValidMain-decl m mt → Behavior
-meaningᵈ fmt m mt hvm = runMainᵈ (proj₂ (mainMeaningᵈ fmt m mt hvm))
+meaningᵈ fmt m mt hvm =
+  mkBehavior (runMainᵈ (proj₂ (mainMeaningᵈ fmt m mt hvm)))
+             (coh pf) (bnd pf) (λ n lt → cong proj₁ (sat pf n lt))
+  where
+    pf = mainMeaningᵈ-pf fmt m mt hvm

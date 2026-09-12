@@ -35,7 +35,7 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 -- denotations themselves take it as an explicit argument.
 module Once.Adequacy.MainExtract (fmt : TargetNum) where
 
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _∸_)
 open import Data.List using (List; _++_; take)
 open import Data.Maybe using (just)
 open import Data.Unit using (tt)
@@ -50,7 +50,9 @@ open import Once.Surface.Elaborate using (elaborate; elaborateFull)
 import Once.Compile as C
 import Once.Parser.Module.Core as P
 open import Once.Denotation.Phase using (env0)
-open import Once.Denotation.Behavior using (Behavior)
+open import Once.Denotation.Behavior using (Behavior; at)
+open import Once.Denotation.Trace using (SigOpEvent)
+open import Data.List using (List; length)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 open import Once.Adequacy.WrapBridge fmt using (wrap-trace)
 open import Once.Adequacy.SourceFaithful fmt using (faithful; faithful∅)
@@ -64,14 +66,22 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 -- Run an `Eff Unit Unit` action's INDEPENDENT surface denotation to a
 -- Behavior: apply the closure `SD.⟦ se ⟧ˢ tt` to the Unit input, read the
 -- depth-`n` SigOp-trace prefix. Mirrors `⟦_⟧IR` but through `SD`.
-runMainˢ : ∀ {Ψ : Usage 0} → Expr ∅ Ψ EffUU → Behavior
+-- D179: NOT a `Behavior`. `Behavior` now carries its three laws, and this
+-- family's would have to come from a prefix-family theorem about the SURFACE
+-- denotation `SD.⟦_⟧ˢ` — a separate induction from `evalᴰ-good`. It is not
+-- needed: every consumer uses this family POINTWISE against `⟦_⟧IR`, which IS
+-- a Behavior, so the laws are already carried on the side that states the
+-- compiler's claim. Should a consumer ever need them here, `faithful`
+-- transports them rather than reproving them.
+runMainˢ : ∀ {Ψ : Usage 0} → Expr ∅ Ψ EffUU → ℕ → List SigOpEvent
 runMainˢ {Ψ} se n =
-  take n (projTrace ((SD.⟦ se ⟧ˢ fmt) (env0 {Ψ} tt) >>=T (λ clo → clo tt)) n)
+  projTrace ((SD.⟦ se ⟧ˢ fmt) (env0 {Ψ} tt) >>=T (λ clo → clo tt)) n
 
 -- Bind respects pointwise equality of the bound computation, at the trace level.
 bind-cong-trace : ∀ {X Y} (m m′ : T X) (f : X → T Y) (n : ℕ) →
   m n ≡ m′ n → projTrace (m >>=T f) n ≡ projTrace (m′ >>=T f) n
-bind-cong-trace m m′ f n eq = cong (λ p → proj₁ p ++ proj₁ (f (proj₂ p) n)) eq
+bind-cong-trace m m′ f n eq =
+  cong (λ p → proj₁ p ++ proj₁ (f (proj₂ p) (n ∸ length (proj₁ p)))) eq
 
 -- DISCHARGED (no longer a postulate): the compiled `main` IR is the entry-wrap
 -- of the elaborated resolved term — proven in `Once.Adequacy.MainIRForm` by the
@@ -90,25 +100,24 @@ open import Once.Adequacy.MainForm fmt using (main-ir-form; Form)
 source-meaningᴰ-aux : ∀ (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) → Form ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-      ∀ (n : ℕ) → ⟦ just ir ⟧IR fmt n ≡ runMainˢ seR n))
+      ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ seR n))
 -- D143: `Ψ` stays ABSTRACT here — matching it would block this function from
 -- reducing at its call site. `elaborateFull` (the erasure adapter composed in)
 -- keeps the IR's domain `Unit`, and `faithful∅` supplies the denotation at the
 -- empty context, doing the `Usage 0` match inside the lemma instead.
 source-meaningᴰ-aux ir (Ψ , seR , eq , _) = Ψ , seR , bridge
   where
-    bridge : ∀ (n : ℕ) → ⟦ just ir ⟧IR fmt n ≡ runMainˢ seR n
+    bridge : ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ seR n
     bridge n =
-      trans (cong (λ X → ⟦ just X ⟧IR fmt n) eq)
-        (trans (cong (take n) (wrap-trace (elaborateFull C.Heap seR) n))
-               (cong (take n)
-                 (bind-cong-trace (evalᴰ fmt (elaborateFull C.Heap seR) tt)
-                                  (SD.⟦ seR ⟧ˢ fmt (env0 {Ψ} tt)) (λ clo → clo tt) n
-                                  (faithful∅ seR n))))
+      trans (cong (λ X → at (⟦ just X ⟧IR fmt) n) eq)
+        (trans (wrap-trace (elaborateFull C.Heap seR) n)
+               (bind-cong-trace (evalᴰ fmt (elaborateFull C.Heap seR) tt)
+                                (SD.⟦ seR ⟧ˢ fmt (env0 {Ψ} tt)) (λ clo → clo tt) n
+                                (faithful∅ seR n)))
 
 source-meaningᴰ : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   moduleToIR m ≡ just ir →
   Σ-syntax (Usage 0) (λ Ψ →
     Σ-syntax (Expr ∅ Ψ EffUU) (λ seR →
-      ∀ (n : ℕ) → ⟦ just ir ⟧IR fmt n ≡ runMainˢ seR n))
+      ∀ (n : ℕ) → at (⟦ just ir ⟧IR fmt) n ≡ runMainˢ seR n))
 source-meaningᴰ m ir mi = source-meaningᴰ-aux ir (main-ir-form m ir mi)

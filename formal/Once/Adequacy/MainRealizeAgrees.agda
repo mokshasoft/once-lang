@@ -180,8 +180,7 @@ main-realize-agrees-proof :
 main-realize-agrees-proof m mt hvm ir mi n
   with main-checkElab-coherence m mt hvm ir mi
 ... | cctx , body , Ψ , se , d , f , dγ₀ , ce , seR≈se , rt≈deriv =
-      cong (take n)
-        (ME.bind-cong-trace
+      (ME.bind-cong-trace
           (SD.⟦ proj₁ (proj₂ (ME.source-meaningᴰ m ir mi)) ⟧ˢ fmt
           (env0 {proj₁ (ME.source-meaningᴰ m ir mi)} tt))
           (SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt

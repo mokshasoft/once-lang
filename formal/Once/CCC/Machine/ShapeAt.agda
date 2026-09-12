@@ -37,7 +37,7 @@ open import Once.IR using (IRTy; Unit; Int; Float; Str; Buffer; _*_; _+_; _⇛_;
 open import Once.Type using ()
   renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ;
             Int to Intˢ; Float to Floatˢ)
-open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧ᴵ)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰ to ⟦_⟧; ⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
   hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
@@ -225,7 +225,7 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
     using (ValidAtWF; valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf;
            rep-prim; rep-unit;
-           valid-μ-wf; valid-ν-wf;
+           valid-μ-wf;
            valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
            SumTag)
 
@@ -267,7 +267,6 @@ module Project (o : CanonicalName) (program-bound : ℕ) where
   valid→shape (valid-inr-reg-wf {m = m} {b = bv} lm tg (rep-unit u sv) r b) =
     shape-inr-reg {b = bv} lm (tag-of m 1 _ _ tg) (rep-unit-at u sv) r b
   valid→shape (valid-μ-wf wf x lv) = shape-μ wf (valid→shape lv)
-  valid→shape (valid-ν-wf wf x lv) = shape-ν wf (valid→shape lv)
   valid→shape (valid-int-wf b r)   = shape-int b r
   valid→shape (valid-float-wf b r) = shape-float b r
   valid→shape (valid-str-wf b)     = shape-str b

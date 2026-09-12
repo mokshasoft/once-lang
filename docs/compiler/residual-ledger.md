@@ -442,3 +442,46 @@ as `exec-bytes ∘ assemble`, that field collapsed to `λ _ _ _ _ _ → refl` an
 premise became decorative. The trust moved to `loader-faithful`; the premise did
 not. Whenever a postulated field becomes a definition, AUDIT ITS PREMISES — they
 are now consumed by a `refl` and protect nothing.
+
+---
+
+## Plan 0.90 additions — the `Behavior`-record producers (2026-09-12)
+
+D179 made `Behavior` a record carrying `extends`/`bounded`/`saturates`. Three
+meanings PROVE or BORROW those laws (`⟦_⟧IR` from `evalᴰ-good`; `⟦_⟧ˢ` and
+`flat-trace-of` via `behavior-by`, from the compiler's own correctness
+equations). Two ASSUME them, and those are the new residuals:
+
+| # | residual | class | what discharges it |
+|---|---|---|---|
+| P1 | `Once.Denotation.MainMeaning.mainMeaningᵈ-pf` — the direct meaning of `main` is a prefix family | **deferred proof** | the `⟦_⟧ᶜ`/`⟦_⟧ᵢ` analogue of `evalᴰ-good`: one induction over typed derivations, `>>=T-pf` at each bind. Stated about the meaning chain, not about an arbitrary `MClo` (which would be FALSE) |
+| P2 | `Once.Arith.Backend.RunTraceCore.run-trace-extends` / `run-trace-saturates` — the concrete machine's trace family extends and saturates | **deferred proof / model gap** | this IS what "`stepBudget` is adequate" means. Needs (i) `run-events` prefix-monotone in its fuel — provable now — and (ii) `stepBudget` monotone and adequate, which needs it pinned (D5). Same boundary as the abstract `stepBudget` parameter itself |
+
+`bounded` is proved on both (a `take n` is at most `n` long), so neither
+residual covers it.
+
+Deleted in the same change, and worth recording as residuals that went away:
+`valid-ν-wf` (a ValidAtWF constructor claiming a ν has a memory-resident layer
+— false for a Kleisli ν, and unreachable anyway since Class G emits nothing for
+`Ana`/`in-ν`) and `ν-layer-iso` (its inversion). `obs-correct-Out` is now
+discharged by `⊥-elim (ν-input-absurd …)` — see D180.
+
+### Known-red ISLAND (not a residual, and not from plan 0.90): `Once.Category.Laws`
+
+`make check-all` (the island-rot backstop) fails on `Once/Category/Laws.agda`,
+and the failure PREDATES plan 0.90 — every cause is an earlier migration the
+module never followed:
+
+* `⟦ A ⟧` at `A : IRTy` while the import is the `Type` interpretation (IRTy split)
+* `eval` lost its `TargetNum` argument here (D113)
+* `inl`/`inr`/`curry` still take an `AllocMode` (0.86 stage G removed it)
+* the IR arrow is still written `⇒[ k ]` (0.52 M2 made it ungraded `⇛`)
+* `Cata wf (In wf)` no longer type-checks at all: `Cata` is the PARAMETERIZED
+  fold (D131, `IR (E * ⟦F⟧TI A) A → IR (E * μ-type F) A`), so the identity law
+  has to be RESTATED (`Cata wf (In wf ∘ snd)`) before it can be reproved
+
+Its only consumer is `Once.Optimize.Correct`, itself an island. The first four
+are mechanical; the fifth is a genuine restatement, and the module's two μ/ν
+identity laws lean on `Once.Postulates.extensionality`, so reviving it is a
+funext decision as well as a repair. Left as one named piece of work rather than
+half-fixed.

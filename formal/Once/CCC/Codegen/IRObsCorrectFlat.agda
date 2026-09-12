@@ -34,9 +34,9 @@ open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Codegen.IRObsCorrectFlat (o : CanonicalName) where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_; _∸_)
 open import Data.Nat.Properties using (n<1+n; n≤1+n; ≤-refl; <-≤-trans)
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (yes; no)
 open import Data.Bool using (false; true)
 open import Data.List using (length; take; []; _∷_; _++_; map)
@@ -53,7 +53,7 @@ open import Once.Type using (Type; FitsInReg; fits-in-reg?)
 open import Once.Float.Decimal using (Decimal; round)
 open import Data.Integer using (ℤ)
 open import Once.IRTy using (WellFormedFI-irrelevant)
-open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
 open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Heap; Cata; SigOp; SigOpInfo; out-μ; _∘_;
   μ-type; ⟦_⟧TI; WellFormedFI; FitsInRegI; fits-int; fits-float; ⌊_⌋;
   -- Plan 0.68 step 0: the enumeration needs EVERY constructor in scope, not
@@ -174,19 +174,22 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   μ-layer-iso : ∀ {m F} (wf : WellFormedFI F) (x : ⟦ μ-type F ⟧)
                 {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
               → ValidAtWF m alloc {μ-type F} x loc s
-              → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (eval (out-μ wf) x) loc s
+              → ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)}
+                  (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s
   μ-layer-iso wf x (valid-μ-wf wf′ .x layer-v)
     rewrite WellFormedFI-irrelevant wf wf′ = layer-v
 
-  -- The ν analogue, for `Out` (Plan 0.68 step 1). Same one-line inversion:
-  -- `valid-ν-wf` carries the layer's own `ValidAtWF`, so destructing it yields
-  -- the layer validity `Out`'s result needs.
-  ν-layer-iso : ∀ {m F} (wf : WellFormedFI F) (x : ⟦ ν-type F ⟧)
-                {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
-              → ValidAtWF m alloc {ν-type F} x loc s
-              → ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (eval (Out wf) x) loc s
-  ν-layer-iso wf x (valid-ν-wf wf′ .x layer-v)
-    rewrite WellFormedFI-irrelevant wf wf′ = layer-v
+  -- Plan 0.90: the ν analogue is GONE, and what replaces it is its negation.
+  -- `valid-ν-wf` used to carry a ν's layer validity — it could, because the
+  -- PURE domain made a ν a first-order value with an already-available layer.
+  -- A Kleisli ν has no layer until it is FORCED, which is a computation, so no
+  -- memory-shape invariant can state one. And the machine agrees: Class G emits
+  -- NO instructions for `Ana`/`in-ν`, so it never builds a ν. The honest
+  -- statement is therefore that a ν-typed value is never machine-resident.
+  ν-not-resident : ∀ {m F} {x : DT.⟦ ν-type F ⟧ᴰᴵ}
+                   {alloc : AllocState {FS}} {loc : ValueLocation FS} {s : LocState FS}
+                 → ValidAtWF m alloc {ν-type F} x loc s → ⊥
+  ν-not-resident ()
 
   -- D152: the trace the compiler ACTUALLY emits for `ir` at emission site
   -- `(n , l)`. (`IRToTrace.proj-trace` is `private`, so the projection is
@@ -291,9 +294,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- relocated by, and `no-ret`/`no-link` say the run left no return pending.
   -- `fclosure` is deliberately NOT constrained — it is what `ir` hands on.
   record ValueRealized (prog : AbstractTrace) (base : ℕ)
-                       {A B} (n l : ℕ) (ir : IR A B) (x : ⟦ A ⟧)
+                       {A B} (n l : ℕ) (ir : IR A B) (x : DT.⟦ A ⟧ᴰᴵ)
                        (s : LocState FS) (alloc : AllocState {FS})
-                       (cl : StoredValue FS) : Set where
+                       (cl : StoredValue FS) (k : ℕ) : Set where
     constructor realized
     field
       steps      : ℕ
@@ -305,13 +308,26 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       at-end     : fpc settle ≡ length (emitted n l ir) + base
       no-ret     : fret settle ≡ []
       no-link    : flink settle ≡ nothing
+      -- D179: the value comes from `evalᴰ`, not the pure `eval`. While it was
+      -- `eval ir x` the value half refined a DIFFERENT semantics from the
+      -- trace half — the same two-models category error this codebase retired
+      -- for `Cata`/`Ana`, still live on the machine boundary.
+      --
+      -- …AT THE OBSERVATION DEPTH `k`, which is now the obligation's own
+      -- parameter rather than a number the producer picks. `valueT … k` is
+      -- budget-indexed while a run is one concrete run, so the two must be
+      -- tied, and an existential "realized at SOME budget" does not compose:
+      -- `g ∘ f` must hand `g` the value `f` realizes at the COMPOSITE's depth
+      -- (`evalᴰ (g ∘ f) x = evalᴰ f x >>=T evalᴰ g` spends `f`'s events out of
+      -- the same budget), and a producer that chose its own could not be asked
+      -- for that one. Depth-indexing makes the composition definitional.
       place      : ResultPlace B out-mode (falloc settle) cont-alloc
-                     (eval ir x) (floc settle)
+                     (TM.valueT (evalᴰ ir x) k) (floc settle)
 
   record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
-                             {A B} (n l : ℕ) (ir : IR A B) (x : ⟦ A ⟧)
+                             {A B} (n l : ℕ) (ir : IR A B) (x : DT.⟦ A ⟧ᴰᴵ)
                              (s : LocState FS) (alloc : AllocState {FS})
-                             (cl : StoredValue FS) : Set where
+                             (cl : StoredValue FS) (k : ℕ) : Set where
     field
       -- NO completion fields (M3, D058: "productivity — not termination").
       -- `run-halts` ("the run halts") is exactly what excludes `Ana`; instead,
@@ -323,7 +339,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- correctly in `evalᴰ`, observed by the `take k` event-prefix.)
       -- D158/D159: the value half comes FIRST, because the trace half is
       -- stated along ITS chain.
-      value-realized : ValueRealized prog base n l ir x s alloc cl
+      value-realized : ValueRealized prog base n l ir x s alloc cl k
       -- …and the trace half, BOUNDED BY THAT CHAIN rather than by a fuel.
       --
       -- The old form was `∀ k → ∃ f` over `flat-events f (emitted n l ir)` —
@@ -341,9 +357,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- gets an emitter, which CLASS G already records as codegen work rather
       -- than proof work.
       traces-agree :
-        ∀ (k : ℕ) →
-          take k (chain-events (ValueRealized.run value-realized))
-            ≡ take k (projTrace (evalᴰ ir (inject x)) k)
+        take k (chain-events (ValueRealized.run value-realized))
+          ≡ take k (projTrace (evalᴰ ir x) k)
       -- The value device: "the value the next effectful SigOp reads is right".
       -- Plan 0.54 rung A: a `ResultPlace` (register `at-reg` OR memory `at-loc`),
       -- NOT bare `ValidAtWF` at a memory loc — a Pure primitive result is
@@ -377,7 +392,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   data InputAt {A : IRTy} (mIn : AllocMode) (alloc : AllocState {FS})
                (v : ⟦ A ⟧) (s : LocState FS) : Set where
     in-loc : (loc : ValueLocation FS)
-           → ValidAtWF mIn alloc v loc s
+           → ValidAtWF mIn alloc {A} v loc s
            → BeforeFrontier alloc loc
            → readReg (regs s) Input1 ≡ SV-Ptr loc → InputAt mIn alloc v s
     in-reg : (fit : FitsInRegI A) → readReg (regs s) Input1 ≡ prim-sv fit v
@@ -407,7 +422,12 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       (prog : AbstractTrace) (base : ℕ) →
       AllSlotStable prog →
       SpanAt prog base (emitted n l ir) →
-    ∀ (mIn : AllocMode) (x : ⟦ A ⟧)
+    -- D179 (top-down): the input ranges over the MONADIC domain. While it was
+    -- `⟦ A ⟧` (pure), `inject x` made every closure trace-free and every ν a
+    -- trace-free suspension — so `apply` could never observe a closure emit and
+    -- `Out` could never observe a layer emit. The statement was true of a case
+    -- that cannot carry effects.
+    ∀ (mIn : AllocMode) (x : DT.⟦ A ⟧ᴰᴵ)
       (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS) →
     -- D155: `≤`, not `≡`. What this premise is FOR is that the emitter's
     -- scratch region `[n , …)` is above anything the caller has live —
@@ -425,8 +445,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- D153: ONE residence premise, carrying its own evidence. The separate
     -- `input-loc` / `ValidAtWF` / `BeforeFrontier` triple is gone — it made
     -- the `in-reg` case unusable.
-    InputAt mIn alloc x s →
-    MachineRefinesObsF prog base n l ir x s alloc cl
+    InputAt {A} mIn alloc x s →
+    -- The OBSERVATION DEPTH, quantified OUTSIDE the witness (D058's "∃ fuel
+    -- per depth" shape, now carried by the statement instead of a field). The
+    -- machine run does not depend on it; asking for one run that works at
+    -- EVERY depth would additionally demand value-stability of `evalᴰ`, a
+    -- theorem nothing here needs.
+    ∀ (k : ℕ) →
+    MachineRefinesObsF prog base n l ir x s alloc cl k
 
   -- `cata-correct`: the single named obligation; the record FIELDS name the
   -- parts the discharge must provide (all sharing one `enough-fuel`):
@@ -562,9 +588,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- is stuck on `halted s` until `nh` fires, so the reduction is done ONCE and
   -- every component rewrites by it, instead of each re-deriving the run.
   obs-correct-id : ∀ {A} → IRObsCorrectF (id {A})
-  obs-correct-id {A} _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =
+  obs-correct-id {A} _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =
     record
-      { traces-agree = λ k → cong (take k) (sym (denot-[] k))
+      { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
                    (place rdi-eq)
@@ -587,7 +613,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       mach-[] f = flat-events-[] (emitted n l (id {A})) ev-[] f (entry-flat 0 s alloc cl)
 
       -- Denotation side: `evalᴰ id a = returnT a` emits nothing.
-      denot-[] : ∀ k → projTrace (evalᴰ (id {A}) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (id {A}) x) k ≡ []
       denot-[] k = refl
 
       keeps-alloc : falloc fs₁ ≡ alloc
@@ -621,7 +647,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
 
       place : InputAt mIn alloc x s
             → ResultPlace A mIn (falloc fs₁)
-                (falloc fs₁) (eval (id {A}) x)
+                (falloc fs₁) (TM.valueT (evalᴰ (id {A}) x) 0)
                 (floc fs₁)
       place (in-loc il v bf eq) =
         at-loc il (valid'' il bf v) (before' il bf) (out-ptr il eq)
@@ -643,9 +669,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- result place is `unit-result` — which asserts nothing about the state,
   -- exactly because a unit result has no residence (D074).
   obs-correct-terminal : ∀ {A} → IRObsCorrectF (terminal {A})
-  obs-correct-terminal {A} _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =
+  obs-correct-terminal {A} _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =
     record
-      { traces-agree = λ k → cong (take k) (sym (denot-[] k))
+      { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 0 (entry-flat base s alloc cl) mIn alloc [] nh refl refl refl unit-result
       }
@@ -657,7 +683,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       mach-[] : ∀ f → flat-events f (emitted n l (terminal {A})) (entry-flat 0 s alloc cl) ≡ []
       mach-[] f = flat-events-[] (emitted n l (terminal {A})) ev-[] f (entry-flat 0 s alloc cl)
 
-      denot-[] : ∀ k → projTrace (evalᴰ (terminal {A}) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (terminal {A}) x) k ≡ []
       denot-[] k = refl
 
   -- ── `initial` — DISCHARGED, VACUOUSLY, and that is the honest reading.
@@ -836,12 +862,12 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- Class-B shaped rather than label-bearing.
   curry-denot-[] : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
                    {x : ⟦ A ⟧} (k : ℕ)
-                 → projTrace (evalᴰ (curry body) (inject x)) k ≡ []
+                 → projTrace (evalᴰ (curry body) x) k ≡ []
   curry-denot-[] body m k = refl
 
   obs-correct-free-heap : ∀ (r : HeapRef) → IRObsCorrectF (free-heap r)
-  obs-correct-free-heap r _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
-      { traces-agree = λ k → cong (take k) (sym (denot-[] k))
+  obs-correct-free-heap r _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =    record
+      { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl unit-result
       }
@@ -855,7 +881,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       mach-[] : ∀ f → flat-events f (emitted n l (free-heap r)) (entry-flat 0 s alloc cl) ≡ []
       mach-[] f = flat-events-[] (emitted n l (free-heap r)) ev-[] f (entry-flat 0 s alloc cl)
 
-      denot-[] : ∀ k → projTrace (evalᴰ (free-heap r) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (free-heap r) x) k ≡ []
       denot-[] k = refl
 
   -- ── `fst` / `snd` — DISCHARGED (D178). One instruction each,
@@ -873,11 +899,11 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- `instr-writes-mem load-indirect … = nothing`), so the component's validity
   -- transports by `validityWF-mem-preserved` over a register write.
   obs-correct-fst : ∀ {A B} → IRObsCorrectF (fst {A} {B})
-  obs-correct-fst {A} {B} _ n l prog base _ span mIn x s alloc cl _ nh inp = mr-of inp
+  obs-correct-fst {A} {B} _ n l prog base _ span mIn x s alloc cl _ nh inp k = mr-of inp
     where
       fs₁ = flat-exec-instr load-indirect prog (entry-flat base s alloc cl)
 
-      denot-[] : ∀ k → projTrace (evalᴰ (fst {A} {B}) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (fst {A} {B}) x) k ≡ []
       denot-[] k = refl
 
       mem-eq : ∀ loc' → readLoc (floc fs₁) loc' ≡ readLoc s loc'
@@ -891,7 +917,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- witness), never the input's — `at-loc`'s mode is fixed by the
       -- `ValidAtWF` handed to it.
       mr-of : InputAt mIn alloc x s
-            → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl
+            → MachineRefinesObsF prog base n l (fst {A} {B}) x s alloc cl k
       mr-of (in-loc pair-loc pv bf eq) =
         let d     = decomposePairWF pv
             cloc  = PairValidWF.fst-loc d
@@ -901,7 +927,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
             live' = exec-abstract-preserves-halted-WF load-indirect s alloc nh
                       (load-indirect-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq (PairValidWF.fst-ptr d))
         in record
-             { traces-agree = λ k → cong (take k) (sym (denot-[] k))
+             { traces-agree = cong (take k) (sym (denot-[] k))
              ; value-realized =
                  realized 1 fs₁ (PairValidWF.mA d) (falloc fs₁)
                    ((nh , span 0 _ refl) ∷ []) live' refl refl refl
@@ -913,11 +939,11 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       mr-of (in-unit ())
 
   obs-correct-snd : ∀ {A B} → IRObsCorrectF (snd {A} {B})
-  obs-correct-snd {A} {B} _ n l prog base _ span mIn x s alloc cl _ nh inp = mr-of inp
+  obs-correct-snd {A} {B} _ n l prog base _ span mIn x s alloc cl _ nh inp k = mr-of inp
     where
       fs₁ = flat-exec-instr load-indirect-suc prog (entry-flat base s alloc cl)
 
-      denot-[] : ∀ k → projTrace (evalᴰ (snd {A} {B}) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (snd {A} {B}) x) k ≡ []
       denot-[] k = refl
 
       mem-eq : ∀ loc' → readLoc (floc fs₁) loc' ≡ readLoc s loc'
@@ -931,7 +957,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- witness), never the input's — `at-loc`'s mode is fixed by the
       -- `ValidAtWF` handed to it.
       mr-of : InputAt mIn alloc x s
-            → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl
+            → MachineRefinesObsF prog base n l (snd {A} {B}) x s alloc cl k
       mr-of (in-loc pair-loc pv bf eq) =
         let d     = decomposePairWF pv
             cloc  = PairValidWF.snd-loc d
@@ -941,7 +967,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
             live' = exec-abstract-preserves-halted-WF load-indirect-suc s alloc nh
                       (load-indirect-suc-twf {alloc = alloc} pair-loc (SV-Ptr cloc) eq (PairValidWF.snd-ptr d))
         in record
-             { traces-agree = λ k → cong (take k) (sym (denot-[] k))
+             { traces-agree = cong (take k) (sym (denot-[] k))
              ; value-realized =
                  realized 1 fs₁ (PairValidWF.mB d) (falloc fs₁)
                    ((nh , span 0 _ refl) ∷ []) live' refl refl refl
@@ -962,8 +988,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- the layer iso: `valid-μ-wf`/`valid-ν-wf` CARRY the layer's own `ValidAtWF`
   -- (Plan 0.27 Option 3), so destructing one yields what `at-loc` wants.
   obs-correct-out-μ : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
-  obs-correct-out-μ {F} wf _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
-      { traces-agree = λ k → cong (take k) (sym (denot-[] k))
+  obs-correct-out-μ {F} wf _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =    record
+      { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
                    (place rdi-eq)
@@ -980,7 +1006,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       mach-[] : ∀ f → flat-events f (emitted n l (out-μ wf)) (entry-flat 0 s alloc cl) ≡ []
       mach-[] f = flat-events-[] (emitted n l (out-μ wf)) ev-[] f (entry-flat 0 s alloc cl)
 
-      denot-[] : ∀ k → projTrace (evalᴰ (out-μ wf) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (out-μ wf) x) k ≡ []
       denot-[] k = refl
 
       keeps-alloc : falloc fs₁ ≡ alloc
@@ -997,9 +1023,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       valid'' : ∀ (il : ValueLocation FS) → BeforeFrontier alloc il
               → ValidAtWF mIn alloc x il s
               → ValidAtWF mIn (falloc fs₁)
-                  (eval (out-μ wf) x) il
+                  (TM.valueT (evalᴰ (out-μ wf) x) 0) il
                   (floc fs₁)
-      valid'' il bf v = subst (λ a → ValidAtWF mIn a (eval (out-μ wf) x) il
+      valid'' il bf v = subst (λ a → ValidAtWF mIn a (TM.valueT (evalᴰ (out-μ wf) x) 0) il
                                (floc fs₁))
                       (sym keeps-alloc) (μ-layer-iso wf x (valid' il bf v))
 
@@ -1015,75 +1041,38 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
 
       place : InputAt mIn alloc x s
             → ResultPlace (⟦ F ⟧TI (μ-type F)) mIn (falloc fs₁)
-                (falloc fs₁) (eval (out-μ wf) x)
+                (falloc fs₁) (TM.valueT (evalᴰ (out-μ wf) x) 0)
                 (floc fs₁)
       place (in-loc il v bf eq) =
         at-loc il (valid'' il bf v) (before' il bf) (out-ptr il eq)
                   (valid'' il bf v) (before' il bf)
       place (in-reg () _)
       place (in-unit ())
+
+  -- ── `Out` — DISCHARGED BY ABSURDITY, and the absurdity is the honest
+  -- content. A ν is now a KLEISLI value: forcing a layer is a computation, so
+  -- `evalᴰ (Out wf) x = forceᵈ x` may EMIT. The machine's `Out` is one
+  -- `mov-to-output`, which emits nothing — so if a ν could reach this
+  -- instruction, the obligation would be FALSE, not provable.
+  --
+  -- It cannot. Class G: the emitter produces NO instructions for `Ana`/`in-ν`,
+  -- so no ν value is ever built in memory, and `ValidAtWF` has no ν
+  -- constructor to witness one (`ν-not-resident`). Both other residences are
+  -- refuted outright: a ν does not fit in a register and is not `Unit`.
+  --
+  -- This is where the audit lands: the old proof looked like a theorem about
+  -- `Out` and was a theorem about `inject x`, a ν that could not emit. When
+  -- `Ana` gets an emitter, THIS case is the one that must be reproved for real
+  -- — against a machine that forces layers, not one that moves a pointer.
+  ν-input-absurd : ∀ {F mIn alloc s} {x : DT.⟦ ν-type F ⟧ᴰᴵ}
+                 → InputAt mIn alloc x s → ⊥
+  ν-input-absurd (in-loc _ v _ _) = ν-not-resident v
+  ν-input-absurd (in-reg () _)
+  ν-input-absurd (in-unit ())
 
   obs-correct-Out : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
-  obs-correct-Out {F} wf _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
-      { traces-agree = λ k → cong (take k) (sym (denot-[] k))
-      ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
-                   (place rdi-eq)
-      }
-    where
-      regs' = writeReg (regs s) Output (readReg (regs s) Input1)
-      fs₁   = flat-exec-instr mov-to-output prog (entry-flat base s alloc cl)
-
-
-      ev-[] : ∀ pc i → fetch (emitted n l (Out wf)) pc ≡ just i → ∀ fs → event-of i fs ≡ []
-      ev-[] zero    .mov-to-output refl fs = refl
-      ev-[] (suc n) i              ()   fs
-
-      mach-[] : ∀ f → flat-events f (emitted n l (Out wf)) (entry-flat 0 s alloc cl) ≡ []
-      mach-[] f = flat-events-[] (emitted n l (Out wf)) ev-[] f (entry-flat 0 s alloc cl)
-
-      denot-[] : ∀ k → projTrace (evalᴰ (Out wf) (inject x)) k ≡ []
-      denot-[] k = refl
-
-      keeps-alloc : falloc fs₁ ≡ alloc
-      keeps-alloc = refl
-
-      mem-eq : ∀ loc' → readLoc (floc fs₁) loc' ≡ readLoc s loc'
-      mem-eq loc' = reg-write-readLoc s regs' (halted s) loc'
-
-      valid' : ∀ (il : ValueLocation FS) → BeforeFrontier alloc il
-             → ValidAtWF mIn alloc x il s
-             → ValidAtWF mIn alloc x il (floc fs₁)
-      valid' il bf v = validityWF-mem-preserved x il s _ bf (λ loc' _ → mem-eq loc') v
-
-      valid'' : ∀ (il : ValueLocation FS) → BeforeFrontier alloc il
-              → ValidAtWF mIn alloc x il s
-              → ValidAtWF mIn (falloc fs₁)
-                  (eval (Out wf) x) il
-                  (floc fs₁)
-      valid'' il bf v = subst (λ a → ValidAtWF mIn a (eval (Out wf) x) il
-                               (floc fs₁))
-                      (sym keeps-alloc) (ν-layer-iso wf x (valid' il bf v))
-
-      out-ptr : ∀ (il : ValueLocation FS) → readReg (regs s) Input1 ≡ SV-Ptr il
-              → readReg (regs (floc fs₁)) Output
-                ≡ SV-Ptr il
-      out-ptr il eq =
-        trans (writeReg-same (regs s) Output (readReg (regs s) Input1)) eq
-
-      before' : ∀ (il : ValueLocation FS) → BeforeFrontier alloc il
-              → BeforeFrontier (falloc fs₁) il
-      before' il bf = bf
-
-      place : InputAt mIn alloc x s
-            → ResultPlace (⟦ F ⟧TI (ν-type F)) mIn (falloc fs₁)
-                (falloc fs₁) (eval (Out wf) x)
-                (floc fs₁)
-      place (in-loc il v bf eq) =
-        at-loc il (valid'' il bf v) (before' il bf) (out-ptr il eq)
-                  (valid'' il bf v) (before' il bf)
-      place (in-reg () _)
-      place (in-unit ())
+  obs-correct-Out {F} wf _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =
+    ⊥-elim (ν-input-absurd rdi-eq)
 
   -- ── `const` — DISCHARGED, and it is the first REGISTER-resident result of
   -- class A. `emitted n l (const fit v) = instr-load-const fitˢ v ∷ []`, whose
@@ -1095,8 +1084,8 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- bodies are identical.
   obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ ℤ , Decimal ⟧-baseI A)
                     → IRObsCorrectF (const fit v)
-  obs-correct-const fits-int v _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
-      { traces-agree = λ k → cong (take k) (sym (denot-[] k))
+  obs-correct-const fits-int v _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =    record
+      { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
                    (at-reg fits-int out-lit)
@@ -1113,21 +1102,21 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       mach-[] : ∀ f → flat-events f (emitted n l (const fits-int v)) (entry-flat 0 s alloc cl) ≡ []
       mach-[] f = flat-events-[] (emitted n l (const fits-int v)) ev-[] f (entry-flat 0 s alloc cl)
 
-      denot-[] : ∀ k → projTrace (evalᴰ (const fits-int v) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (const fits-int v) x) k ≡ []
       denot-[] k = refl
 
       keeps-alloc : falloc fs₁ ≡ alloc
       keeps-alloc = refl
 
       out-lit : readReg (regs (floc fs₁)) Output
-              ≡ prim-sv fits-int (eval (const fits-int v) x)
+              ≡ prim-sv fits-int (TM.valueT (evalᴰ (const fits-int v) x) 0)
       -- D115: the machine MATERIALISES the literal, exactly as the float
       -- case below does — `lit-value` is two's complement at this width.
       out-lit =
         writeReg-same (regs s) Output (SV-Lit fits-intˢ (AbstractExec.lit-value {FS} fits-intˢ v))
 
-  obs-correct-const fits-float v _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq =    record
-      { traces-agree = λ k → cong (take k) (sym (denot-[] k))
+  obs-correct-const fits-float v _ n l prog base _ span mIn x s alloc cl _ nh rdi-eq k =    record
+      { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
                    (at-reg fits-float out-lit)
@@ -1144,14 +1133,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       mach-[] : ∀ f → flat-events f (emitted n l (const fits-float v)) (entry-flat 0 s alloc cl) ≡ []
       mach-[] f = flat-events-[] (emitted n l (const fits-float v)) ev-[] f (entry-flat 0 s alloc cl)
 
-      denot-[] : ∀ k → projTrace (evalᴰ (const fits-float v) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (const fits-float v) x) k ≡ []
       denot-[] k = refl
 
       keeps-alloc : falloc fs₁ ≡ alloc
       keeps-alloc = refl
 
       out-lit : readReg (regs (floc fs₁)) Output
-              ≡ prim-sv fits-float (eval (const fits-float v) x)
+              ≡ prim-sv fits-float (TM.valueT (evalᴰ (const fits-float v) x) 0)
       -- Plan 0.73 (D113): the machine MATERIALISES the literal as it executes —
       -- `exec-abstract` writes `round (float-format FS) v`, not the payload.
       -- The denotation says the same because `eval` above is at the same
@@ -1323,7 +1312,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- `pure-sigop-output si s = SV-Lit fitB (semM si (readTyped A input-loc s))`
   -- (SMCore), and `readTyped-adequate` (ReadTypedAdequate) turns the `ValidAtWF`
   -- hypothesis into `readTyped A input-loc s ≡ just (subst id (coh A) x)`; with
-  -- `eval (SigOp si) x = subst (sym (coh B)) (semM si (subst id (coh A) x))`
+  -- `TM.valueT (evalᴰ (SigOp si) x) 0 = subst (sym (coh B)) (semM si (subst id (coh A) x))`
   -- (CCC.Eval:83) the two sides coincide modulo the `coh` transports (which are
   -- `refl` on the fits-in-reg base types). Discharge = the next step; stated
   -- here so the apex chain is verified end-to-end against ONE named equation.
@@ -1332,7 +1321,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- writes `pure-sigop-output si s = SV-Lit fit (semM si (readTyped A input-loc s))`
   -- (SMCore, Plan 0.54 A4) and `readTyped-adequate` turns the `ValidAtWF`
   -- hypothesis into `readTyped A input-loc s ≡ just (subst id (coh A) x)`, which
-  -- with `eval (SigOp si) x = subst (sym (coh B)) (semM si (subst id (coh A) x))`
+  -- with `TM.valueT (evalᴰ (SigOp si) x) 0 = subst (sym (coh B)) (semM si (subst id (coh A) x))`
   -- (CCC.Eval:83) makes the two sides equal. Verified as far as
   --   `pure-sigop-output si s | just fits-intˢ | sv-as-loc (input1 (regs s))`
   -- (i.e. the codomain and input-pointer dispatches both reduce). The residual is
@@ -1383,18 +1372,18 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       → readReg (regs s) Input1 ≡ prim-sv fit x
       → halted s ≡ false
       → readReg (regs (proj₁ (exec-abstract (instr-sigop si) s alloc))) Output
-          ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
+          ≡ prim-sv (fits-erase fitness) (TM.valueT (evalᴰ (SigOp si) x) 0)
   pure-sigop-value-reg n l si fits-intˢ r-int pure-eq x s alloc fits-int rdi-eq nh
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
     where
-      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (eval (SigOp si) x)
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (TM.valueT (evalᴰ (SigOp si) x) 0)
       step2 rewrite cong sv-as-loc rdi-eq | cong (readReg-typed Intˢ) rdi-eq = refl
   pure-sigop-value-reg n l si fits-floatˢ r-int pure-eq x s alloc fits-int rdi-eq nh
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
     where
-      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (eval (SigOp si) x)
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (TM.valueT (evalᴰ (SigOp si) x) 0)
       step2 rewrite cong sv-as-loc rdi-eq | cong (readReg-typed Intˢ) rdi-eq = refl
   pure-sigop-value-reg n l si fitness r-unit       pure-eq x s alloc () rdi-eq nh
   pure-sigop-value-reg n l si fitness (r-pair _ _) pure-eq x s alloc () rdi-eq nh
@@ -1418,25 +1407,25 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       → ∀ {mIn} (x : ⟦ ⌊ A ⌋ ⟧)
           (s : LocState FS) (alloc : AllocState {FS})
       → halted s ≡ false
-      → InputAt mIn alloc x s
+      → InputAt {⌊ A ⌋} mIn alloc x s
       → readReg (regs (proj₁ (exec-abstract (instr-sigop si) s alloc))) Output
-          ≡ prim-sv (fits-erase fitness) (eval (SigOp si) x)
+          ≡ prim-sv (fits-erase fitness) (TM.valueT (evalᴰ (SigOp si) x) 0)
   pure-sigop-value-correct n l si fits-intˢ rA pure-eq x s alloc nh (in-reg fit rdi-eq) =
     pure-sigop-value-reg n l si fits-intˢ rA pure-eq x s alloc fit rdi-eq nh
   pure-sigop-value-correct n l si fits-floatˢ rA pure-eq x s alloc nh (in-reg fit rdi-eq) =
     pure-sigop-value-reg n l si fits-floatˢ rA pure-eq x s alloc fit rdi-eq nh
-  pure-sigop-value-correct n l si fits-intˢ rA pure-eq x s alloc nh (in-loc input-loc valid _ rdi-eq)
+  pure-sigop-value-correct {A} n l si fits-intˢ rA pure-eq x s alloc nh (in-loc input-loc valid _ rdi-eq)
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
     where
-      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (eval (SigOp si) x)
-      step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate rA valid = refl
-  pure-sigop-value-correct n l si fits-floatˢ rA pure-eq x s alloc nh (in-loc input-loc valid _ rdi-eq)
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-int (TM.valueT (evalᴰ (SigOp si) x) 0)
+      step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate {A = A} rA {v = x} valid = refl
+  pure-sigop-value-correct {A} n l si fits-floatˢ rA pure-eq x s alloc nh (in-loc input-loc valid _ rdi-eq)
     rewrite nh | sigop-halts-false si pure-eq s =
     trans (cong (λ e → exec-sigop-output-of e si s) pure-eq) step2
     where
-      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (eval (SigOp si) x)
-      step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate rA valid = refl
+      step2 : exec-sigop-output-of Pure si s ≡ prim-sv fits-float (TM.valueT (evalᴰ (SigOp si) x) 0)
+      step2 rewrite sv-loc-of s input-loc rdi-eq | readTyped-adequate {A = A} rA {v = x} valid = refl
   -- D074: the unit-input route. `r-unit` pins `A ≡ Unitˢ`, so `⌊A⌋ ≡ Unit`
   -- holds by `refl` and the other two readable shapes refute the equality.
   pure-sigop-value-correct n l si fits-intˢ r-unit pure-eq x s alloc nh (in-unit refl)
@@ -1454,9 +1443,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
     → effect si ≡ Pure → IRObsCorrectF (SigOp si)
   pure-obs-correct-sigop {A} {B} si fitness rA pure-eq
-    _ n l prog base _ span mIn x s alloc cl _ not-halted rdi-eq =
+    _ n l prog base _ span mIn x s alloc cl _ not-halted rdi-eq k =
     record
-      { traces-agree = λ k →
+      { traces-agree =
           trans (cong (take k)
                   (cong (_++ []) (ev-[] 0 (instr-sigop si) refl
                                     (entry-flat base s alloc cl))))
@@ -1485,7 +1474,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
 
 
       -- Denotation side: a `Pure` SigOp emits nothing (`emit-D … ≡ []`).
-      denot-[] : ∀ k → projTrace (evalᴰ (SigOp si) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (SigOp si) x) k ≡ []
       denot-[] k rewrite pure-eq = refl
 
       -- The single `instr-sigop` step leaves the allocator untouched.
@@ -1573,9 +1562,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- obligations, read off the goal rather than guessed at.
   ------------------------------------------------------------------------
   obs-correct-inl : ∀ {A B} → IRObsCorrectF (inl {A} {B})
-  obs-correct-inl {A} {B} _ n l prog base _ span mIn x s alloc cl n≤ nh inp =
+  obs-correct-inl {A} {B} _ n l prog base _ span mIn x s alloc cl n≤ nh inp k =
     record
-      { traces-agree   = λ k → cong (take k) (sym (denot-[] k))
+      { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 10 fs10 Heap (falloc fs10) run nh10 refl refl refl place
       }
@@ -1598,7 +1587,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       fs9  = flat-exec-instr store-indirect-suc         prog fs8
       fs10 = flat-exec-instr (load-from-slot sum-stash) prog fs9
 
-      denot-[] : ∀ k → projTrace (evalᴰ (inl {A} {B}) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (inl {A} {B}) x) k ≡ []
       denot-[] k = refl
 
       -- The sum block's address, as `alloc-impl` hands it out at fs2.
@@ -1872,7 +1861,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- a top-level helper over a with-block.
       place-of : InputAt mIn alloc x s
                → ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
-                             (eval (inl {A} {B}) x) (floc fs10)
+                             (TM.valueT (evalᴰ (inl {A} {B}) x) k) (floc fs10)
       -- A register-resident payload needs NO payload location and NO payload
       -- validity — stage F's whole point. Fully proved.
       place-of (in-reg fit eq) =
@@ -1911,19 +1900,19 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                  (inl-mem-pres n prog base s alloc cl n≤) valid)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
-                   → ValidAtWF Heap (falloc fs10) (eval (inl {A} {B}) x) sum-loc (floc fs10)
+                   → ValidAtWF Heap (falloc fs10) (TM.valueT (evalᴰ (inl {A} {B}) x) 0) sum-loc (floc fs10)
           mk-valid e =
             valid-inl-wf tt tag-fs10 (trans pay-fs10 (cong just (pv≡ptr e)))
               (bf-advance bf) before-suc valid'
 
       place : ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
-                          (eval (inl {A} {B}) x) (floc fs10)
+                          (TM.valueT (evalᴰ (inl {A} {B}) x) k) (floc fs10)
       place = place-of inp
 
   obs-correct-inr : ∀ {A B} → IRObsCorrectF (inr {A} {B})
-  obs-correct-inr {A} {B} _ n l prog base _ span mIn x s alloc cl n≤ nh inp =
+  obs-correct-inr {A} {B} _ n l prog base _ span mIn x s alloc cl n≤ nh inp k =
     record
-      { traces-agree   = λ k → cong (take k) (sym (denot-[] k))
+      { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 10 fs10 Heap (falloc fs10) run nh10 refl refl refl place
       }
@@ -1946,7 +1935,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       fs9  = flat-exec-instr store-indirect-suc         prog fs8
       fs10 = flat-exec-instr (load-from-slot sum-stash) prog fs9
 
-      denot-[] : ∀ k → projTrace (evalᴰ (inr {A} {B}) (inject x)) k ≡ []
+      denot-[] : ∀ k → projTrace (evalᴰ (inr {A} {B}) x) k ≡ []
       denot-[] k = refl
 
       -- The sum block's address, as `alloc-impl` hands it out at fs2.
@@ -2220,7 +2209,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- a top-level helper over a with-block.
       place-of : InputAt mIn alloc x s
                → ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
-                             (eval (inr {A} {B}) x) (floc fs10)
+                             (TM.valueT (evalᴰ (inr {A} {B}) x) k) (floc fs10)
       -- A register-resident payload needs NO payload location and NO payload
       -- validity — stage F's whole point. Fully proved.
       place-of (in-reg fit eq) =
@@ -2259,13 +2248,13 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                  (inr-mem-pres n prog base s alloc cl n≤) valid)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
-                   → ValidAtWF Heap (falloc fs10) (eval (inr {A} {B}) x) sum-loc (floc fs10)
+                   → ValidAtWF Heap (falloc fs10) (TM.valueT (evalᴰ (inr {A} {B}) x) 0) sum-loc (floc fs10)
           mk-valid e =
             valid-inr-wf tt tag-fs10 (trans pay-fs10 (cong just (pv≡ptr e)))
               (bf-advance bf) before-suc valid'
 
       place : ResultPlace (A IRTy.+ B) Heap (falloc fs10) (falloc fs10)
-                          (eval (inr {A} {B}) x) (floc fs10)
+                          (TM.valueT (evalᴰ (inr {A} {B}) x) k) (floc fs10)
       place = place-of inp
 
   obs-correct-sigop : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
@@ -2440,14 +2429,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- ══════════════════════════════════════════════════════════════════════
   comp-value-realized-of :
     ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
-      (prog : AbstractTrace) (base n l : ℕ)
+      (prog : AbstractTrace) (base n l k : ℕ)
     → ir-size g < program-bound
     → next-slot alloc ≤ n
     → AllSlotStable prog
     → SpanAt prog base (emitted n l (g ∘ f))
-    → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl
-    → ValueRealized prog base n l (g ∘ f) x s alloc cl
-  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l szg ns ss span ihg mf =
+    → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
+    → ValueRealized prog base n l (g ∘ f) x s alloc cl k
+  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k szg ns ss span ihg mf =
     go (MachineRefinesObsF.value-realized mf)
     where
       module VR = ValueRealized
@@ -2471,8 +2460,15 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                           (sym (+-identityʳ (length ft))))
                     (fetch-++-right ft (mov-to-input ∷ gt) 0))
 
-      go : ValueRealized prog base n l f x s alloc cl
-         → ValueRealized prog base n l (g ∘ f) x s alloc cl
+      -- D180: the budget `g` observes is what `f` LEFT of the composite's — the
+      -- same arithmetic `_>>=T_` does (`n ∸ length (proj₁ (m n))`), so the
+      -- composite's value and `g`'s coincide DEFINITIONALLY and no transport
+      -- is needed at the seam.
+      kg : ℕ
+      kg = k ∸ length (projTrace (evalᴰ f x) k)
+
+      go : ValueRealized prog base n l f x s alloc cl k
+         → ValueRealized prog base n l (g ∘ f) x s alloc cl k
       go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF) =
         realized (kf + suc (VR.steps vg)) (VR.settle vg)
                  (VR.out-mode vg) (VR.cont-alloc vg)
@@ -2502,14 +2498,14 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
           memEq : ∀ loc → readLoc (floc fsM) loc ≡ readLoc (floc fsF) loc
           memEq loc = reg-write-readLoc (floc fsF) _ (halted (floc fsF)) loc
 
-          inputM : InputAt mOutf (falloc fsM) (eval f x) (floc fsM)
+          inputM : InputAt mOutf (falloc fsM) (TM.valueT (evalᴰ f x) k) (floc fsM)
           inputM = result→input placeF movEq memEq
 
-          vg : ValueRealized prog base' n1 l1 g (eval f x)
-                             (floc fsM) (falloc fsM) (fclosure fsM)
+          vg : ValueRealized prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
+                             (floc fsM) (falloc fsM) (fclosure fsM) kg
           vg = MachineRefinesObsF.value-realized
-                 (ihg szg n1 l1 prog base' ss span-g mOutf (eval f x)
-                      (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM)
+                 (ihg szg n1 l1 prog base' ss span-g mOutf (TM.valueT (evalᴰ f x) k)
+                      (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM kg)
 
           movStep : FlatSteps prog 1 fsF fsM
           movStep = (liveF , trans (cong (fetch prog) endF) mov-in-prog) ∷ []
@@ -2548,34 +2544,33 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     -- piece of work.
     comp-traces-agree :
       ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
-        (prog : AbstractTrace) (base n l : ℕ)
+        (prog : AbstractTrace) (base n l k : ℕ)
         (szg : ir-size g < program-bound) (ns : next-slot alloc ≤ n)
         (ss : AllSlotStable prog) (span : SpanAt prog base (emitted n l (g ∘ f)))
-        (ihg : IRObsCorrectF g) (mf : MachineRefinesObsF prog base n l f x s alloc cl)
-      → ∀ (k : ℕ) →
-          take k (chain-events (ValueRealized.run
-                    (comp-value-realized-of prog base n l szg ns ss span ihg mf)))
-            ≡ take k (projTrace (evalᴰ (g ∘ f) (inject x)) k)
+        (ihg : IRObsCorrectF g) (mf : MachineRefinesObsF prog base n l f x s alloc cl k)
+      → take k (chain-events (ValueRealized.run
+                  (comp-value-realized-of prog base n l k szg ns ss span ihg mf)))
+          ≡ take k (projTrace (evalᴰ (g ∘ f) x) k)
 
   comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
-                (prog : AbstractTrace) (base n l : ℕ)
+                (prog : AbstractTrace) (base n l k : ℕ)
             → ir-size g < program-bound
             → next-slot alloc ≤ n
             → AllSlotStable prog
             → SpanAt prog base (emitted n l (g ∘ f))
-            → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl
-            → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl
-  comp-step prog base n l szg ns ss span ihg mf = record
-    { value-realized = comp-value-realized-of prog base n l szg ns ss span ihg mf
-    ; traces-agree   = comp-traces-agree      prog base n l szg ns ss span ihg mf
+            → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
+            → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
+  comp-step prog base n l k szg ns ss span ihg mf = record
+    { value-realized = comp-value-realized-of prog base n l k szg ns ss span ihg mf
+    ; traces-agree   = comp-traces-agree      prog base n l k szg ns ss span ihg mf
     }
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
-  comp-obs-correct {g = g} {f} ihg ihf sz n l prog base ss span mIn x s alloc cl ns nh inp =
-    comp-step prog base n l (comp-size-g {g = g} {f} sz) ns ss span ihg
+  comp-obs-correct {g = g} {f} ihg ihf sz n l prog base ss span mIn x s alloc cl ns nh inp k =
+    comp-step prog base n l k (comp-size-g {g = g} {f} sz) ns ss span ihg
       (ihf (comp-size-f {g = g} {f} sz) n l prog base ss
-           (comp-span-f g f prog base n l span) mIn x s alloc cl ns nh inp)
+           (comp-span-f g f prog base n l span) mIn x s alloc cl ns nh inp k)
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a

@@ -30,7 +30,7 @@ open import Data.List using (List; []; _++_)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.Unit using (tt)
 open import Data.Product using (proj₁; proj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Unit; _⇒[_]_; mk-kind; Many; eff)
 open import Once.IR using (IR)
@@ -46,6 +46,4 @@ EffUU = Unit ⇒[ mk-kind Many eff ] Unit
 wrap-trace : ∀ (X : IR ⌊ Unit ⌋ ⌊ EffUU ⌋) (n : ℕ) →
   projTrace (evalᴰ fmt (C.wrapMainAsEntry X) tt) n
   ≡ projTrace (evalᴰ fmt X tt >>=T (λ clo → clo tt)) n
-wrap-trace X n =
-  cong (_++ proj₁ (proj₂ (evalᴰ fmt X tt n) tt n))
-       (++-identityʳ (proj₁ (evalᴰ fmt X tt n)))
+wrap-trace X n rewrite ++-identityʳ (proj₁ (evalᴰ fmt X tt n)) = refl

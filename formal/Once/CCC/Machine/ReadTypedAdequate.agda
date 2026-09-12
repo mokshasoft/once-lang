@@ -35,7 +35,8 @@ open import Function using (id)
 
 open import Once.Type using (Type; Unit; Int; _*_)
 open import Once.IRTy using (⌊_⌋)
-open import Once.Semantics.Machine using (⟦_⟧; ⟦_⟧ᴵ; coh)
+open import Once.Semantics.Machine using (⟦_⟧; coh)
+open import Once.Denotation.ValueDomain using (forget) renaming (⟦_⟧ᴰᴵ to ⟦_⟧ᴵ)
 open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}
 open MemOps {FS}
@@ -71,9 +72,14 @@ subst-×-cong₂ refl refl a b = refl
 -- (`v` is the IRTy value; `subst id (coh A)` carries it to the `Type` domain).
 -- Base cases: `coh Unit`/`coh Int` reduce to `refl` on the refined type. Product:
 -- the transport splits (`subst-×-cong₂`) to match the two recursive reads.
-readTyped-adequate : ∀ {A} → Readable A → ∀ {loc s m alloc} {v : ⟦ ⌊ A ⌋ ⟧ᴵ}
+-- D180: the value is DENOTATIONAL, so it is `forget`ten before it crosses the
+-- seam — which is exactly what `evalᴰ (SigOp si)` does with its own input
+-- (`subst id (coh A) (forget a)`, DenotTrace:145). Stating adequacy in that
+-- same form is what lets the consumer's `rewrite` close by `refl`; a
+-- separately-invented coherence would have needed a bridge lemma to `coh`.
+readTyped-adequate : ∀ {A} (r : Readable A) → ∀ {loc s m alloc} {v : ⟦ ⌊ A ⌋ ⟧ᴵ}
                    → ValidAtWF m alloc {⌊ A ⌋} v loc s
-                   → readTyped A loc s ≡ just (subst id (coh A) v)
+                   → readTyped A loc s ≡ just (subst id (coh A) (forget v))
 readTyped-adequate r-unit valid-unit-wf = refl
 readTyped-adequate r-int (valid-int-wf bf rl) rewrite rl = refl
 readTyped-adequate (r-pair rA rB)

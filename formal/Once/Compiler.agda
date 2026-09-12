@@ -58,7 +58,7 @@ open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Adequacy
-open import Once.Denotation.Behavior using (Source; Behavior)
+open import Once.Denotation.Behavior using (Source; Behavior; at)
 open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- The driver is where the per-arch CPU semantics are INJECTED (D054
 -- wired-not-imported). Importing `Once.Adequacy.CPU` here pulls in the
@@ -109,7 +109,7 @@ once-compiler = record
   ; exec     = VC.exec
   -- Behavioural equivalence = pointwise / up-to-`n` SigOp-trace prefix
   -- equality (Plan 0.44).
-  ; _≈_      = λ b₁ b₂ → ∀ (n : ℕ) → b₁ n ≡ b₂ n
+  ; _≈_      = λ b₁ b₂ → ∀ (n : ℕ) → at b₁ n ≡ at b₂ n
   -- Plan 0.48: `compile` carries the optimizer flag.
   ; compile  = VC.compile
   -- Plan 0.49: the two-conjunct (sound+trace / complete) relational claim.

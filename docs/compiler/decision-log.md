@@ -12296,3 +12296,95 @@ after the language stops having one.
 So the obstacle is not a proof gap to be closed where it appears; it is an
 UNFINISHED MIGRATION showing through. The order is: finish 0.86 for
 `inl`/`inr`/`curry`, then discharge.
+
+## D179 — `Behavior` IS A RECORD: the three laws travel with the family (2026-09-12)
+
+`Behavior = ℕ → List SigOpEvent` said "the first `n` events" in its header and
+nothing in its type. Plan 0.90 makes the sentence the type:
+
+```agda
+record Behavior : Set where
+  field
+    at        : ℕ → List SigOpEvent
+    extends   : ∀ n → ∃[ rest ] (at (suc n) ≡ at n ++ rest)
+    bounded   : ∀ n → length (at n) ≤ n
+    saturates : ∀ n → length (at n) < n → at (suc n) ≡ at n
+```
+
+**Why `saturates` is a field and not a convenience.** With `extends` and
+`bounded` alone, `at₁ n` = "the first `min n ∣L∣` events" and `at₂ n` = "the
+first `min (n/2) ∣L∣`" are both admissible families over the SAME trace `L`,
+and they differ at `n = 1`. Since `_≋_` is pointwise, the two would count as
+DIFFERENT behaviours — so `≋` would have been comparing production RATE as well
+as trace, and a compiler could be observationally correct and still fail it for
+reaching its third event one index later than the meaning. With `saturates`,
+`at-stable` (`n ≤ m → at b n ≡ take n (at b m)`) pins one family per trace, so
+pointwise equality IS trace equality: the inductive stand-in for bisimilarity
+the header always claimed, now earned. Still no co-data, still no completion.
+
+**What it costs a producer.** Exactly a `PrefixFamily` (TraceMonad) — `bnd`,
+`sat`, `coh` — which is what `evalᴰ-good` (DenotPrefix) already proves for every
+IR. So the IR meaning `⟦_⟧IR` pays nothing new; it just stops discarding the
+proof it already had. The `take n` cap is GONE from `at`: `bounded` says the
+prefix is already that short, so the cap only obscured which family it was.
+
+**Three producers, three different sources for the laws.**
+
+1. `⟦_⟧IR` (SourceTrace) — PROVES them, from `evalᴰ-good`.
+2. `⟦_⟧ˢ` (Compile, surface) and `flat-trace-of` (FlatFromObs, abstract
+   machine) — BORROW them, via `behavior-by`: a family pointwise equal to a
+   behaviour is a behaviour. Borrowing is not weaker than proving; the equality
+   is the same theorem the compiler's claim is stated with (`sd-eq`,
+   `ir-flat-correct-fam`). Neither side needs a prefix-family induction of its
+   own.
+3. `meaningᵈ` (MainMeaning, direct) and `run-trace` (RunTraceCore, concrete
+   machine) — ASSUME them, as two named residuals:
+   * `mainMeaningᵈ-pf` — the `⟦_⟧ᶜ` analogue of `evalᴰ-good`. Deferred proof:
+     the same induction over typed derivations discharges it. Stated about THE
+     MEANING CHAIN, never about an arbitrary `MClo` (which would be false — a
+     bare `ℕ → List × X` may be any family at all).
+   * `run-trace-extends` / `run-trace-saturates` — what "`stepBudget` is
+     adequate" MEANS: a deeper observation only adds events, and a family that
+     has not filled its budget is finished. Same class and same boundary as the
+     abstract `stepBudget` itself; provable the moment it is pinned.
+
+Intermediates stay plain families (`runMainˢ`, `runMainᵈ`, `flat-trace-fam`):
+every consumer compares them pointwise against a real `Behavior`, so obliging
+each to rebuild the laws for a closure it only passes through would be work
+with no reader.
+
+## D180 — THE MACHINE OBLIGATION IS INDEXED BY OBSERVATION DEPTH (2026-09-12)
+
+`ValueRealized` gained the denotational value (`TM.valueT (evalᴰ ir x) k`
+instead of the pure `eval ir x` — one semantics on both halves at last), and
+that immediately raised the question the pure form could not: AT WHICH BUDGET
+is the value realized?
+
+**An existential field does not compose.** With `obs-budget : ℕ` chosen by the
+producer, `g ∘ f` is stuck: `evalᴰ (g ∘ f) x = evalᴰ f x >>=T evalᴰ g` spends
+`f`'s events out of the composite's budget, so `g` must be applied to the value
+`f` realizes AT THE COMPOSITE's depth — and a producer that picked its own
+cannot be asked for that one. Recovering it would need value-stability of
+`evalᴰ` (`valueT m j ≡ valueT m k`), a real theorem nothing else needs.
+
+**So the depth moves OUTSIDE the witness.** `IRObsCorrectF ir` now ends
+`… → ∀ (k : ℕ) → MachineRefinesObsF … k`, and the composition threads
+`kg = k ∸ length (projTrace (evalᴰ f x) k)` — the same arithmetic `_>>=T_`
+does, so the composite's value and `g`'s coincide DEFINITIONALLY and there is
+no transport at the seam. This is also D058's original shape ("∃ fuel per
+observation depth"), carried by the statement instead of by an ∃ inside it.
+
+**`Out` fell out of the re-index, and the fall is the point.** A ν is now a
+Kleisli value: forcing a layer is a computation, so `evalᴰ (Out wf) x` may
+EMIT, while the machine's `Out` is one `mov-to-output` that emits nothing. If a
+ν could reach that instruction the obligation would be FALSE. It cannot:
+Class G emits NO instructions for `Ana`/`in-ν`, so no ν is ever built, and
+`valid-ν-wf` — which existed only because the PURE domain made a ν a
+first-order value with an already-available layer — is deleted. What replaces
+it is its negation, `ν-not-resident`, and `obs-correct-Out` is discharged by
+`⊥-elim`.
+
+That is the audit's finding made mechanical: the old proof looked like a
+theorem about `Out` and was a theorem about `inject x`, a ν that could not
+emit. When `Ana` gets an emitter, THIS case is the one to reprove — against a
+machine that forces layers, not one that moves a pointer.

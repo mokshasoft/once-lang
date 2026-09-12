@@ -15,7 +15,7 @@ open import Data.List using (List; [])
 open import Data.Maybe using (Maybe)
 open import Data.String using (String)
 
-open import Once.Denotation.Behavior using (Behavior)
+open import Once.Denotation.Behavior using (Behavior; silent)
 
 -- Bytes
 Byte : Set
@@ -49,5 +49,5 @@ record ArchSemantics : Set₁ where
 
   exec-bytes : List Byte → Behavior
   exec-bytes bytes with decode bytes
-  ... | Maybe.nothing  = λ _ → []
+  ... | Maybe.nothing  = silent
   ... | Maybe.just prog = run-trace prog initialState

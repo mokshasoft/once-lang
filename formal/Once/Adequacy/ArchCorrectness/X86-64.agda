@@ -64,7 +64,7 @@ import Once.CCC.Target.X86-64.Semantics as X
 import Once.CCC.Target.X86-64.Syntax as XS
 open import Once.CCC.Label using (LabelId; thunk)
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
-open import Once.Denotation.Behavior using (Behavior)
+open import Once.Denotation.Behavior using (Behavior; at; silent)
 open import Once.Adequacy.CPU using (x86-64; arch-semantics)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
@@ -142,7 +142,7 @@ as64 = arch-semantics x86-64
 ------------------------------------------------------------------------
 
 conc-trace : Maybe (IR Unit Unit) → Behavior
-conc-trace nothing   _ = []
+conc-trace nothing     = silent
 conc-trace (just ir) =
   -- THE REAL EMITTER: `Once.Target.X86-64` lowers via `compile-trace-cnt`
   -- (which threads the label counter through case/loop), not the plain fold.
@@ -169,7 +169,7 @@ postulate
     -- its arith block emitted. `ld`'s rejection; nothing stated it before.
     LabelsResolvable x86-64 m →
     SymbolsResolvable x86-64 m →
-    ∀ (n : ℕ) → FFOx.asm-sem asm n ≡ conc-trace (moduleToIR-emitted m) n
+    ∀ (n : ℕ) → at (FFOx.asm-sem asm) n ≡ at (conc-trace (moduleToIR-emitted m)) n
 
 -- ── (B) THE SIMULATION, WIRED to the ConcFlatSim assembly.
 -- The apex node `conc-flat-sim-just` is DEFINED via `events-agree`; every gap it
@@ -413,7 +413,7 @@ entry-inv ir = record
 Nof : IR Unit Unit → ℕ → ℕ
 Nof ir n =
   ValueRealized.steps
-    (MachineRefinesObsF.value-realized (FFOx.entry-witness ir (ir-obs-correct ir))) + 0
+    (MachineRefinesObsF.value-realized (FFOx.entry-witness ir (ir-obs-correct ir) n)) + 0
 
 postulate
   -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel seam (D5),
@@ -446,7 +446,7 @@ postulate
 -- unconditionally (`compile-trace-cnt-agrees`) and the apex needs no split.
 conc-flat-sim-just :
   ∀ (ir : IR Unit Unit) (n : ℕ) →
-  conc-trace (just ir) n ≡ FFOx.flat-trace-of ir-obs-correct (just ir) n
+  at (conc-trace (just ir)) n ≡ at (FFOx.flat-trace-of ir-obs-correct (just ir)) n
 conc-flat-sim-just ir n
   rewrite compile-trace-cnt-agrees o 0 (ir-to-trace ir)
             (no-nested-of-all (ir-to-trace ir) (ir-to-trace-frame-free ir (main-heap-moded ir))) =
@@ -462,7 +462,7 @@ conc-flat-sim-just ir n
 -- fills. Everything hangs off this apex node (no proof islands).
 x86-64-conc-flat-sim :
   ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ) →
-  conc-trace mir n ≡ FFOx.flat-trace-of ir-obs-correct mir n
+  at (conc-trace mir) n ≡ at (FFOx.flat-trace-of ir-obs-correct mir) n
 x86-64-conc-flat-sim nothing   n = refl
 x86-64-conc-flat-sim (just ir) n = conc-flat-sim-just ir n
 

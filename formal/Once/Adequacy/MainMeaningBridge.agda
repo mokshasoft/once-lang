@@ -26,10 +26,10 @@ module Once.Adequacy.MainMeaningBridge (fmt : TargetNum) where
 
 open import Once.Spec.Module using (EffUU; AllFunsTyped; HasValidMain-decl; MainExists; ModuleMainEffUU-ef; ModuleMainExists-ef; ModuleTyped; ModuleTyped-ef; tcons)
 open import Data.Bool using (Bool; false; true)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; _∸_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Product using (Σ-syntax; _,_; _×_; proj₁; proj₂)
-open import Data.List using (List; take; _++_)
+open import Data.List using (List; take; _++_; length)
 open import Data.String using (String) renaming (_≟_ to _≟str_)
 open import Data.Unit using (⊤; tt)
 open import Relation.Nullary using (yes; no; Dec)
@@ -67,10 +67,16 @@ main-bridge-leaf : ∀ {polys sigEffs nm bdy ctx Ψ}
   (n : ℕ)
   → ME.runMainˢ (realize deriv) n
     ≡ MM.runMainᵈ (λ _ → ⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt)) n
-main-bridge-leaf {Ψ = Ψ} deriv n =
-  let bd = bridge-c deriv {env0 {Ψ} tt} {env0 {Ψ} tt} rel-env0 n
-  in sym (cong (take n)
-       (cong₂ _++_ (proj₁ bd) (proj₁ (proj₂ bd {tt} {tt} tt n))))
+-- D179: the continuation observes what the head LEFT of the budget, so the
+-- second half of the relation is instantiated at `n ∸ length (head trace)`,
+-- not at `n`. The `rewrite` is what makes the two sides' budgets the SAME
+-- term: they are equal only because the head traces are.
+main-bridge-leaf {Ψ = Ψ} deriv n
+  rewrite sym (proj₁ (bridge-c deriv {env0 {Ψ} tt} {env0 {Ψ} tt} rel-env0 n)) =
+  sym (cong (projTrace (⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt)) n ++_)
+        (proj₁ (proj₂ (bridge-c deriv {env0 {Ψ} tt} {env0 {Ψ} tt} rel-env0 n)
+                  {tt} {tt} tt
+                  (n ∸ length (projTrace (⟦ deriv ⟧ᶜ fmt (env0 {Ψ} tt)) n)))))
 
 ------------------------------------------------------------------------
 -- The parallel dispatch — identical branching to `mrg-dispatch`/`mmd-dispatch`.

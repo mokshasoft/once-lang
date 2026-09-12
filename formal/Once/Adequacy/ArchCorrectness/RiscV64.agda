@@ -57,7 +57,7 @@ open import Once.CCC.Codegen.IRToTrace o using (ir-stack-budget)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Once.IR using (IR; Unit)  -- Plan 0.52 M2: IRTy Unit
-open import Once.Denotation.Behavior using (Behavior)
+open import Once.Denotation.Behavior using (Behavior; at; silent)
 open import Once.Adequacy.CPU using (riscv64; arch-semantics)
 open import Once.Adequacy.CPU.Interface using (ArchSemantics)
 open import Once.Adequacy.Compile using (ArchCorrect)
@@ -123,7 +123,7 @@ asR = arch-semantics riscv64
 -- rationale): lower the IR to a concrete riscv64 `Program` (the compiler's real
 -- path `compile-trace-cnt ∘ ir-to-trace`) and run the concrete machine on it.
 conc-trace : Maybe (IR Unit Unit) → Behavior
-conc-trace nothing   _ = []
+conc-trace nothing     = silent
 conc-trace (just ir) =
   ArchSemantics.run-trace asR (proj₂ (compile-trace-cnt o 0 (ir-to-trace ir)))
                           (ArchSemantics.initialState asR)
@@ -141,7 +141,7 @@ postulate
     -- its arith block emitted. `ld`'s rejection; nothing stated it before.
     LabelsResolvable riscv64 m →
     SymbolsResolvable riscv64 m →
-    ∀ (n : ℕ) → FFOr.asm-sem asm n ≡ conc-trace (moduleToIR-emitted m) n
+    ∀ (n : ℕ) → at (FFOr.asm-sem asm) n ≡ at (conc-trace (moduleToIR-emitted m)) n
 
 ------------------------------------------------------------------------
 -- THE ENGINE, APPLIED. riscv64's `ConcFlatSim` takes the twelve resource bounds
@@ -301,7 +301,7 @@ entry-inv ir = record
 Nof : IR Unit Unit → ℕ → ℕ
 Nof ir n =
   ValueRealized.steps
-    (MachineRefinesObsF.value-realized (FFOr.entry-witness ir (ir-obs-correct ir))) + 0
+    (MachineRefinesObsF.value-realized (FFOr.entry-witness ir (ir-obs-correct ir) n)) + 0
 
 postulate
   -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel
@@ -327,7 +327,7 @@ postulate
 
 conc-flat-sim-just :
   ∀ (ir : IR Unit Unit) (n : ℕ) →
-  conc-trace (just ir) n ≡ FFOr.flat-trace-of ir-obs-correct (just ir) n
+  at (conc-trace (just ir)) n ≡ at (FFOr.flat-trace-of ir-obs-correct (just ir)) n
 conc-flat-sim-just ir n
   rewrite compile-trace-cnt-agrees o 0 (ir-to-trace ir)
             (no-nested-of-all (ir-to-trace ir)
@@ -352,7 +352,7 @@ conc-flat-sim-just ir n
 ------------------------------------------------------------------------
 riscv64-conc-flat-sim :
   ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ) →
-  conc-trace mir n ≡ FFOr.flat-trace-of ir-obs-correct mir n
+  at (conc-trace mir) n ≡ at (FFOr.flat-trace-of ir-obs-correct mir) n
 riscv64-conc-flat-sim nothing   n = refl
 riscv64-conc-flat-sim (just ir) n = conc-flat-sim-just ir n
 

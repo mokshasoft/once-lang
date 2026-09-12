@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (LocState; halted; ValueLocation; sucLoc; module MemOps)
-open import Once.Semantics.Machine using () renaming (⟦_⟧ᴵ to ⟦_⟧)
+open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
 open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
 open import Once.CCC.Machine.Validity using (module ValidityDef)
 
@@ -73,8 +73,6 @@ module _ {FS : FrameSemantics} (program-bound : ℕ) where
     valid-inr-reg-wf lm (transport-SumTag (rl s b sl) tg) fit (trans (rl s b (sucLoc sl)) r) bf
   validAtWF-set-halted b (valid-μ-wf wf x v) =
     valid-μ-wf wf x (validAtWF-set-halted b v)
-  validAtWF-set-halted b (valid-ν-wf wf x v) =
-    valid-ν-wf wf x (validAtWF-set-halted b v)
   validAtWF-set-halted {s = s} b (valid-int-wf {loc = loc} bf r) = valid-int-wf bf (trans (rl s b loc) r)
   validAtWF-set-halted {s = s} b (valid-float-wf {loc = loc} bf r) = valid-float-wf bf (trans (rl s b loc) r)
   validAtWF-set-halted b (valid-str-wf bf) = valid-str-wf bf

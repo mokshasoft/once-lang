@@ -84,12 +84,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.IR using (IR; Unit; AllocMode; Stack)
 open import Once.IR.Size using (ir-size)
-open import Once.Denotation.Behavior using (Behavior)
+open import Once.Denotation.Behavior using (Behavior; at; behavior-by)
+open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR)
 open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
-open import Data.List.Properties using (++-identityʳ)
+open import Data.List.Properties using (++-identityʳ; take-all)
+open import Once.Denotation.TraceMonad using (projTrace; bnd)
+open import Once.Denotation.DenotPrefix using (evalᴰ-good)
 -- D158: the entry instance supplies the PLACEMENT — the whole program is the
 -- fragment, at offset 0.
 open import Once.CCC.Codegen.CataIRSlotStable o using (module CataIRSlotStable)
@@ -217,10 +220,12 @@ entry-span ir k i eq =
   subst (λ m → fetch (ir-to-trace ir) m ≡ just i) (sym (+-identityʳ k))
         (fetch-++-left (emitted 0 0 ir) _ k i eq)
 
-entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
+-- D180: …AT AN OBSERVATION DEPTH. The obligation is depth-indexed (one run per
+-- depth, D058's shape), so the entry witness is too.
+entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir → (k : ℕ)
               → MachineRefinesObsF (ir-to-trace ir) 0 0 0 ir tt entry-s
-                  (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
-entry-witness ir ioc =
+                  (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
+entry-witness ir ioc k =
   ioc (entry-size ir) 0 0 (ir-to-trace ir) 0 (ir-to-trace-slot-stable ir)
       (entry-span ir)
       Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
@@ -230,7 +235,7 @@ entry-witness ir ioc =
       -- `entry-loc` / `valid-unit-wf` / `entry-bf` triple that used to be
       -- threaded here was only ever satisfying a premise that should not have
       -- existed.
-      (in-unit refl)
+      (in-unit refl) k
 
 ------------------------------------------------------------------------
 -- `flat-trace` — DEFINED. D159: the adequate fuel is the witness's OWN STEP
@@ -240,16 +245,19 @@ entry-witness ir ioc =
 -- it is exactly `steps` — and it no longer varies with `n`.
 ------------------------------------------------------------------------
 
-entry-vr : (ir : IR Unit Unit) → (∀ {A B} (ir' : IR A B) → IRObsCorrectF ir')
+entry-vr : (ir : IR Unit Unit) → (∀ {A B} (ir' : IR A B) → IRObsCorrectF ir') → (k : ℕ)
          → ValueRealized (ir-to-trace ir) 0 0 0 ir tt entry-s
-             (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
-entry-vr ir ioc = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir))
+             (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
+entry-vr ir ioc k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir) k)
 
-flat-trace-of : (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
-              → Maybe (IR Unit Unit) → Behavior
-flat-trace-of ioc nothing   _ = []
-flat-trace-of ioc (just ir) n =
-  take n (flat-events (ValueRealized.steps (entry-vr ir ioc) + 0)
+-- The machine's trace FAMILY. The fuel is the depth-`n` witness's own step
+-- count — "for each depth there is a fuel that reaches it", D058's
+-- productivity shape, now carried by the statement rather than an ∃.
+flat-trace-fam : (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+               → Maybe (IR Unit Unit) → ℕ → List SigOpEvent
+flat-trace-fam ioc nothing   _ = []
+flat-trace-fam ioc (just ir) n =
+  take n (flat-events (ValueRealized.steps (entry-vr ir ioc n) + 0)
                       (ir-to-trace ir) (mkFlat entry-s (entry-alloc (ir-stack-budget ir)) 0))
 
 ------------------------------------------------------------------------
@@ -286,7 +294,7 @@ AsmTraceCorrect ft =
   -- D165: the EMITTED IR — `rewrite-ir`-lifted, which is what the text was
   -- generated from. Was `moduleToIR m`, the raw IR, which made this shape
   -- relate two different programs.
-  ∀ (n : ℕ) → asm-sem asm n ≡ ft (moduleToIR-emitted m) n
+  ∀ (n : ℕ) → at (asm-sem asm) n ≡ at (ft (moduleToIR-emitted m)) n
 
 ------------------------------------------------------------------------
 -- `ir-flat-correct` — PROVED from `traces-agree` (was a postulate).
@@ -295,18 +303,37 @@ AsmTraceCorrect ft =
 -- D113/D115: at THIS target's NUMERICS — the format and the width — which
 -- is where `IRObsCorrectFlat`'s `evalᴰ` alias reads them from too, so the
 -- two sides mean one thing.
-ir-flat-correct-of : (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+ir-flat-correct-fam : (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
                    → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
-                   → flat-trace-of ioc mir n ≡ ⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS) n
-ir-flat-correct-of ioc nothing   n = refl
+                   → flat-trace-fam ioc mir n ≡ at (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)) n
+ir-flat-correct-fam ioc nothing   n = refl
 -- D159: peel the chain off the fuel (`flat-events-steps`), and the leftover is
 -- `flat-events 0`, i.e. `[]`. So the run's events ARE the chain's events, and
 -- the chain's events are what `traces-agree` now speaks about.
-ir-flat-correct-of ioc (just ir) n =
+ir-flat-correct-fam ioc (just ir) n =
   trans (cong (take n)
-          (trans (flat-events-steps (ValueRealized.run (entry-vr ir ioc)) 0)
-                 (++-identityʳ (chain-events (ValueRealized.run (entry-vr ir ioc))))))
-        (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir)) n)
+          (trans (flat-events-steps (ValueRealized.run (entry-vr ir ioc n)) 0)
+                 (++-identityʳ (chain-events (ValueRealized.run (entry-vr ir ioc n))))))
+        (trans (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir) n))
+               -- `at` no longer caps: `bounded` says the depth-`n` prefix is
+               -- already at most `n` long, so the cap was the identity.
+               (take-all n _ (bnd (proj₁ (evalᴰ-good (Once.CCC.FrameSemantics.fs-numerics FS) ir tt tt)) n)))
+
+-- …and THAT is what makes the machine's family a `Behavior`: it borrows the
+-- three laws from the denotation it is proved equal to (`behavior-by`). The
+-- machine side never needs a prefix-family induction of its own — the
+-- correctness theorem is the transport.
+flat-trace-of : (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+              → Maybe (IR Unit Unit) → Behavior
+flat-trace-of ioc mir =
+  behavior-by (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS))
+              (flat-trace-fam ioc mir)
+              (λ n → sym (ir-flat-correct-fam ioc mir n))
+
+ir-flat-correct-of : (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+                   → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
+                   → at (flat-trace-of ioc mir) n ≡ at (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)) n
+ir-flat-correct-of ioc mir n = ir-flat-correct-fam ioc mir n
 
 ------------------------------------------------------------------------
 -- The constructed ArchCorrect record — now CONSUMING `ir-obs-correct`.
@@ -327,7 +354,7 @@ postulate
   rewrite-preserves-of :
     (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
     → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
-    → flat-trace-of ioc (map-rewrite mir) n ≡ flat-trace-of ioc mir n
+    → at (flat-trace-of ioc (map-rewrite mir)) n ≡ at (flat-trace-of ioc mir) n
 
 flat-from-obs :
   (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
@@ -343,6 +370,6 @@ flat-from-obs ioc atc = record
   ; rewrite-preserves = rewrite-preserves-of ioc
   -- the one place `fmt-agree` is spent
   ; ir-flat-correct   = λ mir n →
-      subst (λ F → flat-trace-of ioc mir n ≡ ⟦ mir ⟧IR F n)
+      subst (λ F → at (flat-trace-of ioc mir) n ≡ at (⟦ mir ⟧IR F) n)
             fmt-agree (ir-flat-correct-of ioc mir n)
   }

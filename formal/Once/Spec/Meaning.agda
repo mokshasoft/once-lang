@@ -19,8 +19,10 @@
 --     header claims for itself — so it is reviewed here rather than left in a
 --     module the spec merely reaches through. See D114 for what it currently
 --     observes, which is LESS than it should.
---   * `Once.Denotation.Behavior` — `Behavior = ℕ → List SigOpEvent`:
---     a program's observable is its SigOp trace (programs do not return).
+--   * `Once.Denotation.Behavior` — `Behavior`: a program's observable is its
+--     SigOp trace (programs do not return). D179: a RECORD — the depth-indexed
+--     family PLUS the three laws that make it canonical (`extends`, `bounded`,
+--     `saturates`), so pointwise equality of behaviours IS trace equality.
 --   * `Once.Denotation.Meaning` — `⟦_⟧ᶜ`/`⟦_⟧ᵢ`: the typing derivation's
 --     denotation, defined by direct induction on `_⊢ᶜ_`/`_⊢ᵢ_`.
 --   * `Once.Denotation.MainMeaning` — `meaningᵈ`: a typed module's

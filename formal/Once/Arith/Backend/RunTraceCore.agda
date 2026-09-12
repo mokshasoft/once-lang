@@ -27,14 +27,16 @@ module Once.Arith.Backend.RunTraceCore where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Data.Nat using (ℕ; zero; suc)
-open import Data.List using (List; []; _∷_; _++_; take)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; _⊓_)
+open import Data.List using (List; []; _∷_; _++_; take; length)
+open import Data.List.Properties using (length-take)
+open import Data.Nat.Properties using (m⊓n≤m)
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Product using (Σ; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Data.Product using (Σ; _,_; ∃-syntax)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; subst)
 
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Denotation.Behavior using (Behavior)
+open import Once.Denotation.Behavior using (Behavior; mkBehavior)
 
 ------------------------------------------------------------------------
 -- The generic machine telescope. `Payload` is the arch-specific arith
@@ -104,8 +106,50 @@ module RunTrace
   -- STEPS. `stepBudget` (the adequate-fuel map) is abstract — the same honest
   -- gap `FlatFromObs.flat-trace` carries.
   ----------------------------------------------------------------------
+  run-trace-fam : (stepBudget : ℕ → ℕ) → EvExtractor → ArithEnv → Program → State
+                → ℕ → List SigOpEvent
+  run-trace-fam stepBudget ev env prog s n = take n (run-events ev env (stepBudget n) prog s)
+
+  -- D179: `Behavior` carries three laws, and on the CONCRETE machine two of
+  -- them are exactly the content of "`stepBudget` is adequate":
+  --
+  --   * `extends`   — a deeper observation only ADDS events, i.e. the machine
+  --                   run at `stepBudget (suc n)` steps extends the one at
+  --                   `stepBudget n`. (Needs `stepBudget` monotone AND
+  --                   `run-events` prefix-monotone in its fuel.)
+  --   * `saturates` — if fewer than `n` events came out, the budget was ENOUGH,
+  --                   so a deeper observation adds nothing.
+  --
+  -- `bounded` is free (a `take n` is at most `n` long), and is proved.
+  --
+  -- The two are POSTULATED here, in the same class and at the same boundary as
+  -- `stepBudget` itself (which is an abstract parameter of every per-arch
+  -- instance): they are what an adequate budget map MEANS. Class **deferred
+  -- proof / model gap** — they become provable the moment `stepBudget` stops
+  -- being abstract. Note this is the concrete machine only: the abstract
+  -- machine's family borrows its laws from the denotation (`behavior-by` in
+  -- `FlatFromObs`) and needs no assumption at all.
+  postulate
+    run-trace-extends :
+      ∀ (stepBudget : ℕ → ℕ) (ev : EvExtractor) (env : ArithEnv) (prog : Program) (s : State) (n : ℕ)
+      → ∃[ rest ] (run-trace-fam stepBudget ev env prog s (suc n)
+                   ≡ run-trace-fam stepBudget ev env prog s n ++ rest)
+    run-trace-saturates :
+      ∀ (stepBudget : ℕ → ℕ) (ev : EvExtractor) (env : ArithEnv) (prog : Program) (s : State) (n : ℕ)
+      → length (run-trace-fam stepBudget ev env prog s n) < n
+      → run-trace-fam stepBudget ev env prog s (suc n)
+        ≡ run-trace-fam stepBudget ev env prog s n
+
   run-trace : (stepBudget : ℕ → ℕ) → EvExtractor → ArithEnv → Program → State → Behavior
-  run-trace stepBudget ev env prog s n = take n (run-events ev env (stepBudget n) prog s)
+  run-trace stepBudget ev env prog s =
+    mkBehavior (run-trace-fam stepBudget ev env prog s)
+               (run-trace-extends stepBudget ev env prog s)
+               bnd
+               (run-trace-saturates stepBudget ev env prog s)
+    where
+      bnd : ∀ n → length (run-trace-fam stepBudget ev env prog s n) ≤ n
+      bnd n = subst (_≤ n) (sym (length-take n (run-events ev env (stepBudget n) prog s)))
+                    (m⊓n≤m n (length (run-events ev env (stepBudget n) prog s)))
 
   ----------------------------------------------------------------------
   -- "No reachable external SigOp ⇒ empty trace" — the concrete analogue of the
