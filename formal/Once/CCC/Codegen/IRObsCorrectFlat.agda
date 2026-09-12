@@ -74,7 +74,7 @@ fits-erase fits-floatˢ = fits-float
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts)
 open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂; _≢_)
 open import Once.IR.Size using (ir-size)
-open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; +-identityʳ; +-assoc; +-suc; +-comm; <-irrefl)
+open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; +-identityʳ; +-assoc; +-suc; +-comm; <-irrefl; <-trans)
 open import Function using (case_of_)
 import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
@@ -1149,6 +1149,24 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
      (trans (exec-abstract-preserves-frame (store-at-slot env-stash) (floc a6) (falloc a6))
             cf-a6)
 
+    cf-a10 : current-frame (falloc a10) ≡ current-frame alloc
+    cf-a10 =
+      trans (exec-abstract-preserves-frame mov-to-input (floc a9) (falloc a9))
+     (trans (exec-abstract-preserves-frame (store-at-slot pair-stash) (floc a8) (falloc a8))
+            cf-a8)
+
+    cf-a12 : current-frame (falloc a12) ≡ current-frame alloc
+    cf-a12 =
+      trans (exec-abstract-preserves-frame store-indirect (floc a11) (falloc a11))
+     (trans (exec-abstract-preserves-frame (load-from-slot env-stash) (floc a10) (falloc a10))
+            cf-a10)
+
+    cf-a14 : current-frame (falloc a14) ≡ current-frame alloc
+    cf-a14 =
+      trans (exec-abstract-preserves-frame store-indirect-suc (floc a13) (falloc a13))
+     (trans (exec-abstract-preserves-frame (load-from-slot arg-stash) (floc a12) (falloc a12))
+            cf-a12)
+
     -- THE SETUP PRESERVES EVERYTHING THE CALLER CAN NAME. The three stashes sit
     -- at `n`, `n+1`, `n+2`, all at or above the frontier; the two heap writes
     -- land in the block allocated at row 8.
@@ -1219,6 +1237,237 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                cf-a1 ns≤n bf)
             (mem-untouched load-indirect-suc (floc a0) (falloc a0) pair-loc
                nhw-load-indirect-suc refl)
+
+    ------------------------------------------------------------------------
+    -- D185: THE SETUP'S SEVENTEEN OBLIGATIONS. Everything the run needs, in
+    -- dependency order — each row's `InstrWF` and its `halted ≡ false`. The
+    -- premises are exactly what the input's `ValidAtWF` provides once it is
+    -- decomposed: the pair's two cells, the closure's two cells, and the
+    -- `BeforeFrontier` of each.
+    --
+    -- The environment cell is taken as a STORED VALUE (`env-sv`) rather than a
+    -- pointer, because D181 made it either — a pointer for a boxed env, the
+    -- value itself for a register literal or `Unit`. `load-indirect` at row 6
+    -- reads the cell either way, so nothing here needs to know which.
+    ------------------------------------------------------------------------
+    module Obligations
+      (pair-loc fst-loc snd-loc : ValueLocation FS)
+      (env-sv : StoredValue FS)
+      (rdi      : readReg (regs s) Input1 ≡ SV-Ptr pair-loc)
+      (fst-cell : MemOps.readLoc s pair-loc ≡ just (SV-Ptr fst-loc))
+      (snd-cell : MemOps.readLoc s (sucLoc pair-loc) ≡ just (SV-Ptr snd-loc))
+      (env-cell : MemOps.readLoc s fst-loc ≡ just env-sv)
+      (bf-pair  : BeforeFrontier alloc pair-loc)
+      (bf-pair' : BeforeFrontier alloc (sucLoc pair-loc))
+      (bf-fst   : BeforeFrontier alloc fst-loc)
+      (ns≤n     : next-slot alloc ≤ n)
+      (nh       : halted s ≡ false)
+      where
+
+      -- ROW 1: the argument pointer, out of the input pair's second cell.
+      wf1 : InstrWF (floc a0) (falloc a0) load-indirect-suc
+      wf1 = pair-loc , cong sv-as-loc rdi , SV-Ptr snd-loc , snd-cell
+
+      -- ROW 3: the closure pointer, out of its first cell.
+      wf3 : InstrWF (floc a2) (falloc a2) load-indirect
+      wf3 = pair-loc , cong sv-as-loc (input1-a2 pair-loc (SV-Ptr snd-loc) rdi snd-cell)
+          , SV-Ptr fst-loc , trans (pair-cell-a2 pair-loc ns≤n bf-pair) fst-cell
+
+      -- ROW 6: the environment, out of the closure's first cell. `Input1` was
+      -- pointed at the closure by row 4.
+      input1-a5 : readReg (regs (floc a5)) Input1 ≡ SV-Ptr fst-loc
+      input1-a5 =
+        trans (writeReg-same (regs (floc a3)) Input1 (readReg (regs (floc a3)) Output))
+              (exec-abstract-load-indirect-output (floc a2) (falloc a2) pair-loc
+                 (SV-Ptr fst-loc) (input1-a2 pair-loc (SV-Ptr snd-loc) rdi snd-cell)
+                 (trans (pair-cell-a2 pair-loc ns≤n bf-pair) fst-cell))
+
+      env-cell-a5 : MemOps.readLoc (floc a5) fst-loc ≡ just env-sv
+      env-cell-a5 =
+        trans (mem-untouched mov-to-input (floc a3) (falloc a3) fst-loc nhw-mov-to-input refl)
+       (trans (mem-untouched load-indirect (floc a2) (falloc a2) fst-loc nhw-load-indirect refl)
+       (trans (store-slot-preserves-before arg-stash (floc a1) alloc (falloc a1) fst-loc
+                 cf-a1 ns≤n bf-fst)
+       (trans (mem-untouched load-indirect-suc (floc a0) (falloc a0) fst-loc
+                 nhw-load-indirect-suc refl)
+              env-cell)))
+
+      wf6 : InstrWF (floc a5) (falloc a5) load-indirect
+      wf6 = fst-loc , cong sv-as-loc input1-a5 , env-sv , env-cell-a5
+
+      -- The three `halted` witnesses the conditional rows need, and the
+      -- unconditional ones between them.
+      nh0 : halted (floc a0) ≡ false
+      nh0 = nh
+      nh1 : halted (floc a1) ≡ false
+      nh1 = exec-abstract-preserves-halted-WF load-indirect-suc (floc a0) (falloc a0) nh0 wf1
+      nh2 : halted (floc a2) ≡ false
+      nh2 = exec-abstract-preserves-halted-WF (store-at-slot arg-stash) (floc a1) (falloc a1) nh1 tt
+      nh3 : halted (floc a3) ≡ false
+      nh3 = exec-abstract-preserves-halted-WF load-indirect (floc a2) (falloc a2) nh2 wf3
+      nh4 : halted (floc a4) ≡ false
+      nh4 = exec-abstract-preserves-halted-WF mov-to-input (floc a3) (falloc a3) nh3 tt
+      nh5 : halted (floc a5) ≡ false
+      nh5 = nh4
+      nh6 : halted (floc a6) ≡ false
+      nh6 = exec-abstract-preserves-halted-WF load-indirect (floc a5) (falloc a5) nh5 wf6
+      nh7 : halted (floc a7) ≡ false
+      nh7 = exec-abstract-preserves-halted-WF (store-at-slot env-stash) (floc a6) (falloc a6) nh6 tt
+      nh8 : halted (floc a8) ≡ false
+      nh8 = exec-abstract-preserves-halted-WF (instr-alloc-heap 2) (floc a7) (falloc a7) nh7 tt
+      nh9 : halted (floc a9) ≡ false
+      nh9 = exec-abstract-preserves-halted-WF (store-at-slot pair-stash) (floc a8) (falloc a8) nh8 tt
+      nh10 : halted (floc a10) ≡ false
+      nh10 = exec-abstract-preserves-halted-WF mov-to-input (floc a9) (falloc a9) nh9 tt
+
+      ------------------------------------------------------------------------
+      -- THE THREE STASHES, read back. Each survives the rows between its write
+      -- and its read: the other stack writes target HIGHER slots, the heap
+      -- writes are a different kind of location, and the rest touch no memory.
+      --
+      -- Ordered by dependency, not by row: the fresh pair's pointer is what the
+      -- two indirect stores aim at, so `rdi12'` has to be established before
+      -- any read that has to travel across them.
+      ------------------------------------------------------------------------
+
+      -- (ii) the ENVIRONMENT, stashed at row 7 and reloaded at row 11.
+      env-sv' : StoredValue FS
+      env-sv' = readReg (regs (floc a6)) Output
+
+      env-a7 : MemOps.readLoc (floc a7) (AtStack (current-frame (falloc a6)) env-stash)
+               ≡ just env-sv'
+      env-a7 = MemOps.writeLoc-read-same-stack (floc a6) (current-frame (falloc a6)) env-stash env-sv'
+
+      env-a10 : MemOps.readLoc (floc a10) (AtStack (current-frame (falloc a6)) env-stash)
+                ≡ just env-sv'
+      env-a10 =
+        trans (exec-abstract-preserves-stack-slot mov-to-input (floc a9) (falloc a9)
+                 (current-frame (falloc a6)) env-stash nhw-mov-to-input refl)
+       (trans (store-at-slot-preserves-below env-stash pair-stash (floc a8) (falloc a8) (n<1+n (suc n)))
+       (trans (exec-abstract-preserves-stack-slot (instr-alloc-heap 2) (floc a7) (falloc a7)
+                 (current-frame (falloc a6)) env-stash nhw-instr-alloc-heap refl)
+              env-a7))
+
+      ------------------------------------------------------------------------
+      -- `Input1` AT THE TWO INDIRECT STORES: the fresh pair, put there by row
+      -- 10 and surviving the slot loads (which write `Output`) and the first
+      -- store (which writes memory).
+      ------------------------------------------------------------------------
+      alloc-out : readReg (regs (floc a8)) Output ≡ SV-Ptr (AtDynamic ahl)
+      alloc-out = writeReg-same (regs (floc a7)) Output (SV-Ptr (AtDynamic ahl))
+
+      input1-a10 : readReg (regs (floc a10)) Input1 ≡ SV-Ptr (AtDynamic ahl)
+      input1-a10 =
+        trans (writeReg-same (regs (floc a9)) Input1 (readReg (regs (floc a9)) Output))
+        (trans (cong (λ r → readReg r Output)
+                  (MemOps.writeLoc-regs (floc a8)
+                     (AtStack (current-frame (falloc a8)) pair-stash)
+                     (readReg (regs (floc a8)) Output)))
+               alloc-out)
+
+      wf11 : InstrWF (floc a10) (falloc a10) (load-from-slot env-stash)
+      wf11 = env-sv'
+           , subst (λ f → MemOps.readLoc (floc a10) (AtStack f env-stash) ≡ just env-sv')
+                   (trans cf-a6 (sym cf-a10)) env-a10
+
+      rdi12' : sv-as-loc (readReg (regs (floc a11)) Input1) ≡ just (AtDynamic ahl)
+      rdi12' =
+        cong sv-as-loc
+          (trans (load-slot-preserves-input env-stash (floc a10) (falloc a10) env-sv'
+                    (proj₂ wf11))
+                 input1-a10)
+
+      -- (i) the ARGUMENT, stashed at row 2 and reloaded at row 13.
+      arg-sv : StoredValue FS
+      arg-sv = readReg (regs (floc a1)) Output
+
+      arg-a2 : MemOps.readLoc (floc a2) (AtStack (current-frame (falloc a1)) arg-stash)
+               ≡ just arg-sv
+      arg-a2 = MemOps.writeLoc-read-same-stack (floc a1) (current-frame (falloc a1)) arg-stash arg-sv
+
+      arg-a12 : MemOps.readLoc (floc a12) (AtStack (current-frame (falloc a1)) arg-stash)
+                ≡ just arg-sv
+      arg-a12 =
+        trans (store-ind-preserves-slot (floc a11) (falloc a11) ahl arg-stash rdi12')
+       (trans (exec-abstract-preserves-stack-slot (load-from-slot env-stash) (floc a10) (falloc a10)
+                 (current-frame (falloc a1)) arg-stash nhw-load-from-slot refl)
+       (trans (exec-abstract-preserves-stack-slot mov-to-input (floc a9) (falloc a9)
+                 (current-frame (falloc a1)) arg-stash nhw-mov-to-input refl)
+       (trans (store-at-slot-preserves-below arg-stash pair-stash (floc a8) (falloc a8)
+                 (<-trans (n<1+n n) (n<1+n (suc n))))
+       (trans (exec-abstract-preserves-stack-slot (instr-alloc-heap 2) (floc a7) (falloc a7)
+                 (current-frame (falloc a1)) arg-stash nhw-instr-alloc-heap refl)
+       (trans (store-at-slot-preserves-below arg-stash env-stash (floc a6) (falloc a6) (n<1+n n))
+       (trans (exec-abstract-preserves-stack-slot load-indirect (floc a5) (falloc a5)
+                 (current-frame (falloc a1)) arg-stash nhw-load-indirect refl)
+       (trans (exec-abstract-preserves-stack-slot mov-to-input (floc a3) (falloc a3)
+                 (current-frame (falloc a1)) arg-stash nhw-mov-to-input refl)
+       (trans (exec-abstract-preserves-stack-slot load-indirect (floc a2) (falloc a2)
+                 (current-frame (falloc a1)) arg-stash nhw-load-indirect refl)
+              arg-a2))))))))
+
+      wf13 : InstrWF (floc a12) (falloc a12) (load-from-slot arg-stash)
+      wf13 = arg-sv
+           , subst (λ f → MemOps.readLoc (floc a12) (AtStack f arg-stash) ≡ just arg-sv)
+                   (trans cf-a1 (sym cf-a12)) arg-a12
+
+      rdi14' : sv-as-loc (readReg (regs (floc a13)) Input1) ≡ just (AtDynamic ahl)
+      rdi14' =
+        cong sv-as-loc
+          (trans (load-slot-preserves-input arg-stash (floc a12) (falloc a12) arg-sv (proj₂ wf13))
+          (trans (store-ind-preserves-input (floc a11) (falloc a11) (AtDynamic ahl) rdi12')
+                 (trans (load-slot-preserves-input env-stash (floc a10) (falloc a10) env-sv'
+                           (proj₂ wf11))
+                        input1-a10)))
+
+      -- (iii) the NEW PAIR's pointer, stashed at row 9 and reloaded at row 15.
+      newpair-sv : StoredValue FS
+      newpair-sv = readReg (regs (floc a8)) Output
+
+      newpair-a9 : MemOps.readLoc (floc a9) (AtStack (current-frame (falloc a8)) pair-stash)
+                   ≡ just newpair-sv
+      newpair-a9 =
+        MemOps.writeLoc-read-same-stack (floc a8) (current-frame (falloc a8)) pair-stash newpair-sv
+
+      newpair-a14 : MemOps.readLoc (floc a14) (AtStack (current-frame (falloc a8)) pair-stash)
+                    ≡ just newpair-sv
+      newpair-a14 =
+        trans (store-ind-suc-preserves-slot (floc a13) (falloc a13) ahl pair-stash rdi14')
+       (trans (exec-abstract-preserves-stack-slot (load-from-slot arg-stash) (floc a12) (falloc a12)
+                 (current-frame (falloc a8)) pair-stash nhw-load-from-slot refl)
+       (trans (store-ind-preserves-slot (floc a11) (falloc a11) ahl pair-stash rdi12')
+       (trans (exec-abstract-preserves-stack-slot (load-from-slot env-stash) (floc a10) (falloc a10)
+                 (current-frame (falloc a8)) pair-stash nhw-load-from-slot refl)
+              newpair-a9)))
+
+      wf15 : InstrWF (floc a14) (falloc a14) (load-from-slot pair-stash)
+      wf15 = newpair-sv
+           , subst (λ f → MemOps.readLoc (floc a14) (AtStack f pair-stash) ≡ just newpair-sv)
+                   (trans cf-a8 (sym cf-a14)) newpair-a14
+
+      -- …and the rest of the `halted` chain, now that every conditional row's
+      -- witness is in hand. Row 17 (`instr-call-closure`) is the flat machine's
+      -- own step, not an `exec-abstract` one, so it is not here.
+      nh11 : halted (floc a11) ≡ false
+      nh11 = exec-abstract-preserves-halted-WF (load-from-slot env-stash) (floc a10) (falloc a10) nh10 wf11
+      nh12 : halted (floc a12) ≡ false
+      nh12 = exec-abstract-preserves-halted-WF store-indirect (floc a11) (falloc a11) nh11
+               (AtDynamic ahl , rdi12')
+      nh13 : halted (floc a13) ≡ false
+      nh13 = exec-abstract-preserves-halted-WF (load-from-slot arg-stash) (floc a12) (falloc a12) nh12 wf13
+      nh14 : halted (floc a14) ≡ false
+      nh14 = exec-abstract-preserves-halted-WF store-indirect-suc (floc a13) (falloc a13) nh13
+               (AtDynamic ahl , rdi14')
+      nh15 : halted (floc a15) ≡ false
+      nh15 = exec-abstract-preserves-halted-WF (load-from-slot pair-stash) (floc a14) (falloc a14) nh14 wf15
+      nh16 : halted (floc a16) ≡ false
+      nh16 = exec-abstract-preserves-halted-WF mov-to-input (floc a15) (falloc a15) nh15 tt
+
+      -- The two premises `setup-mem-pres` and `code-cell` ask for, discharged
+      -- here rather than at the call site: they are facts about THIS run.
+      mem-pres : (loc : ValueLocation FS) → BeforeFrontier alloc loc
+               → MemOps.readLoc (floc a16) loc ≡ MemOps.readLoc s loc
+      mem-pres = setup-mem-pres ns≤n rdi12' rdi14'
 
     -- The closure register, at the call.
     closure-reg : ∀ (pair-loc fst-loc : ValueLocation FS) (arg-sv : StoredValue FS)

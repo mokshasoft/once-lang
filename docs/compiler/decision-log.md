@@ -12547,3 +12547,34 @@ NARROW and excluded a state the machine does produce (a unit environment);
 here it was too WIDE and admitted one the machine cannot handle. Both were
 found the same way — by writing the first real producer and the first real
 consumer of a witness that had neither.
+
+## D185 — `apply`'s seventeen obligations, discharged (2026-09-12)
+
+`ApplySetupPres.Obligations` proves everything the setup's run needs, from the
+premises the input's `ValidAtWF` supplies once decomposed: the input pair's two
+cells, the closure's two cells, and the `BeforeFrontier` of each.
+
+* the six conditional rows' `InstrWF` — the three indirect loads (rows 1, 3, 6)
+  and the three slot loads (rows 11, 13, 15);
+* the three STASHES read back — the argument (row 2 → 13), the environment
+  (row 7 → 11), the new pair's pointer (row 9 → 15). Each survives the rows
+  between: the other stack writes target HIGHER slots, the heap writes are a
+  different kind of location, and the rest touch no memory;
+* `Input1` at the two indirect stores — the fresh pair, put there by row 10 and
+  surviving the slot loads (which write `Output`) and the first store;
+* the sixteen `halted ≡ false` witnesses.
+
+The environment cell is taken as a STORED VALUE, not a pointer. D181 made it
+either — a pointer for a boxed env, the value itself for a register literal or
+`Unit` — and `load-indirect` at row 6 reads the cell either way, so nothing in
+the run needs to know which. That is the first place D181's split pays for
+itself outside `curry`.
+
+The declarations are ordered by DEPENDENCY rather than by row: the fresh pair's
+pointer is what the two indirect stores aim at, so `rdi12'` has to be
+established before any read that travels across them.
+
+What is left for `obs-correct-apply` is the callee: the `FlatSteps` chain (the
+fetches come from the clause's `span`, not from this module), the call step,
+the block's own run relocated by `link-block-steps` (D168), the `c-ret`, and
+the result place. All of it is gated on the one fact D183 named.
