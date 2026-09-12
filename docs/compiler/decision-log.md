@@ -12621,3 +12621,53 @@ splitting the constructor would have needed four combinations.
 The eight `ValidAtWF` transport lemmas each carry one local cell-transporter
 applied twice, so the recursion stays structural and `cell-inline` simply has
 no sub-derivation to recurse into.
+
+### D188 — `apply`'s remaining shape, derived (2026-09-12)
+
+The pair split (D187) removed the blocker, and going top-down from
+`obs-correct-apply`'s record derived the rest of the design. Recording it so
+the next pass does not re-derive it:
+
+**The premise.** `IRObsCorrectF` gains `CalleeRuns prog` beside
+`AllSlotStable prog` — the only premise about the whole image rather than the
+fragment. Conditioned on the CLOSURE WITNESS, so the body and the label are the
+same ones the witness names:
+
+```agda
+CalleeRuns prog =
+  ∀ {E A B} (body : IR (E * A) B) (env : ⟦ E ⟧) (ℓ : LabelId) {m alloc' cloc st}
+  → ValidAtWF m alloc' {A ⇛ B} (λ arg → evalᴰ body (env , arg)) cloc st
+  → readLoc st (sucLoc cloc) ≡ just (SV-Code ℓ)
+  → ∃[ j ] (find-thunk prog ℓ ≡ just j
+      × (∀ fs pre-alloc envArg ret-pc k mIn'
+         → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
+         → falloc fs ≡ enter-call pre-alloc
+         → InputAt mIn' pre-alloc envArg (floc fs)
+         → CalleeRun prog fs ret-pc body envArg k))
+```
+
+Three things about that shape were derived, not chosen:
+
+1. **`CalleeRun` is stated at the POST-CALL STATE, not as the body's own
+   `MachineRefinesObsF`.** That one starts from an `entry-flat`, whose `fret`
+   is `[]`, while the call leaves one pending return address — and `Shifted`
+   relates only stacks of the SAME LENGTH, so nothing bridges them. There is no
+   `fret`-weakening lemma anywhere, and writing one needs a "balanced return
+   stack" invariant (a `c-ret` on an empty `fret` HALTS, so a run that would
+   underflow behaves differently under a deeper stack). Stating the obligation
+   where the machine actually is avoids inventing that.
+2. **The argument's residence is at the CALLER's frontier**, with the frame
+   entry named separately (`falloc fs ≡ enter-call pre-alloc`). `enter-call`
+   SHIFTS the frame, so a caller-resident component becomes an ancestor
+   afterwards; that transfer needs `StackAncestorSource` payloads and belongs
+   with the callee's proof, not at every call site.
+3. **`ClosureValidWF` needs `loc-mode` back.** D181 dropped it; `apply` needs
+   it, because `LocMatchesMode Heap` is what forces `AtDynamic` — the shape
+   `do-call` enters on (D184).
+
+**What remains** is the assembly: the 17-step `FlatSteps` chain, `callView`
+with the label match, the callee's input witness (now constructible — it is
+`valid-pair-wf` over two `CellAt`s, one from the closure's `EnvAt` and one from
+the caller's pair cell), and `traces-agree` over the concatenated chain. Four
+residence combinations share one assembly, which wants the shared part factored
+into a module rather than repeated.
