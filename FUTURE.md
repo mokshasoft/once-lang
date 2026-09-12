@@ -1841,10 +1841,48 @@ to be the WHOLE of their excess. ⚠ And the fit has ±1.8× scatter
 (`IwfKappa` 24.3 s vs `Pair` 48.8 s, both depth 15), so no per-module
 prediction should be made from it.
 
-⬜ NEXT: fix the `imethsTyFrom` normalisation (the step-1 problem, still
-unsolved — a call-site lemma cannot reach it), then re-measure `Elim` and
-`Ielim`. ⛔ Do NOT pursue the ford collapse: it was justified by the
-refuted depth law.
+### ✅ THE FIX IS WRITTEN AND WELL-FORMED — `bootstrap/tmp/MethsTy2.agda`
+
+The kernel's shape wraps the WHOLE TAIL in a renaming, once per row, so a
+53-row chain pushes 53 renamings through a growing structure. **But the
+tail does not depend on the first component** — the only thing needing
+weakening is the MOTIVE:
+
+```agda
+imethsTyFrom2 D I M j (C ◂ E) =
+  Σ' (imethTy D I j C M)
+     (imethsTyFrom2 D I (renTy (extR (extR vs)) M) (suc j) E)
+```
+
+⇒ O(n) renamings of a SMALL term instead of O(n²) of a growing one.
+
+★ **`imethsTyFrom2` AND `imethsTyFrom2-wf` BOTH TYPECHECK (rc=0).** That
+was the part that could have failed outright: the recursive call has to
+carry `ren-ty wM (Ren⊢-ins² (εwk-ren vs I))` in place of renaming the
+tail, and it does.
+
+⚠ THE TWO ARE ONLY **PROPOSITIONALLY** EQUAL — that is `imethsTyFrom`'s
+naturality in `M` — so this is a change to `Spec/Typing`, not a lemma.
+Every proof that unfolds `imethsTyFrom` moves with it (`⊢methsFrom`,
+`⊢methsCons`, `imethsTyFrom-wf`, and whatever in the metatheory matches
+on it), and `⊢ielim`'s premise changes shape.
+
+### ⛔ AND THE A/B IS **UNMEASURED** — THE BOX COULD NOT RUN IT
+
+`tmp/ProbeOld` / `tmp/ProbeNew` drive `imethsTyFrom-wf` /
+`imethsTyFrom2-wf` over the whole of `KnotD` at an ambient motive — the
+same recursion `⊢methsFrom` does per row. Four attempts, **all four
+killed for low memory**: 7.6 GB box, ~3 GB available, with three
+`claude` processes at 1.15 GB and firefox at 0.5 GB. One run also left an
+ORPHANED `agda` that survived the task kill and kept growing.
+
+⚠ Per [[exit-143-is-not-evidence-about-cost]] and
+[[agda-rss-noise-floor]], nothing about cost may be concluded from a
+contended run. ⇒ **the speed claim is OPEN.** Re-run
+`ProbeOld`/`ProbeNew` cold, one at a time, on a quiet box.
+
+⛔ Do NOT pursue the ford collapse: it was justified by the refuted depth
+law.
 
 ## Once: THE ELIMINATOR HAS NO PARAMETERS — and the substitution ladder is the bill
 
