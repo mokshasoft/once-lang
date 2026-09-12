@@ -492,6 +492,31 @@ concrete syntax, so no exit test can reach the ν path at all. That is why the
 defect survived. Surface syntax for `ana` (and `cata`, which has the same gap)
 plus an unfold exit test is the recurrence guard, tracked with D189.
 
+### D191–D194 — the ν path becomes reachable, and what it cost
+
+| # | residual | class | what discharges it |
+|---|---|---|---|
+| V1 | `Once.Denotation.ValueDomainLaws.bisimᵈ-to-eq` — coalgebraic extensionality at the EFFECTFUL ν | **axiom** | provable in Cubical Agda. NOT a new kind: it is `bisimS-to-eq` (plan 0.47 step 3), which the pure `νS` has carried all along. Added because `RelV (ν-type F)` is propositional equality, and `MeaningBridge`'s ana clause must equate two `anaFᵈ`s built from merely RELATED coalgebras |
+| V2 | `out-app-bridge` / `OutErased.out-coh` — the ν DESTRUCTOR's erasure coherence | **deferred proof (parked, not in tree)** | `AnaErased.coerce-νin-erase-D` read backwards, after generalising the layer. `out-trace` and the whole `out-value` chain are already proved; this is the only residual, and D194's patch holds the work |
+
+**What went the other way.** `obs-correct-Ana` left the postulate block (D189).
+`ν-not-resident` is gone — it was provable, and what made it provable was the
+missing emitter. `NoNu` is retracted (D191): a proven cross-stage invariant
+saying the parser never produces a ν, whose whole purpose was a reliance that
+had to end.
+
+**Counting honestly across the branch:** the postulate count moved roughly
+sideways. What changed is that no proof in the tree depends on a feature being
+unimplemented, and the one axiom added is a standard principle the pure side
+already assumed.
+
+**The pattern worth keeping.** Four defects on this branch were one assumption
+in different clothes — *a ν modelled as if its layers were already available*:
+`valid-ν-wf` (a resident layer), `obs-correct-Out` (a theorem about the empty
+case), `as-sum` (unfolding a ν's functor at a branch site), and
+`RelV (ν-type F)` (equality of coinductive values). When a ν-shaped proof looks
+easy, that is the thing to suspect.
+
 ### D188 — `obs-correct-apply` DISCHARGED; one whole-clause axiom → one invariant
 
 `obs-correct-apply` was an axiom for the entire clause. It is now a proof
