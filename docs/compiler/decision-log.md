@@ -12940,3 +12940,60 @@ kind of postulate D189 spent this branch removing.
 with `F` read from the annotation D191 made writable, elaborates to
 `curry (Ana wfF … ∘ snd)`, and compiles to D189's two-cell suspension. The ν
 half of the language is reachable from source for the first time.
+
+## D194 (PARKED, one lemma short) — surface `Out`, the ν's eliminator
+
+D193 made `ana` writable end to end. This entry is what it exposed: **a ν can
+now be BUILT but not OBSERVED.** `"Out"` has been a reserved `genWord` all
+along, but nothing elaborated it — no `ahv-Out`, no `Surface.out`. So an exit
+test still cannot read a layer back, which is the whole point of the guard.
+
+Nine of ten sites are done and green; the work is kept as
+`docs/compiler/D194-surface-out.patch`.
+
+**`Out` is INFER, not check, and that is forced.** A check rule would have to
+recover `F` by inverting `⟦ F ⟧T (ν-type F) ≡ T`, which is not syntactically
+possible. Inferring the argument reads `ν-type F` off its type, where `F` is
+manifest. That single choice is why `Out` costs more than `ana` did: `ana`
+rides `⊢ᶜ`, where every site had a `cata` mirror, while `Out` rides `⊢ᵢ`, where
+it has none.
+
+**Three techniques the `⊢ᵢ` side forced**, each an instance of a known trap:
+
+* *Generic codomain + eq proof.* Stated with the application `⟦ F ⟧T (ν-type
+  F)` in the conclusion, every downstream function that splits on the
+  conclusion's SHAPE got a stuck unification — `iFromInferEff` asks whether the
+  layer is a pure arrow, and it CAN be (at `F = K (A ⇒ B)`), so the case is
+  neither refutable nor solvable. The rule now concludes at a free `C` pinned
+  by `⟦ F ⟧T (ν-type F) ≡ C`, and each consumer transports.
+* *J-style bridge.* `inferOutGo-J`, because a `rewrite` moving from the
+  elaborator's `(wellFormedF? F, refl)` to the witness's `(just wfF, eqW)`
+  would have to abstract a term its own equation mentions. Same shape as
+  `checkCataGo-J`, and it fails identically whether the decision arrives as a
+  parameter or through the `inspectWellFormedF` view.
+* *Applied IH, not general IH.* In `agree-RApp`, inside the caller's `with` the
+  general IH's type no longer mentions `E.inferElabV ctx arg`, so it cannot be
+  passed to a helper. The helper takes the argument's agreement ALREADY
+  APPLIED.
+
+**What remains is one lemma, and its statement is verified** (the `bridge-i`
+clause typechecks against it):
+
+```agda
+out-app-bridge : RelV (ν-type F) vᴸ vᴿ
+               → RelT (⟦ F ⟧T (ν-type F)) (out-sem wfF vᴸ)
+                      (liftFn fmt (Out-ir wfF) vᴿ)
+```
+
+`RelV` at a ν is `≡`, so this carries NO relational content — both sides force
+the same value. It is a pure coherence: the direct meaning's force (`out-sem`,
+`fmapT` of `coerce-functor⁻¹-D ∘ coerce-ν-out` over `forceᵈ`) and the IR's
+(`evalᴰ (Out wf)`, the same chain at `⌈_⌉`) agree. The proof is the `out`
+direction of `AnaErased.coerce-νin-erase-D`, ~100 lines of transport
+induction. No μ-side version exists to reuse: `out-μ` is not surface-reachable
+either, so nobody has needed it.
+
+Parked rather than committed behind a postulate. `out-app-bridge` is certainly
+TRUE — unlike D192's `ana-bridge`, which would have been probably false — but
+it is provable with a validated template, and this branch's standard is not to
+postulate what the template can discharge.
