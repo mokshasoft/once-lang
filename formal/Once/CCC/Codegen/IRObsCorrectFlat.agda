@@ -745,6 +745,32 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ... | .(just loc) | refl =
     cong (λ r → readReg r Input1) (MemOps.writeLoc-regs s loc (readReg (regs s) Output))
 
+  -- D184: …and the same for the two INDIRECT loads, which `apply` runs before
+  -- it has stashed anything. Both resolve `Input1` through a `Maybe` and then
+  -- write `Output`, so the caller's own `InstrWF` collapses the resolution and
+  -- what is left is a register write to a DIFFERENT register.
+  load-ind-suc-preserves-input : ∀ (s : LocState FS) (alloc : AllocState {FS})
+      (loc : ValueLocation FS) (v : StoredValue FS)
+    → sv-as-loc (readReg (regs s) Input1) ≡ just loc
+    → MemOps.readLoc s (sucLoc loc) ≡ just v
+    → readReg (regs (proj₁ (exec-abstract load-indirect-suc s alloc))) Input1
+      ≡ readReg (regs s) Input1
+  load-ind-suc-preserves-input s alloc loc v eq cell
+    with sv-as-loc (readReg (regs s) Input1) | eq
+  ... | .(just loc) | refl with MemOps.readLoc s (sucLoc loc) | cell
+  ...   | .(just v) | refl = refl
+
+  load-ind-preserves-input : ∀ (s : LocState FS) (alloc : AllocState {FS})
+      (loc : ValueLocation FS) (v : StoredValue FS)
+    → sv-as-loc (readReg (regs s) Input1) ≡ just loc
+    → MemOps.readLoc s loc ≡ just v
+    → readReg (regs (proj₁ (exec-abstract load-indirect s alloc))) Input1
+      ≡ readReg (regs s) Input1
+  load-ind-preserves-input s alloc loc v eq cell
+    with sv-as-loc (readReg (regs s) Input1) | eq
+  ... | .(just loc) | refl with MemOps.readLoc s loc | cell
+  ...   | .(just v) | refl = refl
+
   load-slot-preserves-input : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
       (v : StoredValue FS)
     → readLoc s (AtStack (current-frame alloc) slot) ≡ just v
@@ -1156,6 +1182,67 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                cf-a1 ns≤n bf)
             (mem-untouched load-indirect-suc (floc a0) (falloc a0) loc
                nhw-load-indirect-suc refl))))))))))))))
+
+    ------------------------------------------------------------------------
+    -- D184: THE CALL LOOKS UP THE CLOSURE'S OWN LABEL — the last thing the
+    -- machine side can say before the program's block table has to speak.
+    --
+    -- `callView` reads two things: the closure REGISTER (saved at row 5 from
+    -- `Input1`, which row 4 loaded out of the input pair's first cell) and the
+    -- code cell it points at. This says both are exactly what the closure
+    -- witness promises: the register holds the closure's own heap pointer, and
+    -- the cell holds the label the witness names. What remains after it — and
+    -- ALL that remains — is `find-thunk prog ℓ`, i.e. whether the program's
+    -- block table implements that label. That is D183's premise.
+    ------------------------------------------------------------------------
+    -- Row 1 (`load-indirect-suc`) resolves `Input1` and writes `Output`; row 2
+    -- writes memory. Neither disturbs `Input1` — but row 1's resolution is a
+    -- `Maybe` split, so it is the caller's own witness that collapses it.
+    input1-a2 : ∀ (pair-loc : ValueLocation FS) (arg-sv : StoredValue FS)
+              → readReg (regs s) Input1 ≡ SV-Ptr pair-loc
+              → MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-sv
+              → readReg (regs (floc a2)) Input1 ≡ SV-Ptr pair-loc
+    input1-a2 pair-loc arg-sv eq cell =
+      trans (cong (λ r → readReg r Input1)
+                  (MemOps.writeLoc-regs (floc a1)
+                     (AtStack (current-frame (falloc a1)) arg-stash)
+                     (readReg (regs (floc a1)) Output)))
+     (trans (load-ind-suc-preserves-input (floc a0) (falloc a0) pair-loc arg-sv
+               (cong sv-as-loc eq) cell)
+            eq)
+
+    pair-cell-a2 : ∀ (pair-loc : ValueLocation FS)
+                 → next-slot alloc ≤ n → BeforeFrontier alloc pair-loc
+                 → MemOps.readLoc (floc a2) pair-loc ≡ MemOps.readLoc s pair-loc
+    pair-cell-a2 pair-loc ns≤n bf =
+      trans (store-slot-preserves-before arg-stash (floc a1) alloc (falloc a1) pair-loc
+               cf-a1 ns≤n bf)
+            (mem-untouched load-indirect-suc (floc a0) (falloc a0) pair-loc
+               nhw-load-indirect-suc refl)
+
+    -- The closure register, at the call.
+    closure-reg : ∀ (pair-loc fst-loc : ValueLocation FS) (arg-sv : StoredValue FS)
+                → next-slot alloc ≤ n → BeforeFrontier alloc pair-loc
+                → readReg (regs s) Input1 ≡ SV-Ptr pair-loc
+                → MemOps.readLoc s (sucLoc pair-loc) ≡ just arg-sv
+                → MemOps.readLoc s pair-loc ≡ just (SV-Ptr fst-loc)
+                → fclosure a16 ≡ SV-Ptr fst-loc
+    closure-reg pair-loc fst-loc arg-sv ns≤n bf rdi snd-cell cell =
+      trans (writeReg-same (regs (floc a3)) Input1 (readReg (regs (floc a3)) Output))
+            (exec-abstract-load-indirect-output (floc a2) (falloc a2) pair-loc
+               (SV-Ptr fst-loc) (input1-a2 pair-loc arg-sv rdi snd-cell)
+               (trans (pair-cell-a2 pair-loc ns≤n bf) cell))
+
+    -- …and the code cell it points at, carried across the setup.
+    code-cell : ∀ (fst-loc : ValueLocation FS) (ℓ : LabelId)
+              → next-slot alloc ≤ n
+              → sv-as-loc (readReg (regs (floc a11)) Input1) ≡ just (AtDynamic ahl)
+              → sv-as-loc (readReg (regs (floc a13)) Input1) ≡ just (AtDynamic ahl)
+              → BeforeFrontier alloc (sucLoc fst-loc)
+              → MemOps.readLoc s (sucLoc fst-loc) ≡ just (SV-Code ℓ)
+              → MemOps.readLoc (floc a16) (sucLoc fst-loc) ≡ just (SV-Code ℓ)
+    code-cell fst-loc ℓ ns≤n rdi12 rdi14 bf-suc cell =
+      trans (setup-mem-pres ns≤n rdi12 rdi14 (sucLoc fst-loc) bf-suc) cell
 
   -- D170 / Phase E2 probe: the DENOTATION half of `obs-correct-curry`.
   -- `curry` builds a value; it invokes no SigOp, so its trace is empty at every
