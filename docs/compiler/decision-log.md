@@ -12830,3 +12830,59 @@ grammar has no token for — that, not ν, is what the predicate now rules out.
 
 `Nu` is a prerequisite, not the whole guard: the guard is an exit test that
 runs an unfold, and that needs the `ana` term as well (D192).
+
+## D192 (PARKED, one site short) — surface `ana`, and the ν row of `RelV`
+
+D191 made a ν type writable. This entry is the term: `ana coalg` in check mode
+at `A -> Nu F`. **Nine of its ten sites are done and green; it is parked on the
+tenth, and the tenth is a finding rather than a chore.** The work is kept as
+`docs/compiler/D192-ana-surface.patch`.
+
+**`ana` needs no syntax of its own.** `"ana"` was already in `genWords`, so the
+resolver has always produced `RApp (RResolved (gen "ana")) coalg`; `cata` and
+`In` are already surface-reachable the same way, with the functor read from the
+EXPECTED type. So the term is `cata`'s mirror at every site, and each one went
+green first or second try:
+
+| site | what |
+|---|---|
+| `Judgment` | `t-ana-check` — `t-cata-check` with the arrow reversed |
+| `Classify` | `ahv-ana`, `pba-ana`, the absurd row |
+| `Elaborate` | `checkAna` / `checkAnaGo` + two dispatch rows |
+| `ElaborateProofs` | `checkAnaGo-J`, `checkAnaGoV-J`, `checkAnaGo-just-success` |
+| `Completeness` | `check-complete`, `subsume-complete` |
+| `Realize` | one line — `Surface.ana` already existed and already elaborated |
+| `Meaning` | `ana-sem`, the dual of `cata-sem` |
+| `RealizeAgrees` | `agree-checkAnaGo` |
+
+It needs TWO bridges where the cata needs five, because `checkAna` is
+grade-generic: the coalgebra's grade IS the unfold's, and there is no morphism
+witness to recover, so no eff-then-pure fallback to follow.
+
+**The blocker: `RelV (ν-type F) x y = x ≡ y`.** `bridge-c` relates the direct
+meaning to `⟦_⟧ˢ ∘ realize`. At the ana it must produce EQUALITY of two
+`anaFᵈ` values built from two merely RELATED coalgebras. That is not provable,
+and the reason is structural: `RelV`'s ν row treats codata as first-order,
+which is the SAME assumption D179/D180 removed from `ValidAtWF` and D189
+removed from `obs-correct-Out`. This is the fourth instance of one defect
+class — *a ν modelled as if its layers were already available*.
+
+`ValueDomain` is explicit that the denotational ν has no bisimulation: "No
+bisimulation and no axiom, because `anaᵈ` is indexed by the functor" — true of
+`anaᵈ-erase`, which only ever needs `cong` over a coalgebra EQUALITY, and
+false of what a relational bridge needs.
+
+**What discharges it**, and it is a known shape: the semantic ν already has
+`_∼S_`, `unfoldS-∼` and the coalgebraic-extensionality axiom `bisimS-to-eq`
+(Plan 0.47 step 3, "provable in Cubical Agda"). The denotational ν needs the
+same three: a `_∼ᵈ_` on `νᵈ`, a coinductive "related coalgebras unfold to
+bisimilar values", and `bisimᵈ-to-eq`. Then `RelV (ν-type F)` becomes
+bisimilarity — which is what observational relatedness at codata SHOULD have
+been — and `bridge-c`'s ana clause follows. One new axiom, of a class the
+project already sanctions, replacing a row that is currently too strong to
+satisfy and too weak to be right.
+
+Parked rather than forced: postulating `ana-bridge` itself would assert that
+related coalgebras give propositionally EQUAL coinductive values, which is not
+merely unproven but probably false — exactly the kind of postulate D189 was
+about removing.
