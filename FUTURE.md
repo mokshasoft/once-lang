@@ -2398,7 +2398,48 @@ result is MORE general than the baseline, not less.
 memory than the fully general one — [[half-generalization-is-worst]]
 measured a third time, in the direction the memory predicts.
 
-⚠ WHAT IS STILL OPEN: **neither version closes.** The baseline ends with
+### ⚠⚠ AND THE TUPLE LAYER IS THE OTHER HALF — SPIKED 2026-09-12
+
+`imethsTyFrom` stacks **one `renTy vs` per row** on the motive:
+
+```agda
+imethsTyFrom D I M j (C ◂ E) =
+  Σ' (imethTy D I j C M) (renTy vs (imethsTyFrom D I M (suc j) E))
+```
+
+For a Γ-polymorphic motive all 44 collapse; for an ambient one none do.
+`tmp/TupleA.agda` vs `tmp/TupleP.agda` — the REAL 44-row junk run
+(`Knot/PayTy`'s own `cdTake 44 KnotD`), motive swapped and nothing else:
+
+| 44-row junk run | wall | peak RSS | rc |
+|---|---|---|---|
+| control — Γ-polymorphic motive | 0:43.92 | 0.94 GB | **0** |
+| ambient — `motA` | **2:53.64** | 1.11 GB | **0** |
+
+★ **IT PASSES** — `rc=0`, no errors, no metas. The accumulating
+weakenings do NOT blow up: memory is 1.18×, inside the noise floor. ⇒ the
+`datatype-index-accumulating-codes` 40× shape did NOT recur.
+
+⚠ **BUT IT IS 4.0× SLOWER IN TIME**, and that is the opposite profile
+from the row, where memory was the win and time was not. Per motive:
+
+| | row + tuple | peak RSS |
+|---|---|---|
+| baseline | 164s | **4.21 GB** |
+| ambient | 210s | **1.11 GB** |
+
+⇒ **MEMORY 3.8× BETTER, TIME ~28% WORSE.** And memory is the binding
+constraint — the 5.5 GB cgroup cap is what KILLED the 5-passenger row in
+the first place, so a 4.21 → 1.11 GB peak is the result that matters and
+a 28% time regression is affordable.
+
+⬜ **FIX THE TUPLE BEFORE CONVERTING ANYTHING.** The 4× is the per-row
+`renTy vs` failing to reduce, and the fix is the move that already worked
+once: hoist an `imethsTyFrom` naturality lemma into the `Lib/IPay`
+prologue beside `⊢methLamN`, so the stack is peeled ONCE instead of
+re-normalised 44 times. Not attempted.
+
+### ⚠ WHAT IS STILL OPEN: **neither version closes.** The baseline ends with
 one `UnsolvedMetaVariables` site; the generic ambient row ends with that
 plus an `UnsolvedConstraints`, both at `⊢iihsIHA`'s application — so on
 RESIDUE it is arguably one worse. Pinning `i`/`q` changes nothing
