@@ -74,7 +74,7 @@ d_ir'45'size_10 v0 v1 v2
                        (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_apply_92 -> coe (1 :: Integer)
-      MAlonzo.Code.Once.IR.C_In_96 v4 v5 -> coe (1 :: Integer)
+      MAlonzo.Code.Once.IR.C_In_96 v4 -> coe (1 :: Integer)
       MAlonzo.Code.Once.IR.C_out'45'μ_100 v4 -> coe (1 :: Integer)
       MAlonzo.Code.Once.IR.C_Cata_108 v4 v7
         -> case coe v0 of
@@ -106,7 +106,7 @@ d_ir'45'size_10 v0 v1 v2
                        (coe v1) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_Out_118 v4 -> coe (1 :: Integer)
-      MAlonzo.Code.Once.IR.C_in'45'ν_122 v4 v5 -> coe (1 :: Integer)
+      MAlonzo.Code.Once.IR.C_in'45'ν_122 v4 -> coe (1 :: Integer)
       MAlonzo.Code.Once.IR.C_Ana_128 v4 v6
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C_ν'45'type_28 v7

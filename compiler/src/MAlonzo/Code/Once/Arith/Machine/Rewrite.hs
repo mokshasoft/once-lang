@@ -377,10 +377,10 @@ du_walk_226 v0 v1 v2
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Once.IR.C_apply_92)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.IR.C_In_96 v4 v5
+      MAlonzo.Code.Once.IR.C_In_96 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Once.IR.C_In_96 v4 v5)
+             (coe MAlonzo.Code.Once.IR.C_In_96 v4)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.IR.C_out'45'μ_100 v4
         -> coe
@@ -445,10 +445,10 @@ du_walk_226 v0 v1 v2
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Once.IR.C_Out_118 v4)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
-      MAlonzo.Code.Once.IR.C_in'45'ν_122 v4 v5
+      MAlonzo.Code.Once.IR.C_in'45'ν_122 v4
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-             (coe MAlonzo.Code.Once.IR.C_in'45'ν_122 v4 v5)
+             (coe MAlonzo.Code.Once.IR.C_in'45'ν_122 v4)
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16)
       MAlonzo.Code.Once.IR.C_Ana_128 v4 v6
         -> case coe v1 of

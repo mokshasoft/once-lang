@@ -32,7 +32,7 @@ import qualified MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax
 import qualified MAlonzo.Code.Once.Arith.Machine.Shape
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics
 import qualified MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
-import qualified MAlonzo.Code.Once.Denotation.Trace
+import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Float.Arith
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.Float.Dyadic
@@ -708,10 +708,10 @@ d_arith'45'env'45'x86'45'64_364
 d_run'45'trace'45'x86'45'64_366 ::
   [MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.T_Instr_28] ->
   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.T_State_370 ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
+  MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_run'45'trace'45'x86'45'64_366 v0 v1
   = coe
-      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_162
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_208
       (coe
          (\ v2 ->
             MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_halted_390
@@ -748,7 +748,7 @@ d_arch'45'semantics_376 ::
   MAlonzo.Code.Once.Adequacy.CPU.Interface.T_ArchSemantics_10
 d_arch'45'semantics_376
   = coe
-      MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_56
+      MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_54
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_initState_404
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Semantics.d_run_768
       d_run'45'trace'45'x86'45'64_366 d_decode'45'x86'45'64_372

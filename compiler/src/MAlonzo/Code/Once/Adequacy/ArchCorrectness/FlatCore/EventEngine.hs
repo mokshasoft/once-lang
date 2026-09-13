@@ -39,6 +39,7 @@ import qualified MAlonzo.Code.Once.CCC.Machine.FlatStoreWF
 import qualified MAlonzo.Code.Once.CCC.Machine.Locations
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
 import qualified MAlonzo.Code.Once.CanonicalName
+import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Float.Decimal
 import qualified MAlonzo.Code.Once.IR
@@ -8100,8 +8101,7 @@ d_run'45'trace_968 ::
    [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
   [AgdaAny] ->
-  AgdaAny ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
+  AgdaAny -> MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_run'45'trace_968 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 v10
   = du_run'45'trace_968 v8 v9 v10
 du_run'45'trace_968 ::
@@ -8114,11 +8114,10 @@ du_run'45'trace_968 ::
    [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
   [AgdaAny] ->
-  AgdaAny ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
+  AgdaAny -> MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 du_run'45'trace_968 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_162
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_208
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_xhalted_292
          (coe v1))
@@ -8140,10 +8139,145 @@ du_run'45'trace_968 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_dispatchArith_442
          (coe v2))
+-- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.RT.run-trace-extends
+d_run'45'trace'45'extends_970 ::
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  () ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
+  Integer ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Emitter_14 ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Machine_196 ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_TraceLoop_366 ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   AgdaAny ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
+  [AgdaAny] ->
+  AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_run'45'trace'45'extends_970 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9
+                              v10
+  = du_run'45'trace'45'extends_970 v8 v9 v10
+du_run'45'trace'45'extends_970 ::
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Emitter_14 ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Machine_196 ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_TraceLoop_366 ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   AgdaAny ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
+  [AgdaAny] ->
+  AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_run'45'trace'45'extends_970 v0 v1 v2
+  = coe
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.d_run'45'trace'45'extends_190
+      erased erased erased erased
+      (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_xhalted_292
+         (coe v1))
+      (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_xpc_294
+         (coe v1))
+      (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_mfetch_118
+         (coe v0))
+      (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_mexecInstr_298
+         (coe v1))
+      (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_matchCall_438
+         (coe v2))
+      (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_ret'45'past_440
+         (coe v2))
+      (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_dispatchArith_442
+         (coe v2))
+-- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.RT.run-trace-fam
+d_run'45'trace'45'fam_972 ::
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  () ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
+  Integer ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Emitter_14 ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Machine_196 ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_TraceLoop_366 ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   AgdaAny ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
+  [AgdaAny] ->
+  AgdaAny ->
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
+d_run'45'trace'45'fam_972 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 v8 v9 v10
+  = du_run'45'trace'45'fam_972 v8 v9 v10
+du_run'45'trace'45'fam_972 ::
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Emitter_14 ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Machine_196 ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_TraceLoop_366 ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   AgdaAny ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
+  [AgdaAny] ->
+  AgdaAny ->
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
+du_run'45'trace'45'fam_972 v0 v1 v2
+  = coe
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace'45'fam_162
+      (coe
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_xhalted_292
+         (coe v1))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_xpc_294
+         (coe v1))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_mfetch_118
+         (coe v0))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_mexecInstr_298
+         (coe v1))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_matchCall_438
+         (coe v2))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_ret'45'past_440
+         (coe v2))
+      (coe
+         MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.d_dispatchArith_442
+         (coe v2))
+-- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.RT.run-trace-saturates
+d_run'45'trace'45'saturates_974 ::
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T_NonZero_112 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
+  () ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RegRoles.T_RegRoles_28 ->
+  Integer ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Emitter_14 ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Machine_196 ->
+  MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_TraceLoop_366 ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   AgdaAny ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
+  [AgdaAny] ->
+  AgdaAny ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_run'45'trace'45'saturates_974 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.FlatState
-d_FlatState_972 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 = ()
+d_FlatState_978 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 = ()
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.fetch
-d_fetch_980 ::
+d_fetch_986 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8158,15 +8292,15 @@ d_fetch_980 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218
-d_fetch_980 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
-  = du_fetch_980
-du_fetch_980 ::
+d_fetch_986 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
+  = du_fetch_986
+du_fetch_986 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   Integer ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218
-du_fetch_980 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_214
+du_fetch_986 = coe MAlonzo.Code.Once.CCC.Machine.Flat.du_fetch_214
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.flat-exec-instr
-d_flat'45'exec'45'instr_982 ::
+d_flat'45'exec'45'instr_988 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8182,54 +8316,54 @@ d_flat'45'exec'45'instr_982 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68
-d_flat'45'exec'45'instr_982 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
+d_flat'45'exec'45'instr_988 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
                             ~v10
-  = du_flat'45'exec'45'instr_982 v1
-du_flat'45'exec'45'instr_982 ::
+  = du_flat'45'exec'45'instr_988 v1
+du_flat'45'exec'45'instr_988 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68
-du_flat'45'exec'45'instr_982 v0
+du_flat'45'exec'45'instr_988 v0
   = coe
       MAlonzo.Code.Once.CCC.Machine.Flat.d_flat'45'exec'45'instr_1330
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.FlatState.falloc
-d_falloc_990 ::
+d_falloc_996 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_488
-d_falloc_990 v0
+d_falloc_996 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_falloc_84 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.FlatState.fclosure
-d_fclosure_992 ::
+d_fclosure_998 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
-d_fclosure_992 v0
+d_fclosure_998 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fclosure_90 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.FlatState.flink
-d_flink_994 ::
+d_flink_1000 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> Maybe Integer
-d_flink_994 v0
+d_flink_1000 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_flink_92 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.FlatState.floc
-d_floc_996 ::
+d_floc_1002 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402
-d_floc_996 v0
+d_floc_1002 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_floc_82 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.FlatState.fpc
-d_fpc_998 ::
+d_fpc_1004 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> Integer
-d_fpc_998 v0
+d_fpc_1004 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fpc_86 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.FlatState.fret
-d_fret_1000 ::
+d_fret_1006 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> [Integer]
-d_fret_1000 v0
+d_fret_1006 v0
   = coe MAlonzo.Code.Once.CCC.Machine.Flat.d_fret_88 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.readLoc
-d_readLoc_1004 ::
+d_readLoc_1010 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8244,16 +8378,16 @@ d_readLoc_1004 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
-d_readLoc_1004 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
-  = du_readLoc_1004
-du_readLoc_1004 ::
+d_readLoc_1010 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
+  = du_readLoc_1010
+du_readLoc_1010 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   Maybe MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66
-du_readLoc_1004
+du_readLoc_1010
   = coe MAlonzo.Code.Once.CCC.Machine.SMCore.du_readLoc_644
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.FlatWF
-d_FlatWF_1008 ::
+d_FlatWF_1014 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8266,9 +8400,9 @@ d_FlatWF_1008 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Machine_196 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_TraceLoop_366 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> ()
-d_FlatWF_1008 = erased
+d_FlatWF_1014 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.sv-below
-d_sv'45'below_1014 ::
+d_sv'45'below_1020 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8282,9 +8416,9 @@ d_sv'45'below_1014 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_TraceLoop_366 ->
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 -> ()
-d_sv'45'below_1014 = erased
+d_sv'45'below_1020 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.FlatRegTag
-d_FlatRegTag_1018 ::
+d_FlatRegTag_1024 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8297,54 +8431,54 @@ d_FlatRegTag_1018 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_Machine_196 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_TraceLoop_366 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 -> ()
-d_FlatRegTag_1018 = erased
+d_FlatRegTag_1024 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.FlatInv
-d_FlatInv_1030 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14
+d_FlatInv_1036 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14
   = ()
-data T_FlatInv_1030
-  = C_mkFlatInv_1064 MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_662
-                     AgdaAny MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF.T_RegTagWF_470
+data T_FlatInv_1036
+  = C_mkFlatInv_1070 MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_664
+                     AgdaAny MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF.T_RegTagWF_472
                      MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_362
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.FlatInv.inv-wf
-d_inv'45'wf_1052 ::
-  T_FlatInv_1030 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_662
-d_inv'45'wf_1052 v0
+d_inv'45'wf_1058 ::
+  T_FlatInv_1036 ->
+  MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.T_StoreWF_664
+d_inv'45'wf_1058 v0
   = case coe v0 of
-      C_mkFlatInv_1064 v1 v2 v3 v6 -> coe v1
+      C_mkFlatInv_1070 v1 v2 v3 v6 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.FlatInv.inv-closure
-d_inv'45'closure_1054 :: T_FlatInv_1030 -> AgdaAny
-d_inv'45'closure_1054 v0
+d_inv'45'closure_1060 :: T_FlatInv_1036 -> AgdaAny
+d_inv'45'closure_1060 v0
   = case coe v0 of
-      C_mkFlatInv_1064 v1 v2 v3 v6 -> coe v2
+      C_mkFlatInv_1070 v1 v2 v3 v6 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.FlatInv.inv-regtag
-d_inv'45'regtag_1056 ::
-  T_FlatInv_1030 ->
-  MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF.T_RegTagWF_470
-d_inv'45'regtag_1056 v0
+d_inv'45'regtag_1062 ::
+  T_FlatInv_1036 ->
+  MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF.T_RegTagWF_472
+d_inv'45'regtag_1062 v0
   = case coe v0 of
-      C_mkFlatInv_1064 v1 v2 v3 v6 -> coe v3
+      C_mkFlatInv_1070 v1 v2 v3 v6 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.FlatInv.inv-ev
-d_inv'45'ev_1058 ::
-  T_FlatInv_1030 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_inv'45'ev_1058 = erased
+d_inv'45'ev_1064 ::
+  T_FlatInv_1036 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_inv'45'ev_1064 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.FlatInv.inv-env
-d_inv'45'env_1060 ::
-  T_FlatInv_1030 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_inv'45'env_1060 = erased
+d_inv'45'env_1066 ::
+  T_FlatInv_1036 -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_inv'45'env_1066 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.FlatInv.inv-run
-d_inv'45'run_1062 ::
-  T_FlatInv_1030 ->
+d_inv'45'run_1068 ::
+  T_FlatInv_1036 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_362
-d_inv'45'run_1062 v0
+d_inv'45'run_1068 v0
   = case coe v0 of
-      C_mkFlatInv_1064 v1 v2 v3 v6 -> coe v6
+      C_mkFlatInv_1070 v1 v2 v3 v6 -> coe v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.flat-inv-step
-d_flat'45'inv'45'step_1076 ::
+d_flat'45'inv'45'step_1082 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8365,41 +8499,41 @@ d_flat'45'inv'45'step_1076 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
-  T_FlatInv_1030 -> T_FlatInv_1030
-d_flat'45'inv'45'step_1076 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
+  T_FlatInv_1036 -> T_FlatInv_1036
+d_flat'45'inv'45'step_1082 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9
                            ~v10 ~v11 ~v12 v13 v14 v15 ~v16 ~v17 v18
-  = du_flat'45'inv'45'step_1076 v1 v13 v14 v15 v18
-du_flat'45'inv'45'step_1076 ::
+  = du_flat'45'inv'45'step_1082 v1 v13 v14 v15 v18
+du_flat'45'inv'45'step_1082 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
-  T_FlatInv_1030 -> T_FlatInv_1030
-du_flat'45'inv'45'step_1076 v0 v1 v2 v3 v4
+  T_FlatInv_1036 -> T_FlatInv_1036
+du_flat'45'inv'45'step_1082 v0 v1 v2 v3 v4
   = coe
-      C_mkFlatInv_1064
-      (MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.d_flat'45'wf'45'step_2662
+      C_mkFlatInv_1070
+      (MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.d_flat'45'wf'45'step_2664
          (coe v0) (coe v1) (coe v2) (coe v3)
-         (coe d_inv'45'wf_1052 (coe v4)))
-      (MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.d_cl'45'step_2302
-         (coe v0) (coe v1) (coe v2) (coe v3) (coe d_inv'45'wf_1052 (coe v4))
-         (coe d_inv'45'closure_1054 (coe v4)))
-      (MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF.d_flat'45'regtag'45'step_1560
+         (coe d_inv'45'wf_1058 (coe v4)))
+      (MAlonzo.Code.Once.CCC.Machine.FlatStoreWF.d_cl'45'step_2304
+         (coe v0) (coe v1) (coe v2) (coe v3) (coe d_inv'45'wf_1058 (coe v4))
+         (coe d_inv'45'closure_1060 (coe v4)))
+      (MAlonzo.Code.Once.CCC.Machine.FlatRegTagWF.d_flat'45'regtag'45'step_1562
          (coe v0) (coe v1) (coe v2) (coe v3)
-         (coe d_inv'45'regtag_1056 (coe v4)))
+         (coe d_inv'45'regtag_1062 (coe v4)))
       (coe
          MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.C_mkRunAt_384
          (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.d_run'45'ir_376
-            (coe d_inv'45'run_1062 (coe v4)))
+            (coe d_inv'45'run_1068 (coe v4)))
          (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.d_run'45'heap_380
-            (coe d_inv'45'run_1062 (coe v4)))
+            (coe d_inv'45'run_1068 (coe v4)))
          (coe
             MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.C_reach'45'step_350
             v1 v3
             (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.d_run'45'reach_382
-               (coe d_inv'45'run_1062 (coe v4)))))
+               (coe d_inv'45'run_1068 (coe v4)))))
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.t≢f
-d_t'8802'f_1090 ::
+d_t'8802'f_1096 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8413,9 +8547,9 @@ d_t'8802'f_1090 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.EngineInterface.T_TraceLoop_366 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_t'8802'f_1090 = erased
+d_t'8802'f_1096 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.n≢j
-d_n'8802'j_1096 ::
+d_n'8802'j_1102 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8431,9 +8565,9 @@ d_n'8802'j_1096 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Irrelevant.T_Irrelevant_20
-d_n'8802'j_1096 = erased
+d_n'8802'j_1102 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.block-run-exec
-d_block'45'run'45'exec_1112 ::
+d_block'45'run'45'exec_1118 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8457,9 +8591,9 @@ d_block'45'run'45'exec_1112 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_block'45'run'45'exec_1112 = erased
+d_block'45'run'45'exec_1118 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.go-h
-d_go'45'h_1152 ::
+d_go'45'h_1158 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8485,9 +8619,9 @@ d_go'45'h_1152 ::
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_go'45'h_1152 = erased
+d_go'45'h_1158 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._._.go-f
-d_go'45'f_1164 ::
+d_go'45'f_1170 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8514,9 +8648,9 @@ d_go'45'f_1164 ::
   Maybe AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_go'45'f_1164 = erased
+d_go'45'f_1170 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._._._.go-e
-d_go'45'e_1178 ::
+d_go'45'e_1184 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8545,9 +8679,9 @@ d_go'45'e_1178 ::
   Maybe AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_go'45'e_1178 = erased
+d_go'45'e_1184 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._._._._.go-h1
-d_go'45'h1_1192 ::
+d_go'45'h1_1198 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8578,9 +8712,9 @@ d_go'45'h1_1192 ::
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_go'45'h1_1192 = erased
+d_go'45'h1_1198 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.event-of
-d_event'45'of_1200 ::
+d_event'45'of_1206 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8595,18 +8729,18 @@ d_event'45'of_1200 ::
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
-d_event'45'of_1200 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
-  = du_event'45'of_1200 v1
-du_event'45'of_1200 ::
+d_event'45'of_1206 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
+  = du_event'45'of_1206 v1
+du_event'45'of_1206 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
-du_event'45'of_1200 v0
+du_event'45'of_1206 v0
   = coe
       MAlonzo.Code.Once.Adequacy.FlatEvents.d_event'45'of_432 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.flat-events
-d_flat'45'events_1202 ::
+d_flat'45'events_1208 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8622,19 +8756,19 @@ d_flat'45'events_1202 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
-d_flat'45'events_1202 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
-  = du_flat'45'events_1202 v1
-du_flat'45'events_1202 ::
+d_flat'45'events_1208 ~v0 v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
+  = du_flat'45'events_1208 v1
+du_flat'45'events_1208 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
-du_flat'45'events_1202 v0
+du_flat'45'events_1208 v0
   = coe
       MAlonzo.Code.Once.Adequacy.FlatEvents.d_flat'45'events_438 (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.events-running-end
-d_events'45'running'45'end_1226 ::
+d_events'45'running'45'end_1232 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8656,21 +8790,21 @@ d_events'45'running'45'end_1226 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
-  T_FlatInv_1030 ->
+  T_FlatInv_1036 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_events'45'running'45'end_1226 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8
+d_events'45'running'45'end_1232 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8
                                 ~v9 ~v10 ~v11 ~v12 ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 ~v20 ~v21
-  = du_events'45'running'45'end_1226
-du_events'45'running'45'end_1226 ::
+  = du_events'45'running'45'end_1232
+du_events'45'running'45'end_1232 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_events'45'running'45'end_1226
+du_events'45'running'45'end_1232
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe (1 :: Integer))
       erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine._.cfetch-nothing
-d_cfetch'45'nothing_1254 ::
+d_cfetch'45'nothing_1260 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8692,13 +8826,13 @@ d_cfetch'45'nothing_1254 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   AgdaAny ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
-  T_FlatInv_1030 ->
+  T_FlatInv_1036 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_cfetch'45'nothing_1254 = erased
+d_cfetch'45'nothing_1260 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.sigop-concrete-fetch
-d_sigop'45'concrete'45'fetch_1276 ::
+d_sigop'45'concrete'45'fetch_1282 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8720,9 +8854,9 @@ d_sigop'45'concrete'45'fetch_1276 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sigop'45'concrete'45'fetch_1276 = erased
+d_sigop'45'concrete'45'fetch_1282 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.sigop-run-arith
-d_sigop'45'run'45'arith_1320 ::
+d_sigop'45'run'45'arith_1326 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8752,9 +8886,9 @@ d_sigop'45'run'45'arith_1320 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sigop'45'run'45'arith_1320 = erased
+d_sigop'45'run'45'arith_1326 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.sigop-run-external
-d_sigop'45'run'45'external_1366 ::
+d_sigop'45'run'45'external_1372 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8783,9 +8917,9 @@ d_sigop'45'run'45'external_1366 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_sigop'45'run'45'external_1366 = erased
+d_sigop'45'run'45'external_1372 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.event-of-pure
-d_event'45'of'45'pure_1398 ::
+d_event'45'of'45'pure_1404 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8803,9 +8937,9 @@ d_event'45'of'45'pure_1398 ::
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_event'45'of'45'pure_1398 = erased
+d_event'45'of'45'pure_1404 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.StuckAt
-d_StuckAt_1410 ::
+d_StuckAt_1416 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -8822,11 +8956,11 @@ d_StuckAt_1410 ::
    [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
   [AgdaAny] -> AgdaAny -> ()
-d_StuckAt_1410 = erased
+d_StuckAt_1416 = erased
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.StuckSteps
-d_StuckSteps_1422 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 = ()
-data T_StuckSteps_1422
-  = C_constructor_1588 (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
+d_StuckSteps_1428 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 = ()
+data T_StuckSteps_1428
+  = C_constructor_1594 (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
                         (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
                          AgdaAny ->
                          [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
@@ -8906,8 +9040,8 @@ data T_StuckSteps_1422
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.StuckSteps.st-load-indirect
-d_st'45'load'45'indirect_1520 ::
-  T_StuckSteps_1422 ->
+d_st'45'load'45'indirect_1526 ::
+  T_StuckSteps_1428 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    AgdaAny ->
@@ -8924,13 +9058,13 @@ d_st'45'load'45'indirect_1520 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_st'45'load'45'indirect_1520 v0
+d_st'45'load'45'indirect_1526 v0
   = case coe v0 of
-      C_constructor_1588 v1 v2 v3 v4 v5 -> coe v1
+      C_constructor_1594 v1 v2 v3 v4 v5 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.StuckSteps.st-load-indirect-suc
-d_st'45'load'45'indirect'45'suc_1536 ::
-  T_StuckSteps_1422 ->
+d_st'45'load'45'indirect'45'suc_1542 ::
+  T_StuckSteps_1428 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    AgdaAny ->
@@ -8947,13 +9081,13 @@ d_st'45'load'45'indirect'45'suc_1536 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_st'45'load'45'indirect'45'suc_1536 v0
+d_st'45'load'45'indirect'45'suc_1542 v0
   = case coe v0 of
-      C_constructor_1588 v1 v2 v3 v4 v5 -> coe v2
+      C_constructor_1594 v1 v2 v3 v4 v5 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.StuckSteps.st-c-jmp
-d_st'45'c'45'jmp_1552 ::
-  T_StuckSteps_1422 ->
+d_st'45'c'45'jmp_1558 ::
+  T_StuckSteps_1428 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    AgdaAny ->
@@ -8968,13 +9102,13 @@ d_st'45'c'45'jmp_1552 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_st'45'c'45'jmp_1552 v0
+d_st'45'c'45'jmp_1558 v0
   = case coe v0 of
-      C_constructor_1588 v1 v2 v3 v4 v5 -> coe v3
+      C_constructor_1594 v1 v2 v3 v4 v5 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.StuckSteps.st-c-branch-scratch-zero
-d_st'45'c'45'branch'45'scratch'45'zero_1568 ::
-  T_StuckSteps_1422 ->
+d_st'45'c'45'branch'45'scratch'45'zero_1574 ::
+  T_StuckSteps_1428 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    AgdaAny ->
@@ -8990,13 +9124,13 @@ d_st'45'c'45'branch'45'scratch'45'zero_1568 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_st'45'c'45'branch'45'scratch'45'zero_1568 v0
+d_st'45'c'45'branch'45'scratch'45'zero_1574 v0
   = case coe v0 of
-      C_constructor_1588 v1 v2 v3 v4 v5 -> coe v4
+      C_constructor_1594 v1 v2 v3 v4 v5 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.StuckSteps.st-c-branch-tag-zero
-d_st'45'c'45'branch'45'tag'45'zero_1586 ::
-  T_StuckSteps_1422 ->
+d_st'45'c'45'branch'45'tag'45'zero_1592 ::
+  T_StuckSteps_1428 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    AgdaAny ->
@@ -9015,12 +9149,12 @@ d_st'45'c'45'branch'45'tag'45'zero_1586 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_st'45'c'45'branch'45'tag'45'zero_1586 v0
+d_st'45'c'45'branch'45'tag'45'zero_1592 v0
   = case coe v0 of
-      C_constructor_1588 v1 v2 v3 v4 v5 -> coe v5
+      C_constructor_1594 v1 v2 v3 v4 v5 -> coe v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.stuck-result
-d_stuck'45'result_1606 ::
+d_stuck'45'result_1612 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -9045,18 +9179,18 @@ d_stuck'45'result_1606 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_stuck'45'result_1606 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
+d_stuck'45'result_1612 ~v0 ~v1 ~v2 ~v3 ~v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10
                        ~v11 ~v12 ~v13 ~v14 ~v15 ~v16 ~v17 ~v18 ~v19 v20
-  = du_stuck'45'result_1606 v20
-du_stuck'45'result_1606 ::
+  = du_stuck'45'result_1612 v20
+du_stuck'45'result_1612 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_stuck'45'result_1606 v0 = coe v0
+du_stuck'45'result_1612 v0 = coe v0
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply
-d_Supply_1632 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 = ()
-data T_Supply_1632
-  = C_constructor_1974 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_BlockSteps_870
-                       T_StuckSteps_1422
+d_Supply_1638 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 = ()
+data T_Supply_1638
+  = C_constructor_1980 MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_BlockSteps_870
+                       T_StuckSteps_1428
                        (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
                         [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
                         MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9183,24 +9317,24 @@ data T_Supply_1632
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.bss
-d_bss_1804 ::
-  T_Supply_1632 ->
+d_bss_1810 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_BlockSteps_870
-d_bss_1804 v0
+d_bss_1810 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.sts
-d_sts_1806 :: T_Supply_1632 -> T_StuckSteps_1422
-d_sts_1806 v0
+d_sts_1812 :: T_Supply_1638 -> T_StuckSteps_1428
+d_sts_1812 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.heap-room
-d_heap'45'room_1818 ::
-  T_Supply_1632 ->
+d_heap'45'room_1824 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9210,14 +9344,14 @@ d_heap'45'room_1818 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_heap'45'room_1818 v0
+d_heap'45'room_1824 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.stack-room
-d_stack'45'room_1832 ::
-  T_Supply_1632 ->
+d_stack'45'room_1838 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9228,14 +9362,14 @@ d_stack'45'room_1832 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_stack'45'room_1832 v0
+d_stack'45'room_1838 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.call-room
-d_call'45'room_1842 ::
-  T_Supply_1632 ->
+d_call'45'room_1848 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9244,14 +9378,14 @@ d_call'45'room_1842 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_call'45'room_1842 v0
+d_call'45'room_1848 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.reg-range
-d_reg'45'range_1854 ::
-  T_Supply_1632 ->
+d_reg'45'range_1860 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9260,14 +9394,14 @@ d_reg'45'range_1854 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_362 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_reg'45'range_1854 v0
+d_reg'45'range_1860 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v6
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.scratch-dec-guarded
-d_scratch'45'dec'45'guarded_1864 ::
-  T_Supply_1632 ->
+d_scratch'45'dec'45'guarded_1870 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9276,14 +9410,14 @@ d_scratch'45'dec'45'guarded_1864 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_scratch'45'dec'45'guarded_1864 v0
+d_scratch'45'dec'45'guarded_1870 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v7
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.ret-no-wrap
-d_ret'45'no'45'wrap_1876 ::
-  T_Supply_1632 ->
+d_ret'45'no'45'wrap_1882 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9293,14 +9427,14 @@ d_ret'45'no'45'wrap_1876 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_ret'45'no'45'wrap_1876 v0
+d_ret'45'no'45'wrap_1882 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v8
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.count-no-wrap
-d_count'45'no'45'wrap_1886 ::
-  T_Supply_1632 ->
+d_count'45'no'45'wrap_1892 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9309,14 +9443,14 @@ d_count'45'no'45'wrap_1886 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_count'45'no'45'wrap_1886 v0
+d_count'45'no'45'wrap_1892 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v9
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.tag-fits
-d_tag'45'fits_1898 ::
-  T_Supply_1632 ->
+d_tag'45'fits_1904 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9326,14 +9460,14 @@ d_tag'45'fits_1898 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_tag'45'fits_1898 v0
+d_tag'45'fits_1904 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.lit-fits
-d_lit'45'fits_1910 ::
-  T_Supply_1632 ->
+d_lit'45'fits_1916 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9343,14 +9477,14 @@ d_lit'45'fits_1910 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_lit'45'fits_1910 v0
+d_lit'45'fits_1916 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v11
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.float-fits
-d_float'45'fits_1922 ::
-  T_Supply_1632 ->
+d_float'45'fits_1928 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9360,14 +9494,14 @@ d_float'45'fits_1922 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_float'45'fits_1922 v0
+d_float'45'fits_1928 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v12
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.lo-fits
-d_lo'45'fits_1932 ::
-  T_Supply_1632 ->
+d_lo'45'fits_1938 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -9375,14 +9509,14 @@ d_lo'45'fits_1932 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.RunContext.T_RunAt_362 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Data.Nat.Base.T__'8804'__22
-d_lo'45'fits_1932 v0
+d_lo'45'fits_1938 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v13
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.arith-sigop-contract
-d_arith'45'sigop'45'contract_1952 ::
-  T_Supply_1632 ->
+d_arith'45'sigop'45'contract_1958 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
@@ -9397,14 +9531,14 @@ d_arith'45'sigop'45'contract_1952 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_arith'45'sigop'45'contract_1952 v0
+d_arith'45'sigop'45'contract_1958 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v14
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventEngine.Supply.external-sigop-contract
-d_external'45'sigop'45'contract_1972 ::
-  T_Supply_1632 ->
+d_external'45'sigop'45'contract_1978 ::
+  T_Supply_1638 ->
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
   (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
    AgdaAny ->
@@ -9422,8 +9556,8 @@ d_external'45'sigop'45'contract_1972 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.CompiledCorrespondence.T_CompiledCorr_656 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_external'45'sigop'45'contract_1972 v0
+d_external'45'sigop'45'contract_1978 v0
   = case coe v0 of
-      C_constructor_1974 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+      C_constructor_1980 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
         -> coe v15
       _ -> MAlonzo.RTE.mazUnreachableError

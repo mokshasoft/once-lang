@@ -20,7 +20,6 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.Unit
-import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Once.Adequacy.MainForm
 import qualified MAlonzo.Code.Once.Denotation.Phase
 import qualified MAlonzo.Code.Once.Denotation.SourceDenote
@@ -56,21 +55,19 @@ d_runMain'738'_22 ::
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_runMain'738'_22 v0 v1 v2 v3
   = coe
-      MAlonzo.Code.Data.List.Base.du_take_530 (coe v3)
+      MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_64
       (coe
-         MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
+         MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
          (coe
-            MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
+            MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_74
+            (coe (0 :: Integer))
+            (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
+            (coe du_EffUU_18) (coe v2) (coe v0)
             (coe
-               MAlonzo.Code.Once.Denotation.SourceDenote.du_'10214'_'10215''738'_114
-               (coe (0 :: Integer))
-               (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8)
-               (coe du_EffUU_18) (coe v2) (coe v0)
-               (coe
-                  MAlonzo.Code.Once.Denotation.Phase.d_env0_304 (coe v1)
-                  (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)))
-            (coe (\ v4 -> coe v4 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))))
-         (coe v3))
+               MAlonzo.Code.Once.Denotation.Phase.d_env0_304 (coe v1)
+               (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)))
+         (coe (\ v4 -> coe v4 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))))
+      (coe v3)
 -- Once.Adequacy.MainExtract.bind-cong-trace
 d_bind'45'cong'45'trace_44 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->

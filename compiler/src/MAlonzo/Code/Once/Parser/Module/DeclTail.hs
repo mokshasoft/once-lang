@@ -547,7 +547,7 @@ du_psig'45'colon_352 v0 v1 v2 v3
       then coe
              du_psig'45'poly_320 (coe v0) (coe v1) (coe v2)
              (coe
-                MAlonzo.Code.Once.Parser.PolyType.d_parsePolyTypeB_558
+                MAlonzo.Code.Once.Parser.PolyType.d_parsePolyTypeB_34
                 (coe d_colDrop1_302 (coe v1)))
       else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
 -- Once.Parser.Module.DeclTail.parseSignatureB

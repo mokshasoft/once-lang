@@ -20,10 +20,10 @@ import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Agda.Builtin.Unit
-import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Compile
+import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Denotation.Meaning
 import qualified MAlonzo.Code.Once.Denotation.Phase
 import qualified MAlonzo.Code.Once.Denotation.Trace
@@ -67,7 +67,7 @@ d_mainMeaning'7496''45'go_22 v0 v1 v2 v3 v4 v5 v6
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v11)
                                      (coe
                                         (\ v20 ->
-                                           MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_238
+                                           MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_248
                                              (coe
                                                 MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                                                 (coe v3) (coe v0) (coe v1)
@@ -140,7 +140,7 @@ d_mmd'45'dispatch_50 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)
                                                (coe
                                                   (\ v19 ->
-                                                     MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_238
+                                                     MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_248
                                                        (coe
                                                           MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                                                           (coe v5) (coe v0) (coe v1) (coe v2)
@@ -227,24 +227,40 @@ d_runMain'7496'_160 ::
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
 d_runMain'7496'_160 v0 v1
   = coe
-      MAlonzo.Code.Data.List.Base.du_take_530 (coe v1)
+      MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_64
       (coe
-         MAlonzo.Code.Once.Denotation.TraceMonad.du_projTrace_62
-         (coe
-            MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
-            (coe v0 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
-            (coe (\ v2 -> coe v2 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))))
-         (coe v1))
+         MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20
+         (coe v0 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))
+         (coe (\ v2 -> coe v2 (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8))))
+      (coe v1)
+-- Once.Denotation.MainMeaning.mainMeaningᵈ-pf
+d_mainMeaning'7496''45'pf_178
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Denotation.MainMeaning.mainMeaning\7496-pf"
 -- Once.Denotation.MainMeaning.meaningᵈ
-d_meaning'7496'_174 ::
+d_meaning'7496'_186 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
-d_meaning'7496'_174 v0 v1 v2 v3
+  MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
+d_meaning'7496'_186 v0 v1 v2 v3
   = coe
-      d_runMain'7496'_160
-      (coe
-         MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
-         (coe d_mainMeaning'7496'_148 (coe v0) (coe v1) (coe v2) (coe v3)))
+      MAlonzo.Code.Once.Denotation.Behavior.C_mkBehavior_40
+      (d_runMain'7496'_160
+         (coe
+            MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+            (coe d_mainMeaning'7496'_148 (coe v0) (coe v1) (coe v2) (coe v3))))
+      (MAlonzo.Code.Once.Denotation.TraceMonad.d_coh_238
+         (coe d_pf_200 (coe v0) (coe v1) (coe v2) (coe v3)))
+      (MAlonzo.Code.Once.Denotation.TraceMonad.d_bnd_234
+         (coe d_pf_200 (coe v0) (coe v1) (coe v2) (coe v3)))
+-- Once.Denotation.MainMeaning._.pf
+d_pf_200 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
+  AgdaAny ->
+  MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
+  MAlonzo.Code.Once.Denotation.TraceMonad.T_PrefixFamily_222
+d_pf_200 v0 v1 v2 v3
+  = coe d_mainMeaning'7496''45'pf_178 v0 v1 v2 v3

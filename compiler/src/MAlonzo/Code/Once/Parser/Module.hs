@@ -142,7 +142,7 @@ d_pdb'45'fb'45'go_82 v0 v1 v2
       then coe
              d_pdb'45'fb'45'sig_62 (coe v0) (coe v1)
              (coe
-                MAlonzo.Code.Once.Parser.PolyType.d_parsePolyTypeB_558
+                MAlonzo.Code.Once.Parser.PolyType.d_parsePolyTypeB_34
                 (coe
                    MAlonzo.Code.Once.Parser.Module.DeclTail.d_colDrop1_302 (coe v1)))
       else coe

@@ -25,7 +25,7 @@ import qualified MAlonzo.Code.Once.Arith.Backend.RiscV64.RunTrace
 import qualified MAlonzo.Code.Once.Arith.Backend.RunTraceCore
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax
-import qualified MAlonzo.Code.Once.Denotation.Trace
+import qualified MAlonzo.Code.Once.Denotation.Behavior
 
 -- Once.Adequacy.CPU.RiscV64.step-budget-riscv64
 d_step'45'budget'45'riscv64_8
@@ -43,10 +43,10 @@ d_arith'45'env'45'riscv64_12
 d_run'45'trace'45'riscv64_14 ::
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
+  MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_run'45'trace'45'riscv64_14 v0 v1
   = coe
-      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_162
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_208
       (coe
          (\ v2 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_halted_424
@@ -86,7 +86,7 @@ d_arch'45'semantics_24 ::
   MAlonzo.Code.Once.Adequacy.CPU.Interface.T_ArchSemantics_10
 d_arch'45'semantics_24
   = coe
-      MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_56
+      MAlonzo.Code.Once.Adequacy.CPU.Interface.C_constructor_54
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_initState_436
       MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_run_886
       d_run'45'trace'45'riscv64_14 d_decode'45'riscv64_20

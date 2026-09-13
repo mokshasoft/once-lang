@@ -22,8 +22,12 @@ import qualified MAlonzo.Code.Agda.Builtin.List
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Algebra.Construct.NaturalChoice.MinOp
 import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.List.Base
+import qualified MAlonzo.Code.Data.Nat.Base
+import qualified MAlonzo.Code.Data.Nat.Properties
+import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Denotation.Trace
 
 -- Once.Arith.Backend.RunTraceCore.RunTrace.ArithEnv
@@ -327,8 +331,8 @@ du_run'45'events'45'exec_44 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
         -> coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Arith.Backend.RunTraceCore.RunTrace.run-trace
-d_run'45'trace_162 ::
+-- Once.Arith.Backend.RunTraceCore.RunTrace.run-trace-fam
+d_run'45'trace'45'fam_162 ::
   () ->
   () ->
   () ->
@@ -348,10 +352,11 @@ d_run'45'trace_162 ::
   AgdaAny ->
   AgdaAny ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
-d_run'45'trace_162 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
-                   v13 v14 v15 v16
-  = du_run'45'trace_162 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16
-du_run'45'trace_162 ::
+d_run'45'trace'45'fam_162 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 v7 v8 v9 v10 v11
+                          v12 v13 v14 v15 v16
+  = du_run'45'trace'45'fam_162
+      v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16
+du_run'45'trace'45'fam_162 ::
   (AgdaAny -> Bool) ->
   (AgdaAny -> Integer) ->
   (AgdaAny -> Integer -> Maybe AgdaAny) ->
@@ -367,15 +372,126 @@ du_run'45'trace_162 ::
   AgdaAny ->
   AgdaAny ->
   Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
-du_run'45'trace_162 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+du_run'45'trace'45'fam_162 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
+                           v12
   = coe
       MAlonzo.Code.Data.List.Base.du_take_530 (coe v12)
       (coe
          du_run'45'events_36 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
          (coe v5) (coe v6) (coe v8) (coe v9) (coe v7 v12) (coe v10)
          (coe v11))
+-- Once.Arith.Backend.RunTraceCore.RunTrace.run-trace-extends
+d_run'45'trace'45'extends_190
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.Backend.RunTraceCore.RunTrace.run-trace-extends"
+-- Once.Arith.Backend.RunTraceCore.RunTrace.run-trace-saturates
+d_run'45'trace'45'saturates_204
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Arith.Backend.RunTraceCore.RunTrace.run-trace-saturates"
+-- Once.Arith.Backend.RunTraceCore.RunTrace.run-trace
+d_run'45'trace_208 ::
+  () ->
+  () ->
+  () ->
+  () ->
+  (AgdaAny -> Bool) ->
+  (AgdaAny -> Integer) ->
+  (AgdaAny -> Integer -> Maybe AgdaAny) ->
+  (AgdaAny -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
+  (AgdaAny -> Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6) ->
+  (AgdaAny -> AgdaAny) ->
+  (AgdaAny -> AgdaAny -> AgdaAny) ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   AgdaAny ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
+  AgdaAny ->
+  AgdaAny -> MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
+d_run'45'trace_208 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+                   v13 v14 v15
+  = du_run'45'trace_208 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+du_run'45'trace_208 ::
+  (AgdaAny -> Bool) ->
+  (AgdaAny -> Integer) ->
+  (AgdaAny -> Integer -> Maybe AgdaAny) ->
+  (AgdaAny -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
+  (AgdaAny -> Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6) ->
+  (AgdaAny -> AgdaAny) ->
+  (AgdaAny -> AgdaAny -> AgdaAny) ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   AgdaAny ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
+  AgdaAny ->
+  AgdaAny -> MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
+du_run'45'trace_208 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11
+  = coe
+      MAlonzo.Code.Once.Denotation.Behavior.C_mkBehavior_40
+      (coe
+         du_run'45'trace'45'fam_162 (coe v0) (coe v1) (coe v2) (coe v3)
+         (coe v4) (coe v5) (coe v6) (coe v7) (coe v8) (coe v9) (coe v10)
+         (coe v11))
+      (coe
+         d_run'45'trace'45'extends_190 erased erased erased erased v0 v1 v2
+         v3 v4 v5 v6 v7 v8 v9 v10 v11)
+      (coe
+         du_bnd_226 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5)
+         (coe v6) (coe v7) (coe v8) (coe v9) (coe v10) (coe v11))
+-- Once.Arith.Backend.RunTraceCore.RunTrace._.bnd
+d_bnd_226 ::
+  () ->
+  () ->
+  () ->
+  () ->
+  (AgdaAny -> Bool) ->
+  (AgdaAny -> Integer) ->
+  (AgdaAny -> Integer -> Maybe AgdaAny) ->
+  (AgdaAny -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
+  (AgdaAny -> Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6) ->
+  (AgdaAny -> AgdaAny) ->
+  (AgdaAny -> AgdaAny -> AgdaAny) ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   AgdaAny ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
+  AgdaAny ->
+  AgdaAny -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+d_bnd_226 ~v0 ~v1 ~v2 ~v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15
+          v16
+  = du_bnd_226 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16
+du_bnd_226 ::
+  (AgdaAny -> Bool) ->
+  (AgdaAny -> Integer) ->
+  (AgdaAny -> Integer -> Maybe AgdaAny) ->
+  (AgdaAny -> AgdaAny -> AgdaAny -> Maybe AgdaAny) ->
+  (AgdaAny -> Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6) ->
+  (AgdaAny -> AgdaAny) ->
+  (AgdaAny -> AgdaAny -> AgdaAny) ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   AgdaAny ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 -> Maybe AgdaAny) ->
+  AgdaAny ->
+  AgdaAny -> Integer -> MAlonzo.Code.Data.Nat.Base.T__'8804'__22
+du_bnd_226 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+  = coe
+      MAlonzo.Code.Algebra.Construct.NaturalChoice.MinOp.du_x'8851'y'8804'x_2924
+      (coe
+         MAlonzo.Code.Data.Nat.Properties.d_'8804''45'totalPreorder_2962)
+      (coe MAlonzo.Code.Data.Nat.Properties.d_'8851''45'operator_4580)
+      (coe v12)
+      (coe
+         MAlonzo.Code.Data.List.Base.du_length_268
+         (coe
+            du_run'45'events_36 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)
+            (coe v5) (coe v6) (coe v8) (coe v9) (coe v7 v12) (coe v10)
+            (coe v11)))
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-[]
-d_run'45'events'45''91''93'_194 ::
+d_run'45'events'45''91''93'_250 ::
   () ->
   () ->
   () ->
@@ -400,9 +516,9 @@ d_run'45'events'45''91''93'_194 ::
    MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   Integer ->
   AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45''91''93'_194 = erased
+d_run'45'events'45''91''93'_250 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-noncall
-d_run'45'events'45'noncall_390 ::
+d_run'45'events'45'noncall_446 ::
   () ->
   () ->
   () ->
@@ -428,9 +544,9 @@ d_run'45'events'45'noncall_390 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45'noncall_390 = erased
+d_run'45'events'45'noncall_446 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-stuck
-d_run'45'events'45'stuck_440 ::
+d_run'45'events'45'stuck_496 ::
   () ->
   () ->
   () ->
@@ -455,9 +571,9 @@ d_run'45'events'45'stuck_440 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45'stuck_440 = erased
+d_run'45'events'45'stuck_496 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-halted
-d_run'45'events'45'halted_488 ::
+d_run'45'events'45'halted_544 ::
   () ->
   () ->
   () ->
@@ -478,9 +594,9 @@ d_run'45'events'45'halted_488 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45'halted_488 = erased
+d_run'45'events'45'halted_544 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-fetch-none
-d_run'45'events'45'fetch'45'none_516 ::
+d_run'45'events'45'fetch'45'none_572 ::
   () ->
   () ->
   () ->
@@ -501,9 +617,9 @@ d_run'45'events'45'fetch'45'none_516 ::
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45'fetch'45'none_516 = erased
+d_run'45'events'45'fetch'45'none_572 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace._.go
-d_go_536 ::
+d_go_592 ::
   () ->
   () ->
   () ->
@@ -526,9 +642,9 @@ d_go_536 ::
   Bool ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_go_536 = erased
+d_go_592 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-arith
-d_run'45'events'45'arith_554 ::
+d_run'45'events'45'arith_610 ::
   () ->
   () ->
   () ->
@@ -555,9 +671,9 @@ d_run'45'events'45'arith_554 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45'arith_554 = erased
+d_run'45'events'45'arith_610 = erased
 -- Once.Arith.Backend.RunTraceCore.RunTrace.run-events-external
-d_run'45'events'45'external_610 ::
+d_run'45'events'45'external_666 ::
   () ->
   () ->
   () ->
@@ -583,4 +699,4 @@ d_run'45'events'45'external_610 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_run'45'events'45'external_610 = erased
+d_run'45'events'45'external_666 = erased

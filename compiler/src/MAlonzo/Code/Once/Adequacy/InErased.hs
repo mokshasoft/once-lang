@@ -59,7 +59,6 @@ du_In'45'ir_60 v0 v1
       MAlonzo.Code.Once.IR.C_In_96
       (MAlonzo.Code.Once.IRTy.WF.d_wf'45''8970''8971'_46
          (coe v0) (coe v1))
-      (coe MAlonzo.Code.Once.IR.C_Heap_8)
 -- Once.Adequacy.InErased.⟨⟩-subst-nat
 d_'10216''10217''45'subst'45'nat_78 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->

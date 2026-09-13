@@ -299,7 +299,7 @@ du_compileFunBody'45'aux_82 v0 v1 v2 v3 v4 v5 v6 v7
              (coe
                 MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v2)
                 (coe
-                   MAlonzo.Code.Once.Optimize.d_optimize_4052
+                   MAlonzo.Code.Once.Optimize.d_optimize_3946
                    (MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
                       (coe
                          MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
@@ -555,7 +555,7 @@ d_inferType'45'validate_292 v0 v1 v2 v3
         -> let v5
                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1438
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1460
                         (coe v0) (coe v1) (coe v4)) in
            coe
              (case coe v5 of
@@ -577,7 +577,7 @@ d_inferType_328 v0 v1 v2
   = let v3
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1422
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1444
                  (coe
                     MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
                     (coe v0) (coe v1))
@@ -1192,7 +1192,7 @@ d_funLabels'45'cons_694 v0 v1 v2 v3
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_738
+                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_776
                       (coe d_cfName_256 (coe v3))
                       (coe
                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
@@ -1353,7 +1353,7 @@ d_funLabelRefs'45'cons_756 v0 v1 v2 v3
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_738
+                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_776
                       (coe d_cfName_256 (coe v3))
                       (coe
                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52
@@ -1515,7 +1515,7 @@ d_funSyms'45'cons_818 v0 v1 v2 v3
                 (coe
                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
                    (coe
-                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_738
+                      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'linked'45'from_776
                       (coe d_cfName_256 (coe v3))
                       (coe
                          MAlonzo.Code.Once.IRTy.d_'8970'_'8971'_52

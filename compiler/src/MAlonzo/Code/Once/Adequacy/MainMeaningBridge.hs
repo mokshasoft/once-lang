@@ -56,7 +56,7 @@ d_main'45'bridge'45'leaf_56 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_main'45'bridge'45'leaf_56 = erased
 -- Once.Adequacy.MainMeaningBridge.main-bridge-go
-d_main'45'bridge'45'go_80 ::
+d_main'45'bridge'45'go_84 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -65,9 +65,9 @@ d_main'45'bridge'45'go_80 ::
   MAlonzo.Code.Once.Spec.Module.T_AllFunsTyped_10 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_main'45'bridge'45'go_80 = erased
+d_main'45'bridge'45'go_84 = erased
 -- Once.Adequacy.MainMeaningBridge.main-bridge-dispatch
-d_main'45'bridge'45'dispatch_112 ::
+d_main'45'bridge'45'dispatch_116 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -83,9 +83,9 @@ d_main'45'bridge'45'dispatch_112 ::
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   MAlonzo.Code.Relation.Nullary.Decidable.Core.T_Dec_20 ->
   Bool -> Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_main'45'bridge'45'dispatch_112 = erased
+d_main'45'bridge'45'dispatch_116 = erased
 -- Once.Adequacy.MainMeaningBridge.main-bridge-ef
-d_main'45'bridge'45'ef_180 ::
+d_main'45'bridge'45'ef_184 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30 ->
@@ -93,12 +93,12 @@ d_main'45'bridge'45'ef_180 ::
   AgdaAny ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_main'45'bridge'45'ef_180 = erased
+d_main'45'bridge'45'ef_184 = erased
 -- Once.Adequacy.MainMeaningBridge.main-bridge
-d_main'45'bridge_204 ::
+d_main'45'bridge_208 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Parser.Module.Core.T_Module_32 ->
   AgdaAny ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_main'45'bridge_204 = erased
+d_main'45'bridge_208 = erased

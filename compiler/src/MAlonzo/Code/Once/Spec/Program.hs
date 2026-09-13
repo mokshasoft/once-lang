@@ -25,6 +25,6 @@ d_Typed_6 :: ()
 d_Typed_6 = erased
 -- Once.Spec.Program._⊢R_
 d__'8866'R__12 ::
-  MAlonzo.Code.Once.Denotation.Behavior.T_Source_8 ->
+  MAlonzo.Code.Once.Denotation.Behavior.T_Source_196 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 -> ()
 d__'8866'R__12 = erased

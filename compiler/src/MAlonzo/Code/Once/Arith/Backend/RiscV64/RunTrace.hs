@@ -21,12 +21,14 @@ import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Maybe
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
+import qualified MAlonzo.Code.Data.Nat.Base
 import qualified MAlonzo.Code.Data.Product.Base
 import qualified MAlonzo.Code.Once.Arith.Backend.RiscV64.Dispatch
 import qualified MAlonzo.Code.Once.Arith.Backend.RunTraceCore
 import qualified MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics
 import qualified MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax
+import qualified MAlonzo.Code.Once.Denotation.Behavior
 import qualified MAlonzo.Code.Once.Denotation.Trace
 import qualified MAlonzo.Code.Once.Target.RiscV64.PhysReg
 
@@ -401,10 +403,10 @@ d_run'45'trace_54 ::
    Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
-  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
+  MAlonzo.Code.Once.Denotation.Behavior.T_Behavior_6
 d_run'45'trace_54 v0
   = coe
-      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_162
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace_208
       (coe
          (\ v1 ->
             MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_halted_424
@@ -422,3 +424,86 @@ d_run'45'trace_54 v0
             coe
               MAlonzo.Code.Once.Arith.Backend.RiscV64.Dispatch.du_dispatch'45'arith_18
               (coe v0) v1 v3))
+-- Once.Arith.Backend.RiscV64.RunTrace._._.run-trace-extends
+d_run'45'trace'45'extends_56 ::
+  (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
+   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
+   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 -> Integer) ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
+  Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+d_run'45'trace'45'extends_56 v0
+  = coe
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.d_run'45'trace'45'extends_190
+      erased erased erased erased
+      (\ v1 ->
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_halted_424
+           (coe v1))
+      (\ v1 ->
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v1))
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488
+      MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546
+      d_matchCall_10 d_ret'45'past_14
+      (coe
+         MAlonzo.Code.Data.Product.Base.du_uncurry_244
+         (\ v1 v2 v3 ->
+            coe
+              MAlonzo.Code.Once.Arith.Backend.RiscV64.Dispatch.du_dispatch'45'arith_18
+              (coe v0) v1 v3))
+-- Once.Arith.Backend.RiscV64.RunTrace._._.run-trace-fam
+d_run'45'trace'45'fam_58 ::
+  (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
+   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
+   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 -> Integer) ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
+  Integer -> [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]
+d_run'45'trace'45'fam_58 v0
+  = coe
+      MAlonzo.Code.Once.Arith.Backend.RunTraceCore.du_run'45'trace'45'fam_162
+      (coe
+         (\ v1 ->
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_halted_424
+              (coe v1)))
+      (coe
+         (\ v1 ->
+            MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_pc_422 (coe v1)))
+      (coe MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_fetch_488)
+      (coe
+         MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.d_execInstr_546)
+      (coe d_matchCall_10) (coe d_ret'45'past_14)
+      (coe
+         MAlonzo.Code.Data.Product.Base.du_uncurry_244
+         (\ v1 v2 v3 ->
+            coe
+              MAlonzo.Code.Once.Arith.Backend.RiscV64.Dispatch.du_dispatch'45'arith_18
+              (coe v0) v1 v3))
+-- Once.Arith.Backend.RiscV64.RunTrace._._.run-trace-saturates
+d_run'45'trace'45'saturates_60 ::
+  (MAlonzo.Code.Once.Arith.Backend.XInstr.Syntax.T_XInstr_24 ->
+   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
+   MAlonzo.Code.Once.Target.RiscV64.PhysReg.T_Reg_8 -> Integer) ->
+  (Integer -> Integer) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
+   [MAlonzo.Code.Once.Denotation.Trace.T_SigOpEvent_118]) ->
+  (MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  [MAlonzo.Code.Once.CCC.Target.RiscV64.Syntax.T_Instr_10] ->
+  MAlonzo.Code.Once.CCC.Target.RiscV64.Semantics.T_State_408 ->
+  Integer ->
+  MAlonzo.Code.Data.Nat.Base.T__'8804'__22 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_run'45'trace'45'saturates_60 = erased

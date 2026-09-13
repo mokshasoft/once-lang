@@ -31,5 +31,5 @@ data T_ParsesEffAnnot_8 = C_pea'45'some_14 | C_pea'45'none_18
 d_ParsesSignature_20 a0 a1 a2 = ()
 data T_ParsesSignature_20
   = C_psig'45'mk_34 [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-                    MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_374
+                    MAlonzo.Code.Once.Parser.Generic.Relation.T_ParsesTypeG_390
                     T_ParsesEffAnnot_8
