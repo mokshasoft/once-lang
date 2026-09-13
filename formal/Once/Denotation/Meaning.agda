@@ -37,12 +37,13 @@ open import Data.String using (String; _++_)
 open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity; mk-kind; Quantity; Zero; One; Many)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
+open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace; fmapT)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; seqF)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; forceᵈ; seqF)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0; lookupᴰUsed)
-open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; ⟦_⟧F)
+open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; coerce-ν-out; ⟦_⟧F)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
@@ -71,7 +72,7 @@ open import Once.TypeCheck.Judgment
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
          t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-         t-terminal-app; t-apply-app-infer; t-app; t-effApp)
+         t-terminal-app; t-apply-app-infer; t-Out-app-infer; t-app; t-effApp)
 
 ------------------------------------------------------------------------
 -- P1 scaffolds (discharged in P2). NAMED and narrow — each is exactly one
@@ -109,6 +110,17 @@ ana-sem : ∀ {F : Functor} {A : Type} → WellFormedF F
 ana-sem {F} {A} wf cT a =
   returnT (anaFᵈ F (λ a' → fmapT (coerce-functor-D F A)
                              (cT >>=T λ clo → clo a')) a)
+
+-- D194: FORCING a layer — the ν's eliminator, and the one place a ν emits.
+-- `ana-sem` stores the coalgebra; this is where it runs. Mirrors
+-- `evalᴰ (Out wf)` exactly, minus the IRTy transports (those live on the
+-- other side of `⌈_⌉`).
+out-sem : ∀ {F : Functor} → WellFormedF F
+        → ⟦ Once.Type.ν-type F ⟧ᴰ → T ⟦ ⟦ F ⟧T (Once.Type.ν-type F) ⟧ᴰ
+out-sem {F} wf v =
+  fmapT (λ layer → coerce-functor⁻¹-D F (Once.Type.ν-type F)
+                     (coerce-ν-out wf _ layer))
+        (forceᵈ v)
 
 -- g-In: the initial-algebra constructor `⟦F⟧T (μF) → μF` at the value level.
 -- DEFINITIONALLY `eval (In wf Heap) ∘ forget` (first-order data is pure), so the
@@ -377,6 +389,11 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
 ⟦_⟧ᵢ {ctx = ctx} (t-id-app d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ)
 ⟦_⟧ᵢ {ctx = ctx} (t-fst-app d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (proj₁ v)
 ⟦_⟧ᵢ {ctx = ctx} (t-snd-app d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ v → returnT (proj₂ v)
+⟦_⟧ᵢ {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) fmt dγ =
+  subst (λ Z → T ⟦ Z ⟧ᴰ) ceq
+    ((⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx}
+                    (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ)
+       >>=T out-sem wfF)
 ⟦_⟧ᵢ {ctx = ctx} (t-terminal-app d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ _ → returnT tt
 ⟦_⟧ᵢ {ctx = ctx} (t-apply-app-infer d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ fa → proj₁ fa (proj₂ fa)
 -- D143: at an ERASED arrow the argument is NOT evaluated — the meaning takes

@@ -1033,6 +1033,18 @@ mutual
   -- helpers take each decidable result as an explicit argument with its
   -- `refl` witness (no `with … in`), so the completeness fallbacks
   -- reduce them with plain nested `with | eq` — like `checkPair`.
+  -- D194: `Out v` — the ν eliminator, INFER-mode (a check rule would have to
+  -- invert `⟦ F ⟧T (ν-type F) ≡ T` to recover `F`).
+  inferOut : (ctx : NamedCtx) → (arg : RawExpr)
+           → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
+  inferOutGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
+               (Ψ : Surface.Usage (NamedCtx.size ctx))
+               (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.ν-type F))
+               (d fr : ℕ)
+               (w : ctx ⊢ᵢ arg ∶ Once.Type.ν-type F ⨾ Ψ)
+             → (mw : Maybe (Once.Functor.Translate.WellFormedF F)) → wellFormedF? F ≡ mw
+             → VerifiedInferResult ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
+
   checkIn : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type)
           → VerifiedCheckResult ctx (Raw.RApp (Raw.RResolved (gen "In")) arg) T
   checkInGo : (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
@@ -1554,6 +1566,37 @@ mutual
   -- D127: `In arg` at an ARROW type is no longer a lift. It falls through to
   -- the mismatch below, and the program writes `\_ -> In arg`.
   checkIn _ _ _ = failure (BuiltinTypeMismatch "In") , tt
+
+  -- D194: `Out v` — INFER. The argument is inferred, `ν-type F` read off its
+  -- type, and `F`'s well-formedness decided exactly as `In`/`cata`/`ana` do.
+  -- `Go` takes the decision as an explicit argument with its `refl` witness,
+  -- for `checkInGo`'s reason: the completeness fallbacks reduce it with plain
+  -- nested `with | eq`.
+  inferOut ctx arg with inferElabV ctx arg
+  ... | failure err , _ = failure err , tt
+  ... | success (Once.Type.ν-type F) Ψ argE d fr , w =
+        inferOutGo ctx arg F Ψ argE d fr w (wellFormedF? F) refl
+  ... | success Once.Type.Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success Once.Type.Void _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success Once.Type.Int _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success Once.Type.Float _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success Once.Type.Str _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success Once.Type.Buffer _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success (_ Once.Type.* _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success (_ Once.Type.+ _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success (_ Once.Type.⇒[ _ ] _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+  ... | success (Once.Type.μ-type _) _ _ _ _ , _ = failure (BuiltinTypeMismatch "Out") , tt
+
+  inferOutGo ctx arg F Ψ argE d fr w nothing _ = failure (BuiltinTypeMismatch "Out") , tt
+  inferOutGo ctx arg F Ψ argE d fr w (just wfF) eqW =
+    success (⟦ F ⟧T (Once.Type.ν-type F)) _
+      (Surface.morph-app
+        (subst (λ o → IR ⌊ Once.Type.ν-type F ⌋ o)
+               (sym (⌊⟧T-commute F (Once.Type.ν-type F)))
+               (IR.Out (wf-⌊⌋ wfF)))
+        argE)
+      (suc d) fr
+    , t-Out-app-infer wfF refl w
 
   checkInGo ctx arg F nothing _ = failure (BuiltinTypeMismatch "In") , tt
   checkInGo ctx arg F (just wfF) eqW with checkElabV ctx arg (⟦ F ⟧T (Once.Type.μ-type F))
@@ -2360,6 +2403,7 @@ mutual
   inferElabV-RApp-dispatch ctx f arg ahv-In              _ = failure (BuiltinTypeMismatch "In") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-cata            _ = failure (BuiltinTypeMismatch "cata") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-ana             _ = failure (BuiltinTypeMismatch "ana") , tt
+  inferElabV-RApp-dispatch ctx f arg ahv-Out             _ = inferOut ctx arg
   inferElabV-RApp-dispatch ctx f arg ahv-curry           _ = failure (BuiltinTypeMismatch "curry") , tt
   -- ahv-other : generic application via `inferElabV-RApp-other`.
   inferElabV-RApp-dispatch ctx f arg ahv-other _ = inferElabV-RApp-other ctx f arg
@@ -2376,6 +2420,12 @@ mutual
   ... | r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RApp f arg) T r
   ... | (failure err , _) = failure err , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-snd _      with inferElabV ctx (Raw.RApp f arg)
+  ... | r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RApp f arg) T r
+  ... | (failure err , _) = failure err , tt
+  -- D194: `Out v` infers, so its CHECK goes through the shared
+  -- infer-then-check, exactly as `terminal`/`apply` do. That is what gives
+  -- `Out v` at an eff position for free (`t-subsume`).
+  checkElabV-RApp-dispatch ctx f arg T ahv-Out _ with inferElabV ctx (Raw.RApp f arg)
   ... | r@(success _ _ _ _ _ , _) = embedOrSubsume ctx (Raw.RApp f arg) T r
   ... | (failure err , _) = failure err , tt
   checkElabV-RApp-dispatch ctx f arg T ahv-terminal _ with inferElabV ctx (Raw.RApp f arg)

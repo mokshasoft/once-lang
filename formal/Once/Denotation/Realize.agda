@@ -33,7 +33,7 @@ module Once.Denotation.Realize where
 
 open import Data.Integer using (-_)   -- the folded payload of `g-neg-int` (plan 0.73 F3)
 open import Data.String using (_++_)
-open import Once.Type using (Type; Many; _*_; _+_; μ-type; ⟦_⟧T)
+open import Once.Type using (Type; Many; _*_; _+_; μ-type; ν-type; ⟦_⟧T)
 open import Once.IR as IR using (IR; _∘_; ⟨_,_⟩)
 open import Once.IRTy using (⌊_⌋; ⌊⟧T-commute)
 open import Once.IRTy.WF using (wf-⌊⌋)
@@ -49,7 +49,7 @@ open import Once.TypeCheck.Judgment
          t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
          t-binop-arith-float-ir; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-         t-terminal-app; t-apply-app-infer; t-app; t-effApp; t-embed; t-lam;
+         t-terminal-app; t-apply-app-infer; t-Out-app-infer; t-app; t-effApp; t-embed; t-lam;
          t-pair-lit-check; t-In-app-check; t-apply-check; t-inl-app-check;
          t-inr-app-check; t-initial-app-check; t-subsume;
          t-arg-driven-app-check; t-var-poly-instantiate;
@@ -228,6 +228,14 @@ realize-infer (t-binop-cmp {op = OpMod} () _ _)
 realize-infer (t-id-app d)       = morph-app IR.id       (realize-infer d)
 realize-infer (t-fst-app d)      = morph-app IR.fst      (realize-infer d)
 realize-infer (t-snd-app d)      = morph-app IR.snd      (realize-infer d)
+-- D194: the ν eliminator, with `t-In-app-check`'s transport in the opposite
+-- direction — `In` lands AT `⌊ μ-type F ⌋`, `Out` STARTS there.
+realize-infer {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) =
+  subst (λ Z → Expr (NamedCtx.debruijn ctx) _ Z) ceq
+    (morph-app (subst (λ o → IR ⌊ ν-type F ⌋ o)
+                      (sym (⌊⟧T-commute F (ν-type F)))
+                      (IR.Out (wf-⌊⌋ wfF)))
+               (realize-infer d))
 realize-infer (t-terminal-app d) = morph-app IR.terminal (realize-infer d)
 realize-infer (t-apply-app-infer d) = morph-app IR.apply (realize-infer d)
 realize-infer (t-app _ df dx)    = app    (realize-infer df) (realize dx)

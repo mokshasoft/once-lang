@@ -13109,3 +13109,45 @@ the constructor and left the import), the whole `do-call-sv`/`-code`/`-at`/
 come from `Flat`; the names resolved elsewhere so nothing ever broke), a
 duplicated `SV-Code`, and `nhw-store-indirect`/`-suc` from `SMPrimitives`
 which has neither. All fixed; the full tree lint is now clean.
+
+## D197 — `Out` LANDS, THE ν LOOP CLOSES, AND THE GUARD FINDS A HOLE (2026-09-13)
+
+D194's last obligation is discharged. `νout-erase-D` is PROVED — five clauses,
+seven base leaves, no postulate — so `out-app-bridge` is a proof and surface
+`Out` is landed. **A ν can now be written, typed, compiled, built and FORCED.**
+`Out (mkNu 42)` exits 42, on x86_64, x86_32 and riscv64.
+
+**What made the proof tractable was fixing the STATEMENT, not the proof.** Two
+changes: generalise the CARRIER (at `⊕` the sub-functor changes while the
+carrier does not, so tying them blocked the recursion outright), and NAME the
+`⌈⌉`-side layer map (`out-layer-gen`) so the proof could `cong` over the LAYER
+instead of the whole computation. After those, `wf-Id` fell to subst
+cancellation, `⊕`/`⊗` to five-step push chains, and five of seven base leaves
+to `refl`. Three earlier attempts failed because I was writing transport
+chains against a statement the induction could not consume.
+
+**The guard found a hole on its first live run.** Written point-free —
+
+```once
+force : Nu (K Int) -> Int
+force = Out
+```
+
+— this TYPECHECKS AND EMITS NOTHING; the link then fails on an undefined
+`once_5force`. `t-Out-app-infer` is an INFER rule about
+`RApp (RResolved (gen "Out")) v`; there is no rule for a bare `Out`, so it
+should be REJECTED. Bare point-free defs DO work for the check-mode generators
+(`identity = id`), so this is specific to the infer-mode-only heads. Same
+defect class as the one this whole branch started from: something accepted
+that has no meaning. Left as the next task rather than patched here, because
+the fix is a frontend rule change and wants its own entry.
+
+**Test coverage, measured.** `nu-ana-build` exercises the ten-instruction
+two-cell build and the coalgebra block; `nu-ana-force` exercises the CALL
+through the ν's second cell — the half `obs-correct-Out` still assumes. Both
+are in `Layer5Spec` (the μ file's codata dual) so `exitCases` runs them on all
+three arches; `tests/run-exit-tests.sh` is x86_64 only, and until now the ν
+codegen had never executed anywhere else.
+
+Exit tests 64 passed / 0 failed / 0 SKIPPED. `cabal test` 743 passed (737 + the
+six new: two programs × three arches). `make certified` green.

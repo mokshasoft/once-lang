@@ -456,6 +456,7 @@ library
       MAlonzo.Code.Once.Adequacy.CanonResolve
       MAlonzo.Code.Once.Adequacy.AnaBridge
       MAlonzo.Code.Once.Adequacy.CataBridge
+      MAlonzo.Code.Once.Adequacy.OutErased
       MAlonzo.Code.Once.Adequacy.CataRel
       MAlonzo.Code.Once.Adequacy.SeqRel
       MAlonzo.Code.Once.Adequacy.FunBundle

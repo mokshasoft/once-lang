@@ -1315,6 +1315,44 @@ checkElab-fallback-RApp-apply-eff {ctx} p A B eqInf
 ...     | no ¬a    | _        = ⊥-elim (¬a refl)
 ...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
 
+-- D194: the J bridge for `inferOutGo`'s decision argument — `checkCataGo-J`'s
+-- analogue, and needed for its reason: the completeness proof must move from
+-- the `(wellFormedF? F, refl)` form the elaborator produces to the
+-- `(just wfF, eqW)` form the witness gives, and a `rewrite` cannot do it
+-- because the equation it would rewrite by mentions the very term being
+-- abstracted.
+inferOutGo-J :
+  ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Once.Type.Functor)
+    (Ψ : Surface.Usage (NamedCtx.size ctx))
+    (argE : SExpr (NamedCtx.debruijn ctx) Ψ (Once.Type.ν-type F))
+    (d fr : ℕ) (w : ctx ⊢ᵢ arg ∶ Once.Type.ν-type F ⨾ Ψ)
+    (mw : Maybe (Once.Functor.Translate.WellFormedF F)) (eq : wellFormedF? F ≡ mw)
+  → inferOutGo ctx arg F Ψ argE d fr w (wellFormedF? F) refl
+    ≡ inferOutGo ctx arg F Ψ argE d fr w mw eq
+inferOutGo-J ctx arg F Ψ argE d fr w .(wellFormedF? F) refl = refl
+
+-- D194: the eff twin for `Out`. Reachable because `⟦ F ⟧T (ν-type F)` CAN be
+-- a pure arrow — at `F = K (A ⇒ B)` — so forcing a layer can synthesise a
+-- function, and checking it at an eff arrow is the ordinary subsumption.
+checkElab-fallback-RApp-Out-eff :
+  ∀ {ctx : NamedCtx} (v : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {d f' : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) v) ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ eE d f'
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) v) (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        ≡ success Ψ eE' d' f'')))
+checkElab-fallback-RApp-Out-eff {ctx} v A B eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "Out")) v) | eqInf
+... | success _ _ _ _ _ , _ | refl
+    with (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ≟T (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+...   | yes ()
+...   | no _ with A ≟T A | B ≟T B
+...     | yes refl | yes refl = _ , _ , _ , refl
+...     | no ¬a    | _        = ⊥-elim (¬a refl)
+...     | yes _     | no ¬b    = ⊥-elim (¬b refl)
+
 -- Plan 0.54: relate the two `(mw, eq)` instantiations of `checkCataGo` by
 -- singleton contractibility (mirrors compose's `go-canonical`). Used to bridge
 -- the `(wellFormedF? F, refl)` form that `checkElabV`/`checkCata` actually produce
@@ -1464,6 +1502,23 @@ checkElab-fallback-RApp-terminal {ctx} arg T eqInf
 ... | success T' _ _ _ _ , _ | refl with T ≟T T'
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
+-- D194: the `Out` fallback — `terminal`'s verbatim. Both are infer-mode heads
+-- whose CHECK routes through `embedOrSubsume`, so the check reduces to the
+-- infer result matched against the expected type.
+checkElab-fallback-RApp-Out :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-Out {ctx} arg T eqInf
+  with inferElabV ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg) | eqInf
+... | success T' _ _ _ _ , _ | refl with T ≟T T'
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq refl)
+
 checkElab-fallback-RBinOp :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (e₁ e₂ : RawExpr) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}

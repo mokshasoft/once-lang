@@ -44,6 +44,7 @@ open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata)
 open import Once.IRTy using (eraseF; ⌊⟧T-commute; IRTy)
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Adequacy.InErased fmt using (In-ir; liftFn-In)
+open import Once.Denotation.Meaning using (out-sem)
 open import Once.Postulates using (extensionality)
 open import Once.Surface.Context using (Ctx; ∅; _,_^_; lookup; svar; SVar; _↾_;
                                         singleUse; zeroUsage; _⊑ᵘ_; ⊑[]; _⊑∷_;
@@ -67,7 +68,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-  t-terminal-app; t-apply-app-infer; t-app; t-effApp;
+  t-terminal-app; t-apply-app-infer; t-Out-app-infer; t-app; t-effApp;
   t-embed; t-lam; t-pair-lit-check;
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
   t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
@@ -93,6 +94,7 @@ open import Once.Adequacy.MeaningRelation fmt
   using (RelV; RelT; RelT-return; RelT-bind)
 open import Once.Adequacy.CataBridge fmt using (cata-bridge)
 open import Once.Adequacy.AnaBridge fmt using (ana-bridge)
+open import Once.Adequacy.OutErased fmt using (Out-ir; liftFn-Out-pair)
 
 -- Move a codomain-subst on `f` across `g ∘_` into a domain-subst on `g`.
 -- Match-to-refl.  (`realize-global (g-In) = In ∘ subst(⌊⟧T)(rg) = In-ir ∘ rg`.)
@@ -382,6 +384,15 @@ sigop-ref-bridge {A = Dom ⇒[ mk-kind Many π ] Cod} cn (con-fun bDom cCod) dγ
 -- constructor (`sem-In ∘ coerce-functor ∘ forget`, `inject{μ}=id`, empty trace);
 -- the argument's `RelV` collapses to `≡` via `wfF-layer-eq` (`RelV(μ)=≡` at the
 -- recursive slot), so a `cong` finishes — no funext.
+-- D194: the `Out` bridge, PROVED. `RelV` at a ν is propositional equality, so
+-- this carries no relational content — it is the coherence saying the direct
+-- meaning's force and the IR's agree, which is `OutErased.liftFn-Out`.
+out-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ν-type F ⟧ᴰ}
+               → RelV (ν-type F) vᴸ vᴿ
+               → RelT (⟦ F ⟧T (ν-type F)) (out-sem wfF vᴸ)
+                      (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) vᴿ)
+out-app-bridge {F} {wfF} refl k = liftFn-Out-pair wfF _ k
+
 in-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
               → RelV (⟦ F ⟧T (μ-type F)) vᴸ vᴿ
               → RelT (μ-type F) (returnT (in-value vᴸ))
@@ -760,6 +771,9 @@ bridge-i {ctx = ctx} (t-fst-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = d
 bridge-i {ctx = ctx} (t-snd-app {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
   subst (RelT B ((⟦ t-snd-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-snd {A} {B})))
         (λ k → cong (_++ []) (proj₁ (bridge-i d (reᵐ re) k)) , proj₂ (proj₂ (bridge-i d (reᵐ re) k)))
+bridge-i (t-Out-app-infer {F = F} wfF refl d) re =
+  RelT-bind {A = ν-type F} {B = ⟦ F ⟧T (ν-type F)}
+            (bridge-i d (reᵐ re)) (λ rv → out-app-bridge {wfF = wfF} rv)
 bridge-i {ctx = ctx} (t-terminal-app {T = T} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
   subst (RelT Unit ((⟦ t-terminal-app d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-terminal {T})))
         (λ k → cong (_++ []) (proj₁ (bridge-i d (reᵐ re) k)) , tt)

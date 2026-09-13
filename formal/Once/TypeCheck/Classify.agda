@@ -451,6 +451,7 @@ data PolyBuiltinApp : Set where
   pba-In : PolyBuiltinApp                               -- 1-arg `In arg`, check mode (μ intro)
   pba-cata : PolyBuiltinApp                             -- 1-arg `cata alg`, check mode (fold)
   pba-ana  : PolyBuiltinApp                             -- 1-arg `ana coalg`, check mode (unfold)
+  pba-Out  : PolyBuiltinApp                             -- 1-arg `Out v`, INFER mode (force)
 
 -- | `classifyAppHead` (head → `Maybe PolyBuiltinApp`) is DEFINED BELOW, after
 -- `classifyAppHeadView`, as `viewToPba ∘ classifyAppHeadView` — a single source
@@ -486,6 +487,8 @@ data AppHeadView : RawExpr → Set where
   -- D192: `ana`, the cata's dual. Same shape of head — a generator name
   -- applied to one argument — so it needs no syntax of its own.
   ahv-ana      : AppHeadView (Raw.RResolved (gen "ana"))
+  -- D194: `Out`, the ν's eliminator. INFER-mode, unlike `In`/`cata`/`ana`.
+  ahv-Out      : AppHeadView (Raw.RResolved (gen "Out"))
   ahv-pair-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "pair")) f')
   ahv-compose-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "compose")) f')
   ahv-case-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RResolved (gen "case")) f')
@@ -522,7 +525,9 @@ classifyAppHeadView (Raw.RResolved (canonical (ns ∷ g ∷ []))) with ns ≟ ge
 ...                       | yes refl = ahv-cata
 ...                       | no  _ with g ≟ "ana"
 ...                         | yes refl = ahv-ana
-...                         | no  _ = ahv-other
+...                         | no  _ with g ≟ "Out"
+...                           | yes refl = ahv-Out
+...                           | no  _ = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RResolved (canonical (ns ∷ g ∷ []))) _) with ns ≟ generatorNS
 ... | no _ = ahv-other
 ... | yes refl with g ≟ "pair"
@@ -585,6 +590,7 @@ viewToPba ahv-apply           = just pba-apply
 viewToPba ahv-In              = just pba-In
 viewToPba ahv-cata            = just pba-cata
 viewToPba ahv-ana             = just pba-ana
+viewToPba ahv-Out             = just pba-Out
 viewToPba ahv-pair-applied    = just pba-pair-applied
 viewToPba ahv-compose-applied = just pba-compose-applied
 viewToPba ahv-case-applied    = just pba-case-applied
@@ -618,6 +624,7 @@ classifyAppHead-nothing⇒view-other {f} p with classifyAppHeadView f | p
 ... | ahv-In              | ()
 ... | ahv-cata            | ()
 ... | ahv-ana             | ()
+... | ahv-Out             | ()
 ... | ahv-pair-applied    | ()
 ... | ahv-compose-applied | ()
 ... | ahv-case-applied    | ()

@@ -417,6 +417,34 @@ mutual
                       → ctx ⊢ᵢ p ∶ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) ⨾ Ψ
                       → ctx ⊢ᵢ RApp (RResolved (gen "apply")) p ∶ B ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
+    -- | D194: `Out v` — force one layer of a ν. INFER, not check, and that
+    -- is forced by the shape rather than chosen: a check rule would have to
+    -- recover `F` by inverting `⟦ F ⟧T (ν-type F) ≡ T`, which is not
+    -- syntactically possible. Inferring the argument instead reads `ν-type F`
+    -- off its type, where `F` is manifest.
+    --
+    -- This is the ν's ONLY eliminator, so without it `ana` can build a value
+    -- nothing can observe — which is exactly the reachability gap D189 was
+    -- about (an unobservable feature cannot fail a test).
+    -- The `WellFormedF F` premise is the one every recursion scheme carries
+    -- (`t-In-app-check`, `t-cata-check`, `t-ana-check`): the IR generator it
+    -- realizes to is indexed by it.
+    -- The conclusion type is a VARIABLE `C` pinned by an equation rather than
+    -- the application `⟦ F ⟧T (ν-type F)` written directly. That is forced:
+    -- `⟦_⟧T` is not constructor-headed, so with the application in the index
+    -- every downstream `∀`-over-⊢ᵢ function that splits on the conclusion's
+    -- SHAPE gets a stuck unification (`iFromInferEff` asks whether the layer
+    -- is a pure arrow — and it CAN be, at `F = K (A ⇒ B)`, so the case is
+    -- neither refutable nor solvable). With `C` free the split succeeds and
+    -- the equation is there to transport along.
+    t-Out-app-infer : ∀ {ctx : NamedCtx} {v : RawExpr} {F : Functor} {C : Type}
+                      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                    → WellFormedF F
+                    → ⟦ F ⟧T (ν-type F) ≡ C
+                    → ctx ⊢ᵢ v ∶ ν-type F ⨾ Ψ
+                    → ctx ⊢ᵢ RApp (RResolved (gen "Out")) v
+                            ∶ C ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+
     ----------------------------------------------------------------
     -- Generic function application.
     --

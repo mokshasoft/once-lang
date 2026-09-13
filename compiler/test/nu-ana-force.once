@@ -1,10 +1,7 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
--- PENDING (D194: surface `Out` not yet landed)
 
--- PENDING — blocked on D194 (surface `Out`).
---
--- THIS is the recurrence guard. `nu-ana-build.once` proves a ν can be BUILT;
+-- THE RECURRENCE GUARD — live as of D194. `nu-ana-build.once` proves a ν can be BUILT;
 -- this one proves it can be OBSERVED, which is what makes the ν path testable
 -- at all. Until it runs, the only thing standing between the ν codegen and a
 -- silent regression is someone deciding to read the proofs.
@@ -15,8 +12,6 @@
 -- there by calling the coalgebra block through the ν's second cell, which is
 -- `obs-correct-Out`'s content.
 --
--- Enable by deleting the PENDING line once `docs/compiler/D194-surface-out.patch`
--- lands (the `Out` typing rule, `inferOut`, and `OutErased.νout-erase-D`).
 --
 -- Expected: exit code 42.
 
@@ -26,8 +21,11 @@ mkNu : Int -> Nu (K Int)
 mkNu = ana id
 
 -- `Out v : ⟦ K Int ⟧T (Nu (K Int))` = `Int` at this functor.
-force : Nu (K Int) -> Int
-force = Out
-
+--
+-- APPLIED, deliberately. `t-Out-app-infer` is an INFER rule about
+-- `RApp (RResolved (gen "Out")) v`, so the applied form is the one the spec
+-- describes. Writing it point-free as `force : Nu (K Int) -> Int; force = Out`
+-- instead TYPECHECKS AND EMITS NOTHING — the link then fails on an undefined
+-- `once_5force`. See D197: that is a real hole, and this test found it.
 main : IO Unit
-main = exit@S (force (mkNu 42))
+main = exit@S (Out (mkNu 42))

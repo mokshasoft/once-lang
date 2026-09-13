@@ -1160,6 +1160,24 @@ agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
 agree-RApp-other-aux {ctx} f arg nothing eqAH eq fInferIH argCheckIH dγ k
   | success (A ⇒[ mk-kind Zero eff ] B) _ _ _ _ , _ | ()
 
+-- D194: the `Out` analogue of `agree-checkCataGo` — the decision argument is
+-- explicit so the caller never has to abstract it.
+agree-inferOutGo : ∀ (ctx : NamedCtx) (arg : RawExpr) (F : Functor)
+    (Ψ : Usage (NamedCtx.size ctx))
+    (argE : Expr (NamedCtx.debruijn ctx) Ψ (ν-type F)) (d fr : ℕ)
+    (w : ctx ⊢ᵢ arg ∶ ν-type F ⨾ Ψ)
+    (mw : Maybe (WellFormedF F)) (eqW : wellFormedF? F ≡ mw)
+    {A : Type} {Ψ' : Usage (NamedCtx.size ctx)}
+    {se : Expr (NamedCtx.debruijn ctx) Ψ' A} {d' fr' : ℕ}
+    {w' : ctx ⊢ᵢ Raw.RApp (Raw.RResolved (gen "Out")) arg ∶ A ⨾ Ψ'}
+  → E.inferOutGo ctx arg F Ψ argE d fr w mw eqW ≡ (success A Ψ' se d' fr' , w')
+  -- the ARGUMENT'S AGREEMENT, already applied. Not the general IH: inside the
+  -- caller's `with` the scrutinee is abstracted, so the general IH's type no
+  -- longer mentions `E.inferElabV ctx arg` and cannot be passed along. The
+  -- applied form has no such dependency.
+  → (argAgree : ∀ dγ' k' → SD.⟦ argE ⟧ˢ fmt dγ' k' ≡ SD.⟦ realize-infer w ⟧ˢ fmt dγ' k')
+  → ∀ (dγ : Env ctx Ψ') (k : ℕ) → SD.⟦ se ⟧ˢ fmt dγ k ≡ SD.⟦ realize-infer w' ⟧ˢ fmt dγ k
+
 agree-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) {A Ψ se d fr w}
   (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
   → E.inferElabV-RApp-dispatch ctx f arg vw veq ≡ (success A Ψ se d fr , w)
@@ -1194,6 +1212,16 @@ agree-RApp ctx f arg E.ahv-terminal veq eq argIH fInferIH argCheckIH dγ k with 
 ... | failure _ , _ | ()
 ... | success T Ψ argE d fr , w | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
                       (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
+-- D194: ahv-Out. The `wellFormedF?` decision cannot be `with`-abstracted here
+-- — it sits under the `refl` the argument's own `with` produced — so it goes
+-- to a helper that takes it explicitly, exactly as `agree-checkCataGo` does.
+agree-RApp ctx f arg E.ahv-Out veq eq argIH fInferIH argCheckIH dγ k
+  with E.inferElabV ctx arg | eq
+... | failure _ , _ | ()
+... | success (ν-type F) Ψ argE d fr , w | eq₁ =
+      agree-inferOutGo ctx arg F Ψ argE d fr w (wellFormedF? F) refl eq₁
+        (λ dγ' k' → argIH refl dγ' k') dγ k
+
 -- ahv-fst : arg must be a product; other shapes fail.
 agree-RApp ctx f arg E.ahv-fst veq eq argIH fInferIH argCheckIH dγ k with E.inferElabV ctx arg | eq
 ... | failure _ , _ | ()
@@ -1683,6 +1711,12 @@ agree-checkAnaGo ctx coalg F A π (just wfF) eqW disp coalgIH dγ k
               (λ a' → fmapT (coerce-functor-D F A) (ac >>=T λ clo → clo a')) a))) k)
            (extensionality (λ j → coalgIH eqCoalg tt j))
 
+agree-inferOutGo ctx arg F Ψ argE d fr w nothing eqW ()
+agree-inferOutGo ctx arg F Ψ argE d fr w (just wfF) eqW refl argAgree dγ k
+  rewrite argAgree (restrictᴰ {Γ = NamedCtx.debruijn ctx}
+            (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+              (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
+
 agree-check-RApp : ∀ (ctx : NamedCtx) (f arg : RawExpr) (T : Type) {Ψ se d fr w}
   (vw : E.AppHeadView f) (veq : E.classifyAppHeadView f ≡ vw)
   → E.checkElabV-RApp-dispatch ctx f arg T vw veq ≡ (success Ψ se d fr , w)
@@ -1717,6 +1751,13 @@ agree-check-RApp ctx f arg T E.ahv-fst veq disp inferIH argCheckIH argInferIH fC
 ...   | yes refl | refl = inferIH refl dγ k
 ...   | no _     | eq₂ = agree-embedOrSubsume-no T' T eE d fr w eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
 agree-check-RApp ctx f arg T E.ahv-snd veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
+  with E.inferElabV ctx (Raw.RApp f arg) | disp
+... | failure _ , _ | ()
+... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁
+...   | yes refl | refl = inferIH refl dγ k
+...   | no _     | eq₂ = agree-embedOrSubsume-no T' T eE d fr w eq₂ (λ dγ' k' → inferIH refl dγ' k') dγ k
+-- D194: `Out`'s CHECK is infer-then-check, so this is `terminal`'s verbatim.
+agree-check-RApp ctx f arg T E.ahv-Out veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
   with E.inferElabV ctx (Raw.RApp f arg) | disp
 ... | failure _ , _ | ()
 ... | success T' Ψ eE d fr , w | eq₁ with T E.≟T T' | eq₁

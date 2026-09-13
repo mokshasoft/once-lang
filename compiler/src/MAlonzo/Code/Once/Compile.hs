@@ -555,7 +555,7 @@ d_inferType'45'validate_292 v0 v1 v2 v3
         -> let v5
                  = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                      (coe
-                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1460
+                        MAlonzo.Code.Once.TypeCheck.Elaborate.du_checkElabV'45'wf_1486
                         (coe v0) (coe v1) (coe v4)) in
            coe
              (case coe v5 of
@@ -577,7 +577,7 @@ d_inferType_328 v0 v1 v2
   = let v3
           = MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
               (coe
-                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1444
+                 MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElabV_1470
                  (coe
                     MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndPolys_376
                     (coe v0) (coe v1))

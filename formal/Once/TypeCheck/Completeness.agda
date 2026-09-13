@@ -86,6 +86,7 @@ open import Once.TypeCheck.ElaborateProofs using (
   inspectWellFormedF; wfv-no; wfv-yes;
   checkCataGo; cata-go-canonical; checkCataGo-J; checkCataGoV-pure-J; checkCataGo-just-success;
   checkAnaGo; checkAnaGo-J; checkAnaGoV-J; checkAnaGo-just-success;
+  inferOutGo; inferOutGo-J;
   checkCata-eff-strong-hlp;
   -- the literal view the negation dispatch takes (plan 0.74 J6 step 3 for
   -- `RInt`, plan 0.73 F3 for `RFloat`)
@@ -445,6 +446,30 @@ infer-complete-RApp-terminal :
 infer-complete-RApp-terminal {ctx} arg eqArg
   with inferElabV ctx arg | eqArg
 ... | success _ _ _ _ _ , _ | refl = _ , _ , _ , refl
+
+-- D194: the `Out` head. Unlike `terminal` the result type is not a constant,
+-- so the argument's inferred `ν-type F` and the decided `wellFormedF? F` both
+-- have to be reduced through before the elaborator's success is visible.
+infer-complete-RApp-Out :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) {F : T.Functor}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ (T.ν-type F)}
+    {d' f' : ℕ}
+    (wfF : WellFormedF F)
+  → inferElab ctx arg ≡ success (T.ν-type F) Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (Raw.RResolved (gen "Out")) arg)
+        ≡ success (T.⟦ F ⟧T (T.ν-type F)) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+-- The move from the elaborator's `(wellFormedF? F, refl)` to the witness's
+-- `(just wfF, eqW)` goes through `inferOutGo-J`, not a `rewrite`: the equation
+-- a rewrite would use mentions the very term it must abstract, so it clashes
+-- however the decision is obtained (parameter or `inspectWellFormedF` view).
+infer-complete-RApp-Out {ctx} arg {F} wfF eqArg
+  with inferElabV ctx arg | eqArg
+... | success _ Ψ' argE' d' fr' , w' | refl
+      rewrite inferOutGo-J ctx arg F Ψ' argE' d' fr' w'
+                (just wfF) (wellFormedF?-complete-at wfF)
+      = _ , _ , _ , refl
 
 infer-complete-RApp-fst :
   ∀ {ctx : NamedCtx} (arg : RawExpr) {A B : Type}
@@ -954,7 +979,7 @@ open Once.TypeCheck.ElaborateProofs
          checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp;
          checkElab-fallback-RBinOp;
          checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst;
-         checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal;
+         checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal; checkElab-fallback-RApp-Out; checkElab-fallback-RApp-Out-eff;
          checkElab-fallback-RApp-generic; checkElab-fallback-RApp-generic-eff;
          checkElab-fallback-RApp-id-eff; checkElab-fallback-RApp-fst-eff; checkElab-fallback-RApp-snd-eff;
          checkElab-fallback-RVar-eff; checkElab-fallback-RApp-initial-eff;
@@ -1346,6 +1371,11 @@ mutual
   iFromInfer (t-terminal-app {e = e} d) =
     let (_ , _ , _ , eqI) = infer-complete (t-terminal-app d)
     in checkElab-fallback-RApp-terminal e Unit eqI
+  -- D194: `Out` is an infer head whose check routes through `embedOrSubsume`,
+  -- so its switch is `terminal`'s.
+  iFromInfer (t-Out-app-infer {v = v} {F = F} wfF refl d) =
+    let (_ , _ , _ , eqI) = infer-complete (t-Out-app-infer wfF refl d)
+    in checkElab-fallback-RApp-Out v (T.⟦ F ⟧T (T.ν-type F)) eqI
   iFromInfer (t-apply-app-infer {p = p} {A = A} {B = B} d) =
     let (_ , _ , _ , eqI) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eqI
@@ -1408,6 +1438,9 @@ mutual
   iFromInferEff {ctx} {_} {A} {B} dd@(t-var-poly-instantiate-infer {x = x} _ _ _ _ _ _) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RVar-eff {ctx} x A B eqI
+  iFromInferEff {ctx} {_} {A} {B} dd@(t-Out-app-infer {v = v} wfF ceq d) =
+    let (_ , _ , _ , eqI) = infer-complete dd
+    in checkElab-fallback-RApp-Out-eff v A B eqI
   iFromInferEff {ctx} {_} {A} {B} dd@(t-apply-app-infer {p = p} d) =
     let (_ , _ , _ , eqI) = infer-complete dd
     in checkElab-fallback-RApp-apply-eff p A B eqI
@@ -1504,6 +1537,9 @@ mutual
   infer-complete (t-terminal-app {e = e} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-terminal e eqSub
+  infer-complete (t-Out-app-infer {v = v} {F = F} wfF refl d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-Out v wfF eqSub
   infer-complete (t-apply-app-infer {p = p} {A = A} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-apply p A eqSub
