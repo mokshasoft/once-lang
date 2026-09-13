@@ -51,10 +51,10 @@ index ec92ac47..490b05b1 100644
          (λ k → cong (_++ []) (proj₁ (bridge-i d (reᵐ re) k)) , tt)
 diff --git a/formal/Once/Adequacy/OutErased.agda b/formal/Once/Adequacy/OutErased.agda
 new file mode 100644
-index 00000000..5011b7be
+index 00000000..06475a7e
 --- /dev/null
 +++ b/formal/Once/Adequacy/OutErased.agda
-@@ -0,0 +1,138 @@
+@@ -0,0 +1,166 @@
 +-- SPDX-License-Identifier: AGPL-3.0-or-later
 +-- Copyright (C) 2025-2026 Jonas Claesson
 +
@@ -83,14 +83,16 @@ index 00000000..5011b7be
 +open import Function using (id)
 +open import Data.Product using (_×_; _,_; proj₁; proj₂)
 +open import Data.Nat using (ℕ)
++open import Data.Sum using (_⊎_; inj₁; inj₂)
 +open import Relation.Binary.PropositionalEquality
 +  using (_≡_; refl; cong; cong₂; trans; sym; subst; subst-subst-sym)
 +
 +open import Once.Word using (Carrier)
 +open import Once.Type using (Type; Functor; ν-type; ⟦_⟧T)
-+open import Once.Functor.Translate using (WellFormedF; translateF)
++open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF)
 +open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute; ⌈⟧TI-commute)
-+open import Once.IRTy.WF using (wf-⌊⌋)
++import Once.IRTy as IT
++open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 +open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
 +open import Once.Semantics.Machine using (coerce-functor⁻¹; coh; tF-coh; ⟦_⟧F; coerce-ν-out)
 +open import Once.Denotation.TraceMonad using (T; fmapT; projTrace; valueT)
@@ -164,11 +166,48 @@ index 00000000..5011b7be
 +            (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F))) v)) n)
 +         (force-subst-trace (tF-coh F) v n)))
 +
-+-- THE ONE REMAINING OBLIGATION. Everything above is proved; this is the
-+-- erasure coherence for the ν DESTRUCTOR — `AnaErased.coerce-νin-erase-D`
-+-- read backwards. To discharge it the LAYER has to be generalised (the two
-+-- sides' layers differ by a `tF-coh` transport, and `wf-*` induction needs a
-+-- layer it can case-split), then it is that lemma's five clauses inverted.
++-- The ⌈⌉-side layer map that `evalᴰ (Out …)` applies, transcribed from
++-- `DenotTrace`'s `Out` clause at `wf := wf-⌊⌋ wfG`. Naming it is what lets the
++-- proof `cong` over the LAYER rather than over the whole computation.
++out-layerᴵ : ∀ (G : Functor) (wfG : WellFormedF G)
++    (layer : ⟦ translateF Carrier Carrier ⌈ eraseF G ⌉F ⟧SF ⟦ IT.ν-type (eraseF G) ⟧ᴰᴵ)
++  → ⟦ IT.⟦ eraseF G ⟧TI (IT.ν-type (eraseF G)) ⟧ᴰᴵ
++out-layerᴵ G wfG layer =
++  subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute (eraseF G) (IT.ν-type (eraseF G))))
++    (coerce-functor⁻¹-D ⌈ eraseF G ⌉F ⌈ IT.ν-type (eraseF G) ⌉
++      (coerce-ν-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _ layer))
++
++-- THE ONE REMAINING OBLIGATION, now reduced to a statement about an ABSTRACT
++-- LAYER — which is what the `wf-*` induction needs, and what `valueT (forceᵈ
++-- v) n` could not provide. This is `AnaErased.coerce-νin-erase-D` inverted:
++-- that one pushes a layer THROUGH `coerce-ν-in ∘ coerce-functor-D`, this one
++-- through `coerce-functor⁻¹-D ∘ coerce-ν-out`. Five clauses, on `wfG` (not on
++-- the raw functor — `coerce-ν-out` is indexed by the witness).
++νout-erase-D : ∀ (G : Functor) (wfG : WellFormedF G)
++    (ℓ : ⟦ translateF Carrier Carrier G ⟧SF ⟦ ν-type G ⟧ᴰ)
++  → subst id (cohᴰ (⟦ G ⟧T (ν-type G)))
++      (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute G (ν-type G)))
++        (out-layerᴵ G wfG
++          (subst (λ H → ⟦ H ⟧SF (νᵈ H)) (sym (tF-coh G)) ℓ)))
++    ≡ coerce-functor⁻¹-D G (ν-type G) (coerce-ν-out wfG ⟦ ν-type G ⟧ᴰ ℓ)
++-- STATUS (D194, second pass): `wf-Id` is CLOSED by `refl` — at `Id` every
++-- coercion is the identity and every transport is `refl`. The other four are
++-- the remaining work, and each has a line-for-line template in
++-- `AnaErased.coerce-νin-erase-D`:
++--
++--   * `wf-K` — the base-type coherence. `coerce-νin-erase-D`'s K clause spends
++--     `subst-KF-const`, `pushSK` and `base-in`; this needs those read the
++--     other way (`forget`/`inject` swap roles, `coerce-full-to-base` inverts).
++--   * `wf-Sum` ×2 / `wf-Prod` — split the transports across the
++--     injection/pair, recurse, re-assemble. Same `push⊎₁/₂`, `push×`,
++--     `push-⊎fam₁/₂`, `push-×fam`, `pushS⊕₁/₂`, `pushS⊗` vocabulary, applied
++--     in the opposite order.
++νout-erase-D _ (wf-K ib)         ℓ        = {! !}
++νout-erase-D _ wf-Id             ℓ        = refl
++νout-erase-D _ (wf-Sum wfA wfB) (inj₁ x) = {! !}
++νout-erase-D _ (wf-Sum wfA wfB) (inj₂ y) = {! !}
++νout-erase-D _ (wf-Prod wfA wfB) (x , y) = {! !}
++
 +out-coh : ∀ (F : Functor) (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ) (n : ℕ)
 +  → subst id (cohᴰ (⟦ F ⟧T (ν-type F)))
 +      (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F)))
@@ -176,23 +215,12 @@ index 00000000..5011b7be
 +                  (subst id (sym (cohᴰ (ν-type F))) v)) n))
 +    ≡ coerce-functor⁻¹-D F (ν-type F)
 +        (coerce-ν-out wfF ⟦ ν-type F ⟧ᴰ (valueT (forceᵈ v) n))
-+out-coh F wfF v n = {! !}
-+
-+-- PROBE (D194 step 3): the VALUE half. Peel the three transports the `liftFn`
-+-- wrapper and `Out-ir` add, then the ν transport, and read what is left.
-+out-value : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ) (n : ℕ)
-+  → valueT (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) v) n
-+    ≡ valueT (out-sem wfF v) n
-+out-value {F} wfF v n =
-+  trans (subst-T-valueT (cohᴰ (⟦ F ⟧T (ν-type F)))
-+          (evalᴰ fmt (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F))) v)) n)
-+  (trans (cong (λ hh → subst id (cohᴰ (⟦ F ⟧T (ν-type F))) (valueT hh n))
-+            (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F))) (IR.Out (wf-⌊⌋ wfF))
-+              (subst id (sym (cohᴰ (ν-type F))) v)))
-+  (trans (cong (subst id (cohᴰ (⟦ F ⟧T (ν-type F))))
-+            (subst-TI-valueT (sym (⌊⟧T-commute F (ν-type F)))
-+              (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F))) v)) n))
-+         (out-coh F wfF v n)))
++out-coh F wfF v n =
++  trans (cong (λ ℓ → subst id (cohᴰ (⟦ F ⟧T (ν-type F)))
++                      (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F)))
++                        (out-layerᴵ F wfF ℓ)))
++              (force-subst-value (tF-coh F) v n))
++        (νout-erase-D F wfF (valueT (forceᵈ v) n))
 diff --git a/formal/Once/Adequacy/RealizeAgrees.agda b/formal/Once/Adequacy/RealizeAgrees.agda
 index e8dd7de4..d762df6a 100644
 --- a/formal/Once/Adequacy/RealizeAgrees.agda
