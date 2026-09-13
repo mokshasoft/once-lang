@@ -13252,6 +13252,29 @@ the tag from the arm it is in (`instr-load-tag-lit`) rather than copying it,
 since each arm already knows which one it is. Nothing the pass runs on is ever
 written to, so ownership of the layer never has to be established.
 
+### `obs-correct-Out` IS NOW A PROOF
+
+With the emitter re-suspending, the obligation is true, and it is discharged —
+`apply`'s argument with the pair-packing removed. A suspension IS the callee
+record (cell 0 the argument, cell 1 the code), so the setup is three rows
+instead of sixteen and writes no memory at all; neither `load-indirect` nor
+`mov-to-input` touches the allocator DEFINITIONALLY, so `apply`'s
+frontier-advance plumbing collapses to a single `validityWF-mem-preserved`.
+
+Three things the proof turned on:
+
+  * the ν's location must be split as `AtDynamic` in the CLAUSE. `LocMatchesMode`
+    is a ⊤/⊥ FUNCTION, not a datatype, so the heap-ness witness cannot be
+    matched on — and without the split `do-call-sv` never reduces to
+    `do-call-code`;
+  * `go` must take the ν VALUE as an argument. Matching `valid-ν-susp-wf` has
+    to force its own index, and a variable bound by the enclosing clause cannot
+    be forced — the match instead tries to solve the constructor's
+    `coalg`/`seed` out of an opaque `x` and gets stuck (this surfaced as
+    unsolved `_coalg` metas);
+  * the two functor witnesses are identified once by `rewrite
+    WellFormedFI-irrelevant`, not transported at each use.
+
 ### What this does to the proof obligation
 
 `CoalgRuns` (D198) says the ν's block computes `coalg`. That is now FALSE in a

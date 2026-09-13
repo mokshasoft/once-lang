@@ -475,7 +475,7 @@ discharged by `⊥-elim (ν-input-absurd …)` — see D180.
 
 | # | residual | class | what discharges it |
 |---|---|---|---|
-| N1 | `obs-correct-Out` — forcing a layer | **deferred proof** | D188's argument applied to the coalgebra's block. The emitter lowers the force as a CALL (`instr-save-closure-reg`, `load-indirect`, `mov-to-input`, `instr-call-closure`), so the premise is `CalleeRuns`, already in the interface |
+| N1 | `obs-correct-Out` — forcing a layer | **DISCHARGED (D199)** | Was `deferred proof`; it was in fact FALSE until the emitter re-suspended (D199), and is now a proof. `apply`'s argument with the pair-packing removed: three straight-line rows, then the call, handed off to `BlockRuns.coalgs`. The premise is `CoalgRuns`, not `CalleeRuns` — a suspension is called with the raw seed in `Input1`, where a closure is called with an `(env , arg)` pair pointer |
 | N2 | `obs-correct-in-ν` — a ν built from an available layer | **deferred proof** | same two-cell build with an identity block: the seed IS the layer and the code returns it |
 
 **What went the other way.** `obs-correct-Ana` left the postulate block — it is
