@@ -51,10 +51,10 @@ index ec92ac47..490b05b1 100644
          (λ k → cong (_++ []) (proj₁ (bridge-i d (reᵐ re) k)) , tt)
 diff --git a/formal/Once/Adequacy/OutErased.agda b/formal/Once/Adequacy/OutErased.agda
 new file mode 100644
-index 00000000..06475a7e
+index 00000000..7a31dcb5
 --- /dev/null
 +++ b/formal/Once/Adequacy/OutErased.agda
-@@ -0,0 +1,166 @@
+@@ -0,0 +1,200 @@
 +-- SPDX-License-Identifier: AGPL-3.0-or-later
 +-- Copyright (C) 2025-2026 Jonas Claesson
 +
@@ -93,7 +93,7 @@ index 00000000..06475a7e
 +open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute; ⌈⟧TI-commute)
 +import Once.IRTy as IT
 +open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
-+open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
++open import Once.Semantics.Functor using (SFunctor; _S⊕_; _S⊗_; ⟦_⟧SF)
 +open import Once.Semantics.Machine using (coerce-functor⁻¹; coh; tF-coh; ⟦_⟧F; coerce-ν-out)
 +open import Once.Denotation.TraceMonad using (T; fmapT; projTrace; valueT)
 +open import Once.Denotation.ValueDomain
@@ -176,6 +176,40 @@ index 00000000..06475a7e
 +  subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute (eraseF G) (IT.ν-type (eraseF G))))
 +    (coerce-functor⁻¹-D ⌈ eraseF G ⌉F ⌈ IT.ν-type (eraseF G) ⌉
 +      (coerce-ν-out (wf-⌈⌉ (wf-⌊⌋ wfG)) _ layer))
++
++------------------------------------------------------------------------
++-- Transport vocabulary the OUT direction needs and the IN direction did not
++--
++-- `AnaErased`'s `pushS⊕₁`/`pushS⊗` move a functor transport at a FIXED
++-- carrier. Here the carrier moves WITH the functor (`νᵈ H` is indexed by the
++-- same `H`), so the diagonal has to be split first — `InErased.subst-diag`
++-- does this for `μS`, and this is its ν twin — and the pushes are needed in
++-- the `sym` direction. All match-to-refl.
++------------------------------------------------------------------------
++
++subst-diag-ν⁻ : ∀ {H₁ H₂ : SFunctor} (eq : H₁ ≡ H₂) (z : ⟦ H₂ ⟧SF (νᵈ H₂))
++  → subst (λ H → ⟦ H ⟧SF (νᵈ H)) (sym eq) z
++    ≡ subst (λ H → ⟦ H ⟧SF (νᵈ H₁)) (sym eq)
++        (subst (λ C → ⟦ H₂ ⟧SF C) (sym (cong νᵈ eq)) z)
++subst-diag-ν⁻ refl z = refl
++
++pushS⊕₁⁻ : ∀ {X : Set} {H₁ H₂ H₁' H₂' : SFunctor}
++             (p : H₁ ≡ H₁') (q : H₂ ≡ H₂') (w : ⟦ H₁' ⟧SF X)
++  → subst (λ H → ⟦ H ⟧SF X) (sym (cong₂ _S⊕_ p q)) (inj₁ w)
++    ≡ inj₁ (subst (λ H → ⟦ H ⟧SF X) (sym p) w)
++pushS⊕₁⁻ refl refl w = refl
++
++pushS⊕₂⁻ : ∀ {X : Set} {H₁ H₂ H₁' H₂' : SFunctor}
++             (p : H₁ ≡ H₁') (q : H₂ ≡ H₂') (w : ⟦ H₂' ⟧SF X)
++  → subst (λ H → ⟦ H ⟧SF X) (sym (cong₂ _S⊕_ p q)) (inj₂ w)
++    ≡ inj₂ (subst (λ H → ⟦ H ⟧SF X) (sym q) w)
++pushS⊕₂⁻ refl refl w = refl
++
++pushS⊗⁻ : ∀ {X : Set} {H₁ H₂ H₁' H₂' : SFunctor}
++            (p : H₁ ≡ H₁') (q : H₂ ≡ H₂') (a : ⟦ H₁' ⟧SF X) (b : ⟦ H₂' ⟧SF X)
++  → subst (λ H → ⟦ H ⟧SF X) (sym (cong₂ _S⊗_ p q)) (a , b)
++    ≡ (subst (λ H → ⟦ H ⟧SF X) (sym p) a , subst (λ H → ⟦ H ⟧SF X) (sym q) b)
++pushS⊗⁻ refl refl a b = refl
 +
 +-- THE ONE REMAINING OBLIGATION, now reduced to a statement about an ABSTRACT
 +-- LAYER — which is what the `wf-*` induction needs, and what `valueT (forceᵈ
