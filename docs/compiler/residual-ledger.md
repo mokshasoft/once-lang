@@ -492,6 +492,57 @@ concrete syntax, so no exit test can reach the ν path at all. That is why the
 defect survived. Surface syntax for `ana` (and `cata`, which has the same gap)
 plus an unfold exit test is the recurrence guard, tracked with D189.
 
+### THE EMPTINESS PROBE — run it on every new residual (added 2026-09-13)
+
+MERGE.md already carries a **vacuity** discipline: is a residual's HYPOTHESIS
+reachable in emitted programs? A residual conditioned on an unreachable state
+is harmless but meaningless. This is its **dual**, and it is not harmless: is
+the residual's CONCLUSION inhabited at all?
+
+A postulate whose conclusion type is EMPTY is not unproven — it is FALSE, and
+everything downstream of it is unsound. That is not a hypothetical: D189's
+`obs-correct-Ana` was exactly this, and `ir-obs-correct` is total over `IR`, so
+the apex `CorrectCompiler` proof depended on it.
+
+**The recipe.** For a residual concluding at `P`, in a scratch module that
+imports what `P` needs:
+
+```agda
+probe : P → ⊥
+probe ()            -- or: enumerate the constructors and refute each
+```
+
+If that compiles, `P` is empty and the residual is false. Cost: one file, about
+a minute. The D189 instance was three lines:
+
+```agda
+refute : ResultPlace (ν-type F) m a ca v st → ⊥
+refute (at-loc loc v _ _ _ _) = ν-not-resident v
+refute (at-reg () _)
+```
+
+`ResultPlace` has three constructors and at a ν NONE applied: `unit-result`
+needs `B ≡ Unit`; `at-loc` needs a `ValidAtWF` at `ν-type F`, which had no
+constructor after `valid-ν-wf` was deleted; `at-reg` needs `FitsInRegI (ν-type
+F)`, absurd.
+
+**When it is worth running** — any residual where the answer is not obviously
+"inhabited":
+
+* the conclusion mentions a type the EMITTER never constructs (the whole
+  Class-G "emitter is missing" block is this shape);
+* a witness datatype lost a constructor and something downstream still concludes
+  at that type — *the D180 lesson: when deleting a constructor, check the
+  postulates whose CODOMAIN is that type, not just the modules that import it*;
+* the conclusion is a record and one FIELD is at such a type (the emptiness
+  hides one level down, which is where `obs-correct-Ana`'s was).
+
+**What it does not catch.** A residual can be false without being empty —
+Class G's `Para`/`Hylo`/`Fuse` emit `[]` while their denotations may emit
+events, so their `traces-agree` half is refutable only for programs whose
+denotation actually emits. That needs a witnessing program, not a probe. The
+emptiness probe is the cheap half; run it first because it is nearly free.
+
 ### D191–D194 — the ν path becomes reachable, and what it cost
 
 | # | residual | class | what discharges it |

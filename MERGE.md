@@ -114,6 +114,16 @@ Special scrutiny, in order:
   makes it true of reachable states of emitted programs. Re-run the probe
   recipe (`vacuity-probe*.agda`) if any new residual is in the
   state/program-fact class.
+- **Emptiness probe on every new residual.** The dual of the vacuity check:
+  vacuity asks whether the HYPOTHESIS is reachable, this asks whether the
+  CONCLUSION is inhabited. `probe : P → ⊥; probe ()` in a scratch module — if
+  it compiles, the residual is FALSE, not merely unproven, and everything
+  downstream is unsound. Mandatory when the conclusion (or a FIELD of a
+  conclusion record) is at a type the emitter never constructs, and whenever a
+  witness datatype loses a constructor — D180 deleted `valid-ν-wf` and checked
+  only what imported it, leaving `obs-correct-Ana` postulating an inhabitant of
+  an empty type, under the apex proof. Recipe and worked example:
+  `docs/compiler/residual-ledger.md`.
 - **`{-# TERMINATING #-}` / `--allow-unsolved` pragmas.** None may enter the
   correspondence cone (Machine / Codegen / Adequacy).
 - **`make -C formal lint-imports` is clean.** Agda only WARNS when a `using
