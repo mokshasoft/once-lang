@@ -40,6 +40,11 @@ layer5Tests = testGroup "Layer5"
       -- still a postulate). If the ν codegen regresses, this is what fails.
       [ exitCases "ana builds a suspension (exit 42)" "nu-ana-build" 42
       , exitCases "Out forces a layer (exit 42)"      "nu-ana-force" 42
+      -- D199: the first ν test with a RECURSIVE POSITION. The two above use
+      -- `Nu (K Int)`, where a forced layer has nothing to re-suspend, so they
+      -- pass whether or not `Out` re-suspends. This one forces twice, through
+      -- the recursive slot, and segfaulted before the re-suspension pass.
+      , exitCases "forcing twice through Id (exit 42)" "nu-ana-deep"  42
       ]
   ]
 

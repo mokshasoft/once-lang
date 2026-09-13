@@ -571,7 +571,9 @@ easy, that is the thing to suspect.
 ### D188 — `obs-correct-apply` DISCHARGED; one whole-clause axiom → one invariant
 
 `obs-correct-apply` was an axiom for the entire clause. It is now a proof
-against `callee-runs` (FlatFromObs), which is a PROGRAM-level invariant:
+against `block-runs` (FlatFromObs; named `callee-runs` until D199 widened it to
+cover ν coalgebra blocks as well as closure bodies), which is a PROGRAM-level
+invariant:
 
 | half | status |
 |---|---|

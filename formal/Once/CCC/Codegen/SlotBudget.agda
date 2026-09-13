@@ -43,7 +43,7 @@ open import Data.Nat.Properties using
 open import Data.Bool using (Bool; true; false; _∧_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Product using (_×_; _,_; Σ)
+open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
@@ -56,17 +56,20 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
+  WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (blocks-layout)
 open import Once.CCC.Machine.SMCore using
   (AbstractInstr; AbstractTrace; Slot; lea-slot;
    mov-to-output; mov-to-input; store-at-slot; load-from-slot;
    store-indirect; store-indirect-suc; instr-alloc-heap; instr-load-tag-lit;
-   instr-ctrl; c-thunk; c-ret; c-label; c-jmp)
+   instr-ctrl; c-thunk; c-ret; c-label; c-jmp;
+   restore-input; load-indirect; load-indirect-suc; instr-load-code-addr;
+   c-branch-tag-zero)
 open import Once.CCC.Machine.InstrSlot using (slot-of)
 open import Once.CCC.Codegen.IRToTrace o using
-  (ir-to-trace'; ir-to-trace; ir-stack-budget;
+  (ir-to-trace'; ir-to-trace; ir-stack-budget; resuspend-layer;
    ir-to-unit;
    CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
    cata-strategy; cata-dispatch; fsize; lsize;
@@ -1009,6 +1012,115 @@ cata-slots-below (strat-branching F) bb n1 l1 at bok = cata-branching-below F bb
 -- below the frontier `ir-to-trace'` hands back. Each splice weakens the
 -- sub-IR's bound through `frontier-mono`.
 ------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- D199: the re-suspension pass's slot budget.
+------------------------------------------------------------------------
+-- The pass stashes into the slots from its starting frontier up to the one it
+-- returns, so its budget obligation needs the frontier to GROW — which is what
+-- `resuspend-mono` says, and the only arithmetic the witness below needs.
+
+resuspend-mono : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+               → n ≤ proj₁ (resuspend-layer n l lbl wf)
+resuspend-mono n l lbl (wf-K _) = ≤-refl
+resuspend-mono n l lbl wf-Id    = ≤-step (≤-step ≤-refl)
+resuspend-mono n l lbl (wf-Prod wfF wfG) =
+  ≤-trans (≤-step (≤-step (≤-step ≤-refl)))
+    (≤-trans (resuspend-mono (suc (suc (suc n))) l lbl wfF)
+             (resuspend-mono (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
+                             (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF)))
+                             lbl wfG))
+resuspend-mono n l lbl (wf-Sum wfF wfG) =
+  ≤-trans (≤-step (≤-step (≤-step ≤-refl)))
+    (≤-trans (resuspend-mono (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+             (resuspend-mono (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+                             (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)))
+                             lbl wfG))
+
+resuspend-below : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+                → SegOK (proj₁ (resuspend-layer n l lbl wf))
+                        (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
+resuspend-below n l lbl (wf-K _) = segok-idle _ refl []
+-- Budget `suc (suc n)`; the stashes are `n` and `suc n`, exactly as the `Ana`
+-- site trace this is a copy of.
+resuspend-below n l lbl wf-Id =
+  segok-idle _ refl
+    (sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+     sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷
+     sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
+     sb-none refl ∷ sb-none refl ∷
+     sb-slot refl ≤-refl (λ _ ()) ∷ [])
+-- Three stashes per container level — source, destination, and the child being
+-- carried across the allocation — so the children start at `n + 3` and the
+-- budget bound for every one of them comes from a single `base`.
+resuspend-below n l lbl (wf-Prod wfF wfG) =
+  segok-pre (store-at-slot n ∷ restore-input n ∷ load-indirect ∷ []) refl
+    (sb-slot refl n<B (λ _ ()) ∷ sb-slot refl n<B (λ _ ()) ∷ sb-none refl ∷ [])
+    (segok-++ (segok-weaken mid (resuspend-below (suc (suc (suc n))) l lbl wfF))
+      (segok-pre (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
+                  store-at-slot (suc n) ∷ mov-to-input ∷
+                  load-from-slot (suc (suc n)) ∷ store-indirect ∷
+                  restore-input n ∷ load-indirect-suc ∷ []) refl
+        (sb-slot refl base (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl sn<B (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl base (λ _ ()) ∷ sb-none refl ∷
+         sb-slot refl n<B (λ _ ()) ∷ sb-none refl ∷ [])
+        (segok-++ (resuspend-below n2 l2 lbl wfG)
+          (segok-idle _ refl
+            (sb-slot refl base (λ _ ()) ∷ sb-slot refl sn<B (λ _ ()) ∷
+             sb-slot refl base (λ _ ()) ∷ sb-none refl ∷
+             sb-slot refl sn<B (λ _ ()) ∷ [])))))
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
+    B  = proj₁ (resuspend-layer n2 l2 lbl wfG)
+    mid : n2 ≤ B
+    mid = resuspend-mono n2 l2 lbl wfG
+    base : suc (suc (suc n)) ≤ B
+    base = ≤-trans (resuspend-mono (suc (suc (suc n))) l lbl wfF) mid
+    sn<B : suc (suc n) ≤ B
+    sn<B = ≤-trans (≤-step ≤-refl) base
+    n<B : suc n ≤ B
+    n<B = ≤-trans (≤-step (≤-step ≤-refl)) base
+resuspend-below n l lbl (wf-Sum wfF wfG) =
+  segok-pre (store-at-slot n ∷ restore-input n ∷
+             instr-ctrl (c-branch-tag-zero (ℓ o l)) ∷ []) refl
+    (sb-slot refl n<B (λ _ ()) ∷ sb-slot refl n<B (λ _ ()) ∷ sb-none refl ∷ [])
+    (segok-++ (arm 1 (resuspend-below n2 l2 lbl wfG))
+      (segok-pre (instr-ctrl (c-jmp (ℓ o (suc l))) ∷
+                  instr-ctrl (c-label (ℓ o l)) ∷ []) refl
+        (sb-none refl ∷ sb-none refl ∷ [])
+        (segok-++ (arm 0 (segok-weaken mid
+                            (resuspend-below (suc (suc (suc n))) (suc (suc l)) lbl wfF)))
+          (segok-idle _ refl (sb-none refl ∷ [])))))
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+    B  = proj₁ (resuspend-layer n2 l2 lbl wfG)
+    mid : n2 ≤ B
+    mid = resuspend-mono n2 l2 lbl wfG
+    base : suc (suc (suc n)) ≤ B
+    base = ≤-trans (resuspend-mono (suc (suc (suc n))) (suc (suc l)) lbl wfF) mid
+    sn<B : suc (suc n) ≤ B
+    sn<B = ≤-trans (≤-step ≤-refl) base
+    n<B : suc n ≤ B
+    n<B = ≤-trans (≤-step (≤-step ≤-refl)) base
+    arm : ∀ (tag : ℕ) {t} → SegOK B t
+        → SegOK B (restore-input n ∷ load-indirect-suc ∷
+                   t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
+                         store-at-slot (suc n) ∷ mov-to-input ∷
+                         load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
+                         instr-load-tag-lit tag ∷ store-indirect ∷
+                         load-from-slot (suc n) ∷ []))
+    arm tag ok =
+      segok-pre (restore-input n ∷ load-indirect-suc ∷ []) refl
+        (sb-slot refl n<B (λ _ ()) ∷ sb-none refl ∷ [])
+        (segok-++ ok (segok-idle _ refl
+          (sb-slot refl base (λ _ ()) ∷ sb-none refl ∷
+           sb-slot refl sn<B (λ _ ()) ∷ sb-none refl ∷
+           sb-slot refl base (λ _ ()) ∷ sb-none refl ∷
+           sb-none refl ∷ sb-none refl ∷
+           sb-slot refl sn<B (λ _ ()) ∷ [])))
+
 slots-below : ∀ {A B} (ir : IR A B) (n l : ℕ)
             → SegOK (budget-of (ir-to-trace' n l ir)) (trace-of (ir-to-trace' n l ir))
 slots-below id       n l = segok-idle _ refl (sb-none refl ∷ [])
@@ -1226,8 +1338,16 @@ blocks-below (Cata {F} _ alg)    n l = blocks-below alg 0 l
 blocks-below (Para _ _)          n l = []
 blocks-below (Out _)             n l = []
 blocks-below (in-ν _)          n l = segok-idle _ refl (sb-none refl ∷ []) ∷ []
-blocks-below (Ana _ c)           n l = slots-below c 0 (suc l)
-                                     ∷ blocks-below c 0 (suc l)
+-- D199: the block is `coalg ++ re-suspension`, and the budget is the pass's
+-- final frontier — so the coalgebra's own witness weakens up to it.
+blocks-below (Ana wf c)          n l =
+  segok-++ (segok-weaken (resuspend-mono (proj₁ (ir-to-trace' 0 (suc l) c))
+                                         (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
+                                         (ℓ o l) wf)
+                         (slots-below c 0 (suc l)))
+           (resuspend-below (proj₁ (ir-to-trace' 0 (suc l) c))
+                            (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c))) (ℓ o l) wf)
+    ∷ blocks-below c 0 (suc l)
 blocks-below (Hylo _ _ _ _)      n l = []
 blocks-below (Fuse _ _ _ _)      n l = []
 blocks-below (free-heap _)       n l = []

@@ -38,7 +38,7 @@ module Once.CCC.Codegen.LabelRange (o : CanonicalName) where
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s; _*_)
 open import Data.Nat.Properties using
   (≤-refl; ≤-trans; ≤-reflexive; n≤1+n; m≤m+n; m≤n+m; +-monoʳ-≤; +-comm; +-assoc)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List)
 
 open import Once.IR using (IR; AllocMode; Stack; Heap;
@@ -46,12 +46,14 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
+  WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.CCC.Label using (ℓ)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore using (LabelId; AbstractInstr; AbstractTrace)
 open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
-   cata-strategy; cata-dispatch; lsize)
+   cata-strategy; cata-dispatch; lsize; resuspend-layer)
 
 ------------------------------------------------------------------------
 -- The label projections of the two result tuples (record patterns, so they
@@ -100,6 +102,28 @@ cata-label-mono (strat-branching F) bb n1 l1 at =
 ------------------------------------------------------------------------
 -- THE COUNTER NEVER RETREATS.
 ------------------------------------------------------------------------
+-- D199: the re-suspension pass takes labels of its own — two per `⊕`, for the
+-- `c-branch-tag-zero` target and the join — so the counter advances through it
+-- too, and `Ana`'s window now ends where the PASS left it, not where the
+-- coalgebra did.
+resuspend-label-mono : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+                     → l ≤ proj₁ (proj₂ (resuspend-layer n l lbl wf))
+resuspend-label-mono n l lbl (wf-K _) = ≤-refl
+resuspend-label-mono n l lbl wf-Id    = ≤-refl
+resuspend-label-mono n l lbl (wf-Prod wfF wfG) =
+  ≤-trans (resuspend-label-mono (suc (suc (suc n))) l lbl wfF)
+          (resuspend-label-mono (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
+                                (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF)))
+                                lbl wfG)
+resuspend-label-mono n l lbl (wf-Sum wfF wfG) =
+  ≤-trans (n≤1+n l)
+    (≤-trans (n≤1+n (suc l))
+      (≤-trans (resuspend-label-mono (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+               (resuspend-label-mono
+                  (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+                  (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)))
+                  lbl wfG)))
+
 label-mono : ∀ {A B} (ir : IR A B) (n l : ℕ) → l ≤ label-of (ir-to-trace' n l ir)
 label-mono id       n l = ≤-refl
 label-mono fst      n l = ≤-refl
@@ -139,7 +163,12 @@ label-mono (in-ν _)     n l = n≤1+n l
 -- D189: the ν suspension is `curry`'s closure record cell for cell, so
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
-label-mono (Ana _ c)      n l = ≤-trans (n≤1+n l) (label-mono c 0 (suc l))
+label-mono (Ana wf c)     n l =
+  ≤-trans (n≤1+n l)
+    (≤-trans (label-mono c 0 (suc l))
+             (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
+                                   (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
+                                   (ℓ o l) wf))
 label-mono (Hylo _ _ _ _) n l = ≤-refl
 label-mono (Fuse _ _ _ _) n l = ≤-refl
 label-mono (free-heap _)  n l = ≤-refl

@@ -1,0 +1,34 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D199's GUARD: forcing a ν TWICE, through a RECURSIVE POSITION.
+--
+-- `nu-ana-build.once` builds a suspension and `nu-ana-force.once` forces one
+-- layer, but both use `Nu (K Int)` — a functor with NO recursive position. At
+-- that functor a forced layer contains nothing that needs re-suspending, so
+-- the machine's answer and the spec's coincide no matter what the machine
+-- does. The entire ν test surface was that blind spot, and `Out` did in fact
+-- do the wrong thing: it handed back the coalgebra's layer verbatim, with the
+-- raw SEED sitting in the recursive slot where `forceᵈ` says a SUSPENSION
+-- belongs (`mapAnaᵈ H SId coalg a = anaᵈ H coalg a`).
+--
+-- This program is the smallest one that can tell the difference. The functor
+-- `K Int * Id` has both kinds of position, `ana (pair id id)` unfolds 42 into
+-- an infinite stream of 42s, and forcing twice goes THROUGH the recursive
+-- slot: `snd (Out …)` is the ν that the first force put there, and the second
+-- `Out` forces it. Before D199 that second `Out` dereferenced the integer 42
+-- as a suspension pointer and the program segfaulted.
+--
+-- Expected: exit code 42.
+
+import I.Linux.Syscalls as S
+
+-- `⟦ K Int * Id ⟧T A = Int * A`, so a coalgebra `Int → Int * Int` is `pair id
+-- id`: emit the seed as this layer's payload, and carry it on as the next
+-- seed. The unfold is the constant stream.
+mkS : Int -> Nu (K Int * Id)
+mkS = ana (pair id id)
+
+-- Force, take the recursive position, force THAT, then read its payload.
+main : IO Unit
+main = exit@S (fst (Out (snd (Out (mkS 42)))))

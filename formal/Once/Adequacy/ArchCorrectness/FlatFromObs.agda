@@ -114,7 +114,7 @@ import Once.Parser.Module.Core as P
 open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
 open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 
-open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; CalleeRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted)
+open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; CalleeRuns; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted)
 open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left)
 open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
@@ -247,15 +247,27 @@ entry-span ir k i eq =
 -- preservation, the call's label resolution and all three input residences
 -- are now PROVED (D183/D185/D188), and only the callee's own run is assumed.
 ------------------------------------------------------------------------
+-- D199 widens this to BOTH block kinds. The ν's coalgebra block is reached
+-- exactly as a closure body is — through a code cell of a resident two-cell
+-- object — and carries exactly the same two halves: its content is true by
+-- construction of the emitter (`Ana`'s clause puts the block in `all-bodies`,
+-- and since D199 that block is the coalgebra FOLLOWED BY the re-suspension of
+-- every recursive position, which is what makes it compute `evalᴰ (Out wf)`
+-- rather than the coalgebra alone), and that a resident suspension was built
+-- by an earlier `Ana` in the same run is the same reachability invariant.
+--
+-- Widening it is not a new assumption so much as an honest one: while the
+-- premise mentioned only closures, `obs-correct-Out` was a postulate covering
+-- the ν side, and that postulate was FALSE (D199).
 postulate
-  callee-runs : (ir : IR Unit Unit) → CalleeRuns (ir-to-trace ir)
+  block-runs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)
 
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir → (k : ℕ)
               → MachineRefinesObsF (ir-to-trace ir) 0 0 0 ir tt entry-s
                   (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
 entry-witness ir ioc k =
   ioc (entry-size ir) 0 0 (ir-to-trace ir) 0 (ir-to-trace-slot-stable ir)
-      (callee-runs ir) (entry-span ir)
+      (block-runs ir) (entry-span ir)
       Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
       (entry-ns (ir-stack-budget ir)) entry-nh
       -- D153: ONE residence premise. `main : IR Unit Unit`, so its input has

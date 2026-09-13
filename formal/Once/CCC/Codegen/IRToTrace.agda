@@ -90,7 +90,8 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   free-heap; SigOp; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
+  WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 import Once.Type as Ty
 
 open import Once.CCC.Machine.SMCore
@@ -624,6 +625,116 @@ cata-dispatch strat-nat           bb n1 l1 at = cata-trace-nat bb n1 l1 at
 cata-dispatch strat-linear        bb n1 l1 at = cata-trace-linear bb n1 l1 at
 cata-dispatch (strat-branching F) bb n1 l1 at = cata-trace-branching F bb n1 l1 at
 
+-- ────────────────────────────────────────────────────────────────────
+-- D199: `resuspend-layer` — THE MISSING HALF OF FORCING.
+--
+-- `forceᵈ` is not "run the coalgebra". It is
+--
+--     forceᵈ (anaᵈ H coalg a) = ( projTrace (coalg a)
+--                               , mapAnaᵈ H H coalg (valueT (coalg a)) )
+--
+-- and `mapAnaᵈ H SId coalg a = anaᵈ H coalg a`: every RECURSIVE POSITION of
+-- the forced layer holds a FRESH SUSPENSION, not the seed the coalgebra left
+-- there. Without this pass the machine hands back seeds, and forcing a second
+-- layer dereferences an `Int` as a pointer — a segfault, which is how D199
+-- was found. At `K Int` there are no recursive positions, the two agree, and
+-- that is the whole ν test surface, which is why it stayed invisible.
+--
+-- WHY IT LIVES HERE AND NOT IN `Out`. Forcing is a property of the
+-- INTRODUCTION FORM: `forceᵈ (injectν x)` maps `mapInjectν` over a layer that
+-- ALREADY holds νs and must not be re-suspended. `Out` sees two cells and
+-- cannot tell an `ana` from an `in-ν`. So each introduction form's block owes
+-- its own forcing behaviour, and the label to store is then statically known —
+-- it is the emitting block's own, which is exactly `anaᵈ H coalg`.
+--
+-- CONVENTION: the layer arrives in Output in its cell representation and
+-- leaves in Output, re-suspended. Input1 is clobbered. Every container cell
+-- holds either an inline value or an `SV-Ptr` (`CellAt`), so `wf-Id`'s freshly
+-- allocated pointer is what any parent cell wants, uniformly.
+resuspend-layer : ℕ → ℕ → LabelId → ∀ {F} → WellFormedFI F
+                → ℕ × ℕ × AbstractTrace
+-- A constant position holds a base value. Nothing to suspend.
+resuspend-layer n l lbl (wf-K _) = n , l , []
+-- THE RECURSIVE POSITION: Output holds a seed, and owes a suspension. These
+-- are `Ana`'s own ten instructions minus the leading `mov-to-output` (the seed
+-- is already in Output here, where at the `Ana` site it arrives in Input1),
+-- and with the code cell pointing at the block being emitted.
+resuspend-layer n l lbl wf-Id =
+  let seed-stash = n
+      susp-stash = suc seed-stash
+  in suc susp-stash , l ,
+     (store-at-slot seed-stash ∷
+      instr-alloc-heap 2 ∷
+      store-at-slot susp-stash ∷
+      mov-to-input ∷
+      load-from-slot seed-stash ∷
+      store-indirect ∷
+      instr-load-code-addr lbl ∷
+      store-indirect-suc ∷
+      load-from-slot susp-stash ∷ [])
+-- A product layer is two cells at the pair pointer (`valid-pair-wf`). Read
+-- each child, transform it, and build a FRESH pair from the results.
+resuspend-layer n l lbl (wf-Prod wfF wfG) =
+  let src             = n
+      dst             = suc src
+      tmp             = suc dst
+      (n2 , l2 , tF)  = resuspend-layer (suc tmp) l lbl wfF
+      (n3 , l3 , tG)  = resuspend-layer n2 l2 lbl wfG
+  in n3 , l3 ,
+     (store-at-slot src ∷
+      restore-input src ∷ load-indirect ∷
+      tF ++ (store-at-slot tmp ∷
+             instr-alloc-heap 2 ∷
+             store-at-slot dst ∷
+             mov-to-input ∷
+             load-from-slot tmp ∷
+             store-indirect ∷
+             restore-input src ∷
+             load-indirect-suc ∷
+             tG ++ (store-at-slot tmp ∷
+                    restore-input dst ∷
+                    load-from-slot tmp ∷
+                    store-indirect-suc ∷
+                    load-from-slot dst ∷ [])))
+-- A sum layer is a tag cell and a payload POINTER (`valid-inl-wf`). Only one
+-- arm is live, so this branches — in FLAT control, the same
+-- `c-branch-tag-zero` / `c-jmp` / `c-label` skeleton `case` emits, and for the
+-- same reason: `instr-case-on-tag` is a retired fossil that `EmittableI`
+-- forbids, because one flat step must never run a nested trace. Hence the
+-- label counter in this function's signature.
+--
+-- Each arm builds a FRESH node and writes its own tag literally: inside an arm
+-- the tag is known, so there is nothing to copy.
+resuspend-layer n l lbl (wf-Sum wfF wfG) =
+  let src             = n
+      dst             = suc src
+      tmp             = suc dst
+      l-inl           = l
+      l-end           = suc l
+      (n2 , l2 , tF)  = resuspend-layer (suc tmp) (suc (suc l)) lbl wfF
+      (n3 , l3 , tG)  = resuspend-layer n2 l2 lbl wfG
+      arm             = λ t tag →
+                          (restore-input src ∷ load-indirect-suc ∷ []) ++
+                          t ++
+                          (store-at-slot tmp ∷
+                           instr-alloc-heap 2 ∷
+                           store-at-slot dst ∷
+                           mov-to-input ∷
+                           load-from-slot tmp ∷
+                           store-indirect-suc ∷
+                           instr-load-tag-lit tag ∷
+                           store-indirect ∷
+                           load-from-slot dst ∷ [])
+  in n3 , l3 ,
+     (store-at-slot src ∷
+      restore-input src ∷
+      instr-ctrl (c-branch-tag-zero (ℓ o l-inl)) ∷ []) ++
+     arm tG 1 ++
+     (instr-ctrl (c-jmp (ℓ o l-end)) ∷
+      instr-ctrl (c-label (ℓ o l-inl)) ∷ []) ++
+     arm tF 0 ++
+     (instr-ctrl (c-label (ℓ o l-end)) ∷ [])
+
 ir-to-trace' : ∀ {A B} → ℕ → ℕ → IR A B
               → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
 
@@ -1023,13 +1134,19 @@ ir-to-trace' n l (in-ν _) =
 -- The coalgebra is a NAMED BLOCK, generated at frontier 0 exactly as
 -- `curry`'s body is: it runs in its own frame when forced, so its slots do
 -- not extend the constructing frame.
-ir-to-trace' n l (Ana _ coalg) =
+ir-to-trace' n l (Ana wf coalg) =
   let this-label  = l
       l1          = suc l
       seed-stash  = n
       susp-stash  = suc seed-stash
       next        = suc susp-stash
       (coalg-budget , l2 , coalg-trace , coalg-bodies) = ir-to-trace' 0 l1 coalg
+      -- D199: the block is the coalgebra FOLLOWED BY the re-suspension of
+      -- every recursive position — `mapAnaᵈ H H coalg`, which is the half of
+      -- `forceᵈ` the machine used to skip. Its slots continue the block's own
+      -- frame, so they start where the coalgebra's frontier ended.
+      (block-budget , l3 , resusp-trace) =
+        resuspend-layer coalg-budget l2 (ℓ o this-label) wf
       this-trace  = (mov-to-output ∷
                      store-at-slot seed-stash ∷
                      instr-alloc-heap 2 ∷
@@ -1040,8 +1157,9 @@ ir-to-trace' n l (Ana _ coalg) =
                      instr-load-code-addr (ℓ o this-label) ∷
                      store-indirect-suc ∷
                      load-from-slot susp-stash ∷ [])
-      all-bodies  = (ℓ o this-label , coalg-budget , coalg-trace) ∷ coalg-bodies
-  in next , l2 , this-trace , all-bodies
+      all-bodies  = (ℓ o this-label , block-budget ,
+                     coalg-trace ++ resusp-trace) ∷ coalg-bodies
+  in next , l3 , this-trace , all-bodies
 ir-to-trace' n l (Hylo _ _ _ _) = n , l , [] , []
 ir-to-trace' n l (Fuse _ _ _ _) = n , l , [] , []
 

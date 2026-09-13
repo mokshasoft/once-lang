@@ -55,7 +55,8 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
+  WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Machine.SMCore
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -68,8 +69,9 @@ open import Once.CCC.Codegen.IRToTrace o using
   ; cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; cata-nat-layer; cata-nat-descend
   ; cata-br-I₁; cata-br-I₂; cata-lin-I₁; cata-lin-I₂; cata-lin-I₃
   -- D099 / C1: the called-algebra blocks.
-  ; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize)
-open import Once.CCC.Codegen.LabelRange o using (label-of; cata-label-of; label-mono; cata-label-mono)
+  ; cata-body; cata-call-setup; cata-call; cata-trace-const; fsize; resuspend-layer)
+open import Once.CCC.Codegen.LabelRange o using (label-of; cata-label-of; label-mono; cata-label-mono;
+  resuspend-label-mono)
 open import Once.CCC.Codegen.SlotBudget o using
   (fetch-at; seg-at; SegState; seg-idle?; idle-seg-at
   ; seg-at-++ˡ; seg-at-++ʳ; fetch-++ˡ; fetch-++ʳ; split-pos; seg-fold
@@ -1870,6 +1872,109 @@ scope-nolab t bs lo hi nl li sa =
   mkScope li sa (nocross-nolabˡ t (blocks-layout bs) nl)
                 (nocross-nolabʳ (blocks-layout bs) t nl)
 
+------------------------------------------------------------------------
+-- D199: the re-suspension pass, for the label development.
+------------------------------------------------------------------------
+-- Two facts, and the first is the surprising one: `instr-load-code-addr` is
+-- INVISIBLE to `once-label-of`, which sees only the four control instructions.
+-- So the pass's `wf-Id` clause — which names the enclosing block's own label to
+-- point a fresh suspension's code cell at it — contributes no label at all, and
+-- the only labels the pass owns are `wf-Sum`'s branch target and join.
+
+resuspend-idle : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+               → seg-idle? (proj₂ (proj₂ (resuspend-layer n l lbl wf))) ≡ true
+resuspend-idle n l lbl (wf-K _) = refl
+resuspend-idle n l lbl wf-Id    = refl
+resuspend-idle n l lbl (wf-Prod wfF wfG) =
+  idle-++ (store-at-slot n ∷ restore-input n ∷ load-indirect ∷ tF) mid
+    (resuspend-idle (suc (suc (suc n))) l lbl wfF)
+    (idle-++ tG tail2 (resuspend-idle n2 l2 lbl wfG) refl)
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
+    tF = proj₂ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
+    tG = proj₂ (proj₂ (resuspend-layer n2 l2 lbl wfG))
+    tail2 = store-at-slot (suc (suc n)) ∷ restore-input (suc n) ∷
+            load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
+            load-from-slot (suc n) ∷ []
+    mid = store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
+          store-at-slot (suc n) ∷ mov-to-input ∷
+          load-from-slot (suc (suc n)) ∷ store-indirect ∷
+          restore-input n ∷ load-indirect-suc ∷ (tG ++ tail2)
+resuspend-idle n l lbl (wf-Sum wfF wfG) =
+  idle-++ (tG ++ tail9 1) rest
+    (idle-++ tG (tail9 1) (resuspend-idle n2 l2 lbl wfG) refl)
+    (idle-++ (tF ++ tail9 0) (instr-ctrl (c-label (ℓ o (suc l))) ∷ [])
+      (idle-++ tF (tail9 0) (resuspend-idle (suc (suc (suc n))) (suc (suc l)) lbl wfF) refl)
+      refl)
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+    tF = proj₂ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+    tG = proj₂ (proj₂ (resuspend-layer n2 l2 lbl wfG))
+    tail9 : ℕ → AbstractTrace
+    tail9 tag = store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
+                store-at-slot (suc n) ∷ mov-to-input ∷
+                load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
+                instr-load-tag-lit tag ∷ store-indirect ∷
+                load-from-slot (suc n) ∷ []
+    rest = instr-ctrl (c-jmp (ℓ o (suc l))) ∷ instr-ctrl (c-label (ℓ o l)) ∷
+           restore-input n ∷ load-indirect-suc ∷
+           ((tF ++ tail9 0) ++ (instr-ctrl (c-label (ℓ o (suc l))) ∷ []))
+
+resuspend-labels-in : ∀ (lo hi n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+                    → lo ≤ l
+                    → proj₁ (proj₂ (resuspend-layer n l lbl wf)) ≤ hi
+                    → LabelsIn lo hi (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
+resuspend-labels-in lo hi n l lbl (wf-K _) lo≤ ≤hi = []
+resuspend-labels-in lo hi n l lbl wf-Id lo≤ ≤hi =
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+  li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
+resuspend-labels-in lo hi n l lbl (wf-Prod wfF wfG) lo≤ ≤hi =
+  li-none refl ∷ li-none refl ∷ li-none refl ∷
+  ++⁺ (resuspend-labels-in lo hi (suc (suc (suc n))) l lbl wfF lo≤
+        (≤-trans (resuspend-label-mono n2 l2 lbl wfG) ≤hi))
+      (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+       li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+       ++⁺ (resuspend-labels-in lo hi n2 l2 lbl wfG
+             (≤-trans lo≤ (resuspend-label-mono (suc (suc (suc n))) l lbl wfF)) ≤hi)
+           (li-none refl ∷ li-none refl ∷ li-none refl ∷
+            li-none refl ∷ li-none refl ∷ []))
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
+resuspend-labels-in lo hi n l lbl (wf-Sum wfF wfG) lo≤ ≤hi =
+  li-none refl ∷ li-none refl ∷ li-lab refl lo≤ l<hi ∷
+  ++⁺ (arm 1 (resuspend-labels-in lo hi n2 l2 lbl wfG
+             (≤-trans lo≤ (≤-trans (≤-step (≤-step ≤-refl)) upF)) ≤hi))
+      (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ li-lab refl lo≤ l<hi ∷
+       ++⁺ (arm 0 (resuspend-labels-in lo hi (suc (suc (suc n))) (suc (suc l)) lbl wfF
+                  (≤-trans lo≤ (≤-step (≤-step ≤-refl)))
+                  (≤-trans (resuspend-label-mono n2 l2 lbl wfG) ≤hi)))
+           (li-lab refl (≤-trans lo≤ (n≤1+n l)) sl<hi ∷ []))
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+    upF : suc (suc l) ≤ l2
+    upF = resuspend-label-mono (suc (suc (suc n))) (suc (suc l)) lbl wfF
+    up : suc (suc l) ≤ hi
+    up = ≤-trans upF (≤-trans (resuspend-label-mono n2 l2 lbl wfG) ≤hi)
+    sl<hi : suc l < hi
+    sl<hi = up
+    l<hi : l < hi
+    l<hi = ≤-trans (≤-step ≤-refl) up
+    arm : ∀ (tag : ℕ) {t} → LabelsIn lo hi t
+        → LabelsIn lo hi (restore-input n ∷ load-indirect-suc ∷
+                          t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
+                                store-at-slot (suc n) ∷ mov-to-input ∷
+                                load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
+                                instr-load-tag-lit tag ∷ store-indirect ∷
+                                load-from-slot (suc n) ∷ []))
+    arm tag ls = li-none refl ∷ li-none refl ∷
+             ++⁺ ls (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+                     li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
+                     li-none refl ∷ [])
+
 scope-ok : ∀ {A B} (ir : IR A B) (n l : ℕ)
          → ScopeOK (trace-of (ir-to-trace' n l ir))
                    (bodies-of (ir-to-trace' n l ir))
@@ -1919,11 +2024,80 @@ scope-ok (in-ν {F} _) n l =
     (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
     (body-bl-in (id {⟦ F ⟧TI (ν-type F)}) n l (suc l) (n≤1+n l) (scope-nil _ _ _))
     (body-bl-agree (id {⟦ F ⟧TI (ν-type F)}) n l (suc l) (scope-nil _ _ _))
-scope-ok (Ana _ c) n l =
+-- D199: `body-bl-in`/`body-bl-agree` no longer apply — they are hardwired to a
+-- block whose trace IS `trace-of (ir-to-trace' 0 lb bd)`, and this block's is
+-- `coalg ++ re-suspension`. The two pieces carry labels in DISJOINT windows
+-- (`[suc l , l')` for the coalgebra, `[l' , hi)` for the pass), which is what
+-- makes every `SegAgree`/`NoCross` obligation below a `segagree-++'` or a
+-- `nocross-win` rather than new reasoning.
+scope-ok (Ana wf c) n l =
   scope-nolab _ _ l _
     (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-    (body-bl-in c n l (suc l) (n≤1+n l) (scope-ok c 0 (suc l)))
-    (body-bl-agree c n l (suc l) (scope-ok c 0 (suc l)))
+    ana-bl-in ana-bl-agree
+  where
+    lb = suc l
+    D  = ir-to-trace' 0 lb c
+    ct = trace-of D
+    l' = label-of D
+    R  = resuspend-layer (budget-of D) l' (ℓ o l) wf
+    rt = proj₂ (proj₂ R)
+    bb = proj₁ R
+    hi = proj₁ (proj₂ R)
+    BB = blocks-layout (bodies-of D)
+    tl = instr-ctrl (c-ret bb) ∷ []
+    bt = ct ++ rt
+    blk = instr-ctrl (c-thunk (ℓ o l) bb) ∷ (bt ++ tl)
+    S  = scope-ok c 0 lb
+
+    l'≤hi : l' ≤ hi
+    l'≤hi = resuspend-label-mono (budget-of D) l' (ℓ o l) wf
+    l≤l' : l ≤ l'
+    l≤l' = ≤-trans (n≤1+n l) (label-mono c 0 lb)
+
+    ctL : LabelsIn lb l' ct
+    ctL = labels-in c 0 lb
+    rtL : LabelsIn l' hi rt
+    rtL = resuspend-labels-in l' hi (budget-of D) l' (ℓ o l) wf ≤-refl ≤-refl
+    btL : LabelsIn l hi bt
+    btL = ++⁺ (ls-weaken (n≤1+n l) l'≤hi ctL) (ls-weaken l≤l' ≤-refl rtL)
+    btlL : LabelsIn l hi (bt ++ tl)
+    btlL = ++⁺ btL (li-none refl ∷ [])
+
+    btA : SegAgree bt
+    btA = segagree-++' ct rt lb l' l' hi ctL rtL (inj₁ ≤-refl)
+            (seg-agree c 0 lb) (segagree-idle rt (resuspend-idle (budget-of D) l' (ℓ o l) wf))
+    btlA : SegAgree (bt ++ tl)
+    btlA = segagree-++' bt tl l hi 0 0 btL (nolab-any 0 tl (refl ∷ [])) (inj₂ z≤n)
+             btA (segagree-nolab tl (refl ∷ []))
+    blkA : SegAgree blk
+    blkA = segagree-pre (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) l l hi
+             (refl ∷ []) btlL ≤-refl btlA
+
+    -- The pass's labels start where the coalgebra's window ends, so nothing it
+    -- mentions can be defined in the coalgebra's own blocks, or vice versa.
+    ncRB : NoCross rt BB
+    ncRB = nocross-win rt BB l' hi lb l' rtL (ScopeOK.bl-in S) (inj₂ ≤-refl)
+    ncBR : NoCross BB rt
+    ncBR = nocross-win BB rt lb l' l' hi (ScopeOK.bl-in S) rtL (inj₁ ≤-refl)
+
+    nc1 : NoCross blk BB
+    nc1 = nocross-++ˡ (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) (bt ++ tl) BB
+            (nocross-nolabˡ _ BB (refl ∷ []))
+            (nocross-++ˡ bt tl BB
+              (nocross-++ˡ ct rt BB (ScopeOK.nc-eb S) ncRB)
+              (nocross-nolabˡ tl BB (refl ∷ [])))
+    nc2 : NoCross BB blk
+    nc2 = nocross-++ʳ BB (instr-ctrl (c-thunk (ℓ o l) bb) ∷ []) (bt ++ tl)
+            (nocross-nolabʳ BB _ (refl ∷ []))
+            (nocross-++ʳ BB bt tl
+              (nocross-++ʳ BB ct rt (ScopeOK.nc-be S) ncBR)
+              (nocross-nolabʳ BB tl (refl ∷ [])))
+
+    ana-bl-in : LabelsIn l hi (blocks-layout ((ℓ o l , bb , bt) ∷ bodies-of D))
+    ana-bl-in = ++⁺ (li-none refl ∷ ++⁺ btL (li-none refl ∷ []))
+                    (ls-weaken (n≤1+n l) l'≤hi (ScopeOK.bl-in S))
+    ana-bl-agree : SegAgree (blocks-layout ((ℓ o l , bb , bt) ∷ bodies-of D))
+    ana-bl-agree = segagree-++ⁿ blk BB nc1 nc2 blkA (ScopeOK.bl-agree S)
 scope-ok (Hylo _ _ _ _)      n l = scope-nil _ _ _
 scope-ok (Fuse _ _ _ _)      n l = scope-nil _ _ _
 scope-ok (free-heap _)       n l = scope-nil _ _ _

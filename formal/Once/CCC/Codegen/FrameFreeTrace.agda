@@ -44,7 +44,8 @@ module Once.CCC.Codegen.FrameFreeTrace (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _+_; _*_)
 open import Data.Unit using (⊤; tt)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Once.CCC.Label using (ℓ)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -56,13 +57,15 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (blocks-layout)
 open import Once.CCC.Machine.SMCore using (LabelId)
 open import Once.CCC.Machine.SMCore using
-  (AbstractInstr; AbstractTrace; load-indirect-suc; mov-to-input)
+  (AbstractInstr; AbstractTrace; load-indirect-suc; mov-to-input;
+   restore-input; store-indirect-suc; load-from-slot;
+   store-at-slot; instr-alloc-heap; instr-load-tag-lit; store-indirect)
 open import Once.CCC.Machine.FrameFree using
   (FrameFreeI; FrameFreeT; frame-free-nest; EmittableI)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
@@ -74,7 +77,7 @@ open import Once.CCC.Codegen.IRToTrace o using
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
    -- D099 / C1: the three shared blocks of the called-algebra shape.
    cata-body; cata-call-setup; cata-call; cata-trace-const;
-   cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize)
+   cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize; resuspend-layer)
 
 -- third projection of `ir-to-trace'`'s 4-tuple / of `cata-dispatch`'s 3-tuple
 -- (record patterns, so they reduce under eta — unlike IRToTrace's own
@@ -349,6 +352,43 @@ frame-free-blocks []                   []       = []
 frame-free-blocks ((lb , bb , t) ∷ bs) (q ∷ qs) =
   ++⁺ (tt ∷ ++⁺ q (tt ∷ [])) (frame-free-blocks bs qs)
 
+-- D199: the re-suspension pass passes the EMITTER fence. It emits register
+-- moves, indirect loads/stores, a heap allocation, a code-address load and
+-- flat control — and, in particular, no `instr-case-on-tag`: its sum arm
+-- branches with `c-branch-tag-zero`/`c-jmp`/`c-label`, exactly as `case` does,
+-- which is why `EmittableI`'s retired-fossil ⊥ cases are never reached.
+resuspend-ff : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+             → FrameFreeTrace (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
+resuspend-ff n l lbl (wf-K _) = []
+resuspend-ff n l lbl wf-Id =
+  tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+resuspend-ff n l lbl (wf-Prod wfF wfG) =
+  tt ∷ tt ∷ tt ∷
+  ++⁺ (resuspend-ff (suc (suc (suc n))) l lbl wfF)
+      (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
+       ++⁺ (resuspend-ff n2 l2 lbl wfG)
+           (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
+resuspend-ff n l lbl (wf-Sum wfF wfG) =
+  tt ∷ tt ∷ tt ∷
+  ++⁺ (arm 1 (resuspend-ff n2 l2 lbl wfG))
+      (tt ∷ tt ∷
+       ++⁺ (arm 0 (resuspend-ff (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+           (tt ∷ []))
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+    arm : ∀ (tag : ℕ) {t} → FrameFreeTrace t
+        → FrameFreeTrace (restore-input n ∷ load-indirect-suc ∷
+                          t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
+                                store-at-slot (suc n) ∷ mov-to-input ∷
+                                load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
+                                instr-load-tag-lit tag ∷ store-indirect ∷
+                                load-from-slot (suc n) ∷ []))
+    arm tag ff = tt ∷ tt ∷ ++⁺ ff (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+
 frame-free-blocks' : ∀ {A B} (ir : IR A B) (hm : HeapModed ir) (n l : ℕ)
                    → All BlockFrameFree (ffbds (ir-to-trace' n l ir))
 frame-free-blocks' id       hm n l = []
@@ -373,8 +413,12 @@ frame-free-blocks' (Cata {F} _ alg) hm n l = frame-free-blocks' alg hm 0 l
 frame-free-blocks' (Para _ _)     hm n l = []
 frame-free-blocks' (Out _)        hm n l = []
 frame-free-blocks' (in-ν _)     hm n l = (tt ∷ []) ∷ []
-frame-free-blocks' (Ana _ c)      hc n l =
-  frame-free-trace' c hc 0 (suc l) ∷ frame-free-blocks' c hc 0 (suc l)
+-- D199: the block is `coalg ++ re-suspension`.
+frame-free-blocks' (Ana wf c)     hc n l =
+  ++⁺ (frame-free-trace' c hc 0 (suc l))
+      (resuspend-ff (proj₁ (ir-to-trace' 0 (suc l) c))
+                    (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c))) (ℓ o l) wf)
+    ∷ frame-free-blocks' c hc 0 (suc l)
 frame-free-blocks' (Hylo _ _ _ _) hm n l = []
 frame-free-blocks' (Fuse _ _ _ _) hm n l = []
 frame-free-blocks' (free-heap _)  hm n l = []

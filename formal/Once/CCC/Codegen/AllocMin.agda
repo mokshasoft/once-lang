@@ -31,7 +31,7 @@ module Once.CCC.Codegen.AllocMin (o : CanonicalName) where
 
 open import Data.Nat using (ℕ; suc; _+_; _≤_; s≤s; z≤n; _*_)
 open import Data.Unit using (⊤; tt)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -43,11 +43,15 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
   free-heap; SigOp; const)
-open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type)
+open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
+  WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
+open import Once.CCC.Label using (ℓ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (AbstractInstr; AbstractTrace; instr-alloc-heap
-  ; blocks-layout; blocks-layout-++; LabelId)
+  ; blocks-layout; blocks-layout-++; LabelId
+  ; restore-input; load-indirect-suc; store-at-slot; mov-to-input
+  ; load-from-slot; store-indirect-suc; instr-load-tag-lit; store-indirect)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.CCC.Codegen.IRToTrace o using
   (ir-to-trace'; ir-to-trace; ir-to-trace-at-frontier;
@@ -56,7 +60,7 @@ open import Once.CCC.Codegen.IRToTrace o using
    cata-trace-branching; push2; pop2; wrap-sum; visit-walk; rebuild-walk; lsize;
    -- D099 / C1: the called-algebra blocks.
    cata-body; cata-call-setup; cata-call; cata-trace-const;
-   cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize)
+   cata-nat-I₁; cata-nat-I₂; cata-nat-I₃; fsize; resuspend-layer)
 open import Once.CCC.Codegen.FrameFreeTrace o using (trace-of; cata-trace-of)
 
 -- The per-instruction fact, reducing on every constructor (CATCHALL): only an
@@ -308,6 +312,41 @@ bud (b , _ , _ , _) = b
 lab : ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace) → ℕ
 lab (_ , k , _ , _) = k
 
+-- D199: every heap allocation the re-suspension pass emits is the two-cell
+-- one — the suspension in `wf-Id`, the fresh pair in `wf-Prod`, the fresh
+-- tagged node in each `wf-Sum` arm — so `am2` discharges all of them.
+resuspend-am : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+             → AllocMinTrace (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
+resuspend-am n l lbl (wf-K _) = []
+resuspend-am n l lbl wf-Id =
+  tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
+resuspend-am n l lbl (wf-Prod wfF wfG) =
+  tt ∷ tt ∷ tt ∷
+  ++⁺ (resuspend-am (suc (suc (suc n))) l lbl wfF)
+      (tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷
+       ++⁺ (resuspend-am n2 l2 lbl wfG)
+           (tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
+resuspend-am n l lbl (wf-Sum wfF wfG) =
+  tt ∷ tt ∷ tt ∷
+  ++⁺ (arm 1 (resuspend-am n2 l2 lbl wfG))
+      (tt ∷ tt ∷
+       ++⁺ (arm 0 (resuspend-am (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+           (tt ∷ []))
+  where
+    n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+    l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+    arm : ∀ (tag : ℕ) {t} → AllocMinTrace t
+        → AllocMinTrace (restore-input n ∷ load-indirect-suc ∷
+                         t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
+                               store-at-slot (suc n) ∷ mov-to-input ∷
+                               load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
+                               instr-load-tag-lit tag ∷ store-indirect ∷
+                               load-from-slot (suc n) ∷ []))
+    arm tag am = tt ∷ tt ∷ ++⁺ am (tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ [])
+
 alloc-min-blocks : ∀ {A B} (ir : IR A B) (n l : ℕ)
                  → AllocMinTrace (blocks-layout (bodies-of (ir-to-trace' n l ir)))
 alloc-min-blocks id       n l = []
@@ -323,8 +362,13 @@ alloc-min-blocks (out-μ _)  n l = []
 alloc-min-blocks (Para _ _) n l = []
 alloc-min-blocks (Out _)    n l = []
 alloc-min-blocks (in-ν _) n l = tt ∷ tt ∷ tt ∷ []
-alloc-min-blocks (Ana _ c)  n l =
-  ++⁺ (tt ∷ ++⁺ (alloc-min-trace' c 0 (suc l)) (tt ∷ []))
+-- D199: the block is `coalg ++ re-suspension`.
+alloc-min-blocks (Ana wf c) n l =
+  ++⁺ (tt ∷ ++⁺ (++⁺ (alloc-min-trace' c 0 (suc l))
+                     (resuspend-am (proj₁ (ir-to-trace' 0 (suc l) c))
+                                   (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
+                                   (ℓ o l) wf))
+                (tt ∷ []))
       (alloc-min-blocks c 0 (suc l))
 alloc-min-blocks (Hylo _ _ _ _) n l = []
 alloc-min-blocks (Fuse _ _ _ _) n l = []

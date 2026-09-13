@@ -428,8 +428,16 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   -- deeper stack). Stating the obligation where the machine actually IS avoids
   -- inventing that.
   ------------------------------------------------------------------------
+  -- D198: indexed by ANY `IR A B` and any input, not by a body-of-a-closure.
+  -- Nothing in the fields ever used the `E * A` shape — they mention only
+  -- `evalᴰ ir inp` and `B` — and the ν force needs the same record at a
+  -- COALGEBRA `IR A (⟦F⟧TI A)` called on a bare seed. `apply` instantiates
+  -- this at `E * A` and is otherwise unchanged.
   record CalleeRun (prog : AbstractTrace) (fs : FlatState) (ret-pc : ℕ)
-                   {E A B : IRTy} (body : IR (E IRTy.* A) B) (envArg : ⟦ E IRTy.* A ⟧)
+                   -- D199: `B` is EXPLICIT. Indexing by the computation
+                   -- rather than by `(ir , inp)` costs its inferability —
+                   -- `TM.T ⟦ B ⟧` pins `⟦ B ⟧`, and `⟦_⟧` is not injective.
+                   (B : IRTy) (comp : TM.T ⟦ B ⟧)
                    (k : ℕ) : Set where
     constructor callee-run
     field
@@ -445,9 +453,9 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       no-ret     : fret settle ≡ []
       no-link    : flink settle ≡ nothing
       place      : ResultPlace B out-mode (falloc settle) cont-alloc
-                     (TM.valueT (evalᴰ body envArg) k) (floc settle)
+                     (TM.valueT comp k) (floc settle)
       events     : take k (chain-events run)
-                   ≡ take k (projTrace (evalᴰ body envArg) k)
+                   ≡ take k (projTrace comp k)
 
   ------------------------------------------------------------------------
   -- D188: THE BLOCK TABLE, as the machine needs it — the one fact `apply`
@@ -478,7 +486,44 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
            → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
            → falloc fs ≡ enter-call pre-alloc
            → InputAt {E IRTy.* A} mIn' pre-alloc envArg (floc fs)
-           → CalleeRun prog fs ret-pc body envArg k))
+           → CalleeRun prog fs ret-pc B (evalᴰ body envArg) k))
+
+  -- D198: the ν analogue of `CalleeRuns`, and a SIBLING rather than an
+  -- instance because the two block kinds are called differently BY
+  -- CONSTRUCTION: `apply` packs an `(env , arg)` pair on the heap and points
+  -- `Input1` at it, while `Out` puts the SEED in `Input1` directly. That is
+  -- what makes a ν's code cell a coalgebra rather than a closure body, so one
+  -- premise cannot serve both.
+  CoalgRuns : AbstractTrace → Set
+  CoalgRuns prog =
+    ∀ {A : IRTy} {F : Once.IRTy.IRFunctor} (wf : WellFormedFI F)
+      (coalg : IR A (⟦ F ⟧TI A)) (seed : ⟦ A ⟧) (ℓ : LabelId)
+      {m : AllocMode} {alloc' : AllocState {FS}}
+      {vloc : ValueLocation FS} {st : LocState FS}
+    → ValidAtWF m alloc' {ν-type F}
+        (TM.valueT (evalᴰ (Ana wf coalg) seed) 0) vloc st
+    → MemOps.readLoc st (sucLoc vloc) ≡ just (SV-Code ℓ)
+    → ∃[ j ]
+        ( (find-thunk prog ℓ ≡ just j)
+        × (∀ (fs : FlatState) (pre-alloc : AllocState {FS})
+             (ret-pc k : ℕ) (mIn' : AllocMode)
+           → fpc fs ≡ j → halted (floc fs) ≡ false → fret fs ≡ ret-pc ∷ []
+           → falloc fs ≡ enter-call pre-alloc
+           → InputAt {A} mIn' pre-alloc seed (floc fs)
+           -- D199: the block is the coalgebra FOLLOWED BY the re-suspension of
+           -- every recursive position, so what it computes is not `coalg` but
+           -- the FORCED LAYER — `evalᴰ (Out wf)` of the very ν whose code cell
+           -- named this label. That is `mapAnaᵈ H H coalg (valueT (coalg a))`,
+           -- which is precisely the half of `forceᵈ` the emitter used to skip.
+           → CalleeRun prog fs ret-pc (⟦ F ⟧TI (ν-type F))
+               (evalᴰ (Out wf) (TM.valueT (evalᴰ (Ana wf coalg) seed) 0)) k))
+
+  -- Both block-table premises in ONE slot, so adding the second does not
+  -- re-thread the fourteen discharge clauses that only pass it along.
+  record BlockRuns (prog : AbstractTrace) : Set where
+    field
+      closures : CalleeRuns prog
+      coalgs   : CoalgRuns prog
 
   IRObsCorrectF : ∀ {A B} → IR A B → Set
   IRObsCorrectF {A} {B} ir =
@@ -497,7 +542,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       -- closures name. Every other premise here is about the fragment; this
       -- one is about the whole image, and it is the only thing `apply` needs
       -- that no value can supply (D170 removed that ability on purpose).
-      CalleeRuns prog →
+      BlockRuns prog →
       SpanAt prog base (emitted n l ir) →
     -- D179 (top-down): the input ranges over the MONADIC domain. While it was
     -- `⟦ A ⟧` (pure), `inject x` made every closure trace-free and every ν a
@@ -3659,7 +3704,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                               (callee-arg sc' OB.pair-snd-a16))
                             OB.before-ahl OB.input1-a16
 
-              cinfo = cr body env blbl
+              cinfo = BlockRuns.closures cr body env blbl
                         (subst (λ f → ValidAtWF _ alloc {A IRTy.⇛ B} f fst-loc s)
                                (ClosureValidWF.f-is-closure cvw) fst-valid)
                         (ClosureValidWF.code-ptr cvw)
@@ -3686,7 +3731,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
                        (cong (λ z → do-call-at z ASP.a16) feq))
 
               crun : CalleeRun prog (flat-exec-instr instr-call-closure prog ASP.a16)
-                       (suc (fpc ASP.a16)) body (env , proj₂ x) k
+                       (suc (fpc ASP.a16)) B (evalᴰ body (env , proj₂ x)) k
               crun = runner (flat-exec-instr instr-call-closure prog ASP.a16)
                        (falloc ASP.a16) (env , proj₂ x) (suc (fpc ASP.a16)) k Heap
                        (trans (cong fpc call-eq) refl)
@@ -3920,7 +3965,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
     → ir-size g < program-bound
     → next-slot alloc ≤ n
     → AllSlotStable prog
-    → CalleeRuns prog
+    → BlockRuns prog
     → SpanAt prog base (emitted n l (g ∘ f))
     → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
     → ValueRealized prog base n l (g ∘ f) x s alloc cl k
@@ -4034,7 +4079,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
       ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
         (prog : AbstractTrace) (base n l k : ℕ)
         (szg : ir-size g < program-bound) (ns : next-slot alloc ≤ n)
-        (ss : AllSlotStable prog) (cr : CalleeRuns prog)
+        (ss : AllSlotStable prog) (cr : BlockRuns prog)
         (span : SpanAt prog base (emitted n l (g ∘ f)))
         (ihg : IRObsCorrectF g) (mf : MachineRefinesObsF prog base n l f x s alloc cl k)
       → take k (chain-events (ValueRealized.run
@@ -4046,7 +4091,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
             → ir-size g < program-bound
             → next-slot alloc ≤ n
             → AllSlotStable prog
-            → CalleeRuns prog
+            → BlockRuns prog
             → SpanAt prog base (emitted n l (g ∘ f))
             → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
             → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k

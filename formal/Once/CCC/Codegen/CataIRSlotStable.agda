@@ -41,7 +41,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.IR
-open import Once.IRTy using (⌈_⌉F)
+open import Once.CCC.Label using (ℓ)
+open import Once.IRTy using (⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_; fits-int; fits-float)
 open import Once.CCC.Machine.SMCore using (blocks-layout)
 open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr;
@@ -55,7 +56,7 @@ open import Once.CCC.Machine.SMCore using (LabelId; AbstractTrace; AbstractInstr
          instr-reg-op; instr-ctrl; lea-indexed;
          module AbstractExec)
 open import Once.CCC.Codegen.IRToTrace o
-  using (ir-to-trace; ir-to-trace'; cata-strategy; cata-dispatch;
+  using (ir-to-trace; ir-to-trace'; cata-strategy; cata-dispatch; resuspend-layer;
          CataStrategy; strat-const; strat-nat; strat-linear; strat-branching;
          cata-trace-nat; cata-trace-linear; cata-trace-branching;
          visit-walk; rebuild-walk; lsize; cata-br-I₁; cata-br-I₂;
@@ -394,6 +395,44 @@ module CataIRSlotStable {FS : FrameSemantics} where
   blocks-stable ((lb , bb , t) ∷ bs) (q ∷ᴬ qs) =
     ++⁺ (tt ∷ᴬ ++⁺ q (tt ∷ᴬ []ᴬ)) (blocks-stable bs qs)
 
+  -- D199: the re-suspension pass emits only slot-stable instructions —
+  -- register moves, indirect loads/stores, a heap allocation and flat control,
+  -- none of which touch `next-slot`. It cannot go through `all-stable?-sound`
+  -- like `in-ν`'s literal stub does: the trace is not concrete, it is generated
+  -- from the functor witness, so the induction mirrors `resuspend-layer`'s own.
+  resuspend-stable : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+                   → AllSlotStable (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
+  resuspend-stable n l lbl (wf-K _) = []ᴬ
+  resuspend-stable n l lbl wf-Id =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ
+  resuspend-stable n l lbl (wf-Prod wfF wfG) =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (resuspend-stable (suc (suc (suc n))) l lbl wfF)
+        (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+         ++⁺ (resuspend-stable n2 l2 lbl wfG)
+             (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ))
+    where
+      n2 = proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF)
+      l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
+  resuspend-stable n l lbl (wf-Sum wfF wfG) =
+    tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
+    ++⁺ (arm 1 (resuspend-stable n2 l2 lbl wfG))
+        (tt ∷ᴬ tt ∷ᴬ
+         ++⁺ (arm 0 (resuspend-stable (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+             (tt ∷ᴬ []ᴬ))
+    where
+      n2 = proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+      l2 = proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+      -- Each arm reads the payload, transforms it, and builds a fresh node.
+      arm : ∀ (tag : ℕ) {t} → AllSlotStable t
+          → AllSlotStable (restore-input n ∷ load-indirect-suc ∷
+                           t ++ (store-at-slot (suc (suc n)) ∷ instr-alloc-heap 2 ∷
+                                 store-at-slot (suc n) ∷ mov-to-input ∷
+                                 load-from-slot (suc (suc n)) ∷ store-indirect-suc ∷
+                                 instr-load-tag-lit tag ∷ store-indirect ∷
+                                 load-from-slot (suc n) ∷ []))
+      arm tag st = tt ∷ᴬ tt ∷ᴬ ++⁺ st (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ []ᴬ)
+
   ir-blocks-stable : ∀ {A B} (ir : IR A B) (n l : ℕ)
                    → All BlockStable (bds (ir-to-trace' n l ir))
   ir-blocks-stable id                   n l = []ᴬ
@@ -414,8 +453,12 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-blocks-stable (Para _ _)           n l = []ᴬ
   ir-blocks-stable (Out _)              n l = []ᴬ
   ir-blocks-stable (in-ν _)           n l = all-stable?-sound _ refl ∷ᴬ []ᴬ
-  ir-blocks-stable (Ana _ c)            n l = ir-stable c 0 (suc l)
-                                            ∷ᴬ ir-blocks-stable c 0 (suc l)
+  -- D199: the block is `coalg ++ re-suspension`, so its stability is theirs.
+  ir-blocks-stable (Ana wf c)           n l =
+    ++⁺ (ir-stable c 0 (suc l))
+        (resuspend-stable (proj₁ (ir-to-trace' 0 (suc l) c))
+                          (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c))) (ℓ o l) wf)
+      ∷ᴬ ir-blocks-stable c 0 (suc l)
   ir-blocks-stable (Hylo _ _ _ _)       n l = []ᴬ
   ir-blocks-stable (Fuse _ _ _ _)       n l = []ᴬ
   ir-blocks-stable (free-heap _)        n l = []ᴬ
