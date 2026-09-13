@@ -1939,7 +1939,57 @@ LIMITATION — they are the performance design, and its header saying the
 motive generalisation *"HAS to thread `subTy σ A ≡ A`"* was recording
 exactly this cost.
 
-### ★★★ AND THE DIVIDING LINE IS **READING THE INDEX** — not size, not shape
+### ⛔ REFUTED — IT IS NOT INDEX-READING EITHER.  IT IS **`KnotD` IN THE MOTIVE**
+
+Four probes, IDENTICAL harness (`imethsTyFrom-wf` over all 53 rows),
+only the motive changes:
+
+| motive | what it is | cost |
+|---|---|---|
+| `Nat` | mentions NOTHING | **0.98 s** |
+| `K (pair sTm nzero)` | **CLOSED**, index-free, 3 nodes | 62.28 s |
+| `K (pair sTm (var …))` | ambient **VARIABLE**, 4 nodes | 60.99 s |
+| `K (pair sTm (snd ⟨i⟩))` | index-**READING**, 4 nodes | 61.38 s |
+
+⇒ **every `K`-built motive ≈ 61 s; `Nat` ≈ 1 s — 63×**, and index-reading
+vs ambient-variable vs closed makes NO difference (60.99 / 61.38 / 62.28,
+inside noise).
+
+★★★ `K x = IMu KnotD IPair x`. **They all carry the 53-row DESCRIPTION,
+and `Nat` carries nothing.** 53 rows × a 53-row description walked per
+row = 2809 units against `Nat`'s 53 — a predicted ~53× against a measured
+~63×. ⇒ **the cost is QUADRATIC IN THE DESCRIPTION, and the motive is
+what carries the second factor.**
+
+⚠⚠⚠ **THREE OF MY MODELS DIED TESTING THIS, IN ORDER:** "cost ∝ |M|"
+(refuted by `ProbeSmall`), "evidence-passing fixes tier 3" (refuted by
+reasoning — `imethsTyFrom` is a plain function), and "index-reading is
+the dividing line" (refuted by `ProbeVar`, which is one token different
+from `ProbeSmall` and costs the same). ⇒ every motive-CLASS law I
+recorded today is wrong; only this one survives its own discriminator.
+
+### ⚠ AND IT LEAVES THE 6.64 s vs 43.92 s GAP UNEXPLAINED
+
+`TupleAVar` (6.64 s) and `TupleP` (43.92 s) BOTH use `K`-built motives,
+so on this evidence they should cost the same. The difference must be in
+the METHODS — `junkA` via `⊢methLamN` against `payTyJunk` via
+`⊢methLam` — not the motive. ⇒ **this morning's row-level 7.7× needs
+re-attributing too**, and the `iihs` conversion's measured win is not yet
+explained by any surviving mechanism.
+
+### ⬜ THE ONE LEVER LEFT: STOP AGDA WALKING `KnotD`
+
+`KnotD` is already a Def, so sharing is not the issue — Agda unfolds it
+on comparison. The mechanism that would stop that is `abstract`/`opaque`,
+**which this file already identifies elsewhere** (*"the mechanism that
+WOULD pay is `abstract`"*, in the INTERFACE/IMPLEMENTATION section).
+
+⚠ NOT TESTED. And it cannot be blanket: `ipayTy`/`iihTy` RECURSE on the
+`ICon`, so the description must compute there. The candidate is narrower
+— keep `K`'s `IMu KnotD IPair _` opaque where the description is INERT
+(the motive) while leaving it transparent where it is eliminated.
+
+
 
 `tmp/ProbeSmall` is a motive of FOUR nodes
 (`K (pair sTm (snd (var (vs vz))))`) that reads the index, run in the
