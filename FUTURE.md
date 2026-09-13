@@ -2026,7 +2026,45 @@ CHEAP to build (nothing is walked) but they still pile up quadratically.
 of the motive. ⚠ NOT TESTED, and `imethsTyFrom-wf` is generic in `M` so
 it cannot use such a lemma without being made transport-aware.
 
-★★ AND THAT IS THE SAME PATTERN FOR THE THIRD TIME TODAY — `⊢methLamN`
+### ★★★ AND THE CHECKER'S OWN COUNTERS NAME THE MECHANISM — `--profile=conversion`
+
+⚠ I hand-built EIGHT probes over a day to find this. Agda reports it
+directly: `--profile=definitions --profile=conversion --profile=sharing`
+(⚠ one flag per option — a comma-separated list is rejected).
+
+Same probe, transparent vs sealed:
+
+| counter | transparent | sealed | |
+|---|---|---|---|
+| `compare` | 7,012 | 1,273 | 5.5× fewer |
+| `compare by reduction` | 2,172 | 546 | 4.0× fewer |
+| **`compare by reduction: injectivity`** | **1,431** | **3** | **477× fewer** |
+| `compare equal` | 679 | 697 | unchanged |
+| **`compare meta`** | **4,164** | **43** | **97× fewer** |
+| time in `probe` | 72,759 ms | 35,487 ms | 2.05× |
+
+★★★ **IT IS THE INJECTIVITY HEURISTIC.** Comparing `f a ≟ f b` for a
+DEFINED `f`, Agda tries injectivity — reduce both sides and conclude
+`a ≟ b`. Unfolded `K` gives it 1,431 chances to try; sealed `Kop` gives
+it 3, because `Kop i ≟ Kop j` matches on the head and recurses on the
+index. The 4,164 → 43 meta comparisons are the same storm.
+
+⇒ **this is [[pin-implicits-on-defined-set-types]] MEASURED** — that
+memory says "not injective; Agda unfolds, the metas never solve". Same
+phenomenon, now with counters.
+
+⚠⚠ AND SEALING DOES NOT MAKE COMPARISONS CHEAPER — IT MAKES THEM RARER:
+10.4 ms each transparent, **27.9 ms each sealed**. The survivors are the
+hard ones; what vanished was the storm. ⇒ do not expect the remaining
+35 s to yield to the same trick.
+
+⚠ `--profile=definitions` attributes per TOP-LEVEL definition, so a
+one-definition probe reports one line. For LIBRARY attribution it must be
+run on a module with many definitions — `Judge/Ielim` would give per-row
+figures. NOT DONE (4.3 GB, and the box has ~3 GB free).
+
+⚠ **This tree uses `abstract`/`opaque` NOWHERE today** (0 files). Adopting
+it is a new convention and needs a policy, not just a patch. — `⊢methLamN`
 for the prologue, `motA-ren`/`motA-at` for the motive, and now `ren-Kop`
 for the type former. ⇒ a result about the ENCODING, not about any one
 module: **every layer that transports a term needs its naturality
