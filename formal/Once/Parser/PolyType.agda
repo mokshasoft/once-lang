@@ -81,6 +81,13 @@ pmuOf : Maybe (PolyFunctor × List Token) → Maybe (PolyType × List Token)
 pmuOf nothing          = nothing
 pmuOf (just (F , rest)) = just (Pμ-type F , rest)
 
+-- D191 follow-on: `Nu`'s mirror. The ground-type parser got `pa-nu`, but DEF
+-- SIGNATURES are parsed HERE — which is why `nu-ana-build.once` failed to
+-- parse even with `Nu` in the ground grammar. Two parsers, one keyword set.
+pnuOf : Maybe (PolyFunctor × List Token) → Maybe (PolyType × List Token)
+pnuOf nothing          = nothing
+pnuOf (just (F , rest)) = just (Pν-type F , rest)
+
 {-# TERMINATING #-}
 parsePolyTypeImpl     : PolyParser PolyType
 parsePolySumImpl      : PolyParser PolyType
@@ -172,6 +179,10 @@ parsePolyAtomImpl (TWord name ∷ rest)
 ... | yes _ = pmuOf (parsePolyFuncAtom rest)
 parsePolyAtomImpl (TWord name ∷ rest)
    | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+   with name ≟ "Nu"
+... | yes _ = pnuOf (parsePolyFuncAtom rest)
+parsePolyAtomImpl (TWord name ∷ rest)
+   | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
    with isLowerWord name
 ...   | true  = just (PTVar name , rest)
 ...   | false = nothing

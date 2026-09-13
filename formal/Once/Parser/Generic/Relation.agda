@@ -81,6 +81,10 @@ record TyAlg : Set₁ where
     aProd aSum aEff : R → R → R
     aArrow : Quantity → R → R → R
     aMu : RF → R
+    -- D191 follow-on: the ν introduction, `aMu`'s mirror. Needed because DEF
+    -- SIGNATURES are parsed by this generic algebra, not by the ground-type
+    -- parser `pa-nu` extended — two parsers, one keyword set.
+    aNu : RF → R
     fK : R → RF
     fId : RF
     fSum fProd : RF → RF → RF
@@ -98,6 +102,7 @@ record TyAlg : Set₁ where
     extraMiss-Eff    : (rest : List Token) → extraP (TWord "Eff"    ∷ rest) ≡ nothing
     extraMiss-IO     : (rest : List Token) → extraP (TWord "IO"     ∷ rest) ≡ nothing
     extraMiss-Mu     : (rest : List Token) → extraP (TWord "Mu"     ∷ rest) ≡ nothing
+    extraMiss-Nu     : (rest : List Token) → extraP (TWord "Nu"     ∷ rest) ≡ nothing
     extraMiss-LParen : (rest : List Token) → extraP (TLParen ∷ rest) ≡ nothing
 
 -- Strict-decrease lemmas for the classifier-routed tails (enumeration, ONCE).
@@ -471,6 +476,8 @@ module Gen (alg : TyAlg) where
             → ParsesAtomG toks1 A rest → ParsesAtomG (TWord "IO" ∷ toks1) (aEff aUnit A) rest
       pa-mu : ∀ {toks rest} {F : RF}
             → ParsesFuncSumG toks F rest → ParsesAtomG (TWord "Mu" ∷ toks) (aMu F) rest
+      pa-nu : ∀ {toks rest} {F : RF}
+            → ParsesFuncSumG toks F rest → ParsesAtomG (TWord "Nu" ∷ toks) (aNu F) rest
       pa-extra : ∀ {toks a rest} → Extra toks a rest → ParsesAtomG toks a rest
       pa-paren : ∀ {toks rest1 rest2} {T : R}
                → ParsesTypeG toks T rest1 → rest1 ≡ TRParen ∷ rest2
@@ -549,6 +556,7 @@ module Gen (alg : TyAlg) where
     atomShrink (pa-eff dA dB) = <-trans (atomShrink dB) (<-trans (atomShrink dA) (s≤s ≤-refl))
     atomShrink (pa-io dA) = <-trans (atomShrink dA) (s≤s ≤-refl)
     atomShrink (pa-mu dF) = <-trans (funcSumShrink dF) (s≤s ≤-refl)
+    atomShrink (pa-nu dF) = <-trans (funcSumShrink dF) (s≤s ≤-refl)
     atomShrink (pa-extra ex) = extraShrink ex
     atomShrink (pa-paren dT refl) = <-trans (s≤s ≤-refl) (<-trans (typeShrink dT) (s≤s ≤-refl))
 

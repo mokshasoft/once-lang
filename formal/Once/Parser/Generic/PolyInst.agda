@@ -21,7 +21,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Axiom.UniquenessOfIdentityProofs.WithK using (uip)
 
 open import Once.Type
-  using ( PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type
+  using ( PolyType; PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type
         ; PInt; PFloat; PStr; PBuffer; PTVar
         ; PolyFunctor; PK; PId; _P⊕_; _P⊗_ )
 open import Once.Parser.Token
@@ -75,6 +75,7 @@ PolyAlg = record
   ; aProd = _P*_ ; aSum = _P+_ ; aEff = PEff
   ; aArrow = λ q A B → A P⇒[ q ] B
   ; aMu = Pμ-type
+  ; aNu = Pν-type
   ; fK = PK ; fId = PId ; fSum = _P⊕_ ; fProd = _P⊗_
   ; Extra = TVarRel ; extraShrink = tvar-shrink ; extraP = tvarP
   ; extraComplete = tvar-complete
@@ -82,7 +83,8 @@ PolyAlg = record
   ; extraMiss-Int    = λ _ → refl ; extraMiss-Float = λ _ → refl
   ; extraMiss-Buffer = λ _ → refl ; extraMiss-String = λ _ → refl
   ; extraMiss-Eff    = λ _ → refl ; extraMiss-IO    = λ _ → refl
-  ; extraMiss-Mu     = λ _ → refl ; extraMiss-LParen = λ _ → refl
+  ; extraMiss-Mu     = λ _ → refl ; extraMiss-Nu    = λ _ → refl
+  ; extraMiss-LParen = λ _ → refl
   }
 
 ------------------------------------------------------------------------

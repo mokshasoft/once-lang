@@ -13026,3 +13026,44 @@ LAYER generalised first: the two sides' layers differ by a `tF-coh` transport,
 and the `wf-*` induction needs a layer it can case-split, which
 `valueT (forceᵈ v) n` is not. After that it is that lemma's five clauses
 inverted. Everything else in the `Out` path is proved.
+
+## D195 — THE FIRST `ana` PROGRAM RUNS, AND IT FOUND D191's GAP (2026-09-13)
+
+`compiler/test/nu-ana-build.once` compiles and exits 42. It is the first source
+program in Once's history to mention the ν half of the language.
+
+**It failed on its first run, and the failure is the point.** D191 added `Nu` to
+`Once.Parser.Type` — the GROUND-type parser. Def signatures are parsed by a
+different one: the generic `TyAlg` parser (`Once.Parser.Generic`), instantiated
+at `PolyType`. So `Nu` was writable in exactly the positions no program uses,
+and `mkNu : Int -> Nu (K Int)` was a parse error.
+
+No proof could have caught it. Both parsers were internally consistent and both
+clusters were green; the ground parser's `pa-nu` was threaded through its
+relation, its WF parser, its bridge and both round-trips, and all of that was
+true and useless for signatures. Only compiling a program that says `Nu` in a
+signature could find it — which is the D189 lesson one level down: *a feature
+reachable in the proofs but not from source is not reachable.*
+
+**The fix** adds `Nu` to the generic algebra, which is where it belonged:
+`TyAlg.aNu`, the `pa-nu` relation constructor, its `atomShrink` measure, the
+executable parser clause, soundness, completeness, and the `PolyType` instance
+(`aNu = Pν-type`, `extraMiss-Nu`). Seven sites, each a `Mu` mirror.
+
+**An asymmetry worth naming.** The same keyword added to
+`Once.Parser.PolyType`'s own `parsePolyAtomImpl` produced ZERO proof
+obligations — that clause is not covered by a soundness relation — while adding
+it to the generic algebra produced five. Def signatures are parsed by a
+verified component; that other impl is not, and a keyword can enter it silently.
+Worth a follow-up: either it is dead and should go, or it is live and owes a
+relation.
+
+**What the test covers, measured rather than assumed.** With `mkNu` unused the
+emitted `.text` is BYTE-IDENTICAL to a program without it — the def is elided,
+and the test would have exercised only the frontend. Reaching the ν from `main`
+(through `terminal`, the most that is possible until `Out` exists) moves `.text`
+from `0x81b` to `0xd2b`. So D189's ten-instruction suspension build and its
+coalgebra block are emitted, assembled, linked and RUN. What is still not
+exercised is FORCING; `nu-ana-force.once` is written and waits on D194.
+
+Exit tests: 63 passed, 0 failed, 1 skipped.

@@ -38,6 +38,8 @@ module Make (alg : TyAlg) where
       rewrite extraMiss-IO toks1 | complete-atom dA = refl
     complete-atom (pa-mu {toks} dF)
       rewrite extraMiss-Mu toks | complete-fSum dF = refl
+    complete-atom (pa-nu {toks} dF)
+      rewrite extraMiss-Nu toks | complete-fSum dF = refl
     complete-atom (pa-extra ex) rewrite extraComplete ex = refl
     complete-atom (pa-paren {toks} dT refl)
       rewrite extraMiss-LParen toks | complete-type dT = refl

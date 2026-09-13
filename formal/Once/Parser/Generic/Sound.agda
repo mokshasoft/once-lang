@@ -72,6 +72,11 @@ module Make (alg : TyAlg) where
     ... | yes refl with fSumP rest in eq1
     ...   | just (F , r1) with sound-fSum rest (rec (s≤s ≤-refl)) eq1
     ...     | dF with refl ← just-injective h = pa-mu dF
+    sound-kw (TWord name ∷ rest) (acc rec) h
+      | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟s "Nu"
+    ... | yes refl with fSumP rest in eq1
+    ...   | just (F , r1) with sound-fSum rest (rec (s≤s ≤-refl)) eq1
+    ...     | dF with refl ← just-injective h = pa-nu dF
     sound-kw (TLParen ∷ rest) (acc rec) h with typeP rest in eq1
     ... | just (T , TRParen ∷ rest2) with sound-type rest (rec (s≤s ≤-refl)) eq1
     ...   | dT with refl ← just-injective h = pa-paren dT refl

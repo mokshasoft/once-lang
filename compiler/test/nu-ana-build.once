@@ -1,0 +1,44 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D189/D191/D193: the FIRST source program that mentions the ν half of the
+-- language. Before this branch none could: the type grammar had `Mu` and no
+-- `Nu`, so no annotation could name a final coalgebra, so no `ana` could be
+-- written — and an unreachable feature cannot fail a test, which is exactly
+-- how a vacuous `obs-correct-Out` and a FALSE `obs-correct-Ana` survived.
+--
+-- What this exercises, end to end:
+--   * `Nu ( K Int )` through the verified parser (`pa-nu`, D191)
+--   * `ana` through `checkAna` (D192), with the functor read off the
+--     annotation
+--   * `Surface.ana` → `elaborate` → `curry (Ana wfF … ∘ snd)`
+--   * `ir-to-trace'`'s `Ana` clause (D189): the ten-instruction two-cell
+--     suspension build plus the coalgebra as a named block
+--   * assembly and linking of that block
+--
+-- What it does NOT exercise: FORCING. `Out` has no surface syntax yet (D194
+-- is parked one lemma short), so the ν is built and discarded. The companion
+-- `nu-ana-force.once` is the real guard, and it waits on D194.
+--
+-- Expected: exit code 42.
+
+import I.Linux.Syscalls as S
+
+-- The coalgebra of a degenerate functor: `⟦ K Int ⟧T Int = Int`, so a
+-- coalgebra `Int → ⟦ K Int ⟧T Int` is just `Int → Int`, and `id` is one.
+-- The ν it unfolds to has a single layer and no recursive positions — the
+-- `Mu (K Int)` test's mirror.
+mkNu : Int -> Nu (K Int)
+mkNu = ana id
+
+-- The ν must be REACHED from `main`, or the def is elided and this tests only
+-- the frontend: with `mkNu` unused the emitted `.text` is byte-identical to a
+-- program without it. Consuming it through `terminal` is the most that can be
+-- done until `Out` exists — it forces the suspension to be BUILT (the ten
+-- instructions and the coalgebra block are emitted and run) without forcing a
+-- layer. Measured: `.text` 0x81b → 0xd2b.
+useNu : Nu (K Int) -> Int
+useNu = compose (\u -> 42) terminal
+
+main : IO Unit
+main = exit@S (useNu (mkNu 7))
