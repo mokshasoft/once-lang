@@ -131,6 +131,17 @@ Special scrutiny, in order:
   leaves stale import lists behind silently and forever (D139). The lint is a
   full-tree scope-only pass; it is fast (no type-checking) and it is the only
   check that sees a directive naming a symbol that no longer exists.
+- **A `public` re-export can DEFEAT the no-islands check.** The island test
+  below is "delete it and the build must break". A `… using (f) public`
+  re-export guarantees the build breaks — the aggregator's `using` list stops
+  resolving — so dead code held up by one PASSES the test while having zero
+  real consumers. That is how `Once.Parser.PolyType.parsePolyType` survived: a
+  second, unverified implementation of the signature grammar, wired to the
+  build by exactly one re-export in `Once/Parser.agda` and used by nothing
+  (D196). It was also where a keyword could enter the frontend without a proof
+  obligation. So for every `public` re-export, check that some module OTHER
+  than the re-export line consumes the name — the aggregator's own body counts
+  (`isUpperWord` is re-exported and used in `hasUpperTVar`, and is fine).
 - **No islands — every change must be load-bearing on the apex proof path.**
   For every new module/lemma the branch adds, deleting it must break the
   build of `certified` (or the three-arch cluster) — an unwired supporting

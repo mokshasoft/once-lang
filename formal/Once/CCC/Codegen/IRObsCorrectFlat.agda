@@ -91,9 +91,9 @@ open import Once.CCC.Machine.SMCore
          -- D174: the rest of `inl`/`inr`'s heap build — the first discharge in
          -- this file that ALLOCATES, so these are new to its vocabulary.
          instr-alloc-heap; instr-load-tag-lit; instr-load-code-addr; SV-Code;
-         instr-call-closure; do-call; do-call-sv; do-call-code; do-call-at; enter-call; store-indirect; store-indirect-suc;
+         instr-call-closure; store-indirect; store-indirect-suc;
          load-from-slot; load-indirect; load-indirect-suc;
-         AtDynamic; sucLoc; SV-Tag; SV-Code; writeReg-preserves; _≟HL_)
+         AtDynamic; sucLoc; SV-Tag; writeReg-preserves; _≟HL_)
 open import Once.CCC.Machine.Validity using (module ValidityDef)
 open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; next-heap-ref; module FrontierInvariant)
@@ -137,7 +137,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor)
   open RecSchemeSemantics {FS} using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-preserves-mem;
                                      exec-abstract-load-indirect-suc-output; exec-abstract-load-indirect-suc-preserves-mem)
-  open Once.CCC.Machine.SMPrimitives using (nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-save-closure-reg; nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output; nhw-store-indirect; nhw-store-indirect-suc)
+  open Once.CCC.Machine.SMPrimitives using (nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-save-closure-reg; nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output)
   open RecSchemeSemantics {FS} using (exec-abstract-preserves-heap-ref)
 
   open FlatMachine {FS}
@@ -145,7 +145,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; valid-μ-wf; valid-ν-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv
+    using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
           -- only — there is no register location — so `readLoc` cannot see a
@@ -1871,7 +1871,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   --     `fits-int`/`fits-float` — absurd;
   --   * `in-unit` claims `μ-type F ≡ Unit` — absurd by constructor disjointness.
   -- So only the pointer residence survives, and the value witness is exactly
-  -- the layer iso: `valid-μ-wf`/`valid-ν-wf` CARRY the layer's own `ValidAtWF`
+  -- the layer iso: `valid-μ-wf` CARRIES the layer's own `ValidAtWF`
   -- (Plan 0.27 Option 3), so destructing one yields what `at-loc` wants.
   obs-correct-out-μ : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
   obs-correct-out-μ {F} wf _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record

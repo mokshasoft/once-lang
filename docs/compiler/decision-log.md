@@ -13067,3 +13067,45 @@ coalgebra block are emitted, assembled, linked and RUN. What is still not
 exercised is FORCING; `nu-ana-force.once` is written and waits on D194.
 
 Exit tests: 63 passed, 0 failed, 1 skipped.
+
+## D196 — THE DEAD POLY PARSER, AND WHY THE ISLAND TEST MISSED IT (2026-09-13)
+
+D195 found that `Nu` had to go into the GENERIC parser, not the ground one,
+because def signatures are parsed there. This is the follow-up it exposed:
+`Once.Parser.PolyType` held a SECOND, UNVERIFIED implementation of the same
+grammar — `parsePolyTypeImpl` and ten mutually-recursive helpers under a
+termination-check-bypassing pragma, exported as `parsePolyType`. Nothing
+consumed it. Deleted, ~200 lines.
+
+**Why it mattered more than its size.** It was the one place a keyword could
+enter the frontend without a proof obligation. Adding `Nu` to the generic
+algebra cost five (relation constructor, shrink measure, parser clause,
+soundness, completeness); adding it here cost zero, and changed nothing,
+because the live path is `parsePolyTypeB → parsePolyTypeP` wrapped in
+`sound-polyType`. Two implementations of one grammar, one of them unconstrained,
+is drift waiting to happen.
+
+**Why the no-islands check did not catch it, which is the transferable part.**
+That check is "delete it and the build must break". A `… using (f) public`
+re-export GUARANTEES the build breaks — the aggregator's `using` list stops
+resolving — so dead code held up by a re-export PASSES the island test while
+having zero real consumers. `parsePolyType` was wired to the build by exactly
+one line in `Once/Parser.agda` and used by nothing. MERGE.md now carries the
+companion check: for each `public` re-export, confirm a consumer other than the
+re-export line (the aggregator's own body counts — `isUpperWord` is re-exported
+AND used in `hasUpperTVar`, and is fine).
+
+**Coverage was verified before deleting.** Both parsers accepted the same
+keyword set (Unit/Void/Int/Float/Buffer/String/Eff/IO/Mu/Nu/K/Id); the quantity
+arrows are handled generically by `arrowDir`; the `TLBrace` clause was a
+rejection, not a feature. `Mu` did NOT need porting — it has been in the
+generic parser all along, which is what `Nu` was mirrored against.
+
+**And `lint-imports` paid for itself.** Its 8 flagged modules were one root
+cause — `IRObsCorrectFlat` re-reported through its importers — with four stale
+directives, three PRE-EXISTING: `valid-ν-wf` in a `using` list (D180 deleted
+the constructor and left the import), the whole `do-call-sv`/`-code`/`-at`/
+`enter-call` family imported from `SMCore` which exports none of them (they
+come from `Flat`; the names resolved elsewhere so nothing ever broke), a
+duplicated `SV-Code`, and `nhw-store-indirect`/`-suc` from `SMPrimitives`
+which has neither. All fixed; the full tree lint is now clean.

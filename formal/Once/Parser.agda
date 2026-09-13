@@ -29,7 +29,6 @@ open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString; isIdentStart; isIdentContinue)
 open import Once.Parser.Core using (Parser)
 open import Once.Parser.Type using (parseType; isUpperWord) public
-open import Once.Parser.PolyType using (parsePolyType) public
 open import Once.Parser.Expr using (parseExpr) public
 open import Once.Parser.Module public
 open import Once.Parser.Inline public

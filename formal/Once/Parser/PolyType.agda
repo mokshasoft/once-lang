@@ -20,13 +20,18 @@
 --   PolyAtom     ::= 'Unit' | 'Void' | 'Int' | 'Float' | 'Buffer' | 'String'
 --                  | 'Eff' PolyAtom PolyAtom | 'IO' PolyAtom
 --                  | lower_ident                                -- type variable
+--                  | 'Mu' PolyFuncSum | 'Nu' PolyFuncSum
+--                  | lower_ident                                -- type variable
 --                  | '(' PolyType ')'
 --
--- Termination: structurally recursive on the input token list. Each
--- recursive call is on a strict-suffix of the input. Marked
--- `TERMINATING` pending a proper well-founded rewrite
--- (plan 0.7 Phase 2, which will also add a `ParsesPolyType` relational
--- specification paralleling `ParsesType`).
+-- D196: that grammar is no longer IMPLEMENTED here. This module is now just
+-- the bounded wrapper `parsePolyTypeB`, which runs the generic parser
+-- (`Once.Parser.Generic.PolyInst.parsePolyTypeP`) and attaches the
+-- strict-decrease proof its WF callers need. The grammar above is the one
+-- `ParsesPolyType` defines and the generic parser is proved sound and
+-- complete against — so the header that used to promise "plan 0.7 Phase 2
+-- will add a relational specification" is discharged: it exists, and it is
+-- the only specification there is.
 ------------------------------------------------------------------------
 
 module Once.Parser.PolyType where
@@ -56,210 +61,30 @@ open import Once.Parser.Core using (Parser)
 open import Once.Parser.CharClass public using (isLowerWord)
 
 ------------------------------------------------------------------------
--- Parser state
-------------------------------------------------------------------------
-
-PolyParser : Set → Set
-PolyParser A = List Token → Maybe (A × List Token)
-
-------------------------------------------------------------------------
--- The parser itself
+-- D196: THE HAND-WRITTEN POLY PARSER IS GONE.
 --
--- Mutual recursion between arrow / sum / product / atom levels.
--- Structurally recursive on the token list (each recursive call is
--- on a strict-suffix). Termination is structural but the `with`
--- chain obscures it from Agda's checker; TERMINATING is used
--- pending the plan 0.7 Phase 2 relational+WF rewrite.
+-- What stood here was a second, unverified implementation of the same
+-- grammar: `parsePolyTypeImpl` and its ten mutually-recursive helpers, under
+-- a termination-check-bypassing pragma, exported as `parsePolyType`. NOTHING
+-- consumed it — the live signature path is `parsePolyTypeB` below, which runs
+-- the GENERIC parser (`parsePolyTypeP`) and wraps it in `sound-polyType`, so
+-- every accept is backed by a `ParsesPolyType` derivation.
+--
+-- It was not merely redundant, it was a HOLE IN THE GATE. D191 added `Nu` to
+-- the ground-type parser and the first `ana` program still failed to parse;
+-- adding `Nu` HERE produced zero proof obligations and still did not fix it,
+-- because this parser is dead. Adding it to the generic algebra produced five
+-- (relation constructor, shrink measure, parser clause, soundness,
+-- completeness) and fixed it. A keyword could enter this file without anyone
+-- having to prove the relation accepts it — exactly the island MERGE.md's
+-- no-islands rule is about: dead code hides gaps instead of surfacing them as
+-- type errors.
+--
+-- Coverage was checked before deleting, not assumed: both parsers accepted the
+-- same keyword set (Unit/Void/Int/Float/Buffer/String/Eff/IO/Mu/Nu/K/Id), the
+-- quantity arrows are handled generically by `arrowDir`, and this file's
+-- `TLBrace` clause was a rejection, not a feature. Nothing to port.
 ------------------------------------------------------------------------
-
--- Result wrappers, to keep the functor cases free of nested `with`.
-pkOf : Maybe (PolyType × List Token) → Maybe (PolyFunctor × List Token)
-pkOf nothing          = nothing
-pkOf (just (A , rest)) = just (PK A , rest)
-
-pmuOf : Maybe (PolyFunctor × List Token) → Maybe (PolyType × List Token)
-pmuOf nothing          = nothing
-pmuOf (just (F , rest)) = just (Pμ-type F , rest)
-
--- D191 follow-on: `Nu`'s mirror. The ground-type parser got `pa-nu`, but DEF
--- SIGNATURES are parsed HERE — which is why `nu-ana-build.once` failed to
--- parse even with `Nu` in the ground grammar. Two parsers, one keyword set.
-pnuOf : Maybe (PolyFunctor × List Token) → Maybe (PolyType × List Token)
-pnuOf nothing          = nothing
-pnuOf (just (F , rest)) = just (Pν-type F , rest)
-
-{-# TERMINATING #-}
-parsePolyTypeImpl     : PolyParser PolyType
-parsePolySumImpl      : PolyParser PolyType
-parsePolyProdImpl     : PolyParser PolyType
-parsePolyAtomImpl     : PolyParser PolyType
-parsePolyArrowTail    : PolyType → PolyParser PolyType
-parsePolySumTail      : PolyType → PolyParser PolyType
-parsePolyProdTail     : PolyType → PolyParser PolyType
--- Functor sub-grammar (for `Mu F` μ-type atoms). Mirrors the type
--- levels: funcSum (⊕) over funcProd (⊗) over funcAtom (`Id` | `K`
--- typeAtom | `(` funcSum `)`). `K`'s argument is a (poly)type atom.
-parsePolyFuncSum      : PolyParser PolyFunctor
-parsePolyFuncProd     : PolyParser PolyFunctor
-parsePolyFuncAtom     : PolyParser PolyFunctor
-parsePolyFuncSumTail  : PolyFunctor → PolyParser PolyFunctor
-parsePolyFuncProdTail : PolyFunctor → PolyParser PolyFunctor
-
--- parsePolyType: sum-level + optional arrow tail
-parsePolyTypeImpl toks with parsePolySumImpl toks
-... | nothing = nothing
-... | just (A , rest) = parsePolyArrowTail A rest
-
--- | Arrow tail: optional `^q ->` followed by a recursive PolyType.
-parsePolyArrowTail A (TCaret1 ∷ TArrow ∷ rest) with parsePolyTypeImpl rest
-... | nothing = nothing
-... | just (B , rest') = just (A P⇒[ One ] B , rest')
-parsePolyArrowTail A (TCaret0 ∷ TArrow ∷ rest) with parsePolyTypeImpl rest
-... | nothing = nothing
-... | just (B , rest') = just (A P⇒[ Zero ] B , rest')
-parsePolyArrowTail A (TCaretW ∷ TArrow ∷ rest) with parsePolyTypeImpl rest
-... | nothing = nothing
-... | just (B , rest') = just (A P⇒[ Many ] B , rest')
-parsePolyArrowTail A (TArrow ∷ rest) with parsePolyTypeImpl rest
-... | nothing = nothing
-... | just (B , rest') = just (A P⇒[ Many ] B , rest')
-parsePolyArrowTail A toks = just (A , toks)  -- no arrow: A is complete
-
--- parsePolySum: product-level + left-assoc `+` tail
-parsePolySumImpl toks with parsePolyProdImpl toks
-... | nothing = nothing
-... | just (A , rest) = parsePolySumTail A rest
-
-parsePolySumTail A (TPlus ∷ rest) with parsePolyProdImpl rest
-... | nothing = nothing
-... | just (B , rest') = parsePolySumTail (A P+ B) rest'
-parsePolySumTail A toks = just (A , toks)
-
--- parsePolyProd: atom-level + left-assoc `*` tail
-parsePolyProdImpl toks with parsePolyAtomImpl toks
-... | nothing = nothing
-... | just (A , rest) = parsePolyProdTail A rest
-
-parsePolyProdTail A (TStar ∷ rest) with parsePolyAtomImpl rest
-... | nothing = nothing
-... | just (B , rest') = parsePolyProdTail (A P* B) rest'
-parsePolyProdTail A toks = just (A , toks)
-
--- parsePolyAtom: keywords, TVars (lowercase), or parenthesized PolyType.
-parsePolyAtomImpl [] = nothing
-parsePolyAtomImpl (TWord name ∷ rest) with name ≟ "Unit"
-... | yes _ = just (PUnit , rest)
-... | no _  with name ≟ "Void"
-...   | yes _ = just (PVoid , rest)
-...   | no _  with name ≟ "Int"
-...     | yes _ = just (PInt , rest)
-...     | no _  with name ≟ "Float"
-...       | yes _ = just (PFloat , rest)
-...       | no _  with name ≟ "Buffer"
-...         | yes _ = just (PBuffer , rest)
-...         | no _  with name ≟ "String"
-...           | yes _ = just (PStr , rest)
-...           | no _  with name ≟ "Eff"
-...             | yes _ with parsePolyAtomImpl rest
-...               | nothing = nothing
-...               | just (A , rest1) with parsePolyAtomImpl rest1
-...                 | nothing = nothing
-...                 | just (B , rest2) = just (PEff A B , rest2)
-parsePolyAtomImpl (TWord name ∷ rest) | no _ | no _ | no _ | no _ | no _ | no _ | no _
-   with name ≟ "IO"
-... | yes _ with parsePolyAtomImpl rest
-...   | nothing = nothing
-...   | just (A , rest1) = just (PEff PUnit A , rest1)
--- Otherwise: lowercase identifier = type variable; uppercase unknown
--- identifier fails (ground type keyword mis-spelling — surfaces as a
--- real error rather than silently becoming a TVar).
-parsePolyAtomImpl (TWord name ∷ rest)
-   | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-   with name ≟ "Mu"
-... | yes _ = pmuOf (parsePolyFuncAtom rest)
-parsePolyAtomImpl (TWord name ∷ rest)
-   | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-   with name ≟ "Nu"
-... | yes _ = pnuOf (parsePolyFuncAtom rest)
-parsePolyAtomImpl (TWord name ∷ rest)
-   | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
-   with isLowerWord name
-...   | true  = just (PTVar name , rest)
-...   | false = nothing
-
-parsePolyAtomImpl (TLParen ∷ rest) with parsePolyTypeImpl rest
-... | nothing = nothing
-... | just (A , TRParen ∷ rest') = just (A , rest')
-... | just _ = nothing
-
--- Other heads: parser rejects.
-parsePolyAtomImpl (TInt _ _ ∷ _)     = nothing
-parsePolyAtomImpl (TFloat _ _ _ _ ∷ _) = nothing
-parsePolyAtomImpl (TString _ ∷ _)  = nothing
-parsePolyAtomImpl (TRParen ∷ _)    = nothing
-parsePolyAtomImpl (TLBrace ∷ _)    = nothing
-parsePolyAtomImpl (TRBrace ∷ _)    = nothing
-parsePolyAtomImpl (TColon ∷ _)     = nothing
-parsePolyAtomImpl (TEquals ∷ _)    = nothing
-parsePolyAtomImpl (TArrow ∷ _)     = nothing
-parsePolyAtomImpl (TCaret0 ∷ _)    = nothing
-parsePolyAtomImpl (TCaret1 ∷ _)    = nothing
-parsePolyAtomImpl (TCaretW ∷ _)    = nothing
-parsePolyAtomImpl (TLambda ∷ _)    = nothing
-parsePolyAtomImpl (TComma ∷ _)     = nothing
-parsePolyAtomImpl (TSemicolon ∷ _) = nothing
-parsePolyAtomImpl (TAt ∷ _)        = nothing
-parsePolyAtomImpl (TPipe ∷ _)      = nothing
-parsePolyAtomImpl (TDot ∷ _)       = nothing
-parsePolyAtomImpl (TPlus ∷ _)      = nothing
-parsePolyAtomImpl (TMinus ∷ _)     = nothing
-parsePolyAtomImpl (TStar ∷ _)      = nothing
-parsePolyAtomImpl (TSlash ∷ _)     = nothing
-parsePolyAtomImpl (TPercent ∷ _)   = nothing
-parsePolyAtomImpl (TAmpersand ∷ _) = nothing
-parsePolyAtomImpl (TLt ∷ _)        = nothing
-parsePolyAtomImpl (TLe ∷ _)        = nothing
-parsePolyAtomImpl (TGt ∷ _)        = nothing
-parsePolyAtomImpl (TGe ∷ _)        = nothing
-parsePolyAtomImpl (TEqEq ∷ _)      = nothing
-parsePolyAtomImpl (TNeq ∷ _)       = nothing
-parsePolyAtomImpl (TBang ∷ _)      = nothing
-parsePolyAtomImpl (TNewline ∷ _)   = nothing
-parsePolyAtomImpl (TEOF ∷ _)       = nothing
-
--- Functor sub-grammar bodies (for `Mu F`).
-parsePolyFuncSum toks with parsePolyFuncProd toks
-... | nothing = nothing
-... | just (F , rest) = parsePolyFuncSumTail F rest
-
-parsePolyFuncSumTail F (TPlus ∷ rest) with parsePolyFuncProd rest
-... | nothing = nothing
-... | just (G , rest') = parsePolyFuncSumTail (F P⊕ G) rest'
-parsePolyFuncSumTail F toks = just (F , toks)
-
-parsePolyFuncProd toks with parsePolyFuncAtom toks
-... | nothing = nothing
-... | just (F , rest) = parsePolyFuncProdTail F rest
-
-parsePolyFuncProdTail F (TStar ∷ rest) with parsePolyFuncAtom rest
-... | nothing = nothing
-... | just (G , rest') = parsePolyFuncProdTail (F P⊗ G) rest'
-parsePolyFuncProdTail F toks = just (F , toks)
-
--- funcAtom: `Id` | `K` typeAtom | `(` funcSum `)`.
-parsePolyFuncAtom (TWord name ∷ rest) with name ≟ "Id" | name ≟ "K"
-... | yes _ | _     = just (PId , rest)
-... | no _  | yes _ = pkOf (parsePolyAtomImpl rest)
-... | no _  | no _  = nothing
-parsePolyFuncAtom (TLParen ∷ rest) with parsePolyFuncSum rest
-... | nothing = nothing
-... | just (F , TRParen ∷ rest') = just (F , rest')
-... | just _ = nothing
-parsePolyFuncAtom _ = nothing
-
--- | Top-level PolyType parser.
-parsePolyType : Parser PolyType
-parsePolyType = parsePolyTypeImpl
 
 ------------------------------------------------------------------------
 -- Bounded variant: guarantees strict length decrease on success.
