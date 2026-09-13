@@ -1939,6 +1939,49 @@ LIMITATION — they are the performance design, and its header saying the
 motive generalisation *"HAS to thread `subTy σ A ≡ A`"* was recording
 exactly this cost.
 
+### ★★★ AND THE DIVIDING LINE IS **READING THE INDEX** — not size, not shape
+
+`tmp/ProbeSmall` is a motive of FOUR nodes
+(`K (pair sTm (snd (var (vs vz))))`) that reads the index, run in the
+IDENTICAL harness as the `Nat` probe:
+
+| motive | harness | cost |
+|---|---|---|
+| `Nat` — closed, index-FREE | 53 rows, `imethsTyFrom-wf` | **0.98 s** |
+| `Msmall` — TINY, index-READING | 53 rows, `imethsTyFrom-wf` | **61.38 s** |
+| motA at a VARIABLE — index-free | 44 rows, `⊢methsFrom` | **6.64 s** |
+| `payTyMotK` — index-READING | 44 rows, `⊢methsFrom` | 43.92 s |
+| motA ABSTRACT | 44 rows, `⊢methsFrom` | 173.64 s |
+
+⇒ **63× for 4× the size.** Cost does NOT track motive size. ⚠ Two of my
+models died here: "cost ∝ |M|" (refuted by `Msmall`) and
+"evidence-passing fixes tier 3" (refuted by reasoning — `imethsTyFrom` is
+a plain function, so evidence at `⊢methsFrom` cannot change how Agda
+computes the type, the same reason a call-site lemma failed in step 1).
+
+★ THE ORDERING, all measured:
+
+    closed index-free (1 s) < ambient VARIABLE (6.6 s)
+      < index-READING (44–61 s) < ambient ABSTRACT (174 s)
+
+### ⇒ SO THE `iihs` CONVERSION IS VINDICATED, AND NOW WITH A MECHANISM
+
+Replacing an index-reading motive with an ambient-VARIABLE one is
+**6.6×** in the same harness (43.92 s → 6.64 s) — which is where the
+row-level 7.7× came from. That was not luck; this is the mechanism.
+
+⬜ **THE LEVER FOR THE 22 TIER-3 MODULES**: move them off index-reading
+motives onto ambient-variable ones — the `iihs` pattern, generalised.
+Predicted ~6.6× on `PayTy`, `Ihs`, `ConS`, `Single`, `Occ`, `MethsTy`,
+`IPayTy` and the rest. ⚠ PREDICTED, not measured, and today every
+prediction I made was wrong by 20×+ in one direction or the other.
+
+⚠ AND THE TOP TIER STAYS OUT OF REACH: `Lib/IFold`'s 34 modules get ~1 s
+because their motives are index-FREE AND closed, which is only possible
+for a NON-DEPENDENT fold. A program whose result type varies with the
+depth cannot have one — that is the parameter question again, and the
+kernel has no parameters.
+
 ⚠⚠ AND IT PUTS A PRICE ON THE `iihs` AMBIENT-MOTIVE WORK. That conversion
 measured 7.7× BETTER than the passenger baseline at the ROW, and it buys
 the worst motive class at the TUPLE. The mixed formulation (generic
