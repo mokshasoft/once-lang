@@ -1984,10 +1984,53 @@ on comparison. The mechanism that would stop that is `abstract`/`opaque`,
 **which this file already identifies elsewhere** (*"the mechanism that
 WOULD pay is `abstract`"*, in the INTERFACE/IMPLEMENTATION section).
 
-⚠ NOT TESTED. And it cannot be blanket: `ipayTy`/`iihTy` RECURSE on the
-`ICon`, so the description must compute there. The candidate is narrower
-— keep `K`'s `IMu KnotD IPair _` opaque where the description is INERT
-(the motive) while leaving it transparent where it is eliminated.
+⚠ It cannot be blanket: `ipayTy`/`iihTy` RECURSE on the `ICon`, so the
+description must compute there. The candidate is narrower — keep `K`'s
+`IMu KnotD IPair _` opaque where the description is INERT (the motive)
+while leaving it transparent where it is eliminated.
+
+### ✅ TESTED — `bootstrap/tmp/ProbeOpaque.agda`, AND IT WORKS
+
+Seal `K` with its ⊢ty proof sealed ALONGSIDE it, so callers get
+well-formedness without looking inside:
+
+```agda
+opaque
+  Kop : {Γ : Cx} → RTm Γ → RTy Γ
+  Kop i = IMu KnotD IPair i
+
+  ty-Kop : Γ ⊢ i ∷ εwkTy IPair → Γ ⊢ty Kop i
+  ty-Kop di = ty-IMu KnotWf di
+```
+
+| motive | wall | peak RSS |
+|---|---|---|
+| `K (pair sTm nzero)` — transparent | 62.28 s | 2.15 GB |
+| **the same, `K` SEALED** | **31.60 s** | **0.69 GB** |
+
+⇒ **2× time and 3.1× MEMORY, rc=0, no errors** — and it is a LOCAL
+change, no kernel surface touched. ★ The memory figure is the one that
+matters: 2.15 → 0.69 GB, against a 5.5 GB cap that has been killing
+modules all session.
+
+### ⚠ BUT IT IS 2×, NOT 63× — SEALING STOPS THE **WALK**, NOT THE **ACCUMULATION**
+
+31.60 s is still 32× `Nat`'s 0.98 s in the same harness. The reason:
+`renTy ρ (Kop i)` is now STUCK — it cannot reduce without unfolding — so
+the types accumulate `renTy ρ₁ (renTy ρ₂ (… (Kop i)))`. Each layer is
+CHEAP to build (nothing is walked) but they still pile up quadratically.
+
+⇒ **the full fix is `opaque` PLUS naturality threading** — a sealed
+`ren-Kop : renTy ρ (Kop i) ≡ Kop (renTm ρ i)` carried the way
+`⊢methLamN` carries `motA-ren`, one level down at the TYPE FORMER instead
+of the motive. ⚠ NOT TESTED, and `imethsTyFrom-wf` is generic in `M` so
+it cannot use such a lemma without being made transport-aware.
+
+★★ AND THAT IS THE SAME PATTERN FOR THE THIRD TIME TODAY — `⊢methLamN`
+for the prologue, `motA-ren`/`motA-at` for the motive, and now `ren-Kop`
+for the type former. ⇒ a result about the ENCODING, not about any one
+module: **every layer that transports a term needs its naturality
+threaded, and every layer that does not costs a factor.**
 
 
 
