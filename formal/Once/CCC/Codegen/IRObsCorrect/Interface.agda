@@ -98,7 +98,7 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
           ; validityWF-frontier-advance) public
   open MemOps {FS} using (readLoc) public
   open ValidityDef {FS} program-bound using (readLoc-stack-heap-eq) public
-  open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++) public
+  open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start) public
   open RTA o {FS} program-bound using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate) public
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable) public

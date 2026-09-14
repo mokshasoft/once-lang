@@ -177,9 +177,9 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
     → BlockRuns prog
     → SpanAt prog base (emitted n l (g ∘ f))
     → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
-    → ValueRealized prog base n l (g ∘ f) x s alloc cl k
+    → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
   comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k szg ns ss cr span ihg mf =
-    go (MachineRefinesObsF.value-realized mf)
+    go (MachineRefinesObsF.value-realized mf) (MachineRefinesObsF.traces-agree mf)
     where
       module VR = ValueRealized
 
@@ -209,12 +209,25 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
       kg : ℕ
       kg = k ∸ length (projTrace (evalᴰ f x) k)
 
-      go : ValueRealized prog base n l f x s alloc cl k
-         → ValueRealized prog base n l (g ∘ f) x s alloc cl k
-      go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF) =
-        realized (kf + suc (VR.steps vg)) (VR.settle vg)
-                 (VR.out-mode vg) (VR.cont-alloc vg)
-                 chain (VR.live vg) atEnd (VR.no-ret vg) (VR.no-link vg) (VR.place vg)
+      -- D203: `go` builds BOTH halves. It used to build only the value half,
+      -- and the trace half was a separate postulate — which it had to be,
+      -- because the chain it must talk about (`chainF`, `chainG`) only exists
+      -- inside this pattern match. Stating it outside meant either a `with`
+      -- abstraction over a projection or an axiom; the honest fix is to widen
+      -- what the match produces. `f`'s own trace agreement comes in as an
+      -- argument for the same reason: it mentions the matched chain.
+      go : (vr : ValueRealized prog base n l f x s alloc cl k)
+         → take k (chain-events (VR.run vr)) ≡ take k (projTrace (evalᴰ f x) k)
+         → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
+      go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF) tf =
+        record
+          { value-realized =
+              realized (kf + suc (VR.steps vg)) (VR.settle vg)
+                       (VR.out-mode vg) (VR.cont-alloc vg)
+                       chain (VR.live vg) atEnd (VR.no-ret vg) (VR.no-link vg)
+                       (VR.place vg)
+          ; traces-agree = traces
+          }
         where
           fsM : FlatState
           fsM = flat-exec-instr mov-to-input prog fsF
@@ -243,11 +256,14 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
           inputM : InputAt mOutf (falloc fsM) (TM.valueT (evalᴰ f x) k) (floc fsM)
           inputM = result→input placeF movEq memEq
 
+          mg : MachineRefinesObsF prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
+                                  (floc fsM) (falloc fsM) (fclosure fsM) kg
+          mg = ihg szg n1 l1 prog base' ss cr span-g mOutf (TM.valueT (evalᴰ f x) k)
+                   (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM kg
+
           vg : ValueRealized prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
                              (floc fsM) (falloc fsM) (fclosure fsM) kg
-          vg = MachineRefinesObsF.value-realized
-                 (ihg szg n1 l1 prog base' ss cr span-g mOutf (TM.valueT (evalᴰ f x) k)
-                      (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM kg)
+          vg = MachineRefinesObsF.value-realized mg
 
           movStep : FlatSteps prog 1 fsF fsM
           movStep = (liveF , trans (cong (fetch prog) endF) mov-in-prog) ∷ []
@@ -263,6 +279,52 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
                             (entry-flat base s alloc cl) (VR.settle vg)
           chain = FlatSteps-++ chainF (FlatSteps-++ movStep chainG)
 
+          -- ── THE TRACE HALF (D203) ──────────────────────────────────────
+          -- The composite's chain is `chainF ++ mov ++ chainG` and the
+          -- composite's meaning is `evalᴰ f x >>=T evalᴰ g`, whose trace is
+          -- DEFINITIONALLY `dEvF ++ dEvG` with `g`'s budget THREADED as
+          -- `k ∸ length dEvF`. So both sides are a concatenation observed at
+          -- `k`, and `take-++-threaded` splits each the same way.
+          --
+          -- The step that makes it go through without a boundedness
+          -- hypothesis is `minus-take`: the residual budget cannot tell
+          -- whether the prefix was truncated, so the machine's
+          -- `k ∸ length (take k mEvF)` and the denotation's `k ∸ length dEvF`
+          -- are the same number — which is `kg`, the budget `mg` was already
+          -- instantiated at.
+          mEvF = chain-events chainF
+          mEvG = chain-events chainG
+          dEvF = projTrace (evalᴰ f x) k
+          dEvG = projTrace (evalᴰ g (TM.valueT (evalᴰ f x) k)) kg
+
+          events-split : chain-events chain ≡ mEvF ++ mEvG
+          events-split =
+            trans (chain-events-++ chainF (FlatSteps-++ movStep chainG))
+                  (cong (mEvF ++_) (chain-events-++ movStep chainG))
+
+          evG-eq : mEvG ≡ chain-events (VR.run vg)
+          evG-eq = chain-events-subst-start (sym handover) (VR.run vg)
+
+          budget-eq : k ∸ length (take k dEvF) ≡ kg
+          budget-eq = TM.minus-take k dEvF
+
+          tail-eq : take (k ∸ length (take k mEvF)) mEvG
+                  ≡ take (k ∸ length (take k dEvF)) dEvG
+          tail-eq =
+            trans (cong (λ m → take (k ∸ length m) mEvG) tf)
+            (trans (cong (λ j → take j mEvG) budget-eq)
+            (trans (cong (take kg) evG-eq)
+            (trans (MachineRefinesObsF.traces-agree mg)
+                   (sym (cong (λ j → take j dEvG) budget-eq)))))
+
+          traces : take k (chain-events chain)
+                 ≡ take k (projTrace (evalᴰ (g ∘ f) x) k)
+          traces =
+            trans (cong (take k) events-split)
+            (trans (TM.take-++-threaded k mEvF mEvG)
+            (trans (cong₂ _++_ tf tail-eq)
+                   (sym (TM.take-++-threaded k dEvF dEvG))))
+
           atEnd : fpc (VR.settle vg) ≡ length (emitted n l (g ∘ f)) + base
           atEnd = trans (VR.at-end vg)
                         (sym (trans (cong (_+ base) (length-++ ft {mov-to-input ∷ gt}))
@@ -271,29 +333,13 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- (moved below `comp-value-realized-of`: it names that proof's chain, so it
   -- cannot be declared above it.)
-  postulate
-    -- D159: chain-bounded, like the field it now sits beside, and stated about
-    -- THE SAME chain `comp-value-realized-of` builds — not about an arbitrary
-    -- `ValueRealized`, which would be the D157 mistake again (a universally
-    -- quantified witness nothing ties to the run).
-    --
-    -- This one looks PROVABLE now, and that is the point of the shape: the
-    -- composite's chain is `chainF ++ mov ++ chainG`, so `chain-events-++`
-    -- splits its events into `f`'s ++ `[]` ++ `g`'s, while `evalᴰ (g ∘ f)`
-    -- splits DEFINITIONALLY into `evalᴰ f >>=T evalᴰ g` (DenotTrace:129). The
-    -- two halves are then the components' own `traces-agree`. Left as an axiom
-    -- only because the `projTrace`/`>>=T` event-concatenation step is its own
-    -- piece of work.
-    comp-traces-agree :
-      ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
-        (prog : AbstractTrace) (base n l k : ℕ)
-        (szg : ir-size g < program-bound) (ns : next-slot alloc ≤ n)
-        (ss : AllSlotStable prog) (cr : BlockRuns prog)
-        (span : SpanAt prog base (emitted n l (g ∘ f)))
-        (ihg : IRObsCorrectF g) (mf : MachineRefinesObsF prog base n l f x s alloc cl k)
-      → take k (chain-events (ValueRealized.run
-                  (comp-value-realized-of prog base n l k szg ns ss cr span ihg mf)))
-          ≡ take k (projTrace (evalᴰ (g ∘ f) x) k)
+  -- D203: `comp-traces-agree` was here, and is GONE — it is `go`'s
+  -- `traces` field now. Its own comment said it "looks PROVABLE now" and was
+  -- "left as an axiom only because the `projTrace`/`>>=T` event-concatenation
+  -- step is its own piece of work". That step is `take-++-threaded` /
+  -- `minus-take` (TraceMonad), and the reason it could not simply be written
+  -- here was structural: the chain it talks about exists only inside `go`'s
+  -- pattern match.
 
   comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
                 (prog : AbstractTrace) (base n l k : ℕ)
@@ -304,10 +350,8 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
             → SpanAt prog base (emitted n l (g ∘ f))
             → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
             → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-  comp-step prog base n l k szg ns ss cr span ihg mf = record
-    { value-realized = comp-value-realized-of prog base n l k szg ns ss cr span ihg mf
-    ; traces-agree   = comp-traces-agree      prog base n l k szg ns ss cr span ihg mf
-    }
+  comp-step prog base n l k szg ns ss cr span ihg mf =
+    comp-value-realized-of prog base n l k szg ns ss cr span ihg mf
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)

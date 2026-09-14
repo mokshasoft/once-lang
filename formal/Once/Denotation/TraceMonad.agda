@@ -198,7 +198,7 @@ open PrefixFamily public
 ------------------------------------------------------------------------
 
 open import Data.Nat using (zero)
-open import Data.Nat.Properties using (+-∸-assoc; m+n∸m≡n; ∸-monoˡ-≤; m≤m+n; ≤-reflexive; n∸n≡0; +-suc)
+open import Data.Nat.Properties using (+-∸-assoc; m+n∸m≡n; ∸-monoˡ-≤; m≤m+n; ≤-reflexive; n∸n≡0; +-suc; 0∸n≡0)
 open import Data.List using (_∷_)
 open import Data.List.Properties using (++-identityʳ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -506,3 +506,47 @@ module _ where
     ; identityʳ = >>=T-identityʳ
     ; assoc     = >>=T-assoc
     }
+
+------------------------------------------------------------------------
+-- D203: THE EVENT-CONCATENATION STEP.
+--
+-- `comp-traces-agree`'s comment parked this as "its own piece of work", and
+-- it is the same step `⟨ f , g ⟩`'s trace half needs, because both denote a
+-- BIND: `projTrace (m >>=T f) n` is definitionally
+-- `projTrace m n ++ projTrace (f …) (n ∸ length (projTrace m n))` — a
+-- THREADED budget — while the machine side is a flat chain observed with
+-- `take k`. These two lemmas are the whole reconciliation.
+--
+-- Note what is NOT needed: `Bounded`. The obvious route is "the denotation
+-- spends at most its budget, so `take k` is the identity on it", but the
+-- budgets line up without that, because `minus-take` says the residual
+-- budget cannot tell whether the prefix was truncated.
+------------------------------------------------------------------------
+
+-- `take` distributes over `++`, with the second half seeing what the first
+-- left. Three clauses; the `suc k , []` case is where the `∸ 0` appears.
+take-++-split : ∀ {A : Set} (k : ℕ) (as bs : List A)
+              → take k (as ++ bs) ≡ take k as ++ take (k ∸ length as) bs
+-- `0 ∸ n` does NOT reduce: stdlib's `_∸_` recurses on its SECOND argument, so
+-- the zero cases need `0∸n≡0` rather than `refl`.
+take-++-split zero    as       bs = sym (cong (λ m → take m bs) (0∸n≡0 (length as)))
+take-++-split (suc k) []       bs = refl
+take-++-split (suc k) (a ∷ as) bs = cong (a ∷_) (take-++-split k as bs)
+
+-- THE KEY FACT, and the reason no boundedness hypothesis is required: the
+-- residual budget is blind to truncation. If `as` is shorter than `k` the
+-- `take` does nothing; if it is longer, both sides are `0`.
+minus-take : ∀ {A : Set} (k : ℕ) (as : List A)
+           → k ∸ length (take k as) ≡ k ∸ length as
+minus-take zero    as       = sym (0∸n≡0 (length as))
+minus-take (suc k) []       = refl
+minus-take (suc k) (a ∷ as) = minus-take k as
+
+-- The form the two consumers want: a flat chain split at `take k`, with the
+-- tail's budget computed from the PREFIX — which is what the bind threads.
+take-++-threaded : ∀ {A : Set} (k : ℕ) (as bs : List A)
+                 → take k (as ++ bs)
+                   ≡ take k as ++ take (k ∸ length (take k as)) bs
+take-++-threaded k as bs =
+  trans (take-++-split k as bs)
+        (cong (λ m → take k as ++ take m bs) (sym (minus-take k as)))

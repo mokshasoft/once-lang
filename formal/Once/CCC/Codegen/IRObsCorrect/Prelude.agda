@@ -56,7 +56,7 @@ fits-erase : ∀ {B} → FitsInReg B → FitsInRegI ⌊ B ⌋
 fits-erase fits-intˢ   = fits-int
 fits-erase fits-floatˢ = fits-float
 open import Once.SigOp.Info using (effect; EffectShape; Pure; Emits; Halts) public
-open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; subst; subst₂; _≢_) public
+open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong; cong₂; subst; subst₂; _≢_) public
 open import Once.IR.Size using (ir-size) public
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; +-identityʳ; +-assoc; +-suc; +-comm; <-irrefl; <-trans) public
 open import Function using (case_of_) public

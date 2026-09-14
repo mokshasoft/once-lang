@@ -1083,3 +1083,23 @@ d_assoc_860 = erased
 -- Once.Denotation.TraceMonad._.T-isMonad
 d_T'45'isMonad_864 :: T_IsMonadT_784
 d_T'45'isMonad_864 = erased
+-- Once.Denotation.TraceMonad.take-++-split
+d_take'45''43''43''45'split_874 ::
+  () ->
+  Integer ->
+  [AgdaAny] ->
+  [AgdaAny] -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_take'45''43''43''45'split_874 = erased
+-- Once.Denotation.TraceMonad.minus-take
+d_minus'45'take_902 ::
+  () ->
+  Integer ->
+  [AgdaAny] -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_minus'45'take_902 = erased
+-- Once.Denotation.TraceMonad.take-++-threaded
+d_take'45''43''43''45'threaded_922 ::
+  () ->
+  Integer ->
+  [AgdaAny] ->
+  [AgdaAny] -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_take'45''43''43''45'threaded_922 = erased

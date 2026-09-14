@@ -13409,3 +13409,61 @@ proof that looked easy because the relation had been weakened to let it be.
 
 Exit tests 65 passed / 0 failed / 0 skipped. `cabal test` 746 passed.
 `Once/Compiler.agda` and `Once/Certified.agda` typecheck.
+
+## D203 — `comp-traces-agree` DISCHARGED; the event-concatenation step (2026-09-14)
+
+The postulate's own comment said it "looks PROVABLE now" and was "left as an
+axiom only because the `projTrace`/`>>=T` event-concatenation step is its own
+piece of work". That step is three lemmas, and the axiom is gone.
+
+### The step
+
+Composition denotes a BIND, and `projTrace` of a bind splits definitionally
+with a THREADED budget:
+
+    projTrace (m >>=T f) n
+      = projTrace m n ++ projTrace (f …) (n ∸ length (projTrace m n))
+
+while the machine side is a flat chain observed with `take k`. Reconciling
+them is:
+
+    take-++-split   take k (as ++ bs) ≡ take k as ++ take (k ∸ length as) bs
+    minus-take      k ∸ length (take k as) ≡ k ∸ length as
+    take-++-threaded  (the two composed, in the form both consumers want)
+
+**`Bounded` is NOT needed**, which is the part worth recording. The obvious
+route is "the denotation spends at most its budget, so `take k` is the identity
+on it" — and `Bounded`/`PrefixFamily` are sitting right there in `TraceMonad`
+inviting it. They are not required: `minus-take` says the residual budget
+cannot tell whether the prefix was truncated, so the machine's
+`k ∸ length (take k mEvF)` and the denotation's `k ∸ length dEvF` are the same
+number without any hypothesis about either side's length.
+
+(Both zero cases need `0∸n≡0`, not `refl`: stdlib's `_∸_` recurses on its
+SECOND argument, so `0 ∸ n` does not reduce.)
+
+### Why it could not simply be written where it stood
+
+The obstacle was structural, not mathematical. `comp-value-realized-of` builds
+the composite chain inside a pattern match on `f`'s `ValueRealized`, so
+`chainF` and `chainG` exist only in that scope. A lemma stated outside it can
+only reach them through a `with` abstraction over a projection — the
+with-abstraction trap — or by assuming the result.
+
+The fix is the one the with-discipline prescribes: change the DEFINITION, not
+the proof. `go` now returns the whole `MachineRefinesObsF` rather than just its
+value half, and takes `f`'s own trace agreement as an argument (it mentions the
+matched chain, so it has to arrive from outside). `comp-step` is then `go`
+applied to `mf`'s two fields.
+
+This is the same shape D188 used on `obs-correct-apply`: a whole-clause axiom
+becomes a proof by widening what the construction produces.
+
+### Bearing on `pair`
+
+`⟨ f , g ⟩` denotes `evalᴰ f a >>=T λ b → evalᴰ g a >>=T λ c → returnT (b , c)`
+— the same threaded bind — so its trace half is now unblocked by the same three
+lemmas. That was the reason to do this one first.
+
+Postulates in the per-constructor clauses: 10 → 9. Root typechecks (68 modules
+checked). Exit tests 65/0/0; `cabal test` 746 passed.
