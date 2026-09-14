@@ -13467,3 +13467,73 @@ lemmas. That was the reason to do this one first.
 
 Postulates in the per-constructor clauses: 10 → 9. Root typechecks (68 modules
 checked). Exit tests 65/0/0; `cabal test` 746 passed.
+
+## D204 — WHY `pair` AND `case` ARE STILL OPEN: two missing facts, not two grinds (2026-09-14)
+
+With `comp-traces-agree` discharged (D203) the remaining per-constructor
+clauses are `pair`, `case`, `In`, `in-ν`, `sigop-rest`, `cata-correct` and the
+three the user has deferred. Reading `pair` and `case` against the machine
+shows both are blocked on something the interface does not say — the same
+CLASS of finding as D202, where `pair` was unprovable because the dispatcher
+did not pass its induction hypotheses.
+
+### `pair` — the obligation does not say what memory a run PRESERVES
+
+`⟨ f , g ⟩` stashes its input at `backup-slot = n`, runs `f` (emitted at
+frontier `n + 4`), and then does `restore-input backup-slot` so that `g` can
+have the same input:
+
+    mov-to-output ∷ store-at-slot n ∷ ft ++
+    store-at-slot (suc n) ∷ restore-input n ∷ gt ++ <heap build>
+
+For the restore to mean anything, `f`'s run must not have written slot `n`.
+**Nothing in `IRObsCorrectF` says that.** `ValueRealized` has exactly ten
+fields — `steps`, `settle`, `out-mode`, `cont-alloc`, `run`, `live`,
+`at-end`, `no-ret`, `no-link`, `place` — and not one of them is about memory.
+Nor is there a lower bound anywhere saying an emitted trace writes only slots
+at or above its own frontier; `SlotBudget` bounds slots from ABOVE (they are
+below the budget), which is the opposite end.
+
+So `pair` is not merely unproved. As stated it is unprovable, exactly as it was
+before D202 — for a different missing fact.
+
+The fix is a field on `ValueRealized`:
+
+    mem-pres : ∀ loc → BeforeFrontier alloc loc
+             → readLoc (floc settle) loc ≡ readLoc s loc
+
+It is TRUE — a sub-IR writes stack slots at or above its frontier, allocates
+only fresh heap, and a call runs in its own frame — and it is what `PairWF`'s
+`mem-preserved-through-setup` / `store-fst-preserves` / `bf-lift-to-scratch`
+were, before D176 deleted them. Much of it already exists per-clause and is
+simply not exported: `TwoCellBuild` has a `mem-pres`, `OutSetupPres` has one,
+`ApplySetupPres` has `setup-mem-pres`, and D174's thirteen heap lemmas cover
+`inl`/`inr`. What makes it a project rather than an edit is that EVERY clause
+must then supply it — including `apply`, whose callee's preservation is not
+available either (`CalleeRun` has no memory field, so `BlockRuns` would be
+strengthened too).
+
+### `case` — needs label resolution, which is a different development
+
+Only one arm of a `case` runs, so it needs no cross-run preservation and is
+untouched by the above. Its blocker is control:
+
+    flat-exec-instr (instr-ctrl (c-branch-tag-zero m)) prog fs
+      = do-branch (tag-zf (flat-read-tag (floc fs))) m prog fs
+    flat-exec-instr (instr-ctrl (c-jmp m))            prog fs
+      = do-jump (find-label prog m) fs
+
+Both consume `find-label prog m`, so the clause needs a theorem that a label
+the fragment emits RESOLVES, and resolves to the position the fragment expects.
+`SpanAt` is fetch agreement at given offsets; it says nothing about a scan for
+a label. That theorem is what `LabelScope`'s `SegAgree` / `NoCross` /
+`LabelsIn` machinery is for, and connecting it to `find-label` has not been
+done.
+
+### The shape of the finding
+
+Three clauses in a row (`Out` at D199, `pair` at D202 and again here, `case`
+here) turned out to be blocked by something the STATEMENT was missing rather
+than by the difficulty of the proof. That is worth treating as the default
+hypothesis when a clause resists: before grinding, check that the obligation
+actually says enough to be true.
