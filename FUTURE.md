@@ -464,6 +464,44 @@ Three points, because this is the template:
 ⚠ TEMPLATE, NOT A MIGRATION. The tree's `K` has **68 `IMu` use sites**;
 swapping it is a separate and much larger change.
 
+### ⛔ AND THE `opaque` LEVER DOES **NOT** APPLY TO THE `iihs` ROW — profiled
+
+I predicted the row's two residual metas were the same guessing
+phenomenon as the `K` probe, said so, and profiled it. **Refuted.**
+
+| counter | `K` probe | `IihsRhoAGen` |
+|---|---|---|
+| `compare` | 7,012 | **615,809** |
+| `compare by reduction` | 2,172 (31%) | **592,745 (96%)** |
+| `…: injectivity` | **1,431** | 369 |
+| `…: injectivity successful` | 0 | 36 |
+| `compare meta` | 4,164 | 1,963 |
+| `meta shortcut successful` | 4,160 | **1,902 of 1,903** |
+| `pointer equality: terms` | 1 | **17,878** |
+| **time per comparison** | **10.38 ms** | **0.058 ms** |
+
+★★★ **TWO OPPOSITE COST PROFILES.** The `K` probe is FEW comparisons,
+each EXPENSIVE, driven by a losing injectivity search. The `iihs` row is
+**600 000 comparisons, each CHEAP**, 96% of them requiring reduction,
+with injectivity barely involved (369 attempts, 36 wins) and the meta
+machinery working fine (1,902 of 1,903 shortcuts succeed).
+
+⇒ **the `opaque` fix is for the first profile and cannot help the
+second.** Do not apply it to the row.
+
+⇒ AND THE TWO RESIDUAL METAS ARE NOT WHERE THE TIME GOES: 2 unsolved out
+of **1,893** created, in a module whose cost is 592 745 reductions. They
+are a tiny unification tail, not a search failure. ⚠ So the four
+hypotheses refuted on 2026-09-13 were refuted for the RIGHT reason, and
+"it is a metas problem" — my fifth — is refuted too.
+
+⬜ WHAT THE ROW'S COST ACTUALLY IS: 600 000 reduction-requiring
+comparisons at 58 µs each. That is the substitution-tower machinery
+(`pw^`, `towerA`/`towerJ`, `wk-single`) doing very many small reductions.
+UNDIAGNOSED — and note `pointer equality: terms` is 17 878 here against 1
+in the `K` probe, so sharing IS occurring; the volume is the problem, not
+the per-term size.
+
 ### ⚠ AND THE HEADER-POINTER PASS COST A LESSON
 
 11 formers in `Spec/Typing` have their transport laws a layer up in
