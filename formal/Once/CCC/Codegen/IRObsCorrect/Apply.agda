@@ -212,18 +212,30 @@ module ApplyC {FS : FrameSemantics} (program-bound : ℕ) where
               -- caller's `BeforeFrontier` across it.
               -- The setup ALLOCATES the callee's pair, so the frontier moves
               -- twice: `bf-advance` across the sixteen rows, then the callee's.
-              bf-mono-apply : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
-                            → BeforeFrontier (falloc (CalleeRun.settle crun)) loc
-              bf-mono-apply loc bf =
-                CalleeRun.bf-mono crun (falloc ASP.a16) (cong falloc call-eq) loc
-                  (OB.bf-advance bf)
+              bf-mono-apply : ∀ (m : ℕ) (loc : ValueLocation FS)
+                            → BeforeFrontier (record alloc { next-slot = m }) loc
+                            → BeforeFrontier
+                                (record (falloc (CalleeRun.settle crun)) { next-slot = m }) loc
+              bf-mono-apply m loc bf =
+                CalleeRun.bf-mono crun (falloc ASP.a16) m (cong falloc call-eq) loc
+                  (frontier-monotone (record alloc { next-slot = m })
+                     (record (falloc ASP.a16) { next-slot = m })
+                     (sym OB.cf-a16) ≤-refl OB.heapref-a16-≤ loc bf)
 
-              mem-pres-apply : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+              mem-pres-apply : ∀ (loc : ValueLocation FS)
+                             → BeforeFrontier (record alloc { next-slot = n }) loc
                              → MemOps.readLoc (floc (CalleeRun.settle crun)) loc
                                ≡ MemOps.readLoc s loc
               mem-pres-apply loc bf =
-                trans (CalleeRun.mem-pres crun (falloc ASP.a16)
-                         (cong falloc call-eq) loc (OB.bf-advance bf))
+                -- The callee preserves the caller's frame at ANY bound; the
+                -- setup's own preservation is at apply's frontier `n`. The
+                -- lift across the setup keeps the bound and moves only the
+                -- heap frontier (the setup allocates the callee's pair).
+                trans (CalleeRun.mem-pres crun (falloc ASP.a16) n
+                         (cong falloc call-eq) loc
+                         (frontier-monotone (record alloc { next-slot = n })
+                            (record (falloc ASP.a16) { next-slot = n })
+                            (sym OB.cf-a16) ≤-refl OB.heapref-a16-≤ loc bf))
                       (trans (cong (λ st → MemOps.readLoc (floc st) loc) call-eq)
                              (ASP.setup-mem-pres n≤ OB.rdi12' OB.rdi14' loc bf))
 

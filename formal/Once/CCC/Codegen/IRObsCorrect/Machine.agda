@@ -370,21 +370,30 @@ module Mach {FS : FrameSemantics} (program-bound : ℕ) where
       → next-slot alloc ≤ n
       → sv-as-loc (readReg (regs (floc t6)) Input1) ≡ just (AtDynamic hl)
       → sv-as-loc (readReg (regs (floc t8)) Input1) ≡ just (AtDynamic hl)
-      → (loc : ValueLocation FS) → BeforeFrontier alloc loc
+      -- D206: the witness frontier is the BUILD'S OWN `n`, not the caller's.
+      -- `store-slot-preserves-before` takes the frontier witness and the run's
+      -- allocator separately, so this is a swap of the witness — the run is
+      -- untouched — and the two stores land at `n` and `suc n`, both of which
+      -- are still at or above the swapped frontier.
+      → (loc : ValueLocation FS)
+      → BeforeFrontier (record alloc { next-slot = n }) loc
       → MemOps.readLoc (floc t10) loc ≡ MemOps.readLoc s loc
     mem-pres nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf =
       trans (mem-untouched (load-from-slot (suc n)) (floc t9) (falloc t9) loc
                nhw-load-from-slot refl)
-     (trans (store-ind-suc-preserves-before (floc t8) alloc (falloc t8) hl loc rdi8 fresh bf)
+     (trans (store-ind-suc-preserves-before (floc t8) (record alloc { next-slot = n })
+               (falloc t8) hl loc rdi8 fresh bf)
      (trans (mem-untouched i8 (floc t7) (falloc t7) loc nhw8 nws8)
-     (trans (store-ind-preserves-before (floc t6) alloc (falloc t6) hl loc rdi6 fresh bf)
+     (trans (store-ind-preserves-before (floc t6) (record alloc { next-slot = n })
+               (falloc t6) hl loc rdi6 fresh bf)
      (trans (mem-untouched i6 (floc t5) (falloc t5) loc nhw6 nws6)
      (trans (mem-untouched mov-to-input (floc t4) (falloc t4) loc nhw-mov-to-input refl)
-     (trans (store-slot-preserves-before (suc n) (floc t3) alloc (falloc t3) loc
-               cf-t3 (≤-trans ns≤n (n≤1+n n)) bf)
+     (trans (store-slot-preserves-before (suc n) (floc t3) (record alloc { next-slot = n })
+               (falloc t3) loc cf-t3 (n≤1+n n) bf)
      (trans (mem-untouched (instr-alloc-heap 2) (floc t2) (falloc t2) loc
                nhw-instr-alloc-heap refl)
-     (trans (store-slot-preserves-before n (floc t1) alloc (falloc t1) loc cf-t1 ns≤n bf)
+     (trans (store-slot-preserves-before n (floc t1) (record alloc { next-slot = n })
+               (falloc t1) loc cf-t1 ≤-refl bf)
             (mem-untouched mov-to-output (floc t0) (falloc t0) loc nhw-mov-to-output refl)))))))))
 
   ------------------------------------------------------------------------
@@ -494,30 +503,35 @@ module Mach {FS : FrameSemantics} (program-bound : ℕ) where
         next-slot alloc ≤ n
       → sv-as-loc (readReg (regs (floc a11)) Input1) ≡ just (AtDynamic ahl)
       → sv-as-loc (readReg (regs (floc a13)) Input1) ≡ just (AtDynamic ahl)
-      → (loc : ValueLocation FS) → BeforeFrontier alloc loc
+      -- D206: at `apply`'s OWN frontier `n`; its three stashes are `n`,
+      -- `suc n`, `suc (suc n)`, all at or above it.
+      → (loc : ValueLocation FS)
+      → BeforeFrontier (record alloc { next-slot = n }) loc
       → MemOps.readLoc (floc a16) loc ≡ MemOps.readLoc s loc
     setup-mem-pres ns≤n rdi12 rdi14 loc bf =
       trans (mem-untouched mov-to-input (floc a15) (falloc a15) loc nhw-mov-to-input refl)
      (trans (mem-untouched (load-from-slot pair-stash) (floc a14) (falloc a14) loc
                nhw-load-from-slot refl)
-     (trans (store-ind-suc-preserves-before (floc a13) alloc (falloc a13) ahl loc rdi14 fresh-a bf)
+     (trans (store-ind-suc-preserves-before (floc a13) (record alloc { next-slot = n })
+               (falloc a13) ahl loc rdi14 fresh-a bf)
      (trans (mem-untouched (load-from-slot arg-stash) (floc a12) (falloc a12) loc
                nhw-load-from-slot refl)
-     (trans (store-ind-preserves-before (floc a11) alloc (falloc a11) ahl loc rdi12 fresh-a bf)
+     (trans (store-ind-preserves-before (floc a11) (record alloc { next-slot = n })
+               (falloc a11) ahl loc rdi12 fresh-a bf)
      (trans (mem-untouched (load-from-slot env-stash) (floc a10) (falloc a10) loc
                nhw-load-from-slot refl)
      (trans (mem-untouched mov-to-input (floc a9) (falloc a9) loc nhw-mov-to-input refl)
-     (trans (store-slot-preserves-before pair-stash (floc a8) alloc (falloc a8) loc
-               cf-a8 (≤-trans ns≤n (≤-trans (n≤1+n n) (n≤1+n (suc n)))) bf)
+     (trans (store-slot-preserves-before pair-stash (floc a8) (record alloc { next-slot = n })
+               (falloc a8) loc cf-a8 (≤-trans (n≤1+n n) (n≤1+n (suc n))) bf)
      (trans (mem-untouched (instr-alloc-heap 2) (floc a7) (falloc a7) loc
                nhw-instr-alloc-heap refl)
-     (trans (store-slot-preserves-before env-stash (floc a6) alloc (falloc a6) loc
-               cf-a6 (≤-trans ns≤n (n≤1+n n)) bf)
+     (trans (store-slot-preserves-before env-stash (floc a6) (record alloc { next-slot = n })
+               (falloc a6) loc cf-a6 (n≤1+n n) bf)
      (trans (mem-untouched load-indirect (floc a5) (falloc a5) loc nhw-load-indirect refl)
      (trans (mem-untouched mov-to-input (floc a3) (falloc a3) loc nhw-mov-to-input refl)
      (trans (mem-untouched load-indirect (floc a2) (falloc a2) loc nhw-load-indirect refl)
-     (trans (store-slot-preserves-before arg-stash (floc a1) alloc (falloc a1) loc
-               cf-a1 ns≤n bf)
+     (trans (store-slot-preserves-before arg-stash (floc a1) (record alloc { next-slot = n })
+               (falloc a1) loc cf-a1 ≤-refl bf)
             (mem-untouched load-indirect-suc (floc a0) (falloc a0) loc
                nhw-load-indirect-suc refl))))))))))))))
 
@@ -907,11 +921,18 @@ module Mach {FS : FrameSemantics} (program-bound : ℕ) where
       carry c lc cb v =
         validityWF-frontier-advance c lc (floc a16) cf-a16 nextslot-a16-≤ heapref-a16-≤
           (validityWF-mem-preserved c lc s (floc a16) cb
-             (setup-mem-pres ns≤n rdi12' rdi14') v)
+             -- D206: `setup-mem-pres` is stated at apply's own frontier `n`;
+             -- the caller's data lies below `next-slot alloc ≤ n`, so the
+             -- hypothesis weakens upward.
+             (λ loc' bf' → setup-mem-pres ns≤n rdi12' rdi14' loc'
+                             (frontier-monotone alloc (record alloc { next-slot = n })
+                                refl ns≤n ≤-refl loc' bf'))
+             v)
 
       -- The two premises `setup-mem-pres` and `code-cell` ask for, discharged
       -- here rather than at the call site: they are facts about THIS run.
-      mem-pres : (loc : ValueLocation FS) → BeforeFrontier alloc loc
+      mem-pres : (loc : ValueLocation FS)
+               → BeforeFrontier (record alloc { next-slot = n }) loc
                → MemOps.readLoc (floc a16) loc ≡ MemOps.readLoc s loc
       mem-pres = setup-mem-pres ns≤n rdi12' rdi14'
 
@@ -937,7 +958,10 @@ module Mach {FS : FrameSemantics} (program-bound : ℕ) where
               → MemOps.readLoc s (sucLoc fst-loc) ≡ just (SV-Code ℓ)
               → MemOps.readLoc (floc a16) (sucLoc fst-loc) ≡ just (SV-Code ℓ)
     code-cell fst-loc ℓ ns≤n rdi12 rdi14 bf-suc cell =
-      trans (setup-mem-pres ns≤n rdi12 rdi14 (sucLoc fst-loc) bf-suc) cell
+      trans (setup-mem-pres ns≤n rdi12 rdi14 (sucLoc fst-loc)
+               (frontier-monotone alloc (record alloc { next-slot = n })
+                  refl ns≤n ≤-refl (sucLoc fst-loc) bf-suc))
+            cell
 
   -- D170 / Phase E2 probe: the DENOTATION half of `obs-correct-curry`.
   -- `curry` builds a value; it invokes no SigOp, so its trace is empty at every

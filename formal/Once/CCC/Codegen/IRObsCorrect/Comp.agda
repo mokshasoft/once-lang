@@ -283,16 +283,25 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
           -- whose frontier is `falloc fsM` — equal to `alloc`'s at the slot
           -- `mov-to-input` does not touch the allocator, so `falloc fsM` IS
           -- `falloc fsF` and `f`'s own `bf-mono` is the whole lift.
-          mem-pres-comp : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+          mem-pres-comp : ∀ (loc : ValueLocation FS)
+                        → BeforeFrontier (record alloc { next-slot = n }) loc
                         → MemOps.readLoc (floc (VR.settle vg)) loc
                           ≡ MemOps.readLoc s loc
+          -- `g` is emitted at `n1 ≥ n`, so its preservation covers everything
+          -- below `n` too; the witness is carried across `f`'s run by `f`'s own
+          -- `bf-mono` at the composite's bound, then widened to `g`'s.
           mem-pres-comp loc bf =
-            trans (VR.mem-pres vg loc (bfF loc bf))
+            trans (VR.mem-pres vg loc
+                    (frontier-monotone (record (falloc fsM) { next-slot = n })
+                                       (record (falloc fsM) { next-slot = n1 })
+                                       refl (frontier-mono f n l) ≤-refl loc
+                                       (bfF n loc bf)))
                   (trans (memEq loc) (mpF loc bf))
 
-          bf-mono-comp : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
-                       → BeforeFrontier (falloc (VR.settle vg)) loc
-          bf-mono-comp loc bf = VR.bf-mono vg loc (bfF loc bf)
+          bf-mono-comp : ∀ (m : ℕ) (loc : ValueLocation FS)
+                       → BeforeFrontier (record alloc { next-slot = m }) loc
+                       → BeforeFrontier (record (falloc (VR.settle vg)) { next-slot = m }) loc
+          bf-mono-comp m loc bf = VR.bf-mono vg m loc (bfF m loc bf)
 
           -- ── THE TRACE HALF (D203) ──────────────────────────────────────
           -- The composite's chain is `chainF ++ mov ++ chainG` and the

@@ -41,7 +41,10 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
                    -- spends — the obligation just names it now.
                    (TSP.mem-pres nhw-instr-load-tag-lit refl nhw-load-from-slot refl
                       n≤ rdi-fs6 rdi-fs8)
-                   (λ _ bf → bf-advance bf)
+                   (λ m loc' bf' → frontier-monotone
+                                     (record alloc { next-slot = m })
+                                     (record (falloc fs10) { next-slot = m })
+                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf')
       }
     where
       payload-stash sum-stash : ℕ
@@ -376,8 +379,10 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
             validityWF-frontier-advance x loc (floc fs10)
               cf-fs10 nextslot-≤ heapref-≤
               (validityWF-mem-preserved x loc s (floc fs10) bf
-                 (TSP.mem-pres nhw-instr-load-tag-lit refl nhw-load-from-slot refl
-                    n≤ rdi-fs6 rdi-fs8)
+                 (λ loc' bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
+                                 nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8 loc'
+                                 (frontier-monotone alloc (record alloc { next-slot = n })
+                                    refl n≤ ≤-refl loc' bf'))
                  valid)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)
@@ -401,7 +406,10 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
                    -- spends — the obligation just names it now.
                    (TSP.mem-pres nhw-instr-load-tag-lit refl nhw-load-from-slot refl
                       n≤ rdi-fs6 rdi-fs8)
-                   (λ _ bf → bf-advance bf)
+                   (λ m loc' bf' → frontier-monotone
+                                     (record alloc { next-slot = m })
+                                     (record (falloc fs10) { next-slot = m })
+                                     (sym cf-fs10) ≤-refl heapref-≤ loc' bf')
       }
     where
       payload-stash sum-stash : ℕ
@@ -736,8 +744,10 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
             validityWF-frontier-advance x loc (floc fs10)
               cf-fs10 nextslot-≤ heapref-≤
               (validityWF-mem-preserved x loc s (floc fs10) bf
-                 (TSP.mem-pres nhw-instr-load-tag-lit refl nhw-load-from-slot refl
-                    n≤ rdi-fs6 rdi-fs8)
+                 (λ loc' bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
+                                 nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8 loc'
+                                 (frontier-monotone alloc (record alloc { next-slot = n })
+                                    refl n≤ ≤-refl loc' bf'))
                  valid)
 
           mk-valid : ∀ (e : readReg (regs s) Input1 ≡ SV-Ptr loc)

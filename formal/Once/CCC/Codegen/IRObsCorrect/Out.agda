@@ -211,16 +211,19 @@ module OutC {FS : FrameSemantics} (program-bound : ℕ) where
               -- the `enter-call` premise the callee wants is `refl`.
               -- `falloc OSP.b3` IS `alloc` (neither setup row touches the
               -- allocator), so the frontier only moves at the call.
-              bf-mono-out : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
-                          → BeforeFrontier (falloc (CalleeRun.settle crun)) loc
-              bf-mono-out loc bf =
-                CalleeRun.bf-mono crun alloc (cong falloc call-eq) loc bf
+              bf-mono-out : ∀ (m : ℕ) (loc : ValueLocation FS)
+                          → BeforeFrontier (record alloc { next-slot = m }) loc
+                          → BeforeFrontier
+                              (record (falloc (CalleeRun.settle crun)) { next-slot = m }) loc
+              bf-mono-out m loc bf =
+                CalleeRun.bf-mono crun alloc m (cong falloc call-eq) loc bf
 
-              mem-pres-out : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+              mem-pres-out : ∀ (loc : ValueLocation FS)
+                           → BeforeFrontier (record alloc { next-slot = n }) loc
                            → MemOps.readLoc (floc (CalleeRun.settle crun)) loc
                              ≡ MemOps.readLoc s loc
               mem-pres-out loc bf =
-                trans (CalleeRun.mem-pres crun alloc
+                trans (CalleeRun.mem-pres crun alloc n
                          (trans (cong falloc call-eq) refl) loc bf)
                       (trans (cong (λ st → MemOps.readLoc (floc st) loc) call-eq)
                              (OSP.mem-pres loc))

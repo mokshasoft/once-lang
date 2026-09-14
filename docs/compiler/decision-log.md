@@ -13660,3 +13660,64 @@ across a sub-run, so it is the first to exercise what the obligation actually
 promises. Each attempt to use it has found the promise one notch too weak.
 That is the top-down discipline working as intended — the alternative was
 three more years of a postulate that hid all three.
+
+## D206 — THE RE-CONDITIONING, AND THE METHOD THAT SHOULD HAVE PRODUCED IT (2026-09-14)
+
+D205 named the defect: `mem-pres` was conditioned on the caller's frontier
+(`BeforeFrontier alloc`) when what `pair` needs is the FRAGMENT'S OWN
+(`backup-slot = n` sits at or above `next-slot alloc`, never below it). This
+entry is the fix, and the reason the defect existed.
+
+### The method failure
+
+D204 and D205 both added a supporting fact by reasoning from the MACHINE —
+"what does a run do to memory?" — and guessing the statement. That is
+bottom-up work wearing a top-down label, and it was wrong twice, in the same
+place, for the same reason: the CONSUMER was never consulted.
+
+Strict top-down is the opposite: write the consumer, let the typechecker state
+the obligation, read the field off the goal. Applied here that took one step —
+a `Pair` skeleton with the restore isolated:
+
+    restore-needs : ∀ (pF : FlatState)
+                  → readLoc (floc pF) (AtStack (current-frame (falloc p1)) backup)
+                    ≡ readLoc (floc p2) (AtStack (current-frame (falloc p1)) backup)
+
+Preservation at stack slot `backup = n` in the caller's frame, with `f` emitted
+at `n + 4`. The frontier-relative condition is not a guess from that goal; it
+is a reading of it.
+
+### The settled statements
+
+    ValueRealized  mem-pres : ∀ loc → BeforeFrontier (record alloc { next-slot = n }) loc
+                            → readLoc (floc settle) loc ≡ readLoc s loc
+                   bf-mono  : ∀ m loc → BeforeFrontier (record alloc { next-slot = m }) loc
+                            → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
+
+    CalleeRun      both, plus `pre` and the `enter-call` premise; `mem-pres`
+                   ALSO over an arbitrary `m`, because a callee runs in its own
+                   frame and so preserves the caller's frame ENTIRELY — a
+                   stronger claim than a straight-line fragment can make, and
+                   the reason the two records' fields differ.
+
+`bf-mono` is quantified over the slot bound for the same reason `CalleeRun`'s
+is: `g ∘ f` must spend `f`'s preservation at `f`'s bound and `g`'s at `g`'s, so
+a witness fixed at one bound does not compose. Four formulations were tried
+before this one; the generalisation over `m` is what made it converge.
+
+### What the change cost, clause by clause
+
+  * `Simple`, `SigOp` — NOTHING. Their proofs are unconditional (a register
+    write is invisible to `readLoc` whatever the hypothesis), so weakening it
+    left them untouched. That is the signal the fact is real.
+  * the ten-step builds — a witness SWAP inside `TenStepPres.mem-pres`, which
+    is possible only because `store-slot-preserves-before` already takes the
+    frontier witness and the run's allocator as SEPARATE parameters. The run is
+    not touched; their stashes are `n`, `suc n`, both at or above the swapped
+    frontier.
+  * the spend sites (`valid-transport`, apply's `carry`, `code-cell`) — a
+    `frontier-monotone` lift, since the caller's data lies below
+    `next-slot alloc ≤ n` and the hypothesis weakens UPWARD.
+  * `apply`/`Out`/`g ∘ f` — compositions, unchanged in shape.
+
+Root typechecks (11 modules). Exit tests 65/0/0; `cabal test` 746 passed.

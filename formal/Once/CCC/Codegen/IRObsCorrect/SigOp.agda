@@ -213,7 +213,7 @@ module SigOpC {FS : FrameSemantics} (program-bound : ℕ) where
                    -- untouched whatever the SigOp means.
                    (λ loc _ → mem-untouched (instr-sigop si) s alloc loc
                                 nhw-instr-sigop refl)
-                   (λ _ bf → bf)
+                   (λ _ _ bf → bf)
       }
     where
       fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl)

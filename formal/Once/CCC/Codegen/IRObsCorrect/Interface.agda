@@ -70,7 +70,7 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatMachine {FS} public
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
-  open FrontierInvariant {FS} using (BeforeFrontier) public
+  open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv
           -- Plan 0.68 step 1: the class-A discharges move the value witness
@@ -275,7 +275,17 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
       -- `OutSetupPres` and `ApplySetupPres` each already prove their own
       -- version internally, and D174's heap lemmas cover `inl`/`inr`. What
       -- was missing was exporting it as part of the obligation.
-      mem-pres   : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+      -- D205/D206: conditioned on the FRAGMENT'S OWN frontier `n`, not on the
+      -- caller's `next-slot alloc`. Read off `Pair.restore-needs`: what
+      -- `⟨ f , g ⟩` must know is that `f` — emitted at `n + 4` — left stack
+      -- slot `n` alone, and slot `n` is at or ABOVE the caller's frontier
+      -- (`next-slot alloc ≤ n` is this record's own premise), so the
+      -- caller-relative phrasing never covered it.
+      --
+      -- An emitted fragment writes only slots in `[n , budget)`, so preserving
+      -- everything below `n` is exactly what it does.
+      mem-pres   : ∀ (loc : ValueLocation FS)
+                 → BeforeFrontier (record alloc { next-slot = n }) loc
                  → MemOps.readLoc (floc settle) loc ≡ MemOps.readLoc s loc
       -- …and the allocator companion, stated as the CONJUNCTION its consumers
       -- actually want rather than as three separate facts. `mem-pres` alone
@@ -284,8 +294,14 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
       -- the frame to be fixed, the slot frontier fixed, and the heap frontier
       -- monotone — all three at once, which is exactly `frontier-monotone`'s
       -- conclusion. Every clause already has this as `bf-advance`.
-      bf-mono    : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
-                 → BeforeFrontier (falloc settle) loc
+      -- D206: over an arbitrary slot bound `m`, for the same reason
+      -- `CalleeRun.mem-pres` is: the run keeps the frame and only grows the
+      -- heap, so it carries a `BeforeFrontier` at WHATEVER slot bound the
+      -- consumer is working with — `g ∘ f` needs it at `f`'s bound to spend
+      -- `f`'s preservation and at `g`'s to spend `g`'s.
+      bf-mono    : ∀ (m : ℕ) (loc : ValueLocation FS)
+                 → BeforeFrontier (record alloc { next-slot = m }) loc
+                 → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
 
   record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
                              {A B} (n l : ℕ) (ir : IR A B) (x : DT.⟦ A ⟧ᴰᴵ)
@@ -428,12 +444,19 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
       -- before that, so the obvious phrasing states something else entirely
       -- (and something the caller cannot use). The caller supplies `pre` and
       -- the `enter-call` equation it already has as a premise of `CalleeRuns`.
-      mem-pres   : ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
-                 → ∀ (loc : ValueLocation FS) → BeforeFrontier pre loc
+      -- D206: quantified over the slot bound `m`, because a callee preserves
+      -- the caller's frame ENTIRELY — it runs in its own (`enter-call`) — not
+      -- merely below some frontier. The caller picks the bound it needs; a
+      -- straight-line fragment could not make this claim, which is why
+      -- `ValueRealized`'s version is fixed at its own `n`.
+      mem-pres   : ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
+                 → ∀ (loc : ValueLocation FS)
+                 → BeforeFrontier (record pre { next-slot = m }) loc
                  → MemOps.readLoc (floc settle) loc ≡ MemOps.readLoc (floc fs) loc
-      bf-mono    : ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
-                 → ∀ (loc : ValueLocation FS) → BeforeFrontier pre loc
-                 → BeforeFrontier (falloc settle) loc
+      bf-mono    : ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
+                 → ∀ (loc : ValueLocation FS)
+                 → BeforeFrontier (record pre { next-slot = m }) loc
+                 → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
 
   ------------------------------------------------------------------------
   -- D188: THE BLOCK TABLE, as the machine needs it — the one fact `apply`

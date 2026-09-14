@@ -311,7 +311,8 @@ module TwoCellC {FS : FrameSemantics} (program-bound : ℕ) where
     -- proved it (it is what `valid-transport` spends below); the obligation
     -- now names it, so both consumers hand it over instead of it staying an
     -- internal step.
-    mem-pres : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+    mem-pres : ∀ (loc : ValueLocation FS)
+             → BeforeFrontier (record alloc { next-slot = n }) loc
              → MemOps.readLoc (floc fs10) loc ≡ MemOps.readLoc s loc
     mem-pres = TSP.mem-pres nhw-load-from-slot refl nhw-instr-load-code-addr refl
                  n≤ rdi-fs6 rdi-fs8
@@ -329,8 +330,13 @@ module TwoCellC {FS : FrameSemantics} (program-bound : ℕ) where
       validityWF-frontier-advance {A = A} x loc (floc fs10)
         cf-fs10 nextslot-≤ heapref-≤
         (validityWF-mem-preserved {A = A} x loc s (floc fs10) bf
-           (TSP.mem-pres nhw-load-from-slot refl nhw-instr-load-code-addr refl
-              n≤ rdi-fs6 rdi-fs8)
+           -- D206: `TSP.mem-pres` is now stated at the BUILD's frontier `n`;
+           -- the caller's data is below `next-slot alloc ≤ n`, so the
+           -- hypothesis weakens upward.
+           (λ loc' bf' → TSP.mem-pres nhw-load-from-slot refl
+                           nhw-instr-load-code-addr refl n≤ rdi-fs6 rdi-fs8 loc'
+                           (frontier-monotone alloc (record alloc { next-slot = n })
+                              refl n≤ ≤-refl loc' bf'))
            valid)
 
   obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF (curry body)
@@ -339,7 +345,11 @@ module TwoCellC {FS : FrameSemantics} (program-bound : ℕ) where
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run TCB.nh10 refl refl refl place
-                   TCB.mem-pres (λ _ bf → TCB.bf-advance bf)
+                   TCB.mem-pres
+                   (λ m loc' bf' → frontier-monotone
+                                     (record alloc { next-slot = m })
+                                     (record (falloc TCB.fs10) { next-slot = m })
+                                     (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf')
       }
     where
       -- D190: the ten-instruction build is shared with `Ana`; `emitted n l
@@ -419,7 +429,11 @@ module TwoCellC {FS : FrameSemantics} (program-bound : ℕ) where
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run TCB.nh10 refl refl refl place
-                   TCB.mem-pres (λ _ bf → TCB.bf-advance bf)
+                   TCB.mem-pres
+                   (λ m loc' bf' → frontier-monotone
+                                     (record alloc { next-slot = m })
+                                     (record (falloc TCB.fs10) { next-slot = m })
+                                     (sym TCB.cf-fs10) ≤-refl TCB.heapref-≤ loc' bf')
       }
     where
       module TCB = TwoCellBuild n l prog base s alloc cl n≤ nh span
