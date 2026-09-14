@@ -307,6 +307,15 @@ module TwoCellC {FS : FrameSemantics} (program-bound : ℕ) where
       BeforeFrontier.heap-before (<-≤-trans r<h heapref-≤)
 
 
+    -- D204: what the ten-instruction build LEAVES ALONE. `TenStepPres` already
+    -- proved it (it is what `valid-transport` spends below); the obligation
+    -- now names it, so both consumers hand it over instead of it staying an
+    -- internal step.
+    mem-pres : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+             → MemOps.readLoc (floc fs10) loc ≡ MemOps.readLoc s loc
+    mem-pres = TSP.mem-pres nhw-load-from-slot refl nhw-instr-load-code-addr refl
+                 n≤ rdi-fs6 rdi-fs8
+
     -- The input's validity, carried from the entry state to `fs10`. This is
     -- the one place `TenStepPres` is spent, and both consumers spend it the
     -- same way — the pointer residence is the only one that has a sub-value.
@@ -330,6 +339,7 @@ module TwoCellC {FS : FrameSemantics} (program-bound : ℕ) where
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run TCB.nh10 refl refl refl place
+                   TCB.mem-pres (λ _ bf → TCB.bf-advance bf)
       }
     where
       -- D190: the ten-instruction build is shared with `Ana`; `emitted n l
@@ -409,6 +419,7 @@ module TwoCellC {FS : FrameSemantics} (program-bound : ℕ) where
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run TCB.nh10 refl refl refl place
+                   TCB.mem-pres (λ _ bf → TCB.bf-advance bf)
       }
     where
       module TCB = TwoCellBuild n l prog base s alloc cl n≤ nh span

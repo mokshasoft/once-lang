@@ -219,13 +219,13 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
       go : (vr : ValueRealized prog base n l f x s alloc cl k)
          → take k (chain-events (VR.run vr)) ≡ take k (projTrace (evalᴰ f x) k)
          → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-      go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF) tf =
+      go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF mpF bfF) tf =
         record
           { value-realized =
               realized (kf + suc (VR.steps vg)) (VR.settle vg)
                        (VR.out-mode vg) (VR.cont-alloc vg)
                        chain (VR.live vg) atEnd (VR.no-ret vg) (VR.no-link vg)
-                       (VR.place vg)
+                       (VR.place vg) mem-pres-comp bf-mono-comp
           ; traces-agree = traces
           }
         where
@@ -278,6 +278,21 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
           chain : FlatSteps prog (kf + suc (VR.steps vg))
                             (entry-flat base s alloc cl) (VR.settle vg)
           chain = FlatSteps-++ chainF (FlatSteps-++ movStep chainG)
+
+          -- D204: `g ∘ f` preserves what BOTH preserve. `g` runs from `fsM`,
+          -- whose frontier is `falloc fsM` — equal to `alloc`'s at the slot
+          -- `mov-to-input` does not touch the allocator, so `falloc fsM` IS
+          -- `falloc fsF` and `f`'s own `bf-mono` is the whole lift.
+          mem-pres-comp : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+                        → MemOps.readLoc (floc (VR.settle vg)) loc
+                          ≡ MemOps.readLoc s loc
+          mem-pres-comp loc bf =
+            trans (VR.mem-pres vg loc (bfF loc bf))
+                  (trans (memEq loc) (mpF loc bf))
+
+          bf-mono-comp : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+                       → BeforeFrontier (falloc (VR.settle vg)) loc
+          bf-mono-comp loc bf = VR.bf-mono vg loc (bfF loc bf)
 
           -- ── THE TRACE HALF (D203) ──────────────────────────────────────
           -- The composite's chain is `chainF ++ mov ++ chainG` and the

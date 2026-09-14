@@ -36,6 +36,12 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 10 fs10 Heap (falloc fs10) run nh10 refl refl refl place
+                   -- D204: the ten-instruction build's own preservation, which
+                   -- `TenStepPres` already proves and `valid-transport` already
+                   -- spends — the obligation just names it now.
+                   (TSP.mem-pres nhw-instr-load-tag-lit refl nhw-load-from-slot refl
+                      n≤ rdi-fs6 rdi-fs8)
+                   (λ _ bf → bf-advance bf)
       }
     where
       payload-stash sum-stash : ℕ
@@ -390,6 +396,12 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 10 fs10 Heap (falloc fs10) run nh10 refl refl refl place
+                   -- D204: the ten-instruction build's own preservation, which
+                   -- `TenStepPres` already proves and `valid-transport` already
+                   -- spends — the obligation just names it now.
+                   (TSP.mem-pres nhw-instr-load-tag-lit refl nhw-load-from-slot refl
+                      n≤ rdi-fs6 rdi-fs8)
+                   (λ _ bf → bf-advance bf)
       }
     where
       payload-stash sum-stash : ℕ

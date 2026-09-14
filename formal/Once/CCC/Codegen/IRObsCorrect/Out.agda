@@ -179,6 +179,7 @@ module OutC {FS : FrameSemantics} (program-bound : ℕ) where
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
                          run (CalleeRun.live crun) (CalleeRun.returned crun)
                          (CalleeRun.no-ret crun) (CalleeRun.no-link crun) place
+                         mem-pres-out bf-mono-out
             ; traces-agree = trc
             }
             where
@@ -203,6 +204,26 @@ module OutC {FS : FrameSemantics} (program-bound : ℕ) where
                        (trans (cong falloc call-eq) refl)
                        (subst (λ st → InputAt {A} (mode-of c) (falloc OSP.b3) seed st)
                               (sym (cong floc call-eq)) (input-of c))
+
+              -- D204: what the WHOLE force leaves alone — the three setup rows
+              -- (which write no memory at all) composed with the callee's own
+              -- preservation. `falloc OSP.b3` IS `alloc` definitionally, so
+              -- the `enter-call` premise the callee wants is `refl`.
+              -- `falloc OSP.b3` IS `alloc` (neither setup row touches the
+              -- allocator), so the frontier only moves at the call.
+              bf-mono-out : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+                          → BeforeFrontier (falloc (CalleeRun.settle crun)) loc
+              bf-mono-out loc bf =
+                CalleeRun.bf-mono crun alloc (cong falloc call-eq) loc bf
+
+              mem-pres-out : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+                           → MemOps.readLoc (floc (CalleeRun.settle crun)) loc
+                             ≡ MemOps.readLoc s loc
+              mem-pres-out loc bf =
+                trans (CalleeRun.mem-pres crun alloc
+                         (trans (cong falloc call-eq) refl) loc bf)
+                      (trans (cong (λ st → MemOps.readLoc (floc st) loc) call-eq)
+                             (OSP.mem-pres loc))
 
               run4 : FlatSteps prog 4 (entry-flat base s alloc cl)
                        (flat-exec-instr instr-call-closure prog OSP.b3)

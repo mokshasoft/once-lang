@@ -64,7 +64,7 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
   open InstrPrimitives {FS} using (exec-abstract-preserves-stack-slot; store-at-slot-preserves-below; exec-abstract-preserves-frame; exec-abstract-preserves-heapMem; store-at-slot-preserves-ancestor) public
   open RecSchemeSemantics {FS} using (exec-abstract-load-indirect-output; exec-abstract-load-indirect-preserves-mem;
                                      exec-abstract-load-indirect-suc-output; exec-abstract-load-indirect-suc-preserves-mem) public
-  open Once.CCC.Machine.SMPrimitives using (nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-save-closure-reg; nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output) public
+  open Once.CCC.Machine.SMPrimitives using (nhw-load-indirect; nhw-load-indirect-suc; nhw-instr-save-closure-reg; nhw-instr-load-tag-lit; nhw-mov-to-input; nhw-instr-alloc-heap; nhw-instr-load-code-addr; nhw-load-from-slot; InstrNoHeapWrite; instr-writes-slot; nhw-mov-to-output; nhw-instr-load-const; nhw-instr-sigop) public
   open RecSchemeSemantics {FS} using (exec-abstract-preserves-heap-ref) public
 
   open FlatMachine {FS} public
@@ -258,6 +258,34 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
       -- for that one. Depth-indexing makes the composition definitional.
       place      : ResultPlace B out-mode (falloc settle) cont-alloc
                      (TM.valueT (evalᴰ ir x) k) (floc settle)
+      -- D204: WHAT THE RUN LEAVES ALONE.
+      --
+      -- A fragment writes stack slots at or above its own frontier, allocates
+      -- only fresh heap, and a call runs in its own frame — so everything the
+      -- CALLER has live (`BeforeFrontier alloc`) reads the same after the run
+      -- as before it.
+      --
+      -- Without this field `⟨ f , g ⟩` is unprovable rather than unproved: it
+      -- stashes its input at `backup-slot`, runs `f`, and then
+      -- `restore-input backup-slot` to hand the same input to `g`. Nothing
+      -- else in this record says `f` did not write that slot. (`SlotBudget`
+      -- bounds slots from ABOVE — below the budget — which is the other end.)
+      --
+      -- It is also not new work for most clauses: `TwoCellBuild`,
+      -- `OutSetupPres` and `ApplySetupPres` each already prove their own
+      -- version internally, and D174's heap lemmas cover `inl`/`inr`. What
+      -- was missing was exporting it as part of the obligation.
+      mem-pres   : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+                 → MemOps.readLoc (floc settle) loc ≡ MemOps.readLoc s loc
+      -- …and the allocator companion, stated as the CONJUNCTION its consumers
+      -- actually want rather than as three separate facts. `mem-pres` alone
+      -- does not compose: to spend `g`'s preservation the composite must first
+      -- carry the caller's `BeforeFrontier` across `f`'s run, and that needs
+      -- the frame to be fixed, the slot frontier fixed, and the heap frontier
+      -- monotone — all three at once, which is exactly `frontier-monotone`'s
+      -- conclusion. Every clause already has this as `bf-advance`.
+      bf-mono    : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+                 → BeforeFrontier (falloc settle) loc
 
   record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
                              {A B} (n l : ℕ) (ir : IR A B) (x : DT.⟦ A ⟧ᴰᴵ)
@@ -383,6 +411,29 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
                      (TM.valueT comp k) (floc settle)
       events     : take k (chain-events run)
                    ≡ take k (projTrace comp k)
+      -- D204: WHAT THE CALL LEAVES ALONE — the call half of the same fact
+      -- `ValueRealized.mem-pres` states for a straight-line fragment.
+      --
+      -- This is the deeper of the two. `apply` and `Out` cannot prove it: the
+      -- callee's run arrives from `BlockRuns`, so whatever the callee does to
+      -- memory is only ever ASSUMED. Until the field existed, "a call
+      -- preserves the caller's live data" was hidden inside `block-runs`,
+      -- which is why the gap surfaced at `pair` — the one clause that has to
+      -- read a slot back after a sub-run — rather than at the call sites.
+      --
+      -- True for the same reason: the callee runs in its OWN frame
+      -- (`enter-call`) and allocates only fresh heap.
+      -- Conditioned on the CALLER's frontier, not `falloc fs`. `falloc fs` is
+      -- `enter-call pre`, i.e. the CALLEE's — the caller's live data is not
+      -- before that, so the obvious phrasing states something else entirely
+      -- (and something the caller cannot use). The caller supplies `pre` and
+      -- the `enter-call` equation it already has as a premise of `CalleeRuns`.
+      mem-pres   : ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
+                 → ∀ (loc : ValueLocation FS) → BeforeFrontier pre loc
+                 → MemOps.readLoc (floc settle) loc ≡ MemOps.readLoc (floc fs) loc
+      bf-mono    : ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
+                 → ∀ (loc : ValueLocation FS) → BeforeFrontier pre loc
+                 → BeforeFrontier (falloc settle) loc
 
   ------------------------------------------------------------------------
   -- D188: THE BLOCK TABLE, as the machine needs it — the one fact `apply`

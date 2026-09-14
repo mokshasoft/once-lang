@@ -92,7 +92,7 @@ module ApplyC {FS : FrameSemantics} (program-bound : ℕ) where
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
                          run (CalleeRun.live crun)
                          (CalleeRun.returned crun) (CalleeRun.no-ret crun)
-                         (CalleeRun.no-link crun) place
+                         (CalleeRun.no-link crun) place mem-pres-apply bf-mono-apply
             ; traces-agree = trc
             }
             where
@@ -203,6 +203,29 @@ module ApplyC {FS : FrameSemantics} (program-bound : ℕ) where
                                      (CalleeRun.cont-alloc crun)
                                      (TM.valueT d k) (floc (CalleeRun.settle crun)))
                             denot-eq (CalleeRun.place crun)
+
+              -- D204: what the whole `apply` leaves alone — the sixteen setup rows
+              -- (`setup-mem-pres`, already proved) composed with the callee's
+              -- own preservation. The callee's `pre` is `falloc a16`, NOT
+              -- `alloc`: the setup allocates the `(env , arg)` pair, so the
+              -- frontier has moved, and `bf-advance` is what carries the
+              -- caller's `BeforeFrontier` across it.
+              -- The setup ALLOCATES the callee's pair, so the frontier moves
+              -- twice: `bf-advance` across the sixteen rows, then the callee's.
+              bf-mono-apply : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+                            → BeforeFrontier (falloc (CalleeRun.settle crun)) loc
+              bf-mono-apply loc bf =
+                CalleeRun.bf-mono crun (falloc ASP.a16) (cong falloc call-eq) loc
+                  (OB.bf-advance bf)
+
+              mem-pres-apply : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+                             → MemOps.readLoc (floc (CalleeRun.settle crun)) loc
+                               ≡ MemOps.readLoc s loc
+              mem-pres-apply loc bf =
+                trans (CalleeRun.mem-pres crun (falloc ASP.a16)
+                         (cong falloc call-eq) loc (OB.bf-advance bf))
+                      (trans (cong (λ st → MemOps.readLoc (floc st) loc) call-eq)
+                             (ASP.setup-mem-pres n≤ OB.rdi12' OB.rdi14' loc bf))
 
               trc : take k (chain-events run) ≡ take k (projTrace (evalᴰ (apply {A} {B}) x) k)
               trc = trans (cong (take k) (chain-events-++ run17 (CalleeRun.run crun)))

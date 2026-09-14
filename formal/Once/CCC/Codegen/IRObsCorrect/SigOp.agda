@@ -208,6 +208,12 @@ module SigOpC {FS : FrameSemantics} (program-bound : ℕ) where
                    (at-reg (fits-erase fitness)
                      (pure-sigop-value-correct n l si fitness rA pure-eq x s alloc
                         not-halted rdi-eq))
+                   -- D204: `exec-abstract (instr-sigop si)` writes the Output
+                   -- register and the halt flag and nothing else — memory is
+                   -- untouched whatever the SigOp means.
+                   (λ loc _ → mem-untouched (instr-sigop si) s alloc loc
+                                nhw-instr-sigop refl)
+                   (λ _ bf → bf)
       }
     where
       fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl)

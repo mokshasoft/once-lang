@@ -13477,6 +13477,30 @@ shows both are blocked on something the interface does not say — the same
 CLASS of finding as D202, where `pair` was unprovable because the dispatcher
 did not pass its induction hypotheses.
 
+### CORRECTION (2026-09-14, same day): "hiding" conflated two things
+
+As first written this entry said `cata-correct` and the derived schemes "hide"
+the need for `mem-pres`, which reads as though they owed something. They do
+not. Two different roles were run together:
+
+  * **Who OWES the fact.** Every IR does. `mem-pres` is a field of the
+    obligation, so every clause supplies it — and most do so trivially: a
+    single `mov-to-output` preserves everything (`reg-write-readLoc`),
+    `terminal` emits no instruction at all. This is a universal property of
+    emitted fragments, not a special burden.
+
+  * **Who NEEDS it.** Only the clauses that read memory back ACROSS a sub-run:
+    `pair` (restores its input after `f`), `cata-correct` (the loop reads its
+    cursor and heap-linked stack back after each algebra run), and the derived
+    schemes. While those are axioms, nothing ever asks for the field, so its
+    absence is invisible. That is the sense in which they hid it: they hid a
+    DEMAND, not a duty.
+
+The one place the fact is genuinely assumed rather than proved is
+`CalleeRun`/`block-runs`. At a call boundary this side cannot prove it — the
+callee's run is given — so it is an honest axiom there and a theorem
+everywhere else.
+
 ### `pair` — the obligation does not say what memory a run PRESERVES
 
 `⟨ f , g ⟩` stashes its input at `backup-slot = n`, runs `f` (emitted at
@@ -13537,3 +13561,53 @@ here) turned out to be blocked by something the STATEMENT was missing rather
 than by the difficulty of the proof. That is worth treating as the default
 hypothesis when a clause resists: before grinding, check that the obligation
 actually says enough to be true.
+
+## D204b — THE STRENGTHENING LANDED: two fields, and one design correction (2026-09-14)
+
+`ValueRealized` and `CalleeRun` now say what a run does to memory and to the
+allocator. Every clause supplies both; the apex axiom `block-runs` assumes them
+at the call boundary, where this side cannot prove them.
+
+    ValueRealized  mem-pres : ∀ loc → BeforeFrontier alloc loc
+                            → readLoc (floc settle) loc ≡ readLoc s loc
+                   bf-mono  : ∀ loc → BeforeFrontier alloc loc
+                            → BeforeFrontier (falloc settle) loc
+
+    CalleeRun      the same two, conditioned on the CALLER's `pre` together
+                   with the `falloc fs ≡ enter-call pre` premise `CalleeRuns`
+                   already carries.
+
+### The correction the typechecker forced
+
+`CalleeRun.mem-pres` was first written as `BeforeFrontier (falloc fs) loc`.
+That is the CALLEE's frontier — `falloc fs` is `enter-call pre` — so it states
+something about the callee's own frame and is useless to the caller, whose live
+data is not before it. `Out` would not typecheck, which is how it surfaced.
+
+### The design correction
+
+The first attempt at the allocator half was `heap-mono : next-heap-ref alloc ≤
+next-heap-ref (falloc settle)`. `Comp` then needed the frame fixed AND the slot
+frontier fixed as well, i.e. three separate facts, because what it actually
+wants is `frontier-monotone`'s CONCLUSION. Stating that conclusion directly —
+`bf-mono` — is one field instead of three, and every clause already had it
+proved as `bf-advance`. Prefer the conjunction the consumer wants over the
+three facts it decomposes into.
+
+### What it cost per clause — the point of the exercise
+
+Nothing was hard, which is the evidence that the fact is a genuine property of
+emitted fragments rather than a new obligation:
+
+  * `id`/`fst`/`snd`/`out-μ`/`terminal`/`initial`/`free-heap`/`const` — the
+    existing local `mem-eq` (a register write is invisible to `readLoc`), or
+    `mem-untouched`; `bf-mono` is the identity, the allocator being untouched.
+  * `SigOp` — `exec-abstract (instr-sigop si)` writes Output and the halt flag
+    and nothing else, whatever the SigOp means.
+  * `inl`/`inr`/`curry`/`Ana` — `TenStepPres.mem-pres` and `bf-advance`, both
+    already proved and already spent internally by `valid-transport`.
+  * `apply`/`Out` — the setup's own preservation composed with the callee's.
+  * `g ∘ f` — `f`'s, then `g`'s.
+
+Postulate count is unchanged (9). What changed is that `pair` is now provable:
+`restore-input backup-slot` has the fact it needs.
