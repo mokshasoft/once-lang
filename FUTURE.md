@@ -431,6 +431,57 @@ an item.
    session's probe — is what happens when duplication is invisible to the
    type system.
 
+### ✅ FIRST INSTANCE OF INVARIANT 1 — `bootstrap/tmp/KSealed.agda`, rc=0
+
+Agda cannot put exported equations in a signature, so the convention is a
+module that seals the former and exports exactly what may be used:
+
+```agda
+opaque
+  K        : RTm Γ → RTy Γ
+  ty-K     : Γ ⊢ i ∷ εwkTy IPair → Γ ⊢ty K i
+  ren-K    : renTy ρ (K i) ≡ K (renTm ρ i)
+  sub-K    : subTy σ (K i) ≡ K (subTm σ i)
+  unfold-K : K i ≡ IMu KnotD IPair i          -- the escape hatch, NAMED
+```
+
+Three points, because this is the template:
+
+- **`ty-K` is what makes the seal usable.** Sealing without exporting
+  well-formedness just moves the problem — every caller would need
+  `unfolding` to build a `⊢ty`. Bundling it is the difference between an
+  abstraction barrier and an obstruction.
+- **The transport laws are stated where the former lives.** Yesterday the
+  same fact was rebuilt by hand at THREE separate sites (`⊢methLamN`,
+  `motA-ren`/`motA-at`, `ren-Kop`) because nothing said it existed.
+- ★ **`unfold-K` makes the escape greppable.** A caller needing the
+  implementation cites a named lemma instead of opening an `unfolding`
+  block, so *"who depends on `K`'s definition?"* is a grep, not an audit,
+  and every use is a reviewable claim that the interface was
+  insufficient. ⇒ in Once this is a signature obligation, not a
+  convention.
+
+⚠ TEMPLATE, NOT A MIGRATION. The tree's `K` has **68 `IMu` use sites**;
+swapping it is a separate and much larger change.
+
+### ⚠ AND THE HEADER-POINTER PASS COST A LESSON
+
+11 formers in `Spec/Typing` have their transport laws a layer up in
+`Metatheory/TySub` — **for a REASON**: `TySub` imports `Spec/Typing`,
+`RedCong` and `SubjectReductionBase`, so it sits strictly ABOVE the
+kernel spec. ⇒ "bundle every former with its laws" would INVERT the
+layering. The rule that survives is weaker and correct:
+
+> a former's laws live at the LOWEST layer that can state them, and the
+> former's header NAMES where they are.
+
+⚠⚠ The pointers themselves are written and VERIFIED (`Spec/Typing.agda`
+checks in 2.28 s with them) but are **held in
+`bootstrap/tmp/spec-typing-pointers.patch`, not applied** — a
+comment-only edit to a kernel file forces a full closure rebuild, which
+this box killed twice (137, then 143 at `Examples/Knot/Wf`). ⇒ apply with
+the next real batch, never alone.
+
 ### ⇒ THE TEST THAT THE DESIGN WORKED
 
 **Nobody ever has an operational reason to seal.**
