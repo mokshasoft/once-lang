@@ -219,13 +219,13 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
       go : (vr : ValueRealized prog base n l f x s alloc cl k)
          → take k (chain-events (VR.run vr)) ≡ take k (projTrace (evalᴰ f x) k)
          → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-      go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF mpF bfF) tf =
+      go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF spF hpF bfF) tf =
         record
           { value-realized =
               realized (kf + suc (VR.steps vg)) (VR.settle vg)
                        (VR.out-mode vg) (VR.cont-alloc vg)
                        chain (VR.live vg) atEnd (VR.no-ret vg) (VR.no-link vg)
-                       (VR.place vg) mem-pres-comp bf-mono-comp
+                       (VR.place vg) (λ fr j bf → mem-pres-comp (AtStack fr j) bf) (λ hl bf → mem-pres-comp (AtDynamic hl) bf) bf-mono-comp
           ; traces-agree = traces
           }
         where
@@ -291,12 +291,18 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
           -- below `n` too; the witness is carried across `f`'s run by `f`'s own
           -- `bf-mono` at the composite's bound, then widened to `g`'s.
           mem-pres-comp loc bf =
-            trans (VR.mem-pres vg loc
+            trans (vr-mem-pres vg loc
                     (frontier-monotone (record (falloc fsM) { next-slot = n })
                                        (record (falloc fsM) { next-slot = n1 })
                                        refl (frontier-mono f n l) ≤-refl loc
                                        (bfF n loc bf)))
                   (trans (memEq loc) (mpF loc bf))
+            where
+              mpF : ∀ (l' : ValueLocation FS)
+                  → BeforeFrontier (record alloc { next-slot = n }) l'
+                  → MemOps.readLoc (floc fsF) l' ≡ MemOps.readLoc s l'
+              mpF (AtStack fr j) b = spF fr j b
+              mpF (AtDynamic hl) b = hpF hl b
 
           bf-mono-comp : ∀ (m : ℕ) (loc : ValueLocation FS)
                        → BeforeFrontier (record alloc { next-slot = m }) loc

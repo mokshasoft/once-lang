@@ -275,25 +275,39 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
       -- `OutSetupPres` and `ApplySetupPres` each already prove their own
       -- version internally, and D174's heap lemmas cover `inl`/`inr`. What
       -- was missing was exporting it as part of the obligation.
-      -- D205/D206: conditioned on the FRAGMENT'S OWN frontier `n`, not on the
-      -- caller's `next-slot alloc`. Read off `Pair.restore-needs`: what
-      -- `⟨ f , g ⟩` must know is that `f` — emitted at `n + 4` — left stack
-      -- slot `n` alone, and slot `n` is at or ABOVE the caller's frontier
-      -- (`next-slot alloc ≤ n` is this record's own premise), so the
-      -- caller-relative phrasing never covered it.
+      -- D208: SPLIT, because the two halves have different fates.
       --
-      -- An emitted fragment writes only slots in `[n , budget)`, so preserving
-      -- everything below `n` is exactly what it does.
-      mem-pres   : ∀ (loc : ValueLocation FS)
-                 → BeforeFrontier (record alloc { next-slot = n }) loc
-                 → MemOps.readLoc (floc settle) loc ≡ MemOps.readLoc s loc
-      -- …and the allocator companion, stated as the CONJUNCTION its consumers
-      -- actually want rather than as three separate facts. `mem-pres` alone
-      -- does not compose: to spend `g`'s preservation the composite must first
-      -- carry the caller's `BeforeFrontier` across `f`'s run, and that needs
-      -- the frame to be fixed, the slot frontier fixed, and the heap frontier
-      -- monotone — all three at once, which is exactly `frontier-monotone`'s
-      -- conclusion. Every clause already has this as `bf-advance`.
+      -- `BeforeFrontier`'s heap constructor IS the bump allocator's encoding —
+      -- `heap-before : ref-id (heap-ref hl) < next-heap-ref alloc`. "Live on
+      -- the heap" is defined there as "ref-id below the frontier", which is
+      -- true of a bump allocator and FALSE of a reusing one: a freed-then-
+      -- reallocated `Mempool`/`Slab` slot has a low ref-id and is not the
+      -- caller's live data. Plan 0.35 M2 replaces that notion with the
+      -- allocator interface's liveness property; until it does, anything
+      -- stated over heap locations is instance-specific.
+      --
+      -- The STACK half is not. Frames are the machine's, not the allocator's,
+      -- and `free` never touches a stack slot — so `stack-pres` is permanent,
+      -- and it is the half `⟨ f , g ⟩` actually needs (`restore-input backup`
+      -- reads `AtStack (current-frame alloc) n`).
+      --
+      -- Keeping them as one field hid a bump-specific assumption inside a
+      -- fact that is otherwise allocator-independent. Split, the contingent
+      -- part is named and quarantined.
+
+      -- PERMANENT. Slots below the fragment's own frontier are untouched.
+      stack-pres : ∀ (fr : FrameSemantics.Frame FS) (j : ℕ)
+                 → BeforeFrontier (record alloc { next-slot = n }) (AtStack fr j)
+                 → MemOps.readLoc (floc settle) (AtStack fr j)
+                   ≡ MemOps.readLoc s (AtStack fr j)
+
+      -- CONTINGENT on the bump encoding; to be restated as 0.35 M2's liveness
+      -- property when the allocator is wired.
+      heap-pres  : ∀ (hl : HeapLocation)
+                 → BeforeFrontier (record alloc { next-slot = n }) (AtDynamic hl)
+                 → MemOps.readLoc (floc settle) (AtDynamic hl)
+                   ≡ MemOps.readLoc s (AtDynamic hl)
+
       -- D206: over an arbitrary slot bound `m`, for the same reason
       -- `CalleeRun.mem-pres` is: the run keeps the frame and only grows the
       -- heap, so it carries a `BeforeFrontier` at WHATEVER slot bound the
@@ -302,6 +316,19 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
       bf-mono    : ∀ (m : ℕ) (loc : ValueLocation FS)
                  → BeforeFrontier (record alloc { next-slot = m }) loc
                  → BeforeFrontier (record (falloc settle) { next-slot = m }) loc
+
+  -- D208: the combined form, DERIVED once rather than assumed per clause.
+  -- Consumers that do not care which half they are using (`valid-transport`,
+  -- the call-site compositions) keep asking for this; the split is visible
+  -- only to whoever needs to know that the heap half is contingent.
+  vr-mem-pres : ∀ {prog base A B n l} {ir : IR A B} {x s alloc cl k}
+              → (vr : ValueRealized prog base n l ir x s alloc cl k)
+              → ∀ (loc : ValueLocation FS)
+              → BeforeFrontier (record alloc { next-slot = n }) loc
+              → MemOps.readLoc (floc (ValueRealized.settle vr)) loc
+                ≡ MemOps.readLoc s loc
+  vr-mem-pres vr (AtStack fr j) bf = ValueRealized.stack-pres vr fr j bf
+  vr-mem-pres vr (AtDynamic hl) bf = ValueRealized.heap-pres  vr hl bf
 
   record MachineRefinesObsF (prog : AbstractTrace) (base : ℕ)
                              {A B} (n l : ℕ) (ir : IR A B) (x : DT.⟦ A ⟧ᴰᴵ)

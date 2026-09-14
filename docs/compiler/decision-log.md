@@ -13763,3 +13763,65 @@ on the critical path, and the completion is mechanical from here:
 
 Either pair lands and this module becomes load-bearing, or both are deleted
 together. It must not sit here unwired.
+
+## D208 — THE ALLOCATOR QUESTION, AND WHY `mem-pres` SPLITS (2026-09-14)
+
+Asked whether the IR clauses should be proving heap-block preservation at all
+— they should not, `blocks-disjoint` is a FIELD every allocator implementation
+discharges — and whether it is time to run plan 0.35. Three findings.
+
+### 1. Plan 0.35's "Why" is STALE
+
+It says the interface is "alloc-only, no `free`". It is not.
+`AllocatorInterface` already has `init`, `alloc`, **`free`**, `block-in-region`,
+`blocks-disjoint`, `alloc-fresh` — all as fields. M1 is essentially done, and
+`SMCore` already imports `Once.Allocator.AbstractInstance`, so the abstract
+machine's alloc IS interface-routed. What is missing is M2 (no `instr-free-heap`
+exists anywhere) and M3 onward (codegen still bump-lowers; nothing calls an
+allocator label).
+
+### 2. The subsystem exports exactly what the clauses need — and it is DEAD
+
+`AbstractInstance.fresh-loc-disjoint` / `fresh-cell-disjoint` are documented as
+"convenience forms in the granularity IR producers actually consume". They have
+ZERO consumers. The codegen instead carries a private duplicate,
+`fresh-heap-≢`, proving the same thing by the same `<-irrefl` argument.
+
+### 3. …but the layering cannot be fixed yet, and this is the real finding
+
+    heap-before : ref-id (heap-ref hl) < next-heap-ref alloc
+                → BeforeFrontier alloc (AtDynamic hl)
+
+**`BeforeFrontier`'s heap half IS the bump allocator's encoding.** "Live on the
+heap" is *defined* as "ref-id below the frontier" — true of a bump allocator,
+FALSE of a reusing one: a freed-then-reallocated `Mempool`/`Slab` slot has a low
+ref-id and is not the caller's live data. So the IR cannot consume the
+interface's allocator-agnostic `alloc-fresh` while its own vocabulary hard-codes
+the instance's representation. Replacing that notion is precisely 0.35 M2's
+liveness contract; bolting a consumption of `alloc-fresh` underneath the current
+`BeforeFrontier` would only move the duplicate.
+
+### The change: split `mem-pres`, quarantine the contingent half
+
+    stack-pres  -- PERMANENT. Frames are the machine's, not the allocator's,
+                -- and `free` never touches a stack slot.
+    heap-pres   -- CONTINGENT on the bump encoding; to be restated as 0.35 M2's
+                -- liveness property.
+
+The combined form is DERIVED once (`vr-mem-pres`) by casing on the location, so
+consumers that do not care keep asking for it. What the split buys is that the
+bump-specific assumption is NAMED instead of hidden inside a field that is
+otherwise allocator-independent — and `⟨ f , g ⟩`'s keystone (`restore-input
+backup` reads `AtStack (current-frame alloc) n`) now visibly depends only on the
+permanent half, so pair is not gated on the allocator at all.
+
+### Recommendation on running 0.35: NOT the whole plan, not on this branch
+
+M3 lowers `instr-alloc-heap` to `call alloc-label`, which changes the emitted
+trace and so invalidates the heap-build proof in `inl`, `inr`, `curry`, `Ana`,
+`apply` — and whatever `pair` adds. That rework is branch-scale, extracted-cone,
+and lands on three arches. It belongs on its own branch after this one merges.
+Note the rework is already sunk across five clauses, so finishing `pair` first
+adds one more to a list of six — marginal.
+
+Root typechecks. Exit tests 65/0/0; `cabal test` 746 passed.

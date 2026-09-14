@@ -39,8 +39,12 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
                    -- D204: the ten-instruction build's own preservation, which
                    -- `TenStepPres` already proves and `valid-transport` already
                    -- spends — the obligation just names it now.
-                   (TSP.mem-pres nhw-instr-load-tag-lit refl nhw-load-from-slot refl
-                      n≤ rdi-fs6 rdi-fs8)
+                   (λ fr j bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
+                                   nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8
+                                   (AtStack fr j) bf')
+                   (λ hl bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
+                                 nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8
+                                 (AtDynamic hl) bf')
                    (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs10) { next-slot = m })
@@ -404,8 +408,12 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
                    -- D204: the ten-instruction build's own preservation, which
                    -- `TenStepPres` already proves and `valid-transport` already
                    -- spends — the obligation just names it now.
-                   (TSP.mem-pres nhw-instr-load-tag-lit refl nhw-load-from-slot refl
-                      n≤ rdi-fs6 rdi-fs8)
+                   (λ fr j bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
+                                   nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8
+                                   (AtStack fr j) bf')
+                   (λ hl bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
+                                 nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8
+                                 (AtDynamic hl) bf')
                    (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs10) { next-slot = m })

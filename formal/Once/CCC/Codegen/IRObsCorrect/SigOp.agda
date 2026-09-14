@@ -211,8 +211,10 @@ module SigOpC {FS : FrameSemantics} (program-bound : ℕ) where
                    -- D204: `exec-abstract (instr-sigop si)` writes the Output
                    -- register and the halt flag and nothing else — memory is
                    -- untouched whatever the SigOp means.
-                   (λ loc _ → mem-untouched (instr-sigop si) s alloc loc
-                                nhw-instr-sigop refl)
+                   (λ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j)
+                                 nhw-instr-sigop refl)
+                   (λ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl)
+                               nhw-instr-sigop refl)
                    (λ _ _ bf → bf)
       }
     where

@@ -13613,7 +13613,7 @@ d_ValueRealized_3428 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13
                      a14
   = ()
 data T_ValueRealized_3428
-  = C_realized_3514 Integer
+  = C_realized_3526 Integer
                     MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68
                     MAlonzo.Code.Once.IR.T_AllocMode_4
                     MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_488
@@ -13624,118 +13624,148 @@ data T_ValueRealized_3428
                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658)
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.steps
-d_steps_3484 :: T_ValueRealized_3428 -> Integer
-d_steps_3484 v0
+d_steps_3490 :: T_ValueRealized_3428 -> Integer
+d_steps_3490 v0
   = case coe v0 of
-      C_realized_3514 v1 v2 v3 v4 v5 v10 v12 -> coe v1
+      C_realized_3526 v1 v2 v3 v4 v5 v10 v13 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.settle
-d_settle_3486 ::
+d_settle_3492 ::
   T_ValueRealized_3428 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68
-d_settle_3486 v0
+d_settle_3492 v0
   = case coe v0 of
-      C_realized_3514 v1 v2 v3 v4 v5 v10 v12 -> coe v2
+      C_realized_3526 v1 v2 v3 v4 v5 v10 v13 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.out-mode
-d_out'45'mode_3488 ::
+d_out'45'mode_3494 ::
   T_ValueRealized_3428 -> MAlonzo.Code.Once.IR.T_AllocMode_4
-d_out'45'mode_3488 v0
+d_out'45'mode_3494 v0
   = case coe v0 of
-      C_realized_3514 v1 v2 v3 v4 v5 v10 v12 -> coe v3
+      C_realized_3526 v1 v2 v3 v4 v5 v10 v13 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.cont-alloc
-d_cont'45'alloc_3490 ::
+d_cont'45'alloc_3496 ::
   T_ValueRealized_3428 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_488
-d_cont'45'alloc_3490 v0
+d_cont'45'alloc_3496 v0
   = case coe v0 of
-      C_realized_3514 v1 v2 v3 v4 v5 v10 v12 -> coe v4
+      C_realized_3526 v1 v2 v3 v4 v5 v10 v13 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.run
-d_run_3492 ::
+d_run_3498 ::
   T_ValueRealized_3428 ->
   MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas.T_FlatSteps_330
-d_run_3492 v0
+d_run_3498 v0
   = case coe v0 of
-      C_realized_3514 v1 v2 v3 v4 v5 v10 v12 -> coe v5
+      C_realized_3526 v1 v2 v3 v4 v5 v10 v13 -> coe v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.live
-d_live_3494 ::
+d_live_3500 ::
   T_ValueRealized_3428 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_live_3494 = erased
+d_live_3500 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.at-end
-d_at'45'end_3496 ::
+d_at'45'end_3502 ::
   T_ValueRealized_3428 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_at'45'end_3496 = erased
+d_at'45'end_3502 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.no-ret
-d_no'45'ret_3498 ::
+d_no'45'ret_3504 ::
   T_ValueRealized_3428 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_no'45'ret_3498 = erased
+d_no'45'ret_3504 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.no-link
-d_no'45'link_3500 ::
+d_no'45'link_3506 ::
   T_ValueRealized_3428 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_no'45'link_3500 = erased
+d_no'45'link_3506 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.place
-d_place_3502 ::
+d_place_3508 ::
   T_ValueRealized_3428 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ResultPlace_620
-d_place_3502 v0
+d_place_3508 v0
   = case coe v0 of
-      C_realized_3514 v1 v2 v3 v4 v5 v10 v12 -> coe v10
+      C_realized_3526 v1 v2 v3 v4 v5 v10 v13 -> coe v10
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.mem-pres
-d_mem'45'pres_3506 ::
+-- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.stack-pres
+d_stack'45'pres_3514 ::
   T_ValueRealized_3428 ->
-  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  AgdaAny ->
+  Integer ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mem'45'pres_3506 = erased
+d_stack'45'pres_3514 = erased
+-- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.heap-pres
+d_heap'45'pres_3518 ::
+  T_ValueRealized_3428 ->
+  MAlonzo.Code.Once.Memory.HeapAddress.T_HeapLocation_42 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_heap'45'pres_3518 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.ValueRealized.bf-mono
-d_bf'45'mono_3512 ::
+d_bf'45'mono_3524 ::
   T_ValueRealized_3428 ->
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
-d_bf'45'mono_3512 v0
+d_bf'45'mono_3524 v0
   = case coe v0 of
-      C_realized_3514 v1 v2 v3 v4 v5 v10 v12 -> coe v12
+      C_realized_3526 v1 v2 v3 v4 v5 v10 v13 -> coe v13
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.CCC.Codegen.IRObsCorrect.Interface.Core.vr-mem-pres
+d_vr'45'mem'45'pres_3556 ::
+  MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
+  MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
+  Integer ->
+  [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
+  Integer ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+  Integer ->
+  Integer ->
+  MAlonzo.Code.Once.IR.T_IR_16 ->
+  AgdaAny ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_488 ->
+  MAlonzo.Code.Once.CCC.Machine.SMCore.T_StoredValue_66 ->
+  Integer ->
+  T_ValueRealized_3428 ->
+  MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
+  MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
+  MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
+d_vr'45'mem'45'pres_3556 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.MachineRefinesObsF
-d_MachineRefinesObsF_3540 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12
+d_MachineRefinesObsF_3596 a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12
                           a13 a14
   = ()
-newtype T_MachineRefinesObsF_3540
-  = C_constructor_3574 T_ValueRealized_3428
+newtype T_MachineRefinesObsF_3596
+  = C_constructor_3630 T_ValueRealized_3428
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.MachineRefinesObsF.value-realized
-d_value'45'realized_3570 ::
-  T_MachineRefinesObsF_3540 -> T_ValueRealized_3428
-d_value'45'realized_3570 v0
+d_value'45'realized_3626 ::
+  T_MachineRefinesObsF_3596 -> T_ValueRealized_3428
+d_value'45'realized_3626 v0
   = case coe v0 of
-      C_constructor_3574 v1 -> coe v1
+      C_constructor_3630 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.MachineRefinesObsF.traces-agree
-d_traces'45'agree_3572 ::
-  T_MachineRefinesObsF_3540 ->
+d_traces'45'agree_3628 ::
+  T_MachineRefinesObsF_3596 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_traces'45'agree_3572 = erased
+d_traces'45'agree_3628 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.InputAt
-d_InputAt_3586 a0 a1 a2 a3 a4 a5 a6 a7 = ()
-data T_InputAt_3586
-  = C_in'45'loc_3600 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
+d_InputAt_3642 a0 a1 a2 a3 a4 a5 a6 a7 = ()
+data T_InputAt_3642
+  = C_in'45'loc_3656 MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12
                      MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_590
                      MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 |
-    C_in'45'reg_3604 MAlonzo.Code.Once.IRTy.T_FitsInRegI_526 |
-    C_in'45'unit_3606
+    C_in'45'reg_3660 MAlonzo.Code.Once.IRTy.T_FitsInRegI_526 |
+    C_in'45'unit_3662
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun
-d_CalleeRun_3620 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
-data T_CalleeRun_3620
-  = C_callee'45'run_3710 Integer
+d_CalleeRun_3676 a0 a1 a2 a3 a4 a5 a6 a7 a8 = ()
+data T_CalleeRun_3676
+  = C_callee'45'run_3766 Integer
                          MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68
                          MAlonzo.Code.Once.IR.T_AllocMode_4
                          MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_488
@@ -13748,116 +13778,116 @@ data T_CalleeRun_3620
                           MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
                           MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658)
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.steps
-d_steps_3672 :: T_CalleeRun_3620 -> Integer
-d_steps_3672 v0
+d_steps_3728 :: T_CalleeRun_3676 -> Integer
+d_steps_3728 v0
   = case coe v0 of
-      C_callee'45'run_3710 v1 v2 v3 v4 v5 v10 v13 -> coe v1
+      C_callee'45'run_3766 v1 v2 v3 v4 v5 v10 v13 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.settle
-d_settle_3674 ::
-  T_CalleeRun_3620 ->
+d_settle_3730 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68
-d_settle_3674 v0
+d_settle_3730 v0
   = case coe v0 of
-      C_callee'45'run_3710 v1 v2 v3 v4 v5 v10 v13 -> coe v2
+      C_callee'45'run_3766 v1 v2 v3 v4 v5 v10 v13 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.out-mode
-d_out'45'mode_3676 ::
-  T_CalleeRun_3620 -> MAlonzo.Code.Once.IR.T_AllocMode_4
-d_out'45'mode_3676 v0
+d_out'45'mode_3732 ::
+  T_CalleeRun_3676 -> MAlonzo.Code.Once.IR.T_AllocMode_4
+d_out'45'mode_3732 v0
   = case coe v0 of
-      C_callee'45'run_3710 v1 v2 v3 v4 v5 v10 v13 -> coe v3
+      C_callee'45'run_3766 v1 v2 v3 v4 v5 v10 v13 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.cont-alloc
-d_cont'45'alloc_3678 ::
-  T_CalleeRun_3620 ->
+d_cont'45'alloc_3734 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_488
-d_cont'45'alloc_3678 v0
+d_cont'45'alloc_3734 v0
   = case coe v0 of
-      C_callee'45'run_3710 v1 v2 v3 v4 v5 v10 v13 -> coe v4
+      C_callee'45'run_3766 v1 v2 v3 v4 v5 v10 v13 -> coe v4
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.run
-d_run_3680 ::
-  T_CalleeRun_3620 ->
+d_run_3736 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas.T_FlatSteps_330
-d_run_3680 v0
+d_run_3736 v0
   = case coe v0 of
-      C_callee'45'run_3710 v1 v2 v3 v4 v5 v10 v13 -> coe v5
+      C_callee'45'run_3766 v1 v2 v3 v4 v5 v10 v13 -> coe v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.live
-d_live_3682 ::
-  T_CalleeRun_3620 ->
+d_live_3738 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_live_3682 = erased
+d_live_3738 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.returned
-d_returned_3684 ::
-  T_CalleeRun_3620 ->
+d_returned_3740 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_returned_3684 = erased
+d_returned_3740 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.no-ret
-d_no'45'ret_3686 ::
-  T_CalleeRun_3620 ->
+d_no'45'ret_3742 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_no'45'ret_3686 = erased
+d_no'45'ret_3742 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.no-link
-d_no'45'link_3688 ::
-  T_CalleeRun_3620 ->
+d_no'45'link_3744 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_no'45'link_3688 = erased
+d_no'45'link_3744 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.place
-d_place_3690 ::
-  T_CalleeRun_3620 ->
+d_place_3746 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ResultPlace_620
-d_place_3690 v0
+d_place_3746 v0
   = case coe v0 of
-      C_callee'45'run_3710 v1 v2 v3 v4 v5 v10 v13 -> coe v10
+      C_callee'45'run_3766 v1 v2 v3 v4 v5 v10 v13 -> coe v10
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.events
-d_events_3692 ::
-  T_CalleeRun_3620 ->
+d_events_3748 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_events_3692 = erased
+d_events_3748 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.mem-pres
-d_mem'45'pres_3700 ::
-  T_CalleeRun_3620 ->
+d_mem'45'pres_3756 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_488 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_mem'45'pres_3700 = erased
+d_mem'45'pres_3756 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRun.bf-mono
-d_bf'45'mono_3708 ::
-  T_CalleeRun_3620 ->
+d_bf'45'mono_3764 ::
+  T_CalleeRun_3676 ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_AllocState_488 ->
   Integer ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658 ->
   MAlonzo.Code.Once.CCC.Machine.Allocation.T_BeforeFrontier_658
-d_bf'45'mono_3708 v0
+d_bf'45'mono_3764 v0
   = case coe v0 of
-      C_callee'45'run_3710 v1 v2 v3 v4 v5 v10 v13 -> coe v13
+      C_callee'45'run_3766 v1 v2 v3 v4 v5 v10 v13 -> coe v13
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CalleeRuns
-d_CalleeRuns_3712 ::
+d_CalleeRuns_3768 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] -> ()
-d_CalleeRuns_3712 = erased
+d_CalleeRuns_3768 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.CoalgRuns
-d_CoalgRuns_3752 ::
+d_CoalgRuns_3808 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] -> ()
-d_CoalgRuns_3752 = erased
+d_CoalgRuns_3808 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.BlockRuns
-d_BlockRuns_3790 a0 a1 a2 a3 = ()
-data T_BlockRuns_3790
-  = C_constructor_3802 (MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
+d_BlockRuns_3846 a0 a1 a2 a3 = ()
+data T_BlockRuns_3846
+  = C_constructor_3858 (MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                         MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                         MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
                         MAlonzo.Code.Once.IR.T_IR_16 ->
@@ -13884,8 +13914,8 @@ data T_BlockRuns_3790
                         MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
                         MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14)
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.BlockRuns.closures
-d_closures_3798 ::
-  T_BlockRuns_3790 ->
+d_closures_3854 ::
+  T_BlockRuns_3846 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
@@ -13899,13 +13929,13 @@ d_closures_3798 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_590 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_closures_3798 v0
+d_closures_3854 v0
   = case coe v0 of
-      C_constructor_3802 v1 v2 -> coe v1
+      C_constructor_3858 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.BlockRuns.coalgs
-d_coalgs_3800 ::
-  T_BlockRuns_3790 ->
+d_coalgs_3856 ::
+  T_BlockRuns_3846 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRFunctor_4 ->
   MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 ->
@@ -13919,25 +13949,25 @@ d_coalgs_3800 ::
   MAlonzo.Code.Once.CCC.Machine.ClosureWellFormed.T_ValidAtWF_590 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_coalgs_3800 v0
+d_coalgs_3856 v0
   = case coe v0 of
-      C_constructor_3802 v1 v2 -> coe v2
+      C_constructor_3858 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.IRObsCorrectF
-d_IRObsCorrectF_3808 ::
+d_IRObsCorrectF_3864 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IRTy.T_IRTy_6 ->
   MAlonzo.Code.Once.IR.T_IR_16 -> ()
-d_IRObsCorrectF_3808 = erased
+d_IRObsCorrectF_3864 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.cata-correct
-d_cata'45'correct_3846
+d_cata'45'correct_3902
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Codegen.IRObsCorrect.Interface.Core.cata-correct"
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.exec-flat-stop
-d_exec'45'flat'45'stop_3854 ::
+d_exec'45'flat'45'stop_3910 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
@@ -13947,9 +13977,9 @@ d_exec'45'flat'45'stop_3854 ::
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_exec'45'flat'45'stop_3854 = erased
+d_exec'45'flat'45'stop_3910 = erased
 -- Once.CCC.Codegen.IRObsCorrect.Interface.Core.reg-write-readLoc
-d_reg'45'write'45'readLoc_3882 ::
+d_reg'45'write'45'readLoc_3938 ::
   MAlonzo.Code.Once.CCC.FrameSemantics.T_FrameSemantics_6 ->
   Integer ->
   MAlonzo.Code.Once.CCC.Machine.SMCore.T_LocState_402 ->
@@ -13957,4 +13987,4 @@ d_reg'45'write'45'readLoc_3882 ::
   Bool ->
   MAlonzo.Code.Once.CCC.Machine.Locations.T_ValueLocation_12 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_reg'45'write'45'readLoc_3882 = erased
+d_reg'45'write'45'readLoc_3938 = erased

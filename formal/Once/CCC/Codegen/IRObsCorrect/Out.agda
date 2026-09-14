@@ -179,7 +179,7 @@ module OutC {FS : FrameSemantics} (program-bound : ℕ) where
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
                          run (CalleeRun.live crun) (CalleeRun.returned crun)
                          (CalleeRun.no-ret crun) (CalleeRun.no-link crun) place
-                         mem-pres-out bf-mono-out
+                         (λ fr j bf → mem-pres-out (AtStack fr j) bf) (λ hl bf → mem-pres-out (AtDynamic hl) bf) bf-mono-out
             ; traces-agree = trc
             }
             where

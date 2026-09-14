@@ -92,7 +92,7 @@ module ApplyC {FS : FrameSemantics} (program-bound : ℕ) where
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
                          run (CalleeRun.live crun)
                          (CalleeRun.returned crun) (CalleeRun.no-ret crun)
-                         (CalleeRun.no-link crun) place mem-pres-apply bf-mono-apply
+                         (CalleeRun.no-link crun) place (λ fr j bf → mem-pres-apply (AtStack fr j) bf) (λ hl bf → mem-pres-apply (AtDynamic hl) bf) bf-mono-apply
             ; traces-agree = trc
             }
             where
