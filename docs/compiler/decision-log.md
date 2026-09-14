@@ -13282,3 +13282,61 @@ second way: the block computes the coalgebra AND the re-suspension. The premise
 has to say it computes `forceᵈ`'s value — `mapAnaᵈ H H coalg (valueT (coalg a))`
 — which is what `obs-correct-Out` needs from it anyway. The emitter change makes
 the obligation honest; it was the postulate, not the proof, that was wrong.
+
+## D200 — SPLITTING `IRObsCorrectFlat`, AND HOW TO MEASURE IT (2026-09-14)
+
+`IRObsCorrectFlat` was 4358 lines. A genuine recheck — its own `.agdai`
+deleted, every dependency cached — costs **728 s and 2.2 GB**. Ten postulates
+are still open in it, and `obs-correct-Out` took four compile cycles, so the
+remaining work was priced at several hours of pure waiting.
+
+After the split, rechecking one clause part (`Out`) is **14.7 s**. Same
+methodology, ~50x.
+
+### Why it was safe to split
+
+`ir-obs-correct` is the only recursive definition in the development. Its two
+recursive cases take the induction hypothesis as an ARGUMENT:
+
+    ir-obs-correct (g ∘ f)       = comp-obs-correct (ir-obs-correct g) (ir-obs-correct f)
+    ir-obs-correct (Cata wf alg) = cata-correct wf alg (ir-obs-correct alg)
+
+So no clause calls back into the dispatcher, and no clause needs another. The
+parts form a STAR over `Interface` (the obligation) and `Machine` (the step
+lemmas) — not a chain. A chain would have been nearly worthless: editing the
+first part would still recheck everything after it.
+
+`bundle-telescope-for-oom` records a measured case where splitting a file did
+NOT help, because the real cost was a 64-parameter module telescope. That is
+worth checking before any split like this. It does not apply here: the
+telescope is `{FS}` and `program-bound`.
+
+### THE MEASUREMENT TRAP — read this before believing any timing
+
+Agda keys interface reuse on the SOURCE HASH, not mtime. Two consequences, and
+both of them produced confidently wrong conclusions during this work:
+
+  * **`touch` does not force a recheck.** A `touch`-then-time run reported
+    10 s where the real cost was 728 s.
+  * **A run that exits 0 may have checked NOTHING.** Running the committed
+    file as a "control to prove the environment is healthy" returned `RC=0` in
+    seconds — it had loaded a cached interface. That was taken as evidence the
+    environment was fine and the new proof was at fault. It was not.
+
+The check is `grep -c 'Checking' <log>`: 0 means a cached no-op and the run
+proves nothing; 1 means the module was really compiled. To force a real
+recheck, delete `_build/<ver>/agda/<path>.agdai`.
+
+Separately: a check launched as a background task is killed by the harness
+watchdog within seconds regardless of content — it fired identically on the
+committed file and on ten trivial `FlatState` definitions. Launched in the
+foreground it runs to completion. Nine "out of memory" kills were this, not
+memory: agda's real peak here is 2.2 GB with 5 GB free.
+
+### Two Agda facts the split turned on
+
+  * a `public` re-export carries NAMES, not the module — a fully qualified
+    `Once.CCC.FrameSemantics.fs-numerics` still needs a bare `import`;
+  * the prelude may be re-exported publicly along exactly ONE path. Seven
+    parts re-exporting it gives seven routes to `Data.Nat._+_`, which Agda
+    rejects as a clashing definition.
