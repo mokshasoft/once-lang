@@ -13721,3 +13721,45 @@ before this one; the generalisation over `m` is what made it converge.
   * `apply`/`Out`/`g ∘ f` — compositions, unchanged in shape.
 
 Root typechecks (11 modules). Exit tests 65/0/0; `cabal test` 746 passed.
+
+## D207 — `pair`'s KEYSTONE, PROVED (2026-09-14)
+
+The backup/restore argument — the part D202, D204 and D206 all existed for —
+is a theorem. `Once.CCC.Codegen.IRObsCorrect.Pair` proves:
+
+    backup-written   slot `backup` holds the input after the prologue
+    backup-survives  `f`'s run leaves it alone
+    restore-ok       therefore `restore-input backup` hands `g` exactly what
+                     `f` was given
+
+`restore-ok` is one `trans` of the other two. That is the measure of the three
+preceding decisions: before them none of its three ingredients could be STATED
+— the dispatcher did not pass `f`'s induction hypothesis (D202), the obligation
+said nothing about memory (D204), and then it said it about the caller's
+frontier rather than `f`'s (D206). `backup = n` sits four slots below `f-start`,
+inside the window `mem-pres` now promises and outside the one it promised
+first.
+
+Two facts fell out as `refl`, worth recording because they simplify what is
+left: `falloc p2 ≡ alloc` (neither prologue row touches the allocator), and
+`Input1` survives both rows (`mov-to-output` writes Output, `store-at-slot` is
+a `writeLoc`), so `f` can be handed the caller's own input residence unchanged.
+
+### Status: UNWIRED, and deliberately so
+
+`obs-correct-pair` is still the postulate; this module is not yet imported by
+anything, so it is an ISLAND by the merge rule and must not reach `master` in
+that state. It is committed rather than discarded because it is verified work
+on the critical path, and the completion is mechanical from here:
+
+  1. `span-f` / `span-g` — the fetch splits, modelled on `Comp.span-g`;
+  2. the two IH applications, using `alloc-p2` and `input1-p2` above;
+  3. the nine-instruction tail — the SAME shape as `inl`'s heap build
+     (`TenStepPres` rows 2-10 at `snd-stash`, with `i6 := load-from-slot
+     fst-stash` and `i8 := load-from-slot snd-stash`), so the remaining work is
+     a shared `NineStepPres` or an inlined copy of `Sum`'s argument;
+  4. the trace half — `take-++-threaded` twice, pair denoting the same
+     threaded bind composition does.
+
+Either pair lands and this module becomes load-bearing, or both are deleted
+together. It must not sit here unwired.
