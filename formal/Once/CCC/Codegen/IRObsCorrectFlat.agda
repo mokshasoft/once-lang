@@ -78,7 +78,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-obs-correct id                  = obs-correct-id
   ir-obs-correct (g ∘ f)             = comp-obs-correct (ir-obs-correct g) (ir-obs-correct f)
   -- products
-  ir-obs-correct ⟨ f , g ⟩         = obs-correct-pair f g
+  ir-obs-correct ⟨ f , g ⟩         = obs-correct-pair (ir-obs-correct f) (ir-obs-correct g)
   ir-obs-correct fst                 = obs-correct-fst
   ir-obs-correct snd                 = obs-correct-snd
   -- sums

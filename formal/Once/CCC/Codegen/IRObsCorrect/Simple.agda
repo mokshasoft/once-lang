@@ -516,7 +516,18 @@ module Simp {FS : FrameSemantics} (program-bound : ℕ) where
                           → IRObsCorrectF (In wf)
 
     -- CLASS B — allocating, no control flow. Step 1; adds the frontier thread.
-    obs-correct-pair : ∀ {A B C} (f : IR A B) (g : IR A C)
+    --
+    -- D202: takes the SUB-PROOFS. `⟨ f , g ⟩` splices two sub-IR runs
+    -- (`emitted = mov ∷ store ∷ ft ++ store ∷ restore ∷ gt ++ <heap build>`),
+    -- so like `g ∘ f` it cannot be proved without them — and unlike `g ∘ f`
+    -- the dispatcher was not passing them, which made the clause unprovable in
+    -- principle rather than merely unproved. The induction hypotheses arrive
+    -- as ARGUMENTS, so the parts keep the D200 star shape: no clause calls
+    -- back into `ir-obs-correct`.
+    --
+    -- Still an axiom, but a strictly weaker one: it now asks for more.
+    obs-correct-pair : ∀ {A B C} {f : IR A B} {g : IR A C}
+                     → IRObsCorrectF f → IRObsCorrectF g
                      → IRObsCorrectF ⟨ f , g ⟩
     -- D171: THE DISCHARGE DICTATED A SPEC QUESTION — named, not guessed.
     --
