@@ -94,7 +94,8 @@ open import Once.Adequacy.MeaningRelation fmt
   using (RelV; RelT; RelT-return; RelT-bind)
 open import Once.Adequacy.CataBridge fmt using (cata-bridge)
 open import Once.Adequacy.AnaBridge fmt using (ana-bridge)
-open import Once.Adequacy.OutErased fmt using (Out-ir; liftFn-Out-pair)
+open import Once.Adequacy.OutErased fmt using (Out-ir; liftFn-Out-pair; out-rel; out-trace; out-value)
+open import Once.Denotation.ValueDomainLaws using (traceᵈ-∼; layerᵈ-∼)
 
 -- Move a codomain-subst on `f` across `g ∘_` into a domain-subst on `g`.
 -- Match-to-refl.  (`realize-global (g-In) = In ∘ subst(⌊⟧T)(rg) = In-ir ∘ rg`.)
@@ -384,14 +385,28 @@ sigop-ref-bridge {A = Dom ⇒[ mk-kind Many π ] Cod} cn (con-fun bDom cCod) dγ
 -- constructor (`sem-In ∘ coerce-functor ∘ forget`, `inject{μ}=id`, empty trace);
 -- the argument's `RelV` collapses to `≡` via `wfF-layer-eq` (`RelV(μ)=≡` at the
 -- recursive slot), so a `cong` finishes — no funext.
--- D194: the `Out` bridge, PROVED. `RelV` at a ν is propositional equality, so
--- this carries no relational content — it is the coherence saying the direct
--- meaning's force and the IR's agree, which is `OutErased.liftFn-Out`.
+-- D194: the `Out` bridge, PROVED. D201: and now it carries REAL relational
+-- content. While `RelV` at a ν was propositional equality this clause matched
+-- `refl`, collapsed the two values to one, and was nothing but a coherence.
+-- With the relation at a ν being BISIMILARITY the two forces are genuinely
+-- different computations, and what relates them is the bisimulation's own two
+-- fields: `traceᵈ-∼` gives the equal traces, `layerᵈ-∼` the related layers —
+-- which `out-rel` then pushes out through the `Out` coercions. The coherences
+-- (`out-trace` / `out-value`) only move between the direct meaning and the IR's.
+--
+-- Pattern-matching `refl` here is not merely unnecessary now, it is ILLEGAL:
+-- `_∼ᵈ_` is coinductive and Agda refuses to split on it. That refusal is the
+-- point — it is what stops a ν-shaped goal being closed by pretending the two
+-- sides are the same value.
 out-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ν-type F ⟧ᴰ}
                → RelV (ν-type F) vᴸ vᴿ
                → RelT (⟦ F ⟧T (ν-type F)) (out-sem wfF vᴸ)
                       (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) vᴿ)
-out-app-bridge {F} {wfF} refl k = liftFn-Out-pair wfF _ k
+out-app-bridge {F} {wfF} {vᴸ} {vᴿ} rel k =
+    trans (traceᵈ-∼ rel k) (sym (out-trace wfF vᴿ k))
+  , subst (λ z → RelV (⟦ F ⟧T (ν-type F)) (valueT (out-sem wfF vᴸ) k) z)
+          (sym (out-value wfF vᴿ k))
+          (out-rel wfF (layerᵈ-∼ rel k))
 
 in-app-bridge : ∀ {F : Functor} {wfF : WellFormedF F} {vᴸ vᴿ : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ}
               → RelV (⟦ F ⟧T (μ-type F)) vᴸ vᴿ

@@ -41,6 +41,9 @@ open import Once.Semantics.Functor using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧S
 open import Once.Semantics.Machine using (coerce-functor⁻¹; coh; tF-coh; base-coh; ⟦_⟧F; coerce-ν-out)
 open import Once.Denotation.TraceMonad using (T; fmapT; projTrace; valueT)
 open import Once.Denotation.ValueDomain
+open import Once.Denotation.ValueDomainLaws using (∼ᵈ-refl; _∼ᵈ_)
+open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
+open import Data.Empty using (⊥-elim)
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; νᵈ; forceᵈ; cohᴰ; coerce-functor⁻¹-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (out-sem)
@@ -426,6 +429,30 @@ layer-refl (F Once.Type.⊕ G) (wf-Sum a b) rA (inj₂ y) = layer-refl G b rA y
 layer-refl (F Once.Type.⊗ G) (wf-Prod a b) rA (x , y) =
   layer-refl F a rA x , layer-refl G b rA y
 
+-- D201: the DUAL of `AnaBridge.in-rel`, and the relational content that
+-- `RelV (ν-type F) = _≡_` used to hide.
+--
+-- `out-sem` forces and then coerces, so relating two forces means pushing a
+-- functor-lifted BISIMILARITY out through `coerce-ν-out` / `coerce-functor⁻¹-D`
+-- — structurally, exactly as `in-rel` pushes one in. At a `K` position the
+-- lifted relation is already an equality and the carrier is a base type
+-- (`base-refl`); at an `Id` position it is bisimilarity, which is precisely
+-- what `RelV` at a ν now is, so that clause is the identity.
+out-rel : ∀ {A : Type} {G : Functor} (wf : WellFormedF G)
+            {x y : ⟦ translateF Carrier Carrier G ⟧SF ⟦ A ⟧ᴰ}
+        → ⟦ translateF Carrier Carrier G ⟧SF-rel (RelV A) x y
+        → RelV (⟦ G ⟧T A)
+            (coerce-functor⁻¹-D G A (coerce-ν-out wf ⟦ A ⟧ᴰ x))
+            (coerce-functor⁻¹-D G A (coerce-ν-out wf ⟦ A ⟧ᴰ y))
+out-rel (wf-K ib) rel rewrite rel = base-refl ib _
+out-rel wf-Id     rel = rel
+out-rel (wf-Sum wfF wfG) {x = inj₁ _} {y = inj₁ _} rel = out-rel wfF rel
+out-rel (wf-Sum wfF wfG) {x = inj₂ _} {y = inj₂ _} rel = out-rel wfG rel
+out-rel (wf-Sum wfF wfG) {x = inj₁ _} {y = inj₂ _} rel = ⊥-elim rel
+out-rel (wf-Sum wfF wfG) {x = inj₂ _} {y = inj₁ _} rel = ⊥-elim rel
+out-rel (wf-Prod wfF wfG) {x = _ , _} {y = _ , _} (rF , rG) =
+  out-rel wfF rF , out-rel wfG rG
+
 -- The two halves at one budget, in the order `RelT` wants them.
 liftFn-Out-pair : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ) (n : ℕ)
 -- Stated in the order `RelT` wants: DIRECT meaning first, IR second. `RelV` is
@@ -440,4 +467,7 @@ liftFn-Out-pair {F} wfF v n =
     sym (out-trace wfF v n)
   , subst (λ z → RelV (⟦ F ⟧T (ν-type F)) (valueT (out-sem wfF v) n) z)
           (sym (out-value wfF v n))
-          (layer-refl F wfF (λ _ → refl) (valueT (out-sem wfF v) n))
+          -- D201: the carrier here is `ν-type F`, where the observational
+          -- relation is BISIMILARITY — so the carrier's reflexivity is the
+          -- coinductive `∼ᵈ-refl`, not `refl`.
+          (layer-refl F wfF (λ z → ∼ᵈ-refl z) (valueT (out-sem wfF v) n))

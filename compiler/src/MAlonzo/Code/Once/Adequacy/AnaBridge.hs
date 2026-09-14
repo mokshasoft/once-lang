@@ -22,7 +22,10 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Data.Empty
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
+import qualified MAlonzo.Code.Once.Denotation.ValueDomain
+import qualified MAlonzo.Code.Once.Denotation.ValueDomainLaws
 import qualified MAlonzo.Code.Once.Functor.Translate
+import qualified MAlonzo.Code.Once.Semantics.Value
 import qualified MAlonzo.Code.Once.Target.Arch
 import qualified MAlonzo.Code.Once.Type
 
@@ -121,8 +124,58 @@ d_ana'45'bridge_148 ::
    AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
   AgdaAny ->
   AgdaAny ->
-  AgdaAny -> MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_ana'45'bridge_148 = erased
+  AgdaAny ->
+  MAlonzo.Code.Once.Denotation.ValueDomainLaws.T__'8764''7496'__12
+d_ana'45'bridge_148 ~v0 ~v1 v2 v3 v4 v5 v6 v7 v8 v9
+  = du_ana'45'bridge_148 v2 v3 v4 v5 v6 v7 v8 v9
+du_ana'45'bridge_148 ::
+  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240 ->
+  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  (AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  (AgdaAny ->
+   AgdaAny ->
+   AgdaAny -> Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14) ->
+  AgdaAny ->
+  AgdaAny ->
+  AgdaAny ->
+  MAlonzo.Code.Once.Denotation.ValueDomainLaws.T__'8764''7496'__12
+du_ana'45'bridge_148 v0 v1 v2 v3 v4 v5 v6 v7
+  = coe
+      MAlonzo.Code.Once.Denotation.ValueDomainLaws.du_ana'7496''45''8764'_140
+      (coe MAlonzo.Code.Once.Functor.Translate.du_translateF_60 (coe v0))
+      (coe
+         (\ v8 v9 ->
+            coe
+              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+              (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v2 v8 v9))
+              (coe
+                 MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'in_762 (coe v0)
+                 (coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                    (coe
+                       MAlonzo.Code.Once.Denotation.TraceMonad.du_fmapT_48
+                       (coe
+                          MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_672
+                          (coe v0))
+                       (coe v2 v8) (coe v9))))))
+      (coe
+         (\ v8 v9 ->
+            coe
+              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+              (coe MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28 (coe v3 v8 v9))
+              (coe
+                 MAlonzo.Code.Once.Semantics.Value.du_coerce'45'μ'45'in_762 (coe v0)
+                 (coe
+                    MAlonzo.Code.Agda.Builtin.Sigma.d_snd_30
+                    (coe
+                       MAlonzo.Code.Once.Denotation.TraceMonad.du_fmapT_48
+                       (coe
+                          MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_672
+                          (coe v0))
+                       (coe v3 v8) (coe v9))))))
+      (coe du_cr_172 (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))
+      (coe v5) (coe v6) (coe v7)
 -- Once.Adequacy.AnaBridge._.cr
 d_cr_172 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->

@@ -13340,3 +13340,72 @@ memory: agda's real peak here is 2.2 GB with 5 GB free.
   * the prelude may be re-exported publicly along exactly ONE path. Seven
     parts re-exporting it gives seven routes to `Data.Nat._+_`, which Agda
     rejects as a clashing definition.
+
+## D201 — `RelV` AT A ν IS BISIMILARITY; THE `bisimᵈ-to-eq` AXIOM IS GONE (2026-09-14)
+
+The fourth and last member of the ν defect class, which the residual ledger
+named and this branch had not closed:
+
+> Four defects on this branch were one assumption in different clothes — *a ν
+> modelled as if its layers were already available*: `valid-ν-wf`,
+> `obs-correct-Out`, `as-sum`, and `RelV (ν-type F)` (equality of coinductive
+> values).
+
+`RelV (ν-type F) x y = x ≡ y` — the observational relation at a COINDUCTIVE
+type was propositional equality. That is what `bisimᵈ-to-eq` existed to serve:
+`anaᵈ-∼` proves a bisimulation, coinductively and honestly, and the axiom
+converted it into the `≡` the relation demanded.
+
+### The axiom could never have been discharged
+
+Bisimulation-implies-equality is INDEPENDENT of MLTT — provable in Cubical
+Agda, not in plain Agda. So "discharge it" was never an option; the only
+options were to assume it or to stop needing it. Stating the relation honestly
+is the second.
+
+    RelV (ν-type F)  x y = x ∼ᵈ y
+
+`bisimᵈ-to-eq` and `anaᵈ-rel-eq` are DELETED, and `Once.Denotation.
+ValueDomainLaws` is now axiom-free.
+
+### What the change cost: two sites
+
+Measured by spiking the definition and following the red — the blast radius was
+two places, and the second is the interesting one.
+
+  * `OutErased.liftFn-Out-pair` passed `(λ _ → refl)` as the carrier's
+    reflexivity. At a ν that is now the coinductive `∼ᵈ-refl` (new, mutual with
+    `SF-rel-refl`, guarded exactly as `anaᵈ-∼`/`mapAnaᵈ-∼` are — no axiom).
+
+  * `MeaningBridge.out-app-bridge` PATTERN-MATCHED `refl` on the ν relation,
+    collapsing the two values to one, and its own comment said it therefore
+    "carries no relational content". Under bisimilarity it carries real
+    content, and Agda will not let you dodge it: splitting on `_∼ᵈ_` is
+    ILLEGAL (`SplitOnCoinductive`). The clause is now the bisimulation's own
+    two fields — `traceᵈ-∼` for the equal traces, `layerᵈ-∼` for the related
+    layers — with `out-rel` pushing the layer relation out through the `Out`
+    coercions.
+
+`out-rel` is the dual of `AnaBridge.in-rel`. Its first statement conflated the
+SHAPE functor with the CARRIER and did not typecheck; generalising the carrier
+(the relation is `RelV A` for an arbitrary `A`, exactly as `in-rel` has it)
+fixed it — the same correction D194's `νout-erase-D` needed.
+
+### The pure side's axiom STAYS
+
+`bisimS-to-eq` (plan 0.47, over `νS`) is a different case: its six uses produce
+genuine EQUALITIES that get substituted into other proofs (`sem-CoIn-CoOut`,
+`sem-ana-Out-id`, `forgetν-injectν`, `sem-ana-anaS`). Those cannot become
+bisimilarity without rewriting the pure semantics, and the need there is
+honest. One axiom removed, not two.
+
+### Why this was worth doing before more machine-side proofs
+
+It blocks nothing — `pair`/`case`/`In` are machine-side and touch nothing
+coinductive. But it is the last member of a defect class the branch had already
+paid for twice (D189, D199), and the class's lesson is that ν-shaped proofs
+that look easy are wrong. The `refl` in `out-app-bridge` was exactly that: a
+proof that looked easy because the relation had been weakened to let it be.
+
+Exit tests 65 passed / 0 failed / 0 skipped. `cabal test` 746 passed.
+`Once/Compiler.agda` and `Once/Certified.agda` typecheck.

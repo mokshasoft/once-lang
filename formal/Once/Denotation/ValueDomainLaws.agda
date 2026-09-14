@@ -59,14 +59,45 @@ record _∼ᵈ_ {F : SFunctor} (x y : νᵈ F) : Set where
 
 open _∼ᵈ_ public
 
--- | Bisimulation implies equality (coalgebraic extensionality).
+-- D201: `bisimᵈ-to-eq` — coalgebraic extensionality at the effectful ν — is
+-- GONE, and this module is now AXIOM-FREE.
 --
--- The `bisimS-to-eq` of plan 0.47 step 3, at the effectful ν. Provable in
--- Cubical Agda; postulated here, and named so it is countable. It is the
--- ONLY axiom this module adds, and it is the same axiom the pure side has
--- already been carrying — not a new kind of assumption.
-postulate
-  bisimᵈ-to-eq : ∀ {F : SFunctor} (x y : νᵈ F) → x ∼ᵈ y → x ≡ y
+-- It existed for exactly one reason: `RelV (ν-type F)` was propositional
+-- equality, so the `ana` case of the meaning bridge had to convert the
+-- bisimulation `anaᵈ-∼` proves into an `≡`. Bisimulation-implies-equality is
+-- independent of MLTT, so that conversion could never have been discharged —
+-- only assumed. Making the observational relation at a coinductive type BE
+-- bisimilarity removes the need for it instead, which is the fourth and last
+-- member of the ν defect class (`valid-ν-wf`, `obs-correct-Out`, `as-sum`,
+-- `RelV (ν-type F)` — a ν modelled as if its layers were already available).
+--
+-- The PURE side's `bisimS-to-eq` (plan 0.47) stays: its six uses produce real
+-- equalities that are substituted into other proofs, which is a different and
+-- honest need.
+
+------------------------------------------------------------------------
+-- Bisimilarity is reflexive — coinductively, with no axiom
+------------------------------------------------------------------------
+
+-- D201: what the observational relation at a ν needs of it. `RelV (ν-type F)`
+-- is bisimilarity (not propositional equality), so every site that used to
+-- close a ν-shaped goal with `refl` closes it with this instead — and unlike
+-- `refl`, it costs nothing beyond the coinduction the relation already is.
+--
+-- Mutual for `anaᵈ-∼`'s reason: the corecursive call sits under a map that is
+-- structural in the SHAPE functor, so guardedness sees it.
+mutual
+  ∼ᵈ-refl : ∀ {H : SFunctor} (x : νᵈ H) → x ∼ᵈ x
+  traceᵈ-∼ (∼ᵈ-refl x)     k = refl
+  layerᵈ-∼ (∼ᵈ-refl {H} x) k = SF-rel-refl H H (valueT (forceᵈ x) k)
+
+  SF-rel-refl : ∀ (H G : SFunctor) (x : ⟦ G ⟧SF (νᵈ H))
+              → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) x x
+  SF-rel-refl H (SK B)     x        = refl
+  SF-rel-refl H SId        x        = ∼ᵈ-refl x
+  SF-rel-refl H (G₁ S⊕ G₂) (inj₁ x) = SF-rel-refl H G₁ x
+  SF-rel-refl H (G₁ S⊕ G₂) (inj₂ y) = SF-rel-refl H G₂ y
+  SF-rel-refl H (G₁ S⊗ G₂) (x , y)  = SF-rel-refl H G₁ x , SF-rel-refl H G₂ y
 
 ------------------------------------------------------------------------
 -- The unfold respects the relation
@@ -110,10 +141,3 @@ mutual
   mapAnaᵈ-∼ H (G₁ S⊕ G₂) cr {inj₂ _} {inj₂ _} rel = mapAnaᵈ-∼ H G₂ cr rel
   mapAnaᵈ-∼ H (G₁ S⊗ G₂) cr {x₁ , x₂} {y₁ , y₂} (r₁ , r₂) =
     mapAnaᵈ-∼ H G₁ cr r₁ , mapAnaᵈ-∼ H G₂ cr r₂
-
--- | The form a consumer wants: related seeds give EQUAL unfolds.
-anaᵈ-rel-eq : ∀ (H : SFunctor) {A B : Set} {R : A → B → Set}
-              {c₁ : A → T (⟦ H ⟧SF A)} {c₂ : B → T (⟦ H ⟧SF B)}
-            → CoalgRel H R c₁ c₂
-            → ∀ {a b} → R a b → anaᵈ H c₁ a ≡ anaᵈ H c₂ b
-anaᵈ-rel-eq H cr r = bisimᵈ-to-eq _ _ (anaᵈ-∼ H cr r)

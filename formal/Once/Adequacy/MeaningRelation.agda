@@ -41,6 +41,7 @@ open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
                              mk-kind; Zero; One; Many)
 open import Once.Denotation.TraceMonad using (T; projTrace; valueT; returnT; _>>=T_)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
+open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
 
 ------------------------------------------------------------------------
 -- The relation, by recursion on the type. `RelV` on values, `RelT` on
@@ -62,7 +63,11 @@ RelV Float       x y = x ≡ y
 RelV Str         x y = x ≡ y
 RelV Buffer      x y = x ≡ y
 RelV (μ-type F)  x y = x ≡ y
-RelV (ν-type F)  x y = x ≡ y
+-- SPIKE (4th ν defect): the observational relation at a COINDUCTIVE type is
+-- BISIMILARITY, not propositional equality. `anaᵈ-∼` proves this one directly
+-- and coinductively; it is only the conversion to `≡` that needs the
+-- `bisimᵈ-to-eq` axiom.
+RelV (ν-type F)  x y = x ∼ᵈ y
 RelV (A * B) (a₁ , b₁) (a₂ , b₂) = RelV A a₁ a₂ × RelV B b₁ b₂
 RelV (A + B) (inj₁ a₁) (inj₁ a₂) = RelV A a₁ a₂
 RelV (A + B) (inj₂ b₁) (inj₂ b₂) = RelV B b₁ b₂

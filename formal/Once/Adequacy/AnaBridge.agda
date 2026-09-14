@@ -16,9 +16,11 @@
 -- work closes that gap — the missing principle is coalgebraic extensionality,
 -- which is why `Once.Denotation.ValueDomainLaws` exists.
 --
--- With `_∼ᵈ_`, `anaᵈ-∼` and `bisimᵈ-to-eq` in hand the clause is short: push
--- the relation through the two coercions at the layer (`in-rel`, the mirror
--- of `CataBridge`'s `z-rel`), hand the result to `anaᵈ-rel-eq`, done.
+-- With `_∼ᵈ_` and `anaᵈ-∼` in hand the clause is short: push the relation
+-- through the two coercions at the layer (`in-rel`, the mirror of
+-- `CataBridge`'s `z-rel`), hand the result to `anaᵈ-∼`, done. (D201: this used
+-- to go through `anaᵈ-rel-eq` and so through the `bisimᵈ-to-eq` axiom, because
+-- `RelV` at a ν was equality. It is bisimilarity now, and the axiom is gone.)
 --
 -- Own module for `CataBridge`'s reason: minimal, distinct-suffix `⟦_⟧`
 -- imports, clear of `MeaningBridge`'s mixfix soup.
@@ -43,7 +45,7 @@ open import Once.Semantics.Machine using (coerce-ν-in; ⟦_⟧F)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; νᵈ; anaᵈ; anaFᵈ; coerce-functor-D)
-open import Once.Denotation.ValueDomainLaws using (CoalgRel; anaᵈ-rel-eq)
+open import Once.Denotation.ValueDomainLaws using (CoalgRel; anaᵈ-∼; _∼ᵈ_)
 open import Once.Denotation.TraceMonad using (T; projTrace; valueT; fmapT; _>>=T_)
 open import Once.Adequacy.MeaningRelation fmt using (RelV; RelT)
 
@@ -101,14 +103,20 @@ in-rel (wf-Prod wfF wfG) {_ , _} {_ , _} (rF , rG) =
 -- The two `fmapT`s are transparent: `fmapT` maps the value and leaves the
 -- trace alone, both definitionally, so the `CoalgRel` obligations ARE the
 -- relation's own two halves, with `in-rel` applied to the second.
+-- D201: the conclusion is BISIMILARITY, which is what `RelV` at a ν now is.
+-- It used to be propositional equality, and the only way to get there was
+-- `anaᵈ-rel-eq` — i.e. the coalgebraic-extensionality AXIOM `bisimᵈ-to-eq`.
+-- `anaᵈ-∼` proves the bisimulation outright, coinductively and axiom-free, so
+-- stating the relation at a ν honestly does not merely avoid the axiom: it
+-- removes the need for it.
 ana-bridge : ∀ {A : Type} {F : Functor} (wfF : WellFormedF F)
              {k₁ k₂ : ⟦ A ⟧ᴰ → T ⟦ ⟦ F ⟧T A ⟧ᴰ}
            → (∀ {a b : ⟦ A ⟧ᴰ} → RelV A a b → RelT (⟦ F ⟧T A) (k₁ a) (k₂ b))
            → ∀ {a b : ⟦ A ⟧ᴰ} → RelV A a b
            → anaFᵈ F (λ a' → fmapT (coerce-functor-D F A) (k₁ a')) a
-             ≡ anaFᵈ F (λ a' → fmapT (coerce-functor-D F A) (k₂ a')) b
+             ∼ᵈ anaFᵈ F (λ a' → fmapT (coerce-functor-D F A) (k₂ a')) b
 ana-bridge {A} {F} wfF {k₁} {k₂} kR rab =
-  anaᵈ-rel-eq (translateF Carrier Carrier F) cr rab
+  anaᵈ-∼ (translateF Carrier Carrier F) cr rab
   where
     cr : CoalgRel (translateF Carrier Carrier F) (RelV A)
            (λ a → fmapT (coerce-ν-in F ⟦ A ⟧ᴰ)

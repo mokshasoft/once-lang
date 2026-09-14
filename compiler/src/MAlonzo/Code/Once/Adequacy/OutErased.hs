@@ -19,11 +19,13 @@ import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.Sigma
+import qualified MAlonzo.Code.Data.Empty
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.Adequacy.CataBridge
 import qualified MAlonzo.Code.Once.Denotation.Meaning
 import qualified MAlonzo.Code.Once.Denotation.TraceMonad
 import qualified MAlonzo.Code.Once.Denotation.ValueDomain
+import qualified MAlonzo.Code.Once.Denotation.ValueDomainLaws
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.IR
 import qualified MAlonzo.Code.Once.IRTy
@@ -513,25 +515,101 @@ du_layer'45'refl_900 v0 v1 v2 v3
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Adequacy.OutErased.out-rel
+d_out'45'rel_962 ::
+  MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
+  MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240 ->
+  AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
+d_out'45'rel_962 ~v0 ~v1 v2 v3 v4 v5 v6
+  = du_out'45'rel_962 v2 v3 v4 v5 v6
+du_out'45'rel_962 ::
+  MAlonzo.Code.Once.Type.T_Functor_106 ->
+  MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240 ->
+  AgdaAny -> AgdaAny -> AgdaAny -> AgdaAny
+du_out'45'rel_962 v0 v1 v2 v3 v4
+  = case coe v1 of
+      MAlonzo.Code.Once.Functor.Translate.C_wf'45'K_244 v6
+        -> case coe v0 of
+             MAlonzo.Code.Once.Type.C_K_110 v7
+               -> coe
+                    MAlonzo.Code.Once.Adequacy.CataBridge.du_base'45'refl_24 (coe v7)
+                    (coe v6)
+                    (coe
+                       MAlonzo.Code.Once.Denotation.ValueDomain.d_inject_458 (coe v7)
+                       (coe
+                          MAlonzo.Code.Once.Semantics.Value.du_coerce'45'base'45'to'45'full_650
+                          (coe v7) (coe v6) (coe v2)))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Id_246 -> coe v4
+      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Sum_252 v7 v8
+        -> case coe v0 of
+             MAlonzo.Code.Once.Type.C__'8853'__114 v9 v10
+               -> case coe v2 of
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v11
+                      -> case coe v3 of
+                           MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v12
+                             -> coe
+                                  du_out'45'rel_962 (coe v9) (coe v7) (coe v11) (coe v12) (coe v4)
+                           MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v12
+                             -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                           _ -> MAlonzo.RTE.mazUnreachableError
+                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v11
+                      -> case coe v3 of
+                           MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v12
+                             -> coe MAlonzo.Code.Data.Empty.du_'8869''45'elim_12
+                           MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v12
+                             -> coe
+                                  du_out'45'rel_962 (coe v10) (coe v8) (coe v11) (coe v12) (coe v4)
+                           _ -> MAlonzo.RTE.mazUnreachableError
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      MAlonzo.Code.Once.Functor.Translate.C_wf'45'Prod_258 v7 v8
+        -> case coe v0 of
+             MAlonzo.Code.Once.Type.C__'8855'__116 v9 v10
+               -> case coe v2 of
+                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
+                      -> case coe v3 of
+                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
+                             -> case coe v4 of
+                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
+                                    -> coe
+                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                         (coe
+                                            du_out'45'rel_962 (coe v9) (coe v7) (coe v11) (coe v13)
+                                            (coe v15))
+                                         (coe
+                                            du_out'45'rel_962 (coe v10) (coe v8) (coe v12) (coe v14)
+                                            (coe v16))
+                                  _ -> MAlonzo.RTE.mazUnreachableError
+                           _ -> MAlonzo.RTE.mazUnreachableError
+                    _ -> MAlonzo.RTE.mazUnreachableError
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Adequacy.OutErased.liftFn-Out-pair
-d_liftFn'45'Out'45'pair_960 ::
+d_liftFn'45'Out'45'pair_1014 ::
   MAlonzo.Code.Once.Target.Arch.T_TargetNum_14 ->
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240 ->
   MAlonzo.Code.Once.Denotation.ValueDomain.T_ν'7496'_8 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_liftFn'45'Out'45'pair_960 ~v0 v1 v2 v3 v4
-  = du_liftFn'45'Out'45'pair_960 v1 v2 v3 v4
-du_liftFn'45'Out'45'pair_960 ::
+d_liftFn'45'Out'45'pair_1014 ~v0 v1 v2 v3 v4
+  = du_liftFn'45'Out'45'pair_1014 v1 v2 v3 v4
+du_liftFn'45'Out'45'pair_1014 ::
   MAlonzo.Code.Once.Type.T_Functor_106 ->
   MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_240 ->
   MAlonzo.Code.Once.Denotation.ValueDomain.T_ν'7496'_8 ->
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-du_liftFn'45'Out'45'pair_960 v0 v1 v2 v3
+du_liftFn'45'Out'45'pair_1014 v0 v1 v2 v3
   = coe
       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 erased
       (coe
-         du_layer'45'refl_900 (coe v0) (coe v1) erased
+         du_layer'45'refl_900 (coe v0) (coe v1)
+         (coe
+            MAlonzo.Code.Once.Denotation.ValueDomainLaws.d_'8764''7496''45'refl_42
+            (coe
+               MAlonzo.Code.Once.Functor.Translate.du_translateF_60 (coe v0)))
          (coe
             MAlonzo.Code.Once.Denotation.TraceMonad.du_valueT_72
             (coe
