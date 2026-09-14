@@ -464,6 +464,50 @@ Three points, because this is the template:
 ⚠ TEMPLATE, NOT A MIGRATION. The tree's `K` has **68 `IMu` use sites**;
 swapping it is a separate and much larger change.
 
+### ★★★ THERE ARE **TWO COST REGIMES**, NOT A SPECTRUM — and that is why every single-number model failed
+
+Four modules, `--profile=definitions --profile=conversion`:
+
+| module | comparisons | ms EACH | wall |
+|---|---|---|---|
+| `TupleP` — Γ-polymorphic motive | 1,477 | **36.6** | 54 s |
+| `ProbeClosed` — `K` transparent | 7,012 | 10.4 | 73 s |
+| `ProbeOpaque` — `K` sealed | 1,273 | 27.9 | 35 s |
+| `TupleAVar` — ambient VARIABLE | 24,580 | **0.29** | 7 s |
+| `IihsRhoAGen` — ambient row | **615,809** | **0.058** | 38 s |
+
+⇒ **FEW-AND-HUGE (10–37 ms each) versus MANY-AND-TINY (0.06–0.3 ms
+each).** They reach similar wall times by opposite routes. ★ That is why
+every law I fitted today died: **I was fitting one curve across two
+populations.**
+
+### ⇒ AND IT EXPLAINS THE 6.64 s vs 43.92 s GAP LEFT OPEN ON 2026-09-13
+
+Same 44-row tuple, same harness, only the motive changes — and it is a
+REGIME CHANGE, not a speed-up:
+
+| | `TupleP` (Γ-poly) | `TupleAVar` (ambient var) |
+|---|---|---|
+| Miscellaneous (imports) | 3,569 ms | 3,532 ms |
+| **WORK** (the definitions) | **50,455 ms** | **3,557 ms** |
+| comparisons | 1,477 | **24,580** |
+| ms per comparison | 34.2 | **0.145** |
+
+★ **16.6× MORE comparisons, 236× CHEAPER each, net 14.2× faster on work.**
+
+**Mechanism:** a comparison costs what the terms it walks are worth. With
+a CONCRETE motive the compared types carry it inline and every comparison
+is huge. With the ambient reference a VARIABLE the types stay small —
+more comparisons, because nothing is short-circuited, but each is
+trivial. ⇒ this is the real content of
+[[variable-is-the-cheapest-position]], and the mechanism behind the row's
+7.7× memory win: **small terms do not accumulate.**
+
+⚠ AND THE FIXED COST IS NOW VISIBLE: `Miscellaneous` is 3.5 s in BOTH —
+50% of `TupleAVar`'s total. Import/deserialisation is a floor that
+dominates once the work is optimised, and wall-clock comparisons that
+ignore it understate the real ratio (6.6× measured, **14.2×** on work).
+
 ### ⛔ AND THE `opaque` LEVER DOES **NOT** APPLY TO THE `iihs` ROW — profiled
 
 I predicted the row's two residual metas were the same guessing
