@@ -13611,3 +13611,52 @@ emitted fragments rather than a new obligation:
 
 Postulate count is unchanged (9). What changed is that `pair` is now provable:
 `restore-input backup-slot` has the fact it needs.
+
+## D205 — `mem-pres` IS CONDITIONED ONE STEP TOO TIGHT (2026-09-14)
+
+Found by trying to use D204 for `pair`, which is what it was added for.
+
+    mem-pres : ∀ loc → BeforeFrontier alloc loc
+             → readLoc (floc settle) loc ≡ readLoc s loc
+
+`BeforeFrontier alloc` covers stack slots `k < next-slot alloc` — the CALLER's
+live data. But `pair`'s backup slot is `backup-slot = n`, and the obligation's
+own premise is `next-slot alloc ≤ n`, so slot `n` is at or above that frontier
+and is never `BeforeFrontier alloc`. The field does not reach the one slot
+`restore-input backup-slot` depends on.
+
+### The right condition
+
+An emitted fragment writes only slots in `[n , budget)` — `n` being where it is
+emitted — so it preserves everything BELOW ITS OWN FRONTIER, which is a
+strictly larger set than the caller's live data:
+
+    mem-pres : ∀ loc → BeforeFrontier (record alloc { next-slot = n }) loc
+             → readLoc (floc settle) loc ≡ readLoc s loc
+
+For `pair` this is exactly what is needed: `f` is emitted at `n + 4`, so it
+preserves everything below `n + 4`, and `backup-slot = n` is in that range.
+
+Weakening a HYPOTHESIS strengthens the obligation, so every clause must now
+prove more — but not much more, and the shape is already there:
+
+  * the leaf clauses' proofs are UNCONDITIONAL (`mem-eq`, `mem-untouched`:
+    a register write is invisible to `readLoc` whatever the hypothesis), so
+    they survive the change untouched;
+  * the ten-step builds (`inl`/`inr`/`curry`/`Ana`) go through
+    `store-slot-preserves-before`, which already takes the frontier-witness
+    allocator and the RUN's allocator as SEPARATE parameters — so the witness
+    can be swapped for the frontier-`n` one without touching the run. Their
+    scratch slots are `n` and `suc n`, both `≥ n`, so the premise still holds.
+  * `apply`/`Out` compose their setup's version with the callee's; a callee
+    runs in its own frame, so it preserves the caller's slots outright.
+
+### Why this is the third strengthening in a row
+
+D202 (the dispatcher did not pass the IHs), D204 (the obligation did not say
+what a run preserves) and now D205 (it said it about the wrong frontier) are
+all the same discovery: `pair` is the first clause that READS MEMORY BACK
+across a sub-run, so it is the first to exercise what the obligation actually
+promises. Each attempt to use it has found the promise one notch too weak.
+That is the top-down discipline working as intended — the alternative was
+three more years of a postulate that hid all three.
