@@ -343,6 +343,117 @@ catch-all `false` from three classifiers at once (`stkC?`, `stkA?`,
 threaded through eleven modules to fix. A one-line row at the time the
 former landed would have prevented all of it.
 
+## Once: THE CHECKER'S COST IS A LANGUAGE-DESIGN QUESTION — five invariants
+
+⚠⚠ **PROVOKED BY A DAY OF BEING WRONG.** 2026-09-13/14 produced four
+confident, measured, WRONG models of why the Knot is slow (see the Judge
+section and `HANDOFF-2026-09-13.md` §4). The eventual mechanism —
+**Agda's INJECTIVITY heuristic, 1,431 attempts and 0 wins** — was
+reported directly by `--profile=conversion`, a flag found on the last
+hour of the day. None of the four models could have survived contact with
+it. ⇒ the lesson is not about Agda's speed; it is about what a language
+must make VISIBLE and DECLARABLE.
+
+### The observation that starts it
+
+A declaration is **three** things, and the type system records two:
+
+```agda
+K : {Γ : Cx} → RTm Γ → RTy Γ      -- signature: declares the CONSTANT
+K i = IMu KnotD IPair i            -- definition: adds a DEFINITIONAL EQUATION (δ-rule)
+```
+
+The equation `K i ≡ IMu KnotD IPair i` enters the context INVISIBLY. It
+is what `opaque` withdraws, and nothing declares it. ⇒ adding `opaque`
+can break downstream code while removing it never can — an asymmetry that
+exists only because the thing it changes was never written down.
+
+★ **This is ML module sealing** (Mitchell–Plotkin, "abstract types have
+existential type"), where it IS a type-level operation with a signature.
+Agda has the same act as an annotation. That is the whole discomfort.
+
+### ⇒ THE PROPOSAL: EXPORTED EQUATIONS GO IN THE SIGNATURE
+
+```
+K : RTm Γ → RTy Γ
+  exports  ren-K : renTy ρ (K i) = K (renTm ρ i)
+           sub-K : subTy σ (K i) = K (subTm σ i)
+K i = IMu KnotD IPair i
+```
+
+Downstream sees the constant, the type, and **exactly those equations**.
+`K i ≡ IMu KnotD IPair i` does not escape.
+
+| | |
+|---|---|
+| symmetric | the declaration is the contract, checked from both sides — no ambient fallback |
+| a proof obligation | the compiler verifies the exports by unfolding internally |
+| implementation-free | the body may change while the exports hold — the ML signature property |
+| ★ | **the three naturality lemmas this session needed would have been part of the declaration** rather than discovered under duress at three separate layers |
+
+### ★★★ THE FIVE INVARIANTS
+
+**Premise: TOTALITY + PRODUCTIVITY.** ⚠ "conversion is undecidable in
+general" is the WRONG frame for Once — Once is total and productive, so
+conversion IS decidable. Decidability was never the issue; **complexity
+is**, and the absence of a cost model. Turing-completeness is upstream:
+without totality you cannot state a budget at all, so you are forced into
+heuristics-plus-timeouts. That is the enabling condition for 2 and 4, not
+an item.
+
+1. **UNFOLDING IS INTERFACE — declare it in the signature**, exported
+   equations as proof obligations. Not an ambient tag.
+
+2. **THE CHECKER NEVER SEARCHES.** Formally: *the trusted checking
+   relation must be SYNTAX-DIRECTED and MODE-CORRECT* — at most one rule
+   applies per goal shape, and every premise's inputs are determined by
+   the conclusion's inputs plus earlier premises' outputs. Nothing is
+   guessed. ⇒ no backtracking, no metas in the TCB, cost linear in the
+   certificate. All search (unification, normalisation strategy,
+   injectivity inversion) lives OUTSIDE and communicates by certificate.
+   ★ **Mechanically enforceable** — mode analysis is standard (Twelf,
+   logic programming). This is a checkable invariant, not a slogan.
+
+3. **INJECTIVITY AND VARIANCE ARE DECLARED AND PROVED, NEVER GUESSED.**
+   Injectivity is a THEOREM. Make it a declared attribute and inversion
+   becomes a rule with a discharged side condition. ⇒ the 1,431 losing
+   attempts are not optimised away; they are **impossible to write**.
+
+4. **CONVERSION COST IS DERIVABLE FROM THE INTERFACE.** With exports
+   declared, the set of equations that can fire is known, so checking
+   cost is a TYPING-time quantity rather than a profiling discovery.
+   ⇒ this is [[ORDO TYPES]] applied to the CHECKER — the idea was
+   proposed for programs; the checker is where it pays first.
+
+5. **SHARING IS TRACKED BY THE GRADING**, not left to the implementation.
+   Once's surface is already QTT-graded `{0,1,ω}` and grading tracks
+   DUPLICATION. `pointer equality: terms = 1` — measured in this
+   session's probe — is what happens when duplication is invisible to the
+   type system.
+
+### ⇒ THE TEST THAT THE DESIGN WORKED
+
+**Nobody ever has an operational reason to seal.**
+
+Sealing has two uses with DIFFERENT truth conditions: *semantic* ("this
+proof does not need the construction" — a claim, checkable) and
+*operational* ("stop the checker searching" — a performance hint with no
+semantic content). They are conflated because one mechanism serves both.
+
+⚠ **The smell is not the conflation. It is that the operational motive
+EXISTS.** You do not fix it by splitting the keyword; you fix it by
+removing the motive. If that motive reappears in Once, cost control has
+failed somewhere and 2 or 4 is not holding.
+
+### ⚠ WHAT THIS IS NOT
+
+It is not a claim that Agda is defective. The heuristics answer a real
+difficulty, and Agda has totality too. What is genuinely weak is the
+ERGONOMICS: no way to declare intent, no visibility until an obscure
+flag, no cost accounting, no sharing. ⇒ three of those four are
+mathematically avoidable, and **two of them by ideas already in this
+file** (ORDO, the graded core).
+
 ## Once: "ORDO TYPES" — carry a COST BOUND in the type, and compose it
 
 **The idea.** A function's type carries a complexity bound alongside its
