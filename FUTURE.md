@@ -464,6 +464,69 @@ Three points, because this is the template:
 ⚠ TEMPLATE, NOT A MIGRATION. The tree's `K` has **68 `IMu` use sites**;
 swapping it is a separate and much larger change.
 
+### ★★★ `Judge/Elim` PROFILED — COST IS **THE SIZE OF THE DESCRIPTION MENTIONED**
+
+The first per-definition profile of a REAL Judge module (199 s profiled
+against 158.8 s raw — ~25% overhead, tolerable):
+
+```
+W_JΠΒ8   89,728ms   ← 45% of the module in ONE slot
+W_JΠΒ13  18,899ms      W_JΠΒ15   1,537ms
+W_JΠΒ12  18,064ms      W_JΠΒ14     934ms
+W_JΠΒ9   16,233ms      W_JΠΒ11     256ms   ← cliff
+W_JΠΒ7   15,540ms      W_JΠΒ10      58ms
+```
+
+⚠ **NOT monotonic in depth, and NOT predicted by size.** Slots 7 and 11
+are the same size (361 vs 366 chars) and differ **60×**; slots 8 and 15
+are the same size and differ **58×**.
+
+★★★ **THE `iκ` SLOTS SPLIT BY WHICH DESCRIPTION THEY MENTION:**
+
+| slot | description | rows | ms | ms/row |
+|---|---|---|---|---|
+| `kJΠΒ10` | `⌜Nat⌝` | 0 | 58 | — |
+| `kJΠΒ14` | `⌜Nat⌝` | 0 | 934 | — |
+| `kJΠΒ11` | `CtxD` | 2 | 256 | 128 |
+| `kJΠΒ15` | `IxD` | 5 | 1,537 | 307 |
+| `kJΠΒ12` | **`KnotD`** | **53** | **18,064** | 341 |
+| `kJΠΒ13` | **`KnotD`** | **53** | **18,899** | 357 |
+
+⇒ **~340 ms PER ROW OF THE DESCRIPTION MENTIONED.** A ford on `⌜Nat⌝` is
+free; the same ford on `KnotD` costs 18 s. ★ And the four expensive
+non-ford slots (6–9) are the **`iρ` recursive premises**, typed at
+`IMu JudgeD IJudge _` — `JudgeD` is **56 rows**, the biggest description
+in the tree.
+
+⇒ this is the SAME law as the `K`-motive probes, at a second site and on
+production code: **cost is driven by the size of the description carried
+in a type, wherever it is carried.**
+
+### ⛔ AND IT KILLS THE `opaque` PLAN FOR JUDGE
+
+`Judge/Elim`: **2,827,803 comparisons at 0.070 ms each** — the
+MANY-AND-TINY regime, like `IihsRhoAGen`. With
+**`compare by reduction: injectivity` = 2,475 of 2.8 M = 0.09%.**
+
+Sealing attacks injectivity. Injectivity is a rounding error here. ⇒ the
+sealing lever measured at 2×/3.1× on the `K` probe **cannot help Judge**,
+and 2026-09-13's *"`JudgeD` is 56 rows with 103 `IMu` uses — the same
+lever points at Judge"* is REFUTED. ⚠ Seventh model of mine to die this
+way; the instrument found it in one run.
+
+⬜ WHAT WOULD HELP IS UNKNOWN. The cost is 2.7 M reductions comparing
+types that carry 53- and 56-row descriptions. Not injectivity, not
+sharing (`pointer equality: terms` = 81,393), not depth.
+
+### ⚠ AND PROFILING PERTURBS THE FEW-AND-HUGE REGIME BADLY
+
+`tmp/IihsRho2Tmp` (the 4-passenger baseline) runs in 120 s unprofiled and
+was **SIGTERM-killed at 537 s** under `--profile`, twice. ⇒ the direct
+baseline-vs-ambient comparison is **NOT OBTAINABLE on this box**, and
+the counters it printed are dependency accumulation, not the target.
+★ Note the asymmetry: `TupleAVar` (many-tiny) profiled fine at 7 s. The
+modules that most need instrumenting are the hardest to instrument.
+
 ### ★★★ THERE ARE **TWO COST REGIMES**, NOT A SPECTRUM — and that is why every single-number model failed
 
 Four modules, `--profile=definitions --profile=conversion`:
