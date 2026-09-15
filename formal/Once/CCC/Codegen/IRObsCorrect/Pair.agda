@@ -302,3 +302,20 @@ module PairC {FS : FrameSemantics} (program-bound : ℕ) where
                                (mid ++ gt ++ (store-at-slot snd-stash ∷ tail))
                                (suc (suc k)))
                             (fetch-++-left gt (store-at-slot snd-stash ∷ tail) k i eq))))
+
+  ----------------------------------------------------------------------
+  -- THE CLAUSE. Written top-down: every field a hole, so Agda states the
+  -- obligations rather than me guessing them.
+  ----------------------------------------------------------------------
+  obs-correct-pair-proof :
+    ∀ {A B C} {f : IR A B} {g : IR A C}
+    → IRObsCorrectF f → IRObsCorrectF g → IRObsCorrectF ⟨ f , g ⟩
+  obs-correct-pair-proof {A} {B} {C} {f} {g} ihf ihg sz n l prog base
+                         ss cr span mIn x s alloc cl n≤ nh inp k =
+    record
+      { value-realized =
+          realized {!STEPS!} {!SETTLE!} {!OUTMODE!} {!CONTALLOC!}
+                   {!RUN!} {!LIVE!} {!ATEND!} {!NORET!} {!NOLINK!}
+                   {!PLACE!} {!STACKPRES!} {!HEAPPRES!} {!BFMONO!}
+      ; traces-agree = {!TRACES!}
+      }

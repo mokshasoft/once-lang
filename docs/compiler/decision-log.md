@@ -13825,3 +13825,62 @@ Note the rework is already sunk across five clauses, so finishing `pair` first
 adds one more to a list of six — marginal.
 
 Root typechecks. Exit tests 65/0/0; `cabal test` 746 passed.
+
+## D210 — `frame-pres`: the fourth thing the obligation did not say (2026-09-15)
+
+Found by scouting `⟨ f , g ⟩` STRICTLY top-down — the clause was written as a
+record with fourteen holes first, so Agda stated the obligations, and a
+fourteen-agent workflow then scouted each hole against the existing toolbox
+with instructions to grep and quote every helper's signature rather than name
+it from memory.
+
+Three independent verifiers converged on the same single gap: **`ValueRealized`
+has no frame-preservation field.**
+
+    frame-pres : current-frame (falloc settle) ≡ current-frame alloc
+
+`⟨ f , g ⟩` needs it twice — `restore-input backup` reads
+`AtStack (current-frame alloc) backup` AFTER `f`'s run, and transporting `f`'s
+result validity to the final state calls `validityWF-frontier-advance`, whose
+FIRST premise is exactly this equation. Nothing in the record said it, and
+nothing in the tree derives it at `exec-flat`/`ValueRealized` level: `bf-mono`
+encodes frame agreement only up to `stack-ancestor`, which is weaker than an
+equation.
+
+It is the same shape as D204 (memory), D206 (the frontier it is conditioned on)
+and D208 (the stack/heap split): the obligation did not say enough for its
+consumer, so it now says it. Four in a row, all found by the same clause —
+`pair` is the first IR that reads memory back across a sub-run, so it is the
+first to exercise what the obligation actually promises.
+
+### It cost nothing to supply, which is the evidence it was always true
+
+Every discharged clause ALREADY proved its own version internally and simply
+did not export it: `cf-fs10` (Sum ×2, TwoCell), `cf-a16` (ApplySetupPres),
+`cf-t1`/`cf-u3` (TenStepPres/NineStepPres). The straight-line clauses took
+`refl`. `Out`/`apply`/`g ∘ f` compose the call's or sub-run's with their own.
+All seven parts typechecked on the first attempt after the field was added.
+
+It is TRUE for a structural reason worth recording: no emitted instruction is a
+frame op — that is `FrameFreeTrace`, already proved for every emitted trace —
+and a call enters and leaves its own frame.
+
+`CalleeRun` gets the analogue, against the caller's `pre`, since `enter-call`
+SHIFTS the frame and a returning callee restores it.
+
+Also exported: `validityWF-with-bf-transfer` (ClosureWellFormed.agda:2115),
+which the scouts found unexported. It takes a `bf-transfer` function directly,
+so some validity transports can use `bf-mono` without needing the frontier
+premises at all.
+
+### The workflow's other finding: no principled blocker
+
+The blocker-hunters were told not to manufacture one. They found none — the
+remaining work on `pair` is grind, not discovery. What they did find is a long
+list of line-citation drift and four invented helper names in the scouts' own
+plans (`size-f`, `NSP.u1`, `_∘_`, a mis-stated `frontier-monotone` direction),
+each caught before it cost a typecheck cycle. That is the pattern working: this
+session had already burned several 10-minute round trips on exactly that class
+of error.
+
+Root typechecks. Exit tests 65/0/0; `cabal test` 746 passed.

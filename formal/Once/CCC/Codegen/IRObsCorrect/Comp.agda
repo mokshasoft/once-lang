@@ -219,13 +219,16 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
       go : (vr : ValueRealized prog base n l f x s alloc cl k)
          → take k (chain-events (VR.run vr)) ≡ take k (projTrace (evalᴰ f x) k)
          → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-      go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF spF hpF bfF) tf =
+      go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF spF hpF cfF bfF) tf =
         record
           { value-realized =
               realized (kf + suc (VR.steps vg)) (VR.settle vg)
                        (VR.out-mode vg) (VR.cont-alloc vg)
                        chain (VR.live vg) atEnd (VR.no-ret vg) (VR.no-link vg)
-                       (VR.place vg) (λ fr j bf → mem-pres-comp (AtStack fr j) bf) (λ hl bf → mem-pres-comp (AtDynamic hl) bf) bf-mono-comp
+                       (VR.place vg)
+                       (λ fr j bf → mem-pres-comp (AtStack fr j) bf) (λ hl bf → mem-pres-comp (AtDynamic hl) bf)
+                       (trans (VR.frame-pres vg) cfF)
+                       bf-mono-comp
           ; traces-agree = traces
           }
         where

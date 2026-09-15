@@ -347,6 +347,7 @@ module TwoCellC {FS : FrameSemantics} (program-bound : ℕ) where
           realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run TCB.nh10 refl refl refl place
                    (λ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
                    (λ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
+                   TCB.cf-fs10
                    (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc TCB.fs10) { next-slot = m })
@@ -432,6 +433,7 @@ module TwoCellC {FS : FrameSemantics} (program-bound : ℕ) where
           realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run TCB.nh10 refl refl refl place
                    (λ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
                    (λ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
+                   TCB.cf-fs10
                    (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc TCB.fs10) { next-slot = m })

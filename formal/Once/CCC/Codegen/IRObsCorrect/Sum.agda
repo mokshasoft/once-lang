@@ -45,6 +45,7 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
                    (λ hl bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
                                  nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8
                                  (AtDynamic hl) bf')
+                   cf-fs10
                    (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs10) { next-slot = m })
@@ -414,6 +415,7 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
                    (λ hl bf' → TSP.mem-pres nhw-instr-load-tag-lit refl
                                  nhw-load-from-slot refl n≤ rdi-fs6 rdi-fs8
                                  (AtDynamic hl) bf')
+                   cf-fs10
                    (λ m loc' bf' → frontier-monotone
                                      (record alloc { next-slot = m })
                                      (record (falloc fs10) { next-slot = m })

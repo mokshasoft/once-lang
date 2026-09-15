@@ -78,6 +78,7 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
           -- only — there is no register location — so `readLoc` cannot see a
           -- register write at all, and this is the combinator that says so.
           ; validityWF-mem-preserved
+          ; validityWF-with-bf-transfer
           -- D174: the SUM witnesses. `valid-inl-reg-wf` is stage F's
           -- inline-payload form (no payload location, no payload validity);
           -- `validityWF-frontier-advance` carries a witness across the
@@ -308,6 +309,25 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
                  → MemOps.readLoc (floc settle) (AtDynamic hl)
                    ≡ MemOps.readLoc s (AtDynamic hl)
 
+      -- D210: THE FRAME DOES NOT MOVE.
+      --
+      -- Found by scouting `⟨ f , g ⟩` top-down: `restore-input backup` reads
+      -- `AtStack (current-frame alloc) backup` AFTER `f`'s run, and
+      -- transporting `f`'s result validity to the final state wants
+      -- `validityWF-frontier-advance`, whose first premise is exactly this.
+      -- Nothing in the record said it, and nothing in the tree derives it at
+      -- `exec-flat`/`ValueRealized` level — `bf-mono` encodes it only up to
+      -- `stack-ancestor`, which is weaker than an equation.
+      --
+      -- It is cheap and it is TRUE: none of the emitted instructions is a
+      -- frame op (that is `FrameFreeTrace`, already proved for every emitted
+      -- trace), and a call enters and leaves its own frame. Every discharged
+      -- clause already proves its own version of it internally —
+      -- `cf-fs10` (Sum, TwoCell), `cf-a16` (ApplySetupPres), `cf-t1`/`cf-u3`
+      -- (TenStepPres/NineStepPres) — so the field exports what was already
+      -- there rather than asking for new work.
+      frame-pres : current-frame (falloc settle) ≡ current-frame alloc
+
       -- D206: over an arbitrary slot bound `m`, for the same reason
       -- `CalleeRun.mem-pres` is: the run keeps the frame and only grows the
       -- heap, so it carries a `BeforeFrontier` at WHATEVER slot bound the
@@ -480,6 +500,11 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
                  → ∀ (loc : ValueLocation FS)
                  → BeforeFrontier (record pre { next-slot = m }) loc
                  → MemOps.readLoc (floc settle) loc ≡ MemOps.readLoc (floc fs) loc
+      -- D210: …and the call's. `enter-call` SHIFTS the frame, so the claim is
+      -- against the caller's `pre`, which is what a returning callee restores.
+      frame-pres : ∀ (pre : AllocState {FS}) → falloc fs ≡ enter-call pre
+                 → current-frame (falloc settle) ≡ current-frame pre
+
       bf-mono    : ∀ (pre : AllocState {FS}) (m : ℕ) → falloc fs ≡ enter-call pre
                  → ∀ (loc : ValueLocation FS)
                  → BeforeFrontier (record pre { next-slot = m }) loc

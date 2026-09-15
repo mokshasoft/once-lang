@@ -215,7 +215,7 @@ module SigOpC {FS : FrameSemantics} (program-bound : ℕ) where
                                  nhw-instr-sigop refl)
                    (λ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl)
                                nhw-instr-sigop refl)
-                   (λ _ _ bf → bf)
+                   refl (λ _ _ bf → bf)
       }
     where
       fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl)
