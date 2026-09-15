@@ -319,101 +319,144 @@ module Mach {FS : FrameSemantics} (program-bound : ℕ) where
   -- stuck on a variable, which is exactly what `StraightStep` exists to work
   -- around.)
   ------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- D209: THE NINE-INSTRUCTION HEAP BUILD, over an ARBITRARY start state.
+  --
+  -- `inl`, `inr`, `curry`, `Ana` and `⟨ f , g ⟩` all end with the same nine
+  -- instructions — stash, allocate two cells, stash the pointer, then write
+  -- the two cells and hand the pointer back:
+  --
+  --   store-at-slot n ∷ instr-alloc-heap 2 ∷ store-at-slot (suc n) ∷
+  --   mov-to-input ∷ i6 ∷ store-indirect ∷ i8 ∷ store-indirect-suc ∷
+  --   load-from-slot (suc n) ∷ []
+  --
+  -- The first four begin it at the entry state, one `mov-to-output` in;
+  -- `pair` begins it wherever `g`'s run settled. So the module takes the
+  -- START STATE as a parameter, with the two facts relating its allocator to
+  -- the one the caller's data is measured against. `TenStepPres` below is the
+  -- entry-state instance — a wrapper, not a copy.
+  ------------------------------------------------------------------------
+  module NineStepPres
+    (n : ℕ) (i6 i8 : AbstractInstr)
+    (u1 : FlatState) (s : LocState FS) (alloc : AllocState {FS})
+    -- the start state's allocator, related to the frontier the CALLER's live
+    -- data is measured against
+    (heapref-u1 : next-heap-ref (falloc u1) ≡ next-heap-ref alloc)
+    (cf-u1      : current-frame (falloc u1) ≡ current-frame alloc)
+    where
+
+    u2 u3 u4 u5 u6 u7 u8 u9 u10 : FlatState
+    u2  = flat-step-straight (store-at-slot n)        u1
+    u3  = flat-step-straight (instr-alloc-heap 2)     u2
+    u4  = flat-step-straight (store-at-slot (suc n))  u3
+    u5  = flat-step-straight mov-to-input             u4
+    u6  = flat-step-straight i6                       u5
+    u7  = flat-step-straight store-indirect           u6
+    u8  = flat-step-straight i8                       u7
+    u9  = flat-step-straight store-indirect-suc       u8
+    u10 = flat-step-straight (load-from-slot (suc n)) u9
+
+    hl : HeapLocation
+    hl = heap-loc (mkHeapRef (next-heap-ref (falloc u2))) 0
+
+    -- The stash does not allocate, so the ref handed out at `u3` is the one
+    -- the start state was carrying — which is the caller's.
+    heapref-u2 : next-heap-ref (falloc u2) ≡ next-heap-ref alloc
+    heapref-u2 =
+      trans (exec-abstract-preserves-heap-ref (store-at-slot n) (floc u1) (falloc u1) tt)
+            heapref-u1
+
+    fresh : next-heap-ref alloc ≤ ref-id (heap-ref hl)
+    fresh = ≤-reflexive (sym heapref-u2)
+
+    cf-u3 : current-frame (falloc u3) ≡ current-frame alloc
+    cf-u3 =
+      trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc u2) (falloc u2))
+     (trans (exec-abstract-preserves-frame (store-at-slot n) (floc u1) (falloc u1))
+            cf-u1)
+
+    -- What the nine leave alone, RELATIVE TO THE START STATE. The caller
+    -- composes this with whatever it knows about how the start state was
+    -- reached — for the entry-state instance that is one `mov-to-output`, for
+    -- `pair` it is the two sub-IR runs.
+    mem-pres-from :
+        InstrNoHeapWrite i6 → instr-writes-slot i6 ≡ nothing
+      → InstrNoHeapWrite i8 → instr-writes-slot i8 ≡ nothing
+      → next-slot alloc ≤ n
+      → sv-as-loc (readReg (regs (floc u6)) Input1) ≡ just (AtDynamic hl)
+      → sv-as-loc (readReg (regs (floc u8)) Input1) ≡ just (AtDynamic hl)
+      → (loc : ValueLocation FS)
+      → BeforeFrontier (record alloc { next-slot = n }) loc
+      → MemOps.readLoc (floc u10) loc ≡ MemOps.readLoc (floc u1) loc
+    mem-pres-from nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf =
+      trans (mem-untouched (load-from-slot (suc n)) (floc u9) (falloc u9) loc
+               nhw-load-from-slot refl)
+     (trans (store-ind-suc-preserves-before (floc u8) (record alloc { next-slot = n })
+               (falloc u8) hl loc rdi8 fresh bf)
+     (trans (mem-untouched i8 (floc u7) (falloc u7) loc nhw8 nws8)
+     (trans (store-ind-preserves-before (floc u6) (record alloc { next-slot = n })
+               (falloc u6) hl loc rdi6 fresh bf)
+     (trans (mem-untouched i6 (floc u5) (falloc u5) loc nhw6 nws6)
+     (trans (mem-untouched mov-to-input (floc u4) (falloc u4) loc nhw-mov-to-input refl)
+     (trans (store-slot-preserves-before (suc n) (floc u3) (record alloc { next-slot = n })
+               (falloc u3) loc cf-u3 (n≤1+n n) bf)
+     (trans (mem-untouched (instr-alloc-heap 2) (floc u2) (falloc u2) loc
+               nhw-instr-alloc-heap refl)
+            (store-slot-preserves-before n (floc u1) (record alloc { next-slot = n })
+               (falloc u1) loc cf-u1 ≤-refl bf))))))))
+
+  -- The ENTRY-STATE instance: one `mov-to-output`, then the nine. Every field
+  -- is `NineStepPres`'s, re-exported at the names the four existing clauses
+  -- already use.
   module TenStepPres
     (n : ℕ) (i6 i8 : AbstractInstr) (prog : AbstractTrace) (base : ℕ)
     (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
     where
 
-    t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 : FlatState
+    t0 t1 : FlatState
     t0  = entry-flat base s alloc cl
-    t1  = flat-step-straight mov-to-output            t0
-    t2  = flat-step-straight (store-at-slot n)        t1
-    t3  = flat-step-straight (instr-alloc-heap 2)     t2
-    t4  = flat-step-straight (store-at-slot (suc n))  t3
-    t5  = flat-step-straight mov-to-input             t4
-    t6  = flat-step-straight i6                       t5
-    t7  = flat-step-straight store-indirect           t6
-    t8  = flat-step-straight i8                       t7
-    t9  = flat-step-straight store-indirect-suc       t8
-    t10 = flat-step-straight (load-from-slot (suc n)) t9
+    t1  = flat-step-straight mov-to-output t0
 
-    -- The block the two indirect stores write. `alloc-impl` hands out
-    -- `heap-loc (mkHeapRef (next-heap-ref …)) 0` at `t2`, which is where the
-    -- three clauses each name it too.
-    hl : HeapLocation
-    hl = heap-loc (mkHeapRef (next-heap-ref (falloc t2))) 0
+    heapref-t1 : next-heap-ref (falloc t1) ≡ next-heap-ref alloc
+    heapref-t1 = exec-abstract-preserves-heap-ref mov-to-output (floc t0) (falloc t0) tt
 
-    -- …and it is FRESH: rows 1-2 do not allocate, so the ref-id the allocator
-    -- hands out IS the caller's frontier. That is the whole reason the two heap
-    -- writes are invisible to the caller.
-    heapref-t2 : next-heap-ref (falloc t2) ≡ next-heap-ref alloc
-    heapref-t2 =
-      trans (exec-abstract-preserves-heap-ref (store-at-slot n) (floc t1) (falloc t1) tt)
-            (exec-abstract-preserves-heap-ref mov-to-output (floc t0) (falloc t0) tt)
-
-    fresh : next-heap-ref alloc ≤ ref-id (heap-ref hl)
-    fresh = ≤-reflexive (sym heapref-t2)
-
-    -- The frame does not move: none of the ten is a frame op.
     cf-t1 : current-frame (falloc t1) ≡ current-frame alloc
     cf-t1 = exec-abstract-preserves-frame mov-to-output (floc t0) (falloc t0)
 
-    cf-t3 : current-frame (falloc t3) ≡ current-frame alloc
-    cf-t3 =
-      trans (exec-abstract-preserves-frame (instr-alloc-heap 2) (floc t2) (falloc t2))
-     (trans (exec-abstract-preserves-frame (store-at-slot n) (floc t1) (falloc t1))
-            cf-t1)
+    module NSP = NineStepPres n i6 i8 t1 s alloc heapref-t1 cf-t1
 
+    t2 t3 t4 t5 t6 t7 t8 t9 t10 : FlatState
+    t2  = NSP.u2 ; t3 = NSP.u3 ; t4 = NSP.u4 ; t5 = NSP.u5 ; t6 = NSP.u6
+    t7  = NSP.u7 ; t8 = NSP.u8 ; t9 = NSP.u9 ; t10 = NSP.u10
+
+    hl : HeapLocation
+    hl = NSP.hl
+
+    heapref-t2 : next-heap-ref (falloc t2) ≡ next-heap-ref alloc
+    heapref-t2 = NSP.heapref-u2
+
+    fresh : next-heap-ref alloc ≤ ref-id (heap-ref hl)
+    fresh = NSP.fresh
+
+    cf-t3 : current-frame (falloc t3) ≡ current-frame alloc
+    cf-t3 = NSP.cf-u3
+
+    -- …and the entry-state form: the nine, then the leading `mov-to-output`,
+    -- which writes a register and so touches no memory.
     mem-pres :
         InstrNoHeapWrite i6 → instr-writes-slot i6 ≡ nothing
       → InstrNoHeapWrite i8 → instr-writes-slot i8 ≡ nothing
       → next-slot alloc ≤ n
       → sv-as-loc (readReg (regs (floc t6)) Input1) ≡ just (AtDynamic hl)
       → sv-as-loc (readReg (regs (floc t8)) Input1) ≡ just (AtDynamic hl)
-      -- D206: the witness frontier is the BUILD'S OWN `n`, not the caller's.
-      -- `store-slot-preserves-before` takes the frontier witness and the run's
-      -- allocator separately, so this is a swap of the witness — the run is
-      -- untouched — and the two stores land at `n` and `suc n`, both of which
-      -- are still at or above the swapped frontier.
       → (loc : ValueLocation FS)
       → BeforeFrontier (record alloc { next-slot = n }) loc
       → MemOps.readLoc (floc t10) loc ≡ MemOps.readLoc s loc
     mem-pres nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf =
-      trans (mem-untouched (load-from-slot (suc n)) (floc t9) (falloc t9) loc
-               nhw-load-from-slot refl)
-     (trans (store-ind-suc-preserves-before (floc t8) (record alloc { next-slot = n })
-               (falloc t8) hl loc rdi8 fresh bf)
-     (trans (mem-untouched i8 (floc t7) (falloc t7) loc nhw8 nws8)
-     (trans (store-ind-preserves-before (floc t6) (record alloc { next-slot = n })
-               (falloc t6) hl loc rdi6 fresh bf)
-     (trans (mem-untouched i6 (floc t5) (falloc t5) loc nhw6 nws6)
-     (trans (mem-untouched mov-to-input (floc t4) (falloc t4) loc nhw-mov-to-input refl)
-     (trans (store-slot-preserves-before (suc n) (floc t3) (record alloc { next-slot = n })
-               (falloc t3) loc cf-t3 (n≤1+n n) bf)
-     (trans (mem-untouched (instr-alloc-heap 2) (floc t2) (falloc t2) loc
-               nhw-instr-alloc-heap refl)
-     (trans (store-slot-preserves-before n (floc t1) (record alloc { next-slot = n })
-               (falloc t1) loc cf-t1 ≤-refl bf)
-            (mem-untouched mov-to-output (floc t0) (falloc t0) loc nhw-mov-to-output refl)))))))))
+      trans (NSP.mem-pres-from nhw6 nws6 nhw8 nws8 ns≤n rdi6 rdi8 loc bf)
+            (mem-untouched mov-to-output (floc t0) (falloc t0) loc
+               nhw-mov-to-output refl)
 
-  ------------------------------------------------------------------------
-  -- D183: `apply`'s SETUP, the sixteen instructions before the call.
-  --
-  -- Same shape as the ten-step build and proved from the same three lemmas —
-  -- it just has three stack stashes instead of two and reads two cells out of
-  -- the input pair and the closure before building the callee's (env , arg)
-  -- pair on the heap. Every row is concrete, so nothing needs abstracting.
-  --
-  -- Row 5 (`instr-save-closure-reg`) is the one step that is NOT
-  -- `flat-step-straight`: `do-save-closure` writes the flat closure REGISTER,
-  -- which is `FlatState` rather than `LocState`, so it moves no memory at all
-  -- and its preservation is `refl`. (That register is what `do-call` reads at
-  -- row 17 — see `callView`.)
-  --
-  -- This is the part of `apply` that holds under every design for the call. It
-  -- says nothing about the callee, which is the piece that needs the program's
-  -- block table (D184).
-  ------------------------------------------------------------------------
   module ApplySetupPres
     (n : ℕ) (prog : AbstractTrace) (base : ℕ)
     (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
