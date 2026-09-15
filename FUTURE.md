@@ -498,9 +498,42 @@ non-ford slots (6–9) are the **`iρ` recursive premises**, typed at
 `IMu JudgeD IJudge _` — `JudgeD` is **56 rows**, the biggest description
 in the tree.
 
-⇒ this is the SAME law as the `K`-motive probes, at a second site and on
-production code: **cost is driven by the size of the description carried
-in a type, wherever it is carried.**
+⇒ this looked like the SAME law as the `K`-motive probes, at a second
+site and on production code.
+
+### ⛔⛔ REFUTED BY REPLICATION — `Judge/Pair`
+
+| ford | `Judge/Elim` | `Judge/Pair` |
+|---|---|---|
+| `KnotD` (53 rows) | **18,064 ms** | **358 ms** |
+| `KnotD` (53 rows) | **18,899 ms** | **530 ms** |
+| `IxD` (5 rows) | 1,537 ms | **815 ms** |
+| `CtxD` (2 rows) | 256 ms | 168 ms |
+
+**Same description, same ford shape `⌜Id⌝ (⌜IMu⌝ KnotD IPair …)`, 34–50×
+apart.** And inside `Pair` the ordering INVERTS: the 5-row `IxD` ford
+costs MORE than both 53-row `KnotD` fords. ⇒ "~340 ms per description
+row" was a within-`Elim` coincidence. **Eighth model refuted today.**
+
+⚠ A crude corpus test (description-rows vs wall time over 11 timed
+modules) gave correlation **0.378** — but that test is itself invalid:
+`TrC` and `TrA` SHARE the `kJΒΒ` prefix, so it counted the same slots for
+both and reported identical exposure for modules 17.6× apart. Inconclusive,
+not evidence.
+
+### ⬜ WHAT SURVIVES: **SLOT 8**, in both modules
+
+| module | slot-8 | total | share |
+|---|---|---|---|
+| `Judge/Elim` | 89,728 ms | 199,102 ms | **45%** |
+| `Judge/Pair` | 12,905 ms | 35,726 ms | **36%** |
+
+In both it is an `iρ` RECURSIVE-PREMISE index tuple —
+`pair (var …) (pair (var …) (pair …))`, the 5-component judgement index.
+⚠ **n = 2.** Two modules agreeing on one slot is suggestive, not a law.
+⬜ Next: a third module, and find what distinguishes slot 8 from its
+sibling `iρ` premises (in `Elim` the four cost 550 / 15,540 / **89,728** /
+16,233 ms — slot 8 is 5.8× its neighbour).
 
 ### ⛔ AND IT KILLS THE `opaque` PLAN FOR JUDGE
 
