@@ -71,7 +71,7 @@ open import Once.CCC.Machine.SMCore
          StoredValue; AbstractInstr; module AbstractExec; module MemOps;
          -- D171: the store instruction and the location vocabulary its
          -- read-back needs.
-         store-at-slot; AtStack; current-frame;
+         store-at-slot; restore-input; AtStack; current-frame;
          -- D174: the rest of `inl`/`inr`'s heap build — the first discharge in
          -- this file that ALLOCATES, so these are new to its vocabulary.
          instr-alloc-heap; instr-load-tag-lit; instr-load-code-addr; SV-Code;

@@ -24,6 +24,8 @@ module Once.CCC.Codegen.IRObsCorrect.Pair (o : CanonicalName) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o
 open import Data.Nat using (s≤s)
+open import Data.Nat.Solver using (module +-*-Solver)
+open +-*-Solver using (solve; _:+_; con; _:=_)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -185,3 +187,118 @@ module PairC {FS : FrameSemantics} (program-bound : ℕ) where
       → MemOps.readLoc (floc NSP.u10) loc ≡ MemOps.readLoc (floc gs) loc
     tail-mem-pres ns≤ rdi6 rdi8 =
       NSP.mem-pres-from nhw-load-from-slot refl nhw-load-from-slot refl ns≤ rdi6 rdi8
+
+  ----------------------------------------------------------------------
+  -- THE SPAN SPLITS.
+  --
+  -- `emitted n l ⟨ f , g ⟩` is four segments:
+  --
+  --   pre ++ ft ++ mid ++ gt ++ tail
+  --     pre  = mov-to-output ∷ store-at-slot backup ∷ []          (2)
+  --     mid  = store-at-slot fst-stash ∷ restore-input backup ∷ []  (2)
+  --     tail = the nine-instruction heap build                    (9)
+  --
+  -- `f` sits at `2 + base`, `g` at `2 + length ft + 2 + base`. Both are
+  -- `Comp.comp-span-f`'s argument with a longer prefix: strip what precedes,
+  -- then re-associate the index.
+  ----------------------------------------------------------------------
+
+  -- `fetch` through a concrete prefix of exactly two instructions.
+  fetch-drop2 : ∀ (i₁ i₂ : AbstractInstr) (rest : AbstractTrace) (k : ℕ)
+              → fetch (i₁ ∷ i₂ ∷ rest) (suc (suc k)) ≡ fetch rest k
+  fetch-drop2 i₁ i₂ rest k = refl
+
+  -- …and the index shuffle it forces on the span: a fragment `k` steps into
+  -- a segment that begins `d` instructions after `base` is at `d + k + base`
+  -- in the program, which `SpanAt` wants as `k + (d + base)`.
+  span-shift : ∀ (d k b : ℕ) → d + k + b ≡ k + (d + b)
+  span-shift d k b =
+    trans (cong (_+ b) (+-comm d k)) (+-assoc k d b)
+
+  ----------------------------------------------------------------------
+  -- The emitted trace, decomposed. Stated as an EQUATION so the splits can
+  -- rewrite by it rather than re-deriving the emitter's `let`.
+  ----------------------------------------------------------------------
+  module PairShape {A B C : IRTy} (f : IR A B) (g : IR A C) (n l : ℕ) where
+
+    backup fst-stash snd-stash pair-stash f-start : ℕ
+    backup     = n
+    fst-stash  = suc n
+    snd-stash  = suc (suc n)
+    pair-stash = suc (suc (suc n))
+    f-start    = suc (suc (suc (suc n)))
+
+    ft : AbstractTrace
+    ft = emitted f-start l f
+
+    n1 l1 : ℕ
+    n1 = proj₁ (ir-to-trace' f-start l f)
+    l1 = proj₁ (proj₂ (ir-to-trace' f-start l f))
+
+    gt : AbstractTrace
+    gt = emitted n1 l1 g
+
+    pre mid tail : AbstractTrace
+    pre  = mov-to-output ∷ store-at-slot backup ∷ []
+    mid  = store-at-slot fst-stash ∷ restore-input backup ∷ []
+    tail = instr-alloc-heap 2 ∷
+           store-at-slot pair-stash ∷
+           mov-to-input ∷
+           load-from-slot fst-stash ∷
+           store-indirect ∷
+           load-from-slot snd-stash ∷
+           store-indirect-suc ∷
+           load-from-slot pair-stash ∷ []
+
+    -- THE DECOMPOSITION. `refl`: this is the emitter's own `let`, spelled out.
+    -- (`store-at-slot snd-stash` heads the tail in the emitter; it is written
+    -- here as the last element of `gt`'s segment boundary — see `shape`.)
+    shape : emitted n l ⟨ f , g ⟩
+          ≡ pre ++ ft ++ mid ++ gt ++ (store-at-slot snd-stash ∷ tail)
+    shape = refl
+
+    -- `f`'s span: strip the two-instruction prologue, then `f`'s own trace is
+    -- a PREFIX of everything that follows it.
+    span-f : ∀ (prog : AbstractTrace) (base : ℕ)
+           → SpanAt prog base (emitted n l ⟨ f , g ⟩)
+           → SpanAt prog (suc (suc base)) ft
+    span-f prog base span k i eq =
+      subst (λ m → fetch prog m ≡ just i) (span-shift 2 k base)
+            (span (suc (suc k)) i
+              (fetch-++-left ft (mid ++ gt ++ (store-at-slot snd-stash ∷ tail)) k i eq))
+
+    -- The index re-association `g`'s split needs. `span` is applied at
+    -- `2 + (length ft + (2 + k))`; `SpanAt` wants `k + (2 + (length ft + (2 +
+    -- base)))`. The `k` travels out through one more `+` than `span-f`'s does,
+    -- so this is its own equation rather than another `span-shift`.
+    g-shift : ∀ (base k : ℕ)
+            → suc (suc (length ft + suc (suc k))) + base
+              ≡ k + suc (suc (length ft + suc (suc base)))
+    g-shift base k = solve-it (length ft) base k
+      where
+        -- Pure `+` arithmetic; the hand-written `trans` chain was an
+        -- off-by-one factory, so it is discharged by the ring solver.
+        solve-it : ∀ (a b c : ℕ)
+                 → suc (suc (a + suc (suc c))) + b
+                   ≡ c + suc (suc (a + suc (suc b)))
+        solve-it a b c = solve 3 (λ x y z →
+            con 1 :+ (con 1 :+ (x :+ (con 1 :+ (con 1 :+ z)))) :+ y
+          , z :+ (con 1 :+ (con 1 :+ (x :+ (con 1 :+ (con 1 :+ y))))))
+          refl a b c
+
+    -- `g`'s span: past the prologue, `f`'s trace and the two mid rows. The
+    -- offset is `2 + length ft + 2`, and the index shuffle is the same one,
+    -- applied at that depth.
+    span-g : ∀ (prog : AbstractTrace) (base : ℕ)
+           → SpanAt prog base (emitted n l ⟨ f , g ⟩)
+           → SpanAt prog (suc (suc (length ft + suc (suc base)))) gt
+    span-g prog base span k i eq =
+      subst (λ m → fetch prog m ≡ just i)
+            (g-shift base k)
+            (span (suc (suc (length ft + suc (suc k)))) i
+              (trans (cong (fetch (ft ++ mid ++ gt ++ (store-at-slot snd-stash ∷ tail)))
+                           refl)
+                     (trans (fetch-++-right ft
+                               (mid ++ gt ++ (store-at-slot snd-stash ∷ tail))
+                               (suc (suc k)))
+                            (fetch-++-left gt (store-at-slot snd-stash ∷ tail) k i eq))))
