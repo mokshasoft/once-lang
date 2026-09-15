@@ -27,7 +27,7 @@
 --   Interface  `IRObsCorrectF` and everything its statement mentions
 --   Machine    the step/memory lemmas + the straight-line setup skeletons
 --   Simple     id, terminal, initial, free-heap, fst, snd, out-μ, const
---              (+ the postulates still open: In, pair, case, Para, in-ν,
+--              (+ the postulates still open: In, case, Para, in-ν,
 --               Hylo, Fuse)
 --   SigOp      the SigOp clause
 --   Sum        inl, inr
@@ -35,6 +35,8 @@
 --   Apply      apply
 --   Out        Out  (D199)
 --   Comp       g ∘ f
+--   Pair       ⟨ f , g ⟩'s four clusters (run, place, preservation, trace)
+--   PairAssemble  …and the clause that wires them (D211)
 ------------------------------------------------------------------------
 
 open import Once.CanonicalName using (CanonicalName)
@@ -54,6 +56,9 @@ open import Once.CCC.Codegen.IRObsCorrect.TwoCell o
 open import Once.CCC.Codegen.IRObsCorrect.Apply   o
 open import Once.CCC.Codegen.IRObsCorrect.Out     o
 open import Once.CCC.Codegen.IRObsCorrect.Comp    o
+-- `PairAssemble` imports `Pair` (the four clusters) itself, WITHOUT `public`
+-- — same D200 rule: only this façade re-exports.
+open import Once.CCC.Codegen.IRObsCorrect.PairAssemble o
 
 -- The name every importer uses. Each part re-exports `Core`/`Mach`, so the
 -- surface here is what the single file's `IRObsCorrectFlatness` had.
@@ -68,6 +73,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   open ApplyC   {FS} program-bound public
   open OutC     {FS} program-bound public
   open CompC    {FS} program-bound public
+  open PairAsm  {FS} program-bound public
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a
@@ -78,7 +84,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
   ir-obs-correct id                  = obs-correct-id
   ir-obs-correct (g ∘ f)             = comp-obs-correct (ir-obs-correct g) (ir-obs-correct f)
   -- products
-  ir-obs-correct ⟨ f , g ⟩         = obs-correct-pair (ir-obs-correct f) (ir-obs-correct g)
+  ir-obs-correct ⟨ f , g ⟩         = obs-correct-pair-proof (ir-obs-correct f) (ir-obs-correct g)
   ir-obs-correct fst                 = obs-correct-fst
   ir-obs-correct snd                 = obs-correct-snd
   -- sums

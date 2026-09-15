@@ -13884,3 +13884,73 @@ session had already burned several 10-minute round trips on exactly that class
 of error.
 
 Root typechecks. Exit tests 65/0/0; `cabal test` 746 passed.
+
+## D211 — `obs-correct-pair` IS A PROOF (2026-09-15)
+
+The CCC product introduction is discharged. `Pair.agda` is no longer an island;
+`ir-obs-correct ⟨ f , g ⟩` routes to a real proof, and the postulate is gone
+from `Simple.agda`. Per-constructor postulates: 9 → 8.
+
+### The shape
+
+Four independent clusters, each a parameterised module — so each was written
+and typechecked WITHOUT the others existing, and they assemble by
+concatenation:
+
+    PairChain  the run: pre(2) ++ f ++ mid(2) ++ g ++ snd-store(1) ++ tail(8),
+               with `handover-eq` spent TWICE (each sub-run's `run` starts at
+               its own `entry-flat`, not where the previous segment settled)
+    PairPlace  `valid-pair-wf` over the heap node, with both components'
+               validity transported from their sub-run's settle state
+    PairPres   the four preservation fields across five segments
+    PairTrace  the nested bind — `take-++-threaded` twice
+
+plus `PairAssemble`, the clause that instantiates them.
+
+### What made it possible, and it was not this session's proof work
+
+Four earlier decisions, each found by TRYING to use the obligation and failing:
+
+    D202  the dispatcher did not pass `pair` its induction hypotheses
+    D204  `ValueRealized` said nothing about memory
+    D206  …and said it about the CALLER's frontier, not the fragment's
+    D210  …and said nothing about the FRAME
+
+`pair` is the first IR that reads memory back across a sub-run, so it is the
+first to exercise what the obligation actually promises. Each attempt to use it
+found the promise one notch too weak. The proof itself only became writable
+once those four closed.
+
+### Method note: what the parallel agents were and were not good for
+
+Three agents wrote the final clause independently; all three succeeded, so the
+redundancy bought nothing — and because each worktree carries its own `_build`
+and the machine runs one agda at a time, three root checks SERIALISE. An hour
+went to queuing, not thinking.
+
+**Redundant attempts help when the bottleneck is reasoning and hurt when it is
+a shared physical resource.** Parallelise the writing; verify once.
+
+### The check that mattered
+
+Before harvesting, the diff was audited for the failure mode that makes a green
+build worthless — reaching it by weakening the claim. Zero new postulates, no
+`TERMINATING`, no holes, no new `abstract`, and `Interface.agda` / `Machine.agda`
+BYTE-IDENTICAL. The obligation `obs-correct-pair` now proves is the one it was
+always stated at.
+
+### Two defects the scouts found in this branch's own earlier work
+
+  * `NineStepPres.heapref-u1` (D209) is stated with `≡` where `pair` needs `≤` —
+    either sub-run may allocate, so the heap frontier moves. `PairTail` as
+    committed is therefore NOT instantiable by any caller; the clusters bypass
+    it by instantiating `NineStepPres` directly. The premise is only ever spent
+    via `fresh`, which needs `≤`, so relaxing it is safe — deferred because it
+    ripples into `Sum`/`TwoCell`.
+  * There is no `exec-flat`-level heap-monotonicity lemma anywhere in the tree.
+    The assembly manufactures one (`vr-heap-mono`) by instantiating `bf-mono` at
+    a synthetic heap ref and reading `BeforeFrontier.heap-before` back out. That
+    is a hack standing in for a missing fact, and a candidate FIFTH field.
+
+`Once/Compiler.agda` and `Once/Certified.agda` typecheck. Exit tests 65/0/0;
+`cabal test` 746 passed.

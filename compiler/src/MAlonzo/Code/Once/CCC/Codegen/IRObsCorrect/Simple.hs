@@ -3098,27 +3098,23 @@ d_out'45'lit_5812 = erased
 d_obs'45'correct'45'In_5834
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-In"
--- Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-pair
-d_obs'45'correct'45'pair_5846
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-pair"
 -- Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-case
-d_obs'45'correct'45'case_5858
+d_obs'45'correct'45'case_5846
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-case"
 -- Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-Para
-d_obs'45'correct'45'Para_5868
+d_obs'45'correct'45'Para_5856
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-Para"
 -- Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-in-ν
-d_obs'45'correct'45'in'45'ν_5874
+d_obs'45'correct'45'in'45'ν_5862
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-in-\957"
 -- Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-Hylo
-d_obs'45'correct'45'Hylo_5890
+d_obs'45'correct'45'Hylo_5878
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-Hylo"
 -- Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-Fuse
-d_obs'45'correct'45'Fuse_5906
+d_obs'45'correct'45'Fuse_5894
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.CCC.Codegen.IRObsCorrect.Simple.Simp.obs-correct-Fuse"
