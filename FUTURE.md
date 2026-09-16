@@ -414,6 +414,32 @@ an item.
    ★ **Mechanically enforceable** — mode analysis is standard (Twelf,
    logic programming). This is a checkable invariant, not a slogan.
 
+2b. ★★★ **AND SOLVE ORDER IS PART OF INVARIANT 2 — MEASURED 267×.**
+   A datatype constructor whose CONCLUSION contains a computed term
+   (`there : Γ ∋ x ∷ A → (Γ ▹ B) ∋ vs x ∷ renTy vs A`) costs **nothing**
+   forward and **267×** when the checker solves BACKWARDS through it
+   (`tmp/ProbeFord`: 15,998 ms → 60 ms forded).
+
+   ⇒ **the defect is SOLVE ORDER, not the computed index.** Agda unified
+   the conclusion first, making `A` a meta to invert through `renTy`,
+   instead of running the premise first and COMPARING two known terms.
+
+   ⚠⚠ ELEVEN PROBES, SIX CANDIDATES, **ONE BIT** — and it is
+   INDISTINGUISHABLE BY INSPECTION from the five that did not. Three
+   conditions must coincide: the operation is INVERTIBLE (Agda *refuses*
+   `subTy`/`subTm`/`εwkTm`, instantly); the argument is NOT recoverable
+   elsewhere in the conclusion; and the term is LARGE.
+
+   ⇒ **a computed conclusion is a FORWARD-MODE-ONLY declaration.** Under
+   mode-correctness the arguments are determined by matching the source
+   and the target is COMPUTED AS OUTPUT. The backward reading needs an
+   inversion, and mode analysis **rejects it statically** instead of
+   attempting it expensively. ⇒ **none of the six needs fording in
+   Once** — see [[computed-index-cost-is-solve-order]].
+
+   ⚠ `Hom-U`/`β` are safe in Agda BY ACCIDENT — it *happened* to attack
+   the source constraint first. A heuristic, not a theorem.
+
 3. **INJECTIVITY AND VARIANCE ARE DECLARED AND PROVED, NEVER GUESSED.**
    Injectivity is a THEOREM. Make it a declared attribute and inversion
    becomes a rule with a discharged side condition. ⇒ the 1,431 losing
