@@ -428,13 +428,28 @@ everything" (loses forward-mode ergonomics for nothing) nor "leave it"
 --------------------------------------------------------------------------
 ## 3. The order
 
-1. ⬜ **spike `⊢app`** — ford `subTy (single u) B` in a probe and measure.
-   Second data point, and the highest-frequency rule after lookup
-   (829 uses; every application in every proof).
-   ⚠ If it does NOT reproduce, the law is about RENAMING specifically and
-   §2's audit must be re-scoped before any kernel edit.
+1. ✅ **spike all six** — DONE, §2.1–2.11. Eleven probes. Only
+   `_∋_∷_` bites (267×); `⊢app` is 2.17× and never worse; `icw-clo` is
+   usability-only; `Hom-U`/`β` measure free; `IDescWfFrom` was a false
+   positive.
 2. ⬜ **ford `_∋_∷_`** in `Spec/Typing`. Reopens the metatheory.
-3. ⬜ regenerate the 66 GENERATED files (free); repair the 117
+
+   ⚠⚠ **SCOPED 2026-09-16, AND THE CONSTRUCTION SITES ARE NOT THE WORK:**
+
+   | | count | character |
+   |---|---|---|
+   | files using `⊢var` | 230 (74 generated, 156 hand-written) | |
+   | `⊢var (there …)` occurrences | **7,581** | mechanical: `here` → `here refl`, `there d` → `there d refl` |
+   | **pattern-match sites on `here`/`there`** | **36** | ★ **THE REAL WORK** |
+
+   The 36 are in `Metatheory/TySub` (9), `Lib/Wk` (3), `Lib/IPay` (3),
+   `Fundamental/Semantic` (2 — `⊩ˢ-ext`), `Fundamental` (2 —
+   `isingleEnv`), `Lib/Amrec` (1). Each must thread the new equation
+   through its equational reasoning. ⇒ **take the 36 FIRST**: if the
+   metatheory does not absorb them, the change is not viable and the
+   7,581 are wasted effort.
+
+3. ⬜ regenerate the 74 GENERATED files (free); repair the 156
    hand-written ones (mechanical — each site gains a `refl`).
 4. ⬜ **re-measure `Judge/Elim`**. PREDICTION: `W_JΠΒ8`'s 89,728 ms —
    45% of that module — largely evaporates, since it is `⊢var` weakening
