@@ -35,7 +35,7 @@ open import DirectedHoTT.Spec.Syntax
         ; renTy; renTm; subTy; subTm )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢ordtr; ⊢unit; Hom-Nat-z
         ; ty-Nat; ty-Hom
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; Hom-Nat-ss
@@ -70,7 +70,7 @@ plusLeMot x y = plusLeB (w x) (w y) (var vz)
 ⊢plusLeMot : {Γ : Ctx} {x y : RTm ⌊ Γ ⌋} →
              Γ ⊢ x ∷ Nat → Γ ⊢ y ∷ Nat → (Γ ▹ Nat) ⊢ty plusLeMot x y
 ⊢plusLeMot dx dy =
-  ty-Hom ty-Nat (⊢plus (⊢var here) (⊢wk dx)) (⊢plus (⊢var here) (⊢wk dy))
+  ty-Hom ty-Nat (⊢plus (⊢var (here refl)) (⊢wk dx)) (⊢plus (⊢var (here refl)) (⊢wk dy))
 
 le-at : {Γ : Cx} (x y n : RTm Γ) →
         subTy (single n) (plusLeMot x y) ≡ plusLeB x y n
@@ -98,7 +98,7 @@ le-s x y =
              (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Homˡ (natrec-zero _ _))
                               (stepᵀ (ξ-Homʳ (natrec-zero _ _)) doneᵀ)))))
     sB = ⊢-cast (sym (le-s x y))
-           (⊢conv (⊢var here)
+           (⊢conv (⊢var (here refl))
              (csymᵀ (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Homˡ (natrec-suc _ _ _))
                                      (stepᵀ (ξ-Homʳ (natrec-suc _ _ _)) doneᵀ)))
                            (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ)))))

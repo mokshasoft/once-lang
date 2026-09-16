@@ -157,9 +157,9 @@ _⊩ˢ_ : (Γ : Ctx) {Ξ : Cx} → Sub ⌊ Γ ⌋ Ξ → Set
 ⊩ˢ-ext : {σ : Sub ⌊ Γ ⌋ Ξ} {A : RTy ⌊ Γ ⌋} →
          Γ ⊩ˢ σ → (R : ⊩₁ (subTy σ A)) (u : RTm Ξ) → R ⊩₁∋ u →
          (Γ ▹ A) ⊩ˢ (σ ,ₛ u)
-⊩ˢ-ext {σ = σ} {A = A} ρ R u r here =
+⊩ˢ-ext {σ = σ} {A = A} ρ R u r (here refl) =
   relTy (sym (sub-ext-wk σ u A)) (R , r)
-⊩ˢ-ext {σ = σ} {A = A} ρ R u r (there {A = B} d) =
+⊩ˢ-ext {σ = σ} {A = A} ρ R u r (there {A = B} d refl) =
   relTy (sym (sub-ext-wk σ u B)) (ρ d)
 
 ------------------------------------------------------------------------

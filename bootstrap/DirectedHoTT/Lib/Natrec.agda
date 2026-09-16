@@ -116,7 +116,7 @@ module _ {Γ : Ctx} {M : RTy (⌊ Γ ⌋ ∙)} where
   Γ ⊢ z ∷ subTy (single nzero) M →
   ((Γ ▹ Nat) ▹ M) ⊢ s ∷ subTy nrs M →
   (Γ ▹ Nat) ⊢ natrec (w z) (renTm (extR (extR vs)) s) (var vz) ∷ M
-⊢natrec-var = ⊢natrec-var-at (⊢var here)
+⊢natrec-var = ⊢natrec-var-at (⊢var (here refl))
 
 
 ------------------------------------------------------------------------

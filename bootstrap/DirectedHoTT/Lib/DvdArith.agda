@@ -35,7 +35,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy; subTm; renTy; renTm; Ren; extS; extR )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
         ; ty-Id; ty-El; ty-Nat; ty-U; ty-Π
         ; ⊢⌜Unit⌝; ⊢⌜base⌝; ⊢unit; ⊢absurd; ⊢lam; ⊢app; El-⌜Unit⌝; El-⌜base⌝; ξ-El
@@ -87,7 +87,7 @@ congPR d x p =
         (elIdN (plusTm d x) (plusTm d y))
   where
     dfam = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk (⊢plus dd dx)))
-                        (natAsEl (⊢plus (⊢wk dd) (asN (⊢var here))))
+                        (natAsEl (⊢plus (⊢wk dd) (asN (⊢var (here refl)))))
 
     -- the family at an ARBITRARY endpoint — one `wk-single` per slot
     peel : (v : RTm ⌊ _ ⌋) →
@@ -118,8 +118,8 @@ assocB b c a = IdN (plusTm (plusTm a b) c) (plusTm a (plusTm b c))
             Γ ⊢ b ∷ Nat → Γ ⊢ c ∷ Nat →
             (Γ ▹ Nat) ⊢ty assocB (w b) (w c) (var vz)
 ⊢assocMot db dc =
-  ⊢tyIdN (⊢plus (⊢plus (⊢var here) (⊢wk db)) (⊢wk dc))
-         (⊢plus (⊢var here) (⊢plus (⊢wk db) (⊢wk dc)))
+  ⊢tyIdN (⊢plus (⊢plus (⊢var (here refl)) (⊢wk db)) (⊢wk dc))
+         (⊢plus (⊢var (here refl)) (⊢plus (⊢wk db) (⊢wk dc)))
 
 asMot-at : {Γ : Cx} (b c k : RTm Γ) →
            subTy (single k) (assocB (w b) (w c) (var vz)) ≡ assocB b c k
@@ -156,13 +156,13 @@ assocTm b c a =
     sB = ⊢-cast (sym (asMot-s b c))
            (⊢conv (⊢congS (⊢plus (⊢plus dA dB) dC)
                           (⊢plus dA (⊢plus dB dC))
-                          (⊢var here))
+                          (⊢var (here refl)))
              (csymᵀ (ctrnᵀ
                (red→≅ᵀ (stepᵀ (ξ-Idˡ (ξ-natrecⁿ (natrec-suc _ _ _)))
                         (stepᵀ (ξ-Idˡ (natrec-suc _ _ _)) doneᵀ)))
                (red→≅ᵀ (stepᵀ (ξ-Idʳ (natrec-suc _ _ _)) doneᵀ)))))
       where
-        dA = ⊢var (there here)
+        dA = ⊢var (there (here refl) refl)
         dB = ⊢wk (⊢wk db)
         dC = ⊢wk (⊢wk dc)
 
@@ -185,7 +185,7 @@ congPL y x p =
         (elIdN (plusTm x y) (plusTm x' y))
   where
     dfam = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk (⊢plus dx dy)))
-                        (natAsEl (⊢plus (asN (⊢var here)) (⊢wk dy)))
+                        (natAsEl (⊢plus (asN (⊢var (here refl))) (⊢wk dy)))
 
     peel : (v : RTm ⌊ _ ⌋) →
            subTm (single v) (⌜Id⌝ ⌜Nat⌝ (w (plusTm x y)) (plusTm (var vz) (w y)))
@@ -220,8 +220,8 @@ distB k d j = IdN (mulTm (plusTm j k) d) (plusTm (mulTm j d) (mulTm k d))
            Γ ⊢ k ∷ Nat → Γ ⊢ d ∷ Nat →
            (Γ ▹ Nat) ⊢ty distB (w k) (w d) (var vz)
 ⊢distMot dk dd =
-  ⊢tyIdN (⊢mul (⊢plus (⊢var here) (⊢wk dk)) (⊢wk dd))
-         (⊢plus (⊢mul (⊢var here) (⊢wk dd)) (⊢mul (⊢wk dk) (⊢wk dd)))
+  ⊢tyIdN (⊢mul (⊢plus (⊢var (here refl)) (⊢wk dk)) (⊢wk dd))
+         (⊢plus (⊢mul (⊢var (here refl)) (⊢wk dd)) (⊢mul (⊢wk dk) (⊢wk dd)))
 
 -- ⚠ `plusTm` DISTRIBUTES THROUGH `subTm` DEFINITIONALLY and `mulTm` DOES
 --   NOT.  `plusTm m n = natrec n (nsuc (var vz)) m` keeps `n` at depth 0,
@@ -315,7 +315,7 @@ distTm k d j =
              (csymᵀ (ctrnᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ redL))
                            (red→≅ᵀ (⟶ᵀ*-Idʳ redR)))))
       where
-        dIH = ⊢-cast (dsMot-wk k d) (⊢var here)
+        dIH = ⊢-cast (dsMot-wk k d) (⊢var (here refl))
 
         -- ⚠ `⟶*`-VALUED, NOT A ξ-CHAIN OF SINGLE STEPS.  `mul-suc` is a
         --   `⟶*` because its reduct needs a peel, so the whole side has to
@@ -323,7 +323,7 @@ distTm k d j =
         redL = ⟶*-trans (step (ξ-natrecⁿ (natrec-suc _ _ _)) done)
                         (mul-suc (plusTm (var (vs vz)) (w (w k))) (w (w d)))
         redR = ⟶*-natrecⁿ (mul-suc (var (vs vz)) (w (w d)))
-        dJ = ⊢var (there here)
+        dJ = ⊢var (there (here refl) refl)
         dK = ⊢wk (⊢wk dk)
         dD = ⊢wk (⊢wk dd)
         dX = ⊢mul (⊢plus dJ dK) dD
@@ -402,7 +402,7 @@ congPd x p =
         (elIdN (predTm x) (predTm y))
   where
     dfam = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk (⊢pred dx)))
-                        (natAsEl (⊢pred (asN (⊢var here))))
+                        (natAsEl (⊢pred (asN (⊢var (here refl)))))
 
     peel : (v : RTm ⌊ _ ⌋) →
            subTm (single v) (⌜Id⌝ ⌜Nat⌝ (w (predTm x)) (predTm (var vz)))
@@ -423,7 +423,7 @@ zmB : {Γ : Cx} (b : RTm Γ) → RTy Γ
 zmB b = IdN (monusTm nzero b) nzero
 
 ⊢zmMot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty zmB (var vz)
-⊢zmMot = ⊢tyIdN (⊢monus ⊢nzero (⊢var here)) ⊢nzero
+⊢zmMot = ⊢tyIdN (⊢monus ⊢nzero (⊢var (here refl))) ⊢nzero
 
 zmTm : {Γ : Cx} → RTm Γ → RTm Γ
 zmTm b = natrec (reflN nzero)
@@ -441,7 +441,7 @@ zmTm b = natrec (reflN nzero)
     --   endpoint steps DOWN to the branch's subject (`monus-suc`), while
     --   the branch's own RIGHT endpoint `pred 0` steps down to the goal's
     --   `0`.  ⇒ `ctrnᵀ` with one `csymᵀ`, not two reductions the same way.
-    sB = ⊢conv (⊢congPd (⊢monus ⊢nzero (⊢var (there here))) ⊢nzero (⊢var here))
+    sB = ⊢conv (⊢congPd (⊢monus ⊢nzero (⊢var (there (here refl) refl))) ⊢nzero (⊢var (here refl)))
            (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Idʳ (natrec-zero _ _)) doneᵀ))
                   (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-suc _ _ _)) doneᵀ))))
 
@@ -461,8 +461,8 @@ pmB a b = IdN (predTm (monusTm (nsuc a) b)) (monusTm a b)
 ⊢pmMot : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat →
          (Γ ▹ Nat) ⊢ty pmB (w a) (var vz)
 ⊢pmMot da =
-  ⊢tyIdN (⊢pred (⊢monus (⊢nsuc (⊢wk da)) (⊢var here)))
-         (⊢monus (⊢wk da) (⊢var here))
+  ⊢tyIdN (⊢pred (⊢monus (⊢nsuc (⊢wk da)) (⊢var (here refl))))
+         (⊢monus (⊢wk da) (⊢var (here refl)))
 
 pmMot-at : {Γ : Cx} (a b : RTm Γ) →
            subTy (single b) (pmB (w a) (var vz)) ≡ pmB a b
@@ -503,13 +503,13 @@ pmTm a b =
     sB = ⊢-cast (sym (pmMot-s a))
            (⊢conv (⊢congPd (⊢pred (⊢monus (⊢nsuc dA) dB'))
                            (⊢monus dA dB')
-                           (⊢var here))
+                           (⊢var (here refl)))
              (csymᵀ (ctrnᵀ
                (red→≅ᵀ (stepᵀ (ξ-Idˡ (ξ-natrecⁿ (natrec-suc _ _ _))) doneᵀ))
                (red→≅ᵀ (stepᵀ (ξ-Idʳ (natrec-suc _ _ _)) doneᵀ)))))
       where
         dA  = ⊢wk (⊢wk da)
-        dB' = ⊢var (there here)
+        dB' = ⊢var (there (here refl) refl)
 
 ------------------------------------------------------------------------
 -- ★★★ 7.  NO CONFUSION FOR `Nat` — `0 ≡ suc p` IS ABSURD, INTERNALLY.
@@ -528,7 +528,7 @@ nfam : {Γ : Cx} → RTm (Γ ∙)
 nfam = natrec ⌜Unit⌝ ⌜base⌝ (var vz)
 
 ⊢nfam : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ nfam ∷ U
-⊢nfam = ⊢natrec ty-U ⊢⌜Unit⌝ ⊢⌜base⌝ (elAsNat (⊢var here))
+⊢nfam = ⊢natrec ty-U ⊢⌜Unit⌝ ⊢⌜base⌝ (elAsNat (⊢var (here refl)))
 
 noConfTm : {Γ : Cx} → RTm Γ → RTm Γ
 noConfTm e = jsub nfam e unit
@@ -714,7 +714,7 @@ dvdCongTm d h p = jsub (dvdCode (w d) (var vz)) p h
             Γ ⊢ dvdCongTm d h p ∷ dvdT d n'
 ⊢dvd-cong {d = d} {n = n} {n' = n'} dd dn dn' dp dh =
   ⊢conv (⊢-cast (cong El (peel n'))
-          (⊢jsub (⊢dvdCode (⊢wk dd) (asN (⊢var here)))
+          (⊢jsub (⊢dvdCode (⊢wk dd) (asN (⊢var (here refl))))
                  (natAsEl dn) (natAsEl dn') dp
                  (⊢-cast (sym (cong El (peel n)))
                          (⊢conv dh (csymᵀ (red→≅ᵀ (El-dvd d n)))))))

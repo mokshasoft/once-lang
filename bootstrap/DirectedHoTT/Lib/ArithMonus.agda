@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm; subTy; subTm; Sub; extS )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢ordtr; ty-Nat; ty-Hom
         ; _≅ᵀ_; csymᵀ; Hom-Nat-ss; Hom-Nat-sz; ⊢absurd
         ; _⟶_; _⟶*_; done; step; ξ-natrecⁿ; wk-single; βsnd )
@@ -92,7 +92,7 @@ monusLtB a b = Hom Nat (monusTm (nsuc a) (nsuc b)) a
 ⊢monusLtMot : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat →
               (Γ ▹ Nat) ⊢ty monusLtB (w a) (var vz)
 ⊢monusLtMot da =
-  ty-Hom ty-Nat (⊢monus (⊢nsuc (⊢wk da)) (⊢nsuc (⊢var here))) (⊢wk da)
+  ty-Hom ty-Nat (⊢monus (⊢nsuc (⊢wk da)) (⊢nsuc (⊢var (here refl)))) (⊢wk da)
 
 mlt-at : {Γ : Cx} (a k : RTm Γ) →
          subTy (single k) (monusLtB (w a) (var vz)) ≡ monusLtB a k
@@ -131,12 +131,12 @@ monusLtTm a b =
     zB = ⊢-cast (sym (mlt-at a nzero))
            (⊢conv (⊢le-refl da) (csymᵀ (red→≅ᵀ (homˡ* (mlt-chain a)))))
     sB = ⊢-cast (sym (mlt-s a))
-           (⊢conv (⊢ordtr (⊢pred dU) dU dA (⊢pred-le dU) (⊢var here))
+           (⊢conv (⊢ordtr (⊢pred dU) dU dA (⊢pred-le dU) (⊢var (here refl)))
                   (csymᵀ (red→≅ᵀ (homˡ* (monus-suc (nsuc (w (w a)))
                                                    (nsuc (var (vs vz))))))))
       where
         dA = ⊢wk (⊢wk da)
-        dU = ⊢monus (⊢nsuc dA) (⊢nsuc (⊢var (there here)))
+        dU = ⊢monus (⊢nsuc dA) (⊢nsuc (⊢var (there (here refl) refl)))
 
 ------------------------------------------------------------------------
 -- ★ the STRICT form the descents want: `suc a ∸ suc b < suc a`.
@@ -269,7 +269,7 @@ congPred a p = jsub (⌜Id⌝ ⌜Nat⌝ (predTm (w a)) (predTm (var vz))) p
         (elIdN (predTm a) (predTm b))
   where
     dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢pred (⊢wk da)))
-                      (natAsEl (⊢pred (asN (⊢var here))))
+                      (natAsEl (⊢pred (asN (⊢var (here refl)))))
     de = ⊢-cast (sym (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ (predTm z) (predTm a)))
                            (wk-single {v = a} a)))
                 (⊢conv (⊢reflN (⊢pred da))
@@ -287,7 +287,7 @@ monus0B : {Γ : Cx} (b : RTm Γ) → RTy Γ
 monus0B b = IdN (monusTm nzero b) nzero
 
 ⊢monus0Mot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty monus0B (var vz)
-⊢monus0Mot = ⊢tyIdN (⊢monus ⊢nzero (⊢var here)) ⊢nzero
+⊢monus0Mot = ⊢tyIdN (⊢monus ⊢nzero (⊢var (here refl))) ⊢nzero
 
 monus0Tm : {Γ : Cx} → RTm Γ → RTm Γ
 monus0Tm b = natrec (reflN nzero)
@@ -302,8 +302,8 @@ monus0Tm b = natrec (reflN nzero)
     zB = ⊢conv (⊢reflN ⊢nzero)
                (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (monus-zero nzero))))
     -- b := suc k :  0 ∸ suc k ⟶* pred (0 ∸ k), and the IH gives 0 ∸ k ≡ 0
-    sB = ⊢conv (⊢conv (⊢congPred (⊢monus ⊢nzero (⊢var (there here))) ⊢nzero
-                                 (⊢var here))
+    sB = ⊢conv (⊢conv (⊢congPred (⊢monus ⊢nzero (⊢var (there (here refl) refl))) ⊢nzero
+                                 (⊢var (here refl)))
                       (red→≅ᵀ (⟶ᵀ*-Idʳ (pred-zero))))
                (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (monus-suc nzero (var (vs vz))))))
 
@@ -323,8 +323,8 @@ monusSSB a b = IdN (monusTm (nsuc a) (nsuc b)) (monusTm a b)
 ⊢monusSSMot : {Γ : Ctx} {a : RTm ⌊ Γ ⌋} → Γ ⊢ a ∷ Nat →
               (Γ ▹ Nat) ⊢ty monusSSB (w a) (var vz)
 ⊢monusSSMot da =
-  ⊢tyIdN (⊢monus (⊢nsuc (⊢wk da)) (⊢nsuc (⊢var here)))
-         (⊢monus (⊢wk da) (⊢var here))
+  ⊢tyIdN (⊢monus (⊢nsuc (⊢wk da)) (⊢nsuc (⊢var (here refl))))
+         (⊢monus (⊢wk da) (⊢var (here refl)))
 
 mss-at : {Γ : Cx} (a k : RTm Γ) →
          subTy (single k) (monusSSB (w a) (var vz)) ≡ monusSSB a k
@@ -357,15 +357,15 @@ monusSSTm a b =
                   (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (mlt-chain a)))))
     -- b := suc k :  both sides peel one `pred`, and the IH bridges them
     sB = ⊢-cast (sym (mss-s a))
-           (⊢conv (⊢conv (⊢congPred dL dR (⊢var here))
+           (⊢conv (⊢conv (⊢congPred dL dR (⊢var (here refl)))
                          (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idʳ (monus-suc dA' dK')))))
                   (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (monus-suc (nsuc dA') (nsuc dK'))))))
       where
         dA  = ⊢wk (⊢wk da)
         dA' = w (w a)
         dK' = var (vs vz)
-        dL  = ⊢monus (⊢nsuc dA) (⊢nsuc (⊢var (there here)))
-        dR  = ⊢monus dA (⊢var (there here))
+        dL  = ⊢monus (⊢nsuc dA) (⊢nsuc (⊢var (there (here refl) refl)))
+        dR  = ⊢monus dA (⊢var (there (here refl) refl))
 
 ------------------------------------------------------------------------
 -- ★★★★★ PIECE 4 — THE BRIDGE: `a ≤ b → a ∸ b ≡ 0`.
@@ -394,8 +394,8 @@ monusLeB a = Π Nat (Π (Hom Nat (w a) (var vz))
 ⊢monusLeMot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty monusLeB (var vz)
 ⊢monusLeMot =
   ty-Π ty-Nat
-    (ty-Π (ty-Hom ty-Nat (⊢var (there here)) (⊢var here))
-          (⊢tyIdN (⊢monus (⊢var (there (there here))) (⊢var (there here)))
+    (ty-Π (ty-Hom ty-Nat (⊢var (there (here refl) refl)) (⊢var (here refl)))
+          (⊢tyIdN (⊢monus (⊢var (there (there (here refl) refl) refl)) (⊢var (there (here refl) refl)))
                   ⊢nzero))
 
 -- ★ the two branches, as their own Defs (one big term per Def)
@@ -406,8 +406,8 @@ monusLeZ = lam (lam (monus0Tm (var (vs vz))))
 ⊢monusLeZ : {Γ : Ctx} → Γ ⊢ monusLeZ ∷ monusLeB nzero
 ⊢monusLeZ =
   ⊢lam ty-Nat
-    (⊢lam (ty-Hom ty-Nat ⊢nzero (⊢var here))
-          (⊢monus0 (⊢var (there here))))
+    (⊢lam (ty-Hom ty-Nat ⊢nzero (⊢var (here refl)))
+          (⊢monus0 (⊢var (there (here refl) refl))))
 
 -- ★★ THE INNER SPLIT.  At `a := suc k` the certificate decides `b`:
 --    `suc k ≤ 0` is `base` (absurd), `suc k ≤ suc j` IS `k ≤ j`.
@@ -418,9 +418,9 @@ leC = Π (Hom Nat (nsuc (var (vs (vs (vs vz))))) (var vz))
         (IdN (monusTm (nsuc (var (vs (vs (vs (vs vz)))))) (var (vs vz))) nzero)
 
 ⊢leC : {Γ : Ctx} → ((((Γ ▹ Nat) ▹ monusLeB (var vz)) ▹ Nat) ▹ Nat) ⊢ty leC
-⊢leC = ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢var (there (there (there here))))) (⊢var here))
-            (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there (there (there here))))))
-                            (⊢var (there here)))
+⊢leC = ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl))) (⊢var (here refl)))
+            (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))
+                            (⊢var (there (here refl) refl)))
                     ⊢nzero)
 
 monusLeS : {Γ : Cx} → RTm ((Γ ∙) ∙)
@@ -444,17 +444,17 @@ monusLeTm a = natrec monusLeZ monusLeS a
            Γ ⊢ monusLeTm a ∷ monusLeB a
 ⊢monusLe {a = a} da = ⊢natrec ⊢monusLeMot ⊢monusLeZ sB da
   where
-    sB = ⊢lam ty-Nat (⊢natrec ⊢leC zBr sBr (⊢var here))
+    sB = ⊢lam ty-Nat (⊢natrec ⊢leC zBr sBr (⊢var (here refl)))
       where
         -- b := 0 :  `suc k ≤ 0` reduces to `base`, so the branch is absurd
-        zBr = ⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢var (there (there here)))) ⊢nzero)
+        zBr = ⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢var (there (there (here refl) refl) refl))) ⊢nzero)
                    (⊢conv (⊢absurd dCode dBase) (elIdN _ _))
           where
             dCode = ⊢⌜Id⌝ ⊢⌜Nat⌝
-                      (natAsEl (⊢monus (⊢nsuc (⊢var (there (there (there here)))))
+                      (natAsEl (⊢monus (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))
                                        ⊢nzero))
                       (natAsEl ⊢nzero)
-            dBase = ⊢conv (⊢var here) (red→≅ᵀ (stepᵀ (Hom-Nat-sz _) doneᵀ))
+            dBase = ⊢conv (⊢var (here refl)) (red→≅ᵀ (stepᵀ (Hom-Nat-sz _) doneᵀ))
         -- b := suc j :  `suc k ≤ suc j` IS `k ≤ j`, so the IH applies at j
         -- ⚠ THE DOMAIN AND THE BODY SIT EITHER SIDE OF THE `lam`, so `k` and
         --   `j` need DIFFERENT indices in the two positions — one binder
@@ -463,15 +463,15 @@ monusLeTm a = natrec monusLeZ monusLeS a
                    (⊢transN dLHS dMID ⊢nzero (⊢monusSS dK' dJ) dIHapp)
           where
             -- domain side (before `c` is bound)
-            dKᵈ  = ⊢var (there (there (there (there here))))
-            dJᵈ  = ⊢var (there here)
+            dKᵈ  = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
+            dJᵈ  = ⊢var (there (here refl) refl)
             -- body side (after `c` is bound)
-            dK'  = ⊢var (there (there (there (there (there here)))))
-            dJ   = ⊢var (there (there here))
-            dIH  = ⊢var (there (there (there (there here))))
+            dK'  = ⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)
+            dJ   = ⊢var (there (there (here refl) refl) refl)
+            dIH  = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
             dLHS = ⊢monus (⊢nsuc dK') (⊢nsuc dJ)
             dMID = ⊢monus dK' dJ
-            dCer = ⊢conv (⊢var here) (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))
+            dCer = ⊢conv (⊢var (here refl)) (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))
             dIHapp = ⊢app (⊢app dIH dJ) dCer
 
 ------------------------------------------------------------------------

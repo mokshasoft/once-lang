@@ -603,12 +603,24 @@ posc-red (posc-Hom hc ha) (ξ-⌜Hom⌝ʳ ())
 Ren⊢ : (Γ Δ : Ctx) → Ren ⌊ Γ ⌋ ⌊ Δ ⌋ → Set
 Ren⊢ Γ Δ ρ = ∀ {x A} → Γ ∋ x ∷ A → Δ ∋ ρ x ∷ renTy ρ A
 
+-- ★★★ THE WEAKENING RENAMING, NAMED — `_∋_∷_`'s `there` at `vs`.
+--
+-- ⚠⚠ REQUIRED BY THE FORD, and it must be a NAMED DEFINITION, not a
+--   lambda.  Point-free uses (`ren-ty X there`, `wR there`, …) have no
+--   argument to append the equation to, and `(λ v → there v refl)` has no
+--   inferable type there: `renTy ?ρ ?A =?= renTy vs …` is not
+--   decomposable, so `?ρ := vs` was previously solved only by `there`'s
+--   RIGID constructor type.  A named shim restores that rigidity.
+--   ⇒ `pin-implicits-on-defined-set-types`, at the point-free position.
+wkR⊢ : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} → Ren⊢ Γ (Γ ▹ B) vs
+wkR⊢ v = there v refl
+
 Ren⊢-ext : {Γ Δ : Ctx} {ρ : Ren ⌊ Γ ⌋ ⌊ Δ ⌋} {C : RTy ⌊ Γ ⌋} →
            Ren⊢ Γ Δ ρ → Ren⊢ (Γ ▹ C) (Δ ▹ renTy ρ C) (extR ρ)
-Ren⊢-ext {ρ = ρ} {C = C} h here =
-  ∋-cast (sym (ren-wk-comm ρ C)) here
-Ren⊢-ext {ρ = ρ} h (there {A = A₀} v) =
-  ∋-cast (sym (ren-wk-comm ρ A₀)) (there (h v))
+Ren⊢-ext {ρ = ρ} {C = C} h (here refl) =
+  ∋-cast (sym (ren-wk-comm ρ C)) (here refl)
+Ren⊢-ext {ρ = ρ} h (there {A = A₀} v refl) =
+  ∋-cast (sym (ren-wk-comm ρ A₀)) (there (h v) refl)
 
 -- Typed renaming, now MUTUAL with renaming for TYPE FORMATION: `⊢lam`/`⊢pair`
 -- carry `⊢ty` premises (2026-07-30, option A), so the two must move together.
@@ -1169,7 +1181,7 @@ ren-lemma {ρ = ρ} (⊢conv d c) h = ⊢conv (ren-lemma d h) (≅ᵀ-ren ρ c)
 
 ⊢wk : {Γ : Ctx} {B : RTy ⌊ Γ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
       Γ ⊢ t ∷ A → (Γ ▹ B) ⊢ renTm vs t ∷ renTy vs A
-⊢wk d = ren-lemma d there
+⊢wk d = ren-lemma d wkR⊢
 
 ------------------------------------------------------------------------
 -- Typed substitution preserves typing, and single substitution.
@@ -1180,9 +1192,9 @@ Sub⊢ Γ Δ σ = ∀ {x A} → Γ ∋ x ∷ A → Δ ⊢ subTm σ (var x) ∷ s
 
 Sub⊢-ext : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {C : RTy ⌊ Γ ⌋} →
            Sub⊢ Γ Δ σ → Sub⊢ (Γ ▹ C) (Δ ▹ subTy σ C) (extS σ)
-Sub⊢-ext {σ = σ} {C = C} h here =
-  ⊢-cast (sym (exts-wk-ty σ C)) (⊢var here)
-Sub⊢-ext {σ = σ} h (there {A = A₀} v) =
+Sub⊢-ext {σ = σ} {C = C} h (here refl) =
+  ⊢-cast (sym (exts-wk-ty σ C)) (⊢var (here refl))
+Sub⊢-ext {σ = σ} h (there {A = A₀} v refl) =
   ⊢-cast (sym (exts-wk-ty σ A₀)) (⊢wk (h v))
 
 sub-lemma : {Γ Δ : Ctx} {σ : Sub ⌊ Γ ⌋ ⌊ Δ ⌋} {t : RTm ⌊ Γ ⌋} {A : RTy ⌊ Γ ⌋} →
@@ -1294,8 +1306,8 @@ sub-lemma {σ = σ} (⊢conv d c) h = ⊢conv (sub-lemma d h) (≅ᵀ-sub σ c)
 -- substitute the recursor's OUTER binder, under the IH binder).
 ⊢single : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {a : RTm ⌊ Γ ⌋} →
           Γ ⊢ a ∷ A → Sub⊢ (Γ ▹ A) Γ (single a)
-⊢single {A = A} {a = a} da here = ⊢-cast (sym (wk-cancel a A)) da
-⊢single {a = a} da (there {A = A₀} v) = ⊢-cast (sym (wk-cancel a A₀)) (⊢var v)
+⊢single {A = A} {a = a} da (here refl) = ⊢-cast (sym (wk-cancel a A)) da
+⊢single {a = a} da (there {A = A₀} v refl) = ⊢-cast (sym (wk-cancel a A₀)) (⊢var v)
 
 ⊢[] : {Γ : Ctx} {A : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {B : RTy (⌊ Γ ⌋ ∙)}
       {a : RTm ⌊ Γ ⌋} →
@@ -1313,10 +1325,10 @@ conv-ctx {Γ} {A} {A'} c {t} {B} d =
     (subst (λ z → (Γ ▹ A') ⊢ z ∷ subTy idₛ B) (subTm-id t) (sub-lemma d idₛ⊢))
   where
   idₛ⊢ : Sub⊢ (Γ ▹ A) (Γ ▹ A') idₛ
-  idₛ⊢ here =
-    ⊢-cast (sym (subTy-id (renTy vs A))) (⊢conv (⊢var here) (csymᵀ (≅ᵀ-ren vs c)))
-  idₛ⊢ (there {A = A₀} v) =
-    ⊢-cast (sym (subTy-id (renTy vs A₀))) (⊢var (there v))
+  idₛ⊢ (here refl) =
+    ⊢-cast (sym (subTy-id (renTy vs A))) (⊢conv (⊢var (here refl)) (csymᵀ (≅ᵀ-ren vs c)))
+  idₛ⊢ (there {A = A₀} v refl) =
+    ⊢-cast (sym (subTy-id (renTy vs A₀))) (⊢var (there v refl))
 
 ----------------------------------------------------------------- ★ arithmetic the indexed-ι block needs, brought along with it.
 +-suc : (j k : ℕ) → (j + suc k) ≡ suc (j + k)
@@ -1374,10 +1386,10 @@ ipayTy-sub-single D I σ v C =
 -- extending a well-typed environment by a well-typed value.
 iext-Sub⊢ : {Γ Θ : Ctx} {σ : Sub ⌊ Θ ⌋ ⌊ Γ ⌋} {A : RTy ⌊ Θ ⌋} {v : RTm ⌊ Γ ⌋} →
             Sub⊢ Θ Γ σ → Γ ⊢ v ∷ subTy σ A → Sub⊢ (Θ ▹ A) Γ (iext σ v)
-iext-Sub⊢ {σ = σ} {A = A} h dv here =
+iext-Sub⊢ {σ = σ} {A = A} h dv (here refl) =
   ⊢-cast (sym (trans (subTy-renTy A)
                      (subTy-cong (λ x → refl) A))) dv
-iext-Sub⊢ {σ = σ} h dv (there {A = A₀} x) =
+iext-Sub⊢ {σ = σ} h dv (there {A = A₀} x refl) =
   ⊢-cast (sym (trans (subTy-renTy A₀)
                      (subTy-cong (λ x → refl) A₀))) (h x)
 
@@ -1396,7 +1408,7 @@ iihTy-wf {Γ} {Θ} D I M σ (iρ j C) p (iwf-ρ .j dj wC) hσ dM hp =
        (ren-ty (iihTy-wf D I M (iext σ (fst p)) C (snd p) wC
                          (iext-Sub⊢ hσ (⊢fst hp)) dM
                          (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp)))
-               there)
+               wkR⊢)
 iihTy-wf D I M σ (iκ κ C) p (iwf-κ .κ _ dcode wC) hσ dM hp =
   iihTy-wf D I M (iext σ (fst p)) C (snd p) wC
            (iext-Sub⊢ hσ (⊢fst hp)) dM
@@ -1438,6 +1450,6 @@ ilookupD-wf (suc k) (idwf-cons wC wE) (thereID m) = ilookupD-wf k wE m
 --   telescope — the base case that gets `iihs-ty` off the ground.
 isingle-Sub⊢ : {Γ : Ctx} {I : RTy ε} {i : RTm ⌊ Γ ⌋} →
                Γ ⊢ i ∷ εwkTy I → Sub⊢ (◇ ▹ εwkTy I) Γ (isingle i)
-isingle-Sub⊢ {I = I} di here =
+isingle-Sub⊢ {I = I} di (here refl) =
   ⊢-cast (sym (trans (subTy-renTy (εwkTy I)) (εwk-sub _ I))) di
-isingle-Sub⊢ di (there ())
+isingle-Sub⊢ di (there () _)

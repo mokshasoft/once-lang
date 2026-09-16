@@ -32,7 +32,7 @@ open import DirectedHoTT.Spec.Typing
         ; Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; ⊢var; here; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢absurd; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
-        ; ⊢lam; ⊢app; there; nrs; single
+        ; ⊢lam; ⊢app; there; refl nrs; single
         ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom; wk-single )
 open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )
@@ -76,7 +76,7 @@ reflTm : {Γ : Cx} → RTm Γ → RTm Γ
 reflTm m = natrec unit (var vz) m
 
 ⊢reflMot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty reflMot
-⊢reflMot = ty-El (⊢⌜Hom⌝ ⊢⌜Nat⌝ (natAsEl (⊢var here)) (natAsEl (⊢var here)))
+⊢reflMot = ty-El (⊢⌜Hom⌝ ⊢⌜Nat⌝ (natAsEl (⊢var (here refl))) (natAsEl (⊢var (here refl))))
 
 -- the code at the ZERO instance collapses all the way to `Unit`.
 ⊢le-refl-z : {Γ : Ctx} → Γ ⊢ unit ∷ El (⌜Hom⌝ ⌜Nat⌝ nzero nzero)
@@ -91,7 +91,7 @@ reflTm m = natrec unit (var vz) m
              ((Γ ▹ Nat) ▹ reflMot) ⊢ var vz
                ∷ El (⌜Hom⌝ ⌜Nat⌝ (nsuc (var (vs vz))) (nsuc (var (vs vz))))
 ⊢le-refl-s =
-  ⊢conv (⊢var here)
+  ⊢conv (⊢var (here refl))
         (ctrnᵀ (red→≅ᵀ (El-homNat (var (vs vz)) (var (vs vz))))
                (csymᵀ (red→≅ᵀ (⟶ᵀ*-trans
                  (El-homNat (nsuc (var (vs vz))) (nsuc (var (vs vz))))
@@ -115,7 +115,7 @@ sucMot = El (⌜Hom⌝ ⌜Nat⌝ (var vz) (nsuc (var vz)))
 
 ⊢sucMot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty sucMot
 ⊢sucMot =
-  ty-El (⊢⌜Hom⌝ ⊢⌜Nat⌝ (natAsEl (⊢var here)) (natAsEl (⊢nsuc (⊢var here))))
+  ty-El (⊢⌜Hom⌝ ⊢⌜Nat⌝ (natAsEl (⊢var (here refl))) (natAsEl (⊢nsuc (⊢var (here refl)))))
 
 ⊢le-suc : {Γ : Ctx} {m : RTm ⌊ Γ ⌋} →
           Γ ⊢ m ∷ Nat → Γ ⊢ natrec unit (var vz) m ∷ Hom Nat m (nsuc m)
@@ -134,7 +134,7 @@ sucMot = El (⌜Hom⌝ ⌜Nat⌝ (var vz) (nsuc (var vz)))
                 ∷ El (⌜Hom⌝ ⌜Nat⌝ (nsuc (var (vs vz)))
                                   (nsuc (nsuc (var (vs vz)))))
     sBranch =
-      ⊢conv (⊢var here)
+      ⊢conv (⊢var (here refl))
             (ctrnᵀ (red→≅ᵀ (El-homNat (var (vs vz)) (nsuc (var (vs vz)))))
                    (csymᵀ (red→≅ᵀ (⟶ᵀ*-trans
                      (El-homNat (nsuc (var (vs vz)))

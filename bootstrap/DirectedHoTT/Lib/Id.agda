@@ -45,7 +45,7 @@ symTm c t p = jsub (⌜Id⌝ (renTm vs c) (var vz) (renTm vs t)) p (idrefl c t)
 ⊢symId {c = c} {t = t} {u = u} {p = p} dc dt du dp =
   ⊢conv
     (⊢-cast (cong El (⌜Id⌝-cong₃ (wk-cancel-tm u c) refl (wk-cancel-tm u t)))
-      (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢var here) (⊢wk dt))
+      (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢var (here refl)) (⊢wk dt))
              dt du dp
              (⊢-cast (cong El (sym (⌜Id⌝-cong₃ (wk-cancel-tm t c) refl
                                                (wk-cancel-tm t t))))

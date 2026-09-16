@@ -836,9 +836,9 @@ ctx-conv {Γ = Γ} {A = A} {A' = A'} {t = t} {D = D} d cA =
              t₁ ≡ t₂ → D₁ ≡ D₂ → Δ ⊢ t₁ ∷ D₁ → Δ ⊢ t₂ ∷ D₂
   subst₂-⊢ refl refl d₀ = d₀
   idσ⊢ : Sub⊢ (Γ ▹ A) (Γ ▹ A') idₛ
-  idσ⊢ here = ⊢-cast (sym (subTy-id _))
-                     (⊢conv (⊢var here) (≅ᵀ-ren vs cA))
-  idσ⊢ (there v) = ⊢-cast (sym (subTy-id _)) (⊢var (there v))
+  idσ⊢ (here refl) = ⊢-cast (sym (subTy-id _))
+                     (⊢conv (⊢var (here refl)) (≅ᵀ-ren vs cA))
+  idσ⊢ (there v refl) = ⊢-cast (sym (subTy-id _)) (⊢var (there v refl))
 
 -- ★ the WORKHORSE: a member of a pw-able decoded type, weakened and
 -- applied at the fresh domain variable, lands in the pointwise body.
@@ -849,7 +849,7 @@ pw-app {Γ = Γ} {C = C} {w = w} dw key with pw-El-decode C key
 ... | Body , (ch₁ , ch₂) =
   ⊢conv
     (⊢-cast (wk-inst-ty Body)
-      (⊢app (⊢conv (⊢wk dw) (red→≅ᵀ (⟶ᵀ*-ren vs ch₁))) (⊢var here)))
+      (⊢app (⊢conv (⊢wk dw) (red→≅ᵀ (⟶ᵀ*-ren vs ch₁))) (⊢var (here refl))))
     (csymᵀ (red→≅ᵀ ch₂))
 
 -- typing of the pointwise dom/body codes, by spine induction.
@@ -1037,7 +1037,7 @@ ihTy-wf : {Γ : Ctx} (D : Desc) (M : RTy (⌊ Γ ⌋ ∙)) (C : DCon) (p : RTm �
 ihTy-wf D M dι       p dM hp = ty-Unit
 ihTy-wf {Γ} D M (dρ C) p dM hp =
   ty-Σ (sub-ty dM (⊢single (⊢fst hp)))
-       (ren-ty (ihTy-wf D M C (snd p) dM htail) there)
+       (ren-ty (ihTy-wf D M C (snd p) dM htail) wkR⊢)
   where
     htail : Γ ⊢ snd p ∷ payTy D C
     htail = ⊢-cast (payTy-sub (single (fst p)) D C) (⊢snd hp)
@@ -1055,7 +1055,7 @@ ihs-ty : {Γ : Ctx} (D : Desc) (M : RTy (⌊ Γ ⌋ ∙)) (ms : RTm ⌊ Γ ⌋)
          Γ ⊢ ihs D ms C p ∷ ihTy D C p M
 ihs-ty D M ms dι       p w dM hms hp = ⊢unit
 ihs-ty {Γ} D M ms (dρ C) p w dM hms hp =
-  ⊢pair (ren-ty (ihTy-wf D M C (snd p) dM htail) there)
+  ⊢pair (ren-ty (ihTy-wf D M C (snd p) dM htail) wkR⊢)
         (⊢elim w dM hms (⊢fst hp))
         (⊢-cast (sym (wk-sub-single (ihTy D C (snd p) M) (elim D ms (fst p))))
                 (ihs-ty D M ms C (snd p) w dM hms htail))
@@ -1099,7 +1099,7 @@ iihs-ty {Γ} {Θ} D I M ms σ (iρ j C) p wD (iwf-ρ .j dj wC) hσ dM hms hp =
   ⊢pair (ren-ty (iihTy-wf D I M (iext σ (fst p)) C (snd p) wC
                           (iext-Sub⊢ hσ (⊢fst hp)) dM
                           (⊢-cast (ipayTy-sub-single D I σ (fst p) C) (⊢snd hp)))
-                there)
+                wkR⊢)
         (⊢ielim wD dM
                 (⊢-cast (εwk-sub σ I) (sub-lemma dj hσ))
                 hms
@@ -1691,7 +1691,7 @@ sr {Γ = Γ} d (tr-pw c a f e₀ key) with gen-tr d
 ... | tgU (mkTrInvU () t u dt du dp de cC)
 ... | tgC (mkTrInv cM aM refl A t u dcM daM dvM ncM hcM haM dt du dp de cC)
       with gen-var dvM
-...   | _ , (here , cv) =
+...   | _ , ((here refl) , cv) =
       ⊢conv
         (⊢-cast
           (cong (Π (El (pwDom C₀)))
@@ -1824,7 +1824,7 @@ sr {Γ = Γ} d (tr-pw c a f e₀ key) with gen-tr d
                    (⊢wk {Γ = ΓD} {B = A″} (pw-app dA₀ keyT)))
 
   dv-in : ΓDA ⊢ var vz ∷ El (renTm pwShift (pwBody c))
-  dv-in = ⊢-cast (cong El (sym eq-c-in)) (⊢var here)
+  dv-in = ⊢-cast (cong El (sym eq-c-in)) (⊢var (here refl))
 
   hc-in : occTm vz (renTm pwShift (pwBody c)) ≡ false
   hc-in = occ-ren-tm avoids-pwShift (pwBody c)

@@ -59,7 +59,7 @@ predN a p = jsub (⌜Id⌝ ⌜Nat⌝ (w (predTm a)) (predTm (var vz))) p
                 (⊢jsub dd (natAsEl da) (natAsEl db) dp de))
         (elIdN (predTm a) (predTm b))
   where
-    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk (⊢pred da))) (natAsEl (⊢pred (elAsNat (⊢var here))))
+    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk (⊢pred da))) (natAsEl (⊢pred (elAsNat (⊢var (here refl)))))
     de = ⊢-cast (sym (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ z (predTm a)))
                            (wk-single {v = a} (predTm a))))
                 (⊢conv (⊢reflN (⊢pred da)) (csymᵀ (elIdN (predTm a) (predTm a))))

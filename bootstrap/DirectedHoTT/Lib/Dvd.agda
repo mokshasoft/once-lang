@@ -55,7 +55,7 @@ dvdT d n = Σ' Nat (IdN (w n) (mulTm (var vz) (w d)))
 ⊢dvdT : {Γ : Ctx} {d n : RTm ⌊ Γ ⌋} →
         Γ ⊢ d ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ty dvdT d n
 ⊢dvdT dd dn =
-  ty-Σ ty-Nat (⊢tyIdN (⊢wk dn) (⊢mul (⊢var here) (⊢wk dd)))
+  ty-Σ ty-Nat (⊢tyIdN (⊢wk dn) (⊢mul (⊢var (here refl)) (⊢wk dd)))
 
 ------------------------------------------------------------------------
 -- ★★ INTRO AND ELIM.  One peel each, and it is the same peel: the Σ's
@@ -75,7 +75,7 @@ dvd-intro : {Γ : Ctx} {d n k p : RTm ⌊ Γ ⌋} →
             Γ ⊢ p ∷ IdN n (mulTm k d) →
             Γ ⊢ pair k p ∷ dvdT d n
 dvd-intro {d = d} {n = n} {k = k} dd dn dk dp =
-  ⊢pair (⊢tyIdN (⊢wk dn) (⊢mul (⊢var here) (⊢wk dd)))
+  ⊢pair (⊢tyIdN (⊢wk dn) (⊢mul (⊢var (here refl)) (⊢wk dd)))
         dk
         (⊢-cast (sym (dvd-at d n k)) dp)
 
@@ -114,4 +114,4 @@ dvdCode d n = ⌜Σ⌝ ⌜Nat⌝ (⌜Id⌝ ⌜Nat⌝ (w n) (mulTm (var vz) (w d)
   ⊢⌜Σ⌝ ⊢⌜Nat⌝
     (⊢⌜Id⌝ ⊢⌜Nat⌝
        (natAsEl (⊢wk dn))
-       (natAsEl (⊢mul (elAsNat (⊢var here)) (⊢wk dd))))
+       (natAsEl (⊢mul (elAsNat (⊢var (here refl))) (⊢wk dd))))

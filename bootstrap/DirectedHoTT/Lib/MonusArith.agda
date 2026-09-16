@@ -32,7 +32,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy; subTm; renTy; renTm; Ren; Sub; extS )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
         ; csymᵀ; ctrnᵀ; ξ-Idˡ; ξ-Idʳ; natrec-zero; natrec-suc
         ; _⟶*_; step; done; wk-single )
@@ -80,7 +80,7 @@ congM₂ m n p =
         (elIdN (monusTm m n) (monusTm m n'))
   where
     dfam = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk (⊢monus dm dn)))
-                        (natAsEl (⊢monus (⊢wk dm) (asN (⊢var here))))
+                        (natAsEl (⊢monus (⊢wk dm) (asN (⊢var (here refl)))))
 
     peel : (v : RTm ⌊ _ ⌋) →
            subTm (single v) (⌜Id⌝ ⌜Nat⌝ (w (monusTm m n)) (monusTm (w m) (var vz)))
@@ -102,8 +102,8 @@ mpaB x y z = IdN (monusTm x (plusTm y z)) (monusTm (monusTm x y) z)
 ⊢mpaMot : {Γ : Ctx} {x y : RTm ⌊ Γ ⌋} → Γ ⊢ x ∷ Nat → Γ ⊢ y ∷ Nat →
           (Γ ▹ Nat) ⊢ty mpaB (w x) (w y) (var vz)
 ⊢mpaMot dx dy =
-  ⊢tyIdN (⊢monus (⊢wk dx) (⊢plus (⊢wk dy) (⊢var here)))
-         (⊢monus (⊢monus (⊢wk dx) (⊢wk dy)) (⊢var here))
+  ⊢tyIdN (⊢monus (⊢wk dx) (⊢plus (⊢wk dy) (⊢var (here refl))))
+         (⊢monus (⊢monus (⊢wk dx) (⊢wk dy)) (⊢var (here refl)))
 
 mpaMot-at : {Γ : Cx} (x y z : RTm Γ) →
             subTy (single z) (mpaB (w x) (w y) (var vz)) ≡ mpaB x y z
@@ -178,7 +178,7 @@ mpaTm x y z =
              (⊢-cast (sym (mpaMot-at x y nzero)) (⊢mpaZ dx dy))
              (⊢-cast (sym (mpaMot-s x y))
                      (⊢mpaS (⊢wk (⊢wk dx)) (⊢wk (⊢wk dy))
-                            (⊢var (there here)) (⊢var here)))
+                            (⊢var (there (here refl) refl)) (⊢var (here refl))))
              dz)
 
 ------------------------------------------------------------------------
@@ -204,7 +204,7 @@ congM₁ n m p =
         (elIdN (monusTm m n) (monusTm m' n))
   where
     dfam = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk (⊢monus dm dn)))
-                        (natAsEl (⊢monus (asN (⊢var here)) (⊢wk dn)))
+                        (natAsEl (⊢monus (asN (⊢var (here refl))) (⊢wk dn)))
 
     peel : (v : RTm ⌊ _ ⌋) →
            subTm (single v) (⌜Id⌝ ⌜Nat⌝ (w (monusTm m n)) (monusTm (var vz) (w n)))
@@ -225,7 +225,7 @@ pmcB y e = IdN (monusTm (plusTm e y) e) y
 
 ⊢pmcMot : {Γ : Ctx} {y : RTm ⌊ Γ ⌋} → Γ ⊢ y ∷ Nat →
           (Γ ▹ Nat) ⊢ty pmcB (w y) (var vz)
-⊢pmcMot dy = ⊢tyIdN (⊢monus (⊢plus (⊢var here) (⊢wk dy)) (⊢var here)) (⊢wk dy)
+⊢pmcMot dy = ⊢tyIdN (⊢monus (⊢plus (⊢var (here refl)) (⊢wk dy)) (⊢var (here refl))) (⊢wk dy)
 
 pmcMot-at : {Γ : Cx} (y e : RTm Γ) →
             subTy (single e) (pmcB (w y) (var vz)) ≡ pmcB y e
@@ -272,7 +272,7 @@ pmcTm y e = natrec (reflN y) (pmcSTm (w (w y)) (var (vs vz)) (var vz)) e
     (⊢natrec (⊢pmcMot dy)
              (⊢-cast (sym (pmcMot-at y nzero)) (⊢pmcZ dy))
              (⊢-cast (sym (pmcMot-s y))
-                     (⊢pmcS (⊢wk (⊢wk dy)) (⊢var (there here)) (⊢var here)))
+                     (⊢pmcS (⊢wk (⊢wk dy)) (⊢var (there (here refl) refl)) (⊢var (here refl))))
              de)
 
 ------------------------------------------------------------------------
@@ -289,8 +289,8 @@ pmulB e x = IdN (mulTm (predTm x) e) (monusTm (mulTm x e) e)
 ⊢pmulMot : {Γ : Ctx} {e : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ Nat →
            (Γ ▹ Nat) ⊢ty pmulB (w e) (var vz)
 ⊢pmulMot de =
-  ⊢tyIdN (⊢mul (⊢pred (⊢var here)) (⊢wk de))
-         (⊢monus (⊢mul (⊢var here) (⊢wk de)) (⊢wk de))
+  ⊢tyIdN (⊢mul (⊢pred (⊢var (here refl))) (⊢wk de))
+         (⊢monus (⊢mul (⊢var (here refl)) (⊢wk de)) (⊢wk de))
 
 pmulMot-at : {Γ : Cx} (e x : RTm Γ) →
              subTy (single x) (pmulB (w e) (var vz)) ≡ pmulB e x
@@ -345,7 +345,7 @@ pmulTm e x =
     (⊢natrec (⊢pmulMot de)
              (⊢-cast (sym (pmulMot-at e nzero)) (⊢pmulZ de))
              (⊢-cast (sym (pmulMot-s e))
-                     (⊢pmulS (⊢wk (⊢wk de)) (⊢var (there here))))
+                     (⊢pmulS (⊢wk (⊢wk de)) (⊢var (there (here refl) refl))))
              dx)
 
 ------------------------------------------------------------------------
@@ -363,8 +363,8 @@ mmB e j k = IdN (mulTm (monusTm j k) e) (monusTm (mulTm j e) (mulTm k e))
 ⊢mmMot : {Γ : Ctx} {e j : RTm ⌊ Γ ⌋} → Γ ⊢ e ∷ Nat → Γ ⊢ j ∷ Nat →
          (Γ ▹ Nat) ⊢ty mmB (w e) (w j) (var vz)
 ⊢mmMot de dj =
-  ⊢tyIdN (⊢mul (⊢monus (⊢wk dj) (⊢var here)) (⊢wk de))
-         (⊢monus (⊢mul (⊢wk dj) (⊢wk de)) (⊢mul (⊢var here) (⊢wk de)))
+  ⊢tyIdN (⊢mul (⊢monus (⊢wk dj) (⊢var (here refl))) (⊢wk de))
+         (⊢monus (⊢mul (⊢wk dj) (⊢wk de)) (⊢mul (⊢var (here refl)) (⊢wk de)))
 
 mmMot-at : {Γ : Cx} (e j k : RTm Γ) →
            subTy (single k) (mmB (w e) (w j) (var vz)) ≡ mmB e j k
@@ -462,8 +462,8 @@ mmTm e j k =
              (⊢-cast (sym (mmMot-at e j nzero)) (⊢mmZ de dj))
              (⊢-cast (sym (mmMot-s e j))
                      (⊢mmS (⊢wk (⊢wk de)) (⊢wk (⊢wk dj))
-                           (⊢var (there here))
-                           (⊢-cast (mmMot-wk e j) (⊢var here))))
+                           (⊢var (there (here refl) refl))
+                           (⊢-cast (mmMot-wk e j) (⊢var (here refl)))))
              dk)
 
 ------------------------------------------------------------------------

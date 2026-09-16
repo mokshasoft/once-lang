@@ -62,10 +62,10 @@ msr₁ = fst (var vz)
 msr₂ = snd (var vz)
 
 ⊢msr₁ : {Γ : Ctx} → (Γ ▹ PairT) ⊢ msr₁ ∷ Nat
-⊢msr₁ = ⊢fst (⊢var here)
+⊢msr₁ = ⊢fst (⊢var (here refl))
 
 ⊢msr₂ : {Γ : Ctx} → (Γ ▹ PairT) ⊢ msr₂ ∷ Nat
-⊢msr₂ = ⊢snd (⊢var here)
+⊢msr₂ = ⊢snd (⊢var (here refl))
 
 ------------------------------------------------------------------------
 -- the motive is a CODE, so results cross `El ⌜Nat⌝ ≅ᵀ Nat` once in each

@@ -35,7 +35,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; subTm-cong
         ; subTy-renTy; subTy-id; renTy-renTy; renTy-subTy; renTm-cong; idₛ )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _∋_∷_; here; there; wk-single )
+  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _∋_∷_; here; there; refl wk-single )
 open import DirectedHoTT.Metatheory.TySub
   using ( ren-lemma; Ren⊢; Ren⊢-ext; ∋-cast )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub )
@@ -80,7 +80,7 @@ wᶠ = renTm (extR vs)
 
 ⊢wkᶠ : {Γ : Ctx} {A B : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {T : RTy (⌊ Γ ⌋ ∙)} →
        (Γ ▹ A) ⊢ t ∷ T → ((Γ ▹ B) ▹ renTy vs A) ⊢ wᶠ t ∷ renTy (extR vs) T
-⊢wkᶠ d = ren-lemma d (Ren⊢-ext there)
+⊢wkᶠ d = ren-lemma d (Ren⊢-ext wkR⊢)
 
 ------------------------------------------------------------------------
 -- substitution vs weakening — the ETA half (no case analysis)
@@ -458,17 +458,17 @@ Ren⊢-ins² : {Γ : Ctx} {X A : RTy ⌊ Γ ⌋} {A' B : RTy (⌊ Γ ⌋ ∙)} �
             Ren⊢ ((Γ ▹ A) ▹ B) (((Γ ▹ X) ▹ A') ▹ renTy (extR vs) B)
                  (extR (extR vs))
 -- ★ each case is `ren-wTy`, once per binder the variable sits under.
-Ren⊢-ins² {B = B} eqA here =
-  ∋-cast (sym (ren-wTy {ρ = extR vs} B)) here
-Ren⊢-ins² {A = A} eqA (there here) =
+Ren⊢-ins² {B = B} eqA (here refl) =
+  ∋-cast (sym (ren-wTy {ρ = extR vs} B)) (here refl)
+Ren⊢-ins² {A = A} eqA (there (here refl) refl) =
   ∋-cast (sym (trans (ren-wTy {ρ = extR vs} (renTy vs A))
                      (trans (cong (renTy vs) (ren-wTy {ρ = vs} A))
                             (cong (λ z → renTy vs (renTy vs z)) eqA))))
-         (there here)
-Ren⊢-ins² eqA (there (there {A = A₀} v)) =
+         (there (here refl) refl)
+Ren⊢-ins² eqA (there (there {A = A₀} v refl) refl) =
   ∋-cast (sym (trans (ren-wTy {ρ = extR vs} (renTy vs A₀))
                      (cong (renTy vs) (ren-wTy {ρ = vs} A₀))))
-         (there (there (there v)))
+         (there (there (there v refl) refl) refl)
 
 ------------------------------------------------------------------------
 -- ★★★ THE DESCENT THROUGH AN `iinst`ed MOTIVE'S Π-TOWER.

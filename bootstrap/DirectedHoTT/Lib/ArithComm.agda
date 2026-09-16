@@ -39,7 +39,7 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm; subTy; subTm; Sub; extS )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢idrefl; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝; ⊢⌜Hom⌝
         ; ty-Id; ty-El; ty-Nat
         ; _≅ᵀ_; csymᵀ; ctrnᵀ; El-⌜Id⌝
@@ -89,7 +89,7 @@ congS a p = jsub (⌜Id⌝ ⌜Nat⌝ (nsuc (w a)) (nsuc (var vz))) p (reflN (nsu
         (elIdN (nsuc a) (nsuc b))
   where
     dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢nsuc (⊢wk da)))
-                      (natAsEl (⊢nsuc (asN (⊢var here))))
+                      (natAsEl (⊢nsuc (asN (⊢var (here refl)))))
     de = ⊢-cast (sym (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ (nsuc z) (nsuc a)))
                            (wk-single {v = a} a)))
                 (⊢conv (⊢reflN (⊢nsuc da)) (csymᵀ (elIdN (nsuc a) (nsuc a))))
@@ -109,7 +109,7 @@ symN a p = jsub (⌜Id⌝ ⌜Nat⌝ (var vz) (w a)) p (reflN a)
                 (⊢jsub dd (natAsEl da) (natAsEl db) dp de))
         (elIdN b a)
   where
-    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (natAsEl (⊢wk da))
+    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (here refl)) (natAsEl (⊢wk da))
     de = ⊢-cast (sym (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ a z)) (wk-single {v = a} a)))
                 (⊢conv (⊢reflN da) (csymᵀ (elIdN a a)))
 
@@ -125,7 +125,7 @@ transN a p q = jsub (⌜Id⌝ ⌜Nat⌝ (w a) (var vz)) q p
                 (⊢jsub dd (natAsEl db) (natAsEl dc) dq de))
         (elIdN a c)
   where
-    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk da)) (⊢var here)
+    dd = ⊢⌜Id⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk da)) (⊢var (here refl))
     de = ⊢-cast (sym (cong (λ z → El (⌜Id⌝ ⌜Nat⌝ z b)) (wk-single {v = b} a)))
                 (⊢conv dp (csymᵀ (elIdN a b)))
 
@@ -140,7 +140,7 @@ plus0B : {Γ : Cx} (m : RTm Γ) → RTy Γ
 plus0B m = IdN (plusTm m nzero) m
 
 ⊢plus0Mot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty plus0B (var vz)
-⊢plus0Mot = ⊢tyIdN (⊢plus (⊢var here) ⊢nzero) (⊢var here)
+⊢plus0Mot = ⊢tyIdN (⊢plus (⊢var (here refl)) ⊢nzero) (⊢var (here refl))
 
 plus0Tm : {Γ : Cx} → RTm Γ → RTm Γ
 plus0Tm m = natrec (reflN nzero) (congS (plusTm (var (vs vz)) nzero) (var vz)) m
@@ -150,8 +150,8 @@ plus0Tm m = natrec (reflN nzero) (congS (plusTm (var (vs vz)) nzero) (var vz)) m
   where
     zB = ⊢conv (⊢reflN ⊢nzero)
            (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-zero _ _)) doneᵀ)))
-    sB = ⊢conv (⊢congS (⊢plus (⊢var (there here)) ⊢nzero) (⊢var (there here))
-                       (⊢var here))
+    sB = ⊢conv (⊢congS (⊢plus (⊢var (there (here refl) refl)) ⊢nzero) (⊢var (there (here refl) refl))
+                       (⊢var (here refl)))
            (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-suc _ _ _)) doneᵀ)))
 
 ------------------------------------------------------------------------
@@ -165,8 +165,8 @@ plusSB n m = IdN (plusTm m (nsuc n)) (nsuc (plusTm m n))
 ⊢plusSMot : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ Nat →
             (Γ ▹ Nat) ⊢ty plusSB (w n) (var vz)
 ⊢plusSMot dn =
-  ⊢tyIdN (⊢plus (⊢var here) (⊢nsuc (⊢wk dn)))
-         (⊢nsuc (⊢plus (⊢var here) (⊢wk dn)))
+  ⊢tyIdN (⊢plus (⊢var (here refl)) (⊢nsuc (⊢wk dn)))
+         (⊢nsuc (⊢plus (⊢var (here refl)) (⊢wk dn)))
 
 psMot-at : {Γ : Cx} (n k : RTm Γ) →
            subTy (single k) (plusSB (w n) (var vz)) ≡ plusSB n k
@@ -197,9 +197,9 @@ plusSTm n m =
              (csymᵀ (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-zero _ _)) doneᵀ))
                            (red→≅ᵀ (stepᵀ (ξ-Idʳ (ξ-nsuc (natrec-zero _ _))) doneᵀ)))))
     sB = ⊢-cast (sym (psMot-s n))
-           (⊢conv (⊢congS (⊢plus (⊢var (there here)) (⊢nsuc (⊢wk (⊢wk dn))))
-                          (⊢nsuc (⊢plus (⊢var (there here)) (⊢wk (⊢wk dn))))
-                          (⊢var here))
+           (⊢conv (⊢congS (⊢plus (⊢var (there (here refl) refl)) (⊢nsuc (⊢wk (⊢wk dn))))
+                          (⊢nsuc (⊢plus (⊢var (there (here refl) refl)) (⊢wk (⊢wk dn))))
+                          (⊢var (here refl)))
              (csymᵀ (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-suc _ _ _)) doneᵀ))
                            (red→≅ᵀ (stepᵀ (ξ-Idʳ (ξ-nsuc (natrec-suc _ _ _))) doneᵀ)))))
 
@@ -216,7 +216,7 @@ commB n m = IdN (plusTm m n) (plusTm n m)
 ⊢commMot : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ Nat →
            (Γ ▹ Nat) ⊢ty commB (w n) (var vz)
 ⊢commMot dn =
-  ⊢tyIdN (⊢plus (⊢var here) (⊢wk dn)) (⊢plus (⊢wk dn) (⊢var here))
+  ⊢tyIdN (⊢plus (⊢var (here refl)) (⊢wk dn)) (⊢plus (⊢wk dn) (⊢var (here refl)))
 
 cmMot-at : {Γ : Cx} (n k : RTm Γ) →
            subTy (single k) (commB (w n) (var vz)) ≡ commB n k
@@ -251,13 +251,13 @@ commTm n m =
            (⊢conv (⊢transN (⊢nsuc (⊢plus dm' dn''))
                            (⊢nsuc (⊢plus dn'' dm'))
                            (⊢plus dn'' (⊢nsuc dm'))
-                           (⊢congS (⊢plus dm' dn'') (⊢plus dn'' dm') (⊢var here))
+                           (⊢congS (⊢plus dm' dn'') (⊢plus dn'' dm') (⊢var (here refl)))
                            (⊢symN (⊢plus dn'' (⊢nsuc dm'))
                                   (⊢nsuc (⊢plus dn'' dm'))
                                   (⊢plusS dm' dn'')))
              (csymᵀ (red→≅ᵀ (stepᵀ (ξ-Idˡ (natrec-suc _ _ _)) doneᵀ))))
       where
-        dm'  = ⊢var (there here)
+        dm'  = ⊢var (there (here refl) refl)
         dn'' = ⊢wk (⊢wk dn)
 
 ------------------------------------------------------------------------
@@ -283,7 +283,7 @@ trHomˡ u p h = jsub (⌜Hom⌝ ⌜Nat⌝ (var vz) (w u)) p h
                 (⊢jsub dd (natAsEl da) (natAsEl db) dp de))
         (homN b u)
   where
-    dd = ⊢⌜Hom⌝ ⊢⌜Nat⌝ (⊢var here) (natAsEl (⊢wk du))
+    dd = ⊢⌜Hom⌝ ⊢⌜Nat⌝ (⊢var (here refl)) (natAsEl (⊢wk du))
     de = ⊢-cast (sym (cong (λ z → El (⌜Hom⌝ ⌜Nat⌝ a z)) (wk-single {v = a} u)))
                 (⊢conv dh (csymᵀ (homN a u)))
 
@@ -299,7 +299,7 @@ trHomʳ t p h = jsub (⌜Hom⌝ ⌜Nat⌝ (w t) (var vz)) p h
                 (⊢jsub dd (natAsEl da) (natAsEl db) dp de))
         (homN t b)
   where
-    dd = ⊢⌜Hom⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk dt)) (⊢var here)
+    dd = ⊢⌜Hom⌝ ⊢⌜Nat⌝ (natAsEl (⊢wk dt)) (⊢var (here refl))
     de = ⊢-cast (sym (cong (λ z → El (⌜Hom⌝ ⌜Nat⌝ z a)) (wk-single {v = a} t)))
                 (⊢conv dh (csymᵀ (homN t a)))
 

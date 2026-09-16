@@ -33,4 +33,4 @@ plusTm m n = natrec n (nsuc (var vz)) m
 -- the CONSTANT-Nat motive makes every obligation definitional
 ⊢plus : {Γ : Ctx} {m n : RTm ⌊ Γ ⌋} →
         Γ ⊢ m ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ plusTm m n ∷ Nat
-⊢plus dm dn = ⊢natrec ty-Nat dn (⊢nsuc (⊢var here)) dm
+⊢plus dm dn = ⊢natrec ty-Nat dn (⊢nsuc (⊢var (here refl))) dm

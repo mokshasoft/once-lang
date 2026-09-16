@@ -29,7 +29,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy; subTm; renTy; renTm; Ren; extS )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ty-Nat; ty-Π
         ; csymᵀ; ξ-Idʳ; natrec-suc; wk-single )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; stepᵀ; doneᵀ; ⟶ᵀ*-Idˡ )
@@ -74,10 +74,10 @@ mpAt b =
 ⊢mpAt db =
   ty-Π ty-Nat
     (ty-Π ty-Nat
-      (ty-Π (⊢tyIdN (⊢monus (⊢var (there here)) (⊢wk (⊢wk db)))
-                    (⊢nsuc (⊢var here)))
-            (⊢tyIdN (⊢var (there (there here)))
-                    (⊢plus (⊢nsuc (⊢var (there here)))
+      (ty-Π (⊢tyIdN (⊢monus (⊢var (there (here refl) refl)) (⊢wk (⊢wk db)))
+                    (⊢nsuc (⊢var (here refl))))
+            (⊢tyIdN (⊢var (there (there (here refl) refl) refl))
+                    (⊢plus (⊢nsuc (⊢var (there (here refl) refl)))
                            (⊢wk (⊢wk (⊢wk db)))))))
 
 mpUse : {Γ : Ctx} {b h a p e : RTm ⌊ Γ ⌋} →
@@ -199,8 +199,8 @@ mpInner b' p =
 ⊢mpInner : {Γ : Ctx} {b' p : RTm ⌊ Γ ⌋} →
            Γ ⊢ b' ∷ Nat → Γ ⊢ p ∷ Nat → (Γ ▹ Nat) ⊢ty mpInner b' p
 ⊢mpInner db' dp =
-  ty-Π (⊢tyIdN (⊢monus (⊢var here) (⊢nsuc (⊢wk db'))) (⊢nsuc (⊢wk dp)))
-       (⊢tyIdN (⊢var (there here))
+  ty-Π (⊢tyIdN (⊢monus (⊢var (here refl)) (⊢nsuc (⊢wk db'))) (⊢nsuc (⊢wk dp)))
+       (⊢tyIdN (⊢var (there (here refl) refl))
                (⊢plus (⊢nsuc (⊢wk (⊢wk dp))) (⊢nsuc (⊢wk (⊢wk db')))))
 
 mpInner-at : {Γ : Cx} (b' p a : RTm Γ) →
@@ -333,9 +333,9 @@ mpZTm = lam (lam (lam (mpBaseTm (var (vs (vs vz))) (var (vs vz)) (var vz))))
 ⊢mpZ =
   ⊢lam ty-Nat
     (⊢lam ty-Nat
-      (⊢lam (⊢tyIdN (⊢monus (⊢var (there here)) ⊢nzero) (⊢nsuc (⊢var here)))
-            (⊢mpBase (⊢var (there (there here))) (⊢var (there here))
-                     (⊢var here))))
+      (⊢lam (⊢tyIdN (⊢monus (⊢var (there (here refl) refl)) ⊢nzero) (⊢nsuc (⊢var (here refl))))
+            (⊢mpBase (⊢var (there (there (here refl) refl) refl)) (⊢var (there (here refl) refl))
+                     (⊢var (here refl)))))
 
 -- ⚠ THE BRANCH TERMS ARE DEPTH-SPECIFIC, and their signatures must say so.
 --   Slots at the inner ZERO leaf: [0] eq [1] p [2] a [3] IH [4] b'
@@ -361,26 +361,26 @@ mpSTm = lam (lam (natrec (lam mpSZTm) (lam mpSSTm) (var (vs vz))))
     P  = var vz
     B' = var (vs (vs (vs vz)))
 
-    dA  = ⊢var (there here)
-    dP  = ⊢var here
-    dB' = ⊢var (there (there (there here)))
+    dA  = ⊢var (there (here refl) refl)
+    dP  = ⊢var (here refl)
+    dB' = ⊢var (there (there (there (here refl) refl) refl) refl)
 
     zA = ⊢-cast (sym (mpInner-at B' P nzero))
            (⊢lam (⊢tyIdN (⊢monus ⊢nzero (⊢nsuc dB')) (⊢nsuc dP))
-                 (⊢mpZero (⊢var (there here))
-                          (⊢var (there (there (there (there here)))))
-                          (⊢var here)))
+                 (⊢mpZero (⊢var (there (here refl) refl))
+                          (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                          (⊢var (here refl))))
 
     sA = ⊢-cast (sym (mpInner-s B' P))
-           (⊢lam (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there here)))
-                                 (⊢nsuc (⊢var (there (there (there (there (there here)))))))) 
-                         (⊢nsuc (⊢var (there (there here)))))
-                 (⊢mpStep (⊢var (there (there here)))
-                          (⊢var (there (there (there here))))
-                          (⊢var (there (there (there (there (there (there here)))))))
+           (⊢lam (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (here refl) refl)))
+                                 (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))) 
+                         (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
+                 (⊢mpStep (⊢var (there (there (here refl) refl) refl))
+                          (⊢var (there (there (there (here refl) refl) refl) refl))
+                          (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
                           (⊢-cast (mpAt-w⁶ (var vz))
-                                  (⊢var (there (there (there (there (there here)))))))
-                          (⊢var here)))
+                                  (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
+                          (⊢var (here refl))))
 
     inner = ⊢-cast (mpInner-at B' P A)
               (⊢natrec (⊢mpInner dB' dP) zA sA dA)
@@ -395,7 +395,7 @@ mpTm b = natrec mpZTm mpSTm b
 ⊢monusPlus : {Γ : Ctx} {b : RTm ⌊ Γ ⌋} → Γ ⊢ b ∷ Nat →
              Γ ⊢ mpTm b ∷ mpAt b
 ⊢monusPlus {b = b} db =
-  ⊢-cast (mpAt-at b) (⊢natrec (⊢mpAt (⊢var here)) ⊢mpZ ⊢mpS db)
+  ⊢-cast (mpAt-at b) (⊢natrec (⊢mpAt (⊢var (here refl))) ⊢mpZ ⊢mpS db)
 
 -- ★ the form a client calls: from `a ∸ b ≡ suc p`, get `a ≡ suc p + b`.
 monusPlus : {Γ : Ctx} {a b p e : RTm ⌊ Γ ⌋} →

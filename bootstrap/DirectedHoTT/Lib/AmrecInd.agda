@@ -48,7 +48,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm-subTm; subTm-renTm; subTm-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs; ⊢jsub
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs; ⊢jsub
         ; ty-El; ty-Π; ty-Hom; ty-Nat
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝; ⊢ordtr
         ; Hom-Nat-ss; ⊢natrec; wk-single )
@@ -116,7 +116,7 @@ module Stmt (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp :
   valAt = app (w amrecTm) (var vz)
 
   ⊢valAt : (Δ ▹ A) ⊢ valAt ∷ El cM
-  ⊢valAt = ⊢-cast (cong El (wᶠ¹-single cM)) (⊢app (⊢wk ⊢amrecΠ) (⊢var here))
+  ⊢valAt = ⊢-cast (cong El (wᶠ¹-single cM)) (⊢app (⊢wk ⊢amrecΠ) (⊢var (here refl)))
 
   ------------------------------------------------------------------------
   -- ★★ THE GOAL TYPE: `P` at the argument `x` and the value `amrec x`.
@@ -719,7 +719,7 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
 
   -- ★ the ambient renaming, typed: three weakenings off `Δ`.
   ρ₃⊢ : Ren⊢ Δ (((Δ ▹ Nat) ▹ renTy vs A) ▹ Hom Nat (nsuc (wᶠ m)) (var (vs vz))) ρ₃
-  ρ₃⊢ = wR (wR there)
+  ρ₃⊢ = wR (wR wkR⊢)
 
   ------------------------------------------------------------------------
   -- ★★★★★ `IndBAt-sub` — THE SUBSTITUTION LAW, GENERIC IN σ.
@@ -884,7 +884,7 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
       (⊢lam dA'
         (⊢lam (ty-Hom ty-Nat (⊢nsuc dμ) ⊢nzero)
               (⊢strong-base (⊢PAtR ρ₂⊢ dP dy (⊢app (ren-lemma ⊢amrecΠ ρ₂⊢) dy))
-                            (⊢var here))))
+                            (⊢var (here refl)))))
     where
       -- ⚠ `⊢-cast` moves a TERM judgement's type; this is a `⊢ty`
       --   judgement, so it needs `subst`.  Standing distinction in this
@@ -903,14 +903,14 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
       dyEq : renTy vs (renTy vs (renTy idR A)) ≡ renTy (θ₂ idR) A
       dyEq = trans (cong (renTy vs) (renTy-renTy A)) (renTy-renTy A)
 
-      dy = ⊢-cast dyEq (⊢var (there here))
+      dy = ⊢-cast dyEq (⊢var (there (here refl) refl))
 
   ⊢IndB : {P : RTm ((⌊ Δ ⌋ ∙) ∙)} →
           ((Δ ▹ A) ▹ El cM) ⊢ P ∷ U →
           (Δ ▹ Nat) ⊢ty IndB P
   ⊢IndB dP =
-    ty-Π (ren-ty dA there)
-      (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢wkᶠ dm)) (⊢var (there here)))
+    ty-Π (ren-ty dA wkR⊢)
+      (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢wkᶠ dm)) (⊢var (there (here refl) refl)))
          (ty-El (⊢PAtR ρ₃⊢ dP dy (⊢app (ren-lemma ⊢amrecΠ ρ₃⊢) dy))))
     where
       -- ⚠ THE VARIABLE'S TYPE IS THE COMPOSITE, NOT THE CONTEXT'S.
@@ -921,7 +921,7 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
       dyEq : renTy vs (renTy vs (renTy vs A)) ≡ renTy ρ₃ A
       dyEq = trans (cong (renTy vs) (renTy-renTy A)) (renTy-renTy A)
 
-      dy = ⊢-cast dyEq (⊢var (there here))
+      dy = ⊢-cast dyEq (⊢var (there (here refl) refl))
 
 
   ------------------------------------------------------------------------
@@ -964,7 +964,7 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
       ρ₂ v = vs (vs v)
 
       ρ₂⊢ : Ren⊢ Δ ((Δ ▹ Nat) ▹ IndB P) ρ₂
-      ρ₂⊢ = wR there
+      ρ₂⊢ = wR wkR⊢
 
       ρ₃ᵇ : Ren ⌊ Δ ⌋ ((⌊ Δ ⌋ ∙ ∙) ∙)
       ρ₃ᵇ v = vs (ρ₂ v)
@@ -979,7 +979,7 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
       goalTy = IndBAt-sub {σ = nrs} vs ρ₂ (λ v → refl) P (var vz)
 
       dm₃ = ren-lemma dm (Ren⊢-ext ρ₂⊢)
-      dK₃ = ⊢var (there (there here))
+      dK₃ = ⊢var (there (there (here refl) refl) refl)
 
   -- ⚠ from here on everything lives at `Γ₄`, the branch's own context:
   --     [0] = the certificate  [1] = the carrier  [2] = the IH  [3] = K
@@ -1007,10 +1007,10 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
       dXeq = trans (cong (renTy vs) (renTy-renTy A)) (renTy-renTy A)
 
       dX : Γ₄ ⊢ X ∷ Aρ
-      dX = ⊢-cast dXeq (⊢var (there here))
+      dX = ⊢-cast dXeq (⊢var (there (here refl) refl))
 
       dK₄ : Γ₄ ⊢ K₄ ∷ Nat
-      dK₄ = ⊢var (there (there (there here)))
+      dK₄ = ⊢var (there (there (there (here refl) refl) refl) refl)
 
       dm₄ = ren-lemma dm (Ren⊢-ext ρ₄⊢)
       dcM₄ = ren-lemma dcM (Ren⊢-ext ρ₄⊢)
@@ -1045,7 +1045,7 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
       -- 2. the hypothesis, and the ORDER COMPUTING it down one successor
       dcert : Γ₄ ⊢ var vz ∷ Hom Nat (nsuc μX) (nsuc K₄)
       dcert = ⊢-cast (cong (λ t → Hom Nat (nsuc t) (nsuc K₄)) mBridge)
-                     (⊢var here)
+                     (⊢var (here refl))
 
       dpk : Γ₄ ⊢ var vz ∷ Hom Nat μX K₄
       dpk = ⊢conv dcert (red→≅ᵀ (stepᵀ (Hom-Nat-ss μX K₄) doneᵀ))
@@ -1067,7 +1067,7 @@ module Typing (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp
                  (IndBAt-ren {ϑ = vs} ρ₃ᵇ ρ₄ (λ v → refl) P (var (vs (vs vz)))))
 
       dIHv : Γ₄ ⊢ var (vs (vs vz)) ∷ IndBAt ρ₄ P K₄
-      dIHv = ⊢-cast ihvEq (⊢var (there (there here)))
+      dIHv = ⊢-cast ihvEq (⊢var (there (there (here refl) refl) refl))
 
       -- 5. the handle, and the client's step premise
       H : RTm ⌊ Γ₄ ⌋

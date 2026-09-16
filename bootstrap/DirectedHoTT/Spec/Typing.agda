@@ -631,13 +631,36 @@ data Ctx where
 
 ------------------------------------------------------------------------
 -- Variable typing (looked-up types are weakened into the deeper context).
+--
+-- ★★★ FORDED 2026-09-16 — the index is a VARIABLE plus an equation, not
+--   the computed `renTy vs A`.  See `PLAN-FORDING-INDICES.md`.
+--
+-- ⚠ COST: with the computed form, checking `⊢var (there^k here)` at a
+--   DECLARED type made Agda solve `renTy vs ?A ≡ <declared>` — an
+--   INVERSION, because a renaming is structurally invertible and its
+--   injectivity heuristic fires.  Measured on a type carrying a stuck
+--   `ielim`: **15,998 ms computed vs 60 ms forded — 267×**
+--   (`tmp/ProbeFord`).  Forded, `A'` is fixed by the conclusion and the
+--   equation is CHECKED, not solved.
+--
+-- ⚠ THE DEFECT IS SOLVE ORDER, NOT THE COMPUTED INDEX.  In a
+--   mode-correct setting (`(Γ,x) → A`, lookup) the computed form is free:
+--   run the premise, compute `renTy` forward, compare.  Agda's implicits
+--   are mode-agnostic and it unified the conclusion first.  ⇒ Once should
+--   DECLARE THE MODE, not ford — see `FUTURE.md` invariant 2b.
+--
+-- ⇒ CONSTRUCTION: `here refl` · `there d refl`.
+-- ⇒ POINT-FREE `there` has no argument to append to — use `wkR⊢`
+--   (`Metatheory/TySub`), never a lambda: `renTy ?ρ ?A` is not
+--   decomposable, so `(λ v → there v refl)` has no inferable type.
 ------------------------------------------------------------------------
 
 infix 3 _∋_∷_
 data _∋_∷_ : (Γ : Ctx) → Var ⌊ Γ ⌋ → RTy ⌊ Γ ⌋ → Set where
-  here  : ∀ {Γ} {A : RTy ⌊ Γ ⌋} → (Γ ▹ A) ∋ vz ∷ renTy vs A
-  there : ∀ {Γ} {A B : RTy ⌊ Γ ⌋} {x} →
-          Γ ∋ x ∷ A → (Γ ▹ B) ∋ vs x ∷ renTy vs A
+  here  : ∀ {Γ} {A : RTy ⌊ Γ ⌋} {A' : RTy (⌊ Γ ⌋ ∙)} →
+          renTy vs A ≡ A' → (Γ ▹ A) ∋ vz ∷ A'
+  there : ∀ {Γ} {A B : RTy ⌊ Γ ⌋} {A' : RTy (⌊ Γ ⌋ ∙)} {x} →
+          Γ ∋ x ∷ A → renTy vs A ≡ A' → (Γ ▹ B) ∋ vs x ∷ A'
 
 ------------------------------------------------------------------------
 -- THE TYPING JUDGMENT — dependent `app`, and the conversion rule.
@@ -1051,11 +1074,11 @@ data ⊢ctx_ : Ctx → Set where
 
 -- The identity function: `◇ ⊢ λx.x ∷ Π base base`.
 ⊢id : ◇ ⊢ lam (var vz) ∷ Π base base
-⊢id = ⊢lam ty-base (⊢var here)
+⊢id = ⊢lam ty-base (⊢var (here refl))
 
 -- A dependent-`app` derivation: `(◇ ▹ base) ⊢ (λx.x) y ∷ base`.
 ⊢appex : (◇ ▹ base) ⊢ app (lam (var vz)) (var vz) ∷ base
-⊢appex = ⊢app (⊢lam ty-base (⊢var here)) (⊢var here)
+⊢appex = ⊢app (⊢lam ty-base (⊢var (here refl))) (⊢var (here refl))
 
 -- β-reduction is directed `Hom`, and reduction ⊆ conversion. The redex
 -- `(λx.x) y` reduces to `y`, and the two are convertible.
@@ -1081,7 +1104,7 @@ conv-El d r = ⊢conv d (credᵀ (ξ-El r))
 -- it — a directed path derived by COMPUTATION, not by a `refl` primitive.
 ⊢hom-id : ◇ ⊢ lam (var vz) ∷ Hom U ⌜base⌝ ⌜base⌝
 ⊢hom-id =
-  ⊢conv (⊢lam (ty-El ⊢⌜base⌝) (⊢var here))
+  ⊢conv (⊢lam (ty-El ⊢⌜base⌝) (⊢var (here refl)))
         (csymᵀ (credᵀ (Hom-U ⌜base⌝ ⌜base⌝)))
 
 -- ★ A path between DEFINITIONALLY DISTINCT codes — `SpikeHom`'s fee-is-real
@@ -1093,6 +1116,6 @@ conv-El d r = ⊢conv d (credᵀ (ξ-El r))
                 ∷ Hom U ⌜base⌝ (⌜Π⌝ ⌜base⌝ ⌜base⌝)
 ⊢hom-across =
   ⊢conv (⊢lam (ty-El ⊢⌜base⌝)
-              (⊢conv (⊢lam (ty-El ⊢⌜base⌝) (⊢var (there here)))
+              (⊢conv (⊢lam (ty-El ⊢⌜base⌝) (⊢var (there (here refl) refl)))
                      (csymᵀ (credᵀ (El-⌜Π⌝ ⌜base⌝ ⌜base⌝)))))
         (csymᵀ (credᵀ (Hom-U ⌜base⌝ (⌜Π⌝ ⌜base⌝ ⌜base⌝))))

@@ -72,7 +72,7 @@ open import DirectedHoTT.Spec.Syntax
         ; _∈ID_; hereID; thereID; ilookupD; εwkTy; εwk-ren )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; wk-single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢pair; ⊢fst; ⊢snd; ⊢unit; ⊢conv
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢pair; ⊢fst; ⊢snd; ⊢unit; ⊢conv
         ; ty-El; ty-Unit; ty-Σ; ty-Π; ty-IMu
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
@@ -723,21 +723,21 @@ posOf (wkd-cons _ W) j = posOf W (suc j)
 ⊢iwkMethod {Γ = Γ} D I k {C = C} w wD wC mem look tI ⊢sh =
   ⊢lam tI
     (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var (here refl)))))
       (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                       D I (Mot D I) (isingle (var (vs vz))) C (var vz) wC
                       (isingle-Sub⊢
                         (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                        (εwk-ren vs I))
-                                (⊢var (there here))))
+                                (⊢var (there (here refl) refl))))
                       (ty-IMu wD
                         (⊢sh (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                             (εwk-ren vs I))
-                                     (⊢var (there here)))))
+                                     (⊢var (there (here refl) refl)))))
                       (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
                                      (ipayTy-cong D I C
                                         (λ { vz → refl ; (vs ()) })))
-                              (⊢var here)))
+                              (⊢var (here refl))))
         -- ★ the result sits at `sh ⟨i⟩` — which is why `⊢sh` has to be a
         --   hypothesis: `⊢icon` must TYPE that index, and only an index
         --   type the shift preserves admits one.
@@ -746,7 +746,7 @@ posOf (wkd-cons _ W) j = posOf W (suc j)
                                      (trans (cong (renTy vs) (εwk-ren vs I))
                                             (εwk-ren vs I)))
                                    (εwk-ren vs I))
-                            (⊢var (there (there here)))))
+                            (⊢var (there (there (here refl) refl) refl))))
                -- ⚠ `⊢icon` wants the payload at `ilookupD D k`, not at
                --   `C`.  They are the same row, and `spl-look` is what
                --   says so; this is where that is cashed.
@@ -757,13 +757,13 @@ posOf (wkd-cons _ W) j = posOf W (suc j)
                                            (trans (cong (renTy vs) (εwk-ren vs I))
                                                   (εwk-ren vs I)))
                                          (εwk-ren vs I))
-                                  (⊢var (there (there here)))))
+                                  (⊢var (there (there (here refl) refl) refl))))
                         (isingle-Sub⊢
                           (⊢sh (⊢-cast (trans (cong (renTy vs)
                                                 (trans (cong (renTy vs) (εwk-ren vs I))
                                                        (εwk-ren vs I)))
                                               (εwk-ren vs I))
-                                       (⊢var (there (there here))))))
+                                       (⊢var (there (there (here refl) refl) refl)))))
                         refl (var (vs vz)) (var vz)
                         -- ⚠ TWO renamings, not one: the payload's domain
                         --   is declared two binders out and is weakened
@@ -775,12 +775,12 @@ posOf (wkd-cons _ W) j = posOf W (suc j)
                                        (trans (ipayTy-ren vs D I (isingle (var (vs vz))) C)
                                               (ipayTy-cong D I C
                                                  (λ { vz → refl ; (vs ()) }))))
-                                (⊢var (there here)))
+                                (⊢var (there (here refl) refl)))
                         (⊢-cast (trans (iihTy-ren vs D I (isingle (var (vs vz))) C
                                                   (var vz) (Mot D I))
                                        (iihTy-cong D I C (var (vs vz)) (Mot D I)
                                           (λ { vz → refl ; (vs ()) })))
-                                (⊢var here)))))))
+                                (⊢var (here refl))))))))
 
 -- ★ the method type's own well-formedness, at the SHIFTING motive.
 --   ⚠ `Lib/IPay`'s pair is `Nat`-specific (`imethTyNat-wf`), because
@@ -795,26 +795,26 @@ imethTyMot-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙)
 imethTyMot-wf {Γ = Γ} D I k C wD wC tI ⊢sh =
   ty-Π tI
     (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var (here refl)))))
       (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                       D I (Mot D I) (isingle (var (vs vz))) C (var vz) wC
                       (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                    (εwk-ren vs I))
-                                            (⊢var (there here))))
+                                            (⊢var (there (here refl) refl))))
                       (ty-IMu wD
                         (⊢sh (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                             (εwk-ren vs I))
-                                     (⊢var (there here)))))
+                                     (⊢var (there (here refl) refl)))))
                       (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
                                      (ipayTy-cong D I C
                                        (λ { vz → refl ; (vs ()) })))
-                              (⊢var here)))
+                              (⊢var (here refl))))
             (ty-IMu wD
               (⊢sh (⊢-cast (trans (cong (renTy vs)
                                     (trans (cong (renTy vs) (εwk-ren vs I))
                                            (εwk-ren vs I)))
                                   (εwk-ren vs I))
-                           (⊢var (there (there here))))))))
+                           (⊢var (there (there (here refl) refl) refl)))))))
 
 imethsTyFromMot-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc) →
                      IDescWf I D → IDescWfFrom D I E →
@@ -825,7 +825,7 @@ imethsTyFromMot-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc) �
 imethsTyFromMot-wf D I j inil    wD idwf-nil          tI ⊢sh = ty-Unit
 imethsTyFromMot-wf D I j (C ◂ E) wD (idwf-cons wC wE) tI ⊢sh =
   ty-Σ (imethTyMot-wf D I j C wD wC tI ⊢sh)
-       (ren-ty (imethsTyFromMot-wf D I (suc j) E wD wE tI ⊢sh) there)
+       (ren-ty (imethsTyFromMot-wf D I (suc j) E wD wE tI ⊢sh) wkR⊢)
 
 -- ★ the leftover's OWN well-formedness, peeled rather than enumerated.
 --   ⚠ The caller needs `IDescWfFrom D I (wkdRest W)` to type the tail, and
@@ -858,7 +858,7 @@ splDrop sp (wkd-cons w W) = splDrop (spl-step sp) W
                 Γ ⊢ iwkMethsFrom j W tl ∷ imethsTyFrom D I (Mot D I) j E
 ⊢iwkMethsFrom D I (wkd-stop E) sp wD wE tI ⊢sh tl dtl = dtl
 ⊢iwkMethsFrom D I {j = j} (wkd-cons w W) sp wD (idwf-cons wC wE) tI ⊢sh tl dtl =
-  ⊢pair (ren-ty (imethsTyFromMot-wf D I (suc j) _ wD wE tI ⊢sh) there)
+  ⊢pair (ren-ty (imethsTyFromMot-wf D I (suc j) _ wD wE tI ⊢sh) wkR⊢)
         (⊢iwkMethod D I j w wD wC (spl-mem sp) (spl-look sp) tI ⊢sh)
         (⊢-cast (sym (wk-singleTy {v = iwkMethod j w} _))
                 (⊢iwkMethsFrom D I W (spl-step sp) wD wE tI ⊢sh tl dtl))

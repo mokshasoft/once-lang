@@ -32,7 +32,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy; subTm; renTy; renTm; Ren; extS; extR )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app; ty-Nat; ty-Π
         ; csymᵀ; ξ-Idʳ; natrec-zero; natrec-suc; _⟶*_; step; done; wk-single )
 open import DirectedHoTT.Metatheory.RedCong
@@ -65,10 +65,10 @@ mlAt b =
 ⊢mlAt : {Γ : Ctx} {b : RTm ⌊ Γ ⌋} → Γ ⊢ b ∷ Nat → Γ ⊢ty mlAt b
 ⊢mlAt db =
   ty-Π ty-Nat
-    (ty-Π (⊢tyIdN (⊢monus (⊢var here) (⊢wk db)) ⊢nzero)
+    (ty-Π (⊢tyIdN (⊢monus (⊢var (here refl)) (⊢wk db)) ⊢nzero)
           (⊢tyIdN (⊢wk (⊢wk db))
-                  (⊢plus (⊢monus (⊢wk (⊢wk db)) (⊢var (there here)))
-                         (⊢var (there here)))))
+                  (⊢plus (⊢monus (⊢wk (⊢wk db)) (⊢var (there (here refl) refl)))
+                         (⊢var (there (here refl) refl)))))
 
 mlUse : {Γ : Ctx} {b h a e : RTm ⌊ Γ ⌋} →
         Γ ⊢ h ∷ mlAt b → Γ ⊢ a ∷ Nat →
@@ -138,10 +138,10 @@ mlInner b' =
 ⊢mlInner : {Γ : Ctx} {b' : RTm ⌊ Γ ⌋} → Γ ⊢ b' ∷ Nat →
            (Γ ▹ Nat) ⊢ty mlInner b'
 ⊢mlInner db =
-  ty-Π (⊢tyIdN (⊢monus (⊢var here) (⊢nsuc (⊢wk db))) ⊢nzero)
+  ty-Π (⊢tyIdN (⊢monus (⊢var (here refl)) (⊢nsuc (⊢wk db))) ⊢nzero)
        (⊢tyIdN (⊢nsuc (⊢wk (⊢wk db)))
-               (⊢plus (⊢monus (⊢nsuc (⊢wk (⊢wk db))) (⊢var (there here)))
-                      (⊢var (there here))))
+               (⊢plus (⊢monus (⊢nsuc (⊢wk (⊢wk db))) (⊢var (there (here refl) refl)))
+                      (⊢var (there (here refl) refl))))
 
 mlInner-at : {Γ : Cx} (b' a : RTm Γ) →
              subTy (single a) (mlInner b')
@@ -262,8 +262,8 @@ mlZTm = lam (lam (mlBaseTm (var (vs vz)) (var vz)))
 ⊢mlZ : {Γ : Ctx} → Γ ⊢ mlZTm ∷ mlAt nzero
 ⊢mlZ =
   ⊢lam ty-Nat
-    (⊢lam (⊢tyIdN (⊢monus (⊢var here) ⊢nzero) ⊢nzero)
-          (⊢mlBase (⊢var (there here)) (⊢var here)))
+    (⊢lam (⊢tyIdN (⊢monus (⊢var (here refl)) ⊢nzero) ⊢nzero)
+          (⊢mlBase (⊢var (there (here refl) refl)) (⊢var (here refl))))
 
 --   inner ZERO leaf:  [0] eq [1] a [2] IH [3] b'
 mlSZTm : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙)
@@ -284,22 +284,22 @@ mlSTm = lam (natrec (lam mlSZTm) (lam mlSSTm) (var vz))
 ⊢mlS = ⊢lam ty-Nat inner
   where
     B' = var (vs (vs vz))
-    dB' = ⊢var (there (there here))
-    dA  = ⊢var here
+    dB' = ⊢var (there (there (here refl) refl) refl)
+    dA  = ⊢var (here refl)
 
     zA = ⊢-cast (sym (mlInner-at B' nzero))
            (⊢lam (⊢tyIdN (⊢monus ⊢nzero (⊢nsuc dB')) ⊢nzero)
-                 (⊢mlZero (⊢var (there (there (there here))))))
+                 (⊢mlZero (⊢var (there (there (there (here refl) refl) refl) refl))))
 
     sA = ⊢-cast (sym (mlInner-s B'))
-           (⊢lam (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there here)))
-                                 (⊢nsuc (⊢var (there (there (there (there here)))))))
+           (⊢lam (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (here refl) refl)))
+                                 (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
                          ⊢nzero)
-                 (⊢mlStep (⊢var (there (there (there (there (there here))))))
-                          (⊢var (there (there here)))
+                 (⊢mlStep (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
+                          (⊢var (there (there (here refl) refl) refl))
                           (⊢-cast (mlAt-w⁵ (var vz))
-                                  (⊢var (there (there (there (there here))))))
-                          (⊢var here)))
+                                  (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))
+                          (⊢var (here refl))))
 
     inner = ⊢-cast (mlInner-at B' (var vz))
               (⊢natrec (⊢mlInner dB') zA sA dA)
@@ -309,7 +309,7 @@ mlTm b = natrec mlZTm mlSTm b
 
 ⊢monusLe : {Γ : Ctx} {b : RTm ⌊ Γ ⌋} → Γ ⊢ b ∷ Nat → Γ ⊢ mlTm b ∷ mlAt b
 ⊢monusLe {b = b} db =
-  ⊢-cast (mlAt-at b) (⊢natrec (⊢mlAt (⊢var here)) ⊢mlZ ⊢mlS db)
+  ⊢-cast (mlAt-at b) (⊢natrec (⊢mlAt (⊢var (here refl))) ⊢mlZ ⊢mlS db)
 
 -- ★ the form a client calls.
 monusLe : {Γ : Ctx} {a b e : RTm ⌊ Γ ⌋} →

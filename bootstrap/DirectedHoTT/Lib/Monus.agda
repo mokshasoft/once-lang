@@ -26,7 +26,7 @@ open import DirectedHoTT.Spec.Typing
         ; Hom-Nat-z; Hom-Nat-sz; Hom-Nat-ss
         ; _≅ᵀ_; credᵀ; csymᵀ; ctrnᵀ
         ; Ctx; ◇; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; ⊢var; here; there; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; ⊢var; here; there; refl ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
         ; _⊢ty_; ty-El; ty-Nat; ty-Π; ty-Hom
         ; ⊢lam; ⊢app; nrs; wk-single )
@@ -53,11 +53,11 @@ monusTm : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
 monusTm m n = natrec m (predTm (var vz)) n
 
 ⊢pred : {Γ : Ctx} {m : RTm ⌊ Γ ⌋} → Γ ⊢ m ∷ Nat → Γ ⊢ predTm m ∷ Nat
-⊢pred dm = ⊢natrec ty-Nat ⊢nzero (⊢var (there here)) dm
+⊢pred dm = ⊢natrec ty-Nat ⊢nzero (⊢var (there (here refl) refl)) dm
 
 ⊢monus : {Γ : Ctx} {m n : RTm ⌊ Γ ⌋} →
          Γ ⊢ m ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ monusTm m n ∷ Nat
-⊢monus dm dn = ⊢natrec ty-Nat dm (⊢pred (⊢var here)) dn
+⊢monus dm dn = ⊢natrec ty-Nat dm (⊢pred (⊢var (here refl))) dn
 
 ------------------------------------------------------------------------
 -- 2. THE TWO COMPUTATION RULES, as reductions.
@@ -103,7 +103,7 @@ predMot = El (⌜Hom⌝ ⌜Nat⌝ (predTm (var vz)) (var vz))
 
 ⊢predMot : {Γ : Ctx} → (Γ ▹ Nat) ⊢ty predMot
 ⊢predMot =
-  ty-El (⊢⌜Hom⌝ ⊢⌜Nat⌝ (natAsEl (⊢pred (⊢var here))) (natAsEl (⊢var here)))
+  ty-El (⊢⌜Hom⌝ ⊢⌜Nat⌝ (natAsEl (⊢pred (⊢var (here refl)))) (natAsEl (⊢var (here refl))))
 
 ⊢pred-le : {Γ : Ctx} {m : RTm ⌊ Γ ⌋} →
            Γ ⊢ m ∷ Nat →
@@ -121,7 +121,7 @@ predMot = El (⌜Hom⌝ ⌜Nat⌝ (predTm (var vz)) (var vz))
          ((Γ ▹ Nat) ▹ predMot) ⊢ reflTm (var (vs vz))
            ∷ El (⌜Hom⌝ ⌜Nat⌝ (predTm (nsuc (var (vs vz))))
                              (nsuc (var (vs vz))))
-    sB = ⊢conv (⊢le-suc (⊢var (there here)))
+    sB = ⊢conv (⊢le-suc (⊢var (there (here refl) refl)))
            (csymᵀ (red→≅ᵀ (⟶ᵀ*-trans
              (El-homNat (predTm (nsuc (var (vs vz)))) (nsuc (var (vs vz))))
              (homˡ* (pred-suc (var (vs vz)))))))

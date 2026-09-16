@@ -160,7 +160,7 @@ tr-amb-conv {A = A} {cM = cM} tI ncM dvM =
   where
   bridge : Σ (RTy (ε ∙)) (λ A' → ((◇ ▹ A) ∋ vz ∷ A') × (El cM ≅ᵀ A')) →
            El cM ≅ᵀ renTy vs A
-  bridge (_ , (here , cv)) = cv
+  bridge (_ , ((here refl) , cv)) = cv
 
   eqA : subTy (single tI) (renTy vs A) ≡ A
   eqA = trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))
@@ -1057,7 +1057,7 @@ trPwGo cM aM f e {A} {tI} dvM dp sEq ncM (u-stk k) with gen-lam dp
   where
   bridge : Σ (RTy (ε ∙)) (λ A' → ((◇ ▹ A) ∋ vz ∷ A') × (El cM ≅ᵀ A')) →
            El cM ≅ᵀ renTy vs A
-  bridge (_ , (here , cv)) = cv
+  bridge (_ , ((here refl) , cv)) = cv
 
   eqA : subTy (single tI) (renTy vs A) ≡ A
   eqA = trans (subTy-renTy A) (trans (subTy-cong (λ x → refl) A) (subTy-id A))

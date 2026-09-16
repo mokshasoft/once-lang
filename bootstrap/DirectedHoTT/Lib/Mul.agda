@@ -32,7 +32,7 @@ mulTm m n = natrec nzero (plusTm (w (w n)) (var vz)) m
 
 ⊢mul : {Γ : Ctx} {m n : RTm ⌊ Γ ⌋} →
        Γ ⊢ m ∷ Nat → Γ ⊢ n ∷ Nat → Γ ⊢ mulTm m n ∷ Nat
-⊢mul dm dn = ⊢natrec ty-Nat ⊢nzero (⊢plus (⊢wk (⊢wk dn)) (⊢var here)) dm
+⊢mul dm dn = ⊢natrec ty-Nat ⊢nzero (⊢plus (⊢wk (⊢wk dn)) (⊢var (here refl))) dm
 
 -- ★ the two computation rules, which hold by `natrec`'s own reduction.
 mul-zero : {Γ : Cx} (n : RTm Γ) → mulTm nzero n ⟶* nzero

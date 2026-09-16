@@ -29,7 +29,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy; subTm; renTy; renTm; Ren; Sub; extS; extR )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢lam; ⊢app
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢conv; ⊢lam; ⊢app
         ; ty-Nat; ty-Π; ⊢⌜Π⌝; ⊢⌜Nat⌝; El-⌜Π⌝; El-⌜Nat⌝; ξ-Πˡ
         ; _≅ᵀ_; csymᵀ; ⊢nzero; ⊢nsuc; ξ-⌜Π⌝ˡ; ξ-⌜Π⌝ʳ; _⟶*_; step; done; wk-single )
 open import DirectedHoTT.Metatheory.RedCong
@@ -81,9 +81,9 @@ MaxT u₁ u₂ v =
         Γ ⊢ u₁ ∷ Nat → Γ ⊢ u₂ ∷ Nat → Γ ⊢ v ∷ Nat → Γ ⊢ty MaxT u₁ u₂ v
 ⊢MaxT d1 d2 dv =
   ty-Π ty-Nat
-    (ty-Π (⊢dvdT (⊢var here) (⊢wk d1))
-       (ty-Π (⊢dvdT (⊢var (there here)) (⊢wk (⊢wk d2)))
-             (⊢dvdT (⊢var (there (there here))) (⊢wk (⊢wk (⊢wk dv))))))
+    (ty-Π (⊢dvdT (⊢var (here refl)) (⊢wk d1))
+       (ty-Π (⊢dvdT (⊢var (there (here refl) refl)) (⊢wk (⊢wk d2)))
+             (⊢dvdT (⊢var (there (there (here refl) refl) refl)) (⊢wk (⊢wk (⊢wk dv))))))
 
 MaxCode : {Γ : Cx} (u₁ u₂ v : RTm Γ) → RTm Γ
 MaxCode u₁ u₂ v =
@@ -97,9 +97,9 @@ MaxCode u₁ u₂ v =
            Γ ⊢ MaxCode u₁ u₂ v ∷ U
 ⊢MaxCode d1 d2 dv =
   ⊢⌜Π⌝ ⊢⌜Nat⌝
-    (⊢⌜Π⌝ (⊢dvdCode (asN (⊢var here)) (⊢wk d1))
-       (⊢⌜Π⌝ (⊢dvdCode (asN (⊢var (there here))) (⊢wk (⊢wk d2)))
-             (⊢dvdCode (asN (⊢var (there (there here))))
+    (⊢⌜Π⌝ (⊢dvdCode (asN (⊢var (here refl))) (⊢wk d1))
+       (⊢⌜Π⌝ (⊢dvdCode (asN (⊢var (there (here refl) refl))) (⊢wk (⊢wk d2)))
+             (⊢dvdCode (asN (⊢var (there (there (here refl) refl) refl)))
                        (⊢wk (⊢wk (⊢wk dv))))))
 
 -- ★ the decode, three `El-⌜Π⌝`s deep.
@@ -273,9 +273,9 @@ maxLeaf-b0 : {Γ : Ctx} {u : RTm ⌊ Γ ⌋} → Γ ⊢ u ∷ Nat →
              Γ ⊢ lam (lam (lam (var (vs vz)))) ∷ MaxT u nzero u
 maxLeaf-b0 {u = u} du =
   ⊢lam ty-Nat
-    (⊢lam (⊢dvdT (⊢var here) (⊢wk du))
-      (⊢lam (⊢dvdT (⊢var (there here)) ⊢nzero)
-            (⊢-cast peel (⊢var (there here)))))
+    (⊢lam (⊢dvdT (⊢var (here refl)) (⊢wk du))
+      (⊢lam (⊢dvdT (⊢var (there (here refl) refl)) ⊢nzero)
+            (⊢-cast peel (⊢var (there (here refl) refl)))))
   where
     peel = trans (cong (renTy vs) (dvdT-ren {ρ = vs} (var vz) (w u)))
                  (dvdT-ren {ρ = vs} (var (vs vz)) (w (w u)))
@@ -285,10 +285,10 @@ maxLeaf-a0 : {Γ : Ctx} {b : RTm ⌊ Γ ⌋} → Γ ⊢ b ∷ Nat →
              Γ ⊢ lam (lam (lam (var vz))) ∷ MaxT nzero (nsuc b) (nsuc b)
 maxLeaf-a0 {b = b} db =
   ⊢lam ty-Nat
-    (⊢lam (⊢dvdT (⊢var here) ⊢nzero)
-      (⊢lam (⊢dvdT (⊢var (there here)) (⊢nsuc (⊢wk (⊢wk db))))
+    (⊢lam (⊢dvdT (⊢var (here refl)) ⊢nzero)
+      (⊢lam (⊢dvdT (⊢var (there (here refl) refl)) (⊢nsuc (⊢wk (⊢wk db))))
             (⊢-cast (dvdT-ren {ρ = vs} (var (vs vz)) (w (w (nsuc b))))
-                    (⊢var here))))
+                    (⊢var (here refl)))))
 
 -- ★ `MaxT` three binders deep — the IH arrives under the leaf's own lams.
 MaxT-w³ : {Γ : Cx} (u₁ u₂ v : RTm Γ) →
@@ -334,13 +334,13 @@ maxLeaf-le : {Γ : Ctx} {a b v ih : RTm ⌊ Γ ⌋} →
                ∷ MaxT a b v
 maxLeaf-le {a = a} {b = b} {v = v} da db dv dih =
   ⊢lam ty-Nat
-    (⊢lam (⊢dvdT (⊢var here) (⊢wk da))
-      (⊢lam (⊢dvdT (⊢var (there here)) (⊢wk (⊢wk db)))
+    (⊢lam (⊢dvdT (⊢var (here refl)) (⊢wk da))
+      (⊢lam (⊢dvdT (⊢var (there (here refl) refl)) (⊢wk (⊢wk db)))
             (⊢MaxElim dIH dE dH₁ (⊢dvd-monus dE dB dA dH₂ dH₁))))
   where
-    dE  = ⊢var (there (there here))
-    dH₁ = ⊢-cast (h₁Peel a) (⊢var (there here))
-    dH₂ = ⊢-cast (h₂Peel b) (⊢var here)
+    dE  = ⊢var (there (there (here refl) refl) refl)
+    dH₁ = ⊢-cast (h₁Peel a) (⊢var (there (here refl) refl))
+    dH₂ = ⊢-cast (h₂Peel b) (⊢var (here refl))
     dA  = ⊢wk (⊢wk (⊢wk da))
     dB  = ⊢wk (⊢wk (⊢wk db))
     dIH = ⊢-cast (MaxT-w³ a (monusTm b a) v) (⊢wk (⊢wk (⊢wk dih)))
@@ -362,13 +362,13 @@ maxLeaf-gt : {Γ : Ctx} {a b v ih : RTm ⌊ Γ ⌋} →
                ∷ MaxT a b v
 maxLeaf-gt {a = a} {b = b} {v = v} da db dv dih =
   ⊢lam ty-Nat
-    (⊢lam (⊢dvdT (⊢var here) (⊢wk da))
-      (⊢lam (⊢dvdT (⊢var (there here)) (⊢wk (⊢wk db)))
+    (⊢lam (⊢dvdT (⊢var (here refl)) (⊢wk da))
+      (⊢lam (⊢dvdT (⊢var (there (here refl) refl)) (⊢wk (⊢wk db)))
             (⊢MaxElim dIH dE (⊢dvd-monus dE dA dB dH₁ dH₂) dH₂)))
   where
-    dE  = ⊢var (there (there here))
-    dH₁ = ⊢-cast (h₁Peel a) (⊢var (there here))
-    dH₂ = ⊢-cast (h₂Peel b) (⊢var here)
+    dE  = ⊢var (there (there (here refl) refl) refl)
+    dH₁ = ⊢-cast (h₁Peel a) (⊢var (there (here refl) refl))
+    dH₂ = ⊢-cast (h₂Peel b) (⊢var (here refl))
     dA  = ⊢wk (⊢wk (⊢wk da))
     dB  = ⊢wk (⊢wk (⊢wk db))
     dIH = ⊢-cast (MaxT-w³ (monusTm a b) b v) (⊢wk (⊢wk (⊢wk dih)))

@@ -59,7 +59,7 @@ open import DirectedHoTT.Spec.Syntax
         ; εwkTy; εwk-ren; ipayTy-ren; ipayTy-cong ; Ren; extR)
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; ⊢var; here; there; ⊢lam; ⊢pair; ⊢fst; ⊢snd; ⊢unit
+        ; _⊢_∷_; ⊢var; here; there; refl ⊢lam; ⊢pair; ⊢fst; ⊢snd; ⊢unit
         ; _⊢ty_; ty-Unit; ty-Σ; ty-Nat
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
@@ -383,17 +383,17 @@ module Fold
   ⊢ifMethod {Γ = Γ} D I k C wD wC tI =
     ⊢lam tI
       (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                       wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                       wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var (here refl)))))
         (⊢lam (subst (λ z → _ ⊢ty iihTy D I (isingle (var (vs vz))) C (var vz) z)
                      (sym renAA)
                 (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                         D I A (isingle (var (vs vz))) C (var vz) wC
                         (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                      (εwk-ren vs I))
-                                              (⊢var (there here)))) tyA
+                                              (⊢var (there (here refl) refl)))) tyA
                         (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
                                        (ipayTy-cong D I C (λ { vz → refl ; (vs ()) })))
-                                (⊢var here))))
+                                (⊢var (here refl)))))
           -- ⚠ the IH-tuple variable, RETYPED: `⊢var here` hands back
           --   `renTy vs (iihTy …)` and the fold is stated one binder out.
           --   `iihTy-ren` moves the renaming inside, `iihTy-cong` then
@@ -411,7 +411,7 @@ module Fold
                                 (cong (iihTy D I (isingle (var (vs (vs vz)))) C
                                              (var (vs vz)))
                                       renA³))
-                         (⊢var here)))))))
+                         (⊢var (here refl))))))))
 
   ------------------------------------------------------------------------
   -- ★★★ THE TUPLE, COMPUTED FROM THE DESCRIPTION.  ONE induction, and the
@@ -436,7 +436,7 @@ module Fold
   ⊢ifMeths D I j inil    wD idwf-nil          sp tI = ⊢unit
   ⊢ifMeths D I j (C ◂ E) wD (idwf-cons wC wE) sp tI =
     ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI tyA)
-                  there)
+                  wkR⊢)
           (⊢ifMethod D I j C wD wC tI)
           (⊢-cast (sym (wk-singleTy {v = ifMethod C}
                                     (imethsTyFrom D I A (suc j) E)))

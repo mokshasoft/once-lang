@@ -375,7 +375,7 @@ pwShift-sub σ t =
 
 -- the redex is well-typed (dHoTT-21's `⊢appex`)
 sr-redex : (◇ ▹ base) ⊢ app (lam (var vz)) (var vz) ∷ base
-sr-redex = ⊢app (⊢lam ty-base (⊢var here)) (⊢var here)
+sr-redex = ⊢app (⊢lam ty-base (⊢var (here refl))) (⊢var (here refl))
 
 -- it β-reduces to `y = var vz`
 sr-step : app (lam (var vz)) (var vz) ⟶ var (vz {ε})
@@ -383,4 +383,4 @@ sr-step = β (var vz) (var vz)
 
 -- and the reduct is typed at the SAME type — subject reduction, concretely.
 sr-reduct : (◇ ▹ base) ⊢ var vz ∷ base
-sr-reduct = ⊢var here
+sr-reduct = ⊢var (here refl)

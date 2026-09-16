@@ -746,11 +746,11 @@ fund {Ξ = Ξ} {σ = σ} (⊢ielim {D = D} {I = I} {M = M} {i = i} {ms = ms} {t 
     -- ★ the STARTING environment: the ambient index alone.  `isingle`'s
     --   semantic twin, and `isingle-Sub⊢`'s (Subj) exactly.
     isingleEnv : (j : RTm Ξ) → ⊩I ⊩₁∋ j → (◇ ▹ εwkTy I) ⊩ˢ (isingle j)
-    isingleEnv j hj here =
+    isingleEnv j hj (here refl) =
       relTy (trans (εwk-sub σ I)
                    (sym (trans (subTy-renTy (εwkTy I)) (εwk-sub _ I))))
             (⊩I , hj)
-    isingleEnv j hj (there ())
+    isingleEnv j hj (there () refl)
 
     go : (j : RTm Ξ) (hj : ⊩I ⊩₁∋ j) (u : RTm Ξ) (snu : SN u)
          (mm : IMuMem D I (ipredsOf idi) j u) →
@@ -1783,7 +1783,7 @@ fund {Ξ = Ξ} {σ = σ}
           Σ (⊩₁ (El (subTm (single uI) dI)))
             (λ R → R ⊩₁∋ tr dI (lam f) eI)
   goLam {f = f} snf hp' with gen-var dv
-  ... | _ , (here , cv) =
+  ... | _ , ((here refl) , cv) =
     ( R_result
     , projl (emb-coh R₀u) (tr dI (lam f) eI)
         (mem₀cast eqTgt tgtBase
@@ -1988,13 +1988,13 @@ fund {σ = σ} (⊢conv d c) x₀ ρ =
 
 ⊩ˢ-ren : ⊢ctx Γ → (ρ : Ren ⌊ Γ ⌋ Ξ) → Γ ⊩ˢ ⟨ ρ ⟩ᵣ
 ⊩ˢ-ren c-◇ ρ ()
-⊩ˢ-ren (c-▹ {A = A} wΓ tyA) ρ here = ( R , CR3₁ R (sne-var (ρ vz)) )
+⊩ˢ-ren (c-▹ {A = A} wΓ tyA) ρ (here refl) = ( R , CR3₁ R (sne-var (ρ vz)) )
   where
     eq : subTy ⟨ ρ ⟩ᵣ (renTy vs A) ≡ subTy ⟨ ρ ∘ᵣ vs ⟩ᵣ A
     eq = trans (subTy-renTy A) (subTy-cong (λ _ → refl) A)
 
     R = ⊩₁cast (sym eq) (fund-ty tyA (ρ vz) (⊩ˢ-ren wΓ (ρ ∘ᵣ vs)))
-⊩ˢ-ren (c-▹ wΓ tyA) ρ (there {A = B} d) =
+⊩ˢ-ren (c-▹ wΓ tyA) ρ (there {A = B} d refl) =
   relTy (sym eq) (⊩ˢ-ren wΓ (ρ ∘ᵣ vs) d)
   where
     eq : subTy ⟨ ρ ⟩ᵣ (renTy vs B) ≡ subTy ⟨ ρ ∘ᵣ vs ⟩ᵣ B

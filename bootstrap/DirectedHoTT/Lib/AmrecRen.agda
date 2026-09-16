@@ -49,7 +49,7 @@ open import DirectedHoTT.Spec.Syntax
         ; renTy-subTy; renTm-subTm; ordtr-cong₅; Id-cong₃ )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _∋_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _∋_∷_; ⊢var; here; there; refl ⊢nzero; ⊢nsuc; ⊢natrec
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ; ⊢⌜Id⌝; El-⌜Id⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id; wk-single )

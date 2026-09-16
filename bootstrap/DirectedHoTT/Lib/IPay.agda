@@ -84,12 +84,12 @@ imethTyNat-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙)
 imethTyNat-wf {Γ = Γ} D I k C wD wC tI =
   ty-Π tI
     (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var (here refl)))))
       (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                       D I Nat (isingle (var (vs vz))) C (var vz) wC
                       (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                    (εwk-ren vs I))
-                                            (⊢var (there here)))) ty-Nat
+                                            (⊢var (there (here refl) refl)))) ty-Nat
                       -- ⚠ the payload variable, RETYPED.  `⊢var here`
                       --   gives `renTy vs (ipayTy … (isingle (var vz)) C)`
                       --   while the IH tuple is stated at
@@ -98,7 +98,7 @@ imethTyNat-wf {Γ = Γ} D I k C wD wC tI =
                       (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
                                      (ipayTy-cong D I C
                                        (λ { vz → refl ; (vs ()) })))
-                              (⊢var here)))
+                              (⊢var (here refl))))
             ty-Nat))
 
 -- ★★★ ONE INDUCTION over the description, at an ABSTRACT tail.
@@ -109,7 +109,7 @@ imethsTyFromNat-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc) �
 imethsTyFromNat-wf D I j inil    wD idwf-nil        tI = ty-Unit
 imethsTyFromNat-wf D I j (C ◂ E) wD (idwf-cons wC wE) tI =
   ty-Σ (imethTyNat-wf D I j C wD wC tI)
-       (ren-ty (imethsTyFromNat-wf D I (suc j) E wD wE tI) there)
+       (ren-ty (imethsTyFromNat-wf D I (suc j) E wD wE tI) wkR⊢)
 
 ------------------------------------------------------------------------
 -- ⬜ `iatCon-wf` — SPIKED 2026-08-28, 2 of its 3 cases proved.
@@ -179,17 +179,17 @@ iconS-Sub⊢ : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) {i : RTm ⌊ Γ ⌋
 -- ★ CASE 1 — the scrutinee.  `⊢icon` at the WEAKENED index, with the
 --   payload retyped: the same `ipayTy-ren`/`ipayTy-cong` pair
 --   `Lib/IFold.⊢ifMethod` uses.
-iconS-Sub⊢ {Γ = Γ} D I k {i = i} wD mem di here =
+iconS-Sub⊢ {Γ = Γ} D I k {i = i} wD mem di (here refl) =
   ⊢icon wD mem
         (⊢-cast (εwk-ren vs I) (⊢wk di))
         (⊢-cast (trans (ipayTy-ren vs D I (isingle i) (ilookupD D k))
                        (ipayTy-cong D I (ilookupD D k)
                           (λ { vz → refl ; (vs ()) })))
-                (⊢var here))
+                (⊢var (here refl)))
 -- ★ CASE 2 — the index slot.  `εwkTy I` is CLOSED, so every action
 --   fixes it — ⚠ but only PROPOSITIONALLY: `εwkTy` is a defined
 --   function, so nothing computes and the chain is explicit.
-iconS-Sub⊢ D I k {i = i} wD mem di (there here) =
+iconS-Sub⊢ D I k {i = i} wD mem di (there (here refl) refl) =
   ⊢-cast (trans (εwk-ren vs I)
                 (sym (trans (cong (subTy (iconS k i))
                                   (trans (cong (renTy vs) (εwk-ren vs I))
@@ -199,12 +199,12 @@ iconS-Sub⊢ D I k {i = i} wD mem di (there here) =
 -- ★★ CASE 3 — everything else, and the one that was stuck.  Two
 --   `subTy-renTy` steps compose the renamings, `subTy-cong` identifies
 --   the result with `λ x → var (vs x)`, and `ren-subTy` closes it.
-iconS-Sub⊢ D I k {i = i} wD mem di (there (there {A = A₀} v)) =
+iconS-Sub⊢ D I k {i = i} wD mem di (there (there {A = A₀} v refl) refl) =
   ⊢-cast (sym (trans (subTy-renTy {σ = iconS k i} (renTy vs A₀))
                      (trans (subTy-renTy A₀)
                             (trans (subTy-cong (λ _ → refl) A₀)
                                    (sym (ren-subTy {ρ = vs} A₀))))))
-         (⊢var (there v))
+         (⊢var (there v refl))
 
 ------------------------------------------------------------------------
 -- ★★★ …AND THEREFORE `iatCon k ⟨-⟩ M` IS A TYPE, AT AN ABSTRACT `M`.
@@ -286,26 +286,26 @@ imethTy-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (k : ℕ) (C : ICon (ε ∙))
 imethTy-wf {Γ = Γ} D I k C {M = M} wD wC mem look tI wM =
   ty-Π tI
     (ty-Π (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var (here refl)))))
       (ty-Π (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                       D I _ (isingle (var (vs vz))) C (var vz) wC
                       (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                    (εwk-ren vs I))
-                                            (⊢var (there here))))
+                                            (⊢var (there (here refl) refl))))
                       (ren-ty (ren-ty wM (Ren⊢-ins² (εwk-ren vs I)))
                               (Ren⊢-ins² (εwk-ren vs I)))
                       (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
                                      (ipayTy-cong D I C
                                        (λ { vz → refl ; (vs ()) })))
-                              (⊢var here)))
+                              (⊢var (here refl))))
             (ren-ty (subst (λ E → ((Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) E)
                                      ⊢ty iatCon k (var vz)
                                           (renTy (extR (extR vs)) M))
                            look
                            (iatCon-wf D I k wD mem
-                              (⊢-cast (εwk-ren vs I) (⊢var here))
+                              (⊢-cast (εwk-ren vs I) (⊢var (here refl)))
                               (ren-ty wM (Ren⊢-ins² (εwk-ren vs I)))))
-                    there)))
+                    wkR⊢)))
 
 ------------------------------------------------------------------------
 -- ★★★ …AND THE WHOLE METHOD TUPLE'S TYPE, AT AN ABSTRACT MOTIVE.
@@ -329,7 +329,7 @@ imethsTyFrom-wf : {Γ : Ctx} (D : IDesc) (I : RTy ε) (j : ℕ) (E : IDesc)
 imethsTyFrom-wf D I j inil    wD idwf-nil          sp tI wM = ty-Unit
 imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
   ty-Σ (imethTy-wf D I j C wD wC (spl-mem sp) (spl-look sp) tI wM)
-       (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI wM) there)
+       (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI wM) wkR⊢)
 
 ------------------------------------------------------------------------
 -- ★★★ A METHOD IS THREE LAMS AND A BODY — the shareable prologue.
@@ -365,18 +365,18 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
 ⊢methLam {Γ = Γ} D I k C wD wC tI wM db =
   ⊢lam tI
     (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy I} D I (isingle (var vz)) C
-                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var here))))
+                     wD wC (isingle-Sub⊢ (⊢-cast (εwk-ren vs I) (⊢var (here refl)))))
       (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy I) ▹ ipayTy D I (isingle (var vz)) C}
                       D I _ (isingle (var (vs vz))) C (var vz) wC
                       (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs I))
                                                    (εwk-ren vs I))
-                                            (⊢var (there here))))
+                                            (⊢var (there (here refl) refl))))
                       (ren-ty (ren-ty wM (Ren⊢-ins² (εwk-ren vs I)))
                               (Ren⊢-ins² (εwk-ren vs I)))
                       (⊢-cast (trans (ipayTy-ren vs D I (isingle (var vz)) C)
                                      (ipayTy-cong D I C
                                        (λ { vz → refl ; (vs ()) })))
-                              (⊢var here)))
+                              (⊢var (here refl))))
             db))
 
 ------------------------------------------------------------------------
@@ -404,7 +404,7 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
 ⊢methsFrom D I j (cd-stop E) wD wE sp tI wM dm tl dtl = dtl
 ⊢methsFrom D I j (cd-cons {C = C} {E = E} W) {m = m} wD (idwf-cons wC wE)
            sp tI wM dm tl dtl =
-  ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI wM) there)
+  ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI wM) wkR⊢)
         (dm wC (spl-mem sp) (spl-look sp))
         (⊢-cast (sym (wk-singleTy {v = m} _))
                 (⊢methsFrom D I (suc j) W wD wE (spl-step sp) tI wM dm tl dtl))
@@ -439,7 +439,7 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
 ⊢methsAt D I j (cd-stop E) wD wE sp tI wM dm tl dtl = dtl
 ⊢methsAt D I j (cd-cons {C = C} {E = E} W) {mth = mth}
          wD (idwf-cons wC wE) sp tI wM dm tl dtl =
-  ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI wM) there)
+  ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE (spl-step sp) tI wM) wkR⊢)
         (dm wC (spl-mem sp) (spl-look sp))
         (⊢-cast (sym (wk-singleTy {v = mth j} _))
                 (⊢methsAt D I (suc j) W wD wE (spl-step sp) tI wM dm tl dtl))
@@ -474,7 +474,7 @@ imethsTyFrom-wf D I j (C ◂ E) wD (idwf-cons wC wE) sp tI wM =
              Γ ⊢ tl ∷ imethsTyFrom D I M (suc j) E →
              Γ ⊢ pair m tl ∷ imethsTyFrom D I M j (C ◂ E)
 ⊢methsCons D I j E {M = M} {m = m} wD wE sp tI wM dm dtl =
-  ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE sp tI wM) there)
+  ⊢pair (ren-ty (imethsTyFrom-wf D I (suc j) E wD wE sp tI wM) wkR⊢)
         dm
         (⊢-cast (sym (wk-singleTy {v = m} (imethsTyFrom D I M (suc j) E))) dtl)
 
