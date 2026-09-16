@@ -13954,3 +13954,101 @@ always stated at.
 
 `Once/Compiler.agda` and `Once/Certified.agda` typecheck. Exit tests 65/0/0;
 `cabal test` 746 passed.
+
+## D213 — `block-runs` AND `entry-size` ARE FALSE (2026-09-16)
+
+Three emptiness probes, each written against the REAL postulate (not a
+re-declared copy), each run with the `.agdai` deleted and the
+`Checking Once.Adequacy.ArchCorrectness.FlatFromObs` line confirmed present,
+each exiting 0 with zero errors. `probe : ⊥` typechecks three times.
+
+    probe           refutes  block-runs / closures
+    probe-ν         refutes  block-runs / coalgs
+    probe-entry-size refutes entry-size
+
+These were found by the top-down exercise for discharging `block-runs`: writing
+the consumer first and asking what the premises actually give. They did not
+produce a step list; they produced a refutation, which is the better outcome —
+a plan built on that axiom would have been built on sand.
+
+### The defect in `block-runs`, and why it is NOT about label uniqueness
+
+    valid-closure-reg-wf  {body-label  : LabelId} → readLoc s (sucLoc cl)  ≡ just (SV-Code body-label)
+    valid-ν-susp-wf       {coalg-label : LabelId} → readLoc s (sucLoc νl) ≡ just (SV-Code coalg-label)
+
+A free implicit label, tied to nothing but a memory read. Fabricate a state
+whose heap reads `just (SV-Code anything)` and both witnesses are inhabited at
+a label no program ever minted; then `block-runs`' conclusion
+(`find-thunk (ir-to-trace ir) ℓ ≡ just j`) is refutable at `ir = id {Unit}`,
+which emits no blocks at all.
+
+Uniqueness would not save it. Uniqueness says no two blocks collide; it does
+not say this label belongs to any block. **The witness is a MEMORY fact being
+asked to underwrite a PROGRAM fact.**
+
+### Why labels are not special — the real asymmetry
+
+For a pair, memory determines meaning: cell 0 holds an `A`, recursively, down
+to scalars. For a closure, cell 1 holds a NAME, and the binding from name to
+code lives in the PROGRAM, not the heap. A closure is the one value whose
+meaning is not a function of the state alone — it is a function of
+(state, program). `ValidAtWF` is a STATE predicate, so asking it to pin a
+closure's meaning asks memory to witness what memory cannot contain.
+`block-runs` existed to paper over exactly that, and is false because it tried
+to recover a program fact from a state fact.
+
+### …and the actual missing premise
+
+The emitter returns TWO channels:
+
+    ir-to-trace' : … → ℕ × ℕ × AbstractTrace × List (LabelId × ℕ × AbstractTrace)
+                                    ↑ trace           ↑ BLOCK TABLE
+
+`IRObsCorrectF` states a placement premise for ONE of them —
+`SpanAt prog base (emitted n l ir)` — and says nothing whatever about where the
+blocks go. **The obligation models a `CompUnit` as if it were a bare trace.**
+
+That also explains the island cluster D212 recorded: `link-block-split`,
+`link-pre`, `link-post`, `FlatSteps-middle` (D168 / plan 0.89 Phase D1) are
+built, correct, and reachable from nothing, and `FlatStepLemmas.agda:359`
+documents their intended architecture — for a consumer that was never written.
+They are not rot; they are the missing half, stranded.
+
+### `entry-size` — a different, simpler defect
+
+    entry-size : ∀ (ir : IR Unit Unit) → ir-size ir < program-bound
+
+`program-bound` is a fixed module PARAMETER; `ir-size` is unbounded
+(`ir-size id = 1`, `ir-size (g ∘ f) = 1 + ir-size g + ir-size f`). Refuted by
+`big n = id ∘ id ∘ …` with `n ≤ ir-size (big n)`, instantiated at
+`n := program-bound`. Not a state/program confusion — a QUANTIFIER IN THE WRONG
+PLACE. The true statement is per-program: `program-bound` must be chosen after
+the IR, not universally quantified inside the module.
+
+### What this does and does not mean
+
+The COMPILER IS FINE. 746 tests pass on three architectures and the emitted
+code does the right thing — unlike D199, where a false postulate hid a real
+segfault. What is broken is the PROOF: `entry-witness` feeds BOTH false axioms
+into `ir-obs-correct`, so everything above it (`riscv64-correct`,
+`arch-correctness`, `once-compiler`, `once-certified`) is proved against them,
+and ⊥ is derivable from the trust base.
+
+`obs-correct-pair` (D211) is unaffected — verified: no pair path reaches either.
+
+`rewrite-preserves-of`, the third postulate in that file, is NOT of this class.
+It is a genuine claim about `map-rewrite` preserving the flat trace; refuting it
+would need a real counterexample to the arith rewrite, not a fabrication. It
+stays an honest deferred proof.
+
+### The pattern, now earned a place in the merge gate
+
+Fourth instance this session of ONE error: the obligation is missing a premise,
+so it was replaced by an assumption that quantifies over things no program
+produces (D204 memory, D206 the frontier, D210 the frame, now this). And the
+third FALSE axiom on this branch (`valid-ν-wf`, `obs-correct-Out`, `block-runs`).
+
+MERGE.md already mandates emptiness probes for new residuals. This says they
+are owed by OLD ones too, and names the smell precisely: **a residual whose
+CONCLUSION mentions the program while its PREMISES mention only a state.**
+`block-runs` had that shape in plain sight since D188.
