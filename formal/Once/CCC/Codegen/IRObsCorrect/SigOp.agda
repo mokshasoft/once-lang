@@ -193,7 +193,7 @@ module SigOpC {FS : FrameSemantics} where
     ∀ {A B} (si : SigOpInfo A B) (fitness : FitsInReg B) (rA : Readable A)
     → effect si ≡ Pure → IRObsCorrectF (SigOp si)
   pure-obs-correct-sigop {A} {B} si fitness rA pure-eq
-    n l prog base _ cr span mIn x s alloc cl _ not-halted rdi-eq k =
+    n l prog base _ cr span _ mIn x s alloc cl _ not-halted rdi-eq k =
     record
       { traces-agree =
           trans (cong (take k)

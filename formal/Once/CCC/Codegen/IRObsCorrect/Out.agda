@@ -80,17 +80,17 @@ module OutC {FS : FrameSemantics} where
 
   obs-correct-Out : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (Out wf)
   -- A ν is a two-cell heap object: it fits no register, and it is not `Unit`.
-  obs-correct-Out wf n l prog base _ cr span mIn x s alloc cl n≤ nh (in-reg () _) k
-  obs-correct-Out wf n l prog base _ cr span mIn x s alloc cl n≤ nh (in-unit ()) k
+  obs-correct-Out wf n l prog base _ cr span _ mIn x s alloc cl n≤ nh (in-reg () _) k
+  obs-correct-Out wf n l prog base _ cr span _ mIn x s alloc cl n≤ nh (in-unit ()) k
   -- D184 pins a suspension to the HEAP, and `do-call` enters on no other
   -- shape, so the stack case is refuted by the witness's own `LocMatchesMode`.
-  obs-correct-Out {F} wf n l prog base _ cr span mIn x s alloc cl n≤ nh
+  obs-correct-Out {F} wf n l prog base _ cr span _ mIn x s alloc cl n≤ nh
     (in-loc (AtStack _ _) valid bf rdi) k = stack-refuted valid
     where
       stack-refuted : ValidAtWF mIn alloc {ν-type F} x (AtStack _ _) s
                     → MachineRefinesObsF prog base n l (Out wf) x s alloc cl k
       stack-refuted (valid-ν-susp-wf _ lmm _ _ _) = ⊥-elim lmm
-  obs-correct-Out {F} wf n l prog base _ cr span mIn x s alloc cl n≤ nh
+  obs-correct-Out {F} wf n l prog base _ cr span _ mIn x s alloc cl n≤ nh
     (in-loc (AtDynamic ν-hl) valid bf rdi) k = go x valid
     where
       ν-loc : ValueLocation FS

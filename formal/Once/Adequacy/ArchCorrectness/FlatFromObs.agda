@@ -113,7 +113,7 @@ import Once.Parser.Module.Core as P
 open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
 open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 
-open IRObsCorrectFlatness {FS} using (IRObsCorrectF; CalleeRuns; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted)
+open IRObsCorrectFlatness {FS} using (IRObsCorrectF; CalleeRuns; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted; BlocksAt; blocks)
 open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left)
 open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
@@ -268,12 +268,38 @@ entry-span ir k i eq =
 postulate
   block-runs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)
 
+-- plan 0.91 S2 — THE APEX'S SHARE OF THE NEW PREMISE, and S5's obligation.
+--
+-- `IRObsCorrectF` now asks each fragment's caller to show the program
+-- implements the blocks that fragment emits. Composites split that premise
+-- (`comp-blocks-f`/`-g`, `blocks-f`/`blocks-g` in `PairAssemble`) and leaves
+-- ignore it, so it arrives here, at the whole program, unsplit.
+--
+-- UNLIKE `block-runs` THIS IS ABOUT THE PROGRAM, NOT ABOUT A STATE — which is
+-- the whole point of S2. `ir-to-trace ir` is
+--
+--     emitted 0 0 ir ++ c-ret ∷ blocks-layout (blocks 0 0 ir)
+--
+-- so every block in `blocks 0 0 ir` is laid out, contiguously, at a position
+-- `blocks-layout` determines: `length (emitted 0 0 ir) + 1` plus the lengths
+-- of the earlier blocks. Nothing is quantified over fabricable memory, so
+-- D213's refutation has no purchase here — the ⊥-probe that kills
+-- `block-runs` cannot be written against this.
+--
+-- S5 discharges it. The induction is `SlotBudget.blocks-below`'s shape (a
+-- structural walk over `IR` returning `All … (bodies-of (ir-to-trace' n l ir))`)
+-- plus D168's `link`-relocation lemmas, which is the first REAL demand for
+-- that machinery — the plan said to check rather than assume, and this is the
+-- check coming back positive.
+postulate
+  entry-blocks : (ir : IR Unit Unit) → BlocksAt (ir-to-trace ir) (blocks 0 0 ir)
+
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir → (k : ℕ)
               → MachineRefinesObsF (ir-to-trace ir) 0 0 0 ir tt entry-s
                   (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
 entry-witness ir ioc k =
   ioc 0 0 (ir-to-trace ir) 0 (ir-to-trace-slot-stable ir)
-      (block-runs ir) (entry-span ir)
+      (block-runs ir) (entry-span ir) (entry-blocks ir)
       Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
       (entry-ns (ir-stack-budget ir)) entry-nh
       -- D153: ONE residence premise. `main : IR Unit Unit`, so its input has

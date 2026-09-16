@@ -133,6 +133,13 @@ module Core {FS : FrameSemantics} where
   emitted : ∀ {A B} → ℕ → ℕ → IR A B → AbstractTrace
   emitted n l ir = proj₁ (proj₂ (proj₂ (ir-to-trace' n l ir)))
 
+  -- plan 0.91 S2: the fragment's OTHER output channel. `ir-to-trace'` returns
+  -- `(budget , next-label , trace , BLOCKS)`, and until now this obligation
+  -- quantified only over the trace. `curry` and `Ana` do not put their body in
+  -- the trace — they put it HERE, and `blocks-layout` links it in elsewhere.
+  blocks : ∀ {A B} → ℕ → ℕ → IR A B → List (LabelId × ℕ × AbstractTrace)
+  blocks n l ir = proj₂ (proj₂ (proj₂ (ir-to-trace' n l ir)))
+
   -- D155: THE ENTRY STATE, NAMED — and with the closure register open.
   --
   -- A composition hands `g` the state `f`'s run left behind, and `Shifted`
@@ -170,6 +177,26 @@ module Core {FS : FrameSemantics} where
   SpanAt : AbstractTrace → ℕ → AbstractTrace → Set
   SpanAt prog base t =
     ∀ (k : ℕ) (i : AbstractInstr) → fetch t k ≡ just i → fetch prog (k + base) ≡ just i
+
+  -- plan 0.91 S2 — THE PLACEMENT PREMISE, and the thing `block-runs` was
+  -- assuming (D213 refuted it: a MEMORY fact was being asked to underwrite a
+  -- PROGRAM fact). `BlockAt prog blk` says the program actually IMPLEMENTS the
+  -- block: the call scan resolves its label, and the whole laid-out block —
+  -- `c-thunk` marker, body, `c-ret` — spans there.
+  --
+  -- `block-layout` rather than the bare body text on purpose. The three parts
+  -- are placed contiguously by `blocks-layout`, `find-thunk` resolves to the
+  -- `c-thunk` itself (`ft-match true _ _ i = just i`, no successor), and
+  -- saying it in ONE `SpanAt` keeps the off-by-one where the layout function
+  -- can settle it instead of at every consumer.
+  BlockAt : AbstractTrace → LabelId × ℕ × AbstractTrace → Set
+  BlockAt prog blk@(lbl , _ , _) =
+    ∃[ j ] ((find-thunk prog lbl ≡ just j) × SpanAt prog j (block-layout blk))
+
+  -- `All`, matching `SlotBudget.blocks-below : All BlockOK (bodies-of …)` —
+  -- S5's whole-program proof is that induction with this predicate.
+  BlocksAt : AbstractTrace → List (LabelId × ℕ × AbstractTrace) → Set
+  BlocksAt prog bs = All (BlockAt prog) bs
 
   -- D152: the flat run of `ir` AT THE FRONTIER AND LABEL BASE IT IS EMITTED
   -- AT. It used to be hardwired to frontier 0, which is only ever true of the
@@ -596,6 +623,13 @@ module Core {FS : FrameSemantics} where
       -- that no value can supply (D170 removed that ability on purpose).
       BlockRuns prog →
       SpanAt prog base (emitted n l ir) →
+      -- plan 0.91 S2: …and the program implements the blocks THIS fragment
+      -- emits. `SpanAt` covers the fragment's straight-line text; nothing
+      -- covered its block channel, which is why `apply` and `Out` had to be
+      -- handed `block-runs` — an axiom about arbitrary states — to learn where
+      -- a callee lives. This premise is about the fragment, and `curry`/`Ana`
+      -- can DISCHARGE it for the blocks they mint.
+      BlocksAt prog (blocks n l ir) →
     -- D179 (top-down): the input ranges over the MONADIC domain. While it was
     -- `⟦ A ⟧` (pure), `inject x` made every closure trace-free and every ν a
     -- trace-free suspension — so `apply` could never observe a closure emit and

@@ -23,7 +23,18 @@ open import Data.Nat.Properties using (n<1+n; n≤1+n; ≤-refl; <-≤-trans) pu
 open import Data.Empty using (⊥; ⊥-elim) public
 open import Relation.Nullary using (yes; no) public
 open import Data.Bool using (false; true) public
-open import Data.List using (length; take; []; _∷_; _++_; map) public
+open import Data.List using (List; length; take; []; _∷_; _++_; map) public
+-- plan 0.91 S2: `BlocksAt` is `All` over the fragment's emitted block list,
+-- the same shape `SlotBudget.blocks-below` already returns — so S5's proof
+-- can follow that induction rather than invent one.
+--
+-- The CONSTRUCTORS are deliberately NOT re-exported. This prelude already
+-- carries `[]`/`_∷_` from `Data.List` and from `FlatStepsAPI`, and a third
+-- pair made every existing construction site ambiguous (Pair.agda:1628).
+-- Nothing in S2 builds an `All` — leaves take the premise as `_`, composites
+-- split it with `++⁻` — so only the type and the ++ lemmas are needed here.
+open import Data.List.Relation.Unary.All using (All) public
+open import Data.List.Relation.Unary.All.Properties using (++⁻; ++⁺) public
 open import Data.List.Properties using (++-assoc; length-++) public
 open import Data.Maybe using (Maybe; just; nothing) renaming (map to mmap) public
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂) public
@@ -77,7 +88,10 @@ open import Once.CCC.Machine.SMCore
          instr-alloc-heap; instr-load-tag-lit; instr-load-code-addr; SV-Code;
          instr-call-closure; instr-save-closure-reg; store-indirect; store-indirect-suc;
          load-from-slot; load-indirect; load-indirect-suc;
-         AtDynamic; sucLoc; SV-Tag; writeReg-preserves; _≟HL_) public
+         AtDynamic; sucLoc; SV-Tag; writeReg-preserves; _≟HL_;
+         -- plan 0.91 S2: how a block is LAID OUT, so `BlocksAt` can say where
+         -- it lives without restating `c-thunk … ∷ t ++ c-ret … ∷ []`.
+         block-layout) public
 open import Once.CCC.Machine.Validity using (module ValidityDef; module ReadLocEq) public
 open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted) public
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; next-heap-ref; module FrontierInvariant) public

@@ -146,6 +146,23 @@ module CompC {FS : FrameSemantics} where
                                         (proj₁ (proj₂ (ir-to-trace' n l f))) g)
                 k i eq)
 
+  -- plan 0.91 S2: the BLOCK channel splits the same way, and more simply.
+  -- `ir-to-trace' n l (g ∘ f)` concatenates the two block lists literally
+  -- (`… , (ft ++ mov-to-input ∷ gt) , (fb ++ gb)`, IRToTrace:772), so unlike
+  -- the trace — where `g` sits past a bridge instruction — both halves come
+  -- straight off one `++⁻`. `g`'s blocks are emitted at `f`'s output frontier
+  -- and label base, the same `n1`/`l1` the span split uses.
+  comp-blocks-f : ∀ {A B C} (g : IR B C) (f : IR A B) (prog : AbstractTrace) (n l : ℕ)
+                → BlocksAt prog (blocks n l (g ∘ f))
+                → BlocksAt prog (blocks n l f)
+  comp-blocks-f g f prog n l bl = proj₁ (++⁻ (blocks n l f) bl)
+
+  comp-blocks-g : ∀ {A B C} (g : IR B C) (f : IR A B) (prog : AbstractTrace) (n l : ℕ)
+                → BlocksAt prog (blocks n l (g ∘ f))
+                → BlocksAt prog (blocks (proj₁ (ir-to-trace' n l f))
+                                        (proj₁ (proj₂ (ir-to-trace' n l f))) g)
+  comp-blocks-g g f prog n l bl = proj₂ (++⁻ (blocks n l f) bl)
+
   -- ══════════════════════════════════════════════════════════════════════
   -- D158: `comp-value-realized`, ASSEMBLED — and now unconditionally.
   --
@@ -164,9 +181,12 @@ module CompC {FS : FrameSemantics} where
     → AllSlotStable prog
     → BlockRuns prog
     → SpanAt prog base (emitted n l (g ∘ f))
+    -- plan 0.91 S2: and the program implements the composite's blocks — which
+    -- are exactly `f`'s followed by `g`'s.
+    → BlocksAt prog (blocks n l (g ∘ f))
     → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
     → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k ns ss cr span ihg mf =
+  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k ns ss cr span bl ihg mf =
     go (MachineRefinesObsF.value-realized mf) (MachineRefinesObsF.traces-agree mf)
     where
       module VR = ValueRealized
@@ -249,7 +269,8 @@ module CompC {FS : FrameSemantics} where
 
           mg : MachineRefinesObsF prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
                                   (floc fsM) (falloc fsM) (fclosure fsM) kg
-          mg = ihg n1 l1 prog base' ss cr span-g mOutf (TM.valueT (evalᴰ f x) k)
+          mg = ihg n1 l1 prog base' ss cr span-g
+                   (comp-blocks-g g f prog n l bl) mOutf (TM.valueT (evalᴰ f x) k)
                    (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM kg
 
           vg : ValueRealized prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
@@ -368,17 +389,19 @@ module CompC {FS : FrameSemantics} where
             → AllSlotStable prog
             → BlockRuns prog
             → SpanAt prog base (emitted n l (g ∘ f))
+            → BlocksAt prog (blocks n l (g ∘ f))
             → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
             → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-  comp-step prog base n l k ns ss cr span ihg mf =
-    comp-value-realized-of prog base n l k ns ss cr span ihg mf
+  comp-step prog base n l k ns ss cr span bl ihg mf =
+    comp-value-realized-of prog base n l k ns ss cr span bl ihg mf
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
-  comp-obs-correct {g = g} {f} ihg ihf n l prog base ss cr span mIn x s alloc cl ns nh inp k =
-    comp-step prog base n l k ns ss cr span ihg
+  comp-obs-correct {g = g} {f} ihg ihf n l prog base ss cr span bl mIn x s alloc cl ns nh inp k =
+    comp-step prog base n l k ns ss cr span bl ihg
       (ihf n l prog base ss cr
-           (comp-span-f g f prog base n l span) mIn x s alloc cl ns nh inp k)
+           (comp-span-f g f prog base n l span)
+           (comp-blocks-f g f prog n l bl) mIn x s alloc cl ns nh inp k)
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a

@@ -14147,3 +14147,107 @@ grep-based residual count. Removed; the commentary under them is kept.
 `program-bound`, and it is **applied nowhere**: `IRObsCorrect/Prelude.agda:81`
 re-exports `module ValidityDef` but no site instantiates it. Dead by the
 consumers-not-importers test. Separate cleanup.
+
+## D215 — THE BLOCK CHANNEL ENTERS THE OBLIGATION (2026-09-16)
+
+Plan 0.91 S2. `IRObsCorrectF` gains a premise beside `SpanAt`:
+
+    BlocksAt prog (blocks n l ir) →
+
+`ir-to-trace'` returns `(budget , next-label , trace , BLOCKS)` and this
+obligation had only ever quantified over the TRACE. But `curry` and `Ana` do
+not put their body in the trace — they put it in the block channel, and
+`blocks-layout` links it in somewhere else entirely. **That gap is what
+`block-runs` was covering.**
+
+    BlockAt prog blk@(lbl , _ , _) =
+      ∃[ j ] ((find-thunk prog lbl ≡ just j) × SpanAt prog j (block-layout blk))
+
+    BlocksAt prog bs = All (BlockAt prog) bs
+
+`block-layout` rather than the bare body text, deliberately: `blocks-layout`
+places `c-thunk`, body and `c-ret` contiguously and `find-thunk` resolves to
+the `c-thunk` ITSELF (`ft-match true _ _ i = just i`, no successor). Saying it
+in ONE `SpanAt` keeps that off-by-one where `block-layout` can settle it
+instead of re-deriving it at every consumer.
+
+`All` is not an arbitrary choice either. `SlotBudget.blocks-below` is already
+a total structural walk over `IR` returning `All BlockOK (bodies-of
+(ir-to-trace' n l ir))` — S5's proof is that induction with this predicate.
+
+### What the type change produced — 28 sites, and no cascade
+
+This is the S0 contrast in one table. A changed STATEMENT fails at each CALL
+SITE; a blanked BODY failed at one `import` line (D214).
+
+    Simple 9, Out 4, Apply 3, Sum 2, TwoCell 2, SigOp 1   accept as `_`
+    Comp 3, PairAssemble 1                                 must SPLIT it
+    ir-obs-correct (the dispatcher)                        point-free, no change
+    entry-witness                                          the apex's share
+
+Each module reported its own error at its own clause head. `Machine` was clean
+because it constructs no `IRObsCorrectF`.
+
+### The split is cheap, because the emitter hands it over
+
+    ir-to-trace' n l (g ∘ f) = … , (ft ++ mov-to-input ∷ gt) , (fb ++ gb)
+
+The TRACE needs `g` found past a bridge instruction; the BLOCKS are a bare
+`++`. So both halves come off one `++⁻`:
+
+    comp-blocks-f g f prog n l bl = proj₁ (++⁻ (blocks n l f) bl)
+    comp-blocks-g g f prog n l bl = proj₂ (++⁻ (blocks n l f) bl)
+
+Pair is the same shape, and `PairShape` already names the emission sites
+(`f-start`/`l`, then `n1`/`l1`), so `blocks-f`/`blocks-g` line up with the
+existing `span-f`/`span-g` verbatim. SMCore:1291 had recorded the fact this
+rests on since D160: "the block channel is a `++`-homomorphism".
+
+### What S2 did NOT do, stated plainly
+
+`FlatFromObs` went from 2 residuals to 3. S2 MOVES an assumption; it does not
+remove one. The reduction is S4's.
+
+    block-runs    unchanged, still FALSE — probe re-run post-S2, `boom : ⊥`
+                  still compiles (.agdai deleted, both modules rechecked)
+    entry-blocks  NEW, and the point of the exercise
+
+    entry-blocks : (ir : IR Unit Unit) → BlocksAt (ir-to-trace ir) (blocks 0 0 ir)
+
+`entry-blocks` is about the PROGRAM, not about a STATE. D213's refutation
+works by fabricating a heap that reads `just (SV-Code ℓ)`; `entry-blocks` takes
+only the IR, so there is nothing to fabricate. `Once/Probe/EntryBlocksRefute`
+records the failed attempt and pins the fact it rests on:
+
+    id-has-no-blocks : blocks 0 0 (id {Unit}) ≡ []
+    id-has-no-blocks = refl
+
+At D213's own witness IR the list is EMPTY, so the content there is `All _ []`
+— inhabited, not absurd. **This is not a proof that `entry-blocks` is true.**
+It shows one specific attack does not transfer. Class: deferred-proof, not
+axiom; S5 discharges it.
+
+### D168 is demanded after all
+
+The plan said the stranded `link`-relocation machinery might get its first real
+consumer here, and to CHECK rather than assume. The check is positive:
+
+    ir-to-trace ir = emitted 0 0 ir ++ c-ret ∷ blocks-layout (blocks 0 0 ir)
+
+so S5 is exactly "where does `blocks-layout` put each block in the linked
+image", which is what D168 was written for.
+
+### Two self-inflicted collisions, and the lesson
+
+Adding two names to a `public`-re-exported prelude broke two unrelated places:
+`All`'s `[]`/`_∷_` collided with `Data.List`'s and `FlatStepsAPI`'s, and `List`
+collided with a LOCAL `open import Data.List using (List)` 1600 lines into
+`Pair.agda` — Agda reports `[AmbiguousName]` even though both entries are
+literally `Agda.Builtin.List.List`, because it is two scope entries, not two
+types. Both fixed (constructors withdrawn — S2 builds no `All`, it only splits
+with `++⁻`; local import deleted).
+
+**Every `public` name in a prelude is a potential conflict with every local
+import in the cone, and the compiler surfaces them one at a time, far from the
+change.** Keep preludes narrow: export the type and the lemmas, not the
+constructors, until something actually constructs.

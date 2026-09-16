@@ -1621,7 +1621,9 @@ module PairC {FS : FrameSemantics} where
 
     -- `List` and `++-identityʳ` are not in the Prelude's re-export list; kept
     -- local to this module so no other cluster's header is disturbed.
-    open import Data.List using (List)
+    -- plan 0.91 S2: `List` now comes from the prelude (it is needed there for
+    -- `BlocksAt`), and a second local binding of the same datatype is an
+    -- ambiguity rather than a shadow.
     open import Data.List.Properties using (++-identityʳ)
 
     -- The denotation's two segments and the budget between them.
