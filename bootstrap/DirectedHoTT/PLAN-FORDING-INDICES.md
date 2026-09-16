@@ -181,9 +181,48 @@ types where both forms compute in microseconds.
 | edit cost | 7,581 `refl`s | 829 `refl`s |
 | verdict | **ford it** | **skip — fix the few sites directly** |
 
-⇒ `⊢app`'s entry is *"measured 2.17× at a constructed worst case; not
-worth 829 edits"*, NOT *"does not reproduce"*. ⚠ That earlier claim was
-wrong twice: it does reproduce, and the reason to skip is cost/benefit.
+### ✅ AND THE "BAD TRADE" VERDICT IS **ALSO WRONG** — THERE IS NO TRADE
+
+Challenged by the user: *"if we fix app we always get the same
+performance or better … considering this as a POC to find the right
+abstractions, I'm ok with paying the cost."* The empirical half of that
+is testable, so it was tested — the same probe with an ORDINARY type
+(no eliminator) beside the bad one:
+
+| type in the codomain | computed | forded |
+|---|---|---|
+| **ordinary** (`K (pair sTy nzero)`) | 10 ms | **< 10 ms — below the reporting threshold** |
+| **stuck eliminator** | 64–78 ms | **30–37 ms** |
+
+⇒ **FORDED IS SAME-OR-BETTER IN BOTH.** Free where it does not matter,
+2.17× where it does. **There is no trade**, so "bad trade" was wrong on
+its own terms and not merely on principle.
+
+⛔⛔ **AND THE REASONING WAS WRONG BEFORE THE NUMBERS WERE.** I argued
+from EDIT COST — after being asked *"if we don't consider edit costs …
+what would you propose?"*, and against this project's own recorded
+decision [[principledness-over-edit-cost]]: *"OCP-0009 outputs a DESIGN;
+rewriting call sites is recoverable, a formulation needing an axiom is
+not."*
+
+⚠ AND "fix the few sites individually" WAS NEVER AVAILABLE. You can grep
+for `⊢app`, but you CANNOT see from a call site whether its `B` holds
+something expensive — that invisibility is what makes it a footgun. The
+only way to find the bad sites is to profile, which is how this entire
+session went.
+
+### ⇒ REVISED VERDICT: **FORD `⊢app` TOO**
+
+| | `_∋_∷_` | `⊢app` |
+|---|---|---|
+| worst case | **267×** | 2.17× |
+| ordinary case | — | **same or better** |
+| closes a footgun | yes | **yes** |
+| verdict | ⬜ ford | ⬜ **ford** |
+
+★ The POC's output is a DESIGN. A construct whose cost is invisible at
+the use site and unbounded in the type is the wrong design regardless of
+how many sites currently trip it.
 
 ⇒ **REVISED STATUS: the plan is gated to `_∋_∷_` because that is the only
 thing MEASURED to pay.** The other five are **UNTESTED**, not refuted.
