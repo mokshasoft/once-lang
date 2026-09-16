@@ -600,7 +600,57 @@ it solves it by unfolding `szMethsK` and renaming all 53 methods** —
 the expensive slots correlate with eliminator calls and with NOTHING else
 — not depth, not size, not description rows.
 
-### ⛔⛔ AND THE FIX IS BLOCKED BY A **PROPOSITIONAL/COMPUTATIONAL GAP**
+### ★★★★★ AND THE FOOTGUN IS **CLOSABLE** — FORD THE INDEX
+
+`_∋_∷_`'s `there` COMPUTES its index:
+
+```agda
+there : Γ ∋ x ∷ A → (Γ ▹ B) ∋ vs x ∷ renTy vs A      -- computed
+tf    : Γ ∋f x ∷ A → renTy vs A ≡ A' → (Γ ▹ B) ∋f vs x ∷ A'   -- FORDED
+```
+
+`tmp/ProbeFord` — same context, same lookup, same stuck-eliminator type,
+the two judgements side by side:
+
+| | ms |
+|---|---|
+| `lookC` — computed index (the kernel's shape) | **15,998** |
+| `lookF` — forded index, `refl` supplied | **60** |
+
+⇒ **267×, and it needs no naturality lemma at all** — plain `refl`.
+
+⚠⚠ **I PREDICTED THE OPPOSITE** ("the work merely relocates to the
+equation argument") and was wrong. The two forms ask for DIFFERENT KINDS
+of work:
+
+- **computed** — Agda must solve `renTm vs ?ms ≡ myMeths`, **INVERTING a
+  renaming against a METAVARIABLE**. That is literally the error
+  `tmp/ProbeMatch4` printed. Inversion is SEARCH.
+- **forded** — `A'` is determined by the conclusion, so both sides are
+  known and `refl` is a **CHECK**.
+
+★★★ **THIS IS INVARIANT 2 IN MINIATURE** — *the checker never searches*.
+A computed datatype index forces a search; fording replaces it with a
+validation. ⇒ and it is the SECOND measurement of this law in the project
+after [[datatype-index-accumulating-codes]]'s 40× (2026-08-28).
+
+### ⇒ SO: SHOULD THE KERNEL'S `_∋_∷_` BE FORDED?
+
+**Blast radius: 7,580 `⊢var (there …)` uses over 183 files** (66
+generated — free; 117 hand-written). Every site gains a `refl`.
+
+⚠ NOT ATTEMPTED, and n=1. But the probe is a clean A/B with everything
+but the index formulation held fixed, and the mechanism (search vs check)
+explains both this result and `ProbeMatch4`'s error message.
+
+★ FOR ONCE the rule is sharper than "ford everything": **a computed
+datatype index makes the checker INVERT, and inversion is unbounded.
+Keep indices variable and put the computation in an explicit equation —
+then let ELABORATION insert the `refl` so the surface cost is nil.**
+Core: no search. Surface: ergonomics. They are separable, and conflating
+them is what costs 267×.
+
+### ⛔⛔ AND THE SEALING FIX IS BLOCKED BY A **PROPOSITIONAL/COMPUTATIONAL GAP**
 
 `tmp/ProbeMatch5` states the naturality lemma INSIDE the seal:
 
