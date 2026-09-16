@@ -257,10 +257,57 @@ how many sites currently trip it.
 | `ICodeWf` | `εwkTm = subTm εsub` | ⬜ | ⬜ | ⬜ untested |
 | `IDescWfFrom` | `εwkTy = subTy εsub` | ⬜ | ⬜ | ⬜ untested |
 
-⚠ The four untested are **UNTESTED, NOT REFUTED** — §2.2 marked them ⛔
-on a SHAPE MATCH (*"spelled with `subTm`"*), which is the error §2 itself
-was criticised for. ★ `ICodeWf`'s `εsub` runs FROM THE EMPTY CONTEXT and
-is the one most likely to behave unlike its spelling.
+### 2.5 ⚠ THE AUDIT ITSELF WAS WRONG — **FOUR CANDIDATES, NOT SIX**
+
+Re-run excluding COMMENT lines (the original regex matched prose — e.g.
+`IDescWfFrom`'s hit was a comment reading *"each constructor starts in
+the telescope `◇ ▹ εwkTy I`"*). The real list of constructor conclusions
+containing a defined function:
+
+```
+β        : … → app (lam t) u ⟶ subTm (single u) t        subTm
+Hom-U    : … → Hom U c d ⟶ᵀ Π (El c) (El (renTm vs d))   renTm
+here     : … → (Γ ▹ A) ∋ vz ∷ renTy vs A                 renTy
+icw-clo  : … → ICodeWf (εwkTm {Θ} c)                     εwkTm
+```
+
+⇒ **`_⊢_∷_`/`⊢app` and `IDescWfFrom` were NEVER on the list** —
+`⊢app`'s `subTy` is in `_⊢_∷_`, which the corrected scan does not flag,
+and `IDescWfFrom`'s was prose. (The `⊢app` probe is still valid; it just
+was not one of these.)
+
+### 2.6 ★★★ THE SPLIT IS **RENAMING vs SUBSTITUTION**, measured
+
+| operation, solved-for | Agda's behaviour |
+|---|---|
+| `renTy` / `renTm` | **INVERTS — expensively** (15,998 ms) |
+| `subTy` | **REFUSES** — unsolved meta, instant |
+| `εwkTm = subTm εsub` | **REFUSES** — unsolved meta, instant |
+
+★ renamings are INJECTIVE, substitutions are not — so the injectivity
+heuristic fires for one and not the other. ⚠ NOT the function/constructor
+split I proposed mid-probe: `εwkTm` IS a function and Agda refuses,
+`renTy` IS a function and Agda inverts.
+
+### 2.7 ⇒ THE STANDING TABLE, corrected
+
+| constructor | computed term | inverts? | A · bad case | B · ever worse? | verdict |
+|---|---|---|---|---|---|
+| `here`/`there` (`_∋_∷_`) | `renTy vs A` | **YES** | **267×** | — | ⬜ **FORD** |
+| `⊢app` (`_⊢_∷_`) | `subTy (single u) B` | no | 2.17× | **never** | ⬜ **FORD** |
+| `icw-clo` (`ICodeWf`) | `εwkTm c` | **no — measured** | none found | free both ways | ⬜ ford (usability only) |
+| `Hom-U` (`_⟶ᵀ_`) | `renTm vs d` | ⬜ | ⬜ | ⬜ | ⬜ **untested** |
+| `β` (`_⟶_`) | `subTm (single u) t` | ⬜ | ⬜ | ⬜ | ⬜ untested |
+
+★ `icw-clo` has THE SHAPE BUT NOT THE EXPOSURE: 187 real uses, all
+`icw-clo ⌜Nat⌝ ⊢⌜Nat⌝` — `c` explicit and tiny. The 688 `icw-ford _ _ _`
+sites pass holes but `icw-ford`'s index is `⌜Id⌝ c a b`, a CONSTRUCTOR,
+where inversion is structural and cheap. ⇒ fording it buys USABILITY
+(holes become usable) not performance.
+
+★ `Hom-U`'s renaming is in the TARGET and `c`/`d` solve from the SOURCE
+`Hom U c d` — a constructor application — so `renTm vs d` computes
+FORWARD. Predicted no exposure; ⬜ UNTESTED.
 
 --------------------------------------------------------------------------
 ## 3. The order
