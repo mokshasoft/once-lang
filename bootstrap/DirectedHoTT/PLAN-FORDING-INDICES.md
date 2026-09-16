@@ -126,10 +126,45 @@ computed indices in general:
 | `ICodeWf` | `εwkTm = subTm εsub` | no | ⛔ leave |
 | `IDescWfFrom` | `εwkTy = subTy εsub` | no | ⛔ leave |
 
-⇒ **the kernel change is ~2 datatypes, not 6** — and the biggest by far
-is the one already measured. ★ THIS IS WHAT THE GATE WAS FOR: §2's
-six-datatype sweep was proposed on a shape-match and is now cut to the
-two where the mechanism actually applies.
+### 2.3 ⚠⚠ CORRECTION — THE TABLE ABOVE IS **ONE WITNESS AND FOUR
+###      INFERENCES**, and the inferences are a SHAPE MATCH
+
+⚠ Caught by the user asking for the witness. What is actually held:
+
+| datatype | evidence |
+|---|---|
+| `_∋_∷_` (`renTy vs A`) | **MEASURED** — 15,998 vs 60 ms |
+| `_⊢_∷_` (`subTy (single u) B`) | **MEASURED** — refuses the backwards solve; 65 ms forward |
+| `_⟶_` `β` (`subTm (single u) t`) | **NONE — inferred** |
+| `ICodeWf` (`εwkTm = subTm εsub`) | **NONE — inferred** |
+| `IDescWfFrom` (`εwkTy = subTy εsub`) | **NONE — inferred** |
+| `_⟶ᵀ_` (`renTm`) | **NONE — inferred** |
+
+⇒ I extrapolated ONE measurement to four datatypes on the grounds that
+they are *"spelled with `subTm`/`renTm`"*. **That is the same shape-match
+§2 was criticised for**, committed in the paragraph announcing that the
+gate had prevented it.
+
+**Two specific reasons the extrapolation may be WRONG:**
+
+- ★ **`εwkTm = subTm εsub` is not a general substitution.** `εsub` runs
+  FROM THE EMPTY CONTEXT, so `subTm εsub c` with `c : RTm ε` is a special
+  case — plausibly one Agda inverts easily, there being almost nothing to
+  invert. "Spelled with `subTm`" does not settle it.
+- ★ **The `renTy`-invertible / `subTy`-not explanation is INFERRED FROM
+  BEHAVIOUR**, not verified against Agda's injectivity machinery. It fits
+  two data points, which is where most of this session's nine refuted
+  models began.
+
+⚠ AND THE `⊢app` VERDICT IS NARROWER THAN "leave it alone": forward, the
+forded form was **29 ms against 65 ms — a 2.2× gap on a rule used 829
+times.** Small, but not zero, and not measured at scale.
+
+⇒ **REVISED STATUS: the plan is gated to `_∋_∷_` because that is the only
+thing MEASURED to pay.** The other five are **UNTESTED**, not refuted.
+Each needs its own `tmp/ProbeFord`-shaped A/B before it is either done or
+dropped — and `ICodeWf`'s `εsub` is the one most likely to behave
+differently from its spelling.
 
 --------------------------------------------------------------------------
 ## 3. The order
