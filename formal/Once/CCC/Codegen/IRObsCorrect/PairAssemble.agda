@@ -55,11 +55,11 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-module PairAsm {FS : FrameSemantics} (program-bound : ℕ) where
+module PairAsm {FS : FrameSemantics} where
 
-  open Core  {FS} program-bound
-  open Mach  {FS} program-bound
-  open PairC {FS} program-bound
+  open Core  {FS}
+  open Mach  {FS}
+  open PairC {FS}
 
   ----------------------------------------------------------------------
   -- THE GLUE. Three facts the four clusters consume and none of them

@@ -41,7 +41,7 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-module Core {FS : FrameSemantics} (program-bound : ℕ) where
+module Core {FS : FrameSemantics} where
   -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
   -- has no format-free machine value. Inside a module already fixed to this
   -- target's `FrameSemantics`, THE evaluator is the one at its float format,
@@ -71,7 +71,7 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
   open FlatStepsAPI {FS} using (FlatSteps; []; _∷_; exec-flat-steps; FlatSteps-++; FlatSteps-prefix; FlatSteps-reloc) public
   open AbstractExec {FS} using (exec-abstract; exec-sigop-halts; exec-sigop-halts-of; exec-sigop-output-of; pure-sigop-output; pure-sigop-out-aux; pure-sigop-out-val; readTyped; readReg-typed) public
   open FrontierInvariant {FS} using (BeforeFrontier; frontier-monotone) public
-  open ClosureWellFormedDef {FS} program-bound
+  open ClosureWellFormedDef {FS}
     using (ValidAtWF; valid-μ-wf; valid-primitive-wf; ResultPlace; at-loc; at-reg; unit-result; prim-sv
           -- Plan 0.68 step 1: the class-A discharges move the value witness
           -- across a REGISTER write. `ValueLocation` is `AtStack`/`AtDynamic`
@@ -98,9 +98,9 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
           ; InlineRep; rep-prim; rep-unit; inline-sv
           ; validityWF-frontier-advance) public
   open MemOps {FS} using (readLoc) public
-  open ValidityDef {FS} program-bound using (readLoc-stack-heap-eq) public
+  open ReadLocEq {FS} using (readLoc-stack-heap-eq) public
   open FlatEventTrace {FS} using (flat-events; event-of; flat-events-[]; chain-events; chain-events-nil; chain-events-++; chain-events-subst-start) public
-  open RTA o {FS} program-bound using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate) public
+  open RTA o {FS} using (Readable; r-unit; r-int; r-pair; readable?; readTyped-adequate) public
   open CataNextSlot {FS} using (exec-flat-keeps-next-slot; AllSlotStable) public
   open CataIRSlotStable {FS} using (ir-to-trace-slot-stable; ir-stable) public
 

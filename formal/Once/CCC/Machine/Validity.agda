@@ -55,6 +55,22 @@ open import Once.IR.Size
 -- the IR and dispatch to it recursively.
 ------------------------------------------------------------------------
 
+-- `readLoc-stack-heap-eq` is the ONE thing four other modules take from this
+-- file, and it never mentioned `program-bound`. Plan 0.91 S1: it lives in its
+-- own bound-free module, so `ClosureWellFormedDef` / `MuValidityImpl` /
+-- `ValidAtWFHalted` / the `IRObsCorrect` interface can open it WITHOUT
+-- inventing a bound to pass. `ValidityDef` re-exports it, so every existing
+-- use below reads exactly as before.
+module ReadLocEq {FS : FrameSemantics} where
+  open MemOps {FS}
+
+  readLoc-stack-heap-eq : ∀ (s₁ s₂ : LocState FS) loc →
+    stackMem s₁ ≡ stackMem s₂ →
+    heapMem s₁ ≡ heapMem s₂ →
+    readLoc s₁ loc ≡ readLoc s₂ loc
+  readLoc-stack-heap-eq s₁ s₂ (AtStack f k) seq heq = cong (λ m → m f k) seq
+  readLoc-stack-heap-eq s₁ s₂ (AtDynamic hl) seq heq = cong (λ m → m hl) heq
+
 -- ValidityDef is now parameterized by program-bound for termination
 -- All IRs in the program have ir-size < program-bound
 -- This enables Apply to call run-ir on body using rs (body<bound)
@@ -336,13 +352,8 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Validity depends only on memory
   ------------------------------------------------------------------------
 
-  -- Helper for readLoc equality
-  readLoc-stack-heap-eq : ∀ (s₁ s₂ : LocState FS) loc →
-    stackMem s₁ ≡ stackMem s₂ →
-    heapMem s₁ ≡ heapMem s₂ →
-    readLoc s₁ loc ≡ readLoc s₂ loc
-  readLoc-stack-heap-eq s₁ s₂ (AtStack f k) seq heq = cong (λ m → m f k) seq
-  readLoc-stack-heap-eq s₁ s₂ (AtDynamic hl) seq heq = cong (λ m → m hl) heq
+  -- Helper for readLoc equality — hoisted out (bound-free), re-exported here.
+  open ReadLocEq {FS} public using (readLoc-stack-heap-eq)
 
   validity-mem-only : ∀ {alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
     stackMem s₁ ≡ stackMem s₂ →

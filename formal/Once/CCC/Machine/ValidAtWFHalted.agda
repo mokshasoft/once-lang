@@ -35,12 +35,12 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore using (LocState; halted; ValueLocation; sucLoc; module MemOps)
 open import Once.Denotation.ValueDomain using () renaming (⟦_⟧ᴰᴵ to ⟦_⟧)
 open import Once.CCC.Machine.ClosureWellFormed o using (module ClosureWellFormedDef)
-open import Once.CCC.Machine.Validity using (module ValidityDef)
+open import Once.CCC.Machine.Validity using (module ReadLocEq)
 
-module _ {FS : FrameSemantics} (program-bound : ℕ) where
-  open ClosureWellFormedDef {FS} program-bound
+module _ {FS : FrameSemantics} where
+  open ClosureWellFormedDef {FS}
   open MemOps {FS} using (readLoc)
-  open ValidityDef {FS} program-bound using (readLoc-stack-heap-eq)
+  open ReadLocEq {FS} using (readLoc-stack-heap-eq)
 
   -- `readLoc` ignores `halted`: a halted-update preserves stackMem/heapMem
   -- definitionally, so `readLoc-stack-heap-eq` collapses the two.

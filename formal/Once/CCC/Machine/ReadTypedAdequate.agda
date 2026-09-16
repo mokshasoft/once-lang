@@ -25,7 +25,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CanonicalName using (CanonicalName)
 
 module Once.CCC.Machine.ReadTypedAdequate (o : CanonicalName)
-  {FS : FrameSemantics} (program-bound : ℕ) where
+  {FS : FrameSemantics} where
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Unit using (⊤; tt)
@@ -42,7 +42,7 @@ open import Once.CCC.Machine.SMCore
 open AbstractExec {FS}
 open MemOps {FS}
 open import Once.CCC.Machine.ClosureWellFormed o
-open ClosureWellFormedDef {FS} program-bound
+open ClosureWellFormedDef {FS}
   using (ValidAtWF; valid-unit-wf; valid-int-wf; valid-pair-wf; prim-sv;
          CellAt; cell-ptr; cell-inline; InlineRep; rep-prim; rep-unit; inline-sv)
 

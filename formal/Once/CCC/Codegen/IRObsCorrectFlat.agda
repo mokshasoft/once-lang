@@ -62,18 +62,18 @@ open import Once.CCC.Codegen.IRObsCorrect.PairAssemble o
 
 -- The name every importer uses. Each part re-exports `Core`/`Mach`, so the
 -- surface here is what the single file's `IRObsCorrectFlatness` had.
-module IRObsCorrectFlatness {FS : FrameSemantics} (program-bound : ℕ) where
+module IRObsCorrectFlatness {FS : FrameSemantics} where
 
-  open Core     {FS} program-bound public
-  open Mach     {FS} program-bound public
-  open Simp     {FS} program-bound public
-  open SigOpC   {FS} program-bound public
-  open SumC     {FS} program-bound public
-  open TwoCellC {FS} program-bound public
-  open ApplyC   {FS} program-bound public
-  open OutC     {FS} program-bound public
-  open CompC    {FS} program-bound public
-  open PairAsm  {FS} program-bound public
+  open Core     {FS} public
+  open Mach     {FS} public
+  open Simp     {FS} public
+  open SigOpC   {FS} public
+  open SumC     {FS} public
+  open TwoCellC {FS} public
+  open ApplyC   {FS} public
+  open OutC     {FS} public
+  open CompC    {FS} public
+  open PairAsm  {FS} public
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a

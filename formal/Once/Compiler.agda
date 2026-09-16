@@ -29,7 +29,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
 module Once.Compiler
-  (o : CanonicalName) (program-bound : ℕ)
+  (o : CanonicalName)
   (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
   (x86-64-call-room : RB.CallRoom o)
   (x86-64-reg-range : RB.RegRange o)
@@ -66,7 +66,7 @@ open import Once.Adequacy.SourceTrace using (⟦_⟧)
 -- this assembly point. `Once.Adequacy.Compile.WithCPU` itself stays
 -- free of those imports.
 open import Once.Adequacy.CPU      using (Arch; Byte; arch-semantics)
-open import Once.Adequacy.ArchCorrectness o program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room
+open import Once.Adequacy.ArchCorrectness o x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits
        riscv64-heap-room riscv64-stack-room riscv64-call-room
        riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap

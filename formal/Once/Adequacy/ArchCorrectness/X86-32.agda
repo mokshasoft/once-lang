@@ -28,7 +28,7 @@ open import Data.Nat using (ℕ)
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB
 
 module Once.Adequacy.ArchCorrectness.X86-32
-  (o : CanonicalName) (program-bound : ℕ)
+  (o : CanonicalName)
   (x86-32-heap-room : RB.HeapRoom o) (x86-32-stack-room : RB.StackRoom o)
   (x86-32-call-room : RB.CallRoom o)
   -- PLAN 0.70 PHASE C: the machine is finite. Same class and same threading as
@@ -96,12 +96,14 @@ open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
 open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
--- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND, so it is a
--- PARAMETER. It used to be postulated once per arch (three copies);
--- threading it from the top means the top-level statement says
--- "for any program bound" explicitly instead of assuming one into existence.
--- (`--safe` rejects every postulate, so this is on the critical path too.)
-open IRObsCorrectFlatness {x86-32-frame-semantics} program-bound using (ir-obs-correct; MachineRefinesObsF; ValueRealized)
+-- Plan 0.91 S1 (D213): `program-bound` is GONE. It was introduced by Plan 0.54
+-- rung D / D087 as a per-arch RESOURCE BOUND, threaded from the apex so the
+-- top-level statement said "for any program bound" — but `ir-obs-correct`
+-- recurses STRUCTURALLY on the IR and never read the bound as a fact, and the
+-- apex could not discharge `ir-size ir < program-bound` for an `ir` that does
+-- not exist yet (that was the false `entry-size`). The premise and the whole
+-- telescope are deleted; this `open` takes no bound.
+open IRObsCorrectFlatness {x86-32-frame-semantics} using (ir-obs-correct; MachineRefinesObsF; ValueRealized)
 
 -- The FlatFromObs bundle at the x86-32 params (concrete machine now VISIBLE).
 ------------------------------------------------------------------------
@@ -129,7 +131,7 @@ postulate
 entry-frame-x86-32 : X86-32Frame
 entry-frame-x86-32 = stack-addr X.stack-top stack-top-in-stack
 
-module FFOx = FFO o x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32) program-bound
+module FFOx = FFO o x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
 
 -- A THEOREM: the entry frame IS the loader's `%esp`
 -- (`entry-frame-x86-32 = stack-addr stack-top _`) and `frame-base` on x86-32 is
@@ -485,4 +487,4 @@ asm-trace-correct-x86-32 m asm eq dl lr sr n =
 x86-32-correct : ArchCorrect x86-32 (arch-semantics x86-32)
 x86-32-correct =
   FFO.flat-from-obs o x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
-    program-bound ir-obs-correct asm-trace-correct-x86-32
+    ir-obs-correct asm-trace-correct-x86-32

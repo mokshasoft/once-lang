@@ -254,10 +254,10 @@ data ShapeAt where
 -- body-size bound. If this ever stops being a plain structural map, the
 -- shape domain has drifted from the value layer and must be re-aligned.
 ------------------------------------------------------------------------
-module Project (o : CanonicalName) (program-bound : ℕ) where
+module Project (o : CanonicalName) where
   open import Data.Nat using (ℕ)
   open import Once.CCC.Machine.ClosureWellFormed using (module ClosureWellFormedDef)
-  open ClosureWellFormedDef o {FS} program-bound
+  open ClosureWellFormedDef o {FS}
     using (ValidAtWF; valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf; valid-inl-reg-wf; valid-inr-reg-wf;
            rep-prim; rep-unit;

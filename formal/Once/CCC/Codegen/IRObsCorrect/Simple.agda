@@ -26,10 +26,10 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-module Simp {FS : FrameSemantics} (program-bound : ℕ) where
+module Simp {FS : FrameSemantics} where
 
-  open Core {FS} program-bound
-  open Mach {FS} program-bound
+  open Core {FS}
+  open Mach {FS}
 
 
   -- ── `id` — DISCHARGED (Plan 0.68 step 1, the first of class A).

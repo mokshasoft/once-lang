@@ -31,7 +31,7 @@ open import Data.Nat using (ℕ)
 import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.RiscV64.FlatCorrespondence as FCr
 
-module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName) (program-bound : ℕ)
+module Once.Adequacy.ArchCorrectness.RiscV64 (o : CanonicalName)
   -- Plan 0.65: the resource bounds, as PARAMETERS threaded from the apex (D087),
   -- symmetric with x86-64. G3 (2026-08-17) is where they finally get CONSUMED:
   -- until the simulation was whole-cloth nothing below had asked for them, and
@@ -90,9 +90,14 @@ import Once.CCC.Target.RiscV64.Semantics as RS
 open import Once.CCC.Target.RiscV64.Layout using (InStack)
 open import Once.Memory.StackSlots using (stack-addr)
 
--- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND and so is now a
--- module PARAMETER threaded from the apex.
-open IRObsCorrectFlatness {rv64-frame-semantics} program-bound
+-- Plan 0.91 S1 (D213): `program-bound` is GONE. It was introduced by Plan 0.54
+-- rung D / D087 as a per-arch RESOURCE BOUND, threaded from the apex so the
+-- top-level statement said "for any program bound" — but `ir-obs-correct`
+-- recurses STRUCTURALLY on the IR and never read the bound as a fact, and the
+-- apex could not discharge `ir-size ir < program-bound` for an `ir` that does
+-- not exist yet (that was the false `entry-size`). The premise and the whole
+-- telescope are deleted; this `open` takes no bound.
+open IRObsCorrectFlatness {rv64-frame-semantics}
   using (ir-obs-correct; module MachineRefinesObsF; module ValueRealized)
 
 ------------------------------------------------------------------------
@@ -116,7 +121,7 @@ postulate
 entry-frame-riscv64 : FrameSemantics.Frame rv64-frame-semantics
 entry-frame-riscv64 = stack-addr RS.stack-top stack-top-in-stack
 
-module FFOr = FFO o riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64) program-bound
+module FFOr = FFO o riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
 asR = arch-semantics riscv64
 
 -- The concrete machine's SigOp trace of a compiled IR (see X86-64 for the full
@@ -364,4 +369,4 @@ asm-trace-correct-riscv64 m asm eq dl lr sr n =
 riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
 riscv64-correct =
   FFO.flat-from-obs o riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
-    program-bound ir-obs-correct asm-trace-correct-riscv64
+    ir-obs-correct asm-trace-correct-riscv64

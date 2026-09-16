@@ -78,7 +78,7 @@ open import Once.CCC.Machine.SMCore
          instr-call-closure; instr-save-closure-reg; store-indirect; store-indirect-suc;
          load-from-slot; load-indirect; load-indirect-suc;
          AtDynamic; sucLoc; SV-Tag; writeReg-preserves; _≟HL_) public
-open import Once.CCC.Machine.Validity using (module ValidityDef) public
+open import Once.CCC.Machine.Validity using (module ValidityDef; module ReadLocEq) public
 open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted) public
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; next-heap-ref; module FrontierInvariant) public
 open import Once.CCC.Machine.Flat using (module FlatMachine) public

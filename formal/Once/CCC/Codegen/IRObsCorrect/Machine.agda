@@ -28,9 +28,9 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-module Mach {FS : FrameSemantics} (program-bound : ℕ) where
+module Mach {FS : FrameSemantics} where
 
-  open Core {FS} program-bound
+  open Core {FS}
 
   flat-store-floc : ∀ (slot : ℕ) (prog : AbstractTrace) (fs : FlatState)
     → floc (flat-exec-instr (store-at-slot slot) prog fs)

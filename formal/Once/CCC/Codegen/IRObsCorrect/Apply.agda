@@ -24,10 +24,10 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-module ApplyC {FS : FrameSemantics} (program-bound : ℕ) where
+module ApplyC {FS : FrameSemantics} where
 
-  open Core {FS} program-bound
-  open Mach {FS} program-bound
+  open Core {FS}
+  open Mach {FS}
 
   obs-correct-apply : ∀ {A B} → IRObsCorrectF (apply {A} {B})
   -- A PAIR fits no register and is not `Unit`, so the two off-pointer input

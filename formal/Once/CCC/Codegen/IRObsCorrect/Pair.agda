@@ -37,10 +37,10 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-module PairC {FS : FrameSemantics} (program-bound : ℕ) where
+module PairC {FS : FrameSemantics} where
 
-  open Core {FS} program-bound
-  open Mach {FS} program-bound
+  open Core {FS}
+  open Mach {FS}
 
   ----------------------------------------------------------------------
   -- THE KEYSTONE: the backup slot survives `f`'s run.

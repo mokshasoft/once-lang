@@ -26,10 +26,10 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-module TwoCellC {FS : FrameSemantics} (program-bound : ℕ) where
+module TwoCellC {FS : FrameSemantics} where
 
-  open Core {FS} program-bound
-  open Mach {FS} program-bound
+  open Core {FS}
+  open Mach {FS}
 
   curry-denot-[] : ∀ {A B C} (body : IR (A * B) C) (m : AllocMode)
                    {x : ⟦ A ⟧} (k : ℕ)

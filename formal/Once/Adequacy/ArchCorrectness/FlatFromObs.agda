@@ -71,7 +71,6 @@ module Once.Adequacy.ArchCorrectness.FlatFromObs (o : CanonicalName)
   (fmt-agree     : Once.CCC.FrameSemantics.fs-numerics FS ≡ arch-numerics arch)
   (entry-frame   : FrameSemantics.Frame FS)
   (as            : ArchSemantics)
-  (program-bound : ℕ)
   where
 
 open import Data.Bool using (false)
@@ -114,12 +113,12 @@ import Once.Parser.Module.Core as P
 open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
 open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 
-open IRObsCorrectFlatness {FS} program-bound using (IRObsCorrectF; CalleeRuns; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted)
+open IRObsCorrectFlatness {FS} using (IRObsCorrectF; CalleeRuns; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted)
 open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left)
 open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
-open ClosureWellFormedDef {FS} program-bound using (ValidAtWF; valid-unit-wf)
+open ClosureWellFormedDef {FS} using (ValidAtWF; valid-unit-wf)
 
 ------------------------------------------------------------------------
 -- The DEFINED field (+ its proof)

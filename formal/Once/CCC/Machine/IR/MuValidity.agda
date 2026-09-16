@@ -51,14 +51,14 @@ open import Once.CCC.Eval using ()
 -- type statically, so we don't get unification failures.
 ------------------------------------------------------------------------
 
-module MuValidityImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module MuValidityImpl {FS : FrameSemantics} where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open FrameSemantics FS
 
   -- Import readLoc-stack-heap-eq from Validity
   open import Once.CCC.Machine.Validity
-  open ValidityDef {FS} program-bound using (readLoc-stack-heap-eq)
+  open ReadLocEq {FS} using (readLoc-stack-heap-eq)
 
   -- | μLayerValid: F-layer at a location is memory-valid
   --

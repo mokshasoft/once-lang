@@ -25,10 +25,10 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-module SumC {FS : FrameSemantics} (program-bound : ℕ) where
+module SumC {FS : FrameSemantics} where
 
-  open Core {FS} program-bound
-  open Mach {FS} program-bound
+  open Core {FS}
+  open Mach {FS}
 
   obs-correct-inl : ∀ {A B} → IRObsCorrectF (inl {A} {B})
   obs-correct-inl {A} {B} n l prog base _ cr span mIn x s alloc cl n≤ nh inp k =

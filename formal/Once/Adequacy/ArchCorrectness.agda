@@ -18,8 +18,9 @@
 -- are constructed from the FS-generic IR-observable theorem `ir-obs-correct`
 -- (`Once.Adequacy.ArchCorrectness.{X86-64,X86-32,RiscV64}`) — no longer
 -- whole-record postulates. Each arch carries a single named
--- `<arch>-flat-from-obs` residual (the entry-state + prefix FS plumbing) plus
--- `program-bound`; those are provable (no new mathematics) and nothing assumes
+-- `<arch>-flat-from-obs` residual (the entry-state + prefix FS plumbing);
+-- (plan 0.91 S1 deleted the `program-bound` parameter that stood beside it —
+-- see D213); that residual is provable (no new mathematics) and nothing assumes
 -- the trusted fields can't be proved later (an in-Agda assembler / verified
 -- printer). `cata-correct` is load-bearing for the apex on every target.
 ------------------------------------------------------------------------
@@ -37,7 +38,7 @@ import Once.Adequacy.ArchCorrectness.RiscV64.ResourceBounds as RBr
 import Once.Adequacy.ArchCorrectness.X86-32.ResourceBounds as RB32
 
 module Once.Adequacy.ArchCorrectness
-  (o : CanonicalName) (program-bound : ℕ)
+  (o : CanonicalName)
   (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
   (x86-64-call-room : RB.CallRoom o)
   (x86-64-reg-range : RB.RegRange o)
@@ -72,11 +73,11 @@ open import Once.Adequacy.Compile using (ArchCorrect)
 -- (`ir-obs-correct` → `cata-correct`) — see `…ArchCorrectness.{X86-64,X86-32,RiscV64}`.
 -- So `cata-correct` is load-bearing for the apex on every target; each carries
 -- only its single named `<arch>-flat-from-obs` FS-plumbing residual (Plan 0.53).
-open import Once.Adequacy.ArchCorrectness.X86-64 o  program-bound x86-64-heap-room x86-64-stack-room x86-64-call-room
+open import Once.Adequacy.ArchCorrectness.X86-64 o  x86-64-heap-room x86-64-stack-room x86-64-call-room
        x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits using (x86-64-correct)
-open import Once.Adequacy.ArchCorrectness.X86-32 o  program-bound x86-32-heap-room x86-32-stack-room x86-32-call-room
+open import Once.Adequacy.ArchCorrectness.X86-32 o  x86-32-heap-room x86-32-stack-room x86-32-call-room
        x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits using (x86-32-correct)
-open import Once.Adequacy.ArchCorrectness.RiscV64 o program-bound
+open import Once.Adequacy.ArchCorrectness.RiscV64 o
        riscv64-heap-room riscv64-stack-room riscv64-call-room
        riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
        riscv64-addr-no-wrap riscv64-lit-fits using (riscv64-correct)

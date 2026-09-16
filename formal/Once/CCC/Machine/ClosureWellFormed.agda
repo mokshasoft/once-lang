@@ -78,7 +78,7 @@ open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace-at-frontier)
 -- This is essentially IRResultA specialized to the body.
 ------------------------------------------------------------------------
 
-module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
+module ClosureWellFormedDef {FS : FrameSemantics} where
   -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
   -- has no format-free machine value. Inside a module already fixed to this
   -- target's `FrameSemantics`, THE evaluator is the one at its float format,
@@ -93,7 +93,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   evalᴰ = DT.evalᴰ (Once.CCC.FrameSemantics.fs-numerics FS)
 
   open import Once.CCC.Machine.Validity
-  open ValidityDef {FS} program-bound
+  open ReadLocEq {FS}
     using (readLoc-stack-heap-eq)
   open FrontierInvariant {FS}
   open MemOps {FS}
@@ -1055,7 +1055,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   record ClosureWellFormed {EnvType A B : IRTy}
                            (body : IR (EnvType * A) B)
                            (env : ⟦ EnvType ⟧)
-                           (body<bound : ir-size body < program-bound)
+                           {body-bound : ℕ}
+                           (body<bound : ir-size body < body-bound)
                            (closure-loc env-loc code-loc : ValueLocation FS)
                            (s : LocState FS)
                            (alloc : AllocState {FS}) : Set where
@@ -1071,7 +1072,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       mEnv : AllocMode
       env-valid : ValidAtWF mEnv alloc {EnvType} env env-loc s
       -- PRE-COMPUTED body execution proof with program-bound
-      body-correct : BodyCorrect body env env-loc program-bound
+      body-correct : BodyCorrect body env env-loc body-bound
 
   open ClosureWellFormed public
 

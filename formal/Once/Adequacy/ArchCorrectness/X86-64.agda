@@ -22,7 +22,7 @@ open import Data.Nat using (ℕ)
 import Once.Adequacy.ArchCorrectness.X86-64.ResourceBounds as RB
 
 module Once.Adequacy.ArchCorrectness.X86-64
-  (o : CanonicalName) (program-bound : ℕ)
+  (o : CanonicalName)
   (x86-64-heap-room : RB.HeapRoom o) (x86-64-stack-room : RB.StackRoom o)
   (x86-64-call-room : RB.CallRoom o)
   -- PLAN 0.70 PHASE C: the machine is finite. Same class and same threading as
@@ -87,12 +87,14 @@ open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
 open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 
--- Plan 0.54 rung D / D087: `program-bound` is a RESOURCE BOUND, so it is a
--- PARAMETER. It used to be postulated once per arch (three copies);
--- threading it from the top means the top-level statement says
--- "for any program bound" explicitly instead of assuming one into existence.
--- (`--safe` rejects every postulate, so this is on the critical path too.)
-open IRObsCorrectFlatness {x86-64-frame-semantics} program-bound using (ir-obs-correct; MachineRefinesObsF; ValueRealized)
+-- Plan 0.91 S1 (D213): `program-bound` is GONE. It was introduced by Plan 0.54
+-- rung D / D087 as a per-arch RESOURCE BOUND, threaded from the apex so the
+-- top-level statement said "for any program bound" — but `ir-obs-correct`
+-- recurses STRUCTURALLY on the IR and never read the bound as a fact, and the
+-- apex could not discharge `ir-size ir < program-bound` for an `ir` that does
+-- not exist yet (that was the false `entry-size`). The premise and the whole
+-- telescope are deleted; this `open` takes no bound.
+open IRObsCorrectFlatness {x86-64-frame-semantics} using (ir-obs-correct; MachineRefinesObsF; ValueRealized)
 
 -- The FlatFromObs bundle at the x86-64 params (concrete machine now VISIBLE).
 ------------------------------------------------------------------------
@@ -120,7 +122,7 @@ postulate
 entry-frame-x86-64 : X86Frame
 entry-frame-x86-64 = stack-addr X.stack-top stack-top-in-stack
 
-module FFOx = FFO o x86-64 x86-64-frame-semantics refl entry-frame-x86-64 (arch-semantics x86-64) program-bound
+module FFOx = FFO o x86-64 x86-64-frame-semantics refl entry-frame-x86-64 (arch-semantics x86-64)
 
 -- A THEOREM: the entry frame IS the loader's `%rsp`
 -- (`entry-frame-x86-64 = stack-addr stack-top _`) and `frame-base` on x86-64 is
@@ -476,4 +478,4 @@ asm-trace-correct-x86-64 m asm eq dl lr sr n =
 x86-64-correct : ArchCorrect x86-64 (arch-semantics x86-64)
 x86-64-correct =
   FFO.flat-from-obs o x86-64 x86-64-frame-semantics refl entry-frame-x86-64 (arch-semantics x86-64)
-    program-bound ir-obs-correct asm-trace-correct-x86-64
+    ir-obs-correct asm-trace-correct-x86-64

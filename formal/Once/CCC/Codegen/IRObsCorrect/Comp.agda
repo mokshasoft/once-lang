@@ -24,10 +24,10 @@ import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
-module CompC {FS : FrameSemantics} (program-bound : ℕ) where
+module CompC {FS : FrameSemantics} where
 
-  open Core {FS} program-bound
-  open Mach {FS} program-bound
+  open Core {FS}
+  open Mach {FS}
 
   -- THE composition step. `emitted n l (g ∘ f) = ft ++ mov-to-input ∷ gt`: run
   -- `f` (result in `Output`), `mov-to-input` (`Input1 := Output`), run `g`.
