@@ -87,52 +87,6 @@ mutual
   sem-ana-anaS-rel coalg (H₁ S⊗ H₂) (x , y)  =
     sem-ana-anaS-rel coalg H₁ x , sem-ana-anaS-rel coalg H₂ y
 
-sem-ana-anaS : ∀ {F : Functor} {A : Set} (coalg : A → ⟦ F ⟧F A) (a : A)
-  → sem-ana F coalg a ≡ anaS {translateF Carrier Carrier F} (λ x → coerce-ν-in F A (coalg x)) a
-sem-ana-anaS coalg a = bisimS-to-eq _ _ (sem-ana-anaS-bisim coalg a)
-
-------------------------------------------------------------------------
--- Cross-functor transport of `anaS` over an SFunctor equality — cheap
--- (match the equation to `refl`). This is where `tF-coh` discharges.
-------------------------------------------------------------------------
-
-anaS-subst-nat : ∀ {H₁ H₂ : SFunctor} {A : Set} (eq : H₁ ≡ H₂)
-                   (coalg : A → ⟦ H₁ ⟧SF A) (a : A)
-  → subst νS eq (anaS coalg a) ≡ anaS (subst (λ H → A → ⟦ H ⟧SF A) eq coalg) a
-anaS-subst-nat refl coalg a = refl
-
-------------------------------------------------------------------------
--- The erasure round-trip: the `tF-coh`-transported erased-functor unfold
--- equals the surface-functor unfold, GIVEN the coalgebras correspond after
--- transport (discharged in `ana-body` from the coalgebra IH + coerce
--- round-trip). Value half of `ana`-faithfulness.
-------------------------------------------------------------------------
-
-sem-ana-erase-coh′ : ∀ {F : Functor} {A : Set}
-    (cL : A → ⟦ ⌈ eraseF F ⌉F ⟧F A) (cR : A → ⟦ F ⟧F A) (a : A)
-    (ceq : subst (λ H → A → ⟦ H ⟧SF A) (tF-coh F)
-             (λ x → coerce-ν-in ⌈ eraseF F ⌉F A (cL x))
-           ≡ (λ x → coerce-ν-in F A (cR x)))
-  → subst νS (tF-coh F) (sem-ana ⌈ eraseF F ⌉F cL a) ≡ sem-ana F cR a
-sem-ana-erase-coh′ {F} {A} cL cR a ceq =
-  trans (cong (subst νS (tF-coh F)) (sem-ana-anaS cL a))
-    (trans (anaS-subst-nat (tF-coh F) (λ x → coerce-ν-in ⌈ eraseF F ⌉F A (cL x)) a)
-      (trans (cong (λ c → anaS c a) ceq)
-             (sym (sem-ana-anaS cR a))))
-
--- Carrier-eq packaging: fold a carrier equality `ceq2 : A₁ ≡ A₂` into the
--- erasure round-trip (match-to-refl → `sem-ana-erase-coh′`). Lets `ana-body`
--- run the erased-carrier `Val.⟦⌈⌊A⌋⌉⟧` sem-ana against the surface-carrier
--- `Val.⟦A⟧` one without hand-threading the carrier transport.
-sem-ana-erase-full : ∀ {F : Functor} {A₁ A₂ : Set} (ceq2 : A₁ ≡ A₂)
-    (cL : A₁ → ⟦ ⌈ eraseF F ⌉F ⟧F A₁) (cR : A₂ → ⟦ F ⟧F A₂) (a₁ : A₁)
-    (ceq : subst (λ H → A₂ → ⟦ H ⟧SF A₂) (tF-coh F)
-             (λ x → coerce-ν-in ⌈ eraseF F ⌉F A₂
-                      (subst (λ Z → ⟦ ⌈ eraseF F ⌉F ⟧F Z) ceq2 (cL (subst id (sym ceq2) x))))
-           ≡ (λ x → coerce-ν-in F A₂ (cR x)))
-  → subst νS (tF-coh F) (sem-ana ⌈ eraseF F ⌉F cL a₁) ≡ sem-ana F cR (subst id ceq2 a₁)
-sem-ana-erase-full refl cL cR a₁ ceq = sem-ana-erase-coh′ cL cR a₁ ceq
-
 ------------------------------------------------------------------------
 -- TRACE round-trip core. `events-F` DISCARDS the `K`-leaves (`events-F
 -- (K _) _ _ = []`), which is exactly where `⌈eraseF G⌉F` and `G` differ —
@@ -151,23 +105,6 @@ SFRel (G₁ TT.⊕ G₂) R (inj₂ _)  (inj₁ _)  = ⊥
 SFRel (G₁ TT.⊕ G₂) R (inj₂ ye) (inj₂ ys) = SFRel G₂ R ye ys
 SFRel (G₁ TT.⊗ G₂) R (xe , ye) (xs , ys) = SFRel G₁ R xe xs × SFRel G₂ R ye ys
 
-events-F-erase : ∀ (G : Functor) {Ve Vs : Set} (R : Ve → Vs → Set)
-    (child-e : Ve → List SigOpEvent) (child-s : Vs → List SigOpEvent)
-    (child-R : ∀ {xe xs} → R xe xs → child-e xe ≡ child-s xs)
-    (le : ⟦ ⌈ eraseF G ⌉F ⟧F Ve) (ls : ⟦ G ⟧F Vs)
-  → SFRel G R le ls
-  → events-F ⌈ eraseF G ⌉F child-e le ≡ events-F G child-s ls
-events-F-erase (TT.K B)   R ce cs cR le        ls        _        = refl
-events-F-erase TT.Id      R ce cs cR le        ls        r        = cR r
-events-F-erase (G₁ TT.⊕ G₂) R ce cs cR (inj₁ xe) (inj₁ xs) r      = events-F-erase G₁ R ce cs cR xe xs r
-events-F-erase (G₁ TT.⊕ G₂) R ce cs cR (inj₂ ye) (inj₂ ys) r      = events-F-erase G₂ R ce cs cR ye ys r
-events-F-erase (G₁ TT.⊗ G₂) R ce cs cR (xe , ye) (xs , ys) (r₁ , r₂) =
-  cong₂ _++_ (events-F-erase G₁ R ce cs cR xe xs r₁)
-             (events-F-erase G₂ R ce cs cR ye ys r₂)
-
--- The pre-`coerce` structural relation on the layer VALUES (`⟦_⟧T` level):
--- `coh A` at `Id`, `⊤` at the discarded `K`-leaves. `coerce-functor` (identity
--- at `K`/`Id`, structural at `⊕`/`⊗`) carries it straight to `SFRel`.
 TRel : ∀ (G : Functor) (A : TT.Type)
      → ⟦ TT.⟦ ⌈ eraseF G ⌉F ⟧T ⌈ ⌊ A ⌋ ⌉ ⟧ → ⟦ TT.⟦ G ⟧T A ⟧ → Set
 TRel (TT.K B)     A ve        vs        = ⊤
