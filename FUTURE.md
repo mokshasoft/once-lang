@@ -568,9 +568,47 @@ proposed. `kJΠΒ12`/`kJΠΒ13` ARE fords and cost 18 s each, because they
 CONTAIN `εwkK`/`singleK`/`subTyAtK`. **The cost follows the CALL, not
 the position.**
 
-⬜ HYPOTHESIS, UNTESTED: when the scrutinee is a VARIABLE the `ielim`
-never fires, so it sits in the type as a STUCK term carrying its whole
-53-method tuple, and each comparison walks all 53 methods. Consistent
+### ⛔ THE METHOD-TUPLE HYPOTHESIS — TESTED, AND THE PROBE WAS INVALID
+
+`tmp/ProbeElimOpen` vs `tmp/ProbeElimSeal` differ by ONE `opaque` block
+around `szMethsK` (a genuine 53-method tuple), with the motive's depth
+slot holding a stuck `ielim KnotD i szMethsK (var vz)`:
+
+| motive, same 53-row harness | wall | `compare` | injectivity |
+|---|---|---|---|
+| no eliminator (`ProbeVar`) | 61.0 s | — | — |
+| eliminator, tuple TRANSPARENT | 74.9 s | 7,928 | **1,436** |
+| eliminator, tuple SEALED | 76.6 s | 7,194 | **1,436** |
+
+Sealing moved time **+2%** and injectivity **not at all** — 1,436 to the
+digit. (Contrast the `K` probe, where sealing took `compare`
+7,012 → 1,273 and injectivity **1,431 → 3**. That is what a working seal
+looks like.)
+
+⚠⚠ **BUT THE PROBE ONLY REPRODUCED +23%, NOT 20–160×** — so it does NOT
+exhibit the phenomenon it was built to test, and therefore says nothing
+about sealing against the REAL effect. ⇒ *"sealing is the last cheap
+lever and it does not work"* is **RETRACTED**; sealing is UNTESTED here.
+
+★ AND THE COUNTERS SAY WHY — `compare by reduction` as a share:
+
+| | share |
+|---|---|
+| `ProbeElimOpen` | **38%** |
+| `ProbeElimSeal` | 31% |
+| `Judge/Elim` | **96%** |
+| `Judge/Pair` | 93% |
+
+⇒ **the probe is in a different regime.** `imethsTyFrom-wf` THREADS the
+motive through 53 rows — comparing it against ITSELF. `Judge`'s
+`IConWf` proofs MATCH a built type against a differently-shaped EXPECTED
+type, with the eliminator on only one side.
+
+⇒ **THE SHARPER CLAIM, replacing the old hypothesis:** it is not
+"an eliminator in a type is expensive" but **"MATCHING two types where
+one side holds a stuck eliminator is expensive"** — Agda must reduce to
+decide, cannot, and falls back to structural comparison. ⬜ A faithful
+probe must MATCH, not thread. Consistent
 with `compare by reduction` being **96%** (tries, fails, compares
 structurally). ⇒ if so the lever is to SEAL the method tuples —
 `subMethsK` is `Def`-backed but its body is `isubMeths giveK 0 subDescK`,
