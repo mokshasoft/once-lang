@@ -140,9 +140,16 @@ asm-sem asm = ArchSemantics.exec-bytes as (ArchSemantics.assemble as asm)
 -- sufficient space before calling our code"). `Frame` is abstract, so it cannot
 -- be constructed here. Everything ELSE about the entry state is now CONSTRUCTED,
 -- and its preconditions are PROVED (was: 8 postulates, now 2).
-postulate
-  -- the compiled `main` fits the (per-arch) program bound.
-  entry-size  : ∀ (ir : IR Unit Unit) → ir-size ir < program-bound
+-- D213 / plan 0.91 S1: `entry-size : ∀ ir → ir-size ir < program-bound` STOOD
+-- HERE and was FALSE — `program-bound` is universally quantified inside this
+-- module while `ir-size` is unbounded, so `big n = id ∘ id ∘ …` at
+-- `n := program-bound` refutes it. It is GONE, not narrowed: the premise it
+-- discharged has been deleted from `IRObsCorrectF` itself, because
+-- `ir-obs-correct` recurses STRUCTURALLY on the IR and never read the bound as
+-- a fact — every use only weakened it to a sub-term to feed a sub-IH
+-- (`comp-size-f`/`comp-size-g`, `szf`/`szg`). D170 had already removed the one
+-- place that consumed it (`body<bound` in `valid-closure-wf`). The whole
+-- `program-bound` telescope is removed with it.
 
 -- A fresh frame: nothing on the stack (`next-slot ≡ 0`), one heap ref reserved
 -- for the (erased) `Unit` argument cell so it is `BeforeFrontier`.
@@ -266,7 +273,7 @@ entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir → (k : ℕ)
               → MachineRefinesObsF (ir-to-trace ir) 0 0 0 ir tt entry-s
                   (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
 entry-witness ir ioc k =
-  ioc (entry-size ir) 0 0 (ir-to-trace ir) 0 (ir-to-trace-slot-stable ir)
+  ioc 0 0 (ir-to-trace ir) 0 (ir-to-trace-slot-stable ir)
       (block-runs ir) (entry-span ir)
       Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
       (entry-ns (ir-stack-budget ir)) entry-nh

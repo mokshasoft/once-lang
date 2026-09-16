@@ -102,7 +102,7 @@ module PairAsm {FS : FrameSemantics} (program-bound : ℕ) where
   obs-correct-pair-proof :
     ∀ {A B C} {f : IR A B} {g : IR A C}
     → IRObsCorrectF f → IRObsCorrectF g → IRObsCorrectF ⟨ f , g ⟩
-  obs-correct-pair-proof {A} {B} {C} {f} {g} ihf ihg sz n l prog base
+  obs-correct-pair-proof {A} {B} {C} {f} {g} ihf ihg n l prog base
                          ss cr span mIn x s alloc cl n≤ nh inp k =
     record
       { value-realized =
@@ -120,13 +120,6 @@ module PairAsm {FS : FrameSemantics} (program-bound : ℕ) where
       module PC = PairChain f g n l prog base s alloc cl n≤ nh span
       module PT = PairTrace f g x k
       module VR = ValueRealized
-
-      -- `ir-size ⟨ f , g ⟩ = 1 + ir-size f + ir-size g`.
-      szf : ir-size f < program-bound
-      szf = ≤-<-trans (≤-trans (m≤m+n (ir-size f) (ir-size g)) (n≤1+n _)) sz
-
-      szg : ir-size g < program-bound
-      szg = ≤-<-trans (≤-trans (m≤n+m (ir-size g) (ir-size f)) (n≤1+n _)) sz
 
       -- the caller's window, raised to the fragment's own bound and then to
       -- `f`'s emission frontier.
@@ -164,7 +157,7 @@ module PairAsm {FS : FrameSemantics} (program-bound : ℕ) where
 
       mrf : MachineRefinesObsF prog (suc (suc base)) PS.f-start l f x
               (floc PC.PR.p2) (falloc PC.PR.p2) (fclosure PC.PR.p2) k
-      mrf = ihf szf PS.f-start l prog (suc (suc base)) ss cr
+      mrf = ihf PS.f-start l prog (suc (suc base)) ss cr
                 (PS.span-f prog base span) mIn x
                 (floc PC.PR.p2) (falloc PC.PR.p2) (fclosure PC.PR.p2)
                 PC.ns-p2 PC.nh2 (inpF-of inp) k
@@ -266,7 +259,7 @@ module PairAsm {FS : FrameSemantics} (program-bound : ℕ) where
 
       mrg : MachineRefinesObsF prog PCF.bg PS.n1 PS.l1 g x
               (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) PT.kg
-      mrg = ihg szg PS.n1 PS.l1 prog PCF.bg ss cr (PS.span-g prog base span)
+      mrg = ihg PS.n1 PS.l1 prog PCF.bg ss cr (PS.span-g prog base span)
                 mIn x (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2)
                 nsG PCF.nhM2 (inpG-of inp) PT.kg
 

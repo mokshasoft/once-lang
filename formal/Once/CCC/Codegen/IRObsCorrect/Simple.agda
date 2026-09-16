@@ -47,7 +47,7 @@ module Simp {FS : FrameSemantics} (program-bound : ℕ) where
   -- is stuck on `halted s` until `nh` fires, so the reduction is done ONCE and
   -- every component rewrites by it, instead of each re-deriving the run.
   obs-correct-id : ∀ {A} → IRObsCorrectF (id {A})
-  obs-correct-id {A} _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =
+  obs-correct-id {A} n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =
     record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
@@ -128,7 +128,7 @@ module Simp {FS : FrameSemantics} (program-bound : ℕ) where
   -- result place is `unit-result` — which asserts nothing about the state,
   -- exactly because a unit result has no residence (D074).
   obs-correct-terminal : ∀ {A} → IRObsCorrectF (terminal {A})
-  obs-correct-terminal {A} _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =
+  obs-correct-terminal {A} n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =
     record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
@@ -151,7 +151,7 @@ module Simp {FS : FrameSemantics} (program-bound : ℕ) where
   -- absurd pattern. The emitter's `mov-to-output` is never reached because the
   -- state it would run from cannot exist.
   obs-correct-initial : ∀ {A} → IRObsCorrectF (initial {A})
-  obs-correct-initial _ n l prog base _ cr span mIn ()
+  obs-correct-initial n l prog base _ cr span mIn ()
 
   -- ── `free-heap` — DISCHARGED. `IR Unit Unit`, a semantic no-op that still
   -- compiles to `mov-to-output ∷ []` (copy through, so the register discipline
@@ -168,7 +168,7 @@ module Simp {FS : FrameSemantics} (program-bound : ℕ) where
   -- `store-at-slot` goes through `flat-step-straight`, so it is definitional.
 
   obs-correct-free-heap : ∀ (r : HeapRef) → IRObsCorrectF (free-heap r)
-  obs-correct-free-heap r _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
+  obs-correct-free-heap r n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl unit-result (λ fr j _ → mem-untouched mov-to-output s alloc (AtStack fr j) nhw-mov-to-output refl)
@@ -202,7 +202,7 @@ module Simp {FS : FrameSemantics} (program-bound : ℕ) where
   -- `instr-writes-mem load-indirect … = nothing`), so the component's validity
   -- transports by `validityWF-mem-preserved` over a register write.
   obs-correct-fst : ∀ {A B} → IRObsCorrectF (fst {A} {B})
-  obs-correct-fst {A} {B} _ n l prog base _ cr span mIn x s alloc cl _ nh inp k = mr-of inp
+  obs-correct-fst {A} {B} n l prog base _ cr span mIn x s alloc cl _ nh inp k = mr-of inp
     where
       fs₁ = flat-exec-instr load-indirect prog (entry-flat base s alloc cl)
 
@@ -270,7 +270,7 @@ module Simp {FS : FrameSemantics} (program-bound : ℕ) where
       mr-of (in-unit ())
 
   obs-correct-snd : ∀ {A B} → IRObsCorrectF (snd {A} {B})
-  obs-correct-snd {A} {B} _ n l prog base _ cr span mIn x s alloc cl _ nh inp k = mr-of inp
+  obs-correct-snd {A} {B} n l prog base _ cr span mIn x s alloc cl _ nh inp k = mr-of inp
     where
       fs₁ = flat-exec-instr load-indirect-suc prog (entry-flat base s alloc cl)
 
@@ -343,7 +343,7 @@ module Simp {FS : FrameSemantics} (program-bound : ℕ) where
   -- the layer iso: `valid-μ-wf` CARRIES the layer's own `ValidAtWF`
   -- (Plan 0.27 Option 3), so destructing one yields what `at-loc` wants.
   obs-correct-out-μ : ∀ {F} (wf : WellFormedFI F) → IRObsCorrectF (out-μ wf)
-  obs-correct-out-μ {F} wf _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
+  obs-correct-out-μ {F} wf n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
@@ -431,7 +431,7 @@ module Simp {FS : FrameSemantics} (program-bound : ℕ) where
   -- bodies are identical.
   obs-correct-const : ∀ {A} (fit : FitsInRegI A) (v : ⟦ ℤ , Decimal ⟧-baseI A)
                     → IRObsCorrectF (const fit v)
-  obs-correct-const fits-int v _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
+  obs-correct-const fits-int v n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
@@ -463,7 +463,7 @@ module Simp {FS : FrameSemantics} (program-bound : ℕ) where
       out-lit =
         writeReg-same (regs s) Output (SV-Lit fits-intˢ (AbstractExec.lit-value {FS} fits-intˢ v))
 
-  obs-correct-const fits-float v _ n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
+  obs-correct-const fits-float v n l prog base _ cr span mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
           realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl

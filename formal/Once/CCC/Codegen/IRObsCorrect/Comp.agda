@@ -29,16 +29,6 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
   open Core {FS} program-bound
   open Mach {FS} program-bound
 
-  comp-size-f : ∀ {A B C} {g : IR B C} {f : IR A B}
-              → ir-size (g ∘ f) < program-bound → ir-size f < program-bound
-  comp-size-f {g = g} {f} sz =
-    ≤-<-trans (≤-trans (m≤n+m (ir-size f) (ir-size g)) (n≤1+n _)) sz
-
-  comp-size-g : ∀ {A B C} {g : IR B C} {f : IR A B}
-              → ir-size (g ∘ f) < program-bound → ir-size g < program-bound
-  comp-size-g {g = g} {f} sz =
-    ≤-<-trans (≤-trans (m≤m+n (ir-size g) (ir-size f)) (n≤1+n _)) sz
-
   -- THE composition step. `emitted n l (g ∘ f) = ft ++ mov-to-input ∷ gt`: run
   -- `f` (result in `Output`), `mov-to-input` (`Input1 := Output`), run `g`.
   --
@@ -171,14 +161,13 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
   comp-value-realized-of :
     ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
       (prog : AbstractTrace) (base n l k : ℕ)
-    → ir-size g < program-bound
     → next-slot alloc ≤ n
     → AllSlotStable prog
     → BlockRuns prog
     → SpanAt prog base (emitted n l (g ∘ f))
     → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
     → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k szg ns ss cr span ihg mf =
+  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k ns ss cr span ihg mf =
     go (MachineRefinesObsF.value-realized mf) (MachineRefinesObsF.traces-agree mf)
     where
       module VR = ValueRealized
@@ -261,7 +250,7 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
 
           mg : MachineRefinesObsF prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
                                   (floc fsM) (falloc fsM) (fclosure fsM) kg
-          mg = ihg szg n1 l1 prog base' ss cr span-g mOutf (TM.valueT (evalᴰ f x) k)
+          mg = ihg n1 l1 prog base' ss cr span-g mOutf (TM.valueT (evalᴰ f x) k)
                    (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM kg
 
           vg : ValueRealized prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
@@ -376,21 +365,20 @@ module CompC {FS : FrameSemantics} (program-bound : ℕ) where
 
   comp-step : ∀ {A B C} {g : IR B C} {f : IR A B} {x : ⟦ A ⟧} {s alloc cl}
                 (prog : AbstractTrace) (base n l k : ℕ)
-            → ir-size g < program-bound
             → next-slot alloc ≤ n
             → AllSlotStable prog
             → BlockRuns prog
             → SpanAt prog base (emitted n l (g ∘ f))
             → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
             → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-  comp-step prog base n l k szg ns ss cr span ihg mf =
-    comp-value-realized-of prog base n l k szg ns ss cr span ihg mf
+  comp-step prog base n l k ns ss cr span ihg mf =
+    comp-value-realized-of prog base n l k ns ss cr span ihg mf
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
-  comp-obs-correct {g = g} {f} ihg ihf sz n l prog base ss cr span mIn x s alloc cl ns nh inp k =
-    comp-step prog base n l k (comp-size-g {g = g} {f} sz) ns ss cr span ihg
-      (ihf (comp-size-f {g = g} {f} sz) n l prog base ss cr
+  comp-obs-correct {g = g} {f} ihg ihf n l prog base ss cr span mIn x s alloc cl ns nh inp k =
+    comp-step prog base n l k ns ss cr span ihg
+      (ihf n l prog base ss cr
            (comp-span-f g f prog base n l span) mIn x s alloc cl ns nh inp k)
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has

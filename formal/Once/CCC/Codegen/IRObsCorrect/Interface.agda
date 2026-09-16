@@ -580,7 +580,6 @@ module Core {FS : FrameSemantics} (program-bound : ℕ) where
 
   IRObsCorrectF : ∀ {A B} → IR A B → Set
   IRObsCorrectF {A} {B} ir =
-    ir-size ir < program-bound →
     -- D152: quantified over the EMISSION SITE `(n , l)`, and the runtime
     -- frontier is `n` rather than 0. `n = l = 0` is the entry instance, which
     -- is all `ir-flat-correct-of` ever uses.

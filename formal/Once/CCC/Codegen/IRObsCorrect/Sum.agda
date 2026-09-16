@@ -31,7 +31,7 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
   open Mach {FS} program-bound
 
   obs-correct-inl : ∀ {A B} → IRObsCorrectF (inl {A} {B})
-  obs-correct-inl {A} {B} _ n l prog base _ cr span mIn x s alloc cl n≤ nh inp k =
+  obs-correct-inl {A} {B} n l prog base _ cr span mIn x s alloc cl n≤ nh inp k =
     record
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
@@ -401,7 +401,7 @@ module SumC {FS : FrameSemantics} (program-bound : ℕ) where
       place = place-of inp
 
   obs-correct-inr : ∀ {A B} → IRObsCorrectF (inr {A} {B})
-  obs-correct-inr {A} {B} _ n l prog base _ cr span mIn x s alloc cl n≤ nh inp k =
+  obs-correct-inr {A} {B} n l prog base _ cr span mIn x s alloc cl n≤ nh inp k =
     record
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
