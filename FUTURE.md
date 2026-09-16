@@ -568,6 +568,79 @@ proposed. `kJΠΒ12`/`kJΠΒ13` ARE fords and cost 18 s each, because they
 CONTAIN `εwkK`/`singleK`/`subTyAtK`. **The cost follows the CALL, not
 the position.**
 
+### ★★★★★ THE MECHANISM, PROVED — **WEAKENING A TYPE THAT HOLDS A STUCK `ielim`**
+
+`tmp/ProbeMatch3`, `--profile=definitions`. Four `⊢var`s, one context:
+
+| | operation | type holds | ms |
+|---|---|---|---|
+| `dTop` | `⊢var here` | a stuck `ielim` | **35** |
+| `dScr` | `⊢var (there (there here))` | no eliminator | 49 |
+| `dIx` | `⊢var (there³ here)` | no eliminator | 37 |
+| **`dElim`** | **`⊢var (there here)`** | **a stuck `ielim`** | **14,080** |
+
+⇒ **402× from ONE extra `there`.** ⚠ Note `dScr` is weakened TWICE and
+`dElim` only once — so it is not lookup depth. It is one `renTy vs`
+applied to a type containing a stuck eliminator.
+
+★★★ **AND AGDA'S OWN ERROR NAMES THE CONSTRAINT.** Seal the tuple
+(`tmp/ProbeMatch4`) and the checker says:
+
+```
+renTm vs _ms_207 != myMeths
+```
+
+That is what it must solve to weaken the context entry. **Transparently
+it solves it by unfolding `szMethsK` and renaming all 53 methods** —
+14 s. Sealed, `dElim` drops to **30 ms** and the module total from
+17,308 ms to 1,072 ms.
+
+⇒ **THIS IS THE WHOLE JUDGE COST**: 19-deep telescopes ×
+`⊢var (there^k here)` × types carrying eliminator calls. It explains why
+the expensive slots correlate with eliminator calls and with NOTHING else
+— not depth, not size, not description rows.
+
+### ⛔⛔ AND THE FIX IS BLOCKED BY A **PROPOSITIONAL/COMPUTATIONAL GAP**
+
+`tmp/ProbeMatch5` states the naturality lemma INSIDE the seal:
+
+```agda
+opaque
+  myMeths = szMethsK
+  ⊢myMeths = ⊢szMethsK
+  ren-myMeths : renTm ρ (myMeths {Γ}) ≡ myMeths {Δ}
+  ren-myMeths = refl          -- ★ PROVES.  line 54-55, no error.
+```
+
+★ **The equation is TRUE and holds by `refl`** — the tuple really is
+renaming-invariant, and inside the seal Agda can see it.
+
+⛔ **But `dElim` STILL FAILS with the same constraint.** Agda's UNIFIER
+cannot use a PROPOSITIONAL equation to solve `renTm vs ?ms ≡ myMeths`,
+and the constraint arises inside `⊢var`'s own `_∋_∷_` derivation — there
+is no call site to wrap in a cast.
+
+⇒ **SEALING IS NOT AVAILABLE HERE**, not for want of the fact, but
+because a sealed interface can export only PROPOSITIONS while the checker
+needs a COMPUTATION RULE. (Agda's `--rewriting` is the escape and is a
+different trust posture; out of scope for a `--safe` development.)
+
+### ⇒⇒ AND THIS IS EXACTLY WHAT INVARIANT 1 MUST MEAN FOR ONCE
+
+The five invariants above say *"unfolding is interface, so declare it."*
+**This measurement says the declared equations must be COMPUTATIONAL, not
+merely propositional** — a signature that exports `ren-K` must make the
+checker able to REWRITE with it, or the export is useless exactly where
+it is needed. ⇒ sharpen invariant 1: an `exports` clause is a set of
+REDUCTION RULES the caller may use, discharged as proof obligations by
+the implementation.
+
+★ FOURTH INSTANCE OF THE SAME PATTERN TODAY — `⊢methLamN`, `motA-ren`/
+`motA-at`, `ren-Kop`, `ren-myMeths`. Every layer that transports a term
+needs its naturality threaded; three of the four could be threaded by
+hand at a call site, and THIS ONE CANNOT, because `⊢var` has no call
+site to thread through.
+
 ### ⛔ THE METHOD-TUPLE HYPOTHESIS — TESTED, AND THE PROBE WAS INVALID
 
 `tmp/ProbeElimOpen` vs `tmp/ProbeElimSeal` differ by ONE `opaque` block
