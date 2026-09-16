@@ -381,6 +381,43 @@ and unchecked in Agda; declarable and enforced in Once.
 | `_∋_∷_` | ford — inversion is real and costly | declare the mode; forward is cheap |
 | `Hom-U`, `β` | leave — *happens* to be safe | declare the mode; safety is PROVED |
 
+### 2.11 ★★★ ALL SIX UNDER THE MODE LENS — and **every one dissolves**
+
+Asked what happens to the other cases under §2.10's reading. The answer
+is that the whole audit collapses into a single question: **in which
+direction is the index SOLVED?**
+
+| # | constructor | computed term | natural (forward) mode | forward cost | needs fording in Agda? | needs it in Once? |
+|---|---|---|---|---|---|---|
+| 1 | `here`/`there` | `renTy vs A` | `(Γ, x) → A` — LOOKUP | run premise, then `renTy` forward, then COMPARE | **YES — 267×** | **no** |
+| 2 | `⊢app` | `subTy (single u) B` | `(Γ, t) → A` — INFERENCE | `B` from premise 1, `u` from premise 2, `subTy` forward | yes (2.17×, never worse) | **no** |
+| 3 | `icw-clo` | `εwkTm c` | `c` is an EXPLICIT INPUT | `εwkTm c` forward | only for usability | **no** |
+| 4 | `Hom-U` | `renTm vs d` | `source → target` | `d` from the source, `renTm` forward | no | **no** |
+| 5 | `β` | `subTm (single u) t` | `source → target` | `t`/`u` from the source, `subTm` forward | no | **no** |
+| 6 | `IDescWfFrom` | — | — | — | **N/A — false positive** (the audit matched a COMMENT) | — |
+
+★★★ **EVERY ONE IS CHEAP IN ITS FORWARD MODE.** The cost in case 1 is not
+that `renTy` is expensive — it is that Agda **unified the conclusion
+FIRST**, turning `A` into a meta to be solved backwards through the
+renaming, instead of **running the premise first** and comparing.
+
+⇒ **THE DEFECT IS SOLVE ORDER, NOT THE COMPUTED INDEX.** Agda's implicits
+are mode-agnostic: it attacks whichever constraint it likes. A
+mode-correct system fixes the order by declaration, and then a computed
+conclusion is simply an OUTPUT — computed once, forward, never inverted.
+
+⚠ HONEST STATUS: this is DESIGN REASONING about what mode-correctness
+would give, not a measurement — Once does not exist in this form yet. But
+it is consistent with all five measurements, and it explains why cases
+4/5 measured free (Agda *happened* to solve from the source, i.e. it
+*happened* to pick the forward order).
+
+⇒ **the POC's output here is NOT "ford these constructors". It is: a
+proof assistant that cannot declare solve order will pay an unbounded and
+invisible cost on SOME of its computed indices, and which ones is not
+predictable from the definitions — it took eleven probes to find that it
+was exactly one of six.**
+
 ⚠⚠ **SO THE FORDING IN THIS PLAN IS A WORKAROUND FOR AN UNCHECKED MODE,
 NOT A DESIGN ONCE SHOULD COPY.** Someone porting this could easily read
 *"ford `_∋_∷_`"* as the lesson. The lesson is one level up: **declare the
