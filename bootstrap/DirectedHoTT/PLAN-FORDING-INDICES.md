@@ -86,6 +86,51 @@ term:
 ⚠ ONLY `_∋_∷_` IS MEASURED. The others are the same SHAPE; that is a
 reason to spike them, not to assume them.
 
+### 2.1 ✅ STEP 1 RAN, AND THE GATE **NARROWED THE PLAN** — 2026-09-16
+
+`tmp/ProbeFordApp` puts `⊢app`'s `subTy (single u) B` in the same
+position `tmp/ProbeFord` put `renTy vs A`. Three versions were needed
+before it measured anything, and the progression is the finding:
+
+| probe version | result | why |
+|---|---|---|
+| conclusion as `subTy (single u₀) Bel` | 904 ms, nothing in the table | syntactic match, no solve |
+| conclusion substituted-out, `B` SPELLED | 65 / 29 ms | forward computation, no inversion |
+| **`B` a HOLE — solved from the conclusion** | **UNSOLVED METAS, 883 ms** | **Agda REFUSES to invert** |
+
+★★★ **THE GATE FAILS, AND USEFULLY.** Agda cannot invert
+`subTy (single u) ?B ≡ C` and gives up INSTANTLY, where it inverts
+`renTy vs ?A ≡ C` EXPENSIVELY and succeeds:
+
+| operation solved-for | behaviour |
+|---|---|
+| `renTy vs ?A` | **inverts — 15,998 ms, succeeds** |
+| `subTy (single u) ?B` | **refuses — unsolved meta, instant** |
+
+⇒ **a renaming is structurally invertible; a substitution is not** (many
+`B` substitute alike). Agda's INJECTIVITY heuristic fires for one and not
+the other — the same counter that moved **1,431 → 3** in the `K`-motive
+probe.
+
+### 2.2 ⇒ THE AUDIT NARROWS FROM SIX TO **TWO**
+
+The law is about **operations Agda will try to INVERT**, not about
+computed indices in general:
+
+| datatype | computed term | invertible? | verdict |
+|---|---|---|---|
+| **`_∋_∷_`** | `renTy vs A` | **YES** | ⬜ **FORD IT** — measured 267× |
+| **`_⟶ᵀ_`** | `renTm` | **YES** | ⬜ spike, same shape |
+| `_⟶_` `β` | `subTm (single u) t` | no | ⛔ leave |
+| `_⊢_∷_` `⊢app` | `subTy (single u) B` | no | ⛔ **leave — MEASURED** |
+| `ICodeWf` | `εwkTm = subTm εsub` | no | ⛔ leave |
+| `IDescWfFrom` | `εwkTy = subTy εsub` | no | ⛔ leave |
+
+⇒ **the kernel change is ~2 datatypes, not 6** — and the biggest by far
+is the one already measured. ★ THIS IS WHAT THE GATE WAS FOR: §2's
+six-datatype sweep was proposed on a shape-match and is now cut to the
+two where the mechanism actually applies.
+
 --------------------------------------------------------------------------
 ## 3. The order
 
