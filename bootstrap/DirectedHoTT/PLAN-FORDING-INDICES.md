@@ -307,7 +307,40 @@ where inversion is structural and cheap. ⇒ fording it buys USABILITY
 
 ★ `Hom-U`'s renaming is in the TARGET and `c`/`d` solve from the SOURCE
 `Hom U c d` — a constructor application — so `renTm vs d` computes
-FORWARD. Predicted no exposure; ⬜ UNTESTED.
+FORWARD.
+
+### 2.8 ✅ ALL FOUR PROBED — **ONLY `_∋_∷_` IS EXPOSED**
+
+| constructor | computed term | A · bad case | B · ever worse? | verdict |
+|---|---|---|---|---|
+| **`here`/`there`** | `renTy vs A` | **267×** | — | ⬜ **FORD** |
+| `icw-clo` | `εwkTm c` | none — Agda REFUSES to invert | free both ways | ⬜ ford (usability only) |
+| `Hom-U` | `renTm vs d` | **none — all four defs below threshold** | free both ways | ⛔ leave |
+| `β` | `subTm (single u) t` | **none — all four defs below threshold** | free both ways | ⛔ leave |
+
+(`⊢app`, not on the corrected list but measured anyway: 2.17× bad case,
+never worse ⇒ ⬜ ford.)
+
+### 2.9 ★★★ THE RULE — three conditions, and ALL THREE must hold
+
+A computed index bites only when the checker must solve **BACKWARDS
+THROUGH IT**. That needs:
+
+1. **the operation is INVERTIBLE** — a renaming, not a substitution.
+   `subTy`/`subTm`/`εwkTm` make Agda REFUSE (unsolved meta, instant);
+2. **the argument is NOT recoverable elsewhere in the conclusion** —
+   `Hom-U`'s `d` sits in the SOURCE `Hom U c d`, so it solves
+   structurally and the renaming computes FORWARD;
+3. **the term solved for is LARGE** — a stuck `ielim` carrying a 53-method
+   tuple.
+
+`here`/`there` hits all three: `A` appears ONLY under `renTy vs`, with no
+cheaper route. **Every other candidate fails at least one.**
+
+⇒ ★ **THIS IS READABLE OFF THE CONSTRUCTOR, NOT PROFILED.** That is what
+§4's cost documentation should state, and it is a LINT, not an
+investigation: *does a defined, invertible operation wrap an argument
+that appears nowhere else in the conclusion?*
 
 --------------------------------------------------------------------------
 ## 3. The order
