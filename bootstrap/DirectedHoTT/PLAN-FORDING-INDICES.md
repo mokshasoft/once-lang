@@ -13,6 +13,28 @@ gets that term FORDED — replaced by a variable plus an explicit equation
 argument — because a computed index makes the checker INVERT, and
 inversion is unbounded search.**
 
+### ★★ THE CRITERION — sharpened 2026-09-16, and it is the USER'S
+
+⛔ NOT *"how big is the win?"* — that is reasoning from edit cost, which
+[[principledness-over-edit-cost]] rules out for this POC.
+
+★ **IS THE FORDED FORM EVER WORSE?** If it never is, ford it. The size of
+the current win is IRRELEVANT to whether the construct is the right one.
+
+⇒ so each candidate needs TWO measurements, not one:
+
+| | |
+|---|---|
+| **A · the bad case** | a stuck eliminator in the computed term — how big is the worst case? |
+| **B · the ordinary case** | no eliminator — is the forded form ever WORSE? |
+
+**Ford iff B says never-worse.** A only sizes the prize.
+
+⚠ AND "just fix the bad sites" IS NOT AN ALTERNATIVE. You can grep for a
+construct, but you cannot see from a call site whether its type holds
+something expensive — that invisibility IS the footgun. Finding the bad
+sites requires profiling, which is how the 2026-09-13/16 session went.
+
 --------------------------------------------------------------------------
 ## 1. The measurement that forces it
 
@@ -224,11 +246,21 @@ session went.
 the use site and unbounded in the type is the wrong design regardless of
 how many sites currently trip it.
 
-⇒ **REVISED STATUS: the plan is gated to `_∋_∷_` because that is the only
-thing MEASURED to pay.** The other five are **UNTESTED**, not refuted.
-Each needs its own `tmp/ProbeFord`-shaped A/B before it is either done or
-dropped — and `ICodeWf`'s `εsub` is the one most likely to behave
-differently from its spelling.
+### 2.4 ⇒ THE STANDING TABLE
+
+| datatype | computed term | A · bad case | B · ordinary | verdict |
+|---|---|---|---|---|
+| `_∋_∷_` | `renTy vs A` | **267×** | — | ⬜ **FORD** |
+| `_⊢_∷_` `⊢app` | `subTy (single u) B` | **2.17×** | **never worse** | ⬜ **FORD** |
+| `_⟶_` `β` | `subTm (single u) t` | ⬜ | ⬜ | ⬜ untested |
+| `_⟶ᵀ_` | `renTm` | ⬜ | ⬜ | ⬜ untested |
+| `ICodeWf` | `εwkTm = subTm εsub` | ⬜ | ⬜ | ⬜ untested |
+| `IDescWfFrom` | `εwkTy = subTy εsub` | ⬜ | ⬜ | ⬜ untested |
+
+⚠ The four untested are **UNTESTED, NOT REFUTED** — §2.2 marked them ⛔
+on a SHAPE MATCH (*"spelled with `subTm`"*), which is the error §2 itself
+was criticised for. ★ `ICodeWf`'s `εsub` runs FROM THE EMPTY CONTEXT and
+is the one most likely to behave unlike its spelling.
 
 --------------------------------------------------------------------------
 ## 3. The order
