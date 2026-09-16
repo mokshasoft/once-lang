@@ -108,7 +108,6 @@ module CompC {FS : FrameSemantics} where
   -- obligations, each carrying the field's own type. Nothing is glued upward
   -- from the four supporting pieces — each obligation states what it needs and
   -- the pieces are consumed where the goal asks for them.
-  postulate
     -- D158: still fragment-local on the RIGHT (the events of `g ∘ f` run
     -- alone), which is the staged half — `value-realized` moved to the
     -- program-indexed form and this must follow, bounded by the chain rather

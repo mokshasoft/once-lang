@@ -289,6 +289,18 @@ library
       MAlonzo.Code.Once.CCC.Codegen.CataNextSlot
       MAlonzo.Code.Once.CCC.Codegen.FlatStepLemmas
       MAlonzo.Code.Once.CCC.Codegen.FrameFreeTrace
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Apply
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Comp
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Interface
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Machine
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Out
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Pair
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.PairAssemble
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Prelude
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.SigOp
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Simple
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.Sum
+      MAlonzo.Code.Once.CCC.Codegen.IRObsCorrect.TwoCell
       MAlonzo.Code.Once.CCC.Codegen.IRObsCorrectFlat
       MAlonzo.Code.Once.CCC.Codegen.IRToTrace
       MAlonzo.Code.Once.CCC.Codegen.ShapeTable

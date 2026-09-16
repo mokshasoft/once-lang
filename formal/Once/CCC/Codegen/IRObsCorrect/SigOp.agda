@@ -247,7 +247,6 @@ module SigOpC {FS : FrameSemantics} where
   postulate
     obs-correct-sigop-rest : ∀ {A B} (si : SigOpInfo A B) → IRObsCorrectF (SigOp si)
 
-  postulate
     -- ── D174, THE ONE RESIDUAL OF `obs-correct-inl` (deferred proof /
     -- machine invariant). Class: **invariant**, and BELIEVED TRUE for a
     -- reason the model already encodes.

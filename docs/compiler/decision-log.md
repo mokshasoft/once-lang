@@ -14052,3 +14052,98 @@ MERGE.md already mandates emptiness probes for new residuals. This says they
 are owed by OLD ones too, and names the smell precisely: **a residual whose
 CONCLUSION mentions the program while its PREMISES mention only a state.**
 `block-runs` had that shape in plain sight since D188.
+
+## D214 — `program-bound` WAS NEVER FUEL (2026-09-16)
+
+Plan 0.91 S1. `entry-size` — refuted in D213 — is **gone, not narrowed**, and
+the entire `program-bound` telescope went with it: 26 modules, `Once.Certified`
+down to the leaves, zero new postulates, root green.
+
+### The finding
+
+The axiom said the compiled `main` fits a bound:
+
+    entry-size : ∀ (ir : IR Unit Unit) → ir-size ir < program-bound
+
+`program-bound` was a module parameter, so it is universally quantified while
+`ir-size` is unbounded: `big n = id ∘ id ∘ …` at `n := program-bound` refutes
+it. The interesting question was not *how to prove it* but **what read it**.
+
+Nothing did. `ir-obs-correct` recurses STRUCTURALLY on the IR. Every single use
+of the bound only *weakened* it to a sub-term in order to feed a sub-IH —
+`comp-size-f` / `comp-size-g` in `CompC`, `szf` / `szg` in the pair and sum
+clauses. Two lemmas whose entire job was to shrink a number nobody ever read.
+D170 had already deleted the one genuine consumer (`body<bound` in
+`valid-closure-wf`); what survived was a parameter threaded through 26 modules
+to be passed down and discarded.
+
+So the premise was deleted from `IRObsCorrectF` itself, and `entry-witness`
+lost an argument:
+
+    entry-witness ir ioc k =
+  -   ioc (entry-size ir) 0 0 (ir-to-trace ir) 0 …
+  +   ioc 0 0 (ir-to-trace ir) 0 …
+
+### The closure carries its own bound
+
+The one place a bound is real is a closure body, and it does not need a global
+one:
+
+    record ClosureWellFormed … (env : ⟦ EnvType ⟧)
+    -                          (body<bound : ir-size body < program-bound)
+    +                          {body-bound : ℕ}
+    +                          (body<bound : ir-size body < body-bound)
+
+"Choose the bound after the program," applied locally. `suc (ir-size body)`
+discharges it.
+
+`readLoc-stack-heap-eq` — the one thing four modules took from `ValidityDef`
+and which never mentioned a bound — was hoisted into a bound-free `ReadLocEq`
+module, so those four stopped inventing a bound to pass.
+
+### The method correction, which is the durable part
+
+S0 was written as: replace both false postulates with holes, and read the red
+as the work-list. **That is the wrong instrument and it produced nothing.**
+Holing a body leaves the TYPE unchanged, so Agda emits no interface for the
+module and every consumer fails to LOAD rather than to typecheck: the full-root
+run reported exactly one error, an `import` line in `X86-32.agda:97`, and the
+rest of the cone was simply unbuildable.
+
+The MECHANISM, verified rather than inferred — after a run where the two
+definitions were holes, the interface file is simply absent:
+
+    $ ls formal/_build/2.8.0/agda/Once/Adequacy/ArchCorrectness/FlatFromObs.agdai
+    (no such file)
+
+    X86-32.agda:97.8-49: error: [SolvedButOpenHoles]
+    Module cannot be imported since it has open interaction points
+
+An unsolved interaction meta SUPPRESSES THE INTERFACE. So the importer's error
+is `[SolvedButOpenHoles]` at its `import` line — one error, at the first
+importer Agda happens to reach, naming no obligation. Agda never gets as far as
+the call sites, so there is no per-definition work-list to read off. The
+consumer chain in that run had to be reconstructed by grep, which is precisely
+the bottom-up work the plan forbids.
+
+> **Top-down means changing a TYPE, never blanking a BODY.**
+> A hole REMOVES information; a changed statement PRODUCES it.
+
+Going red at every consumer is the *benefit* of top-down work, not its cost —
+and it only happens when the STATEMENT moves. The fix that landed never used
+S0's work-list: it changed the statement and followed the resulting type errors
+to all 26 files.
+
+### Two fossils swept
+
+`Comp.agda:111` and `SigOp.agda:250` each carried a bare `postulate` keyword
+with nothing under it — left behind when D203 and D174 discharged their
+contents. They are only scope-checker warnings, but they inflate every
+grep-based residual count. Removed; the commentary under them is kept.
+
+### Open, found in passing
+
+`ValidityDef` (`Once/CCC/Machine/Validity.agda`) is now the only module naming
+`program-bound`, and it is **applied nowhere**: `IRObsCorrect/Prelude.agda:81`
+re-exports `module ValidityDef` but no site instantiates it. Dead by the
+consumers-not-importers test. Separate cleanup.

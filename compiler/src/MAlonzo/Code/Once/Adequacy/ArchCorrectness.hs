@@ -42,9 +42,8 @@ import qualified MAlonzo.Code.Once.Target.X86Z45Z32.PhysReg
 import qualified MAlonzo.Code.Once.Target.X86Z45Z64.PhysReg
 
 -- Once.Adequacy.ArchCorrectness.arch-correctness
-d_arch'45'correctness_68 ::
+d_arch'45'correctness_66 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
-  Integer ->
   (MAlonzo.Code.Once.Adequacy.ArchCorrectness.FlatCore.FlatCorrespondence.T_HeapView_436 ->
    [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218] ->
    MAlonzo.Code.Once.CCC.Machine.Flat.T_FlatState_68 ->
@@ -191,22 +190,22 @@ d_arch'45'correctness_68 ::
   MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.ResourceBounds.T_LitFits_292 ->
   MAlonzo.Code.Once.Target.Arch.T_Arch_6 ->
   MAlonzo.Code.Once.Adequacy.Compile.T_ArchCorrect_48
-d_arch'45'correctness_68 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
-                         v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24
-  = case coe v24 of
+d_arch'45'correctness_66 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12
+                         v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23
+  = case coe v23 of
       MAlonzo.Code.Once.Target.Arch.C_x86'45'64_8
         -> coe
-             MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_x86'45'64'45'correct_1876
+             MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z64.d_x86'45'64'45'correct_1868
              (coe v0) (coe v1) (coe v2) (coe v3) (coe v4) (coe v5) (coe v6)
-             (coe v7) (coe v8)
+             (coe v7)
       MAlonzo.Code.Once.Target.Arch.C_x86'45'32_10
         -> coe
-             MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_x86'45'32'45'correct_1876
-             (coe v0) (coe v1) (coe v17) (coe v18) (coe v19) (coe v20) (coe v21)
-             (coe v22) (coe v23)
+             MAlonzo.Code.Once.Adequacy.ArchCorrectness.X86Z45Z32.d_x86'45'32'45'correct_1868
+             (coe v0) (coe v16) (coe v17) (coe v18) (coe v19) (coe v20)
+             (coe v21) (coe v22)
       MAlonzo.Code.Once.Target.Arch.C_riscv64_12
         -> coe
-             MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_riscv64'45'correct_1848
-             (coe v0) (coe v1) (coe v9) (coe v10) (coe v11) (coe v12) (coe v13)
-             (coe v14) (coe v15) (coe v16)
+             MAlonzo.Code.Once.Adequacy.ArchCorrectness.RiscV64.d_riscv64'45'correct_1840
+             (coe v0) (coe v8) (coe v9) (coe v10) (coe v11) (coe v12) (coe v13)
+             (coe v14) (coe v15)
       _ -> MAlonzo.RTE.mazUnreachableError
