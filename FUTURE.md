@@ -521,6 +521,64 @@ modules) gave correlation **0.378** — but that test is itself invalid:
 both and reported identical exposure for modules 17.6× apart. Inconclusive,
 not evidence.
 
+### ★★★★ THE PREDICTOR, CLEAN ACROSS 16 SLOTS IN 2 MODULES
+
+A slot's cost is decided by **whether its type contains an OBJECT-LEVEL
+ELIMINATOR CALL** — nothing else:
+
+| | slots | cost |
+|---|---|---|
+| **WITH** an `ielim`-backed call | `Elim` 7, 8, 9, 12, 13 · `Pair` 8 | **12,905 – 89,728 ms** |
+| **WITHOUT** | `Elim` 6, 11, 15 · `Pair` 6, 7, 9, 10, 11, 12, 13, 14 | **44 – 1,537 ms** |
+
+**NO OVERLAP** — the cheapest with-call slot is **8.4×** the dearest
+without. And the count is linear-ish: `Elim` slots 7 and 9 have exactly
+one `εwkK` each and cost 15,540 / 16,233 ms; slot 8 has three
+(`methsTyFromK` + 2× `εwkK`) and costs 89,728.
+
+★ The classification is `icon` vs `ielim`, not size: `Ctx-extK`,
+`Tm-pairK`, `Ty-SgK`, `Ty-MuK` are CONSTRUCTORS and cost nothing;
+`εwkK`, `subTyAtK`, `singleK`, `methsTyFromK` bottom out in `ielim` and
+cost ~15 s each.
+
+⇒ this supersedes the description-size law (refuted), the depth law
+(refuted), and slot-8-is-special (it was just the slot with three calls).
+
+### ⇒ AND IT NAMES THE ABSTRACTION GAP — why the Knot is harder than `Spec`
+
+```agda
+-- Spec: a META-level function.  Reduces by PATTERN MATCHING,
+--       one step per constructor, native to the checker.
+subTy σ (IMu D I i) = IMu D I (subTm σ i)
+
+-- Knot: an OBJECT-level PROGRAM.  One reduction step =
+--       fire ι-ielim → `sel k ms` into a 53-ELEMENT TUPLE →
+--       build `ifields` (which runs `iihs` over the fields) →
+--       apply a triply-nested lam.
+subTyAtK dd m σ A  ⇝  app (ielim KnotD <53-method tuple> …) …
+```
+
+**Measured: ~15 s per object-level eliminator call, against microseconds
+for the meta-level equivalent.** ⇒ the Knot is not written badly; every
+meta-level operation becomes an `ielim` over a 53-row description, and
+anything in a TYPE gets compared.
+
+⚠⚠ **FORDING DOES NOT FIX IT** — tested and refuted the moment it was
+proposed. `kJΠΒ12`/`kJΠΒ13` ARE fords and cost 18 s each, because they
+CONTAIN `εwkK`/`singleK`/`subTyAtK`. **The cost follows the CALL, not
+the position.**
+
+⬜ HYPOTHESIS, UNTESTED: when the scrutinee is a VARIABLE the `ielim`
+never fires, so it sits in the type as a STUCK term carrying its whole
+53-method tuple, and each comparison walks all 53 methods. Consistent
+with `compare by reduction` being **96%** (tries, fails, compares
+structurally). ⇒ if so the lever is to SEAL the method tuples —
+`subMethsK` is `Def`-backed but its body is `isubMeths giveK 0 subDescK`,
+a computation that BUILDS the 53-element tuple, so one unfold yields the
+huge term. ⚠ Counter-evidence: injectivity is only 0.09% in Judge, so the
+`K`-probe's mechanism is NOT what is happening here; any win would come
+from stopping the EXPANSION, not the search.
+
 ### ⬜ WHAT SURVIVES: **SLOT 8**, in both modules
 
 | module | slot-8 | total | share |
