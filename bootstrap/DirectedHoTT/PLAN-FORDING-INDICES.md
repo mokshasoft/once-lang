@@ -514,3 +514,50 @@ merely relocates the work". Every one looked right until measured.
 
 ⇒ **step 1 is a gate, not a formality**, and step 4 is the falsification
 test for the whole plan.
+
+
+--------------------------------------------------------------------------
+## ⛔⛔⛔ RETRACTION — THE 7.47× WAS A CACHE ARTIFACT (2026-09-16)
+
+`Examples/Knot/RedWfA` was reported at **1544.0 s base vs 206.7 s forded**.
+**That comparison is INVALID.**
+
+```
+modules compiled during each run:
+  BASE: 46     ← RedWfA + 45 DEPENDENCIES
+  FORD:  1     ← RedWfA alone
+```
+
+Switching branches invalidates `.agdai` files by content hash. The BASE
+run followed a branch switch, so it rebuilt the whole closure; the FORD
+run's dependencies were already warm. **1544 s vs 207 s is 46 modules
+against 1.**
+
+⇒ this is [[agda-timing-needs-a-cold-interface]] (recorded in this project
+at up to **52×**) compounded with
+[[sweep-first-module-eats-the-closure]]. Deleting the target's `.agdai`
+makes THAT module cold; the branch switch silently made EVERYTHING ELSE
+cold too. The protocol I wrote into the measuring workflow said "delete
+the .agdai first" — necessary and NOT sufficient across branches.
+
+### ⇒ THE VALID PROTOCOL for a cross-branch single-module comparison
+
+1. check out the branch;
+2. **build the module's full closure** (`check.sh` on it once, discarding
+   the timing);
+3. delete ONLY the target's `.agdai`;
+4. time it — now exactly one module compiles;
+5. confirm with `grep -c Checking` that the run compiled **1** module.
+
+★ Step 5 is the guard. Had I run it the first time, the artifact would
+have been visible immediately.
+
+### WHAT SURVIVES
+
+- **FORD `RedWfA` = 206.7 s / 4.69 GB / 2.59 MB interface** is a VALID
+  single-module measurement (`Checking` count = 1).
+- **The base figure is unknown** — 1544 s measured 46 modules.
+- Interface size +1.1% vs base is still meaningful (a file size, not a
+  timing) — the term-size regression really is small.
+- ⚠ `Judge/Pair` forded is likewise unmeasured: its run was compiling
+  dependencies when observed.
