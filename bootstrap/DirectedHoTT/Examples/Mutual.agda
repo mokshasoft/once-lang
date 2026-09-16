@@ -36,6 +36,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Mutual where
+open import normalizer.Syntax.Types using ( refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
@@ -123,7 +124,7 @@ TT s = IMu TTD INat s
 ιWf : IConWf TTD INat (◇ ▹ INat) ιC
 ιWf = iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) sortTy)
             (icw-ford ⌜Nat⌝ (var vz) sortTy)
-            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))
+            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (here refl)) (toI ⊢nzero))
             iwf-ι
 
 arrWf : IConWf TTD INat (◇ ▹ INat) arrC
@@ -132,13 +133,13 @@ arrWf =
    (iwf-ρ sortTy (toI ⊢nzero)
     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTy)
            (icw-ford ⌜Nat⌝ (var (vs (vs vz))) sortTy)
-           (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here))) (toI ⊢nzero))
+           (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there (here refl) refl) refl)) (toI ⊢nzero))
            iwf-ι))
 
 cWf : IConWf TTD INat (◇ ▹ INat) cC
 cWf = iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) sortTm)
             (icw-ford ⌜Nat⌝ (var vz) sortTm)
-            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI (⊢nsuc ⊢nzero)))
+            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (here refl)) (toI (⊢nsuc ⊢nzero)))
             iwf-ι
 
 annWf : IConWf TTD INat (◇ ▹ INat) annC
@@ -147,7 +148,7 @@ annWf =
    (iwf-ρ sortTy (toI ⊢nzero)
     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTm)
            (icw-ford ⌜Nat⌝ (var (vs (vs vz))) sortTm)
-           (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here))) (toI (⊢nsuc ⊢nzero)))
+           (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there (here refl) refl) refl)) (toI (⊢nsuc ⊢nzero)))
            iwf-ι))
 
 TTWf : IDescWf INat TTD
@@ -248,11 +249,11 @@ depth s t = ielim TTD s ms t
 -- the four payload types, under the method's index binder
 tyPayΙ : {Γ : Ctx} →
          (Γ ▹ El ⌜Nat⌝) ⊢ty Σ' (El (⌜Id⌝ ⌜Nat⌝ (var vz) sortTy)) Unit
-tyPayΙ = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))) ty-Unit
+tyPayΙ = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (here refl)) (toI ⊢nzero))) ty-Unit
 
 tyPayC : {Γ : Ctx} →
          (Γ ▹ El ⌜Nat⌝) ⊢ty Σ' (El (⌜Id⌝ ⌜Nat⌝ (var vz) sortTm)) Unit
-tyPayC = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI (⊢nsuc ⊢nzero))))
+tyPayC = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (here refl)) (toI (⊢nsuc ⊢nzero))))
               ty-Unit
 
 tyPayArr : {Γ : Ctx} →
@@ -263,7 +264,7 @@ tyPayArr : {Γ : Ctx} →
 tyPayArr =
   ty-Σ (ty-IMu TTWf (toI ⊢nzero))
     (ty-Σ (ty-IMu TTWf (toI ⊢nzero))
-      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here))) (toI ⊢nzero)))
+      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there (here refl) refl) refl)) (toI ⊢nzero)))
             ty-Unit))
 
 tyPayAnn : {Γ : Ctx} →
@@ -274,7 +275,7 @@ tyPayAnn : {Γ : Ctx} →
 tyPayAnn =
   ty-Σ (ty-IMu TTWf (toI (⊢nsuc ⊢nzero)))
     (ty-Σ (ty-IMu TTWf (toI ⊢nzero))
-      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here)))
+      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there (here refl) refl) refl))
                                  (toI (⊢nsuc ⊢nzero))))
             ty-Unit))
 
@@ -306,7 +307,7 @@ tyIH₂ = ty-Σ ty-Nat (ty-Σ ty-Nat ty-Unit)
                      (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTy)) Unit)))
              (Π (Σ' Nat (Σ' Nat Unit)) Nat))
 ⊢marr = ⊢lam (ty-El ⊢⌜Nat⌝)
-          (⊢lam tyPayArr (⊢lam tyIH₂ (⊢nsuc (⊢fst (⊢var here)))))
+          (⊢lam tyPayArr (⊢lam tyIH₂ (⊢nsuc (⊢fst (⊢var (here refl))))))
 
 -- ★★★ the cross-sort method: `fst (snd ih)` is the recursor's value at
 --   the OTHER TAG.
@@ -318,7 +319,7 @@ tyIH₂ = ty-Σ ty-Nat (ty-Σ ty-Nat ty-Unit)
                      (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) sortTm)) Unit)))
              (Π (Σ' Nat (Σ' Nat Unit)) Nat))
 ⊢mann = ⊢lam (ty-El ⊢⌜Nat⌝)
-          (⊢lam tyPayAnn (⊢lam tyIH₂ (⊢nsuc (⊢fst (⊢snd (⊢var here))))))
+          (⊢lam tyPayAnn (⊢lam tyIH₂ (⊢nsuc (⊢fst (⊢snd (⊢var (here refl)))))))
 
 tyΠmarr : {Γ : Ctx} →
           Γ ⊢ty Π (El ⌜Nat⌝)

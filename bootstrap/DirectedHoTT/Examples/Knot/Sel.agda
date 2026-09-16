@@ -50,7 +50,7 @@ selK k ms = Tm-fstK (natrec ms (Tm-sndK (var vz)) k)
                (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢wk dn)))
                (⊢-cast (sym (cong (λ z → K (pair sTm z)) (wk-single {v = nzero} n))) dms)
                (⊢-cast (sym (cong (λ z → K (pair sTm z)) (nrs-w n)))
-                       (⊢Tm-sndKv _ (⊢wk (⊢wk dn)) (⊢var here)))
+                       (⊢Tm-sndKv _ (⊢wk (⊢wk dn)) (⊢var (here refl))))
                dk))
 
 ------------------------------------------------------------------------

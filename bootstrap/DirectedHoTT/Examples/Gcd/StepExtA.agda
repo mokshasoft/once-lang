@@ -90,11 +90,11 @@ open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
 --   ⭐ Read `agda-cost-is-elaborated-term-size` before re-inlining any of it.
 
 ⊢M₁ : {Γ : Ctx} → ((Γ ▹ PairT) ▹ Nat) ⊢ty M₁
-⊢M₁ = ⊢eqG (⊢plus (⊢fst (⊢var (there here))) (⊢var here))
+⊢M₁ = ⊢eqG (⊢plus (⊢fst (⊢var (there (here refl) refl))) (⊢var (here refl)))
            (⊢natrec-var ⊢G1 ⊢G1z ⊢gcdInn1)
 
 ⊢M₂ : {Γ : Ctx} → (Θ₂ Γ ▹ Nat) ⊢ty M₂
-⊢M₂ = ⊢eqG (⊢plus (⊢var here) (⊢nsuc (⊢var (there (there here)))))
+⊢M₂ = ⊢eqG (⊢plus (⊢var (here refl)) (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
            (⊢natrec-var ⊢G2 ⊢G2z ⊢gcdInn2)
 
 -- ══════════════════════════════════════════════════════════════════
@@ -118,8 +118,8 @@ open import DirectedHoTT.Lib.Monus using ( monusTm; ⊢monus )
 --   ⭐ Read `agda-cost-is-elaborated-term-size` before re-inlining any of it.
 
 ⊢M₃ : {Γ : Ctx} → (Θ₃ Γ ▹ Nat) ⊢ty M₃
-⊢M₃ = ⊢eqG (⊢plus (⊢nsuc (⊢var (there (there here))))
-                  (⊢nsuc (⊢var (there (there (there (there here)))))))
+⊢M₃ = ⊢eqG (⊢plus (⊢nsuc (⊢var (there (there (here refl) refl) refl)))
+                  (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
            (⊢natrec-var ⊢G3 ⊢G3z ⊢G3s)
 
 -- ══════════════════════════════════════════════════════════════════
@@ -147,8 +147,8 @@ split3 : {Γ : Ctx} →
              (subTy (single (monusTm (nsuc (var (vs vz)))
                                      (nsuc (var (vs (vs (vs vz))))))) M₃)
 split3 = prv _ (⊢natrec ⊢M₃ (prvOk leaf₃z) (prvOk leaf₃s)
-                        (⊢monus (⊢nsuc (⊢var (there here)))
-                                (⊢nsuc (⊢var (there (there (there here)))))))
+                        (⊢monus (⊢nsuc (⊢var (there (here refl) refl)))
+                                (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))))
 
 -- ══════════════════════════════════════════════════════════════════
 -- PART: …ExamplesGcdStepExtC
@@ -210,7 +210,7 @@ split2 : {Γ : Ctx} →
          Prv (Θ₂ Γ) (subTy (single (fst (var (vs (vs vz))))) M₂)
 split2 = prv _ (⊢natrec ⊢M₂ (prvOk leaf₂z)
                         (⊢conv (prvOk split3) (csymᵀ conv₂))
-                        (⊢fst (⊢var (there (there here)))))
+                        (⊢fst (⊢var (there (there (here refl) refl) refl))))
 
 -- ══════════════════════════════════════════════════════════════════
 -- PART: …ExamplesGcdStepExtA5
@@ -235,7 +235,7 @@ split2 = prv _ (⊢natrec ⊢M₂ (prvOk leaf₂z)
 gcdExt : {Γ : Ctx} → Prv (Γ ▹ PairT) (eqG msr gcdBody)
 gcdExt = prv _ (⊢natrec ⊢M₁ (prvOk leaf₁z)
                         (⊢conv (prvOk split2) (csymᵀ conv₁))
-                        (⊢snd (⊢var here)))
+                        (⊢snd (⊢var (here refl))))
 
 -- ══════════════════════════════════════════════════════════════════
 -- PART: …ExamplesGcdStepExtA

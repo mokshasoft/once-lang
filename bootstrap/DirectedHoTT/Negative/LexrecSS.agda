@@ -44,7 +44,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢lam; ⊢app
         ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ren-ty )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ren-ty; wkR⊢ )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Wk
@@ -103,7 +103,7 @@ module SS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
 
   tyA₈ : SSCtx ⊢ty wTy^ 8 A
   tyA₈ = ren-ty (ren-ty (ren-ty (ren-ty (ren-ty (ren-ty (ren-ty (ren-ty dA
-           there) there) there) there) there) there) there) there
+           wkR⊢) wkR⊢) wkR⊢) wkR⊢) wkR⊢) wkR⊢) wkR⊢) wkR⊢
 
   dk₁ : (SSCtx ▹ wTy^ 8 A) ⊢ wᶠ^ 8 m₁ ∷ Nat
   dk₁ = ⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁)))))))
@@ -220,11 +220,11 @@ module SS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
     ⊢strong-step (⊢wk dk₁)
                  (⊢wk (⊢wk (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁)))))))))
                  (⊢var (there (there (there (there (there (there (there
-                        (there (there here))))))))))
+                        (there (there (here refl) refl) refl) refl) refl) refl) refl) refl) refl) refl))
                  (⊢-cast (cong (λ z → Hom Nat (nsuc (w (wᶠ^ 8 m₁))) (w (w z)))
                                (wᶠ³-single (wᶠ^ 5 m₁)))
-                         (⊢var here))
-                 (⊢var (there (there (there here))))
+                         (⊢var (here refl)))
+                 (⊢var (there (there (there (here refl) refl) refl) refl))
 
   ⊢rec1 : SSCtx ⊢ rec1tm
         ∷ aIHTat (wTy^ 8 A) (wᶠ^ 8 cM) (wᶠ^ 8 m₁)
@@ -236,9 +236,9 @@ module SS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
           (⊢app (⊢app (⊢app (⊢-cast IH₁-fit
                                (⊢app (⊢-cast IH₁-w⁹
                                         (⊢var (there (there (there (there (there
-                                               (there (there (there here))))))))))
+                                               (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl) refl)))
                                      dnSS))
-                             (⊢var (there here)))
+                             (⊢var (there (here refl) refl)))
                       (⊢-cast (sym (cong (λ z → Hom Nat z
                                      (var (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))
                                          μ₁SS-fit))
@@ -314,11 +314,11 @@ module SS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
     ⊢ordtr (⊢wk (⊢wk dk₁))
            (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁))))))))))
            (⊢nsuc (⊢var (there (there (there (there (there (there (there
-                          (there (there (there here))))))))))))
+                          (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl) refl) refl) refl)))
            (⊢-cast (cong (λ z → Hom Nat (w (w (wᶠ^ 8 m₁))) (w (w (w z))))
                          (wᶠ³-single (wᶠ^ 5 m₁)))
-                   (⊢var (there here)))
-           (⊢var (there (there (there (there here)))))
+                   (⊢var (there (here refl) refl)))
+           (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
 
   ⊢lt₂SS : ((((SSCtx ▹ wTy^ 8 A)
                 ▹ Hom Nat (wᶠ^ 8 m₁)
@@ -331,11 +331,11 @@ module SS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
   ⊢lt₂SS =
     ⊢strong-step (⊢wk (⊢wk dk₂))
                  (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₂))))))))))
-                 (⊢var (there (there (there (there (there (there (there here))))))))
+                 (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))
                  (⊢-cast (cong (λ z → Hom Nat (nsuc (w (w (wᶠ^ 8 m₂)))) (w (w (w z))))
                                (wᶠ³-single (wᶠ^ 5 m₂)))
-                         (⊢var here))
-                 (⊢var (there (there (there here))))
+                         (⊢var (here refl)))
+                 (⊢var (there (there (there (here refl) refl) refl) refl))
 
   ⊢rec2 : SSCtx ⊢ rec2tm
         ∷ rec2Tat (wTy^ 8 A) (wᶠ^ 8 cM) (wᶠ^ 8 m₁) (wᶠ^ 8 m₂)
@@ -348,8 +348,8 @@ module SS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
           (⊢-cast (cong El cancel₂)
             (⊢app (⊢app (⊢app (⊢-cast IH₂-w⁷
                                  (⊢var (there (there (there (there (there
-                                        (there here))))))))
-                               (⊢var (there (there here))))
+                                        (there (here refl) refl) refl) refl) refl) refl) refl)))
+                               (⊢var (there (there (here refl) refl) refl)))
                         (⊢-cast (sym (cong (λ z → Hom Nat z
                                        (nsuc (var (vs (vs (vs (vs (vs (vs (vs (vs (vs (vs vz)))))))))))))
                                            μ₁-fit₂))
@@ -409,15 +409,15 @@ module SS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
   ⊢lexSS : ((((Δ ▹ Nat) ▹ omot) ▹ Nat) ▹ Nat) ▹ imot ⊢ lexSS ∷ subTy nrs imot
   ⊢lexSS =
     ⊢-cast (sym imot-s)
-      (⊢lam (ren-ty (ren-ty (ren-ty (ren-ty (ren-ty dA there) there) there)
-                            there) there)
+      (⊢lam (ren-ty (ren-ty (ren-ty (ren-ty (ren-ty dA wkR⊢) wkR⊢) wkR⊢)
+                            wkR⊢) wkR⊢)
         (⊢lam (ty-Hom ty-Nat (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁)))))
-                      (⊢nsuc (⊢var (there (there (there (there (there here))))))))
+                      (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))))
           (⊢lam (ty-Hom ty-Nat (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₂))))))
-                        (⊢nsuc (⊢var (there (there (there here))))))
+                        (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl))))
             (⊢-cast (cong El cMcancel)
               (⊢app (⊢app (⊢app (⊢-cast stp-w⁸
                                    (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dstp)))))))))
-                                 (⊢var (there (there here))))
+                                 (⊢var (there (there (here refl) refl) refl)))
                           (⊢-cast (sym rec1-fit) ⊢rec1))
                     (⊢-cast (sym rec2-fit) ⊢rec2))))))

@@ -28,6 +28,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhsMot where
+open import normalizer.Syntax.Types using ( refl )
 
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; snd; Π; Nat; εwkTy; IMu )
@@ -75,10 +76,10 @@ ihsMotK =
            ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty ihsMotK
 ⊢ihsMotK =
   ty-Π ty-Nat
-   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var here)))
-    (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
-     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
-        (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there (there here)))))))))
+   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var (here refl))))
+    (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (here refl) refl))))
+     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there (here refl) refl) refl))))
+        (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there (there (here refl) refl) refl) refl)))))))
 
 ------------------------------------------------------------------------
 -- ★ ROW `dι` — `ihs D ms dι p = unit`.  SEVEN lams: `⊢methLam`'s three
@@ -93,10 +94,10 @@ ihsIota = lam (lam (lam (lam (lam (lam (lam Tm-unitK))))))
 ⊢ihsIota =
   ⊢methLam KnotD IPair tagDCon-i cDCon-i KnotWf cDCon-iWf ⊢IPair ⊢ihsMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var here)))
-        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
-          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
-            (⊢Tm-unitKv (var (vs (vs (vs vz)))) (⊢var (there (there (there here)))))))))
+      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var (here refl))))
+        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (here refl) refl))))
+          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there (here refl) refl) refl))))
+            (⊢Tm-unitKv (var (vs (vs (vs vz)))) (⊢var (there (there (there (here refl) refl) refl) refl)))))))
 
 ------------------------------------------------------------------------
 -- ★ ROW `dρ` — `ihs D ms (dρ C) p = pair (elim D ms (fst p)) (ihs D ms C (snd p))`.

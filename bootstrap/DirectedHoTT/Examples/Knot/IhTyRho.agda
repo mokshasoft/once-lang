@@ -24,7 +24,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
         ; ξ-pairʳ; ξ-nsuc; βsnd; done; step; single; wk-single; iinst )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; trans; sym )
+open import normalizer.Syntax.Types using ( cong; trans; sym; refl )
 open import DirectedHoTT.Lib.Wk using ( towerA; towerJ )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ )
 open import DirectedHoTT.Lib.ICast using ( muFwd; muBwd* )
@@ -64,22 +64,22 @@ ihTyRho =
 ⊢ihTyRho =
   ⊢methLam KnotD IPair tagDCon-rho cDCon-rho KnotWf cDCon-rhoWf
            ⊢IPair ⊢ihTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (there (here refl) refl) refl)))))
       (⊢lam (ty-IMu KnotWf
-               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))
+               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))))
         (⊢ihRowρ dn dq dM
           (⊢wkTyK dn
             (⊢ihAppK {dd = snd (var (vs (vs (vs (vs vz))))) }
                      {u = fst (var (vs (vs (vs vz)))) }
                      dIH (⊢Tm-sndKv _ dn dq) dM)))))
   where
-    dn = ⊢snd (⊢var (there (there (there (there here)))))
-    dq = ⊢var (there here)
-    dM = ⊢var here
+    dn = ⊢snd (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+    dq = ⊢var (there (here refl) refl)
+    dM = ⊢var (here refl)
     dIH = ⊢ihHere
             {D = KnotD} {I = IPair}
             {σ = isingle (var (vs (vs (vs (vs vz)))))}
             {j = pair sDCon (snd (var vz))}
             (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) sDCon) iι)
             {q = var (vs (vs (vs vz)))} {M = ihTyMotK}
-            (⊢var (there (there here)))
+            (⊢var (there (there (here refl) refl) refl))

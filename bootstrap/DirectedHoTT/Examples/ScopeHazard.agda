@@ -68,15 +68,15 @@ TmH n = IMu TmHD INat n
 varWfH : IConWf TmHD INat (◇ ▹ INat) varC
 varWfH = iwf-κ (⌜IMu⌝ FinD INat (var vz))
                (icw-imu (var vz) FinWf)
-               (⊢⌜IMu⌝ FinWf (⊢var here))
+               (⊢⌜IMu⌝ FinWf (⊢var (here refl)))
                iwf-ι
 
 lamWfH : IConWf TmHD INat (◇ ▹ INat) lamC
-lamWfH = iwf-ρ (nsuc (var vz)) (toI (⊢nsuc (fromI (⊢var here)))) iwf-ι
+lamWfH = iwf-ρ (nsuc (var vz)) (toI (⊢nsuc (fromI (⊢var (here refl))))) iwf-ι
 
 appWfH : IConWf TmHD INat (◇ ▹ INat) appC
-appWfH = iwf-ρ (var vz) (⊢var here)
-          (iwf-ρ (var (vs vz)) (⊢var (there here)) iwf-ι)
+appWfH = iwf-ρ (var vz) (⊢var (here refl))
+          (iwf-ρ (var (vs vz)) (⊢var (there (here refl) refl)) iwf-ι)
 
 boxWfH : IConWf TmHD INat (◇ ▹ INat) boxC
 boxWfH = iwf-ρ nzero (toI ⊢nzero) iwf-ι

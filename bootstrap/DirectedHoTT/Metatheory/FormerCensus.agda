@@ -83,9 +83,9 @@ mentionedIn : List Name → TC (List Name)
 mentionedIn []       = returnTC []
 mentionedIn (d ∷ ds) =
   bindTC (consOf d)        λ cs →
-  bindTC (fromCons cs)     λ (here refl) →
+  bindTC (fromCons cs)     λ here →
   bindTC (mentionedIn ds)  λ rest →
-  returnTC ((here refl) ++ rest)
+  returnTC (here ++ rest)
   where
     fromCons : List Name → TC (List Name)
     fromCons []       = returnTC []

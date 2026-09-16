@@ -119,8 +119,8 @@ module Am (Δ : Ctx) (cA cP μ stp : RTm ⌊ Δ ⌋)
   ⊢aAuxMot : (Δ ▹ Nat) ⊢ty aAuxMot
   ⊢aAuxMot =
     ty-Π (ty-El (⊢wk dcA))
-      (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk dμ)) (⊢var here)) (⊢var (there here)))
-            (ty-El (⊢app (⊢wk (⊢wk (⊢wk dcP))) (⊢var (there here)))))
+      (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk dμ)) (⊢var (here refl))) (⊢var (there (here refl) refl)))
+            (ty-El (⊢app (⊢wk (⊢wk (⊢wk dcP))) (⊢var (there (here refl) refl)))))
 
   -- ★ the ⊢wk'd step, reassociated.  `⊢wk` leaves `renTy vs` OUTSIDE the
   --   combinator and Agda pushes it into the Π-chain instead; without
@@ -173,7 +173,7 @@ module Am (Δ : Ctx) (cA cP μ stp : RTm ⌊ Δ ⌋)
   ⊢ihZ : ((Δ ▹ El cA) ▹ Hom Nat (app (w μ) (var vz)) nzero)
            ⊢ ihZ ∷ rec1T (w (w cA)) (w (w cP)) (w (w μ)) (var (vs vz))
   ⊢ihZ =
-    ⊢lam (ty-El (⊢wk (⊢wk dcA))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢wk (⊢wk (⊢wk dμ))) (⊢var here))) (⊢app (⊢wk (⊢wk (⊢wk dμ))) (⊢var (there (there here))))) (⊢strong-base' (⊢app (⊢wk (⊢wk (⊢wk (⊢wk dcP)))) (⊢var (there here))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk dμ)))) (⊢var (there here))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk dμ)))) (⊢var (there (there (there here))))) (⊢var here) (⊢var (there (there here)))))
+    ⊢lam (ty-El (⊢wk (⊢wk dcA))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢wk (⊢wk (⊢wk dμ))) (⊢var (here refl)))) (⊢app (⊢wk (⊢wk (⊢wk dμ))) (⊢var (there (there (here refl) refl) refl)))) (⊢strong-base' (⊢app (⊢wk (⊢wk (⊢wk (⊢wk dcP)))) (⊢var (there (here refl) refl))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk dμ)))) (⊢var (there (here refl) refl))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk dμ)))) (⊢var (there (there (there (here refl) refl) refl) refl))) (⊢var (here refl)) (⊢var (there (there (here refl) refl) refl))))
 
   -- the IH argument's expected type is the `rec1T` slot already
   -- substituted by the argument before it.
@@ -196,7 +196,7 @@ module Am (Δ : Ctx) (cA cP μ stp : RTm ⌊ Δ ⌋)
   ⊢aZBr : Δ ⊢ aZBr ∷ subTy (single nzero) aAuxMot
   ⊢aZBr =
     ⊢-cast (sym mot-z)
-      (⊢lam (ty-El dcA) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk dμ) (⊢var here)) ⊢nzero) (⊢-cast (cong (λ z → El (app z (var (vs vz)))) cPcancelZ) (⊢app (⊢app (⊢-cast stp-w² (⊢wk (⊢wk dstp))) (⊢var (there here))) (⊢-cast (sym rec1-fitZ) ⊢ihZ)))))
+      (⊢lam (ty-El dcA) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk dμ) (⊢var (here refl))) ⊢nzero) (⊢-cast (cong (λ z → El (app z (var (vs vz)))) cPcancelZ) (⊢app (⊢app (⊢-cast stp-w² (⊢wk (⊢wk dstp))) (⊢var (there (here refl) refl))) (⊢-cast (sym rec1-fitZ) ⊢ihZ)))))
 
   ------------------------------------------------------------------------
   -- n = suc n': the IH at n' is a CONTEXT VARIABLE, applied at `y`.  This
@@ -239,7 +239,7 @@ module Am (Δ : Ctx) (cA cP μ stp : RTm ⌊ Δ ⌋)
             ▹ Hom Nat (app (w (w (w μ))) (var vz)) (nsuc (var (vs (vs vz)))))
            ⊢ ihS ∷ rec1T (w (w (w (w cA)))) (w (w (w (w cP)))) (w (w (w (w μ)))) (var (vs vz))
   ⊢ihS =
-    ⊢lam (ty-El (⊢wk (⊢wk (⊢wk (⊢wk dcA))))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dμ))))) (⊢var here))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dμ))))) (⊢var (there (there here))))) (⊢-cast (cong (λ z → El (app z (var (vs vz)))) cP-fitS) (⊢app (⊢app (⊢-cast ihMot-w⁵ (⊢var (there (there (there (there here)))))) (⊢var (there here))) (⊢-cast (sym (cong (λ z → Hom Nat (app z (var (vs vz))) (var (vs (vs (vs (vs (vs vz))))))) μ-fitS)) (⊢strong-step (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dμ)))))) (⊢var (there here))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dμ)))))) (⊢var (there (there (there here))))) (⊢var (there (there (there (there (there here)))))) (⊢var here) (⊢var (there (there here))))))))
+    ⊢lam (ty-El (⊢wk (⊢wk (⊢wk (⊢wk dcA))))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dμ))))) (⊢var (here refl)))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dμ))))) (⊢var (there (there (here refl) refl) refl)))) (⊢-cast (cong (λ z → El (app z (var (vs vz)))) cP-fitS) (⊢app (⊢app (⊢-cast ihMot-w⁵ (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))) (⊢var (there (here refl) refl))) (⊢-cast (sym (cong (λ z → Hom Nat (app z (var (vs vz))) (var (vs (vs (vs (vs (vs vz))))))) μ-fitS)) (⊢strong-step (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dμ)))))) (⊢var (there (here refl) refl))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dμ)))))) (⊢var (there (there (there (here refl) refl) refl) refl))) (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)) (⊢var (here refl)) (⊢var (there (there (here refl) refl) refl)))))))
 
   rec1-fitS : subTy (single (var (vs vz))) (rec1T (w (w (w (w (w cA))))) (w (w (w (w (w cP))))) (w (w (w (w (w μ))))) (var vz))
             ≡ rec1T (w (w (w (w cA)))) (w (w (w (w cP)))) (w (w (w (w μ)))) (var (vs vz))
@@ -258,7 +258,7 @@ module Am (Δ : Ctx) (cA cP μ stp : RTm ⌊ Δ ⌋)
   ⊢aSBr : ((Δ ▹ Nat) ▹ aAuxMot) ⊢ aSBr ∷ subTy nrs aAuxMot
   ⊢aSBr =
     ⊢-cast (sym mot-s)
-      (⊢lam (ty-El (⊢wk (⊢wk dcA))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk dμ))) (⊢var here)) (⊢nsuc (⊢var (there (there here))))) (⊢-cast (cong (λ z → El (app z (var (vs vz)))) cPcancelS) (⊢app (⊢app (⊢-cast stp-w⁴ (⊢wk (⊢wk (⊢wk (⊢wk dstp))))) (⊢var (there here))) (⊢-cast (sym rec1-fitS) ⊢ihS)))))
+      (⊢lam (ty-El (⊢wk (⊢wk dcA))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk dμ))) (⊢var (here refl))) (⊢nsuc (⊢var (there (there (here refl) refl) refl)))) (⊢-cast (cong (λ z → El (app z (var (vs vz)))) cPcancelS) (⊢app (⊢app (⊢-cast stp-w⁴ (⊢wk (⊢wk (⊢wk (⊢wk dstp))))) (⊢var (there (here refl) refl))) (⊢-cast (sym rec1-fitS) ⊢ihS)))))
 
   aAuxTm : RTm ⌊ Δ ⌋ → RTm ⌊ Δ ⌋
   aAuxTm n = natrec aZBr aSBr n
@@ -293,7 +293,7 @@ module AmΠ (Δ : Ctx) (cA cP μ stp : RTm ⌊ Δ ⌋)
   μx = app (w μ) (var vz)
 
   dμx : (Δ ▹ El cA) ⊢ μx ∷ Nat
-  dμx = ⊢app (⊢wk dμ) (⊢var here)
+  dμx = ⊢app (⊢wk dμ) (⊢var (here refl))
 
   amrecTm : RTm ⌊ Δ ⌋
   amrecTm = lam (app (app (aAuxTm μx) (var vz)) (reflTm μx))
@@ -322,7 +322,7 @@ module AmΠ (Δ : Ctx) (cA cP μ stp : RTm ⌊ Δ ⌋)
   ⊢amrecΠ =
     ⊢lam (ty-El dcA)
       (⊢-cast (cong (λ z → El (app z (var vz))) cP-fit)
-        (⊢app (⊢app (⊢-cast (mot-at μx) (⊢aAux dμx)) (⊢var here))
+        (⊢app (⊢app (⊢-cast (mot-at μx) (⊢aAux dμx)) (⊢var (here refl)))
               (⊢-cast (sym le-fit) (⊢le-refl dμx))))
 
   -- ★ …and the POINTWISE form, DERIVED.  One ⊢app, one wk-single.

@@ -31,7 +31,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.KripkeIx where
-open import normalizer.Syntax.Types using ( _≡_; cong )
+open import normalizer.Syntax.Types using ( _≡_; cong; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
@@ -61,7 +61,7 @@ kMot : {Γ : Cx} → RTy ((Γ ∙) ∙)
 kMot = Π (Π (IMu FinD INat (var (vs vz))) Nat) Nat
 
 ⊢kMot : {Γ : Ctx} → ((Γ ▹ εwkTy INat) ▹ IMu TmD INat (var vz)) ⊢ty kMot
-⊢kMot = ty-Π (ty-Π (ty-IMu FinWf (⊢var (there here))) ty-Nat) ty-Nat
+⊢kMot = ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (here refl) refl))) ty-Nat) ty-Nat
 
 ------------------------------------------------------------------------
 -- 2. THE THREE METHODS.
@@ -79,8 +79,8 @@ kVar = lam (lam (lam (lam (app (var vz) (fst (var (vs (vs vz))))))))
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayVar
       (⊢lam ty-Unit
-        (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat)
-          (⊢app (⊢var here) (fromFin (⊢fst (⊢var (there (there here)))))))))
+        (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there (here refl) refl) refl))) ty-Nat)
+          (⊢app (⊢var (here refl)) (fromFin (⊢fst (⊢var (there (there (here refl) refl) refl))))))))
 
 -- ★★ lam b : use the IH AT THE SHIFTED DOMAIN.  `ih` expects a
 --    `Fin (suc ⟨i⟩) → Nat` where `ρ` is a `Fin ⟨i⟩ → Nat`.
@@ -91,12 +91,12 @@ kLam = lam (lam (lam (lam (app (fst (var (vs vz))) (lam nzero)))))
 ⊢kLam =
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayLam
-      (⊢lam (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there here)))))) ty-Nat)
+      (⊢lam (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))) ty-Nat)
                         ty-Nat)
                   ty-Unit)
-        (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat)
-          (⊢app (⊢fst (⊢var (there here)))
-                (⊢lam (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there (there here))))))))
+        (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there (here refl) refl) refl))) ty-Nat)
+          (⊢app (⊢fst (⊢var (there (here refl) refl)))
+                (⊢lam (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there (there (here refl) refl) refl) refl))))))
                       ⊢nzero)))))
 
 -- app f a : both IHs at the SAME domain, so `ρ` is passed twice
@@ -109,12 +109,12 @@ kApp = lam (lam (lam (lam
 ⊢kApp =
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayApp
-      (⊢lam (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there here))) ty-Nat) ty-Nat)
-                  (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat) ty-Nat)
+      (⊢lam (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (here refl) refl))) ty-Nat) ty-Nat)
+                  (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there (here refl) refl) refl))) ty-Nat) ty-Nat)
                         ty-Unit))
-        (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat)
-          (⊢plus (⊢app (⊢fst (⊢var (there here))) (⊢var here))
-                 (⊢app (⊢fst (⊢snd (⊢var (there here)))) (⊢var here))))))
+        (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there (here refl) refl) refl))) ty-Nat)
+          (⊢plus (⊢app (⊢fst (⊢var (there (here refl) refl))) (⊢var (here refl)))
+                 (⊢app (⊢fst (⊢snd (⊢var (there (here refl) refl)))) (⊢var (here refl)))))))
 
 ------------------------------------------------------------------------
 -- 3. ★★★ THE ELIMINATION ITSELF, AT A KRIPKE MOTIVE.
@@ -124,23 +124,23 @@ tyΠkVar : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat zero varC kMot
 tyΠkVar = ty-Π (ty-El ⊢⌜Nat⌝)
             (ty-Π tyPayVar
               (ty-Π ty-Unit
-                (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat) ty-Nat)))
+                (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there (here refl) refl) refl))) ty-Nat) ty-Nat)))
 
 tyΠkLam : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat (suc zero) lamC kMot
 tyΠkLam = ty-Π (ty-El ⊢⌜Nat⌝)
             (ty-Π tyPayLam
-              (ty-Π (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there here)))))) ty-Nat)
+              (ty-Π (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))) ty-Nat)
                                 ty-Nat)
                           ty-Unit)
-                (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat) ty-Nat)))
+                (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there (here refl) refl) refl))) ty-Nat) ty-Nat)))
 
 tyΠkApp : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat (suc (suc zero)) appC kMot
 tyΠkApp = ty-Π (ty-El ⊢⌜Nat⌝)
             (ty-Π tyPayApp
-              (ty-Π (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there here))) ty-Nat) ty-Nat)
-                          (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat) ty-Nat)
+              (ty-Π (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (here refl) refl))) ty-Nat) ty-Nat)
+                          (ty-Σ (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there (here refl) refl) refl))) ty-Nat) ty-Nat)
                                 ty-Unit))
-                (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here)))) ty-Nat) ty-Nat)))
+                (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there (here refl) refl) refl))) ty-Nat) ty-Nat)))
 
 kMeths : {Γ : Cx} → RTm Γ
 kMeths = pair kVar (pair kLam (pair kApp unit))

@@ -33,7 +33,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
         ; ξ-pairʳ; βsnd; done; step; single; wk-single; iinst )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; sym )
+open import normalizer.Syntax.Types using ( cong; sym; refl )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam )
 open import DirectedHoTT.Lib.ICast using ( muFwd; muBwd* )
 open import DirectedHoTT.Lib.Wk using ( towerA; towerJ )
@@ -65,11 +65,11 @@ iihTyMotK =
              ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty iihTyMotK
 ⊢iihTyMotK =
   ty-Π ty-Nat
-   (ty-Π (ty-SubTy (⊢snd (⊢var (there (there here)))) (⊢var here))
-    (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
+   (ty-Π (ty-SubTy (⊢snd (⊢var (there (there (here refl) refl) refl))) (⊢var (here refl)))
+    (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (here refl) refl))))
      (ty-Π (ty-IMu KnotWf
-              (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
-        (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there (there here)))))))))
+              (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there (here refl) refl) refl))))))
+        (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there (there (here refl) refl) refl) refl)))))))
 
 ------------------------------------------------------------------------
 -- ★ THE JUNK ROW — and for `cICon-i` it is the RIGHT answer: `Unit`.
@@ -84,11 +84,11 @@ iihTyJunk = lam (lam (lam (lam (lam (lam (lam Ty-UnitK))))))
 ⊢iihTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢iihTyMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there here))))) (⊢var here))
-        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
+      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))) (⊢var (here refl)))
+        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (here refl) refl))))
           (⊢lam (ty-IMu KnotWf
-                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
-            (⊢Ty-UnitKv _ (⊢var (there (there (there here)))))))))
+                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there (here refl) refl) refl))))))
+            (⊢Ty-UnitKv _ (⊢var (there (there (there (here refl) refl) refl) refl)))))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE DESCENT THROUGH THE FOUR Π BINDERS, ONCE.

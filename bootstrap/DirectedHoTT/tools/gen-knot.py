@@ -151,7 +151,14 @@ def dbv(k):
 
 def dbd(k):
     "…and the LOOKUP derivation for it"
-    return "⊢var " + ("(there " * k) + "here" + (")" * k)
+    # ⚠ FORDED `_∋_∷_` (branch `ocp-0009-ford-lookup`): `here`/`there`
+    #   each take a trailing `renTy vs A ≡ A'` witness, and at a lookup
+    #   built out of constructors it is always `refl`.  The point of the
+    #   ford is that checking `⊢var (there^k …)` against a DECLARED type no
+    #   longer asks Agda to INVERT `renTy vs ?A ≡ <declared>` — measured
+    #   15,998 ms computed vs 60 ms forded on a type carrying a stuck
+    #   `ielim`.  ⇒ every emitted lookup must carry its `refl`s.
+    return "⊢var " + ("(there " * k) + "(here refl)" + (" refl)" * k)
 
 def amb(k):   return dbv(k)          # the ambient index, k fields bound
 def damb(k):  return dbd(k)
@@ -320,6 +327,12 @@ def gen_wf():
          "--   ~1.7\u00d7 per slot.",
          "", "{-# OPTIONS --safe #-}",
          "module DirectedHoTT.Examples.Knot.Wf where",
+         # ⚠ `_∋_∷_` IS FORDED (`ocp-0009-ford-lookup`): every `here`/`there`
+         #   carries a trailing `renTy vs A ≡ A\'` witness, `refl` at a
+         #   constructor lookup — so `refl` must be IN SCOPE.  This module
+         #   imported no equality at all before the ford, and the emitted
+         #   `⊢var (here refl)` scope-errors without it.
+         "open import normalizer.Syntax.Types using ( refl )",
          "open import DirectedHoTT.Spec.Syntax",
          "  using ( Cx; ε; _∙; vz; vs",
          "        ; RTm; var; pair; fst; snd; nzero; nsuc; ⌜Nat⌝; ⌜Id⌝",
@@ -2173,7 +2186,7 @@ JWFTOP = """
 --   and CODES (`JS0`, `kJS0`, …) saves nothing — they are shape, and
 --   `shape-is-free-payload-is-the-cost` measured shape at ZERO.  What
 --   this lemma moves is the PAYLOAD: the `⊢ty` obligations
---   `⊢⌜Nat⌝` and `⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here)))` were
+--   `⊢⌜Nat⌝` and `⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var (here refl))))` were
 --   re-discharged once per row, and are now discharged ONCE.
 ------------------------------------------------------------------------
 
@@ -2197,7 +2210,7 @@ jwfTop : {C : ICon ⌊ JS2 ⌋} (D : IDesc) → IConWf D IJudge JS2 C →
 jwfTop D w =
   iwf-κ kJS0 (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
     (iwf-κ kJS1 (icw-imu (var vz) CtxWf)
-      (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here))))
+      (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var (here refl)))))
       w)
 
 """
@@ -4428,7 +4441,7 @@ def emit_jrowwf(row, tel, pre, ity, wfname, idesc=None, share=0, topname=None,
                         % (F, k,
                            par(_codewf(comp, A)),
                            par(jdAt(_proj(c, n, AMB), k, vis, bty, tel, 'el')),
-                           par(_codewf(comp, "fromI (⊢var here)")),
+                           par(_codewf(comp, "fromI (⊢var (here refl))")),
                            par(d0), A, A, par(d0),
                            dbd(k - 1 - depth_at),
                            par(jdAt(row.vals[c], k, vis, bty, tel, 'el'))))

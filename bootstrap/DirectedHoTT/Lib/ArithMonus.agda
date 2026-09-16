@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Syntax
         ; renTm; subTy; subTm; Sub; extS )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢ordtr; ty-Nat; ty-Hom
         ; _≅ᵀ_; csymᵀ; Hom-Nat-ss; Hom-Nat-sz; ⊢absurd
         ; _⟶_; _⟶*_; done; step; ξ-natrecⁿ; wk-single; βsnd )

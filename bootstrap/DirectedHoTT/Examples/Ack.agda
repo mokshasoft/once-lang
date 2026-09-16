@@ -32,6 +32,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Ack where
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Nat; U; Σ'
@@ -76,7 +77,7 @@ ackμ₂ = lam (snd (var vz))
 ⊢ackμ₁ : ◇ ⊢ ackμ₁ ∷ Π (El pairCode) Nat
 ⊢ackμ₁ =
   ⊢lam (ty-El ⊢pairCode)
-    (⊢conv (⊢fst (⊢conv (⊢var here) (red→≅ᵀ El-pair)))
+    (⊢conv (⊢fst (⊢conv (⊢var (here refl)) (red→≅ᵀ El-pair)))
            (red→≅ᵀ El-nat))
 
 -- ⚠ `⊢snd`'s result is `subTy (single (fst p)) B`.  Here B is `El ⌜Nat⌝`,
@@ -86,7 +87,7 @@ ackμ₂ = lam (snd (var vz))
 ⊢ackμ₂ : ◇ ⊢ ackμ₂ ∷ Π (El pairCode) Nat
 ⊢ackμ₂ =
   ⊢lam (ty-El ⊢pairCode)
-    (⊢conv (⊢snd (⊢conv (⊢var here) (red→≅ᵀ El-pair)))
+    (⊢conv (⊢snd (⊢conv (⊢var (here refl)) (red→≅ᵀ El-pair)))
            (red→≅ᵀ El-nat))
 
 ------------------------------------------------------------------------

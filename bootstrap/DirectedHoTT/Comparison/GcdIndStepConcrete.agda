@@ -148,25 +148,25 @@ indGElim {μ = μ} {f = f} {u₁ = u₁} {u₂ = u₂} {i = i} {h = h} de di dh 
 ------------------------------------------------------------------------
 
 ⊢MI₁ : {Γ : Ctx} → ((Γ ▹ PairT) ▹ Nat) ⊢ty MI₁
-⊢MI₁ = ⊢indG (⊢plus (⊢fst (⊢var (there here))) (⊢var here))
+⊢MI₁ = ⊢indG (⊢plus (⊢fst (⊢var (there (here refl) refl))) (⊢var (here refl)))
              (⊢natrec-var ⊢G1 ⊢G1z ⊢gcdInn1)
-             (⊢fst (⊢var (there here))) (⊢var here)
+             (⊢fst (⊢var (there (here refl) refl))) (⊢var (here refl))
 
 ⊢MI₂ : {Γ : Ctx} → (ΘI₂ Γ ▹ Nat) ⊢ty MI₂
-⊢MI₂ = ⊢indG (⊢plus (⊢var here) (⊢nsuc (⊢var (there (there here)))))
+⊢MI₂ = ⊢indG (⊢plus (⊢var (here refl)) (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
              (⊢natrec-var ⊢G2 ⊢G2z ⊢gcdInn2)
-             (⊢var here) (⊢nsuc (⊢var (there (there here))))
+             (⊢var (here refl)) (⊢nsuc (⊢var (there (there (here refl) refl) refl)))
 
 ⊢MI₃ : {Γ : Ctx} → (ΘI₃ Γ ▹ Nat) ⊢ty MI₃
 ⊢MI₃ =
-  ty-Π (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there here))))
-                       (⊢nsuc (⊢var (there (there (there (there here)))))))
-               (⊢var here))
-       (⊢indG (⊢wk (⊢plus (⊢nsuc (⊢var (there (there here))))
-                          (⊢nsuc (⊢var (there (there (there (there here))))))))
+  ty-Π (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there (here refl) refl) refl)))
+                       (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
+               (⊢var (here refl)))
+       (⊢indG (⊢wk (⊢plus (⊢nsuc (⊢var (there (there (here refl) refl) refl)))
+                          (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))
               (⊢wk (⊢natrec-var ⊢G3 ⊢G3z ⊢G3s))
-              (⊢wk (⊢nsuc (⊢var (there (there here)))))
-              (⊢wk (⊢nsuc (⊢var (there (there (there (there here))))))))
+              (⊢wk (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
+              (⊢wk (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))
 
 -- ══════════════════════════════════════════════════════════════════
 -- PART: …ExamplesGcdDvdA3
@@ -185,8 +185,8 @@ indGElim {μ = μ} {f = f} {u₁ = u₁} {u₂ = u₂} {i = i} {h = h} de di dh 
 
 split3 : {Γ : Ctx} → Prv (ΘI₃ Γ) (subTy (single μAB) MI₃)
 split3 = prv _ (⊢natrec ⊢MI₃ (prvOk leafI₃z) (prvOk leafI₃s)
-                        (⊢monus (⊢nsuc (⊢var (there here)))
-                                (⊢nsuc (⊢var (there (there (there here)))))))
+                        (⊢monus (⊢nsuc (⊢var (there (here refl) refl)))
+                                (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))))
 
 -- ⚠ THE STEP `StepExt` DOES NOT HAVE: discharge the equation with `reflN`.
 split3app : {Γ : Ctx} →
@@ -194,8 +194,8 @@ split3app : {Γ : Ctx} →
 split3app =
   prv _ (⊢-cast peel
           (⊢app (⊢-cast probeI₃-at (prvOk split3))
-                (⊢reflN (⊢monus (⊢nsuc (⊢var (there here)))
-                                (⊢nsuc (⊢var (there (there (there here)))))))))
+                (⊢reflN (⊢monus (⊢nsuc (⊢var (there (here refl) refl)))
+                                (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))))))
   where
     R = reflN (μAB {Γ = _})
     peel = trans (indG-sub {σ = single R}
@@ -230,7 +230,7 @@ split2 : {Γ : Ctx} →
          Prv (ΘI₂ Γ) (subTy (single (fst (var (vs (vs vz))))) MI₂)
 split2 {Γ} = prv _ (⊢natrec ⊢MI₂ (prvOk leafI₂z)
                             (⊢conv (prvOk split3app) (csymᵀ (conv₂I {⌊ Γ ⌋})))
-                            (⊢fst (⊢var (there (there here)))))
+                            (⊢fst (⊢var (there (there (here refl) refl) refl))))
 
 -- ══════════════════════════════════════════════════════════════════
 -- PART: …ExamplesGcdDvdA5
@@ -256,7 +256,7 @@ gcdInd : {Γ : Ctx} →
          Prv (Γ ▹ PairT) (indG msr gcdBody (fst (var vz)) (snd (var vz)))
 gcdInd {Γ} = prv _ (⊢natrec ⊢MI₁ (prvOk leafI₁z)
                             (⊢conv (prvOk split2) (csymᵀ (conv₁I {⌊ Γ ⌋})))
-                            (⊢snd (⊢var here)))
+                            (⊢snd (⊢var (here refl))))
 
 -- ══════════════════════════════════════════════════════════════════
 -- PART: …ExamplesGcdDvdA

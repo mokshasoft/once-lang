@@ -205,8 +205,8 @@ pwIntro {a = a} {ih₁ = ih₁} {ih₂ = ih₂} dμ pw =
     -- ★ ϑ = `vs ∘ vs`, in ONE step rather than as `w` twice — that is what
     --   makes the bridge to `ρ'` a `refl`.  The price is the `renren` below.
     inner = pw (wR (wR Ren⊢-id)) (λ v → refl) (var (vs vz)) (var vz)
-               (⊢var (there here))
-               (⊢-cast (cong (Hom Nat (nsuc (w msr))) (ww μa)) (⊢var here))
+               (⊢var (there (here refl) refl))
+               (⊢-cast (cong (Hom Nat (nsuc (w msr))) (ww μa)) (⊢var (here refl)))
 
     idEq : Id (El ⌜Nat⌝) (app (app (renTm (λ v → vs (vs v)) ih₁) (var (vs vz))) (var vz))
                          (app (app (renTm (λ v → vs (vs v)) ih₂) (var (vs vz))) (var vz))
@@ -285,7 +285,7 @@ gcdG-w³ μ = cong (λ T → Π T (El ⌜Nat⌝)) (gcdIH-w³ μ)
   where
     at : {i : RTm ⌊ _ ⌋} → _ ⊢ i ∷ gcdIH μa → _
     at d = appGcdIH (⊢-cast (gcdIH-w² μa) (⊢wk (⊢wk d)))
-                    (⊢var (there here)) (⊢var here)
+                    (⊢var (there (here refl) refl)) (⊢var (here refl))
 
 ------------------------------------------------------------------------
 -- ★★★ `eqG` — THE `Id`-ANALOGUE OF `gcdG`.
@@ -319,16 +319,16 @@ eqG μx f =
   ty-Π (⊢gcdIH dμ)
     (ty-Π (⊢gcdIH (⊢wk dμ))
       (ty-Π (⊢pwT (⊢wk (⊢wk dμ))
-                  (⊢-cast (gcdIH-w² μx) (⊢var (there here)))
-                  (⊢-cast (gcdIH-w (w μx)) (⊢var here)))
+                  (⊢-cast (gcdIH-w² μx) (⊢var (there (here refl) refl)))
+                  (⊢-cast (gcdIH-w (w μx)) (⊢var (here refl))))
             -- ⚠ THE TWO IH VARIABLES NEED DIFFERENT PEELS.  Both land at
             --   `gcdIH (w (w (w μx)))`, but the first is `gcdIH μx` under
             --   three weakenings and the second is `gcdIH (w μx)` under two
             --   — the motive already weakened it once.  Sharing one helper
             --   between them does not typecheck.
             (ty-Id (ty-El ⊢⌜Nat⌝)
-                   (⊢app df³ (⊢-cast (gcdIH-w³ μx) (⊢var (there (there here)))))
-                   (⊢app df³ (⊢-cast (gcdIH-w² (w μx)) (⊢var (there here)))))))
+                   (⊢app df³ (⊢-cast (gcdIH-w³ μx) (⊢var (there (there (here refl) refl) refl))))
+                   (⊢app df³ (⊢-cast (gcdIH-w² (w μx)) (⊢var (there (here refl) refl)))))))
   where
     df³ = ⊢-cast (gcdG-w³ μx) (⊢wk (⊢wk (⊢wk df)))
 
@@ -382,14 +382,14 @@ leaf₁z =
   prv _ (⊢lam (⊢gcdIH dμ)
           (⊢lam (⊢gcdIH (⊢wk dμ))
             (⊢lam (⊢pwT (⊢wk (⊢wk dμ))
-                        (⊢-cast (gcdIH-w² _) (⊢var (there here)))
-                        (⊢-cast (gcdIH-w (w _)) (⊢var here)))
+                        (⊢-cast (gcdIH-w² _) (⊢var (there (here refl) refl)))
+                        (⊢-cast (gcdIH-w (w _)) (⊢var (here refl))))
                   (prvOk idPrf))))
   where
-    dμ = ⊢plus (⊢fst (⊢var here)) ⊢nzero
+    dμ = ⊢plus (⊢fst (⊢var (here refl))) ⊢nzero
     idPrf = idOfRed (red₁z (var (vs (vs vz)))) (red₁z (var (vs vz)))
               (prv _ (⊢idrefl ⊢⌜Nat⌝
-                        (asP (⊢fst (⊢var (there (there (there here))))))))
+                        (asP (⊢fst (⊢var (there (there (there (here refl) refl) refl) refl))))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE BRIDGE BETWEEN SPLITS — a reduction of `f` is a CONVERSION of
@@ -458,14 +458,14 @@ leaf₂z =
   prv _ (⊢lam (⊢gcdIH dμ)
           (⊢lam (⊢gcdIH (⊢wk dμ))
             (⊢lam (⊢pwT (⊢wk (⊢wk dμ))
-                        (⊢-cast (gcdIH-w² _) (⊢var (there here)))
-                        (⊢-cast (gcdIH-w (w _)) (⊢var here)))
+                        (⊢-cast (gcdIH-w² _) (⊢var (there (here refl) refl)))
+                        (⊢-cast (gcdIH-w (w _)) (⊢var (here refl))))
                   (prvOk idPrf))))
   where
-    dμ = ⊢plus ⊢nzero (⊢nsuc (⊢var (there here)))
+    dμ = ⊢plus ⊢nzero (⊢nsuc (⊢var (there (here refl) refl)))
     idPrf = idOfRed (red₂z _ (var (vs (vs vz)))) (red₂z _ (var (vs vz)))
               (prv _ (⊢idrefl ⊢⌜Nat⌝
-                        (asP (⊢nsuc (⊢var (there (there (there (there here)))))))))
+                        (asP (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))))
 
 ------------------------------------------------------------------------
 -- ★★★ ELIMINATING THE INTERNAL POINTWISE HYPOTHESIS.

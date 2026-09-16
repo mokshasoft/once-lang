@@ -149,61 +149,61 @@ mAuxTm n = natrec mZBr mSBr n
 ⊢mAuxMot =
   ty-Π ty-Nat
     (ty-Π (ty-Hom ty-Nat
-             (⊢app (⊢var (there (there (there here)))) (⊢var here))
-             (⊢var (there here)))
-          (ty-El (⊢app (⊢var (there (there (there (there (there here))))))
-                       (⊢var (there here)))))
+             (⊢app (⊢var (there (there (there (here refl) refl) refl) refl)) (⊢var (here refl)))
+             (⊢var (there (here refl) refl)))
+          (ty-El (⊢app (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
+                       (⊢var (there (here refl) refl)))))
 
 ⊢mZBr : Γ₂ ⊢ mZBr ∷ subTy (single nzero) mAuxMot
 ⊢mZBr =
   ⊢lam ty-Nat
     (⊢lam (ty-Hom ty-Nat
-             (⊢app (⊢var (there (there here))) (⊢var here))
+             (⊢app (⊢var (there (there (here refl) refl) refl)) (⊢var (here refl)))
              ⊢nzero)
-      (⊢app (⊢app (⊢var (there (there here))) (⊢var (there here)))
+      (⊢app (⊢app (⊢var (there (there (here refl) refl) refl)) (⊢var (there (here refl) refl)))
             (⊢lam ty-Nat
               (⊢lam (ty-Hom ty-Nat
-                       (⊢nsuc (⊢app (⊢var (there (there (there (there here)))))
-                                    (⊢var here)))
-                       (⊢app (⊢var (there (there (there (there here)))))
-                             (⊢var (there (there here)))))
+                       (⊢nsuc (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                                    (⊢var (here refl))))
+                       (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                             (⊢var (there (there (here refl) refl) refl))))
                 (⊢absurd
-                  (⊢app (⊢var (there (there (there (there (there (there here)))))))
-                        (⊢var (there here)))
+                  (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
+                        (⊢var (there (here refl) refl)))
                   (⊢conv (⊢ordtr
-                           (⊢nsuc (⊢app (⊢var (there (there (there (there (there here))))))
-                                        (⊢var (there here))))
-                           (⊢app (⊢var (there (there (there (there (there here))))))
-                                 (⊢var (there (there (there here)))))
+                           (⊢nsuc (⊢app (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
+                                        (⊢var (there (here refl) refl))))
+                           (⊢app (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
+                                 (⊢var (there (there (there (here refl) refl) refl) refl)))
                            ⊢nzero
-                           (⊢var here)
-                           (⊢var (there (there here))))
+                           (⊢var (here refl))
+                           (⊢var (there (there (here refl) refl) refl)))
                          (red→≅ᵀ (stepᵀ (Hom-Nat-sz _) doneᵀ))))))))
 
 ⊢mSBr : ((Γ₂ ▹ Nat) ▹ mAuxMot) ⊢ mSBr ∷ subTy nrs mAuxMot
 ⊢mSBr =
   ⊢lam ty-Nat
     (⊢lam (ty-Hom ty-Nat
-             (⊢app (⊢var (there (there (there (there here))))) (⊢var here))
-             (⊢nsuc (⊢var (there (there here)))))
-      (⊢app (⊢app (⊢var (there (there (there (there here)))))
-                  (⊢var (there here)))
+             (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var (here refl)))
+             (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
+      (⊢app (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                  (⊢var (there (here refl) refl)))
             (⊢lam ty-Nat
               (⊢lam (ty-Hom ty-Nat
-                       (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there here)))))))
-                                    (⊢var here)))
-                       (⊢app (⊢var (there (there (there (there (there (there here)))))))
-                             (⊢var (there (there here)))))
-                (⊢app (⊢app (⊢var (there (there (there (there here)))))
-                            (⊢var (there here)))
+                       (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
+                                    (⊢var (here refl))))
+                       (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
+                             (⊢var (there (there (here refl) refl) refl))))
+                (⊢app (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                            (⊢var (there (here refl) refl)))
                       (⊢conv (⊢ordtr
-                               (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there here))))))))
-                                            (⊢var (there here))))
-                               (⊢app (⊢var (there (there (there (there (there (there (there here))))))))
-                                     (⊢var (there (there (there here)))))
-                               (⊢nsuc (⊢var (there (there (there (there (there here)))))))
-                               (⊢var here)
-                               (⊢var (there (there here))))
+                               (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))
+                                            (⊢var (there (here refl) refl))))
+                               (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))
+                                     (⊢var (there (there (there (here refl) refl) refl) refl)))
+                               (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
+                               (⊢var (here refl))
+                               (⊢var (there (there (here refl) refl) refl)))
                              (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))))))))
 
 -- ★★ the bounded auxiliary, ON THE MEASURE.
@@ -240,7 +240,7 @@ mrecTm x = app (app (mAuxTm (app (var (vs vz)) x)) x)
               (⊢le-refl dμx)))
   where
     dμx : Γ₂ ⊢ app (var (vs vz)) x ∷ Nat
-    dμx = ⊢app (⊢var (there here)) dx
+    dμx = ⊢app (⊢var (there (here refl) refl)) dx
 
 ------------------------------------------------------------------------
 -- ★★★★★ 5. THE SAME COMBINATOR AT AN ARBITRARY CARRIER.
@@ -313,59 +313,59 @@ aAuxTm n = natrec aZBr aSBr n
 
 ⊢aAuxMot : (Γ₄ ▹ Nat) ⊢ty aAuxMot
 ⊢aAuxMot =
-  ty-Π (ty-El (⊢var (there (there (there (there here))))))
+  ty-Π (ty-El (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))
     (ty-Π (ty-Hom ty-Nat
-             (⊢app (⊢var (there (there (there here)))) (⊢var here))
-             (⊢var (there here)))
-          (ty-El (⊢app (⊢var (there (there (there (there (there here))))))
-                       (⊢var (there here)))))
+             (⊢app (⊢var (there (there (there (here refl) refl) refl) refl)) (⊢var (here refl)))
+             (⊢var (there (here refl) refl)))
+          (ty-El (⊢app (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
+                       (⊢var (there (here refl) refl)))))
 
 ⊢aZBr : Γ₄ ⊢ aZBr ∷ subTy (single nzero) aAuxMot
 ⊢aZBr =
-  ⊢lam (ty-El (⊢var (there (there (there here)))))
+  ⊢lam (ty-El (⊢var (there (there (there (here refl) refl) refl) refl)))
     (⊢lam (ty-Hom ty-Nat
-             (⊢app (⊢var (there (there here))) (⊢var here)) ⊢nzero)
-      (⊢app (⊢app (⊢var (there (there here))) (⊢var (there here)))
-            (⊢lam (ty-El (⊢var (there (there (there (there (there here)))))))
+             (⊢app (⊢var (there (there (here refl) refl) refl)) (⊢var (here refl))) ⊢nzero)
+      (⊢app (⊢app (⊢var (there (there (here refl) refl) refl)) (⊢var (there (here refl) refl)))
+            (⊢lam (ty-El (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
               (⊢lam (ty-Hom ty-Nat
-                       (⊢nsuc (⊢app (⊢var (there (there (there (there here)))))
-                                    (⊢var here)))
-                       (⊢app (⊢var (there (there (there (there here)))))
-                             (⊢var (there (there here)))))
+                       (⊢nsuc (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                                    (⊢var (here refl))))
+                       (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                             (⊢var (there (there (here refl) refl) refl))))
                 (⊢absurd
-                  (⊢app (⊢var (there (there (there (there (there (there here)))))))
-                        (⊢var (there here)))
+                  (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
+                        (⊢var (there (here refl) refl)))
                   (⊢conv (⊢ordtr
-                           (⊢nsuc (⊢app (⊢var (there (there (there (there (there here))))))
-                                        (⊢var (there here))))
-                           (⊢app (⊢var (there (there (there (there (there here))))))
-                                 (⊢var (there (there (there here)))))
-                           ⊢nzero (⊢var here) (⊢var (there (there here))))
+                           (⊢nsuc (⊢app (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
+                                        (⊢var (there (here refl) refl))))
+                           (⊢app (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
+                                 (⊢var (there (there (there (here refl) refl) refl) refl)))
+                           ⊢nzero (⊢var (here refl)) (⊢var (there (there (here refl) refl) refl)))
                          (red→≅ᵀ (stepᵀ (Hom-Nat-sz _) doneᵀ))))))))
 
 ⊢aSBr : ((Γ₄ ▹ Nat) ▹ aAuxMot) ⊢ aSBr ∷ subTy nrs aAuxMot
 ⊢aSBr =
-  ⊢lam (ty-El (⊢var (there (there (there (there (there here)))))))
+  ⊢lam (ty-El (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
     (⊢lam (ty-Hom ty-Nat
-             (⊢app (⊢var (there (there (there (there here))))) (⊢var here))
-             (⊢nsuc (⊢var (there (there here)))))
-      (⊢app (⊢app (⊢var (there (there (there (there here)))))
-                  (⊢var (there here)))
-            (⊢lam (ty-El (⊢var (there (there (there (there (there (there (there here)))))))))
+             (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var (here refl)))
+             (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
+      (⊢app (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                  (⊢var (there (here refl) refl)))
+            (⊢lam (ty-El (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)))
               (⊢lam (ty-Hom ty-Nat
-                       (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there here)))))))
-                                    (⊢var here)))
-                       (⊢app (⊢var (there (there (there (there (there (there here)))))))
-                             (⊢var (there (there here)))))
-                (⊢app (⊢app (⊢var (there (there (there (there here)))))
-                            (⊢var (there here)))
+                       (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
+                                    (⊢var (here refl))))
+                       (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
+                             (⊢var (there (there (here refl) refl) refl))))
+                (⊢app (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                            (⊢var (there (here refl) refl)))
                       (⊢conv (⊢ordtr
-                               (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there here))))))))
-                                            (⊢var (there here))))
-                               (⊢app (⊢var (there (there (there (there (there (there (there here))))))))
-                                     (⊢var (there (there (there here)))))
-                               (⊢nsuc (⊢var (there (there (there (there (there here)))))))
-                               (⊢var here) (⊢var (there (there here))))
+                               (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))
+                                            (⊢var (there (here refl) refl))))
+                               (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))
+                                     (⊢var (there (there (there (here refl) refl) refl) refl)))
+                               (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
+                               (⊢var (here refl)) (⊢var (there (there (here refl) refl) refl)))
                              (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))))))))
 
 ⊢aAux : {n : RTm ⌊ Γ₄ ⌋} → Γ₄ ⊢ n ∷ Nat →
@@ -389,4 +389,4 @@ amrecTm x = app (app (aAuxTm (app (var (vs vz)) x)) x)
                 (⊢le-refl dμx)))
   where
     dμx : Γ₄ ⊢ app (var (vs vz)) x ∷ Nat
-    dμx = ⊢app (⊢var (there here)) dx
+    dμx = ⊢app (⊢var (there (here refl) refl)) dx

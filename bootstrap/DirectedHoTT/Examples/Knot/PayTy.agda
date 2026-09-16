@@ -43,7 +43,7 @@ open import DirectedHoTT.Spec.Typing
         ; ξ-pairʳ; βsnd; done; step; single; wk-single )
 open import DirectedHoTT.Lib.Wk using ( sub-w-single )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; trans; sym )
+open import normalizer.Syntax.Types using ( cong; trans; sym; refl )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ; ⊢methsFrom; ⊢methsCons
         ; idwfDrop; splTake; Split; spl-nil; spl-step )
@@ -75,8 +75,8 @@ payTyMotK =
 ⊢payTyMotK : {Γ : Ctx} →
              ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty payTyMotK
 ⊢payTyMotK =
-  ty-Π (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there here)))))
-       (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢snd (⊢var (there (there here))))))
+  ty-Π (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (here refl) refl)))))
+       (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢snd (⊢var (there (there (here refl) refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ★ THE CONSTANT ROWS.  ⚠ `dι`'s own answer IS `Unit`, so the junk
@@ -92,8 +92,8 @@ payTyJunk = lam (lam (lam (lam Ty-UnitK)))
              Γ ⊢ payTyJunk ∷ imethTy KnotD IPair k C payTyMotK
 ⊢payTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢payTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there here))))))
-          (⊢Ty-UnitKv _ (⊢snd (⊢var (there (there (there here)))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there (here refl) refl) refl)))))
+          (⊢Ty-UnitKv _ (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ★★★ `dρ` — `Σ' (Mu D) (payTy D C)`.  ⚠ `Σ'`'s second component sits
@@ -113,10 +113,10 @@ payTyRho =
 ⊢payTyRho =
   ⊢methLam KnotD IPair tagDCon-rho cDCon-rho KnotWf cDCon-rhoWf
            ⊢IPair ⊢payTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there here))))))
-      (⊢Ty-SgKv _ (⊢snd (⊢var (there (there (there here)))))
-        (⊢Ty-MuKv _ (⊢snd (⊢var (there (there (there here))))) (⊢var here))
-        (⊢wkAtK ⊢sTy (⊢snd (⊢var (there (there (there here)))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there (here refl) refl) refl)))))
+      (⊢Ty-SgKv _ (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))
+        (⊢Ty-MuKv _ (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))) (⊢var (here refl)))
+        (⊢wkAtK ⊢sTy (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))
           (muFwd (ξ-pairʳ (βsnd sDCon (snd (var (vs (vs (vs vz))))))) 
             (⊢app (⊢ihHere
                      {D = KnotD} {I = IPair}
@@ -124,9 +124,9 @@ payTyRho =
                      {j = pair sDCon (snd (var vz))}
                      (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) sDCon) iι)
                      {q = var (vs (vs vz))} {M = payTyMotK}
-                     (⊢var (there here)))
+                     (⊢var (there (here refl) refl)))
                   (muBwd* (step (ξ-pairʳ (βsnd sDCon (snd (var (vs (vs (vs vz))))))) done)
-                          (⊢var here)))))))
+                          (⊢var (here refl))))))))
 
 ------------------------------------------------------------------------
 -- ★★★ `dκ` — `Σ' (εwkTy A) (payTy D C)`.  ⚠ TWO weakenings, and they
@@ -149,11 +149,11 @@ payTyKap =
 ⊢payTyKap =
   ⊢methLam KnotD IPair tagDCon-kap cDCon-kap KnotWf cDCon-kapWf
            ⊢IPair ⊢payTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there here))))))
-      (⊢Ty-SgKv _ (⊢snd (⊢var (there (there (there here)))))
-        (⊢εwkK ⊢sTy sortMap-ty (⊢snd (⊢var (there (there (there here)))))
-               (⊢fst (⊢var (there (there here)))))
-        (⊢wkAtK ⊢sTy (⊢snd (⊢var (there (there (there here)))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there (here refl) refl) refl)))))
+      (⊢Ty-SgKv _ (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))
+        (⊢εwkK ⊢sTy sortMap-ty (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))
+               (⊢fst (⊢var (there (there (here refl) refl) refl))))
+        (⊢wkAtK ⊢sTy (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))
           (muFwd (ξ-pairʳ (βsnd sDCon (snd (var (vs (vs (vs vz)))))))
             (⊢app (⊢ihHere
                      {D = KnotD} {I = IPair}
@@ -169,9 +169,9 @@ payTyKap =
                         (iρ (pair sDCon (snd (var (vs vz))))
                           (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDCon) iι))
                         {q = var (vs (vs vz))} {M = payTyMotK}
-                        (⊢var (there here))))
+                        (⊢var (there (here refl) refl))))
                   (muBwd* (step (ξ-pairʳ (βsnd sDCon (snd (var (vs (vs (vs vz))))))) done)
-                          (⊢var here)))))))
+                          (⊢var (here refl))))))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE TUPLE — junk 0–43 · row 44 · row 45 · junk 46–52.

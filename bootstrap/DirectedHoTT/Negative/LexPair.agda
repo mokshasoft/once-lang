@@ -77,8 +77,8 @@ fMot =
 
 ⊢fMot : ((◇ ▹ PairT) ▹ Nat) ⊢ty fMot
 ⊢fMot =
-  ty-Π (⊢rec1Tat (⊢fst (⊢var (there here))))
-    (ty-Π (⊢rec2Tat (⊢fst (⊢var (there (there here)))) (⊢var (there here)))
+  ty-Π (⊢rec1Tat (⊢fst (⊢var (there (here refl) refl))))
+    (ty-Π (⊢rec2Tat (⊢fst (⊢var (there (there (here refl) refl) refl))) (⊢var (there (here refl) refl)))
           (ty-El ⊢⌜Nat⌝))
 
 -- b = 0: the answer is the first component; both recursors are discarded.
@@ -87,9 +87,9 @@ fZ = lam (lam (fst (var (vs (vs vz)))))
 
 ⊢fZ : (◇ ▹ PairT) ⊢ fZ ∷ subTy (single nzero) fMot
 ⊢fZ =
-  ⊢lam (⊢rec1Tat (⊢fst (⊢var here)))
-    (⊢lam (⊢rec2Tat (⊢fst (⊢var (there here))) ⊢nzero)
-          (asP (⊢fst (⊢var (there (there here))))))
+  ⊢lam (⊢rec1Tat (⊢fst (⊢var (here refl))))
+    (⊢lam (⊢rec2Tat (⊢fst (⊢var (there (here refl) refl))) ⊢nzero)
+          (asP (⊢fst (⊢var (there (there (here refl) refl) refl)))))
 
 -- b = suc b': recurse at `(fst x , b')` through rec₂.
 -- ★ THE PAIR IS BUILT HERE, and both descents are discharged alongside it:
@@ -106,13 +106,13 @@ fS =
 
 ⊢fS : (((◇ ▹ PairT) ▹ Nat) ▹ fMot) ⊢ fS ∷ subTy nrs fMot
 ⊢fS =
-  ⊢lam (⊢rec1Tat (⊢fst (⊢var (there (there here)))))
-    (⊢lam (⊢rec2Tat (⊢fst (⊢var (there (there (there here)))))
-                    (⊢nsuc (⊢var (there (there here)))))
-      (⊢app (⊢app (⊢app (⊢var here) dPair) dDesc₁) dDesc₂))
+  ⊢lam (⊢rec1Tat (⊢fst (⊢var (there (there (here refl) refl) refl))))
+    (⊢lam (⊢rec2Tat (⊢fst (⊢var (there (there (there (here refl) refl) refl) refl)))
+                    (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
+      (⊢app (⊢app (⊢app (⊢var (here refl)) dPair) dDesc₁) dDesc₂))
   where
-    dx    = ⊢var (there (there (there (there here))))
-    db'   = ⊢var (there (there (there here)))
+    dx    = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
+    db'   = ⊢var (there (there (there (here refl) refl) refl) refl)
     dPair = ⊢pair ty-Nat (⊢fst dx) db'
     -- ★ BOTH DESCENTS COME FROM THE LIBRARY (D10).  `holdˡ` is μ₁ held —
     --   `fst (pair (fst x) _)` reduces to `fst x`, so reflexivity — and

@@ -73,7 +73,7 @@ msr : {Γ : Cx} → RTm (Γ ∙)
 msr = fst (var vz)
 
 ⊢msr : {Γ : Ctx} → (Γ ▹ PairT) ⊢ msr ∷ Nat
-⊢msr = ⊢fst (⊢var here)
+⊢msr = ⊢fst (⊢var (here refl))
 
 elNat : {Γ : Cx} → El (⌜Nat⌝ {Γ}) ≅ᵀ Nat
 elNat = red→≅ᵀ (stepᵀ El-⌜Nat⌝ doneᵀ)
@@ -97,14 +97,14 @@ fMot = Π (aIHTat PairT ⌜Nat⌝ msr (var vz)) (El ⌜Nat⌝)
     (ty-Π (ty-Hom ty-Nat (⊢nsuc ⊢msr) (⊢wk db)) (ty-El ⊢⌜Nat⌝))
 
 ⊢fMot : ((◇ ▹ PairT) ▹ Nat) ⊢ty fMot
-⊢fMot = ty-Π (⊢ihTat (⊢var here)) (ty-El ⊢⌜Nat⌝)
+⊢fMot = ty-Π (⊢ihTat (⊢var (here refl))) (ty-El ⊢⌜Nat⌝)
 
 -- a = 0: the answer is the second component; the IH is discarded.
 fZ : RTm (ε ∙)
 fZ = lam (snd (var (vs vz)))
 
 ⊢fZ : (◇ ▹ PairT) ⊢ fZ ∷ subTy (single nzero) fMot
-⊢fZ = ⊢lam (⊢ihTat ⊢nzero) (asP (⊢snd (⊢var (there here))))
+⊢fZ = ⊢lam (⊢ihTat ⊢nzero) (asP (⊢snd (⊢var (there (here refl) refl))))
 
 -- a = suc a': recurse at `(a' , suc b)`.  ★ THE PAIR IS BUILT HERE.
 fS : RTm (ε ∙ ∙ ∙)
@@ -114,13 +114,13 @@ fS =
 
 ⊢fS : (((◇ ▹ PairT) ▹ Nat) ▹ fMot) ⊢ fS ∷ subTy nrs fMot
 ⊢fS =
-  ⊢lam (⊢ihTat (⊢nsuc (⊢var (there here))))
-    (⊢app (⊢app (⊢var here) dPair) dDesc)
+  ⊢lam (⊢ihTat (⊢nsuc (⊢var (there (here refl) refl))))
+    (⊢app (⊢app (⊢var (here refl)) dPair) dDesc)
   where
-    dPair = ⊢pair ty-Nat (⊢var (there (there here)))
-                  (⊢nsuc (⊢snd (⊢var (there (there (there here))))))
+    dPair = ⊢pair ty-Nat (⊢var (there (there (here refl) refl) refl))
+                  (⊢nsuc (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))
     -- ★ `fst (pair a' _)` REDUCES to `a'`, so the descent is `a' ≤ a'`.
-    dDesc = ⊢conv (⊢le-refl (⊢var (there (there here))))
+    dDesc = ⊢conv (⊢le-refl (⊢var (there (there (here refl) refl) refl)))
                   (csymᵀ (ctrnᵀ (red→≅ᵀ (stepᵀ (ξ-Homˡ (ξ-nsuc (βfst _ _))) doneᵀ))
                                 (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))))
 

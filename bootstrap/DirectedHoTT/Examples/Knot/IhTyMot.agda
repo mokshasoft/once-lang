@@ -38,7 +38,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
         ; ξ-pairʳ; ξ-nsuc; βsnd; done; step; single; wk-single; iinst )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; trans; sym )
+open import normalizer.Syntax.Types using ( cong; trans; sym; refl )
 open import DirectedHoTT.Lib.Wk using ( towerA; towerJ )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ )
 open import DirectedHoTT.Lib.ICast using ( muFwd; muBwd* )
@@ -70,9 +70,9 @@ ihTyMotK =
 ⊢ihTyMotK : {Γ : Ctx} →
             ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty ihTyMotK
 ⊢ihTyMotK =
-  ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there here)))))
-   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there here)))))))
-      (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢snd (⊢var (there (there (there here))))))))
+  ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (here refl) refl)))))
+   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (here refl) refl) refl))))))
+      (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))))
 
 ------------------------------------------------------------------------
 -- ★ THE JUNK ROW — and for `dι` it is the RIGHT answer, not junk.
@@ -86,10 +86,10 @@ ihTyJunk = lam (lam (lam (lam (lam Ty-UnitK))))
             Γ ⊢ ihTyJunk ∷ imethTy KnotD IPair k C ihTyMotK
 ⊢ihTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢ihTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (there (here refl) refl) refl)))))
       (⊢lam (ty-IMu KnotWf
-               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))
-        (⊢Ty-UnitKv _ (⊢snd (⊢var (there (there (there (there here)))))))))
+               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))))
+        (⊢Ty-UnitKv _ (⊢snd (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE DESCENT, ONCE — and it is the wrapper too.

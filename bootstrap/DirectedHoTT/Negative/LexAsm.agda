@@ -40,13 +40,13 @@ open import DirectedHoTT.Negative.LexSS using ( ⊢lexSS )
 ⊢lexZBr : (stpTm : RTm ⌊ Γ₅ ⌋) (dstp : Γ₅ ⊢ stpTm ∷ LStepT) →
           Γ₅ ⊢ lexZBr stpTm ∷ subTy (single nzero) lexAuxMot
 ⊢lexZBr stpTm dstp =
-  ⊢lam ty-Nat (⊢natrec ⊢M0lex (⊢lexZZ stpTm dstp) (⊢lexZS stpTm dstp) (⊢var here))
+  ⊢lam ty-Nat (⊢natrec ⊢M0lex (⊢lexZZ stpTm dstp) (⊢lexZS stpTm dstp) (⊢var (here refl)))
 
 -- the n₁ = suc branch: same shape, at the motive whose μ₁ bound is suc n₁'.
 ⊢lexSBr : (stpTm : RTm ⌊ Γ₅ ⌋) (dstp : Γ₅ ⊢ stpTm ∷ LStepT) →
           ((Γ₅ ▹ Nat) ▹ lexAuxMot) ⊢ lexSBr stpTm ∷ subTy nrs lexAuxMot
 ⊢lexSBr stpTm dstp =
-  ⊢lam ty-Nat (⊢natrec ⊢M1lex (⊢lexSZ stpTm dstp) (⊢lexSS stpTm dstp) (⊢var here))
+  ⊢lam ty-Nat (⊢natrec ⊢M1lex (⊢lexSZ stpTm dstp) (⊢lexSS stpTm dstp) (⊢var (here refl)))
 
 -- ★ THE OUTER RECURSION.  Generic in the bound, as `⊢strong-base'` is —
 --   so `lexrec` can instantiate it at μ₁ x.
@@ -110,4 +110,4 @@ cancel2 t =
           {x : RTm ⌊ Γ₅ ⌋} → Γ₅ ⊢ x ∷ El (var (vs (vs (vs vz)))) →
           Γ₅ ⊢ lexrecTm stpTm x ∷ El (app (var (vs (vs vz))) x)
 ⊢lexrec stpTm dstp {x} dx =
-  subst (λ t → Γ₅ ⊢ lexrecTm stpTm x ∷ El (app (var (vs (vs vz))) t)) (cancel2 x {reflTm (app (var (vs vz)) x) } {reflTm (app (var vz) x) }) (⊢app (⊢app (⊢app (⊢app (⊢lexAux stpTm dstp (⊢app (⊢var (there here)) dx)) (⊢app (⊢var here) dx)) dx) (subst (λ t → Γ₅ ⊢ reflTm (app (var (vs vz)) x) ∷ Hom Nat (app (var (vs vz)) x) (app (var (vs vz)) t)) (sym (cancel2 x {app (var vz) x} {x})) (⊢le-refl (⊢app (⊢var (there here)) dx)))) (⊢Hom₂ (cong (app (var vz)) (sym (wk-single {v = reflTm (app (var (vs vz)) x) } x))) (cong (app (var vz)) (sym (cancel2 x {x} {reflTm (app (var (vs vz)) x) }))) (⊢le-refl (⊢app (⊢var here) dx))))
+  subst (λ t → Γ₅ ⊢ lexrecTm stpTm x ∷ El (app (var (vs (vs vz))) t)) (cancel2 x {reflTm (app (var (vs vz)) x) } {reflTm (app (var vz) x) }) (⊢app (⊢app (⊢app (⊢app (⊢lexAux stpTm dstp (⊢app (⊢var (there (here refl) refl)) dx)) (⊢app (⊢var (here refl)) dx)) dx) (subst (λ t → Γ₅ ⊢ reflTm (app (var (vs vz)) x) ∷ Hom Nat (app (var (vs vz)) x) (app (var (vs vz)) t)) (sym (cancel2 x {app (var vz) x} {x})) (⊢le-refl (⊢app (⊢var (there (here refl) refl)) dx)))) (⊢Hom₂ (cong (app (var vz)) (sym (wk-single {v = reflTm (app (var (vs vz)) x) } x))) (cong (app (var vz)) (sym (cancel2 x {x} {reflTm (app (var (vs vz)) x) }))) (⊢le-refl (⊢app (⊢var (here refl)) dx))))

@@ -125,8 +125,8 @@ module Plumb (M : Motive) where
   gP = PC (fst (var (vs vz))) (snd (var (vs vz))) (var vz)
 
   ⊢gP : {Δ : Ctx} → ((Δ ▹ PairT) ▹ El ⌜Nat⌝) ⊢ gP ∷ U
-  ⊢gP = ⊢PC (⊢fst dx) (⊢snd dx) (asN (⊢var here))
-    where dx = ⊢var (there here)
+  ⊢gP = ⊢PC (⊢fst dx) (⊢snd dx) (asN (⊢var (here refl)))
+    where dx = ⊢var (there (here refl) refl)
 
   -- ⚠ stated at `Cx`, not `Ctx`: `PAtR` is `Cx`-indexed and `⌊_⌋` is not
   --   injective, so at `Ctx` the target context never solves.
@@ -163,8 +163,8 @@ module Plumb (M : Motive) where
     ⊢ihCallT ⊢PairT ⊢msr (⊢wk dμ)
              (ty-El (⊢PC (⊢fst dy) (⊢snd dy) (asN dcall)))
     where
-      dy    = ⊢var (there here)
-      dcall = appGcdIH (⊢-cast (gcdIH-w² μa) (⊢wk (⊢wk di))) dy (⊢var here)
+      dy    = ⊢var (there (here refl) refl)
+      dcall = appGcdIH (⊢-cast (gcdIH-w² μa) (⊢wk (⊢wk di))) dy (⊢var (here refl))
 
   indPWIntro : {Δ Θ : Ctx} {ρ : Ren ⌊ Δ ⌋ ⌊ Θ ⌋} {a ih : RTm ⌊ Θ ⌋} →
                Θ ⊢ subTm (single a) msr ∷ Nat →
@@ -177,8 +177,8 @@ module Plumb (M : Motive) where
       μa = subTm (single a) msr
 
       inner = pw (wR (wR Ren⊢-id)) (λ v → refl) (var (vs vz)) (var vz)
-                 (⊢var (there here))
-                 (⊢-cast (cong (Hom Nat (nsuc (w msr))) (ww μa)) (⊢var here))
+                 (⊢var (there (here refl) refl))
+                 (⊢-cast (cong (Hom Nat (nsuc (w msr))) (ww μa)) (⊢var (here refl)))
 
       -- ⚠ the ambient renaming is the COMPOSITE `vs ∘ vs ∘ ρ`, and it must
       --   be pinned: `PAtR` is defined, so it will not solve from the goal.
@@ -254,11 +254,11 @@ module Plumb (M : Motive) where
           Γ ⊢ u₁ ∷ Nat → Γ ⊢ u₂ ∷ Nat → Γ ⊢ty indG μx f u₁ u₂
   ⊢indG {μx = μx} dμ df d1 d2 =
     ty-Π (⊢gcdIH dμ)
-      (ty-Π (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w μx) (⊢var here)))
+      (ty-Π (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w μx) (⊢var (here refl))))
             (ty-El (⊢PC (⊢wk (⊢wk d1)) (⊢wk (⊢wk d2)) (asN dfi))))
     where
       dfi = ⊢app (⊢-cast (gcdG-w² μx) (⊢wk (⊢wk df)))
-                 (⊢-cast (gcdIH-w² μx) (⊢var (there here)))
+                 (⊢-cast (gcdIH-w² μx) (⊢var (there (here refl) refl)))
 
   -- ★ the two derived conversions the leaves use
   PC-conv : {Γ : Cx} {v v' : RTm Γ} (u₁ u₂ : RTm Γ) →
@@ -385,12 +385,12 @@ module Plumb (M : Motive) where
                       (natrec G1z gcdInn1 nzero) (fst (var vz)) nzero)
   leafI₁z =
     prv _ (⊢lam (⊢gcdIH dμ)
-            (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var here)))
+            (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var (here refl))))
                   (⊢conv (prvOk (leaf-b0 du))
                          (csymᵀ (PC-conv _ nzero (redI₁z (var (vs vz))))))))
     where
-      dμ = ⊢plus (⊢fst (⊢var here)) ⊢nzero
-      du = ⊢fst (⊢var (there (there here)))
+      dμ = ⊢plus (⊢fst (⊢var (here refl))) ⊢nzero
+      du = ⊢fst (⊢var (there (there (here refl) refl) refl))
 
   ------------------------------------------------------------------------
   -- ★ LEAF 2 — `fst x = 0`.  IH-free: `G2z` returns `suc n'`.
@@ -407,13 +407,13 @@ module Plumb (M : Motive) where
     --   `Lib/Amrec.prv-cast`, in a file that already imports it.
     prv-cast (sym (indG-sub μ₂ f₂ (var vz) (nsuc (var (vs (vs vz))))))
       (prv _ (⊢lam (⊢gcdIH dμ)
-               (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var here)))
+               (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var (here refl))))
                      (⊢conv (prvOk (leaf-a0 db))
                             (csymᵀ (PC-conv nzero _
                                      (redI₂z _ (var (vs vz)))))))))
     where
-      dμ = ⊢plus ⊢nzero (⊢nsuc (⊢var (there here)))
-      db = ⊢var (there (there (there here)))
+      dμ = ⊢plus ⊢nzero (⊢nsuc (⊢var (there (here refl) refl)))
+      db = ⊢var (there (there (there (here refl) refl) refl) refl)
 
 
   ------------------------------------------------------------------------
@@ -437,8 +437,8 @@ module Plumb (M : Motive) where
   B₃ = plusTm uA₃ uB₃
 
   ⊢B₃ : {Γ : Ctx} → ΘI₃ Γ ⊢ B₃ ∷ Nat
-  ⊢B₃ = ⊢plus (⊢nsuc (⊢var (there here)))
-              (⊢nsuc (⊢var (there (there (there here)))))
+  ⊢B₃ = ⊢plus (⊢nsuc (⊢var (there (here refl) refl)))
+              (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))
 
   F₃ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
   F₃ = subTm (single nzero) f₃
@@ -454,10 +454,10 @@ module Plumb (M : Motive) where
   B₈ = w (w (w uB₃))
 
   dA₈ : {Γ : Ctx} → Θ₃L Γ ⊢ A₈ ∷ Nat
-  dA₈ = ⊢nsuc (⊢var (there (there (there (there here)))))
+  dA₈ = ⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
 
   dB₈ : {Γ : Ctx} → Θ₃L Γ ⊢ B₈ ∷ Nat
-  dB₈ = ⊢nsuc (⊢var (there (there (there (there (there (there here)))))))
+  dB₈ = ⊢nsuc (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
 
   dPAIR : {Γ : Ctx} → Θ₃L Γ ⊢ w (w PAIRᶻ) ∷ PairT
   dPAIR = ⊢wk (⊢wk ⊢PAIRᶻ)
@@ -467,7 +467,7 @@ module Plumb (M : Motive) where
   dCERT = ⊢wk (⊢wk ⊢CERTᶻ)
 
   dIH : {Γ : Ctx} → Θ₃L Γ ⊢ var (vs vz) ∷ gcdIH (w (w (w B₃)))
-  dIH = ⊢-cast (gcdIH-w² (w B₃)) (⊢var (there here))
+  dIH = ⊢-cast (gcdIH-w² (w B₃)) (⊢var (there (here refl) refl))
 
   dV : {Γ : Ctx} → Θ₃L Γ ⊢ app (app (var (vs vz)) (w (w PAIRᶻ))) (w (w CERTᶻ)) ∷ Nat
   dV = asN (appGcdIH dIH dPAIR dCERT)
@@ -478,12 +478,12 @@ module Plumb (M : Motive) where
             ∷ El (PC A₈ (monusTm B₈ A₈)
                     (app (app (var (vs vz)) (w (w PAIRᶻ))) (w (w CERTᶻ))))
   dcall =
-    ⊢conv (indPWElim (⊢-cast (indPWT-w (w (w B₃)) (var vz)) (⊢var here))
+    ⊢conv (indPWElim (⊢-cast (indPWT-w (w (w B₃)) (var vz)) (⊢var (here refl)))
                      dPAIR dCERT)
           (PC-convU _ (step (βfst _ _) done) (step (βsnd _ _) done))
 
   dEq : {Γ : Ctx} → Θ₃L Γ ⊢ var (vs (vs vz)) ∷ IdN (monusTm A₈ B₈) nzero
-  dEq = ⊢var (there (there here))
+  dEq = ⊢var (there (there (here refl) refl) refl)
 
   innerI₃z : {Γ : Ctx} → Prv (Θ₃L Γ) (El (PC A₈ B₈ (app (w (w (w F₃))) (var (vs vz)))))
   innerI₃z =
@@ -508,7 +508,7 @@ module Plumb (M : Motive) where
             --   without re-testing — that rule is real, but it is not what
             --   was wrong here.
             (⊢lam (⊢indPWT (⊢wk (⊢wk ⊢B₃))
-                           (⊢-cast (gcdIH-w (w B₃)) (⊢var here)))
+                           (⊢-cast (gcdIH-w (w B₃)) (⊢var (here refl))))
                   (prvOk innerI₃z)))
 
   leafI₃z : {Γ : Ctx} → Prv (ΘI₃ Γ) (subTy (single nzero) MI₃)
@@ -519,8 +519,8 @@ module Plumb (M : Motive) where
     --   Generically `subTm σ (PC …)` is STUCK: `PC` is a module parameter,
     --   so the substitution law has to be CITED.  That is what `indG-sub`
     --   is for, and `leafI₂z` above pays the same tax.
-    prv _ (⊢lam (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there here)))
-                                (⊢nsuc (⊢var (there (there (there here))))))
+    prv _ (⊢lam (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (here refl) refl)))
+                                (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl))))
                         ⊢nzero)
             (⊢-cast (sym (indG-sub {σ = extS (single nzero)}
                             (w (w B₃)) (w f₃) (w (w uA₃)) (w (w uB₃))))
@@ -545,8 +545,8 @@ module Plumb (M : Motive) where
   F₄ = subTm nrs f₃
 
   ⊢B₄ : {Γ : Ctx} → ((ΘI₃ Γ ▹ Nat) ▹ MI₃) ⊢ B₄ ∷ Nat
-  ⊢B₄ = ⊢plus (⊢nsuc (⊢var (there (there (there here)))))
-              (⊢nsuc (⊢var (there (there (there (there (there here)))))))
+  ⊢B₄ = ⊢plus (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))
+              (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
 
   rr₄ : {Γ : Cx} → subTm nrs (f₃ {Γ}) ⟶* G3s
   rr₄ = step (natrec-suc _ _ _) done
@@ -557,9 +557,9 @@ module Plumb (M : Motive) where
             (nsuc (var (vs vz)))
 
   ⊢EqT : {Γ : Ctx} → ((ΘI₃ Γ ▹ Nat) ▹ MI₃) ⊢ty EqT
-  ⊢EqT = ⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there (there here)))))
-                        (⊢nsuc (⊢var (there (there (there (there (there here))))))))
-                (⊢nsuc (⊢var (there here)))
+  ⊢EqT = ⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))
+                        (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))))
+                (⊢nsuc (⊢var (there (here refl) refl)))
 
   Θ₄E : Ctx → Ctx
   Θ₄E Γ = (((ΘI₃ Γ ▹ Nat) ▹ MI₃) ▹ EqT)
@@ -573,13 +573,13 @@ module Plumb (M : Motive) where
   P₁₀ = var (vs (vs (vs (vs vz))))
 
   dA₁₀ : {Γ : Ctx} → Θ₄ Γ ⊢ A₁₀ ∷ Nat
-  dA₁₀ = ⊢nsuc (⊢var (there (there (there (there (there (there here)))))))
+  dA₁₀ = ⊢nsuc (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
 
   dB₁₀ : {Γ : Ctx} → Θ₄ Γ ⊢ B₁₀ ∷ Nat
-  dB₁₀ = ⊢nsuc (⊢var (there (there (there (there (there (there (there (there here)))))))))
+  dB₁₀ = ⊢nsuc (⊢var (there (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl) refl))
 
   dP₁₀ : {Γ : Ctx} → Θ₄ Γ ⊢ P₁₀ ∷ Nat
-  dP₁₀ = ⊢var (there (there (there (there here))))
+  dP₁₀ = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
 
   -- ⚠⚠ `⊢PAIRˢ`/`⊢CERTˢ` RE-DERIVED, NOT IMPORTED — same measurement as
   --   `…GcdDvdLs`: `…GcdStep` states them at `CΓs Γ B C D`, whose last slot
@@ -588,10 +588,10 @@ module Plumb (M : Motive) where
   --   `…ExamplesGcdLeEq`/`…GcdLeMid`.  Six lines of duplication, not a
   --   regression there.
   dksL : {Γ : Ctx} → Θ₄E Γ ⊢ KS ∷ Nat
-  dksL = ⊢var (there (there (there (there here))))
+  dksL = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
 
   dnsL : {Γ : Ctx} → Θ₄E Γ ⊢ NS ∷ Nat
-  dnsL = ⊢var (there (there (there (there (there (there here))))))
+  dnsL = ⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)
 
   ⊢PAIRˢL : {Γ : Ctx} → Θ₄E Γ ⊢ PAIRˢ ∷ PairT
   ⊢PAIRˢL = ⊢pair ty-Nat (⊢monus (⊢nsuc dksL) (⊢nsuc dnsL)) (⊢nsuc dnsL)
@@ -612,7 +612,7 @@ module Plumb (M : Motive) where
   dCERTs = ⊢wk (⊢wk ⊢CERTˢL)
 
   dIHs : {Γ : Ctx} → Θ₄ Γ ⊢ var (vs vz) ∷ gcdIH (w (w (w B₄)))
-  dIHs = ⊢-cast (gcdIH-w² (w B₄)) (⊢var (there here))
+  dIHs = ⊢-cast (gcdIH-w² (w B₄)) (⊢var (there (here refl) refl))
 
   dVs : {Γ : Ctx} → Θ₄ Γ ⊢ app (app (var (vs vz)) (w (w PAIRˢ))) (w (w CERTˢ)) ∷ Nat
   dVs = asN (appGcdIH dIHs dPAIRs dCERTs)
@@ -622,12 +622,12 @@ module Plumb (M : Motive) where
              ∷ El (PC (monusTm A₁₀ B₁₀) B₁₀
                      (app (app (var (vs vz)) (w (w PAIRˢ))) (w (w CERTˢ))))
   dcalls =
-    ⊢conv (indPWElim (⊢-cast (indPWT-w (w (w B₄)) (var vz)) (⊢var here))
+    ⊢conv (indPWElim (⊢-cast (indPWT-w (w (w B₄)) (var vz)) (⊢var (here refl)))
                      dPAIRs dCERTs)
           (PC-convU _ (step (βfst _ _) done) (step (βsnd _ _) done))
 
   dEqs : {Γ : Ctx} → Θ₄ Γ ⊢ var (vs (vs vz)) ∷ IdN (monusTm A₁₀ B₁₀) (nsuc P₁₀)
-  dEqs = ⊢var (there (there here))
+  dEqs = ⊢var (there (there (here refl) refl) refl)
 
   innerI₃s : {Γ : Ctx} → Prv (Θ₄ Γ) (El (PC A₁₀ B₁₀ (app (w (w (w F₄))) (var (vs vz)))))
   innerI₃s =
@@ -645,7 +645,7 @@ module Plumb (M : Motive) where
   bodyI₃s =
     prv _ (⊢lam (⊢gcdIH (⊢wk ⊢B₄))
             (⊢lam (⊢indPWT (⊢wk (⊢wk ⊢B₄))
-                           (⊢-cast (gcdIH-w (w B₄)) (⊢var here)))
+                           (⊢-cast (gcdIH-w (w B₄)) (⊢var (here refl))))
                   (prvOk innerI₃s)))
 
   leafI₃s : {Γ : Ctx} → Prv ((ΘI₃ Γ ▹ Nat) ▹ MI₃) (subTy nrs MI₃)
@@ -661,25 +661,25 @@ module Plumb (M : Motive) where
   ------------------------------------------------------------------------
 
   ⊢MI₁ : {Γ : Ctx} → ((Γ ▹ PairT) ▹ Nat) ⊢ty MI₁
-  ⊢MI₁ = ⊢indG (⊢plus (⊢fst (⊢var (there here))) (⊢var here))
+  ⊢MI₁ = ⊢indG (⊢plus (⊢fst (⊢var (there (here refl) refl))) (⊢var (here refl)))
                (⊢natrec-var ⊢G1 ⊢G1z ⊢gcdInn1)
-               (⊢fst (⊢var (there here))) (⊢var here)
+               (⊢fst (⊢var (there (here refl) refl))) (⊢var (here refl))
 
   ⊢MI₂ : {Γ : Ctx} → (ΘI₂ Γ ▹ Nat) ⊢ty MI₂
-  ⊢MI₂ = ⊢indG (⊢plus (⊢var here) (⊢nsuc (⊢var (there (there here)))))
+  ⊢MI₂ = ⊢indG (⊢plus (⊢var (here refl)) (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
                (⊢natrec-var ⊢G2 ⊢G2z ⊢gcdInn2)
-               (⊢var here) (⊢nsuc (⊢var (there (there here))))
+               (⊢var (here refl)) (⊢nsuc (⊢var (there (there (here refl) refl) refl)))
 
   ⊢MI₃ : {Γ : Ctx} → (ΘI₃ Γ ▹ Nat) ⊢ty MI₃
   ⊢MI₃ =
-    ty-Π (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there here))))
-                         (⊢nsuc (⊢var (there (there (there (there here)))))))
-                 (⊢var here))
-         (⊢indG (⊢wk (⊢plus (⊢nsuc (⊢var (there (there here))))
-                            (⊢nsuc (⊢var (there (there (there (there here))))))))
+    ty-Π (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there (here refl) refl) refl)))
+                         (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
+                 (⊢var (here refl)))
+         (⊢indG (⊢wk (⊢plus (⊢nsuc (⊢var (there (there (here refl) refl) refl)))
+                            (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))
                 (⊢wk (⊢natrec-var ⊢G3 ⊢G3z ⊢G3s))
-                (⊢wk (⊢nsuc (⊢var (there (there here)))))
-                (⊢wk (⊢nsuc (⊢var (there (there (there (there here))))))))
+                (⊢wk (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
+                (⊢wk (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))
 
 
   ------------------------------------------------------------------------
@@ -688,8 +688,8 @@ module Plumb (M : Motive) where
 
   split3 : {Γ : Ctx} → Prv (ΘI₃ Γ) (subTy (single μAB) MI₃)
   split3 = prvNatrec ⊢MI₃ leafI₃z leafI₃s
-                     (⊢monus (⊢nsuc (⊢var (there here)))
-                             (⊢nsuc (⊢var (there (there (there here))))))
+                     (⊢monus (⊢nsuc (⊢var (there (here refl) refl)))
+                             (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl))))
 
 
   -- ⚠ `probeI₃-at` IS `refl` IN THE CONCRETE DEVELOPMENT AND CANNOT BE HERE.
@@ -715,8 +715,8 @@ module Plumb (M : Motive) where
   split3app {Γ} =
     prv _ (⊢-cast peel
             (⊢app (⊢-cast probeI₃-atP (prvOk split3))
-                  (⊢reflN (⊢monus (⊢nsuc (⊢var (there here)))
-                                  (⊢nsuc (⊢var (there (there (there here)))))))))
+                  (⊢reflN (⊢monus (⊢nsuc (⊢var (there (here refl) refl)))
+                                  (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))))))
     where
       R = reflN (μAB {Γ = ⌊ Γ ⌋})
 
@@ -756,7 +756,7 @@ module Plumb (M : Motive) where
            Prv (ΘI₂ Γ) (subTy (single (fst (var (vs (vs vz))))) MI₂)
   split2 {Γ} = prvNatrec ⊢MI₂ leafI₂z
                          (prv _ (⊢conv (prvOk split3app) (csymᵀ (conv₂I {⌊ Γ ⌋}))))
-                         (⊢fst (⊢var (there (there here))))
+                         (⊢fst (⊢var (there (there (here refl) refl) refl)))
 
   conv₁I : {Γ : Cx} →
            subTy nrs (MI₁ {Γ}) ≅ᵀ subTy (single (fst (var (vs (vs vz))))) MI₂
@@ -781,7 +781,7 @@ module Plumb (M : Motive) where
       (prvNatrec ⊢MI₁
                  (prv-cast (sym peelz) leafI₁z)
                  (prv _ (⊢conv (prvOk split2) (csymᵀ (conv₁I {⌊ Γ ⌋}))))
-                 (⊢snd (⊢var here)))
+                 (⊢snd (⊢var (here refl))))
     where
       N = snd (var vz)
       -- ⚠ `leafI₁z` is stated in the SUBSTITUTED form; `⊢natrec` wants

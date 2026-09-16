@@ -61,7 +61,7 @@ open import DirectedHoTT.Examples.Knot.Sorts using ( sVar; ⊢sVar )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Spec.Typing using ( wk-single )
-open import normalizer.Syntax.Types using ( cong )
+open import normalizer.Syntax.Types using ( cong; refl )
 
 open import DirectedHoTT.Spec.Syntax using ( Π; app )
 open import DirectedHoTT.Spec.Typing using ( ty-Π; ty-Nat; ⊢app; ⊢nsuc )
@@ -82,7 +82,7 @@ conSMotK = Π Nat (IMu KnotD IPair (pair sTm (snd (var (vs (vs vz))))))
 ⊢conSMotK : {Γ : Ctx} →
             ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty conSMotK
 ⊢conSMotK =
-  ty-Π ty-Nat (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here))))))
+  ty-Π ty-Nat (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (there (here refl) refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ★ THE 51 UNREACHABLE ROWS.
@@ -97,7 +97,7 @@ conSJunk = lam (lam (lam (lam Tm-nzeroK)))
 ⊢conSJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢conSMotK
     (⊢lam ty-Nat
-      (⊢Tm-nzeroKv _ (⊢snd (⊢var (there (there (there here)))))))
+      (⊢Tm-nzeroKv _ (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ★★★ `vz ↦ con k (var vz)`.  ⚠ SAME FORD TRANSPORT AS `Knot/Nrs`'s
@@ -119,13 +119,13 @@ conSVz = lam (lam (lam (lam
 ⊢conSVz =
   ⊢methLam KnotD IPair tagVar-vz cVar-vz KnotWf cVar-vzWf ⊢IPair ⊢conSMotK
     (⊢lam ty-Nat
-      (⊢Tm-conKv _ dsi (⊢var here) (⊢Tm-varKv _ dsi tx)))
+      (⊢Tm-conKv _ dsi (⊢var (here refl)) (⊢Tm-varKv _ dsi tx)))
   where
-    dp   = ⊢var (there (there here))
-    dsi  = ⊢snd (⊢var (there (there (there here))))
+    dp   = ⊢var (there (there (here refl) refl) refl)
+    dsi  = ⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))
     dm   = elAsNat (⊢fst dp)
     deq  = ⊢symN dsi (⊢nsuc dm) (fordAs (⊢fst (⊢snd (⊢snd dp))))
-    tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
+    tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var (here refl)))))
                          (natAsEl (⊢nsuc dm)) (natAsEl dsi) deq
                          (toMu (⊢Var-vzKt dm)))
 
@@ -148,12 +148,12 @@ conSVs = lam (lam (lam (lam
   ⊢methLam KnotD IPair tagVar-vs cVar-vs KnotWf cVar-vsWf ⊢IPair ⊢conSMotK
     (⊢lam ty-Nat (⊢Tm-varKv _ dsi tx))
   where
-    dp   = ⊢var (there (there here))
-    dsi  = ⊢snd (⊢var (there (there (there here))))
+    dp   = ⊢var (there (there (here refl) refl) refl)
+    dsi  = ⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))
     dm   = elAsNat (⊢fst dp)
     dx   = ⊢fst (⊢snd dp)
     deq  = ⊢symN dsi (⊢nsuc dm) (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp)))))
-    tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
+    tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var (here refl)))))
                          (natAsEl (⊢nsuc dm)) (natAsEl dsi) deq
                          (toMu (⊢Var-vsKt dm dx)))
 
@@ -213,7 +213,7 @@ conSK n k = lam (conSSK (pair sVar (nsuc (renTm vs n))) (var vz) (renTm vs k))
 ⊢conSK {n = n} {k = k} dn dk =
   ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc dn)))
        (muFwd (ξ-pairʳ (βsnd _ _))
-         (⊢conSSK (⊢ixP ⊢sVar (⊢nsuc (⊢wk dn))) (⊢var here) (⊢wk dk)))
+         (⊢conSSK (⊢ixP ⊢sVar (⊢nsuc (⊢wk dn))) (⊢var (here refl)) (⊢wk dk)))
 
 -- ★★★ `atCon k M` — and it is `subTy` at a substitution that neither
 --   raises nor lowers, so BOTH depths are `nsuc n`.

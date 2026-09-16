@@ -76,15 +76,15 @@ open import DirectedHoTT.Examples.AmrecInst
 ⊢ihTat : {Γ : Ctx} {x : RTm ⌊ Γ ⌋} → Γ ⊢ x ∷ El cAt → Γ ⊢ty rec1T cAt cPt μt x
 ⊢ihTat dx =
   ty-Π (ty-El dcA)
-    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var here))) (⊢app dμ (⊢wk dx)))
-          (ty-El (⊢app dcP (⊢var (there here)))))
+    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var (here refl)))) (⊢app dμ (⊢wk dx)))
+          (ty-El (⊢app dcP (⊢var (there (here refl) refl)))))
 
 -- `nzero` and `nsuc _` as carrier elements: the carrier IS ℕ, one conv.
 asA : {Γ : Ctx} {t : RTm ⌊ Γ ⌋} → Γ ⊢ t ∷ Nat → Γ ⊢ t ∷ El cAt
 asA dt = ⊢conv dt (csymᵀ elNat)
 
 ⊢ihT : {Γ : Ctx} → (Γ ▹ El cAt) ⊢ty rec1T cAt cPt μt (var vz)
-⊢ihT = ⊢ihTat (⊢var here)
+⊢ihT = ⊢ihTat (⊢var (here refl))
 
 ------------------------------------------------------------------------
 -- ★ THE β TAX, in full.  The instantiated measure is `lam (var vz)`, so
@@ -124,10 +124,10 @@ divMot = Π (rec1T cAt cPt μt (var vz)) (El (app cPt (var (vs vz))))
 ⊢divMot : ((Γ₃ ▹ El cAt) ▹ Nat) ⊢ty divMot
 ⊢divMot =
   ty-Π (ty-Π (ty-El dcA)
-             (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var here)))
-                                  (⊢app dμ (⊢conv (⊢var (there here)) (csymᵀ elNat))))
-                   (ty-El (⊢app dcP (⊢var (there here))))))
-       (ty-El (⊢app dcP (⊢conv (⊢var (there here)) (csymᵀ elNat))))
+             (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var (here refl))))
+                                  (⊢app dμ (⊢conv (⊢var (there (here refl) refl)) (csymᵀ elNat))))
+                   (ty-El (⊢app dcP (⊢var (there (here refl) refl))))))
+       (ty-El (⊢app dcP (⊢conv (⊢var (there (here refl) refl)) (csymᵀ elNat))))
 
 -- m = 0: the quotient is 0, and the IH is discarded.
 divZ : RTm (⌊ Γ₃ ⌋ ∙)
@@ -152,22 +152,22 @@ divSMot = El (app cPt (nsuc (var (vs (vs (vs vz))))))
 ⊢divSMot : (((((Γ₃ ▹ El cAt) ▹ Nat) ▹ divMot)
               ▹ rec1T cAt cPt μt (nsuc (var (vs vz)))) ▹ Nat) ⊢ty divSMot
 ⊢divSMot =
-  ty-El (⊢app dcP (⊢conv (⊢nsuc (⊢var (there (there (there here))))) (csymᵀ elNat)))
+  ty-El (⊢app dcP (⊢conv (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl))) (csymᵀ elNat)))
 
 ⊢divS : (((Γ₃ ▹ El cAt) ▹ Nat) ▹ divMot) ⊢ divS ∷ subTy nrs divMot
 ⊢divS =
   ⊢lam ⊢ihTS
     (⊢natrec ⊢divSMot
       (⊢conv ⊢nzero (csymᵀ (elCP (nsuc (var (vs (vs vz)))))))
-      (⊢conv (⊢nsuc (⊢conv (⊢app (⊢app (⊢var (there (there here))) dArg) dDesc)
+      (⊢conv (⊢nsuc (⊢conv (⊢app (⊢app (⊢var (there (there (here refl) refl) refl)) dArg) dDesc)
                            (elCP (monusTm (var (vs (vs (vs (vs vz)))))
                                           (var (vs (vs (vs (vs (vs (vs vz)))))))))))
              (csymᵀ (elCP (nsuc (var (vs (vs (vs (vs vz))))))))) 
-      (⊢monus (⊢nsuc (⊢var (there (there here)))) (⊢var (there (there (there (there here)))))))
+      (⊢monus (⊢nsuc (⊢var (there (there (here refl) refl) refl))) (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
   where
-    ⊢ihTS = ⊢ihTat (asA (⊢nsuc (⊢var (there here))))
-    dj = ⊢var (there (there (there (there here))))
-    dk = ⊢var (there (there (there (there (there (there here))))))
+    ⊢ihTS = ⊢ihTat (asA (⊢nsuc (⊢var (there (here refl) refl))))
+    dj = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
+    dk = ⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)
     dArg = asA (⊢monus dj dk)
     dDesc =
       ⊢conv (⊢div-descend dj dk)
@@ -180,7 +180,7 @@ divStp = lam (natrec divZ divS (var vz))
 ⊢divStp : Γ₃ ⊢ divStp ∷ aStepT cAt cPt μt
 ⊢divStp =
   ⊢lam (ty-El dcA)
-    (⊢natrec ⊢divMot ⊢divZ ⊢divS (⊢conv (⊢var here) elNat))
+    (⊢natrec ⊢divMot ⊢divZ ⊢divS (⊢conv (⊢var (here refl)) elNat))
 
 ------------------------------------------------------------------------
 -- ★★ THE USE SITE.  One `open`, and the recursor exists as a CLOSED

@@ -87,7 +87,7 @@ msr : {Γ : Cx} → RTm (Γ ∙)
 msr = plusTm (fst (var vz)) (snd (var vz))
 
 ⊢msr : {Γ : Ctx} → (Γ ▹ PairT) ⊢ msr ∷ Nat
-⊢msr = ⊢plus (⊢fst (⊢var here)) (⊢snd (⊢var here))
+⊢msr = ⊢plus (⊢fst (⊢var (here refl))) (⊢snd (⊢var (here refl)))
 
 -- the IH at an explicit bound, and the "IH → answer" type the splits carry
 gcdIH : {Γ : Cx} (μx : RTm Γ) → RTy Γ
@@ -132,7 +132,7 @@ G1 : {Γ : Cx} → RTy (Γ ∙ ∙)
 G1 = gcdG (plusTm (fst (var (vs vz))) (var vz))
 
 ⊢G1 : {Γ : Ctx} → ((Γ ▹ PairT) ▹ Nat) ⊢ty G1
-⊢G1 = ⊢gcdG (⊢plus (⊢fst (⊢var (there here))) (⊢var here))
+⊢G1 = ⊢gcdG (⊢plus (⊢fst (⊢var (there (here refl) refl))) (⊢var (here refl)))
 
 -- b = 0 : the answer is `a`, and the IH is discarded.
 G1z : {Γ : Cx} → RTm (Γ ∙)
@@ -140,8 +140,8 @@ G1z = lam (fst (var (vs vz)))
 
 ⊢G1z : {Γ : Ctx} → (Γ ▹ PairT) ⊢ G1z ∷ gcdG (plusTm (fst (var vz)) nzero)
 ⊢G1z =
-  ⊢lam (⊢gcdIH (⊢plus (⊢fst (⊢var here)) ⊢nzero))
-       (asP (⊢fst (⊢var (there here))))
+  ⊢lam (⊢gcdIH (⊢plus (⊢fst (⊢var (here refl))) ⊢nzero))
+       (asP (⊢fst (⊢var (there (here refl) refl))))
 
 ------------------------------------------------------------------------
 -- SPLIT 2 — on `fst x`.  ctx: [0]=k' [1]=G1 [2]=n' [3]=x
@@ -159,7 +159,7 @@ G2 = gcdG (plusTm (var vz) (nsuc (var (vs (vs vz)))))
 --   the caller to re-derive all of it.
 ⊢G2 : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} →
       ((((Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ⊢ty G2
-⊢G2 = ⊢gcdG (⊢plus (⊢var here) (⊢nsuc (⊢var (there (there here)))))
+⊢G2 = ⊢gcdG (⊢plus (⊢var (here refl)) (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
 
 -- a = 0 : the answer is `b`.  ctx after the ⊢lam: [0]=ih [1]=G1 [2]=n' [3]=x
 G2z : {Γ : Cx} → RTm (Γ ∙ ∙ ∙)
@@ -169,8 +169,8 @@ G2z = lam (nsuc (var (vs (vs vz))))
        (((Γ ▹ PairT) ▹ Nat) ▹ B) ⊢ G2z
      ∷ gcdG (plusTm nzero (nsuc (var (vs vz))))
 ⊢G2z =
-  ⊢lam (⊢gcdIH (⊢plus ⊢nzero (⊢nsuc (⊢var (there here)))))
-       (asP (⊢nsuc (⊢var (there (there here)))))
+  ⊢lam (⊢gcdIH (⊢plus ⊢nzero (⊢nsuc (⊢var (there (here refl) refl)))))
+       (asP (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
 
 ------------------------------------------------------------------------
 -- SPLIT 3 — the COMPARISON, on `a ∸ b`.  ⚠ CONSTANT MOTIVE: the branch
@@ -184,8 +184,8 @@ G3 = gcdG (plusTm (nsuc (var (vs (vs vz)))) (nsuc (var (vs (vs (vs (vs vz)))))))
 ⊢G3 : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)} →
       ((((((Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ C) ▹ Nat) ⊢ty G3
 ⊢G3 =
-  ⊢gcdG (⊢plus (⊢nsuc (⊢var (there (there here))))
-               (⊢nsuc (⊢var (there (there (there (there here)))))))
+  ⊢gcdG (⊢plus (⊢nsuc (⊢var (there (there (here refl) refl) refl)))
+               (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
 
 -- a ≤ b : recurse at (a , b ∸ a).  SECOND component changes → ⊢desc-right.
 -- ctx after the ⊢lam: [0]=ih [1]=G2 [2]=k' [3]=G1 [4]=n' [5]=x
@@ -226,11 +226,11 @@ CERTᶻ = plusMonoTm (monusLtTm NZ KZ) (nsuc KZ)
 
 dkz : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
       {E : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙)} → CΓz Γ B C E ⊢ KZ ∷ Nat
-dkz = ⊢var (there (there here))
+dkz = ⊢var (there (there (here refl) refl) refl)
 
 dnz : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
       {E : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙)} → CΓz Γ B C E ⊢ NZ ∷ Nat
-dnz = ⊢var (there (there (there (there here))))
+dnz = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
 
 ⊢PAIRᶻ : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
          {E : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙)} → CΓz Γ B C E ⊢ PAIRᶻ ∷ PairT
@@ -253,9 +253,9 @@ G3z = lam (app (app (var vz) PAIRᶻ) CERTᶻ)
        (((((Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ C) ⊢ G3z
      ∷ gcdG (plusTm (nsuc (var (vs vz))) (nsuc (var (vs (vs (vs vz))))))
 ⊢G3z =
-  ⊢lam (⊢gcdIH (⊢plus (⊢nsuc (⊢var (there here)))
-                      (⊢nsuc (⊢var (there (there (there here)))))))
-    (⊢app (⊢app (⊢var here) ⊢PAIRᶻ) ⊢CERTᶻ)
+  ⊢lam (⊢gcdIH (⊢plus (⊢nsuc (⊢var (there (here refl) refl)))
+                      (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))))
+    (⊢app (⊢app (⊢var (here refl)) ⊢PAIRᶻ) ⊢CERTᶻ)
 
 -- a > b : recurse at (a ∸ b , b).  FIRST component changes → ⊢desc-left.
 -- ctx after the ⊢lam: [0]=ih [1]=G3 [2]=d [3]=G2 [4]=k' [5]=G1 [6]=n' [7]=x
@@ -282,11 +282,11 @@ CERTˢ = plusMonoLTm (monusTm (nsuc KS) (nsuc NS)) (nsuc KS) (nsuc NS)
 
 dks : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
      {D : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)} → CΓs Γ B C D ⊢ KS ∷ Nat
-dks = ⊢var (there (there (there (there here))))
+dks = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
 
 dns : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
      {D : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)} → CΓs Γ B C D ⊢ NS ∷ Nat
-dns = ⊢var (there (there (there (there (there (there here))))))
+dns = ⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)
 
 ⊢PAIRˢ : {Γ : Ctx} {B : RTy (⌊ Γ ⌋ ∙ ∙)} {C : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙)}
      {D : RTy (⌊ Γ ⌋ ∙ ∙ ∙ ∙ ∙ ∙)} → CΓs Γ B C D ⊢ PAIRˢ ∷ PairT
@@ -309,9 +309,9 @@ G3s = lam (app (app (var vz) PAIRˢ) CERTˢ)
      ∷ gcdG (plusTm (nsuc (var (vs (vs (vs vz)))))
                     (nsuc (var (vs (vs (vs (vs (vs vz))))))))
 ⊢G3s =
-  ⊢lam (⊢gcdIH (⊢plus (⊢nsuc (⊢var (there (there (there here)))))
-                      (⊢nsuc (⊢var (there (there (there (there (there here)))))))))
-    (⊢app (⊢app (⊢var here) ⊢PAIRˢ) ⊢CERTˢ)
+  ⊢lam (⊢gcdIH (⊢plus (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))
+                      (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))))
+    (⊢app (⊢app (⊢var (here refl)) ⊢PAIRˢ) ⊢CERTˢ)
 
 ------------------------------------------------------------------------
 -- ★★★ THE STEP, ASSEMBLED — three nested `natrec`s under one `lam`.
@@ -352,15 +352,15 @@ gcdStp = lam gcdBody
            ((((( Γ ▹ PairT) ▹ Nat) ▹ B) ▹ Nat) ▹ G2) ⊢ gcdInn2 ∷ subTy nrs G2
 ⊢gcdInn2 =
   ⊢natrec ⊢G3 ⊢G3z ⊢G3s
-          (⊢monus (⊢nsuc (⊢var (there here)))
-                  (⊢nsuc (⊢var (there (there (there here))))))
+          (⊢monus (⊢nsuc (⊢var (there (here refl) refl)))
+                  (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl))))
 
 ⊢gcdInn1 : {Γ : Ctx} → ((( Γ ▹ PairT) ▹ Nat) ▹ G1) ⊢ gcdInn1 ∷ subTy nrs G1
-⊢gcdInn1 = ⊢natrec ⊢G2 ⊢G2z ⊢gcdInn2 (⊢fst (⊢var (there (there here))))
+⊢gcdInn1 = ⊢natrec ⊢G2 ⊢G2z ⊢gcdInn2 (⊢fst (⊢var (there (there (here refl) refl) refl)))
 
 ⊢gcdBody : {Γ : Ctx} →
            (Γ ▹ PairT) ⊢ gcdBody ∷ subTy (single (snd (var vz))) G1
-⊢gcdBody = ⊢natrec ⊢G1 ⊢G1z ⊢gcdInn1 (⊢snd (⊢var here))
+⊢gcdBody = ⊢natrec ⊢G1 ⊢G1z ⊢gcdInn1 (⊢snd (⊢var (here refl)))
 
 ⊢gcdStp : {Γ : Ctx} → Γ ⊢ gcdStp ∷ aStepT PairT ⌜Nat⌝ msr
 ⊢gcdStp = ⊢lam ⊢PairT ⊢gcdBody

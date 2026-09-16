@@ -30,6 +30,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.DepIx where
+open import normalizer.Syntax.Types using ( refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
@@ -61,7 +62,7 @@ IPT : RTy ε
 IPT = Σ' (El ⌜Nat⌝) (IMu TmD INat (var vz))
 
 ⊢IPT : {Γ : Ctx} → Γ ⊢ty Σ' (El ⌜Nat⌝) (IMu TmD INat (var vz))
-⊢IPT = ty-Σ (ty-El ⊢⌜Nat⌝) (ty-IMu TmWf (⊢var here))
+⊢IPT = ty-Σ (ty-El ⊢⌜Nat⌝) (ty-IMu TmWf (⊢var (here refl)))
 
 -- the two projections of the ambient index, at `k` binders in
 --   ⚠ `⊢snd` lands at `subTy (single (fst i)) (IMu TmD INat (var vz))`,
@@ -108,17 +109,17 @@ islamWf : IConWf IsLamD IPT (◇ ▹ IPT) islamC
 islamWf =
   iwf-κ (⌜IMu⌝ TmD INat (nsuc (fst (var vz))))
         (icw-imu (nsuc (fst (var vz))) TmWf)
-        (⊢⌜IMu⌝ TmWf (toI (⊢nsuc (fromI (⊢fst (⊢var here))))))
+        (⊢⌜IMu⌝ TmWf (toI (⊢nsuc (fromI (⊢fst (⊢var (here refl)))))))
    (iwf-κ (⌜Id⌝ (⌜IMu⌝ TmD INat (fst (var (vs vz))))
                 (snd (var (vs vz)))
                 (tlam (var vz)))
           (icw-ford (⌜IMu⌝ TmD INat (fst (var (vs vz))))
                     (snd (var (vs vz)))
                     (tlam (var vz)))
-          (⊢⌜Id⌝ (⊢⌜IMu⌝ TmWf (⊢fst (⊢var (there here))))
-                 (toMu (ixTm (⊢var (there here))))
-                 (toMu (⊢tlam (⊢fst (⊢var (there here)))
-                              (fromMu (⊢var here)))))
+          (⊢⌜Id⌝ (⊢⌜IMu⌝ TmWf (⊢fst (⊢var (there (here refl) refl))))
+                 (toMu (ixTm (⊢var (there (here refl) refl))))
+                 (toMu (⊢tlam (⊢fst (⊢var (there (here refl) refl)))
+                              (fromMu (⊢var (here refl))))))
           iwf-ι)
 
 IsLamWf : IDescWf IPT IsLamD
@@ -144,7 +145,7 @@ IsLamWf = idwf-cons islamWf idwf-nil
 ⊢ixP2 : {Γ : Ctx} {n t : RTm ⌊ Γ ⌋} →
         Γ ⊢ n ∷ El ⌜Nat⌝ → Γ ⊢ t ∷ Tm n →
         Γ ⊢ pair n t ∷ Σ' (El ⌜Nat⌝) (IMu TmD INat (var vz))
-⊢ixP2 dn dt = ⊢pair (ty-IMu TmWf (⊢var here)) dn dt
+⊢ixP2 dn dt = ⊢pair (ty-IMu TmWf (⊢var (here refl))) dn dt
 
 -- the BODY field, at a concrete index: `fst (pair n t)` must step
 bodyAt : {Γ : Ctx} {n t b : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ El ⌜Nat⌝ →
@@ -177,7 +178,7 @@ tyFord₀ =
   ty-Σ (ty-El (⊢⌜Id⌝ (⊢⌜IMu⌝ TmWf (⊢fst (⊢ixP2 (toI ⊢nzero) ⊢idTm)))
                      (toMu (⊢snd (⊢ixP2 (toI ⊢nzero) ⊢idTm)))
                      (toMu (⊢tlam (⊢fst (⊢ixP2 (toI ⊢nzero) ⊢idTm))
-                                  (fromMu (⊢var here))))))
+                                  (fromMu (⊢var (here refl)))))))
        ty-Unit
 
 islam : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ

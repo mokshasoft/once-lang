@@ -12,6 +12,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Comparison.GcdRoute3Combinator where
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; El; Nat; Π; RTm; var; nzero; nsuc
         ; natrec; app; pair; fst; snd; ⌜Nat⌝; subTm; lam )
@@ -200,8 +201,8 @@ gcdB0B {Δ} a = IdN (app (gcdAt Δ) (pair a nzero)) a
 ⊢gcdB0Mot : {Δ : Ctx} → (Δ ▹ Nat) ⊢ty gcdB0B {Δ ▹ Nat} (var vz)
 ⊢gcdB0Mot {Δ} =
   ⊢tyIdN (asN (⊢app (GcdAt.⊢amrecΠ (Δ ▹ Nat))
-                    (⊢pair ty-Nat (⊢var here) ⊢nzero)))
-         (⊢var here)
+                    (⊢pair ty-Nat (⊢var (here refl)) ⊢nzero)))
+         (⊢var (here refl))
 
 -- ★ the proof TERM.  ⚠ the IH is NEVER USED: splitting `a` is not there to
 --   supply an induction hypothesis, it is there to UN-STICK THE MEASURE.
@@ -217,7 +218,7 @@ gcdB0Tm a = natrec (reflN nzero) (reflN (nsuc (var (vs vz)))) a
     zB = ⊢conv (⊢reflN ⊢nzero)
            (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (GcdAt.amrec-step-z Δ X00At msr-0-0At
                                      (gcd-b0-var nzero)))))
-    sB = ⊢conv (⊢reflN (⊢nsuc (⊢var (there here))))
+    sB = ⊢conv (⊢reflN (⊢nsuc (⊢var (there (here refl) refl))))
            (csymᵀ (red→≅ᵀ (⟶ᵀ*-Idˡ (gcd-suc-0At {(Δ ▹ Nat) ▹ gcdB0B {Δ ▹ Nat} (var vz)} (var (vs vz))))))
 
 -- ★★★★ GAP A, CLOSED.  A single closed term of a single object-language
@@ -225,7 +226,7 @@ gcdB0Tm a = natrec (reflN nzero) (reflN (nsuc (var (vs vz)))) a
 --   reduction sequences — one theorem, INTERNAL to the theory.
 ⊢gcd-b0-Π : ◇ ⊢ lam (gcdB0Tm {◇ ▹ Nat} (var vz))
                 ∷ Π Nat (gcdB0B {◇ ▹ Nat} (var vz))
-⊢gcd-b0-Π = ⊢lam ty-Nat (⊢gcdB0 {◇ ▹ Nat} (⊢var here))
+⊢gcd-b0-Π = ⊢lam ty-Nat (⊢gcdB0 {◇ ▹ Nat} (⊢var (here refl)))
 
 ------------------------------------------------------------------------
 -- ★★★★★ A RECURSING RUN — `gcd (1,1) = 1`, THROUGH A REAL RECURSIVE CALL.

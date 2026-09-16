@@ -83,8 +83,8 @@ private
   F₄ = subTm nrs f₃
 
   ⊢B₄ : {Γ : Ctx} → ((Θ₃ Γ ▹ Nat) ▹ M₃) ⊢ B₄ ∷ Nat
-  ⊢B₄ = ⊢plus (⊢nsuc (⊢var (there (there (there here)))))
-              (⊢nsuc (⊢var (there (there (there (there (there here)))))))
+  ⊢B₄ = ⊢plus (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))
+              (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
 
   rr₄ : {Γ : Cx} → subTm nrs (f₃ {Γ}) ⟶* G3s
   rr₄ = step (natrec-suc _ _ _) done
@@ -98,7 +98,7 @@ private
                (Id (El ⌜Nat⌝) (app (w (w (w F₄))) (var (vs (vs vz))))
                               (app (w (w (w F₄))) (var (vs vz))))
   idPrf₄ = idOfRed (red₃s rr₄ (var (vs (vs vz)))) (red₃s rr₄ (var (vs vz)))
-                   (prv _ (pwElim (⊢-cast (pwT-w _ _ _) (⊢var here))
+                   (prv _ (pwElim (⊢-cast (pwT-w _ _ _) (⊢var (here refl)))
                                   (⊢wk (⊢wk ⊢PAIRˢ))
                                   (⊢wk (⊢wk ⊢CERTˢ))))
 
@@ -107,6 +107,6 @@ leaf₃s =
   prv _ (⊢lam (⊢gcdIH ⊢B₄)
           (⊢lam (⊢gcdIH (⊢wk ⊢B₄))
             (⊢lam (⊢pwT (⊢wk (⊢wk ⊢B₄))
-                        (⊢-cast (gcdIH-w² _) (⊢var (there here)))
-                        (⊢-cast (gcdIH-w (w _)) (⊢var here)))
+                        (⊢-cast (gcdIH-w² _) (⊢var (there (here refl) refl)))
+                        (⊢-cast (gcdIH-w (w _)) (⊢var (here refl))))
                   (prvOk idPrf₄))))

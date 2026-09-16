@@ -114,7 +114,7 @@ dcP : {Γ : Ctx} → Γ ⊢ cPt ∷ Π (El cAt) U
 dcP = ⊢lam (ty-El ⊢⌜Nat⌝) ⊢⌜Nat⌝
 
 dμ : {Γ : Ctx} → Γ ⊢ μt ∷ Π (El cAt) Nat
-dμ = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢conv (⊢var here) elNat)
+dμ = ⊢lam (ty-El ⊢⌜Nat⌝) (⊢conv (⊢var (here refl)) elNat)
 
 -- the instantiated IH type: `(y : A) → μ y < μ x → P y`, with x the
 -- variable the step's first ⊢lam bound.
@@ -127,9 +127,9 @@ AIHTσ =
 ⊢AIHTσ : (◇ ▹ El cAt) ⊢ty AIHTσ
 ⊢AIHTσ =
   ty-Π (ty-El ⊢⌜Nat⌝)
-    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var here)))
-                         (⊢app dμ (⊢var (there here))))
-          (ty-El (⊢app dcP (⊢var (there here)))))
+    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var (here refl))))
+                         (⊢app dμ (⊢var (there (here refl) refl))))
+          (ty-El (⊢app dcP (⊢var (there (here refl) refl)))))
 
 dstp : ◇ ⊢ stpt ∷ subTy σ₄ (renTy vs AStepT)
 dstp =
@@ -141,10 +141,10 @@ dstp =
 ------------------------------------------------------------------------
 
 σ₄⊢ : Sub⊢ Γ₄ ◇ σ₄
-σ₄⊢ here                         = dstp
-σ₄⊢ (there here)                 = dμ
-σ₄⊢ (there (there here))         = dcP
-σ₄⊢ (there (there (there here))) = dcA
+σ₄⊢ (here refl)                         = dstp
+σ₄⊢ (there (here refl) refl)                 = dμ
+σ₄⊢ (there (there (here refl) refl) refl)         = dcP
+σ₄⊢ (there (there (there (here refl) refl) refl) refl) = dcA
 
 ------------------------------------------------------------------------
 -- 5. …AND THE BOUNDED AUXILIARY, INSTANTIATED.  A CLOSED term.

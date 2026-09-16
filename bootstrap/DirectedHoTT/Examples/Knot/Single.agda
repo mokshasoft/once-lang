@@ -64,7 +64,7 @@ open import DirectedHoTT.Lib.IPay using ( splTake; spl-step )
 open import DirectedHoTT.Lib.ArithMonus using ( pred-snd-pair )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-IMu )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-pairʳ )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-ty; ⊢wk )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-ty; ⊢wk; wkR⊢ )
 open import DirectedHoTT.Examples.Knot.Desc using ( cVar-vz )
 open import DirectedHoTT.Examples.Knot.Wf using ( cVar-vzWf )
 open import DirectedHoTT.Examples.Knot.Tags using ( tagVar-vz )
@@ -84,8 +84,8 @@ singleMotK =
 ⊢singleMotK : {Γ : Ctx} →
               ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty singleMotK
 ⊢singleMotK =
-  ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there here))))))
-       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there (there here)))))))
+  ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there (here refl) refl))))))
+       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there (there (here refl) refl) refl))))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE IDENTITY METHOD — and it serves 52 of the 53 rows.
@@ -104,8 +104,8 @@ singleId = lam (lam (lam (lam (var vz))))
             Γ ⊢ singleId ∷ imethTy KnotD IPair k C singleMotK
 ⊢singleId k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢singleMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there (there here)))))))
-          (⊢var here))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there (there (here refl) refl) refl))))))
+          (⊢var (here refl)))
 
 ------------------------------------------------------------------------
 -- ★★★ THE ONE REAL METHOD — `vs y ↦ var y`.
@@ -134,18 +134,18 @@ singleVs =
             Γ ⊢ singleVs ∷ imethTy KnotD IPair tagVar-vs cVar-vs singleMotK
 ⊢singleVs =
   ⊢methLam KnotD IPair tagVar-vs cVar-vs KnotWf cVar-vsWf ⊢IPair ⊢singleMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there (there here)))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there (there (here refl) refl) refl))))))
           (⊢Tm-varKv _ dsi tx))
   where
-    dp  = ⊢var (there (there here))
+    dp  = ⊢var (there (there (here refl) refl) refl)
     dm  = elAsNat (⊢fst dp)
-    dsi = ⊢pred (⊢snd (⊢var (there (there (there here)))))
-    deq = ⊢symN (⊢pred (⊢snd (⊢var (there (there (there here))))))
+    dsi = ⊢pred (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))
+    deq = ⊢symN (⊢pred (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))
                 dm
-                (⊢fordPredN (⊢snd (⊢var (there (there (there here)))))
+                (⊢fordPredN (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))
                             dm
                             (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp))))))
-    tx  = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
+    tx  = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var (here refl)))))
                         (natAsEl dm) (natAsEl dsi) deq
                         (toMu (⊢fst (⊢snd dp))))
 
@@ -198,12 +198,12 @@ splK51 = splTake spl-nil (cdTake 51 KnotD)
 ⊢singleTail =
   ⊢pair (ren-ty (imethsTyFrom-wf KnotD IPair 52 (cVar-vs ◂ inil) KnotWf
                                  (idwf-cons cVar-vsWf idwf-nil)
-                                 (spl-step splK51) ⊢IPair ⊢singleMotK) there)
+                                 (spl-step splK51) ⊢IPair ⊢singleMotK) wkR⊢)
         (⊢singleId tagVar-vz cVar-vz cVar-vzWf)
         (⊢-cast (sym (wk-singleTy {v = singleId}
                         (imethsTyFrom KnotD IPair singleMotK 52 (cVar-vs ◂ inil))))
           (⊢pair (ren-ty (imethsTyFrom-wf KnotD IPair 53 inil KnotWf idwf-nil
-                            (spl-step (spl-step splK51)) ⊢IPair ⊢singleMotK) there)
+                            (spl-step (spl-step splK51)) ⊢IPair ⊢singleMotK) wkR⊢)
                  ⊢singleVs
                  (⊢-cast (sym (wk-singleTy {v = singleVs}
                                  (imethsTyFrom KnotD IPair singleMotK 53 inil)))
@@ -272,7 +272,7 @@ splK51 = splTake spl-nil (cdTake 51 KnotD)
   ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc dn)))
     (⊢conv (⊢-cast (cong (λ z → K (pair sTm (predTm (snd z))))
                          (wk-single {v = w u} ix))
-              (⊢app (⊢singleSK (⊢ixP ⊢sVar (⊢nsuc (⊢wk dn))) (⊢var here))
+              (⊢app (⊢singleSK (⊢ixP ⊢sVar (⊢nsuc (⊢wk dn))) (⊢var (here refl)))
                     (⊢conv (⊢wk du) (csymᵀ red))))
            red)
   where

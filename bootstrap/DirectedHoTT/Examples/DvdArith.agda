@@ -58,13 +58,13 @@ B = var (vs vz)
 C = var vz
 
 dA : Γ₃ ⊢ A ∷ Nat
-dA = ⊢var (there (there here))
+dA = ⊢var (there (there (here refl) refl) refl)
 
 dB : Γ₃ ⊢ B ∷ Nat
-dB = ⊢var (there here)
+dB = ⊢var (there (here refl) refl)
 
 dC : Γ₃ ⊢ C ∷ Nat
-dC = ⊢var here
+dC = ⊢var (here refl)
 
 -- ★ `(a + b) + c = a + (b + c)` at three OPEN naturals.
 assoc-open : Γ₃ ⊢ _ ∷ IdN (plusTm (plusTm A B) C) (plusTm A (plusTm B C))

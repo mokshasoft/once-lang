@@ -20,7 +20,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
         ; ξ-pairʳ; ξ-nsuc; βsnd; done; step; single; wk-single; iinst )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; trans; sym )
+open import normalizer.Syntax.Types using ( cong; trans; sym; refl )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam )
 open import DirectedHoTT.Lib.ICast using ( muFwd; muBwd* )
 open import DirectedHoTT.Lib.Wk using ( towerA; towerJ⁵ )
@@ -68,11 +68,11 @@ methsTyMotK =
 ⊢methsTyMotK : {Γ : Ctx} →
                ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty methsTyMotK
 ⊢methsTyMotK =
-  ty-Π (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there here)))))
-   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there here)))))))
+  ty-Π (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (here refl) refl)))))
+   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (here refl) refl) refl))))))
     (ty-Π ty-Nat
        (ty-IMu KnotWf
-          (⊢ixP ⊢sTy (⊢snd (⊢var (there (there (there (there here))))))))))
+          (⊢ixP ⊢sTy (⊢snd (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))))
 
 ------------------------------------------------------------------------
 -- ★ THE JUNK ROW — and for `cDesc-nil` it is the RIGHT answer, not junk:
@@ -90,12 +90,12 @@ methsTyJunk = lam (lam (lam (lam (lam (lam Ty-UnitK)))))
                Γ ⊢ methsTyJunk ∷ imethTy KnotD IPair k C methsTyMotK
 ⊢methsTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢methsTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there here))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there (here refl) refl) refl)))))
       (⊢lam (ty-IMu KnotWf
-               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))
+               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))))
         (⊢lam ty-Nat
           (⊢Ty-UnitKv _
-            (⊢snd (⊢var (there (there (there (there (there here))))))))))) 
+            (⊢snd (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))))))) 
 
 ------------------------------------------------------------------------
 -- ★★★ THE DESCENT THROUGH THE THREE Π BINDERS, ONCE — and it is the

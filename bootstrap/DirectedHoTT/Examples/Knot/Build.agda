@@ -175,7 +175,7 @@ Var-vzK m = icon tagVar-vz
                           (toI ⊢sVar)))
                  (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                 (toI (⊢snd (⊢ixP ⊢sVar (⊢numAt (suc n) r2))))
-                                (toI (⊢nsuc (fromI (⊢var (there here)))))))
+                                (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))))
                        ty-Unit))
            (toI (⊢num n))
       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
@@ -226,13 +226,13 @@ Var-vsK m x = icon tagVar-vs
            Δ ⊢ Var-vsK (num n) x ∷ K (pair sVar (num (suc n)))
 ⊢Var-vsK n {x = x} dx =
   ⊢icon KnotWf memVar-vs (⊢ixP ⊢sVar (⊢num (suc n)))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var here))))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var (here refl)))))
              (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                             (toI (⊢fst (⊢ixP ⊢sVar (⊢numAt (suc n) r2))))
                             (toI ⊢sVar)))
                (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                               (toI (⊢snd (⊢ixP ⊢sVar (⊢numAt (suc n) r3))))
-                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                              (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))))
                      ty-Unit)))
            (toI (⊢num n))
       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
@@ -308,7 +308,7 @@ Var-vsK m x = icon tagVar-vs
                           (toI ⊢sVar)))
                  (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                 (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk dx))))))
-                                (toI (⊢nsuc (fromI (⊢var (there here)))))))
+                                (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))))
                        ty-Unit))
            (toI dx)
       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
@@ -325,13 +325,13 @@ Var-vsK m x = icon tagVar-vs
             Δ ⊢ Var-vsK (var y) x ∷ K (pair sVar (nsuc (var y)))
 ⊢Var-vsKv {y = y} {x = x} dy dx =
   ⊢icon KnotWf memVar-vs (⊢ixP ⊢sVar (⊢nsuc dy))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var here))))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var (here refl)))))
              (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                             (toI (⊢fst (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk dy))))))
                             (toI ⊢sVar)))
                (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                               (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk (⊢wk dy)))))))
-                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                              (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))))
                      ty-Unit)))
            (toI dy)
       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
@@ -383,7 +383,7 @@ tmCast refl d = d
                           (toI ⊢sVar)))
                  (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                 (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk dd))))))
-                                (toI (⊢nsuc (fromI (⊢var (there here)))))))
+                                (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))))
                        ty-Unit))
            (toI dd)
       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
@@ -433,13 +433,13 @@ tmCast refl d = d
             Δ ⊢ Var-vsK d x ∷ K (pair sVar (nsuc d))
 ⊢Var-vsKt {Δ = Δ} {d = d} {x = x} dd dx =
   ⊢icon KnotWf memVar-vs (⊢ixP ⊢sVar (⊢nsuc dd))
-    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var here))))
+    (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var (here refl)))))
              (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                             (toI (⊢fst (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk dd))))))
                             (toI ⊢sVar)))
                (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                               (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc (⊢wk (⊢wk (⊢wk dd)))))))
-                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                              (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))))
                      ty-Unit)))
            (toI dd)
       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝

@@ -13,6 +13,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhsKap where
+open import normalizer.Syntax.Types using ( refl )
 
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; snd; Π; Nat; εwkTy; IMu )
@@ -62,9 +63,9 @@ ihsKap = lam (lam (lam (lam (lam (lam (lam
 ⊢ihsKap =
   ⊢methLam KnotD IPair tagDCon-kap cDCon-kap KnotWf cDCon-kapWf ⊢IPair ⊢ihsMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var here)))
-        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
-          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
+      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var (here refl))))
+        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (here refl) refl))))
+          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there (here refl) refl) refl))))
             (⊢app (⊢app (⊢app (⊢app
                      (⊢ihHere {D = KnotD} {I = IPair}
                        {σ = iext (isingle (var (vs (vs (vs (vs (vs (vs vz))))))))
@@ -78,9 +79,9 @@ ihsKap = lam (lam (lam (lam (lam (lam (lam
                          (iρ (pair sDCon (snd (var (vs vz))))
                           (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDCon) iι))
                          {q = var (vs (vs (vs (vs (vs vz)))))} {M = ihsMotK}
-                         (⊢var (there (there (there (there here)))))))
-                     (⊢var (there (there (there here)))))
-                     (⊢var (there (there here))))
-                     (⊢var (there here)))
-                  (⊢Tm-sndKv (var (vs (vs (vs vz)))) (⊢var (there (there (there here)))) (⊢var here)))))))
+                         (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
+                     (⊢var (there (there (there (here refl) refl) refl) refl)))
+                     (⊢var (there (there (here refl) refl) refl)))
+                     (⊢var (there (here refl) refl)))
+                  (⊢Tm-sndKv (var (vs (vs (vs vz)))) (⊢var (there (there (there (here refl) refl) refl) refl)) (⊢var (here refl))))))))
 

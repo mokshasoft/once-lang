@@ -98,7 +98,7 @@ dcP : {Γ : Ctx} → Γ ⊢ cPC ∷ Π (El pairC) U
 dcP = ⊢lam (ty-El dcA) ⊢⌜Nat⌝
 
 dμ : {Γ : Ctx} → Γ ⊢ μC ∷ Π (El pairC) Nat
-dμ = ⊢lam (ty-El dcA) (prj₁ (⊢var here))
+dμ = ⊢lam (ty-El dcA) (prj₁ (⊢var (here refl)))
 
 ------------------------------------------------------------------------
 -- ★★ WHAT `rec1T` CANNOT SAY, AND D4 CAN.
@@ -119,8 +119,8 @@ ihC b =
 ⊢ihC : {Γ : Ctx} {b : RTm ⌊ Γ ⌋} → Γ ⊢ b ∷ Nat → Γ ⊢ty ihC b
 ⊢ihC db =
   ty-Π (ty-El dcA)
-    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var here))) (⊢wk db))
-          (ty-El (⊢app dcP (⊢var (there here)))))
+    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app dμ (⊢var (here refl)))) (⊢wk db))
+          (ty-El (⊢app dcP (⊢var (there (here refl) refl)))))
 
 -- ★ the reconciliation with the combinator's own IH slot is at least FREE
 --   — `ihC` at the applied measure IS `rec1T`, definitionally.  What is

@@ -62,6 +62,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Negative.WkEmp where
+open import normalizer.Syntax.Types using ( refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs
@@ -113,8 +114,8 @@ wkMot = K (pair (fst (var (vs vz))) (nsuc (snd (var (vs vz)))))
 
 ⊢wkMot : {Γ : Ctx} →
          ((Γ ▹ εwkTy IPair) ▹ K (var vz)) ⊢ty wkMot
-⊢wkMot = ty-IMu KnotWf (⊢ixP (⊢fst (⊢var (there here)))
-                             (⊢nsuc (⊢snd (⊢var (there here)))))
+⊢wkMot = ty-IMu KnotWf (⊢ixP (⊢fst (⊢var (there (here refl) refl)))
+                             (⊢nsuc (⊢snd (⊢var (there (here refl) refl)))))
 
 ------------------------------------------------------------------------
 -- 2. `cCtx-emp`'s PAYLOAD — two fords and nothing else.
@@ -124,8 +125,8 @@ tyPayEmp : {Γ : Ctx} → (Γ ▹ Σ' Nat Nat) ⊢ty
            Σ' (El (⌜Id⌝ ⌜Nat⌝ (fst (var vz)) sCtx))
              (Σ' (El (⌜Id⌝ ⌜Nat⌝ (snd (var (vs vz))) nzero)) Unit)
 tyPayEmp =
-  ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var here))) (toI ⊢sCtx)))
-    (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢var (there here)))) (toI ⊢nzero)))
+  ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (here refl)))) (toI ⊢sCtx)))
+    (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢snd (⊢var (there (here refl) refl)))) (toI ⊢nzero)))
           ty-Unit)
 
 ------------------------------------------------------------------------
@@ -161,18 +162,18 @@ wkEmp =
       (⊢lam ty-Unit
         (fromK
             (⊢jsub (⊢⌜IMu⌝ KnotWf
-                     (⊢ixP (fromI (⊢var here))
-                           (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))
+                     (⊢ixP (fromI (⊢var (here refl)))
+                           (⊢nsuc (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))))
                    (toI ⊢sCtx)
-                   (toI (⊢fst (⊢var (there (there here)))))
-                   (⊢symN (⊢fst (⊢var (there (there here)))) ⊢sCtx
-                          (fordAs (⊢fst (⊢var (there here)))))
+                   (toI (⊢fst (⊢var (there (there (here refl) refl) refl))))
+                   (⊢symN (⊢fst (⊢var (there (there (here refl) refl) refl))) ⊢sCtx
+                          (fordAs (⊢fst (⊢var (there (here refl) refl)))))
                    (toK
                        (fromK
                          (⊢jsub (⊢⌜IMu⌝ KnotWf
-                                  (⊢ixP ⊢sCtx (⊢nsuc (fromI (⊢var here)))))
+                                  (⊢ixP ⊢sCtx (⊢nsuc (fromI (⊢var (here refl))))))
                                 (toI ⊢nzero)
-                                (toI (⊢snd (⊢var (there (there here)))))
-                                (⊢symN (⊢snd (⊢var (there (there here)))) ⊢nzero
-                                       (fordAs (⊢fst (⊢snd (⊢var (there here))))))
+                                (toI (⊢snd (⊢var (there (there (here refl) refl) refl))))
+                                (⊢symN (⊢snd (⊢var (there (there (here refl) refl) refl))) ⊢nzero
+                                       (fordAs (⊢fst (⊢snd (⊢var (there (here refl) refl))))))
                                 (toK ⊢junkCtx))))))))

@@ -92,88 +92,88 @@ open import DirectedHoTT.Examples.Knot.JudgeRows
 
 -- ⊢unit
 aJΛΒ7 : JΛΒ7 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) ∷ Nat
-aJΛΒ7 = ⊢fst (⊢var (there (there (there (there (there (there (there here))))))))
+aJΛΒ7 = ⊢fst (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))
 CJΛΒ7 : ICon ⌊ JΛΒ7 ⌋
 CJΛΒ7 = iκ kJΛΒ7 iι
 W_JΛΒ7 : (D : IDesc) → IConWf D IJudge JΛΒ7 CJΛΒ7
 W_JΛΒ7 D =
   iwf-κ kJΛΒ7 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ IxWf (toI aJΛΒ7))
-           (toMu (⊢snd (⊢snd (⊢snd (⊢snd (⊢snd (⊢var (there (there (there (there (there (there (there here))))))))))))))
-           (⊢jsub (⊢⌜IMu⌝ IxWf (toI (fromI (⊢var here))))
-                  (toI (fromI (⊢var (there (there (there (there (there (there here)))))))))
+           (toMu (⊢snd (⊢snd (⊢snd (⊢snd (⊢snd (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))))))))
+           (⊢jsub (⊢⌜IMu⌝ IxWf (toI (fromI (⊢var (here refl)))))
+                  (toI (fromI (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))))
                   (toI aJΛΒ7)
-                  (⊢symN aJΛΒ7 (fromI (⊢var (there (there (there (there (there (there here))))))))
-                         (fordAs (⊢var (there (there (there (there here)))))))
-                  (toMu (⊢IxNoneK (fromI (⊢var (there (there (there (there (there (there here))))))))))))
+                  (⊢symN aJΛΒ7 (fromI (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)))
+                         (fordAs (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
+                  (toMu (⊢IxNoneK (fromI (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)))))))
     (iwf-ι)
 
 aJΛΒ6 : JΛΒ6 ⊢ fst (var (vs (vs (vs (vs (vs (vs vz))))))) ∷ Nat
-aJΛΒ6 = ⊢fst (⊢var (there (there (there (there (there (there here)))))))
+aJΛΒ6 = ⊢fst (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
 CJΛΒ6 : ICon ⌊ JΛΒ6 ⌋
 CJΛΒ6 = iκ kJΛΒ6 CJΛΒ7
 W_JΛΒ6 : (D : IDesc) → IConWf D IJudge JΛΒ6 CJΛΒ6
 W_JΛΒ6 D =
   iwf-κ kJΛΒ6 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝
-           (toI (⊢fst (⊢snd (⊢snd (⊢snd (⊢snd (⊢var (there (there (there (there (there (there here)))))))))))))
+           (toI (⊢fst (⊢snd (⊢snd (⊢snd (⊢snd (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))))))))
            (⊢jsub ⊢⌜Nat⌝
-                  (toI (fromI (⊢var (there (there (there (there (there here))))))))
+                  (toI (fromI (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))))
                   (toI aJΛΒ6)
-                  (⊢symN aJΛΒ6 (fromI (⊢var (there (there (there (there (there here)))))))
-                         (fordAs (⊢var (there (there (there here))))))
+                  (⊢symN aJΛΒ6 (fromI (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
+                         (fordAs (⊢var (there (there (there (here refl) refl) refl) refl))))
                   (toI (⊢num 1))))
     (W_JΛΒ7 D)
 
 aJΛΒ5 : JΛΒ5 ⊢ fst (var (vs (vs (vs (vs (vs vz)))))) ∷ Nat
-aJΛΒ5 = ⊢fst (⊢var (there (there (there (there (there here))))))
+aJΛΒ5 = ⊢fst (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
 CJΛΒ5 : ICon ⌊ JΛΒ5 ⌋
 CJΛΒ5 = iκ kJΛΒ5 CJΛΒ6
 W_JΛΒ5 : (D : IDesc) → IConWf D IJudge JΛΒ5 CJΛΒ5
 W_JΛΒ5 D =
   iwf-κ kJΛΒ5 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy aJΛΒ5))
-           (toMu (⊢fst (⊢snd (⊢snd (⊢snd (⊢var (there (there (there (there (there here)))))))))))
-           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var here))))
-                  (toI (fromI (⊢var (there (there (there (there here)))))))
+           (toMu (⊢fst (⊢snd (⊢snd (⊢snd (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (here refl)))))
+                  (toI (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
                   (toI aJΛΒ5)
-                  (⊢symN aJΛΒ5 (fromI (⊢var (there (there (there (there here))))))
-                         (fordAs (⊢var (there (there here)))))
-                  (toMu (⊢Ty-UnitKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (there (there (there (there here))))))))))
+                  (⊢symN aJΛΒ5 (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))
+                         (fordAs (⊢var (there (there (here refl) refl) refl))))
+                  (toMu (⊢Ty-UnitKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))))
     (W_JΛΒ6 D)
 
 aJΛΒ4 : JΛΒ4 ⊢ fst (var (vs (vs (vs (vs vz))))) ∷ Nat
-aJΛΒ4 = ⊢fst (⊢var (there (there (there (there here)))))
+aJΛΒ4 = ⊢fst (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
 CJΛΒ4 : ICon ⌊ JΛΒ4 ⌋
 CJΛΒ4 = iκ kJΛΒ4 CJΛΒ5
 W_JΛΒ4 : (D : IDesc) → IConWf D IJudge JΛΒ4 CJΛΒ4
 W_JΛΒ4 D =
   iwf-κ kJΛΒ4 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm aJΛΒ4))
-           (toMu (⊢fst (⊢snd (⊢snd (⊢var (there (there (there (there here)))))))))
-           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var here))))
-                  (toI (fromI (⊢var (there (there (there here))))))
+           (toMu (⊢fst (⊢snd (⊢snd (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (here refl)))))
+                  (toI (fromI (⊢var (there (there (there (here refl) refl) refl) refl))))
                   (toI aJΛΒ4)
-                  (⊢symN aJΛΒ4 (fromI (⊢var (there (there (there here)))))
-                         (fordAs (⊢var (there here))))
-                  (toMu (⊢Tm-unitKv (var (vs (vs (vs vz)))) (fromI (⊢var (there (there (there here)))))))))
+                  (⊢symN aJΛΒ4 (fromI (⊢var (there (there (there (here refl) refl) refl) refl)))
+                         (fordAs (⊢var (there (here refl) refl))))
+                  (toMu (⊢Tm-unitKv (var (vs (vs (vs vz)))) (fromI (⊢var (there (there (there (here refl) refl) refl) refl)))))))
     (W_JΛΒ5 D)
 
 aJΛΒ3 : JΛΒ3 ⊢ fst (var (vs (vs (vs vz)))) ∷ Nat
-aJΛΒ3 = ⊢fst (⊢var (there (there (there here))))
+aJΛΒ3 = ⊢fst (⊢var (there (there (there (here refl) refl) refl) refl))
 CJΛΒ3 : ICon ⌊ JΛΒ3 ⌋
 CJΛΒ3 = iκ kJΛΒ3 CJΛΒ4
 W_JΛΒ3 : (D : IDesc) → IConWf D IJudge JΛΒ3 CJΛΒ3
 W_JΛΒ3 D =
   iwf-κ kJΛΒ3 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ CtxWf (toI aJΛΒ3))
-           (toMu (⊢fst (⊢snd (⊢var (there (there (there here)))))))
-           (⊢jsub (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here))))
-                  (toI (fromI (⊢var (there (there here)))))
+           (toMu (⊢fst (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))))
+           (⊢jsub (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var (here refl)))))
+                  (toI (fromI (⊢var (there (there (here refl) refl) refl))))
                   (toI aJΛΒ3)
-                  (⊢symN aJΛΒ3 (fromI (⊢var (there (there here))))
-                         (fordAs (⊢var here)))
-                  (toMu (fromMu (⊢var (there here))))))
+                  (⊢symN aJΛΒ3 (fromI (⊢var (there (there (here refl) refl) refl)))
+                         (fordAs (⊢var (here refl))))
+                  (toMu (fromMu (⊢var (there (here refl) refl))))))
     (W_JΛΒ4 D)
 
 CJΛΒ2 : ICon ⌊ JΛΒ2 ⌋
@@ -181,7 +181,7 @@ CJΛΒ2 = iκ kJΛΒ2 CJΛΒ3
 W_JΛΒ2 : (D : IDesc) → IConWf D IJudge JΛΒ2 CJΛΒ2
 W_JΛΒ2 D =
   iwf-κ kJΛΒ2 (icw-ford _ _ _)
-    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here))))) (toI (fromI (⊢var (there here)))))
+    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (here refl) refl) refl)))) (toI (fromI (⊢var (there (here refl) refl)))))
     (W_JΛΒ3 D)
 
 CJΛΒ1 : ICon ⌊ JΛΒ1 ⌋
@@ -189,7 +189,7 @@ CJΛΒ1 = iκ kJΛΒ1 CJΛΒ2
 W_JΛΒ1 : (D : IDesc) → IConWf D IJudge JΛΒ1 CJΛΒ1
 W_JΛΒ1 D =
   iwf-κ kJΛΒ1 (icw-imu (var vz) CtxWf)
-    (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here))))
+    (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var (here refl)))))
     (W_JΛΒ2 D)
 
 CJΛΒ0 : ICon ⌊ JΛΒ0 ⌋

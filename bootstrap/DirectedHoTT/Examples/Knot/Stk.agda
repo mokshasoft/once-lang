@@ -218,8 +218,8 @@ stkCHom = lam (lam (lam (stkAK (pair sTm (snd (var (vs (vs vz)))))
            Γ ⊢ stkCHom ∷ imethTy KnotD IPair tagTm-cHom cTm-cHom Nat
 ⊢stkCHom =
   ⊢methLam KnotD IPair tagTm-cHom cTm-cHom KnotWf cTm-cHomWf ⊢IPair ty-Nat
-    (⊢stkAK (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-            (⊢fst (⊢var (there here))))
+    (⊢stkAK (⊢ixP ⊢sTm (⊢snd (⊢var (there (there (here refl) refl) refl))))
+            (⊢fst (⊢var (there (here refl) refl))))
 
 -- ⚠ ROWS 37–40 ARE NO LONGER ONE RUN: `⌜Nat⌝` (37) is `false` for
 --   `stkC?` while 38–40 stay `true`, so the contiguous block splits.
@@ -278,8 +278,8 @@ flatHom = lam (lam (lam (stkCK (pair sTm (snd (var (vs (vs vz)))))
            Γ ⊢ flatHom ∷ imethTy KnotD IPair tagTm-cHom cTm-cHom Nat
 ⊢flatHom =
   ⊢methLam KnotD IPair tagTm-cHom cTm-cHom KnotWf cTm-cHomWf ⊢IPair ty-Nat
-    (⊢stkCK (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
-            (⊢fst (⊢var (there here))))
+    (⊢stkCK (⊢ixP ⊢sTm (⊢snd (⊢var (there (there (here refl) refl) refl))))
+            (⊢fst (⊢var (there (here refl) refl))))
 
 flatMeths : {Γ : Cx} → RTm Γ
 flatMeths =

@@ -59,7 +59,7 @@ open import DirectedHoTT.Examples.Knot.CtxD using ( INat; toKn )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Lib.Wk using ( sub-w-single )
 open import DirectedHoTT.Examples.Knot.Build using ( tmCast; kCast )
-open import normalizer.Syntax.Types using ( sym; trans; cong )
+open import normalizer.Syntax.Types using ( sym; trans; cong; refl )
 
 ------------------------------------------------------------------------
 -- 1. THE FIVE CONSTRUCTORS.  ⚠ `iι` targets the AMBIENT index, so none
@@ -137,7 +137,7 @@ cIxIConWf =
           (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy ⊢nzero))
     (iwf-κ (⌜IMu⌝ KnotD IPair (pair sICon (var (vs (vs vz)))))
            (icw-imu (pair sICon (var (vs (vs vz)))) KnotWf)
-           (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sICon (fromI (⊢var (there (there here))))))
+           (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sICon (fromI (⊢var (there (there (here refl) refl) refl)))))
      iwf-ι))
 
 cIxIDescWf : IConWf IxD INat Θ₀ cIxIDesc

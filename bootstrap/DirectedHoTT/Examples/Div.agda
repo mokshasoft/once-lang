@@ -89,7 +89,7 @@ monusMot i = El (⌜Hom⌝ ⌜Nat⌝ (monusTm (var (vs i)) (var vz)) (var (vs i)
             Γ ⊢ var i ∷ Nat → (Γ ▹ Nat) ⊢ty monusMot i
 ⊢monusMot {i = i} di =
   ty-El (⊢⌜Hom⌝ ⊢⌜Nat⌝
-          (natAsEl (⊢monus (⊢wk di) (⊢var here)))
+          (natAsEl (⊢monus (⊢wk di) (⊢var (here refl))))
           (natAsEl (⊢wk di)))
 
 monusStep : {Γ : Cx} → Var Γ → RTm (Γ ∙ ∙)
@@ -123,7 +123,7 @@ monusStep i =
       ⊢conv
         (⊢ordtr (⊢pred (⊢monus mm kk)) (⊢monus mm kk) mm
                 (⊢pred-le (⊢monus mm kk))
-                (⊢conv (⊢var here)
+                (⊢conv (⊢var (here refl))
                        (red→≅ᵀ (El-homNat (monusTm MM KK) MM))))
         (csymᵀ (red→≅ᵀ (⟶ᵀ*-trans
           (El-homNat (monusTm MM (nsuc KK)) MM)
@@ -132,7 +132,7 @@ monusStep i =
         MM = var (vs (vs i))
         KK = var (vs vz)
         mm = ⊢wk (⊢wk di)
-        kk = ⊢var (there here)
+        kk = ⊢var (there (here refl) refl)
 
 ------------------------------------------------------------------------
 -- ★★★★ 5. THE TERMINATION CERTIFICATE FOR `div`.
@@ -228,7 +228,7 @@ divAuxMot = Π Nat (Π (Hom Nat (var vz) (var (vs vz))) Nat)
 
 ⊢divAuxMot : (Γ₃ ▹ Nat) ⊢ty divAuxMot
 ⊢divAuxMot =
-  ty-Π ty-Nat (ty-Π (ty-Hom ty-Nat (⊢var here) (⊢var (there here))) ty-Nat)
+  ty-Π ty-Nat (ty-Π (ty-Hom ty-Nat (⊢var (here refl)) (⊢var (there (here refl) refl))) ty-Nat)
 
 -- n = 0: `m ≤ 0` forces `m = 0`, and `0 div anything = 0`.
 divZBr : RTm (ε ∙)
@@ -269,25 +269,25 @@ divAuxTm n = natrec divZBr divSBr n
 -- ── the derivations ──────────────────────────────────────────────────
 
 ⊢divZBr : Γ₃ ⊢ divZBr ∷ subTy (single nzero) divAuxMot
-⊢divZBr = ⊢lam ty-Nat (⊢lam (ty-Hom ty-Nat (⊢var here) ⊢nzero) ⊢nzero)
+⊢divZBr = ⊢lam ty-Nat (⊢lam (ty-Hom ty-Nat (⊢var (here refl)) ⊢nzero) ⊢nzero)
 
 ⊢divInnerMot : ((((Γ₃ ▹ Nat) ▹ divAuxMot) ▹ Nat) ▹ Nat) ⊢ty divInnerMot
 ⊢divInnerMot =
-  ty-Π (ty-Hom ty-Nat (⊢var here)
-                      (⊢nsuc (⊢var (there (there (there here))))))
+  ty-Π (ty-Hom ty-Nat (⊢var (here refl))
+                      (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl))))
        ty-Nat
 
 ⊢divInnerZ : (((Γ₃ ▹ Nat) ▹ divAuxMot) ▹ Nat) ⊢ divInnerZ
                ∷ subTy (single nzero) divInnerMot
 ⊢divInnerZ =
-  ⊢lam (ty-Hom ty-Nat ⊢nzero (⊢nsuc (⊢var (there (there here))))) ⊢nzero
+  ⊢lam (ty-Hom ty-Nat ⊢nzero (⊢nsuc (⊢var (there (there (here refl) refl) refl)))) ⊢nzero
 
 -- ★ the heart: the recursive call, and its descent certificate.
 ⊢divInnerS : (((((Γ₃ ▹ Nat) ▹ divAuxMot) ▹ Nat) ▹ Nat) ▹ divInnerMot)
                ⊢ divInnerS ∷ subTy nrs divInnerMot
 ⊢divInnerS =
-  ⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢var (there here)))
-                      (⊢nsuc (⊢var (there (there (there (there here)))))))
+  ⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢var (there (here refl) refl)))
+                      (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
     (⊢natrec ty-Nat ⊢nzero
       (⊢nsuc (⊢app (⊢app iH dArg)
                    -- ★★ THE DESCENT: `j ∸ k ≤ j` composed with `j ≤ n`
@@ -295,19 +295,19 @@ divAuxTm n = natrec divZBr divSBr n
                    (⊢ordtr dArg dJ dN
                            (⊢monus-le dJ dK)
                            (⊢conv dLe (red→≅ᵀ (stepᵀ (Hom-Nat-ss _ _) doneᵀ))))))
-      (⊢monus (⊢nsuc (⊢var (there (there here))))
-              (⊢var (there (there (there (there (there (there here))))))))) 
+      (⊢monus (⊢nsuc (⊢var (there (there (here refl) refl) refl)))
+              (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)))) 
   where
-    iH   = ⊢var (there (there (there (there (there (there here))))))
-    dJ   = ⊢var (there (there (there (there here))))
-    dN   = ⊢var (there (there (there (there (there (there (there here)))))))
-    dK   = ⊢var (there (there (there (there (there (there (there (there here))))))))
-    dLe  = ⊢var (there (there here))
+    iH   = ⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)
+    dJ   = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
+    dN   = ⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)
+    dK   = ⊢var (there (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl) refl)
+    dLe  = ⊢var (there (there (here refl) refl) refl)
     dArg = ⊢monus dJ dK
 
 ⊢divSBr : ((Γ₃ ▹ Nat) ▹ divAuxMot) ⊢ divSBr ∷ subTy nrs divAuxMot
 ⊢divSBr =
-  ⊢lam ty-Nat (⊢natrec ⊢divInnerMot ⊢divInnerZ ⊢divInnerS (⊢var here))
+  ⊢lam ty-Nat (⊢natrec ⊢divInnerMot ⊢divInnerZ ⊢divInnerS (⊢var (here refl)))
 
 -- ★★ the bounded auxiliary for `div`.
 ⊢divAux : {n : RTm ⌊ Γ₃ ⌋} → Γ₃ ⊢ n ∷ Nat →

@@ -77,7 +77,7 @@ symTm c t p = jsub (⌜Id⌝ (renTm vs c) (var vz) (renTm vs t)) p (idrefl c t)
 ⊢sym {c = c} {t = t} {u = u} {p = p} dc dt du dp =
   ⊢conv
     (⊢-cast (cong El (⌜Id⌝-cong₃ (wk-cancel-tm u c) refl (wk-cancel-tm u t)))
-      (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢var here) (⊢wk dt))
+      (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢var (here refl)) (⊢wk dt))
              dt du dp
              (⊢-cast (cong El (sym (⌜Id⌝-cong₃ (wk-cancel-tm t c) refl
                                                (wk-cancel-tm t t))))
@@ -109,7 +109,7 @@ transTm c a q p = jsub (⌜Id⌝ (renTm vs c) (renTm vs a) (var vz)) q p
 ⊢transId {c = c} {a = a} {t = t} {u = u} dc da dt du dp dq =
   ⊢conv
     (⊢-cast (cong El (⌜Id⌝-cong₃ (wk-cancel-tm u c) (wk-cancel-tm u a) refl))
-      (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢wk da) (⊢var here))
+      (⊢jsub (⊢⌜Id⌝ (⊢wk dc) (⊢wk da) (⊢var (here refl)))
              dt du dq
              (⊢-cast (cong El (sym (⌜Id⌝-cong₃ (wk-cancel-tm t c)
                                                (wk-cancel-tm t a) refl)))
@@ -169,7 +169,7 @@ idtohomTm c t p = jsub (⌜Hom⌝ (renTm vs c) (renTm vs t) (var vz)) p (hrefl c
 ⊢idtohom {c = c} {t = t} {u = u} dc dt du dp =
   ⊢conv
     (⊢-cast (cong El (⌜Hom⌝-cong₃ (wk-cancel-tm u c) (wk-cancel-tm u t) refl))
-      (⊢jsub (⊢⌜Hom⌝ (⊢wk dc) (⊢wk dt) (⊢var here))
+      (⊢jsub (⊢⌜Hom⌝ (⊢wk dc) (⊢wk dt) (⊢var (here refl)))
              dt du dp
              (⊢-cast (cong El (sym (⌜Hom⌝-cong₃ (wk-cancel-tm t c)
                                                 (wk-cancel-tm t t) refl)))

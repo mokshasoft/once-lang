@@ -13,6 +13,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhsRho where
+open import normalizer.Syntax.Types using ( refl )
 
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; snd; Π; Nat; εwkTy; IMu )
@@ -69,21 +70,21 @@ ihsRho = lam (lam (lam (lam (lam (lam (lam
 ⊢ihsRho =
   ⊢methLam KnotD IPair tagDCon-rho cDCon-rho KnotWf cDCon-rhoWf ⊢IPair ⊢ihsMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var here)))
-        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
-          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
-            (⊢ihsStep (⊢var (there (there (there here))))
-                      (⊢var (there (there here))) (⊢var (there here)) (⊢var here)
+      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var (here refl))))
+        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (here refl) refl))))
+          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there (here refl) refl) refl))))
+            (⊢ihsStep (⊢var (there (there (there (here refl) refl) refl) refl))
+                      (⊢var (there (there (here refl) refl) refl)) (⊢var (there (here refl) refl)) (⊢var (here refl))
                (⊢app (⊢app (⊢app (⊢app
                         (⊢ihHere {D = KnotD} {I = IPair}
                           {σ = isingle (var (vs (vs (vs (vs (vs (vs vz)))))))}
                           {j = pair sDCon (snd (var vz))}
                           (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) sDCon) iι)
                           {q = var (vs (vs (vs (vs (vs vz)))))} {M = ihsMotK}
-                          (⊢var (there (there (there (there here))))))
-                        (⊢var (there (there (there here)))))
-                        (⊢var (there (there here))))
-                        (⊢var (there here)))
-                     (⊢Tm-sndKv (var (vs (vs (vs vz)))) (⊢var (there (there (there here)))) (⊢var here)))))))) 
+                          (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))
+                        (⊢var (there (there (there (here refl) refl) refl) refl)))
+                        (⊢var (there (there (here refl) refl) refl)))
+                        (⊢var (there (here refl) refl)))
+                     (⊢Tm-sndKv (var (vs (vs (vs vz)))) (⊢var (there (there (there (here refl) refl) refl) refl)) (⊢var (here refl))))))))) 
 
 ------------------------------------------------------------------------

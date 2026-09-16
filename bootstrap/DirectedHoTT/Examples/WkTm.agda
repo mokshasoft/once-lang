@@ -21,7 +21,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.WkTm where
-open import normalizer.Syntax.Types using ( _≡_; cong )
+open import normalizer.Syntax.Types using ( _≡_; cong; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
@@ -52,7 +52,7 @@ wkTmMot = IMu TmD INat (nsuc (var (vs vz)))
 
 ⊢wkTmMot : {Γ : Ctx} →
            ((Γ ▹ εwkTy INat) ▹ IMu TmD INat (var vz)) ⊢ty wkTmMot
-⊢wkTmMot = ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there here)))))
+⊢wkTmMot = ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))
 
 ------------------------------------------------------------------------
 -- 2. THE THREE METHODS.  ⚠ payload ⊢ty's come from `Scoped` — CONCRETE,
@@ -70,9 +70,9 @@ wkVar = lam (lam (lam
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayVar
       (⊢lam ty-Unit
-        (⊢tvar (toI (⊢nsuc (fromI (⊢var (there (there here))))))
-               (⊢wkFinTm (⊢var (there (there here)))
-                         (fromFin (⊢fst (⊢var (there here))))))))
+        (⊢tvar (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))
+               (⊢wkFinTm (⊢var (there (there (here refl) refl) refl))
+                         (fromFin (⊢fst (⊢var (there (here refl) refl))))))))
 
 -- lam : Tm (suc n) → Tm n   ↦   lam ⟨ih⟩ : Tm (suc n)
 wkLam : {Γ : Cx} → RTm Γ
@@ -82,10 +82,10 @@ wkLam = lam (lam (lam (tlam (fst (var vz)))))
 ⊢wkLam =
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayLam
-      (⊢lam (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (⊢nsuc (fromI (⊢var (there here)))))))
+      (⊢lam (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (⊢nsuc (fromI (⊢var (there (here refl) refl)))))))
                   ty-Unit)
-        (⊢tlam (toI (⊢nsuc (fromI (⊢var (there (there here))))))
-               (⊢fst (⊢var here)))))
+        (⊢tlam (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))
+               (⊢fst (⊢var (here refl))))))
 
 -- app : Tm n → Tm n → Tm n   ↦   app ⟨ih₁⟩ ⟨ih₂⟩ : Tm (suc n)
 wkApp : {Γ : Cx} → RTm Γ
@@ -95,12 +95,12 @@ wkApp = lam (lam (lam (tapp (fst (var vz)) (fst (snd (var vz))))))
 ⊢wkApp =
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayApp
-      (⊢lam (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there here))))))
-                  (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
+      (⊢lam (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (here refl) refl))))))
+                  (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))
                         ty-Unit))
-        (⊢tapp (toI (⊢nsuc (fromI (⊢var (there (there here))))))
-               (⊢fst (⊢var here))
-               (⊢fst (⊢snd (⊢var here))))))
+        (⊢tapp (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))
+               (⊢fst (⊢var (here refl)))
+               (⊢fst (⊢snd (⊢var (here refl)))))))
 
 ------------------------------------------------------------------------
 -- 3. ★★★ `wkTm` ITSELF.
@@ -110,22 +110,22 @@ tyΠVar : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat zero varC wkTmMot
 tyΠVar = ty-Π (ty-El ⊢⌜Nat⌝)
            (ty-Π tyPayVar
              (ty-Π ty-Unit
-               (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (there here)))))))))
+               (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))))
 
 tyΠLam : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat (suc zero) lamC wkTmMot
 tyΠLam = ty-Π (ty-El ⊢⌜Nat⌝)
            (ty-Π tyPayLam
-             (ty-Π (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (⊢nsuc (fromI (⊢var (there here)))))))
+             (ty-Π (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (⊢nsuc (fromI (⊢var (there (here refl) refl)))))))
                          ty-Unit)
-               (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (there here)))))))))
+               (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))))
 
 tyΠApp : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat (suc (suc zero)) appC wkTmMot
 tyΠApp = ty-Π (ty-El ⊢⌜Nat⌝)
            (ty-Π tyPayApp
-             (ty-Π (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there here))))))
-                         (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
+             (ty-Π (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (here refl) refl))))))
+                         (ty-Σ (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))
                                ty-Unit))
-               (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (there here)))))))))
+               (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))))
 
 wkTmMeths : {Γ : Cx} → RTm Γ
 wkTmMeths = pair wkVar (pair wkLam (pair wkApp unit))

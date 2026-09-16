@@ -128,18 +128,18 @@ fzeroWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs vz)) (nsuc (var vz)))
           (icw-ford ⌜Nat⌝ (var (vs vz)) (nsuc (var vz)))
-          (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there here))
-                        (toI (⊢nsuc (fromI (⊢var here)))))
+          (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (here refl) refl))
+                        (toI (⊢nsuc (fromI (⊢var (here refl))))))
           iwf-ι)
 
 fsucWf : IConWf FinD INat (◇ ▹ INat) fsucC
 fsucWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-   (iwf-ρ (var vz) (⊢var here)
+   (iwf-ρ (var vz) (⊢var (here refl))
     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) (nsuc (var (vs vz))))
            (icw-ford ⌜Nat⌝ (var (vs (vs vz))) (nsuc (var (vs vz))))
-           (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here)))
-                         (toI (⊢nsuc (fromI (⊢var (there here))))))
+           (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there (here refl) refl) refl))
+                         (toI (⊢nsuc (fromI (⊢var (there (here refl) refl))))))
            iwf-ι))
 
 FinWf : IDescWf INat FinD
@@ -169,7 +169,7 @@ reflS1 = ⊢conv (⊢idrefl ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero)))
 tyFz : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ty
        Σ' (El (⌜Id⌝ ⌜Nat⌝ (nsuc nzero) (nsuc (var vz)))) Unit
 tyFz = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero))
-                           (toI (⊢nsuc (fromI (⊢var here))))))
+                           (toI (⊢nsuc (fromI (⊢var (here refl)))))))
             ty-Unit
 
 ⊢fz : {Γ : Ctx} → Γ ⊢ fz ∷ Fin (nsuc nzero)
@@ -217,7 +217,7 @@ Tm n = IMu TmD INat n
 varWf : IConWf TmD INat (◇ ▹ INat) varC
 varWf = iwf-κ (⌜IMu⌝ FinD INat (var vz))
               (icw-imu (var vz) FinWf)
-              (⊢⌜IMu⌝ FinWf (⊢var here))
+              (⊢⌜IMu⌝ FinWf (⊢var (here refl)))
               iwf-ι
 
 -- ⚠ the ONE obligation that is new here: the shifted index must TYPE.
@@ -225,11 +225,11 @@ varWf = iwf-κ (⌜IMu⌝ FinD INat (var vz))
 --   pays off, and why `Nat` had to be in `U` (stage C) before a syntax
 --   could be described at all.
 lamWf : IConWf TmD INat (◇ ▹ INat) lamC
-lamWf = iwf-ρ (nsuc (var vz)) (toI (⊢nsuc (fromI (⊢var here)))) iwf-ι
+lamWf = iwf-ρ (nsuc (var vz)) (toI (⊢nsuc (fromI (⊢var (here refl))))) iwf-ι
 
 appWf : IConWf TmD INat (◇ ▹ INat) appC
-appWf = iwf-ρ (var vz) (⊢var here)
-         (iwf-ρ (var (vs vz)) (⊢var (there here)) iwf-ι)
+appWf = iwf-ρ (var vz) (⊢var (here refl))
+         (iwf-ρ (var (vs vz)) (⊢var (there (here refl) refl)) iwf-ι)
 
 TmWf : IDescWf INat TmD
 TmWf = idwf-cons varWf (idwf-cons lamWf (idwf-cons appWf idwf-nil))
@@ -315,18 +315,18 @@ size n t = ielim TmD n msize t
 -- the three payload types, under the method's index binder
 tyPayVar : {Γ : Ctx} →
            (Γ ▹ El ⌜Nat⌝) ⊢ty Σ' (El (⌜IMu⌝ FinD INat (var vz))) Unit
-tyPayVar = ty-Σ (ty-El (⊢⌜IMu⌝ FinWf (⊢var here))) ty-Unit
+tyPayVar = ty-Σ (ty-El (⊢⌜IMu⌝ FinWf (⊢var (here refl)))) ty-Unit
 
 tyPayLam : {Γ : Ctx} →
            (Γ ▹ El ⌜Nat⌝) ⊢ty Σ' (IMu TmD INat (nsuc (var vz))) Unit
-tyPayLam = ty-Σ (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var here))))) ty-Unit
+tyPayLam = ty-Σ (ty-IMu TmWf (toI (⊢nsuc (fromI (⊢var (here refl)))))) ty-Unit
 
 tyPayApp : {Γ : Ctx} →
            (Γ ▹ El ⌜Nat⌝) ⊢ty
            Σ' (IMu TmD INat (var vz))
               (Σ' (IMu TmD INat (var (vs vz))) Unit)
-tyPayApp = ty-Σ (ty-IMu TmWf (⊢var here))
-             (ty-Σ (ty-IMu TmWf (⊢var (there here))) ty-Unit)
+tyPayApp = ty-Σ (ty-IMu TmWf (⊢var (here refl)))
+             (ty-Σ (ty-IMu TmWf (⊢var (there (here refl) refl))) ty-Unit)
 
 ⊢msize-var : {Γ : Ctx} →
              Γ ⊢ msize-var ∷
@@ -342,7 +342,7 @@ tyPayApp = ty-Σ (ty-IMu TmWf (⊢var here))
 ⊢msize-lam =
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayLam
-      (⊢lam (ty-Σ ty-Nat ty-Unit) (⊢nsuc (⊢fst (⊢var here)))))
+      (⊢lam (ty-Σ ty-Nat ty-Unit) (⊢nsuc (⊢fst (⊢var (here refl))))))
 
 ⊢msize-app : {Γ : Ctx} →
              Γ ⊢ msize-app ∷
@@ -354,7 +354,7 @@ tyPayApp = ty-Σ (ty-IMu TmWf (⊢var here))
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayApp
       (⊢lam (ty-Σ ty-Nat (ty-Σ ty-Nat ty-Unit))
-        (⊢nsuc (⊢plus (⊢fst (⊢var here)) (⊢fst (⊢snd (⊢var here)))))))
+        (⊢nsuc (⊢plus (⊢fst (⊢var (here refl))) (⊢fst (⊢snd (⊢var (here refl))))))))
 
 -- ⚠ CONTEXT-GENERIC, and not decoratively so.  `AmTΠ`'s measure premise
 --   is `dm : (Δ ▹ A) ⊢ m ∷ Nat` — the measure is typed UNDER the carrier's

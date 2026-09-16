@@ -22,12 +22,12 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Pw where
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
-open import normalizer.Syntax.Types using ( _≡_; sym )
+open import normalizer.Syntax.Types using ( _≡_; sym; refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; fst; nzero; nsuc; Nat
         ; ICon; IDesc; εwkTy; pair; unit; ielim; Σ'; _◂_ )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-ty )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-ty; wkR⊢ )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there
         ; ⊢nzero; ⊢nsuc; ⊢fst; ty-Nat; IConWf; imethTy
@@ -73,7 +73,7 @@ pwHom = lam (lam (lam (fst (var vz))))
 ⊢pwHom : {Γ : Ctx} → Γ ⊢ pwHom ∷ imethTy KnotD IPair tagTm-cHom cTm-cHom Nat
 ⊢pwHom =
   ⊢methLam KnotD IPair tagTm-cHom cTm-cHom KnotWf cTm-cHomWf ⊢IPair ty-Nat
-           (⊢fst (⊢var here))
+           (⊢fst (⊢var (here refl)))
 
 ------------------------------------------------------------------------
 -- ★★★ THE TUPLE — IN SEGMENTS, and that is what avoids the hard part.
@@ -148,17 +148,17 @@ pwMid = pair pwOne (pair pwZero (pair pwHom pwTail))
 ⊢pwMid : {Γ : Ctx} → Γ ⊢ pwMid ∷ imethsTyFrom KnotD IPair Nat 20 D20
 ⊢pwMid =
   ⊢pair (ren-ty (imethsTyFrom-wf KnotD IPair 21 D21 KnotWf
-                   (idwfDrop spl21 KnotWf) spl21 ⊢IPair ty-Nat) there)
+                   (idwfDrop spl21 KnotWf) spl21 ⊢IPair ty-Nat) wkR⊢)
         ⊢pwOne
         (⊢-cast (sym (wk-singleTy {v = pwOne}
                         (imethsTyFrom KnotD IPair Nat 21 D21)))
           (⊢pair (ren-ty (imethsTyFrom-wf KnotD IPair 22 D22 KnotWf
-                            (idwfDrop spl22 KnotWf) spl22 ⊢IPair ty-Nat) there)
+                            (idwfDrop spl22 KnotWf) spl22 ⊢IPair ty-Nat) wkR⊢)
                  (⊢pwZero tagTm-cSg cTm-cSg cTm-cSgWf)
                  (⊢-cast (sym (wk-singleTy {v = pwZero}
                                  (imethsTyFrom KnotD IPair Nat 22 D22)))
                    (⊢pair (ren-ty (imethsTyFrom-wf KnotD IPair 23 D23 KnotWf
-                                     wf23 spl23 ⊢IPair ty-Nat) there)
+                                     wf23 spl23 ⊢IPair ty-Nat) wkR⊢)
                           ⊢pwHom
                           (⊢-cast (sym (wk-singleTy {v = pwHom}
                                           (imethsTyFrom KnotD IPair Nat 23 D23)))

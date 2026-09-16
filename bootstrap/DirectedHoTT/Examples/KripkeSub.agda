@@ -25,7 +25,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.KripkeSub where
-open import normalizer.Syntax.Types using ( _≡_; cong; sym )
+open import normalizer.Syntax.Types using ( _≡_; cong; sym; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; app; fst; snd; pair; unit
@@ -64,9 +64,9 @@ sMot = Π Nat (Π (Π (IMu FinD INat (var (vs (vs vz))))
         ((Γ ▹ εwkTy INat) ▹ IMu TmD INat (var vz)) ⊢ty sMot
 ⊢sMot =
   ty-Π ty-Nat
-    (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there here))))
-                (ty-IMu TmWf (toI (⊢var (there here)))))
-          (ty-IMu TmWf (toI (⊢var (there here)))))
+    (ty-Π (ty-Π (ty-IMu FinWf (⊢var (there (there (here refl) refl) refl)))
+                (ty-IMu TmWf (toI (⊢var (there (here refl) refl)))))
+          (ty-IMu TmWf (toI (⊢var (there (here refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ⚠ A `Fin` ZERO AT A **VARIABLE** DEPTH, which `Examples/Scoped` does
@@ -95,7 +95,7 @@ tyFzv : {Γ : Ctx} {n : RTm ⌊ Γ ⌋} → Γ ⊢ n ∷ El ⌜Nat⌝ →
         (Γ ▹ El ⌜Nat⌝) ⊢ty
         Σ' (El (⌜Id⌝ ⌜Nat⌝ (nsuc (renTm vs n)) (nsuc (var vz)))) Unit
 tyFzv dn = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢nsuc (fromI (⊢wk dn))))
-                               (toI (⊢nsuc (fromI (⊢var here))))))
+                               (toI (⊢nsuc (fromI (⊢var (here refl)))))))
                 ty-Unit
 
 -- ⚠ THE ROUND TRIP DOES NOT COMPUTE AT A VARIABLE DEPTH.  The payload's
@@ -148,20 +148,20 @@ sLam = lam (lam (lam (lam (lam
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayLam
       (⊢lam (ty-Σ (ty-Π ty-Nat
-                     (ty-Π (ty-Π (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
-                                 (ty-IMu TmWf (toI (⊢var (there here)))))
-                           (ty-IMu TmWf (toI (⊢var (there here))))))
+                     (ty-Π (ty-Π (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))
+                                 (ty-IMu TmWf (toI (⊢var (there (here refl) refl)))))
+                           (ty-IMu TmWf (toI (⊢var (there (here refl) refl))))))
                   ty-Unit)
         (⊢lam ty-Nat
-          (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there (there here)))))
-                      (ty-IMu TmWf (toI (⊢var (there here)))))
+          (⊢lam (ty-Π (ty-IMu FinWf (⊢var (there (there (there (here refl) refl) refl) refl)))
+                      (ty-IMu TmWf (toI (⊢var (there (here refl) refl)))))
             -- ★ the IH at `suc n`, then `tlam` back down to `Tm n`
-            (⊢tlam (toI (⊢var (there here)))
-              (⊢app (⊢app (⊢fst (⊢var (there (there here))))
-                          (⊢nsuc (⊢var (there here))))
-                    (⊢lam (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there (there (there here)))))))))
-                          (⊢tvar (toI (⊢nsuc (⊢var (there (there here)))))
-                                 (⊢fzv (toI (⊢var (there (there here)))))))))))))
+            (⊢tlam (toI (⊢var (there (here refl) refl)))
+              (⊢app (⊢app (⊢fst (⊢var (there (there (here refl) refl) refl)))
+                          (⊢nsuc (⊢var (there (here refl) refl))))
+                    (⊢lam (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))))
+                          (⊢tvar (toI (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
+                                 (⊢fzv (toI (⊢var (there (there (here refl) refl) refl))))))))))))
 
 
 ------------------------------------------------------------------------

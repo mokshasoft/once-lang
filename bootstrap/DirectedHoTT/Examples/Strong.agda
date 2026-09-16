@@ -88,10 +88,10 @@ StepT = Π Nat (Π IHT (El (app (var (vs (vs vz))) (var (vs vz)))))
 
 -- the two hypotheses, as variables.
 ⊢cP : Γ₁ ⊢ var (vs vz) ∷ Π Nat U
-⊢cP = ⊢var (there here)
+⊢cP = ⊢var (there (here refl) refl)
 
 ⊢stp : Γ₁ ⊢ var vz ∷ renTy vs StepT
-⊢stp = ⊢var here
+⊢stp = ⊢var (here refl)
 
 -- ── the `natrec` motive: `(m : Nat) → m ≤ n → P m`, with vz = n ──────
 auxMot : RTy (ε ∙ ∙ ∙)
@@ -126,28 +126,28 @@ auxTm n = natrec zBr sBr n
 ⊢auxMot : (Γ₁ ▹ Nat) ⊢ty auxMot
 ⊢auxMot =
   ty-Π ty-Nat
-    (ty-Π (ty-Hom ty-Nat (⊢var here) (⊢var (there here)))
-          (ty-El (⊢app (⊢var (there (there (there (there here)))))
-                       (⊢var (there here)))))
+    (ty-Π (ty-Hom ty-Nat (⊢var (here refl)) (⊢var (there (here refl) refl)))
+          (ty-El (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                       (⊢var (there (here refl) refl)))))
 
 -- ★★ stage D and stage E working together, and the branch the older §4
 --    wrongly said needed stage D alone.
 ⊢zBr : Γ₁ ⊢ zBr ∷ subTy (single nzero) auxMot
 ⊢zBr =
   ⊢lam ty-Nat
-    (⊢lam (ty-Hom ty-Nat (⊢var here) ⊢nzero)
-      (⊢app (⊢app (⊢var (there (there here))) (⊢var (there here)))
+    (⊢lam (ty-Hom ty-Nat (⊢var (here refl)) ⊢nzero)
+      (⊢app (⊢app (⊢var (there (there (here refl) refl) refl)) (⊢var (there (here refl) refl)))
             (⊢lam ty-Nat
-              (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢var here))
-                                   (⊢var (there (there here))))
+              (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢var (here refl)))
+                                   (⊢var (there (there (here refl) refl) refl)))
                 (⊢absurd
-                  (⊢app (⊢var (there (there (there (there (there here))))))
-                        (⊢var (there here)))
-                  (⊢conv (⊢ordtr (⊢nsuc (⊢var (there here)))
-                                 (⊢var (there (there (there here))))
+                  (⊢app (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
+                        (⊢var (there (here refl) refl)))
+                  (⊢conv (⊢ordtr (⊢nsuc (⊢var (there (here refl) refl)))
+                                 (⊢var (there (there (there (here refl) refl) refl) refl))
                                  ⊢nzero
-                                 (⊢var here)
-                                 (⊢var (there (there here))))
+                                 (⊢var (here refl))
+                                 (⊢var (there (there (here refl) refl) refl)))
                          (red→≅ᵀ (stepᵀ (Hom-Nat-sz (var (vs vz)))
                                         doneᵀ))))))))
 
@@ -159,20 +159,20 @@ auxTm n = natrec zBr sBr n
 ⊢sBr : ((Γ₁ ▹ Nat) ▹ auxMot) ⊢ sBr ∷ subTy nrs auxMot
 ⊢sBr =
   ⊢lam ty-Nat
-    (⊢lam (ty-Hom ty-Nat (⊢var here) (⊢nsuc (⊢var (there (there here)))))
-      (⊢app (⊢app (⊢var (there (there (there (there here)))))
-                  (⊢var (there here)))
+    (⊢lam (ty-Hom ty-Nat (⊢var (here refl)) (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
+      (⊢app (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                  (⊢var (there (here refl) refl)))
             (⊢lam ty-Nat
-              (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢var here))
-                                   (⊢var (there (there here))))
-                (⊢app (⊢app (⊢var (there (there (there (there here)))))
-                            (⊢var (there here)))
-                      (⊢conv (⊢ordtr (⊢nsuc (⊢var (there here)))
-                                     (⊢var (there (there (there here))))
+              (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢var (here refl)))
+                                   (⊢var (there (there (here refl) refl) refl)))
+                (⊢app (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
+                            (⊢var (there (here refl) refl)))
+                      (⊢conv (⊢ordtr (⊢nsuc (⊢var (there (here refl) refl)))
+                                     (⊢var (there (there (there (here refl) refl) refl) refl))
                                      (⊢nsuc (⊢var (there (there (there
-                                       (there (there here)))))))
-                                     (⊢var here)
-                                     (⊢var (there (there here))))
+                                       (there (there (here refl) refl) refl) refl) refl) refl)))
+                                     (⊢var (here refl))
+                                     (⊢var (there (there (here refl) refl) refl)))
                              (red→≅ᵀ (stepᵀ (Hom-Nat-ss
                                               (var (vs vz))
                                               (var (vs (vs (vs (vs (vs vz)))))))

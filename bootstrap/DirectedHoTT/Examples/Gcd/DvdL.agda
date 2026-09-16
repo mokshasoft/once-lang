@@ -48,8 +48,8 @@ private
   B₃ = plusTm uA₃ uB₃
 
   ⊢B₃ : {Γ : Ctx} → ΘI₃ Γ ⊢ B₃ ∷ Nat
-  ⊢B₃ = ⊢plus (⊢nsuc (⊢var (there here)))
-              (⊢nsuc (⊢var (there (there (there here)))))
+  ⊢B₃ = ⊢plus (⊢nsuc (⊢var (there (here refl) refl)))
+              (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))
 
   F₃ : {Γ : Cx} → RTm (Γ ∙ ∙ ∙ ∙ ∙)
   F₃ = subTm (single nzero) f₃
@@ -68,10 +68,10 @@ private
   B₈ = w (w (w uB₃))
 
   dA₈ : {Γ : Ctx} → Θ₃L Γ ⊢ A₈ ∷ Nat
-  dA₈ = ⊢nsuc (⊢var (there (there (there (there here)))))
+  dA₈ = ⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
 
   dB₈ : {Γ : Ctx} → Θ₃L Γ ⊢ B₈ ∷ Nat
-  dB₈ = ⊢nsuc (⊢var (there (there (there (there (there (there here)))))))
+  dB₈ = ⊢nsuc (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
 
   dPAIR : {Γ : Ctx} → Θ₃L Γ ⊢ w (w PAIRᶻ) ∷ PairT
   dPAIR = ⊢wk (⊢wk ⊢PAIRᶻ)
@@ -81,7 +81,7 @@ private
   dCERT = ⊢wk (⊢wk ⊢CERTᶻ)
 
   dIH : {Γ : Ctx} → Θ₃L Γ ⊢ var (vs vz) ∷ gcdIH (w (w (w B₃)))
-  dIH = ⊢-cast (gcdIH-w² (w B₃)) (⊢var (there here))
+  dIH = ⊢-cast (gcdIH-w² (w B₃)) (⊢var (there (here refl) refl))
 
   -- the IH's value at the recursive call
   dV : {Γ : Ctx} → Θ₃L Γ ⊢ app (app (var (vs vz)) (w (w PAIRᶻ))) (w (w CERTᶻ)) ∷ Nat
@@ -94,12 +94,12 @@ private
             ∷ El (QCode A₈ (monusTm B₈ A₈)
                     (app (app (var (vs vz)) (w (w PAIRᶻ))) (w (w CERTᶻ))))
   dcall =
-    ⊢conv (indPWElim (⊢-cast (indPWT-w (w (w B₃)) (var vz)) (⊢var here))
+    ⊢conv (indPWElim (⊢-cast (indPWT-w (w (w B₃)) (var vz)) (⊢var (here refl)))
                      dPAIR dCERT)
           (QCode-convU _ (step (βfst _ _) done) (step (βsnd _ _) done))
 
   dEq : {Γ : Ctx} → Θ₃L Γ ⊢ var (vs (vs vz)) ∷ IdN (monusTm A₈ B₈) nzero
-  dEq = ⊢var (there (there here))
+  dEq = ⊢var (there (there (here refl) refl) refl)
 
   inner : {Γ : Ctx} → Prv (Θ₃L Γ) (El (QCode A₈ B₈
                                         (app (w (w (w F₃))) (var (vs vz)))))
@@ -109,10 +109,10 @@ private
 
 leafI₃z : {Γ : Ctx} → Prv (ΘI₃ Γ) (subTy (single nzero) MI₃)
 leafI₃z =
-  prv _ (⊢lam (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there here)))
-                              (⊢nsuc (⊢var (there (there (there here))))))
+  prv _ (⊢lam (⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (here refl) refl)))
+                              (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl))))
                       ⊢nzero)
           (⊢lam (⊢gcdIH (⊢wk ⊢B₃))
             (⊢lam (⊢indPWT (⊢wk (⊢wk ⊢B₃))
-                           (⊢-cast (gcdIH-w (w B₃)) (⊢var here)))
+                           (⊢-cast (gcdIH-w (w B₃)) (⊢var (here refl))))
                   (prvOk inner))))

@@ -22,6 +22,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AckKernel where
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; Nat; RTm; var; vz; vs; nzero; nsuc; natrec; lam; app; Π )
 open import DirectedHoTT.Spec.Typing
@@ -51,10 +52,10 @@ ackTm = lam (natrec (lam (nsuc (var vz))) ackStep (var vz))
 ⊢ack =
   ⊢lam ty-Nat
     (⊢natrec (ty-Π ty-Nat ty-Nat)
-             (⊢lam ty-Nat (⊢nsuc (⊢var here)))
+             (⊢lam ty-Nat (⊢nsuc (⊢var (here refl))))
              (⊢lam ty-Nat
                (⊢natrec ty-Nat
-                        (⊢app (⊢var (there here)) (⊢nsuc ⊢nzero))
-                        (⊢app (⊢var (there (there (there here)))) (⊢var here))
-                        (⊢var here)))
-             (⊢var here))
+                        (⊢app (⊢var (there (here refl) refl)) (⊢nsuc ⊢nzero))
+                        (⊢app (⊢var (there (there (there (here refl) refl) refl) refl)) (⊢var (here refl)))
+                        (⊢var (here refl))))
+             (⊢var (here refl)))

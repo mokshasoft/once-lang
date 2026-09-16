@@ -72,7 +72,7 @@ open import DirectedHoTT.Spec.Syntax
         ; _∈ID_; hereID; thereID; ilookupD; εwkTy; εwk-ren )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; wk-single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢pair; ⊢fst; ⊢snd; ⊢unit; ⊢conv
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢pair; ⊢fst; ⊢snd; ⊢unit; ⊢conv
         ; ty-El; ty-Unit; ty-Σ; ty-Π; ty-IMu
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
@@ -81,7 +81,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⟶_; βfst; βsnd; ξ-pairˡ; ξ-pairʳ; ξ-nsuc )
 open import DirectedHoTT.Metatheory.TySub
   using ( ⊢-cast; Sub⊢; Sub⊢-ext; iext-Sub⊢; isingle-Sub⊢; ren-ty
-        ; iihTy-wf; iihTy-ren; iihTy-cong )
+        ; iihTy-wf; iihTy-ren; iihTy-cong; wkR⊢ )
 open import DirectedHoTT.Lib.IPay
   using ( ipayTy-wf; imethsTyFromNat-wf
         ; Split; spl-nil; spl-cons; spl-mem; spl-look; spl-step )

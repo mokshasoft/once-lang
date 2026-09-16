@@ -37,7 +37,7 @@ open import DirectedHoTT.Spec.Typing
         ; ty-Π; ty-Nat; ty-IMu; IConWf; imethTy
         ; single; wk-single; iinst )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; sym )
+open import normalizer.Syntax.Types using ( cong; sym; refl )
 open import DirectedHoTT.Lib.IPay using ( ⊢methLam )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.Wk using ( towerA; towerJ⁵ )
@@ -63,13 +63,13 @@ imethsTyMotK =
                 ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty imethsTyMotK
 ⊢imethsTyMotK =
   ty-Π ty-Nat
-   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var here)))
+   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (here refl))))
     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
      (ty-Π (ty-IMu KnotWf
-              (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
+              (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there (here refl) refl) refl))))))
       (ty-Π ty-Nat
          (ty-IMu KnotWf
-            (⊢ixP ⊢sTy (⊢var (there (there (there (there here)))))))))))
+            (⊢ixP ⊢sTy (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))))))
 
 -- ★ for `cIDesc-nil` the junk IS the answer: `Unit`.
 imethsTyJunk : {Γ : Cx} → RTm Γ
@@ -81,13 +81,13 @@ imethsTyJunk = lam (lam (lam (lam (lam (lam (lam (lam Ty-UnitK)))))))
 ⊢imethsTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢imethsTyMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var here)))
+      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (here refl))))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
           (⊢lam (ty-IMu KnotWf
-                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
+                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there (here refl) refl) refl))))))
             (⊢lam ty-Nat
               (⊢Ty-UnitKv _
-                 (⊢var (there (there (there (there here))))))))))) 
+                 (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))))) 
 
 ------------------------------------------------------------------------
 -- ★★★ THE DESCENT THROUGH THE FIVE Π BINDERS.

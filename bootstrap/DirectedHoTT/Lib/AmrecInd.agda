@@ -48,13 +48,13 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm-subTm; subTm-renTm; subTm-cong )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs; ⊢jsub
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢app; ⊢nsuc; ⊢lam; ⊢nzero; nrs; ⊢jsub
         ; ty-El; ty-Π; ty-Hom; ty-Nat
         ; ⊢⌜Id⌝; ⊢idrefl; ⊢conv; csymᵀ; credᵀ; El-⌜Id⌝; ⊢ordtr
         ; Hom-Nat-ss; ⊢natrec; wk-single )
 open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; ⊢-cast; ⊢[]; Ren⊢; Ren⊢-ext; ren-lemma; ren-ty
-        ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma; wk-cancel-tm )
+        ; Sub⊢; Sub⊢-ext; ⊢single; sub-lemma; wk-cancel-tm; wkR⊢ )
 open import DirectedHoTT.Lib.Rec using ( aIHTat; aIHT; aIHT-fit )
 open import DirectedHoTT.Lib.Wk
   using ( w; wᶠ; wᶠ¹-single; ⊢wkᶠ; sub-w; cong₃; cong₄; ren-sub )

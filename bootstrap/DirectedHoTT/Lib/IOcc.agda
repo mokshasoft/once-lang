@@ -32,7 +32,7 @@ module DirectedHoTT.Lib.IOcc where
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; RTy; vz; vs; var; lam; app; Π; Nat; nzero; renTm )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢lam; ⊢app; ⊢nzero
+  using ( Ctx; ⌊_⌋; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢lam; ⊢app; ⊢nzero
         ; ty-Π; ty-Nat )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true )

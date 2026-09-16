@@ -11,6 +11,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IMethsTy where
+open import normalizer.Syntax.Types using ( refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTm; IDesc; var; lam; snd; pair; unit; app; fst
@@ -67,10 +68,10 @@ imethsTyCons =
   ⊢methLam KnotD IPair tagIDesc-cons cIDesc-cons KnotWf cIDesc-consWf
            ⊢IPair ⊢imethsTyMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var here)))
+      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (here refl))))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
           (⊢lam (ty-IMu KnotWf
-                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
+                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there (here refl) refl) refl))))))
             (⊢lam ty-Nat
               (⊢imethsRowCons dn dj dD dI dC dM
                 (⊢imethsAppK
@@ -78,12 +79,12 @@ imethsTyCons =
                    {u = fst (snd (var (vs (vs (vs (vs (vs (vs vz))))))))}
                    dIH dn dD dI dM (⊢nsuc dj))))))))
   where
-    dn  = ⊢var (there (there (there (there here))))
-    dD  = ⊢var (there (there (there here)))
-    dI  = ⊢var (there (there here))
-    dM  = ⊢var (there here)
-    dj  = ⊢var here
-    dC  = ⊢fst (⊢var (there (there (there (there (there (there here)))))))
+    dn  = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
+    dD  = ⊢var (there (there (there (here refl) refl) refl) refl)
+    dI  = ⊢var (there (there (here refl) refl) refl)
+    dM  = ⊢var (there (here refl) refl)
+    dj  = ⊢var (here refl)
+    dC  = ⊢fst (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
     dIH = ⊢ihHere
             {D = KnotD} {I = IPair}
             {σ = iext (isingle (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))
@@ -98,7 +99,7 @@ imethsTyCons =
                (iρ (pair sIDesc (snd (var (vs vz))))
                  (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sIDesc) iι))
                {q = var (vs (vs (vs (vs (vs (vs vz))))))} {M = imethsTyMotK}
-               (⊢var (there (there (there (there (there here)))))))
+               (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
 
 ------------------------------------------------------------------------
 -- ★ THE TUPLE AND THE WRAPPERS.

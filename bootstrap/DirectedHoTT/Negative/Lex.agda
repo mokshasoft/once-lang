@@ -355,22 +355,22 @@ lexAuxTm stpTm n = natrec (lexZBr stpTm) (lexSBr stpTm) n
 -- ctx: x=0, μ₂=1, μ₁=2, cP=3   (+y ⇒ +1, +lt ⇒ +2)
 ⊢REC1T : (Γ₅₀ ▹ El (var (vs (vs (vs vz))))) ⊢ty REC1T
 ⊢REC1T =
-  ty-Π (ty-El (⊢var (there (there (there (there here))))))
-    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there here)))) (⊢var (here)))) (⊢app (⊢var (there (there (there here)))) (⊢var (there here))))
-          (ty-El (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var (there here)))))
+  ty-Π (ty-El (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))
+    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (here refl) refl) refl) refl)) (⊢var ((here refl))))) (⊢app (⊢var (there (there (there (here refl) refl) refl) refl)) (⊢var (there (here refl) refl))))
+          (ty-El (⊢app (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)) (⊢var (there (here refl) refl)))))
 
 -- ctx: rec1=0, x=1, μ₂=2, μ₁=3, cP=4   (+y ⇒ +1, +le ⇒ +2, +lt ⇒ +3)
 ⊢REC2T : ((Γ₅₀ ▹ El (var (vs (vs (vs vz))))) ▹ REC1T) ⊢ty REC2T
 ⊢REC2T =
-  ty-Π (ty-El (⊢var (there (there (there (there (there here)))))))
-    (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var (here))) (⊢app (⊢var (there (there (there (there here))))) (⊢var (there (there here)))))
-      (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there here))))) (⊢var (there here)))) (⊢app (⊢var (there (there (there (there here))))) (⊢var (there (there (there here))))))
-        (ty-El (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there here)))))))
+  ty-Π (ty-El (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
+    (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var ((here refl)))) (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var (there (there (here refl) refl) refl))))
+      (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var (there (here refl) refl)))) (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var (there (there (there (here refl) refl) refl) refl))))
+        (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (here refl) refl) refl))))))
 
 -- ctx: μ₂=0, μ₁=1, cP=2   (+x ⇒ +1, +rec1 ⇒ +2, +rec2 ⇒ +3)
 ⊢LStepT : Γ₅₀ ⊢ty LStepT
 ⊢LStepT =
-  ty-Π (ty-El (⊢var (there (there (there here))))) (ty-Π ⊢REC1T (ty-Π ⊢REC2T (ty-El (⊢app (⊢var (there (there (there (there (there here)))))) (⊢var (there (there here)))))))
+  ty-Π (ty-El (⊢var (there (there (there (here refl) refl) refl) refl))) (ty-Π ⊢REC1T (ty-Π ⊢REC2T (ty-El (⊢app (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)) (⊢var (there (there (here refl) refl) refl))))))
 
 M0lex : RTy (ε ∙ ∙ ∙ ∙ ∙ ∙)
 M0lex = auxBody (var (vs (vs (vs (vs (vs vz))))))   -- cA
@@ -430,14 +430,14 @@ M1lex = auxBody (var (vs (vs (vs (vs (vs (vs (vs vz))))))))            -- cA
 -- ctx: vz=n₁', vs=stp, vs²=μ₂, vs³=μ₁, vs⁴=cP
 ⊢lexAuxMot : (Γ₅ ▹ Nat) ⊢ty lexAuxMot
 ⊢lexAuxMot =
-  ty-Π ty-Nat (ty-Π (ty-El (⊢var (there (there (there (there (there here))))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var here)) (⊢var (there (there here)))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var (there here))) (⊢var (there (there here)))) (ty-El (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there here))))))))
+  ty-Π ty-Nat (ty-Π (ty-El (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var (here refl))) (⊢var (there (there (here refl) refl) refl))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var (there (here refl) refl))) (⊢var (there (there (here refl) refl) refl))) (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (here refl) refl) refl)))))))
 
 -- ctx: vz=m, vs=n₂, vs²=stp, vs³=μ₂, vs⁴=μ₁, vs⁵=cP
 ⊢M0lex : ((Γ₅ ▹ Nat) ▹ Nat) ⊢ty M0lex
 ⊢M0lex =
-  ty-Π (ty-El (⊢var (there (there (there (there (there here))))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var here)) ⊢nzero) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there here))))) (⊢var (there here))) (⊢var (there (there here)))) (ty-El (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there here)))))))
+  ty-Π (ty-El (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var (here refl))) ⊢nzero) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var (there (here refl) refl))) (⊢var (there (there (here refl) refl) refl))) (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (here refl) refl) refl))))))
 
 -- ctx: vz=m, vs=n₂, vs²=IH₁, vs³=n₁', vs⁴=stp, vs⁵=μ₂, vs⁶=μ₁, vs⁷=cP
 ⊢M1lex : ((((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ Nat) ⊢ty M1lex
 ⊢M1lex =
-  ty-Π (ty-El (⊢var (there (there (there (there (there (there (there here))))))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var here)) (⊢nsuc (⊢var (there (there (there (there here))))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var (there here))) (⊢var (there (there here)))) (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there (there here)))))))
+  ty-Π (ty-El (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)) (⊢var (here refl))) (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (here refl) refl))) (⊢var (there (there (here refl) refl) refl))) (ty-El (⊢app (⊢var (there (there (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (here refl) refl) refl))))))

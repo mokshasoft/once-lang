@@ -52,8 +52,8 @@ private
   F₄ = subTm nrs f₃
 
   ⊢B₄ : {Γ : Ctx} → ((ΘI₃ Γ ▹ Nat) ▹ MI₃) ⊢ B₄ ∷ Nat
-  ⊢B₄ = ⊢plus (⊢nsuc (⊢var (there (there (there here)))))
-              (⊢nsuc (⊢var (there (there (there (there (there here)))))))
+  ⊢B₄ = ⊢plus (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))
+              (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
 
   rr₄ : {Γ : Cx} → subTm nrs (f₃ {Γ}) ⟶* G3s
   rr₄ = step (natrec-suc _ _ _) done
@@ -65,9 +65,9 @@ private
             (nsuc (var (vs vz)))
 
   ⊢EqT : {Γ : Ctx} → ((ΘI₃ Γ ▹ Nat) ▹ MI₃) ⊢ty EqT
-  ⊢EqT = ⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there (there here)))))
-                        (⊢nsuc (⊢var (there (there (there (there (there here))))))))
-                (⊢nsuc (⊢var (there here)))
+  ⊢EqT = ⊢tyIdN (⊢monus (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))
+                        (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))))
+                (⊢nsuc (⊢var (there (here refl) refl)))
 
   -- the branch's context up to (and including) the equation binder — this
   -- is `CΓs`'s shape with the last slot being `EqT`, not `gcdIH`.
@@ -83,13 +83,13 @@ private
   P₁₀ = var (vs (vs (vs (vs vz))))
 
   dA₁₀ : {Γ : Ctx} → Θ₄ Γ ⊢ A₁₀ ∷ Nat
-  dA₁₀ = ⊢nsuc (⊢var (there (there (there (there (there (there here)))))))
+  dA₁₀ = ⊢nsuc (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
 
   dB₁₀ : {Γ : Ctx} → Θ₄ Γ ⊢ B₁₀ ∷ Nat
-  dB₁₀ = ⊢nsuc (⊢var (there (there (there (there (there (there (there (there here)))))))))
+  dB₁₀ = ⊢nsuc (⊢var (there (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl) refl))
 
   dP₁₀ : {Γ : Ctx} → Θ₄ Γ ⊢ P₁₀ ∷ Nat
-  dP₁₀ = ⊢var (there (there (there (there here))))
+  dP₁₀ = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
 
   -- ⚠⚠ `⊢PAIRˢ`/`⊢CERTˢ` ARE RE-DERIVED HERE, NOT IMPORTED, AND THAT IS A
   --   MEASUREMENT.  `…GcdStep` states them at `CΓs Γ B C D`, whose LAST
@@ -105,10 +105,10 @@ private
   --   two sit at ~6m24s.  ⇒ six lines of duplication here, rather than a
   --   regression there.
   dksL : {Γ : Ctx} → Θ₄E Γ ⊢ KS ∷ Nat
-  dksL = ⊢var (there (there (there (there here))))
+  dksL = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
 
   dnsL : {Γ : Ctx} → Θ₄E Γ ⊢ NS ∷ Nat
-  dnsL = ⊢var (there (there (there (there (there (there here))))))
+  dnsL = ⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)
 
   ⊢PAIRˢL : {Γ : Ctx} → Θ₄E Γ ⊢ PAIRˢ ∷ PairT
   ⊢PAIRˢL = ⊢pair ty-Nat (⊢monus (⊢nsuc dksL) (⊢nsuc dnsL)) (⊢nsuc dnsL)
@@ -129,7 +129,7 @@ private
   dCERT = ⊢wk (⊢wk ⊢CERTˢL)
 
   dIH : {Γ : Ctx} → Θ₄ Γ ⊢ var (vs vz) ∷ gcdIH (w (w (w B₄)))
-  dIH = ⊢-cast (gcdIH-w² (w B₄)) (⊢var (there here))
+  dIH = ⊢-cast (gcdIH-w² (w B₄)) (⊢var (there (here refl) refl))
 
   dV : {Γ : Ctx} → Θ₄ Γ ⊢ app (app (var (vs vz)) (w (w PAIRˢ))) (w (w CERTˢ)) ∷ Nat
   dV = asN (appGcdIH dIH dPAIR dCERT)
@@ -139,12 +139,12 @@ private
             ∷ El (QCode (monusTm A₁₀ B₁₀) B₁₀
                     (app (app (var (vs vz)) (w (w PAIRˢ))) (w (w CERTˢ))))
   dcall =
-    ⊢conv (indPWElim (⊢-cast (indPWT-w (w (w B₄)) (var vz)) (⊢var here))
+    ⊢conv (indPWElim (⊢-cast (indPWT-w (w (w B₄)) (var vz)) (⊢var (here refl)))
                      dPAIR dCERT)
           (QCode-convU _ (step (βfst _ _) done) (step (βsnd _ _) done))
 
   dEq : {Γ : Ctx} → Θ₄ Γ ⊢ var (vs (vs vz)) ∷ IdN (monusTm A₁₀ B₁₀) (nsuc P₁₀)
-  dEq = ⊢var (there (there here))
+  dEq = ⊢var (there (there (here refl) refl) refl)
 
   inner : {Γ : Ctx} → Prv (Θ₄ Γ) (El (QCode A₁₀ B₁₀
                                        (app (w (w (w F₄))) (var (vs vz)))))
@@ -158,5 +158,5 @@ leafI₃s =
   prv _ (⊢lam ⊢EqT
           (⊢lam (⊢gcdIH (⊢wk ⊢B₄))
             (⊢lam (⊢indPWT (⊢wk (⊢wk ⊢B₄))
-                           (⊢-cast (gcdIH-w (w B₄)) (⊢var here)))
+                           (⊢-cast (gcdIH-w (w B₄)) (⊢var (here refl))))
                   (prvOk inner))))

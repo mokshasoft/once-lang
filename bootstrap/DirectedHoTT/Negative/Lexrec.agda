@@ -37,7 +37,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢lam; ⊢app
         ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ren-ty )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ren-ty; wkR⊢ )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Wk
   using ( w; wᶠ; cong₆; sub-w; sub-w²; wk-singleTy; wᶠ-single
@@ -78,28 +78,28 @@ module Asm (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙))
 
   ⊢mot : ((Δ ▹ Nat) ▹ Nat) ⊢ty mot
   ⊢mot =
-    ty-Π (ren-ty (ren-ty dA there) there)
+    ty-Π (ren-ty (ren-ty dA wkR⊢) wkR⊢)
       (ty-Π (ty-Hom ty-Nat (⊢wkᶠ (⊢wkᶠ dm₁)) ⊢nzero)
         (ty-Π (ty-Hom ty-Nat (⊢wk (⊢wkᶠ (⊢wkᶠ dm₂)))
-                      (⊢var (there (there here))))
+                      (⊢var (there (there (here refl) refl) refl)))
               (ty-El (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ dcM)))))))
 
   ⊢imot : ((((Δ ▹ Nat) ▹ omot) ▹ Nat) ▹ Nat) ⊢ty imot
   ⊢imot =
-    ty-Π (ren-ty (ren-ty (ren-ty (ren-ty dA there) there) there) there)
+    ty-Π (ren-ty (ren-ty (ren-ty (ren-ty dA wkR⊢) wkR⊢) wkR⊢) wkR⊢)
       (ty-Π (ty-Hom ty-Nat (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁))))
-                    (⊢nsuc (⊢var (there (there (there (there here)))))))
+                    (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
         (ty-Π (ty-Hom ty-Nat (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₂)))))
-                      (⊢var (there (there here))))
+                      (⊢var (there (there (here refl) refl) refl)))
               (ty-El (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dcM)))))))))
 
   ⊢omot : (Δ ▹ Nat) ⊢ty omot
   ⊢omot =
     ty-Π ty-Nat
-      (ty-Π (ren-ty (ren-ty dA there) there)
-        (ty-Π (ty-Hom ty-Nat (⊢wkᶠ (⊢wkᶠ dm₁)) (⊢var (there (there here))))
+      (ty-Π (ren-ty (ren-ty dA wkR⊢) wkR⊢)
+        (ty-Π (ty-Hom ty-Nat (⊢wkᶠ (⊢wkᶠ dm₁)) (⊢var (there (there (here refl) refl) refl)))
           (ty-Π (ty-Hom ty-Nat (⊢wk (⊢wkᶠ (⊢wkᶠ dm₂)))
-                        (⊢var (there (there here))))
+                        (⊢var (there (there (here refl) refl) refl)))
                 (ty-El (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ dcM))))))))
 
   ------------------------------------------------------------------------
@@ -129,7 +129,7 @@ module Asm (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙))
   ⊢lexZ =
     ⊢-cast (sym omot-z)
       (⊢lam ty-Nat
-        (⊢-cast mot-at-vz (⊢natrec ⊢mot ⊢lexZZ ⊢lexZS (⊢var here))))
+        (⊢-cast mot-at-vz (⊢natrec ⊢mot ⊢lexZZ ⊢lexZS (⊢var (here refl)))))
 
   ------------------------------------------------------------------------
   -- ★ THE OUTER STEP BRANCH — the inner recursor at n₁ = suc n₁'.
@@ -159,7 +159,7 @@ module Asm (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙))
   ⊢lexS =
     ⊢-cast (sym omot-s)
       (⊢lam ty-Nat
-        (⊢-cast imot-at-vz (⊢natrec ⊢imot ⊢lexSZ ⊢lexSS (⊢var here))))
+        (⊢-cast imot-at-vz (⊢natrec ⊢imot ⊢lexSZ ⊢lexSS (⊢var (here refl)))))
 
   ------------------------------------------------------------------------
   -- ★★ THE DOUBLY-BOUNDED AUXILIARY, at an arbitrary μ₁-bound.
@@ -194,7 +194,7 @@ module LxΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)
            where
 
   open Asm (Δ ▹ A) (renTy vs A) (wᶠ cM) (wᶠ m₁) (wᶠ m₂) (w stp)
-           (ren-ty dA there) (⊢wkᶠ dcM) (⊢wkᶠ dm₁) (⊢wkᶠ dm₂)
+           (ren-ty dA wkR⊢) (⊢wkᶠ dcM) (⊢wkᶠ dm₁) (⊢wkᶠ dm₂)
            (⊢-cast (lStepT-ren A cM m₁ m₂) (⊢wk dstp)) public
 
   lexrecTm : RTm ⌊ Δ ⌋
@@ -257,7 +257,7 @@ module LxΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)
     ⊢lam dA
       (⊢-cast (cong El cancelΠ)
         (⊢app (⊢app (⊢app (⊢-cast fit-n₂ (⊢app (⊢lexAux dm₁) dm₂))
-                           (⊢var here))
+                           (⊢var (here refl)))
                     (⊢-cast (sym (cong₂ (λ a b → Hom Nat a b)
                                         (wᶠ¹-single m₁)
                                         (wk-single {v = var vz} m₁)))

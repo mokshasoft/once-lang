@@ -32,7 +32,7 @@ open import DirectedHoTT.Spec.Typing
         ; Ctx; ◇; _▹_; ⌊_⌋
         ; _⊢_∷_; ⊢var; here; ⊢unit; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢absurd; ⊢ordtr; ⊢⌜Hom⌝; ⊢⌜Nat⌝
-        ; ⊢lam; ⊢app; there; refl nrs; single
+        ; ⊢lam; ⊢app; there; nrs; single
         ; _⊢ty_; ty-El; ty-Nat; ty-U; ty-Π; ty-Hom; wk-single )
 open import DirectedHoTT.Metatheory.RedCong
   using ( red→≅ᵀ; _⟶ᵀ*_; doneᵀ; stepᵀ; ⟶ᵀ*-trans )

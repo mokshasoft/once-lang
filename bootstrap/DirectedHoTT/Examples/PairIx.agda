@@ -40,6 +40,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.PairIx where
+open import normalizer.Syntax.Types using ( refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
@@ -129,14 +130,14 @@ kbaseWf : IConWf KD IPair (◇ ▹ IPair) kbaseC
 kbaseWf =
   iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst ix) sTy)
         (icw-ford ⌜Nat⌝ (fst ix) sTy)
-        (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var here))) (toI ⊢nzero))
+        (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (here refl)))) (toI ⊢nzero))
         iwf-ι
 
 kvarWf : IConWf KD IPair (◇ ▹ IPair) kvarC
 kvarWf =
   iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst ix) sTm)
         (icw-ford ⌜Nat⌝ (fst ix) sTm)
-        (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var here))) (toI (⊢nsuc ⊢nzero)))
+        (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (here refl)))) (toI (⊢nsuc ⊢nzero)))
         iwf-ι
 
 -- ★★★ the binder row: the recursive field's index is a PAIR TERM whose
@@ -144,10 +145,10 @@ kvarWf =
 klamWf : IConWf KD IPair (◇ ▹ IPair) klamC
 klamWf =
   iwf-ρ (pair sTm (nsuc (snd ix)))
-        (⊢pair ty-Nat (⊢nsuc ⊢nzero) (⊢nsuc (⊢snd (⊢var here))))
+        (⊢pair ty-Nat (⊢nsuc ⊢nzero) (⊢nsuc (⊢snd (⊢var (here refl)))))
    (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) sTm)
           (icw-ford ⌜Nat⌝ (fst (var (vs vz))) sTm)
-          (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there here))))
+          (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (here refl) refl))))
                         (toI (⊢nsuc ⊢nzero)))
           iwf-ι)
 
@@ -155,12 +156,12 @@ klamWf =
 kannWf : IConWf KD IPair (◇ ▹ IPair) kannC
 kannWf =
   iwf-ρ (pair sTm (snd ix))
-        (⊢pair ty-Nat (⊢nsuc ⊢nzero) (⊢snd (⊢var here)))
+        (⊢pair ty-Nat (⊢nsuc ⊢nzero) (⊢snd (⊢var (here refl))))
    (iwf-ρ (pair sTy (snd (var (vs vz))))
-          (⊢pair ty-Nat ⊢nzero (⊢snd (⊢var (there here))))
+          (⊢pair ty-Nat ⊢nzero (⊢snd (⊢var (there (here refl) refl))))
     (iwf-κ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm)
            (icw-ford ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm)
-           (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here)))))
+           (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (here refl) refl) refl))))
                          (toI (⊢nsuc ⊢nzero)))
            iwf-ι))
 
@@ -307,13 +308,13 @@ tyPayBase : {Γ : Ctx} →
             (Γ ▹ Σ' Nat Nat) ⊢ty
             Σ' (El (⌜Id⌝ ⌜Nat⌝ (fst (var vz)) sTy)) Unit
 tyPayBase =
-  ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var here))) (toI ⊢nzero))) ty-Unit
+  ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (here refl)))) (toI ⊢nzero))) ty-Unit
 
 tyPayVar : {Γ : Ctx} →
            (Γ ▹ Σ' Nat Nat) ⊢ty
            Σ' (El (⌜Id⌝ ⌜Nat⌝ (fst (var vz)) sTm)) Unit
 tyPayVar =
-  ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var here)))
+  ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (here refl))))
                             (toI (⊢nsuc ⊢nzero)))) ty-Unit
 
 tyPayLam : {Γ : Ctx} →
@@ -321,8 +322,8 @@ tyPayLam : {Γ : Ctx} →
            Σ' (IMu KD IPair (pair sTm (nsuc (snd (var vz)))))
               (Σ' (El (⌜Id⌝ ⌜Nat⌝ (fst (var (vs vz))) sTm)) Unit)
 tyPayLam =
-  ty-Σ (ty-IMu KWf (⊢ixP (⊢nsuc ⊢nzero) (⊢nsuc (⊢snd (⊢var here)))))
-    (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there here))))
+  ty-Σ (ty-IMu KWf (⊢ixP (⊢nsuc ⊢nzero) (⊢nsuc (⊢snd (⊢var (here refl))))))
+    (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (here refl) refl))))
                                (toI (⊢nsuc ⊢nzero)))) ty-Unit)
 
 tyPayAnn : {Γ : Ctx} →
@@ -331,9 +332,9 @@ tyPayAnn : {Γ : Ctx} →
               (Σ' (IMu KD IPair (pair sTy (snd (var (vs vz)))))
                   (Σ' (El (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sTm)) Unit))
 tyPayAnn =
-  ty-Σ (ty-IMu KWf (⊢ixP (⊢nsuc ⊢nzero) (⊢snd (⊢var here))))
-    (ty-Σ (ty-IMu KWf (⊢ixP ⊢nzero (⊢snd (⊢var (there here)))))
-      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here)))))
+  ty-Σ (ty-IMu KWf (⊢ixP (⊢nsuc ⊢nzero) (⊢snd (⊢var (here refl)))))
+    (ty-Σ (ty-IMu KWf (⊢ixP ⊢nzero (⊢snd (⊢var (there (here refl) refl)))))
+      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (here refl) refl) refl))))
                                  (toI (⊢nsuc ⊢nzero)))) ty-Unit))
 
 tyΠbase tyΠvar tyΠlam tyΠann : {Γ : Ctx} → Γ ⊢ty _
@@ -352,11 +353,11 @@ tyΠann  = ty-Π (ty-Σ ty-Nat ty-Nat) (ty-Π tyPayAnn  (ty-Π tyIH₂ ty-Nat))
              (⊢lam tyPayVar (⊢lam ty-Unit (⊢nsuc ⊢nzero))))
       (⊢pair (ty-Σ tyΠann ty-Unit)
              (⊢lam (ty-Σ ty-Nat ty-Nat)
-               (⊢lam tyPayLam (⊢lam tyIH₁ (⊢nsuc (⊢fst (⊢var here))))))
+               (⊢lam tyPayLam (⊢lam tyIH₁ (⊢nsuc (⊢fst (⊢var (here refl)))))))
         (⊢pair ty-Unit
                (⊢lam (ty-Σ ty-Nat ty-Nat)
                  (⊢lam tyPayAnn
-                   (⊢lam tyIH₂ (⊢nsuc (⊢fst (⊢snd (⊢var here)))))))
+                   (⊢lam tyIH₂ (⊢nsuc (⊢fst (⊢snd (⊢var (here refl))))))))
                ⊢unit)))
 
 ⊢dep : {i t : RTm ε} → ◇ ⊢ i ∷ Σ' Nat Nat → ◇ ⊢ t ∷ K i → ◇ ⊢ dep i t ∷ Nat

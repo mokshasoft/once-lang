@@ -66,11 +66,11 @@ gcdP : {Γ : Cx} → RTm ((Γ ∙) ∙)
 gcdP = QCode (fst (var (vs vz))) (snd (var (vs vz))) (var vz)
 
 ⊢gcdP : {Δ : Ctx} → ((Δ ▹ PairT) ▹ El ⌜Nat⌝) ⊢ gcdP ∷ U
-⊢gcdP = ⊢QCode (⊢fst dx) (⊢snd dx) (asN (⊢var here))
+⊢gcdP = ⊢QCode (⊢fst dx) (⊢snd dx) (asN (⊢var (here refl)))
   where
     -- ⚠ `PairT = Σ' Nat Nat` is CLOSED, so `renTy vs (renTy vs PairT)`
     --   computes back to `PairT` and this needs no cast.
-    dx = ⊢var (there here)
+    dx = ⊢var (there (here refl) refl)
 
 ------------------------------------------------------------------------
 -- ★★ …AND `PAtR` AT IT.  `amrec-ind` states every premise through `PAtR`;
@@ -203,8 +203,8 @@ indPWIntro {a = a} {ih = ih} dμ pw =
     μa = subTm (single a) msr
 
     inner = pw (wR (wR Ren⊢-id)) (λ v → refl) (var (vs vz)) (var vz)
-               (⊢var (there here))
-               (⊢-cast (cong (Hom Nat (nsuc (w msr))) (ww μa)) (⊢var here))
+               (⊢var (there (here refl) refl))
+               (⊢-cast (cong (Hom Nat (nsuc (w msr))) (ww μa)) (⊢var (here refl)))
 
     -- ⚠ the result slot must be PINNED: `PAtR` is a defined function, so
     --   Agda unfolds instead of decomposing and the meta never solves.
@@ -228,8 +228,8 @@ indPWIntro {a = a} {ih = ih} dμ pw =
     (ty-Π (ty-Hom ty-Nat (⊢nsuc ⊢msr) (⊢wk dμ))
           (ty-El (⊢QCode (⊢fst dy) (⊢snd dy) (asN dcall))))
   where
-    dy    = ⊢var (there here)
-    dcall = appGcdIH (⊢-cast (gcdIH-w² μa) (⊢wk (⊢wk di))) dy (⊢var here)
+    dy    = ⊢var (there (here refl) refl)
+    dcall = appGcdIH (⊢-cast (gcdIH-w² μa) (⊢wk (⊢wk di))) dy (⊢var (here refl))
 
 ------------------------------------------------------------------------
 -- ★★★★ `indG` — THE `P`-ANALOGUE OF `gcdG`, and the split motive.
@@ -265,11 +265,11 @@ indG μx f u₁ u₂ =
         Γ ⊢ u₁ ∷ Nat → Γ ⊢ u₂ ∷ Nat → Γ ⊢ty indG μx f u₁ u₂
 ⊢indG {μx = μx} dμ df d1 d2 =
   ty-Π (⊢gcdIH dμ)
-    (ty-Π (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w μx) (⊢var here)))
+    (ty-Π (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w μx) (⊢var (here refl))))
           (ty-El (⊢QCode (⊢wk (⊢wk d1)) (⊢wk (⊢wk d2)) (asN dfi))))
   where
     dfi = ⊢app (⊢-cast (gcdG-w² μx) (⊢wk (⊢wk df)))
-               (⊢-cast (gcdIH-w² μx) (⊢var (there here)))
+               (⊢-cast (gcdIH-w² μx) (⊢var (there (here refl) refl)))
 
 ------------------------------------------------------------------------
 -- ★★ SPLIT 1's MOTIVE — on `snd x`.  ctx: [0]=n' [1]=x
@@ -336,12 +336,12 @@ leafI₁z : {Γ : Ctx} →
                     (natrec G1z gcdInn1 nzero) (fst (var vz)) nzero)
 leafI₁z =
   prv _ (⊢lam (⊢gcdIH dμ)
-          (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var here)))
+          (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var (here refl))))
                 (⊢conv (prvOk (gcdLeaf-b0 du))
                        (csymᵀ (QCode-conv _ nzero (redI₁z (var (vs vz))))))))
   where
-    dμ = ⊢plus (⊢fst (⊢var here)) ⊢nzero
-    du = ⊢fst (⊢var (there (there here)))
+    dμ = ⊢plus (⊢fst (⊢var (here refl))) ⊢nzero
+    du = ⊢fst (⊢var (there (there (here refl) refl) refl))
 
 ------------------------------------------------------------------------
 -- ★★ SPLIT 2 — on `fst x`.  ctx: [0]=k' [1]=MI₁ [2]=n' [3]=x
@@ -386,12 +386,12 @@ redI₂z sb i = ⟶*-trans (⟶*-appˡ (step (natrec-zero _ _) done)) (step (β 
 leafI₂z : {Γ : Ctx} → Prv (ΘI₂ Γ) (subTy (single nzero) MI₂)
 leafI₂z =
   prv _ (⊢lam (⊢gcdIH dμ)
-          (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var here)))
+          (⊢lam (⊢indPWT (⊢wk dμ) (⊢-cast (gcdIH-w _) (⊢var (here refl))))
                 (⊢conv (prvOk (gcdLeaf-a0 db))
                        (csymᵀ (QCode-conv nzero _ (redI₂z _ (var (vs vz))))))))
   where
-    dμ = ⊢plus ⊢nzero (⊢nsuc (⊢var (there here)))
-    db = ⊢var (there (there (there here)))
+    dμ = ⊢plus ⊢nzero (⊢nsuc (⊢var (there (here refl) refl)))
+    db = ⊢var (there (there (there (here refl) refl) refl) refl)
 
 ------------------------------------------------------------------------
 -- ★★★ ELIMINATING THE INTERNAL HYPOTHESIS — the mirror of `pwElim`.

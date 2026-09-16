@@ -49,14 +49,14 @@ open import DirectedHoTT.Spec.Syntax
         ; renTy-subTy; renTm-subTm; ordtr-cong₅; Id-cong₃ )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _∋_∷_; ⊢var; here; there; refl ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _∋_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢natrec
         ; _⟶*_; done; step; β; ξ-appˡ; natrec-zero; natrec-suc
         ; ⊢lam; ⊢app; _⊢ty_; ⊢conv; csymᵀ; ctrnᵀ; ⊢⌜Id⌝; El-⌜Id⌝
         ; ty-Nat; ty-Hom; ty-El; ty-Π; ty-Id; wk-single )
 open import DirectedHoTT.Metatheory.RedCong using ( red→≅ᵀ; ⟶ᵀ*-Idˡ; ⟶ᵀ*-Idʳ; ⟶ᵀ*-Homʳ; stepᵀ; doneᵀ )
 open import DirectedHoTT.Metatheory.TySub
   using ( ⊢wk; ⊢-cast; ∋-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext
-        ; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single )
+        ; sub-ty; sub-lemma; Sub⊢; Sub⊢-ext; ⊢single; wkR⊢ )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
@@ -3069,8 +3069,8 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
 
       -- n = 0: both inner cases are ex falso, from `c₁ : μ a ≤ 0`
       ZP : Prv (Δ ▹ Nat) (irrT vs x y nzero (var vz))
-      ZP = irrSplit there dx refl dy ⊢nzero
-                    (irr-zz ext there dx refl dy)
+      ZP = irrSplit wkR⊢ dx dy ⊢nzero
+                    (irr-zz ext wkR⊢ dx dy)
                     (irr-zs ext (wR (wR wkR⊢)) dx dy (⊢var (there (here refl) refl)))
 
       -- n = suc k₁: the (S,0) case is ex falso from `c₂`, and (S,S) is the IH

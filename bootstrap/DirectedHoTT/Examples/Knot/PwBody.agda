@@ -75,7 +75,7 @@ open import DirectedHoTT.Lib.IPay using ( idwfDrop; Split; spl-nil )
 open import DirectedHoTT.Spec.Typing using ( imethsTy; imethsTyFrom; ⊢pair; ⊢ielim )
 open import DirectedHoTT.Spec.Syntax using ( ielim )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-ty )
-open import normalizer.Syntax.Types using ( sym; _≡_; cong; trans )
+open import normalizer.Syntax.Types using ( sym; _≡_; cong; trans; refl )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Lib.IWk using ( sh )
 open import DirectedHoTT.Spec.Typing using ( wk-single )
@@ -115,11 +115,11 @@ pwPi =
     (fromMu (⊢jsub dmot (natAsEl ⊢sTm) (natAsEl dfi) dsym
                    (toMu (⊢fst (⊢snd dp)))))
   where
-    dix  = ⊢var (there (there here))
-    dp   = ⊢var (there here)
+    dix  = ⊢var (there (there (here refl) refl) refl)
+    dp   = ⊢var (there (here refl) refl)
     dfi  = ⊢fst dix
-    dmot = ⊢⌜IMu⌝ KnotWf (⊢ixP (elAsNat (⊢var here))
-                               (⊢nsuc (⊢snd (⊢var (there (there (there here)))))))
+    dmot = ⊢⌜IMu⌝ KnotWf (⊢ixP (elAsNat (⊢var (here refl)))
+                               (⊢nsuc (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))))
     dsym = ⊢symN dfi ⊢sTm (fordAs (⊢fst (⊢snd (⊢snd dp))))
 
 ------------------------------------------------------------------------
@@ -177,9 +177,9 @@ pwHom =
     (fromMu (⊢jsub dmot (natAsEl ⊢sTm) (natAsEl dfi) dsym
                    (toMu (⊢Tm-cHomKv _ (⊢nsuc dd) dihC dapa dapb))))
   where
-    dix  = ⊢var (there (there here))
-    dp   = ⊢var (there here)
-    dih  = ⊢var here
+    dix  = ⊢var (there (there (here refl) refl) refl)
+    dp   = ⊢var (there (here refl) refl)
+    dih  = ⊢var (here refl)
     dd   = ⊢snd dix
     dfi  = ⊢fst dix
     -- ★ the two β-steps, once — every component needs them.
@@ -197,8 +197,8 @@ pwHom =
                      (⊢Tm-varKv _ (⊢nsuc dd) (⊢Var-vzKt dd))
     dapb = ⊢Tm-appKv _ (⊢nsuc dd) (⊢wkTmK dd db)
                      (⊢Tm-varKv _ (⊢nsuc dd) (⊢Var-vzKt dd))
-    dmot = ⊢⌜IMu⌝ KnotWf (⊢ixP (elAsNat (⊢var here))
-                               (⊢nsuc (⊢snd (⊢var (there (there (there here)))))))
+    dmot = ⊢⌜IMu⌝ KnotWf (⊢ixP (elAsNat (⊢var (here refl)))
+                               (⊢nsuc (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))))
     dsym = ⊢symN dfi ⊢sTm (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp)))))
 
 ------------------------------------------------------------------------
@@ -253,8 +253,8 @@ pwDefault k =
     -- ⚠ `{i}`/`{u}` PINNED: they sit under `iinst`, which is two
     --   `subTy`s and so not injective (`pin-implicits-on-defined-set-types`).
     (⊢renAppAt {i = var (vs (vs vz))} {u = icon k (var (vs vz))}
-               (⊢renTmK (⊢var (there (there here)))
-                        (⊢icon KnotWf mem (⊢var (there (there here)))
+               (⊢renTmK (⊢var (there (there (here refl) refl) refl))
+                        (⊢icon KnotWf mem (⊢var (there (there (here refl) refl) refl))
                                -- ⚠ TWO CASTS, AND THE FIRST IS THE ONE
                                --   a CONCRETE row never needs: at an
                                --   abstract `C` the payload type is
@@ -269,9 +269,9 @@ pwDefault k =
                                               (cong (ipayTy KnotD IPair
                                                        (isingle (var (vs (vs vz)))))
                                                     (sym look)))
-                                       (⊢var (there here)))))
-               (⊢nsuc (⊢snd (⊢var (there (there here)))))
-               (⊢vsRenK (⊢snd (⊢var (there (there here))))))
+                                       (⊢var (there (here refl) refl)))))
+               (⊢nsuc (⊢snd (⊢var (there (there (here refl) refl) refl))))
+               (⊢vsRenK (⊢snd (⊢var (there (there (here refl) refl) refl)))))
 
 ------------------------------------------------------------------------
 

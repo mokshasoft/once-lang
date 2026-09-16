@@ -86,10 +86,10 @@ divMot = Π (aIHT Nat ⌜Nat⌝ (var vz)) (El ⌜Nat⌝)
          Γ ⊢ty Π Nat (Π (Hom Nat (nsuc (var vz)) (renTm vs b)) (El ⌜Nat⌝))
 ⊢ihTat db =
   ty-Π ty-Nat
-    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢var here)) (⊢wk db)) (ty-El ⊢⌜Nat⌝))
+    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢var (here refl))) (⊢wk db)) (ty-El ⊢⌜Nat⌝))
 
 ⊢divMot : ((Γ₃ ▹ Nat) ▹ Nat) ⊢ty divMot
-⊢divMot = ty-Π (⊢ihTat (⊢var here)) (ty-El ⊢⌜Nat⌝)
+⊢divMot = ty-Π (⊢ihTat (⊢var (here refl))) (ty-El ⊢⌜Nat⌝)
 
 divZ : RTm (⌊ Γ₃ ⌋ ∙)
 divZ = lam nzero
@@ -114,25 +114,25 @@ divStp = lam (natrec divZ divS (var vz))
 
 ⊢divS : (((Γ₃ ▹ Nat) ▹ Nat) ▹ divMot) ⊢ divS ∷ subTy nrs divMot
 ⊢divS =
-  ⊢lam (⊢ihTat (⊢nsuc (⊢var (there here))))
+  ⊢lam (⊢ihTat (⊢nsuc (⊢var (there (here refl) refl))))
     (⊢natrec ⊢divSMot (asP ⊢nzero)
-      (asP (⊢nsuc (⊢conv (⊢app (⊢app (⊢var (there (there here))) dArg) dDesc) elNat)))
-      (⊢monus (⊢nsuc (⊢var (there (there here)))) (⊢var (there (there (there (there here)))))))
+      (asP (⊢nsuc (⊢conv (⊢app (⊢app (⊢var (there (there (here refl) refl) refl)) dArg) dDesc) elNat)))
+      (⊢monus (⊢nsuc (⊢var (there (there (here refl) refl) refl))) (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
   where
-    dj = ⊢var (there (there (there (there here))))
-    dk = ⊢var (there (there (there (there (there (there here))))))
+    dj = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
+    dk = ⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)
     dArg = ⊢monus dj dk
     dDesc = ⊢div-descend dj dk
 
 ⊢divStp : Γ₃ ⊢ divStp ∷ aStepT Nat ⌜Nat⌝ (var vz)
-⊢divStp = ⊢lam ty-Nat (⊢natrec ⊢divMot ⊢divZ ⊢divS (⊢var here))
+⊢divStp = ⊢lam ty-Nat (⊢natrec ⊢divMot ⊢divZ ⊢divS (⊢var (here refl)))
 
 ------------------------------------------------------------------------
 -- ★★ THE USE SITE.  One `open`, and the instantiation data are three
 --    ATOMS with three one-token derivations.
 ------------------------------------------------------------------------
 
-open AmTΠ Γ₃ Nat ⌜Nat⌝ (var vz) divStp ty-Nat ⊢⌜Nat⌝ (⊢var here) ⊢divStp
+open AmTΠ Γ₃ Nat ⌜Nat⌝ (var vz) divStp ty-Nat ⊢⌜Nat⌝ (⊢var (here refl)) ⊢divStp
   using ( amrecTm; ⊢amrecΠ; ⊢amrecPt; amrec-unfold-z )
 
 divT : RTm ⌊ Γ₃ ⌋

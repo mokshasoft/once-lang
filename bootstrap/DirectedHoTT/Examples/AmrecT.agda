@@ -70,7 +70,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢lam; ⊢app; _⊢ty_
         ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
 open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext )
+  using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢; Ren⊢-ext; wkR⊢ )
 open import DirectedHoTT.Lib.Strong using ( ⊢le-refl; reflTm )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-trans; ⟶*-appˡ; ⟶*-natrecⁿ )
@@ -90,7 +90,7 @@ wᶠ = renTm (extR vs)
 --   two produce terms that look interchangeable and are not (P1).
 ⊢wkᶠ : {Γ : Ctx} {A B : RTy ⌊ Γ ⌋} {t : RTm (⌊ Γ ⌋ ∙)} {T : RTy (⌊ Γ ⌋ ∙)} →
        (Γ ▹ A) ⊢ t ∷ T → ((Γ ▹ B) ▹ renTy vs A) ⊢ wᶠ t ∷ renTy (extR vs) T
-⊢wkᶠ d = ren-lemma d (Ren⊢-ext there)
+⊢wkᶠ d = ren-lemma d (Ren⊢-ext wkR⊢)
 
 ------------------------------------------------------------------------
 -- THE THREE TYPES — and there is not one `app` in them.
@@ -307,9 +307,9 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
 
   ⊢aAuxMot : (Δ ▹ Nat) ⊢ty aAuxMot
   ⊢aAuxMot =
-    ty-Π (ren-ty dA there)
-      (ty-Π (ty-Hom ty-Nat (ren-lemma dm (Ren⊢-ext there)) (⊢var (there here)))
-            (ty-El (⊢wk (ren-lemma dcM (Ren⊢-ext there)))))
+    ty-Π (ren-ty dA wkR⊢)
+      (ty-Π (ty-Hom ty-Nat (ren-lemma dm (Ren⊢-ext wkR⊢)) (⊢var (there (here refl) refl)))
+            (ty-El (⊢wk (ren-lemma dcM (Ren⊢-ext wkR⊢)))))
 
   -- ★ the motive at ANY bound.  Four peels, one per argument, and three of
   --   them are the family lemmas — no `app`, so no β anywhere.
@@ -360,9 +360,9 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
        ∷ aIHTat (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))
                 (subTm (single (var (vs vz))) (wᶠ (wᶠ m)))
   ⊢ihZ =
-    ⊢lam (ren-ty (ren-ty dA there) there)
+    ⊢lam (ren-ty (ren-ty dA wkR⊢) wkR⊢)
       (⊢lam (ty-Hom ty-Nat (⊢nsuc dmY) dmX)
-        (⊢strong-base' dC dmY' dmX' dlt (⊢var (there (there here)))))
+        (⊢strong-base' dC dmY' dmX' dlt (⊢var (there (there (here refl) refl) refl))))
     where
       dmY = ⊢wkᶠ (⊢wkᶠ dm)
       dmX = subst (λ z → (((Δ ▹ A) ▹ Hom Nat m (w nzero)) ▹ renTy vs (renTy vs A)) ⊢ z ∷ Nat)
@@ -372,7 +372,7 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
       dC = ⊢wk (⊢wkᶠ (⊢wkᶠ dcM))
       dlt = ⊢-cast (cong (λ z → Hom Nat (nsuc (w (wᶠ (wᶠ m)))) (w (w z)))
                          (wᶠ²-single m))
-                   (⊢var here)
+                   (⊢var (here refl))
 
   ⊢aZBr : Δ ⊢ aZBr ∷ subTy (single nzero) aAuxMot
   ⊢aZBr =
@@ -380,7 +380,7 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
       (⊢lam dA
         (⊢lam (ty-Hom ty-Nat dm ⊢nzero)
           (⊢-cast (cong El cancelZ)
-            (⊢app (⊢app (⊢-cast stp-w² (⊢wk (⊢wk dstp))) (⊢var (there here)))
+            (⊢app (⊢app (⊢-cast stp-w² (⊢wk (⊢wk dstp))) (⊢var (there (here refl) refl)))
                   (⊢-cast (sym (aIHT-fit (renTy vs (renTy vs A)) (wᶠ (wᶠ cM)) (wᶠ (wᶠ m))))
                           ⊢ihZ)))))
 
@@ -429,11 +429,11 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
                   (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))
                   (subTm (single (var (vs vz))) (wᶠ (wᶠ (wᶠ (wᶠ m)))))
   ⊢ihS =
-    ⊢lam (ren-ty (ren-ty (ren-ty (ren-ty dA there) there) there) there)
+    ⊢lam (ren-ty (ren-ty (ren-ty (ren-ty dA wkR⊢) wkR⊢) wkR⊢) wkR⊢)
       (⊢lam (ty-Hom ty-Nat (⊢nsuc dm₄) dmXS)
         (⊢-cast (cong El cancelIH)
-          (⊢app (⊢app (⊢-cast ih₀-w⁵ (⊢var (there (there (there (there here))))))
-                      (⊢var (there here)))
+          (⊢app (⊢app (⊢-cast ih₀-w⁵ (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))
+                      (⊢var (there (here refl) refl)))
                 (⊢-cast (sym (cong (λ z → Hom Nat z (var (vs (vs (vs (vs (vs vz)))))))
                                    (wᶠ²-single (wᶠ (wᶠ (wᶠ (wᶠ m)))))))
                         dDesc))))
@@ -446,11 +446,11 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
                    (sym (cong w (wᶠ²-single (wᶠ (wᶠ m)))))
                    (⊢wk (⊢wk dm₂))
       dDesc = ⊢strong-step (⊢wk dm₄) (⊢wk (⊢wk (⊢wk dm₂)))
-                           (⊢var (there (there (there (there (there here))))))
+                           (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
                            (⊢-cast (cong (λ z → Hom Nat (nsuc (w (wᶠ (wᶠ (wᶠ (wᶠ m)))))) (w (w z)))
                                          (wᶠ²-single (wᶠ (wᶠ m))))
-                                   (⊢var here))
-                           (⊢var (there (there here)))
+                                   (⊢var (here refl)))
+                           (⊢var (there (there (here refl) refl) refl))
 
   -- the outer spine's cancellation: wᶠ⁴ cM peeled by the step's two ⊢apps
   cancelS : subTm (single ihS)
@@ -465,11 +465,11 @@ module AmT (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp : 
   ⊢aSBr : ((Δ ▹ Nat) ▹ aAuxMot) ⊢ aSBr ∷ subTy nrs aAuxMot
   ⊢aSBr =
     ⊢-cast (sym mot-s)
-      (⊢lam (ren-ty (ren-ty dA there) there)
-        (⊢lam (ty-Hom ty-Nat (⊢wkᶠ (⊢wkᶠ dm)) (⊢nsuc (⊢var (there (there here)))))
+      (⊢lam (ren-ty (ren-ty dA wkR⊢) wkR⊢)
+        (⊢lam (ty-Hom ty-Nat (⊢wkᶠ (⊢wkᶠ dm)) (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
           (⊢-cast (cong El cancelS)
             (⊢app (⊢app (⊢-cast stp-w⁴ (⊢wk (⊢wk (⊢wk (⊢wk dstp)))))
-                        (⊢var (there here)))
+                        (⊢var (there (here refl) refl)))
                   (⊢-cast (sym (aIHT-fit (renTy vs (renTy vs (renTy vs (renTy vs A))))
                                          (wᶠ (wᶠ (wᶠ (wᶠ cM)))) (wᶠ (wᶠ (wᶠ (wᶠ m))))))
                           ⊢ihS)))))
@@ -505,7 +505,7 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
             where
 
   open AmT (Δ ▹ A) (renTy vs A) (wᶠ cM) (wᶠ m) (w stp)
-           (ren-ty dA there) (⊢wkᶠ dcM) (⊢wkᶠ dm)
+           (ren-ty dA wkR⊢) (⊢wkᶠ dcM) (⊢wkᶠ dm)
            (⊢-cast (aStepT-ren A cM m) (⊢wk dstp))
 
   amrecTm : RTm ⌊ Δ ⌋
@@ -527,7 +527,7 @@ module AmTΠ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m : RTm (⌊ Δ ⌋ ∙)) (stp 
   ⊢amrecΠ =
     ⊢lam dA
       (⊢-cast (cong El cancelΠ)
-        (⊢app (⊢app (⊢-cast (mot-at m) (⊢aAux dm)) (⊢var here))
+        (⊢app (⊢app (⊢-cast (mot-at m) (⊢aAux dm)) (⊢var (here refl)))
               (⊢-cast (sym (cong₂ (λ a b → Hom Nat a b)
                                   (wᶠ¹-single m) (wk-single {v = var vz} m)))
                       (⊢le-refl dm))))

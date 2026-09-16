@@ -239,7 +239,7 @@ module Assemble {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
               ∷ gcdG (μS dW db)
   ⊢body =
     ⊢lam (⊢gcdIH (⊢plus (⊢nsuc (⊢wk (⊢wk dW))) (⊢nsuc (⊢wk (⊢wk db)))))
-         (⊢app (⊢app (⊢var here) (⊢PAIR* dW db)) (⊢CERT*' dW db))
+         (⊢app (⊢app (⊢var (here refl)) (⊢PAIR* dW db)) (⊢CERT*' dW db))
 
   -- ★ `S3'` IS that `lam` — `subTm` pushed through on its own.
   S3'-computes : S3' a' b'
@@ -336,7 +336,7 @@ module HoleE {Γ : Ctx} {a' b' : RTm ⌊ Γ ⌋}
                                    (renTm (extR (extR vs)) (S3' a' b'))
                                    (var vz)
                           ∷ M
-  ⊢holeE = ⊢natrec-var-at (elAsNat (⊢var here))
+  ⊢holeE = ⊢natrec-var-at (elAsNat (⊢var (here refl)))
                           (⊢M3s da db) (⊢-cast (sym z-eq) (⊢Z3s da db)) ⊢S3s
 
 

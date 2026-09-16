@@ -27,7 +27,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single; nrs
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢app
         ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ren-ty )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast; ren-ty; wkR⊢ )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base' )
 open import DirectedHoTT.Lib.Wk
   using ( w; wᶠ; cong₆; sub-w; sub-w²; wk-singleTy; wᶠ-single
@@ -72,7 +72,7 @@ module ZZ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
   ------------------------------------------------------------------------
 
   tyA₄ : ZZCtx ⊢ty wTy^ 4 A
-  tyA₄ = ren-ty (ren-ty (ren-ty (ren-ty dA there) there) there) there
+  tyA₄ = ren-ty (ren-ty (ren-ty (ren-ty dA wkR⊢) wkR⊢) wkR⊢) wkR⊢
 
   dk₁ : (ZZCtx ▹ wTy^ 4 A) ⊢ wᶠ^ 4 m₁ ∷ Nat
   dk₁ = ⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁)))
@@ -108,10 +108,10 @@ module ZZ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
     ⊢lam tyA₄
       (⊢lam (ty-Hom ty-Nat (⊢nsuc dk₁) dmX)
         (⊢strong-base' (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dcM)))))
-                       (⊢wk dk₁) (⊢wk dmX) (⊢var here)
+                       (⊢wk dk₁) (⊢wk dmX) (⊢var (here refl))
                        (⊢-cast (cong (λ z → Hom Nat (w (w z)) nzero)
                                      (sym (wᶠ³-single (wᶠ^ 1 m₁))))
-                               (⊢var (there (there (there here)))))))
+                               (⊢var (there (there (there (here refl) refl) refl) refl)))))
 
   ------------------------------------------------------------------------
   -- rec₂ — VACUOUS on μ₂ this time: μ₂ y < μ₂ x ≤ 0.  ★ Same lemma, the
@@ -134,10 +134,10 @@ module ZZ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
       (⊢lam (ty-Hom ty-Nat dk₁ dmX)
         (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢wk dk₂)) (⊢wk dmX₂))
           (⊢strong-base' (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dcM))))))
-                         (⊢wk (⊢wk dk₂)) (⊢wk (⊢wk dmX₂)) (⊢var here)
+                         (⊢wk (⊢wk dk₂)) (⊢wk (⊢wk dmX₂)) (⊢var (here refl))
                          (⊢-cast (cong (λ z → Hom Nat (w (w (w z))) nzero)
                                        (sym (wᶠ³-single (wᶠ^ 1 m₂))))
-                                 (⊢var (there (there (there here))))))))
+                                 (⊢var (there (there (there (here refl) refl) refl) refl))))))
 
   ------------------------------------------------------------------------
   -- BRANCH (0,0), ASSEMBLED.
@@ -189,11 +189,11 @@ module ZZ (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
   ⊢lexZZ : (Δ ▹ Nat) ⊢ lexZZ ∷ subTy (single nzero) mot
   ⊢lexZZ =
     ⊢-cast (sym mot-z)
-      (⊢lam (ren-ty dA there)
+      (⊢lam (ren-ty dA wkR⊢)
         (⊢lam (ty-Hom ty-Nat (⊢wkᶠ dm₁) ⊢nzero)
           (⊢lam (ty-Hom ty-Nat (⊢wk (⊢wkᶠ dm₂)) ⊢nzero)
             (⊢-cast (cong El cMcancel)
               (⊢app (⊢app (⊢app (⊢-cast stp-w⁴ (⊢wk (⊢wk (⊢wk (⊢wk dstp)))))
-                                 (⊢var (there (there here))))
+                                 (⊢var (there (there (here refl) refl) refl)))
                           (⊢-cast (sym rec1-fit) ⊢rec1))
                     (⊢-cast (sym rec2-fit) ⊢rec2))))))

@@ -21,6 +21,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.Nat where
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; RTm; var; vz; nsuc; natrec; Nat )
 open import DirectedHoTT.Spec.Typing

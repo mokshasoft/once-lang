@@ -64,7 +64,7 @@ open import DirectedHoTT.Lib.Strong using ( elAsNat; natAsEl )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Lib.Wk using ( towerA )
-open import normalizer.Syntax.Types using ( cong )
+open import normalizer.Syntax.Types using ( cong; refl )
 open import DirectedHoTT.Spec.Typing using ( wk-single )
 -- ★ EVERYTHING SHARED WITH `conS` IS IMPORTED, NOT COPIED.
 open import DirectedHoTT.Examples.Knot.ConS
@@ -91,13 +91,13 @@ iconSVz = lam (lam (lam (lam
 ⊢iconSVz =
   ⊢methLam KnotD IPair tagVar-vz cVar-vz KnotWf cVar-vzWf ⊢IPair ⊢conSMotK
     (⊢lam ty-Nat
-      (⊢Tm-iconKv _ dsi (⊢var here) (⊢Tm-varKv _ dsi tx)))
+      (⊢Tm-iconKv _ dsi (⊢var (here refl)) (⊢Tm-varKv _ dsi tx)))
   where
-    dp   = ⊢var (there (there here))
-    dsi  = ⊢snd (⊢var (there (there (there here))))
+    dp   = ⊢var (there (there (here refl) refl) refl)
+    dsi  = ⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))
     dm   = elAsNat (⊢fst dp)
     deq  = ⊢symN dsi (⊢nsuc dm) (fordAs (⊢fst (⊢snd (⊢snd dp))))
-    tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
+    tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var (here refl)))))
                          (natAsEl (⊢nsuc dm)) (natAsEl dsi) deq
                          (toMu (⊢Var-vzKt dm)))
 
@@ -157,7 +157,7 @@ icSK n k = lam (iconSSK (pair sVar (nsuc (renTm vs n))) (var vz) (renTm vs k))
 ⊢icSK {n = n} {k = k} dn dk =
   ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc dn)))
        (muFwd (ξ-pairʳ (βsnd _ _))
-         (⊢iconSSK (⊢ixP ⊢sVar (⊢nsuc (⊢wk dn))) (⊢var here) (⊢wk dk)))
+         (⊢iconSSK (⊢ixP ⊢sVar (⊢nsuc (⊢wk dn))) (⊢var (here refl)) (⊢wk dk)))
 
 ------------------------------------------------------------------------
 -- ★★★ `iconS k i = icS k ∘ extS (single i)` — the factorisation, built.
@@ -191,7 +191,7 @@ iconSK n k i =
                              (wk-single {v = var vz} (renTm vs n)))
                  (⊢app (⊢extNK (⊢nsuc (⊢wk dn)) (⊢wk dn)
                                (⊢singleK (⊢wk dn) (⊢wk di)))
-                       (⊢var here))))
+                       (⊢var (here refl)))))
 
 ------------------------------------------------------------------------
 -- ★ `iatCon k i M = subTy (iconS k i) M` — the motive re-based at the

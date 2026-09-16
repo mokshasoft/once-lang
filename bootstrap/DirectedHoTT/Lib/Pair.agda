@@ -32,6 +32,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Lib.Pair where
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Σ'

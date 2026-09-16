@@ -97,7 +97,7 @@ CJΒΒ7 = iκ kJΒΒ7 CJΒΒ8
 W_JΒΒ7 : IConWf JudgeD IJudge JΒΒ7 CJΒΒ7
 W_JΒΒ7 =
   iwf-κ kJΒΒ7 (icw-imu (pair sTm (var (vs (vs (vs (vs (vs (vs vz)))))))) KnotWf)
-    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there (there here))))))))))
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)))))
     W_JΒΒ8
 
 CJΒΒ6 : ICon ⌊ JΒΒ6 ⌋
@@ -105,7 +105,7 @@ CJΒΒ6 = iκ kJΒΒ6 CJΒΒ7
 W_JΒΒ6 : IConWf JudgeD IJudge JΒΒ6 CJΒΒ6
 W_JΒΒ6 =
   iwf-κ kJΒΒ6 (icw-imu (pair sTm (var (vs (vs (vs (vs (vs vz))))))) KnotWf)
-    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there here)))))))))
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))))
     W_JΒΒ7
 
 CJΒΒ5 : ICon ⌊ JΒΒ5 ⌋
@@ -113,7 +113,7 @@ CJΒΒ5 = iκ kJΒΒ5 CJΒΒ6
 W_JΒΒ5 : IConWf JudgeD IJudge JΒΒ5 CJΒΒ5
 W_JΒΒ5 =
   iwf-κ kJΒΒ5 (icw-imu (pair sTm (var (vs (vs (vs (vs vz)))))) KnotWf)
-    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there here))))))))
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))
     W_JΒΒ6
 
 CJΒΒ4 : ICon ⌊ JΒΒ4 ⌋
@@ -121,7 +121,7 @@ CJΒΒ4 = iκ kJΒΒ4 CJΒΒ5
 W_JΒΒ4 : IConWf JudgeD IJudge JΒΒ4 CJΒΒ4
 W_JΒΒ4 =
   iwf-κ kJΒΒ4 (icw-imu (pair sTm (nsuc (var (vs (vs (vs vz)))))) KnotWf)
-    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (there here))))))))
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (there (here refl) refl) refl) refl))))))
     W_JΒΒ5
 
 CJΒΒ3 : ICon ⌊ JΒΒ3 ⌋
@@ -129,7 +129,7 @@ CJΒΒ3 = iκ kJΒΒ3 CJΒΒ4
 W_JΒΒ3 : IConWf JudgeD IJudge JΒΒ3 CJΒΒ3
 W_JΒΒ3 =
   iwf-κ kJΒΒ3 (icw-imu (pair sTm (nsuc (var (vs (vs vz))))) KnotWf)
-    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there here)))))))
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTm (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))
     W_JΒΒ4
 
 CJΒΒ2 : ICon ⌊ JΒΒ2 ⌋
@@ -137,7 +137,7 @@ CJΒΒ2 = iκ kJΒΒ2 CJΒΒ3
 W_JΒΒ2 : IConWf JudgeD IJudge JΒΒ2 CJΒΒ2
 W_JΒΒ2 =
   iwf-κ kJΒΒ2 (icw-imu (pair sTy (var (vs vz))) KnotWf)
-    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here)))))
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there (here refl) refl)))))
     W_JΒΒ3
 
 CJΒΒ1 : ICon ⌊ JΒΒ1 ⌋
@@ -145,7 +145,7 @@ CJΒΒ1 = iκ kJΒΒ1 CJΒΒ2
 W_JΒΒ1 : IConWf JudgeD IJudge JΒΒ1 CJΒΒ1
 W_JΒΒ1 =
   iwf-κ kJΒΒ1 (icw-imu (var vz) CtxWf)
-    (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var here))))
+    (⊢⌜IMu⌝ CtxWf (toI (fromI (⊢var (here refl)))))
     W_JΒΒ2
 
 CJΒΒ0 : ICon ⌊ JΒΒ0 ⌋

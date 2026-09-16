@@ -77,7 +77,7 @@ comp c a q p = tr (⌜Hom⌝ (renTm vs c) (renTm vs a) (var vz)) q p
          Γ ⊢ comp c a q p ∷ Hom (El c) a u
 ⊢trans {c = c} {a} {t} {u} {p} {q} dc da nc dt du dp dq =
   ⊢conv
-    (⊢tr (⊢wk dc) (⊢wk da) (⊢var here) (nonatc-ren vs nc)
+    (⊢tr (⊢wk dc) (⊢wk da) (⊢var (here refl)) (nonatc-ren vs nc)
          (occ-ren-tm avoids-wk c) (occ-ren-tm avoids-wk a)
          dt du dq
          (subst (λ z → _ ⊢ p ∷ El z) (sym (motive-at t))
@@ -117,7 +117,7 @@ runit a t p = tr-J-base _ _ _ t p
 ------------------------------------------------------------------------
 
 ⊢idU : ◇ ⊢ lam (var vz) ∷ Hom U ⌜base⌝ ⌜base⌝
-⊢idU = ⊢conv (⊢lam (ty-El ⊢⌜base⌝) (⊢var here))
+⊢idU = ⊢conv (⊢lam (ty-El ⊢⌜base⌝) (⊢var (here refl)))
              (csymᵀ (credᵀ (Hom-U ⌜base⌝ ⌜base⌝)))
 
 univalence-computes :

@@ -49,7 +49,7 @@ stpT : {Γ : Cx} → RTm Γ
 stpT = lam (lam (fst (var (vs vz))))
 
 ⊢stpT : {Γ : Ctx} → Γ ⊢ stpT ∷ aStepT PairT ⌜Nat⌝ msr
-⊢stpT = ⊢lam ⊢PairT (⊢lam (⊢gcdIH ⊢msr) (asP (⊢fst (⊢var (there here)))))
+⊢stpT = ⊢lam ⊢PairT (⊢lam (⊢gcdIH ⊢msr) (asP (⊢fst (⊢var (there (here refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ★ …and its `StepExt`, which is trivial: BOTH SIDES REDUCE TO `fst a`,
@@ -115,7 +115,7 @@ stpB = lam (lam (monusTm (plusTm (fst (var (vs vz))) (snd (var (vs vz))))
 ⊢stpB : {Γ : Ctx} → Γ ⊢ stpB ∷ aStepT PairT ⌜Nat⌝ msr
 ⊢stpB = ⊢lam ⊢PairT (⊢lam (⊢gcdIH ⊢msr)
           (asP (⊢monus (⊢plus (⊢fst dx) (⊢snd dx)) (⊢plus (⊢snd dx) (⊢fst dx)))))
-  where dx = ⊢var (there here)
+  where dx = ⊢var (there (here refl) refl)
 
 redB : {Γ : Cx} (a ih : RTm Γ) →
        app (app stpB a) ih ⟶* monusTm (plusTm (fst a) (snd a))

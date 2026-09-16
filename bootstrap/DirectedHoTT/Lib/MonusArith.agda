@@ -32,7 +32,7 @@ open import DirectedHoTT.Spec.Syntax
         ; subTy; subTm; renTy; renTm; Ren; Sub; extS )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; nrs
-        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; refl ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
+        ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢conv; ⊢nzero; ⊢nsuc; ⊢natrec
         ; ⊢jsub; ⊢⌜Id⌝; ⊢⌜Nat⌝
         ; csymᵀ; ctrnᵀ; ξ-Idˡ; ξ-Idʳ; natrec-zero; natrec-suc
         ; _⟶*_; step; done; wk-single )

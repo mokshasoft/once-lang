@@ -47,7 +47,7 @@ open import DirectedHoTT.Lib.IPay
 open import DirectedHoTT.Lib.IMeths using ( cdTake; cdRest; methsFrom )
 open import DirectedHoTT.Lib.Wk using ( sub-w-single )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; trans )
+open import normalizer.Syntax.Types using ( cong; trans; refl )
 open import DirectedHoTT.Lib.ICast using ( muFwd )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; ⊢IPair; sDCon; ⊢sDCon; sDesc; ⊢sDesc; ⊢ixP )
@@ -72,7 +72,7 @@ lookupMotK = Π Nat (IMu KnotD IPair (pair sDCon (snd (var (vs (vs vz))))))
               ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty lookupMotK
 ⊢lookupMotK =
   ty-Π ty-Nat
-       (ty-IMu KnotWf (⊢ixP ⊢sDCon (⊢snd (⊢var (there (there here))))))
+       (ty-IMu KnotWf (⊢ixP ⊢sDCon (⊢snd (⊢var (there (there (here refl) refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ★ THE 51 UNREACHABLE ROWS.  `dι` inhabits the codomain at EVERY index,
@@ -88,7 +88,7 @@ lookupJunk = lam (lam (lam (lam DCon-iK)))
               Γ ⊢ lookupJunk ∷ imethTy KnotD IPair k C lookupMotK
 ⊢lookupJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢lookupMotK
-    (⊢lam ty-Nat (⊢DCon-iKv _ (⊢snd (⊢var (there (there (there here)))))))
+    (⊢lam ty-Nat (⊢DCon-iKv _ (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE ONE REAL ROW — and there is only one, which is the first
@@ -161,8 +161,8 @@ lookupCons =
            ⊢IPair ⊢lookupMotK
     (⊢lam ty-Nat
       (⊢natrec (ty-IMu KnotWf
-                  (⊢ixP ⊢sDCon (⊢snd (⊢var (there (there (there (there here))))))))
-               (⊢fst (⊢var (there (there here))))
+                  (⊢ixP ⊢sDCon (⊢snd (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))
+               (⊢fst (⊢var (there (there (here refl) refl) refl)))
                -- ⚠ `s` lives under TWO more binders (the predecessor and
                --   `natrec`'s own IH), so the method's IH tuple is THREE
                --   back, not four.
@@ -197,9 +197,9 @@ lookupCons =
                                     (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDesc)
                                      iι))
                            {q = var (vs (vs (vs (vs vz))))} {M = lookupMotK}
-                           (⊢var (there (there (there here))))))
-                     (⊢var (there here))))
-               (⊢var here)))
+                           (⊢var (there (there (there (here refl) refl) refl) refl))))
+                     (⊢var (there (here refl) refl))))
+               (⊢var (here refl))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE TUPLE — SEGMENTED, `Knot/Pw`'s shape but through the LIBRARY.

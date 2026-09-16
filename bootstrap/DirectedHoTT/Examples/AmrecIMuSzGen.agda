@@ -28,6 +28,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AmrecIMuSzGen where
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Nat; U
@@ -37,7 +38,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋; single
         ; _⊢_∷_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢lam; ⊢⌜Nat⌝
         ; _⊢ty_; ty-Nat; ty-Hom; ty-El; ty-Π; ty-IMu )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ren-ty )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ren-ty; wkR⊢ )
 open import DirectedHoTT.Lib.Wk    using ( ⊢wkᶠ )
 open import DirectedHoTT.Lib.Rec   using ( aIHT )
 open import DirectedHoTT.Lib.Amrec using ( aStepT; module AmTΠ )
@@ -56,11 +57,11 @@ msr : RTm (ε ∙)
 msr = szTmScoped nzero (var vz)
 
 ⊢msr : (◇ ▹ A) ⊢ msr ∷ Nat
-⊢msr = ⊢szTmScoped (toI ⊢nzero) (⊢var here)
+⊢msr = ⊢szTmScoped (toI ⊢nzero) (⊢var (here refl))
 
 ⊢ihT : (◇ ▹ A) ⊢ty aIHT A ⌜Nat⌝ msr
 ⊢ihT =
-  ty-Π (ren-ty ⊢A there)
+  ty-Π (ren-ty ⊢A wkR⊢)
     (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢wkᶠ ⊢msr)) (⊢wk ⊢msr))
           (ty-El ⊢⌜Nat⌝))
 

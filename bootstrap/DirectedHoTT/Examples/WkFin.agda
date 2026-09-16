@@ -41,7 +41,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.WkFin where
-open import normalizer.Syntax.Types using ( _≡_; cong )
+open import normalizer.Syntax.Types using ( _≡_; cong; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
@@ -82,7 +82,7 @@ wkMot : {Γ : Cx} → RTy ((Γ ∙) ∙)
 wkMot = IMu FinD INat (nsuc (var (vs vz)))
 
 ⊢wkMot : {Γ : Ctx} → ((Γ ▹ εwkTy INat) ▹ IMu FinD INat (var vz)) ⊢ty wkMot
-⊢wkMot = ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there here)))))
+⊢wkMot = ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))
 
 ------------------------------------------------------------------------
 -- 2. THE `fzero` METHOD.
@@ -106,8 +106,8 @@ tyPayFz : {Γ : Ctx} →
           Σ' (El ⌜Nat⌝) (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs vz)) (nsuc (var vz)))) Unit)
 tyPayFz =
   ty-Σ (ty-El ⊢⌜Nat⌝)
-    (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there here))
-                               (toI (⊢nsuc (fromI (⊢var here))))))
+    (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (here refl) refl))
+                               (toI (⊢nsuc (fromI (⊢var (here refl)))))))
           ty-Unit)
 
 wkFzero : {Γ : Cx} → RTm Γ
@@ -124,15 +124,15 @@ wkFzero =
     (⊢lam tyPayFz
       (⊢lam ty-Unit
         (⊢icon FinWf hereID
-               (toI (⊢nsuc (fromI (⊢var (there (there here))))))
+               (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))
                (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                                     (toI (⊢nsuc (fromI (⊢var (there (there (there here)))))))
-                                     (toI (⊢nsuc (fromI (⊢var here))))))
+                                     (toI (⊢nsuc (fromI (⊢var (there (there (there (here refl) refl) refl) refl)))))
+                                     (toI (⊢nsuc (fromI (⊢var (here refl)))))))
                             ty-Unit)
-                      (⊢var (there (there here)))
+                      (⊢var (there (there (here refl) refl) refl))
                       (⊢pair ty-Unit
                              (⊢conv (⊢idrefl ⊢⌜Nat⌝
-                                      (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
+                                      (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))
                                     (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝
                                                     (nsuc (var (vs (vs vz))))
                                                     (nsuc (var (vs (vs vz))))))))
@@ -161,9 +161,9 @@ tyPayFs : {Γ : Ctx} →
                (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) (nsuc (var (vs vz))))) Unit))
 tyPayFs =
   ty-Σ (ty-El ⊢⌜Nat⌝)
-    (ty-Σ (ty-IMu FinWf (⊢var here))
-      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there here)))
-                                 (toI (⊢nsuc (fromI (⊢var (there here)))))))
+    (ty-Σ (ty-IMu FinWf (⊢var (here refl)))
+      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there (here refl) refl) refl))
+                                 (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))))
             ty-Unit))
 
 -- ⚠ TWO binders in, not one: the IH tuple sits after the index AND the
@@ -174,7 +174,7 @@ tyIHFs : {Γ : Ctx} →
             (Σ' (IMu FinD INat (var vz))
                (Σ' (El (⌜Id⌝ ⌜Nat⌝ (var (vs (vs vz))) (nsuc (var (vs vz))))) Unit)))
          ⊢ty _
-tyIHFs = ty-Σ (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢fst (⊢var here)))))) ty-Unit
+tyIHFs = ty-Σ (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢fst (⊢var (here refl))))))) ty-Unit
 
 wkFsuc : {Γ : Cx} → RTm Γ
 wkFsuc =
@@ -199,31 +199,31 @@ fromFin d = ⊢conv d (credᵀ El-⌜IMu⌝)
     (⊢lam tyPayFs
       (⊢lam tyIHFs
         (⊢icon FinWf (thereID hereID)
-               (toI (⊢nsuc (fromI (⊢var (there (there here))))))
-               (⊢pair (ty-Σ (ty-IMu FinWf (⊢var here))
+               (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))
+               (⊢pair (ty-Σ (ty-IMu FinWf (⊢var (here refl)))
                             (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                                           (toI (⊢nsuc (fromI (⊢var (there (there (there (there here))))))))
-                                           (toI (⊢nsuc (fromI (⊢var (there here)))))))
+                                           (toI (⊢nsuc (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))
+                                           (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))))
                                   ty-Unit))
-                      (⊢var (there (there here)))
+                      (⊢var (there (there (here refl) refl) refl))
                       (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                                            (toI (⊢nsuc (fromI (⊢var (there (there (there here)))))))
-                                            (toI (⊢nsuc (fromI (⊢var (there (there (there here)))))))))
+                                            (toI (⊢nsuc (fromI (⊢var (there (there (there (here refl) refl) refl) refl)))))
+                                            (toI (⊢nsuc (fromI (⊢var (there (there (there (here refl) refl) refl) refl)))))))
                                    ty-Unit)
                              -- ★★★ THE TRANSPORT.  `Fin (suc m) → Fin ⟨i⟩`,
                              --   along the ford read BACKWARDS.
                              (fromFin
-                               (⊢jsub (⊢⌜IMu⌝ FinWf (⊢var here))
-                                      (toI (⊢nsuc (fromI (⊢fst (⊢var (there here))))))
-                                      (⊢var (there (there here)))
-                                      (⊢symN (fromI (⊢var (there (there here))))
-                                             (⊢nsuc (fromI (⊢fst (⊢var (there here)))))
-                                             (⊢conv (⊢fst (⊢snd (⊢snd (⊢var (there here)))))
+                               (⊢jsub (⊢⌜IMu⌝ FinWf (⊢var (here refl)))
+                                      (toI (⊢nsuc (fromI (⊢fst (⊢var (there (here refl) refl))))))
+                                      (⊢var (there (there (here refl) refl) refl))
+                                      (⊢symN (fromI (⊢var (there (there (here refl) refl) refl)))
+                                             (⊢nsuc (fromI (⊢fst (⊢var (there (here refl) refl)))))
+                                             (⊢conv (⊢fst (⊢snd (⊢snd (⊢var (there (here refl) refl)))))
                                                     (credᵀ (El-⌜Id⌝ ⌜Nat⌝ _ _))))
-                                      (toFin (⊢fst (⊢var here)))))
+                                      (toFin (⊢fst (⊢var (here refl))))))
                              (⊢pair ty-Unit
                                     (⊢conv (⊢idrefl ⊢⌜Nat⌝
-                                             (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
+                                             (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))
                                            (csymᵀ (credᵀ (El-⌜Id⌝ ⌜Nat⌝ _ _))))
                                     ⊢unit))))))
 
@@ -235,13 +235,13 @@ tyΠFz : {Γ : Ctx} → Γ ⊢ty imethTy FinD INat zero fzeroC wkMot
 tyΠFz = ty-Π (ty-El ⊢⌜Nat⌝)
           (ty-Π tyPayFz
             (ty-Π ty-Unit
-              (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there here)))))))))
+              (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))))
 
 tyΠFs : {Γ : Ctx} → Γ ⊢ty imethTy FinD INat (suc zero) fsucC wkMot
 tyΠFs = ty-Π (ty-El ⊢⌜Nat⌝)
           (ty-Π tyPayFs
             (ty-Π tyIHFs
-              (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there here)))))))))
+              (ty-IMu FinWf (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))))
 
 wkMeths : {Γ : Cx} → RTm Γ
 wkMeths = pair wkFzero (pair wkFsuc unit)

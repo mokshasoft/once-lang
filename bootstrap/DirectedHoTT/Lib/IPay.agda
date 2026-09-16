@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Typing
         ; ⊢fst; ⊢snd; iinst )
 open import DirectedHoTT.Metatheory.TySub
   using ( Sub⊢; Sub⊢-ext; sub-lemma; sub-ty; ⊢-cast; ren-ty; ⊢wk; Ren⊢-ext
-        ; isingle-Sub⊢; iihTy-wf )
+        ; isingle-Sub⊢; iihTy-wf; wkR⊢ )
 open import DirectedHoTT.Lib.Wk using ( ren-subTy; Ren⊢-ins²; wk-singleTy )
 open import DirectedHoTT.Lib.IMeths using ( CDesc; cd-stop; cd-cons; cdRest; cdPos; methsFrom; methsAt )
 

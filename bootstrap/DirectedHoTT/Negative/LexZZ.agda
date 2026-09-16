@@ -15,6 +15,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Negative.LexZZ where
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Hom; Nat
@@ -65,7 +66,7 @@ REC1TZZ =
 
 ⊢lexZZrec1 : ΓZZ ⊢ lexZZrec1 ∷ REC1TZZ
 ⊢lexZZrec1 =
-  ⊢lam (ty-El (⊢var (there (there (there (there (there (there (there here))))))))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var here))) (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var (there (there (there here)))))) (⊢strong-base' (⊢app (⊢var (there (there (there (there (there (there (there (there here))))))))) (⊢var (there here))) (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there here))) (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there (there (there here)))))) (⊢var here) (⊢var (there (there (there here))))))
+  ⊢lam (ty-El (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)) (⊢var (here refl)))) (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (there (here refl) refl) refl) refl)))) (⊢strong-base' (⊢app (⊢var (there (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (here refl) refl))) (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (here refl) refl))) (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))) (⊢var (here refl)) (⊢var (there (there (there (here refl) refl) refl) refl))))
 
 lexZZrec2 : RTm ⌊ ΓZZ ⌋
 lexZZrec2 =
@@ -82,7 +83,7 @@ REC2TZZ =
 
 ⊢lexZZrec2 : ΓZZ ⊢ lexZZrec2 ∷ REC2TZZ
 ⊢lexZZrec2 =
-  ⊢lam (ty-El (⊢var (there (there (there (there (there (there (there here))))))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var here)) (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var (there (there (there here)))))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var (there here)))) (⊢app (⊢var (there (there (there (there (there (there here))))))) (⊢var (there (there (there (there here))))))) (⊢strong-base' (⊢app (⊢var (there (there (there (there (there (there (there (there (there here)))))))))) (⊢var (there (there here)))) (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there here)))) (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there (there (there (there (there here))))))) (⊢var here) (⊢var (there (there (there here)))))))
+  ⊢lam (ty-El (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)) (⊢var (here refl))) (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (there (here refl) refl) refl) refl)))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (here refl) refl)))) (⊢app (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))) (⊢strong-base' (⊢app (⊢var (there (there (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (here refl) refl) refl))) (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (here refl) refl) refl))) (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))) (⊢var (here refl)) (⊢var (there (there (there (here refl) refl) refl) refl)))))
 
 ------------------------------------------------------------------------
 -- 7. BRANCH (0,0) ASSEMBLED.  Three `⊢lam`s and a three-fold `⊢app`
@@ -92,4 +93,4 @@ REC2TZZ =
 ⊢lexZZ : (stpTm : RTm ⌊ Γ₅ ⌋) (dstp : Γ₅ ⊢ stpTm ∷ LStepT) →
          (Γ₅ ▹ Nat) ⊢ lexZZ stpTm ∷ subTy (single nzero) M0lex
 ⊢lexZZ stpTm dstp =
-  ⊢lam (ty-El (⊢var (there (there (there (there here)))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there here)))) (⊢var here)) ⊢nzero) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there here)))) (⊢var (there here))) ⊢nzero) (⊢app (⊢app (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (dstp))))) (⊢var (there (there here)))) ⊢lexZZrec1) ⊢lexZZrec2)))
+  ⊢lam (ty-El (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (here refl) refl) refl) refl)) (⊢var (here refl))) ⊢nzero) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (here refl) refl) refl) refl)) (⊢var (there (here refl) refl))) ⊢nzero) (⊢app (⊢app (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (dstp))))) (⊢var (there (there (here refl) refl) refl))) ⊢lexZZrec1) ⊢lexZZrec2)))

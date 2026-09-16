@@ -59,14 +59,14 @@ open import DirectedHoTT.Spec.Syntax
         ; εwkTy; εwk-ren; ipayTy-ren; ipayTy-cong ; Ren; extR)
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; ◇; _▹_; ⌊_⌋
-        ; _⊢_∷_; ⊢var; here; there; refl ⊢lam; ⊢pair; ⊢fst; ⊢snd; ⊢unit
+        ; _⊢_∷_; ⊢var; here; there; ⊢lam; ⊢pair; ⊢fst; ⊢snd; ⊢unit
         ; _⊢ty_; ty-Unit; ty-Σ; ty-Nat
         ; IConWf; iwf-ι; iwf-ρ; iwf-κ
         ; IDescWf; IDescWfFrom; idwf-nil; idwf-cons
         ; imethTy; imethsTyFrom; iihTy
         ; _⟶_; _⟶*_; done; step; βfst; βsnd; ξ-fst; ξ-snd ; iinst; single; iconS; iatCon)
 open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢-cast; ren-ty; isingle-Sub⊢; iihTy-wf; iihTy-ren; iihTy-cong )
+  using ( ⊢-cast; ren-ty; isingle-Sub⊢; iihTy-wf; iihTy-ren; iihTy-cong; wkR⊢ )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false )
 open import DirectedHoTT.Lib.IPay

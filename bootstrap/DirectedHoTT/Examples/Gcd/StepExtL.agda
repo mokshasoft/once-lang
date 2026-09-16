@@ -76,8 +76,8 @@ private
   F₃ = subTm (single nzero) f₃
 
   ⊢B₃ : {Γ : Ctx} → Θ₃ Γ ⊢ B₃ ∷ Nat
-  ⊢B₃ = ⊢plus (⊢nsuc (⊢var (there here)))
-              (⊢nsuc (⊢var (there (there (there here)))))
+  ⊢B₃ = ⊢plus (⊢nsuc (⊢var (there (here refl) refl)))
+              (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))
 
   Θ₃' : Ctx → Ctx
   Θ₃' Γ = ((Θ₃ Γ ▹ gcdIH B₃) ▹ gcdIH (w B₃))
@@ -88,7 +88,7 @@ private
                (Id (El ⌜Nat⌝) (app (w (w (w F₃))) (var (vs (vs vz))))
                               (app (w (w (w F₃))) (var (vs vz))))
   idPrf₃ = idOfRed (red₃z _ (var (vs (vs vz)))) (red₃z _ (var (vs vz)))
-                   (prv _ (pwElim (⊢-cast (pwT-w _ _ _) (⊢var here))
+                   (prv _ (pwElim (⊢-cast (pwT-w _ _ _) (⊢var (here refl)))
                                   (⊢wk (⊢wk ⊢PAIRᶻ))
                                   (⊢wk (⊢wk ⊢CERTᶻ))))
 
@@ -97,6 +97,6 @@ leaf₃z =
   prv _ (⊢lam (⊢gcdIH ⊢B₃)
           (⊢lam (⊢gcdIH (⊢wk ⊢B₃))
             (⊢lam (⊢pwT (⊢wk (⊢wk ⊢B₃))
-                        (⊢-cast (gcdIH-w² _) (⊢var (there here)))
-                        (⊢-cast (gcdIH-w (w _)) (⊢var here)))
+                        (⊢-cast (gcdIH-w² _) (⊢var (there (here refl) refl)))
+                        (⊢-cast (gcdIH-w (w _)) (⊢var (here refl))))
                   (prvOk idPrf₃))))

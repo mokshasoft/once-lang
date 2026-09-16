@@ -42,6 +42,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Comparison.GcdRoute2Kernel where
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; El; Hom; Nat; Π
@@ -81,7 +82,7 @@ auxMot : RTy (ε ∙ ∙)
 auxMot = auxB (var vz)
 
 ⊢auxMot : ((◇ ▹ PairT) ▹ Nat) ⊢ty auxMot
-⊢auxMot = ⊢auxB (⊢var here)
+⊢auxMot = ⊢auxB (⊢var (here refl))
 
 ------------------------------------------------------------------------
 -- n = 0 : `μ y < μ x ≤ 0` is impossible, so the IH is EX FALSO.
@@ -101,12 +102,12 @@ ihZ =
 ⊢ihZ =
   ⊢lam ⊢PairT
     (⊢lam (ty-Hom ty-Nat (⊢nsuc ⊢msr)
-            (⊢wk (⊢plus (⊢fst (⊢var (there here))) (⊢snd (⊢var (there here))))))
+            (⊢wk (⊢plus (⊢fst (⊢var (there (here refl) refl))) (⊢snd (⊢var (there (here refl) refl))))))
       (⊢strong-base' ⊢⌜Nat⌝
-        (⊢plus (⊢fst (⊢var (there here))) (⊢snd (⊢var (there here))))
-        (⊢plus (⊢fst (⊢var (there (there (there here)))))
-               (⊢snd (⊢var (there (there (there here))))))
-        (⊢var here) (⊢var (there (there here)))))
+        (⊢plus (⊢fst (⊢var (there (here refl) refl))) (⊢snd (⊢var (there (here refl) refl))))
+        (⊢plus (⊢fst (⊢var (there (there (there (here refl) refl) refl) refl)))
+               (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))
+        (⊢var (here refl)) (⊢var (there (there (here refl) refl) refl))))
 
 zBr : RTm (ε ∙)
 zBr = lam (lam (app (app (w (w (w gcdStp))) (var (vs vz))) ihZ))
@@ -115,7 +116,7 @@ zBr = lam (lam (app (app (w (w (w gcdStp))) (var (vs vz))) ihZ))
 ⊢zBr =
   ⊢lam ⊢PairT
     (⊢lam (ty-Hom ty-Nat ⊢msr ⊢nzero)
-      (⊢app (⊢app (⊢wk (⊢wk (⊢wk ⊢gcdStp))) (⊢var (there here))) ⊢ihZ))
+      (⊢app (⊢app (⊢wk (⊢wk (⊢wk ⊢gcdStp))) (⊢var (there (here refl) refl))) ⊢ihZ))
 
 ------------------------------------------------------------------------
 -- n = suc n' : the IH at n' is a CONTEXT VARIABLE, and `⊢strong-step` is
@@ -137,14 +138,14 @@ ihS =
 ⊢ihS =
   ⊢lam ⊢PairT
     (⊢lam (ty-Hom ty-Nat (⊢nsuc ⊢msr)
-            (⊢wk (⊢plus (⊢fst (⊢var (there here))) (⊢snd (⊢var (there here))))))
-      (⊢app (⊢app (⊢var (there (there (there (there here))))) (⊢var (there here)))
+            (⊢wk (⊢plus (⊢fst (⊢var (there (here refl) refl))) (⊢snd (⊢var (there (here refl) refl))))))
+      (⊢app (⊢app (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)) (⊢var (there (here refl) refl)))
             (⊢strong-step
-              (⊢plus (⊢fst (⊢var (there here))) (⊢snd (⊢var (there here))))
-              (⊢plus (⊢fst (⊢var (there (there (there here)))))
-                     (⊢snd (⊢var (there (there (there here))))))
-              (⊢var (there (there (there (there (there here))))))
-              (⊢var here) (⊢var (there (there here))))))
+              (⊢plus (⊢fst (⊢var (there (here refl) refl))) (⊢snd (⊢var (there (here refl) refl))))
+              (⊢plus (⊢fst (⊢var (there (there (there (here refl) refl) refl) refl)))
+                     (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))
+              (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
+              (⊢var (here refl)) (⊢var (there (there (here refl) refl) refl)))))
 
 sBr : RTm (ε ∙ ∙ ∙)
 sBr =
@@ -153,8 +154,8 @@ sBr =
 ⊢sBr : (((◇ ▹ PairT) ▹ Nat) ▹ auxMot) ⊢ sBr ∷ auxB (nsuc (var (vs vz)))
 ⊢sBr =
   ⊢lam ⊢PairT
-    (⊢lam (ty-Hom ty-Nat ⊢msr (⊢nsuc (⊢var (there (there here)))))
-      (⊢app (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk ⊢gcdStp))))) (⊢var (there here)))
+    (⊢lam (ty-Hom ty-Nat ⊢msr (⊢nsuc (⊢var (there (there (here refl) refl) refl))))
+      (⊢app (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk ⊢gcdStp))))) (⊢var (there (here refl) refl)))
             ⊢ihS))
 
 ------------------------------------------------------------------------
@@ -176,7 +177,7 @@ gcdKTm : RTm ε
 gcdKTm = lam (app (app (auxTm msr) (var vz)) (reflTm msr))
 
 ⊢gcdK : ◇ ⊢ gcdKTm ∷ Π PairT (El ⌜Nat⌝)
-⊢gcdK = ⊢lam ⊢PairT (⊢app (⊢app (⊢aux ⊢msr) (⊢var here)) (⊢le-refl ⊢msr))
+⊢gcdK = ⊢lam ⊢PairT (⊢app (⊢app (⊢aux ⊢msr) (⊢var (here refl))) (⊢le-refl ⊢msr))
 
 ------------------------------------------------------------------------
 -- ★★★★ END TO END, BY HAND — and this is what D7's CPS lemma saves.

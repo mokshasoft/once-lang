@@ -124,19 +124,19 @@ nilWf : IConWf VecD INat (◇ ▹ INat) nilC
 nilWf =
   iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) nzero)
         (icw-ford ⌜Nat⌝ (var vz) nzero)
-        (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))
+        (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (here refl)) (toI ⊢nzero))
         iwf-ι
 
 consWf : IConWf VecD INat (◇ ▹ INat) consC
 consWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
    (iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-    (iwf-ρ (var (vs vz)) (⊢var (there here))
+    (iwf-ρ (var (vs vz)) (⊢var (there (here refl) refl))
      (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs (vs vz)))) (nsuc (var (vs (vs vz)))))
             (icw-ford ⌜Nat⌝ (var (vs (vs (vs vz)))) (nsuc (var (vs (vs vz)))))
             (⊢⌜Id⌝ ⊢⌜Nat⌝
-                   (⊢var (there (there (there here))))
-                   (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
+                   (⊢var (there (there (there (here refl) refl) refl) refl))
+                   (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))
             iwf-ι)))
 
 VecWf : IDescWf INat VecD
@@ -205,9 +205,9 @@ tyP₁ : (◇ ▹ El ⌜Nat⌝) ⊢ty
                                   (nsuc (var (vs (vs vz)))))) Unit))
 tyP₁ =
   ty-Σ (ty-El ⊢⌜Nat⌝)
-    (ty-Σ (ty-IMu VecWf (⊢var (there here)))
+    (ty-Σ (ty-IMu VecWf (⊢var (there (here refl) refl)))
       (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢nsuc ⊢nzero))
-                          (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                          (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))))
             ty-Unit))
 
 ⊢v1 : ◇ ⊢ v1 ∷ Vec (nsuc nzero)
@@ -246,7 +246,7 @@ vlen n v = ielim VecD n vms v
 -- the payload types, as `⊢ty` derivations under the method's index binder
 tyPayNil : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ty
            Σ' (El (⌜Id⌝ ⌜Nat⌝ (var vz) nzero)) Unit
-tyPayNil = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))) ty-Unit
+tyPayNil = ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (here refl)) (toI ⊢nzero))) ty-Unit
 
 tyPayCons : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ty
             Σ' (El ⌜Nat⌝)
@@ -257,10 +257,10 @@ tyPayCons : {Γ : Ctx} → (Γ ▹ El ⌜Nat⌝) ⊢ty
 tyPayCons =
   ty-Σ (ty-El ⊢⌜Nat⌝)
     (ty-Σ (ty-El ⊢⌜Nat⌝)
-      (ty-Σ (ty-IMu VecWf (⊢var (there here)))
+      (ty-Σ (ty-IMu VecWf (⊢var (there (here refl) refl)))
         (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                            (⊢var (there (there (there here))))
-                            (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                            (⊢var (there (there (there (here refl) refl) refl) refl))
+                            (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))))
               ty-Unit)))
 
 ⊢mnil : {Γ : Ctx} → Γ ⊢ mnil ∷ Π (El ⌜Nat⌝)
@@ -279,7 +279,7 @@ tyPayCons =
 ⊢mcons =
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayCons
-      (⊢lam (ty-Σ ty-Nat ty-Unit) (⊢nsuc (⊢fst (⊢var here)))))
+      (⊢lam (ty-Σ ty-Nat ty-Unit) (⊢nsuc (⊢fst (⊢var (here refl))))))
 
 ⊢vms : ◇ ⊢ vms ∷ imethsTy VecD INat Nat VecD
 ⊢vms =

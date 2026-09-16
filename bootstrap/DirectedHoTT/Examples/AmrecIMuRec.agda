@@ -49,6 +49,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AmrecIMuRec where
+open import normalizer.Syntax.Types using ( refl )
 open import Agda.Builtin.Nat using ( zero; suc )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
@@ -89,7 +90,7 @@ ihT i s =
        Γ ⊢ i ∷ El ⌜Nat⌝ → Γ ⊢ s ∷ Tm i → Γ ⊢ty ihT i s
 ⊢ihT di ds =
   ty-Π (ty-IMu TmWf di)
-    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢size (⊢wk di) (⊢var here)))
+    (ty-Π (ty-Hom ty-Nat (⊢nsuc (⊢size (⊢wk di) (⊢var (here refl))))
                          (⊢size (⊢wk di) (⊢wk ds)))
           (ty-El ⊢⌜Nat⌝))
 
@@ -105,7 +106,7 @@ Mot : {Γ : Cx} → RTy ((Γ ∙) ∙)
 Mot = MotAt (var (vs vz)) (var vz)
 
 ⊢Mot : {Γ : Ctx} → ((Γ ▹ El ⌜Nat⌝) ▹ IMu TmD INat (var vz)) ⊢ty Mot
-⊢Mot = ⊢MotAt (⊢var (there here)) (⊢var here)
+⊢Mot = ⊢MotAt (⊢var (there (here refl) refl)) (⊢var (here refl))
 
 ------------------------------------------------------------------------
 -- 2. THE THREE METHODS.
@@ -131,18 +132,18 @@ tyMethVar =
   ty-Π (ty-El ⊢⌜Nat⌝)
     (ty-Π tyPayVar
       (ty-Π ty-Unit
-        (⊢MotAt (⊢var (there (there here)))
-                (⊢icon TmWf hereID (⊢var (there (there here)))
-                                   (⊢var (there here))))))
+        (⊢MotAt (⊢var (there (there (here refl) refl) refl))
+                (⊢icon TmWf hereID (⊢var (there (there (here refl) refl) refl))
+                                   (⊢var (there (here refl) refl))))))
 
 ⊢mVar : {Γ : Ctx} → Γ ⊢ mVar ∷ imethTy TmD INat zero varC Mot
 ⊢mVar =
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayVar
       (⊢lam ty-Unit
-        (⊢lam (⊢ihT (⊢var (there (there here)))
-                    (⊢icon TmWf hereID (⊢var (there (there here)))
-                                       (⊢var (there here))))
+        (⊢lam (⊢ihT (⊢var (there (there (here refl) refl) refl))
+                    (⊢icon TmWf hereID (⊢var (there (there (here refl) refl) refl))
+                                       (⊢var (there (here refl) refl))))
               (toI ⊢nzero))))
 
 -- `lam`: ONE structural IH, at the SHIFTED index `suc n` — and the
@@ -151,23 +152,23 @@ tyMethLam : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat (suc zero) lamC Mot
 tyMethLam =
   ty-Π (ty-El ⊢⌜Nat⌝)
     (ty-Π tyPayLam
-      (ty-Π (ty-Σ (⊢MotAt (toI (⊢nsuc (fromI (⊢var (there here)))))
-                          (⊢fst (⊢var here)))
+      (ty-Π (ty-Σ (⊢MotAt (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))
+                          (⊢fst (⊢var (here refl))))
                   ty-Unit)
-        (⊢MotAt (⊢var (there (there here)))
-                (⊢icon TmWf (thereID hereID) (⊢var (there (there here)))
-                                             (⊢var (there here))))))
+        (⊢MotAt (⊢var (there (there (here refl) refl) refl))
+                (⊢icon TmWf (thereID hereID) (⊢var (there (there (here refl) refl) refl))
+                                             (⊢var (there (here refl) refl))))))
 
 ⊢mLam : {Γ : Ctx} → Γ ⊢ mLam ∷ imethTy TmD INat (suc zero) lamC Mot
 ⊢mLam =
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayLam
-      (⊢lam (ty-Σ (⊢MotAt (toI (⊢nsuc (fromI (⊢var (there here)))))
-                          (⊢fst (⊢var here)))
+      (⊢lam (ty-Σ (⊢MotAt (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))
+                          (⊢fst (⊢var (here refl))))
                   ty-Unit)
-        (⊢lam (⊢ihT (⊢var (there (there here)))
-                    (⊢icon TmWf (thereID hereID) (⊢var (there (there here)))
-                                                 (⊢var (there here))))
+        (⊢lam (⊢ihT (⊢var (there (there (here refl) refl) refl))
+                    (⊢icon TmWf (thereID hereID) (⊢var (there (there (here refl) refl) refl))
+                                                 (⊢var (there (here refl) refl))))
               (toI ⊢nzero))))
 
 -- `app`: TWO structural IHs, both at the ambient index — and both
@@ -176,32 +177,32 @@ tyMethApp : {Γ : Ctx} → Γ ⊢ty imethTy TmD INat (suc (suc zero)) appC Mot
 tyMethApp =
   ty-Π (ty-El ⊢⌜Nat⌝)
     (ty-Π tyPayApp
-      (ty-Π (ty-Σ (⊢MotAt (⊢var (there here)) (⊢fst (⊢var here)))
-                  (ty-Σ (⊢MotAt (⊢wk (⊢var (there here)))
-                                (⊢wk (⊢fst (⊢snd (⊢var here)))))
+      (ty-Π (ty-Σ (⊢MotAt (⊢var (there (here refl) refl)) (⊢fst (⊢var (here refl))))
+                  (ty-Σ (⊢MotAt (⊢wk (⊢var (there (here refl) refl)))
+                                (⊢wk (⊢fst (⊢snd (⊢var (here refl))))))
                         ty-Unit))
-        (⊢MotAt (⊢var (there (there here)))
+        (⊢MotAt (⊢var (there (there (here refl) refl) refl))
                 (⊢icon TmWf (thereID (thereID hereID))
-                            (⊢var (there (there here)))
-                            (⊢var (there here))))))
+                            (⊢var (there (there (here refl) refl) refl))
+                            (⊢var (there (here refl) refl))))))
 
 ⊢mApp : {Γ : Ctx} → Γ ⊢ mApp ∷ imethTy TmD INat (suc (suc zero)) appC Mot
 ⊢mApp =
   ⊢lam (ty-El ⊢⌜Nat⌝)
     (⊢lam tyPayApp
-      (⊢lam (ty-Σ (⊢MotAt (⊢var (there here)) (⊢fst (⊢var here)))
-                  (ty-Σ (⊢MotAt (⊢wk (⊢var (there here)))
-                                (⊢wk (⊢fst (⊢snd (⊢var here)))))
+      (⊢lam (ty-Σ (⊢MotAt (⊢var (there (here refl) refl)) (⊢fst (⊢var (here refl))))
+                  (ty-Σ (⊢MotAt (⊢wk (⊢var (there (here refl) refl)))
+                                (⊢wk (⊢fst (⊢snd (⊢var (here refl))))))
                         ty-Unit))
-        (⊢lam (⊢ihT (⊢var (there (there here)))
+        (⊢lam (⊢ihT (⊢var (there (there (here refl) refl) refl))
                     (⊢icon TmWf (thereID (thereID hereID))
-                                (⊢var (there (there here)))
-                                (⊢var (there here))))
+                                (⊢var (there (there (here refl) refl) refl))
+                                (⊢var (there (here refl) refl))))
           -- ★★★ THE RECURSIVE CALL, and the whole point of step 1b.
-          (⊢app (⊢app (⊢var here) (⊢fst (⊢var (there (there here)))))
-                (⊢desc-app (⊢var (there (there (there here))))
-                           (⊢fst (⊢var (there (there here))))
-                           (⊢fst (⊢snd (⊢var (there (there here))))))))))
+          (⊢app (⊢app (⊢var (here refl)) (⊢fst (⊢var (there (there (here refl) refl) refl))))
+                (⊢desc-app (⊢var (there (there (there (here refl) refl) refl) refl))
+                           (⊢fst (⊢var (there (there (here refl) refl) refl)))
+                           (⊢fst (⊢snd (⊢var (there (there (here refl) refl) refl)))))))))
 
 ------------------------------------------------------------------------
 -- 3. THE METHOD TUPLE, AND THE STEP.
@@ -222,7 +223,7 @@ stpR : RTm ε
 stpR = lam (ielim TmD nzero mRecs (var vz))
 
 ⊢stpR : ◇ ⊢ stpR ∷ aStepT A ⌜Nat⌝ msr
-⊢stpR = ⊢lam ⊢A (⊢ielim TmWf ⊢Mot (toI ⊢nzero) ⊢mRecs (⊢var here))
+⊢stpR = ⊢lam ⊢A (⊢ielim TmWf ⊢Mot (toI ⊢nzero) ⊢mRecs (⊢var (here refl)))
 
 ------------------------------------------------------------------------
 -- 4. ★★★ THE USE SITE.

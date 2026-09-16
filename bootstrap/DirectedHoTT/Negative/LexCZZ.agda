@@ -83,13 +83,13 @@ module _ (Δ : Ctx) (cA cP μ₁ μ₂ stp : RTm ⌊ Δ ⌋)
              ∷ rec1T (w (w (w (w cA)))) (w (w (w (w cP)))) (w (w (w (w μ₁))))
                      (var (vs (vs vz)))
   ⊢lexZZrec1 =
-    ⊢lam (ty-El (⊢wk (⊢wk (⊢wk (⊢wk (dcA)))))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁)))))) (⊢var here))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁)))))) (⊢var (there (there (there here)))))) (⊢strong-base' (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dcP))))))) (⊢var (there here))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁))))))) (⊢var (there here))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁))))))) (⊢var (there (there (there (there here)))))) (⊢var here) (⊢var (there (there (there here))))))
+    ⊢lam (ty-El (⊢wk (⊢wk (⊢wk (⊢wk (dcA)))))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁)))))) (⊢var (here refl)))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁)))))) (⊢var (there (there (there (here refl) refl) refl) refl)))) (⊢strong-base' (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dcP))))))) (⊢var (there (here refl) refl))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁))))))) (⊢var (there (here refl) refl))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁))))))) (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))) (⊢var (here refl)) (⊢var (there (there (there (here refl) refl) refl) refl))))
 
   ⊢lexZZrec2 : ΓZZ ⊢ lexZZrec2
              ∷ rec2T (w (w (w (w cA)))) (w (w (w (w cP)))) (w (w (w (w μ₁))))
                      (w (w (w (w μ₂)))) (var (vs (vs vz)))
   ⊢lexZZrec2 =
-    ⊢lam (ty-El (⊢wk (⊢wk (⊢wk (⊢wk (dcA)))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁)))))) (⊢var here)) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁)))))) (⊢var (there (there (there here)))))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂))))))) (⊢var (there here)))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂))))))) (⊢var (there (there (there (there here))))))) (⊢strong-base' (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dcP)))))))) (⊢var (there (there here)))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂)))))))) (⊢var (there (there here)))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂)))))))) (⊢var (there (there (there (there (there here))))))) (⊢var here) (⊢var (there (there (there here)))))))
+    ⊢lam (ty-El (⊢wk (⊢wk (⊢wk (⊢wk (dcA)))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁)))))) (⊢var (here refl))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁)))))) (⊢var (there (there (there (here refl) refl) refl) refl)))) (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂))))))) (⊢var (there (here refl) refl)))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂))))))) (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))) (⊢strong-base' (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dcP)))))))) (⊢var (there (there (here refl) refl) refl))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂)))))))) (⊢var (there (there (here refl) refl) refl))) (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂)))))))) (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))) (⊢var (here refl)) (⊢var (there (there (there (here refl) refl) refl) refl)))))
 
   ------------------------------------------------------------------------
   -- ★ THE MOTIVE BOUNDARY.  `⊢natrec` will demand `subTy (single nzero)
@@ -169,4 +169,4 @@ module _ (Δ : Ctx) (cA cP μ₁ μ₂ stp : RTm ⌊ Δ ⌋)
   ⊢lexZZ : (Δ ▹ Nat) ⊢ lexZZ ∷ subTy (single nzero) M0lex
   ⊢lexZZ =
     ⊢-cast (sym M0lex-sub)
-      (⊢lam (ty-El (⊢wk (dcA))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (dμ₁))) (⊢var here)) ⊢nzero) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (dμ₂)))) (⊢var (there here))) ⊢nzero) (⊢-cast (cong (λ z → El (app z (var (vs (vs vz))))) cPcancel) (⊢app (⊢app (⊢app (⊢-cast stp-w⁴ (⊢wk (⊢wk (⊢wk (⊢wk dstp))))) (⊢var (there (there here)))) (⊢-cast (sym rec1-fit) ⊢lexZZrec1)) (⊢-cast (sym rec2-fit) ⊢lexZZrec2))))))
+      (⊢lam (ty-El (⊢wk (dcA))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (dμ₁))) (⊢var (here refl))) ⊢nzero) (⊢lam (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (dμ₂)))) (⊢var (there (here refl) refl))) ⊢nzero) (⊢-cast (cong (λ z → El (app z (var (vs (vs vz))))) cPcancel) (⊢app (⊢app (⊢app (⊢-cast stp-w⁴ (⊢wk (⊢wk (⊢wk (⊢wk dstp))))) (⊢var (there (there (here refl) refl) refl))) (⊢-cast (sym rec1-fit) ⊢lexZZrec1)) (⊢-cast (sym rec2-fit) ⊢lexZZrec2))))))

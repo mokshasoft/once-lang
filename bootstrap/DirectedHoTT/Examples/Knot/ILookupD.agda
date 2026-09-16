@@ -29,6 +29,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.ILookupD where
+open import normalizer.Syntax.Types using ( refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -87,7 +88,7 @@ ilookupCons =
            ⊢IPair ⊢ilookupMotK
     (⊢lam ty-Nat
       (⊢natrec (ty-IMu KnotWf (⊢ixP ⊢sICon (⊢nsuc ⊢nzero)))
-               (⊢fst (⊢var (there (there here))))
+               (⊢fst (⊢var (there (there (here refl) refl) refl)))
                (⊢app (⊢ihHere
                         {D = KnotD} {I = IPair}
                         {σ = iext (isingle (var (vs (vs (vs (vs (vs vz)))))))
@@ -101,9 +102,9 @@ ilookupCons =
                            (iρ (pair sIDesc (snd (var (vs vz))))
                              (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sIDesc) iι))
                            {q = var (vs (vs (vs (vs vz))))} {M = ilookupMotK}
-                           (⊢var (there (there (there here))))))
-                     (⊢var (there here)))
-               (⊢var here)))
+                           (⊢var (there (there (there (here refl) refl) refl) refl))))
+                     (⊢var (there (here refl) refl)))
+               (⊢var (here refl))))
 
 -- ★ THE TUPLE — rows 0–46 junk · row 47 · rows 48–52 junk.
 D48 : IDesc

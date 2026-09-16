@@ -26,7 +26,7 @@ open import DirectedHoTT.Spec.Syntax
         ; Ren; renTm; renTy; subTm; subTy; extR; nrs )
 open import DirectedHoTT.Spec.Typing
   using ( Ctx; _▹_; ⌊_⌋; single; _⊢_∷_; wk-single )
-open import DirectedHoTT.Metatheory.TySub using ( Ren⊢ )
+open import DirectedHoTT.Metatheory.TySub using ( Ren⊢; wkR⊢ )
 open import DirectedHoTT.Lib.Rec using ( aIHTat )
 open import DirectedHoTT.Lib.Amrec using ( prvTm; prvOk; StepPW )
 open import DirectedHoTT.Lib.Pair using ( PairT )
@@ -103,9 +103,9 @@ module LeafAt (Δ : Ctx) where
   splitZP : {x y : RTm ⌊ Δ ⌋} (dx : Δ ⊢ x ∷ PairT) (dy : Δ ⊢ y ∷ PairT) →
             Prv (Δ ▹ Nat) (irrT vs x y nzero (var vz))
   splitZP dx dy =
-    irrSplit there dx dy ⊢nzero
-             (irr-zz gcdStepExt there dx dy)
-             (irr-zs gcdStepExt (wR (wR there)) dx dy (⊢var (there here)))
+    irrSplit wkR⊢ dx dy ⊢nzero
+             (irr-zz gcdStepExt wkR⊢ dx dy)
+             (irr-zs gcdStepExt (wR (wR wkR⊢)) dx dy (⊢var (there (here refl) refl)))
 
   ------------------------------------------------------------------------
   -- ★★ SPLITTING `irrSplit` INTO ITS TWO HALVES.

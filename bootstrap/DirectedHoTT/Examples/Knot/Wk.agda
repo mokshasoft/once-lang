@@ -50,7 +50,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢pair; ⊢unit; ⊢fst; ⊢snd; ⊢nsuc
         ; IDescWfFrom; idwf-cons; ξ-pairˡ; ξ-pairʳ; ξ-nsuc; βfst; βsnd
         ; ty-IMu; imethsTy; imethsTyFrom; ⊢ielim )
-open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-ty )
+open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast; ren-ty; wkR⊢ )
 open import DirectedHoTT.Lib.Wk using ( wk-singleTy )
 open import DirectedHoTT.Lib.IWk
   using ( sh; Mot; decDesc; iwkMeths; ⊢iwkMethsFrom; wkdRest
@@ -105,13 +105,13 @@ wkTail = pair wkVarVz (pair wkVarVs unit)
   ⊢pair (ren-ty (imethsTyFromMot-wf KnotD IPair tagVar-vs _ KnotWf
                    (wfStep (wfDrop KnotWf (decDesc KnotD)))
                    ⊢IPair ⊢shIPair)
-                there)
+                wkR⊢)
         ⊢wkVarVz
         (⊢-cast (sym (wk-singleTy {v = wkVarVz} _))
           (⊢pair (ren-ty (imethsTyFromMot-wf KnotD IPair (suc tagVar-vs) _ KnotWf
                             (wfStep (wfStep (wfDrop KnotWf (decDesc KnotD))))
                             ⊢IPair ⊢shIPair)
-                         there)
+                         wkR⊢)
                  ⊢wkVarVs
                  (⊢-cast (sym (wk-singleTy {v = wkVarVs} _)) ⊢unit)))
 
@@ -133,4 +133,4 @@ wkMethsK = iwkMeths (decDesc KnotD) wkTail
 ⊢MotK = ty-IMu KnotWf
           (⊢shIPair (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
                                    (εwk-ren vs IPair))
-                            (⊢var (there here))))
+                            (⊢var (there (here refl) refl))))

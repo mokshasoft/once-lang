@@ -88,8 +88,8 @@ M₁ =
 
 ⊢M₁ : ((◇ ▹ PairT) ▹ Nat) ⊢ty M₁
 ⊢M₁ =
-  ty-Π (⊢rec1Tat (⊢var here))
-    (ty-Π (⊢rec2Tat (⊢var (there here)) (⊢snd (⊢var (there (there here)))))
+  ty-Π (⊢rec1Tat (⊢var (here refl)))
+    (ty-Π (⊢rec2Tat (⊢var (there (here refl) refl)) (⊢snd (⊢var (there (there (here refl) refl) refl))))
           (ty-El ⊢⌜Nat⌝))
 
 -- fst x = 0 : `ack (0 , n) = n + 1`.  Both recursors discarded.
@@ -99,8 +99,8 @@ fZ₁ = lam (lam (nsuc (snd (var (vs (vs vz))))))
 ⊢fZ₁ : (◇ ▹ PairT) ⊢ fZ₁ ∷ subTy (single nzero) M₁
 ⊢fZ₁ =
   ⊢lam (⊢rec1Tat ⊢nzero)
-    (⊢lam (⊢rec2Tat ⊢nzero (⊢snd (⊢var (there here))))
-          (asP (⊢nsuc (⊢snd (⊢var (there (there here)))))))
+    (⊢lam (⊢rec2Tat ⊢nzero (⊢snd (⊢var (there (here refl) refl))))
+          (asP (⊢nsuc (⊢snd (⊢var (there (there (here refl) refl) refl))))))
 
 ------------------------------------------------------------------------
 -- THE INNER MOTIVE — the split on `snd x`, inside the outer successor
@@ -124,7 +124,7 @@ C5 =
 
 ⊢M₂ : (C5 ▹ Nat) ⊢ty M₂
 ⊢M₂ =
-  ty-Π (⊢rec2Tat (⊢nsuc (⊢var (there (there (there (there here)))))) (⊢var here))
+  ty-Π (⊢rec2Tat (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))) (⊢var (here refl)))
        (ty-El ⊢⌜Nat⌝)
 
 -- snd x = 0 : `ack (suc m' , 0) = ack (m' , 1)` — rec₁, μ₁ strictly down.
@@ -136,12 +136,12 @@ fZ₂ =
 
 ⊢fZ₂ : C5 ⊢ fZ₂ ∷ subTy (single nzero) M₂
 ⊢fZ₂ =
-  ⊢lam (⊢rec2Tat (⊢nsuc (⊢var (there (there (there here))))) ⊢nzero)
-    (⊢app (⊢app (⊢var (there (there here)))
+  ⊢lam (⊢rec2Tat (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl))) ⊢nzero)
+    (⊢app (⊢app (⊢var (there (there (here refl) refl) refl))
                 (⊢pair ty-Nat dm' (⊢nsuc ⊢nzero)))
           (dropˡ (var (vs (vs (vs (vs vz))))) (nsuc nzero) dm'))
   where
-    dm' = ⊢var (there (there (there (there here))))
+    dm' = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
 
 -- snd x = suc n' : `ack (suc m' , suc n') = ack (m' , ack (suc m' , n'))`.
 -- ★ THE NESTED CALL.  The inner one goes through rec₂ (μ₁ held, μ₂ down);
@@ -174,14 +174,14 @@ innerTm =
 -- `ack (suc m' , n')` — μ₁ HELD (reflexivity after βfst), μ₂ DOWN.
 ⊢innerCall : C8 ⊢ innerTm ∷ El ⌜Nat⌝
 ⊢innerCall =
-  ⊢app (⊢app (⊢app (⊢var here) (⊢pair ty-Nat (⊢nsuc dm') dn'))
+  ⊢app (⊢app (⊢app (⊢var (here refl)) (⊢pair ty-Nat (⊢nsuc dm') dn'))
              (holdˡ (nsuc (var (vs (vs (vs (vs (vs (vs vz))))))))
                     (var (vs (vs vz))) (⊢nsuc dm')))
        (dropʳ (nsuc (var (vs (vs (vs (vs (vs (vs vz))))))))
               (var (vs (vs vz))) dn')
   where
-    dm' = ⊢var (there (there (there (there (there (there here))))))
-    dn' = ⊢var (there (there here))
+    dm' = ⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)
+    dn' = ⊢var (there (there (here refl) refl) refl)
 
 fS₂ : RTm (ε ∙ ∙ ∙ ∙ ∙ ∙ ∙)
 fS₂ =
@@ -198,12 +198,12 @@ fS₂ =
     -- ⚠ the ⊢lam's DOMAIN is one slot shallower than its BODY, and the
     --   two need different lookups.  Seven slots: vz = M₂, vs = n',
     --   vs² = rec₂, vs³ = rec₁, vs⁴ = M₁, vs⁵ = m', vs⁶ = x
-    dm'₇   = ⊢var (there (there (there (there (there here)))))
-    dn'₇   = ⊢var (there here)
+    dm'₇   = ⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)
+    dn'₇   = ⊢var (there (here refl) refl)
     -- eight slots (inside the ⊢lam): vz = rec₂', vs = M₂, vs² = n',
     --   vs³ = rec₂, vs⁴ = rec₁, vs⁵ = M₁, vs⁶ = m', vs⁷ = x
-    dm'    = ⊢var (there (there (there (there (there (there here))))))
-    drec₁  = ⊢var (there (there (there (there here))))
+    dm'    = ⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)
+    drec₁  = ⊢var (there (there (there (there (here refl) refl) refl) refl) refl)
 
 ------------------------------------------------------------------------
 -- the outer successor branch: bind rec₁ and rec₂, then split on `snd x`
@@ -217,12 +217,12 @@ fS₁ =
 
 ⊢fS₁ : (((◇ ▹ PairT) ▹ Nat) ▹ M₁) ⊢ fS₁ ∷ subTy nrs M₁
 ⊢fS₁ =
-  ⊢lam (⊢rec1Tat (⊢nsuc (⊢var (there here))))
-    (⊢lam (⊢rec2Tat (⊢nsuc (⊢var (there (there here))))
-                    (⊢snd (⊢var (there (there (there here))))))
+  ⊢lam (⊢rec1Tat (⊢nsuc (⊢var (there (here refl) refl))))
+    (⊢lam (⊢rec2Tat (⊢nsuc (⊢var (there (there (here refl) refl) refl)))
+                    (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))
       (⊢app (⊢natrec ⊢M₂ ⊢fZ₂ ⊢fS₂
-                     (⊢snd (⊢var (there (there (there (there here)))))))
-            (⊢var here)))
+                     (⊢snd (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
+            (⊢var (here refl))))
 
 ------------------------------------------------------------------------
 -- THE STEP, and the use site.

@@ -24,7 +24,7 @@ open import DirectedHoTT.Spec.Typing
         ; _⊢_∷_; _⊢ty_; ⊢var; here; there; ⊢nzero; ⊢nsuc; ⊢ordtr; ⊢lam; ⊢app
         ; ty-Nat; ty-Hom; ty-El; ty-Π; wk-single )
 open import DirectedHoTT.Metatheory.TySub
-  using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢-ext )
+  using ( ⊢wk; ⊢-cast; ren-ty; ren-lemma; Ren⊢-ext; wkR⊢ )
 open import DirectedHoTT.Lib.Ord using ( ⊢strong-base'; ⊢strong-step )
 open import DirectedHoTT.Lib.Wk
   using ( w; wᶠ; cong₃; cong₄; cong₅; cong₆; sub-w; sub-w²; ren-w; ren-w²
@@ -368,8 +368,8 @@ module ZS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
   ------------------------------------------------------------------------
 
   tyA₆ : BCtx ⊢ty wTy^ 6 A
-  tyA₆ = ren-ty (ren-ty (ren-ty (ren-ty (ren-ty (ren-ty dA there) there)
-                                        there) there) there) there
+  tyA₆ = ren-ty (ren-ty (ren-ty (ren-ty (ren-ty (ren-ty dA wkR⊢) wkR⊢)
+                                        wkR⊢) wkR⊢) wkR⊢) wkR⊢
 
   dk : (BCtx ▹ wTy^ 6 A) ⊢ wᶠ^ 6 m₁ ∷ Nat
   dk = ⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁)))))
@@ -391,7 +391,7 @@ module ZS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
         ∷ Hom Nat (w (w (subTm (single (var (vs (vs vz)))) (wᶠ^ 6 m₁)))) nzero
   dle = ⊢-cast (cong (λ z → Hom Nat (w (w z)) nzero)
                      (sym (wᶠ³-single (wᶠ^ 3 m₁))))
-               (⊢var (there (there (there here))))
+               (⊢var (there (there (there (here refl) refl) refl) refl))
 
   ------------------------------------------------------------------------
   -- ★★ ⊢rec1 — the (0,S) branch's FIRST recursor argument, derived.
@@ -408,7 +408,7 @@ module ZS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
   ⊢rec1 =
     ⊢lam tyA₆
       (⊢lam (ty-Hom ty-Nat (⊢nsuc dk) dmX)
-        (⊢strong-base' dC (⊢wk dk) (⊢wk dmX) (⊢var here) dle))
+        (⊢strong-base' dC (⊢wk dk) (⊢wk dmX) (⊢var (here refl)) dle))
 
   ------------------------------------------------------------------------
   -- ★★★ GATE STEP 2c — `⊢rec2`, THE REAL RECURSIVE CALL.
@@ -508,8 +508,8 @@ module ZS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
            ⊢nzero
            (⊢-cast (cong (λ z → Hom Nat (w (w (wᶠ^ 6 m₁))) (w (w (w z))))
                          (wᶠ³-single (wᶠ^ 3 m₁)))
-                   (⊢var (there here)))
-           (⊢var (there (there (there (there here)))))
+                   (⊢var (there (here refl) refl)))
+           (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
 
   ⊢lt₂ZS : ((((BCtx ▹ wTy^ 6 A)
                 ▹ Hom Nat (wᶠ^ 6 m₁)
@@ -522,11 +522,11 @@ module ZS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
   ⊢lt₂ZS =
     ⊢strong-step (⊢wk (⊢wk dk₂))
                  (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₂))))))))
-                 (⊢var (there (there (there (there (there (there (there here))))))))
+                 (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))
                  (⊢-cast (cong (λ z → Hom Nat (nsuc (w (w (wᶠ^ 6 m₂)))) (w (w (w z))))
                                (wᶠ³-single (wᶠ^ 3 m₂)))
-                         (⊢var here))
-                 (⊢var (there (there (there here))))
+                         (⊢var (here refl)))
+                 (⊢var (there (there (there (here refl) refl) refl) refl))
 
   ------------------------------------------------------------------------
   -- ★★ ⊢rec2, ASSEMBLED.
@@ -542,8 +542,8 @@ module ZS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
         (⊢lam (ty-Hom ty-Nat (⊢nsuc (⊢wk dk₂)) (⊢wk dmX₂))
           (⊢-cast (cong El ihCancel)
             (⊢app (⊢app (⊢app (⊢-cast IH-w⁷
-                                 (⊢var (there (there (there (there (there (there here))))))))
-                               (⊢var (there (there here))))
+                                 (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)))
+                               (⊢var (there (there (here refl) refl) refl)))
                         (⊢-cast (sym (cong (λ z → Hom Nat z nzero) μ₁-fit)) ⊢lt₁ZS))
                   (⊢-cast (sym (cong (λ z → Hom Nat z (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))
                                      μ₂-fit))
@@ -609,13 +609,13 @@ module ZS (Δ : Ctx) (A : RTy ⌊ Δ ⌋) (cM m₁ m₂ : RTm (⌊ Δ ⌋ ∙)) 
   ⊢lexZS : (((Δ ▹ Nat) ▹ Nat) ▹ mot) ⊢ lexZS ∷ subTy nrs mot
   ⊢lexZS =
     ⊢-cast (sym mot-s)
-      (⊢lam (ren-ty (ren-ty (ren-ty dA there) there) there)
+      (⊢lam (ren-ty (ren-ty (ren-ty dA wkR⊢) wkR⊢) wkR⊢)
         (⊢lam (ty-Hom ty-Nat (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₁))) ⊢nzero)
           (⊢lam (ty-Hom ty-Nat (⊢wk (⊢wkᶠ (⊢wkᶠ (⊢wkᶠ dm₂))))
-                        (⊢nsuc (⊢var (there (there (there here))))))
+                        (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl))))
             (⊢-cast (cong El cMcancel)
               (⊢app (⊢app (⊢app (⊢-cast stp-w⁶
                                    (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk dstp)))))))
-                                 (⊢var (there (there here))))
+                                 (⊢var (there (there (here refl) refl) refl)))
                           (⊢-cast (sym rec1-fit) ⊢rec1))
                     (⊢-cast (sym rec2-fit) ⊢rec2))))))

@@ -45,7 +45,7 @@ open import DirectedHoTT.Spec.Typing
         ; imethsTy; imethsTyFrom; IDescWfFrom; ⊢ielim
         ; ξ-pairʳ; βsnd; done; step; single; wk-single; iinst )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; trans; sym )
+open import normalizer.Syntax.Types using ( cong; trans; sym; refl )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ; ⊢methsFrom; ⊢methsCons
         ; idwfDrop; splTake; Split; spl-nil; spl-step )
@@ -84,10 +84,10 @@ ipayTyMotK =
               ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty ipayTyMotK
 ⊢ipayTyMotK =
   ty-Π ty-Nat
-   (ty-Π (ty-SubTy (⊢snd (⊢var (there (there here)))) (⊢var here))
-    (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))
+   (ty-Π (ty-SubTy (⊢snd (⊢var (there (there (here refl) refl) refl))) (⊢var (here refl)))
+    (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there (here refl) refl))))
      (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
-        (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there (there here)))))))))
+        (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there (there (here refl) refl) refl) refl)))))))
 
 ------------------------------------------------------------------------
 -- ★ THE JUNK ROW — and for `cICon-i` it is the RIGHT answer, not junk.
@@ -102,10 +102,10 @@ ipayTyJunk = lam (lam (lam (lam (lam (lam (lam Ty-UnitK))))))
 ⊢ipayTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢ipayTyMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there here))))) (⊢var here))
-        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))
+      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))) (⊢var (here refl)))
+        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there (here refl) refl))))
           (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
-            (⊢Ty-UnitKv _ (⊢var (there (there (there here)))))))))
+            (⊢Ty-UnitKv _ (⊢var (there (there (there (here refl) refl) refl) refl)))))))
 
 ------------------------------------------------------------------------
 -- ★★★ EVERYTHING HEAVY IS STATED AT **ABSTRACT** PIECES, AND THAT IS

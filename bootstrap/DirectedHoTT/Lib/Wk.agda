@@ -35,9 +35,9 @@ open import DirectedHoTT.Spec.Syntax
         ; subTm-renTm; renTm-subTm; renTm-renTm; subTm-id; subTm-cong
         ; subTy-renTy; subTy-id; renTy-renTy; renTy-subTy; renTm-cong; idₛ )
 open import DirectedHoTT.Spec.Typing
-  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _∋_∷_; here; there; refl wk-single )
+  using ( Ctx; _▹_; ⌊_⌋; single; nrs; _⊢_∷_; _∋_∷_; here; there; wk-single )
 open import DirectedHoTT.Metatheory.TySub
-  using ( ren-lemma; Ren⊢; Ren⊢-ext; ∋-cast )
+  using ( ren-lemma; Ren⊢; Ren⊢-ext; ∋-cast; wkR⊢ )
 open import DirectedHoTT.Spec.Variance using ( ren-as-sub )
 
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )

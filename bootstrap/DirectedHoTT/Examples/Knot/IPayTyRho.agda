@@ -36,7 +36,7 @@ open import DirectedHoTT.Spec.Typing
         ; imethsTy; imethsTyFrom; IDescWfFrom; ⊢ielim
         ; ξ-pairʳ; βsnd; done; step; single; wk-single; iinst )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
-open import normalizer.Syntax.Types using ( cong; trans; sym )
+open import normalizer.Syntax.Types using ( cong; trans; sym; refl )
 open import DirectedHoTT.Lib.IPay
   using ( ⊢methLam; ⊢ihHere; ⊢ihSkipρ; ⊢methsFrom; ⊢methsCons
         ; idwfDrop; splTake; Split; spl-nil; spl-step )
@@ -106,22 +106,22 @@ ipayTyRho =
   ⊢methLam KnotD IPair tagICon-rho cICon-rho KnotWf cICon-rhoWf
            ⊢IPair ⊢ipayTyMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there here))))) (⊢var here))
-        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))
+      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))) (⊢var (here refl)))
+        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there (here refl) refl))))
           (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
             (⊢ipayRowρ dn ddd dsb dD dI
-              (⊢fst (⊢var (there (there (there (there (there here)))))))
+              (⊢fst (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
               (⊢ipayAppK
                  {dd = nsuc (snd (var (vs (vs (vs (vs (vs (vs vz)))))))) }
                  {u = fst (snd (var (vs (vs (vs (vs (vs vz))))))) }
                  dIH (⊢nsuc dn) (⊢extNK ddd dn dsb)
                  (⊢wkAtK ⊢sIDesc dn dD) dI))))))
   where
-    dn  = ⊢var (there (there (there here)))
-    dsb = ⊢var (there (there here))
-    dD  = ⊢var (there here)
-    dI  = ⊢var here
-    ddd = ⊢snd (⊢var (there (there (there (there (there (there here)))))))
+    dn  = ⊢var (there (there (there (here refl) refl) refl) refl)
+    dsb = ⊢var (there (there (here refl) refl) refl)
+    dD  = ⊢var (there (here refl) refl)
+    dI  = ⊢var (here refl)
+    ddd = ⊢snd (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
     dIH = ⊢ihHere
             {D = KnotD} {I = IPair}
             {σ = iext (isingle (var (vs (vs (vs (vs (vs (vs vz))))))))
@@ -136,4 +136,4 @@ ipayTyRho =
                (iρ (pair sICon (nsuc (snd (var (vs vz)))))
                  (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) iι))
                {q = var (vs (vs (vs (vs (vs vz)))))} {M = ipayTyMotK}
-               (⊢var (there (there (there (there here))))))
+               (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))

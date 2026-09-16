@@ -63,8 +63,8 @@ occVz = lam (lam (lam (lam (eqNatTm (var vz) (fst (var (vs (vs vz))))))))
 ⊢occVz =
   ⊢methLam KnotD IPair tagVar-vz cVar-vz KnotWf cVar-vzWf ⊢IPair ty-OccTy
     (⊢lam ty-Nat
-      (⊢eqNat (⊢var here)
-              (elAsNat (⊢fst (⊢var (there (there here)))))))
+      (⊢eqNat (⊢var (here refl))
+              (elAsNat (⊢fst (⊢var (there (there (here refl) refl) refl))))))
 
 ------------------------------------------------------------------------
 -- ★ THE TUPLE — 51 computed rows, the spliced `cVar-vz`, then `cVar-vs`

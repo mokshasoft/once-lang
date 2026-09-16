@@ -8,6 +8,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Negative.LexSS where
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs
         ; RTy; El; Hom; Nat; Unit
@@ -30,4 +31,4 @@ open import DirectedHoTT.Negative.LexSS2 using ( ⊢lexSSrec2 )
 ⊢lexSS : (stpTm : RTm ⌊ Γ₅ ⌋) (dstp : Γ₅ ⊢ stpTm ∷ LStepT) →
          (((((Γ₅ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ Nat) ▹ M1lex) ⊢ lexSS stpTm ∷ subTy nrs M1lex
 ⊢lexSS stpTm dstp =
-  ⊢lam (ty-El (⊢var (there (there (there (there (there (there (there (there here)))))))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var here)) (⊢nsuc (⊢var (there (there (there (there (there here)))))))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there here)))))))) (⊢var (there here))) (⊢nsuc (⊢var (there (there (there here)))))) (⊢app (⊢app (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dstp))))))))) (⊢var (there (there here)))) ⊢lexSSrec1) ⊢lexSSrec2)))
+  ⊢lam (ty-El (⊢var (there (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl) refl))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (here refl))) (⊢nsuc (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))) (⊢lam (ty-Hom ty-Nat (⊢app (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)) (⊢var (there (here refl) refl))) (⊢nsuc (⊢var (there (there (there (here refl) refl) refl) refl)))) (⊢app (⊢app (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dstp))))))))) (⊢var (there (there (here refl) refl) refl))) ⊢lexSSrec1) ⊢lexSSrec2)))

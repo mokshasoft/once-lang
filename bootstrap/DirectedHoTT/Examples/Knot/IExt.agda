@@ -27,7 +27,7 @@ open import DirectedHoTT.Spec.Typing
   using ( Ctx; ⌊_⌋; _⊢_∷_; ⊢var; here; ⊢lam; ⊢app; ⊢nsuc; ty-IMu
         ; wk-single )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
-open import normalizer.Syntax.Types using ( cong )
+open import normalizer.Syntax.Types using ( cong; refl )
 open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTm; ⊢sTm; sTy; ⊢sTy; sVar; ⊢sVar; ⊢ixP )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
@@ -81,7 +81,7 @@ iextK dd n σ t =
                --   the argument back into it.
                (⊢-cast (cong (λ z → K (pair sTm (nsuc z)))
                              (wk-single {v = var vz} (renTm vs n)))
-                 (⊢app (⊢extNK (⊢wk ddd) (⊢wk dn) (⊢wkSubTy _ _ dσ)) (⊢var here))))
+                 (⊢app (⊢extNK (⊢wk ddd) (⊢wk dn) (⊢wkSubTy _ _ dσ)) (⊢var (here refl)))))
 
 -- ★ `iinst i t M` — instantiate the TWO-slot motive at index and scrutinee.
 iinstK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ

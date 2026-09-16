@@ -36,6 +36,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Terms where
+open import normalizer.Syntax.Types using ( refl )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs
         ; RTy; RTm; El; Unit; Nat; Σ'; IMu
@@ -140,7 +141,7 @@ kvz = icon tagVar-vz
                           (toI (⊢fst (⊢ixP ⊢sVar (⊢nsuc ⊢nzero)))) (toI ⊢sVar)))
                  (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                 (toI (⊢snd (⊢ixP ⊢sVar (⊢nsuc ⊢nzero))))
-                                (toI (⊢nsuc (fromI (⊢var (there here)))))))
+                                (toI (⊢nsuc (fromI (⊢var (there (here refl) refl)))))))
                        ty-Unit))
            (toI ⊢nzero)
            (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝

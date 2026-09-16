@@ -23,7 +23,7 @@ open import DirectedHoTT.Spec.Typing using ( ⊢app; ⊢ielim; iinst; wk-single;
 open import DirectedHoTT.Spec.Syntax using ( ielim; subTm )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢-cast )
 open import DirectedHoTT.Lib.Wk using ( towerJ )
-open import normalizer.Syntax.Types using ( cong; sym; trans )
+open import normalizer.Syntax.Types using ( cong; sym; trans; refl )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-appK )
 open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Tm-appKv )
 open import DirectedHoTT.Lib.IPay using ( ⊢ihHere; ⊢ihSkipρ )
@@ -58,10 +58,10 @@ ihsJunk = lam (lam (lam (lam (lam (lam (lam Tm-unitK))))))
 ⊢ihsJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢ihsMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var here)))
-        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
-          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
-            (⊢Tm-unitKv (var (vs (vs (vs vz)))) (⊢var (there (there (there here)))))))))
+      (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var (here refl))))
+        (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (here refl) refl))))
+          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there (here refl) refl) refl))))
+            (⊢Tm-unitKv (var (vs (vs (vs vz)))) (⊢var (there (there (there (here refl) refl) refl) refl)))))))
 
 ------------------------------------------------------------------------
 -- ★ THE TUPLE — `Knot/IhTy`'s assembly, one description over.

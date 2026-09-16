@@ -56,7 +56,7 @@ open import DirectedHoTT.Examples.Knot.Sorts using ( sVar; ⊢sVar )
 open import DirectedHoTT.Examples.Knot.Terms using ( SubTy )
 open import DirectedHoTT.Metatheory.TySub using ( ⊢wk; ⊢-cast )
 open import DirectedHoTT.Spec.Typing using ( wk-single )
-open import normalizer.Syntax.Types using ( cong )
+open import normalizer.Syntax.Types using ( cong; refl )
 
 ------------------------------------------------------------------------
 -- ★ THE MOTIVE.  At index `i` the answer is a term one binder DEEPER:
@@ -69,7 +69,7 @@ nrsMotK = IMu KnotD IPair (pair sTm (nsuc (snd (var (vs vz)))))
 
 ⊢nrsMotK : {Γ : Ctx} →
            ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty nrsMotK
-⊢nrsMotK = ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢var (there here)))))
+⊢nrsMotK = ty-IMu KnotWf (⊢ixP ⊢sTm (⊢nsuc (⊢snd (⊢var (there (here refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ★ THE 51 UNREACHABLE ROWS.  ⚠ They are not dead code: `ielim` demands
@@ -84,7 +84,7 @@ nrsJunk = lam (lam (lam Tm-nzeroK))
            Γ ⊢ nrsJunk ∷ imethTy KnotD IPair k C nrsMotK
 ⊢nrsJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢nrsMotK
-    (⊢Tm-nzeroKv _ (⊢nsuc (⊢snd (⊢var (there (there here))))))
+    (⊢Tm-nzeroKv _ (⊢nsuc (⊢snd (⊢var (there (there (here refl) refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ★★★ `vz ↦ nsuc (var (vs vz))`.
@@ -125,11 +125,11 @@ nrsVz = lam (lam (lam
     (⊢Tm-nsucKv _ (⊢nsuc dsi)
       (⊢Tm-varKv _ (⊢nsuc dsi) (⊢Var-vsKt dsi tx)))
   where
-    dp   = ⊢var (there here)
-    dsi  = ⊢snd (⊢var (there (there here)))
+    dp   = ⊢var (there (here refl) refl)
+    dsi  = ⊢snd (⊢var (there (there (here refl) refl) refl))
     dm   = elAsNat (⊢fst dp)
     deq  = ⊢symN dsi (⊢nsuc dm) (fordAs (⊢fst (⊢snd (⊢snd dp))))
-    tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
+    tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var (here refl)))))
                          (natAsEl (⊢nsuc dm)) (natAsEl dsi) deq
                          (toMu (⊢Var-vzKt dm)))
 
@@ -156,14 +156,14 @@ nrsVs = lam (lam (lam
   ⊢methLam KnotD IPair tagVar-vs cVar-vs KnotWf cVar-vsWf ⊢IPair ⊢nrsMotK
     (⊢Tm-varKv _ (⊢nsuc dsi) (⊢Var-vsKt dsi tx))
   where
-    dp   = ⊢var (there here)
-    dsi  = ⊢snd (⊢var (there (there here)))
+    dp   = ⊢var (there (here refl) refl)
+    dsi  = ⊢snd (⊢var (there (there (here refl) refl) refl))
     dm   = elAsNat (⊢fst dp)
     -- ⚠ `x` IS AN `iρ` FIELD, so the payload already holds an `IMu` —
     --   `fromMu` (El → IMu) is the wrong direction here.
     dx   = ⊢fst (⊢snd dp)
     deq  = ⊢symN dsi (⊢nsuc dm) (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp)))))
-    tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
+    tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var (here refl)))))
                          (natAsEl (⊢nsuc dm)) (natAsEl dsi) deq
                          (toMu (⊢Var-vsKt dm dx)))
 
@@ -233,4 +233,4 @@ nrsSubK d = lam (nrsK (pair sVar (renTm vs d)) (var vz))
          (⊢-cast (cong (λ z → IMu KnotD IPair (pair sTm (nsuc (snd z))))
                        (wk-single {v = var vz} (pair sVar (renTm vs _))))
                  (⊢ielim KnotWf ⊢nrsMotK (⊢ixP ⊢sVar (⊢wk dd)) ⊢nrsMeths
-                         (⊢var here))))
+                         (⊢var (here refl)))))

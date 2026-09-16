@@ -132,9 +132,9 @@ extRMotK =
 ⊢extRMotK =
   ty-Π ty-Nat
     (ty-Π (ty-Π (ty-IMu KnotWf
-                   (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there here)))))))
-                (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
-          (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc (⊢var (there here))))))
+                   (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (here refl) refl) refl))))))
+                (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there (here refl) refl)))))
+          (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc (⊢var (there (here refl) refl))))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE DO-NOTHING METHOD — AND IT IS ALSO THE `vz` ROW.
@@ -154,9 +154,9 @@ constMethR = lam (lam (lam (lam (lam (Var-vzK (var (vs vz)))))))
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢extRMotK
     (⊢lam ty-Nat
       (⊢lam (ty-Π (ty-IMu KnotWf
-                     (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
-                  (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
-        (⊢Var-vzKt (⊢var (there here)))))
+                     (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))))
+                  (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there (here refl) refl)))))
+        (⊢Var-vzKt (⊢var (there (here refl) refl)))))
 
 ------------------------------------------------------------------------
 -- ★★★ `extR ρ (vs x) = vs (ρ x)` — THE ONE REAL ROW.
@@ -184,18 +184,18 @@ extRVs =
   ⊢lam ⊢IPair
     (⊢lam (ipayTy-wf {Γ = Γ ▹ εwkTy IPair} KnotD IPair (isingle (var vz)) cVar-vs
                      KnotWf cVar-vsWf
-                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var here))))
+                     (isingle-Sub⊢ (⊢-cast (εwk-ren vs IPair) (⊢var (here refl)))))
       (⊢lam (iihTy-wf {Γ = (Γ ▹ εwkTy IPair) ▹ ipayTy KnotD IPair (isingle (var vz)) cVar-vs}
                       KnotD IPair extRMotK (isingle (var (vs vz))) cVar-vs (var vz) cVar-vsWf
                       (isingle-Sub⊢ (⊢-cast (trans (cong (renTy vs) (εwk-ren vs IPair))
                                                    (εwk-ren vs IPair))
-                                            (⊢var (there here))))
+                                            (⊢var (there (here refl) refl))))
                       ⊢extRMotK
-                      (⊢var here))
+                      (⊢var (here refl)))
         (⊢lam ty-Nat
           (⊢lam (ty-Π (ty-IMu KnotWf
-                         (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
-                      (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
+                         (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there (here refl) refl) refl) refl))))))
+                      (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there (here refl) refl)))))
             -- ⚠ TWO β STEPS, INNERMOST FIRST: `sh i` projects `i` twice
             --   and both projections are redexes at `pair sTm n`.
             -- ★★★ `Var-vsK`, AND NOTHING ELSE.  `Knot/SubMot`'s row pays
@@ -204,23 +204,23 @@ extRVs =
             --   and `vs` IS the constructor for that.  ⇒ no weakening at
             --   all, which is the whole reason this module can exist
             --   below `Knot/SubMot` instead of above it.
-            (⊢Var-vsKt (⊢var (there here)) (⊢app (⊢var here) tx))))))
+            (⊢Var-vsKt (⊢var (there (here refl) refl)) (⊢app (⊢var (here refl)) tx))))))
   where
     -- the payload binder, and the two components the method needs
-    dp = ⊢var (there (there (there here)))
+    dp = ⊢var (there (there (there (here refl) refl) refl) refl)
     dm = elAsNat (⊢fst dp)
-    dsi = ⊢pred (⊢snd (⊢var (there (there (there (there here))))))
+    dsi = ⊢pred (⊢snd (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))
     -- ★ THE FORD, INVERTED AND ORIENTED.
-    deq = ⊢symN (⊢pred (⊢snd (⊢var (there (there (there (there here)))))))
+    deq = ⊢symN (⊢pred (⊢snd (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
                 dm
-                (⊢fordPredN (⊢snd (⊢var (there (there (there (there here))))))
+                (⊢fordPredN (⊢snd (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))
                             dm
                             (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp))))))
     -- ⚠ `⊢jsub`'s ENDPOINTS live at `El ⌜Nat⌝` (that is `IdN`'s carrier)
     --   while `⊢pred`/`⊢symN`/`⊢fordPredN` all want `Nat`.  Both forms of
     --   the same two terms are needed; the conversion is free but the
     --   mismatch is invisible until `⊢jsub` is applied.
-    tx = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
+    tx = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var (here refl)))))
                        (natAsEl dm) (natAsEl dsi) deq
                        (toMu (⊢fst (⊢snd dp))))
 
@@ -316,7 +316,7 @@ extRNK d n ρ =
   ⊢lam (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc dd)))
     (⊢-cast (cong (λ z → K (pair sVar (nsuc z)))
                   (wk-single {v = renTm vs rn} (renTm vs n)))
-      (⊢app (⊢app (⊢extRK (⊢ixP ⊢sVar (⊢nsuc (⊢wk dd))) (⊢var here))
+      (⊢app (⊢app (⊢extRK (⊢ixP ⊢sVar (⊢nsuc (⊢wk dd))) (⊢var (here refl)))
                   (⊢wk dn))
             (⊢conv (⊢-cast (cong (λ z → Π (K (pair sVar (renTm vs d)))
                                           (K (pair sVar z)))

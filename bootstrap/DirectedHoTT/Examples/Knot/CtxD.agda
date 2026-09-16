@@ -43,7 +43,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.CtxD where
-open import normalizer.Syntax.Types using ( _≡_; sym; trans; cong; cong₂ )
+open import normalizer.Syntax.Types using ( _≡_; sym; trans; cong; cong₂; refl )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; Var
@@ -114,23 +114,23 @@ cCtx-empWf : IConWf CtxD INat (◇ ▹ INat) cCtx-emp
 cCtx-empWf =
   iwf-κ (⌜Id⌝ ⌜Nat⌝ (var vz) nzero)
         (icw-ford ⌜Nat⌝ (var vz) nzero)
-        (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var here) (toI ⊢nzero))
+        (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (here refl)) (toI ⊢nzero))
         iwf-ι
 
 cCtx-extWf : IConWf CtxD INat (◇ ▹ INat) cCtx-ext
 cCtx-extWf =
   iwf-κ ⌜Nat⌝ (icw-clo ⌜Nat⌝ ⊢⌜Nat⌝) ⊢⌜Nat⌝
-   (iwf-ρ (var vz) (⊢var here)
+   (iwf-ρ (var vz) (⊢var (here refl))
     -- ★★★ a field whose TYPE is a member of the KNOT, at an index built
     --   from the BOUND depth.  Fording cannot express this; `icw-imu` is
     --   what §12 added for it.
     (iwf-κ (⌜IMu⌝ KnotD IPair (pair sTy (var (vs vz))))
            (icw-imu (pair sTy (var (vs vz))) KnotWf)
-           (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here)))))
+           (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there (here refl) refl)))))
      (iwf-κ (⌜Id⌝ ⌜Nat⌝ (var (vs (vs (vs vz)))) (nsuc (var (vs (vs vz)))))
             (icw-ford ⌜Nat⌝ (var (vs (vs (vs vz)))) (nsuc (var (vs (vs vz)))))
-            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there (there here))))
-                          (toI (⊢nsuc (fromI (⊢var (there (there here)))))))
+            (⊢⌜Id⌝ ⊢⌜Nat⌝ (⊢var (there (there (there (here refl) refl) refl) refl))
+                          (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl))))))
             iwf-ι)))
 
 CtxWf : IDescWf INat CtxD
@@ -198,11 +198,11 @@ Ctx-extK m g a =
              Δ ⊢ Ctx-extK d g a ∷ CtxK (nsuc d)
 ⊢Ctx-extKt {Δ = Δ} {d = d} {g = g} {a = a} dx dg da =
   ⊢icon CtxWf (thereID hereID) (toI (⊢nsuc dx))
-    (⊢pair (ty-Σ (ty-IMu CtxWf (⊢var here))
-             (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there here))))))
+    (⊢pair (ty-Σ (ty-IMu CtxWf (⊢var (here refl)))
+             (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy (fromI (⊢var (there (here refl) refl))))))
                (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                               (toI (⊢nsuc (⊢wk (⊢wk (⊢wk dx)))))
-                              (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                              (toI (⊢nsuc (fromI (⊢var (there (there (here refl) refl) refl)))))))
                      ty-Unit)))
            (toI dx)
       (⊢pair (ty-Σ (ty-El (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy dw1)))

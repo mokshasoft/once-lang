@@ -443,12 +443,12 @@ module Lx (Δ : Ctx) (cA cP μ₁ μ₂ stp : RTm ⌊ Δ ⌋)
 
   ⊢lexAuxMot : (Δ ▹ Nat) ⊢ty lexAuxMot
   ⊢lexAuxMot =
-    ty-Π ty-Nat (ty-Π (ty-El (⊢wk (⊢wk (dcA)))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (dμ₁)))) (⊢var here)) (⊢var (there (there here)))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂))))) (⊢var (there here))) (⊢var (there (there here)))) (ty-El (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dcP)))))) (⊢var (there (there here))))))))
+    ty-Π ty-Nat (ty-Π (ty-El (⊢wk (⊢wk (dcA)))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (dμ₁)))) (⊢var (here refl))) (⊢var (there (there (here refl) refl) refl))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂))))) (⊢var (there (here refl) refl))) (⊢var (there (there (here refl) refl) refl))) (ty-El (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dcP)))))) (⊢var (there (there (here refl) refl) refl)))))))
 
   ⊢M0lex : ((Δ ▹ Nat) ▹ Nat) ⊢ty M0lex
   ⊢M0lex =
-    ty-Π (ty-El (⊢wk (⊢wk (dcA)))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (dμ₁)))) (⊢var here)) ⊢nzero) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂))))) (⊢var (there here))) (⊢var (there (there here)))) (ty-El (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dcP)))))) (⊢var (there (there here)))))))
+    ty-Π (ty-El (⊢wk (⊢wk (dcA)))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (dμ₁)))) (⊢var (here refl))) ⊢nzero) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂))))) (⊢var (there (here refl) refl))) (⊢var (there (there (here refl) refl) refl))) (ty-El (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dcP)))))) (⊢var (there (there (here refl) refl) refl))))))
 
   ⊢M1lex : ((((Δ ▹ Nat) ▹ lexAuxMot) ▹ Nat) ▹ Nat) ⊢ty M1lex
   ⊢M1lex =
-    ty-Π (ty-El (⊢wk (⊢wk (⊢wk (⊢wk (dcA)))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁)))))) (⊢var here)) (⊢nsuc (⊢var (there (there (there (there here))))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂))))))) (⊢var (there here))) (⊢var (there (there here)))) (ty-El (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dcP)))))))) (⊢var (there (there here)))))))
+    ty-Π (ty-El (⊢wk (⊢wk (⊢wk (⊢wk (dcA)))))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₁)))))) (⊢var (here refl))) (⊢nsuc (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))) (ty-Π (ty-Hom ty-Nat (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dμ₂))))))) (⊢var (there (here refl) refl))) (⊢var (there (there (here refl) refl) refl))) (ty-El (⊢app (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (⊢wk (dcP)))))))) (⊢var (there (there (here refl) refl) refl))))))

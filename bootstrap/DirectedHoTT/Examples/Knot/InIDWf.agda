@@ -56,36 +56,36 @@ open import DirectedHoTT.Examples.Knot.InIDRows
 
 -- hereID
 aInIDΑ5 : InIDΑ5 ⊢ fst (var (vs (vs (vs (vs (vs vz)))))) ∷ Nat
-aInIDΑ5 = ⊢fst (⊢var (there (there (there (there (there here))))))
+aInIDΑ5 = ⊢fst (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))
 CInIDΑ5 : ICon ⌊ InIDΑ5 ⌋
 CInIDΑ5 = iκ kInIDΑ5 iι
 W_InIDΑ5 : (D : IDesc) → IConWf D IInID InIDΑ5 CInIDΑ5
 W_InIDΑ5 D =
   iwf-κ kInIDΑ5 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc aInIDΑ5))
-           (toMu (⊢snd (⊢snd (⊢var (there (there (there (there (there here)))))))))
-           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc (fromI (⊢var here))))
-                  (toI (fromI (⊢var (there (there (there (there here)))))))
+           (toMu (⊢snd (⊢snd (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc (fromI (⊢var (here refl)))))
+                  (toI (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))))
                   (toI aInIDΑ5)
-                  (⊢symN aInIDΑ5 (fromI (⊢var (there (there (there (there here))))))
-                         (fordAs (⊢var (there here))))
-                  (toMu (⊢IDesc-consKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (there (there (there (there here)))))) (fromMu (⊢var (there (there (there here))))) (fromMu (⊢var (there (there here))))))))
+                  (⊢symN aInIDΑ5 (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))
+                         (fordAs (⊢var (there (here refl) refl))))
+                  (toMu (⊢IDesc-consKv (var (vs (vs (vs (vs vz))))) (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))) (fromMu (⊢var (there (there (there (here refl) refl) refl) refl))) (fromMu (⊢var (there (there (here refl) refl) refl)))))))
     (iwf-ι)
 
 aInIDΑ4 : InIDΑ4 ⊢ fst (var (vs (vs (vs (vs vz))))) ∷ Nat
-aInIDΑ4 = ⊢fst (⊢var (there (there (there (there here)))))
+aInIDΑ4 = ⊢fst (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))
 CInIDΑ4 : ICon ⌊ InIDΑ4 ⌋
 CInIDΑ4 = iκ kInIDΑ4 CInIDΑ5
 W_InIDΑ4 : (D : IDesc) → IConWf D IInID InIDΑ4 CInIDΑ4
 W_InIDΑ4 D =
   iwf-κ kInIDΑ4 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝
-           (toI (⊢fst (⊢snd (⊢var (there (there (there (there here))))))))
+           (toI (⊢fst (⊢snd (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))
            (⊢jsub ⊢⌜Nat⌝
-                  (toI (fromI (⊢var (there (there (there here))))))
+                  (toI (fromI (⊢var (there (there (there (here refl) refl) refl) refl))))
                   (toI aInIDΑ4)
-                  (⊢symN aInIDΑ4 (fromI (⊢var (there (there (there here)))))
-                         (fordAs (⊢var here)))
+                  (⊢symN aInIDΑ4 (fromI (⊢var (there (there (there (here refl) refl) refl) refl)))
+                         (fordAs (⊢var (here refl))))
                   (toI ⊢nzero)))
     (W_InIDΑ5 D)
 
@@ -94,7 +94,7 @@ CInIDΑ3 = iκ kInIDΑ3 CInIDΑ4
 W_InIDΑ3 : (D : IDesc) → IConWf D IInID InIDΑ3 CInIDΑ3
 W_InIDΑ3 D =
   iwf-κ kInIDΑ3 (icw-ford _ _ _)
-    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there here)))))) (toI (fromI (⊢var (there (there here))))))
+    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there (here refl) refl) refl) refl)))) (toI (fromI (⊢var (there (there (here refl) refl) refl)))))
     (W_InIDΑ4 D)
 
 CInIDΑ2 : ICon ⌊ InIDΑ2 ⌋
@@ -102,7 +102,7 @@ CInIDΑ2 = iκ kInIDΑ2 CInIDΑ3
 W_InIDΑ2 : (D : IDesc) → IConWf D IInID InIDΑ2 CInIDΑ2
 W_InIDΑ2 D =
   iwf-κ kInIDΑ2 (icw-imu (pair sIDesc (var (vs vz))) KnotWf)
-    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc (fromI (⊢var (there here)))))
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc (fromI (⊢var (there (here refl) refl)))))
     (W_InIDΑ3 D)
 
 CInIDΑ1 : ICon ⌊ InIDΑ1 ⌋
@@ -134,37 +134,37 @@ InIDΒ7 = InIDΒ6 ▹ El kInIDΒ6
 InIDΒ8 = InIDΒ7 ▹ El kInIDΒ7
 
 aInIDΒ7 : InIDΒ7 ⊢ fst (var (vs (vs (vs (vs (vs (vs (vs vz)))))))) ∷ Nat
-aInIDΒ7 = ⊢fst (⊢var (there (there (there (there (there (there (there here))))))))
+aInIDΒ7 = ⊢fst (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl))
 CInIDΒ7 : ICon ⌊ InIDΒ7 ⌋
 CInIDΒ7 = iκ kInIDΒ7 iι
 W_InIDΒ7 : IConWf InIDD IInID InIDΒ7 CInIDΒ7
 W_InIDΒ7 =
   iwf-κ kInIDΒ7 (icw-ford _ _ _)
     (⊢⌜Id⌝ (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc aInIDΒ7))
-           (toMu (⊢snd (⊢snd (⊢var (there (there (there (there (there (there (there here)))))))))))
-           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc (fromI (⊢var here))))
-                  (toI (fromI (⊢var (there (there (there (there (there (there here)))))))))
+           (toMu (⊢snd (⊢snd (⊢var (there (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl) refl)))))
+           (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc (fromI (⊢var (here refl)))))
+                  (toI (fromI (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))))
                   (toI aInIDΒ7)
-                  (⊢symN aInIDΒ7 (fromI (⊢var (there (there (there (there (there (there here))))))))
-                         (fordAs (⊢var (there here))))
-                  (toMu (⊢IDesc-consKv (var (vs (vs (vs (vs (vs (vs vz))))))) (fromI (⊢var (there (there (there (there (there (there here)))))))) (fromMu (⊢var (there (there (there (there here)))))) (fromMu (⊢var (there (there (there here)))))))))
+                  (⊢symN aInIDΒ7 (fromI (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)))
+                         (fordAs (⊢var (there (here refl) refl))))
+                  (toMu (⊢IDesc-consKv (var (vs (vs (vs (vs (vs (vs vz))))))) (fromI (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))) (fromMu (⊢var (there (there (there (there (here refl) refl) refl) refl) refl))) (fromMu (⊢var (there (there (there (here refl) refl) refl) refl)))))))
     iwf-ι
 
 aInIDΒ6 : InIDΒ6 ⊢ fst (var (vs (vs (vs (vs (vs (vs vz))))))) ∷ Nat
-aInIDΒ6 = ⊢fst (⊢var (there (there (there (there (there (there here)))))))
+aInIDΒ6 = ⊢fst (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl))
 CInIDΒ6 : ICon ⌊ InIDΒ6 ⌋
 CInIDΒ6 = iκ kInIDΒ6 CInIDΒ7
 W_InIDΒ6 : IConWf InIDD IInID InIDΒ6 CInIDΒ6
 W_InIDΒ6 =
   iwf-κ kInIDΒ6 (icw-ford _ _ _)
     (⊢⌜Id⌝ ⊢⌜Nat⌝
-           (toI (⊢fst (⊢snd (⊢var (there (there (there (there (there (there here))))))))))
+           (toI (⊢fst (⊢snd (⊢var (there (there (there (there (there (there (here refl) refl) refl) refl) refl) refl) refl)))))
            (⊢jsub ⊢⌜Nat⌝
-                  (toI (fromI (⊢var (there (there (there (there (there here))))))))
+                  (toI (fromI (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl))))
                   (toI aInIDΒ6)
-                  (⊢symN aInIDΒ6 (fromI (⊢var (there (there (there (there (there here)))))))
-                         (fordAs (⊢var here)))
-                  (toI (⊢nsuc (fromI (⊢var (there (there (there (there here))))))))))
+                  (⊢symN aInIDΒ6 (fromI (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))
+                         (fordAs (⊢var (here refl))))
+                  (toI (⊢nsuc (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))))
     W_InIDΒ7
 
 CInIDΒ5 : ICon ⌊ InIDΒ5 ⌋
@@ -172,7 +172,7 @@ CInIDΒ5 = iκ kInIDΒ5 CInIDΒ6
 W_InIDΒ5 : IConWf InIDD IInID InIDΒ5 CInIDΒ5
 W_InIDΒ5 =
   iwf-κ kInIDΒ5 (icw-ford _ _ _)
-    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there (there (there here)))))))) (toI (fromI (⊢var (there (there (there (there here))))))))
+    (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there (there (there (there (here refl) refl) refl) refl) refl) refl)))) (toI (fromI (⊢var (there (there (there (there (here refl) refl) refl) refl) refl)))))
     W_InIDΒ6
 
 CInIDΒ4 : ICon ⌊ InIDΒ4 ⌋
@@ -180,8 +180,8 @@ CInIDΒ4 = iρ kInIDΒ4 CInIDΒ5
 W_InIDΒ4 : IConWf InIDD IInID InIDΒ4 CInIDΒ4
 W_InIDΒ4 =
   iwf-ρ kInIDΒ4
-    (⊢pair (ty-Σ ty-Nat (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))) (fromI (⊢var (there (there (there here)))))
-      (⊢pair (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢wk (fromI (⊢var (there (there (there here)))))))) (fromI (⊢var (there (there here)))) (fromMu (⊢var here))))
+    (⊢pair (ty-Σ ty-Nat (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there (here refl) refl))))) (fromI (⊢var (there (there (there (here refl) refl) refl) refl)))
+      (⊢pair (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢wk (fromI (⊢var (there (there (there (here refl) refl) refl) refl)))))) (fromI (⊢var (there (there (here refl) refl) refl))) (fromMu (⊢var (here refl)))))
     W_InIDΒ5
 
 CInIDΒ3 : ICon ⌊ InIDΒ3 ⌋
@@ -189,7 +189,7 @@ CInIDΒ3 = iκ kInIDΒ3 CInIDΒ4
 W_InIDΒ3 : IConWf InIDD IInID InIDΒ3 CInIDΒ3
 W_InIDΒ3 =
   iwf-κ kInIDΒ3 (icw-imu (pair sIDesc (var (vs (vs vz)))) KnotWf)
-    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc (fromI (⊢var (there (there here))))))
+    (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sIDesc (fromI (⊢var (there (there (here refl) refl) refl)))))
     W_InIDΒ4
 
 CInIDΒ2 : ICon ⌊ InIDΒ2 ⌋
