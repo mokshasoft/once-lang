@@ -342,6 +342,52 @@ cheaper route. **Every other candidate fails at least one.**
 investigation: *does a defined, invertible operation wrap an argument
 that appears nowhere else in the conclusion?*
 
+### 2.10 ⚠⚠ AND "LEAVE THEM" IS **AGDA-SPECIFIC** — it does NOT port to Once
+
+Asked whether leaving `Hom-U`/`β` computed is right for Once too. **It is
+not**, and the reason matters more than the verdict.
+
+They measured free for two reasons, **neither of which is a theorem**:
+
+1. Agda solved `c`/`d` **from the SOURCE** rather than through the
+   target's renaming — a heuristic about which constraint to attack
+   first;
+2. Agda **refuses to invert substitutions** — the coverage of its
+   injectivity heuristic.
+
+⇒ "safe" here means *Agda happens not to take the expensive path, and no
+current call site forces it*. **The footgun is loaded and merely not
+pointed anywhere.** A future use — or a future Agda — can force the
+backward direction and hit the 267× silently.
+
+★★★ **IN ONCE THE QUESTION DISSOLVES, VIA INVARIANT 2.** Mode-correctness
+says every premise's inputs are determined. Then
+
+```
+β : app (lam t) u ⟶ subTm (single u) t
+```
+
+is FINE in the FORWARD mode: `t`/`u` are determined by matching the
+source and the target is COMPUTED AS OUTPUT — no search, and the computed
+form is the natural one. The BACKWARD mode (*"what reduces to `r`?"*)
+needs `subTm` inverted, and **mode analysis rejects it STATICALLY**
+instead of the checker attempting it expensively.
+
+⇒ **a computed conclusion is a FORWARD-MODE-ONLY declaration.** Implicit
+and unchecked in Agda; declarable and enforced in Once.
+
+| | Agda today | Once |
+|---|---|---|
+| `_∋_∷_` | ford — inversion is real and costly | declare the mode; forward is cheap |
+| `Hom-U`, `β` | leave — *happens* to be safe | declare the mode; safety is PROVED |
+
+⚠⚠ **SO THE FORDING IN THIS PLAN IS A WORKAROUND FOR AN UNCHECKED MODE,
+NOT A DESIGN ONCE SHOULD COPY.** Someone porting this could easily read
+*"ford `_∋_∷_`"* as the lesson. The lesson is one level up: **declare the
+direction and let mode analysis enforce it** — which is neither "ford
+everything" (loses forward-mode ergonomics for nothing) nor "leave it"
+(safety by accident).
+
 --------------------------------------------------------------------------
 ## 3. The order
 
