@@ -14134,6 +14134,28 @@ and it only happens when the STATEMENT moves. The fix that landed never used
 S0's work-list: it changed the statement and followed the resulting type errors
 to all 26 files.
 
+### CONFIRMED BY THE AST DUMP (added 2026-09-16, after S2)
+
+`./run-ast-dumps.sh` at `ca693126`, diffed against the 0.90 base. Eight
+definitions left the reachable set and every one is accounted for — but two of
+them are the real evidence for this entry's claim:
+
+    - Once.IR.Size.ir-size
+    - Once.IR.Size.ir-size-nt
+
+**The size measure itself is now unreachable from `Once.Certified.once-certified`.**
+Not "nothing reads it any more" as a reading of the source — provably dead from
+the entry point. D170's comment called it "the whole `program-bound` /
+`ir-size` / `RecDispatcherWF` apparatus"; with the parameter gone the apparatus
+has no consumer in the certified cone.
+
+The other six: `entry-size`, `comp-size-f`, `comp-size-g` and `PairAsm`'s
+`szf`/`szg` were deleted here, and `ValidityDef.readLoc-stack-heap-eq` moved to
+`ReadLocEq` (it reappears in the same diff's added list).
+
+Trust base 104 → 104 across S1+S2: one swap, `entry-size` out and S2's
+`entry-blocks` in. Nothing else entered or left.
+
 ### Two fossils swept
 
 `Comp.agda:111` and `SigOp.agda:250` each carried a bare `postulate` keyword
