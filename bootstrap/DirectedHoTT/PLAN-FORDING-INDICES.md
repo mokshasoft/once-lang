@@ -156,9 +156,34 @@ gate had prevented it.
   two data points, which is where most of this session's nine refuted
   models began.
 
-⚠ AND THE `⊢app` VERDICT IS NARROWER THAN "leave it alone": forward, the
-forded form was **29 ms against 65 ms — a 2.2× gap on a rule used 829
-times.** Small, but not zero, and not measured at scale.
+### ⚠ AND THE `⊢app` VERDICT, MEASURED PROPERLY — **2.17×, AND REAL**
+
+Five cold runs, both definitions in each:
+
+| | samples (ms) | mean | sd | range |
+|---|---|---|---|---|
+| `appC` computed | 67 · 72 · 63 · 62 · 77 | **68.2** | 5.6 | 62–77 |
+| `appF` forded | 29 · 35 · 29 · 30 · 34 | **31.4** | 2.6 | 29–35 |
+
+**RANGES DO NOT OVERLAP** — the worst forded run beats the best computed
+one by 1.8×. ⇒ it is a WIN, outside noise, and *"`⊢app` does not
+reproduce"* was **wrong**: it reproduces at 2.17×.
+
+⛔ **BUT IT IS STILL A BAD TRADE, FOR AN ECONOMIC REASON, NOT A
+MECHANICAL ONE.** The 2.17× is a WORST CASE built on purpose — a stuck
+eliminator in the codomain. Most of the 829 real uses are at ordinary
+types where both forms compute in microseconds.
+
+| | `_∋_∷_` | `⊢app` |
+|---|---|---|
+| measured | **267×** | 2.17× |
+| where it lands | the HOT path — every deep lookup | a few sites with eliminators in the type |
+| edit cost | 7,581 `refl`s | 829 `refl`s |
+| verdict | **ford it** | **skip — fix the few sites directly** |
+
+⇒ `⊢app`'s entry is *"measured 2.17× at a constructed worst case; not
+worth 829 edits"*, NOT *"does not reproduce"*. ⚠ That earlier claim was
+wrong twice: it does reproduce, and the reason to skip is cost/benefit.
 
 ⇒ **REVISED STATUS: the plan is gated to `_∋_∷_` because that is the only
 thing MEASURED to pay.** The other five are **UNTESTED**, not refuted.
