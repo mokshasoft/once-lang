@@ -74,16 +74,32 @@ open import Once.Adequacy.Compile using (ArchCorrect)
 -- So `cata-correct` is load-bearing for the apex on every target; each carries
 -- only its single named `<arch>-flat-from-obs` FS-plumbing residual (Plan 0.53).
 open import Once.Adequacy.ArchCorrectness.X86-64 o  x86-64-heap-room x86-64-stack-room x86-64-call-room
-       x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits using (x86-64-correct)
+       x86-64-reg-range x86-64-scratch-dec-guarded x86-64-addr-no-wrap x86-64-lit-fits using (x86-64-correct; BlockRunsHyp-x86-64)
+-- plan 0.92: this `public` is the ONE defensible kind — this module IS the
+-- interface to the three arch modules, and the name re-exported is a TYPE the
+-- consumer must be able to NAME to state its own signature. No constructors.
+       public
 open import Once.Adequacy.ArchCorrectness.X86-32 o  x86-32-heap-room x86-32-stack-room x86-32-call-room
-       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits using (x86-32-correct)
+       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits using (x86-32-correct; BlockRunsHyp-x86-32)
+-- plan 0.92: this `public` is the ONE defensible kind — this module IS the
+-- interface to the three arch modules, and the name re-exported is a TYPE the
+-- consumer must be able to NAME to state its own signature. No constructors.
+       public
 open import Once.Adequacy.ArchCorrectness.RiscV64 o
        riscv64-heap-room riscv64-stack-room riscv64-call-room
        riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
-       riscv64-addr-no-wrap riscv64-lit-fits using (riscv64-correct)
+       riscv64-addr-no-wrap riscv64-lit-fits using (riscv64-correct; BlockRunsHyp-riscv64)
+-- plan 0.92: this `public` is the ONE defensible kind — this module IS the
+-- interface to the three arch modules, and the name re-exported is a TYPE the
+-- consumer must be able to NAME to state its own signature. No constructors.
+       public
 
 -- Total over `Arch` ⇒ adding a target forces a new witness here.
-arch-correctness : ∀ (arch : Arch) → ArchCorrect arch (arch-semantics arch)
-arch-correctness x86-64  = x86-64-correct
-arch-correctness x86-32  = x86-32-correct
-arch-correctness riscv64 = riscv64-correct
+-- plan 0.91 parallel track: THREE hypotheses, one per target, because
+-- `BlockRuns` is `FrameSemantics`-relative. Each was the false postulate
+-- `block-runs` at that target's FS; plan 0.93 discharges them.
+arch-correctness : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
+                 → ∀ (arch : Arch) → ArchCorrect arch (arch-semantics arch)
+arch-correctness b64 b32 brv x86-64  = x86-64-correct b64
+arch-correctness b64 b32 brv x86-32  = x86-32-correct b32
+arch-correctness b64 b32 brv riscv64 = riscv64-correct brv

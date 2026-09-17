@@ -78,7 +78,8 @@ open import Once.Compiler o x86-64-heap-room x86-64-stack-room x86-64-call-room
        riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-heap-room x86-32-stack-room x86-32-call-room
-       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits using (once-compiler)
+       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits
+       using (once-compiler; BlockRunsHyp-x86-64; BlockRunsHyp-x86-32; BlockRunsHyp-riscv64)
 open import Once.TypeCheck.Verified using (VerifiedTypeChecker; verifiedTypeChecker)
 
 record CertifiedBuild : Set₁ where
@@ -86,8 +87,30 @@ record CertifiedBuild : Set₁ where
     correctness : CorrectCompiler       -- soundness + completeness (the minimal claim)
     typechecker : VerifiedTypeChecker    -- determinism ∧ totality ∧ errors ∧ identities
 
-once-certified : CertifiedBuild
-once-certified = record
-  { correctness = once-compiler
+-- plan 0.91 parallel track (2026-09-17) — THE ASSUMPTION IS NOW IN THE
+-- STATEMENT.
+--
+-- `once-certified` used to be unconditional. It was also VACUOUS: it rested on
+-- `block-runs`, which D213 refuted with a machine-checked `⊥`
+-- (`Once/Probe/ApexInconsistent.boom`). An inconsistent assumption proves
+-- everything, so the unconditional reading was worth nothing.
+--
+-- It now takes the three block-table coherence hypotheses — one per target,
+-- because `BlockRuns` is `FrameSemantics`-relative and the single postulate was
+-- quietly standing for all three at once. The theorem reads:
+--
+--     IF the emitter's block table is coherent on each target,
+--     THEN the compiler is correct and the typechecker is verified.
+--
+-- That is WEAKER than what stood here and TRUE, where what stood here was
+-- stronger and vacuous. Discharging the hypotheses is plan 0.93's purpose: the
+-- fact they assert is BEHAVIOURAL, and D217 showed (machine-checked, one cell
+-- two denotations) that no property of a machine STATE can supply it — which
+-- is why `ValidAtWF` has to become a relation recursive on the TYPE rather
+-- than a `data` indexed by it.
+once-certified : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
+               → CertifiedBuild
+once-certified b64 b32 brv = record
+  { correctness = once-compiler b64 b32 brv
   ; typechecker = verifiedTypeChecker
   }

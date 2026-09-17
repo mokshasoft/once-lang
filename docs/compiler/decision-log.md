@@ -14449,3 +14449,80 @@ Proving `BlockRuns (ir-to-trace ir)` applies `ioc body`, whose own premises
 include `BlockRuns (ir-to-trace ir)`. Circular. Two candidate exits — a
 depth-indexed family, or a subterm order carried in the field — with different
 blast radii. Settle before threading anything.
+
+## D218 — `block-runs` IS DEMOTED FROM CLAIM TO HYPOTHESIS (2026-09-17)
+
+No proof was added. What changed is that the top-level theorem now says what it
+actually depends on.
+
+    -- was: unconditional, and VACUOUS — it rested on a refuted postulate
+    once-certified : CertifiedBuild
+
+    -- now: conditional, and TRUE
+    once-certified : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
+                   → CertifiedBuild
+
+`block-runs` is FALSE (D213, machine-checked). An inconsistent assumption proves
+everything, so the unconditional reading was worth nothing. It is no longer
+postulated anywhere in the tree — it survives only in comments explaining why it
+is not — and the evidence is that D213's own probe no longer compiles:
+
+    Once/Probe/ApexInconsistent.agda:28.36-46: error: [NotInScope]
+    Not in scope:
+      block-runs
+
+**The apex ⊥ is no longer writable.**
+
+### Three separations that had to happen first
+
+D217 forced them, and until they were made every attempted fix aimed at the
+wrong one of the three:
+
+* `BlockRuns prog` AS A PREMISE of `IRObsCorrectF` is LEGITIMATE. D188 was right
+  to put it there: it is what excludes a fabricated closure, and
+  `IRObsCorrectF apply` is ITSELF false without it — a state whose closure names
+  an undefined label HALTS the machine on the call while the denotation says
+  `f a`.
+* The APEX DISCHARGE — claiming the premise always holds — is the false
+  statement. That, and only that, is what is demoted here.
+* What the discharge needs is BEHAVIOURAL, and no fact about a state can supply
+  it (D217: one cell, two denotations). That is plan 0.93's subject.
+
+### Two things the postulate was hiding, both found by threading it
+
+* **There were never one assumption, but THREE.** `BlockRuns` is
+  `FrameSemantics`-relative, so the single postulate was standing for x86-64,
+  x86-32 and riscv64 simultaneously. `arch-correctness` now forces each target
+  to name its own, the same way it already forced per-arch backend witnesses.
+* **It reached further than its one call site suggested.** `conc-fuel` — the
+  fuel-adequacy postulate in ALL THREE backends — depends on it through `Nof`,
+  which computes a step count via `entry-witness`. From the outside that looked
+  like a single use.
+
+Neither was visible while it was a postulate. **You cannot tell what an
+assumption costs until you make it explicit** — and the contrast with D214 is
+exact: there, a parameter threaded through 26 modules turned out to be read
+NOWHERE, because it stood for nothing; here, an assumption that looked local is
+read in the fuel accounting of every backend.
+
+### On the `public` re-exports this required
+
+Naming a type in a signature N levels up forces a re-export at every level
+between — here `ArchCorrectness` and `Once.Compiler`, for three names. That
+propagation is exactly the cost plan 0.92 is about, and it sharpens 0.92's rule
+into something testable:
+
+> Re-export a name only when a consumer **cannot state its own signature**
+> without it. Convenience of use is not a reason; inability to SPEAK is.
+
+`Once.Certified` cannot write `once-certified`'s type without these three, and
+the alternative — re-importing `ArchCorrectness` with its twenty-parameter
+telescope — is worse. A name used only in BODIES never qualifies, since a body
+can import it directly. That rule rules out almost all 345 existing re-exports.
+
+### Status
+
+This is a holding position, not a fix. The hypotheses are discharged by plan
+0.93, which rebuilds `ValidAtWF` as a relation recursive on the TYPE (the
+`MeaningRelation` shape) rather than a `data` indexed by it. If that lands,
+`BlockRuns` disappears entirely and this thread is deleted with it.

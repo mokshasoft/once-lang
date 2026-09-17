@@ -103,7 +103,7 @@ import Once.Adequacy.ArchCorrectness.FlatFromObs as FFO
 -- apex could not discharge `ir-size ir < program-bound` for an `ir` that does
 -- not exist yet (that was the false `entry-size`). The premise and the whole
 -- telescope are deleted; this `open` takes no bound.
-open IRObsCorrectFlatness {x86-32-frame-semantics} using (ir-obs-correct; MachineRefinesObsF; ValueRealized)
+open IRObsCorrectFlatness {x86-32-frame-semantics} using (ir-obs-correct; MachineRefinesObsF; ValueRealized; BlockRuns)
 
 -- The FlatFromObs bundle at the x86-32 params (concrete machine now VISIBLE).
 ------------------------------------------------------------------------
@@ -421,17 +421,17 @@ entry-inv ir = record
 -- per-`n` existential left to project. The fuel is the witness's own
 -- `steps`, which is exactly what `flat-trace-of` runs at, so the two sides
 -- match definitionally instead of through a chosen `N`.
-Nof : IR Unit Unit → ℕ → ℕ
-Nof ir n =
+Nof : (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) → IR Unit Unit → ℕ → ℕ
+Nof brs ir n =
   ValueRealized.steps
-    (MachineRefinesObsF.value-realized (FFOx.entry-witness ir (ir-obs-correct ir) n)) + 0
+    (MachineRefinesObsF.value-realized (FFOx.entry-witness ir (ir-obs-correct ir) brs n)) + 0
 
 postulate
   -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel seam (D5),
   -- the SAME gap `FlatFromObs.flat-trace` / `traces-agree` carry on the flat side.
   --
   -- `events-agree` supplies an existential concrete fuel `M` that REPRODUCES the adequate
-  -- flat prefix `flat-events (Nof ir n)` — the flat trace at the adequacy witness for `n`
+  -- flat prefix `flat-events (Nof brs ir n)` — the flat trace at the adequacy witness for `n`
   -- events (that is the `hyp` argument). `conc-trace` runs at the DESIGNED budget
   -- `step-budget-x86-32 n`. Because `M` already reproduces the first-`n`-event prefix and
   -- `step-budget-x86-32 n` is adequate, their `take n` prefixes agree.
@@ -442,10 +442,10 @@ postulate
   -- `step-budget-x86-32 n` itself reaches ≥ n events — the abstract adequacy of the
   -- postulated `ℕ→ℕ` fuel map. Provable core: `run-events` fuel-prefix monotonicity;
   -- residual leaf: `step-budget-x86-32` adequacy (needs `step-budget` pinned, D5).
-  conc-fuel : ∀ (ir : IR Unit Unit) (n M : ℕ) →
+  conc-fuel : ∀ (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) (ir : IR Unit Unit) (n M : ℕ) →
       RTx.run-events val-x86-32 ev-x86-32 (arith-env-x86-32 (compile-trace (ir-to-trace ir)))
         M (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState as32)
-      ≡ flat-events (Nof ir n) (ir-to-trace ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0) →
+      ≡ flat-events (Nof brs ir n) (ir-to-trace ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0) →
       take n (RTx.run-events val-x86-32 ev-x86-32 (arith-env-x86-32 (compile-trace (ir-to-trace ir)))
                 (step-budget-x86-32 n) (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState as32))
     ≡ take n (RTx.run-events val-x86-32 ev-x86-32 (arith-env-x86-32 (compile-trace (ir-to-trace ir)))
@@ -456,14 +456,14 @@ postulate
 -- (`no-nested-of-all` on the frame-free walk), so the two lowerings coincide
 -- unconditionally (`compile-trace-cnt-agrees`) and the apex needs no split.
 conc-flat-sim-just :
-  ∀ (ir : IR Unit Unit) (n : ℕ) →
-  at (conc-trace (just ir)) n ≡ at (FFOx.flat-trace-of ir-obs-correct (just ir)) n
-conc-flat-sim-just ir n
+  ∀ (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) (ir : IR Unit Unit) (n : ℕ) →
+  at (conc-trace (just ir)) n ≡ at (FFOx.flat-trace-of ir-obs-correct brs (just ir)) n
+conc-flat-sim-just brs ir n
   rewrite compile-trace-cnt-agrees o 0 (ir-to-trace ir)
             (no-nested-of-all (ir-to-trace ir) (ir-to-trace-frame-free ir (main-heap-moded ir))) =
-  trans (conc-fuel ir n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
+  trans (conc-fuel brs ir n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
   where
-    agree = events-agree (Nof ir n)
+    agree = events-agree (Nof brs ir n)
               ev-x86-32 (arith-env-x86-32 (compile-trace (ir-to-trace ir)))
               (ir-to-trace ir) (mkFlat FFOx.entry-s (FFOx.entry-alloc (ir-stack-budget ir)) 0)
               (ArchSemantics.initialState as32) (entry-corr ir) (entry-inv ir)
@@ -472,19 +472,26 @@ conc-flat-sim-just ir n
 -- to `conc-flat-sim-just` — the single refinement obligation the recovered cluster
 -- fills. Everything hangs off this apex node (no proof islands).
 x86-32-conc-flat-sim :
-  ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ) →
-  at (conc-trace mir) n ≡ at (FFOx.flat-trace-of ir-obs-correct mir) n
-x86-32-conc-flat-sim nothing   n = refl
-x86-32-conc-flat-sim (just ir) n = conc-flat-sim-just ir n
+  ∀ (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) (mir : Maybe (IR Unit Unit)) (n : ℕ) →
+  at (conc-trace mir) n ≡ at (FFOx.flat-trace-of ir-obs-correct brs mir) n
+x86-32-conc-flat-sim brs nothing   n = refl
+x86-32-conc-flat-sim brs (just ir) n = conc-flat-sim-just brs ir n
 
 -- The seam, ASSEMBLED from (A) ∘ (B). No longer one opaque postulate: the
 -- provable half is named and separated from the honest toolchain axiom.
-asm-trace-correct-x86-32 : FFOx.AsmTraceCorrect (FFOx.flat-trace-of ir-obs-correct)
-asm-trace-correct-x86-32 m asm eq dl lr sr n =
+asm-trace-correct-x86-32 : ∀ (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) → FFOx.AsmTraceCorrect (FFOx.flat-trace-of ir-obs-correct brs)
+asm-trace-correct-x86-32 brs m asm eq dl lr sr n =
   trans (x86-32-loader-faithful m asm eq dl lr sr n)
-        (x86-32-conc-flat-sim (moduleToIR-emitted m) n)
+        (x86-32-conc-flat-sim brs (moduleToIR-emitted m) n)
 
-x86-32-correct : ArchCorrect x86-32 (arch-semantics x86-32)
-x86-32-correct =
+-- plan 0.91 parallel track: the block-table coherence HYPOTHESIS, named so it
+-- can be threaded to `Once.Certified` (each target has its own
+-- `FrameSemantics`, so `BlockRuns` differs per arch and one hypothesis cannot
+-- serve all three). Was the FALSE postulate `block-runs`; plan 0.93 discharges it.
+BlockRunsHyp-x86-32 : Set
+BlockRunsHyp-x86-32 = (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)
+
+x86-32-correct : BlockRunsHyp-x86-32 → ArchCorrect x86-32 (arch-semantics x86-32)
+x86-32-correct brs =
   FFO.flat-from-obs o x86-32 x86-32-frame-semantics refl entry-frame-x86-32 (arch-semantics x86-32)
-    ir-obs-correct asm-trace-correct-x86-32
+    ir-obs-correct brs (asm-trace-correct-x86-32 brs)

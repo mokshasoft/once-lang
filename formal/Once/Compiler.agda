@@ -72,7 +72,17 @@ open import Once.Adequacy.ArchCorrectness o x86-64-heap-room x86-64-stack-room x
        riscv64-reg-range riscv64-scratch-dec-guarded riscv64-slot-addr-no-wrap
        riscv64-addr-no-wrap riscv64-lit-fits
        x86-32-heap-room x86-32-stack-room x86-32-call-room
-       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits using (arch-correctness)
+       x86-32-reg-range x86-32-scratch-dec-guarded x86-32-addr-no-wrap x86-32-lit-fits
+       using (arch-correctness; BlockRunsHyp-x86-64; BlockRunsHyp-x86-32; BlockRunsHyp-riscv64)
+-- plan 0.92, and an honest note on its cost: `public` here is NOT convenience.
+-- `Once.Certified` cannot STATE `once-certified`'s signature without naming
+-- these three types, and to name a type N levels up it must be re-exported at
+-- every level in between. That propagation is exactly the property that makes
+-- `public` expensive — but the alternative (Certified re-importing
+-- `ArchCorrectness` with its full twenty-parameter telescope) is worse.
+-- `arch-correctness` rides along on the same `using` list; splitting the import
+-- to avoid that would duplicate the telescope for one name.
+       public
 import Once.Adequacy.Compile as VCompile
 
 -- D162: the Haskell-facing surface. Imported HERE because `make malonzo`
@@ -88,10 +98,14 @@ open import Once.Extract.Names using (module-has-main; module-imports)
 -- grand theorem proved against them. `arch-correctness` forces every target
 -- to supply its `ArchCorrect` (proof or postulate) — the assembly point for
 -- the per-arch trusted base.
-module VC = VCompile.WithCPU arch-semantics arch-correctness
+-- plan 0.91 parallel track: `VC` is now scoped INSIDE `once-compiler`, because
+-- it depends on the three block-table coherence hypotheses. They were the FALSE
+-- postulate `block-runs` (D213); making them visible in the statement is what
+-- turns a vacuous theorem into a conditional one. Plan 0.93 discharges them.
 
-once-compiler : CorrectCompiler
-once-compiler = record
+once-compiler : BlockRunsHyp-x86-64 → BlockRunsHyp-x86-32 → BlockRunsHyp-riscv64
+              → CorrectCompiler
+once-compiler b64 b32 brv = record
   { Arch     = Arch
   ; Source   = Source
   ; Bytes    = List Byte
@@ -115,3 +129,5 @@ once-compiler = record
   -- Plan 0.49: the two-conjunct (sound+trace / complete) relational claim.
   ; correct  = VC.correctᵈ
   }
+  where
+    module VC = VCompile.WithCPU arch-semantics (arch-correctness b64 b32 brv)

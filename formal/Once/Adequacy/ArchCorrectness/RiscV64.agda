@@ -98,7 +98,7 @@ open import Once.Memory.StackSlots using (stack-addr)
 -- not exist yet (that was the false `entry-size`). The premise and the whole
 -- telescope are deleted; this `open` takes no bound.
 open IRObsCorrectFlatness {rv64-frame-semantics}
-  using (ir-obs-correct; module MachineRefinesObsF; module ValueRealized)
+  using (ir-obs-correct; module MachineRefinesObsF; module ValueRealized; BlockRuns)
 
 ------------------------------------------------------------------------
 -- THE ENTRY FRAME — CONSTRUCTED (plan 0.65 G3, 2026-08-17).
@@ -303,10 +303,10 @@ entry-inv ir = record
 -- per-`n` existential left to project. The fuel is the witness's own
 -- `steps`, which is exactly what `flat-trace-of` runs at, so the two sides
 -- match definitionally instead of through a chosen `N`.
-Nof : IR Unit Unit → ℕ → ℕ
-Nof ir n =
+Nof : (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) → IR Unit Unit → ℕ → ℕ
+Nof brs ir n =
   ValueRealized.steps
-    (MachineRefinesObsF.value-realized (FFOr.entry-witness ir (ir-obs-correct ir) n)) + 0
+    (MachineRefinesObsF.value-realized (FFOr.entry-witness ir (ir-obs-correct ir) brs n)) + 0
 
 postulate
   -- STEP-BUDGET ADEQUACY / fuel coherence — the honest abstract adequate-fuel
@@ -316,11 +316,11 @@ postulate
   -- argument); `conc-trace` runs at the DESIGNED budget. Because `M` already
   -- reproduces the first-`n`-event prefix, the only remaining content is that
   -- `step-budget-riscv64 n` itself reaches ≥ n events.
-  conc-fuel : ∀ (ir : IR Unit Unit) (n M : ℕ) →
+  conc-fuel : ∀ (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) (ir : IR Unit Unit) (n M : ℕ) →
       RTr.run-events val-riscv64 ev-riscv64
         (arith-env-riscv64 (compile-trace (ir-to-trace ir)))
         M (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState asR)
-      ≡ flat-events (Nof ir n) (ir-to-trace ir)
+      ≡ flat-events (Nof brs ir n) (ir-to-trace ir)
           (mkFlat FFOr.entry-s (FFOr.entry-alloc (ir-stack-budget ir)) 0) →
       take n (RTr.run-events val-riscv64 ev-riscv64
                 (arith-env-riscv64 (compile-trace (ir-to-trace ir)))
@@ -331,15 +331,15 @@ postulate
                 M (compile-trace (ir-to-trace ir)) (ArchSemantics.initialState asR))
 
 conc-flat-sim-just :
-  ∀ (ir : IR Unit Unit) (n : ℕ) →
-  at (conc-trace (just ir)) n ≡ at (FFOr.flat-trace-of ir-obs-correct (just ir)) n
-conc-flat-sim-just ir n
+  ∀ (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) (ir : IR Unit Unit) (n : ℕ) →
+  at (conc-trace (just ir)) n ≡ at (FFOr.flat-trace-of ir-obs-correct brs (just ir)) n
+conc-flat-sim-just brs ir n
   rewrite compile-trace-cnt-agrees o 0 (ir-to-trace ir)
             (no-nested-of-all (ir-to-trace ir)
               (ir-to-trace-frame-free ir (main-heap-moded ir))) =
-  trans (conc-fuel ir n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
+  trans (conc-fuel brs ir n (proj₁ agree) (proj₂ agree)) (cong (take n) (proj₂ agree))
   where
-    agree = events-agree (Nof ir n)
+    agree = events-agree (Nof brs ir n)
               ev-riscv64 (arith-env-riscv64 (compile-trace (ir-to-trace ir)))
               (ir-to-trace ir) (mkFlat FFOr.entry-s (FFOr.entry-alloc (ir-stack-budget ir)) 0)
               (ArchSemantics.initialState asR) (entry-corr ir) (entry-inv ir)
@@ -356,17 +356,24 @@ conc-flat-sim-just ir n
 -- not ask.
 ------------------------------------------------------------------------
 riscv64-conc-flat-sim :
-  ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ) →
-  at (conc-trace mir) n ≡ at (FFOr.flat-trace-of ir-obs-correct mir) n
-riscv64-conc-flat-sim nothing   n = refl
-riscv64-conc-flat-sim (just ir) n = conc-flat-sim-just ir n
+  ∀ (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) (mir : Maybe (IR Unit Unit)) (n : ℕ) →
+  at (conc-trace mir) n ≡ at (FFOr.flat-trace-of ir-obs-correct brs mir) n
+riscv64-conc-flat-sim brs nothing   n = refl
+riscv64-conc-flat-sim brs (just ir) n = conc-flat-sim-just brs ir n
 
-asm-trace-correct-riscv64 : FFOr.AsmTraceCorrect (FFOr.flat-trace-of ir-obs-correct)
-asm-trace-correct-riscv64 m asm eq dl lr sr n =
+asm-trace-correct-riscv64 : ∀ (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) → FFOr.AsmTraceCorrect (FFOr.flat-trace-of ir-obs-correct brs)
+asm-trace-correct-riscv64 brs m asm eq dl lr sr n =
   trans (riscv64-loader-faithful m asm eq dl lr sr n)
-        (riscv64-conc-flat-sim (moduleToIR-emitted m) n)
+        (riscv64-conc-flat-sim brs (moduleToIR-emitted m) n)
 
-riscv64-correct : ArchCorrect riscv64 (arch-semantics riscv64)
-riscv64-correct =
+-- plan 0.91 parallel track: the block-table coherence HYPOTHESIS, named so it
+-- can be threaded to `Once.Certified` (each target has its own
+-- `FrameSemantics`, so `BlockRuns` differs per arch and one hypothesis cannot
+-- serve all three). Was the FALSE postulate `block-runs`; plan 0.93 discharges it.
+BlockRunsHyp-riscv64 : Set
+BlockRunsHyp-riscv64 = (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)
+
+riscv64-correct : BlockRunsHyp-riscv64 → ArchCorrect riscv64 (arch-semantics riscv64)
+riscv64-correct brs =
   FFO.flat-from-obs o riscv64 rv64-frame-semantics refl entry-frame-riscv64 (arch-semantics riscv64)
-    ir-obs-correct asm-trace-correct-riscv64
+    ir-obs-correct brs (asm-trace-correct-riscv64 brs)

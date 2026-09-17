@@ -265,8 +265,42 @@ entry-span ir k i eq =
 -- Widening it is not a new assumption so much as an honest one: while the
 -- premise mentioned only closures, `obs-correct-Out` was a postulate covering
 -- the ν side, and that postulate was FALSE (D199).
-postulate
-  block-runs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)
+-- plan 0.91 parallel track (2026-09-17) — `block-runs` IS NO LONGER CLAIMED.
+--
+-- It stood here as
+--
+--     postulate block-runs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)
+--
+-- and it is FALSE (D213, machine-checked: `Once/Probe/ApexInconsistent.boom : ⊥`).
+-- Everything above it was therefore derived from an inconsistent assumption —
+-- the apex theorem was not weak, it was VACUOUS.
+--
+-- Three things had to be separated to see what to do, and D217 is what forced
+-- the separation:
+--
+--   * `BlockRuns prog` AS A PREMISE of `IRObsCorrectF` is LEGITIMATE, and D188
+--     was right to put it there. It is what excludes a fabricated closure —
+--     and `IRObsCorrectF apply` is itself false without it, since a state whose
+--     closure names an undefined label HALTS the machine on the call while the
+--     denotation says `f a`.
+--   * The apex DISCHARGE — the claim that the premise always holds — is the
+--     false statement.
+--   * What the discharge needs is BEHAVIOURAL (that entering the block runs the
+--     body), and D217 showed no fact about a state can supply it: one cell, two
+--     denotations. That is what plan 0.93 rebuilds, as a relation recursive on
+--     the TYPE rather than a `data` indexed by it.
+--
+-- Until 0.93 lands, the honest thing is to ASSUME it visibly rather than claim
+-- it falsely. It is now a HYPOTHESIS of this module, threaded to
+-- `Once.Certified`, so the top-level theorem reads
+--
+--     "IF the emitter's block table is coherent, THEN the compiled code is
+--      correct"
+--
+-- which is WEAKER than what stood here, and TRUE, where what stood here was
+-- stronger and vacuous. Discharging it is plan 0.93's whole purpose; the
+-- hypothesis is what makes the debt visible in the statement instead of hidden
+-- in a postulate block.
 
 -- plan 0.91 S2 — THE APEX'S SHARE OF THE NEW PREMISE, and S5's obligation.
 --
@@ -294,12 +328,13 @@ postulate
 postulate
   entry-blocks : (ir : IR Unit Unit) → BlocksAt (ir-to-trace ir) (blocks 0 0 ir)
 
-entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir → (k : ℕ)
+entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
+              → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) → (k : ℕ)
               → MachineRefinesObsF (ir-to-trace ir) 0 0 0 ir tt entry-s
                   (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
-entry-witness ir ioc k =
+entry-witness ir ioc brs k =
   ioc 0 0 (ir-to-trace ir) 0 (ir-to-trace-slot-stable ir)
-      (block-runs ir) (entry-span ir) (entry-blocks ir)
+      (brs ir) (entry-span ir) (entry-blocks ir)
       Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
       (entry-ns (ir-stack-budget ir)) entry-nh
       -- D153: ONE residence premise. `main : IR Unit Unit`, so its input has
@@ -317,19 +352,21 @@ entry-witness ir ioc k =
 -- it is exactly `steps` — and it no longer varies with `n`.
 ------------------------------------------------------------------------
 
-entry-vr : (ir : IR Unit Unit) → (∀ {A B} (ir' : IR A B) → IRObsCorrectF ir') → (k : ℕ)
+entry-vr : (ir : IR Unit Unit) → (∀ {A B} (ir' : IR A B) → IRObsCorrectF ir')
+         → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) → (k : ℕ)
          → ValueRealized (ir-to-trace ir) 0 0 0 ir tt entry-s
              (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
-entry-vr ir ioc k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir) k)
+entry-vr ir ioc brs k = MachineRefinesObsF.value-realized (entry-witness ir (ioc ir) brs k)
 
 -- The machine's trace FAMILY. The fuel is the depth-`n` witness's own step
 -- count — "for each depth there is a fuel that reaches it", D058's
 -- productivity shape, now carried by the statement rather than an ∃.
 flat-trace-fam : (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+               → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
                → Maybe (IR Unit Unit) → ℕ → List SigOpEvent
-flat-trace-fam ioc nothing   _ = []
-flat-trace-fam ioc (just ir) n =
-  take n (flat-events (ValueRealized.steps (entry-vr ir ioc n) + 0)
+flat-trace-fam ioc brs nothing   _ = []
+flat-trace-fam ioc brs (just ir) n =
+  take n (flat-events (ValueRealized.steps (entry-vr ir ioc brs n) + 0)
                       (ir-to-trace ir) (mkFlat entry-s (entry-alloc (ir-stack-budget ir)) 0))
 
 ------------------------------------------------------------------------
@@ -376,17 +413,18 @@ AsmTraceCorrect ft =
 -- is where `IRObsCorrectFlat`'s `evalᴰ` alias reads them from too, so the
 -- two sides mean one thing.
 ir-flat-correct-fam : (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+                   → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
                    → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
-                   → flat-trace-fam ioc mir n ≡ at (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)) n
-ir-flat-correct-fam ioc nothing   n = refl
+                   → flat-trace-fam ioc brs mir n ≡ at (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)) n
+ir-flat-correct-fam ioc brs nothing   n = refl
 -- D159: peel the chain off the fuel (`flat-events-steps`), and the leftover is
 -- `flat-events 0`, i.e. `[]`. So the run's events ARE the chain's events, and
 -- the chain's events are what `traces-agree` now speaks about.
-ir-flat-correct-fam ioc (just ir) n =
+ir-flat-correct-fam ioc brs (just ir) n =
   trans (cong (take n)
-          (trans (flat-events-steps (ValueRealized.run (entry-vr ir ioc n)) 0)
-                 (++-identityʳ (chain-events (ValueRealized.run (entry-vr ir ioc n))))))
-        (trans (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir) n))
+          (trans (flat-events-steps (ValueRealized.run (entry-vr ir ioc brs n)) 0)
+                 (++-identityʳ (chain-events (ValueRealized.run (entry-vr ir ioc brs n))))))
+        (trans (MachineRefinesObsF.traces-agree (entry-witness ir (ioc ir) brs n))
                -- `at` no longer caps: `bounded` says the depth-`n` prefix is
                -- already at most `n` long, so the cap was the identity.
                (take-all n _ (bnd (proj₁ (evalᴰ-good (Once.CCC.FrameSemantics.fs-numerics FS) ir tt tt)) n)))
@@ -396,16 +434,18 @@ ir-flat-correct-fam ioc (just ir) n =
 -- machine side never needs a prefix-family induction of its own — the
 -- correctness theorem is the transport.
 flat-trace-of : (∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+              → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
               → Maybe (IR Unit Unit) → Behavior
-flat-trace-of ioc mir =
+flat-trace-of ioc brs mir =
   behavior-by (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS))
-              (flat-trace-fam ioc mir)
-              (λ n → sym (ir-flat-correct-fam ioc mir n))
+              (flat-trace-fam ioc brs mir)
+              (λ n → sym (ir-flat-correct-fam ioc brs mir n))
 
 ir-flat-correct-of : (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+                   → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
                    → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
-                   → at (flat-trace-of ioc mir) n ≡ at (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)) n
-ir-flat-correct-of ioc mir n = ir-flat-correct-fam ioc mir n
+                   → at (flat-trace-of ioc brs mir) n ≡ at (⟦ mir ⟧IR (Once.CCC.FrameSemantics.fs-numerics FS)) n
+ir-flat-correct-of ioc brs mir n = ir-flat-correct-fam ioc brs mir n
 
 ------------------------------------------------------------------------
 -- The constructed ArchCorrect record — now CONSUMING `ir-obs-correct`.
@@ -425,23 +465,25 @@ ir-flat-correct-of ioc mir n = ir-flat-correct-fam ioc mir n
 postulate
   rewrite-preserves-of :
     (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
+    → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
     → ∀ (mir : Maybe (IR Unit Unit)) (n : ℕ)
-    → at (flat-trace-of ioc (map-rewrite mir)) n ≡ at (flat-trace-of ioc mir) n
+    → at (flat-trace-of ioc brs (map-rewrite mir)) n ≡ at (flat-trace-of ioc brs mir) n
 
 flat-from-obs :
   (ioc : ∀ {A B} (ir : IR A B) → IRObsCorrectF ir)
-  → AsmTraceCorrect (flat-trace-of ioc)
+  → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir))
+  → AsmTraceCorrect (flat-trace-of ioc brs)
   → ArchCorrect arch as
-flat-from-obs ioc atc = record
+flat-from-obs ioc brs atc = record
   { asm-sem           = asm-sem
-  ; flat-trace        = flat-trace-of ioc
+  ; flat-trace        = flat-trace-of ioc brs
   ; assemble-correct  = λ _ _ _ _ _ → refl
   ; asm-trace-correct = atc
   -- D165: a NAMED RESIDUAL — the arith pass preserves the flat trace. It was
   -- previously folded into `asm-trace-correct`'s two mismatched sides.
-  ; rewrite-preserves = rewrite-preserves-of ioc
+  ; rewrite-preserves = rewrite-preserves-of ioc brs
   -- the one place `fmt-agree` is spent
   ; ir-flat-correct   = λ mir n →
-      subst (λ F → at (flat-trace-of ioc mir) n ≡ at (⟦ mir ⟧IR F) n)
-            fmt-agree (ir-flat-correct-of ioc mir n)
+      subst (λ F → at (flat-trace-of ioc brs mir) n ≡ at (⟦ mir ⟧IR F) n)
+            fmt-agree (ir-flat-correct-of ioc brs mir n)
   }

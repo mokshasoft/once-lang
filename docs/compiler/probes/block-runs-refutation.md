@@ -1,5 +1,11 @@
 # Emptiness probes — `block-runs`
 
+> **SUPERSEDED 2026-09-17 (D218).** `block-runs` is no longer postulated, so
+> `ApexInconsistent.boom` CANNOT BE WRITTEN any more — the probe fails with
+> `[NotInScope] block-runs`. It was demoted from a claim to a hypothesis of
+> `once-certified`. The sources below are kept as the record of what was refuted
+> and how; they no longer typecheck, and that is the point.
+
 **These are deliberately NOT in `formal/Once/`.** `ApexInconsistent.boom` has
 type `⊥`. Compiling it as part of the tree would make the build inconsistent
 and every `Everything.agda` island backstop would (correctly) reject it. They
