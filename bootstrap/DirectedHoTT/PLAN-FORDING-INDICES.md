@@ -561,3 +561,50 @@ have been visible immediately.
   timing) — the term-size regression really is small.
 - ⚠ `Judge/Pair` forded is likewise unmeasured: its run was compiling
   dependencies when observed.
+
+
+--------------------------------------------------------------------------
+## ⚖ THE FIRST VALID COMPARISON — and the ford LOSES on `Judge/Pair`
+
+Protocol finally correct on both sides: warm closure, delete ONLY the
+target's `.agdai`, `-M5G -A64m -c`, **`Checking` count verified = 1**,
+`rc=0`, `errors=0`.
+
+| `Judge/Pair` warm | BASE | FORD | |
+|---|---|---|---|
+| wall | **44.1 s** | 49.6 s | **1.12× SLOWER** |
+| peak RSS | **1.96 GB** | 2.48 GB | **1.26× MORE** |
+
+⇒ **12% slower, 26% more memory.**
+
+⚠⚠ AND THIS IS THE MODULE THE WHOLE HYPOTHESIS WAS ABOUT. `Judge/*` is
+where slot types carry stuck `ielim`s — the configuration `tmp/ProbeFord`
+measured at **267×**. On real code the ford is a small LOSS there.
+
+⇒ **the 267× probe did not generalise.** `ProbeFord` put a stuck
+eliminator in the looked-up type with `A` reachable ONLY through
+`renTy vs ?A`; a real `Judge` row evidently gives Agda cheaper routes to
+the same solution, so removing the inversion buys little — while the extra
+equation costs real memory at every node.
+
+### ⬜ WHAT IS STILL UNKNOWN, and it is the deciding number
+
+`RedWfA` — 935 lookups at ORDINARY types, deep `there^k` chains — has a
+VALID ford figure (**206.7 s / 4.69 GB, `Checking`=1**) and NO valid base
+figure. If the ford wins there, the picture is a SPLIT:
+
+| | ford vs base |
+|---|---|
+| deep chains, ordinary types (`RedWfA`) | ? |
+| stuck eliminators (`Judge/Pair`) | **1.12× slower, 1.26× memory** |
+
+⚠ Do not read the retracted 7.47× as evidence for the first row — that
+number compared 46 modules against 1.
+
+### ⇒ PROVISIONAL VERDICT: **DO NOT MERGE YET**
+
+One valid comparison exists and it is negative. The branch is VIABLE
+(16 kernel/metatheory modules + `RedWfA` + `Judge/Pair` all green, zero
+proof-body changes, interface +1.1%) but not yet JUSTIFIED. ⇒ measure
+`RedWfA` base warm before deciding; if it too is a loss, abandon and keep
+only `wkR⊢`, the cost documentation, and invariant 2b.
