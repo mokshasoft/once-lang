@@ -52,9 +52,10 @@ Three facts from those that shape everything below:
   about `ielim` reduction at knot scale.
 * ~~The **168 rows** are not written.~~ 🟡 **MOSTLY WRITTEN** — see
   `TODO.md` §D for the live counts. `_⊢ty_`/`_⊢_∷_` is 56/56, `_⟶ᵀ_`
-  26/26, `_≅ᵀ_` 4/4, `_∋_∷_` 2/2; `_⟶_` is **71 of 73** (`ι-elim` and
-  `ι-ielim` want an object-level method selector) and `Canon`/`Prog`
-  (**20 rows**) are not started.
+  26/26, `_≅ᵀ_` 4/4, `_∋_∷_` 2/2, `_⟶_` **73 of 73** (`ι-elim` and
+  `ι-ielim` landed once the object-level method selector existed —
+  `selK`/`fieldsK`/`lookupDK`, then `iihsK`/`ifieldsK`/`ilookupDK`);
+  `Canon`/`Prog` (**20 rows**) are not started.
 * ⚠ **AND EMITTED + WELL-FORMED IS NOT ENCODED.** There is no
   `enJudge` — the judgement families have no adequacy map, so nothing
   says the 56 rows are the RIGHT 56. `Knot/Map`/`SzAgree`/`OccAgree` do

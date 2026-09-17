@@ -163,6 +163,18 @@
 --     iextK      ⬜ OWED — agreement with `iext`, VIA its factorisation
 --                `iext σ t ≡ single t ∘ extS σ` (the same two-step debt
 --                `iconSK` carries).
+--     ifieldsK   ⬜ OWED — agreement with `ifields` (`Spec/Syntax:1231`).
+--                ★ THE SAME COROLLARY ONE DESCRIPTION OVER:
+--                `ifieldsK … = Tm-appK (Tm-appK (Tm-appK m i) p)
+--                (iihsK …)`, so its adequacy is THREE `Tm-appK`
+--                congruences over `iihsK`'s — one more than `fieldsK`
+--                owes, because `ifields` applies the method to the
+--                INDEX as well as the payload.
+--                ⇒ BLOCKED ON `iihsK`; no separate induction.
+--                ⚠ THE LEDGER TRACKS IT UNDER `ifieldsK`, the emitted
+--                name `ifieldsKᵏ` TRUNCATED — `fieldsK` and `selK` are
+--                the same truncation, so this is the convention, not a
+--                second program.
 --     ihTyK      ⬜ OWED — agreement with `ihTy`.
 --     ihTyRho    ✅ not owed — a method row of `ihTyK`.
 --     ihsK       ⬜ OWED — agreement with `ihs` (`Spec/Syntax:981`).
@@ -170,8 +182,13 @@
 --                unemitted rules (`ι-elim`, `ι-ielim`) need an
 --                object-level `sel`/`fields`/`ihs`, and this is the
 --                `ihs` third.  `Knot/Sel.selK` and `Knot/Ihs.fieldsK`
---                are the other two and are NOT ledger-tracked — `selK`
---                is a `natrec` (no `ielim`) and `fieldsK` just applies
+--                are the other two.
+--                ⚠ THIS ENTRY ONCE READ that those two are "NOT
+--                ledger-tracked".  FALSE since the emitted-wrapper scan
+--                started seeing them under their truncated names — both
+--                have entries a few lines above.  What is true is the
+--                REASON it gave: `selK` is a `natrec` (no `ielim`), so
+--                it owes no 53-row induction, and `fieldsK` just applies
 --                this one.
 --                ★ `selK` SHIPS WITH ITS ADEQUACY ALREADY
 --                (`Knot/Sel.selK-agree`); this one does not, which is
@@ -185,6 +202,23 @@
 --     iihTyK     ⬜ OWED — agreement with `iihTy`.
 --     iihTyMotK  ✅ not a program — `iihTyK`'s MOTIVE.
 --     iihTyRho   ✅ not a program — the `cICon-rho` METHOD of `iihTyK`.
+--     iihsK      ⬜ OWED — agreement with `iihs` (`Spec/Syntax:1222`).
+--                ★ `ihsK`'s INDEXED twin, and the LAST of the three
+--                programs `_⟶_`'s two unemitted rules needed: with this
+--                and `ifieldsK` in place `ι-ielim` emits, so `_⟶_` is at
+--                73 of 73 rows.
+--                ★ TWO THINGS `ihsK` DOES NOT HAVE, and both are what
+--                indexing means here:
+--                  · the SUBSTITUTION `σ` is a real argument, so the
+--                    `iκ`/`iρ` rows call `iextK` to grow it;
+--                  · the recursive index is `subTm σ j`, so the `iρ`
+--                    row composes `subTmAtK`.
+--                ⇒ its adequacy is `ihsK`'s PLUS the commutation of
+--                  those two, which are themselves ledger entries
+--                  (`iextK`, `subTmAtK`).
+--                ⚠ SPLIT ACROSS FIVE MODULES FOR SIZE, on the same
+--                measured grounds as `ihsK`'s split.
+--     iihsRho    ✅ not owed — a method row of `iihsK`.
 --     iinst-agree ✅ not a program — it IS an adequacy lemma
 --                (`Knot/IExtAgree`), namely `iinstK`'s own.  The
 --                scanner over-approximates and flags it; a lemma

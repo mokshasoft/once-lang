@@ -1350,6 +1350,10 @@ FIELD_SORT.update({
     #   takes a ℕ then a `Tm`.
     "fieldsKᵏ": ["sDesc", "sTm", "sDCon", "sTm", "sTm"],
     "selKᵏ":    [None, "sTm"],
+    # ★ `ifields D i ms σ C m p` — like `fieldsKᵏ` but with the INDEX
+    #   term `i` second and the SUBSTITUTION fourth.  ⚠ `None` for σ, by
+    #   this table's own rule: it is not a knot term at any sort.
+    "ifieldsKᵏ": ["sIDesc", "sTm", "sTm", None, "sICon", "sTm", "sTm"],
     # ★ `methsTyFrom D M j E` — `j` is a ℕ, hence `None`.
     "methsTyFromK": ["sDesc", "sTy", None, "sDesc"],
     # ★ `⊢ielim` — `imethsTy D I M E` and the conclusion's `iinst i t M`.
@@ -2135,6 +2139,13 @@ _OPT_IMPORT = [
                    "open import DirectedHoTT.Examples.Knot.KAdapt using ( payTyKᵏ; ⊢payTyKᵏ; ipayTyKᵏ; ⊢ipayTyKᵏ )"),
   (("fieldsKᵏ", "selKᵏ"),
                    "open import DirectedHoTT.Examples.Knot.KAdapt using ( fieldsKᵏ; ⊢fieldsKᵏ; selKᵏ; ⊢selKᵏ )"),
+  (("ifieldsKᵏ",), "open import DirectedHoTT.Examples.Knot.KAdapt using ( ifieldsKᵏ; ⊢ifieldsKᵏ )"),
+  # ⚠ `ι-ielim`'s σ.  `RedRows`' literal header imports this UNCONDITIONALLY
+  #   (it has no `%(opt)s` slot); `Knot/RedWf` needs the same line and gets
+  #   it from here — without it `RedWfB` died on `⊢isingleK` NotInScope
+  #   while the TERM `isingleK` resolved fine, because the two halves of
+  #   the row are emitted into different modules.
+  (("isingleK",),  "open import DirectedHoTT.Examples.Knot.EWk using ( isingleK; ⊢isingleK )"),
   (("methsTyFromK",), "open import DirectedHoTT.Examples.Knot.MethsTy using ( methsTyFromK; ⊢methsTyFromK )"),
   (("imethsTyK",), "open import DirectedHoTT.Examples.Knot.IMethsTy using ( imethsTyK; ⊢imethsTyK )"),
   (("iinstK",),    "open import DirectedHoTT.Examples.Knot.IExt using ( iinstK; ⊢iinstK )"),
@@ -3908,6 +3919,10 @@ WF_CTOR.update({
     #   first argument is a ℕ (`N`), its second a `Tm` (`MU`).
     "fieldsKᵏ":  ("⊢fieldsKᵏ",  ["DD", "MU", "MU", "MU", "MU", "MU"], None),
     "selKᵏ":     ("⊢selKᵏ",     ["DD", "N", "MU"],                   None),
+    # ★ `ι-ielim`'s head.  ⚠ `IX` in slot 4 — `ifields` is the only
+    #   reduction head that takes a SUBSTITUTION, and it is `isingle i`.
+    "ifieldsKᵏ": ("⊢ifieldsKᵏ",
+                  ["DD", "MU", "MU", "MU", "IX", "MU", "MU", "MU"],   None),
     "ipayTyKᵏ":  ("⊢ipayTyKᵏ",  ["DD", "DD", "MU", "MU", "IX", "MU"], None),
     "methsTyFromK": ("⊢methsTyFromK", ["DD", "MU", "MU", "N", "MU"],  None),
     "imethsTyK":    ("⊢imethsTyK",    ["DD", "MU", "MU", "MU", "MU"], None),
@@ -4667,6 +4682,15 @@ open import DirectedHoTT.Examples.Knot.Stk using ( stkAK; stkCK; flatK )
 --   `%(opt)s` slot, and `ι-elim` is now always emitted.
 open import DirectedHoTT.Examples.Knot.KAdapt using ( fieldsKᵏ; ⊢fieldsKᵏ; selKᵏ; ⊢selKᵏ )
 open import DirectedHoTT.Examples.Knot.LookupD using ( lookupDK; ⊢lookupDK )
+-- ★ …AND `ι-ielim`'s, which names THREE more:
+--     ielim D i ms (icon k p)
+--       ⟶ ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p
+--   `sel` it shares with `ι-elim`; `ifields`, `isingle` and `ilookupD`
+--   are its own.  ⚠ Same reason as above — no `%(opt)s` slot here, and
+--   `ι-ielim` is now always emitted too.
+open import DirectedHoTT.Examples.Knot.KAdapt using ( ifieldsKᵏ; ⊢ifieldsKᵏ )
+open import DirectedHoTT.Examples.Knot.ILookupD using ( ilookupDK; ⊢ilookupDK )
+open import DirectedHoTT.Examples.Knot.EWk using ( isingleK; ⊢isingleK )
 open import DirectedHoTT.Examples.Knot.Nrs using ( nrsSubK )
 open import DirectedHoTT.Examples.Knot.PwBody using ( pwBodyK )
 open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK; wkTyK )
@@ -4724,8 +4748,8 @@ _DEPTH_PRE = {"singleK", "subTmAtK", "subTyAtK", "extNK",
               # ★ STEP 5 — see `_PRE_N`.
               "lookupDK", "ilookupDK", "payTyKᵏ", "ipayTyKᵏ",
               "methsTyFromK", "imethsTyK", "iinstK",
-              # ★ STEP 3's two.
-              "fieldsKᵏ", "selKᵏ"}
+              # ★ STEP 3's two, and `ι-ielim`'s head.
+              "fieldsKᵏ", "selKᵏ", "ifieldsKᵏ"}
 
 # ★★★ HOW MANY DEPTHS EACH WRAPPER TAKES BEFORE ITS SOURCE ARGUMENTS.
 #
@@ -4774,6 +4798,9 @@ _PRE_D = {"singleK":  (('D',),),
           "methsTyFromK": (('D',),),
           # ★ STEP 3 — one ambient depth each, unshifted.
           "fieldsKᵏ": (('D',),), "selKᵏ": (('D',),),
+          # ★ ONE depth only.  `ifieldsK` takes the ICon's depth too, but
+          #   `Knot/KAdapt.ifieldsKᵏ` supplies the literal 1 — see there.
+          "ifieldsKᵏ": (('D',),),
           "imethsTyK": (('D',),), "iinstK": (('D',),)}
 
 # ⚠ DERIVED, so a prefix cannot be given a shape without also being
@@ -4806,7 +4833,9 @@ _SUBST_CT = {"single": "singleK", "subTm": "subTmAtK",
              #   kernel-order adapters.  ⚠ NOT a plain rename: ⊢fieldsK
              #   takes its DCon premise BEFORE its Desc one, and ⊢selK
              #   needs a depth the term does not take.
-             "fields": "fieldsKᵏ", "sel": "selKᵏ"}
+             "fields": "fieldsKᵏ", "sel": "selKᵏ",
+             # ★★★ AND `ι-ielim`'s, the LAST unemitted reduction rule.
+             "ifields": "ifieldsKᵏ"}
 
 # ⚠⚠ STEP 5 — WHY THE FOUR "ALREADY EXISTING" FUNCTIONS ARE NOT JUST A
 #   TABLE ENTRY.  `Knot/JudgeRows` names its own gaps:
@@ -5573,7 +5602,7 @@ _WRAP_LEDGER = {
     "singleSK":  "✅ DISCHARGED — `Knot/RenSpec.singleSK-agree-vz`/`-vs`:\n--                `app (singleSK i (Var-vzK m)) u ⟶* u` and\n--                `app (singleSK i (Var-vsK m x)) u ⟶* Tm-varK x`, which\n--                is `single` (`Spec/Typing`) read back.\n--                ★ The CHAINS ALREADY EXISTED inside `singleK-vz`/`-vs`;\n--                all that was owed was stating them at the CORE name.\n--                `singleK` is now one β and one `wk-single` on top.",
     "nrsK":      "✅ DISCHARGED — `Knot/RenSpec.nrsK-agree-vz`/`-vs`:\n--                `nrsK (pair sVar d) (Var-vzK m) ⟶* Tm-nsucK (Tm-varK\n--                (Var-vsK d (Var-vzK m)))` and the `vs` twin.  Same\n--                factoring as `singleSK` — the chains were already\n--                inside `nrsK-vz`/`-vs`, only the NAME was missing.\n--                ⚠ `nrsSubK` has no passenger, so the wrapper is one β\n--                and a `⟶*-castₗ`, not an `app` peel.",
     # ★ STEP 3's `ι-elim`/`ι-ielim` MACHINERY, added 2026-09-11.
-    "ihsK":     "⬜ OWED — agreement with `ihs` (`Spec/Syntax:981`).\n--                ★ NEW PROGRAM, not a newly-found gap: `_⟶_`'s two\n--                unemitted rules (`ι-elim`, `ι-ielim`) need an\n--                object-level `sel`/`fields`/`ihs`, and this is the\n--                `ihs` third.  `Knot/Sel.selK` and `Knot/Ihs.fieldsK`\n--                are the other two and are NOT ledger-tracked — `selK`\n--                is a `natrec` (no `ielim`) and `fieldsK` just applies\n--                this one.\n--                ★ `selK` SHIPS WITH ITS ADEQUACY ALREADY\n--                (`Knot/Sel.selK-agree`); this one does not, which is\n--                why it is OWED rather than discharged.\n--                ⚠ SPLIT ACROSS FIVE MODULES FOR SIZE, and the split is\n--                measured: `dι`+`dρ` together fit at 4.9 GB, adding\n--                `dκ` blew the 5.5 GB cap.  `Knot/IhTyRho`/`IhTyKap`\n--                are split for the same reason.",
+    "ihsK":     "⬜ OWED — agreement with `ihs` (`Spec/Syntax:981`).\n--                ★ NEW PROGRAM, not a newly-found gap: `_⟶_`'s two\n--                unemitted rules (`ι-elim`, `ι-ielim`) need an\n--                object-level `sel`/`fields`/`ihs`, and this is the\n--                `ihs` third.  `Knot/Sel.selK` and `Knot/Ihs.fieldsK`\n--                are the other two.\n--                ⚠ THIS ENTRY ONCE READ that those two are \"NOT\n--                ledger-tracked\".  FALSE since the emitted-wrapper scan\n--                started seeing them under their truncated names — both\n--                have entries a few lines above.  What is true is the\n--                REASON it gave: `selK` is a `natrec` (no `ielim`), so\n--                it owes no 53-row induction, and `fieldsK` just applies\n--                this one.\n--                ★ `selK` SHIPS WITH ITS ADEQUACY ALREADY\n--                (`Knot/Sel.selK-agree`); this one does not, which is\n--                why it is OWED rather than discharged.\n--                ⚠ SPLIT ACROSS FIVE MODULES FOR SIZE, and the split is\n--                measured: `dι`+`dρ` together fit at 4.9 GB, adding\n--                `dκ` blew the 5.5 GB cap.  `Knot/IhTyRho`/`IhTyKap`\n--                are split for the same reason.",
     "conSSK":   "✅ DISCHARGED — `Knot/ConSAgree.conSSK-vz`/`-vs`, BOTH\n--                rows:  `conSSK i (Var-vzK m) k ⟶* Tm-conK k (Tm-varK\n--                (Var-vzK m))` and `conSSK i (Var-vsK m x) k ⟶* Tm-varK\n--                (Var-vsK m x)`, which is `conS` (`Spec/Typing:107`)\n--                read back.  Packaged as `conS-Represents`, and `conSK`\n--                falls out as ONE β on top (`conSK-vz`/`-vs`).\n--                ★★★ THE 2026-09-08 BLOCKER WAS A MISDIAGNOSIS.  The\n--                residue really did read `fst (subTm … (var (vs (vs\n--                vz))))`, but the inference that `subTm` cannot compute\n--                through a hand-written method body did NOT follow:\n--                `subTm`/`renTm` distribute over `pair` definitionally,\n--                so the payload IS a literal pair and `sel-here` applies\n--                to it.  What was stuck was the object-level `fst` REDEX\n--                on top, which wants a reduction step.  ⇒ no naturality\n--                lemma was owed; `⟶*` and `≡` were being asked to do\n--                each other's jobs.  See `Knot/ConSAgree`'s header.\n--                ⚠ THE `singleK` TEMPLATE IS STILL FALSE HERE — `conSVs`\n--                REBUILDS `Var-vsK m x` where `singleVs` returns the\n--                lowered `x` — and the corrected target is what makes\n--                the chain close.",
     "occK":   "✅ DISCHARGED — `Knot/OccAgree`, ALL 53 ROWS, generated:\n--                `app (ielim KnotD i occMethsK ⌈A⌉) ⟨lvl x⟩ ⟶*\n--                 ⌈b2n (occTy x A)⌉`, and the same for terms.\n--                ⚠ PROVING IT FOUND A DEFECT: `occK` was NOT\n--                faithful, because the fold descended into CLOSED\n--                sub-syntax whose bound variables collide on\n--                LEVELS with ambient ones.  Fixed by\n--                `Lib/IFold.scopeAt`; `Knot/PickScope` pins the\n--                four skipped edges.  `OCC-ATTEMPTS.md` §35-36.\n--                The `Var` rows carry the real content —\n--                `Knot/OccLvlEq.eqv-lvl`, i.e. `lvl` is INJECTIVE\n--                on `Var Γ`.  `LVL-ATTEMPTS.md`.  ⚠ And it is\n--                stated at `occK`'s OWN name by\n--                `occK-agree-ty`/`occK-agree-tm`, not only at\n--                the `ielim` form the rows induct on.",
     "occVzK": "✅ DISCHARGED — `Knot/OccAgree.occVzK-agree`.  Exactly the\n--                COROLLARY this entry predicted: the level comes from\n--                the INDEX rather than as an argument, so the only\n--                work is reducing `predTm (snd ⟨i⟩)` to `num (lvl vz)`\n--                — one `βsnd` in the natrec SCRUTINEE, then\n--                `pred-num`.  The level convention it said had to be\n--                fixed first is `lvl {Γ ∙} vz = len Γ` against an\n--                index depth of `suc (len Γ)`.",
@@ -5583,7 +5612,13 @@ _WRAP_LEDGER = {
     #   asserted they were "NOT ledger-tracked", and that stopped being
     #   true when emitted code began APPLYING them.
     "selK":     "✅ DISCHARGED — `Knot/Sel.selK-agree`:\n--                `selK (num k) ⌈ms⌉ ⟶* ⌈ sel k ms ⌉`.\n--                ★ It shipped WITH its adequacy, which is why this entry\n--                is green on the day the gate first demanded it.\n--                ⚠ `selK` is a `natrec`, NOT an `ielim` — so it owes no\n--                53-row induction; `sndsK` was associated to match\n--                `sel`\'s own recursion, making each step definitional.",
+    # ★★★ STEP 3's `ι-ielim` HALF, added 2026-09-17.
+    "iihsK":    "⬜ OWED — agreement with `iihs` (`Spec/Syntax:1222`).\n--                ★ `ihsK`'s INDEXED twin, and the LAST of the three\n--                programs `_⟶_`'s two unemitted rules needed: with this\n--                and `ifieldsK` in place `ι-ielim` emits, so `_⟶_` is at\n--                73 of 73 rows.\n--                ★ TWO THINGS `ihsK` DOES NOT HAVE, and both are what\n--                indexing means here:\n--                  · the SUBSTITUTION `σ` is a real argument, so the\n--                    `iκ`/`iρ` rows call `iextK` to grow it;\n--                  · the recursive index is `subTm σ j`, so the `iρ`\n--                    row composes `subTmAtK`.\n--                ⇒ its adequacy is `ihsK`'s PLUS the commutation of\n--                  those two, which are themselves ledger entries\n--                  (`iextK`, `subTmAtK`).\n--                ⚠ SPLIT ACROSS FIVE MODULES FOR SIZE, on the same\n--                measured grounds as `ihsK`'s split.",
+    # ★ AND THE `iρ` ROW, which the DEFINED-program scan sees because it
+    #   applies `subTmAtK` — `ihsRho` has no σ and so was never scanned.
+    "iihsRho":  "✅ not owed — a method row of `iihsK`.",
     "fieldsK":  "⬜ OWED — agreement with `fields` (`Spec/Syntax:1000`).\n--                ★ AND IT IS A COROLLARY, NOT NEW CONTENT:\n--                `fieldsK n D ms C m p = Tm-appK (Tm-appK m p)\n--                (ihsK n C D ms p)`, so its adequacy is TWO `Tm-appK`\n--                congruences over `ihsK`\'s.\n--                ⇒ BLOCKED ON `ihsK` — discharge that and this follows;\n--                there is no separate induction to do.",
+    "ifieldsK": "⬜ OWED — agreement with `ifields` (`Spec/Syntax:1231`).\n--                ★ THE SAME COROLLARY ONE DESCRIPTION OVER:\n--                `ifieldsK … = Tm-appK (Tm-appK (Tm-appK m i) p)\n--                (iihsK …)`, so its adequacy is THREE `Tm-appK`\n--                congruences over `iihsK`'s — one more than `fieldsK`\n--                owes, because `ifields` applies the method to the\n--                INDEX as well as the payload.\n--                ⇒ BLOCKED ON `iihsK`; no separate induction.\n--                ⚠ THE LEDGER TRACKS IT UNDER `ifieldsK`, the emitted\n--                name `ifieldsKᵏ` TRUNCATED — `fieldsK` and `selK` are\n--                the same truncation, so this is the convention, not a\n--                second program.",
 
     # ★★★ `⊢ielim`'s FIVE PROGRAMS, 2026-09-06.
     "iextK":         "⬜ OWED — agreement with `iext`, VIA its factorisation\n--                `iext σ t ≡ single t ∘ extS σ` (the same two-step debt\n--                `iconSK` carries).",
@@ -5884,7 +5919,12 @@ _SRCMOD = {"Typing": "DirectedHoTT.Spec.Typing",
 # ⚠ `RedD` fell 2 → 1 on 2026-09-17: `ι-elim` now translates, because
 #   `fields`/`sel` gained `Knot/KAdapt` adapters and `_SUBST_CT` entries.
 #   The remaining 1 is `ι-ielim`, blocked on `ifieldsK`/`iihsK`.
-_SKIP_EXPECT = {"RedD": 1, "TyRedD": 0, "ConvD": 0, "NoNatCD": 0,
+# ★★★ `RedD` REACHED ZERO on 2026-09-17, with `ι-ielim`'s `ifieldsKᵏ`.
+#   It read 2 until `ι-elim` landed and 1 until this one; all 73 rules of
+#   `_⟶_` now translate.  ⚠ A family at 0 is the only state where this
+#   gate is checking anything beyond its own bookkeeping — raise an entry
+#   only with the reason written down.
+_SKIP_EXPECT = {"RedD": 0, "TyRedD": 0, "ConvD": 0, "NoNatCD": 0,
                 "InDD": 0, "InIDD": 0, "JudgeD": 0}
 
 def gen_census(out):

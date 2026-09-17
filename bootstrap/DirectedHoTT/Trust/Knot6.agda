@@ -45,3 +45,4 @@ import DirectedHoTT.Examples.Knot.RedWfA
 import DirectedHoTT.Examples.Knot.RedWfB
 import DirectedHoTT.Examples.Knot.RenAgree
 import DirectedHoTT.Examples.Knot.RenAgreeTie
+import DirectedHoTT.Examples.Knot.RenAgreeTy
