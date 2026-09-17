@@ -169,6 +169,7 @@ import Data.List.Relation.Unary.All as All
 
 open import Data.Unit using (⊤)
 open import Data.Product using (Σ; Σ-syntax)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.List.Properties using (++-identityʳ)
 -- The IRTy constructors Prelude does not re-export.  `_+_` is RENAMED: the
 -- ℕ `_+_` is already in scope and an unrenamed import would make every
@@ -349,13 +350,292 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   -- (`valid-ν-susp-wf`, D189/D199) — and per §1 `ν`'s only admissible index
   -- is the EVENT BUDGET.  Each owes an emptiness probe when it lands.
   ----------------------------------------------------------------------
-  RelV Void        _ _ _ _ = ⊥
-  RelV Float       _ _ _ _ = ⊥
-  RelV Str         _ _ _ _ = ⊥
-  RelV Buffer      _ _ _ _ = ⊥
-  RelV (A +ᴵ B)    _ _ _ _ = ⊥
-  RelV (μ-type F)  _ _ _ _ = ⊥
-  RelV (ν-type F)  _ _ _ _ = ⊥
+  ----------------------------------------------------------------------
+  -- S1, BATCH 1.  Three of the seven leaves are now REAL; four are still
+  -- placeholders, and each names its own obligation below.
+  --
+  -- THE TERMINATION GATE IS UNMOVED.  The only new `RelV` calls in this
+  -- batch are the two in the sum clauses, at `A` and `B` — STRICT
+  -- SUBTERMS of `A +ᴵ B`.  Every other clause here makes no call at all,
+  -- so the call graph is exactly the one recorded at :213-216 and every
+  -- cycle still decreases strictly on the IRTy argument.  No pragma.
+  --
+  -- `⊥` is still the placeholder, and still ENUMERATED rather than a
+  -- catch-all (`feedback_enumerate_over_catchall_postulate`).  But the
+  -- header this replaces claimed `⊥` "can only make the spike HARDER",
+  -- and that claim was SCOPED: it held because `A`, `B`, `E` stayed
+  -- abstract, so no theorem ever reduced `RelV` here.  `RelV` occurs
+  -- NEGATIVELY in the arrow clause (:334).  The moment a per-constructor
+  -- discharge reduces `RelV (Str ⇛ B)`, a `⊥` DOMAIN makes its seventh
+  -- conjunct VACUOUSLY TRUE — one cell, every denotation, which is D217
+  -- again.  `Void` is immune (its domain is genuinely empty);
+  -- `Str`/`Buffer` are NOT, and that is why they stay stubbed rather
+  -- than being filled in with either polarity.
+  ----------------------------------------------------------------------
+
+  -- `Void` — FINAL, not a placeholder, and nothing to fill in.
+  -- `⟦ Void ⟧ᴰᴵ = ⟦ ⌈ Void ⌉ ⟧ᴰ` (ValueDomain.agda:222-223) `= ⟦ T.Void ⟧ᴰ`
+  -- (IRTy.agda:303) `= ⊥` (ValueDomain.agda:184): the value domain is
+  -- EMPTY, so any obligation at `Void` is discharged from its own value.
+  -- That is already how the tree does it — `obs-correct-initial … ()`
+  -- (Simple.agda:154) is an absurd pattern on exactly this — and
+  -- `ValidAtWF` agrees by having NO `Void` constructor at all (there is
+  -- no `valid-void-wf`).
+  --
+  -- Written `= ⊥` rather than as an absurd pattern ON PURPOSE: an absurd
+  -- clause would stop `RelV Void alloc x sv s` reducing at a variable
+  -- `x`, and `rel-transport Void _ _ r = r` (:375) typechecks precisely
+  -- because it reduces.
+  RelV Void _ _ _ _ = ⊥
+
+  -- `Float` — `valid-float-wf`'s content (ClosureWellFormed.agda:504-509):
+  -- the `Int` clause at the OTHER `FitsInRegI` constructor.  `FitsInRegI`
+  -- has exactly two (IRTy.agda:240-243) and `prim-sv` dispatches on both
+  -- (ClosureWellFormed.agda:161-163), so `Float` is register-resident in
+  -- the same sense `Int` is.  This equation is ALREADY PROVED in the tree
+  -- as `out-lit` (Simple.agda:491-498) — the machine materialises the
+  -- literal as `round (float-format FS) v` and the denotation reads the
+  -- same format (D113) — so this leaf lands discharged.
+  RelV Float _ x sv _ = sv ≡ prim-sv fits-float x
+
+  -- `Str` / `Buffer` — STILL STUBBED, and the stub is now a NAMED MODEL
+  -- GAP rather than a leaf awaiting transcription.
+  --
+  -- There is no representation to relate to.  `SV-Lit` is the only
+  -- value-carrying `StoredValue` (SMCore.agda:218-226) and its witness is
+  -- the surface `FitsInReg`, whose constructors are `fits-int`/`fits-float`
+  -- and nothing else (Type.agda:383-385) — while `⟦ Str ⟧ = ⟦ Buffer ⟧ =
+  -- String` (Value.agda:142-143).  Nothing in the machine can hold one and
+  -- nothing can read one back (`readTyped _ loc s = nothing`,
+  -- SMCore.agda:1627).  So BOTH candidate clauses are vacuous, in opposite
+  -- directions:
+  --   `⊤` — the faithful transposition of `valid-str-wf`/`valid-buffer-wf`,
+  --         which constrain only `BeforeFrontier` and say NOTHING about the
+  --         value (ClosureWellFormed.agda:511-521) — is vacuous in
+  --         CONCLUSIONS: a compiler emitting garbage for strings passes.
+  --   `⊥` — is vacuous in PREMISES, through the arrow's negative
+  --         occurrence (:334): `RelV (Str ⇛ B)`'s entry obligation becomes
+  --         unfalsifiable.
+  -- `⊥` is kept because it is the status quo and the conservative half of
+  -- the pair, NOT because it is right.
+  --
+  -- THE GAP IS SURFACE-REACHABLE: `str : … → Expr Γ zeroUsage Str`
+  -- (Surface/Syntax.agda:121) elaborates to `strLit s = SigOp
+  -- (str-lit-info s) ∘ terminal` (Surface/Elaborate.agda:71) at
+  -- `SigOpInfo Unit Str`, `Pure` (Arith/SigOp/Builders.agda:248-249).  It
+  -- breaks no proof TODAY: that site is covered by the
+  -- `obs-correct-sigop-rest` postulate (SigOp.agda:247-248, reached
+  -- because `fits-in-reg? Str` is `no`, ibid. 293) over a value that is
+  -- itself the `structured-pure-sigop-output` postulate
+  -- (SMCore.agda:1638-1644, whose comment records that `str.lit.<s>` never
+  -- fires at runtime in Layer 0).
+  --
+  -- OBLIGATION: decide a machine representation for `Str`/`Buffer`, then
+  -- write the clause that PINS it.  Until that decision lands these two
+  -- are a MODEL GAP in the residual ledger, not a stub, and `strLit` is
+  -- blocked.
+  RelV Str    _ _ _ _ = ⊥
+  RelV Buffer _ _ _ _ = ⊥
+
+  -- THE SUM — a TAGGED TWO-CELL HEAP OBJECT: the `_*_` clause (:271) with
+  -- the first cell PINNED TO A TAG LITERAL instead of related to a
+  -- component.  After 0.86 stage G there is ONE lowering each and it is
+  -- heap (IRToTrace.agda:975-1007; `inl` carries no `AllocMode`):
+  --     mov-to-output ∷ store-at-slot payload-stash ∷ instr-alloc-heap 2 ∷
+  --     store-at-slot sum-stash ∷ mov-to-input ∷ instr-load-tag-lit t ∷
+  --     store-indirect ∷ load-from-slot payload-stash ∷
+  --     store-indirect-suc ∷ load-from-slot sum-stash ∷ []
+  -- `instr-alloc-heap 2` leaves `SV-Ptr (AtDynamic hl)` in Output
+  -- (SMCore.agda:2003-2010) and `mov-to-input` moves it to Input1 (ibid.
+  -- 1813-1814), so `store-indirect` writes the TAG at the BASE cell
+  -- (`*Input1 := Output`, ibid. 1836-1841) and `store-indirect-suc` the
+  -- PAYLOAD at the SUC cell (ibid. 1843-1846, with
+  -- `sucLoc (AtDynamic hl) = AtDynamic (sucHL hl)`, ibid. 262).  `t = 0`
+  -- for `inl`, `1` for `inr`; the READER agrees (`c-branch-tag-zero
+  -- (ℓ o l-inl)`, IRToTrace.agda:1035), and so do `valid-inl-wf`'s
+  -- `SumTag m 0` / `valid-inr-wf`'s `SumTag m 1`
+  -- (ClosureWellFormed.agda:393-415).  `SumTag` is not re-exported by
+  -- `Interface`, so its Heap clause (`readLoc s loc ≡ just (SV-Tag t)`,
+  -- ibid. 144-146) is written out here rather than imported.
+  --
+  -- WHAT COLLAPSES, exactly as at the pair: `valid-inl-wf`'s
+  -- `SV-Ptr payload-loc` + payload `ValidAtWF` and `valid-inl-reg-wf`'s
+  -- `inline-sv rep a` (ibid. 440-449) become ONE premise — the suc cell
+  -- holds a stored value RELATED to the payload — because the recursive
+  -- call decides pointer-vs-inline from the payload's TYPE.  The emitter
+  -- agrees: `load-from-slot payload-stash ∷ store-indirect-suc` stores
+  -- whatever the payload's own lowering left in Output, boxed or not.
+  --
+  -- TWO THINGS THIS IS NOT.
+  -- (1) NOT a pure transcription.  It also demands
+  --     `BeforeFrontier alloc (AtDynamic hl)` for the TAG cell, which
+  --     `valid-inl-wf` never asks for — it asks only for the payload and
+  --     the suc cell (ClosureWellFormed.agda:400-401).  The live pair
+  --     clause already took that same strengthening (:276), so it is
+  --     spike-consistent; but whoever discharges `obs-correct-inl` will
+  --     owe a base-cell frontier fact the datatype never made them prove.
+  -- (2) It SPLITS THE VALUE, so `RelV (A +ᴵ B) alloc v sv s` is STUCK at a
+  --     neutral `v`, where `RelV (A * B)` (which projects) is not.  That
+  --     is unavoidable — only the value decides the tag — and it is why
+  --     these are two constructor clauses rather than one
+  --     `Data.Sum.[_,_]`: each then holds as a definitional equality under
+  --     `--exact-split` (Once.agda-lib).
+  RelV (A +ᴵ B) alloc (inj₁ a) sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ psv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just (SV-Tag 0))
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just psv)
+      × RelV A alloc a psv s )
+
+  RelV (A +ᴵ B) alloc (inj₂ b) sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ psv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just (SV-Tag 1))
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just psv)
+      × RelV B alloc b psv s )
+
+  ----------------------------------------------------------------------
+  -- `μ-type` — STILL STUBBED.  The obligation, precisely.
+  --
+  -- WHAT IT MUST NOT BE.  NOT
+  --     RelV (μ-type F) alloc x sv s =
+  --       Σ[ wf ∈ WellFormedFI F ] RelV (⟦ F ⟧TI (μ-type F)) alloc
+  --         (TM.valueT (evalᴰ (out-μ wf) x) 0) sv s
+  -- and the reason is stronger than the checker: `⟦ Id ⟧TI X = X`
+  -- (IRTy.agda:119) with `wf-Id : WellFormedFI Id` (ibid. 137), so at
+  -- `F = Id` the call is AT THE IDENTICAL TYPE, and at `K Int ⊗ Id` the
+  -- layer type contains the original and returns here through the pair
+  -- clause.  A pragma would be hiding a real divergence.
+  --
+  -- NOT a delegation to `ValidAtWF`'s `valid-μ-wf` either: that re-imports
+  -- the datatype plan 0.93 exists to replace, and drags the
+  -- `validityWF-*` transport families back in through
+  -- `rel-transport (μ-type F)`.
+  --
+  -- NOT a delegation to the surface `μValid`/`μLayerValid`
+  -- (Once.Semantics…MuValidity), which fails D217's pinning test three
+  -- ways: `μlayer-K` constrains NO CELL, only `BeforeFrontier`
+  -- (MuValidity.agda:89-93), so two different `Int`s are valid at one cell
+  -- in one state; `μlayer-inl`/`μlayer-inr` never read the TAG (ibid.
+  -- 104-123), at the very cell `c-branch-tag-zero` branches on; and
+  -- `μlayer-prod` demands `SV-Ptr` in BOTH cells (ibid. 126-137), which
+  -- the emitter refutes (`cons node = [1, pair-ptr]`, `pair = [x,
+  -- child-ptr]` — IRToTrace.agda:362).  It is also dead code and on the
+  -- surface `Type` tier.
+  --
+  -- WHAT IT MUST BE.  A NEW IRTy-tier inductive family (`MuRel`/`MuLayer`)
+  -- defined BEFORE `RelV`'s forward declarations at :231-233, mentioning
+  -- `RelV` NOWHERE, with `RelV (μ-type F) alloc x sv s = MuRel alloc F x
+  -- sv s` as its one non-recursive clause — the template's own move (it
+  -- hands μ off to `_≡_`, a `data`, MeaningRelation.agda:65).  It is
+  -- phrased on the STORED VALUE, never demanding `SV-Ptr`, because `In` is
+  -- HEAP-IDENTITY (IRToTrace.agda:1044-1049): a μ node's cell content IS
+  -- its layer's, which at `μ-type (K Int)` is an `SV-Lit`.  It is
+  -- first-order and closed — `wf-K` admits only `IsBaseTypeI`
+  -- (IRTy.agda:124-136), which has no `_⇛_`, so no closure can occur in a
+  -- μ layer and D217 cannot re-enter through the delegate.
+  --
+  -- WHAT S1 MUST PROBE AND BUDGET BEFORE WRITING IT:
+  --   (a) POSITIVITY of the family — the gate MOVES from the termination
+  --       checker to the positivity checker.  Inline the Σ-shapes in each
+  --       constructor's premises (as `μLayerValid` itself does) rather
+  --       than passing `MuLayer` as a higher-order argument to a defined
+  --       combinator, which is the likely rejection.
+  --   (b) IMPORTS.  `IRFunctor`, `K`/`Id`/`_⊕_`/`_⊗_`, `IsBaseTypeI` and
+  --       the `base-*` constructors are re-exported by NEITHER `Prelude`
+  --       nor `Interface` (Interface.agda:579 writes
+  --       `Once.IRTy.IRFunctor` fully qualified for exactly this reason).
+  --   (c) A SECOND BASE RELATION.  Because (a) forbids mentioning `RelV`,
+  --       the `K` positions need their own `RelBase` over `IsBaseTypeI`,
+  --       which is definitionally `RelV` at `Int`/`Float` but NOT at
+  --       `base-Prod`/`base-Sum` (different functions, different
+  --       recursion).  A two-way agreement lemma by induction on
+  --       `IsBaseTypeI` is owed, and every consumer holding one form and
+  --       needing the other must transport.
+  --   (d) THE COHERENCE LEMMA.  `μ-layer-iso` (Interface.agda:114-119) is
+  --       a CONSTRUCTOR FIELD of `valid-μ-wf` today; over a `data` it
+  --       becomes a THEOREM by induction on the functor code, and
+  --       `out-μ`/`In`/`Cata` all consume it (Simple.agda:385).
+  --   (e) THE INDEX IS A SUBST TOWER.  `TM.valueT (evalᴰ (out-μ wf) x) 0`
+  --       goes through `subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute …))
+  --       (coerce-functor⁻¹ …)` (Eval.agda:126); `μ-layer-iso` escapes it
+  --       only because it never looks INSIDE the layer.  A pinning probe
+  --       must reduce through it.
+  --   (f) A `StrBufferFree F` SIDE CONDITION, itself an induction over
+  --       `IsBaseTypeI` (Str/Buffer can sit arbitrarily deep under
+  --       `base-Prod`/`base-Sum`), for as long as the two leaves above are
+  --       a model gap.
+  --   (g) AN EMPTINESS PROBE at `NatF = K Unit ⊕ Id` against a state the
+  --       emitter really produces.  (`μ-type Id` is uninhabited in any
+  --       such family, correctly — `μS SId` has no inhabitant.)
+  RelV (μ-type F) _ _ _ _ = ⊥
+
+  ----------------------------------------------------------------------
+  -- `ν-type` — STILL STUBBED.  This is the one clause that can still
+  -- answer the S1 gate in the negative, and it has NOT been probed.
+  --
+  -- A machine ν is a two-cell heap record, cell-for-cell a closure:
+  -- `ν[0] := seed`, `ν[1] := &coalg` (IRToTrace.agda:1122-1132, emitted at
+  -- :1150-1159; `valid-ν-susp-wf`, ClosureWellFormed.agda:379-391).
+  -- `coalg`/`seed` are D217 implicit fields, so only the seed CELL may
+  -- appear in the relation's type.
+  --
+  -- WHAT IT MUST NOT BE.  NOT `RelT … (⟦ F ⟧TI (ν-type F)) …`: at `F = Id`
+  -- that type IS `ν-type F` (IRTy.agda:119), so the call is not decreasing
+  -- and the pragma comes back.  NOT a delegation to `ValidAtWF` either —
+  -- `valid-ν-susp-wf`'s value index is the literal term
+  -- `TM.valueT (evalᴰ (Ana wf coalg) seed) 0`, so such a clause is
+  -- inhabited only when `x` is definitionally an `Ana` layer-zero value.
+  --
+  -- WHAT IT MUST BE.  A COINDUCTIVE RECORD (`RelNu`) over a layer relation
+  -- that recurses on the FUNCTOR CODE with the recursive-position relation
+  -- a PARAMETER — the machine analogue of `⟦_⟧SF-rel`
+  -- (Semantics/Functor/Laws.agda:28-36) instantiated exactly as `_∼S_`
+  -- (ibid. 43-48) and `_∼ᵈ_` (ValueDomainLaws.agda:53-58) instantiate it.
+  -- Productivity is then the GUARDEDNESS checker's, under the global
+  -- `--guardedness` (Once.agda-lib:4).  D199 is the PRECONDITION that
+  -- makes this writable at all: the block re-suspends every recursive
+  -- position at its OWN label (IRToTrace.agda:662-676, :1148-1149), so a
+  -- forced layer's children are again two-cell suspensions of identical
+  -- shape.  `RelV (ν-type F)` then delegates and adds NO recursive call,
+  -- so the termination gate again becomes a positivity/guardedness gate.
+  --
+  -- FOUR DEFECTS ALREADY FOUND IN THE CANDIDATE, all of which must be
+  -- fixed before it is written:
+  --   (a) A `flink cfs ≡ nothing` premise on the forcing field is FALSE at
+  --       the state it describes.  The call that lands at the block's
+  --       `c-thunk` sets `flink = just (suc (fpc fs))`
+  --       (Flat.agda:762-765, matched by Out.agda:167); it is cleared only
+  --       by the thunk PROLOGUE (Flat.agda:717-722).  The arrow clause has
+  --       no such premise at closure entry (:321-335); the ν clause must
+  --       match it.
+  --   (b) The record needs a TRACE field, as `_∼ᵈ_` does
+  --       (ValueDomainLaws.agda:50-52 says why: without it, values emitting
+  --       different events are related and `RelT`'s first component cannot
+  --       be recovered).
+  --   (c) PLACEMENT.  Agda infers a mutual block spanning a signature and
+  --       its clauses, so anything placed between :231-233 and the clauses
+  --       lands INSIDE `RelV`'s block — putting the record in a block with
+  --       a function that uses `RelV` negatively.  It must go ABOVE :231.
+  --   (d) AN EMPTINESS PROBE.  A record whose forcing field is
+  --       unsatisfiable is uninhabited, which makes the ν clause silently
+  --       vacuous and every ν theorem unprovable rather than false.
+  --
+  -- AND ONE PLAN-LEVEL CORRECTION.  §1's constraint — "ν's only admissible
+  -- index is the EVENT BUDGET" — is UNSATISFIABLE and unnecessary.  Events
+  -- come only from `SigOp` (DenotTrace.agda:144-147); `Ana` emits nothing
+  -- (ibid. 169-175) and `Out`'s trace is the coalgebra's (ibid. 178-182),
+  -- which for an effect-free coalgebra is `[]` at every budget — so
+  -- unboundedly many forcings fit inside budget 0 and `bud` is not a
+  -- productivity measure.  Guarded corecursion needs no index at all, so
+  -- D058 is satisfied by having nothing to leak.
+  RelV (ν-type F) _ _ _ _ = ⊥
 
   ----------------------------------------------------------------------
   -- 2.  TRANSPORT — one induction on the TYPE.
@@ -376,7 +656,20 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   rel-transport Float      _ _ r = r
   rel-transport Str        _ _ r = r
   rel-transport Buffer     _ _ r = r
-  rel-transport (A +ᴵ B)   _ _ r = r
+  -- S1: the sum's transport, now that the clause has CONTENT. Two clauses
+  -- because the relation splits on the value, and each mirrors the pair's
+  -- (:662) — re-base the two frontier premises, re-base the two cell reads
+  -- through `HeapAgree`, and recurse at the ONE live component.
+  rel-transport (A +ᴵ B) {x = inj₁ a} m ag (hl , psv , e , b0 , b1 , c0 , c1 , ra) =
+      hl , psv , e , bf-lift m b0 , bf-lift m b1
+    , trans (ag hl b0) c0
+    , trans (ag (sucHL hl) b1) c1
+    , rel-transport A m ag ra
+  rel-transport (A +ᴵ B) {x = inj₂ b} m ag (hl , psv , e , b0 , b1 , c0 , c1 , rb) =
+      hl , psv , e , bf-lift m b0 , bf-lift m b1
+    , trans (ag hl b0) c0
+    , trans (ag (sucHL hl) b1) c1
+    , rel-transport B m ag rb
   rel-transport (μ-type F) _ _ r = r
   rel-transport (ν-type F) _ _ r = r
   rel-transport (A * B) m ag (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) =
