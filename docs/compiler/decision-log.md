@@ -14309,18 +14309,53 @@ bare memory read, which determines nothing at all.
 ### The consequence for plan 0.91
 
 S3 as designed is dead, and `CodeResolves` is deleted (it was threaded nowhere —
-two lines, its own definition). The successor the design workflow proposed,
-`CodeWF`, keys on the label instead of the body, which escapes THIS refutation;
-but it still concludes `find-thunk prog ℓ ≡ just j` from a fact about `s`, so it
-sits in the same quadrant and is narrower rather than different.
+two lines, its own definition).
 
-### …and why that points at the machine, not at the premise
+**CORRECTION, same day, before anything was built on it.** The paragraph that
+stood here claimed the label-keyed successor `CodeWF` "sits in the same quadrant
+and is narrower rather than different". That is WRONG, by this entry's own rule.
 
-The mismatch is structural, not a matter of finding a better statement. The flat
-machine stores a NAME whose meaning is syntactic (`do-call-code prog (just
-(SV-Code ℓ)) fs = do-call-at (find-thunk prog ℓ) fs`, Flat.agda:772ff) while the
-closure VALUE only ever determines a denotation. Any fix that keeps the name in
-the runtime must re-enter the forbidden quadrant to connect them.
+The rule is *a syntactic conclusion is allowed if the hypothesis DETERMINES the
+syntax*. `CodeWF`'s conclusion mentions only `ℓ`, and its hypothesis — an
+`SV-Code ℓ` readable in `s` — determines `ℓ` exactly. It is in a SAFE quadrant.
+
+The two refuted statements failed for two DIFFERENT reasons, and neither is
+"state-indexed hypothesis":
+
+  * `CodeResolves` concluded about `emitted … body`, the body's TEXT, which the
+    closure witness provably does not determine (it pins `evalᴰ body`).
+  * `block-runs`' hypothesis was a bare memory read, which determines NOTHING —
+    not the body, not even that the label came from this program.
+
+Generalising from those two to "no state-indexed premise may conclude anything
+syntactic" was an over-reach from two data points. The quadrant table above is
+right as a summary of what was OBSERVED; it is not a licence to reject a premise
+whose hypothesis pins its own conclusion.
+
+### What the machine gets wrong — and it is NOT that it uses labels
+
+A second correction to this entry's first draft, which proposed lowering labels
+to ADDRESSES in the machine model (the original plan 0.93). That is backwards.
+Labels are the RIGHT abstraction for every general part of the compiler and its
+proofs; the only thing that should lower a label to an address is the arch
+backend and the assembler after it — which is already what happens:
+
+    compile-abstract (instr-load-code-addr n) = lea rax (rip+label n) ∷ []
+    compile-abstract instr-call-closure       = call (mem (base+disp r12 slot-size)) ∷ []
+
+The actual defect is narrower: a LABEL-addressed machine has been handed a
+POSITIONALLY-addressed program. `prog` is a flat `AbstractTrace`, so "enter
+block ℓ" is implemented as a SEARCH —
+
+    do-call-code prog (just (SV-Code ℓ)) fs = do-call-at (find-thunk prog ℓ) fs
+
+— and a search can fail, so the failure had to be assumed away. With the program
+indexed BY LABEL, entering a block is a lookup, and whether the key exists is a
+STATE-FREE property of the program: `refs prog ⊆ defs prog`, which is exactly
+`LabelsResolvable` (D169, stated at the module level since then, and
+`EmittedWF.labels-resolvable` since D100 with no consumer).
+
+No address need ever appear in the general proofs.
 
 `find-thunk` is a linear scan of the program text performed AT EVERY CALL, whose
 failure case HALTS the machine — and the real backend does no such thing:
@@ -14334,8 +14369,15 @@ real pipeline performs once at link time, and an unresolvable label — a LINK
 error, as D169's riscv64 note records verbatim — is modelled as a runtime halt.
 `block-runs` existed to promise that halt never fires.
 
-Plan 0.93 is the repair: split `AbstractTrace` (unlinked, names — what
-`compile-abstract` needs) from the linked image (positions — what `exec-flat`
-needs). `link` resolves; `do-call` jumps; the forbidden quadrant loses its
-inhabitants because there is no name left in the runtime for a state-indexed
-premise to make a syntactic claim about.
+The repair is therefore SMALL, and stays in the label world:
+
+  * `CodeWF prog s` — every `SV-Code ℓ` readable in `s`, in REGISTERS as well as
+    memory, names a label `prog` defines. Hypothesis determines `ℓ`; conclusion
+    is about `ℓ` alone.
+  * `apply`/`Out` combine it with `LabelsResolvable` and the correctness family
+    to BUILD `CalleeRun`, whose conclusion is already denotational.
+  * `block-runs` dies.
+
+Indexing the program by label instead of scanning it may then be an optimisation
+of the model rather than a correctness requirement, since `CodeWF` plus
+`LabelsResolvable` already give existence.
