@@ -14381,3 +14381,71 @@ The repair is therefore SMALL, and stays in the label world:
 Indexing the program by label instead of scanning it may then be an optimisation
 of the model rather than a correctness requirement, since `CodeWF` plus
 `LabelsResolvable` already give existence.
+
+## D217 — ONE CELL, TWO DENOTATIONS (2026-09-17)
+
+The gate that ends the search for a state-level premise. Verified, not argued:
+
+    valid₀ : ValidAtWF Heap bad-alloc {Unit ⇛ Int} (λ arg → evalᴰ (const fits-int (+ 0) ∘ terminal) (tt , arg)) cloc bad-st
+    valid₁ : ValidAtWF Heap bad-alloc {Unit ⇛ Int} (λ arg → evalᴰ (const fits-int (+ 1) ∘ terminal) (tt , arg)) cloc bad-st
+
+Same cell, same state, same label, different denotations, both typecheck.
+`Once/Probe/ClosureAmbiguous.agda`; sources archived in
+`docs/compiler/probes/closure-ambiguity.md`.
+
+`valid-closure-wf` binds `{body}` and `{body-label}` as free implicits tied to
+the state only by `readLoc s (sucLoc closure-loc) ≡ just (SV-Code body-label)`,
+and `valid-unit-wf` is unconditional — so a Unit-env closure cell says nothing
+about the body whatsoever.
+
+### Why this closes the question
+
+`CalleeRuns` needs (1) WHERE the block is — `find-thunk prog ℓ ≡ just j` — and
+(2) WHICH function it computes — `evalᴰ body envArg`. A state predicate can give
+(1). **Nothing in a state can give (2).** So the search that produced
+`block-runs` (D188/D213), `CodeResolves` (D216) and `CodeWF` was looking in a
+place where the answer provably is not.
+
+Four attempts, four different reasons, each visible only after the previous died:
+
+    block-runs     state → syntactic, hypothesis determines nothing   FALSE  (D213)
+    CodeResolves   state → the body's TEXT                            FALSE  (D216)
+    CodeWF         state → the label alone                            sound, WRONG HALF
+    BlockAt field  the VALUE carries it                               ← the remaining road
+
+### Where the fact actually lives
+
+Neither the program alone nor the state alone can supply it. The program knows
+where block `ℓ` is; the state knows a closure holds `ℓ`; **which body `ℓ` means
+is carried by neither.** The two meet at exactly one moment — CONSTRUCTION,
+where `curry` / `Ana` / `in-ν` hold both their own label and their own body. So
+it belongs on the witness, supplied at construction: `valid-closure-wf`,
+`valid-closure-reg-wf` and `valid-ν-susp-wf` each gain a `BlockAt` field, fed
+from S2's `BlocksAt` premise — which those three clauses currently discard as
+`_` (TwoCell.agda:343, :429; Simple.agda:624). That is what S2 was for.
+
+NOT the field D170 removed: `BodyCorrect` was EXECUTIONAL and made
+representation depend on execution, the cycle that forced `ir-size` /
+`program-bound`. `BlockAt` is text-vs-label — no execution, no cycle. Precedent
+in the same file: `IRResultBase.trace-is-ir-to-trace`.
+
+### Also settled: the label-addressing directive is ALREADY MET
+
+`SV-Code : LabelId → StoredValue FS` (SMCore.agda:226); `find-thunk` returns an
+INDEX INTO THE ABSTRACT TRACE, pinned as a `fetch` index by `find-thunk-sound`
+(Flat.agda:465), not a machine address; every address is minted arch-side
+(`AddrMap.cmap`, `lea rax (rip+label n)`). The general layer is label-addressed
+today. Running `exec-flat` on `CompUnit` instead of `link u` would delete
+`find-thunk` and retire the relocation development (`Shifted`/`shift`/
+`exec-flat-reloc`, `FlatSteps-prefix/-reloc/-middle`, most of `LabelScope`) —
+a large PROOF-SURFACE win, but an optimisation, not a correctness requirement.
+It also cannot reduce the pc to a bare `LabelId`: `do-call-at` pushes
+`suc (fpc fs)` and no label is minted for a post-call point, so the reachable
+form is (site, intra-block offset).
+
+### Open, and blocking
+
+Proving `BlockRuns (ir-to-trace ir)` applies `ioc body`, whose own premises
+include `BlockRuns (ir-to-trace ir)`. Circular. Two candidate exits — a
+depth-indexed family, or a subterm order carried in the field — with different
+blast radii. Settle before threading anything.
