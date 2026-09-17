@@ -185,8 +185,18 @@ open import Once.IRTy using (Void; Int; Float; Str; Buffer; _⇛_;
                              IRFunctor; K; Id; _⊕_; _⊗_;
                              IsBaseTypeI; base-Unit; base-Void; base-Int;
                              base-Float; base-Str; base-Buffer;
-                             base-Prod; base-Sum)
+                             base-Prod; base-Sum; ⌈_⌉F; ⌈_⌉)
   renaming (_+_ to _+ᴵ_)
+-- plan 0.93 S1 batch 3 (ν): the SFunctor tier a ν VALUE actually lives at.
+-- `Carrier` is ALREADY in scope through the prelude; importing it again is
+-- an [AmbiguousName], not a shadow (plan 0.92's failure mode, third time today).
+-- `⟦_,_⟧-base` is RENAMED on import. It parses unambiguously in Translate.agda
+-- only because Sigma's `_,_` is not in scope there; here it is, so the comma
+-- inside the closed mixfix is genuinely ambiguous. A plain prefix name avoids it.
+open import Once.Functor.Translate using (translateF)
+  renaming (⟦_,_⟧-base to BaseVal)
+open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
+open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk; c-ret)
 
 ------------------------------------------------------------------------
@@ -615,6 +625,187 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   -- polarity.  `ValidAtWF` could be neither recursive on its index nor
   -- under an arrow; that asymmetry IS plan 0.93.
   ----------------------------------------------------------------------
+
+  ----------------------------------------------------------------------
+  -- ν, STEP 0.  The SFunctor a ν VALUE lives at.
+  --   ⟦ ν-type F ⟧ = ⟦ T.ν-type ⌈ F ⌉F ⟧ᴰ = νᵈ (translateF Carrier Carrier ⌈ F ⌉F)
+  -- `⌈_⌉F` and `translateF` are both STRUCTURAL, so `HF` commutes with every
+  -- IRFunctor constructor and the layer types below reduce clause by clause.
+  ----------------------------------------------------------------------
+  HF : IRFunctor → SFunctor
+  HF F = translateF Carrier Carrier ⌈ F ⌉F
+
+  ----------------------------------------------------------------------
+  -- ν, STEP 2.  `NuLayer` — the machine analogue of `⟦_⟧SF-rel`
+  -- (Semantics/Functor/Laws.agda:28-36): recursion on the FUNCTOR CODE with
+  -- the recursive-position relation `R` a PARAMETER, so STEP 3 can pass
+  -- `RelNu F` BARE, exactly as `_∼S_` and `_∼ᵈ_` pass themselves.
+  --
+  -- The `K` position reuses μ's `RelBase` — the arrow-free relation over
+  -- `IsBaseTypeI` that keeps the positivity cycle away from `RelV`'s arrow
+  -- clause. NO `WellFormedFI` parameter: `ν-type : IRFunctor → IRTy` carries
+  -- no witness, so well-formedness is DEMANDED at the `K` positions, where
+  -- it is needed and where a non-base `A` correctly leaves the Σ empty.
+  ----------------------------------------------------------------------
+  ----------------------------------------------------------------------
+  -- ν, STEP 1.  `RelK` — the base relation AT THE LAYER'S OWN VALUE TIER.
+  --
+  -- This is NOT a duplicate of μ's `RelBase`, and merging them does not
+  -- typecheck. `⟦ HF (K A) ⟧SF X` reduces to `⟦ Carrier , Carrier ⟧-base ⌈ A ⌉`
+  -- (Translate.agda:70), while `RelBase` is at `⟦ A ⟧ = ⟦ ⌈ A ⌉ ⟧ᴰ`. The two
+  -- spellings reduce to the SAME `Set` at every `IsBaseTypeI` constructor
+  -- (⊤ / ⊥ / Carrier / Carrier / String / String / × / ⊎) — but only once the
+  -- witness is MATCHED, which is exactly why this is its own function rather
+  -- than a reuse. At an abstract `A` with an abstract `ib` neither reduces and
+  -- Agda rejects the merge, as it did here.
+  --
+  -- Their AGREEMENT is an owed lemma (obligation ν-c), by induction on
+  -- `IsBaseTypeI`, and it is what `ν-layer-iso` will spend.
+  --
+  -- `Str`/`Buffer` stay ⊥ — the same MODEL GAP as `RelV Str`/`RelBase base-Str`,
+  -- for the same reason. A ν whose layer contains a string is BLOCKED, not
+  -- passed.
+  ----------------------------------------------------------------------
+  RelK : ∀ {A : IRTy} → IsBaseTypeI A → AllocState {FS}
+       → BaseVal Carrier Carrier ⌈ A ⌉ → StoredValue FS
+       → LocState FS → Set
+  RelK base-Unit   _ _ _  _ = ⊤
+  RelK base-Void   _ _ _  _ = ⊥
+  RelK base-Int    _ x sv _ = sv ≡ prim-sv fits-int   x
+  RelK base-Float  _ x sv _ = sv ≡ prim-sv fits-float x
+  RelK base-Str    _ _ _  _ = ⊥
+  RelK base-Buffer _ _ _  _ = ⊥
+  RelK (base-Prod ia ib) alloc p sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ asv ∈ StoredValue FS ]
+    Σ[ bsv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just asv)
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just bsv)
+      × RelK ia alloc (proj₁ p) asv s
+      × RelK ib alloc (proj₂ p) bsv s )
+  RelK (base-Sum ia ib) alloc (inj₁ a) sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ psv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just (SV-Tag 0))
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just psv)
+      × RelK ia alloc a psv s )
+  RelK (base-Sum ia ib) alloc (inj₂ b) sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ psv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just (SV-Tag 1))
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just psv)
+      × RelK ib alloc b psv s )
+
+  NuLayer : ∀ {F : IRFunctor} (G : IRFunctor)
+          → (R : AllocState {FS} → νᵈ (HF F) → StoredValue FS
+               → LocState FS → Set)
+          → AllocState {FS} → ⟦ HF G ⟧SF (νᵈ (HF F))
+          → StoredValue FS → LocState FS → Set
+  NuLayer (K A) R alloc x sv s =
+    Σ[ ib ∈ IsBaseTypeI A ] RelK ib alloc x sv s
+  -- THE RECURSIVE POSITION. D199: `resuspend-layer … wf-Id` leaves a FRESH
+  -- two-cell suspension here, so the demand is the full ν relation, not a seed.
+  NuLayer Id      R alloc x sv s = R alloc x sv s
+  NuLayer (G ⊕ H) R alloc (inj₁ x) sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ psv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just (SV-Tag 0))
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just psv)
+      × NuLayer G R alloc x psv s )
+  NuLayer (G ⊕ H) R alloc (inj₂ y) sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ psv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just (SV-Tag 1))
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just psv)
+      × NuLayer H R alloc y psv s )
+  NuLayer (G ⊗ H) R alloc (x , y) sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ xsv ∈ StoredValue FS ]
+    Σ[ ysv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just xsv)
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just ysv)
+      × NuLayer G R alloc x xsv s
+      × NuLayer H R alloc y ysv s )
+
+  ----------------------------------------------------------------------
+  -- ν, STEP 3.  THE COINDUCTIVE RECORD.
+  --
+  -- A ν is two heap cells: ν[0] = the SEED's stored value, ν[1] = `SV-Code`
+  -- for the coalgebra block. Forcing is `Out` calling cell 1 on cell 0, so
+  -- `nu-force` IS the arrow clause's forcing conjunct MINUS the pair-packing
+  -- (`Out` hands the callee the seed cell's CONTENT, not a pointer to a pair).
+  --
+  -- D217 is answered as the arrow answers it: the relation names the CELL and
+  -- never the seed's TYPE or the coalgebra TERM, and `x` occurs in the
+  -- CONCLUSION (`forceᵈ x`), so two denotations make jointly unsatisfiable
+  -- demands on one cell.
+  --
+  -- THE INDEX: there is none, and there must not be one. The corecursive
+  -- occurrence sits under `nu-force`, a field of a COINDUCTIVE record — that
+  -- IS the guard. `∀ bud` is inside the field and is the OBSERVABLE (D058),
+  -- not a measure: `Ana` emits nothing and `Out`'s trace is the coalgebra's,
+  -- so unboundedly many forcings fit under budget 0. A step index would be an
+  -- admission that productivity was not found.
+  ----------------------------------------------------------------------
+  record RelNu (F : IRFunctor) (alloc : AllocState {FS})
+               (x : νᵈ (HF F)) (sv : StoredValue FS)
+               (s : LocState FS) : Set where
+    coinductive
+    field
+      nu-hl    : HeapLocation
+      nu-lbl   : LabelId
+      nu-j     : ℕ
+      nu-seed  : StoredValue FS
+      nu-ptr   : sv ≡ SV-Ptr (AtDynamic nu-hl)
+      nu-bf0   : BeforeFrontier alloc (AtDynamic nu-hl)
+      nu-bf1   : BeforeFrontier alloc (AtDynamic (sucHL nu-hl))
+      nu-cell0 : readLoc s (AtDynamic nu-hl)         ≡ just nu-seed
+      nu-cell1 : readLoc s (AtDynamic (sucHL nu-hl)) ≡ just (SV-Code nu-lbl)
+      -- Correction (B) at ν: the resolution travels WITH THE VALUE, because
+      -- `Out` emits no blocks either, so its own `BlocksAt` is `All _ []`.
+      -- `Ana` discharges it from its non-empty `all-bodies`; `in-ν` from its.
+      nu-code  : find-thunk prog nu-lbl ≡ just nu-j
+      nu-force : ∀ (cfs : FlatState) (ret-pc : ℕ) (rest : List ℕ)
+               → fpc cfs ≡ nu-j
+               → halted (floc cfs) ≡ false
+               → fret cfs ≡ ret-pc ∷ rest
+               → readReg (regs (floc cfs)) Input1 ≡ nu-seed
+               → HeapAgree alloc s (floc cfs)
+               → HeapMono  alloc (falloc cfs)
+               → ∀ (bud : ℕ) →
+                 Σ[ steps  ∈ ℕ ]
+                 Σ[ settle ∈ FlatState ]
+                 Σ[ run    ∈ FlatSteps prog steps cfs settle ]
+                   ( (halted (floc settle) ≡ false)
+                   × (fpc settle ≡ ret-pc)
+                   × (fret settle ≡ rest)
+                   × (flink settle ≡ nothing)
+                   × (take bud (chain-events run)
+                        ≡ take bud (projTrace (forceᵈ x) bud))
+                   × NuLayer F (RelNu F) (falloc settle)
+                       (TM.valueT (forceᵈ x) bud)
+                       (readReg (regs (floc settle)) Output) (floc settle) )
+
+  open RelNu public
+
 
   RelV : ∀ (A : IRTy) → AllocState {FS} → ⟦ A ⟧ → StoredValue FS
        → LocState FS → Set
@@ -1068,7 +1259,7 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   -- makes the clause silently vacuous and every ν theorem unprovable
   -- rather than false, and an uninhabited relation passes D217's test
   -- trivially and worthlessly.  Only then write the record.
-  RelV (ν-type F) _ _ _ _ = ⊥
+  RelV (ν-type F) alloc x sv s = RelNu F alloc x sv s
 
   ----------------------------------------------------------------------
   -- 2.  TRANSPORT — one induction on the TYPE.
@@ -1078,6 +1269,34 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   -- constructor per family).  At the ARROW there is NO recursive call: the
   -- clause is a Π, so transporting it is re-plumbing its two premises.
   ----------------------------------------------------------------------
+  ----------------------------------------------------------------------
+  -- ν transport.  NOT corecursive: only the residence fields and
+  -- `nu-force`'s two bookkeeping premises mention `alloc`/`s`; the `NuLayer`
+  -- in the conclusion is at `falloc settle` / `floc settle` and is untouched.
+  -- So this is the ARROW's transport clause field by field, with no
+  -- corecursive call and therefore no guardedness obligation at all.
+  ----------------------------------------------------------------------
+  nu-transport : ∀ (F : IRFunctor) {alloc alloc' : AllocState {FS}}
+                   {x : νᵈ (HF F)} {sv : StoredValue FS}
+                   {s s' : LocState FS}
+               → HeapMono alloc alloc' → HeapAgree alloc s s'
+               → RelNu F alloc x sv s → RelNu F alloc' x sv s'
+  nu-hl    (nu-transport F m ag r) = nu-hl   r
+  nu-lbl   (nu-transport F m ag r) = nu-lbl  r
+  nu-j     (nu-transport F m ag r) = nu-j    r
+  nu-seed  (nu-transport F m ag r) = nu-seed r
+  nu-ptr   (nu-transport F m ag r) = nu-ptr  r
+  nu-bf0   (nu-transport F m ag r) = bf-lift m (nu-bf0 r)
+  nu-bf1   (nu-transport F m ag r) = bf-lift m (nu-bf1 r)
+  nu-cell0 (nu-transport F m ag r) = trans (ag (nu-hl r) (nu-bf0 r)) (nu-cell0 r)
+  nu-cell1 (nu-transport F m ag r) =
+    trans (ag (sucHL (nu-hl r)) (nu-bf1 r)) (nu-cell1 r)
+  nu-code  (nu-transport F m ag r) = nu-code r
+  nu-force (nu-transport F m ag r) cfs rpc rest pc nh fr in1 ag' m' =
+    nu-force r cfs rpc rest pc nh fr in1
+             (λ h bh → trans (ag' h (bf-lift m bh)) (ag h bh))
+             (≤-trans m m')
+
   rel-transport : ∀ (A : IRTy) {alloc alloc' : AllocState {FS}}
                     {x : ⟦ A ⟧} {sv : StoredValue FS} {s s' : LocState FS}
                 → HeapMono alloc alloc'
@@ -1104,7 +1323,7 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
     , trans (ag (sucHL hl) b1) c1
     , rel-transport B m ag rb
   rel-transport (μ-type F) m ag r = mu-transport m ag r
-  rel-transport (ν-type F) _ _ r = r
+  rel-transport (ν-type F) m ag r = nu-transport F m ag r
   rel-transport (A * B) m ag (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) =
       hl , asv , bsv , e , bf-lift m b0 , bf-lift m b1
     , trans (ag hl b0) c0
