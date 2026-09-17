@@ -137,6 +137,13 @@
 --                (`Knot/SubNat`), i.e. `ExtNSub` for `extNK`.
 --     extSK-vs   ✅ not a program — the other clause (`Knot/SubExt`).
 --     extSK-vz   ✅ not a program — the SUBSTITUTION twin (`Knot/SubSpec`).
+--     fieldsK    ⬜ OWED — agreement with `fields` (`Spec/Syntax:1000`).
+--                ★ AND IT IS A COROLLARY, NOT NEW CONTENT:
+--                `fieldsK n D ms C m p = Tm-appK (Tm-appK m p)
+--                (ihsK n C D ms p)`, so its adequacy is TWO `Tm-appK`
+--                congruences over `ihsK`'s.
+--                ⇒ BLOCKED ON `ihsK` — discharge that and this follows;
+--                there is no separate induction to do.
 --     flatK      ⬜ OWED — agreement with `flat?`.
 --     iatConK    ⬜ OWED — agreement with `iatCon`; a corollary of
 --                `iconSK`'s and `subTyAtK`'s (the latter ✅ 2026-09-06).
@@ -268,6 +275,13 @@
 --                (`Knot/RenAgree`), 4 cross-sort + 1 given
 --                (`Knot/RenAgreeX`), closed sorts by
 --                `Knot/RenClosed`.  ⇒ step 3's renaming half.
+--     selK       ✅ DISCHARGED — `Knot/Sel.selK-agree`:
+--                `selK (num k) ⌈ms⌉ ⟶* ⌈ sel k ms ⌉`.
+--                ★ It shipped WITH its adequacy, which is why this entry
+--                is green on the day the gate first demanded it.
+--                ⚠ `selK` is a `natrec`, NOT an `ielim` — so it owes no
+--                53-row induction; `sndsK` was associated to match
+--                `sel`'s own recursion, making each step definitional.
 --     singleK    ✅ DISCHARGED — `Knot/SubAgree.single-Represents`:
 --                `Represents (single u) (singleK n ⌈u⌉)`, from step 2's
 --                `singleK-vz`/`-vs`.
