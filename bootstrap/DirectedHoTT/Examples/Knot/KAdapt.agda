@@ -32,6 +32,8 @@ open import DirectedHoTT.Examples.Knot.PayTy using ( payTyK; ⊢payTyK )
 open import DirectedHoTT.Examples.Knot.IPayTy using ( ipayTyK; ⊢ipayTyK )
 open import DirectedHoTT.Examples.Knot.Ihs using ( fieldsK; ⊢fieldsK )
 open import DirectedHoTT.Examples.Knot.Sel using ( selK; ⊢selK )
+open import DirectedHoTT.Examples.Knot.Iihs using ( ifieldsK; ⊢ifieldsK )
+open import DirectedHoTT.Lib.NatNum using ( num; ⊢num )
 open import DirectedHoTT.Examples.Knot.Sorts using ( sTm )
 
 -- ★ `payTy D C`, in the kernel's order, with the depth in front.
@@ -66,7 +68,7 @@ ipayTyKᵏ dd n D I σ C = ipayTyK dd C n σ D I
 --     ι-elim    unmapped ['fields', 'sel']
 --     ι-ielim   unmapped ['ifields', 'sel']
 -- ⇒ `sel` serves BOTH, so this adapter unblocks half of `ι-ielim` too;
---   the other half waits on `ifieldsK`/`iihsK`.
+--   the other half is `ifieldsKᵏ`, at the bottom of this module.
 ------------------------------------------------------------------------
 
 -- ★ `fields D ms C m p` — the TERM is already in kernel order, so this
@@ -96,3 +98,38 @@ selKᵏ n k ms = selK k ms
          Γ ⊢ n ∷ Nat → Γ ⊢ k ∷ Nat → Γ ⊢ ms ∷ K (pair sTm n) →
          Γ ⊢ selKᵏ n k ms ∷ K (pair sTm n)
 ⊢selKᵏ dn dk dms = ⊢selK dn dk dms
+
+
+------------------------------------------------------------------------
+-- ★★★ `ι-ielim`'s HEAD — the LAST unemitted reduction rule.
+--
+--   ι-ielim : ielim D i ms (icon k p)
+--               ⟶ ifields D i ms (isingle i) (ilookupD D k) (sel k ms) p
+--
+-- ★ THE ADAPTER'S WHOLE CONTENT IS THE LITERAL 1, and the kernel is what
+--   fixes it:
+--
+--       ⊢ilookupDK … → Γ ⊢ ilookupDK n D k ∷ K (pair sICon (nsuc nzero))
+--       ⊢isingleK  … → Γ ⊢ isingleK i      ∷ SubTy (num 1) n
+--
+--   An `ICon` inside an `IDesc` is a CODE — it binds exactly its own
+--   index — so it sits at depth 1 whatever the ambient depth of the rule
+--   using it, and `isingle` lowers from that 1 to the ambient `n`.
+--   `Knot/Iihs.ifieldsK` is left GENERAL in that depth; this is the only
+--   place the specialisation is made, which is `_PRE_D`'s
+--   `("ipayTyKᵏ", (('lit', 1), ('D',)))` convention in Agda instead of
+--   in a Python table.
+------------------------------------------------------------------------
+
+ifieldsKᵏ : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ →
+            RTm Γ → RTm Γ
+ifieldsKᵏ n D i ms σ C m p = ifieldsK n (num 1) D i ms σ C m p
+
+⊢ifieldsKᵏ : {Γ : Ctx} {n D i ms σ C m p : RTm ⌊ Γ ⌋} →
+             Γ ⊢ n ∷ Nat → Γ ⊢ D ∷ K (pair sIDesc n) → Γ ⊢ i ∷ K (pair sTm n) →
+             Γ ⊢ ms ∷ K (pair sTm n) → Γ ⊢ σ ∷ SubTy (num 1) n →
+             Γ ⊢ C ∷ K (pair sICon (num 1)) → Γ ⊢ m ∷ K (pair sTm n) →
+             Γ ⊢ p ∷ K (pair sTm n) →
+             Γ ⊢ ifieldsKᵏ n D i ms σ C m p ∷ K (pair sTm n)
+⊢ifieldsKᵏ dn dD di dms dσ dC dm dp =
+  ⊢ifieldsK dn (⊢num 1) dD di dms dσ dC dm dp

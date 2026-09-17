@@ -61,7 +61,7 @@ gated on `subTm`**.
 |---|---|---|
 | ✅ | the row emitter + its control | `tools/gen-knot.py`, `Knot/LookupGen` |
 | ✅ | **the `IConWf` emitter** | `emit_jrowwf`; both `_∋_∷_` rows generate + typecheck (`Knot/LookupGen`) |
-| 🟡 | `_⟶_` | **71 of 73** — the 2 left are `ι-elim`/`ι-ielim`, which want an object-level METHOD SELECTOR (`sel`/`fields`/`lookupD`) |
+| ✅ | `_⟶_` | **73 of 73** — `Knot/RedRows:84`, computed, nothing skipped. ⚠ This row read "71 of 73" until 2026-09-17, one stale count behind `ι-elim`'s landing; the last two wanted an object-level METHOD SELECTOR and got one (`selK`/`fieldsK`/`lookupDK`, then `iihsK`/`ifieldsK`/`ilookupDK`) |
 | ✅ | `_⟶ᵀ_` | **26 of 26** |
 | ✅ | `_≅ᵀ_` | **4 of 4** |
 | ✅ | `_⊢ty_` + `_⊢_∷_` (mutual) | **ALL 56 EMITTED** — `JudgeRows.agda:97`, computed, nothing skipped. ⚠ This row read "34 of 43 🟡" until 2026-09-10; the count AND the denominator were both stale |
@@ -75,7 +75,9 @@ premises — 7 rules), a boolean function over syntax (`NoNatC`, for
 `⊢tr` — which is why the generator now sub-splits `⊢tr` into 3 parts),
 and a motive annotation the sort inference declined (`⊢ielim`).
 
-⚠ **The only family still short is `_⟶_`**, at 71 of 73.
+✅ **EVERY EMITTED FAMILY IS NOW COMPLETE.** `_⟶_` reached **73 of 73**
+on 2026-09-17 with `ι-ielim`; the only families left are `Canon`/`Prog`,
+which are not started rather than short.
 
 ★ **The ratchet is the witness, not the verdict.** `_FLOOR` in
 `gen-knot.py` asserts these counts where they are computed; a row set

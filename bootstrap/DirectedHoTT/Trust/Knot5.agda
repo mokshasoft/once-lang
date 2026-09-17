@@ -24,6 +24,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot5 where
 
+import DirectedHoTT.Examples.Knot.Judge.TrA
 import DirectedHoTT.Examples.Knot.Judge.TrB
 import DirectedHoTT.Examples.Knot.Judge.TrC
 import DirectedHoTT.Examples.Knot.Judge.TrU

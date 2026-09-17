@@ -24,7 +24,6 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot7 where
 
-import DirectedHoTT.Examples.Knot.RenAgreeTy
 import DirectedHoTT.Examples.Knot.RenAgreeTyTie
 import DirectedHoTT.Examples.Knot.RenAgreeX
 import DirectedHoTT.Examples.Knot.RenClosed
@@ -45,3 +44,5 @@ import DirectedHoTT.Examples.Knot.SubAgreeTyTie
 import DirectedHoTT.Examples.Knot.SubAgreeX
 import DirectedHoTT.Examples.Knot.SubApp
 import DirectedHoTT.Examples.Knot.SubClosed
+import DirectedHoTT.Examples.Knot.SubExt
+import DirectedHoTT.Examples.Knot.SubMot
