@@ -65,8 +65,8 @@ ilen : IDesc → ℕ
 ilen inil    = 0
 ilen (_ ◂ D) = suc (ilen D)
 
--- RedD  (2 rules the generator could not translate)
-_ : ilen RedD + 2 ≡ rules _⟶_
+-- RedD  (1 rule the generator could not translate)
+_ : ilen RedD + 1 ≡ rules _⟶_
 _ = refl
 
 -- InDD  (0 rules the generator could not translate)
