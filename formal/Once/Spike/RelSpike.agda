@@ -174,7 +174,18 @@ open import Data.List.Properties using (++-identityʳ)
 -- The IRTy constructors Prelude does not re-export.  `_+_` is RENAMED: the
 -- ℕ `_+_` is already in scope and an unrenamed import would make every
 -- pattern and every index expression ambiguous.
-open import Once.IRTy using (Void; Int; Float; Str; Buffer; _⇛_)
+--
+-- S1 BATCH 2 adds the FUNCTOR vocabulary for the μ family below.  Neither
+-- `Prelude` nor `Interface` re-exports it — Interface.agda:579 writes
+-- `Once.IRTy.IRFunctor` fully qualified for exactly that reason.  Checked
+-- for clashes: `K`, `Id`, `_⊕_`, `_⊗_`, `IsBaseTypeI` and the eight
+-- `base-*` constructors appear in neither file, and `Id` does not collide
+-- with `Once.IR`'s lowercase morphism `id` (Prelude.agda:55).
+open import Once.IRTy using (Void; Int; Float; Str; Buffer; _⇛_;
+                             IRFunctor; K; Id; _⊕_; _⊗_;
+                             IsBaseTypeI; base-Unit; base-Void; base-Int;
+                             base-Float; base-Str; base-Buffer;
+                             base-Prod; base-Sum)
   renaming (_+_ to _+ᴵ_)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk; c-ret)
 
@@ -207,6 +218,382 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
           → HeapMono a a'
           → BeforeFrontier a (AtDynamic h) → BeforeFrontier a' (AtDynamic h)
   bf-lift m (heap-before lt) = heap-before (<-≤-trans lt m)
+
+  ----------------------------------------------------------------------
+  -- 0b.  THE μ FAMILY.  S1 batch 2, and the answer to spike items (a)-(g)
+  -- at :931-966 below.
+  --
+  -- PLACEMENT IS LOAD-BEARING, and this is why it is HERE and not next to
+  -- the clause it serves.  Agda infers a mutual block spanning a signature
+  -- and its clauses, so anything written between `RelV`'s forward
+  -- declarations and those clauses lands INSIDE `RelV`'s block — a block
+  -- whose arrow clause uses `RelV` NEGATIVELY.  Above the declarations
+  -- this is its own block and that edge does not exist.
+  --
+  -- POSITIVITY: CLEAN.  NO escape hatch, and not a close call.  `MuRel`
+  -- and `MuLayer` are a plain mutual inductive family: every occurrence of
+  -- either one inside a constructor is a BARE PREMISE — never to the left
+  -- of an arrow inside a premise, never under a defined function whose
+  -- polarity has to be inferred.  The family mentions `RelV` NOWHERE, and
+  -- the only defined function it calls (`RelBase`) recurses on
+  -- `IsBaseTypeI`, whose constructor list (IRTy.agda:124-132) has no
+  -- `_⇛_`, no `μ-type` and no `ν-type` — so there is no path from this
+  -- family to the arrow clause's negative occurrence, and the composite
+  -- the checker would have to reject cannot be formed.  The two-part
+  -- mutual-`data` shape already ships escape-hatch-free in this tree as
+  -- `μLayerValid`/`μValid` (MuValidity.agda:72-152), which is also the
+  -- precedent for a constructor here referring to a `data` declared LATER
+  -- in the same `mutual` block.
+  --
+  -- THE TERMINATION GATE DID NOT MOVE.  The `RelV (μ-type F)` clause
+  -- (:967 below) makes no recursive `RelV` call at all, so the call graph
+  -- recorded at :601-604 is exactly as S0 and S1 batch 1 left it.
+  ----------------------------------------------------------------------
+
+  ----------------------------------------------------------------------
+  -- 0b.1  `RelBase` — `RelV` RESTRICTED TO `IsBaseTypeI`.  Spike item (c).
+  --
+  -- The family may not mention `RelV`; `wf-K` admits only `IsBaseTypeI`
+  -- (IRTy.agda:136); so the `K` positions need exactly this arrow-free
+  -- fragment, and it can be defined before `RelV` because it is closed.
+  -- Every clause is `RelV`'s at the same type, verbatim.  Recursion is on
+  -- the WITNESS (`ia`/`ib` are strict subterms of `base-Prod ia ib`), so
+  -- no pragma.
+  --
+  -- `Str`/`Buffer` are `⊥` here for the same reason they are `⊥` there
+  -- (:824-825, the named MODEL GAP).  That DISCHARGES spike item (f): no
+  -- `StrBufferFree F` side condition is owed, because `RelBase` is already
+  -- `⊥` wherever a `Str` sits under `base-Prod`/`base-Sum`, at any depth.
+  --
+  -- THE PRICE, WHICH MUST BE BOOKED IN THE RESIDUAL LEDGER: the Str/Buffer
+  -- gap now has a SECOND REACH.  `μ-type (K Str ⊗ Id)` — a string list —
+  -- has an EMPTY relation, and through the arrow's negative occurrence
+  -- (:722) that makes `RelV (μ-type (K Str ⊗ Id) ⇛ B)`'s seventh conjunct
+  -- vacuously true: one cell, every denotation.  That is the hazard
+  -- :752-760 already names for `Str ⇛ B`.  It is INHERITED here, not
+  -- introduced, and it is strictly NARROWER than the `⊥` this insert
+  -- removes, which made every μ vacuous under an arrow.  Consequence for
+  -- spike item (g): the emptiness probe must be run at `K Unit ⊕ Id` and
+  -- at a compound-`K` functor such as `K (Int * Int) ⊕ Id`, and NEVER at a
+  -- Str-carrying one, which would report a false negative.
+  --
+  -- OWED (and the whole D217 answer below rests on it, so it is named
+  -- here rather than left to be discovered):
+  --   relbase-pins : RelBase ib alloc x₁ sv s → RelBase ib alloc x₂ sv s
+  --                → x₁ ≡ x₂
+  -- nine clauses, needing injectivity of `SV-Lit` at a FIXED witness
+  -- (`SV-Lit : ∀ {A} → FitsInReg A → ⟦ A ⟧ → StoredValue FS`,
+  -- SMCore.agda:221, has `A` hidden and unforced, so it must be stated at
+  -- `fits-intˢ`/`fits-floatˢ` rather than derived generically).
+  ----------------------------------------------------------------------
+  RelBase : ∀ {A : IRTy} → IsBaseTypeI A
+          → AllocState {FS} → ⟦ A ⟧ → StoredValue FS → LocState FS → Set
+  RelBase base-Unit   _ _ _  _ = ⊤
+  RelBase base-Void   _ _ _  _ = ⊥
+  RelBase base-Int    _ x sv _ = sv ≡ prim-sv fits-int   x
+  RelBase base-Float  _ x sv _ = sv ≡ prim-sv fits-float x
+  RelBase base-Str    _ _ _  _ = ⊥
+  RelBase base-Buffer _ _ _  _ = ⊥
+  RelBase (base-Prod ia ib) alloc p sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ asv ∈ StoredValue FS ]
+    Σ[ bsv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just asv)
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just bsv)
+      × RelBase ia alloc (proj₁ p) asv s
+      × RelBase ib alloc (proj₂ p) bsv s )
+  RelBase (base-Sum ia ib) alloc (inj₁ a) sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ psv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just (SV-Tag 0))
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just psv)
+      × RelBase ia alloc a psv s )
+  RelBase (base-Sum ia ib) alloc (inj₂ b) sv s =
+    Σ[ hl  ∈ HeapLocation ]
+    Σ[ psv ∈ StoredValue FS ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just (SV-Tag 1))
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just psv)
+      × RelBase ib alloc b psv s )
+
+  ----------------------------------------------------------------------
+  -- 0b.2  `inᴹ` — the SEMANTIC μ constructor, and the ONE bridge term.
+  --
+  -- This is where spike item (e)'s subst tower is confined.  `mu-in` names
+  -- `inᴹ` inside an EQUATION and nothing in the family ever looks inside
+  -- it, so no clause of `MuLayer` has to reduce through
+  -- `subst (λ T → ⟦ T ⟧) … (coerce-functor …)` (Eval.agda:123-124).
+  --
+  -- It typechecks for the same reason `μ-layer-iso`'s index does
+  -- (Interface.agda:117-118): that index is this term's mirror at `out-μ`,
+  -- and `In : ∀ {F} → WellFormedFI F → IR (⟦ F ⟧TI (μ-type F)) (μ-type F)`
+  -- (IR.agda:199) is `out-μ` reversed.
+  --
+  -- WITNESS-FREE IN VALUE, which is why carrying `wf` in `mu-in` is NOT a
+  -- D217 field: `eval fmt (In {F} _) x` DISCARDS the witness
+  -- (Eval.agda:123-124), `rec-trace-D fmt (In wf) x n = []`
+  -- (DenotTrace.agda:187) so the generic clause applies (ibid. 183), and
+  -- `inject {μ-type F} x = x` (ValueDomain.agda:283).  D217 objects to a
+  -- field the STATE cannot determine; this one determines nothing about
+  -- the value.
+  ----------------------------------------------------------------------
+  inᴹ : ∀ {F : IRFunctor} → WellFormedFI F
+      → ⟦ ⟦ F ⟧TI (μ-type F) ⟧ → ⟦ μ-type F ⟧
+  inᴹ wf l = TM.valueT (evalᴰ (In wf) l) 0
+
+  ----------------------------------------------------------------------
+  -- 0b.3  `MuRel` / `MuLayer`.
+  --
+  -- A `μ F` value is a FINITE TREE — the initial algebra of a polynomial
+  -- functor — so an INDUCTIVE family models it exactly.  That is the
+  -- governing principle applied: a Π at arrows, a product at `*`, a sum at
+  -- `+`, INDUCTION at μ.  `ValidAtWF`'s mistake was being a `data` at the
+  -- ARROW, where the structure is a Π.  A `data` here is right.
+  --
+  -- TWO families because there are two concepts: `MuRel` is a whole tree,
+  -- `MuLayer` is ONE layer.  `MuLayer` recurses on the FUNCTOR CODE `G`
+  -- (a strict subterm at `⊕`/`⊗`); the cycle back to a whole tree is
+  -- `ml-Id → MuRel → mu-in → MuLayer` and passes through one machine `In`
+  -- node each time.
+  --
+  -- `F`, `alloc`, `s` are PARAMETERS — uniform in every constructor, since
+  -- a value's relation never changes the state it is read in, exactly as
+  -- the pair clause (:659) uses one `alloc` and one `s` throughout.  `G`,
+  -- the value and the stored value are INDICES.
+  --
+  -- THE LAYER INDEX TYPE REDUCES DEFINITIONALLY at every functor code,
+  -- which is what lets these constructor patterns be written at all:
+  --   ⟦ ⟦ K A   ⟧TI (μ-type F) ⟧ = ⟦ A ⟧
+  --   ⟦ ⟦ Id    ⟧TI (μ-type F) ⟧ = ⟦ μ-type F ⟧
+  --   ⟦ ⟦ G ⊕ H ⟧TI (μ-type F) ⟧ = ⟦ ⟦G⟧TI (μ-type F) ⟧ ⊎ ⟦ ⟦H⟧TI (μ-type F) ⟧
+  --   ⟦ ⟦ G ⊗ H ⟧TI (μ-type F) ⟧ = ⟦ ⟦G⟧TI (μ-type F) ⟧ × ⟦ ⟦H⟧TI (μ-type F) ⟧
+  -- (IRTy.agda:117-121 for `⟦_⟧TI`; then `⟦ A ⟧ᴰᴵ = ⟦ ⌈ A ⌉ ⟧ᴰ`,
+  -- ValueDomain.agda:222-223, with `⌈ A + B ⌉ = ⌈A⌉ T.+ ⌈B⌉` and
+  -- `⌈ A * B ⌉ = ⌈A⌉ T.* ⌈B⌉`, IRTy.agda:304-305, and
+  -- `⟦ A + B ⟧ᴰ = ⟦A⟧ᴰ ⊎ ⟦B⟧ᴰ`, `⟦ A * B ⟧ᴰ = ⟦A⟧ᴰ × ⟦B⟧ᴰ`,
+  -- ValueDomain.agda:185-186.)  It is also what makes the `⊕` split exact
+  -- under `--exact-split` (Once.agda-lib).
+  --
+  -- WHAT IS NOT HERE, AND WHY:
+  --   * NO `WellFormedFI` INDEX.  `μLayerValid` carries two of them
+  --     (MuValidity.agda:83-85) and that is exactly why `μ-layer-iso` has
+  --     to `rewrite WellFormedFI-irrelevant wf wf′`
+  --     (Interface.agda:119-120).  Here `ml-K` carries its own
+  --     `IsBaseTypeI`, so well-formedness is a consequence of the
+  --     derivation rather than an index of it.  (NOTE, so it is not
+  --     budgeted as a lemma later: this does NOT make `WellFormedFI G`
+  --     recoverable from a `MuLayer … G …` — `ml-inl` carries nothing for
+  --     `H`.  Going DOWN is what is needed, and `mu-in`'s explicit `wf`
+  --     plus inversion on `wf-Sum`/`wf-Prod` supplies it.)
+  --   * NO `AllocMode`.  0.86 stage G left one lowering and it is `Heap`
+  --     (D147/D184); `In` allocates nothing at all.
+  --   * NO demand that `sv` be an `SV-Ptr` at `mu-in`.  `In` is
+  --     HEAP-IDENTITY: `ir-to-trace' n l (In _) = n , l ,
+  --     (mov-to-output ∷ []) , []` (IRToTrace.agda:1049, with the comment
+  --     at :1044-1048 saying "the F-layer node IS the μ-value (same
+  --     pointer)").  So a μ node's cell content IS its layer's, which at
+  --     `μ-type (K Int)` is an `SV-Lit` and not a pointer at all.  Every
+  --     memory fact belongs to the LAYER.
+  --
+  -- D217'S TEST — can two different semantic values be related to one cell
+  -- in one state?  NO, at every functor code, and the walk is the reason
+  -- this design replaces `valid-μ-wf` rather than transcribing it:
+  --   `K A`   — `RelBase` pins the CELL CONTENT (`sv ≡ prim-sv fits-int x`
+  --             at `Int`, `⊥` at Void/Str/Buffer, ⊤ at `Unit` where
+  --             `⟦ Unit ⟧` is a singleton so there are no two values).
+  --             `μlayer-K` constrains NO cell, only `BeforeFrontier`
+  --             (MuValidity.agda:89-93), and therefore fails.
+  --   `Id`    — recurses.
+  --   `G ⊕ H` — the cross case is REFUTED: both sides read the SAME base
+  --             cell and demand `just (SV-Tag 0)` against
+  --             `just (SV-Tag 1)`.  `μlayer-inl`/`μlayer-inr` never read
+  --             the tag at all (ibid. 104-123) — at the very cell
+  --             `c-branch-tag-zero` branches on (IRToTrace.agda:1035).
+  --   `G ⊗ H` — one `hl`, one `asv`, one `bsv`, recurse twice.  It also
+  --             drops `μlayer-prod`'s `SV-Ptr`-in-BOTH-cells demand (ibid.
+  --             126-137), which the emitter REFUTES: "cons node
+  --             `In (inr (x, child))` = `[1, pair-ptr]`, pair =
+  --             `[x, child-ptr]`" (IRToTrace.agda:362) has `x` inline.
+  --             Pointer-vs-inline is decided by the COMPONENT'S TYPE
+  --             through the recursive call, never by a constructor.
+  --   `mu-in` — closes with `cong (inᴹ wf)` over the layer, legitimate
+  --             because `inᴹ` discards the witness (0b.2) and
+  --             `WellFormedFI-irrelevant` (IRTy.agda:155) equates the two.
+  -- STATED AS THEOREMS, and OWED (they are not proved by this insert):
+  --   mulayer-pins : MuLayer F alloc s G l₁ sv → MuLayer F alloc s G l₂ sv
+  --                → l₁ ≡ l₂
+  --   mu-pins      : MuRel F alloc s x₁ sv → MuRel F alloc s x₂ sv
+  --                → x₁ ≡ x₂
+  -- mutually, over `relbase-pins` (0b.1).
+  ----------------------------------------------------------------------
+  mutual
+
+    data MuRel (F : IRFunctor) (alloc : AllocState {FS}) (s : LocState FS)
+         : ⟦ μ-type F ⟧ → StoredValue FS → Set where
+
+      -- The Lambek step, and the ONLY constructor: a μ value is `In` of a
+      -- layer, and it is stored exactly as that layer is.
+      --
+      -- The EQUATION form (`x ≡ inᴹ wf l`, with `l` existential) rather
+      -- than `inᴹ wf l` in the CONCLUSION is deliberate.  A non-
+      -- constructor term in a conclusion's index is green slime: splitting
+      -- a `MuRel F alloc s (inᴹ wf′ l′) sv` would ask Agda to unify
+      -- `inᴹ wf l =?= inᴹ wf′ l′`, which is not a constructor and fails.
+      -- With `x` a variable the constructor applies at every index, and
+      -- the `In` consumer discharges the equation by `refl`.
+      mu-in : ∀ {x : ⟦ μ-type F ⟧} {l : ⟦ ⟦ F ⟧TI (μ-type F) ⟧}
+                {sv : StoredValue FS}
+              (wf : WellFormedFI F)
+            → x ≡ inᴹ wf l
+            → MuLayer F alloc s F l sv
+            → MuRel F alloc s x sv
+
+    data MuLayer (F : IRFunctor) (alloc : AllocState {FS}) (s : LocState FS)
+         : (G : IRFunctor) → ⟦ ⟦ G ⟧TI (μ-type F) ⟧ → StoredValue FS
+         → Set where
+
+      -- CONSTANT POSITION.  Delegates to `RelBase`, carrying its own
+      -- `IsBaseTypeI`.  This is the whole positivity argument in one line:
+      -- there is no edge from here to `RelV`.
+      ml-K   : ∀ {A : IRTy} {a : ⟦ A ⟧} {sv : StoredValue FS}
+               (ib : IsBaseTypeI A)
+             → RelBase ib alloc a sv s
+             → MuLayer F alloc s (K A) a sv
+
+      -- RECURSIVE POSITION.  One machine `In` node further down the tree.
+      ml-Id  : ∀ {y : ⟦ μ-type F ⟧} {sv : StoredValue FS}
+             → MuRel F alloc s y sv
+             → MuLayer F alloc s Id y sv
+
+      -- SUM.  `RelV`'s own sum clause (:870-888) with the component's
+      -- recursive call retargeted at `MuLayer`.  A tagged two-cell heap
+      -- object: `instr-alloc-heap 2`, `store-indirect` writes the TAG at
+      -- the base cell, `store-indirect-suc` the PAYLOAD at the suc cell
+      -- (IRToTrace.agda:976-1008; SMCore.agda:1836-1846).
+      ml-inl : ∀ {G H : IRFunctor} {a : ⟦ ⟦ G ⟧TI (μ-type F) ⟧}
+                 {sv : StoredValue FS}
+               (hl : HeapLocation) (psv : StoredValue FS)
+             → sv ≡ SV-Ptr (AtDynamic hl)
+             → BeforeFrontier alloc (AtDynamic hl)
+             → BeforeFrontier alloc (AtDynamic (sucHL hl))
+             → readLoc s (AtDynamic hl)         ≡ just (SV-Tag 0)
+             → readLoc s (AtDynamic (sucHL hl)) ≡ just psv
+             → MuLayer F alloc s G a psv
+             → MuLayer F alloc s (G ⊕ H) (inj₁ a) sv
+
+      ml-inr : ∀ {G H : IRFunctor} {b : ⟦ ⟦ H ⟧TI (μ-type F) ⟧}
+                 {sv : StoredValue FS}
+               (hl : HeapLocation) (psv : StoredValue FS)
+             → sv ≡ SV-Ptr (AtDynamic hl)
+             → BeforeFrontier alloc (AtDynamic hl)
+             → BeforeFrontier alloc (AtDynamic (sucHL hl))
+             → readLoc s (AtDynamic hl)         ≡ just (SV-Tag 1)
+             → readLoc s (AtDynamic (sucHL hl)) ≡ just psv
+             → MuLayer F alloc s H b psv
+             → MuLayer F alloc s (G ⊕ H) (inj₂ b) sv
+
+      -- PRODUCT.  `RelV`'s pair clause (:659-669) with both recursive
+      -- calls retargeted.  NO `SV-Ptr` demand on either cell — see the
+      -- `μlayer-prod` refutation above.
+      ml-pair : ∀ {G H : IRFunctor} {a : ⟦ ⟦ G ⟧TI (μ-type F) ⟧}
+                  {b : ⟦ ⟦ H ⟧TI (μ-type F) ⟧} {sv : StoredValue FS}
+                (hl : HeapLocation) (asv bsv : StoredValue FS)
+              → sv ≡ SV-Ptr (AtDynamic hl)
+              → BeforeFrontier alloc (AtDynamic hl)
+              → BeforeFrontier alloc (AtDynamic (sucHL hl))
+              → readLoc s (AtDynamic hl)         ≡ just asv
+              → readLoc s (AtDynamic (sucHL hl)) ≡ just bsv
+              → MuLayer F alloc s G a asv
+              → MuLayer F alloc s H b bsv
+              → MuLayer F alloc s (G ⊗ H) (a , b) sv
+
+  ----------------------------------------------------------------------
+  -- 0b.4  TRANSPORT for the family.  `rel-transport (μ-type F) _ _ r = r`
+  -- typechecks TODAY only because that clause is `⊥`; these are what
+  -- replace it (see :1106).  Same three moves as the live sum and pair
+  -- transports (:1096-1113): re-base the frontier facts with `bf-lift`,
+  -- re-base the cell reads through `HeapAgree`, recurse.  They live here,
+  -- with the family, because `rel-transport`'s clauses are CONTIGUOUS and
+  -- a top-level definition spliced between them would split the block.
+  --
+  -- Termination is structural on the DERIVATION in all three, so no
+  -- pragma.  This is the miniature that spike item (b)-at-transport warns
+  -- about — three inductions where `rel-transport` promised one — and it
+  -- is the honest cost of the `data`: it is bounded (30 lines, no new
+  -- concepts) and it does not reintroduce the `validityWF-*` FAMILIES,
+  -- which were five per-constructor transports over an IR-indexed
+  -- datatype.
+  ----------------------------------------------------------------------
+  relbase-transport : ∀ {A : IRTy} (ib : IsBaseTypeI A)
+                        {alloc alloc' : AllocState {FS}}
+                        {x : ⟦ A ⟧} {sv : StoredValue FS}
+                        {s s' : LocState FS}
+                    → HeapMono alloc alloc' → HeapAgree alloc s s'
+                    → RelBase ib alloc x sv s → RelBase ib alloc' x sv s'
+  relbase-transport base-Unit   _ _ r = r
+  relbase-transport base-Void   _ _ r = r
+  relbase-transport base-Int    _ _ r = r
+  relbase-transport base-Float  _ _ r = r
+  relbase-transport base-Str    _ _ r = r
+  relbase-transport base-Buffer _ _ r = r
+  relbase-transport (base-Prod ia ib) m ag
+      (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) =
+      hl , asv , bsv , e , bf-lift m b0 , bf-lift m b1
+    , trans (ag hl b0) c0
+    , trans (ag (sucHL hl) b1) c1
+    , relbase-transport ia m ag ra
+    , relbase-transport ib m ag rb
+  relbase-transport (base-Sum ia ib) {x = inj₁ a} m ag
+      (hl , psv , e , b0 , b1 , c0 , c1 , ra) =
+      hl , psv , e , bf-lift m b0 , bf-lift m b1
+    , trans (ag hl b0) c0
+    , trans (ag (sucHL hl) b1) c1
+    , relbase-transport ia m ag ra
+  relbase-transport (base-Sum ia ib) {x = inj₂ b} m ag
+      (hl , psv , e , b0 , b1 , c0 , c1 , rb) =
+      hl , psv , e , bf-lift m b0 , bf-lift m b1
+    , trans (ag hl b0) c0
+    , trans (ag (sucHL hl) b1) c1
+    , relbase-transport ib m ag rb
+
+  mutual
+    mu-transport : ∀ {F : IRFunctor} {alloc alloc' : AllocState {FS}}
+                     {s s' : LocState FS} {x : ⟦ μ-type F ⟧}
+                     {sv : StoredValue FS}
+                 → HeapMono alloc alloc' → HeapAgree alloc s s'
+                 → MuRel F alloc s x sv → MuRel F alloc' s' x sv
+    mu-transport m ag (mu-in wf eq lr) =
+      mu-in wf eq (mulayer-transport m ag lr)
+
+    mulayer-transport : ∀ {F G : IRFunctor} {alloc alloc' : AllocState {FS}}
+                          {s s' : LocState FS}
+                          {l : ⟦ ⟦ G ⟧TI (μ-type F) ⟧}
+                          {sv : StoredValue FS}
+                      → HeapMono alloc alloc' → HeapAgree alloc s s'
+                      → MuLayer F alloc s G l sv → MuLayer F alloc' s' G l sv
+    mulayer-transport m ag (ml-K ib rb) =
+      ml-K ib (relbase-transport ib m ag rb)
+    mulayer-transport m ag (ml-Id r) = ml-Id (mu-transport m ag r)
+    mulayer-transport m ag (ml-inl hl psv e b0 b1 c0 c1 lr) =
+      ml-inl hl psv e (bf-lift m b0) (bf-lift m b1)
+        (trans (ag hl b0) c0) (trans (ag (sucHL hl) b1) c1)
+        (mulayer-transport m ag lr)
+    mulayer-transport m ag (ml-inr hl psv e b0 b1 c0 c1 lr) =
+      ml-inr hl psv e (bf-lift m b0) (bf-lift m b1)
+        (trans (ag hl b0) c0) (trans (ag (sucHL hl) b1) c1)
+        (mulayer-transport m ag lr)
+    mulayer-transport m ag (ml-pair hl asv bsv e b0 b1 c0 c1 la lb) =
+      ml-pair hl asv bsv e (bf-lift m b0) (bf-lift m b1)
+        (trans (ag hl b0) c0) (trans (ag (sucHL hl) b1) c1)
+        (mulayer-transport m ag la) (mulayer-transport m ag lb)
 
   ----------------------------------------------------------------------
   -- 1.  THE RELATION.  Forward-declared, mutual, NO `TERMINATING` pragma.
@@ -541,40 +928,43 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   -- (IRTy.agda:124-136), which has no `_⇛_`, so no closure can occur in a
   -- μ layer and D217 cannot re-enter through the delegate.
   --
-  -- WHAT S1 MUST PROBE AND BUDGET BEFORE WRITING IT:
-  --   (a) POSITIVITY of the family — the gate MOVES from the termination
-  --       checker to the positivity checker.  Inline the Σ-shapes in each
-  --       constructor's premises (as `μLayerValid` itself does) rather
-  --       than passing `MuLayer` as a higher-order argument to a defined
-  --       combinator, which is the likely rejection.
-  --   (b) IMPORTS.  `IRFunctor`, `K`/`Id`/`_⊕_`/`_⊗_`, `IsBaseTypeI` and
-  --       the `base-*` constructors are re-exported by NEITHER `Prelude`
-  --       nor `Interface` (Interface.agda:579 writes
-  --       `Once.IRTy.IRFunctor` fully qualified for exactly this reason).
-  --   (c) A SECOND BASE RELATION.  Because (a) forbids mentioning `RelV`,
-  --       the `K` positions need their own `RelBase` over `IsBaseTypeI`,
-  --       which is definitionally `RelV` at `Int`/`Float` but NOT at
-  --       `base-Prod`/`base-Sum` (different functions, different
-  --       recursion).  A two-way agreement lemma by induction on
-  --       `IsBaseTypeI` is owed, and every consumer holding one form and
-  --       needing the other must transport.
-  --   (d) THE COHERENCE LEMMA.  `μ-layer-iso` (Interface.agda:114-119) is
-  --       a CONSTRUCTOR FIELD of `valid-μ-wf` today; over a `data` it
-  --       becomes a THEOREM by induction on the functor code, and
-  --       `out-μ`/`In`/`Cata` all consume it (Simple.agda:385).
-  --   (e) THE INDEX IS A SUBST TOWER.  `TM.valueT (evalᴰ (out-μ wf) x) 0`
-  --       goes through `subst (λ T → ⟦ T ⟧) (sym (⌈⟧TI-commute …))
-  --       (coerce-functor⁻¹ …)` (Eval.agda:126); `μ-layer-iso` escapes it
-  --       only because it never looks INSIDE the layer.  A pinning probe
-  --       must reduce through it.
-  --   (f) A `StrBufferFree F` SIDE CONDITION, itself an induction over
-  --       `IsBaseTypeI` (Str/Buffer can sit arbitrarily deep under
-  --       `base-Prod`/`base-Sum`), for as long as the two leaves above are
-  --       a model gap.
-  --   (g) AN EMPTINESS PROBE at `NatF = K Unit ⊕ Id` against a state the
-  --       emitter really produces.  (`μ-type Id` is uninhabited in any
-  --       such family, correctly — `μS SId` has no inhabitant.)
-  RelV (μ-type F) _ _ _ _ = ⊥
+  -- S1 BATCH 2 WROTE IT.  The family is `MuRel`/`MuLayer` at 0b above, and
+  -- this clause is its one non-recursive hand-off — the template's own
+  -- move at μ (MeaningRelation.agda:65 hands μ off to `_≡_`, a `data`).
+  -- The seven items this comment used to list as unprobed now read:
+  --   (a) POSITIVITY — CLEAN, no escape hatch.  The argument and its
+  --       in-tree precedent are at 0b.  Note the correction: this item
+  --       advised AGAINST passing the layer relation to a combinator and
+  --       called that "the likely rejection".  That was backwards — the
+  --       parameterised shape is the one Agda accepts (`μS`,
+  --       Functor.agda:103-104; `_∼S_`, Laws.agda:43-46; `_∼ᵈ_`,
+  --       ValueDomainLaws.agda:53-58, all escape-hatch-free).  What must
+  --       not be done is hard-wiring `RelV`, and the reason is
+  --       TERMINATION, not positivity.  0b sidesteps both by making the
+  --       layer a mutual `data` instead of a combinator.
+  --   (b) IMPORTS — added at :184-188, clash-checked.
+  --   (c) THE SECOND BASE RELATION — `RelBase` (0b.1).  STILL OWED: the
+  --       two-way agreement `RelBase ib ↔ RelV A` by induction on
+  --       `IsBaseTypeI`, nine clauses each way, plus a transport at every
+  --       consumer holding one form and needing the other.  It is the
+  --       larger of the two agreement jobs and item (f)'s discharge does
+  --       NOT shrink it.
+  --   (d) THE COHERENCE LEMMA — `μ-layer-iso` becomes a THEOREM, as
+  --       predicted, but NOT by inversion alone: inverting `mu-in` yields
+  --       a `MuLayer`, and converting that to `RelV` at the layer type is
+  --       an induction on the functor code plus (c).  It also needs
+  --       Lambek in the `out-μ` direction (`layer-of (inᴹ wf l) ≡ l`);
+  --       `In`'s direction is `refl` by construction (0b.2).
+  --   (e) THE SUBST TOWER — confined to `inᴹ` (0b.2) and never entered.
+  --   (f) `StrBufferFree F` — DISCHARGED, at the price booked in 0b.1.
+  --   (g) THE EMPTINESS PROBE — still owed, and now with a constraint:
+  --       run it at `K Unit ⊕ Id` and at a compound-`K` functor, NOT at a
+  --       Str-carrying one (0b.1 says why).
+  --
+  -- NOT YET MACHINE-CHECKED.  This clause and the family were written
+  -- without an Agda run.  The first act on landing is `make check` on this
+  -- module; the positivity verdict above is an argument, not a checker's.
+  RelV (μ-type F) alloc x sv s = MuRel F alloc s x sv
 
   ----------------------------------------------------------------------
   -- `ν-type` — STILL STUBBED.  This is the one clause that can still
@@ -635,6 +1025,49 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   -- unboundedly many forcings fit inside budget 0 and `bud` is not a
   -- productivity measure.  Guarded corecursion needs no index at all, so
   -- D058 is satisfied by having nothing to leak.
+  -- S1 BATCH 2 DID NOT WRITE THIS CLAUSE, AND THE STUB IS NOT
+  -- CONSERVATIVE.  `RelV` occurs NEGATIVELY in the arrow clause (:722), so
+  -- `⊥` here makes `RelV (ν-type F ⇛ B)`'s seventh conjunct VACUOUSLY TRUE
+  -- — one cell, every denotation, which is D217 reached by a different
+  -- door.  This is the hazard :752-760 names for `Str ⇛ B`, and unlike
+  -- `Str`/`Buffer` ν is NOT a model gap: the emitter exists
+  -- (IRToTrace.agda:1137-1161 for `Ana`, :1095-1117 for `in-ν`) and
+  -- `obs-correct-Ana`/`obs-correct-Out` are real definitions.  Record it
+  -- in the residual ledger as a live REGRESSION-shaped stub, not a leaf.
+  --
+  -- WHY IT WAS HELD BACK rather than shipped alongside μ: the positivity
+  -- verdict for the coinductive record is UNKNOWN, not clean.  `RelNu`
+  -- would occur in its own field through a defined function's relation
+  -- PARAMETER.  `_∼S_` and `_∼ᵈ_` do exactly that and are green, but in
+  -- both the parameter's value type is the record's own carrier index at
+  -- the `SFunctor` tier; the ν candidate's is `νᵈ (translateF Carrier
+  -- Carrier ⌈ F ⌉F)`, a defined-function application of the record's
+  -- IRFunctor index.  That is a real difference and only the checker can
+  -- settle it.  Shipping on an expectation is how three of the four
+  -- refuted designs got here.
+  --
+  -- THREE DEFECTS CONFIRMED IN THE CANDIDATE, on top of (a)-(d) above:
+  --   (e) THE LAYER RELATION'S FUNCTOR PARAMETER MUST BE EXPLICIT.  With
+  --       `NuLayer : ∀ {F} (G : IRFunctor) → …`, solving `{F}` at the use
+  --       site requires unifying `translateF Carrier Carrier ⌈ ?F ⌉F` with
+  --       `translateF Carrier Carrier ⌈ F ⌉F` — two stuck applications,
+  --       not a Miller pattern, so unsolved metas.  The in-tree
+  --       precedents take BOTH functors explicit (`SF-rel-refl`,
+  --       ValueDomainLaws.agda:94; `mapAnaᵈ-∼`, ibid. 132).  Follow them.
+  --   (f) `nu-transport` MUST BE DEFINED BEFORE `rel-transport`'s
+  --       SIGNATURE (:1081).  `rel-transport`'s clauses are contiguous; a
+  --       top-level definition spliced between them splits the block.
+  --       (The same constraint put μ's three transports at 0b.4.)
+  --   (g) THE Str/Buffer GAP REACHES ν TOO, through the `K` positions, and
+  --       needs the same booking 0b.1 makes for μ.
+  --
+  -- WHAT S1 BATCH 3 MUST DO FIRST, in this order: the POSITIVITY probe
+  -- (declare the record with a trivial `⊤` forcing field and check Agda
+  -- accepts `NuLayer F (RelNu F) …`), then the EMPTINESS probe (d) — a
+  -- record whose forcing field is unsatisfiable is uninhabited, which
+  -- makes the clause silently vacuous and every ν theorem unprovable
+  -- rather than false, and an uninhabited relation passes D217's test
+  -- trivially and worthlessly.  Only then write the record.
   RelV (ν-type F) _ _ _ _ = ⊥
 
   ----------------------------------------------------------------------
@@ -670,7 +1103,7 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
     , trans (ag hl b0) c0
     , trans (ag (sucHL hl) b1) c1
     , rel-transport B m ag rb
-  rel-transport (μ-type F) _ _ r = r
+  rel-transport (μ-type F) m ag r = mu-transport m ag r
   rel-transport (ν-type F) _ _ r = r
   rel-transport (A * B) m ag (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) =
       hl , asv , bsv , e , bf-lift m b0 , bf-lift m b1
