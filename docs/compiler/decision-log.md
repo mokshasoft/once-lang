@@ -14273,3 +14273,69 @@ with `++⁻`; local import deleted).
 import in the cone, and the compiler surfaces them one at a time, far from the
 change.** Keep preludes narrow: export the type and the lemmas, not the
 constructors, until something actually constructs.
+
+## D216 — THE FORBIDDEN QUADRANT (2026-09-17)
+
+Three attempts at one obligation, three times the same shape, twice demonstrably
+false and the third narrower but not different in kind. The rule that separates
+them:
+
+> **A premise relating a STATE to the PROGRAM may have a SYNTACTIC conclusion
+> only if its hypothesis DETERMINES the syntax.**
+
+| hypothesis   | conclusion    | example                                  | |
+|--------------|---------------|------------------------------------------|-|
+| state-indexed| denotational  | `CalleeRuns` — concludes about `evalᴰ body envArg` | safe |
+| state-free   | syntactic     | `BlocksAt`, `entry-blocks` — about `prog` alone     | safe |
+| state-indexed| **syntactic** | `block-runs`, `CodeResolves`                        | **both FALSE** |
+
+### Why the bad quadrant is bad, precisely
+
+A closure value determines its body's DENOTATION and nothing more:
+
+    f-is-closure : f ≡ (λ arg → evalᴰ body (env , arg))
+
+That is D170's rule working correctly — a value may expose only what it carries.
+So any premise whose hypothesis is a closure witness and whose conclusion names
+`emitted … body`, `blocks … body` or any other TEXT is asking the value for
+information it provably does not have. Two IRs with one denotation decompose the
+same value, and a function (`find-thunk`) must send their different texts to one
+position. `Once/Probe/CodeResolvesRefute` does exactly that; the sources are
+archived in `docs/compiler/probes/block-runs-refutation.md`.
+
+`block-runs` (D213) failed the same way from the other end: its hypothesis was a
+bare memory read, which determines nothing at all.
+
+### The consequence for plan 0.91
+
+S3 as designed is dead, and `CodeResolves` is deleted (it was threaded nowhere —
+two lines, its own definition). The successor the design workflow proposed,
+`CodeWF`, keys on the label instead of the body, which escapes THIS refutation;
+but it still concludes `find-thunk prog ℓ ≡ just j` from a fact about `s`, so it
+sits in the same quadrant and is narrower rather than different.
+
+### …and why that points at the machine, not at the premise
+
+The mismatch is structural, not a matter of finding a better statement. The flat
+machine stores a NAME whose meaning is syntactic (`do-call-code prog (just
+(SV-Code ℓ)) fs = do-call-at (find-thunk prog ℓ) fs`, Flat.agda:772ff) while the
+closure VALUE only ever determines a denotation. Any fix that keeps the name in
+the runtime must re-enter the forbidden quadrant to connect them.
+
+`find-thunk` is a linear scan of the program text performed AT EVERY CALL, whose
+failure case HALTS the machine — and the real backend does no such thing:
+
+    compile-abstract (instr-load-code-addr n) = lea rax (rip+label n) ∷ []
+    compile-abstract instr-call-closure       = call (mem (base+disp r12 slot-size)) ∷ []
+
+`lea rip+label` is resolved by the ASSEMBLER and LINKER; `call *0x8(%r12)` jumps
+to an address already in memory. The model defers to call time a resolution the
+real pipeline performs once at link time, and an unresolvable label — a LINK
+error, as D169's riscv64 note records verbatim — is modelled as a runtime halt.
+`block-runs` existed to promise that halt never fires.
+
+Plan 0.93 is the repair: split `AbstractTrace` (unlinked, names — what
+`compile-abstract` needs) from the linked image (positions — what `exec-flat`
+needs). `link` resolves; `do-call` jumps; the forbidden quadrant loses its
+inhabitants because there is no name left in the runtime for a state-indexed
+premise to make a syntactic claim about.

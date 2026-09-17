@@ -144,3 +144,44 @@ boom = refute (BlockRuns.closures (block-runs (id {Unit})))
 -- the point. `boom` above is what still stands.
 ------------------------------------------------------------------------
 ```
+
+## `CodeResolves` (plan 0.91 S3) — REFUTED, 2026-09-17
+
+The S3 premise proposed to replace `block-runs`. It is FALSE for every program:
+
+    boom : ∀ (prog : AbstractTrace) → CodeResolves prog bad-alloc bad-st → ⊥
+
+Run with the `.agdai` deleted; `Checking Once.Probe.CodeResolvesRefute` present,
+0 errors, 0 unsolved metas. The definition has since been deleted, so this probe
+cannot be re-run — it is kept here as the evidence for D216.
+
+The refutation needs no fabricated heap of its own. It reuses `BlockRunsRefute`'s
+`bad-valid` and decomposes ONE closure value TWO ways:
+
+```agda
+f : ⟦ Unit ⇛ Unit ⟧
+f = λ arg → evalᴰ (terminal {Unit * Unit}) (tt , arg)
+
+cvw₁ = decomposeClosureWF bad-valid
+cvw₂ = record cvw₁ { body = terminal ∘ id ; f-is-closure = refl }
+
+boom prog cr with cr f cloc cvw₁ | cr f cloc cvw₂
+... | lb₁ , (j₁ , fe₁ , sp₁) , _ | lb₂ , (j₂ , fe₂ , sp₂) , _
+      with just-injective (trans (sym fe₂) fe₁)
+...   | refl = case trans (sym (sp₁ 1 _ refl)) (sp₂ 1 _ refl) of λ ()
+```
+
+`ClosureValidWF` ties `f` to the body's DENOTATION, not its syntax —
+
+    f-is-closure : f ≡ (λ arg → evalᴰ body (env , arg))
+
+— so `record cvw₁ { body = … }` is legal for any body with the same denotation,
+and `evalᴰ (terminal ∘ id) ≡ evalᴰ terminal` definitionally (`returnT x _ = ([] , x)`,
+`n ∸ 0 = n`, and η for pairs). But `CodeResolves`' conclusion mentions the body's
+TEXT, and `find-thunk` is a function, so both resolve to the same `j`:
+
+    ir-to-trace' n l terminal = n , l , []                 , []
+    ir-to-trace' n l id       = n , l , (mov-to-output ∷ []) , []
+
+`block-layout` then puts `c-ret` at index 1 of one block and `mov-to-output` at
+index 1 of the other, both at `j+1`. `λ ()` closes it.
