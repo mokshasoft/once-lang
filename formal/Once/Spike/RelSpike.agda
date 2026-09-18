@@ -2494,3 +2494,56 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   --   forcing, so no cell is doubly demanded across depths.  The right
   --   case was picked for the right reason.
   ----------------------------------------------------------------------
+
+  ----------------------------------------------------------------------
+  -- 8.  S3, CLAUSE 1 OF 14 — `id`.
+  --
+  -- The first clause of `ir-correct` written against the UNIFORM obligation
+  -- `RelIR` rather than as a bespoke per-shape theorem. `spike-apply` and
+  -- `spike-curry` proved that the relation WORKS; this is the first proof
+  -- that it works AT THE SHAPE THE INDUCTION WILL ACTUALLY USE.
+  --
+  -- `id` is the cheapest: `ir-to-trace' n l id = n , l , mov-to-output ∷ [] , []`
+  -- (IRToTrace.agda:745) — ONE instruction, NO blocks — and `evalᴰ fmt id a =
+  -- returnT a` (DenotTrace.agda:131), whose trace is `[]` at every budget.
+  --
+  -- Note what is NOT needed here and WAS needed by the old obligation: no
+  -- `BlockRuns`, no `next-slot alloc ≤ n`, no `AllSlotStable`, and no
+  -- fourteen-field record to populate. The premise list is `RelIR`'s and
+  -- nothing more.
+  ----------------------------------------------------------------------
+  ir-correct-id : ∀ {A : IRTy} (n l : ℕ) → RelIR n l (id {A})
+  ir-correct-id {A} n l fs x xsv span blks nh lk rdi rv bud =
+      1 , st1 , run , live , refl , refl , flink1 , refl , rv1
+    where
+      -- the single row.
+      st1 : FlatState
+      st1 = flat-exec-instr mov-to-output prog fs
+
+      mov-fetch : fetch prog (fpc fs) ≡ just mov-to-output
+      mov-fetch = span 0 _ refl
+
+      run : FlatSteps prog 1 fs st1
+      run = (nh , mov-fetch) ∷ []
+
+      -- `mov-to-output` writes ONE register (SMCore.agda:1808-1810): `halted`,
+      -- `fret`, `flink` and every memory cell are untouched, and `falloc` is
+      -- unchanged, so the frontier facts are `refl` and the heap agrees.
+      live : halted (floc st1) ≡ false
+      live = nh
+
+      flink1 : flink st1 ≡ nothing
+      flink1 = lk
+
+      -- THE VALUE. `Output := Input1` and `rdi : Input1 ≡ xsv`, so the result
+      -- cell holds exactly the stored value `x` was already related at. The
+      -- transport is at the SAME allocator and a memory-identical state, so
+      -- both of `rel-transport`'s arguments are the identity.
+      out-eq : readReg (regs (floc st1)) Output ≡ xsv
+      out-eq = trans (writeReg-same (regs (floc fs)) Output
+                                    (readReg (regs (floc fs)) Input1))
+                     rdi
+
+      rv1 : RelV A (falloc st1) x (readReg (regs (floc st1)) Output) (floc st1)
+      rv1 = subst (λ sv → RelV A (falloc st1) x sv (floc st1)) (sym out-eq)
+                  (rel-transport A ≤-refl (λ h bh → refl) rv)
