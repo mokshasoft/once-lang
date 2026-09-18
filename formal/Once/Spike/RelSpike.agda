@@ -2547,3 +2547,31 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
       rv1 : RelV A (falloc st1) x (readReg (regs (floc st1)) Output) (floc st1)
       rv1 = subst (λ sv → RelV A (falloc st1) x sv (floc st1)) (sym out-eq)
                   (rel-transport A ≤-refl (λ h bh → refl) rv)
+
+  ----------------------------------------------------------------------
+  -- 8.1  S3, CLAUSE 2/14 — `terminal`.  ZERO instructions.
+  --
+  -- `ir-to-trace' n l terminal = n , l , [] , []` (IRToTrace.agda:761), so
+  -- the run is EMPTY and the settle state IS the entry state: `RelIR`'s
+  -- conclusion is at `length [] + fpc fs`, i.e. `fpc fs`, definitionally.
+  -- `evalᴰ terminal x = returnT tt`, whose trace is `[]`, and `RelV Unit`
+  -- is `⊤` — so every conjunct is `refl`, `tt`, or a premise handed back.
+  --
+  -- This is the clause that would break first if `RelIR`'s conclusion index
+  -- were stated as anything but `length (emitted n l ir) + fpc fs`.
+  ----------------------------------------------------------------------
+  ir-correct-terminal : ∀ {A : IRTy} (n l : ℕ) → RelIR n l (terminal {A})
+  ir-correct-terminal n l fs x xsv span blks nh lk rdi rv bud =
+    0 , fs , [] , nh , refl , refl , lk , refl , tt
+
+  ----------------------------------------------------------------------
+  -- 8.2  S3, CLAUSE 3/14 — `initial`.  ABSURD ON ITS INPUT.
+  --
+  -- `initial : IR Void A`, and `⟦ Void ⟧` is `⊥` (ValueDomain.agda), so the
+  -- obligation is discharged from its own value argument. That is how the
+  -- tree already does it — `obs-correct-initial … ()` (Simple.agda:154) —
+  -- and it is why `RelV Void = ⊥` is FINAL rather than a placeholder: the
+  -- emptiness is the proof.
+  ----------------------------------------------------------------------
+  ir-correct-initial : ∀ {A : IRTy} (n l : ℕ) → RelIR n l (initial {A})
+  ir-correct-initial n l fs ()
