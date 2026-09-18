@@ -24,6 +24,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot2 where
 
+import DirectedHoTT.Examples.Knot.IPayTyKap
 import DirectedHoTT.Examples.Knot.IPayTyMot
 import DirectedHoTT.Examples.Knot.IPayTyRho
 import DirectedHoTT.Examples.Knot.ISubRedControl
@@ -45,4 +46,3 @@ import DirectedHoTT.Examples.Knot.IihsKap
 import DirectedHoTT.Examples.Knot.IihsMeths
 import DirectedHoTT.Examples.Knot.IihsMot
 import DirectedHoTT.Examples.Knot.IihsRho
-import DirectedHoTT.Examples.Knot.InDRows

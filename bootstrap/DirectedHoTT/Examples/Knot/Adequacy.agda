@@ -161,9 +161,29 @@
 --                part; the third clause is `iconSK`'s job, which is why
 --                it composes with `extNK`.  ⇒ `iconSK`/`iatConK` are NOT
 --                corollaries of this.
---     iextK      ⬜ OWED — agreement with `iext`, VIA its factorisation
---                `iext σ t ≡ single t ∘ extS σ` (the same two-step debt
---                `iconSK` carries).
+--     iext-Represents ✅ not a program — it IS `iextK`'s adequacy lemma.
+--     iextK      ✅ DISCHARGED — `Knot/IExtRep.iext-Represents`, by the
+--                route this entry named: the factorisation
+--                `iext σ t ≡ single t ∘ extS σ`, which `iextK`'s BODY
+--                already is, composed out of `extS-Represents`,
+--                `sub-agree` and `single-Represents` — all discharged.
+--                ★★★ THE FACTORISATION WAS NEVER THE WORK.  The β of
+--                `iextK`'s own `lam` was: `extNK` and `singleK` BOTH
+--                build a `lam`, so the substitution goes UNDER the
+--                binder and their arguments are weakened twice.  ⇒ five
+--                naturality lemmas, each with a template in
+--                `Knot/SubNat`/`SubSpec`: `singleMethsK-sub`,
+--                `singleSK-sub`, `singleK-sub`, `give-sub`,
+--                `subMethsK-sub` (hence `subTmAtK-sub`).
+--                ★ `subMethsK-sub` IS OWED DOWNSTREAM ANYWAY —
+--                `Knot/IihsRho` calls `subTmAtK` inside a seven-lam
+--                body — which is what decided this against changing
+--                `iextK`'s definition.
+--                ⚠ `iextK-app` states the β law ONCE, generic in the
+--                variable; `Knot/SubSpec.extNK-vz` is the precedent and
+--                the reason `extS-Represents` is three lines.
+--     iextK-app  ✅ not a program — `iextK`'s β law, the bookkeeping
+--                step its adequacy is built on.
 --     ifieldsK   ⬜ OWED — agreement with `ifields` (`Spec/Syntax:1231`).
 --                ★ THE SAME COROLLARY ONE DESCRIPTION OVER:
 --                `ifieldsK … = Tm-appK (Tm-appK (Tm-appK m i) p)
@@ -333,6 +353,8 @@
 --                ★ The CHAINS ALREADY EXISTED inside `singleK-vz`/`-vs`;
 --                all that was owed was stating them at the CORE name.
 --                `singleK` is now one β and one `wk-single` on top.
+--     singleSK-sub ✅ not a program — `singleSK`'s substitution
+--                naturality (`extSK-sub`'s twin).
 --     singleSK-vs ✅ not a program — the other clause.
 --     singleSK-vz ✅ not a program — a clause of `singleK`'s adequacy.
 --     stkAK      ⬜ OWED — agreement with `stkA?`.
@@ -346,6 +368,8 @@
 --                by `Knot/SubClosed`.  ⇒ step 3, both halves.
 --     subTmAtK   ✅ DISCHARGED — it IS `subAtK sTm`, so `Knot/SubAgreeTie.sub-agree`
 --                is exactly its statement.
+--     subTmAtK-sub ✅ not a program — `subTmAtK`'s substitution
+--                naturality, over `subMethsK-sub`.
 --     subTmK     ✅ DISCHARGED via `subAtK` — same theorem, unapplied form.
 --     subTyAtK   ✅ DISCHARGED — `Knot/TyAgree.subTyAtK-agree`.  ⚠ NOT a
 --                commutation lemma after all: `subTyAtK d m σ A` IS

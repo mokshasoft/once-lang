@@ -55,7 +55,7 @@ entries. The chain, cheapest first, with each step's REAL size:
 |---|---|---|---|
 | 1 | ✅ `ihsK` | induction on **`DCon` — 3 cases** | nothing |
 | 2 | ✅ `fieldsK` | **1** `Tm-appK` congruence | 1 |
-| 3 | `iextK` | composition + a β | `sub-agree` ✅ `single-Represents` ✅ `extS-Represents` ✅ |
+| 3 | ✅ `iextK` | composition + a β + **5 naturality lemmas** | `sub-agree` ✅ `single-Represents` ✅ `extS-Represents` ✅ |
 | 4 | `iihsK` | induction on **`ICon` — 3 cases** | 1, 3 |
 | 5 | `ifieldsK` | 3 `Tm-appK` congruences | 4 |
 
@@ -223,3 +223,50 @@ because the log said so first.
 ⇒ **NEXT:** step 3 (`iextK`) is unchanged by this — its two logged
 attempts stand, and the `iextK-vz`/`iextK-vs` route in §2 is still the
 one to price first.
+
+
+---
+
+## 4. Step 3 — `iextK` ✅ **CLOSED 2026-09-18** (attempts 3-4)
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 3 | build the naturality cascade FIRST, then the β law | ✅ **rc=0**, five lemmas, every one a template copy |
+| 4 | `iextK-app` (the β law, generic in the variable) + `iext-Represents` | ✅ **rc=0**, and the agreement is `single-Represents`'s three lines |
+
+★★★ **THE LEDGER'S PREDICTION WAS RIGHT AND ITS REASON WAS WRONG.** The
+entry said `iextK` *"owes a factorisation lemma FIRST — the same two-step
+debt `iconSK` carries"*. There was **no factorisation lemma to write**:
+`iextK`'s body already IS `single t ∘ extS σ`, spelled out. What it
+actually owed was the β of its **own `lam`** — `extNK` and `singleK` both
+BUILD a `lam`, so the substitution goes under the binder and their
+arguments are weakened twice:
+
+    singleMethsK-sub ← extMethsK-sub    singleSK-sub ← extSK-sub
+    singleK-sub      ← extNK-sub        give-sub     ← renGive-sub
+    subMethsK-sub    ← renMethsK-sub    ⇒ subTmAtK-sub
+
+⇒ **the discriminator against `iinstK` is not "composition vs not" — it
+is whether the composite sits under a binder of its own.** `iinstK`
+applies `subTyAtK` to arguments and consumes it immediately; `iextK`
+passes `extNK …` as an argument, so it stays a `lam`.
+
+★★ **AND THE CASCADE WAS OWED DOWNSTREAM ANYWAY.** `Knot/IihsRho` calls
+`subTmAtK` inside a seven-lam body, so `subMethsK-sub` is on the path to
+`iihsK` whatever route `iextK` took. **That is what decided it against
+the §2 "fight the definition" option** — the isolation the log demanded
+was never run, because the cheaper route turned out to produce something
+step 4 needs. ⚠ Record that as the reason, not as a refutation: the
+closed-combinator `iextK` may still be the better definition, and
+nothing here measured it.
+
+★ **ONE TRAP, and it is an old one:** `with eqℕ k 11 … | true` made
+`true`/`false` PATTERN VARIABLES — `𝔹`'s constructors were not imported,
+so `pickTm` never reduced and every branch was the same stuck term.
+Agda says `PatternShadowsConstructor` and then reports the error
+somewhere else. `agda-unimported-constructor-trap`, and
+`Knot/SubSpec:65` imports them for exactly this reason.
+
+⇒ **NEXT:** step 4, `iihsK` — three cases on `ICon`, needing `ihs-agree`'s
+shape plus `iext-Represents` (now available) and `subTmAtK`'s agreement
+for the `iρ` row's recursive index.
