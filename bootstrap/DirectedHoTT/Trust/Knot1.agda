@@ -42,6 +42,7 @@ import DirectedHoTT.Examples.Knot.IExt
 import DirectedHoTT.Examples.Knot.IExtAgree
 import DirectedHoTT.Examples.Knot.IExtRep
 import DirectedHoTT.Examples.Knot.ILookupD
+import DirectedHoTT.Examples.Knot.ILookupDAgree
 import DirectedHoTT.Examples.Knot.IMethTy
 import DirectedHoTT.Examples.Knot.IMethsTy
 import DirectedHoTT.Examples.Knot.IMethsTyMot

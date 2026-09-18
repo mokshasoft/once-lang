@@ -265,7 +265,12 @@
 --                `extS-Represents`, plus one congruence for
 --                `subTyAtK` in its scrutinee.  No arithmetic lemma —
 --                `num (suc n) = nsuc (num n)` is definitional.
---     ilookupDK  ⬜ OWED — agreement with `ilookupD`.
+--     ilookupDK  ✅ DISCHARGED — `Knot/ILookupDAgree.ilookupDK-agree`.
+--                ★ GENERATED FROM `lookupDK`'s PROOF BY SUBSTITUTION
+--                and green on the FIRST port: `Desc`→`IDesc`, 42→47,
+--                plus `enICon`'s second context argument (`ICon (ε ∙)`,
+--                not `ICon Θ`).  ⇒ do the non-indexed twin first and
+--                port; the two are one proof.
 --     imethsTyFromK ⬜ OWED — agreement with `imethsTyFrom`.
 --     imethsTyK  ⬜ OWED — `imethsTyFromK` at `j = 0`; a corollary.
 --     ipayTyK    ⬜ OWED — agreement with `ipayTy`.
@@ -279,7 +284,20 @@
 --                so there is no case analysis — one β and one
 --                `wk-single` — and the domain `ε ∙` has a single
 --                variable, so `vs ()` is discharged by the CONTEXT.
---     lookupDK   ⬜ OWED — agreement with `lookupD`.
+--     lookupDK   ✅ DISCHARGED — `Knot/LookupDAgree.lookupDK-agree`:
+--                `lookupDK n ⌈D⌉ ⌈k⌉ ⟶* ⌈ lookupD D k ⌉`.
+--                ★ TWO ROWS, not 53 — it eliminates an ENCODED `Desc`.
+--                And row 41 (`dnil`) is covered by the JUNK method,
+--                whose body IS `DCon-iK`: `Knot/LookupD`'s header calls
+--                that a pleasant surprise and it makes the row free.
+--                ★ THE THIRD CLAUSE IS ON THE ℕ — `lookupCons` is a
+--                `natrec`, so `C ◃ D` splits zero/suc and the suc branch
+--                IS the IH at the predecessor.
+--                ⚠ CAST BEFORE `natrec-suc`, NOT AFTER: reducing first
+--                stacks the βs' four substitutions AND natrec-suc's two
+--                on one slot.  The suc branch is TWO binders deeper, so
+--                its IH slot is `pw^ 2` where the zero branch's payload
+--                is `sub-w²-single`.
 --     methsTyFromK ⬜ OWED — agreement with `methsTyFrom`.  ⚠ It also owes
 --                the closed-sort identity for `methTyK`'s `wkAtK sDCon`:
 --                the object level weakens `C` to reach `ihTy`'s ambient
