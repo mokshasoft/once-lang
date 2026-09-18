@@ -137,13 +137,14 @@
 --                (`Knot/SubNat`), i.e. `ExtNSub` for `extNK`.
 --     extSK-vs   ✅ not a program — the other clause (`Knot/SubExt`).
 --     extSK-vz   ✅ not a program — the SUBSTITUTION twin (`Knot/SubSpec`).
---     fieldsK    ⬜ OWED — agreement with `fields` (`Spec/Syntax:1000`).
---                ★ AND IT IS A COROLLARY, NOT NEW CONTENT:
---                `fieldsK n D ms C m p = Tm-appK (Tm-appK m p)
---                (ihsK n C D ms p)`, so its adequacy is TWO `Tm-appK`
---                congruences over `ihsK`'s.
---                ⇒ BLOCKED ON `ihsK` — discharge that and this follows;
---                there is no separate induction to do.
+--     fieldsK    ✅ DISCHARGED — `Knot/IhsAgree.fieldsK-agree`, and this
+--                entry called it exactly: *a COROLLARY, NOT NEW
+--                CONTENT … BLOCKED ON `ihsK` — discharge that and this
+--                follows; there is no separate induction to do.*
+--                ★ ONE congruence, not the two predicted:
+--                `fields D ms C m p = app (app m p) (ihs …)`, and the
+--                inner `Tm-appK m p` is ALREADY the answer, so only the
+--                second argument descends.
 --     flatK      ⬜ OWED — agreement with `flat?`.
 --     iatConK    ⬜ OWED — agreement with `iatCon`; a corollary of
 --                `iconSK`'s and `subTyAtK`'s (the latter ✅ 2026-09-06).
@@ -177,26 +178,32 @@
 --                second program.
 --     ihTyK      ⬜ OWED — agreement with `ihTy`.
 --     ihTyRho    ✅ not owed — a method row of `ihTyK`.
---     ihsK       ⬜ OWED — agreement with `ihs` (`Spec/Syntax:981`).
---                ★ NEW PROGRAM, not a newly-found gap: `_⟶_`'s two
---                unemitted rules (`ι-elim`, `ι-ielim`) need an
---                object-level `sel`/`fields`/`ihs`, and this is the
---                `ihs` third.  `Knot/Sel.selK` and `Knot/Ihs.fieldsK`
---                are the other two.
---                ⚠ THIS ENTRY ONCE READ that those two are "NOT
---                ledger-tracked".  FALSE since the emitted-wrapper scan
---                started seeing them under their truncated names — both
---                have entries a few lines above.  What is true is the
---                REASON it gave: `selK` is a `natrec` (no `ielim`), so
---                it owes no 53-row induction, and `fieldsK` just applies
---                this one.
---                ★ `selK` SHIPS WITH ITS ADEQUACY ALREADY
---                (`Knot/Sel.selK-agree`); this one does not, which is
---                why it is OWED rather than discharged.
---                ⚠ SPLIT ACROSS FIVE MODULES FOR SIZE, and the split is
---                measured: `dι`+`dρ` together fit at 4.9 GB, adding
---                `dκ` blew the 5.5 GB cap.  `Knot/IhTyRho`/`IhTyKap`
---                are split for the same reason.
+--     ihsK       ✅ DISCHARGED — `Knot/IhsAgree.ihsK-agree`:
+--                `ihsK ⌈|Γ|⌉ ⌈C⌉ ⌈D⌉ ⌈ms⌉ ⌈p⌉ ⟶* ⌈ ihs D ms C p ⌉`.
+--                ★★★ IT IS A **THREE-CASE** INDUCTION, NOT A 53-ROW
+--                ONE.  `ihsK` eliminates an ENCODED `DCon`, and
+--                `Knot/Map` gives that sort three constructors — so
+--                rows 0-42 and 46-52 of `ihsMethsK` are UNREACHABLE by
+--                any `enDCon`.  ⚠ This entry used to cite the FIVE-WAY
+--                module split as if it priced the proof; it prices
+--                BUILDING the program and says nothing about proving
+--                it.  `IHS-ATTEMPTS.md` §1.
+--                ★ The `dρ` row owes no other entry either:
+--                `enTm (elim D ms (fst p))` is `Tm-elimK ⌈D⌉ ⌈ms⌉
+--                (Tm-fstK ⌈p⌉)`, exactly what `ihsRho` builds — an
+--                encoding congruence, not an object-level `elim`.
+--                ⚠ THE ROW STATEMENT QUANTIFIES THE INDEX and only the
+--                top-level theorem ties it: `iihs` hands each child
+--                `pair sDCon (snd i)`, so a row pinned at `i` could
+--                never apply.  That distinction is `OCC-ATTEMPTS` 28,
+--                whose absence cost that investigation six refuted
+--                mechanisms.
+--                ★ COST: head-red + seven βs per row, one weakening
+--                tower (`wk-single`/`sub-w²-single`/`towerJ`/`towerJ⁵`,
+--                one rung per binder the slot passes under), and the
+--                tower's landing value PINNED — left as `_` it is
+--                `meta-standing-for-a-computation` and the module
+--                reports unsolved metas with no type error.
 --     iihAppK    ✅ not a program — the descent through `iihTyMotK`'s four
 --                Π binders, i.e. a step of `iihTyK`'s own definition.
 --     iihTyK     ⬜ OWED — agreement with `iihTy`.

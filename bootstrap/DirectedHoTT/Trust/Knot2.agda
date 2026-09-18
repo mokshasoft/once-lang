@@ -35,6 +35,7 @@ import DirectedHoTT.Examples.Knot.IhTyKap
 import DirectedHoTT.Examples.Knot.IhTyMot
 import DirectedHoTT.Examples.Knot.IhTyRho
 import DirectedHoTT.Examples.Knot.Ihs
+import DirectedHoTT.Examples.Knot.IhsAgree
 import DirectedHoTT.Examples.Knot.IhsKap
 import DirectedHoTT.Examples.Knot.IhsMeths
 import DirectedHoTT.Examples.Knot.IhsMot
@@ -45,4 +46,3 @@ import DirectedHoTT.Examples.Knot.IihsMeths
 import DirectedHoTT.Examples.Knot.IihsMot
 import DirectedHoTT.Examples.Knot.IihsRho
 import DirectedHoTT.Examples.Knot.InDRows
-import DirectedHoTT.Examples.Knot.InDWf
