@@ -108,7 +108,6 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   ir-obs-correct (Hylo wfF wfG a nt) = obs-correct-Hylo wfF wfG a nt
   ir-obs-correct (Fuse wfF wfG a nt) = obs-correct-Fuse wfF wfG a nt
   -- misc
-  ir-obs-correct (free-heap r)       = obs-correct-free-heap r
   ir-obs-correct (const fit v)       = obs-correct-const fit v
   ir-obs-correct (SigOp si)          = obs-correct-sigop si
 

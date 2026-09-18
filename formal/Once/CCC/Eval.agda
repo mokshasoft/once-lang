@@ -90,7 +90,6 @@ eval fmt terminal x = tt
 eval fmt initial ()
 eval fmt (curry f) x = λ y → eval fmt f (sem-pair x y)
 eval fmt apply (closure , arg) = closure arg
-eval fmt (free-heap _) x = x
 -- Constants (global elements 1 → A for primitive A): ignore the
 -- Unit input and return the machine-level value (this evaluator is
 -- the machine-level one — Once.CCC.Eval uses Semantics.Machine).

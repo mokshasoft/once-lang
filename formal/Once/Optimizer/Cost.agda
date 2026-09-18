@@ -63,7 +63,6 @@ cost (Ana _ coalg) = cost coalg               -- cost of coalgebra
 cost (Hylo _ _ alg t) = cost alg ℕ+ cost-nt t  -- fusion: algebra + natural transform
 cost (Fuse _ _ alg t) = cost alg ℕ+ cost-nt t  -- fusion: algebra + natural transform
 -- Memory and primitives
-cost (free-heap _) = 0                        -- deallocation doesn't allocate
 cost (SigOp _)      = 0                        -- primitives are opaque
 cost (const _ _)  = 0                        -- literal global element
 

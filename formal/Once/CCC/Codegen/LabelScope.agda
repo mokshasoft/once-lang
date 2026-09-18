@@ -54,7 +54,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
-  free-heap; SigOp; const)
+  SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
@@ -619,7 +619,6 @@ labels-in (Ana _ c) n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 labels-in (Hylo _ _ _ _) n l = []
 labels-in (Fuse _ _ _ _) n l = []
-labels-in (free-heap _)  n l = li-none refl ∷ []
 labels-in (SigOp _)      n l = li-none refl ∷ []
 labels-in (const fits-int _)   n l = li-none refl ∷ []
 labels-in (const fits-float _) n l = li-none refl ∷ []
@@ -1751,7 +1750,6 @@ seg-agree (Ana w c) n l =
                     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree (Hylo w x y z) n l = segagree-nolab _ []
 seg-agree (Fuse w x y z) n l = segagree-nolab _ []
-seg-agree (free-heap w) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (SigOp w) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-int v) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])
@@ -2100,7 +2098,6 @@ scope-ok (Ana wf c) n l =
     ana-bl-agree = segagree-++ⁿ blk BB nc1 nc2 blkA (ScopeOK.bl-agree S)
 scope-ok (Hylo _ _ _ _)      n l = scope-nil _ _ _
 scope-ok (Fuse _ _ _ _)      n l = scope-nil _ _ _
-scope-ok (free-heap _)       n l = scope-nil _ _ _
 scope-ok (SigOp _)           n l = scope-nil _ _ _
 scope-ok (const fits-int _)  n l = scope-nil _ _ _
 scope-ok (const fits-float _) n l = scope-nil _ _ _

@@ -190,7 +190,6 @@ fusion-once (SigOp name) = SigOp name
 fusion-once (const p v) = const p v
 
 -- free-heap: opaque, pass through
-fusion-once (free-heap h) = free-heap h
 
 fusion-nt ntId         = ntId
 fusion-nt (ntK ir)     = ntK (fusion-once ir)

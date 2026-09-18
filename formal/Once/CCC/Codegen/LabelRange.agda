@@ -45,7 +45,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
-  free-heap; SigOp; const)
+  SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.CCC.Label using (ℓ)
@@ -171,7 +171,6 @@ label-mono (Ana wf c)     n l =
                                    (ℓ o l) wf))
 label-mono (Hylo _ _ _ _) n l = ≤-refl
 label-mono (Fuse _ _ _ _) n l = ≤-refl
-label-mono (free-heap _)  n l = ≤-refl
 label-mono (SigOp _)      n l = ≤-refl
 label-mono (const fits-int _)   n l = ≤-refl
 label-mono (const fits-float _) n l = ≤-refl

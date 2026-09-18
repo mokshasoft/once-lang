@@ -45,7 +45,7 @@ open import Once.IRTy using (IRTy; IRFunctor; Unit; Void; Int; Float; Str; Buffe
 open import Once.IR using (⟦_⟧TI; IR; AllocMode; Heap; Stack;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply; In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
-  free-heap; SigOp; const)
+  SigOp; const)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Once.CCC.Machine.SMCore using
@@ -494,7 +494,6 @@ HeapModed (in-ν _) = ⊤
 HeapModed (Ana _ coalg) = HeapModed coalg
 HeapModed (Hylo _ _ alg _) = HeapModed alg
 HeapModed (Fuse _ _ alg _) = HeapModed alg
-HeapModed (free-heap _) = ⊤
 HeapModed (SigOp _) = ⊤
 HeapModed (const _ _) = ⊤
 

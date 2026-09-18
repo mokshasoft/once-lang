@@ -111,7 +111,6 @@ comp-reducible? (fold _) id = yes red-id-right
 comp-reducible? unfold id = yes red-id-right
 comp-reducible? arr id = yes red-id-right
 comp-reducible? (SigOp _) id = yes red-id-right
-comp-reducible? (free-heap _) id = yes red-id-right
 -- f = initial: reducible (red-initial)
 comp-reducible? fst initial = yes red-initial
 comp-reducible? snd initial = yes red-initial
@@ -126,7 +125,6 @@ comp-reducible? (fold _) initial = yes red-initial
 comp-reducible? unfold initial = yes red-initial
 comp-reducible? arr initial = yes red-initial
 comp-reducible? (SigOp _) initial = yes red-initial
-comp-reducible? (free-heap _) initial = yes red-initial
 -- g = fst, f = ⟨ _ , _ ⟩ _: reducible (red-fst-pair)
 comp-reducible? fst (⟨ _ , _ ⟩) = yes red-fst-pair
 -- g = snd, f = ⟨ _ , _ ⟩ _: reducible (red-snd-pair)
@@ -321,22 +319,7 @@ comp-reducible? (SigOp _) (fold _) = no λ ()
 comp-reducible? (SigOp _) unfold = no λ ()
 comp-reducible? (SigOp _) arr = no λ ()
 comp-reducible? (SigOp _) (SigOp _) = no λ ()
-comp-reducible? (SigOp _) (free-heap _) = no λ ()
-comp-reducible? (⟨ _ , _ ⟩) (free-heap _) = no λ ()
-comp-reducible? (inl _) (free-heap _) = no λ ()
-comp-reducible? (inr _) (free-heap _) = no λ ()
-comp-reducible? (curry _) (free-heap _) = no λ ()
-comp-reducible? (fold _) (free-heap _) = no λ ()
 -- g = free-heap: IR Unit Unit, so f : IR A Unit
-comp-reducible? (free-heap _) (_ ∘ _) = no λ ()
-comp-reducible? (free-heap _) fst = no λ ()
-comp-reducible? (free-heap _) snd = no λ ()
-comp-reducible? (free-heap _) (case _ _) = no λ ()
-comp-reducible? (free-heap _) terminal = no λ ()
-comp-reducible? (free-heap _) apply = no λ ()
-comp-reducible? (free-heap _) unfold = no λ ()
-comp-reducible? (free-heap _) (SigOp _) = no λ ()
-comp-reducible? (free-heap _) (free-heap _) = no λ ()
 
 ------------------------------------------------------------------------
 -- Decidability of pair reducibility
@@ -415,7 +398,6 @@ pair-reducible? apply _ = no λ ()
 -- f = fold _
 pair-reducible? (fold _) _ = no λ ()
 -- f = free-heap _
-pair-reducible? (free-heap _) _ = no λ ()
 -- f = unfold
 pair-reducible? unfold _ = no λ ()
 -- f = arr
@@ -441,7 +423,6 @@ pair-reducible? ((curry _) ∘ _) _ = no λ ()
 -- f = (fold _) ∘ _
 pair-reducible? ((fold _) ∘ _) _ = no λ ()
 -- f = (free-heap _) ∘ _
-pair-reducible? ((free-heap _) ∘ _) _ = no λ ()
 -- f = apply ∘ _
 pair-reducible? (apply ∘ _) _ = no λ ()
 -- f = (fold Heap) ∘ _

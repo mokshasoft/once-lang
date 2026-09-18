@@ -289,10 +289,6 @@ data IR where
        → NatTr G F                                      -- natural transform: G ⇒ F
        → IR (μ-type G) B
 
-  -- Explicit heap deallocation
-  -- Added by escape analysis when heap values can be freed.
-  free-heap : HeapRef → IR Unit Unit
-
   -- Constant / global element of a primitive type.
   --
   -- Categorically: a morphism 1 → A picking out the value `v ∈ A`.

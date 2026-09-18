@@ -49,7 +49,6 @@ ir-size (Hylo _ _ alg t) = 2 +ℕ ir-size alg +ℕ ir-size-nt t
 ir-size (Fuse _ _ alg t) = 2 +ℕ ir-size alg +ℕ ir-size-nt t
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
-ir-size (free-heap _) = 1
 ir-size (SigOp _) = 1
 ir-size (const _ _) = 1
 

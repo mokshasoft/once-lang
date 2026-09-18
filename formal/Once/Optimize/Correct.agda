@@ -225,7 +225,6 @@ mutual
   ... | no _ = refl
   -- const is opaque (no optimization), so structural identity holds.
   optimize-once-structural-correct (const _ _) x = refl
-  optimize-once-structural-correct (free-heap h) x = refl
   optimize-once-structural-correct (In wf) x = refl
   optimize-once-structural-correct (out-μ wf) x = refl
   -- For Cata/Para/Ana/Hylo/Fuse, optimize-once descends into algebras/coalgebras.

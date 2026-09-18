@@ -55,7 +55,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
-  free-heap; SigOp; const)
+  SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
@@ -511,7 +511,6 @@ frontier-mono (in-ν _)     n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (Ana _ c)      n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 frontier-mono (Hylo _ _ _ _) n l = ≤-refl
 frontier-mono (Fuse _ _ _ _) n l = ≤-refl
-frontier-mono (free-heap _)  n l = ≤-refl
 frontier-mono (SigOp _)      n l = ≤-refl
 frontier-mono (const fits-int _)   n l = ≤-refl
 frontier-mono (const fits-float _) n l = ≤-refl
@@ -1209,7 +1208,6 @@ slots-below (Ana _ c) n l =
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
 slots-below (Hylo _ _ _ _) n l = segok-idle _ refl []
 slots-below (Fuse _ _ _ _) n l = segok-idle _ refl []
-slots-below (free-heap _)  n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (SigOp _)      n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (const fits-int _)   n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (const fits-float _) n l = segok-idle _ refl (sb-none refl ∷ [])
@@ -1350,7 +1348,6 @@ blocks-below (Ana wf c)          n l =
     ∷ blocks-below c 0 (suc l)
 blocks-below (Hylo _ _ _ _)      n l = []
 blocks-below (Fuse _ _ _ _)      n l = []
-blocks-below (free-heap _)       n l = []
 blocks-below (SigOp _)           n l = []
 blocks-below (const fits-int _)  n l = []
 blocks-below (const fits-float _) n l = []

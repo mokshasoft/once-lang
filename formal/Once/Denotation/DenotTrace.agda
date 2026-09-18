@@ -40,7 +40,7 @@ open import Once.Type
 open import Once.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
          initial; curry; apply; SigOp; Cata; In; Out; Ana;
-         out-μ; free-heap; const; Para; Hylo; Fuse)
+         out-μ; const; Para; Hylo; Fuse)
 open import Once.IRTy using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; _+_)
 open import Once.CCC.Eval as Val using (eval; appNatTr-F)
 -- Plan 0.73 (D113): the TARGET'S FLOAT FORMAT. `⟦_⟧ᴰ` is a MACHINE-level
@@ -208,7 +208,6 @@ rec-trace-D fmt (Fuse {F} {G} wfF wfG {B} alg t) x n =
     (λ fb → let r = evalᴰ fmt alg (inject (subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F B)) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ B ⌉ fb)))
             in (projTrace r n , forget (valueT r n)))
     x)
-rec-trace-D fmt (free-heap r)           x n = []
 rec-trace-D fmt (const f v)         x n = []
 -- Structural / pure constructors: never reached here (they have explicit
 -- `evalᴰ` clauses), and emit no recursion-scheme events ⇒ `[]`.

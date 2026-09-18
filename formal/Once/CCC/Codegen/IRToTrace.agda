@@ -87,7 +87,7 @@ open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
   In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
-  free-heap; SigOp; const)
+  SigOp; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
@@ -1167,7 +1167,6 @@ ir-to-trace' n l (Fuse _ _ _ _) = n , l , [] , []
 -- run-free-heap emits `mov-to-output ∷ []` to copy Input1 → Output as
 -- the identity behavior; we mirror that exactly so trace correctness
 -- discharges via the same transport-trivial pattern as id/arr.
-ir-to-trace' n l (free-heap _)  = n , l , (mov-to-output ∷ []) , []
 
 ------------------------------------------------------------------------
 -- Public wrapper: starts at frontier 0, returns just the trace.

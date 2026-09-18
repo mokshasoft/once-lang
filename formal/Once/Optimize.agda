@@ -295,7 +295,7 @@ data IRHead : Set where
   h-id h-∘ h-⟨,⟩ h-fst h-snd h-inl h-inr h-case
     h-terminal h-initial h-curry h-apply h-arr
     h-In h-out-μ h-Cata h-Para h-Out h-in-ν h-Ana h-Hylo h-Fuse
-    h-free-heap h-SigOp h-const : IRHead
+    h-SigOp h-const : IRHead
 
 -- Decidable equality for IRHead via tag-to-ℕ conversion. Plan 0.5 Phase B
 -- / F1. Uses stdlib's `Data.Nat._≟_` for the actual comparison;
@@ -325,7 +325,6 @@ headTag h-in-ν      = 19
 headTag h-Ana       = 20
 headTag h-Hylo      = 21
 headTag h-Fuse      = 22
-headTag h-free-heap = 23
 headTag h-SigOp      = 24
 headTag h-const      = 25
 
@@ -355,7 +354,6 @@ headTag-inj h-in-ν      h-in-ν      _ = refl
 headTag-inj h-Ana       h-Ana       _ = refl
 headTag-inj h-Hylo      h-Hylo      _ = refl
 headTag-inj h-Fuse      h-Fuse      _ = refl
-headTag-inj h-free-heap h-free-heap _ = refl
 headTag-inj h-SigOp      h-SigOp      _ = refl
 headTag-inj h-const      h-const      _ = refl
 
@@ -386,7 +384,6 @@ ir-head (in-ν _) = h-in-ν
 ir-head (Ana _ _) = h-Ana
 ir-head (Hylo _ _ _ _) = h-Hylo
 ir-head (Fuse _ _ _ _) = h-Fuse
-ir-head (free-heap _) = h-free-heap
 ir-head (SigOp _) = h-SigOp
 ir-head (const _ _) = h-const
 
@@ -735,9 +732,6 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
             ≟IRH-Fuse-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ tr₁ tr₂
               (≟IRH alg₁ alg₂ refl refl) (tr₁ ≟NatTr tr₂)
 
-≟IRH-diag (free-heap h₁) (free-heap h₂) _ refl refl with h₁ ≟H h₂
-... | yes refl = yes refl
-... | no hne   = no (λ { refl → hne refl })
 
 ≟IRH-diag (SigOp {A₁} {B₁} si₁) (SigOp {A₂} {B₂} si₂) _ eqA eqB with A₁ ≟Type A₂ | B₁ ≟Type B₂
 ... | no ne  | _     = no (λ heq → ne (just-injective (trans (cong sigop-dom heq) (sigop-dom-subst (sym eqA) (sym eqB) (SigOp si₂)))))
@@ -953,7 +947,6 @@ pairView-gen (in-ν wf)     eq = is-other-pair (subst (IR _) eq (in-ν wf))
 pairView-gen (Ana wf coalg)  eq = is-other-pair (subst (IR _) eq (Ana wf coalg))
 pairView-gen (Hylo wfF wfG alg coalg) eq = is-other-pair (subst (IR _) eq (Hylo wfF wfG alg coalg))
 pairView-gen (Fuse wfF wfG alg tr)    eq = is-other-pair (subst (IR _) eq (Fuse wfF wfG alg tr))
-pairView-gen (free-heap h)   eq = is-other-pair (subst (IR _) eq (free-heap h))
 pairView-gen (SigOp si)      eq = is-other-pair (subst (IR _) eq (SigOp si))
 pairView-gen (const p v) eq = is-other-pair (subst (IR _) eq (const p v))
 
@@ -984,7 +977,6 @@ coprodView-gen (in-ν wf)     eq = is-other-coprod (subst (IR _) eq (in-ν wf))
 coprodView-gen (Ana wf coalg)  eq = is-other-coprod (subst (IR _) eq (Ana wf coalg))
 coprodView-gen (Hylo wfF wfG alg coalg) eq = is-other-coprod (subst (IR _) eq (Hylo wfF wfG alg coalg))
 coprodView-gen (Fuse wfF wfG alg tr)    eq = is-other-coprod (subst (IR _) eq (Fuse wfF wfG alg tr))
-coprodView-gen (free-heap h)   eq = is-other-coprod (subst (IR _) eq (free-heap h))
 coprodView-gen (SigOp si)      eq = is-other-coprod (subst (IR _) eq (SigOp si))
 coprodView-gen (const p v) eq = is-other-coprod (subst (IR _) eq (const p v))
 
@@ -1020,7 +1012,6 @@ composeFirstView (in-ν wf)     = cf-other (in-ν wf)
 composeFirstView (Ana wf coalg)  = cf-other (Ana wf coalg)
 composeFirstView (Hylo wfF wfG alg coalg) = cf-other (Hylo wfF wfG alg coalg)
 composeFirstView (Fuse wfF wfG alg tr)    = cf-other (Fuse wfF wfG alg tr)
-composeFirstView (free-heap h)   = cf-other (free-heap h)
 composeFirstView (SigOp si)      = cf-other (SigOp si)
 composeFirstView (const p v) = cf-other (const p v)
 
@@ -1046,7 +1037,6 @@ composeSecondView (in-ν wf)    = cs-other (in-ν wf)
 composeSecondView (Ana wf coalg) = cs-other (Ana wf coalg)
 composeSecondView (Hylo wfF wfG alg coalg) = cs-other (Hylo wfF wfG alg coalg)
 composeSecondView (Fuse wfF wfG alg tr)    = cs-other (Fuse wfF wfG alg tr)
-composeSecondView (free-heap h)  = cs-other (free-heap h)
 composeSecondView (SigOp si)     = cs-other (SigOp si)
 composeSecondView (const p v) = cs-other (const p v)
 
@@ -1072,7 +1062,6 @@ fstSndView (in-ν wf)     = fsv-other (in-ν wf)
 fstSndView (Ana wf coalg)  = fsv-other (Ana wf coalg)
 fstSndView (Hylo wfF wfG alg coalg) = fsv-other (Hylo wfF wfG alg coalg)
 fstSndView (Fuse wfF wfG alg tr)    = fsv-other (Fuse wfF wfG alg tr)
-fstSndView (free-heap h)   = fsv-other (free-heap h)
 fstSndView (SigOp si)      = fsv-other (SigOp si)
 fstSndView (const p v) = fsv-other (const p v)
 
@@ -1098,7 +1087,6 @@ inlInrView (in-ν wf)     = iiv-other (in-ν wf)
 inlInrView (Ana wf coalg)  = iiv-other (Ana wf coalg)
 inlInrView (Hylo wfF wfG alg coalg) = iiv-other (Hylo wfF wfG alg coalg)
 inlInrView (Fuse wfF wfG alg tr)    = iiv-other (Fuse wfF wfG alg tr)
-inlInrView (free-heap h)   = iiv-other (free-heap h)
 inlInrView (SigOp si)      = iiv-other (SigOp si)
 inlInrView (const p v) = iiv-other (const p v)
 
@@ -1137,7 +1125,6 @@ has-effect? (curry f)       = has-effect? f
 has-effect? apply           = true
 has-effect? (SigOp _)       = true
 has-effect? (const _ _)   = false
-has-effect? (free-heap _)   = true
 has-effect? (In _)        = false
 has-effect? (out-μ _)       = false
 has-effect? (Cata _ alg)    = has-effect? alg
@@ -1288,7 +1275,6 @@ mutual
   -- | const is opaque (constant value of a primitive type, not optimized)
   optimize-once-structural (const p v) = const p v
   -- | free-heap is opaque (no optimization)
-  optimize-once-structural (free-heap h) = free-heap h
   -- | OCP-0003 recursion schemes: optimize algebras/coalgebras
   --
   -- Identity rules (proven in Category/Laws.agda):
@@ -1318,7 +1304,7 @@ mutual
   optimize-once {A} {B} ir with B ≟IRTy II.Unit
   ... | yes refl with has-effect? ir
   ...   | false = terminal                     -- pure morphism to Unit → terminal
-  ...   | true  = optimize-once-structural ir  -- EFFECTFUL (SigOp/free-heap) → keep; collapsing would drop the observable effect
+  ...   | true  = optimize-once-structural ir  -- EFFECTFUL (SigOp) → keep; collapsing would drop the observable effect
   optimize-once {A} {B} ir | no _ with A ≟IRTy II.Void
   ...   | yes refl = initial                   -- Source is Void → initial (vacuous: never invoked)
   ...   | no _ = optimize-once-structural ir   -- Otherwise → structural rules

@@ -54,7 +54,7 @@ open import Once.IR using (IR; IRTy; Unit; AllocMode; Stack; Heap; Cata; SigOp; 
   -- Plan 0.68 step 0: the enumeration needs EVERY constructor in scope, not
   -- just the ones with a clause of their own before it.
   id; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial; curry; apply;
-  In; Para; Out; in-ν; Ana; Hylo; Fuse; free-heap; const;
+  In; Para; Out; in-ν; Ana; Hylo; Fuse; const;
   NatTr; ν-type; _*_) public
 open import Once.IRTy using (⟦_,_⟧-baseI) public
 open import Once.Memory.HeapAddress using (HeapRef; mkHeapRef; ref-id; HeapLocation; heap-loc; heap-ref; sucHL) public
