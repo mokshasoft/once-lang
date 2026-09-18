@@ -339,7 +339,28 @@
 --                `pred-num`.  The level convention it said had to be
 --                fixed first is `lvl {Γ ∙} vz = len Γ` against an
 --                index depth of `suc (len Γ)`.
---     payTyK     ⬜ OWED — agreement with `payTy`.
+--     payTyK     ✅ DISCHARGED — `Knot/PayTyAgree.payTyK-agree`:
+--                `payTyK ⌈|Γ|⌉ ⌈C⌉ ⌈D⌉ ⟶* ⌈ payTy D C ⌉`.
+--                ★ THREE ROWS — it eliminates an ENCODED `DCon`, and row
+--                43 (`dι`) is the JUNK method whose body IS `Ty-UnitK`.
+--                ★★ THE SECOND COMPONENT SITS UNDER `Σ'`'s BINDER and
+--                the object side weakens it EXPLICITLY (`wkAtK`) where
+--                the meta does not — closed by the KERNEL's own
+--                `payTy-ren : renTy ρ (payTy D C) ≡ payTy D C`, not by a
+--                new lemma.
+--                ⚠ `wkTyK` AND `εwkK` ARE CALLS TO `lam`-BUILDING
+--                PROGRAMS (`vsRenK n = lam …`), so the βs' four
+--                substitutions do not describe their slots: lift each
+--                out by its own naturality first (`wkTyK-sub`, the
+--                `sTy` twin of `Knot/SubSpec.wkTmK-sub`; `εwkKᵀ-sub`).
+--                ⚠⚠ AND `wkTyK`'s DEPTH OCCURS FOUR TIMES — the index,
+--                `nsuc n`, and TWICE inside `vsRenK n`'s `Var-vsK`.
+--                `⟶*` reduces one redex at a time, so `⟶*-wkTyKᵈ` is
+--                four descents where `subTmAtK`'s was one.  `conSSK`'s
+--                trap.
+--                ★ `εwkK-agree` IS ONE LINE, and the ledger said why:
+--                `εwkTy = subTy εsub` and `εsub`'s `Represents` is
+--                VACUOUS (`λ ()`), because `Var ε` is empty.
 --     pwBodyK    ⬜ OWED — agreement with `pw?`'s body case.
 --     pwDefault  ⬜ OWED — the default method of `Knot/PwBody`'s tuple.
 --                ⚠ ITS OLD NOTE SAID "blocked on the same five cross-sort
@@ -423,6 +444,9 @@
 --     wkTyK      ✅ DISCHARGED — `Knot/TyAgree.wkTyK-agree`:
 --                `ren-agree-ty` at the renaming `vs`, exactly as `wkTmK`
 --                is `ren-agree` at it.  The cost was opening the sort.
+--     wkTyK-sub  ✅ not a program — `wkTyK`'s substitution
+--                naturality (`Knot/SubSpec.wkTmK-sub` at `sTy`), needed
+--                because `vsRenK n` is a `lam`.
 --     wkTyUnder2K ✅ DISCHARGED — `Knot/WkTyAgree.wkTyUnder2-agree`,
 --                at `renTy (extR (extR vs))`.  Same one line with
 --                `extR-Represents` applied twice.  ⚠ It is ONE renaming
@@ -434,6 +458,8 @@
 --     εwkK       ✅ not owed — its argument is CLOSED, and every weakening
 --                agrees on a closed term.  This is exactly why `Knot/PayTy`
 --                may use `wkK` and `Knot/IhTyRho` may not.
+--     εwkKᵀ-sub  ✅ not a program — `εwkK sTy`'s substitution
+--                naturality, one `subMethsK-sub`.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
