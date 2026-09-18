@@ -58,6 +58,34 @@ mutual
     ν-type : IRFunctor → IRTy          -- Final coalgebra
     Int    : IRTy                      -- Machine integers
     Float  : IRTy                      -- IEEE 754 double-precision floats
+    -- ── Str / Buffer: DECLARED, NOT YET REPRESENTED ──────────────────
+    -- No `StoredValue` can hold one. `SV-Lit`'s witness is `FitsInReg`,
+    -- whose constructors are `fits-int` and `fits-float` and nothing else
+    -- (Type.agda), while the value domain of both of these is `String`
+    -- (Semantics/Value.agda). `readTyped` returns `nothing` for them
+    -- (CCC/Machine/SMCore.agda).
+    --
+    -- THIS IS LOCAL. Giving them a representation is a REPRESENTATION
+    -- decision — what a machine cell may contain — and it does NOT affect
+    -- the global structure of the compiler proofs. The relation that carries
+    -- correctness (`RelV`/`RelT`, plan 0.93) recurses on the TYPE, so each
+    -- constructor is one independent clause; filling these two in adds
+    -- clauses and changes nothing else. `curry`/`apply`/`cata`/`ana` and the
+    -- whole CCC+SR spine are unaffected.
+    --
+    -- UNTIL THEN, proof gaps reachable ONLY through these two may be
+    -- postulated (project decision, 2026-09-18, plans/0.93 §11). Today no
+    -- PROVED path reaches them: `strLit` elaborates to a `SigOp`
+    -- (Surface/Elaborate.agda) and `fits-in-reg? Str` is `nothing`, so it
+    -- routes to the named residual `obs-correct-sigop-rest`
+    -- (CCC/Codegen/IRObsCorrect/SigOp.agda).
+    --
+    -- CAUTION, and it is not obvious: `RelV Str = RelV Buffer = ⊥` is NOT
+    -- conservative. `RelV` occurs NEGATIVELY in its arrow clause, so a
+    -- discharge at `Str ⇛ B` would be VACUOUSLY TRUE rather than hard, and
+    -- the same leak reaches `μ` through `K Str`. If a future proof succeeds
+    -- at one of these types, IT MEANS NOTHING until they are represented.
+    -- ──────────────────────────────────────────────────────────────────
     Str    : IRTy                      -- UTF-8 strings
     Buffer : IRTy                      -- Raw byte buffers
 
