@@ -39,7 +39,7 @@ open import Once.Type
          Int; Float; Str; Buffer; Functor; K; Id; _⊕_; _⊗_; ⟦_⟧T)
 open import Once.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
-         initial; curry; apply; SigOp; Cata; In; Out; Ana;
+         initial; curry; apply; SigOp; Cata; In; Out; Ana; in-ν;
          out-μ; const; Para; Hylo; Fuse)
 open import Once.IRTy using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; _+_)
 open import Once.CCC.Eval as Val using (eval; appNatTr-F)
@@ -54,7 +54,8 @@ open import Once.SigOp.Info
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-para; sem-In; sem-fuseNat-events;
-         sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F; coh; coerce-ν-out)
+         sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F; coh; coerce-ν-out;
+         coerce-ν-in)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
@@ -180,6 +181,24 @@ evalᴰ fmt (Out {F} wf) v =
                      (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ ν-type F ⌉
                        (coerce-ν-out (wf-⌈⌉ wf) _ layer)))
         (forceᵈ v)
+-- plan 0.93: `in-ν` gets a NATIVE clause. It used to fall to the catch-all
+-- below, and the catch-all FORGETS its input — `inject (eval fmt ir (forget a))`.
+-- At `ν-type F` that round trip is lossy: `forgetν` reads each child at budget
+-- ZERO and drops its events (ValueDomain.agda:63-64), so a child built by an
+-- EMITTING `Ana` was specified as silent. The machine does no such thing — it
+-- leaves the child's suspension pointer untouched — so the SPEC was wrong, not
+-- the compiler.
+--
+-- The fix is the introduction form the value domain was missing, `in-νᵈ`: force
+-- yields the layer AS GIVEN, children included, emitting nothing. Symmetric with
+-- `Ana` (D179): both BUILD a suspension and emit NOTHING; the events come at
+-- `Out`, when a layer is forced. The coercion chain is `anaFᵈ`'s
+-- (ValueDomain.agda:198) with the recursion removed — `in-ν` has a layer
+-- already, so there is no coalgebra to run.
+evalᴰ fmt (in-ν {F} wf) a =
+  returnT (in-νᵈ (coerce-ν-in ⌈ F ⌉F ⟦ ⌈ ν-type F ⌉ ⟧ᴰ
+                    (coerce-functor-D ⌈ F ⌉F ⌈ ν-type F ⌉
+                      (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F (ν-type F)) a))))
 evalᴰ fmt ir            a        = λ n → (rec-trace-D fmt ir (forget a) n , inject (eval fmt ir (forget a)))
 
 -- `Cata` and `Out` have their own `evalᴰ` clauses, so they never reach this

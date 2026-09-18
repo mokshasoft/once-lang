@@ -70,6 +70,29 @@ mutual
   mapForgetν F (H S⊕ J) (inj₂ y) = inj₂ (mapForgetν F J y)
   mapForgetν F (H S⊗ J) (x , y)  = (mapForgetν F H x , mapForgetν F J y)
 
+-- `in-νᵈ` — THE MISSING INTRODUCTION FORM (plan 0.93).
+--
+-- A `νᵈ` IS what forcing gives (the record has one field), so wrapping an
+-- ALREADY-AVAILABLE layer is a copattern and nothing more. Forcing emits `[]`
+-- and hands the layer back UNCHANGED at every budget: there is nothing left to
+-- compute, which is exactly the difference from `anaᵈ`, whose budget-dependence
+-- comes from running the coalgebra.
+--
+-- WHY IT HAS TO EXIST, rather than reusing `injectν`. `injectν` maps itself
+-- over the children (`mapInjectν`, below), and its children come from the PURE
+-- model `νS` — so a child's events are gone. That is fine for `inject`, whose
+-- job is to lift a trace-free value. It is WRONG for `in-ν`, whose children are
+-- already `νᵈ` values that force themselves: mapping over them would discard
+-- the very events the machine will emit. `in-νᵈ` keeps them.
+--
+-- Symmetric with `Ana` (D179): both BUILD a suspension and emit NOTHING; the
+-- events come at `Out`, when a layer is forced. `in-νᵈ` does even less than
+-- `anaᵈ` — no recursive call, so no guardedness obligation at all — and
+-- `forceᵈ (in-νᵈ l) ≡ ([] , l)` is the Lambek round trip `Out ∘ in-ν ≡ id`,
+-- definitionally.
+in-νᵈ : ∀ {F} → ⟦ F ⟧SF (νᵈ F) → νᵈ F
+forceᵈ (in-νᵈ layer) = λ _ → ([] , layer)
+
 -- `inject` at an arrow lifts a pure function to a trace-free closure. This is
 -- the same thing: every layer emits nothing.
 mutual
