@@ -185,7 +185,8 @@ open import Once.IRTy using (Void; Int; Float; Str; Buffer; _⇛_;
                              IRFunctor; K; Id; _⊕_; _⊗_;
                              IsBaseTypeI; base-Unit; base-Void; base-Int;
                              base-Float; base-Str; base-Buffer;
-                             base-Prod; base-Sum; ⌈_⌉F; ⌈_⌉)
+                             base-Prod; base-Sum; ⌈_⌉F; ⌈_⌉;
+                             wf-K; wf-Id; wf-Sum; wf-Prod)
   renaming (_+_ to _+ᴵ_)
 -- plan 0.93 S1 batch 3 (ν): the SFunctor tier a ν VALUE actually lives at.
 -- `Carrier` is ALREADY in scope through the prelude; importing it again is
@@ -2661,3 +2662,434 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
                 rb)
 
 
+
+  ----------------------------------------------------------------------
+  -- 8.4  S3 — `const`.  THE FIRST LITERAL.
+  --
+  -- The emitter has TWO clauses (IRToTrace.agda:950-951, matched on the
+  -- `FitsInRegI` evidence), so this obligation has two too — exactly as
+  -- `obs-correct-const` splits (Simple.agda:414 and :446).  The payload
+  -- types are written out (`ℤ` / `Decimal`) rather than as
+  -- `⟦ ℤ , Decimal ⟧-baseI A`: they are what that application REDUCES to
+  -- at `Int`/`Float` (IRTy.agda:286-287), and naming them avoids
+  -- re-importing the closed mixfix whose comma this module already had to
+  -- rename once (:196-199).
+  ----------------------------------------------------------------------
+  const-int-len : ∀ (n l : ℕ) (v : ℤ)
+                → length (emitted n l (const fits-int v)) ≡ 1
+  const-int-len n l v = refl
+
+  const-float-len : ∀ (n l : ℕ) (v : Decimal)
+                  → length (emitted n l (const fits-float v)) ≡ 1
+  const-float-len n l v = refl
+
+  const-int-no-blocks : ∀ (n l : ℕ) (v : ℤ) → blocks n l (const fits-int v) ≡ []
+  const-int-no-blocks n l v = refl
+
+  const-float-no-blocks : ∀ (n l : ℕ) (v : Decimal)
+                        → blocks n l (const fits-float v) ≡ []
+  const-float-no-blocks n l v = refl
+
+  ir-correct-const-int : ∀ (n l : ℕ) (v : ℤ) → RelIR n l (const fits-int v)
+  ir-correct-const-int n l v fs x xsv span blks nh lk rdi rv bud =
+      1 , st1 , run , nh , refl , refl , lk , refl , rv1
+    where
+      st1 : FlatState
+      st1 = flat-exec-instr (instr-load-const fits-intˢ v) prog fs
+
+      run : FlatSteps prog 1 fs st1
+      run = (nh , span 0 _ refl) ∷ []
+
+      -- `RelV Int` IS the equation (:842), so the value component of
+      -- `RelT` is `out-lit` (Simple.agda:439-444) with its budget
+      -- generalised — `evalᴰ (const …)` has no native clause, so it goes
+      -- through DenotTrace.agda:183 and `valueT` does not mention the
+      -- budget at all.
+      rv1 : readReg (regs (floc st1)) Output
+          ≡ prim-sv fits-int (TM.valueT (evalᴰ (const fits-int v) x) bud)
+      rv1 = writeReg-same (regs (floc fs)) Output
+              (SV-Lit fits-intˢ (AbstractExec.lit-value {FS} fits-intˢ v))
+
+  -- D113: the float literal is TARGET-RELATIVE.  Writing the materialised
+  -- value as `AbstractExec.lit-value {FS} fits-floatˢ v` rather than
+  -- `round (float-format FS) v` keeps ONE source for it — the machine's —
+  -- which is the agreement Simple.agda:471-478 spells out.
+  ir-correct-const-float : ∀ (n l : ℕ) (v : Decimal)
+                         → RelIR n l (const fits-float v)
+  ir-correct-const-float n l v fs x xsv span blks nh lk rdi rv bud =
+      1 , st1 , run , nh , refl , refl , lk , refl , rv1
+    where
+      st1 : FlatState
+      st1 = flat-exec-instr (instr-load-const fits-floatˢ v) prog fs
+
+      run : FlatSteps prog 1 fs st1
+      run = (nh , span 0 _ refl) ∷ []
+
+      rv1 : readReg (regs (floc st1)) Output
+          ≡ prim-sv fits-float (TM.valueT (evalᴰ (const fits-float v) x) bud)
+      rv1 = writeReg-same (regs (floc fs)) Output
+              (SV-Lit fits-floatˢ (AbstractExec.lit-value {FS} fits-floatˢ v))
+  ir-correct-const : ∀ {A : IRTy} (fit : FitsInRegI A)
+                       (v : ⟦ ℤ , Decimal ⟧-baseI A) (n l : ℕ)
+                   → RelIR n l (const fit v)
+  ir-correct-const fits-int   v n l = ir-correct-const-int   n l v
+  ir-correct-const fits-float v n l = ir-correct-const-float n l v
+  -- `RelBase` is `RelV` restricted, so at every `IsBaseTypeI` constructor
+  -- the two `Set`s are the SAME up to the recursive call, and the six
+  -- leaves are literally the same clause.  `Str`/`Buffer` agree by both
+  -- being ⊥ — the model gap is SHARED, not bridged, and nothing is proved
+  -- at those types.
+  relv→relbase : ∀ {A : IRTy} (ib : IsBaseTypeI A)
+                   {alloc : AllocState {FS}} {x : ⟦ A ⟧}
+                   {sv : StoredValue FS} {s : LocState FS}
+               → RelV A alloc x sv s → RelBase ib alloc x sv s
+  relv→relbase base-Unit   r = r
+  relv→relbase base-Void   r = r
+  relv→relbase base-Int    r = r
+  relv→relbase base-Float  r = r
+  relv→relbase base-Str    r = r
+  relv→relbase base-Buffer r = r
+  relv→relbase (base-Prod ia ib)
+      (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) =
+      hl , asv , bsv , e , b0 , b1 , c0 , c1
+    , relv→relbase ia ra , relv→relbase ib rb
+  relv→relbase (base-Sum ia ib) {x = inj₁ a}
+      (hl , psv , e , b0 , b1 , c0 , c1 , ra) =
+      hl , psv , e , b0 , b1 , c0 , c1 , relv→relbase ia ra
+  relv→relbase (base-Sum ia ib) {x = inj₂ b}
+      (hl , psv , e , b0 , b1 , c0 , c1 , rb) =
+      hl , psv , e , b0 , b1 , c0 , c1 , relv→relbase ib rb
+
+  relbase→relv : ∀ {A : IRTy} (ib : IsBaseTypeI A)
+                   {alloc : AllocState {FS}} {x : ⟦ A ⟧}
+                   {sv : StoredValue FS} {s : LocState FS}
+               → RelBase ib alloc x sv s → RelV A alloc x sv s
+  relbase→relv base-Unit   r = r
+  relbase→relv base-Void   r = r
+  relbase→relv base-Int    r = r
+  relbase→relv base-Float  r = r
+  relbase→relv base-Str    r = r
+  relbase→relv base-Buffer r = r
+  relbase→relv (base-Prod ia ib)
+      (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) =
+      hl , asv , bsv , e , b0 , b1 , c0 , c1
+    , relbase→relv ia ra , relbase→relv ib rb
+  relbase→relv (base-Sum ia ib) {x = inj₁ a}
+      (hl , psv , e , b0 , b1 , c0 , c1 , ra) =
+      hl , psv , e , b0 , b1 , c0 , c1 , relbase→relv ia ra
+  relbase→relv (base-Sum ia ib) {x = inj₂ b}
+      (hl , psv , e , b0 , b1 , c0 , c1 , rb) =
+      hl , psv , e , b0 , b1 , c0 , c1 , relbase→relv ib rb
+
+  -- THE LAYER BRIDGE, UP.  Every equation it relies on is DEFINITIONAL
+  -- (IRTy.agda:145-149): `⟦ K A ⟧TI X = A`, `⟦ Id ⟧TI X = X`,
+  -- `⟦ G ⊕ H ⟧TI X = ⟦G⟧TI X +ᴵ ⟦H⟧TI X`, `⟦ G ⊗ H ⟧TI X = ⟦G⟧TI X * ⟦H⟧TI X`.
+  -- So at `⊕` the premise is literally `RelV (_ +ᴵ _)`'s tagged-two-cell Σ
+  -- (:1061-1080) and `ml-inl`'s eight arguments are its components in
+  -- order; at `⊗` likewise for `ml-pair`; at `Id` the premise IS
+  -- `MuRel F alloc s y sv`, since `RelV (μ-type F) alloc y sv s` reduces
+  -- to it (:1158).
+  relv→mulayer : ∀ {F G : IRFunctor} → WellFormedFI G
+               → {alloc : AllocState {FS}} {s : LocState FS}
+                 {lay : ⟦ ⟦ G ⟧TI (μ-type F) ⟧} {sv : StoredValue FS}
+               → RelV (⟦ G ⟧TI (μ-type F)) alloc lay sv s
+               → MuLayer F alloc s G lay sv
+  relv→mulayer (wf-K ib) r = ml-K ib (relv→relbase ib r)
+  relv→mulayer wf-Id     r = ml-Id r
+  relv→mulayer (wf-Sum wfG wfH) {lay = inj₁ a}
+      (hl , psv , e , b0 , b1 , c0 , c1 , ra) =
+      ml-inl hl psv e b0 b1 c0 c1 (relv→mulayer wfG ra)
+  relv→mulayer (wf-Sum wfG wfH) {lay = inj₂ b}
+      (hl , psv , e , b0 , b1 , c0 , c1 , rb) =
+      ml-inr hl psv e b0 b1 c0 c1 (relv→mulayer wfH rb)
+  relv→mulayer (wf-Prod wfG wfH) {lay = a , b}
+      (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) =
+      ml-pair hl asv bsv e b0 b1 c0 c1
+        (relv→mulayer wfG ra) (relv→mulayer wfH rb)
+
+  -- THE LAYER BRIDGE, DOWN.  Induction on the DERIVATION, and it needs no
+  -- `WellFormedFI` — `ml-K` carries its own `IsBaseTypeI`, which is the
+  -- payoff of 0b.3's decision not to index the family by well-formedness.
+  mulayer→relv : ∀ {F G : IRFunctor} {alloc : AllocState {FS}}
+                   {s : LocState FS} {lay : ⟦ ⟦ G ⟧TI (μ-type F) ⟧}
+                   {sv : StoredValue FS}
+               → MuLayer F alloc s G lay sv
+               → RelV (⟦ G ⟧TI (μ-type F)) alloc lay sv s
+  mulayer→relv (ml-K ib rb) = relbase→relv ib rb
+  mulayer→relv (ml-Id r)    = r
+  mulayer→relv (ml-inl hl psv e b0 b1 c0 c1 ml) =
+    hl , psv , e , b0 , b1 , c0 , c1 , mulayer→relv ml
+  mulayer→relv (ml-inr hl psv e b0 b1 c0 c1 ml) =
+    hl , psv , e , b0 , b1 , c0 , c1 , mulayer→relv ml
+  mulayer→relv (ml-pair hl asv bsv e b0 b1 c0 c1 la lb) =
+      hl , asv , bsv , e , b0 , b1 , c0 , c1
+    , mulayer→relv la , mulayer→relv lb
+  In-trace-pin : ∀ {F : IRFunctor} (wf : WellFormedFI F)
+                   (x : ⟦ ⟦ F ⟧TI (μ-type F) ⟧) (bud : ℕ)
+               → projTrace (evalᴰ (In wf) x) bud ≡ []
+  In-trace-pin wf x bud = refl
+
+  In-value-pin : ∀ {F : IRFunctor} (wf : WellFormedFI F)
+                   (x : ⟦ ⟦ F ⟧TI (μ-type F) ⟧) (bud : ℕ)
+               → TM.valueT (evalᴰ (In wf) x) bud ≡ inᴹ wf x
+  In-value-pin wf x bud = refl
+
+  In-len : ∀ {F : IRFunctor} (wf : WellFormedFI F) (n l : ℕ)
+         → emitted n l (In wf) ≡ mov-to-output ∷ []
+  In-len wf n l = refl
+
+  ir-correct-In : ∀ {F : IRFunctor} (wf : WellFormedFI F) (n l : ℕ)
+                → RelIR n l (In wf)
+  ir-correct-In {F} wf n l fs x xsv span blks nh lk rdi rv bud =
+      1 , st1 , run , live , refl , refl , flink1 , refl , rv1
+    where
+      st1 : FlatState
+      st1 = flat-exec-instr mov-to-output prog fs
+
+      run : FlatSteps prog 1 fs st1
+      run = (nh , span 0 _ refl) ∷ []
+
+      -- `mov-to-output` writes ONE register (SMCore.agda:1808-1810).
+      live : halted (floc st1) ≡ false
+      live = nh
+
+      flink1 : flink st1 ≡ nothing
+      flink1 = lk
+
+      out-eq : readReg (regs (floc st1)) Output ≡ xsv
+      out-eq = trans (writeReg-same (regs (floc fs)) Output
+                                    (readReg (regs (floc fs)) Input1))
+                     rdi
+
+      -- the LAYER's relation, re-based at the post-step state: same
+      -- allocator, memory-identical, so both transports are the identity.
+      lay-rel : RelV (⟦ F ⟧TI (μ-type F)) (falloc st1) x xsv (floc st1)
+      lay-rel = rel-transport (⟦ F ⟧TI (μ-type F)) ≤-refl (λ h bh → refl) rv
+
+      -- `RelV (μ-type F) alloc v sv s` IS `MuRel F alloc s v sv` (:1158),
+      -- so this is the goal with the hand-off unfolded.
+      rv1 : MuRel F (falloc st1) (floc st1)
+              (TM.valueT (evalᴰ (In wf) x) bud)
+              (readReg (regs (floc st1)) Output)
+      rv1 = subst (λ sv → MuRel F (falloc st1) (floc st1)
+                            (TM.valueT (evalᴰ (In wf) x) bud) sv)
+                  (sym out-eq)
+                  (mu-in wf (In-value-pin wf x bud)
+                            (relv→mulayer wf lay-rel))
+  ----------------------------------------------------------------------
+  -- Shared vocabulary first: `RelTat`, the computation relation AT ONE
+  -- BUDGET.  `RelT` is a Π over `bud`, so a helper that consumes a
+  -- sub-IH's output cannot name its type — `RelT r rs B c fs bud` is an
+  -- application of a `Set`.  `RelTat` is the body with `bud` abstracted
+  -- out, and `relT-at` pins the two together by `refl`, so a sub-IH
+  -- applied at a budget lands at `RelTat` with no transport.
+  ----------------------------------------------------------------------
+  RelTat : ℕ → ℕ → List ℕ → ∀ (B : IRTy) → TM.T ⟦ B ⟧ → FlatState → Set
+  RelTat bud resume rets B comp fs =
+    Σ[ steps  ∈ ℕ ]
+    Σ[ settle ∈ FlatState ]
+    Σ[ run    ∈ FlatSteps prog steps fs settle ]
+      ( (halted (floc settle) ≡ false)
+      × (fpc settle ≡ resume)
+      × (fret settle ≡ rets)
+      × (flink settle ≡ nothing)
+      × (take bud (chain-events run) ≡ take bud (projTrace comp bud))
+      × RelV B (falloc settle) (TM.valueT comp bud)
+               (readReg (regs (floc settle)) Output) (floc settle) )
+
+  relT-at : ∀ (resume : ℕ) (rets : List ℕ) (B : IRTy)
+              (comp : TM.T ⟦ B ⟧) (fs : FlatState)
+          → RelT resume rets B comp fs
+            ≡ (∀ (bud : ℕ) → RelTat bud resume rets B comp fs)
+  relT-at _ _ _ _ _ = refl
+
+  -- `(a + suc b) + c ≡ b + suc (a + c)` — the one arithmetic shuffle the
+  -- splice needs.  `Comp.agda:129-137` verbatim; restated here because
+  -- the spike does not import `Machine`/`Comp`.
+  shuffle : ∀ (a b c : ℕ) → (a + suc b) + c ≡ b + suc (a + c)
+  shuffle a b c =
+    trans (cong (_+ c) (+-suc a b))
+          (trans (cong suc (trans (+-assoc a b c)
+                           (trans (cong (a +_) (+-comm b c))
+                                  (trans (sym (+-assoc a c b))
+                                         (+-comm (a + c) b)))))
+                 (sym (+-suc b (a + c))))
+
+  ----------------------------------------------------------------------
+  -- `ir-to-trace' n l (g ∘ f) = n2 , l2 , (ft ++ mov-to-input ∷ gt) ,
+  -- (fb ++ gb)` (IRToTrace.agda:769-772): `f`'s text is a PREFIX, the
+  -- bridge is one instruction, `g`'s text is the suffix, and the block
+  -- channel is the two halves concatenated LITERALLY.  So the two
+  -- placement premises split exactly as `comp-span-f`/`comp-blocks-f`
+  -- split them today (Comp.agda:140-164), with `prog` taken from the
+  -- module parameter instead of an argument.
+  ----------------------------------------------------------------------
+  comp-span-f : ∀ {A B C : IRTy} (g : IR B C) (f : IR A B) (base n l : ℕ)
+              → SpanAt prog base (emitted n l (g ∘ f))
+              → SpanAt prog base (emitted n l f)
+  comp-span-f g f base n l span k i eq =
+    span k i (fetch-++-left (emitted n l f)
+                (mov-to-input ∷ emitted (proj₁ (ir-to-trace' n l f))
+                                        (proj₁ (proj₂ (ir-to-trace' n l f))) g)
+                k i eq)
+
+  comp-span-g : ∀ {A B C : IRTy} (g : IR B C) (f : IR A B) (base n l : ℕ)
+              → SpanAt prog base (emitted n l (g ∘ f))
+              → SpanAt prog (suc (length (emitted n l f) + base))
+                            (emitted (proj₁ (ir-to-trace' n l f))
+                                     (proj₁ (proj₂ (ir-to-trace' n l f))) g)
+  comp-span-g g f base n l span k i eq =
+    subst (λ m → fetch prog m ≡ just i) (shuffle (length ft) k base)
+          (span (length ft + suc k) i
+                (trans (fetch-++-right ft (mov-to-input ∷ gt) (suc k)) eq))
+    where
+      ft : AbstractTrace
+      ft = emitted n l f
+      gt : AbstractTrace
+      gt = emitted (proj₁ (ir-to-trace' n l f))
+                   (proj₁ (proj₂ (ir-to-trace' n l f))) g
+
+  comp-mov-fetch : ∀ {A B C : IRTy} (g : IR B C) (f : IR A B) (base n l : ℕ)
+                 → SpanAt prog base (emitted n l (g ∘ f))
+                 → fetch prog (length (emitted n l f) + base) ≡ just mov-to-input
+  comp-mov-fetch g f base n l span =
+    span (length ft) mov-to-input
+         (trans (cong (fetch (ft ++ mov-to-input ∷ gt))
+                      (sym (+-identityʳ (length ft))))
+                (fetch-++-right ft (mov-to-input ∷ gt) 0))
+    where
+      ft : AbstractTrace
+      ft = emitted n l f
+      gt : AbstractTrace
+      gt = emitted (proj₁ (ir-to-trace' n l f))
+                   (proj₁ (proj₂ (ir-to-trace' n l f))) g
+
+  ir-correct-comp :
+    ∀ {A B C : IRTy} (g : IR B C) (f : IR A B)
+    → (∀ (n l : ℕ) → RelIR n l f)
+    → (∀ (n l : ℕ) → RelIR n l g)
+    → ∀ (n l : ℕ) → RelIR n l (g ∘ f)
+  ir-correct-comp {A} {B} {C} g f ihf ihg n l fs x xsv span blks nh lk rdi rv bud =
+    go (ihf n l fs x xsv (comp-span-f g f (fpc fs) n l span)
+            (proj₁ (++⁻ (blocks n l f) blks)) nh lk rdi rv bud)
+    where
+      ft : AbstractTrace
+      ft = emitted n l f
+
+      n1 l1 : ℕ
+      n1 = proj₁ (ir-to-trace' n l f)
+      l1 = proj₁ (proj₂ (ir-to-trace' n l f))
+
+      gt : AbstractTrace
+      gt = emitted n1 l1 g
+
+      blocks-g : BlocksAt prog (blocks n1 l1 g)
+      blocks-g = proj₂ (++⁻ (blocks n l f) blks)
+
+      -- `f`'s run has settled at `length ft + fpc fs`, so this is the
+      -- bridge's fetch at the pc the machine is actually at.
+      mov-fetch : fetch prog (length ft + fpc fs) ≡ just mov-to-input
+      mov-fetch = comp-mov-fetch g f (fpc fs) n l span
+
+      go : RelTat bud (length ft + fpc fs) (fret fs) B (evalᴰ f x) fs
+         → RelTat bud (length (emitted n l (g ∘ f)) + fpc fs) (fret fs) C
+                  (evalᴰ (g ∘ f) x) fs
+      go (kf , fsF , chainF , liveF , endF , retF , linkF , tf , rvF) =
+        goG (ihg n1 l1 fsM (TM.valueT (evalᴰ f x) bud)
+                 (readReg (regs (floc fsF)) Output)
+                 span-g blocks-g liveF linkF movEq rvM kg)
+        where
+          -- THE BRIDGE.  `mov-to-input` is a straight instruction
+          -- (Flat.agda:872 → :503-507), so `fpc` bumps by one and `fret`,
+          -- `flink`, `fclosure` and `falloc` are untouched
+          -- (`exec-abstract mov-to-input s alloc = record s { regs = … } ,
+          -- alloc`, SMCore.agda:1813-1814) — every one of those is
+          -- DEFINITIONAL here, which is why `liveF`/`linkF` are handed
+          -- straight to `ihg`.
+          fsM : FlatState
+          fsM = flat-exec-instr mov-to-input prog fsF
+
+          kg : ℕ
+          kg = bud ∸ length (projTrace (evalᴰ f x) bud)
+
+          span-g : SpanAt prog (fpc fsM) gt
+          span-g = subst (λ b → SpanAt prog b gt) (sym (cong suc endF))
+                         (comp-span-g g f (fpc fs) n l span)
+
+          movEq : readReg (regs (floc fsM)) Input1
+                ≡ readReg (regs (floc fsF)) Output
+          movEq = writeReg-same (regs (floc fsF)) Input1
+                                (readReg (regs (floc fsF)) Output)
+
+          -- a register write is invisible to `readLoc` (Interface.agda:779).
+          memEq : ∀ (loc : ValueLocation FS)
+                → readLoc (floc fsM) loc ≡ readLoc (floc fsF) loc
+          memEq loc = reg-write-readLoc (floc fsF) _ (halted (floc fsF)) loc
+
+          rvM : RelV B (falloc fsM) (TM.valueT (evalᴰ f x) bud)
+                       (readReg (regs (floc fsF)) Output) (floc fsM)
+          rvM = rel-transport B ≤-refl (λ h bh → memEq (AtDynamic h)) rvF
+
+          movStep : FlatSteps prog 1 fsF fsM
+          movStep = (liveF , trans (cong (fetch prog) endF) mov-fetch) ∷ []
+
+          goG : RelTat kg (length gt + fpc fsM) (fret fsM) C
+                       (evalᴰ g (TM.valueT (evalᴰ f x) bud)) fsM
+              → RelTat bud (length (emitted n l (g ∘ f)) + fpc fs) (fret fs) C
+                       (evalᴰ (g ∘ f) x) fs
+          goG (kg' , settleG , chainG , liveG , endG , retG , linkG , tg , rvG) =
+              kf + suc kg' , settleG , chain , liveG , at-end
+            , trans retG retF , linkG , traces , rvG
+            where
+              chain : FlatSteps prog (kf + suc kg') fs settleG
+              chain = FlatSteps-++ chainF (FlatSteps-++ movStep chainG)
+
+              -- `length (ft ++ mov ∷ gt) + fpc fs` = `(length ft + suc
+              -- (length gt)) + fpc fs`, and `shuffle` turns that into
+              -- `length gt + suc (length ft + fpc fs)`, which is where
+              -- `g` says it settled.
+              at-end : fpc settleG ≡ length (emitted n l (g ∘ f)) + fpc fs
+              at-end =
+                trans (trans endG (cong (λ m → length gt + suc m) endF))
+                      (sym (trans (cong (_+ fpc fs)
+                                        (length-++ ft {mov-to-input ∷ gt}))
+                                  (shuffle (length ft) (length gt) (fpc fs))))
+
+              mEvF mEvG dEvF dEvG : List SigOpEvent
+              mEvF = chain-events chainF
+              mEvG = chain-events chainG
+              dEvF = projTrace (evalᴰ f x) bud
+              dEvG = projTrace (evalᴰ g (TM.valueT (evalᴰ f x) bud)) kg
+
+              -- the bridge emits nothing: `ev-of-loc`'s catch-all
+              -- (FlatEvents.agda:111) makes `chain-events movStep` reduce
+              -- to `[]`, so the middle segment vanishes definitionally.
+              events-split : chain-events chain ≡ mEvF ++ mEvG
+              events-split =
+                trans (chain-events-++ chainF (FlatSteps-++ movStep chainG))
+                      (cong (mEvF ++_) (chain-events-++ movStep chainG))
+
+              -- D203's step, unchanged: the residual budget cannot tell
+              -- whether the prefix was truncated.
+              budget-eq : bud ∸ length (take bud dEvF) ≡ kg
+              budget-eq = TM.minus-take bud dEvF
+
+              tail-eq : take (bud ∸ length (take bud mEvF)) mEvG
+                      ≡ take (bud ∸ length (take bud dEvF)) dEvG
+              tail-eq =
+                trans (cong (λ m → take (bud ∸ length m) mEvG) tf)
+                (trans (cong (λ j → take j mEvG) budget-eq)
+                (trans tg
+                       (sym (cong (λ j → take j dEvG) budget-eq))))
+
+              -- `projTrace (evalᴰ f x >>=T evalᴰ g) bud` IS `dEvF ++ dEvG`
+              -- (TraceMonad.agda:58-63), so both sides are a
+              -- concatenation observed at `bud` and `take-++-threaded`
+              -- splits each the same way.
+              traces : take bud (chain-events chain)
+                     ≡ take bud (projTrace (evalᴰ (g ∘ f) x) bud)
+              traces =
+                trans (cong (take bud) events-split)
+                (trans (TM.take-++-threaded bud mEvF mEvG)
+                (trans (cong₂ _++_ tf tail-eq)
+                       (sym (TM.take-++-threaded bud dEvF dEvG))))
