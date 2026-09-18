@@ -323,3 +323,53 @@ chain had grown RTm-specific copies before anyone looked.
 
 ⇒ **THE `ι-ielim` CHAIN IS CLOSED**: `ihsK`, `fieldsK`, `iextK`, `iihsK`,
 `ifieldsK` — five entries, 22 OWED down to 17.
+
+
+---
+
+## 6. ★★★ THE RULE THAT CHANGED THE COST — *don't prove what is already proved*
+
+Raised by the user after `payTyK`, and it has TWO halves. Both were
+costing real attempts before they were stated.
+
+**(a) THE KERNEL.** `payTy`'s object side weakens explicitly (`wkAtK`)
+where the meta does not, and I was about to prove the bridge. It was
+already there: `Spec/Syntax.payTy-ren : renTy ρ (payTy D C) ≡ payTy D C`.
+
+⇒ **before starting any adequacy, grep the kernel for the meta's own
+`-ren`/`-sub`/`-cong`/`-inst` lemmas.** The survey, which cost two greps:
+
+| meta | kernel lemmas |
+|---|---|
+| `payTy` | `payTy-ren`, `payTy-sub` |
+| `ipayTy` | `-cong`, `-ren`, `-sub`, `-renⁱ`, `-subⁱ` — **five** |
+| `atCon` / `iatCon` | `atCon-inst`, `iatCon-inst` |
+| `ihTy`, `iihTy`, `methsTyFrom` | none in `Spec/` … |
+
+★★★ …**but `Metatheory/TySub` proves them all**: `ihTy-sub`,
+`methsTyFrom-sub`, `iihTy-sub`, `iatCon-sub`, `methTy-sub`,
+`imethTy-sub`, `atCon-sub`, plus the `-ren` twins. Every remaining entry
+of this family has its bridging lemma written already. **Search
+`Metatheory/`, not only `Spec/`.**
+
+**(b) THE PROOFS ALREADY DONE.** The second half, and the one that
+actually shortened `ihTyK`: `wkTyK-sub`, `⟶*-wkTyKᵈ`, `⟶*-wkTyKᵃ` and
+`nat4₂` were built for `payTyK` the day before and IMPORTED here rather
+than rebuilt. `ihTyK`'s three rows then went in **first try**, against
+`payTyK`'s six attempts and `lookupDK`'s thirteen.
+
+⚠ **AND THE COUNTER-EXAMPLE IN MY OWN WORK.** I wrote the
+"lift a naturality through a stack of β-substitutions" fold **four
+times** — `nat7` (7-fold, 4-ary), `nat4₂`, `nat5₂`, `nat5₄` — before
+noticing that `Lib/ISub:871` and `Knot/SubExt:151` already carry the same
+idea as a local `unc`. And `Lib/Wk` already had general `cong₃`–`cong₆`
+while three modules grew RTm-specific copies.
+⇒ `nat5₂'` is now ONE `trans` over `nat4₂`: **each fold count is one line
+over the previous**, which is how the family should have grown from the
+start. ⬜ It still wants a single `Lib` home parameterised by arity.
+
+★ AND THE DISCRIMINATOR FOR WHEN A BRIDGE IS NEEDED AT ALL: read the
+META. `ihTy D (dρ C) q M = Σ' … (renTy vs (ihTy D C (snd q) M))` carries
+`renTy vs` ITSELF, so `wkTyK-agree` lands on the answer and NO cast is
+owed. `payTy` carries none, so it needed `payTy-ren`. Same family, one
+has the debt and one does not, and the definition says which.

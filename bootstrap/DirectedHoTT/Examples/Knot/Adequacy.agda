@@ -196,7 +196,27 @@
 --                `Knot/KAdapt.ifieldsKᵏ` — the adapter fixes the ICon's
 --                depth to `num 1`, which is `ι-ielim`'s use and not the
 --                program's meaning.
---     ihTyK      ⬜ OWED — agreement with `ihTy`.
+--     ihTy-agree ✅ not a program — it IS `ihTyK`'s adequacy, at the
+--                row level.
+--     ihTyK      ✅ DISCHARGED — `Knot/IhTyAgree.ihTyK-agree`.
+--                ★★★ NO BRIDGING CAST, and that is the point: the META
+--                `ihTy D (dρ C) q M = Σ' … (renTy vs (ihTy D C (snd q) M))`
+--                CARRIES `renTy vs` ITSELF, so `wkTyK-agree` lands on the
+--                answer.  `payTy` had none and needed `payTy-ren`.
+--                ⇒ READ THE META BEFORE ASSUMING A NATURALITY DEBT.
+--                ★ AND `Metatheory/TySub` ALREADY PROVES the meta-level
+--                naturality for every entry of this family — `ihTy-sub`,
+--                `methsTyFrom-sub`, `iihTy-sub`, `iatCon-sub`,
+--                `methTy-sub`, `imethTy-sub`, `atCon-sub`, plus `-ren`
+--                twins.  Survey it before writing one.
+--                ★ THE ROWS WENT IN FIRST TRY because the machinery was
+--                REUSED, not rebuilt: `wkTyK-sub`, `⟶*-wkTyKᵈ`,
+--                `⟶*-wkTyKᵃ` and `nat4₂` all came from
+--                `Knot/PayTyAgree`.  ⚠ `nat5₂'` is ONE `trans` over
+--                `nat4₂` — the fold family grows one line at a time.
+--                ⚠ `subTyAtK (nsuc d) d (singleK d u) t` mentions the
+--                depth THREE times and the third is under `singleK`'s
+--                own `lam`; `⟶*-subTyAtK-single` does all three at once.
 --     ihTyRho    ✅ not owed — a method row of `ihTyK`.
 --     ihsK       ✅ DISCHARGED — `Knot/IhsAgree.ihsK-agree`:
 --                `ihsK ⌈|Γ|⌉ ⌈C⌉ ⌈D⌉ ⌈ms⌉ ⌈p⌉ ⟶* ⌈ ihs D ms C p ⌉`.
@@ -422,6 +442,8 @@
 --                commutation lemma after all: `subTyAtK d m σ A` IS
 --                `subAtK sTy d m σ A` definitionally, so this is
 --                `sub-agree-ty` with no repackaging.
+--     subTyAtK-sub ✅ not a program — `subTyAtK`'s substitution
+--                naturality (`subTmAtK-sub` at `sTy`).
 --     szTm       ✅ `Knot/SzProbe` — same-sort counts, per row, by `refl`.
 --     szsTm      ✅ `Knot/SzAgree` — `szsTm i ⌈t⌉ ⟶* num (sz t)`, all 30 rows,
 --                GENERATED.  THE model for every ⬜ below.
