@@ -56,8 +56,8 @@ entries. The chain, cheapest first, with each step's REAL size:
 | 1 | ✅ `ihsK` | induction on **`DCon` — 3 cases** | nothing |
 | 2 | ✅ `fieldsK` | **1** `Tm-appK` congruence | 1 |
 | 3 | ✅ `iextK` | composition + a β + **5 naturality lemmas** | `sub-agree` ✅ `single-Represents` ✅ `extS-Represents` ✅ |
-| 4 | `iihsK` | induction on **`ICon` — 3 cases** | 1, 3 |
-| 5 | `ifieldsK` | 3 `Tm-appK` congruences | 4 |
+| 4 | ✅ `iihsK` | induction on **`ICon` — 3 cases** + `nat7` | 1, 3 |
+| 5 | ✅ `ifieldsK` | **1** `Tm-appK` congruence | 4 |
 
 ★★★ **`ihsK` IS A THREE-CASE INDUCTION, NOT A 53-ROW ONE**, and this is
 the single most useful fact in this file. `ihsK n C D ms p` eliminates an
@@ -270,3 +270,56 @@ somewhere else. `agda-unimported-constructor-trap`, and
 ⇒ **NEXT:** step 4, `iihsK` — three cases on `ICon`, needing `ihs-agree`'s
 shape plus `iext-Represents` (now available) and `subTmAtK`'s agreement
 for the `iρ` row's recursive index.
+
+
+---
+
+## 5. Steps 4 and 5 — `iihsK` and `ifieldsK` ✅ **CLOSED 2026-09-18**
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 1 | state it, index PINNED at `pair sICon ⌈\|Δ\|⌉`, prove by `done` | ✅ well-typed |
+| 2 | row `iι` — head-red at tag 48 + seven βs | ✅ `ihs-agree`'s `dι`, one description over |
+| 3 | row `iκ` — + the `iextK` call and `iext-Represents` | ⚠ `renTm vs (…tower…) != subTm (extS …) (…)` — the `iextK`-internal slots sit ONE BINDER DEEPER |
+| 4 | row `iρ` — same cast shape | ⚠ same, and `subTmAtK` too (it hides `subMethsK`) |
+| 5 | `nat7` + `iextK-sub`, both slots lifted out first | ⚠ **UnsolvedMetaVariables, ZERO type errors** |
+| 6 | pin all eleven slots of each `nat7`, via a `where` block | ✅ **rc=0**, all three rows; the two wrappers followed |
+
+★★★ **THE COST WAS NEITHER OF THE TWO THINGS THE LEDGER PREDICTED.** It
+said `iihsK`'s adequacy is *"`ihsK`'s PLUS the commutation of `iextK` and
+`subTmAtK`"*, and that was right — both were discharged first and nothing
+else was owed. But the work was that **a method body which CALLS a
+`lam`-building program meets all SEVEN of the βs' substitutions**, so
+that program's arguments sit one binder deeper than any ambient tower
+describes. `iextK` and `subTmAtK` are both such calls.
+
+⇒ `nat7`: a seven-fold lift taking the program's own naturality as a
+hypothesis. **One lemma for both**, because both are 4-ary — and with the
+seven substitutions left abstract and the program a parameter, nothing
+unfolds (`abstract-the-substituted-terms`).
+
+★★ **ATTEMPT 5 IS THE THIRD TIME THIS SESSION** that *unsolved metas with
+zero type errors* meant "the chain is right, pin the landing values".
+`ihs-agree` attempt 4 and `subMethsK`'s cascade were the others. It is
+now a reliable reading, not a guess.
+
+★ **ON PINNING THE INDEX.** `OCC-ATTEMPTS` 28 says a pinned row index is
+fatal. It is not — what is fatal is pinning to something the child cannot
+be *reduced* to. `iihsRho` READS the index (`snd ⟨i⟩` is the ICon's own
+depth), so quantifying it away was not available; and `cICon-rho`'s tail
+sits at `pair sICon (nsuc (snd ⟨i⟩))`, which one `βsnd` under
+`⟶*-ielimⁱ` takes to the IH's own form because `len (Δ ∙) = suc (len Δ)`
+is DEFINITIONAL. ⇒ **the rule is "pin only what the child reduces to"**,
+and `occ`'s child (`subTm (isingle i) …`) reduced to nothing.
+
+★ `Lib/Wk` stops at `towerJ⁵` (de Bruijn 4). The `iρ` row reads the
+PAYLOAD at 5 and the ambient INDEX at 6, so `tower⁶`/`tower⁷` are written
+here. ⬜ They belong in `Lib/Wk`, and its own header already says the
+family wants INDEXING rather than listing — that is now four entries of
+evidence, not two.
+
+★ And `Lib/Wk` already had general `cong₃`–`cong₆`. Three modules in this
+chain had grown RTm-specific copies before anyone looked.
+
+⇒ **THE `ι-ielim` CHAIN IS CLOSED**: `ihsK`, `fieldsK`, `iextK`, `iihsK`,
+`ifieldsK` — five entries, 22 OWED down to 17.

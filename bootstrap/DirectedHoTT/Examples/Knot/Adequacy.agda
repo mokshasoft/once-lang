@@ -184,18 +184,18 @@
 --                the reason `extS-Represents` is three lines.
 --     iextK-app  ✅ not a program — `iextK`'s β law, the bookkeeping
 --                step its adequacy is built on.
---     ifieldsK   ⬜ OWED — agreement with `ifields` (`Spec/Syntax:1231`).
---                ★ THE SAME COROLLARY ONE DESCRIPTION OVER:
---                `ifieldsK … = Tm-appK (Tm-appK (Tm-appK m i) p)
---                (iihsK …)`, so its adequacy is THREE `Tm-appK`
---                congruences over `iihsK`'s — one more than `fieldsK`
---                owes, because `ifields` applies the method to the
---                INDEX as well as the payload.
---                ⇒ BLOCKED ON `iihsK`; no separate induction.
---                ⚠ THE LEDGER TRACKS IT UNDER `ifieldsK`, the emitted
---                name `ifieldsKᵏ` TRUNCATED — `fieldsK` and `selK` are
---                the same truncation, so this is the convention, not a
---                second program.
+--     iextK-sub  ✅ not a program — `iextK`'s substitution
+--                naturality, which its own CALLERS need: `Knot/IihsRho`
+--                builds `iextK …` inside a seven-lam body.
+--     ifieldsK   ✅ DISCHARGED — `Knot/IihsAgree.ifieldsK-agree`.
+--                ★ ONE congruence, not the three predicted: the inner
+--                `app (app m i) p` is ALREADY the answer, so only the
+--                last argument descends.  `fieldsK` paid the same
+--                correction (two predicted, one needed).
+--                ⚠ STATED AT `ifieldsK`, the general wrapper, not at
+--                `Knot/KAdapt.ifieldsKᵏ` — the adapter fixes the ICon's
+--                depth to `num 1`, which is `ι-ielim`'s use and not the
+--                program's meaning.
 --     ihTyK      ⬜ OWED — agreement with `ihTy`.
 --     ihTyRho    ✅ not owed — a method row of `ihTyK`.
 --     ihsK       ✅ DISCHARGED — `Knot/IhsAgree.ihsK-agree`:
@@ -229,22 +229,30 @@
 --     iihTyK     ⬜ OWED — agreement with `iihTy`.
 --     iihTyMotK  ✅ not a program — `iihTyK`'s MOTIVE.
 --     iihTyRho   ✅ not a program — the `cICon-rho` METHOD of `iihTyK`.
---     iihsK      ⬜ OWED — agreement with `iihs` (`Spec/Syntax:1222`).
---                ★ `ihsK`'s INDEXED twin, and the LAST of the three
---                programs `_⟶_`'s two unemitted rules needed: with this
---                and `ifieldsK` in place `ι-ielim` emits, so `_⟶_` is at
---                73 of 73 rows.
---                ★ TWO THINGS `ihsK` DOES NOT HAVE, and both are what
---                indexing means here:
---                  · the SUBSTITUTION `σ` is a real argument, so the
---                    `iκ`/`iρ` rows call `iextK` to grow it;
---                  · the recursive index is `subTm σ j`, so the `iρ`
---                    row composes `subTmAtK`.
---                ⇒ its adequacy is `ihsK`'s PLUS the commutation of
---                  those two, which are themselves ledger entries
---                  (`iextK`, `subTmAtK`).
---                ⚠ SPLIT ACROSS FIVE MODULES FOR SIZE, on the same
---                measured grounds as `ihsK`'s split.
+--     iihs-agree ✅ not a program — `iihsK`'s adequacy, at the ROW
+--                level (the index quantified over `Δ`).
+--     iihsK      ✅ DISCHARGED — `Knot/IihsAgree.iihsK-agree`:
+--                `iihsK ⌈|Γ|⌉ ⌈|Δ|⌉ ⌈D⌉ ⌈ms⌉ s ⌈C⌉ ⌈p⌉ ⟶*
+--                ⌈ iihs D ms σ C p ⌉`, given `Represents σ s`.
+--                ★ `ihsK`'s THREE-CASE induction (on `ICon` here) plus
+--                exactly the two things this entry predicted: the
+--                substitution GROWS, so the `iκ`/`iρ` rows consume
+--                `Knot/IExtRep.iext-Represents`; and the recursive index
+--                is `subTm σ j`, so the `iρ` row consumes `sub-agree`.
+--                Both were discharged first, and nothing else was owed.
+--                ⚠⚠ THE COST WAS NEITHER.  A method body that CALLS a
+--                `lam`-building program meets all SEVEN of the βs'
+--                substitutions, so that program's arguments sit one
+--                binder deeper than ANY ambient tower describes.
+--                `iextK` and `subTmAtK` are both such calls.
+--                ⇒ `nat7`, a seven-fold lift taking the program's own
+--                naturality as a hypothesis — ONE lemma for both,
+--                because both are 4-ary.
+--                ★ `Lib/Wk` stops at `towerJ⁵` (de Bruijn 4); the `iρ`
+--                row reads the PAYLOAD at 5 and the ambient INDEX at 6,
+--                so `tower⁶`/`tower⁷` are written here.  ⬜ They belong
+--                in `Lib/Wk`, whose own header says the family wants
+--                INDEXING rather than listing.
 --     iihsRho    ✅ not owed — a method row of `iihsK`.
 --     iinst-agree ✅ not a program — it IS an adequacy lemma
 --                (`Knot/IExtAgree`), namely `iinstK`'s own.  The

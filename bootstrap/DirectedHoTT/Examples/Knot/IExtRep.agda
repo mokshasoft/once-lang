@@ -41,10 +41,11 @@ open import DirectedHoTT.Spec.Syntax
 open import DirectedHoTT.Spec.Typing using ( _⟶*_; done; step; β; single; wk-single )
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ; ⟶*-castᵣ )
-open import DirectedHoTT.Lib.Wk using ( w; sub-w )
+open import DirectedHoTT.Lib.Wk using ( w; sub-w; cong₃; cong₄ )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.IMeths using ( cdTake; methsFrom; methsFrom-sub )
-open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-appˡ; ⟶*-ielimᵗ )
+open import DirectedHoTT.Metatheory.RedCong
+  using ( ⟶*-appˡ; ⟶*-ielimᵗ; ⟶*-ielimⁱ; ⟶*-pairʳ )
 open import normalizer.Syntax.Types using ( _≡_; refl; cong; cong₂; trans; sym )
 open import DirectedHoTT.Examples.Knot.Sorts using ( len; sVar; sTm )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
@@ -135,10 +136,8 @@ subTmAtK-sub τ dd m σ t =
 --   variable, so it serves both clauses.
 ------------------------------------------------------------------------
 
-cong₃' : {Γ : Cx} {a a' b b' c c' : RTm Γ}
-         (f : RTm Γ → RTm Γ → RTm Γ → RTm Γ) →
-         a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'
-cong₃' f refl refl refl = refl
+-- ★ `cong₃`-`cong₆` come from `Lib/Wk` — general in the SETS, so the
+--   RTm-specific copies this module first grew were redundant.
 
 iextK-app : {Γ : Cx} (dd n σ t a : RTm Γ) →
             app (iextK dd n σ t) a
@@ -150,7 +149,7 @@ iextK-app dd n σ t a = step (β _ _) (⟶*-castₗ eq done)
                (cong₂ singleK (wk-single {v = a} n) (wk-single {v = a} t))
     eE : subTm (single a) (extNK (w dd) (w n) (w σ)) ≡ extNK dd n σ
     eE = trans (extNK-sub (single a) (w dd) (w n) (w σ))
-               (cong₃' extNK (wk-single {v = a} dd) (wk-single {v = a} n)
+               (cong₃ extNK (wk-single {v = a} dd) (wk-single {v = a} n)
                              (wk-single {v = a} σ))
     eq : subTm (single a)
            (subTmAtK (nsuc (w n)) (w n) (singleK (w n) (w t))
@@ -158,8 +157,40 @@ iextK-app dd n σ t a = step (β _ _) (⟶*-castₗ eq done)
          ≡ subTmAtK (nsuc n) n (singleK n t) (app (extNK dd n σ) a)
     eq = trans (subTmAtK-sub (single a) (nsuc (w n)) (w n) (singleK (w n) (w t))
                              (app (extNK (w dd) (w n) (w σ)) (var vz)))
-               (cong₃' (λ nn s1 s2 → subTmAtK (nsuc nn) nn s1 (app s2 a))
+               (cong₃ (λ nn s1 s2 → subTmAtK (nsuc nn) nn s1 (app s2 a))
                        (wk-single {v = a} n) eS eE)
+
+------------------------------------------------------------------------
+-- ★★★ AND `iextK` IS ITSELF NATURAL — which its own customers need.
+--
+-- ⚠ `Knot/IihsRho`/`IihsKap` build `iextK (snd ⟨i⟩) n σ (fst p)` INSIDE
+--   a seven-lam method body, so their adequacy meets `subTm τ (iextK …)`
+--   — and `iextK` builds a `lam`, so that is NOT `iextK (subTm τ …)`.
+--   The same wall this module's own β law had to climb, one level up.
+--
+-- ★ IT IS A COMPOSITION OF THE THREE ABOVE and nothing else:
+--   `subTmAtK-sub`, `singleK-sub`, `extNK-sub`, plus one `sub-w` per
+--   weakened argument.  ⇒ the cascade pays for itself a second time.
+------------------------------------------------------------------------
+
+iextK-sub : {Γ Δ : Cx} (τ : Sub Γ Δ) (dd n σ t : RTm Γ) →
+            subTm τ (iextK dd n σ t)
+            ≡ iextK (subTm τ dd) (subTm τ n) (subTm τ σ) (subTm τ t)
+iextK-sub τ dd n σ t =
+  cong lam
+    (trans (subTmAtK-sub (extS τ) (nsuc (w n)) (w n) (singleK (w n) (w t))
+                         (app (extNK (w dd) (w n) (w σ)) (var vz)))
+           (cong₄ (λ n1 n2 s1 s2 →
+                      subTmAtK (nsuc n1) n2 s1 (app s2 (var vz)))
+                   (sub-w {σ = τ} n) (sub-w {σ = τ} n) eS eE))
+  where
+    eS : subTm (extS τ) (singleK (w n) (w t)) ≡ singleK (w (subTm τ n)) (w (subTm τ t))
+    eS = trans (singleK-sub (extS τ) (w n) (w t))
+               (cong₂ singleK (sub-w {σ = τ} n) (sub-w {σ = τ} t))
+    eE : subTm (extS τ) (extNK (w dd) (w n) (w σ))
+         ≡ extNK (w (subTm τ dd)) (w (subTm τ n)) (w (subTm τ σ))
+    eE = trans (extNK-sub (extS τ) (w dd) (w n) (w σ))
+               (cong₃ extNK (sub-w {σ = τ} dd) (sub-w {σ = τ} n) (sub-w {σ = τ} σ))
 
 -- ★ `Knot/IExtAgree.⟶*-subTyAtK` at the TERM sort.
 ⟶*-subTmAtK : {Γ : Cx} {dd m σ t t' : RTm Γ} →
@@ -174,19 +205,39 @@ iextK-app dd n σ t a = step (β _ _) (⟶*-castₗ eq done)
 --     iext σ t vz     = t       iext σ t (vs x) = σ x
 ------------------------------------------------------------------------
 
-iext-Represents : {S T Θ : Cx} {σ : Sub S T} {s : RTm Θ} (t : RTm T) →
+-- ★★★ THE SOURCE DEPTH `dd` IS FREE, and that is not generosity — it is
+--   what the caller needs.  `iihsKap`/`iihsRho` build the substitution as
+--   `iextK (snd ⟨i⟩) …`, and `snd ⟨i⟩` sits UNDER `iextK`'s own `lam`,
+--   twice weakened; reducing it there would be a descent through `lam`,
+--   `subTmAtK`, `extNK` and `extSK`.  Left free there is nothing to
+--   reduce.
+--   ★ It is also free to STATE: `dd` reaches the proof only through
+--     `extNK dd n σ`, and `Knot/SubExt.extS-Represents` already takes its
+--     `d` as a free parameter.  `narrow-twin-shadows-general-form` — the
+--     general form cost nothing and the narrow one would have blocked the
+--     only customer.
+iext-Represents : {S T Θ : Cx} {σ : Sub S T} {s : RTm Θ}
+                  (dd : RTm Θ) (t : RTm T) →
                   Represents σ s →
                   Represents {Γ = S ∙} {Δ = T}
                              (iext σ t)
-                             (iextK (num (len S)) (num (len T)) s (enTm t))
-iext-Represents {S} {T} t h vz =
-  iextK-app (num (len S)) (num (len T)) _ (enTm t) (enVar {S ∙} vz)
-  » ⟶*-subTmAtK (extS-Represents (num (len S)) h vz)
+                             (iextK dd (num (len T)) s (enTm t))
+iext-Represents {S} {T} dd t h vz =
+  iextK-app dd (num (len T)) _ (enTm t) (enVar {S ∙} vz)
+  » ⟶*-subTmAtK (extS-Represents dd h vz)
   » sub-agree (single-Represents (num (len T))) (var vz)
-iext-Represents {S} {T} {σ = σ} t h (vs x) =
+iext-Represents {S} {T} {σ = σ} dd t h (vs x) =
   -- ⚠ the ONE cast: `extS σ (vs x)` is `renTm vs (σ x)`, and `single t`
   --   takes that back — an EQUALITY (`wk-single`), not a reduction.
   ⟶*-castᵣ (cong enTm (wk-single {v = t} (σ x)))
-    (iextK-app (num (len S)) (num (len T)) _ (enTm t) (enVar {S ∙} (vs x))
-     » ⟶*-subTmAtK (extS-Represents (num (len S)) h (vs x))
+    (iextK-app dd (num (len T)) _ (enTm t) (enVar {S ∙} (vs x))
+     » ⟶*-subTmAtK (extS-Represents dd h (vs x))
      » sub-agree (single-Represents (num (len T))) (renTm vs (σ x)))
+
+-- ★ …AND THE DEPTH IS A REDUCIBLE POSITION IN `subTmAtK`, unlike in
+--   `iextK`: `subTmAtK dd m σ t = app (app (ielim KnotD (pair sTm dd)
+--   subMethsK t) m) σ` puts it in the eliminator's INDEX, not under a
+--   binder.  Two congruences reach it.
+⟶*-subTmAtKᵈ : {Γ : Cx} {dd dd' m σ t : RTm Γ} →
+               dd ⟶* dd' → subTmAtK dd m σ t ⟶* subTmAtK dd' m σ t
+⟶*-subTmAtKᵈ h = ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ h)))
