@@ -2659,3 +2659,18 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
                 (λ h bh → exec-abstract-load-indirect-suc-preserves-mem
                             (floc fs) (falloc fs) (AtDynamic h))
                 rb)
+
+  ----------------------------------------------------------------------
+  -- 8.4  S3, CLAUSE 6/14 — `free-heap`.
+  --
+  -- `free-heap : HeapRef → IR Unit Unit` (IR.agda:294), emitting one
+  -- `mov-to-output` (IRToTrace.agda:1170) and denoting an empty trace
+  -- (DenotTrace.agda:211). Its RESULT type is `Unit`, so the value conjunct
+  -- is `RelV Unit = ⊤` and no transport is needed at all — the `id` clause
+  -- minus its only interesting step.
+  ----------------------------------------------------------------------
+  ir-correct-free-heap : ∀ (r : HeapRef) (n l : ℕ) → RelIR n l (free-heap r)
+  ir-correct-free-heap r n l fs x xsv span blks nh lk rdi rv bud =
+      1 , flat-exec-instr mov-to-output prog fs
+    , (nh , span 0 _ refl) ∷ []
+    , nh , refl , refl , lk , refl , tt
