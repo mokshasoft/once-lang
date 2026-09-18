@@ -46,3 +46,4 @@ import DirectedHoTT.Examples.Knot.IihsAgree
 import DirectedHoTT.Examples.Knot.IihsKap
 import DirectedHoTT.Examples.Knot.IihsMeths
 import DirectedHoTT.Examples.Knot.IihsMot
+import DirectedHoTT.Examples.Knot.IihsRho
