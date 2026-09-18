@@ -41,9 +41,9 @@ open import Relation.Binary.PropositionalEquality using (subst)
 open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace; fmapT)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; forceᵈ; seqF)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; forceᵈ; seqF; in-νᵈ)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0; lookupᴰUsed)
-open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; coerce-ν-out; ⟦_⟧F)
+open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; coerce-ν-out; coerce-ν-in; ⟦_⟧F)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
@@ -127,6 +127,25 @@ out-sem {F} wf v =
 -- `bridgeᵈ` case for `g-In` is a `forget`-coercion step.
 in-value : ∀ {F : Functor} → ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ → ⟦ μ-type F ⟧ᴰ
 in-value {F} x = sem-In F (coerce-functor F (μ-type F) (forget x))
+
+-- in-ν: the ν's INTRODUCTION form, `⟦F⟧T (νF) → νF`. The exact mirror of
+-- `out-sem` above, and DEFINITIONALLY `evalᴰ (in-ν wf)` minus the IRTy
+-- transports (DenotTrace.agda:198-201).
+--
+-- IT IS NOT `in-value`'s ν twin. `in-value` may go through `forget` because a
+-- well-formed μ layer holds no suspension: `wf-K` demands `IsBaseType`, which
+-- is Unit/Void/Int/Float/Str/Buffer, so no ν can hide in a `K`. At a ν the
+-- `wf-Id` positions ARE νᵈ suspensions, and `forgetν` reads each child at
+-- budget zero, DROPPING its events. That is precisely the defect the SPEC FIX
+-- removed from `evalᴰ`; re-introducing `forget` here would re-introduce it in
+-- the specification. `in-νᵈ` stores the layer as given.
+--
+-- No `WellFormedF` argument: `coerce-ν-in` is `coerce-μ-in` (Value.agda:574-575)
+-- and needs none. `out-sem` needs one only because `coerce-ν-out` inverts.
+in-ν-value : ∀ {F : Functor} → ⟦ ⟦ F ⟧T (Once.Type.ν-type F) ⟧ᴰ → ⟦ Once.Type.ν-type F ⟧ᴰ
+in-ν-value {F} x =
+  in-νᵈ (coerce-ν-in F ⟦ Once.Type.ν-type F ⟧ᴰ
+          (coerce-functor-D F (Once.Type.ν-type F) x))
 
 -- m-named / m-named-resolved: the named arrow's meaning, IR-free. This is
 -- DEFINITIONALLY `evalᴰ (SigOp (value-info cn))` (same RHS), so the `bridgeᵈ`
