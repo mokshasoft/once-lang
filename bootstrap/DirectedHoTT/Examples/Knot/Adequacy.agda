@@ -146,10 +146,28 @@
 --                inner `Tm-appK m p` is ALREADY the answer, so only the
 --                second argument descends.
 --     flatK      ⬜ OWED — agreement with `flat?`.
---     iatConK    ⬜ OWED — agreement with `iatCon`; a corollary of
---                `iconSK`'s and `subTyAtK`'s (the latter ✅ 2026-09-06).
---     iconSK     ⬜ OWED — agreement with `iconS`, VIA the factorisation
---                above.
+--     iatConK    ✅ DISCHARGED — `Knot/IConSRep.iatCon-agree`, and it is the
+--                ONE LINE this entry predicted: `sub-agree-ty` over
+--                `iconS-Represents`.  `atCon-agree` is the same line one
+--                sort down.
+--     iconS-Represents ✅ not a program — it IS `iconSK`'s adequacy.
+--     iconSK     ✅ DISCHARGED — `Knot/IConSRep.iconS-Represents`, by the
+--                factorisation this entry named: `iconS k i = icS k ∘
+--                extS (single i)`, where `icS k` is the ONE-LEVEL part
+--                `icSK` already represents.
+--                ★ `iconSK` IS `iextK`'s SHAPE — a composition under its
+--                own `lam` — so `Knot/IExtRep` was the template: one β
+--                law (`iconSK-app`) stated ONCE, generic in the
+--                variable, and the three clauses are its packaging.
+--                ⚠ ONLY THE MIDDLE CLAUSE HAS CONTENT: `extS (single i)
+--                (vs vz)` is `w i`, and `icS k` is the IDENTITY off
+--                `vz`, so substituting into a weakened term does nothing
+--                (`subTm-renTm` then `Lib/Wk.ren-sub`).
+--                ⚠ THE DEPTH IS FORCED to `⌈|Γ|⌉`, not free —
+--                `extS-Represents` reads it off the ENCODING, the same
+--                note `atCon-agree` carries.
+--     iconSK-app ✅ not a program — `iconSK`'s β law, stated once
+--                and generic in the variable (`iextK-app`'s shape).
 --     iconSSK    ✅ DISCHARGED — `Knot/IConSAgree.iconSSK-vz`/`-vs`, plus
 --                `icSK-vz`/`-vs`.  A CLONE of `Knot/ConSAgree`, and
 --                tighter than this entry predicted: `Knot/IConS` reuses
@@ -161,6 +179,8 @@
 --                part; the third clause is `iconSK`'s job, which is why
 --                it composes with `extNK`.  ⇒ `iconSK`/`iatConK` are NOT
 --                corollaries of this.
+--     iconSSK-sub ✅ not a program — `iconSSK`'s substitution
+--                naturality, one `methsFrom-sub`.
 --     iext-Represents ✅ not a program — it IS `iextK`'s adequacy lemma.
 --     iextK      ✅ DISCHARGED — `Knot/IExtRep.iext-Represents`, by the
 --                route this entry named: the factorisation
