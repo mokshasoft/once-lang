@@ -1800,3 +1800,302 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
                    (readReg (regs (floc fs10)) Output) (floc fs10)
       arrow = objhl , ℓ o l , j , xsv
             , out10 , bf-obj , bf-obj-suc , cell0-10 , code-10 , ft , calls
+  ----------------------------------------------------------------------
+  -- 6.  THE EMPTINESS PROBE — spike item (d) at :1209-1212, run at item
+  --     (g)'s functor.
+  --
+  --   IS `RelNu` INHABITED?  YES.  A coinductive record whose forcing field
+  --   is UNSATISFIABLE is EMPTY, and an empty `RelV (ν-type F)` would make
+  --   every ν theorem UNPROVABLE rather than false — progress-shaped, and
+  --   the worst outcome.  Declaring the record (:768-806) proved nothing
+  --   about this.  `probe-in-ν-nil` below builds an inhabitant.
+  --
+  --   NOTHING HERE IS ASSUMED BEHAVIOURALLY.  The block is the one
+  --   `ir-to-trace' n l (in-ν _)` actually emits (IRToTrace.agda:1095-1114,
+  --   PINNED by `in-ν-blocks`), its three rows are FETCHED from that block's
+  --   own `SpanAt` and STEPPED with `flat-exec-instr`, exactly as
+  --   `spike-curry` steps `c-thunk`/`c-ret` (:1701-1722).
+  --
+  --   WHY `in-ν` AND NOT `Ana`: `in-ν`'s block body is `mov-to-output ∷ []`
+  --   — an IDENTITY (D189) — so `block-layout` is a CLOSED three-element
+  --   list and all three fetches are `span 0/1/2 _ refl` with no
+  --   `fetch-++-left`/`-right`/`+-suc` (which `spike-curry` needed only
+  --   because its body text is abstract).  And its denotation emits nothing:
+  --   `in-ν` has no native `evalᴰ` clause, so it is `inject ∘ eval ∘ forget`
+  --   (DenotTrace.agda:183 + rec-trace-D's catch-all :215) and
+  --   `inject {ν-type F} = injectν` (ValueDomain.agda:284), whose forcing is
+  --   `λ _ → ([] , …)` (ibid. 76-77) at EVERY budget.
+  --
+  --   WHY `K Unit ⊕ Id`: item (g)'s prescribed probe functor.  It HAS a
+  --   recursive position, so `NuLayer`'s `Id` clause is in the TYPE; and its
+  --   `K` position is Str-free, so `RelK` is `⊤` and not the `⊥` that would
+  --   report a false negative (0b.1 / defect (g)).
+  --
+  --   WHAT IS PROVED: `nu-force` is SATISFIABLE — the live risk.
+  --   WHAT IS NOT: see the note at the end.  The layer taken is `inj₁ tt`,
+  --   so the proof exits through `NuLayer`'s SUM clause and never reaches
+  --   its `Id` clause; this inhabitant makes NO corecursive call at all.
+  ----------------------------------------------------------------------
+
+  ----------------------------------------------------------------------
+  -- 6.1  THE EMITTER'S SHAPE, PINNED — `curry-len`/`apply-len` (:1385-1396)
+  -- at ν.  If either of these is not `refl`, everything below is about a
+  -- block the compiler does not emit.
+  ----------------------------------------------------------------------
+  in-ν-len : ∀ {F : IRFunctor} (wf : WellFormedFI F) (n l : ℕ)
+           → length (emitted n l (in-ν wf)) ≡ 10
+  in-ν-len wf n l = refl
+
+  in-ν-blocks : ∀ {F : IRFunctor} (wf : WellFormedFI F) (n l : ℕ)
+              → blocks n l (in-ν wf) ≡ (ℓ o l , 0 , mov-to-output ∷ []) ∷ []
+  in-ν-blocks wf n l = refl
+
+  ----------------------------------------------------------------------
+  -- 6.2  THE IDENTITY BLOCK, RUN.  General in the label and the landing
+  -- site, so `obs-correct-in-ν` reuses it verbatim at every functor.
+  --
+  -- `block-layout (lbl , 0 , mov-to-output ∷ [])` is the CLOSED list
+  --   instr-ctrl (c-thunk lbl 0) ∷ mov-to-output ∷ instr-ctrl (c-ret 0) ∷ []
+  -- (SMCore.agda:1283-1285), and `SpanAt prog base t = ∀ k i → fetch t k ≡
+  -- just i → fetch prog (k + base) ≡ just i` (Interface.agda:177-178), so
+  -- `k + j` reduces to `j`/`suc j`/`suc (suc j)` at the three literal `k`s.
+  --
+  -- The chain is SILENT: no row is an `instr-sigop`, so `ev-of-loc`'s
+  -- catch-all (FlatEvents.agda:111) makes `chain-events` reduce to `[]` —
+  -- the same reduction :1731-1732 already spends on `ret-step`.
+  --
+  -- The heap survives all three rows: `do-thunk` writes `stackMem`,
+  -- `grow-frame`s (which leaves `next-heap-ref` alone DEFINITIONALLY),
+  -- clears `flink` and bumps `fpc` (Flat.agda:715-723) — `regs`, `halted`,
+  -- `fret` and `heapMem` are untouched; `mov-to-output` writes ONE register
+  -- (SMCore.agda:1808-1810); `do-ret` `leave-frame`s
+  -- (`leave-frame-heap-ref`, Flat.agda:599-605) and moves no cell.
+  --
+  -- `flink settle ≡ nothing` is discharged by `do-thunk`, which is why the
+  -- record correctly has NO `flink cfs ≡ nothing` entry premise — defect (a)
+  -- at :1192-1197, confirmed harmless.
+  ----------------------------------------------------------------------
+  identity-block-run :
+    ∀ (lbl : LabelId) (j : ℕ)
+      (blk-span : SpanAt prog j (block-layout (lbl , 0 , mov-to-output ∷ [])))
+      (cfs : FlatState) (ret-pc : ℕ) (rest : List ℕ)
+    → fpc cfs ≡ j
+    → halted (floc cfs) ≡ false
+    → fret cfs ≡ ret-pc ∷ rest
+    → Σ[ settle ∈ FlatState ]
+      Σ[ run ∈ FlatSteps prog 3 cfs settle ]
+        ( (chain-events run ≡ [])
+        × (halted (floc settle) ≡ false)
+        × (fpc settle  ≡ ret-pc)
+        × (fret settle ≡ rest)
+        × (flink settle ≡ nothing)
+        × (readReg (regs (floc settle)) Output
+             ≡ readReg (regs (floc cfs)) Input1)
+        × (∀ (h : HeapLocation)
+             → readLoc (floc settle) (AtDynamic h)
+               ≡ readLoc (floc cfs) (AtDynamic h))
+        × HeapMono (falloc cfs) (falloc settle) )
+  identity-block-run lbl j blk-span cfs ret-pc rest pc-eq nh fr =
+      st3 , run , refl
+    , trans (cong halted floc3) nh
+    , do-ret-pc-∷    st2 ret-pc rest fr
+    , do-ret-fret-∷  st2 ret-pc rest fr
+    -- `do-thunk` CLEARED the link and neither later row writes it, so
+    -- `flink st2` reduces to `nothing` and no `trans` is needed.
+    , do-ret-flink-∷ st2 ret-pc rest fr
+    , trans (cong (λ ls → readReg (regs ls) Output) floc3)
+            (writeReg-same (regs (floc cfs)) Output
+                           (readReg (regs (floc cfs)) Input1))
+    , (λ h → cong (λ ls → readLoc ls (AtDynamic h)) floc3)
+    , mono3
+    where
+      -- row 0: the marker.
+      st1 : FlatState
+      st1 = flat-exec-instr (instr-ctrl (c-thunk lbl 0)) prog cfs
+
+      -- row 1: THE IDENTITY.  `Output := Input1` — this is the whole block.
+      st2 : FlatState
+      st2 = flat-exec-instr mov-to-output prog st1
+
+      -- row 2: the return.
+      st3 : FlatState
+      st3 = flat-exec-instr (instr-ctrl (c-ret 0)) prog st2
+
+      thunk-fetch : fetch prog (fpc cfs) ≡ just (instr-ctrl (c-thunk lbl 0))
+      thunk-fetch =
+        subst (λ p → fetch prog p ≡ just (instr-ctrl (c-thunk lbl 0)))
+              (sym pc-eq) (blk-span 0 _ refl)
+
+      -- `fpc st1` is `suc (fpc cfs)` by `do-thunk`; `1 + j` is `suc j`.
+      mov-fetch : fetch prog (fpc st1) ≡ just mov-to-output
+      mov-fetch =
+        subst (λ p → fetch prog p ≡ just mov-to-output)
+              (sym (cong suc pc-eq)) (blk-span 1 _ refl)
+
+      ret-fetch : fetch prog (fpc st2) ≡ just (instr-ctrl (c-ret 0))
+      ret-fetch =
+        subst (λ p → fetch prog p ≡ just (instr-ctrl (c-ret 0)))
+              (sym (cong suc (cong suc pc-eq))) (blk-span 2 _ refl)
+
+      -- `halted (floc st1)`/`(floc st2)` reduce to `halted (floc cfs)`
+      -- (both are record updates that touch neither), which is why `nh` is
+      -- reusable verbatim — the reduction :1786-1788 already relies on.
+      run : FlatSteps prog 3 cfs st3
+      run = (nh , thunk-fetch) ∷ (nh , mov-fetch) ∷ (nh , ret-fetch) ∷ []
+
+      floc3 : floc st3 ≡ floc st2
+      floc3 = do-ret-floc-∷ st2 ret-pc rest fr
+
+      -- `spike-curry`'s `mono-ret` (:1720-1722) verbatim.
+      mono3 : HeapMono (falloc cfs) (falloc st3)
+      mono3 =
+        ≤-reflexive (sym (trans (cong next-heap-ref (do-ret-alloc st2))
+                                (leave-frame-heap-ref (falloc st2))))
+
+  ----------------------------------------------------------------------
+  -- 6.3  THE ν VALUE.  Written DIRECTLY by copattern rather than as
+  -- `injectν` of a `νS`, for two reasons: it needs NO import change
+  -- (`forceᵈ` is already in scope at :199; `injectν`, `νS` and `unfoldS`
+  -- are NOT), and it depends on nothing in the `coerce-functor`/
+  -- `⌈⌉TI-commute` tower.  It is `forceᵈ (injectν leaf)`'s normal form:
+  -- `forceᵈ (injectν x) = λ _ → ([] , mapInjectν F F (unfoldS x))`
+  -- (ValueDomain.agda:76-77), and at `SK ⊤ S⊕ SId` with a nil seed
+  -- `mapInjectν` is the identity (ibid. 81-84).
+  --
+  -- `HF (K Unit ⊕ Id)` reduces to `SK ⊤ S⊕ SId` — `⌈ K Unit ⊕ Id ⌉F =
+  -- T.K T.Unit T.⊕ T.Id` (IRTy.agda:314-318), `translateF _ _ (K A) =
+  -- SK (⟦_,_⟧-base A)` and `⟦ _ , _ ⟧-base Unit = ⊤` (Translate.agda:46,
+  -- 69-70) — so `⟦ HF Fν ⟧SF X` is `⊤ ⊎ X`.
+  ----------------------------------------------------------------------
+  Fν : IRFunctor
+  Fν = K Unit ⊕ Id
+
+  nil-ν : νᵈ (HF Fν)
+  forceᵈ nil-ν = λ _ → ([] , inj₁ tt)
+
+  ----------------------------------------------------------------------
+  -- 6.4  THE PROBE, CLOSED.  `RelNu` IS NOT EMPTY.
+  --
+  -- Every argument is a row of `in-ν`'s own emitted build or a component of
+  -- that emitter's INPUT relation — none is a new demand, and none is
+  -- refutable:
+  --   * the ν object's two cells         = `instr-alloc-heap 2` /
+  --     `store-indirect` / `instr-load-code-addr (ℓ o l)` /
+  --     `store-indirect-suc` (IRToTrace.agda:1104-1112), i.e. `curry`'s
+  --     `TwoCellBuild` rows that `spike-curry` already takes (:1613-1618);
+  --   * the seed's two cells             = `RelV (Unit +ᴵ ν-type Fν) alloc
+  --     (inj₁ tt) _ s` unpacked (:1060-1068) — `in-ν`'s input relation;
+  --   * `find-thunk` + `SpanAt`          = `proj₁ (proj₂ (All.head blks))`
+  --     and `proj₂ (proj₂ (All.head blks))` of `BlocksAt prog (blocks n l
+  --     (in-ν wf))`, whose head 6.1 pins to exactly this block.
+  -- No premise mentions `next-slot` (correction (C)); no premise says
+  -- `flink cfs ≡ nothing` (defect (a)); no premise is quantified over data
+  -- occurring only in its conclusion (the D213 shape).
+  ----------------------------------------------------------------------
+  probe-in-ν-nil :
+    ∀ (l j : ℕ) (alloc : AllocState {FS}) (s : LocState FS)
+      (hl nhl : HeapLocation) (psv : StoredValue FS)
+    -- THE ν OBJECT: seed cell + code cell.
+    → BeforeFrontier alloc (AtDynamic hl)
+    → BeforeFrontier alloc (AtDynamic (sucHL hl))
+    → readLoc s (AtDynamic hl)         ≡ just (SV-Ptr (AtDynamic nhl))
+    → readLoc s (AtDynamic (sucHL hl)) ≡ just (SV-Code (ℓ o l))
+    -- THE SEED: the layer `inl tt`, as `inl`'s own tagged two-cell node.
+    → BeforeFrontier alloc (AtDynamic nhl)
+    → BeforeFrontier alloc (AtDynamic (sucHL nhl))
+    → readLoc s (AtDynamic nhl)         ≡ just (SV-Tag 0)
+    → readLoc s (AtDynamic (sucHL nhl)) ≡ just psv
+    -- THE BLOCK — correction (B) at ν: the resolution travels WITH THE
+    -- VALUE, and `in-ν` discharges it from its OWN non-empty `all-bodies`.
+    → find-thunk prog (ℓ o l) ≡ just j
+    → SpanAt prog j (block-layout (ℓ o l , 0 , mov-to-output ∷ []))
+    → RelNu Fν alloc nil-ν (SV-Ptr (AtDynamic hl)) s
+  probe-in-ν-nil l j alloc s hl nhl psv
+                 bf0 bf1 cell0 cell1 nbf0 nbf1 tagc payc ft blk-span = go
+    where
+      go : RelNu Fν alloc nil-ν (SV-Ptr (AtDynamic hl)) s
+      nu-hl    go = hl
+      nu-lbl   go = ℓ o l
+      nu-j     go = j
+      nu-seed  go = SV-Ptr (AtDynamic nhl)
+      nu-ptr   go = refl
+      nu-bf0   go = bf0
+      nu-bf1   go = bf1
+      nu-cell0 go = cell0
+      nu-cell1 go = cell1
+      nu-code  go = ft
+      nu-force go cfs ret-pc rest pc-eq nh fr in1 ag m' bud =
+        let (settle , run , ev0 , live , cpc , cret , clink
+                    , out-eq , heap-pres , mono-run)
+              = identity-block-run (ℓ o l) j blk-span cfs ret-pc rest pc-eq nh fr
+        in  3 , settle , run
+          , live , cpc , cret , clink
+          -- BOTH SIDES ARE `take bud []`: the chain is silent, and
+          -- `projTrace (forceᵈ nil-ν) bud` is `proj₁ ([] , inj₁ tt)`.
+          , cong (take bud) ev0
+          -- THE LAYER.  `TM.valueT (forceᵈ nil-ν) bud` is `inj₁ tt`, so
+          -- `NuLayer` takes its `(G ⊕ H) … (inj₁ x)` clause (:717-726) and
+          -- the `K Unit` position is `RelK base-Unit _ _ _ _ = ⊤` (:672).
+          -- `Output` is the seed cell's content because `mov-to-output` IS
+          -- the whole block — D189's "the block returns its input".
+          , ( nhl , psv
+            , trans out-eq in1
+            , bf-lift (≤-trans m' mono-run) nbf0
+            , bf-lift (≤-trans m' mono-run) nbf1
+            , trans (heap-pres nhl)
+                    (trans (ag nhl nbf0) tagc)
+            , trans (heap-pres (sucHL nhl))
+                    (trans (ag (sucHL nhl) nbf1) payc)
+            , base-Unit , tt )
+
+  ----------------------------------------------------------------------
+  -- 6.5  WHAT THE PROBE DID NOT REACH, AND WHAT IT FOUND.
+  --
+  -- ν-1.  THE `Id` POSITION IS UNPROBED.  The layer is `inj₁ tt`, so
+  --   `NuLayer`'s `Id` clause (:717) is in the TYPE and not in the PROOF,
+  --   and this inhabitant makes NO corecursive call.  It therefore cannot
+  --   settle the open positivity/guardedness question at :1230-1240 — a
+  --   rejection there would be a rejection of the record's DECLARATION, not
+  --   of this proof.  (The declaration is already green at bd100ffe, so
+  --   that question is in fact answered; this note records that the probe
+  --   is not what answered it.)
+  --
+  -- ν-2.  `obs-correct-in-ν` IN FULL GENERALITY IS NOT PROVABLE TODAY, AND
+  --   THE CAUSE IS THE DENOTATION, NOT `RelNu`.  `in-ν` has NO native
+  --   `evalᴰ` clause — unlike `Ana` (DenotTrace.agda:169-175) and `Out`
+  --   (ibid. 178-182) — so it falls to the catch-all at :183 and its
+  --   denotation is `inject ∘ eval ∘ forget`.  At ν, `forget` is `forgetν`
+  --   and `unfoldS (forgetν v) = mapForgetν F F (valueT (forceᵈ v) zero)`
+  --   (ValueDomain.agda:62-64): budget ZERO, events DISCARDED.  So every
+  --   recursive child `v` of the input layer reappears in the RESULT's
+  --   forced layer as `injectν (forgetν v)`, whose forcing emits `[]` at
+  --   every budget — while `in-ν`'s ten rows store that child's POINTER
+  --   UNCHANGED.  The bridge would have to derive "forcing this cell emits
+  --   nothing" from "forcing this cell emits `forceᵈ v`'s events": two
+  --   demands on ONE cell, false as soon as `v` is an `Ana` over an
+  --   emitting coalgebra.  THE FIX IS IN THE DENOTATION: give `in-ν` a
+  --   native `evalᴰ` clause that is the IDENTITY at recursive positions
+  --   (the children are already `νᵈ`), matching `Ana`/`Out`.  Until then
+  --   `in-ν` is provable exactly where no `Id` position is occupied —
+  --   which is this probe.
+  --
+  --   Note this is NOT the same objection as "a finite acyclic heap cannot
+  --   satisfy an unbounded descent".  `in-ν`'s block re-suspends nothing,
+  --   so at the `Id` position the forced child's stored value is THE SAME
+  --   CELL the input layer already related; the right discharge TRANSPORTS
+  --   the child's `RelNu` out of `in-ν`'s input relation (all three steps
+  --   are heap-neutral, so the transport is `nu-transport` with `mono-run`
+  --   and `heap-pres`) rather than rebuilding it.  That transport needs a
+  --   `nulayer-transport` — the clause-for-clause mirror of
+  --   `mulayer-transport` (:586-606) with `nu-transport` at `Id` — which
+  --   does not exist yet and is deliberately NOT written here: it is not
+  --   needed to answer the emptiness question, and adding it would put ~35
+  --   lines of unchecked code between this answer and the typechecker.
+  --
+  -- ν-3.  `obs-correct-in-ν` IS MIS-FILED.  It sits under
+  --   `-- CLASS G — THE EMITTER IS MISSING` (Simple.agda:617-625).  The
+  --   emitter is NOT missing: `ir-to-trace' n l (in-ν _)` emits ten rows
+  --   plus a block (IRToTrace.agda:1095-1114, pinned by 6.1).  It belongs
+  --   with the discharged two-cell builds (`curry`, `Ana`), not with
+  --   `Para`/`Hylo`/`Fuse`.  Re-file it in the residual ledger.
+  ----------------------------------------------------------------------
