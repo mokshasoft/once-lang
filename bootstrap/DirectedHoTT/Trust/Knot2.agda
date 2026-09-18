@@ -42,7 +42,7 @@ import DirectedHoTT.Examples.Knot.IhsMeths
 import DirectedHoTT.Examples.Knot.IhsMot
 import DirectedHoTT.Examples.Knot.IhsRho
 import DirectedHoTT.Examples.Knot.Iihs
+import DirectedHoTT.Examples.Knot.IihsAgree
 import DirectedHoTT.Examples.Knot.IihsKap
 import DirectedHoTT.Examples.Knot.IihsMeths
 import DirectedHoTT.Examples.Knot.IihsMot
-import DirectedHoTT.Examples.Knot.IihsRho
