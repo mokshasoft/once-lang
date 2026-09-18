@@ -27,10 +27,21 @@
 --   on the nose — no arithmetic lemma, which is the "no trick".
 --
 -- ⚠ `iextK` IS NOT IN THIS CLASS, despite sitting in the same module and
---   looking like a twin.  Its entry reads "VIA its factorisation
---   `iext σ t ≡ single t ∘ extS σ`" — it owes a factorisation lemma
---   FIRST, and carries the same two-step debt as `iconSK`.  Do not
---   assume the other compositions are corollaries because this one was.
+--   looking like a twin.  ✅ CLOSED 2026-09-18 in `Knot/IExtRep`, and the
+--   reason it was not a corollary is NOT the one this note predicted.
+--   It read: *"it owes a factorisation lemma FIRST"* — but `iextK`'s
+--   BODY already IS the factorisation `single t ∘ extS σ`, so there was
+--   no such lemma to write.
+--   ★★★ WHAT IT ACTUALLY OWED was the β of its own `lam`.  `extNK` and
+--   `singleK` both BUILD a `lam`, so the substitution goes under the
+--   binder and their arguments are weakened twice — FIVE naturality
+--   lemmas, not a factorisation.  `iinstK` never met this because
+--   `subTyAtK` is applied to arguments and consumed immediately, never
+--   passed as one.
+--   ⇒ the prediction "do not assume the other compositions are
+--     corollaries because this one was" was RIGHT and its stated reason
+--     was wrong.  The discriminator is whether the composite sits under
+--     a binder of its own.
 ------------------------------------------------------------------------
 
 {-# OPTIONS --safe #-}
