@@ -34,6 +34,7 @@ import DirectedHoTT.Examples.Knot.ConvWf
 import DirectedHoTT.Examples.Knot.Ctors
 import DirectedHoTT.Examples.Knot.CtorsV
 import DirectedHoTT.Examples.Knot.CtxD
+import DirectedHoTT.Examples.Knot.DepthCong
 import DirectedHoTT.Examples.Knot.Desc
 import DirectedHoTT.Examples.Knot.EWk
 import DirectedHoTT.Examples.Knot.IConS
@@ -46,4 +47,3 @@ import DirectedHoTT.Examples.Knot.ILookupDAgree
 import DirectedHoTT.Examples.Knot.IMethTy
 import DirectedHoTT.Examples.Knot.IMethsTy
 import DirectedHoTT.Examples.Knot.IMethsTyMot
-import DirectedHoTT.Examples.Knot.IPayTy
