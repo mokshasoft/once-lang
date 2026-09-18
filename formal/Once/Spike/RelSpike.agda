@@ -196,7 +196,7 @@ open import Once.IRTy using (Void; Int; Float; Str; Buffer; _⇛_;
 open import Once.Functor.Translate using (translateF)
   renaming (⟦_,_⟧-base to BaseVal)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
-open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ)
+open import Once.Denotation.ValueDomain using (νᵈ; forceᵈ; anaᵈ; mapAnaᵈ)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk; c-ret)
 
 ------------------------------------------------------------------------
@@ -2098,4 +2098,399 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   --   plus a block (IRToTrace.agda:1095-1114, pinned by 6.1).  It belongs
   --   with the discharged two-cell builds (`curry`, `Ana`), not with
   --   `Para`/`Hylo`/`Fuse`.  Re-file it in the residual ledger.
+  ----------------------------------------------------------------------
+  ----------------------------------------------------------------------
+  -- 7.  `Ana` — THE CORECURSIVE INHABITANT.  WHAT §6 COULD NOT REACH.
+  --
+  -- ν-1 (:2068-2076) records that `probe-in-ν-nil` takes the layer
+  -- `inj₁ tt`, exits through `NuLayer`'s SUM clause, and makes NO
+  -- corecursive call.  So it showed `RelNu` non-empty and said nothing
+  -- about whether a corecursive inhabitant EXISTS.  This section builds
+  -- one: every clause below goes through `NuLayer`'s `Id` clause (:717),
+  -- the only clause that demands a full `RelNu` of the proof.
+  --
+  -- WHY THE SHAPE IS A MUTUAL PAIR.  `RelNu`'s `nu-force` ends in
+  -- `NuLayer F (RelNu F) …` — the corecursive occurrence is passed to a
+  -- DEFINED function.  For the DECLARATION that is a positivity question
+  -- and it passed.  For a PROOF it is a guardedness question, and D062
+  -- (AnaErased.agda:571-573) says: "`--guardedness` rejects a corecursive
+  -- call passed to a defined function (D062), so a corecursive proof must
+  -- place its own map structurally at `SId`."
+  --
+  -- THAT CONSTRAINT IS MET THE WAY THE TREE ALREADY MEETS IT, TWICE:
+  --   * `anaᵈ`/`mapAnaᵈ`      — ValueDomain.agda:119-130 (values);
+  --   * `anaᵈ-∼`/`mapAnaᵈ-∼`  — ValueDomainLaws.agda:118-143 (RELATIONS,
+  --     with the machine-free obligation `CoalgRel` as a PREMISE, ibid.
+  --     105-113).  Its header: "the one place the guardedness checker is
+  --     doing real work: `anaᵈ-∼`'s corecursive call sits under
+  --     `mapAnaᵈ-∼`, which is structural in `G`".
+  -- Both files are green with zero pragmas and zero postulates under the
+  -- same library-wide `--guardedness` (Once.agda-lib).  `_∼ᵈ_` itself
+  -- (ValueDomainLaws.agda:53-58) passes its corecursive occurrence to the
+  -- defined `⟦_⟧SF-rel`, exactly as `RelNu` passes its to `NuLayer` — so
+  -- the shape is precedented at the declaration AND at the construction.
+  --
+  -- WHAT IS ASSUMED AND WHAT IS PROVED.  `CoalgBlockRuns` (7.3) is the
+  -- ONE machine fact, and it is an ARGUMENT of every theorem below, never
+  -- a postulate.  7.7 discharges a real instance of it, so the mutual pair
+  -- is not parameterised by an interface nothing meets.
+  ----------------------------------------------------------------------
+
+  ----------------------------------------------------------------------
+  -- 7.1  THE TWO DENOTATIONAL REDUCTIONS, PINNED.  `in-ν-blocks`' idiom
+  -- (:1849-1851): state the equation the proof will silently rely on and
+  -- make `refl` say whether it holds.
+  --
+  -- `T X = ℕ → List SigOpEvent × X` with `projTrace m n = proj₁ (m n)`
+  -- and `valueT m n = proj₂ (m n)` (TraceMonad.agda:44, 80, 84), so both
+  -- are one beta plus one projection of a literal pair through `anaᵈ`'s
+  -- copattern (ValueDomain.agda:120-122).
+  ----------------------------------------------------------------------
+  ana-trace-pin : ∀ (F : IRFunctor) {A : Set}
+                    (coalgᵈ : A → TM.T (⟦ HF F ⟧SF A)) (a : A) (bud : ℕ)
+                → projTrace (forceᵈ (anaᵈ (HF F) coalgᵈ a)) bud
+                  ≡ projTrace (coalgᵈ a) bud
+  ana-trace-pin F coalgᵈ a bud = refl
+
+  ana-force-pin : ∀ (F : IRFunctor) {A : Set}
+                    (coalgᵈ : A → TM.T (⟦ HF F ⟧SF A)) (a : A) (bud : ℕ)
+                → TM.valueT (forceᵈ (anaᵈ (HF F) coalgᵈ a)) bud
+                  ≡ mapAnaᵈ (HF F) (HF F) coalgᵈ (TM.valueT (coalgᵈ a) bud)
+  ana-force-pin F coalgᵈ a bud = refl
+
+  ----------------------------------------------------------------------
+  -- 7.2  `AnaSusp` — WHAT AN `Ana` BLOCK LEAVES AT A RECURSIVE POSITION.
+  --
+  -- D199: `resuspend-layer n l lbl wf-Id` (IRToTrace.agda:662-676)
+  -- allocates two fresh cells and stores `(child seed , SV-Code lbl)`,
+  -- with `lbl` THE EMITTING BLOCK'S OWN LABEL — `ir-to-trace' n l (Ana wf
+  -- coalg)` passes `ℓ o this-label` to it (ibid. :1148-1149).  That is why
+  -- ONE `(lbl , j)` serves parent and child alike below.
+  --
+  -- TWO DESIGN DECISIONS, BOTH FORCED, NEITHER STYLISTIC:
+  --
+  -- (i) A `data` WITH THE ν VALUE AS A CONSTRUCTOR INDEX, not a `Σ` with
+  --   an `_≡_` field.  The index pins `v ≡ anaᵈ (HF F) coalgᵈ a`, so
+  --   `ana-rel` recovers it by MATCHING.  With a `Σ` the recovery is
+  --   `subst P eq (ana-rel …)` — a corecursive call passed to a defined
+  --   function, which is precisely D062's rejected shape.
+  --
+  -- (ii) `sv` STAYS A FREE INDEX and the pointer equation is a
+  --   constructor ARGUMENT — the discipline `RelNu`'s own `nu-ptr` field
+  --   already follows (:772).  `NuLayer`'s `Id` clause (:717) is bare
+  --   `R alloc x sv s` with no `Σ[ psv ]` to choose, so at the use site
+  --   `sv` is the literal `readReg (regs (floc settle)) Output` while the
+  --   machine yields only a propositional equation.  Pinning `sv` in the
+  --   conclusion would force a `subst` at every use site.
+  --
+  -- POSITIVITY: nothing mentions `AnaSusp`, so there is no cycle, and it
+  -- is declared after every clause of `RelV`/`RelT`, hence in its own
+  -- mutual block (the placement rule at :231-240).
+  ----------------------------------------------------------------------
+  data AnaSusp (F : IRFunctor) (A : Set)
+               (coalgᵈ : A → TM.T (⟦ HF F ⟧SF A))
+               (lbl : LabelId)
+               (Seed : AllocState {FS} → A → StoredValue FS
+                     → LocState FS → Set)
+             : AllocState {FS} → νᵈ (HF F) → StoredValue FS
+             → LocState FS → Set where
+    ana-susp : ∀ {alloc : AllocState {FS}} {s : LocState FS}
+                 {sv : StoredValue FS}
+                 (a : A) (hl : HeapLocation) (seedsv : StoredValue FS)
+               → sv ≡ SV-Ptr (AtDynamic hl)
+               → BeforeFrontier alloc (AtDynamic hl)
+               → BeforeFrontier alloc (AtDynamic (sucHL hl))
+               → readLoc s (AtDynamic hl)         ≡ just seedsv
+               → readLoc s (AtDynamic (sucHL hl)) ≡ just (SV-Code lbl)
+               → Seed alloc a seedsv s
+               → AnaSusp F A coalgᵈ lbl Seed alloc
+                          (anaᵈ (HF F) coalgᵈ a) sv s
+
+  ----------------------------------------------------------------------
+  -- 7.3  THE ONE ASSUMED MACHINE FACT, AS A TYPE.  An ARGUMENT below,
+  -- never a postulate.  It is the behaviour of the block `Ana` registers:
+  -- `coalg-trace ++ resusp-trace` (IRToTrace.agda:1159-1161) — run the
+  -- coalgebra, then re-suspend every recursive position.
+  --
+  -- The seed relation is a PARAMETER `Seed`, not `RelV A`, for the reason
+  -- `CoalgRel` is a parameter in ValueDomainLaws.agda:105-113: the pair
+  -- below is the coinductive core and must not know what a seed is.  For a
+  -- real `Ana` it is instantiated at `RelV A`; 7.7 instantiates it at a
+  -- residence predicate the machine can actually hand back.
+  --
+  -- `HeapAgree`/`HeapMono` are entry premises (as in `nu-force` itself) so
+  -- the step function can move the seed's residence forward on its own.
+  -- That keeps every transport on ARGUMENTS: nothing is ever transported
+  -- OUT of a corecursive call, which is constraint (α) of D062.
+  --
+  -- Shape audit: no premise mentions `next-slot` (correction (C)); no
+  -- premise says `flink cfs ≡ nothing` (defect (a) — `identity-block-run`
+  -- :1877 confirms `do-thunk` clears it); no ∀-bound variable occurs only
+  -- in the conclusion (the D213 shape).
+  ----------------------------------------------------------------------
+  CoalgBlockRuns : ∀ (F : IRFunctor) (A : Set)
+                     (coalgᵈ : A → TM.T (⟦ HF F ⟧SF A))
+                     (lbl : LabelId) (j : ℕ)
+                     (Seed : AllocState {FS} → A → StoredValue FS
+                           → LocState FS → Set)
+                 → Set
+  CoalgBlockRuns F A coalgᵈ lbl j Seed =
+    ∀ (alloc : AllocState {FS}) (s : LocState FS)
+      (a : A) (seedsv : StoredValue FS)
+    → Seed alloc a seedsv s
+    → ∀ (cfs : FlatState) (ret-pc : ℕ) (rest : List ℕ)
+    → fpc cfs ≡ j
+    → halted (floc cfs) ≡ false
+    → fret cfs ≡ ret-pc ∷ rest
+    → readReg (regs (floc cfs)) Input1 ≡ seedsv
+    → HeapAgree alloc s (floc cfs)
+    → HeapMono  alloc (falloc cfs)
+    → ∀ (bud : ℕ) →
+      Σ[ steps  ∈ ℕ ]
+      Σ[ settle ∈ FlatState ]
+      Σ[ run    ∈ FlatSteps prog steps cfs settle ]
+        ( (halted (floc settle) ≡ false)
+        × (fpc settle ≡ ret-pc)
+        × (fret settle ≡ rest)
+        × (flink settle ≡ nothing)
+        × (take bud (chain-events run) ≡ take bud (projTrace (coalgᵈ a) bud))
+        × NuLayer {F = F} F (AnaSusp F A coalgᵈ lbl Seed) (falloc settle)
+            (mapAnaᵈ (HF F) (HF F) coalgᵈ (TM.valueT (coalgᵈ a) bud))
+            (readReg (regs (floc settle)) Output) (floc settle) )
+
+  ----------------------------------------------------------------------
+  -- 7.4  THE MUTUAL PAIR.  THE CRUX OF THE SPIKE.
+  --
+  -- `ana-rel` NEVER PASSES ITS CORECURSIVE CALL TO A FUNCTION.  The cycle
+  -- is  ana-rel → ana-layer → ana-rel  and it passes through the
+  -- `nu-force` COPATTERN, so it is guarded; the `ana-layer → ana-layer`
+  -- edge decreases on the IRFunctor code.  That is `anaᵈ`/`mapAnaᵈ`'s
+  -- graph (ValueDomain.agda:119-130) and `anaᵈ-∼`/`mapAnaᵈ-∼`'s
+  -- (ValueDomainLaws.agda:118-143), both green.
+  ----------------------------------------------------------------------
+  module AnaCorec (F : IRFunctor) (A : Set)
+                  (coalgᵈ : A → TM.T (⟦ HF F ⟧SF A))
+                  (lbl : LabelId) (j : ℕ)
+                  (Seed : AllocState {FS} → A → StoredValue FS
+                        → LocState FS → Set)
+                  (ft   : find-thunk prog lbl ≡ just j)
+                  (step : CoalgBlockRuns F A coalgᵈ lbl j Seed) where
+
+    mutual
+      ana-rel : ∀ {alloc : AllocState {FS}} {v : νᵈ (HF F)}
+                  {sv : StoredValue FS} {s : LocState FS}
+              → AnaSusp F A coalgᵈ lbl Seed alloc v sv s
+              → RelNu F alloc v sv s
+      nu-hl    (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd)) = hl
+      nu-lbl   (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd)) = lbl
+      nu-j     (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd)) = j
+      nu-seed  (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd)) = seedsv
+      nu-ptr   (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd)) = e
+      nu-bf0   (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd)) = b0
+      nu-bf1   (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd)) = b1
+      nu-cell0 (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd)) = c0
+      nu-cell1 (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd)) = c1
+      nu-code  (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd)) = ft
+      -- THE CORECURSIVE CLAUSE.  `in1 : readReg … Input1 ≡ nu-seed (ana-rel
+      -- (ana-susp …))` reduces to `≡ seedsv` by the `nu-seed` clause above,
+      -- and `pc-eq` to `fpc cfs ≡ j` by the `nu-j` clause — the SAME
+      -- self-reduction `probe-in-ν-nil` (:2058-2060) already spends when it
+      -- writes `trans out-eq in1`.
+      --
+      -- The layer obligation is `NuLayer F (RelNu F) (falloc settle)
+      -- (TM.valueT (forceᵈ (anaᵈ (HF F) coalgᵈ a)) bud) …`, which reduces by
+      -- `ana-force-pin` to what `step` hands back, up to `AnaSusp` vs
+      -- `RelNu` at the recursive positions.  `ana-layer` is exactly that
+      -- difference.
+      nu-force (ana-rel (ana-susp {alloc} {s} a hl seedsv e b0 b1 c0 c1 sd))
+               cfs ret-pc rest pc-eq nh fr in1 ag m bud =
+        let (steps , settle , run , live , cpc , cret , clink , cev , clayer)
+              = step alloc s a seedsv sd cfs ret-pc rest pc-eq nh fr in1 ag m bud
+        in  steps , settle , run , live , cpc , cret , clink , cev
+          , ana-layer F clayer
+
+      -- THE LAYER MAP.  `AnaSusp` becomes `RelNu` at the recursive
+      -- positions, everything else is re-packed with CONSTRUCTORS ONLY —
+      -- `mapAnaᵈ-∼`'s discipline (ValueDomainLaws.agda:132-143).
+      --
+      -- Both sides of the arrow are at the SAME `alloc`/`s`, so there is
+      -- nothing to transport and no defined function ever receives the
+      -- recursive call.  (Constraint (α): a `nulayer-transport` wrapper
+      -- here would put `ana-rel` in a defined function's argument and every
+      -- cycle would carry an unguarded edge.)
+      ana-layer : ∀ (G : IRFunctor) {alloc : AllocState {FS}}
+                    {x : ⟦ HF G ⟧SF (νᵈ (HF F))} {sv : StoredValue FS}
+                    {s : LocState FS}
+                → NuLayer {F = F} G (AnaSusp F A coalgᵈ lbl Seed) alloc x sv s
+                → NuLayer {F = F} G (RelNu F)                     alloc x sv s
+      -- `NuLayer (K B) R …` does not mention `R` (:713-714), so this is the
+      -- identity at a type that is literally the same on both sides.
+      ana-layer (K B) r = r
+      -- THE CORECURSIVE CALL, in tail position, RHS-bare.  `NuLayer Id R
+      -- alloc x sv s = R alloc x sv s` (:717) — the defined function
+      -- reduces away and `ana-rel` recovers `x ≡ anaᵈ (HF F) coalgᵈ a` by
+      -- matching `ana-susp`, never by `subst`.
+      ana-layer Id    r = ana-rel r
+      ana-layer (G₁ ⊕ G₂) {x = inj₁ x} (hl , psv , e , bf0 , bf1 , t0 , p1 , r) =
+        hl , psv , e , bf0 , bf1 , t0 , p1 , ana-layer G₁ r
+      ana-layer (G₁ ⊕ G₂) {x = inj₂ y} (hl , psv , e , bf0 , bf1 , t0 , p1 , r) =
+        hl , psv , e , bf0 , bf1 , t0 , p1 , ana-layer G₂ r
+      ana-layer (G₁ ⊗ G₂) {x = x , y}
+                (hl , xsv , ysv , e , bf0 , bf1 , c0 , c1 , rx , ry) =
+        hl , xsv , ysv , e , bf0 , bf1 , c0 , c1
+           , ana-layer G₁ rx , ana-layer G₂ ry
+
+    ----------------------------------------------------------------------
+    -- 7.5  THE THEOREM.  ONE `Ana` SUSPENSION, RELATED — CORECURSIVELY.
+    --
+    -- NOT `obs-correct-Ana`.  That additionally owes the ten two-cell build
+    -- rows (D189: "`Ana` is `curry`'s clause with the coalgebra in the code
+    -- cell" — IRToTrace.agda:1150-1159 IS :879-889 character for
+    -- character, so `spike-curry`'s premises at :1613-1628 carry over
+    -- unchanged), and the discharge of `CoalgBlockRuns` from the coalgebra
+    -- IH plus a `WellFormedFI` induction mirroring `resuspend-layer`.
+    -- NONE of that is corecursive; this is the part that was.
+    ----------------------------------------------------------------------
+    spike-Ana-ν : ∀ {alloc : AllocState {FS}} {s : LocState FS}
+                    (a : A) (hl : HeapLocation) (seedsv sv : StoredValue FS)
+                → sv ≡ SV-Ptr (AtDynamic hl)
+                → BeforeFrontier alloc (AtDynamic hl)
+                → BeforeFrontier alloc (AtDynamic (sucHL hl))
+                → readLoc s (AtDynamic hl)         ≡ just seedsv
+                → readLoc s (AtDynamic (sucHL hl)) ≡ just (SV-Code lbl)
+                → Seed alloc a seedsv s
+                → RelNu F alloc (anaᵈ (HF F) coalgᵈ a) sv s
+    spike-Ana-ν a hl seedsv sv e b0 b1 c0 c1 sd =
+      ana-rel (ana-susp a hl seedsv e b0 b1 c0 c1 sd)
+
+  ----------------------------------------------------------------------
+  -- 7.6  THE `Id` POSITION IS REALLY TAKEN, AT EVERY DEPTH, UNDER BUDGET
+  -- ZERO.  §6's probe could not say this.
+  --
+  -- `ω-coalg`'s layer is `inj₂` at every budget, so every forcing exits
+  -- through `NuLayer`'s `⊕`/`inj₂` clause (:727-735) INTO the `Id` clause
+  -- (:717), where `ana-layer` makes its corecursive call.  The recursion
+  -- is unbounded and `bud` never decreases — which is the point of
+  -- `RelNu` having no step index (:756-766).
+  --
+  -- `HF Fν` reduces to `SK ⊤ S⊕ SId` (the derivation at :1965-1968), so
+  -- `mapAnaᵈ`'s `S⊕`/`inj₂` and `SId` clauses (ValueDomain.agda:127-130)
+  -- both fire and this is `refl`.
+  ----------------------------------------------------------------------
+  ω-coalg : ⊤ → TM.T (⟦ HF Fν ⟧SF ⊤)
+  ω-coalg u = λ _ → ([] , inj₂ u)
+
+  ω-layer-pin : ∀ (u : ⊤) (bud : ℕ)
+              → TM.valueT (forceᵈ (anaᵈ (HF Fν) ω-coalg u)) bud
+                ≡ inj₂ (anaᵈ (HF Fν) ω-coalg u)
+  ω-layer-pin u bud = refl
+
+  ----------------------------------------------------------------------
+  -- 7.7  `CoalgBlockRuns` IS INHABITED.  The pair above is not
+  -- parameterised by an interface nothing meets.
+  --
+  -- At `F = Id` the coalgebra is `returnT` — the block returns its input,
+  -- so the machine side is `identity-block-run`'s three rows (:1878-1897),
+  -- the same block `probe-in-ν-nil` spends.  `HF Id` reduces to `SId`
+  -- (`⌈ Id ⌉F = T.Id`, IRTy.agda:344; `translateF _ _ Id = SId`,
+  -- Translate.agda:71), so `mapAnaᵈ (HF Id) (HF Id) c (TM.valueT (c a)
+  -- bud)` reduces to `anaᵈ (HF Id) c a` and `NuLayer Id R` reduces to `R`.
+  --
+  -- HONEST LIMIT, stated because it is the whole value of this subsection:
+  -- this discharges the INTERFACE, not `Ana`.  The block is `in-ν`'s
+  -- one-instruction body, not `ir-to-trace' n l (Ana wf coalg)`'s
+  -- `coalg-trace ++ resusp-trace`.  Only the DENOTATION side is a genuine
+  -- anamorphism.  What it does settle is that `CoalgBlockRuns` is
+  -- satisfiable at all — so the `YES` of 7.4/7.5 is not vacuous.
+  --
+  -- `CycSeed` asks for a SELF-REFERENTIAL cell: the seed value is a
+  -- pointer to `hl` and cell `hl` holds that same pointer.  Nothing in
+  -- `LocState` forbids it, it is a PREMISE rather than a claim about any
+  -- emitter, and it is exactly what makes this corecursion infinite.
+  ----------------------------------------------------------------------
+  cyc-coalg : ⊤ → TM.T (⟦ HF Id ⟧SF ⊤)
+  cyc-coalg a = TM.returnT a
+
+  CycSeed : LabelId → AllocState {FS} → ⊤ → StoredValue FS
+          → LocState FS → Set
+  CycSeed lbl alloc _ sv s =
+    Σ[ hl ∈ HeapLocation ]
+      ( (sv ≡ SV-Ptr (AtDynamic hl))
+      × BeforeFrontier alloc (AtDynamic hl)
+      × BeforeFrontier alloc (AtDynamic (sucHL hl))
+      × (readLoc s (AtDynamic hl)         ≡ just sv)
+      × (readLoc s (AtDynamic (sucHL hl)) ≡ just (SV-Code lbl)) )
+
+  cyc-step : ∀ (lbl : LabelId) (j : ℕ)
+           → SpanAt prog j (block-layout (lbl , 0 , mov-to-output ∷ []))
+           → CoalgBlockRuns Id ⊤ cyc-coalg lbl j (CycSeed lbl)
+  cyc-step lbl j blk-span alloc s a seedsv (hl , e , b0 , b1 , c0 , c1)
+           cfs ret-pc rest pc-eq nh fr in1 ag m bud =
+    let (settle , run , ev0 , live , cpc , cret , clink
+                , out-eq , heap-pres , mono-run)
+          = identity-block-run lbl j blk-span cfs ret-pc rest pc-eq nh fr
+        mono : HeapMono alloc (falloc settle)
+        mono = ≤-trans m mono-run
+        cell0' : readLoc (floc settle) (AtDynamic hl) ≡ just seedsv
+        cell0' = trans (heap-pres hl) (trans (ag hl b0) c0)
+        cell1' : readLoc (floc settle) (AtDynamic (sucHL hl))
+                   ≡ just (SV-Code lbl)
+        cell1' = trans (heap-pres (sucHL hl)) (trans (ag (sucHL hl) b1) c1)
+        ptr' : readReg (regs (floc settle)) Output ≡ SV-Ptr (AtDynamic hl)
+        ptr' = trans (trans out-eq in1) e
+    in  3 , settle , run , live , cpc , cret , clink
+      -- BOTH SIDES ARE `take bud []`: the chain is silent (`ev0`) and
+      -- `projTrace (TM.returnT a) bud` is `proj₁ ([] , a)`.
+      , cong (take bud) ev0
+      -- THE LAYER, at `NuLayer Id` — i.e. the bare `AnaSusp`, with the
+      -- CHILD seed equal to the parent's.  `anaᵈ`'s own index is met on
+      -- the nose because `TM.valueT (TM.returnT a) bud` reduces to `a`.
+      , ana-susp a hl seedsv ptr'
+                 (bf-lift mono b0) (bf-lift mono b1) cell0' cell1'
+                 ( hl , e , bf-lift mono b0 , bf-lift mono b1
+                 , cell0' , cell1' )
+
+  spike-ana-cyclic :
+    ∀ (lbl : LabelId) (j : ℕ) (alloc : AllocState {FS}) (s : LocState FS)
+      (hl : HeapLocation) (sv : StoredValue FS)
+    → find-thunk prog lbl ≡ just j
+    → SpanAt prog j (block-layout (lbl , 0 , mov-to-output ∷ []))
+    → sv ≡ SV-Ptr (AtDynamic hl)
+    → BeforeFrontier alloc (AtDynamic hl)
+    → BeforeFrontier alloc (AtDynamic (sucHL hl))
+    → readLoc s (AtDynamic hl)         ≡ just sv
+    → readLoc s (AtDynamic (sucHL hl)) ≡ just (SV-Code lbl)
+    → RelNu Id alloc (anaᵈ (HF Id) cyc-coalg tt) sv s
+  spike-ana-cyclic lbl j alloc s hl sv ft blk-span e b0 b1 c0 c1 =
+    AnaCorec.spike-Ana-ν Id ⊤ cyc-coalg lbl j (CycSeed lbl) ft
+                         (cyc-step lbl j blk-span)
+                         tt hl sv sv e b0 b1 c0 c1
+                         (hl , e , b0 , b1 , c0 , c1)
+
+  ----------------------------------------------------------------------
+  -- 7.8  WHAT SECTION 7 SETTLES, AND WHAT IT LEAVES.
+  --
+  -- ν-4.  THE GUARDEDNESS QUESTION IS ANSWERED: YES.  `ana-layer Id r =
+  --   ana-rel r` is a CLAUSE, so it is checked whatever any caller does,
+  --   and 7.6 shows the clause is reachable at unbounded depth under
+  --   budget 0.  `RelNu` is usable for the recursion scheme it exists to
+  --   serve; the note at ν-1 is discharged.
+  --
+  -- ν-5.  `CoalgBlockRuns` FOR A REAL `Ana` IS THE NEXT STEP AND IT IS
+  --   NOT CORECURSIVE.  It needs (a) the coalgebra's own `RelIR` IH at its
+  --   emission site (`ir-to-trace' 0 (suc l) coalg`, IRToTrace.agda:1143),
+  --   (b) a run for `resuspend-layer`'s nine `wf-Id` rows (ibid. 662-676),
+  --   general in the entry state because the corecursion re-enters it, and
+  --   (c) a `WellFormedFI` induction gluing the two.  At `wf-Prod` (ibid.
+  --   677-698) the `tF` sub-run finishes BEFORE `instr-alloc-heap 2` and
+  --   two `store-indirect*` rows, so that induction must move the child's
+  --   residence forward — which is why the transport belongs THERE, in
+  --   first-order `AnaSusp` data, and not in `ana-layer`.
+  --
+  -- ν-6.  ν-2 (:2077-2101) IS UNAFFECTED.  Its objection is that `in-ν`'s
+  --   denotation forces at budget ZERO and discards events, making two
+  --   demands on one cell.  `Ana` has a native `evalᴰ` clause
+  --   (DenotTrace.agda:169-175) and re-suspends into FRESH cells at every
+  --   forcing, so no cell is doubly demanded across depths.  The right
+  --   case was picked for the right reason.
   ----------------------------------------------------------------------
