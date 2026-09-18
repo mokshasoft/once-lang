@@ -53,8 +53,8 @@ entries. The chain, cheapest first, with each step's REAL size:
 
 | # | entry | shape | depends on |
 |---|---|---|---|
-| 1 | `ihsK` | induction on **`DCon` — 3 cases** | nothing |
-| 2 | `fieldsK` | 2 `Tm-appK` congruences | 1 |
+| 1 | ✅ `ihsK` | induction on **`DCon` — 3 cases** | nothing |
+| 2 | ✅ `fieldsK` | **1** `Tm-appK` congruence | 1 |
 | 3 | `iextK` | composition + a β | `sub-agree` ✅ `single-Represents` ✅ `extS-Represents` ✅ |
 | 4 | `iihsK` | induction on **`ICon` — 3 cases** | 1, 3 |
 | 5 | `ifieldsK` | 3 `Tm-appK` congruences | 4 |
@@ -182,3 +182,44 @@ call site, and needs no definition change.
 (wk-single …) (wk-single …)) …)` — note that `extNK-vz` LEAVES
 `subTm (single …) (w σ)` uncancelled, because the lemma it chains into is
 generic in that slot. Cancel only what the next lemma PINS.
+
+
+---
+
+## 3. Steps 1 and 2 — `ihsK` and `fieldsK` ✅ **CLOSED 2026-09-17**
+
+Developed in `bootstrap/tmp/IhsAgreeTmp.agda`, promoted to
+`Examples/Knot/IhsAgree`.  **Five attempts**, and §1's predictions held:
+three cases, no other ledger entry, and the index quantified.
+
+| # | attempt | outcome / **why** |
+|---|---------|-------------------|
+| 1 | state it with the index QUANTIFIED, prove by `done` | ✅ well-formed and well-typed; Agda printed the three goals and the meta side COMPUTES (`ihs D ms dι p` ⇒ `unit`) |
+| 2 | row `dι` — head-red at tag 43 + seven βs | ✅ **rc=0 first try, and NO CAST.** `Tm-unitK` is built from constructors and numerals, so seven substitutions leave it alone definitionally |
+| 3 | row `dρ` — head-red at 44, seven βs, two `βfst`s, the IH | ⚠ `subTm (single ⌈p⌉) (subTm (extS (single ⌈ms⌉)) (w (w ⌈D⌉))) != ⌈D⌉` — the weakening tower `ConSAgree` warned about |
+| 4 | + one `⟶*-castₗ` cleaning all four slots at once | ⚠ **UnsolvedMetaVariables, ZERO type errors** — the `_` in `towerJ⁵ … _` |
+| 5 | pin the tower's landing value (the head-red's own `iihs` term) | ✅ **rc=0**, all three rows; `ihsK-agree` and `fieldsK-agree` followed with no further search |
+
+★★★ **THE TOWER IS ONE RUNG PER BINDER THE SLOT PASSES UNDER**, and the
+seven-lam body makes it a countdown: `p` none · `ms` `wk-single` · `D`
+`sub-w²-single` · `n` `towerJ` · the IH `towerJ⁵`.  ⚠ `Knot/Ihs.⊢ihsAppK`
+already pays `towerJ p ms D n` for the very same slot — **the typing side
+had counted this and the proof side re-derived it.**  Read the `⊢…AppK`
+lemma of a program before writing its adequacy; it is the same arithmetic.
+
+★★ **ATTEMPT 4 IS THE ONE WORTH REMEMBERING.** It reported *unsolved
+metas and not one type error* — i.e. the chain was RIGHT and only a
+landing value was unnamed.  `SUBTM` step 8 found the same thing over four
+rounds and concluded *"on a substitution chain, pin everything at once
+rather than discovering it a layer at a time."*  Here it cost one round
+because the log said so first.
+
+★ **AND THE `dρ`/`dκ` ROWS SHARE THEIR CHILD'S INDEX**, `pair sDCon
+(snd i)`.  `dκ` reaches it through `iext (isingle i) (fst p)` applied to
+`var (vs vz)`, and `iext σ v (vs x) = σ x` takes that straight back to
+`i` — so the two rows differ only in the projection depth of the IH
+(`fst ihs` vs `fst (snd ihs)`) and in `dρ`'s `Tm-pairK` wrapper.
+
+⇒ **NEXT:** step 3 (`iextK`) is unchanged by this — its two logged
+attempts stand, and the `iextK-vz`/`iextK-vs` route in §2 is still the
+one to price first.
