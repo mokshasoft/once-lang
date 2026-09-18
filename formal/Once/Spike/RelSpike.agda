@@ -2575,3 +2575,87 @@ module Spike {FS : FrameSemantics} (prog : AbstractTrace) where
   ----------------------------------------------------------------------
   ir-correct-initial : ∀ {A : IRTy} (n l : ℕ) → RelIR n l (initial {A})
   ir-correct-initial n l fs ()
+
+  ----------------------------------------------------------------------
+  -- 8.3  S3, CLAUSES 4-5/14 — `fst` and `snd`.
+  --
+  -- The first clauses that PROJECT the input relation rather than hand a
+  -- premise back, so the first real test of whether `RelV (A * B)`'s shape
+  -- is convenient to CONSUME (it was designed to be convenient to BUILD).
+  --
+  -- `ir-to-trace' n l fst = n , l , load-indirect ∷ [] , []` and `snd` the
+  -- same with `load-indirect-suc` (IRToTrace.agda:756-757) — one instruction,
+  -- no blocks. `evalᴰ fst p = returnT (proj₁ p)` (DenotTrace.agda:134-135),
+  -- empty trace at every budget.
+  --
+  -- The pair clause hands over exactly what the two read-backs want: the
+  -- pointer equation `e`, the cell reads `c0`/`c1`, and the component
+  -- relations `ra`/`rb`. All four lemmas already exist in the tree
+  -- (SMPrimitives.agda:3775, 3801, 3849, 4628) — nothing new is needed,
+  -- which is the point worth recording: the new relation consumes the
+  -- machine's existing read-back API unchanged.
+  ----------------------------------------------------------------------
+  ir-correct-fst : ∀ {A B : IRTy} (n l : ℕ) → RelIR n l (fst {A} {B})
+  ir-correct-fst {A} {B} n l fs x xsv span blks nh lk rdi
+                 (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) bud =
+      1 , st1 , run , live , refl , refl , lk , refl , rv1
+    where
+      st1 : FlatState
+      st1 = flat-exec-instr load-indirect prog fs
+
+      run : FlatSteps prog 1 fs st1
+      run = (nh , span 0 _ refl) ∷ []
+
+      -- Input1 points at the pair, from the input premise and the relation's
+      -- own pointer equation.
+      rdi-ptr : readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      rdi-ptr = trans rdi e
+
+      -- `halted` does NOT reduce through a load: the executor is stuck on
+      -- `sv-as-loc`. The state-aware lemma takes the witness that unsticks it,
+      -- exactly as the existing `obs-correct-snd` does (Simple.agda:300).
+      live : halted (floc st1) ≡ false
+      live = exec-abstract-preserves-halted-WF load-indirect (floc fs) (falloc fs)
+               nh (AtDynamic hl , cong sv-as-loc rdi-ptr , asv , c0)
+
+      out-eq : readReg (regs (floc st1)) Output ≡ asv
+      out-eq = exec-abstract-load-indirect-output (floc fs) (falloc fs)
+                 (AtDynamic hl) asv rdi-ptr c0
+
+      -- A load writes ONE register: every cell is unchanged, so the heap
+      -- agrees and the allocator is untouched.
+      rv1 : RelV A (falloc st1) (proj₁ x) (readReg (regs (floc st1)) Output) (floc st1)
+      rv1 = subst (λ sv → RelV A (falloc st1) (proj₁ x) sv (floc st1)) (sym out-eq)
+              (rel-transport A ≤-refl
+                (λ h bh → exec-abstract-load-indirect-preserves-mem
+                            (floc fs) (falloc fs) (AtDynamic h))
+                ra)
+
+  ir-correct-snd : ∀ {A B : IRTy} (n l : ℕ) → RelIR n l (snd {A} {B})
+  ir-correct-snd {A} {B} n l fs x xsv span blks nh lk rdi
+                 (hl , asv , bsv , e , b0 , b1 , c0 , c1 , ra , rb) bud =
+      1 , st1 , run , live , refl , refl , lk , refl , rv1
+    where
+      st1 : FlatState
+      st1 = flat-exec-instr load-indirect-suc prog fs
+
+      run : FlatSteps prog 1 fs st1
+      run = (nh , span 0 _ refl) ∷ []
+
+      rdi-ptr : readReg (regs (floc fs)) Input1 ≡ SV-Ptr (AtDynamic hl)
+      rdi-ptr = trans rdi e
+
+      live : halted (floc st1) ≡ false
+      live = exec-abstract-preserves-halted-WF load-indirect-suc (floc fs) (falloc fs)
+               nh (AtDynamic hl , cong sv-as-loc rdi-ptr , bsv , c1)
+
+      out-eq : readReg (regs (floc st1)) Output ≡ bsv
+      out-eq = exec-abstract-load-indirect-suc-output (floc fs) (falloc fs)
+                 (AtDynamic hl) bsv rdi-ptr c1
+
+      rv1 : RelV B (falloc st1) (proj₂ x) (readReg (regs (floc st1)) Output) (floc st1)
+      rv1 = subst (λ sv → RelV B (falloc st1) (proj₂ x) sv (floc st1)) (sym out-eq)
+              (rel-transport B ≤-refl
+                (λ h bh → exec-abstract-load-indirect-suc-preserves-mem
+                            (floc fs) (falloc fs) (AtDynamic h))
+                rb)
