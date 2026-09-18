@@ -27,6 +27,7 @@ module DirectedHoTT.Trust.Knot6 where
 import DirectedHoTT.Examples.Knot.LookupGen
 import DirectedHoTT.Examples.Knot.Map
 import DirectedHoTT.Examples.Knot.MethTy
+import DirectedHoTT.Examples.Knot.MethTyAgree
 import DirectedHoTT.Examples.Knot.MethsTy
 import DirectedHoTT.Examples.Knot.MethsTyCons
 import DirectedHoTT.Examples.Knot.MethsTyMot
@@ -46,4 +47,3 @@ import DirectedHoTT.Examples.Knot.RedRows
 import DirectedHoTT.Examples.Knot.RedWfA
 import DirectedHoTT.Examples.Knot.RedWfB
 import DirectedHoTT.Examples.Knot.RenAgree
-import DirectedHoTT.Examples.Knot.RenAgreeTie
