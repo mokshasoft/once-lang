@@ -14729,14 +14729,46 @@ recursive positions.** One position cannot order anything, so it cannot falsify
 an ordering claim. Every scheme — `cata`, `ana`, `para`, `hylo` — needs a
 two-child witness, and that witness must assert the TRACE, not an exit code.
 
-### Not yet decided
+### DECIDED (same day, after reading the codegen) — the MACHINE is wrong
 
-Whether the machine or `seqF` is wrong. `seqF` left-first agrees with D056's
-discharged obligation for composition (*"effectful `∘` sequences effects in
-source order"*) and with the `⟨f,g⟩` denotation and emitter, which D211 proved
-agree left-first. That is three independent left-first choices against one
-right-to-left fold, so the machine is the odd one out — but the codegen has not
-been read, and the fix belongs with plan 0.95's ordering decision.
+The first draft of this entry argued by vote-count ("three left-first choices
+against one"). That is not an argument, and the real one is narrower.
+
+**Mathematically, left is NOT forced.** Left-first and right-first are both
+lawful traversals — the standard applicative traversal and its `Backwards`
+dual. The traversal laws do not decide, and any claim that they do is wrong.
+
+**What decides is that the two products are THE SAME TYPE.** `Type.agda`:
+
+    ⟦ F ⊗ G ⟧T X = ⟦ F ⟧T X * ⟦ G ⟧T X
+
+so a functor-product layer *is* the CCC product. That type is reachable two
+ways — built by `⟨f,g⟩` (left-first, and D211 PROVES the machine matches) and
+traversed by `seqF`. A right-first `seqF` would give one type two different
+effect orders depending on which combinator touched it. That is a fact about
+the types, not about which document is privileged.
+
+The asymmetry follows: right-first for `seqF` requires ALSO flipping `⟨f,g⟩`
+to keep the product coherent — flipping a proved correspondence and its
+emitter — to reach a semantics no more principled than the current one.
+Left-first is reachable by fixing ONE codegen clause.
+
+**The convention half.** `pair f g`, written left-to-right, runs `f` first.
+The apparent counterexample — `compose f g` runs `g` first, which D056 calls
+"source order" — is not one: there `g` feeds `f`, so data flow forces the
+order and no convention is being exercised. `pair`'s arms take the same input
+and neither feeds the other. The consistent rule is: **effects follow data
+flow where data flow exists; where it does not, they follow reading order.**
+
+**The site** (plan 0.95 B1). `visit-walk` at a product visits `G` (right) then
+`F` (left) (`IRToTrace.agda:165-169`); `rebuild-walk` visits `F` then `G`
+(`:181-189`) — one inversion apart against a LIFO stack. `rebuild-walk`'s own
+comment reads *"popping one value-stack result per Id position,
+LEFT-to-RIGHT"*, so the codegen intends the spec's order and delivers its
+mirror. Measured at four shapes the divergence is an EXACT mirror every time
+(`[1,2,3,4] → [4,3,2,1]`; a left-leaning and a right-leaning three-leaf tree
+both give `[3,2,1]`), which is what a single product-order inversion looks like
+and rules out a structural defect.
 
 **Relates**: D220 (the vacuous test that hid it), D219 (the product's effect
 order), D211 (`obs-correct-pair` proved, left-first), D199 (the same blind spot
