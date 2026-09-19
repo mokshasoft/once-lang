@@ -14526,3 +14526,117 @@ This is a holding position, not a fix. The hypotheses are discharged by plan
 0.93, which rebuilds `ValidAtWF` as a relation recursive on the TYPE (the
 `MeaningRelation` shape) rather than a `data` indexed by it. If that lands,
 `BlockRuns` disappears entirely and this thread is deleted with it.
+
+## D219 — THE PRODUCT IS WHERE EFFECTS STOP (2026-09-19)
+
+`pair` is PURE-FIXED and `case` is grade-polymorphic. That is not an oversight,
+and it is the reason **no `ana` coalgebra can emit**.
+
+### The measurement
+
+```once
+pair (compose emit@E id) id
+-- expected (Int ω→ Unit) but got Eff Int Unit      -- at EVERY annotation
+```
+
+The two rules, side by side (`Judgment.agda`):
+
+```agda
+t-pair-morph-check  : ⊢ᶜ f ∶ (A ⇒[Many pure] B) → ⊢ᶜ g ∶ (A ⇒[Many pure] C)
+                    → ⊢ᶜ pair f g ∶ (A ⇒[Many pure] (B * C))
+
+t-case-copair-check : ⊢ᶜ f ∶ (A ⇒[Many π] C)    → ⊢ᶜ g ∶ (B ⇒[Many π] C)
+                    → ⊢ᶜ case f g ∶ ((A + B) ⇒[Many π] C)
+```
+
+`t-curry-check` is pure-fixed too. D066 fixed all three.
+
+### Why the asymmetry is the categorical one
+
+Copairing two effectful arrows is unproblematic — the coproduct runs ONE of
+them, so there is nothing to order. `⟨f,g⟩` with both arms effectful must
+choose WHICH RUNS FIRST. A category where the tensor is not a bifunctor, and
+that choice must be made explicitly (`f ⋉ g` vs `f ⋊ g`), is a **premonoidal**
+category; values in a cartesian category plus computations in a premonoidal one,
+joined by an identity-on-objects functor, is a **Freyd category**. `arr` was
+exactly that functor; D068 retired the term former and kept the map as
+`t-subsume`, so the structure is present but implicit.
+
+The product is the one place the cartesian structure genuinely fails for
+effects, and `t-pair-morph-check` is where Once stops.
+
+### The consequence, which had not been drawn
+
+* **Effectful ALGEBRAS work.** `cata (case terminal (compose emit@E fst))`
+  compiles and emits `5`, `3` against the byte-writing interpretation — `case`,
+  not `pair`.
+* **Effectful COALGEBRAS are unwritable.** `ana` produces `⟦F⟧T A`, and a
+  functor that carries both a payload and a seed is `K X * Id` — a product. So
+  an emitting `ana` is not expressible at any useful functor.
+
+This is what blocks the `in-ν` surface test (plan 0.93 §13): the test needs an
+`in-ν` layer over an emitting ν child, and there is no way to build one.
+
+### What is NOT yet decided
+
+Whether to make `t-pair-morph-check` grade-polymorphic. The open question is
+whether the DENOTATION already sequences the two components in a definite order
+— in which case the pure-fixing is a typing restriction over a semantics that
+already supports it — or whether an effect order would have to be ADDED to the
+spec. That is plan 0.95.
+
+**Relates**: D066 (fixed value-lift / m-pair / m-curry to pure), D068 (`arr`
+retired, pure⊆eff is subsumption), D069 (effect-free value intros are
+grade-poly), D032 (arrows, not monads), plan 0.93 §13, plan 0.95.
+
+---
+
+## D220 — THE EFFECT TESTS WERE VACUOUS, AND THE FIXTURE IS IN THE WRONG TREE (2026-09-19)
+
+`layer5-cata-list-emit.once` is the north-star effectful-cata test. Its header
+says the algebra "invokes the test-local `emit` Emits SigOp once per cons
+layer". Built against the byte-writing interpretation it emits **zero bytes**.
+
+### Two independent causes
+
+**1. Bind-and-discard never forces.** The program ends
+
+```once
+main = let r = emitAll xs in exit@S 7
+```
+
+`emitAll xs` elaborates through `effApp` to a SUSPENSION (`Unit ⇒[eff] Unit`),
+`let` binds it, nothing forces it. At `q = Zero` the spec erases the binding
+outright (`Denotation/Meaning.agda`, D143). The test passes on `exit@S 7`, which
+the program hardcodes.
+
+Moved onto `main`'s composition chain via a top-level def, the SAME computation
+emits `5`, `3`. So the machinery works and the test was simply not asking.
+
+This is NOT the D039 optimizer-drops-effects class: it reproduces with
+`--no-optimize`, and nothing on the executed path is deleted. What is discarded
+is an unapplied morphism, which is cartesian-legitimate.
+
+**2. The observable is a NOP by construction.** `Strata/Interpretations/Test/
+Emit.x86_64` is `emit: ret`. Its own `.once` header says "NOT a real Strata
+interpretation — exists only so the effect-emitting cata north-star tests can
+invoke an effectful op." The byte-writing implementation lives in
+`compiler/test/teststrata`, which only `TraceSpec` uses. Every exit-test that
+resolves `emit` from `Strata/` therefore cannot observe emission at all, and an
+exit code cannot distinguish "emitted then exited 7" from "exited 7".
+
+### The rule
+
+**An exit code is not an effect observation.** A test whose only assertion is a
+hardcoded `exit@S N` guards the exit path and nothing else. If a test claims an
+effect, it must be built against the byte-writing interpretation and assert the
+BYTES — that is what `TraceSpec` does, and why `TraceSpec` never drifted.
+
+Corollary: a test fixture whose runtime is a nop does not belong in the
+production `Strata/` tree, where it silently satisfies imports that look like
+observations.
+
+**Relates**: D058 (correctness is the effectful-SigOp trace), D114 (the
+observable is part of the spec), D039/D056 (the optimizer dropping effectful
+SigOps — a different mechanism with the same symptom), D143 (grade-aware
+meaning; `q = Zero` erases the bound expression), plan 0.93 §13.
