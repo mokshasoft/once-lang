@@ -24,6 +24,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot5 where
 
+import DirectedHoTT.Examples.Knot.Judge.Nsuc
 import DirectedHoTT.Examples.Knot.Judge.Nzero
 import DirectedHoTT.Examples.Knot.Judge.Ordtr
 import DirectedHoTT.Examples.Knot.Judge.Pair
@@ -46,4 +47,3 @@ import DirectedHoTT.Examples.Knot.Judge.TyUnit
 import DirectedHoTT.Examples.Knot.Judge.Unit
 import DirectedHoTT.Examples.Knot.Judge.Var
 import DirectedHoTT.Examples.Knot.JudgeRows
-import DirectedHoTT.Examples.Knot.KAdapt

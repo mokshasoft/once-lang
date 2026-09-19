@@ -266,7 +266,24 @@
 --                reports unsolved metas with no type error.
 --     iihAppK    ✅ not a program — the descent through `iihTyMotK`'s four
 --                Π binders, i.e. a step of `iihTyK`'s own definition.
---     iihTyK     ⬜ OWED — agreement with `iihTy`.
+--     iihTy-agree ✅ not a program — it IS `iihTyK`'s adequacy, at
+--                the row level.
+--     iihTyK     ✅ DISCHARGED — `Knot/IhITyAgree.iihTyK-agree`.
+--                ★ EVERY INGREDIENT WAS ALREADY DISCHARGED, three by
+--                this session's own earlier entries: `iinst-agree`,
+--                `iext-Represents` (the recursion uses `iext`, NOT
+--                `extS` as `ipayTy` does), `sub-agree`, `wkTyK-agree`.
+--                The meta carries `renTy vs`, so no bridging cast.
+--                ⚠⚠ AND IT IS THE MOST EXPENSIVE MODULE IN THE TREE:
+--                3482 s (58 min), MEASURED.  The `iρ` row's cast nests
+--                `nat7 iinstK` beside `nat7₂ wkTyK`, and `iinstK`
+--                unfolds to FOUR nested programs.  INLINE it did not
+--                finish in 40 minutes; `where`-binding the three lifts
+--                is what made it terminate.
+--                ⬜ OWED: move the cast equalities into their own module
+--                so they are `Def`-backed ACROSS a boundary and
+--                elaborated once — `Knot/IhTyRho`/`IhTyKap` are split
+--                for exactly this reason.
 --     iihTyMotK  ✅ not a program — `iihTyK`'s MOTIVE.
 --     iihTyRho   ✅ not a program — the `cICon-rho` METHOD of `iihTyK`.
 --     iihs-agree ✅ not a program — `iihsK`'s adequacy, at the ROW
@@ -305,6 +322,9 @@
 --                `extS-Represents`, plus one congruence for
 --                `subTyAtK` in its scrutinee.  No arithmetic lemma —
 --                `num (suc n) = nsuc (num n)` is definitional.
+--     iinstK-sub ✅ not a program — `iinstK`'s substitution
+--                naturality, composed from `subTyAtK-sub`,
+--                `extNK-sub` and `singleK-sub`.
 --     ilookupDK  ✅ DISCHARGED — `Knot/ILookupDAgree.ilookupDK-agree`.
 --                ★ GENERATED FROM `lookupDK`'s PROOF BY SUBSTITUTION
 --                and green on the FIRST port: `Desc`→`IDesc`, 42→47,
