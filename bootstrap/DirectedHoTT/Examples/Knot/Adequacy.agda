@@ -280,10 +280,18 @@
 --                unfolds to FOUR nested programs.  INLINE it did not
 --                finish in 40 minutes; `where`-binding the three lifts
 --                is what made it terminate.
---                ⬜ OWED: move the cast equalities into their own module
---                so they are `Def`-backed ACROSS a boundary and
---                elaborated once — `Knot/IhTyRho`/`IhTyKap` are split
---                for exactly this reason.
+--                ⛔ THE OBVIOUS FIX IS REFUTED, MEASURED.  Extracting the
+--                cast equalities into their own module gave 3544 s —
+--                NO CHANGE.  The extracted module alone checks in 46 s,
+--                but only because its parameters stay ABSTRACT there;
+--                the use site instantiates all seven at concrete
+--                encodings and Agda re-elaborates.
+--                `half-generalization-is-worst`, and
+--                `judge-abstractions-at-the-use-site`: measure the
+--                CALLER.  See `IHS-ATTEMPTS.md` §7.
+--                ⬜ STILL OPEN: a fix must make the cast SMALLER — a
+--                `⟶*`-level route that never needs `nat7 iinstK` —
+--                not relocate it.
 --     iihTyMotK  ✅ not a program — `iihTyK`'s MOTIVE.
 --     iihTyRho   ✅ not a program — the `cICon-rho` METHOD of `iihTyK`.
 --     iihs-agree ✅ not a program — `iihsK`'s adequacy, at the ROW
