@@ -149,7 +149,7 @@ d_inject'45'Good_204 v0 v1
                                         (coe v4)
                                         (coe
                                            v1
-                                           (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_454
+                                           (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_462
                                               (coe v2) (coe v7))))))
                     MAlonzo.Code.Once.Type.C_Many_10
                       -> coe
@@ -163,7 +163,7 @@ d_inject'45'Good_204 v0 v1
                                         (coe v4)
                                         (coe
                                            v1
-                                           (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_454
+                                           (MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_462
                                               (coe v2) (coe v7))))))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError

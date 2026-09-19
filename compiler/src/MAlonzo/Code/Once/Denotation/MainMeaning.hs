@@ -67,7 +67,7 @@ d_mainMeaning'7496''45'go_22 v0 v1 v2 v3 v4 v5 v6
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v11)
                                      (coe
                                         (\ v20 ->
-                                           MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_260
+                                           MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_268
                                              (coe
                                                 MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                                                 (coe v3) (coe v0) (coe v1)
@@ -140,7 +140,7 @@ d_mmd'45'dispatch_50 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v7)
                                                (coe
                                                   (\ v19 ->
-                                                     MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_260
+                                                     MAlonzo.Code.Once.Denotation.Meaning.d_'10214'_'10215''7580'_268
                                                        (coe
                                                           MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                                                           (coe v5) (coe v0) (coe v1) (coe v2)

@@ -18,7 +18,6 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Once.IRTy
-import qualified MAlonzo.Code.Once.Memory.HeapAddress
 import qualified MAlonzo.Code.Once.SigOp.Info
 import qualified MAlonzo.Code.Once.Type
 
@@ -50,15 +49,14 @@ data T_IR_16
     C_Fuse_144 MAlonzo.Code.Once.IRTy.T_IRFunctor_4
                MAlonzo.Code.Once.IRTy.T_WellFormedFI_130
                MAlonzo.Code.Once.IRTy.T_WellFormedFI_130 T_IR_16 T_NatTr_18 |
-    C_free'45'heap_146 MAlonzo.Code.Once.Memory.HeapAddress.T_HeapRef_8 |
-    C_const_150 MAlonzo.Code.Once.IRTy.T_FitsInRegI_526 AgdaAny |
-    C_SigOp_156 MAlonzo.Code.Once.Type.T_Type_108
+    C_const_148 MAlonzo.Code.Once.IRTy.T_FitsInRegI_526 AgdaAny |
+    C_SigOp_154 MAlonzo.Code.Once.Type.T_Type_108
                 MAlonzo.Code.Once.Type.T_Type_108
                 MAlonzo.Code.Once.SigOp.Info.T_SigOpInfo_160
 -- Once.IR.NatTr
 d_NatTr_18 a0 a1 = ()
 data T_NatTr_18
-  = C_ntId_158 | C_ntK_164 T_IR_16 | C_ntFst_172 T_NatTr_18 |
-    C_ntSnd_180 T_NatTr_18 | C_ntCase_188 T_NatTr_18 T_NatTr_18 |
-    C_ntInl_196 T_NatTr_18 | C_ntInr_204 T_NatTr_18 |
-    C_ntPair_212 T_NatTr_18 T_NatTr_18
+  = C_ntId_156 | C_ntK_162 T_IR_16 | C_ntFst_170 T_NatTr_18 |
+    C_ntSnd_178 T_NatTr_18 | C_ntCase_186 T_NatTr_18 T_NatTr_18 |
+    C_ntInl_194 T_NatTr_18 | C_ntInr_202 T_NatTr_18 |
+    C_ntPair_210 T_NatTr_18 T_NatTr_18

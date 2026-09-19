@@ -477,7 +477,7 @@ du_VE0_1058 ::
   MAlonzo.Code.Once.Type.T_Type_108 -> AgdaAny -> AgdaAny
 du_VE0_1058 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_454
+      MAlonzo.Code.Once.Denotation.ValueDomain.d_forget_462
       (coe
          MAlonzo.Code.Once.IRTy.d_'8968'_'8969'_622
          (coe

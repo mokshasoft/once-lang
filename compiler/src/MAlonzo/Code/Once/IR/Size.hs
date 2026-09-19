@@ -146,9 +146,8 @@ d_ir'45'size_10 v0 v1 v2
                           MAlonzo.Code.Once.IRTy.d_'10214'_'10215'TI_84 (coe v3) (coe v1))
                        (coe v1) (coe v8))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_free'45'heap_146 v3 -> coe (1 :: Integer)
-      MAlonzo.Code.Once.IR.C_const_150 v4 v5 -> coe (1 :: Integer)
-      MAlonzo.Code.Once.IR.C_SigOp_156 v3 v4 v5 -> coe (1 :: Integer)
+      MAlonzo.Code.Once.IR.C_const_148 v4 v5 -> coe (1 :: Integer)
+      MAlonzo.Code.Once.IR.C_SigOp_154 v3 v4 v5 -> coe (1 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.IR.Size.ir-size-nt
 d_ir'45'size'45'nt_16 ::
@@ -157,8 +156,8 @@ d_ir'45'size'45'nt_16 ::
   MAlonzo.Code.Once.IR.T_NatTr_18 -> Integer
 d_ir'45'size'45'nt_16 v0 v1 v2
   = case coe v2 of
-      MAlonzo.Code.Once.IR.C_ntId_158 -> coe (1 :: Integer)
-      MAlonzo.Code.Once.IR.C_ntK_164 v5
+      MAlonzo.Code.Once.IR.C_ntId_156 -> coe (1 :: Integer)
+      MAlonzo.Code.Once.IR.C_ntK_162 v5
         -> case coe v0 of
              MAlonzo.Code.Once.IRTy.C_K_8 v6
                -> case coe v1 of
@@ -168,21 +167,21 @@ d_ir'45'size'45'nt_16 v0 v1 v2
                            (coe d_ir'45'size_10 (coe v6) (coe v7) (coe v5))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntFst_172 v6
+      MAlonzo.Code.Once.IR.C_ntFst_170 v6
         -> case coe v0 of
              MAlonzo.Code.Once.IRTy.C__'8855'__14 v7 v8
                -> coe
                     addInt (coe (1 :: Integer))
                     (coe d_ir'45'size'45'nt_16 (coe v7) (coe v1) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntSnd_180 v6
+      MAlonzo.Code.Once.IR.C_ntSnd_178 v6
         -> case coe v0 of
              MAlonzo.Code.Once.IRTy.C__'8855'__14 v7 v8
                -> coe
                     addInt (coe (1 :: Integer))
                     (coe d_ir'45'size'45'nt_16 (coe v8) (coe v1) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntCase_188 v6 v7
+      MAlonzo.Code.Once.IR.C_ntCase_186 v6 v7
         -> case coe v0 of
              MAlonzo.Code.Once.IRTy.C__'8853'__12 v8 v9
                -> coe
@@ -192,21 +191,21 @@ d_ir'45'size'45'nt_16 v0 v1 v2
                        (coe d_ir'45'size'45'nt_16 (coe v8) (coe v1) (coe v6)))
                     (coe d_ir'45'size'45'nt_16 (coe v9) (coe v1) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntInl_196 v6
+      MAlonzo.Code.Once.IR.C_ntInl_194 v6
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C__'8853'__12 v7 v8
                -> coe
                     addInt (coe (1 :: Integer))
                     (coe d_ir'45'size'45'nt_16 (coe v0) (coe v7) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntInr_204 v6
+      MAlonzo.Code.Once.IR.C_ntInr_202 v6
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C__'8853'__12 v7 v8
                -> coe
                     addInt (coe (1 :: Integer))
                     (coe d_ir'45'size'45'nt_16 (coe v0) (coe v8) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.IR.C_ntPair_212 v6 v7
+      MAlonzo.Code.Once.IR.C_ntPair_210 v6 v7
         -> case coe v1 of
              MAlonzo.Code.Once.IRTy.C__'8855'__14 v8 v9
                -> coe

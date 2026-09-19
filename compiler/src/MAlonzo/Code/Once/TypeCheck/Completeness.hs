@@ -338,7 +338,7 @@ du_go_130 v0 v1 v2 v3 v4
                                   (coe
                                      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                      (coe
-                                        MAlonzo.Code.Once.IR.C_SigOp_156 (coe v5) (coe v7)
+                                        MAlonzo.Code.Once.IR.C_SigOp_154 (coe v5) (coe v7)
                                         (coe
                                            MAlonzo.Code.Once.TypeCheck.Elaborate.d_ext'45'arrow'45'info_2004
                                            (coe v5) (coe v7) (coe v0) (coe v2) (coe v1) (coe v9)
@@ -805,7 +805,7 @@ du_go_322 v0 v1 v2 v3
                                   (coe
                                      MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                                      (coe
-                                        MAlonzo.Code.Once.IR.C_SigOp_156 (coe v4) (coe v6)
+                                        MAlonzo.Code.Once.IR.C_SigOp_154 (coe v4) (coe v6)
                                         (coe
                                            MAlonzo.Code.Once.TypeCheck.Elaborate.d_ext'45'resolved'45'info_2016
                                            (coe v4) (coe v6) (coe v0) (coe v1) (coe v8)

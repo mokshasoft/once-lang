@@ -521,15 +521,12 @@ d_label'45'mono_150 v0 v1 v2 v3 v4 v5
       MAlonzo.Code.Once.IR.C_Fuse_144 v6 v8 v9 v11 v12
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_free'45'heap_146 v6
-        -> coe
-             MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
-      MAlonzo.Code.Once.IR.C_const_150 v7 v8
+      MAlonzo.Code.Once.IR.C_const_148 v7 v8
         -> coe
              seq (coe v7)
              (coe
                 MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5))
-      MAlonzo.Code.Once.IR.C_SigOp_156 v6 v7 v8
+      MAlonzo.Code.Once.IR.C_SigOp_154 v6 v7 v8
         -> coe
              MAlonzo.Code.Data.Nat.Properties.d_'8804''45'refl_2900 (coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError

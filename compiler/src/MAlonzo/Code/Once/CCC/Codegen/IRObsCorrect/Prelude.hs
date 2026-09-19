@@ -86,7 +86,7 @@ d_ir'45'to'45'trace_22 ::
   [MAlonzo.Code.Once.CCC.Machine.SMCore.T_AbstractInstr_2218]
 d_ir'45'to'45'trace_22 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_812
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'to'45'trace_808
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Prelude._.ir-to-trace'
 d_ir'45'to'45'trace''_24 ::
@@ -205,7 +205,7 @@ du_bds_50 ::
   MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
 du_bds_50 v0 v1
-  = coe MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_bds_642 v1
+  = coe MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_bds_638 v1
 -- Once.CCC.Codegen.IRObsCorrect.Prelude._.CataIRSlotStable.blocks-stable
 d_blocks'45'stable_52 ::
   MAlonzo.Code.Once.CanonicalName.T_CanonicalName_4 ->
@@ -221,7 +221,7 @@ du_blocks'45'stable_52 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 du_blocks'45'stable_52 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_blocks'45'stable_652
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_blocks'45'stable_648
       v1 v2
 -- Once.CCC.Codegen.IRObsCorrect.Prelude._.CataIRSlotStable.cata-body-stable
 d_cata'45'body'45'stable_54 ::
@@ -329,7 +329,7 @@ d_ir'45'blocks'45'stable_66 ::
   Integer -> MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_ir'45'blocks'45'stable_66 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'blocks'45'stable_746
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'blocks'45'stable_742
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Prelude._.CataIRSlotStable.ir-stable
 d_ir'45'stable_68 ::
@@ -354,7 +354,7 @@ d_ir'45'to'45'trace'45'slot'45'stable_70 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_ir'45'to'45'trace'45'slot'45'stable_70 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'slot'45'stable_876
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.d_ir'45'to'45'trace'45'slot'45'stable_868
       (coe v0)
 -- Once.CCC.Codegen.IRObsCorrect.Prelude._.CataIRSlotStable.rebuild-walk-stable
 d_rebuild'45'walk'45'stable_72 ::
@@ -382,7 +382,7 @@ d_resuspend'45'stable_74 ::
   MAlonzo.Code.Data.List.Relation.Unary.All.T_All_44
 d_resuspend'45'stable_74 v0 v1 v2 v3 v4 v5 v6
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_resuspend'45'stable_676
+      MAlonzo.Code.Once.CCC.Codegen.CataIRSlotStable.du_resuspend'45'stable_672
       (coe v0) v2 v3 v4 v5 v6
 -- Once.CCC.Codegen.IRObsCorrect.Prelude._.CataIRSlotStable.stable?
 d_stable'63'_76 ::

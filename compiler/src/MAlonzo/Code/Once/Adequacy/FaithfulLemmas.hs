@@ -393,7 +393,7 @@ du_liftCataM_414 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_liftCataM_414 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_338 (coe v0)
+      MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_340 (coe v0)
       (coe
          MAlonzo.Code.Once.Type.C__'8658''91'_'93'__126
          (coe
@@ -437,7 +437,7 @@ du_liftEalg_416 ::
   Integer -> MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
 du_liftEalg_416 v0 v1 v2 v3 v4
   = coe
-      MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_338 (coe v0)
+      MAlonzo.Code.Once.Denotation.DenotTrace.d_liftFn_340 (coe v0)
       (coe
          MAlonzo.Code.Once.Surface.Context.du_'10214'_'10215''7580'_38
          (coe MAlonzo.Code.Once.Surface.Context.C_'8709'_8))
@@ -706,7 +706,7 @@ du_cE_622 v0 v1 v2 v3 v4 v5
       (coe
          (\ v6 ->
             coe
-              MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_672
+              MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_680
               (coe
                  MAlonzo.Code.Once.IRTy.d_'8968'_'8969'F_624
                  (coe MAlonzo.Code.Once.IRTy.d_eraseF_54 (coe v1)))
@@ -746,7 +746,7 @@ du_cS_630 v0 v1 v2 v3 v4 v5
   = coe
       MAlonzo.Code.Once.Denotation.TraceMonad.du_fmapT_48
       (coe
-         MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_672
+         MAlonzo.Code.Once.Denotation.ValueDomain.du_coerce'45'functor'45'D_680
          (coe v1))
       (coe
          MAlonzo.Code.Once.Denotation.TraceMonad.du__'62''62''61'T__20

@@ -9097,7 +9097,7 @@ du_ir'45'stack'45'budget_1184 ::
   MAlonzo.Code.Once.IR.T_IR_16 -> Integer
 du_ir'45'stack'45'budget_1184 v0
   = coe
-      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_830
+      MAlonzo.Code.Once.CCC.Codegen.IRToTrace.d_ir'45'stack'45'budget_826
       (coe v0)
 -- Once.Adequacy.ArchCorrectness.FlatCore.EventDispatch._.Frame
 d_Frame_1190 ::

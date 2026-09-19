@@ -7244,7 +7244,7 @@ du_inferElabV'45'RQualified'45'arrow'45'aux_1720 v0 v1 v2 v3 v4 v5
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                           (coe
-                             MAlonzo.Code.Once.IR.C_SigOp_156 (coe v3) (coe v4)
+                             MAlonzo.Code.Once.IR.C_SigOp_154 (coe v3) (coe v4)
                              (coe
                                 d_ext'45'arrow'45'info_2004 (coe v3) (coe v4) (coe v0) (coe v2)
                                 (coe v1) (coe v5) (coe v8) (coe v9))))
@@ -7344,7 +7344,7 @@ du_inferElabV'45'RResolved'45'arrow'45'aux_1736 v0 v1 v2 v3 v4 v5
                        (coe
                           MAlonzo.Code.Once.Surface.Syntax.C_lift'45'morphism_414
                           (coe
-                             MAlonzo.Code.Once.IR.C_SigOp_156 (coe v3) (coe v4)
+                             MAlonzo.Code.Once.IR.C_SigOp_154 (coe v3) (coe v4)
                              (coe
                                 d_ext'45'resolved'45'info_2016 (coe v3) (coe v4) (coe v0) (coe v1)
                                 (coe v5) (coe v8) (coe v9))))

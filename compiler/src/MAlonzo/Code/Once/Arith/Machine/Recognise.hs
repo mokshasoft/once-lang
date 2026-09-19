@@ -145,7 +145,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                        (coe
                           MAlonzo.Code.Once.IR.C__'8728'__30 v11 v13
                           (coe MAlonzo.Code.Once.IR.C__'8728'__30 v6 v14 v9))
-                MAlonzo.Code.Once.IR.C_const_150 v11 v12
+                MAlonzo.Code.Once.IR.C_const_148 v11 v12
                   -> case coe v11 of
                        MAlonzo.Code.Once.IRTy.C_fits'45'int_528
                          -> let v13 = coe du_is'45'terminal'63'_386 (coe v9) in
@@ -158,7 +158,7 @@ d_recognise'45'body_74 v0 v1 v2 v3
                        MAlonzo.Code.Once.IRTy.C_fits'45'float_530
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                        _ -> MAlonzo.RTE.mazUnreachableError
-                MAlonzo.Code.Once.IR.C_SigOp_156 v10 v11 v12
+                MAlonzo.Code.Once.IR.C_SigOp_154 v10 v11 v12
                   -> let v13
                            = coe
                                MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
@@ -8723,7 +8723,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                        (coe
                           MAlonzo.Code.Once.IR.C__'8728'__30 v11 v13
                           (coe MAlonzo.Code.Once.IR.C__'8728'__30 v6 v14 v9))
-                MAlonzo.Code.Once.IR.C_const_150 v11 v12
+                MAlonzo.Code.Once.IR.C_const_148 v11 v12
                   -> case coe v11 of
                        MAlonzo.Code.Once.IRTy.C_fits'45'int_528
                          -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -8737,7 +8737,7 @@ d_recognise'45'body'45'float_448 v0 v1 v2 v3
                                            MAlonzo.Code.Once.Arith.Machine.IR.C_aflit_16 (coe v12))
                                  else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
                        _ -> MAlonzo.RTE.mazUnreachableError
-                MAlonzo.Code.Once.IR.C_SigOp_156 v10 v11 v12
+                MAlonzo.Code.Once.IR.C_SigOp_154 v10 v11 v12
                   -> let v13
                            = coe
                                MAlonzo.Code.Data.List.Properties.du_'8801''45'dec_60
