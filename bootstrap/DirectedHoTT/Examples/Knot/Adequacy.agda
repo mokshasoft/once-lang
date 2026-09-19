@@ -313,7 +313,26 @@
 --                port; the two are one proof.
 --     imethsTyFromK ⬜ OWED — agreement with `imethsTyFrom`.
 --     imethsTyK  ⬜ OWED — `imethsTyFromK` at `j = 0`; a corollary.
---     ipayTyK    ⬜ OWED — agreement with `ipayTy`.
+--     ipayTy-agree ✅ not a program — it IS `ipayTyK`'s adequacy, at
+--                the row level.
+--     ipayTyK    ✅ DISCHARGED — `Knot/IPayTyAgree.ipayTyK-agree`.
+--                ★ THREE ROWS on an ENCODED `ICon` with the
+--                substitution threaded — `iihs-agree`'s shape.  ⚠ The
+--                recursion uses `extS σ`, NOT `iext`, so the step is
+--                `Knot/SubExt.extS-Represents`, already discharged.
+--                ★★ AND THE `IDesc` PASSENGER IS WEAKENED ON THE OBJECT
+--                SIDE ONLY (`wkAtK sIDesc n ⌈D⌉`);
+--                `Knot/RenClosed.ren-IDesc-id` — renaming a CLOSED
+--                encoding is the identity — is exactly the bridge, and
+--                it was already written.
+--                ⚠ THREE LIFTED CALLS per row: `subTmAtK` (hides
+--                `subMethsK`), `extNK` and `wkAtK` (both build a `lam`),
+--                each through the seven βs.  `wkAtK-sub` here is
+--                `Knot/PayTyAgree.wkTyK-sub` GENERIC IN THE SORT.
+--                ⚠ `extS-Represents` takes its `d` FREE, so the `extNK`
+--                slot needs NO depth reduction — only the `subTmAtK`
+--                one does.  That asymmetry is why this row is cheaper
+--                than `methsTyFromK`'s.
 --     ipayTyKap  ✅ not owed — a method row of `ipayTyK`.
 --     ipayTyRho  ✅ not owed — a method row of `ipayTyK`.
 --     isingleK   ✅ DISCHARGED — `Knot/SubAgree.isingle-Represents`:
@@ -473,6 +492,9 @@
 --                `ren-agree` at that sort.  ⚠ `sTm` is proved
 --                (`Knot/SubSpec.wkTmK-agree`); `sTy`/`sIDesc` wait on the
 --                type-sort agreement — see `wkTyK`.
+--     wkAtK-sub  ✅ not a program — `wkAtK`'s substitution
+--                naturality, GENERIC in the sort (`wkTyK-sub` is it at
+--                `sTy`).
 --     wkTmK      ✅ DISCHARGED — `Knot/SubSpec.wkTmK-agree`, and in ONE LINE:
 --                `wkTmK n t = renTmAtK sTm n (nsuc n) (vsRenK n) t`, so
 --                its adequacy is `ren-agree` at the renaming `vs`, whose

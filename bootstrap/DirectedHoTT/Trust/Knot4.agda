@@ -24,6 +24,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot4 where
 
+import DirectedHoTT.Examples.Knot.Judge.DwfCons
 import DirectedHoTT.Examples.Knot.Judge.DwfIota
 import DirectedHoTT.Examples.Knot.Judge.DwfKappa
 import DirectedHoTT.Examples.Knot.Judge.DwfNil
@@ -46,4 +47,3 @@ import DirectedHoTT.Examples.Knot.Judge.Jsub
 import DirectedHoTT.Examples.Knot.Judge.Lam
 import DirectedHoTT.Examples.Knot.Judge.Natrec
 import DirectedHoTT.Examples.Knot.Judge.Nsuc
-import DirectedHoTT.Examples.Knot.Judge.Nzero

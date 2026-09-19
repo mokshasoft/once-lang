@@ -24,6 +24,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot3 where
 
+import DirectedHoTT.Examples.Knot.IihsKap
 import DirectedHoTT.Examples.Knot.IihsMeths
 import DirectedHoTT.Examples.Knot.IihsMot
 import DirectedHoTT.Examples.Knot.IihsRho
@@ -46,4 +47,3 @@ import DirectedHoTT.Examples.Knot.Judge.CodeSigma
 import DirectedHoTT.Examples.Knot.Judge.CodeUnit
 import DirectedHoTT.Examples.Knot.Judge.Con
 import DirectedHoTT.Examples.Knot.Judge.Conv
-import DirectedHoTT.Examples.Knot.Judge.DwfCons
