@@ -196,9 +196,9 @@ visit-ls (F ⊕ G) todo tv tb s lb =
                 (s≤s (s≤s (≤-reflexive (+-assoc lb (lsize F) (lsize G)))))
 visit-ls (F ⊗ G) todo tv tb s lb =
   ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-      (++⁺ (ls-weaken (m≤m+n lb (lsize F)) hiG (visit-ls G todo tv tb (s + 4) (lb + lsize F)))
+      (++⁺ (ls-weaken ≤-refl hiF (visit-ls F todo tv tb (s + 4) lb))
            (++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-                (ls-weaken ≤-refl hiF (visit-ls F todo tv tb (s + 4) lb))))
+                (ls-weaken (m≤m+n lb (lsize F)) hiG (visit-ls G todo tv tb (s + 4) (lb + lsize F)))))
   where
     hiF : lb + lsize F ≤ lb + lsize (F ⊗ G)
     hiF = +-monoʳ-≤ lb (m≤m+n (lsize F) (lsize G))
@@ -236,9 +236,9 @@ rebuild-ls (F ⊕ G) val tv tb s lb =
                 (s≤s (s≤s (≤-reflexive (+-assoc lb (lsize F) (lsize G)))))
 rebuild-ls (F ⊗ G) val tv tb s lb =
   ++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-      (++⁺ (ls-weaken ≤-refl hiF (rebuild-ls F val tv tb (s + 4) lb))
+      (++⁺ (ls-weaken (m≤m+n lb (lsize F)) hiG (rebuild-ls G val tv tb (s + 4) (lb + lsize F)))
            (++⁺ (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ [])
-                (++⁺ (ls-weaken (m≤m+n lb (lsize F)) hiG (rebuild-ls G val tv tb (s + 4) (lb + lsize F)))
+                (++⁺ (ls-weaken ≤-refl hiF (rebuild-ls F val tv tb (s + 4) lb))
                      (li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
                       li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
                       li-none refl ∷ []))))

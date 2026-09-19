@@ -221,8 +221,8 @@ module CataIRSlotStable {FS : FrameSemantics} where
        ++⁺ (visit-walk-stable td tv tb F _ _) (tt ∷ᴬ []ᴬ))
   visit-walk-stable td tv tb (F ⊗ G) s lb =
     tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-    ++⁺ (visit-walk-stable td tv tb G _ _)
-      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ visit-walk-stable td tv tb F _ _)
+    ++⁺ (visit-walk-stable td tv tb F _ _)
+      (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ visit-walk-stable td tv tb G _ _)
 
   rebuild-walk-stable : ∀ vs tv tb F s lb → AllSlotStable (rebuild-walk vs tv tb F s lb)
   rebuild-walk-stable vs tv tb (K _)   s lb = all-stable?-sound _ refl
@@ -237,9 +237,9 @@ module CataIRSlotStable {FS : FrameSemantics} where
           tt ∷ᴬ []ᴬ))
   rebuild-walk-stable vs tv tb (F ⊗ G) s lb =
     tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-    ++⁺ (rebuild-walk-stable vs tv tb F _ _)
+    ++⁺ (rebuild-walk-stable vs tv tb G _ _)
       (tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ tt ∷ᴬ
-       ++⁺ (rebuild-walk-stable vs tv tb G _ _) (all-stable?-sound _ refl))
+       ++⁺ (rebuild-walk-stable vs tv tb F _ _) (all-stable?-sound _ refl))
 
   ----------------------------------------------------------------------
   -- The three non-degenerate cata strategy traces. Concrete scaffold

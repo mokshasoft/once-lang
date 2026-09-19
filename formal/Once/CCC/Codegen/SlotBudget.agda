@@ -774,9 +774,9 @@ visit-below (F ⊕ G) todo tv tb s lb b pt pv pb h =
            (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
 visit-below (F ⊗ G) todo tv tb s lb b pt pv pb h =
   ++⁺ (sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-      (++⁺ (visit-below G todo tv tb (s + 4) _ b pt pv pb recG)
+      (++⁺ (visit-below F todo tv tb (s + 4) _ b pt pv pb recF)
            (++⁺ (sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-                (visit-below F todo tv tb (s + 4) _ b pt pv pb recF)))
+                (visit-below G todo tv tb (s + 4) _ b pt pv pb recG)))
   where
     room4 : s + 4 ≤ b
     room4 = ≤-trans (+-monoʳ-≤ s (subst (4 ≤_) (sym (*-suc 4 (fsize F + fsize G)))
@@ -826,11 +826,11 @@ rebuild-below (F ⊕ G) val tv tb s lb b pt h =
            (≤-trans (≤-reflexive (cong (s +_) (sym (*-suc 4 (fsize F + fsize G))))) h))
 rebuild-below (F ⊗ G) val tv tb s lb b pt h =
   ++⁺ (sb-none refl ∷ sb-slot refl s<b (λ _ ()) ∷ sb-none refl ∷ sb-none refl ∷ [])
-      (++⁺ (rebuild-below F val tv tb (s + 4) _ b pt recF)
-           (++⁺ (sb-slot refl b-ss (λ _ ()) ∷ sb-slot refl s<b (λ _ ()) ∷
+      (++⁺ (rebuild-below G val tv tb (s + 4) _ b pt recG)
+           (++⁺ (sb-slot refl b-s2 (λ _ ()) ∷ sb-slot refl s<b (λ _ ()) ∷
                  sb-none refl ∷ sb-none refl ∷ [])
-                (++⁺ (rebuild-below G val tv tb (s + 4) _ b pt recG)
-                     (sb-slot refl b-s2 (λ _ ()) ∷ sb-none refl ∷
+                (++⁺ (rebuild-below F val tv tb (s + 4) _ b pt recF)
+                     (sb-slot refl b-ss (λ _ ()) ∷ sb-none refl ∷
                       sb-slot refl b-s3 (λ _ ()) ∷ sb-none refl ∷
                       sb-slot refl b-ss (λ _ ()) ∷ sb-none refl ∷
                       sb-slot refl b-s2 (λ _ ()) ∷ sb-none refl ∷
@@ -873,9 +873,9 @@ visit-idle (F ⊕ G) todo tv tb s lb =
     (idle-++ (visit-walk todo tv tb F (s + 4) (suc (suc lb))) _
       (visit-idle F todo tv tb (s + 4) (suc (suc lb))) refl)
 visit-idle (F ⊗ G) todo tv tb s lb =
-  idle-++ (visit-walk todo tv tb G (s + 4) (lb + lsize F)) _
-    (visit-idle G todo tv tb (s + 4) (lb + lsize F))
+  idle-++ (visit-walk todo tv tb F (s + 4) lb) _
     (visit-idle F todo tv tb (s + 4) lb)
+    (visit-idle G todo tv tb (s + 4) (lb + lsize F))
 
 rebuild-idle : ∀ (F : Functor) (val tv tb s lb : ℕ)
              → seg-idle? (rebuild-walk val tv tb F s lb) ≡ true
@@ -887,10 +887,10 @@ rebuild-idle (F ⊕ G) val tv tb s lb =
     (idle-++ (rebuild-walk val tv tb F (s + 4) (suc (suc lb))) _
       (rebuild-idle F val tv tb (s + 4) (suc (suc lb))) refl)
 rebuild-idle (F ⊗ G) val tv tb s lb =
-  idle-++ (rebuild-walk val tv tb F (s + 4) lb) _
-    (rebuild-idle F val tv tb (s + 4) lb)
-    (idle-++ (rebuild-walk val tv tb G (s + 4) (lb + lsize F)) _
-      (rebuild-idle G val tv tb (s + 4) (lb + lsize F)) refl)
+  idle-++ (rebuild-walk val tv tb G (s + 4) (lb + lsize F)) _
+    (rebuild-idle G val tv tb (s + 4) (lb + lsize F))
+    (idle-++ (rebuild-walk val tv tb F (s + 4) lb) _
+      (rebuild-idle F val tv tb (s + 4) lb) refl)
 
 cata-branching-below : ∀ (F : Functor) (bb n1 l1 : ℕ) (at : AbstractTrace)
                      → SegOK bb at

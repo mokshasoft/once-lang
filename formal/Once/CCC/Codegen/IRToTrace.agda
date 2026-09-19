@@ -489,7 +489,7 @@ wrap-sum tag s =
   load-from-slot (suc s) ∷ []
 
 -- VISIT walk: Input1 = repr(G); push every Id child (a μF pointer) of G
--- onto the todo stack, RIGHT-to-LEFT. `s` = structural-walk slot base
+-- onto the todo stack, LEFT-to-RIGHT. `s` = structural-walk slot base
 -- (stride 4 per level, so a level's own slots [s..s+3] never overlap its
 -- children's [s+4..]).
 -- LABEL BUDGET of a functor walk: each ⊕ node consumes exactly TWO labels
@@ -517,13 +517,21 @@ visit-walk todoSlot tv tb (F ⊕ G) s lb =
   visit-walk todoSlot tv tb F (s +ℕ 4) (suc (suc lb)) ++
   (instr-ctrl (c-label (ℓ o (suc lb))) ∷ [])
 visit-walk todoSlot tv tb (F ⊗ G) s lb =
-  (mov-to-output ∷ store-at-slot s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
-  visit-walk todoSlot tv tb G (s +ℕ 4) (lb +ℕ lsize F) ++
-  (restore-input s ∷ load-indirect ∷ mov-to-input ∷ []) ++
-  visit-walk todoSlot tv tb F (s +ℕ 4) lb
+  (mov-to-output ∷ store-at-slot s ∷ load-indirect ∷ mov-to-input ∷ []) ++
+  visit-walk todoSlot tv tb F (s +ℕ 4) lb ++
+  (restore-input s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
+  visit-walk todoSlot tv tb G (s +ℕ 4) (lb +ℕ lsize F)
 
 -- REBUILD walk: Input1 = repr(G) (the node sublayer); build the ⟦G⟧A layer
--- in Output, popping one value-stack result per Id position, LEFT-to-RIGHT.
+-- in Output, popping one value-stack result per Id position, RIGHT-to-LEFT.
+--
+-- D221: the two walks are ONE INVERSION APART, and that inversion is what makes
+-- the data pairing correct against a LIFO stack — it must survive. What changed
+-- is the GLOBAL order: `visit-walk` now pushes LEFT-to-RIGHT, so the todo LIFO
+-- pops right-first, the visit order is right-first, and the fold order (which is
+-- `reverse` of it, because the visited stack is also LIFO) is LEFT-FIRST — the
+-- order `seqF (G ⊗ H)` specifies. The value stack then has the RIGHT child's
+-- result on top, so this walk pops `G` before `F`.
 rebuild-walk : (valSlot tv tb : ℕ) → Functor → (s lb : ℕ) → AbstractTrace
 rebuild-walk valSlot tv tb (K _) s lb = mov-to-output ∷ []
 rebuild-walk valSlot tv tb Id    s lb = pop2 valSlot
@@ -535,11 +543,11 @@ rebuild-walk valSlot tv tb (F ⊕ G) s lb =
   rebuild-walk valSlot tv tb F (s +ℕ 4) (suc (suc lb)) ++ wrap-sum 0 s ++
   (instr-ctrl (c-label (ℓ o (suc lb))) ∷ [])
 rebuild-walk valSlot tv tb (F ⊗ G) s lb =
-  (mov-to-output ∷ store-at-slot s ∷ load-indirect ∷ mov-to-input ∷ []) ++
-  rebuild-walk valSlot tv tb F (s +ℕ 4) lb ++
-  (store-at-slot (suc s) ∷ restore-input s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
+  (mov-to-output ∷ store-at-slot s ∷ load-indirect-suc ∷ mov-to-input ∷ []) ++
   rebuild-walk valSlot tv tb G (s +ℕ 4) (lb +ℕ lsize F) ++
-  (store-at-slot (s +ℕ 2) ∷ instr-alloc-heap 2 ∷ store-at-slot (s +ℕ 3) ∷ mov-to-input ∷
+  (store-at-slot (s +ℕ 2) ∷ restore-input s ∷ load-indirect ∷ mov-to-input ∷ []) ++
+  rebuild-walk valSlot tv tb F (s +ℕ 4) lb ++
+  (store-at-slot (suc s) ∷ instr-alloc-heap 2 ∷ store-at-slot (s +ℕ 3) ∷ mov-to-input ∷
    load-from-slot (suc s) ∷ store-indirect ∷
    load-from-slot (s +ℕ 2) ∷ store-indirect-suc ∷
    load-from-slot (s +ℕ 3) ∷ [])

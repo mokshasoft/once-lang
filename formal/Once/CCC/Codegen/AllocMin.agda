@@ -104,9 +104,9 @@ visit-walk-am todoSlot tv tb (F ⊕ G) s lb =
                      (tt ∷ []))))
 visit-walk-am todoSlot tv tb (F ⊗ G) s lb =
   ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (visit-walk-am todoSlot tv tb G (s + 4) (lb + lsize F))
+      (++⁺ (visit-walk-am todoSlot tv tb F (s + 4) lb)
            (++⁺ (tt ∷ tt ∷ tt ∷ [])
-                (visit-walk-am todoSlot tv tb F (s + 4) lb)))
+                (visit-walk-am todoSlot tv tb G (s + 4) (lb + lsize F))))
 
 rebuild-walk-am : ∀ valSlot tv tb F s lb → AllocMinTrace (rebuild-walk valSlot tv tb F s lb)
 rebuild-walk-am valSlot tv tb (K _)   s lb = tt ∷ []
@@ -120,9 +120,9 @@ rebuild-walk-am valSlot tv tb (F ⊕ G) s lb =
                           (++⁺ (wrap-sum-am 0 s) (tt ∷ []))))))
 rebuild-walk-am valSlot tv tb (F ⊗ G) s lb =
   ++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-      (++⁺ (rebuild-walk-am valSlot tv tb F (s + 4) lb)
+      (++⁺ (rebuild-walk-am valSlot tv tb G (s + 4) (lb + lsize F))
            (++⁺ (tt ∷ tt ∷ tt ∷ tt ∷ [])
-                (++⁺ (rebuild-walk-am valSlot tv tb G (s + 4) (lb + lsize F))
+                (++⁺ (rebuild-walk-am valSlot tv tb F (s + 4) lb)
                      (tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []))))
 
 ------------------------------------------------------------------------
