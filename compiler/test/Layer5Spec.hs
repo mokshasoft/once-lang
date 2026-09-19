@@ -14,7 +14,7 @@ module Layer5Spec (layer5Tests) where
 
 import Test.Tasty
 
-import Backend.Common (exitCases)
+import Backend.Common (exitCases, traceCases)
 
 layer5Tests :: TestTree
 layer5Tests = testGroup "Layer5"
@@ -22,11 +22,13 @@ layer5Tests = testGroup "Layer5"
   , testGroup "cata-general (Plan 0.36 Phase 0)"
       [ exitCases name name code | (name, code) <- cataGeneralCases ]
   , testGroup "cata-effectful (Plan 0.36)"
-      -- Both effect-emitting catas build and run to their sentinel (exit 7).
-      -- `emit@E` is a runtime nop in the shipped interpretation, so the exit
-      -- code is the observable here; the emit trace itself is exercised by
-      -- TraceSpec (against the observable test interpretation).
-      [ exitCases name name 7 | name <- cataEffectfulCases ]
+      -- D220/D221: these assert the TRACE, not the exit code. They used to use
+      -- `exitCases`, which links the production `Strata/` NOP `emit` and can
+      -- only see `exit@S 7` — so both tests passed while emitting nothing, and
+      -- the crown case's assembly was byte-identical to a bare `main = exit@S 7`.
+      -- `traceCases` builds against the BYTE-WRITING interpretation and checks
+      -- the ordered emit arguments, which is the actual observable (D058).
+      [ traceCases name name emitted 7 | (name, emitted) <- cataEffectfulCases ]
   , testGroup "ana/Out — the ν half (D189-D195)"
       -- The codata dual of the groups above, and the reason they exist here
       -- rather than only in `tests/run-exit-tests.sh`: THAT harness is x86_64
@@ -64,11 +66,15 @@ cataGeneralCases =
   , ("layer5-cata-nestedprod-sum",  42)  -- #9 Mu (K Unit + ((K Int * K Int) * Id))
   ]
 
--- | The two effect-emitting cata north-star fixtures (Plan 0.36). Both build
--- and run to the sentinel exit 7; the algebra invokes `emit@E` per emitting
--- layer (a runtime nop in the shipped interpretation).
-cataEffectfulCases :: [String]
+-- | The two effect-emitting cata north-star fixtures (Plan 0.36), with the
+-- TRACE each must emit. The algebra invokes `emit@E` once per emitting layer.
+--
+-- The leaftree case is the only one that can see the fold's ORDER: one
+-- recursive position cannot order anything, so the list emits [5, 3] whichever
+-- way the fold runs. `seqF (G ⊗ H)` specifies LEFT-first, so the crown case is
+-- [40, 2] — and it was [2, 40] until D221.
+cataEffectfulCases :: [(String, [Integer])]
 cataEffectfulCases =
-  [ "layer5-cata-list-emit"      -- trace [emit 5, emit 3, exit 7]
-  , "layer5-cata-leaftree-emit"  -- crown: trace [emit 40, emit 2, exit 7]
+  [ ("layer5-cata-list-emit",     [5, 3])
+  , ("layer5-cata-leaftree-emit", [40, 2])   -- crown: LEFT leaf first
   ]

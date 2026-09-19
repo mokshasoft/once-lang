@@ -30,6 +30,8 @@ module Backend.Common
   , testStrataDir
   , buildAndRunTrace
   , buildAndRunTraceOn
+  , buildAndRunTraceFile
+  , traceCases
   , archWordBytes
   , decodeTrace
   , signedAt
@@ -51,7 +53,7 @@ import System.Process (proc, env, std_out, StdStream (UseHandle), createProcess,
                        waitForProcess, readProcessWithExitCode, readCreateProcessWithExitCode)
 
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (testCase, assertFailure)
+import Test.Tasty.HUnit (testCase, assertFailure, assertEqual)
 
 import Once.Type (Type (..))
 
@@ -166,6 +168,47 @@ exitCases :: String -> String -> Int -> TestTree
 exitCases label name expected =
   testGroup label
     [ testCase (archName a) (buildAndRunOn a name expected >>= either assertFailure pure)
+    | a <- backendArches ]
+
+-- | 'buildAndRunTraceOn' for a `.once` FILE in `test/`, rather than inline
+-- source.
+--
+-- D220/D221: this is the piece that did not exist, and its absence is why a
+-- vacuous test could sit next to a real one for a whole plan cycle. Before
+-- this, NO `.once` file was ever built against the byte-writing interpretation
+-- by any harness: `buildAndRunOn` passes no `--strata` at all, so `findStrataDir`
+-- walks up to the repo root and links the PRODUCTION `Strata/Interpretations/
+-- Test/Emit.*`, whose `emit` is a bare `ret`. An exit code therefore could not
+-- distinguish "emitted, then exited 7" from "exited 7", and the crown cata test
+-- compiled byte-identical to `main = exit@S 7` while claiming one emit per
+-- layer.
+--
+-- Everything else is shared with `buildAndRunTraceOn`, so a file-based trace
+-- test and an inline one cannot disagree about how a program is compiled.
+buildAndRunTraceFile :: BackendArch -> String -> IO (Either String (String, Int))
+buildAndRunTraceFile arch name = do
+  source <- TIO.readFile ("test/" ++ name ++ ".once")
+  buildAndRunTraceOn arch name source
+
+-- | Assert a `.once` FILE's whole observable: the ordered SigOp trace AND the
+-- exit code, on every backend arch.
+--
+-- The trace is the observable (D058); the exit code alone is not. A test that
+-- asserts only `exit@S N` guards the exit path and nothing else — which is what
+-- D220 found six of them doing.
+traceCases :: String -> String -> [Integer] -> Int -> TestTree
+traceCases label name emitted expected =
+  testGroup label
+    [ testCase (archName a) $ do
+        r <- buildAndRunTraceFile a name
+        case r of
+          Left err -> assertFailure err
+          Right (out, code) -> case decodeTrace a out of
+            Left err -> assertFailure ("[" ++ archName a ++ "] " ++ err)
+            Right ws -> do
+              assertEqual ("[" ++ archName a ++ "] emitted arguments (effect order + values)")
+                          emitted (map (signedAt a) ws)
+              assertEqual ("[" ++ archName a ++ "] exit code") expected code
     | a <- backendArches ]
 
 -- | Common type variables for tests

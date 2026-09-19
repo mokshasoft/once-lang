@@ -6,14 +6,19 @@
 -- leaf's Int. Combines the case the legacy codegen could not do (two recursive
 -- children) with effect ORDERING across them.
 --
--- Compiles + runs to the exit-7 sentinel (the suite's assertion). `emit@E` is
--- the test-local Emits SigOp (runtime nop in the shipped interpretation; the
--- emit ORDERING is exercised by TraceSpec against the byte interpretation).
+-- THIS IS THE ONLY TEST IN THE TREE THAT CAN SEE THE FOLD'S ORDER. A functor
+-- with ONE recursive position cannot order anything — `layer5-cata-list-emit`
+-- emits [5, 3] whichever way the fold runs. Two positions can, and D221 is what
+-- this test found once it was made to assert the trace: the machine folded
+-- RIGHT-to-left, emitting [2, 40], while `seqF (G ⊗ H)` specifies left-first.
 --
--- Plan 0.52 retired `arr`; the algebra composes the eff SigOp with the builtin
--- `terminal`, and `emitTree` is applied to `t` in a `let` (composing a
--- user-named cata as a morphism arm is a separate open frontend item — see
--- plans/0.53-HANDOFF-compose-pure-eff-subsumption.md).
+-- D220: it could not find that before, because it ended
+-- `main = let r = emitTree t in exit@S 7` — a SUSPENSION, bound and never
+-- forced. It emitted nothing and compiled byte-identical to a bare
+-- `main = exit@S 7`. The effect must sit on `main`'s composition chain, and a
+-- top-level def is required to put it there (plan 0.94).
+--
+-- Expected: exit code 7, trace [40, 2] — LEFT leaf first.
 
 import I.Linux.Syscalls as S
 import I.Test.Emit as E
@@ -22,11 +27,13 @@ import I.Test.Emit as E
 t : Mu (K Int + (Id * Id))
 t = In (inr (In (inl 40), In (inl 2)))
 
--- algebra over `K Int + (Id * Id)` (recursive positions already folded to Unit):
---   leaf (K Int):        emit@E       -- emit the leaf value
---   node (Unit * Unit):  terminal     -- children already emitted; emit nothing
+-- algebra : (Int + (Unit * Unit)) ->[eff] Unit  (leaf: emit it; node: unit)
 emitTree : Eff (Mu (K Int + (Id * Id))) Unit
 emitTree = cata (case emit@E terminal)
 
+-- The fold, as a morphism `main` can compose with.
+runTree : IO Unit
+runTree = emitTree t
+
 main : IO Unit
-main = let r = emitTree t in exit@S 7
+main = compose exit@S (compose (\_ -> 7) runTree)
