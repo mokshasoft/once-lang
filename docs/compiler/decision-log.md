@@ -14640,3 +14640,105 @@ observations.
 observable is part of the spec), D039/D056 (the optimizer dropping effectful
 SigOps — a different mechanism with the same symptom), D143 (grade-aware
 meaning; `q = Zero` erases the bound expression), plan 0.93 §13.
+
+## D221 — `cata-correct` IS FALSE: THE MACHINE FOLDS RIGHT-TO-LEFT (2026-09-19)
+
+A false postulate, hidden by a vacuous test. This is the defect the whole
+verification effort exists to catch, and it survived because the only test that
+could see it was asserting nothing.
+
+### The measurement
+
+`node(leaf 40, leaf 2)` over `Mu (K Int + (Id * Id))`, algebra
+`case emit@E terminal`, forced on `main`'s composition chain and built against
+the BYTE-WRITING interpretation (`compiler/test/teststrata`):
+
+    machine trace = [2, 40]
+
+Deeper, `node(node(leaf 1, leaf 2), leaf 3)`:
+
+    machine trace = [3, 2, 1]        -- a complete right-to-left traversal
+
+### What the spec says
+
+`evalᴰ` routes `Cata` through `seqF` (`DenotTrace.agda:157-158`, `:235-238`):
+
+```agda
+evalᴰ fmt (Cata {F} wf {E} {C} alg) a =
+  sem-cata (wf-⌈⌉ wf) (cata-ev-algᴰ fmt alg (proj₁ a)) (forget (proj₂ a))
+
+cata-ev-algᴰ fmt alg env fc =
+  seqF ⌈ F ⌉F fc >>=T λ layer → evalᴰ fmt alg (env , …)
+```
+
+and `seqF` at a product sequences the LEFT component first
+(`ValueDomain.agda:135`):
+
+```agda
+seqF (G ⊗ H) (x , y) = seqF G x >>=T λ u → seqF H y >>=T λ v → returnT (u , v)
+```
+
+with `_>>=T_` concatenating `m`'s events FIRST (`TraceMonad.agda:52-63`):
+
+```agda
+(m >>=T f) n = let exr = m n ; eyr = f (proj₂ exr) (n ∸ length (proj₁ exr))
+               in (proj₁ exr ++ proj₁ eyr , proj₂ eyr)
+```
+
+**Spec order is `[40, 2]`. The machine gives `[2, 40]`.** `Layer5Spec.hs:73`
+documents the spec order — `"crown: trace [emit 40, emit 2, exit 7]"` — so the
+intent was never in doubt.
+
+### The hiding postulate
+
+`IRObsCorrect/Interface.agda:681`:
+
+```agda
+  postulate
+    cata-correct : ∀ {F} (wf : WellFormedFI F) {E A} (alg : IR (E * ⟦ F ⟧TI A) A)
+                 → IRObsCorrectF alg
+                 → IRObsCorrectF (Cata wf alg)
+```
+
+`ir-obs-correct (Cata wf alg) = cata-correct wf alg (ir-obs-correct alg)`
+(`IRObsCorrectFlat.agda:103`). So the apex is green *because* the one statement
+that would have caught this is assumed.
+
+It is now **REFUTED**, not merely open: its conclusion `IRObsCorrectF (Cata …)`
+asserts the machine's events agree with `evalᴰ (Cata …)`, and they do not at any
+functor with two recursive positions.
+
+### Why it survived
+
+**A one-recursive-position functor cannot see it.** `Mu (K Unit + (K Int * Id))`
+— the list — has a single `Id`, so `[5, 3]` is the only order either side can
+produce. The list test is green and stays green. Only the two-child crown case
+can distinguish, and that test was VACUOUS (D220): built to
+`main = let r = emitTree t in exit@S 7`, it emitted zero bytes and passed on its
+hardcoded exit code. Its assembly is **byte-identical** (same md5) to
+`main = exit@S 7`.
+
+This is the same blind spot D199 named for `Out`: *"both use `Nu (K Int)` — a
+functor with NO recursive position … the entire ν test surface was that blind
+spot."* The μ side had it too, and for two positions rather than one.
+
+### The rule
+
+**A recursion scheme is not tested until it is tested at a functor with TWO
+recursive positions.** One position cannot order anything, so it cannot falsify
+an ordering claim. Every scheme — `cata`, `ana`, `para`, `hylo` — needs a
+two-child witness, and that witness must assert the TRACE, not an exit code.
+
+### Not yet decided
+
+Whether the machine or `seqF` is wrong. `seqF` left-first agrees with D056's
+discharged obligation for composition (*"effectful `∘` sequences effects in
+source order"*) and with the `⟨f,g⟩` denotation and emitter, which D211 proved
+agree left-first. That is three independent left-first choices against one
+right-to-left fold, so the machine is the odd one out — but the codegen has not
+been read, and the fix belongs with plan 0.95's ordering decision.
+
+**Relates**: D220 (the vacuous test that hid it), D219 (the product's effect
+order), D211 (`obs-correct-pair` proved, left-first), D199 (the same blind spot
+at ν), D058 (correctness IS the effectful trace), D132 (per-shape cata witnesses
+were never going to be the theorem).
