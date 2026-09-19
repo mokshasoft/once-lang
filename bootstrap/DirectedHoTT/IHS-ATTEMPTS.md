@@ -373,3 +373,51 @@ META. `ihTy D (dρ C) q M = Σ' … (renTy vs (ihTy D C (snd q) M))` carries
 `renTy vs` ITSELF, so `wkTyK-agree` lands on the answer and NO cast is
 owed. `payTy` carries none, so it needed `payTy-ren`. Same family, one
 has the debt and one does not, and the definition says which.
+
+
+---
+
+## 7. ⛔ THE `IhITyAgree` SPLIT — TRIED, MEASURED, **REFUTED**
+
+`Knot/IhITyAgree` costs **3482 s (58 min)**, the most expensive module in
+the tree. Its `iρ` row's cast nests `nat7 iinstK` beside `nat7₂ wkTyK`,
+and `iinstK` unfolds to four nested programs. The ledger entry records
+⬜ OWED: *"move the cast equalities into their own module so they are
+`Def`-backed ACROSS a module boundary and elaborated once"*.
+
+**Done, and it does not work.**
+
+| | wall |
+|---|---|
+| `where`-bound inside the clauses (committed) | **3482 s** |
+| extracted to `Knot/IhITyCast`, applied | **3544 s** |
+| `Knot/IhITyCast` ALONE, parameters abstract | **46 s** |
+
+★★★ **THE 46 s IS THE TRAP, AND I FELL IN IT.** I measured the extracted
+module standalone, saw 46 s against 58 min, and reported a ~75×
+improvement. That number is real and it means nothing: standalone, the
+module's seven parameters stay ABSTRACT. At the use site `IhITyAgree`
+instantiates all seven at concrete encodings, and Agda re-elaborates
+exactly as before.
+
+⇒ `half-generalization-is-worst`, verbatim: *"A generic lemma is only
+generic if its argument stays ABSTRACT at the use site."* `LESSONS.md` §3
+has said so since the `Lib/IFold` vs `Examples/WkFin` measurement, and
+this is another instance — the abstraction bought nothing because the
+caller is an enumeration over three concrete rows.
+
+⚠ AND IT IS ALSO `verification-that-covers-less-than-it-claims`: the
+timing I quoted was produced by a run that did not do the work being
+claimed. **Measure the CALLER, not the definition**
+(`judge-abstractions-at-the-use-site`).
+
+★ WHAT *DID* HELP, and it is the only thing that did: `where`-binding the
+three lifts rather than inlining them. Inline, the clause did not finish
+in FORTY MINUTES; `where`-bound it completes at 58. That is a real
+effect and it is already in the committed version.
+
+⬜ STILL OPEN. The cost is the elaborated size of a cast that mentions
+`iinstK` seven times over a seven-substitution stack, and no relocation
+of that cast changes it. A fix has to make the cast SMALLER — e.g. a
+`⟶*`-level route that never needs `nat7 iinstK` at all — not move it.
+**Reverted; the committed version stands.**
