@@ -38,7 +38,13 @@ open import Once.Denotation.ValueDomain
 open import Once.Semantics.Functor using (νS; unfoldS)
 open import Once.CCC.Eval as Val using ()
 open import Once.IR using (IR)
-open import Once.IRTy using (IRTy; ⌈_⌉)
+open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
+import Once.IRTy as IT
+open import Once.IRTy using (WellFormedFI; FitsInRegI)
+open import Once.IR using (NatTr)
+open import Once.SigOp.Info using (SigOpInfo)
+open import Once.Float.Decimal using (Decimal)
+open import Data.Integer using (ℤ)
 open import Once.Target.Arch using (TargetNum)
 open import Once.Denotation.DenotTrace using (evalᴰ; ⟦_⟧ᴰᴵ)
 open import Once.Denotation.TraceMonad using (_>>=T_; >>=T-pf)
@@ -142,13 +148,88 @@ inject-Good Buffer      v        = tt
 -- one to establish it and one to consume it.
 ------------------------------------------------------------------------
 
--- SCAFFOLD: the recursion schemes and the `eval`-backed tail (`SigOp`,
--- `Cata`, `Ana`, `Out`, `In`, `out-μ`, `in-ν`, `Para`, `Hylo`, `Fuse`,
--- `free-heap`). `Cata` is known to FAIL `bounded` as written — its trace
--- algebra hands every layer the full budget and concatenates
--- (`cata-ev-algᴰ`), the same defect `events-Fᵇ` fixed on the ana side.
+------------------------------------------------------------------------
+-- THE REMAINING OBLIGATIONS, ONE NAME EACH.
+--
+-- This block used to be a SINGLE postulate:
+--
+--     postulate evalᴰ-good-schemes : ∀ {X : Set} → X
+--
+-- A postulate inhabiting EVERY type is not a scaffold. It is `⊥` under another
+-- name, and `evalᴰ-good` fell through to it for every recursion scheme, so
+-- `FlatFromObs` (which imports `evalᴰ-good` and applies it) carried it into the
+-- apex cone. Machine-checked with two probes: `boom : ⊥ = evalᴰ-good-schemes`
+-- typechecked, and so did the same ⊥ alongside an import of `Once.Certified`.
+-- Every proof under the apex was vacuous while it stood.
+--
+-- Each obligation below is now its own NAMED statement at its own constructor.
+-- A named postulate can still be FALSE — that is what the emptiness probes are
+-- for — but it can only prove the one thing it says, so a false one falsifies
+-- its own clause instead of the entire development.
+--
+-- `Cata` is known to FAIL `bounded` as written: its trace algebra hands every
+-- layer the full budget and concatenates (`cata-ev-algᴰ`), the same defect
+-- `events-Fᵇ` fixed on the ana side. Naming it separately is what lets that be
+-- true of `Cata` alone.
+--
+-- (`free-heap` was in this list and is gone — the constructor was removed.)
+------------------------------------------------------------------------
+
 postulate
-  evalᴰ-good-schemes : ∀ {X : Set} → X
+  evalᴰ-good-In : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F)
+                  (a : ⟦ (IT.⟦ F ⟧TI (IT.μ-type F)) ⟧ᴰᴵ)
+                → Good ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ a
+                → GoodT ⌈ IT.μ-type F ⌉ (evalᴰ fmt (In wf) a)
+
+  evalᴰ-good-out-μ : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F)
+                     (a : ⟦ IT.μ-type F ⟧ᴰᴵ)
+                   → Good ⌈ IT.μ-type F ⌉ a
+                   → GoodT ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ (evalᴰ fmt (out-μ wf) a)
+
+  evalᴰ-good-Cata : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F) {E A}
+                    (alg : IR (E IT.* IT.⟦ F ⟧TI A) A) (a : ⟦ E IT.* IT.μ-type F ⟧ᴰᴵ)
+                  → Good ⌈ E IT.* IT.μ-type F ⌉ a
+                  → GoodT ⌈ A ⌉ (evalᴰ fmt (Cata wf alg) a)
+
+  evalᴰ-good-Para : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F) {A}
+                    (alg : IR (IT.⟦ F ⟧TI (IT.μ-type F IT.* A)) A) (a : ⟦ IT.μ-type F ⟧ᴰᴵ)
+                  → Good ⌈ IT.μ-type F ⌉ a
+                  → GoodT ⌈ A ⌉ (evalᴰ fmt (Para wf alg) a)
+
+  evalᴰ-good-Out : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F)
+                   (a : ⟦ IT.ν-type F ⟧ᴰᴵ)
+                 → Good ⌈ IT.ν-type F ⌉ a
+                 → GoodT ⌈ (IT.⟦ F ⟧TI (IT.ν-type F)) ⌉ (evalᴰ fmt (Out wf) a)
+
+  evalᴰ-good-in-ν : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F)
+                    (a : ⟦ (IT.⟦ F ⟧TI (IT.ν-type F)) ⟧ᴰᴵ)
+                  → Good ⌈ (IT.⟦ F ⟧TI (IT.ν-type F)) ⌉ a
+                  → GoodT ⌈ IT.ν-type F ⌉ (evalᴰ fmt (in-ν wf) a)
+
+  evalᴰ-good-Ana : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F) {A}
+                   (coalg : IR A (IT.⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴰᴵ)
+                 → Good ⌈ A ⌉ a
+                 → GoodT ⌈ IT.ν-type F ⌉ (evalᴰ fmt (Ana wf coalg) a)
+
+  evalᴰ-good-Hylo : ∀ (fmt : TargetNum) {F G} (wfF : WellFormedFI F) (wfG : WellFormedFI G) {B}
+                    (alg : IR (IT.⟦ F ⟧TI B) B) (t : NatTr G F) (a : ⟦ IT.μ-type G ⟧ᴰᴵ)
+                  → Good ⌈ IT.μ-type G ⌉ a
+                  → GoodT ⌈ B ⌉ (evalᴰ fmt (Hylo wfF wfG alg t) a)
+
+  evalᴰ-good-Fuse : ∀ (fmt : TargetNum) {F G} (wfF : WellFormedFI F) (wfG : WellFormedFI G) {B}
+                    (alg : IR (IT.⟦ F ⟧TI B) B) (t : NatTr G F) (a : ⟦ IT.μ-type G ⟧ᴰᴵ)
+                  → Good ⌈ IT.μ-type G ⌉ a
+                  → GoodT ⌈ B ⌉ (evalᴰ fmt (Fuse wfF wfG alg t) a)
+
+  evalᴰ-good-const : ∀ (fmt : TargetNum) {A} (fits : FitsInRegI A)
+                     (v : IT.⟦ ℤ , Decimal ⟧-baseI A) (a : ⟦ IT.Unit ⟧ᴰᴵ)
+                   → Good ⌈ IT.Unit ⌉ a
+                   → GoodT ⌈ A ⌉ (evalᴰ fmt (const fits v) a)
+
+  evalᴰ-good-SigOp : ∀ (fmt : TargetNum) {A B : Type} (si : SigOpInfo A B)
+                     (a : ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
+                   → Good ⌈ ⌊ A ⌋ ⌉ a
+                   → GoodT ⌈ ⌊ B ⌋ ⌉ (evalᴰ fmt (SigOp si) a)
 
 evalᴰ-good : ∀ (fmt : TargetNum) {A B : IRTy} (ir : IR A B) (a : ⟦ A ⟧ᴰᴵ)
            → Good ⌈ A ⌉ a → GoodT ⌈ B ⌉ (evalᴰ fmt ir a)
@@ -196,4 +277,14 @@ evalᴰ-good fmt (⟨_,_⟩ {A} {B} {C} f g) a ga =
     ihg : GoodT ⌈ C ⌉ (evalᴰ fmt g a)
     ihg = evalᴰ-good fmt g a ga
 
-evalᴰ-good fmt ir a ga = evalᴰ-good-schemes
+evalᴰ-good fmt (In wf)             a ga = evalᴰ-good-In    fmt wf a ga
+evalᴰ-good fmt (out-μ wf)          a ga = evalᴰ-good-out-μ fmt wf a ga
+evalᴰ-good fmt (Cata wf alg)       a ga = evalᴰ-good-Cata  fmt wf alg a ga
+evalᴰ-good fmt (Para wf alg)       a ga = evalᴰ-good-Para  fmt wf alg a ga
+evalᴰ-good fmt (Out wf)            a ga = evalᴰ-good-Out   fmt wf a ga
+evalᴰ-good fmt (in-ν wf)           a ga = evalᴰ-good-in-ν  fmt wf a ga
+evalᴰ-good fmt (Ana wf coalg)      a ga = evalᴰ-good-Ana   fmt wf coalg a ga
+evalᴰ-good fmt (Hylo wfF wfG alg t) a ga = evalᴰ-good-Hylo fmt wfF wfG alg t a ga
+evalᴰ-good fmt (Fuse wfF wfG alg t) a ga = evalᴰ-good-Fuse fmt wfF wfG alg t a ga
+evalᴰ-good fmt (const fits v)      a ga = evalᴰ-good-const fmt fits v a ga
+evalᴰ-good fmt (SigOp si)          a ga = evalᴰ-good-SigOp fmt si a ga
