@@ -44,6 +44,8 @@ open import Once.CCC.Machine.SMCore
   using (block-layout; blocks-layout; AbstractTrace; AbstractInstr; LabelId)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Label using (_≡ᵇᴵ_; ≡ᵇᴵ-refl)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk)
 
 ------------------------------------------------------------------------
 -- Fetch agreement, spelled out (= `Interface.Core.SpanAt`).
@@ -53,7 +55,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 ------------------------------------------------------------------------
 
 module Layout {FS : FrameSemantics} where
-  open FlatMachine {FS} using (fetch)
+  open FlatMachine {FS} using (fetch; find-thunk; ft-go; ft-at; ft-match; thunk-of?; ft-go-++-miss)
 
 
   Span : AbstractTrace → ℕ → AbstractTrace → Set
@@ -116,3 +118,35 @@ module Layout {FS : FrameSemantics} where
     All-map (λ {blk} (d , sp) →
         (length pre + d) , span-shift pre (blocks-layout bs) (block-layout blk) d sp)
       (blocks-placed bs)
+
+  ------------------------------------------------------------------------
+  -- THE RESOLUTION HALF, reduced to ONE hypothesis.
+  --
+  -- `find-thunk` scans for the first `c-thunk` carrying the target label. A
+  -- block's layout BEGINS with exactly that marker (`block-layout (lbl , b , t)
+  -- = instr-ctrl (c-thunk lbl b) ∷ t ++ instr-ctrl (c-ret b) ∷ []`), so the scan
+  -- lands on it as soon as it reaches the block — the only question is whether
+  -- anything EARLIER matched first.
+  --
+  -- `ft-go-++-miss` (Flat.agda:240) already skips a prefix the scan misses, and
+  -- its hypothesis is the weakest form: `ft-go pre target 0 ≡ nothing`, "the
+  -- scan fails on the prefix", which its own comment calls "the one a caller can
+  -- actually produce". So the whole resolution half reduces to producing THAT,
+  -- and that is the `ThunkScope` obligation — the entry mints no `c-thunk` for
+  -- this label, and no earlier block carries it.
+  ------------------------------------------------------------------------
+
+  -- The scan HITS a block's own marker immediately.
+  ft-hit : ∀ (lbl : LabelId) (b : ℕ) (rest : AbstractTrace) (i : ℕ)
+         → ft-go (instr-ctrl (c-thunk lbl b) ∷ rest) lbl i ≡ just i
+  ft-hit lbl b rest i rewrite ≡ᵇᴵ-refl lbl = refl
+
+  -- …and therefore resolves to the block's offset, GIVEN the miss.
+  block-resolves : ∀ (pre : AbstractTrace) (lbl : LabelId) (b : ℕ)
+                     (t post : AbstractTrace)
+                 → ft-go pre lbl 0 ≡ nothing
+                 → find-thunk (pre ++ block-layout (lbl , b , t) ++ post) lbl
+                   ≡ just (length pre + 0)
+  block-resolves pre lbl b t post miss =
+    trans (ft-go-++-miss pre (block-layout (lbl , b , t) ++ post) lbl 0 miss)
+          (ft-hit lbl b _ (length pre + 0))
