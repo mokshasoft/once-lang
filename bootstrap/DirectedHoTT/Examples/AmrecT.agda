@@ -53,7 +53,16 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.AmrecT where
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂; subst )
-open import DirectedHoTT.Lib.Wk using ( cong₄; ren-sub; ren-w; sub-w; w )
+-- ★★ SEVEN LEMMAS DELETED FROM THIS MODULE, 2026-09-20 — they were
+--   already in `Lib`, and four were BYTE-IDENTICAL (statement AND
+--   proof).  Found by `tools/find-dup-lemmas.py --vs-lib`, which asks
+--   "same type as this declaration, modulo anti-unification".  ⚠ The
+--   module ALREADY imported `Lib.Wk`; it just did not import these
+--   names, which is why the copies were invisible to every reader.
+open import DirectedHoTT.Lib.Wk
+  using ( cong₄; ren-sub; ren-w; sub-w; w
+        ; wᶠ-nrs; wᶠ²-single; nrs-wTy; ren-wᶠ; wᶠ-single; wᶠ¹-single )
+open import DirectedHoTT.Lib.Rec using ( aIHT-ren )
 import DirectedHoTT.Lib.Wk as W
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; Var; vz; vs; Ren
@@ -150,95 +159,10 @@ aAuxB-ren {ρ = ρ} A cM m n =
 wk-singleTy : {Γ : Cx} {v : RTm Γ} (T : RTy Γ) → subTy (single v) (renTy vs T) ≡ T
 wk-singleTy T = trans (subTy-renTy T) (subTy-id T)
 
--- ★ THE FAMILY VERSION.  `extS (single v) ₛ∘ᵣ extR vs` is the IDENTITY:
---   the family's own variable is held in place by both, and everything
---   below it is weakened then immediately substituted back.
-wᶠ-single : {Γ : Cx} {v : RTm Γ} (t : RTm (Γ ∙)) →
-            subTm (extS (single v)) (wᶠ t) ≡ t
-wᶠ-single t =
-  trans (subTm-renTm t) (trans (subTm-cong bridge t) (subTm-id t))
-  where
-    bridge : ∀ x → _
-    bridge vz     = refl
-    bridge (vs x) = refl
-
--- `nrs` on a weakened type / family: one more weakening, as for `nrs-w`
-nrs-wTy : {Γ : Cx} (T : RTy Γ) → subTy nrs (renTy vs T) ≡ renTy vs (renTy vs T)
-nrs-wTy T =
-  trans (subTy-renTy T)
-        (sym (trans (renTy-renTy T) (ren-subTy T)))
-  where
-    -- ⚠ was a local copy; `Lib/Wk.ren-subTy` is the same statement,
-    --   lifted out of ITS `where` block 2026-08-30.
-    ren-subTy : (T : RTy _) → renTy _ T ≡ subTy (λ x → var _) T
-    ren-subTy T = W.ren-subTy T
-
--- ⚠ this one needs a pointwise BRIDGE: `extS nrs ₛ∘ᵣ extR vs` and
---   `extR vs ∘ᵣ extR vs` agree, but only after casing on the variable —
---   eta alone does not see it, unlike `sub-w`/`ren-w`.
-wᶠ-nrs : {Γ : Cx} (t : RTm (Γ ∙)) → subTm (extS nrs) (wᶠ t) ≡ wᶠ (wᶠ t)
-wᶠ-nrs t =
-  trans (subTm-renTm t)
-        (trans (subTm-cong bridge t)
-               (sym (trans (renTm-renTm t) (ren-sub' t))))
-  where
-    bridge : ∀ x → _
-    bridge vz     = refl
-    bridge (vs x) = refl
-    -- ⚠ was a local copy of `Lib/Wk.ren-sub`.
-    ren-sub' : (u : RTm _) → renTm _ u ≡ subTm (λ x → var _) u
-    ren-sub' u = ren-sub u
-
--- ⚠ bridge: the family under TWO `extR vs` then `single (var (vs vz))`
---   collapses to a single weakening.  This is the spine's cancellation.
-wᶠ²-single : {Γ : Cx} (t : RTm (Γ ∙)) →
-             subTm (single (var (vs vz))) (wᶠ (wᶠ t)) ≡ w t
-wᶠ²-single t =
-  trans (subTm-renTm (wᶠ t))
-        (trans (subTm-renTm t)
-               (trans (subTm-cong bridge t) (sym (ren-sub'' t))))
-  where
-    bridge : ∀ x → _
-    bridge vz     = refl
-    bridge (vs x) = refl
-    -- ⚠ was a local copy of `Lib/Wk.ren-sub`.
-    ren-sub'' : (u : RTm _) → renTm vs u ≡ subTm (λ x → var (vs x)) u
-    ren-sub'' u = ren-sub u
-
--- ⚠ bridge: one `wᶠ` then `single (var vz)` is the IDENTITY — the family's
---   variable is put back exactly where it came from.
-wᶠ¹-single : {Γ : Cx} (t : RTm (Γ ∙)) →
-             subTm (single (var vz)) (wᶠ t) ≡ t
-wᶠ¹-single t =
-  trans (subTm-renTm t) (trans (subTm-cong bridge t) (subTm-id t))
-  where
-    bridge : ∀ x → _
-    bridge vz     = refl
-    bridge (vs x) = refl
-
 -- the renaming twins the step's reassociation needs
 ren-wTy : {Γ Δ : Cx} {ρ : Ren Γ Δ} (T : RTy Γ) →
           renTy (extR ρ) (renTy vs T) ≡ renTy vs (renTy ρ T)
 ren-wTy T = trans (renTy-renTy T) (sym (renTy-renTy T))
-
--- ⚠ bridge again: `extR (extR ρ) ∘ᵣ extR vs` and `extR vs ∘ᵣ extR ρ`
---   agree only after casing, exactly as in `wᶠ-nrs`.
-ren-wᶠ : {Γ Δ : Cx} {ρ : Ren Γ Δ} (t : RTm (Γ ∙)) →
-         renTm (extR (extR ρ)) (wᶠ t) ≡ wᶠ (renTm (extR ρ) t)
-ren-wᶠ t =
-  trans (renTm-renTm t) (trans (renTm-cong bridge t) (sym (renTm-renTm t)))
-  where
-    bridge : ∀ x → _
-    bridge vz     = refl
-    bridge (vs x) = refl
-
-aIHT-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (A : RTy Γ) (cM m : RTm (Γ ∙)) →
-           renTy (extR ρ) (aIHT A cM m)
-         ≡ aIHT (renTy ρ A) (renTm (extR ρ) cM) (renTm (extR ρ) m)
-aIHT-ren {ρ = ρ} A cM m =
-  cong₄ (λ a p q c → Π a (Π (Hom Nat (nsuc p) q) (El c)))
-        (ren-wTy A) (ren-wᶠ m) (ren-w {ρ = extR ρ} m)
-        (trans (ren-w {ρ = extR (extR ρ)} (wᶠ cM)) (cong w (ren-wᶠ cM)))
 
 aStepT-ren : {Γ Δ : Cx} {ρ : Ren Γ Δ} (A : RTy Γ) (cM m : RTm (Γ ∙)) →
              renTy ρ (aStepT A cM m)
