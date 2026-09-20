@@ -68,7 +68,7 @@ open import Once.TypeCheck.Judgment using (_⊢ᶜ_∶_⨾_; _⊢ᵢ_∶_⨾_;
   t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
   t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
   t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-  t-terminal-app; t-apply-app-infer; t-Out-app-infer; t-app; t-effApp;
+  t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp;
   t-embed; t-lam; t-pair-lit-check;
   t-In-app-check; t-apply-check; t-inl-app-check; t-inr-app-check;
   t-initial-app-check; t-subsume; t-arg-driven-app-check; t-var-poly-instantiate;
@@ -79,7 +79,7 @@ open import Once.Denotation.Meaning using (⟦_⟧ᶜ; ⟦_⟧ᵢ;
 open import Once.Adequacy.CataErased fmt using (liftFn-SigOp)
 open import Once.Adequacy.LiftFnReduce fmt using
   (liftFn-id; liftFn-fst; liftFn-snd; liftFn-terminal; liftFn-inl; liftFn-inr;
-   liftFn-∘; liftFn-case-inj₁; liftFn-case-inj₂; liftFn-apply)
+   liftFn-∘; liftFn-case-inj₁; liftFn-case-inj₂; liftFn-apply; liftFn-eff-apply)
 import Once.IR as IR
 open import Once.Arith.SigOp.Builders using (value-info;
   add-info; sub-info; mul-info; div-info; mod-info; neg-info;
@@ -796,6 +796,20 @@ bridge-i {ctx = ctx} (t-apply-app-infer {A = A} {B = B} d) {dγ₁ = dγ₁} {d�
   subst (RelT B ((⟦ t-apply-app-infer d ⟧ᵢ fmt) dγ₁)) (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-apply {A} {B} {pure})))
         -- D179: `RelT-bind` — the closure runs at the budget the head LEFT.
         (RelT-bind {A = (A ⇒[ mk-kind Many pure ] B) * A} {B = B} (bridge-i d (reᵐ re)) (λ rv → proj₁ rv (proj₂ rv)))
+
+-- D222 / plan 0.95 A′: `apply` at an EFF closure. Same shape as the pure clause
+-- above, with two differences that are the whole content of the rule: the
+-- reduction is `liftFn-eff-apply` (the `curry (apply ∘ fst)` thunk-builder, not
+-- bare `apply`), and the continuation returns a SUSPENSION rather than the
+-- application's result. The pair is still evaluated EAGERLY — `RelT-bind`
+-- sequences it before the `returnT` — which is why `⟦_⟧ᵢ`'s clause binds the
+-- pair outside the `returnT` too.
+bridge-i {ctx = ctx} (t-apply-eff-app-infer {A = A} {B = B} d) {dγ₁ = dγ₁} {dγ₂ = dγ₂} re =
+  subst (RelT (Unit ⇒[ mk-kind Many eff ] B) ((⟦ t-apply-eff-app-infer d ⟧ᵢ fmt) dγ₁))
+        (sym (cong ((SD.⟦ realize-infer d ⟧ˢ fmt) (resᵐ {Γ = NamedCtx.debruijn ctx} dγ₂) >>=T_) (liftFn-eff-apply {A} {B})))
+        (RelT-bind {A = (A ⇒[ mk-kind Many eff ] B) * A} {B = Unit ⇒[ mk-kind Many eff ] B}
+                   (bridge-i d (reᵐ re))
+                   (λ rv → RelT-return {A = Unit ⇒[ mk-kind Many eff ] B} (λ _ → proj₁ rv (proj₂ rv))))
 
 -- Application — infer the head, check the argument, apply the related closures.
 -- D143: at an ERASED arrow the argument derivation is not run at all, and the

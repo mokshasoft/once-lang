@@ -21,6 +21,10 @@ layer5Tests = testGroup "Layer5"
   [ exitCases "cata isEven of an even Nat (exit 42)" "layer5-iseven" 42
   , testGroup "cata-general (Plan 0.36 Phase 0)"
       [ exitCases name name code | (name, code) <- cataGeneralCases ]
+  , traceCases "apply eliminates an eff closure — capture (D222 A′)"
+               "apply-eff-closure" [5] 7
+  , traceCases "apply eliminates an eff closure — argument (D222 A′)"
+               "apply-eff-closure-snd" [9] 7
   , traceCases "pair arm order — TWO emitting arms (D222)"
                "pair-arm-order-emit" [1, 2] 7
   , testGroup "cata-effectful (Plan 0.36)"

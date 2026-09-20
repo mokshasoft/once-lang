@@ -72,7 +72,7 @@ open import Once.TypeCheck.Judgment
          t-int; t-float; t-str; t-unit; t-unit-var; t-var-local; t-var-qualified;
          t-var-resolved; t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-binop-arith-float; t-binop-arith-float-il; t-binop-arith-float-ir; t-let; t-case;
          t-binop-arith; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-         t-terminal-app; t-apply-app-infer; t-Out-app-infer; t-app; t-effApp)
+         t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp)
 
 ------------------------------------------------------------------------
 -- P1 scaffolds (discharged in P2). NAMED and narrow — each is exactly one
@@ -415,6 +415,21 @@ EnvRun ctx Ψ = ⟦ ⟦ NamedCtx.debruijn ctx ↾ Ψ ⟧ᶜᵗ ⟧ᴰ
        >>=T out-sem wfF)
 ⟦_⟧ᵢ {ctx = ctx} (t-terminal-app d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ _ → returnT tt
 ⟦_⟧ᵢ {ctx = ctx} (t-apply-app-infer d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ fa → proj₁ fa (proj₂ fa)
+-- D222 / plan 0.95 A′: the EFF closure's elimination is a SUSPENSION — but only
+-- the APPLICATION is suspended, not the evaluation of the pair.
+--
+-- The scope matters and the bridge is what pins it. `realize` emits
+-- `morph-app (curry (apply ∘ fst)) (realize-infer d)`, and `morph-app`
+-- evaluates its ARGUMENT and then applies the morphism — so the pair is built
+-- eagerly and the `curry` suspends only `apply`. Writing the meaning as
+-- `returnT (λ _ → ⟦ d ⟧ᵢ … >>=T …)` would suspend the pair's own evaluation
+-- too, and the two would disagree about WHEN the pair's events appear.
+--
+-- It is also the right reading on its own terms: constructing `(f , a)` is not
+-- the effect; running `f a` is. Contrast `t-effApp`, whose meaning suspends
+-- everything — there `elaborate` puts the head's and argument's evaluation
+-- INSIDE the `curry` too (Surface/Elaborate.agda:393-395), so the two agree.
+⟦_⟧ᵢ {ctx = ctx} (t-apply-eff-app-infer d) fmt dγ = (⟦ d ⟧ᵢ fmt) (restrictᴰ {Γ = NamedCtx.debruijn ctx} (⊑ᵘ-trans (⊑ᵘ-*Many _) (⊑ᵘ-+ʳ zeroUsage _)) dγ) >>=T λ fa → returnT (λ _ → proj₁ fa (proj₂ fa))
 -- D143: at an ERASED arrow the argument is NOT evaluated — the meaning takes
 -- none, so `vf` is applied to `tt`. The spec's counterpart of the elaborator
 -- not emitting `x`, and the reason `Ψ₂` vanishes from the index.

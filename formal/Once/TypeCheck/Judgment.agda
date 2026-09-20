@@ -417,6 +417,31 @@ mutual
                       → ctx ⊢ᵢ p ∶ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) ⨾ Ψ
                       → ctx ⊢ᵢ RApp (RResolved (gen "apply")) p ∶ B ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
+    -- | D222 / plan 0.95 A′: `apply` at an EFFECTFUL closure.
+    --
+    -- A SEPARATE rule, not a free `π` on the one above, and the reason is that
+    -- the CONCLUSION'S SHAPE differs. Once keeps effects on ARROWS: `t-effApp`
+    -- at an eff arrow concludes `Unit ⇒[eff] B` — a SUSPENSION — rather than a
+    -- bare `B`, because a value of type `B` carries no grade and an effectful
+    -- result must stay visible in the type. `apply` eliminates a closure, so it
+    -- splits exactly the way `t-app`/`t-effApp` do:
+    --
+    --     pure closure   ⊢ᵢ apply p ∶ B
+    --     eff  closure   ⊢ᵢ apply p ∶ (Unit ⇒[eff] B)
+    --
+    -- One rule with a free `π` cannot state that, which is why this is a new
+    -- constructor rather than an index change.
+    --
+    -- Phase A made a curried effectful closure BUILDABLE (`curry (compose
+    -- emit@E fst) : Int -> Eff Int Unit`); without this it could not be
+    -- ELIMINATED, which is a dead end rather than a feature.
+    t-apply-eff-app-infer : ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
+                            {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                          → ctx ⊢ᵢ p ∶ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A) ⨾ Ψ
+                          → ctx ⊢ᵢ RApp (RResolved (gen "apply")) p
+                                 ∶ (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+                                 ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+
     -- | D194: `Out v` — force one layer of a ν. INFER, not check, and that
     -- is forced by the shape rather than chosen: a check rule would have to
     -- recover `F` by inverting `⟦ F ⟧T (ν-type F) ≡ T`, which is not

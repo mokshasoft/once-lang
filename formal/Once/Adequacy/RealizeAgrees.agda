@@ -1280,12 +1280,22 @@ agree-RApp ctx f arg E.ahv-apply veq eq argIH fInferIH argCheckIH dγ k with E.i
 ... | success ((_ + _) * _) _ _ _ _ , _ | ()
 ... | success ((μ-type _) * _) _ _ _ _ , _ | ()
 ... | success ((ν-type _) * _) _ _ _ _ , _ | ()
-... | success ((_ ⇒[ mk-kind Many eff ] _) * _) _ _ _ _ , _ | ()
 ... | success ((_ ⇒[ mk-kind One pure ] _) * _) _ _ _ _ , _ | ()
 ... | success ((_ ⇒[ mk-kind One eff ] _) * _) _ _ _ _ , _ | ()
 ... | success ((_ ⇒[ mk-kind Zero pure ] _) * _) _ _ _ _ , _ | ()
 ... | success ((_ ⇒[ mk-kind Zero eff ] _) * _) _ _ _ _ , _ | ()
 ... | success ((A ⇒[ mk-kind Many pure ] B) * A') Ψ argE d fr , w | eq₁ with A E.≟T A' | eq₁
+...   | yes refl | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
+                      (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
+...   | no _     | ()
+-- D222 / plan 0.95 A′: the EFF-closure row. This USED TO BE an absurd pattern
+-- (`… (_ ⇒[ mk-kind Many eff ] _) * _ … | ()`), sound only because the
+-- elaborator's `ahv-apply` dispatch FAILED at an effectful closure. It succeeds
+-- now, so the row is live and needs the pure row's proof — which transfers
+-- unchanged: both emit `morph-app <morphism> argE` and `realize-infer` emits the
+-- same morphism, so agreement is the argument's IH and `refl`.
+agree-RApp ctx f arg E.ahv-apply veq eq argIH fInferIH argCheckIH dγ k
+  | success ((A ⇒[ mk-kind Many eff ] B) * A') Ψ argE d fr , w | eq₁ with A E.≟T A' | eq₁
 ...   | yes refl | refl rewrite argIH refl (restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-trans (Surface.⊑ᵘ-*Many Ψ)
                       (Surface.⊑ᵘ-+ʳ Surface.zeroUsage (Many Surface.*ᵘ Ψ))) dγ) k = refl
 ...   | no _     | ()

@@ -77,7 +77,7 @@ d_compileFunBody'45'complete_22 v0 v1 v2 v3 v4 v5 v6 v7
                   (coe v0) (coe v1) (coe v2) (coe v3) (coe v4)))
             (coe MAlonzo.Code.Once.Surface.Context.C_'91''93'_62) (coe v4)
             (coe
-               MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
+               MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3190
                (coe
                   MAlonzo.Code.Once.TypeCheck.Classify.d_size_354
                   (coe
@@ -101,7 +101,7 @@ d_compileFunBody'45'complete_22 v0 v1 v2 v3 v4 v5 v6 v7
                (coe
                   MAlonzo.Code.Agda.Builtin.Sigma.d_fst_28
                   (coe
-                     MAlonzo.Code.Once.TypeCheck.Completeness.d_check'45'complete_3722
+                     MAlonzo.Code.Once.TypeCheck.Completeness.d_check'45'complete_3794
                      (coe
                         MAlonzo.Code.Once.TypeCheck.Classify.d_ctxWithImportsAndSelfAndPolys_390
                         (coe v0) (coe v1) (coe v2) (coe v3) (coe v4))

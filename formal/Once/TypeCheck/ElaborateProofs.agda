@@ -586,6 +586,28 @@ checkElab-fallback-RApp-apply {ctx} p A B eqInf
 ...   | yes refl with B ≟T B
 ...     | yes refl = _ , _ , _ , refl
 ...     | no  ¬eq  = ⊥-elim (¬eq refl)
+
+-- D222 / plan 0.95 A′: the EFF-closure twin. `apply` at an effectful closure
+-- infers the SUSPENSION `Unit ⇒[eff] B`, so that is the type it is re-checked
+-- at; the `with`-chase is otherwise the pure helper's, verbatim.
+checkElab-fallback-RApp-apply-effclosure :
+  ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A)}
+    {d fr : ℕ}
+  → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A) Ψ eE d fr
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) p)
+                (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+checkElab-fallback-RApp-apply-effclosure {ctx} p A B eqInf
+  with inferElabV ctx p | eqInf
+... | success ((_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] _) Once.Type.* _) _ _ _ _ , _ | refl
+    with A ≟T A
+...   | no  ¬eq  = ⊥-elim (¬eq refl)
+...   | yes refl with B ≟T B
+...     | yes refl = _ , _ , _ , refl
+...     | no  ¬eq  = ⊥-elim (¬eq refl)
 resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
               → (polys : PolyCtx) → Acc _<_ (length polys)
               → Imports → Imports → ℕ

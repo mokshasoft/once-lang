@@ -1,0 +1,35 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D222 / plan 0.95 A′: the effectful-closure round trip, ARGUMENT half — build one with
+-- `curry`, eliminate it with `apply`, observe the effect.
+--
+-- Phase A made a curried effectful closure WRITABLE (`k : Int -> Eff Int Unit`,
+-- outer arrow pure, inner eff — the shape Agda's coverage checker named as
+-- missing). It could not be ELIMINATED: `t-apply-check`/`t-apply-app-infer`
+-- fixed their arrow to `pure`, so `apply` would not take one. That was a dead
+-- end introduced by Phase A, and A′'s `t-apply-eff-app-infer` closes it.
+--
+-- `curry` CAPTURES its first component, so `k 5` closes over 5 and `apply`
+-- supplies 9. The companion `apply-eff-closure-snd` selects the OTHER one. The
+-- pair is the point: `fst` emits 5 and `snd` emits 9, so a closure that dropped
+-- its capture fails the first and an `apply` that dropped its argument fails the
+-- second. Neither can pass by accident — which is exactly what the cata-emit
+-- tests lacked before D220.
+--
+-- Expected: exit code 7, trace [9].
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as E
+
+-- BUILD: `curry f a b = f (a , b)`, so this emits whichever component `fst`
+-- selects — the APPLIED one.
+k : Int -> Eff Int Unit
+k = curry (compose emit@E snd)
+
+-- ELIMINATE: `(k 5, 9)` is the pair literal `(Int ⇒[eff] Unit) * Int`.
+fire : IO Unit
+fire = apply (k 5, 9)
+
+main : IO Unit
+main = compose exit@S (compose (\_ -> 7) fire)

@@ -515,6 +515,26 @@ infer-complete-RApp-apply {ctx} arg A eqArg
 ...   | yes refl = _ , _ , _ , refl
 ...   | no  ¬eq  = ⊥-elim (¬eq refl)
 
+-- D222 / plan 0.95 A′: the EFF-closure twin. `apply` at an effectful closure
+-- infers the SUSPENSION `Unit ⇒[eff] B`, so both the premise's arrow and the
+-- conclusion's type differ from the pure helper above; everything else is the
+-- same `with`-chase.
+infer-complete-RApp-apply-eff :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (A : Type) {B : Type}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {argE : SExpr (NamedCtx.debruijn ctx) Ψ ((A T.⇒[ T.mk-kind T.Many T.eff ] B) T.* A)}
+    {d' f' : ℕ}
+  → inferElab ctx arg ≡ success ((A T.⇒[ T.mk-kind T.Many T.eff ] B) T.* A) Ψ argE d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RApp (Raw.RResolved (gen "apply")) arg)
+        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
+infer-complete-RApp-apply-eff {ctx} arg A eqArg
+  with inferElabV ctx arg | eqArg
+... | success ((_ T.⇒[ T.mk-kind T.Many T.eff ] _) T.* A') _ _ _ _ , _ | refl
+    with A ≟T A'
+...   | yes refl = _ , _ , _ , refl
+...   | no  ¬eq  = ⊥-elim (¬eq refl)
+
 ------------------------------------------------------------------------
 -- Variable lookup (local / import)
 ------------------------------------------------------------------------
@@ -972,7 +992,7 @@ open Once.TypeCheck.ElaborateProofs
          checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal; checkElab-fallback-RVar-terminalV;
          checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl;
          checkElab-fallback-RVar-inr;
-         checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply;
+         checkElab-fallback-RApp-In; checkElab-fallback-RApp-apply; checkElab-fallback-RApp-apply-effclosure;
          checkElab-fallback-RVar-poly; checkElab-fallback-RVar-poly-infer;
          checkElab-fallback-RQualified; checkElab-fallback-RResolved; checkElab-fallback-RAnnot;
          checkElab-fallback-RLet;
@@ -1379,6 +1399,9 @@ mutual
   iFromInfer (t-apply-app-infer {p = p} {A = A} {B = B} d) =
     let (_ , _ , _ , eqI) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eqI
+  iFromInfer (t-apply-eff-app-infer {p = p} {A = A} {B = B} d) =
+    let (_ , _ , _ , eqI) = infer-complete d
+    in checkElab-fallback-RApp-apply-effclosure p A B eqI
   iFromInfer (t-app {f = f} {x = x} {B = B} notPoly dF dX) =
     let (_ , _ , _ , eqI) = infer-complete (t-app notPoly dF dX)
     in checkElab-fallback-RApp-generic f x B notPoly eqI
@@ -1543,6 +1566,9 @@ mutual
   infer-complete (t-apply-app-infer {p = p} {A = A} d) =
     let (_ , _ , _ , eqSub) = infer-complete d
     in infer-complete-RApp-apply p A eqSub
+  infer-complete (t-apply-eff-app-infer {p = p} {A = A} d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-apply-eff p A eqSub
   -- Plan 0.4 T1, change 1: dX is now a check-mode derivation
   -- (per the t-app/t-effApp signature changes in Judgment).
   -- check-complete gives us the checkElab evidence directly.

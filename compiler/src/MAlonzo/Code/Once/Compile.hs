@@ -309,7 +309,7 @@ du_compileFunBody'45'aux_82 v0 v1 v2 v3 v4 v5 v6 v7
                       MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_962 (coe v0)
                       (coe v1) (coe v8) (coe v6)
                       (coe
-                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
+                         MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3190
                          (coe v0) (coe v1) (coe v6) (coe v4)
                          (coe
                             MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
@@ -324,7 +324,7 @@ du_compileFunBody'45'aux_82 v0 v1 v2 v3 v4 v5 v6 v7
                    MAlonzo.Code.Once.Surface.Elaborate.du_elaborateFull_962 (coe v0)
                    (coe v1) (coe v8) (coe v6)
                    (coe
-                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3090
+                      MAlonzo.Code.Once.TypeCheck.ElaborateProofs.du_resolveExpr_3190
                       (coe v0) (coe v1) (coe v6) (coe v4)
                       (coe
                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22

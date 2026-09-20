@@ -2363,6 +2363,18 @@ mutual
     success B _ (Surface.morph-app IR.apply argE) (suc d) fr , t-apply-app-infer w
   ...   | no _ =
     failure (BuiltinTypeMismatch "apply") , tt
+  -- D222 / plan 0.95 A′: an EFFECTFUL closure. The result is a SUSPENSION
+  -- `Unit ⇒[eff] B`, so the morphism is the thunk-builder `curry (apply ∘ fst)`
+  -- rather than `apply` — the same shape `elaborate` gives `effApp`. The IR
+  -- arrow is UNGRADED, so no new Surface former is needed.
+  inferElabV-RApp-dispatch ctx f arg ahv-apply _
+    | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Once.Type.* A') Ψ argE d fr , w with A ≟T A'
+  ...   | yes refl =
+    success (Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _
+            (Surface.morph-app (IR.curry (IR.apply IR.∘ IR.fst)) argE) (suc d) fr
+    , t-apply-eff-app-infer w
+  ...   | no _ =
+    failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Unit _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Void _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt
   inferElabV-RApp-dispatch ctx f arg ahv-apply _ | success Int _ _ _ _ , _ = failure (BuiltinTypeMismatch "apply") , tt

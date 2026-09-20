@@ -182,6 +182,47 @@ liftFn-apply : ∀ {A B : Type} {π}
   → liftFn fmt {(A ⇒[ mk-kind Many π ] B) * A} {B} apply ≡ (λ v → proj₁ v (proj₂ v))
 liftFn-apply {A} {B} = extensionality λ v → apply-red (cohᴰ A) (cohᴰ B) v
 
+-- D222 / plan 0.95 A′: `curry`. `evalᴰ (curry g) a = returnT (λ b → evalᴰ g (a , b))`
+-- (DenotTrace.agda:143), so the reduction is the same match-to-refl shape as
+-- `apply-red` — only the transports differ. `cohᴰ (B ⇒[ mk-kind Many π ] C)` is
+-- `cong₂ (λ x y → x → T y) (cohᴰ B) (cohᴰ C)` (ValueDomain.agda:258) and
+-- `cohᴰ (A * B)` is `cong₂ _×_ (cohᴰ A) (cohᴰ B)` (:251), so the arrow's
+-- transport on the left and the product's on the right cancel pointwise.
+curry-red : ∀ {AI AT BI BT CI CT : Set} (pA : AI ≡ AT) (pB : BI ≡ BT) (pC : CI ≡ CT)
+              (gg : AI × BI → T CI) (a : AT)
+  → subst T (cong₂ (λ x y → x → T y) pB pC)
+        (returnT (λ b → gg (subst id (sym pA) a , b)))
+    ≡ returnT (λ b → subst T pC (gg (subst id (sym (cong₂ _×_ pA pB)) (a , b))))
+curry-red refl refl refl gg a = refl
+
+liftFn-curry : ∀ {A B C : Type} {π} (g : IR IR.⌊ A * B ⌋ IR.⌊ C ⌋)
+  → liftFn fmt {A} {B ⇒[ mk-kind Many π ] C} (IR.curry g)
+    ≡ (λ a → returnT (λ b → liftFn fmt {A * B} {C} g (a , b)))
+liftFn-curry {A} {B} {C} g =
+  extensionality λ a → curry-red (cohᴰ A) (cohᴰ B) (cohᴰ C) (evalᴰ fmt g) a
+
+-- D222 / plan 0.95 A′: the composite `realize` emits for `apply` at an EFF
+-- closure. `curry (apply ∘ fst)` builds the suspension; forcing it drops the
+-- `Unit` (`fst`) and runs the closure (`apply`).
+--
+-- `returnT p >>=T f` is DEFINITIONALLY `f p` — `_>>=T_` concatenates `[] ++ es`
+-- and threads `n ∸ 0` — so the `fst` step collapses without a monad law.
+liftFn-eff-apply : ∀ {A B : Type}
+  → liftFn fmt {(A ⇒[ mk-kind Many Once.Type.eff ] B) * A} {Unit ⇒[ mk-kind Many Once.Type.eff ] B}
+           (IR.curry (apply ∘ fst))
+    ≡ (λ p → returnT (λ _ → proj₁ p (proj₂ p)))
+liftFn-eff-apply {A} {B} = extensionality λ p →
+  trans (cong (λ h → h p)
+              (liftFn-curry {A = P} {B = Unit} {C = B} {π = Once.Type.eff} (apply ∘ fst)))
+        (cong returnT (extensionality λ b →
+          trans (cong (λ h → h (p , b)) (liftFn-∘ {B = P} {C = B} {A = P * Unit} apply fst))
+          (trans (cong (_>>=T liftFn fmt {P} {B} apply)
+                       (cong (λ h → h (p , b)) (liftFn-fst {P} {Unit})))
+                 (cong (λ h → h p) (liftFn-apply {A} {B} {Once.Type.eff})))))
+  where
+    P : Type
+    P = (A ⇒[ mk-kind Many Once.Type.eff ] B) * A
+
 liftFn-case-inj₁ : ∀ {A B C : Type} (f : IR IR.⌊ A ⌋ IR.⌊ C ⌋) (g : IR IR.⌊ B ⌋ IR.⌊ C ⌋) (a : ⟦ A ⟧ᴰ)
   → liftFn fmt {A + B} {C} (case f g) (inj₁ a) ≡ liftFn fmt {A} {C} f a
 liftFn-case-inj₁ {A} {B} {C} f g a =

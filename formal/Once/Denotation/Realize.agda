@@ -49,7 +49,7 @@ open import Once.TypeCheck.Judgment
          t-var-import; t-annot; t-pair; t-neg; t-neg-float; t-let; t-case;
          t-binop-arith; t-binop-arith-float; t-binop-arith-float-il;
          t-binop-arith-float-ir; t-binop-cmp; t-id-app; t-fst-app; t-snd-app;
-         t-terminal-app; t-apply-app-infer; t-Out-app-infer; t-app; t-effApp; t-embed; t-lam;
+         t-terminal-app; t-apply-app-infer; t-apply-eff-app-infer; t-Out-app-infer; t-app; t-effApp; t-embed; t-lam;
          t-pair-lit-check; t-In-app-check; t-apply-check; t-inl-app-check;
          t-inr-app-check; t-initial-app-check; t-subsume;
          t-arg-driven-app-check; t-var-poly-instantiate;
@@ -238,5 +238,14 @@ realize-infer {ctx = ctx} (t-Out-app-infer {F = F} wfF ceq d) =
                (realize-infer d))
 realize-infer (t-terminal-app d) = morph-app IR.terminal (realize-infer d)
 realize-infer (t-apply-app-infer d) = morph-app IR.apply (realize-infer d)
+-- D222 / plan 0.95 A′: `apply` at an EFF closure yields a SUSPENSION, so the
+-- morphism is the thunk-builder rather than `apply` itself:
+--   curry (apply ∘ fst) : IR ((⌊A⌋ ⇛ ⌊B⌋) * ⌊A⌋) (Unit ⇛ ⌊B⌋)
+-- `fst` drops the `Unit` the curry introduced, then `apply` runs the closure —
+-- the same `curry (… ∘ fst)` shape `elaborate` gives `effApp`
+-- (Surface/Elaborate.agda:393-395). No new Surface former is needed: the IR
+-- arrow `_⇛_` is UNGRADED, so `⌊ A ⇒[k] B ⌋ = ⌊A⌋ ⇛ ⌊B⌋` at every `k` and
+-- `morph-app` already accepts an arbitrary IR morphism.
+realize-infer (t-apply-eff-app-infer d) = morph-app (IR.curry (IR.apply IR.∘ IR.fst)) (realize-infer d)
 realize-infer (t-app _ df dx)    = app    (realize-infer df) (realize dx)
 realize-infer (t-effApp _ df dx) = effApp (realize-infer df) (realize dx)
