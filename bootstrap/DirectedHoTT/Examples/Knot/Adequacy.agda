@@ -459,7 +459,17 @@
 --                and `pwK` is itself OWED.  It is NOT a composition
 --                corollary like `iinstK`/`wkTyUnderK`, despite the
 --                callee list looking the same.
---     pwK        ⬜ OWED — agreement with `pw?`.
+--     pwK        ✅ DISCHARGED — `Knot/PwAgree.pwK-agree`, ALL 30 `RTm`
+--                rows: `pwK i ⌈t⌉ ⟶* ⌈ b2n (pw? t) ⌉`.
+--                ★★ THE CHEAPEST ENTRY ON THIS LEDGER, and the triage
+--                said so before a line was written: the motive is
+--                CONSTANT `Nat`, so no row carries a cast, and every
+--                method body is closed under its three binders or reads
+--                the innermost one, so the weakening tower is ZERO
+--                RUNGS.  Both of `Knot/IhITyAgree`'s cost drivers are
+--                absent.  28 of the 30 rows are three βs and stop.
+--                ⇒ the only content is the SEGMENTED selection, and
+--                that is generated (`gen_boolagree`).
 --     ren-head-give ✅ not a program — `ren-head-red`'s twin for a GIVEN
 --                row, whose method is hand-written and so is not an
 --                `isubMethod` at all (`Knot/RenAgreeX`, `cTm-var`).
@@ -491,7 +501,11 @@
 --                naturality (`extSK-sub`'s twin).
 --     singleSK-vs ✅ not a program — the other clause.
 --     singleSK-vz ✅ not a program — a clause of `singleK`'s adequacy.
---     stkAK      ⬜ OWED — agreement with `stkA?`.
+--     stkAK      ✅ DISCHARGED — `Knot/StkAAgree.stkAK-agree`, ALL 30 rows.
+--                ★ THE SAME GENERATOR AS `pwK`, at a ten-segment tuple
+--                instead of a five-segment one — `stkA?` distinguishes
+--                eight constructors where `pw?` distinguishes two, and
+--                the ONLY thing that changes is the segment map.
 --     stkCK      ⬜ OWED — agreement with `stkC?`.
 --     sub-head-give ✅ not a program — `ren-head-give`'s twin for the GIVEN
 --                row at the substitution instantiation.
