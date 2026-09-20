@@ -290,14 +290,18 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
           → Expr Γ Ψ₂ (B ⇒[ mk-kind Many π ] C)
           → Expr Γ (Ψ₁ +ᵘ Ψ₂) ((A + B) ⇒[ mk-kind Many π ] C)
 
-  fork' : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C}
-        → Expr Γ Ψ₁ (A ⇒[ mk-kind Many pure ] B)
-        → Expr Γ Ψ₂ (A ⇒[ mk-kind Many pure ] C)
-        → Expr Γ (Ψ₁ +ᵘ Ψ₂) (A ⇒[ mk-kind Many pure ] (B * C))
+  -- D222: one shared π — applying the pair's arrow runs BOTH arms.
+  fork' : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B C} {π : Purity}
+        → Expr Γ Ψ₁ (A ⇒[ mk-kind Many π ] B)
+        → Expr Γ Ψ₂ (A ⇒[ mk-kind Many π ] C)
+        → Expr Γ (Ψ₁ +ᵘ Ψ₂) (A ⇒[ mk-kind Many π ] (B * C))
 
-  curry' : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B C}
-         → Expr Γ Ψ ((A * B) ⇒[ mk-kind Many pure ] C)
-         → Expr Γ Ψ (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C))
+  -- D222: TWO independent purities — building the closure emits nothing
+  -- (`returnT`), so the outer arrow is effect-free; the body's grade rides the
+  -- INNER arrow, where `apply` runs it.
+  curry' : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B C} {π₀ π : Purity}
+         → Expr Γ Ψ ((A * B) ⇒[ mk-kind Many π ] C)
+         → Expr Γ Ψ (A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C))
 
   -- Plan 0.36 Phase 2a: catamorphism whose algebra is an ARBITRARY closed
   -- function (named/arith/effectful — not a fixed point-free vocabulary).

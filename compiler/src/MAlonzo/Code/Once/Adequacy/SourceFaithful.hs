@@ -2150,11 +2150,12 @@ d_leF_3062 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Once.Surface.Context.T__'8849''7512'__276
-d_leF_3062 ~v0 ~v1 ~v2 v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
+d_leF_3062 ~v0 ~v1 ~v2 v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
   = du_leF_3062 v3 v4
 du_leF_3062 ::
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->
@@ -2174,11 +2175,12 @@ d_leG_3064 ::
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
   MAlonzo.Code.Once.Type.T_Type_108 ->
+  MAlonzo.Code.Once.Type.T_Purity_32 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_8 ->
   AgdaAny ->
   Integer -> MAlonzo.Code.Once.Surface.Context.T__'8849''7512'__276
-d_leG_3064 ~v0 ~v1 ~v2 v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11
+d_leG_3064 ~v0 ~v1 ~v2 v3 v4 ~v5 ~v6 ~v7 ~v8 ~v9 ~v10 ~v11 ~v12
   = du_leG_3064 v3 v4
 du_leG_3064 ::
   MAlonzo.Code.Once.Surface.Context.T_Usage_60 ->

@@ -572,21 +572,44 @@ mutual
                                 ∶ ((A + B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
                                 ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
 
-    -- `pair`/`curry` stay PURE-fixed, as their `⊢ᵐ` predecessors were.
+    -- D222: the grade is READ OFF THE DENOTATION, and pair and curry differ.
+    --
+    -- `evalᴰ ⟨f,g⟩ a = evalᴰ f a >>=T λ b → evalᴰ g a >>=T λ c → returnT (b , c)`
+    -- (DenotTrace.agda:134) — applying the pair's arrow RUNS BOTH ARMS, and
+    -- their events land in that application's trace, in order. So the arms and
+    -- the result carry ONE SHARED π, exactly as `t-compose-check` and
+    -- `t-case-copair-check` do. The emitter agrees (IRToTrace.agda:795-817 runs
+    -- f, restores the input, runs g) and `obs-correct-pair-proof` is a PROOF
+    -- over ARBITRARY arms (D211), so an effectful pair already had a meaning and
+    -- a verified lowering; only the typing forbade it.
     t-pair-morph-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                         {π : Once.Type.Purity}
                          {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-                       → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ₁
-                       → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₂
+                       → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B) ⨾ Ψ₁
+                       → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ₂
                        → ctx ⊢ᶜ RApp (RApp (RResolved (gen "pair")) f) g
-                               ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B * C))
+                               ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (B * C))
                                ⨾ (Ψ₁ Surface.+ᵘ Ψ₂)
 
+    -- D222: `curry` has TWO INDEPENDENT purities, and that is forced by what it
+    -- denotes. `evalᴰ (curry f) a = returnT (λ b → evalᴰ f (a , b))`
+    -- (DenotTrace.agda:143) — building a closure emits `[]`, ALWAYS, for any
+    -- `f`. The body's effects are deferred and fire at `apply`
+    -- (`evalᴰ apply p = proj₁ p (proj₂ p)`), which is reached through the INNER
+    -- arrow. So:
+    --   * the OUTER arrow is an effect-free intro — free `π₀`, per D069's rule
+    --     for effect-free intros (a free index, not pure-fixed + subsume);
+    --   * the INNER arrow carries the BODY's grade `π`.
+    -- This is the closed-Freyd structure: the exponential is the KLEISLI
+    -- exponential and `curry : Hom_C(A ⊗ B, C) ≅ Hom_V(A, B ⇒ C)` lands in the
+    -- VALUE category — currying a computation yields a value, which is `returnT`.
     t-curry-check : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
+                    {π₀ π : Once.Type.Purity}
                     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                  → ctx ⊢ᶜ f ∶ ((A * B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ
+                  → ctx ⊢ᶜ f ∶ ((A * B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C) ⨾ Ψ
                   → ctx ⊢ᶜ RApp (RResolved (gen "curry")) f
-                          ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ]
-                             (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
+                          ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ]
+                             (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C))
                           ⨾ Ψ
 
     -- The cata algebra keeps `m-cata`'s CLEARED context, deliberately.

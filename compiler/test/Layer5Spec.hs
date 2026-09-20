@@ -21,6 +21,8 @@ layer5Tests = testGroup "Layer5"
   [ exitCases "cata isEven of an even Nat (exit 42)" "layer5-iseven" 42
   , testGroup "cata-general (Plan 0.36 Phase 0)"
       [ exitCases name name code | (name, code) <- cataGeneralCases ]
+  , traceCases "pair arm order — TWO emitting arms (D222)"
+               "pair-arm-order-emit" [1, 2] 7
   , testGroup "cata-effectful (Plan 0.36)"
       -- D220/D221: these assert the TRACE, not the exit code. They used to use
       -- `exitCases`, which links the production `Strata/` NOP `emit` and can

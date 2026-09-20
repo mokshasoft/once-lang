@@ -1,0 +1,30 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson
+
+-- D222: TWO EMITTING ARMS under `pair` — the first program in the language's
+-- history that can OBSERVE the product's arm order.
+--
+-- Before D222 `t-pair-morph-check` fixed both arms to `pure`, so an effectful
+-- arm was unwritable and the order was unobservable. `evalᴰ ⟨f,g⟩ a =
+-- evalᴰ f a >>=T λ b → evalᴰ g a >>=T λ c → returnT (b , c)` specifies f FIRST,
+-- and `obs-correct-pair` (D211) PROVES the machine matches — over arbitrary,
+-- hence effectful, arms.
+--
+-- This is the same hazard D221 found one level up, where the cata's traversal
+-- ran the mirror of what `seqF` specifies. The difference is that there the
+-- correspondence was a POSTULATE and here it is a PROOF; this test is what makes
+-- the proof falsifiable rather than merely believed.
+--
+-- Expected: exit code 7, trace [1, 2].
+
+import I.Linux.Syscalls as S
+import I.Test.Emit as E
+
+both : Eff Int (Unit * Unit)
+both = pair (compose emit@E (\_ -> 1)) (compose emit@E (\_ -> 2))
+
+run : IO Unit
+run = compose (\_ -> unit) (compose both (\_ -> 0))
+
+main : IO Unit
+main = compose exit@S (compose (\_ -> 7) run)

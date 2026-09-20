@@ -1802,41 +1802,32 @@ agree-check-RApp ctx f arg (μ-type F) E.ahv-In veq disp inferIH argCheckIH argI
 -- (t-curry-check w) = curry' (realize w)`, so this is the ARM congruence:
 -- rewrite the arg's check IH. Non-arrow-arrow targets ⇒ dispatch fails ⇒ pruned
 -- by `disp`.
-agree-check-RApp ctx f arg (A ⇒[ mk-kind Many pure ] (B ⇒[ mk-kind Many pure ] C)) E.ahv-curry veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
-  with E.checkElabV ctx arg ((A * B) ⇒[ mk-kind Many pure ] C) in eqarg | disp
-... | failure _ , _ | ()
-... | success Ψ argE d fr , w | refl rewrite argCheckIH eqarg dγ k = refl
--- ahv-curry at an EFF outer arrow (Plan 0.55 D#2): checkCurry subsumes the pure
--- curry via `arr'`/`t-subsume`. `⟦arr' x⟧ = ⟦x⟧` and `realize (t-subsume w) = arr'
--- (realize w)` are transparent, so this is the SAME rewrite as pure.
-agree-check-RApp ctx f arg (A ⇒[ mk-kind Many eff ] (B ⇒[ mk-kind Many pure ] C)) E.ahv-curry veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
-  with E.checkElabV ctx arg ((A * B) ⇒[ mk-kind Many pure ] C) in eqarg | disp
+-- D222: ONE clause, with the two purities SEPARATED. The OUTER grade `π₀` is
+-- matched and then ignored — `evalᴰ (curry f) a = returnT (…)`, so building the
+-- closure emits nothing at any grade. The BODY is checked at the INNER arrow's
+-- `π`, because that is the arrow `apply` runs.
+--
+-- The two clauses this replaces both fixed the INNER arrow (and the body) to
+-- `pure` and varied the OUTER one, so `Eff Int (Int -> Int)` was covered and
+-- `Int -> Eff Int Unit` was not. The coverage checker said so directly when the
+-- rule was widened: "Missing cases: … (T₁ ⇒[pure] T₂ ⇒[eff] T₃)".
+agree-check-RApp ctx f arg (A ⇒[ mk-kind Many π₀ ] (B ⇒[ mk-kind Many π ] C)) E.ahv-curry veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
+  with E.checkElabV ctx arg ((A * B) ⇒[ mk-kind Many π ] C) in eqarg | disp
 ... | failure _ , _ | ()
 ... | success Ψ argE d fr , w | refl rewrite argCheckIH eqarg dγ k = refl
 -- ahv-pair-applied: D127 — `checkPair` emits `Surface.fork' fE gE` and
 -- `realize (t-pair-morph-check wF wG) = fork' (realize wF) (realize wG)`. The
 -- FIRST arm is `f_inner`, a sub-expression of the head, so its IH comes from
 -- `subIH` (`argCheckIH` only covers `arg`).
-agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg (A ⇒[ mk-kind Many pure ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
-  with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many pure ] B) in eqf | disp
+-- D222: ONE clause, π-polymorphic, mirroring `checkPair`'s single grade-poly
+-- clause. There used to be two — a pure one and an eff one that checked the arms
+-- at `pure` and subsumed the result — and they collapse for the same reason the
+-- elaborator's did: the arms' grade IS the result's.
+agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg (A ⇒[ mk-kind Many π ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
+  with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many π ] B) in eqf | disp
 ... | failure _ , _ | ()
 ... | success Ψf fE df frf , wF | disp'
-      with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] C) in eqg | disp'
-...   | failure _ , _ | ()
-...   | success Ψg gE dg frg , wG | refl
-          = binop-agree (SD.⟦ fE ⟧ˢ fmt E₁) (SD.⟦ realize wF ⟧ˢ fmt E₁)
-                        (SD.⟦ gE ⟧ˢ fmt E₂) (SD.⟦ realize wG ⟧ˢ fmt E₂)
-                        (λ vf vg → returnT (λ a → vf a >>=T λ x → vg a >>=T λ y → returnT (x , y))) (subIH ctx f_inner (inner-arm-< (Raw.RResolved (gen "pair")) f_inner arg) eqf E₁) (argCheckIH eqg E₂) k
-  where
-    E₁ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ˡ Ψf Ψg) dγ
-    E₂ = restrictᴰ {Γ = NamedCtx.debruijn ctx} (Surface.⊑ᵘ-+ʳ Ψf Ψg) dγ
--- ahv-pair-applied at an EFF outer arrow (Plan 0.55 D#2): checkPair subsumes the
--- pure pair via `arr'`/`t-subsume` (both transparent) — SAME rewrite.
-agree-check-RApp ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg (A ⇒[ mk-kind Many eff ] (B * C)) E.ahv-pair-applied veq disp inferIH argCheckIH argInferIH fCheckIH subIH dγ k
-  with E.checkElabV ctx f_inner (A ⇒[ mk-kind Many pure ] B) in eqf | disp
-... | failure _ , _ | ()
-... | success Ψf fE df frf , wF | disp'
-      with E.checkElabV ctx arg (A ⇒[ mk-kind Many pure ] C) in eqg | disp'
+      with E.checkElabV ctx arg (A ⇒[ mk-kind Many π ] C) in eqg | disp'
 ...   | failure _ , _ | ()
 ...   | success Ψg gE dg frg , wG | refl
           = binop-agree (SD.⟦ fE ⟧ˢ fmt E₁) (SD.⟦ realize wF ⟧ˢ fmt E₁)

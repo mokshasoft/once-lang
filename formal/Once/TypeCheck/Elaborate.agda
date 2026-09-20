@@ -1386,30 +1386,23 @@ mutual
   -- classifier's `ahv-pair-applied` dispatch already establishes
   -- disjointness with `t-embed (t-app …)` — t-app's premise
   -- `classifyAppHead f ≡ nothing` fails for the pair-applied shape.
+  -- D222: ONE grade-poly clause. `π` is matched from the TARGET and the arms are
+  -- checked at that same `π` — applying the pair's arrow runs both arms, so
+  -- their grade IS the result's. This replaces the former pure clause plus an
+  -- eff clause that checked the arms at `pure` and wrapped the result in
+  -- `arr'`/`t-subsume`: that route could type an effectful pair EXPRESSION but
+  -- never an effectful ARM, which is what an emitting `ana` coalgebra needs.
   checkPair ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg
-            (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.* C))
-    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
+            (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] (B Once.Type.* C))
+    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] B)
   ... | failure err , _ = failure err , tt
   ... | success Ψf fE df frf , wF
-        with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+        with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ...     | failure err , _ = failure err , tt
   ...     | success Ψg gE dg frg , wG
             =
               success _ (Surface.fork' fE gE)
                 (suc (df Data.Nat.⊔ dg)) frg , t-pair-morph-check wF wG
-  -- Plan 0.52 (pure⊑eff): the pair morphism is grade-poly, so at an EFF arrow it
-  -- is the pure pair wrapped in arr'/t-subsume (the m-pair morphism stays pure).
-  checkPair ctx (Raw.RApp (Raw.RResolved (gen "pair")) f_inner) arg
-            (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] (B Once.Type.* C))
-    with checkElabV ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
-  ... | failure err , _ = failure err , tt
-  ... | success Ψf fE df frf , wF
-        with checkElabV ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-  ...     | failure err , _ = failure err , tt
-  ...     | success Ψg gE dg frg , wG
-            =
-              success _ (Surface.arr' (Surface.fork' fE gE))
-                (suc (df Data.Nat.⊔ dg)) frg , t-subsume (t-pair-morph-check wF wG)
   -- Any other shape falls through to failure. Consistent with
   -- ahv-inl's per-shape exhaustive enumeration pattern.
   checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair") , tt
@@ -1508,19 +1501,20 @@ mutual
 
   -- Plan 0.6 Phase C.7 POC-3: `curry f` check-mode.
   -- Expected `A ⇒[Many] (B ⇒[Many] C)`. Check f at `(A * B) ⇒[Many] C`.
-  checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
-    with checkElabV ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+  -- D222: ONE clause, with the two purities read off the denotation. The OUTER
+  -- grade `π₀` is matched and otherwise ignored — `evalᴰ (curry f)` is a
+  -- `returnT`, so building the closure emits nothing at any grade. The BODY is
+  -- checked at the INNER arrow's `π`, because that is the arrow `apply` runs.
+  --
+  -- The former pair of clauses had this backwards: both fixed the inner arrow
+  -- (and the body) to `pure` and varied the OUTER one, so `Eff Int (Int -> Int)`
+  -- was accepted while `Int -> Eff Int Unit` — a curried effectful
+  -- continuation, the case that actually needs a grade — was rejected.
+  checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π₀ ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C))
+    with checkElabV ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many π ] C)
   ... | failure err , _ = failure err , tt
   ... | success Ψ argE d fr , w =
           success _ (Surface.curry' argE) (suc d) fr , t-curry-check w
-  -- Plan 0.52 (pure⊑eff): curry at an EFF outer arrow is the pure curry wrapped
-  -- in arr'/t-subsume (the m-curry morphism stays pure; inner arrow unchanged).
-  checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
-    with checkElabV ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
-  ... | failure err , _ = failure err , tt
-  ... | success Ψ argE d fr , w =
-          success _ (Surface.arr' (Surface.curry' argE)) (suc d) fr
-          , t-subsume (t-curry-check w)
   checkCurry _ _ _ = failure (BuiltinTypeMismatch "curry") , tt
 
   -- Plan 0.6 Phase C.7 POC-3: `apply p` check-mode.

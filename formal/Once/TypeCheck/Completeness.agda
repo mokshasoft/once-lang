@@ -1786,8 +1786,14 @@ mutual
   ...     | eqGo
             rewrite trans (checkAnaGo-J ctx coalg F A T.eff (just wfF) eqW) eqGo =
             _ , _ , _ , refl
+  -- D222: `checkPair` is ONE grade-poly clause now, so at an EFF target it
+  -- checks the ARMS at eff too. The arms' completeness therefore has to be the
+  -- SUBSUMED one — `check-completeV` gives them at `pure`, which is what the
+  -- former eff clause (pure arms + `arr'`/`t-subsume`) wanted and no longer
+  -- matches. The error said so precisely: the goal asked for
+  -- `checkElabV-wf ctx … f (A ⇒[eff] B)` while the rewrite offered the pure one.
   subsume-complete {ctx} (t-pair-morph-check df dg)
-    with check-completeV df | check-completeV dg
+    with subsume-completeV df | subsume-completeV dg
   ... | (_ , _ , _ , Wf , eqf) | (_ , _ , _ , Wg , eqg)
         rewrite eqf | eqg = _ , _ , _ , refl
   subsume-complete {ctx} (t-curry-check df)
