@@ -25,18 +25,20 @@ module Once.Denotation.DenotPrefix where
 
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Data.Nat using (ℕ)
+open import Data.Nat using (ℕ; z≤n)
+open import Data.List using ([])
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Once.Type
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; valueT; PrefixFamily; returnT; returnT-pf)
+open import Once.Denotation.TraceMonad using (T; valueT; PrefixFamily; prefixFamily; returnT; returnT-pf)
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; νᵈ; forceᵈ; inject; forget; injectν; mapInjectν)
 open import Once.Semantics.Functor using (νS; unfoldS)
-open import Once.CCC.Eval as Val using ()
+open import Once.CCC.Eval as Val using (eval)
 open import Once.IR using (IR)
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.IRTy as IT
@@ -123,6 +125,16 @@ mutual
   injectν-layer F (G₁ S⊕ G₂) (inj₂ y) = injectν-layer F G₂ y
   injectν-layer F (G₁ S⊗ G₂) (x , y)  = (injectν-layer F G₁ x , injectν-layer F G₂ y)
 
+-- A computation whose trace is CONSTANTLY EMPTY is a prefix family, and all
+-- three conditions are immediate: `length [] ≤ k` is `z≤n`, saturation compares
+-- two identical pairs, and coherence extends `[]` by `[]`.
+--
+-- This is the shape of `evalᴰ`'s `eval`-backed fallback
+-- (DenotTrace.agda:202) at every constructor whose `rec-trace-D` is `[]` —
+-- `In`, `out-μ` and `const` (:206, :208, :230).
+const-empty-pf : ∀ {X : Set} (v : X) → PrefixFamily {X} (λ _ → ([] , v))
+const-empty-pf v = prefixFamily (λ k → z≤n) (λ k _ → refl) (λ k → ([] , refl))
+
 inject-Good : ∀ (A : Type) (v : Val.⟦ A ⟧) → Good A (inject {A} v)
 inject-Good Unit        v        = tt
 inject-Good Void        ()
@@ -176,15 +188,7 @@ inject-Good Buffer      v        = tt
 ------------------------------------------------------------------------
 
 postulate
-  evalᴰ-good-In : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F)
-                  (a : ⟦ (IT.⟦ F ⟧TI (IT.μ-type F)) ⟧ᴰᴵ)
-                → Good ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ a
-                → GoodT ⌈ IT.μ-type F ⌉ (evalᴰ fmt (In wf) a)
 
-  evalᴰ-good-out-μ : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F)
-                     (a : ⟦ IT.μ-type F ⟧ᴰᴵ)
-                   → Good ⌈ IT.μ-type F ⌉ a
-                   → GoodT ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ (evalᴰ fmt (out-μ wf) a)
 
   evalᴰ-good-Cata : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F) {E A}
                     (alg : IR (E IT.* IT.⟦ F ⟧TI A) A) (a : ⟦ E IT.* IT.μ-type F ⟧ᴰᴵ)
@@ -221,10 +225,6 @@ postulate
                   → Good ⌈ IT.μ-type G ⌉ a
                   → GoodT ⌈ B ⌉ (evalᴰ fmt (Fuse wfF wfG alg t) a)
 
-  evalᴰ-good-const : ∀ (fmt : TargetNum) {A} (fits : FitsInRegI A)
-                     (v : IT.⟦ ℤ , Decimal ⟧-baseI A) (a : ⟦ IT.Unit ⟧ᴰᴵ)
-                   → Good ⌈ IT.Unit ⌉ a
-                   → GoodT ⌈ A ⌉ (evalᴰ fmt (const fits v) a)
 
   evalᴰ-good-SigOp : ∀ (fmt : TargetNum) {A B : Type} (si : SigOpInfo A B)
                      (a : ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
@@ -277,8 +277,8 @@ evalᴰ-good fmt (⟨_,_⟩ {A} {B} {C} f g) a ga =
     ihg : GoodT ⌈ C ⌉ (evalᴰ fmt g a)
     ihg = evalᴰ-good fmt g a ga
 
-evalᴰ-good fmt (In wf)             a ga = evalᴰ-good-In    fmt wf a ga
-evalᴰ-good fmt (out-μ wf)          a ga = evalᴰ-good-out-μ fmt wf a ga
+evalᴰ-good fmt (In {F} wf) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ IT.μ-type F ⌉ (eval fmt (In wf) (forget a)))
+evalᴰ-good fmt (out-μ {F} wf) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ (eval fmt (out-μ wf) (forget a)))
 evalᴰ-good fmt (Cata wf alg)       a ga = evalᴰ-good-Cata  fmt wf alg a ga
 evalᴰ-good fmt (Para wf alg)       a ga = evalᴰ-good-Para  fmt wf alg a ga
 evalᴰ-good fmt (Out wf)            a ga = evalᴰ-good-Out   fmt wf a ga
@@ -286,5 +286,5 @@ evalᴰ-good fmt (in-ν wf)           a ga = evalᴰ-good-in-ν  fmt wf a ga
 evalᴰ-good fmt (Ana wf coalg)      a ga = evalᴰ-good-Ana   fmt wf coalg a ga
 evalᴰ-good fmt (Hylo wfF wfG alg t) a ga = evalᴰ-good-Hylo fmt wfF wfG alg t a ga
 evalᴰ-good fmt (Fuse wfF wfG alg t) a ga = evalᴰ-good-Fuse fmt wfF wfG alg t a ga
-evalᴰ-good fmt (const fits v)      a ga = evalᴰ-good-const fmt fits v a ga
+evalᴰ-good fmt (const {A} fits v) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ A ⌉ (eval fmt (const fits v) (forget a)))
 evalᴰ-good fmt (SigOp si)          a ga = evalᴰ-good-SigOp fmt si a ga
