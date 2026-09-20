@@ -238,7 +238,13 @@ cleanupDir dir = do
 -- to the package dir, which is the cwd under `cabal test`. Reusable by any spec
 -- wanting to observe an effect trace at runtime.
 testStrataDir :: FilePath
-testStrataDir = "test/teststrata"
+-- D220: was "test/teststrata", a DUPLICATE strata root that existed only to
+-- pair a byte-writing `emit` with a symlink to the real Linux interpretations.
+-- The production `I.Test.Emit` was a NOP, so the two roots disagreed about what
+-- `emit` DOES, and every `.once` harness resolved the nop one. `emit` is now
+-- observable in `Strata/` itself, so there is one interpretation and no way for
+-- a harness to pick the blind copy.
+testStrataDir = "../Strata"
 
 -- | Build a Once program (given as source) for x86_64 against 'testStrataDir',
 -- run it, and return @(stdout, exitCode)@ on success or a build error on the

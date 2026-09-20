@@ -1,16 +1,37 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- | Test-harness-local Emits SigOp (Plan 0.36 Phase 0/1 prerequisite).
--- NOT a real Strata interpretation — exists only so the effect-emitting
--- cata north-star tests can invoke an effectful op. Runtime = nop (the
--- companion Emit.x86_64's once_<sym> just returns); the observable is the
--- SigOp trace (asserted at the Agda `obs` level), not stdout.
+-- | The OBSERVABLE `emit` SigOp — a program's effect trace, made visible.
+--
+-- Once has no `print`: the only other effectful SigOps are syscalls, and `exit`
+-- terminates. `emit` is the language's way to say something WITHOUT halting, and
+-- that is what makes an effect trace observable at runtime rather than only at
+-- the Agda `obs` level.
+--
+-- D220: this used to be a NOP — a bare `ret` — with a header declaring it "NOT a
+-- real Strata interpretation". That was the defect. An interpretation whose
+-- runtime does not do what its name says cannot witness anything, and because
+-- every `.once` harness resolves `I.Test.Emit` from HERE, it meant no exit test
+-- could tell "emitted, then exited 7" from "exited 7". Six tests claimed effects
+-- they never performed, and one of them was hiding a real codegen bug (D221).
+-- The byte-writing implementation already existed, in a duplicate strata root
+-- used by `TraceSpec` alone; this is that implementation, promoted to be the
+-- only one.
 signature emit : Eff Int Unit
 
--- | The same, for a Float — so a float LITERAL can be USED rather than merely
--- bound. A test that binds a float and ignores it is asking whether dead-code
--- elimination keeps it; a test that passes it to a SigOp is not asking that
--- question at all, and also exercises argument passing at the calling
--- convention. Runtime = nop, exactly like `emit`.
+-- | The same for a `Float`, and observable for the same reason.
+--
+-- BOTH write the argument's WHOLE MACHINE WORD, little-endian — 8 bytes on a
+-- 64-bit target, 4 on x86-32. A test that reads those bytes observes exactly
+-- what D114 says the trace carries: the SigOp's argument at its own base type,
+-- not a projection of it.
+--
+-- `emit` used to write only the low byte, which made `emit 42` and `emit 298`
+-- the same trace — a bug corrupting an argument's high bits would have passed.
+-- That is the same defect D114 found in the spec, one layer down.
+--
+-- The two implementations are IDENTICAL on a 64-bit target, which is D113
+-- showing through: at the machine level an `Int` argument and a `Float` argument
+-- are both one machine word. What differs is the SOURCE type, and hence what the
+-- word MEANS — `42` against `0x3FE0000000000000` for `0.5` at binary64.
 signature emitF : Eff Float Unit

@@ -43,7 +43,11 @@ for f in "$TESTDIR"/*.once; do
     echo "FAIL(build) $name (expected exit $exp) — see $BUILD/$name.log"
     fail=$((fail+1)); failed+=("$name"); continue
   fi
-  "$BUILD/$name"; got=$?
+  # D220: `emit` is a REAL SigOp now, so a test that emits writes machine words
+  # to stdout. This harness asserts the exit code only, so capture that output
+  # (it is kept next to the build log for inspection) rather than letting raw
+  # bytes into the terminal. The ORDERED trace is asserted by `traceCases`.
+  "$BUILD/$name" > "$BUILD/$name.trace" 2>/dev/null; got=$?
   if [ "$got" -eq "$exp" ]; then
     pass=$((pass+1))
   else
