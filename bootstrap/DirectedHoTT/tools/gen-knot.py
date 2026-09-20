@@ -3771,7 +3771,7 @@ open import DirectedHoTT.Lib.IHeadRed using ( ihead-red )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
 open import DirectedHoTT.Examples.Knot.Tags
 open import DirectedHoTT.Examples.Knot.Map using ( enTm )
-%(imports)s
+%(extra)s%(imports)s
 ------------------------------------------------------------------------
 -- ★ THE HEAD STEP, at this program's tuple.  `Knot/SzAgree.head-red`'s
 --   shape, but taking the SELECTION rather than a membership: a
@@ -3899,20 +3899,51 @@ def _seg_sel(segs, k):
 #   (`stkA` → `stkC` → `flat`) and not a mutual block.
 _BOOL_SPEC = {
  "pw":   dict(mod="PwAgree",   prog="pwK",   meths="pwMethsK", fn="pw?",
+              extra="",
               imports="""open import DirectedHoTT.Examples.Knot.Pw
   using ( pwK; pwMethsK; pwZero; pwOne; pwHom; D23 )
 """),
  "stkA": dict(mod="StkAAgree", prog="stkAK", meths="stkAMeths", fn="stkA?",
+              extra="",
               imports="""open import DirectedHoTT.Examples.Knot.Pw
   using ( pwZero; pwHom )
 open import DirectedHoTT.Examples.Knot.Stk
   using ( stkAK; stkAMeths; stkOne; D20; D23; D27; D37; D41 )
 """),
+ "stkC": dict(mod="StkCAgree", prog="stkCK", meths="stkCMeths", fn="stkC?",
+              callee="stkAK", callee_agree="stkA-agree",
+              extra="""open import DirectedHoTT.Spec.Typing using ( wk-single )
+open import DirectedHoTT.Lib.Wk using ( sub-w²-single )
+open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ )
+open import normalizer.Syntax.Types using ( _≡_; cong₂ )
+open import DirectedHoTT.Examples.Knot.Sorts using ( sTm )
+open import DirectedHoTT.Examples.Knot.StkAAgree using () renaming ( agree to stkA-agree )
+""",
+              imports="""open import DirectedHoTT.Spec.Variance using ( stkA? )
+open import DirectedHoTT.Examples.Knot.Pw using ( pwZero )
+open import DirectedHoTT.Examples.Knot.Stk
+  using ( stkCK; stkCMeths; stkAK; stkAMeths; stkOne; stkCHom
+        ; D20; D23; D27; D38; D41 )
+"""),
+ "flat": dict(mod="FlatAgree",  prog="flatK", meths="flatMeths", fn="flat?",
+              callee="stkCK", callee_agree="stkC-agree",
+              extra="""open import DirectedHoTT.Spec.Typing using ( wk-single )
+open import DirectedHoTT.Lib.Wk using ( sub-w²-single )
+open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ )
+open import normalizer.Syntax.Types using ( _≡_; cong₂ )
+open import DirectedHoTT.Examples.Knot.Sorts using ( sTm )
+open import DirectedHoTT.Examples.Knot.StkCAgree using () renaming ( agree to stkC-agree )
+""",
+              imports="""open import DirectedHoTT.Spec.Variance using ( stkC? )
+open import DirectedHoTT.Examples.Knot.Pw using ( pwZero )
+open import DirectedHoTT.Examples.Knot.Stk
+  using ( flatK; flatMeths; stkCK; stkCMeths; stkOne; flatHom; D20; D23 )
+"""),
 }
 
 # how a row REDUCES, dispatched on the method the selection lands at.
 _BOOL_KIND = {"pwZero": "zero", "pwOne": "one", "stkOne": "one",
-              "pwHom": "ih"}
+              "pwHom": "ih", "stkCHom": "call", "flatHom": "call"}
 
 
 def gen_boolagree(key):
@@ -3955,6 +3986,35 @@ def gen_boolagree(key):
             body += ("\n  » step (βfst _ _) done"
                      "\n  » ⟶*-ielimᵗ (step (βfst _ _) done)"
                      "\n  » agree _ %s" % an[nargs[0]])
+        elif kind == "call":
+            # ★★ THE CROSS-CALL ROW.  `stkC?`/`flat?` do not fold — they
+            #   call ANOTHER function on the payload's first field, so
+            #   the method applies the callee's PROGRAM and the proof is
+            #   the callee's AGREEMENT.  ⇒ the four form a chain, not a
+            #   mutual block.
+            # ⚠⚠ AND THIS IS THE ONE ROW IN ALL FOUR PROGRAMS THAT OWES A
+            #   WEAKENING TOWER.  The body names the INDEX binder
+            #   (`var (vs (vs vz))`), outermost of the three, so after
+            #   the βs it has been weakened twice and substituted twice
+            #   — `sub-w²-single`, `Knot/LookupD`'s countdown at depth 2
+            #   — and the payload binder is one rung in (`wk-single`).
+            #   Every other row has a CLOSED body and owes nothing.
+            # ★ `PAY`/`IHS` are `where`-BOUND, not inlined:
+            #   `Knot/IhITyAgree` measured the difference between a
+            #   named cast argument and an inlined one and it is the
+            #   difference between finishing and not.
+            body += ("\n  » ⟶*-castₗ (cong₂ (λ z w → %s (pair sTm (snd z)) (fst w))"
+                     "\n                    (sub-w²-single {a = IHS} {b = PAY} i)"
+                     "\n                    (wk-single {v = IHS} PAY))"
+                     "\n      (⟶*-ielimᵗ (step (βfst _ _) done) » %s _ %s)"
+                     "\n  where"
+                     "\n    PAY : RTm _"
+                     "\n    PAY = %s"
+                     "\n    IHS : RTm _"
+                     "\n    IHS = iihs KnotD %s (isingle i)"
+                     "\n                 (ilookupD KnotD tag%s) PAY"
+                     % (spec["callee"], spec["callee_agree"], an[nargs[0]],
+                        _occ_payload_of(f, an), spec["meths"], nm[1:]))
         L.append("agree i %s =\n%s" % (_pat(c, nargs, an), body))
     # ⚠ COUNT THE KINDS.  A segment map off by one row would still emit
     #   30 well-formed clauses; what it would change is how many land on
@@ -5831,11 +5891,11 @@ _WRAP_LEDGER = {
     "nrsSubK":  "✅ DISCHARGED — `Knot/SubAgree.nrs-Represents`, packaging\n--                step 2's `nrsK-vz`/`-vs` (the row parked at eight\n--                attempts).  ⚠ The two depths differ — `nrs` RAISES, so\n--                the outer `Var-vsK` carries ⌈Γ ∙⌉ and the inner ⌈Γ⌉.",
     # ⬜ boolean/predicate functions over syntax: the SAME obligation `sz`
     #   discharges, and `Knot/SzAgree` is the only one discharged.
-    "flatK":    "⬜ OWED — agreement with `flat?`.",
+    "flatK":    "✅ DISCHARGED — `Knot/FlatAgree.flatK-agree`, ALL 30 rows;\n--                `stkCK`'s cross-call shape one link further down the\n--                chain, at `flat? (⌜Hom⌝ c a b) = stkC? c`.  Same\n--                generator, a four-segment map.\n--                ⇒ `⊢ap`'s premise is now object-level AND adequate.",
     "pwK":      "✅ DISCHARGED — `Knot/PwAgree.pwK-agree`, ALL 30 `RTm`\n--                rows: `pwK i ⌈t⌉ ⟶* ⌈ b2n (pw? t) ⌉`.\n--                ★★ THE CHEAPEST ENTRY ON THIS LEDGER, and the triage\n--                said so before a line was written: the motive is\n--                CONSTANT `Nat`, so no row carries a cast, and every\n--                method body is closed under its three binders or reads\n--                the innermost one, so the weakening tower is ZERO\n--                RUNGS.  Both of `Knot/IhITyAgree`'s cost drivers are\n--                absent.  28 of the 30 rows are three βs and stop.\n--                ⇒ the only content is the SEGMENTED selection, and\n--                that is generated (`gen_boolagree`).",
     "pwBodyK":  "⬜ OWED — agreement with `pw?`'s body case.",
     "stkAK":    "✅ DISCHARGED — `Knot/StkAAgree.stkAK-agree`, ALL 30 rows.\n--                ★ THE SAME GENERATOR AS `pwK`, at a ten-segment tuple\n--                instead of a five-segment one — `stkA?` distinguishes\n--                eight constructors where `pw?` distinguishes two, and\n--                the ONLY thing that changes is the segment map.",
-    "stkCK":    "⬜ OWED — agreement with `stkC?`.",
+    "stkCK":    "✅ DISCHARGED — `Knot/StkCAgree.stkCK-agree`, ALL 30 rows.\n--                ★★ ITS ⌜Hom⌝ ROW IS THE ONE ROW IN ALL FOUR OF THESE\n--                PROGRAMS THAT OWES ANYTHING.  `stkC? (⌜Hom⌝ C a b) =\n--                stkA? C` is a CROSS-CALL, not a fold, so the method\n--                names the INDEX binder — outermost of its three — and\n--                after the βs that is weakened twice and substituted\n--                twice.  `sub-w²-single` plus `wk-single`, i.e.\n--                `Knot/LookupD`'s countdown at depth 2, and the proof\n--                is then the CALLEE's agreement.\n--                ⇒ the four form a CHAIN (`stkA` → `stkC` → `flat`),\n--                not a mutual block.",
     # ✅ NOT OWED, and each for a stated reason.
     "εwkK":     "✅ not owed — its argument is CLOSED, and every weakening\n--                agrees on a closed term.  This is exactly why `Knot/PayTy`\n--                may use `wkK` and `Knot/IhTyRho` may not.",
     "Ctx-empK": "✅ not owed — a CONSTRUCTOR of `CtxD`, not a wrapper.",
@@ -6278,6 +6338,8 @@ if __name__ == "__main__":
     open(os.path.join(out, "OccAgree.agda"), "w").write(gen_occagree())
     open(os.path.join(out, "PwAgree.agda"), "w").write(gen_boolagree("pw"))
     open(os.path.join(out, "StkAAgree.agda"), "w").write(gen_boolagree("stkA"))
+    open(os.path.join(out, "StkCAgree.agda"), "w").write(gen_boolagree("stkC"))
+    open(os.path.join(out, "FlatAgree.agda"), "w").write(gen_boolagree("flat"))
     # ⚠⚠ NOT SPLIT, AND THE FIRST ATTEMPT TO SPLIT IT WAS A MISREADING.
     #   The 25-row module was OOM-killed at 234s (and 260s under `-c`), so
     #   it was split like `RedWfA`/`RedWfB`.  ★ THOSE TIMES WERE THE COLD
