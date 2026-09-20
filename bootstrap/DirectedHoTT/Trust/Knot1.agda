@@ -37,6 +37,7 @@ import DirectedHoTT.Examples.Knot.CtxD
 import DirectedHoTT.Examples.Knot.DepthCong
 import DirectedHoTT.Examples.Knot.Desc
 import DirectedHoTT.Examples.Knot.EWk
+import DirectedHoTT.Examples.Knot.FlatAgree
 import DirectedHoTT.Examples.Knot.IConS
 import DirectedHoTT.Examples.Knot.IConSAgree
 import DirectedHoTT.Examples.Knot.IConSRep
