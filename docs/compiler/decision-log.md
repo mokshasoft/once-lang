@@ -14774,3 +14774,91 @@ and rules out a structural defect.
 order), D211 (`obs-correct-pair` proved, left-first), D199 (the same blind spot
 at ν), D058 (correctness IS the effectful trace), D132 (per-shape cata witnesses
 were never going to be the theorem).
+
+## D222 — READ THE GRADE OFF THE DENOTATION: `pair` SHARES ONE π, `curry` HAS TWO (2026-09-20)
+
+The design call plan 0.95 A owed, made from what the terms MEAN rather than from
+what the elaborator happens to accept.
+
+### The two denotations, side by side
+
+```agda
+evalᴰ fmt (⟨ f , g ⟩) a = evalᴰ fmt f a >>=T λ b → evalᴰ fmt g a >>=T λ c → returnT (b , c)
+evalᴰ fmt (curry f)   a = returnT (λ b → evalᴰ fmt f (a , b))
+evalᴰ fmt apply       p = proj₁ p (proj₂ p)
+```
+
+**`pair` runs its arms when the pair's arrow is applied.** Both arms' events land
+in that application's trace, in order. So the arms and the result arrow all
+carry the SAME grade — one shared `π`, exactly as `t-compose-check` and
+`t-case-copair-check` already have it.
+
+**`curry` runs nothing.** `returnT` — building a closure emits `[]`, always, for
+any `f`. The body's effects are deferred and fire at `apply`, which is reached
+through the INNER arrow. So:
+
+    outer arrow  — EFFECT-FREE. Grade-poly (free π), per D069's rule for
+                   effect-free intros: a free index, not pure-fixed + subsume.
+    inner arrow  — carries the BODY's grade π′.
+
+**Two independent purities, not one.**
+
+    t-curry-check : ∀ {π π′}
+      → ⊢ᶜ f ∶ ((A * B) ⇒[ mk-kind Many π′ ] C)
+      → ⊢ᶜ curry f ∶ (A ⇒[ mk-kind Many π ] (B ⇒[ mk-kind Many π′ ] C))
+
+### This is the closed-Freyd structure, and it is forced
+
+In a closed Freyd category (Power–Thielecke) the exponential is the KLEISLI
+exponential, and currying is an isomorphism
+
+    Hom_C(A ⊗ B, C)  ≅  Hom_V(A, B ⇒ C)
+
+landing in the VALUE category. Currying a computation yields a VALUE — an
+effect-free map into an object of computations. That is `returnT` in the
+denotation, and it is why the outer arrow cannot be where a grade lives.
+
+### The current rule has it BACKWARDS, measured
+
+`checkCurry` (Elaborate.agda:1511-1524) accepts exactly two shapes, and the body
+is checked at `pure` in BOTH:
+
+    k : Int -> (Int -> Int)          curry fst                     ACCEPT
+    k : Eff Int (Int -> Int)         curry fst                     ACCEPT   (outer eff, via t-subsume)
+    k : Int -> Eff Int Unit          curry (compose emit@E fst)    reject   <- THE MATHEMATICAL CASE
+    k : Eff Int (Eff Int Unit)       curry (compose emit@E fst)    reject
+
+`eff` is accepted where nothing happens and rejected where the effects are. An
+effectful body can never be curried.
+
+### THE GENERAL RULE, and why this is plan 0.94's disease in a second shape
+
+D066 justified pure-fixing `m-pair`/`m-curry` with four words: *"`checkElab`
+paths are pure-fixed"*. That is a statement about the IMPLEMENTATION, offered as
+a reason for the RULE. `composeMid` sits in `t-compose-check` for the same kind
+of reason — the elaborator needed a syntactic search, so the search became a
+premise.
+
+Both are **the elaborator's limitations leaking upward into the specification.**
+Plan 0.94's rule — *every premise of a typing rule must be a judgment, not a
+computation on syntax* — is the PREMISE-shaped instance. This is the
+INDEX-shaped one. The rule that covers both:
+
+> **The typing rule states the mathematics. The elaborator's job is to FIND
+> derivations, not to decide which ones exist.**
+
+The confirmation that it is one disease and not two: the curry grades are
+backwards relative to `evalᴰ` and nobody noticed for a year, because the rule
+was written from the elaborator instead of from the denotation.
+
+### Consequence
+
+The answer is NOT "make everything grade-poly". `pair` gets one shared `π` and
+`curry` gets two independent ones, and the difference is visible only in their
+denotations. Every remaining grade decision should be read off `evalᴰ` the same
+way.
+
+**Relates**: D219 (the product is where effects stop), D066 (pure-fixed, with
+the implementation note this corrects), D068 (`arr` retired; pure ⊑ eff is
+subsumption), D069 (effect-free value intros are grade-poly — the rule applied
+here to `curry`'s outer arrow), D018/D032, plan 0.94, plan 0.95 A.
