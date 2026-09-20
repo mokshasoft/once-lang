@@ -525,3 +525,118 @@ apply — it was about `occ`, whose children sit at DIFFERENT depths.
 `⌜Hom⌝`'s three fields are all at the AMBIENT depth, so the child's
 index `subTm (isingle i) (pair sTm (snd (var vz)))` REDUCES back to the
 pinned form, and `⟶*-ielimⁱ` is where that happens.
+
+### §9 — OUTCOME (same day)
+
+CLOSED: `Knot/PwBodyAgree`, all 30 rows, `pwBodyK` and `pwDefault` both
+discharged.  The sizing above was right about the SHAPE and wrong about
+the COST, in an instructive direction.
+
+**Right:** 28 rows are `ren-agree` + `wk-Represents`, two existing names.
+No induction was written for them.
+
+**Wrong:** the sizing said the default row owed "the tower on `i`, one
+`cong₂`, exactly `stkCHom`'s cast".  It owed a NATURALITY STACK first.
+
+    vsRenK n = lam (Var-vsK (w n) (var vz))
+
+puts its argument UNDER A BINDER.  Every substitution crossing it is
+`extS`-lifted and the `w` lands INSIDE, so `subTm σ (vsRenK n)` is not
+definitionally `vsRenK (subTm σ n)` — it needs `sub-w`.  The three βs
+therefore do NOT expose `pwDefault`'s body at the collapsed index; both
+substitutions must be pushed through (`vsRenK-sub`, `renMethsK-sub`)
+BEFORE `sub-w²-single` can collapse anything.
+
+⇒ **THE TELL IS A `lam` IN THE CALLEE, NOT A BINDER IN THE ROW.**  §8's
+four programs had closed method bodies and owed nothing; this one calls
+a program that builds a lambda, and that is a different question from
+how many binders the METHOD has.  Both `-w²` lemmas are `wkTmK-sub`'s
+proof, which existed already and existed *for this reason*.
+
+**The cheap part was the one predicted to be expensive.**  `pwPi`/`pwHom`
+wrap their results in `jsub … (symN …)`, and `symN`'s own `jsub` nests
+inside.  None of it cost anything, because
+
+    jsub-refl : jsub d (idrefl c s) e ⟶ e
+
+IGNORES THE MOTIVE.  Reduce the PROOF to an `idrefl` and the rule fires;
+the motive's own tower — a THIRD depth, under the `jsub` binder — is
+never normalised.  And `symN a p` answers `idrefl ⌜Nat⌝ (fst i)`, already
+an `idrefl` whatever `fst i` is, so the index is never touched either.
+⇒ two `jsub-refl`s for the whole wrapper.
+
+**FOUR OF THE SIX FAILING ITERATIONS WERE ONE BUG CLASS: AN IMPLICIT
+AGDA CANNOT INVERT.**  Not one was a wrong proof shape.
+
+| what was written | why it blocks |
+|---|---|
+| `pwDef-sub _ _`, `homBody-sub _ _ _ _` | `subTm` is not injective: `subTm σ _z = subTm σ (…)` |
+| `hd : snd i ⟶* num (len _)` | `len` is not injective either |
+| `ren-agree (rep hd)` | `RepresentsR` is a DEFINED Set-valued function; unifying unfolds it and `enVar (_ρ x)` blocks |
+
+⇒ read an `UnsolvedMetaVariables` on an adequacy row as *a pin is
+missing*, not as *the chain is wrong*, and look at which argument is
+reached only through a non-injective function.  The fixes were: fold the
+naturality into `-w²` lemmas with EVERY argument explicit; bind `{Γ}` in
+the clause head; pin `{ρ = vs}` at the call site.  See
+[[meta-standing-for-a-computation]] and
+[[pin-implicits-on-defined-set-types]].
+
+★ AND THE LEDGER GATE FIRED BOTH WAYS, correctly each time: it demanded
+an entry for `pwDef-sub` (scanned, because its body mentions `renTmK`)
+and rejected entries for `homBody-sub` and `pwb-agree` as STALE NAMES
+once `renTmK` moved out of their bodies into `pwDef-w²`.
+
+------------------------------------------------------------------------
+## §10 — `methsTyFromK`: HALF DONE, AND THE HALF THAT IS LEFT IS NAMED
+
+**GREEN, validated in `tmp/MethsTyTmp.agda`:**
+  · the three-segment selection (42 junk · `methsTyCons` · 10 junk);
+  · row 41 (`dnil`) — FREE, `lookupDK`'s reason: the junk method
+    answers it and the junk IS the answer
+    (`methsTyJunk = lam⁶ Ty-UnitK`, `methsTyFrom D M j dnil = Unit`);
+  · the `cDesc-cons` row's β-LAW, stated ONCE at ABSTRACT arguments
+    (`Knot/IExtRep`'s move, and `abstract-the-substituted-terms`'
+    measured 87×) — six βs and the slot collapse;
+  · `payTyK-sub`, `ihTyK-sub` — `methsFrom-sub` plus closed leaves.
+
+★★ EACH SLOT'S TOWER IS ITS BINDER POSITION, and `methsTyCons` is
+`lam⁶`: the index owes six rungs, the payload five, the IH tuple four,
+`D` three, `M` two, `j` — innermost — owes nothing.  ⇒ ONE `cong₅`.
+
+⚠⚠ AND `tower⁶` ALREADY EXISTED.  I hand-wrote `towerJ⁶` first, because
+`Lib/Wk`'s family stops at `towerJ⁵` and says *"three customers now; at
+a fourth, stop and write `tower^`"*.  Rungs six and seven were already
+in `Knot/IihsAgree`.  ⇒ `tools/find-dup-lemmas.py`, which found it, and
+the lesson is not that nobody noticed the family — that note proves
+someone did — but that **noticing does not scale past one module**.
+
+★ `tower^` IS NOT A PLAIN FOLD, which is why the family was listed.  The
+generic form needs `(Γ ∙) ∙^ n ≡ (Γ ∙^ n) ∙` — a CONTEXT TRANSPORT, and
+`build-dont-transport` cost 51 failures last time one was let into a
+substitution lemma.  The honest note is "listed, not iterated, and here
+is why", not "⬜ someone should".
+
+**OWED — one cascade, and every step is a three-line `cong`:**
+
+    methTyK-sub   ← the row's remaining cast (a 6-fold lift, `nat6₂`)
+      payTyK-sub      ✅ written
+      ihTyK-sub       ✅ written
+      wkAtK-sub       ✅ Knot/IPayTyAgree
+      wkTyK-sub       ✅ Knot/PayTyAgree
+      wkTyUnderK-sub  ⬜ renMethsK-sub + extRNK-sub, both exist
+      atConK-sub      ⬜ subTyAtK-sub (exists) + conSK-sub
+        conSK-sub     ⬜ cong lam + sub-w + conSSK-sub
+          conSSK-sub  ⬜ ★ ITS INDEXED TWIN EXISTS — `Knot/IConSRep.iconSSK-sub`.
+                         Port DOWN, as `ilookupDK` was ported from
+                         `lookupDK`; that entry called the two "one proof".
+
+⇒ the remaining work is FOUR lemmas, none of them an induction, and the
+last one is a transcription of a lemma already written one sort up.
+
+⚠ AND THE `-sub` FAMILY HAS NO HOME.  `wkTyK-sub` is in `PayTyAgree`,
+`wkAtK-sub` in `IPayTyAgree`, `subTyAtK-sub` in `IhTyAgree`,
+`vsRenK-sub`/`renMethsK-sub` in `SubSpec`, `iconSSK-sub` in `IConSRep` —
+one per adequacy module, each written where it was first needed.  That
+is the same scattering that hid `tower⁶`, and it is what
+`find-dup-lemmas.py --families` reports.

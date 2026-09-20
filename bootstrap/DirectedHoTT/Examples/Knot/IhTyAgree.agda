@@ -86,20 +86,14 @@ nat5₂' F hF τ0 τ1 τ2 τ3 τ4 a b =
 --     has written its own.
 ------------------------------------------------------------------------
 
-nat5₂ : (F : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ) →
-        ({Γ Δ : Cx} (τ : Sub Γ Δ) (a b : RTm Γ) →
-           subTm τ (F a b) ≡ F (subTm τ a) (subTm τ b)) →
-        {Γ0 Γ1 Γ2 Γ3 Γ4 Γ5 : Cx}
-        (τ0 : Sub Γ1 Γ0) (τ1 : Sub Γ2 Γ1) (τ2 : Sub Γ3 Γ2)
-        (τ3 : Sub Γ4 Γ3) (τ4 : Sub Γ5 Γ4) (a b : RTm Γ5) →
-        subTm τ0 (subTm τ1 (subTm τ2 (subTm τ3 (subTm τ4 (F a b)))))
-        ≡ F (subTm τ0 (subTm τ1 (subTm τ2 (subTm τ3 (subTm τ4 a)))))
-            (subTm τ0 (subTm τ1 (subTm τ2 (subTm τ3 (subTm τ4 b)))))
-nat5₂ F hF τ0 τ1 τ2 τ3 τ4 a b =
-  trans (cong (λ z → subTm τ0 (subTm τ1 (subTm τ2 (subTm τ3 z)))) (hF τ4 a b))
-  (trans (cong (λ z → subTm τ0 (subTm τ1 (subTm τ2 z))) (hF τ3 _ _))
-  (trans (cong (λ z → subTm τ0 (subTm τ1 z)) (hF τ2 _ _))
-  (trans (cong (subTm τ0) (hF τ1 _ _)) (hF τ0 _ _))))
+-- ⚠⚠ `nat5₂` DELETED 2026-09-20 — it had the SAME TYPE as `nat5₂'`
+--   twenty lines above, and was never used.  Found by
+--   `tools/find-dup-lemmas.py nat5₂ 6`, which reported the pair at
+--   ZERO HOLES: not "similar" — the identical statement, in the same
+--   module, proved twice (one line via `nat4₂`, five lines longhand).
+--   ★ The tool's premise in one hit.  This was not hidden across the
+--     tree; it was TWENTY LINES APART, and it still survived every
+--     reading of this module.
 
 nat5₄ : (F : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ) →
         ({Γ Δ : Cx} (τ : Sub Γ Δ) (a b c d : RTm Γ) →
