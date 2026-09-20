@@ -44,7 +44,7 @@ import DirectedHoTT.Examples.Knot.PickScope
 import DirectedHoTT.Examples.Knot.Pw
 import DirectedHoTT.Examples.Knot.PwAgree
 import DirectedHoTT.Examples.Knot.PwBody
+import DirectedHoTT.Examples.Knot.PwBodyAgree
 import DirectedHoTT.Examples.Knot.RedRows
 import DirectedHoTT.Examples.Knot.RedWfA
 import DirectedHoTT.Examples.Knot.RedWfB
-import DirectedHoTT.Examples.Knot.RenAgree
