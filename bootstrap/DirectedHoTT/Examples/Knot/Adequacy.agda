@@ -452,17 +452,44 @@
 --                ★ `εwkK-agree` IS ONE LINE, and the ledger said why:
 --                `εwkTy = subTy εsub` and `εsub`'s `Represents` is
 --                VACUOUS (`λ ()`), because `Var ε` is empty.
---     pwBodyK    ⬜ OWED — agreement with `pw?`'s body case.
---     pwDefault  ⬜ OWED — the default method of `Knot/PwBody`'s tuple.
---                ⚠ ITS OLD NOTE SAID "blocked on the same five cross-sort
---                rows" — THAT IS STALE: `renTmK` is discharged for ALL 30.
---                What actually blocks it is different in KIND: `pwDefault`
---                is a METHOD (`lam (lam (lam …))` over index, payload and
---                the IH tuple), not a directly-applied program, so its
---                adequacy only means anything relative to `pwK`'s fold —
---                and `pwK` is itself OWED.  It is NOT a composition
---                corollary like `iinstK`/`wkTyUnderK`, despite the
---                callee list looking the same.
+--     pwBodyK    ✅ DISCHARGED — `Knot/PwBodyAgree.pwBodyK-agree`, ALL 30
+--                `RTm` rows.
+--                ★★★ 28 OF THEM ARE A PROOF THAT ALREADY EXISTED.
+--                `pwDefault k`'s body is
+--                `app (app (renTmK i (icon k p)) (nsuc (snd i))) (vsRenK (snd i))`
+--                and `renTmAtK s dd m rn t = app (app (renTmK (pair s dd) t) m) rn`
+--                is the SAME TERM — so `Knot/RenAgreeTie.ren-agree`
+--                (discharged, 30 rows) and `Knot/SubSpec.wk-Represents`
+--                close all 28 between them.  TWO NAMES, 28 ROWS.
+--                ⚠ Only ⌜Π⌝ and ⌜Hom⌝ are hand-written, and they are a
+--                DIFFERENT shape, not a harder one: a `jsub`/`symN`
+--                wrapper that costs almost nothing because `jsub-refl`
+--                IGNORES THE MOTIVE — reduce the proof to an `idrefl`
+--                and the rule fires, so the motive's own tower (a third
+--                depth, under the `jsub` binder) is never normalised.
+--     pwDef-sub  ✅ not a program — `pwDefault`'s SUBSTITUTION NATURALITY
+--                (`Knot/PwBodyAgree`), and `Knot/SubSpec.wkTmK-sub`'s
+--                proof at `pwDefault`'s spelling of the same term.
+--                ⚠ It is scanned because it MENTIONS `renTmK`, which is
+--                the point: `vsRenK` puts its argument under a `lam`, so
+--                a substitution crossing it is `extS`-lifted and does
+--                not reach the argument definitionally.
+--     pwDefault  ✅ DISCHARGED — by the 28 DEFAULT ROWS of
+--                `Knot/PwBodyAgree`, and this entry named the condition
+--                exactly: *its adequacy only means anything relative to
+--                `pwBodyK`'s fold — and `pwBodyK` is itself OWED*.  It is
+--                discharged BY those rows, not beside them, which is why
+--                there is no separate lemma at this name.
+--                ★★ AND THE ROWS ARE `ren-agree`.  `pwDefault k`'s body
+--                IS `renTmAtK`'s term, so `Knot/RenAgreeTie.ren-agree`
+--                plus `Knot/SubSpec.wk-Represents` close all 28.
+--                ⚠ WHAT IT COSTS IS NATURALITY, NOT INDUCTION.  The
+--                three βs do NOT expose the body at the collapsed index:
+--                `vsRenK n = lam (Var-vsK (w n) (var vz))` puts its
+--                argument UNDER A BINDER, so each substitution crossing
+--                it is `extS`-lifted and the `w` lands inside.
+--                `pwDef-w²` pushes both through (`vsRenK-sub`,
+--                `renMethsK-sub`) before the tower collapses.
 --     pwK        ✅ DISCHARGED — `Knot/PwAgree.pwK-agree`, ALL 30 `RTm`
 --                rows: `pwK i ⌈t⌉ ⟶* ⌈ b2n (pw? t) ⌉`.
 --                ★★ THE CHEAPEST ENTRY ON THIS LEDGER, and the triage

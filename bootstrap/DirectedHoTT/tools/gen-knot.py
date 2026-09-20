@@ -3849,7 +3849,7 @@ _BOOL_SEGS = {
         ("run",30,"(cdTake 30 D23)","pwZero")],
 }
 for _k, _sg in _BOOL_SEGS.items():
-    _n = sum(x[1] if x[0] == "run" else 1 for x in _sg)
+    _n = sum(x[1] if x[0] in ("run", "at") else 1 for x in _sg)
     assert _n == 53, "%s's segments cover %d rows, not 53" % (_k, _n)
 
 
@@ -3862,6 +3862,8 @@ def _seg_assemble(pieces, inner):
     for kind, a, b in reversed(pieces):
         if kind == "past":
             e = "methsFrom-past %s {m = %s} %d\n     » %s" % (a, b[0], b[1], e)
+        elif kind == "pastAt":
+            e = "methsAt-past %s {mth = %s} %d %d\n     » %s" % (a, b[0], b[1], b[2], e)
         else:
             e = "sel-there %d _ _ (%s)" % (a, e)
     return e
@@ -3879,6 +3881,22 @@ def _seg_sel(segs, k):
                           "methsFrom-sel %s {m = %s} %d (inCD %s %d tt)"
                           % (D, m, j, D, j)), m)
             pieces.append(("past", D, (m, k - pos - n)))
+            pos += n
+        elif seg[0] == "at":
+            # ⚠ `methsAt` WALKS A PER-ROW FUNCTION, so its selection lands
+            #   on `mth (j + base)` and not on a constant.  Every segment
+            #   here starts AT its own base (`pos == base`), which is what
+            #   makes `(k - pos) + base` be `k` — assert it rather than
+            #   trust it, because the offset is silent when wrong.
+            n, D, mth, base = seg[1], seg[2], seg[3], seg[4]
+            assert pos == base, ("methsAt segment at %d declares base %d"
+                                 % (pos, base))
+            if pos <= k < pos + n:
+                j = k - pos
+                return (_seg_assemble(pieces,
+                          "methsAt-sel %s {mth = %s} %d %d (inCD %s %d tt)"
+                          % (D, mth, base, j, D, j)), mth)
+            pieces.append(("pastAt", D, (mth, base, k - pos - n)))
             pos += n
         else:
             m = seg[1]
@@ -4023,6 +4041,323 @@ def gen_boolagree(key):
     assert seen.get("ih", 0) + seen.get("call", 0) == 1, \
         "%s: expected exactly one ⌜Hom⌝ row, got %s" % (key, seen)
     return "\n".join(L) + "\n" + _BOOLAGREE_TIE % spec
+
+
+_PWB_ROWS = "\n-- ★★★ ROW 20 — `pwBody (⌜Π⌝ γ δ) = δ`.\n--\n-- ⚠⚠ THE `jsub`/`symN` WRAPPER COSTS ALMOST NOTHING, because\n--   `jsub-refl : jsub d (idrefl c s) e ⟶ e` IGNORES THE MOTIVE.\n--   `pwPi`'s motive mentions the index under the `jsub` binder — a\n--   THIRD tower, at a third depth — and none of it has to be\n--   normalised: reduce the PROOF to an `idrefl` and the rule fires.\n--   `symN a p = jsub (⌜Id⌝ ⌜Nat⌝ (var vz) (w a)) p (reflN a)`, so the\n--   inner `jsub` fires as soon as the payload's FORD is exposed, and\n--   it answers `idrefl ⌜Nat⌝ (fst i)` — already an `idrefl`, whatever\n--   `fst i` is.  ⇒ two `jsub-refl`s, and the index is never touched.\npwb-agree {Γ} i hi (⌜Π⌝ y0 y1) =\n  head-red tagTm-cPi\n    (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 0 » sel-here _ _) i _\n    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »\n     ⟶*-appˡ (step (β _ _) done) »\n     step (β _ _) done)\n  » ⟶*-jsubᵖ ( ⟶*-jsubᵖ\n                 (⟶*-castₗ (cong (λ w → fst (snd (snd w)))\n                                 (wk-single {v = IHS} PAY))\n                    (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done)\n                             » step (βsnd _ _) done) » step (βfst _ _) done))\n             » step (jsub-refl _ _ _ _) done )\n  » step (jsub-refl _ _ _ _) done\n  » ⟶*-castₗ (cong (λ w → fst (snd w)) (wk-single {v = IHS} PAY))\n      (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)\n  where\n    PAY : RTm _\n    PAY = pair (enTm y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit))\n    IHS : RTm _\n    IHS = iihs KnotD pwBodyMethsK (isingle i) (ilookupD KnotD tagTm-cPi) PAY\n\n-- ★★★ ROW 22 — the ONE row that recurses.\n--\n--     pwBody (⌜Hom⌝ C a b) = ⌜Hom⌝ (pwBody C) (app (w a) vz) (app (w b) vz)\n--\n-- ⚠ THREE SOURCES IN ONE TERM: the code from the IH, the endpoints\n--   from the PAYLOAD (weakened, then applied to the new variable).\n--   `Knot/PwBody`'s header says a fold that only read its IH tuple\n--   could not write this row, and the proof shows it — the code slot\n--   is the IH, the endpoint slots are `ren-agree` AGAIN, because\n--   `wkTmK` IS `renTmAtK` at `vsRenK`.\npwb-agree {Γ} i hi (⌜Hom⌝ y0 y1 y2) =\n  head-red tagTm-cHom\n    (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 2\n     » sel-there 1 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 0\n     » sel-here _ _)) i _\n    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »\n     ⟶*-appˡ (step (β _ _) done) »\n     step (β _ _) done)\n  » ⟶*-jsubᵖ ( ⟶*-jsubᵖ\n                 (⟶*-castₗ (cong (λ w → fst (snd (snd (snd w))))\n                                 (wk-single {v = IHS} PAY))\n                    (⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done)\n                                     » step (βsnd _ _) done)\n                             » step (βsnd _ _) done) » step (βfst _ _) done))\n             » step (jsub-refl _ _ _ _) done )\n  » step (jsub-refl _ _ _ _) done\n  -- ★ ONE cast for the whole row: the index at two rungs, the payload at\n  --   one.  The IH tuple is the INNERMOST binder and owes nothing.\n  » ⟶*-castₗ (homBody-w² IHS PAY i)\n    (  -- the CODE slot — the IH\n       ⟶*-icon (⟶*-pairˡ\n         (step (βfst _ _) done\n          » ⟶*-ielimᵗ (step (βfst _ _) done)\n          » pwb-agree _ (⟶*-pairʳ hd) y0))\n       -- the FIRST endpoint\n    »  ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ\n         (⟶*-icon (⟶*-pairˡ\n            (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ hd)))\n            »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))\n            »  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done)\n                          » step (βfst _ _) done)))\n            »  ren-agree {ρ = vs} (rep {Γ = Γ} hd) y1))\n          » ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ\n              (⟶*-icon (⟶*-pairˡ (⟶*-Var-vzKᵈ hd))))))))\n       -- the SECOND endpoint\n    »  ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ\n         (⟶*-icon (⟶*-pairˡ\n            (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ hd)))\n            »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))\n            »  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done)\n                                  » step (βsnd _ _) done)\n                          » step (βfst _ _) done)))\n            »  ren-agree {ρ = vs} (rep {Γ = Γ} hd) y2))\n          » ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ\n              (⟶*-icon (⟶*-pairˡ (⟶*-Var-vzKᵈ hd))))))))))\n  where\n    PAY : RTm _\n    PAY = pair (enTm y0) (pair (enTm y1)\n                 (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTm) unit)))\n    IHS : RTm _\n    IHS = iihs KnotD pwBodyMethsK (isingle i) (ilookupD KnotD tagTm-cHom) PAY\n    hd : snd i ⟶* num (len Γ)\n    hd = ⟶*-snd hi » step (βsnd _ _) done\n\n------------------------------------------------------------------------\n-- ★★★ AT THE LEDGER'S NAMES.\n--\n-- ⚠ TWO ENTRIES, NOT ONE.  `pwDefault` is a METHOD, not a directly\n--   applied program, so its adequacy only means anything relative to\n--   `pwBodyK`'s fold — which is exactly what the 28 default rows above\n--   are.  It is discharged BY them, not beside them.\n------------------------------------------------------------------------\npwBodyK-agree : {Γ Θ : Cx} (t : RTm Γ) →\n                pwBodyK (pair sTm (num (len Γ))) (enTm {Γ} {Θ} t)\n                ⟶* enTm {Γ ∙} {Θ} (pwBody t)\npwBodyK-agree t = pwb-agree (pair sTm (num (len _))) done t\n"
+
+_PWBODYAGREE_HDR = """------------------------------------------------------------------------
+-- OCP-0009 · KNOT — ★★★ `pwBodyK`'s ADEQUACY, ALL 30 `RTm` ROWS.
+--
+-- ⚠ GENERATED by `tools/gen-knot.py`.  Do not hand-edit.
+--
+--     agree : i ⟶* (sTm , ⟨len Γ⟩) → (t : RTm Γ) →
+--             ielim KnotD i pwBodyMethsK ⌈t⌉ ⟶* ⌈ pwBody t ⌉
+--
+--     pwBody (⌜Π⌝ γ δ)     = δ
+--     pwBody (⌜Hom⌝ C a b) = ⌜Hom⌝ (pwBody C) (app (w a) vz) (app (w b) vz)
+--     pwBody t             = renTm vs t          ← 28 of the 30 rows
+--
+-- ★★★ THE DEFAULT ROW IS A PROOF WE ALREADY HAVE, and this is the
+--   largest instance of that in the tree.  `Knot/PwBody.pwDefault k` is
+--
+--     app (app (renTmK i (icon k p)) (nsuc (snd i))) (vsRenK (snd i))
+--
+--   and `Knot/RenTm.renTmAtK s dd m rn t = app (app (renTmK (pair s dd) t) m) rn`
+--   is the SAME TERM.  So `Knot/RenAgreeTie.ren-agree`, discharged for
+--   all 30 rows, closes 28 of these in one application, and the only
+--   other ingredient — `RepresentsR vs (vsRenK ⟨len Γ⟩)` — is
+--   `Knot/SubSpec.wk-Represents`, which also already existed.
+--   ⇒ TWO NAMES COVER 28 ROWS.
+--
+-- ⚠ THE INDEX IS QUANTIFIED WITH A REDUCTION, NOT PINNED.  `pwDefault`
+--   READS `snd i`, so the depth has to arrive somehow, and taking
+--   `i ⟶* pair sTm ⟨len Γ⟩` as a hypothesis buys two things:
+--
+--     the ⌜Hom⌝ row can hand it to its child.  `iihs` gives the child
+--       `subTm (isingle i) (pair sTm (snd (var vz)))`, which only
+--       REDUCES to the same pair — so a pinned index would not match.
+--       ★ `Knot/OccAgree`'s objection does not apply here: ⌜Hom⌝'s three
+--       fields are all at the AMBIENT depth, where `occ`'s sit under
+--       binders and genuinely need a quantified index.
+--
+--     `vsRenK (snd i)` NEVER HAS TO BE REDUCED INSIDE.  `ren-agree`'s
+--       renaming slot is ABSTRACT, so a `RepresentsR` at the unreduced
+--       depth is enough, and `Knot/RenSpec.vsRenK-app` is already
+--       generic in the depth.  Otherwise every row would owe a
+--       congruence descending into `vsRenK` — `⟶*-wkTyKᵈ`'s trap.
+--
+-- ★ THE TWO OVERRIDE ROWS ARE HAND-WRITTEN.  They are not a harder
+--   instance of the default shape but a DIFFERENT one: a `jsub`/`symN`
+--   wrapper, and for ⌜Hom⌝ three sources (the IH, the payload, and the
+--   new variable) in a single term.
+------------------------------------------------------------------------
+
+{-# OPTIONS --safe #-}
+module DirectedHoTT.Examples.Knot.PwBodyAgree where
+
+open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
+open import DirectedHoTT.Spec.Syntax
+  using ( Cx; ε; _∙; RTm; RTy; Var; vz; vs; var; lam; app; pair; unit; fst; snd
+        ; nsuc; icon; ielim; iihs; isingle; sel; ilookupD
+%s        )
+open import DirectedHoTT.Spec.Typing
+  using ( _⟶*_; step; done; β; βfst; βsnd; wk-single; single; jsub-refl )
+open import DirectedHoTT.Spec.Variance using ( pwBody )
+open import DirectedHoTT.Lib.NatNum using ( num )
+open import DirectedHoTT.Lib.RedChain using ( _»_ )
+open import DirectedHoTT.Lib.Wk using ( sub-w²-single; w )
+open import DirectedHoTT.Spec.Syntax using ( Sub; extS; subTm )
+open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ )
+open import normalizer.Syntax.Types using ( _≡_; cong; cong₂; trans )
+open import DirectedHoTT.Metatheory.RedCong
+  using ( ⟶*-ielimⁱ; ⟶*-ielimᵗ; ⟶*-appˡ; ⟶*-appʳ; ⟶*-nsuc; ⟶*-snd; ⟶*-fst
+        ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-idreflᵃ; ⟶*-jsubᵖ )
+open import DirectedHoTT.Lib.IMeths
+  using ( cdTake; methsAt-sel; methsAt-past; inCD; tt; sel-here; sel-there )
+open import DirectedHoTT.Lib.IHeadRed using ( ihead-red )
+open import DirectedHoTT.Examples.Knot.Desc using ( KnotD )
+open import DirectedHoTT.Examples.Knot.Tags
+open import DirectedHoTT.Examples.Knot.Sorts using ( sTm; sVar; len )
+open import DirectedHoTT.Examples.Knot.Map
+  using ( enTy; enTm; enDesc; enDCon; enIDesc; enICon; enVar )
+open import DirectedHoTT.Examples.Knot.Ctors using ( Tm-cHomK; Tm-appK; Tm-varK )
+open import DirectedHoTT.Examples.Knot.Build using ( Var-vsK; Var-vzK )
+open import DirectedHoTT.Examples.Knot.RenTm using ( renTmK; vsRenK )
+open import DirectedHoTT.Examples.Knot.WkSub using ( wkTmK )
+open import DirectedHoTT.Examples.Knot.RenSpec using ( vsRenK-app )
+open import DirectedHoTT.Examples.Knot.SubAgree using ( RepresentsR )
+open import DirectedHoTT.Examples.Knot.SubSpec using ( renMethsK-sub; vsRenK-sub; wkTmK-sub )
+open import DirectedHoTT.Examples.Knot.RenAgreeTie using ( ren-agree )
+open import DirectedHoTT.Examples.Knot.PwBody
+  using ( pwBodyK; pwBodyMethsK; pwDefault; pwPi; pwHom; PD21; PD23 )
+
+head-red : {Γ : Cx} (k : ℕ) {mth : RTm Γ} → sel k (pwBodyMethsK {Γ}) ⟶* mth →
+           (i p : RTm Γ) {u : RTm Γ} →
+           app (app (app mth i) p)
+               (iihs KnotD pwBodyMethsK (isingle i) (ilookupD KnotD k) p) ⟶* u →
+           ielim KnotD i pwBodyMethsK (icon k p) ⟶* u
+head-red k sp i p h = ihead-red KnotD pwBodyMethsK k i p sp h
+
+------------------------------------------------------------------------
+-- ★ THE TWO DEPTH CONGRUENCES.  ⚠ `Var-vzK m` AND `Var-vsK m x` EACH
+--   MENTION `m` TWICE — at slot 0 and inside the ford
+--   `idrefl ⌜Nat⌝ (nsuc m)` — so each is TWO descents, not one.
+--   `Knot/PayTyAgree`'s `⟶*-wkTyKᵈ` trap in miniature.
+------------------------------------------------------------------------
+⟶*-Var-vzKᵈ : {Γ : Cx} {m m' : RTm Γ} → m ⟶* m' → Var-vzK m ⟶* Var-vzK m'
+⟶*-Var-vzKᵈ h =
+    ⟶*-icon (⟶*-pairˡ h)
+  » ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ
+      (⟶*-pairˡ (⟶*-idreflᵃ (⟶*-nsuc h)))))
+
+⟶*-Var-vsKᵈ : {Γ : Cx} {m m' : RTm Γ} → m ⟶* m' → (x : RTm Γ) →
+              Var-vsK m x ⟶* Var-vsK m' x
+⟶*-Var-vsKᵈ h x =
+    ⟶*-icon (⟶*-pairˡ h)
+  » ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ
+      (⟶*-pairˡ (⟶*-idreflᵃ (⟶*-nsuc h))))))
+
+------------------------------------------------------------------------
+-- ★★★ `pwDefault`'s BODY IS NATURAL IN SUBSTITUTION — and this is the
+--   one thing this row shape does NOT get for free.
+--
+-- ⚠⚠ `vsRenK n = lam (Var-vsK (w n) (var vz))` PUTS ITS ARGUMENT UNDER A
+--   BINDER.  A substitution crossing it becomes `extS`-lifted and the
+--   `w` ends up INSIDE, so `subTm σ (vsRenK n)` is NOT definitionally
+--   `vsRenK (subTm σ n)` — it needs `sub-w`, which is exactly what
+--   `Knot/SubSpec.vsRenK-sub` packages.  ★ And `renTmK`'s method tuple
+--   is full of `lam`s for the same reason, hence `renMethsK-sub`.
+--   ⇒ the three βs do NOT simply expose `pwDefault`'s body at the
+--   collapsed index; the substitutions have to be pushed through first.
+--
+-- ★ THIS IS `Knot/SubSpec.wkTmK-sub`'s PROOF at `pwDefault`'s spelling
+--   of the same term — `wkTmK` pins the index to `pair sTm n` where
+--   `pwDefault` passes the whole index through.
+------------------------------------------------------------------------
+pwDef-sub : {Γ Δ : Cx} (τ : Sub Γ Δ) (z p : RTm Γ) (k : ℕ) →
+            subTm τ (app (app (renTmK z (icon k p)) (nsuc (snd z)))
+                         (vsRenK (snd z)))
+            ≡ app (app (renTmK (subTm τ z) (icon k (subTm τ p)))
+                       (nsuc (snd (subTm τ z))))
+                  (vsRenK (snd (subTm τ z)))
+pwDef-sub τ z p k =
+  cong₂ (λ ms rn → app (app (ielim KnotD (subTm τ z) ms (icon k (subTm τ p)))
+                            (nsuc (snd (subTm τ z)))) rn)
+        (renMethsK-sub τ) (vsRenK-sub τ (snd z))
+
+-- ★★★ THE DEFAULT ROW'S WHOLE CAST, AT DEPTH 2 AND FULLY EXPLICIT.
+--
+-- ⚠⚠ EVERY ARGUMENT IS SPELLED OUT.  Stated with `_` for the two
+--   intermediate terms, Agda cannot invert them — the constraint is
+--   `subTm (single a) _z = subTm (single a) (…)` and `subTm` is not
+--   injective, so it blocks and the row leaves unsolved metas.
+--   `meta-standing-for-a-computation`, at a naturality stack.
+pwDef-w² : {Γ : Cx} (a b i : RTm Γ) (k : ℕ) →
+   subTm (single a) (subTm (extS (single b))
+     (app (app (renTmK (w (w i)) (icon k (var (vs vz))))
+               (nsuc (snd (w (w i))))) (vsRenK (snd (w (w i))))))
+   ≡ app (app (renTmK i (icon k b)) (nsuc (snd i))) (vsRenK (snd i))
+pwDef-w² a b i k =
+  trans (cong (subTm (single a))
+              (pwDef-sub (extS (single b)) (w (w i)) (var (vs vz)) k))
+  (trans (pwDef-sub (single a) (subTm (extS (single b)) (w (w i))) (w b) k)
+         (cong₂ (λ z q → app (app (renTmK z (icon k q)) (nsuc (snd z)))
+                             (vsRenK (snd z)))
+                (sub-w²-single {a = a} {b = b} i)
+                (wk-single {v = a} b)))
+
+-- ★ THE ⌜Hom⌝ ROW'S TWIN.  Its body hides the SAME `lam` — `wkTmK n t`
+--   ends in `vsRenK n` — so the endpoints need the same push-through,
+--   and `Knot/SubSpec.wkTmK-sub` is it verbatim.  Everything else in the
+--   row (`Tm-cHomK`, `Tm-appK`, `Tm-varK`, `Var-vzK`) is a bare
+--   `icon`/`pair` and distributes definitionally; only the two `wkTmK`s
+--   do not.
+homBody-sub : {Γ Δ : Cx} (τ : Sub Γ Δ) (ih z a b : RTm Γ) →
+   subTm τ (Tm-cHomK (fst ih)
+              (Tm-appK (wkTmK (snd z) a) (Tm-varK (Var-vzK (snd z))))
+              (Tm-appK (wkTmK (snd z) b) (Tm-varK (Var-vzK (snd z)))))
+   ≡ Tm-cHomK (fst (subTm τ ih))
+       (Tm-appK (wkTmK (snd (subTm τ z)) (subTm τ a))
+                (Tm-varK (Var-vzK (snd (subTm τ z)))))
+       (Tm-appK (wkTmK (snd (subTm τ z)) (subTm τ b))
+                (Tm-varK (Var-vzK (snd (subTm τ z)))))
+homBody-sub τ ih z a b =
+  cong₂ (λ p q → Tm-cHomK (fst (subTm τ ih))
+                   (Tm-appK p (Tm-varK (Var-vzK (snd (subTm τ z)))))
+                   (Tm-appK q (Tm-varK (Var-vzK (snd (subTm τ z))))))
+        (wkTmK-sub τ (snd z) a) (wkTmK-sub τ (snd z) b)
+
+-- ★★ …AND ITS DEPTH-2 FORM, AGAIN FULLY EXPLICIT.  Four `_`s here block
+--   exactly as `pwDef-sub`'s two did: the constraint is
+--   `subTm (single a) _x = subTm (single a) (…)`, which `subTm`'s
+--   non-injectivity leaves unsolvable.
+homBody-w² : {Γ : Cx} (a b i : RTm Γ) →
+   subTm (single a) (subTm (extS (single b))
+     (Tm-cHomK (fst (var vz))
+        (Tm-appK (wkTmK (snd (w (w i))) (fst (snd (var (vs vz)))))
+                 (Tm-varK (Var-vzK (snd (w (w i))))))
+        (Tm-appK (wkTmK (snd (w (w i))) (fst (snd (snd (var (vs vz))))))
+                 (Tm-varK (Var-vzK (snd (w (w i))))))))
+   ≡ Tm-cHomK (fst a)
+       (Tm-appK (wkTmK (snd i) (fst (snd b))) (Tm-varK (Var-vzK (snd i))))
+       (Tm-appK (wkTmK (snd i) (fst (snd (snd b)))) (Tm-varK (Var-vzK (snd i))))
+homBody-w² a b i =
+  trans (cong (subTm (single a))
+              (homBody-sub (extS (single b)) (var vz) (w (w i))
+                           (fst (snd (var (vs vz))))
+                           (fst (snd (snd (var (vs vz)))))))
+  (trans (homBody-sub (single a) (var vz) (subTm (extS (single b)) (w (w i)))
+                      (fst (snd (w b))) (fst (snd (snd (w b)))))
+         (cong₂ (λ z q → Tm-cHomK (fst a)
+                   (Tm-appK (wkTmK (snd z) (fst (snd q)))
+                            (Tm-varK (Var-vzK (snd z))))
+                   (Tm-appK (wkTmK (snd z) (fst (snd (snd q))))
+                            (Tm-varK (Var-vzK (snd z)))))
+                (sub-w²-single {a = a} {b = b} i)
+                (wk-single {v = a} b)))
+
+-- ★★ `RepresentsR` AT AN UNREDUCED DEPTH, and this one lemma is what
+--   keeps `vsRenK` closed: `vsRenK-app` is GENERIC in the depth, so all
+--   that is owed is the congruence above.
+rep : {Γ Θ : Cx} {d : RTm Θ} → d ⟶* num (len Γ) →
+      RepresentsR {Γ} {Γ ∙} {Θ} vs (vsRenK d)
+rep {d = d} h x = vsRenK-app d (enVar x) » ⟶*-Var-vsKᵈ h (enVar x)
+
+------------------------------------------------------------------------
+-- ★★★ THE 30 ROWS.
+------------------------------------------------------------------------
+-- ⚠ NAMED `pwb-agree`, NOT `agree`.  Its body mentions `renTmK`, which
+--   `scan_object_programs` scans for, so it needs a `_WRAP_LEDGER`
+--   entry — and an entry keyed on the bare name `agree` would silence
+--   the gate for every other module that happens to define one.  The
+--   scanner over-approximates ON PURPOSE; keep the name specific rather
+--   than loosening the rule.
+pwb-agree : {Γ Θ : Cx} (i : RTm Θ) → i ⟶* pair sTm (num (len Γ)) → (t : RTm Γ) →
+        ielim KnotD i pwBodyMethsK (enTm {Γ} {Θ} t)
+        ⟶* enTm {Γ ∙} {Θ} (pwBody t)
+"""
+
+# ======================================================================
+# ★★★ `Knot/PwBodyAgree` — `pwBodyK`'s ADEQUACY, ALL 30 `RTm` ROWS.
+#
+#     pwBody (⌜Π⌝ γ δ)     = δ
+#     pwBody (⌜Hom⌝ C a b) = ⌜Hom⌝ (pwBody C) (app (w a) vz) (app (w b) vz)
+#     pwBody t             = renTm vs t          ← 28 of the 30 rows
+#
+# ★★★ THE DEFAULT ROW IS A PROOF THAT ALREADY EXISTS.  `pwDefault k`'s
+#   body is `app (app (renTmK i (icon k p)) (nsuc (snd i))) (vsRenK (snd i))`
+#   and `Knot/RenTm.renTmAtK s dd m rn t = app (app (renTmK (pair s dd) t) m) rn`
+#   is the SAME TERM, so `Knot/RenAgreeTie.ren-agree` — discharged for
+#   all 30 rows — closes all 28 defaults in one application.  ⇒ only the
+#   two override rows are hand-written, and they are in `_PWB_ROWS`.
+#
+# ⚠ THE INDEX IS QUANTIFIED WITH A REDUCTION, NOT PINNED, and this is the
+#   one design decision that matters.  `pwDefault` READS `snd i`, so the
+#   depth must arrive somehow; taking `i ⟶* pair sTm ⟨len Γ⟩` as a
+#   hypothesis buys two things at once:
+#     the ⌜Hom⌝ row can still hand it to its child, whose index only
+#       REDUCES to the same pair (`Knot/OccAgree`'s objection to a pinned
+#       index does not apply — ⌜Hom⌝'s fields are all at the AMBIENT
+#       depth, unlike `occ`'s, which sit under binders);
+#     `vsRenK (snd i)` never has to be reduced INSIDE.  `ren-agree`'s
+#       renaming slot is ABSTRACT, so a `RepresentsR` at the unreduced
+#       depth suffices, and `Knot/RenSpec.vsRenK-app` is already generic
+#       in the depth.  Without this the row would owe a congruence
+#       descending into `vsRenK`, which is `⟶*-wkTyKᵈ`'s trap.
+_PWB_SEGS = [("at", 20, "(cdTake 20 KnotD)", "pwDefault", 0),
+             ("one", "pwPi"),
+             ("at", 1,  "(cdTake 1 PD21)",   "pwDefault", 21),
+             ("one", "pwHom"),
+             ("at", 30, "(cdTake 30 PD23)",  "pwDefault", 23)]
+assert sum(x[1] if x[0] == "at" else 1 for x in _PWB_SEGS) == 53
+
+
+def gen_pwbodyagree():
+    rows = [(k, nm, decl, f) for k, (nm, decl, f) in enumerate(KNOT)
+            if nm.startswith("cTm-")]
+    assert len(rows) == 30, "expected 30 RTm rows, got %d" % len(rows)
+    ks = {nm: k for k, nm, _, _ in rows}
+    assert ks["cTm-cPi"] == 20 and ks["cTm-cHom"] == 22 and \
+           ks["cTm-var"] == 11 and rows[-1][0] == 40, \
+        "the RTm block moved — `Knot/PwBody`'s tuple and this map are stale"
+    ctors = sorted({_ctor(d) for _, _, d, _ in rows})
+    L = [_PWBODYAGREE_HDR % "".join("        ; %s\n" % c for c in ctors)]
+    n_def = 0
+    for k, nm, decl, f in rows:
+        # ⚠ THE TWO OVERRIDE ROWS ARE HAND-WRITTEN (`_PWB_ROWS`).  They are
+        #   not a harder instance of the default shape — they are a
+        #   DIFFERENT shape: a `jsub`/`symN` wrapper, and for ⌜Hom⌝ three
+        #   sources (IH, payload, and the new variable) in one term.
+        if nm in ("cTm-cPi", "cTm-cHom"): continue
+        n_def += 1
+        c = _ctor(decl)
+        nargs = [j for j, x in enumerate(f) if x[0] in ("rec", "nat")]
+        an = _names(c, nargs)
+        sel, mth = _seg_sel(_PWB_SEGS, k)
+        assert mth == "pwDefault", "row %d (%s) is not a default row" % (k, nm)
+        L.append(
+          "pwb-agree {Γ} i hi %s =\n"
+          "  head-red tag%s\n"
+          "    (%s) i _\n"
+          "    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »\n"
+          "     ⟶*-appˡ (step (β _ _) done) »\n"
+          "     step (β _ _) done)\n"
+          "  » ⟶*-castₗ (pwDef-w² IHS PAY i tag%s)\n"
+          "      (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))\n"
+          "      »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))\n"
+          "      »  ren-agree {ρ = vs} (rep {Γ = Γ} hd) %s )\n"
+          "  where\n"
+          "    PAY : RTm _\n"
+          "    PAY = %s\n"
+          "    IHS : RTm _\n"
+          "    IHS = iihs KnotD pwBodyMethsK (isingle i)\n"
+          "                 (ilookupD KnotD tag%s) PAY\n"
+          "    hd : snd i ⟶* num (len Γ)\n"
+          "    hd = ⟶*-snd hi » step (βsnd _ _) done"
+          % (_pat(c, nargs, an), nm[1:], sel, nm[1:],
+             _pat(c, nargs, an), _occ_payload_of(f, an), nm[1:]))
+    assert n_def == 28, "expected 28 default rows, got %d" % n_def
+    return "\n".join(L) + "\n" + _PWB_ROWS
 
 
 def gen_szagree():
@@ -5865,7 +6200,7 @@ _WRAP_LEDGER = {
     "nrsSK-vs":  "✅ not a program — the other clause.",
     "extRNK-vz": "✅ not a program — a clause of `extRNK`'s adequacy\n--                (`Knot/RenSpec`), which `extR-Represents` assembles.",
     "extRNK-vs": "✅ not a program — the other clause.",
-    "pwDefault": "⬜ OWED — the default method of `Knot/PwBody`'s tuple.\n--                ⚠ ITS OLD NOTE SAID \"blocked on the same five cross-sort\n--                rows\" — THAT IS STALE: `renTmK` is discharged for ALL 30.\n--                What actually blocks it is different in KIND: `pwDefault`\n--                is a METHOD (`lam (lam (lam …))` over index, payload and\n--                the IH tuple), not a directly-applied program, so its\n--                adequacy only means anything relative to `pwK`'s fold —\n--                and `pwK` is itself OWED.  It is NOT a composition\n--                corollary like `iinstK`/`wkTyUnderK`, despite the\n--                callee list looking the same.",
+    "pwDefault": "✅ DISCHARGED — by the 28 DEFAULT ROWS of\n--                `Knot/PwBodyAgree`, and this entry named the condition\n--                exactly: *its adequacy only means anything relative to\n--                `pwBodyK`'s fold — and `pwBodyK` is itself OWED*.  It is\n--                discharged BY those rows, not beside them, which is why\n--                there is no separate lemma at this name.\n--                ★★ AND THE ROWS ARE `ren-agree`.  `pwDefault k`'s body\n--                IS `renTmAtK`'s term, so `Knot/RenAgreeTie.ren-agree`\n--                plus `Knot/SubSpec.wk-Represents` close all 28.\n--                ⚠ WHAT IT COSTS IS NATURALITY, NOT INDUCTION.  The\n--                three βs do NOT expose the body at the collapsed index:\n--                `vsRenK n = lam (Var-vsK (w n) (var vz))` puts its\n--                argument UNDER A BINDER, so each substitution crossing\n--                it is `extS`-lifted and the `w` lands inside.\n--                `pwDef-w²` pushes both through (`vsRenK-sub`,\n--                `renMethsK-sub`) before the tower collapses.",
     # ⬜ OWED — a commutation lemma, `Knot/SzAgree`'s shape.
     # ⚠ `wkK` HAS NO ENTRY ANY MORE, and that is correct: it was moved to
     #   `Negative/WkK.agda`, which the scanner does not walk, so a ledger
@@ -5893,7 +6228,8 @@ _WRAP_LEDGER = {
     #   discharges, and `Knot/SzAgree` is the only one discharged.
     "flatK":    "✅ DISCHARGED — `Knot/FlatAgree.flatK-agree`, ALL 30 rows;\n--                `stkCK`'s cross-call shape one link further down the\n--                chain, at `flat? (⌜Hom⌝ c a b) = stkC? c`.  Same\n--                generator, a four-segment map.\n--                ⇒ `⊢ap`'s premise is now object-level AND adequate.",
     "pwK":      "✅ DISCHARGED — `Knot/PwAgree.pwK-agree`, ALL 30 `RTm`\n--                rows: `pwK i ⌈t⌉ ⟶* ⌈ b2n (pw? t) ⌉`.\n--                ★★ THE CHEAPEST ENTRY ON THIS LEDGER, and the triage\n--                said so before a line was written: the motive is\n--                CONSTANT `Nat`, so no row carries a cast, and every\n--                method body is closed under its three binders or reads\n--                the innermost one, so the weakening tower is ZERO\n--                RUNGS.  Both of `Knot/IhITyAgree`'s cost drivers are\n--                absent.  28 of the 30 rows are three βs and stop.\n--                ⇒ the only content is the SEGMENTED selection, and\n--                that is generated (`gen_boolagree`).",
-    "pwBodyK":  "⬜ OWED — agreement with `pw?`'s body case.",
+    "pwDef-sub": "✅ not a program — `pwDefault`'s SUBSTITUTION NATURALITY\n--                (`Knot/PwBodyAgree`), and `Knot/SubSpec.wkTmK-sub`'s\n--                proof at `pwDefault`'s spelling of the same term.\n--                ⚠ It is scanned because it MENTIONS `renTmK`, which is\n--                the point: `vsRenK` puts its argument under a `lam`, so\n--                a substitution crossing it is `extS`-lifted and does\n--                not reach the argument definitionally.",
+    "pwBodyK":  "✅ DISCHARGED — `Knot/PwBodyAgree.pwBodyK-agree`, ALL 30\n--                `RTm` rows.\n--                ★★★ 28 OF THEM ARE A PROOF THAT ALREADY EXISTED.\n--                `pwDefault k`'s body is\n--                `app (app (renTmK i (icon k p)) (nsuc (snd i))) (vsRenK (snd i))`\n--                and `renTmAtK s dd m rn t = app (app (renTmK (pair s dd) t) m) rn`\n--                is the SAME TERM — so `Knot/RenAgreeTie.ren-agree`\n--                (discharged, 30 rows) and `Knot/SubSpec.wk-Represents`\n--                close all 28 between them.  TWO NAMES, 28 ROWS.\n--                ⚠ Only ⌜Π⌝ and ⌜Hom⌝ are hand-written, and they are a\n--                DIFFERENT shape, not a harder one: a `jsub`/`symN`\n--                wrapper that costs almost nothing because `jsub-refl`\n--                IGNORES THE MOTIVE — reduce the proof to an `idrefl`\n--                and the rule fires, so the motive's own tower (a third\n--                depth, under the `jsub` binder) is never normalised.",
     "stkAK":    "✅ DISCHARGED — `Knot/StkAAgree.stkAK-agree`, ALL 30 rows.\n--                ★ THE SAME GENERATOR AS `pwK`, at a ten-segment tuple\n--                instead of a five-segment one — `stkA?` distinguishes\n--                eight constructors where `pw?` distinguishes two, and\n--                the ONLY thing that changes is the segment map.",
     "stkCK":    "✅ DISCHARGED — `Knot/StkCAgree.stkCK-agree`, ALL 30 rows.\n--                ★★ ITS ⌜Hom⌝ ROW IS THE ONE ROW IN ALL FOUR OF THESE\n--                PROGRAMS THAT OWES ANYTHING.  `stkC? (⌜Hom⌝ C a b) =\n--                stkA? C` is a CROSS-CALL, not a fold, so the method\n--                names the INDEX binder — outermost of its three — and\n--                after the βs that is weakened twice and substituted\n--                twice.  `sub-w²-single` plus `wk-single`, i.e.\n--                `Knot/LookupD`'s countdown at depth 2, and the proof\n--                is then the CALLEE's agreement.\n--                ⇒ the four form a CHAIN (`stkA` → `stkC` → `flat`),\n--                not a mutual block.",
     # ✅ NOT OWED, and each for a stated reason.
@@ -6340,6 +6676,7 @@ if __name__ == "__main__":
     open(os.path.join(out, "StkAAgree.agda"), "w").write(gen_boolagree("stkA"))
     open(os.path.join(out, "StkCAgree.agda"), "w").write(gen_boolagree("stkC"))
     open(os.path.join(out, "FlatAgree.agda"), "w").write(gen_boolagree("flat"))
+    open(os.path.join(out, "PwBodyAgree.agda"), "w").write(gen_pwbodyagree())
     # ⚠⚠ NOT SPLIT, AND THE FIRST ATTEMPT TO SPLIT IT WAS A MISREADING.
     #   The 25-row module was OOM-killed at 234s (and 260s under `-c`), so
     #   it was split like `RedWfA`/`RedWfB`.  ★ THOSE TIMES WERE THE COLD
