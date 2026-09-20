@@ -49,7 +49,10 @@ for f in "$TESTDIR"/*.once; do
   fi
   # Per-test wall-clock cap: a codegen bug can loop forever under qemu.
   # timeout exits 124 on expiry, which surfaces as a FAIL (never a hang).
-  timeout 10 "$QEMU" "$BUILD/$name"; got=$?
+  # D220: `emit` is a REAL SigOp now, so an emitting test writes machine words
+  # to stdout. Capture them next to the build log rather than into the terminal;
+  # this harness asserts the exit code only.
+  timeout 10 "$QEMU" "$BUILD/$name" > "$BUILD/$name.trace" 2>/dev/null; got=$?
   if [ "$got" -eq "$exp" ]; then
     pass=$((pass+1))
   elif [ "$got" -eq 124 ]; then

@@ -39,7 +39,10 @@ for f in "$TESTDIR"/*.once; do
     echo "FAIL(build) $name (expected exit $exp) — see $BUILD/$name.log"
     fail=$((fail+1)); failed+=("$name"); continue
   fi
-  timeout 10 "$QEMU" "$BUILD/$name"; got=$?
+  # D220: `emit` is a REAL SigOp now, so an emitting test writes machine words
+  # to stdout. Capture them next to the build log rather than into the terminal;
+  # this harness asserts the exit code only.
+  timeout 10 "$QEMU" "$BUILD/$name" > "$BUILD/$name.trace" 2>/dev/null; got=$?
   if [ "$got" -eq 124 ]; then
     echo "FAIL $name: TIMEOUT (hang) under qemu-i386, expected exit $exp"
     fail=$((fail+1)); failed+=("$name")
