@@ -145,7 +145,11 @@
 --                `fields D ms C m p = app (app m p) (ihs …)`, and the
 --                inner `Tm-appK m p` is ALREADY the answer, so only the
 --                second argument descends.
---     flatK      ⬜ OWED — agreement with `flat?`.
+--     flatK      ✅ DISCHARGED — `Knot/FlatAgree.flatK-agree`, ALL 30 rows;
+--                `stkCK`'s cross-call shape one link further down the
+--                chain, at `flat? (⌜Hom⌝ c a b) = stkC? c`.  Same
+--                generator, a four-segment map.
+--                ⇒ `⊢ap`'s premise is now object-level AND adequate.
 --     iatConK    ✅ DISCHARGED — `Knot/IConSRep.iatCon-agree`, and it is the
 --                ONE LINE this entry predicted: `sub-agree-ty` over
 --                `iconS-Represents`.  `atCon-agree` is the same line one
@@ -506,7 +510,17 @@
 --                instead of a five-segment one — `stkA?` distinguishes
 --                eight constructors where `pw?` distinguishes two, and
 --                the ONLY thing that changes is the segment map.
---     stkCK      ⬜ OWED — agreement with `stkC?`.
+--     stkCK      ✅ DISCHARGED — `Knot/StkCAgree.stkCK-agree`, ALL 30 rows.
+--                ★★ ITS ⌜Hom⌝ ROW IS THE ONE ROW IN ALL FOUR OF THESE
+--                PROGRAMS THAT OWES ANYTHING.  `stkC? (⌜Hom⌝ C a b) =
+--                stkA? C` is a CROSS-CALL, not a fold, so the method
+--                names the INDEX binder — outermost of its three — and
+--                after the βs that is weakened twice and substituted
+--                twice.  `sub-w²-single` plus `wk-single`, i.e.
+--                `Knot/LookupD`'s countdown at depth 2, and the proof
+--                is then the CALLEE's agreement.
+--                ⇒ the four form a CHAIN (`stkA` → `stkC` → `flat`),
+--                not a mutual block.
 --     sub-head-give ✅ not a program — `ren-head-give`'s twin for the GIVEN
 --                row at the substitution instantiation.
 --     subAtK     ✅ DISCHARGED — `Knot/SubAgreeTie.sub-agree`, ALL 30 `RTm`
