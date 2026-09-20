@@ -24,10 +24,6 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Trust.Knot7 where
 
-import DirectedHoTT.Examples.Knot.RedRows
-import DirectedHoTT.Examples.Knot.RedWfA
-import DirectedHoTT.Examples.Knot.RedWfB
-import DirectedHoTT.Examples.Knot.RenAgree
 import DirectedHoTT.Examples.Knot.RenAgreeTie
 import DirectedHoTT.Examples.Knot.RenAgreeTy
 import DirectedHoTT.Examples.Knot.RenAgreeTyTie
@@ -42,8 +38,13 @@ import DirectedHoTT.Examples.Knot.Sel
 import DirectedHoTT.Examples.Knot.Single
 import DirectedHoTT.Examples.Knot.Sorts
 import DirectedHoTT.Examples.Knot.Stk
+import DirectedHoTT.Examples.Knot.StkAAgree
+import DirectedHoTT.Examples.Knot.StkCAgree
 import DirectedHoTT.Examples.Knot.SubAgree
 import DirectedHoTT.Examples.Knot.SubAgreeRows
 import DirectedHoTT.Examples.Knot.SubAgreeTie
 import DirectedHoTT.Examples.Knot.SubAgreeTyRows
 import DirectedHoTT.Examples.Knot.SubAgreeTyTie
+import DirectedHoTT.Examples.Knot.SubAgreeX
+import DirectedHoTT.Examples.Knot.SubApp
+import DirectedHoTT.Examples.Knot.SubClosed

@@ -421,3 +421,107 @@ effect and it is already in the committed version.
 of that cast changes it. A fix has to make the cast SMALLER — e.g. a
 `⟶*`-level route that never needs `nat7 iinstK` at all — not move it.
 **Reverted; the committed version stands.**
+
+------------------------------------------------------------------------
+## §8 — THE BOOLEAN-PREMISE CLUSTER, CLOSED IN ONE SITTING (2026-09-20)
+
+`pwK`, `stkAK`, `stkCK`, `flatK` — four ledger entries, 120 rows, and the
+whole batch cost less than `iextK` alone did.  Recorded because the
+TRIAGE was right in advance for once, and it is worth knowing why.
+
+**THE TRIAGE.** §6's rule says size an entry by its METHOD BODIES.  These
+four have the two properties that make an `ielim` adequacy cheap, and
+they are exactly the two whose ABSENCE cost `Knot/IhITyAgree` 58 minutes:
+
+| | `IhITyAgree` | these four |
+|---|---|---|
+| motive | DEPENDENT (`iinst` over a 7-substitution stack) | CONSTANT `Nat` |
+| method bodies | mention the index under 7 binders | CLOSED, or the innermost binder |
+| ⇒ per row | a cast needing `nat7 iinstK` | three βs and stop |
+
+A constant motive means `iinst i t Nat` **is** `Nat`, so not one of the
+120 rows carries a cast.  A closed body means the weakening tower is
+ZERO RUNGS.  28 of `pw`'s 30 rows are three βs; 29 of `stkA`'s are.
+
+⚠ AND A CONSTANT MOTIVE IS NOT SUFFICIENT — `occK` has one too, and
+`Knot/OccAgree` is still the biggest generated module in the tree.  The
+difference is that `occ` FOLDS its IH tuple, so every row owes the
+`maxℕ`/`_∨_` reassociation `occSum-red` needs.  These four read ONE slot
+or none.  ⇒ the sharp predicate is **does the row consume its IH tuple**,
+not **is the motive constant**.
+
+**WHAT THE CONTENT ACTUALLY WAS: the SELECTION.**  `Knot/Pw` and
+`Knot/Stk` build segmented tuples — constant runs with explicit
+overrides BETWEEN them, because the overrides sit at rows 19-22, 26 and
+37-40, in the middle of 53, where no `cdTake` prefix reaches.  Reaching
+row k means walking its segment, and the walk mixes two combinators that
+compose DIFFERENTLY:
+
+    methsFrom-past   crosses a constant run — a ⟶* STEP, composed with »
+    sel-there        crosses an explicit slot — a CONGRUENCE, which WRAPS
+
+⇒ `_seg_sel` in `gen-knot.py` walks a declared segment map and emits the
+composition.  `pw` is five segments, `stkA` ten, `stkC` eleven, `flat`
+four; the generator is identical and only the map differs.
+
+**THE ONE ROW THAT OWED ANYTHING.**  `stkC? (⌜Hom⌝ C a b) = stkA? C` and
+`flat? (⌜Hom⌝ c a b) = stkC? c` are CROSS-CALLS, not folds, so their
+methods apply the callee's PROGRAM to the payload's first field.  That
+body names the INDEX binder — `var (vs (vs vz))`, the OUTERMOST of the
+three — so after the βs it has been weakened twice and substituted
+twice: `sub-w²-single` plus `wk-single` on the payload.  A lemma that
+already existed, at `Knot/LookupD`'s depth 2.
+
+⇒ the four form a CHAIN (`stkA` → `stkC` → `flat`), not a mutual block,
+which is why each is its own module and each compiles cheaply.
+
+**METHOD.**  Every shape was proved STANDALONE in a temp module before
+the generator learned to emit it — four selection shapes, three chain
+shapes, then the cross-call row.  Every one went green on the FIRST
+attempt, and the 120 generated rows needed a single fix (a `sel-there`
+dropped in transcription).  `temp-module-dev-cycle`, and the contrast
+with `lookupDK`'s thirteen attempts is the whole argument for it.
+
+------------------------------------------------------------------------
+## §9 — `pwBodyK`/`pwDefault`: SIZED, AND IT IS REUSE (2026-09-20)
+
+Unblocked by §8: the ledger entry said `pwDefault`'s adequacy *"only
+means anything relative to `pwK`'s fold — and `pwK` is itself OWED"*.
+`pwK` is now discharged.
+
+    pwBody (⌜Π⌝ γ δ)     = δ
+    pwBody (⌜Hom⌝ C a b) = ⌜Hom⌝ (pwBody C) (app (w a) vz) (app (w b) vz)
+    pwBody t             = renTm vs t          ← 28 of the 30 rows
+
+★★★ THE DEFAULT ROW IS A PROOF WE ALREADY HAVE.  `pwDefault k`'s body is
+
+    app (app (renTmK i (icon k p)) (nsuc (snd i))) (vsRenK (snd i))
+
+and `Knot/RenTm.renTmAtK s dd m rn t = app (app (renTmK (pair s dd) t) m) rn`
+— so at `i = pair sTm ⟨len Γ⟩` the row's subject IS `renTmAtK`'s, and
+
+    Knot/RenAgreeTie.ren-agree : RepresentsR ρ r → (t : RTm Γ) →
+      renTmAtK sTm ⌈Γ⌉ ⌈Δ⌉ r ⌈t⌉ ⟶* ⌈ renTm ρ t ⌉        ✅ DISCHARGED
+    Knot/SubSpec.wk-Represents : RepresentsR vs (vsRenK ⌈len Γ⌉)  ✅ EXISTS
+
+closes all 28 in one lemma.  ⇒ §6's rule again, and this is the largest
+instance of it so far: 28 rows for two names.
+
+**WHAT IS ACTUALLY OWED.**
+  · the tower on the default row — `i` occurs THREE times in the body,
+    but at ONE depth, so it is one `sub-w²-single` inside one `cong₂`,
+    exactly `stkCHom`'s cast;
+  · `snd i ⟶ ⟨len Γ⟩` by `βsnd`, under two congruences (the depth
+    argument and `vsRenK`'s), before `ren-agree` applies;
+  · row 20 (`pwPi`) — `pwBody (⌜Π⌝ γ δ) = δ` is a payload projection;
+  · row 22 (`pwHom`) — the IH plus `⌜Hom⌝`'s two endpoint terms
+    `app (w a) vz`, whose `w` is `renTm vs` AGAIN and so is `ren-agree`
+    a third time.
+
+⚠ THE INDEX MUST BE PINNED HERE, unlike §8's four: `pwDefault` READS
+`snd i`, so a quantified index leaves the depth stuck.  §7's warning
+(*"a row that PINNED its index could never match a child"*) does not
+apply — it was about `occ`, whose children sit at DIFFERENT depths.
+`⌜Hom⌝`'s three fields are all at the AMBIENT depth, so the child's
+index `subTm (isingle i) (pair sTm (snd (var vz)))` REDUCES back to the
+pinned form, and `⟶*-ielimⁱ` is where that happens.
