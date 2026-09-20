@@ -148,20 +148,46 @@ if sys.argv[1:2] == ["--vs-lib"]:
 if sys.argv[1:2] == ["--families"]:
     import collections
     MIN = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+    # ⚠⚠ BUCKET, OR THIS IS 4000² ANTI-UNIFICATIONS.  The first version
+    #   shipped unbucketed and was killed at 600s — `--vs-lib` had the
+    #   bucketing and this mode did not, which is the hazard of two
+    #   modes sharing a matcher but not its index.
+    import collections as _c
+    _df = _c.Counter()
+    for _n, _t, _m, _b in ALL: _df.update(set(toks(_t)))
+    _NTOT = len(ALL)
+    # ⚠ STRICTER THAN `--vs-lib`'s, and it has to be.  That mode gets
+    #   free signal from the Lib/ vs non-Lib/ split; this one compares
+    #   everything to everything, so structural vocabulary leaks through.
+    #   At df<=66 the top "family" was 39 method typings sharing
+    #   `imethTy KnotD IPair` — one SHAPE, 39 different theorems.
+    def rare(t):
+        return {w for w in toks(t) if _df[w] <= 5 and len(w) > 2}
+    def rel(t): return "≡" if "≡" in t else ("⟶*" if "⟶*" in t else "·")
+    def key(t): return (rel(t), t.count("→") // 2)
+    buck = {}
+    for d in ALL: buck.setdefault(key(d[1]), []).append(d)
     seen, fams = set(), []
     for nm, ty, mod, _nb in ALL:
         if nm in seen or len(ty) < 30: continue
-        grp = [(nm, mod)]
-        for n2, t2, m2, _n2b in ALL:
+        grp, rt = [(nm, mod)], rare(ty)
+        if not rt: continue
+        for n2, t2, m2, _n2b in buck.get(key(ty), ()):
             if n2 == nm or n2 in seen: continue
+            if not (rt & rare(t2)): continue
             h, r = holes(toks(ty), toks(t2))
             if h <= 3 and r > 0.6: grp.append((n2, m2)); seen.add(n2)
         if len(grp) >= MIN:
             seen.add(nm); fams.append((len({m for _, m in grp}), len(grp), nm, ty, grp))
     fams.sort(reverse=True)
-    print("== FAMILIES: one theorem, written N times, across M modules ==")
-    print("   (sorted by MODULE spread — same-module families are usually")
-    print("    a generated block, cross-module ones are the real finding)\n")
+    print("== SHAPE FAMILIES — candidates for GENERATION, not deletion ==")
+    print("   ⚠ A FAMILY HERE IS NOT A DUPLICATE.  `--vs-lib` finds proofs")
+    print("     a library lemma would have closed; this finds N theorems")
+    print("     sharing ONE shape, which is a GENERATOR opportunity —")
+    print("     `Variance`'s 22 `?-red` and 15 `?-ren` lemmas are 22 and 15")
+    print("     genuinely different predicates, not copies.")
+    print("   (sorted by module spread: same-module families are usually")
+    print("    already a generated block)\n")
     for M, N, nm, ty, grp in fams[:10]:
         if M < 2: continue
         print("%2d module(s), %2d member(s)   %s" % (M, N, ty[:72]))
