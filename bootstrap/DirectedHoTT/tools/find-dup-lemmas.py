@@ -69,15 +69,16 @@ def decls():
                 # ★ AND THE PROOF BODY — the SIZE is what makes a hit
                 #   interesting: a 1-line proof that matches a library
                 #   lemma is fine, a 20-line one is the finding.
-                nb, seenhd = 0, False
+                nb, seenhd, btxt = 0, False, []
                 for nx in lines[k+1:]:
                     if nx.startswith(m.group(1) + " ") or nx.startswith(m.group(1) + "\n"):
                         seenhd = True
                     if seenhd and nx[:1].strip() and not nx.startswith(m.group(1)):
                         break
-                    if seenhd and nx.strip(): nb += 1
+                    if seenhd and nx.strip(): nb += 1; btxt.append(nx)
                     if nb > 400: break
-                yield m.group(1), re.sub(r"\s+", " ", " ".join(body)).strip(), p[2:], nb
+                yield (m.group(1), re.sub(r"\s+", " ", " ".join(body)).strip(),
+                       p[2:], nb, " ".join(btxt))
 
 def toks(s): return re.findall(r"[A-Za-z0-9₀-₉⁰-⁹'ᵀ_\-]+|\S", s)
 
@@ -88,6 +89,89 @@ def holes(a, b):
     return n, sm.ratio()
 
 ALL = list(decls())
+if sys.argv[1:2] == ["--could-simplify"]:
+    # ★★★ THE LIBRARY AUTHOR'S QUESTION, AND IT IS THE USEFUL ONE:
+    #   "does THIS lemma prove something that could have simplified
+    #    these proofs?"
+    #
+    # ⚠ THE INVERSE OF `--vs-lib`, AND NOT A COSMETIC ONE.  With the
+    #   lemma FIXED this is n comparisons, not n², so it can afford to
+    #   be generous — and it catches the case `--vs-lib` structurally
+    #   cannot: a lemma that belonged as a STEP INSIDE a proof,
+    #   shortening it, rather than one that replaces the proof whole.
+    #   That is the common case.
+    #
+    # ★ RECALL OVER PRECISION, DELIBERATELY.  No filter — every
+    #   candidate is reported, RANKED.  A missed lemma is invisible
+    #   forever; a false positive costs a reader thirty seconds.
+    #   ⇒ the IDF weight is a SORT KEY here, never a gate.
+    #
+    # THE SIGNAL: a proof that manipulates exactly the constants this
+    # lemma is about, and never calls it.
+    import collections as _c
+    L = sys.argv[2]; MINB = int(sys.argv[3]) if len(sys.argv) > 3 else 3
+    lem = [d for d in ALL if d[0] == L]
+    if not lem: sys.exit("no declaration named %s" % L)
+    _, lty, lmod, _, _ = lem[0]
+    _df = _c.Counter()
+    for _n, _t, _m, _b, _x in ALL: _df.update(set(toks(_t)))
+    N = len(ALL)
+    import math
+    # the lemma's vocabulary, each weighted by how DISTINCTIVE it is
+    voc = {w: math.log(N / max(1, _df[w]))
+           for w in set(toks(lty)) if len(w) > 2 and not w[0].isupper()}
+
+    # ★★ THE STRONG SIGNAL IS THE LEMMA'S **LHS SHAPE**, NOT ITS
+    #   VOCABULARY.  Ranking on vocabulary alone put every 100-line
+    #   substitution lemma at the top: of course a big proof about
+    #   substitution mentions `subTm`, `renTm` and `single`.  That is a
+    #   statement about proof LENGTH, not about whether this lemma
+    #   applies.
+    #   ⇒ take the lemma's left-hand side, turn its identifiers into
+    #     literals and everything else into gaps, and look for THAT in
+    #     the proof text.  A proof that writes `subTm (single v)
+    #     (renTm vs t)` by hand is re-deriving `wk-single` in place.
+    # ⚠ VOCABULARY IS KEPT AS A WEAK TIER, not dropped — recall first.
+    #   A shape hit outranks any amount of vocabulary; vocabulary-only
+    #   hits are still reported, below.
+    lhs = re.split(r"≡|⟶\*", lty.split("→")[-1])[0].strip()
+    idents = [w for w in re.findall(r"[A-Za-zΓΔΘ_][A-Za-z0-9₀-₉'ᵀ\-]*", lhs)
+              if len(w) > 2 and _df[w] < N // 3]
+    shape = re.compile(r"[\s\S]{0,40}?".join(map(re.escape, idents[:4]))) \
+            if len(idents) >= 2 else None
+    hits = []
+    for nm, ty, mod, nb, bt in ALL:
+        if nm == L or nb < MINB: continue
+        if re.search(r"(?<![A-Za-z0-9])" + re.escape(L) + r"(?![A-Za-z0-9])", bt):
+            continue                      # already calls it
+        btk = set(toks(bt))
+        sh = {w for w in voc if w in btk}
+        if not sh: continue
+        nshape = len(shape.findall(bt)) if shape else 0
+        # ⚠ LENGTH IS PAYOFF, NOT LIKELIHOOD.  It is shown, not
+        #   multiplied in — otherwise the longest proof always wins.
+        score = nshape * 1000 + sum(voc[w] for w in sh)
+        closes = holes(toks(ty), toks(lty))[0] <= 2
+        hits.append((-score, -nb, nm, mod,
+                     sorted(sh, key=lambda w: -voc[w])[:4], closes, nshape))
+    hits.sort()
+    print("== COULD `%s` HAVE SIMPLIFIED THESE?  (%s)" % (L, lmod))
+    print("   %s" % lty[:96])
+    print("   %d proof(s) manipulate its vocabulary and never call it."
+          % len(hits))
+    print("   ⚠ RANKED, NOT FILTERED — recall first.  Triage from the top;")
+    print("     the tail is expected to be noise, and that is the trade.\n")
+    nsh = sum(1 for h in hits if h[6])
+    print("   ★ %d of them WRITE ITS LEFT-HAND SIDE BY HAND — those first.\n"
+          % nsh)
+    print("   %-4s %-5s %-24s %-28s %s" % ("LHS", "lines", "proof", "in", "shared vocabulary"))
+    for sc, nnb, nm, mod, sh, closes, nshape in hits[:25]:
+        print("   %-4s %-5d %-24s %-28s %s%s"
+              % (("×%d" % nshape) if nshape else "-", -nnb, nm[:24], mod[:28],
+                 ",".join(sh),
+                 "   ★ SAME TYPE — may close it outright" if closes else ""))
+    sys.exit(0)
+
 if sys.argv[1:2] == ["--vs-lib"]:
     # ★★★ "WHICH PROOFS WOULD A LIBRARY CALL HAVE CLOSED?"
     #   target  = every declaration OUTSIDE Lib/ whose proof is more than
@@ -110,7 +194,7 @@ if sys.argv[1:2] == ["--vs-lib"]:
     #     and context names, which every derivation has.
     import collections as _c
     _df = _c.Counter()
-    for _n, _t, _m, _b in ALL: _df.update(set(toks(_t)))
+    for _n, _t, _m, _b, _x in ALL: _df.update(set(toks(_t)))
     _NTOT = len(ALL)
     def rare(t):
         return {w for w in toks(t)
@@ -123,9 +207,9 @@ if sys.argv[1:2] == ["--vs-lib"]:
     buck = {}
     for d in lib: buck.setdefault(key(d[1]), []).append(d)
     hits = []
-    for nm, ty, mod, nb in tgt_:
+    for nm, ty, mod, nb, _bt in tgt_:
         if nb < MINB or len(ty) < 30: continue
-        for ln, lt, lm, _ in buck.get(key(ty), ()):
+        for ln, lt, lm, _, _ in buck.get(key(ty), ()):
             h, r = holes(toks(ty), toks(lt))
             if h > K or r <= 0.62: continue
             sh = rare(ty) & rare(lt)
@@ -154,7 +238,7 @@ if sys.argv[1:2] == ["--families"]:
     #   modes sharing a matcher but not its index.
     import collections as _c
     _df = _c.Counter()
-    for _n, _t, _m, _b in ALL: _df.update(set(toks(_t)))
+    for _n, _t, _m, _b, _x in ALL: _df.update(set(toks(_t)))
     _NTOT = len(ALL)
     # ⚠ STRICTER THAN `--vs-lib`'s, and it has to be.  That mode gets
     #   free signal from the Lib/ vs non-Lib/ split; this one compares
@@ -168,11 +252,11 @@ if sys.argv[1:2] == ["--families"]:
     buck = {}
     for d in ALL: buck.setdefault(key(d[1]), []).append(d)
     seen, fams = set(), []
-    for nm, ty, mod, _nb in ALL:
+    for nm, ty, mod, _nb, _bt in ALL:
         if nm in seen or len(ty) < 30: continue
         grp, rt = [(nm, mod)], rare(ty)
         if not rt: continue
-        for n2, t2, m2, _n2b in buck.get(key(ty), ()):
+        for n2, t2, m2, _n2b, _b2 in buck.get(key(ty), ()):
             if n2 == nm or n2 in seen: continue
             if not (rt & rare(t2)): continue
             h, r = holes(toks(ty), toks(t2))
