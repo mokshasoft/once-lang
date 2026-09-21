@@ -1,4 +1,6 @@
 -- Layer 4 test: direct id application (no top-level user fn)
+--
+-- Expected: exit code 42.
 import I.Linux.Syscalls as S
 
 main : IO Unit

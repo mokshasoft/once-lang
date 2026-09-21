@@ -1,20 +1,28 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson
 
--- Float literal regression (plan 0.71 F7). Expected exit code 3
+-- D220: the float literal is USED — passed to `emitF`, and the TRACE is what
+-- this test asserts.
 --
--- The literal is USED — passed to `emitF` — so this asks nothing about dead
--- code elimination. The SigOp's runtime is a nop; the observable is that the
--- process REACHES its exit code instead of trapping.
+-- It used to end `main = let _ = emitF@T 0.125 in exit@S 3`, which binds a
+-- suspension and never forces it. It emitted nothing and compiled
+-- byte-identical to a bare `main = exit@S 3`, so its header's claim that
+-- "the literal is USED" was false and the D109 `ud2` regression it was written
+-- to catch could not have been caught: no float constant reached `.text` at all.
 --
--- This is the test that would have caught D109 on the day float literals
--- landed: under the pre-0.66 x86-32 lowering a float constant compiled to
--- `ud2`, so on that target this program died instead of exiting 3. It runs
--- on x86-64, x86-32 and riscv64, and 0.125 is exact at every width — four
--- significand bits suffice, so it stays valid on a narrower target too.
+-- Two shape constraints, both load-bearing (FloatEmitSpec.hs:105-118):
+--   * the effect must sit on `main`'s composition chain to run at all;
+--   * the literal needs a SIGNATURE-CARRYING binding — nested inside another
+--     `compose` it lands in an inference position, and a float literal has no
+--     inferable type (a pre-existing frontend gap).
+--
+-- Expected: exit code 3.
 
 import I.Linux.Syscalls as S
-import I.Test.Emit as T
+import I.Test.Emit as E
+
+emitLit : IO Unit
+emitLit = compose emitF@E (\_ -> 0.125)
 
 main : IO Unit
-main = let _ = emitF@T 0.125 in exit@S 3
+main = compose exit@S (compose (\_ -> 3) emitLit)
