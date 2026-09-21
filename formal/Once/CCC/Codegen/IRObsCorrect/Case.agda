@@ -768,3 +768,45 @@ module CaseC {FS : FrameSemantics} where
       at-end-u1 : fpc u1 ≡ length (emitted n l (case f g)) + base
       at-end-u1 = sym (cong (_+ base) len-eq)
 
+
+      ------------------------------------------------------------
+      -- …and the same preservation argument, one row longer.
+      ------------------------------------------------------------
+      mem-P : ∀ (lc : ValueLocation FS) → MemOps.readLoc (floc P.i4) lc ≡ MemOps.readLoc s lc
+      mem-P lc = trans (mem-untouched mov-to-input (floc P.i3) (falloc P.i3) lc
+                          nhw-mov-to-input refl)
+                       (mem-untouched load-indirect-suc s alloc lc
+                          nhw-load-indirect-suc refl)
+
+      mem-pres : ∀ (loc : ValueLocation FS)
+               → BeforeFrontier (record alloc { next-slot = n }) loc
+               → MemOps.readLoc (floc u1) loc ≡ MemOps.readLoc s loc
+      mem-pres loc bf = trans (vr-mem-pres vf loc bf) (mem-P loc)
+
+      bf-mono-c : ∀ (m : ℕ) (loc : ValueLocation FS)
+                → BeforeFrontier (record alloc { next-slot = m }) loc
+                → BeforeFrontier (record (falloc u1) { next-slot = m }) loc
+      bf-mono-c m loc bf = VR.bf-mono vf m loc bf
+
+      ev-chain : chain-events chain ≡ chain-events (VR.run vf)
+      ev-chain =
+        trans (chain-events-++ (P.run-i cond) (FlatSteps-++ chainF joinStep))
+          (trans (cong (_++ chain-events (FlatSteps-++ chainF joinStep)) (P.ev-run-i cond))
+            (trans (chain-events-++ chainF joinStep)
+              (trans (cong₂ _++_ (chain-events-subst-start (sym handF) (VR.run vf))
+                                 (chain-events-subst-end _ _))
+                     (++-idʳ (chain-events (VR.run vf))))))
+
+      witness : MachineRefinesObsF prog base n l (case f g) (inj₁ Av) s alloc cl k
+      witness = record
+        { value-realized =
+            realized (4 + (VR.steps vf + 1)) u1 (VR.out-mode vf) (VR.cont-alloc vf)
+                     chain (VR.live vf) at-end-u1 (VR.no-ret vf) (VR.no-link vf)
+                     (VR.place vf)
+                     (λ fr j bf → mem-pres (AtStack fr j) bf)
+                     (λ hl bf → mem-pres (AtDynamic hl) bf)
+                     (VR.frame-pres vf)
+                     bf-mono-c
+        ; traces-agree =
+            trans (cong (take k) ev-chain) (MachineRefinesObsF.traces-agree mrf)
+        }
