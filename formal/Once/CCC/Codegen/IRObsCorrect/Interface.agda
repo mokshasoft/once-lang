@@ -178,6 +178,21 @@ module Core {FS : FrameSemantics} where
   SpanAt prog base t =
     ∀ (k : ℕ) (i : AbstractInstr) → fetch t k ≡ just i → fetch prog (k + base) ≡ just i
 
+  -- plan 0.88: `SpanAt`'s DUAL, for the other way a fragment addresses itself.
+  --
+  -- `SpanAt` says the program FETCHES what the fragment's own text does. A
+  -- branch does not fetch, it RESOLVES: `c-branch-tag-zero (ℓ o l)` becomes
+  -- `do-jump (find-label prog (ℓ o l))`, a scan of the WHOLE program. Nothing
+  -- among the premises said that scan lands inside the fragment, so `case` was
+  -- not merely unproved — its two jumps had no stated destination, and an
+  -- earlier `c-label (ℓ o l)` anywhere in `prog` would have taken them.
+  --
+  -- Stated in `SpanAt`'s own shape: whatever the fragment's text resolves for
+  -- itself, the program resolves at the fragment's offset.
+  LabelsAt : AbstractTrace → ℕ → AbstractTrace → Set
+  LabelsAt prog base t =
+    ∀ (m : LabelId) (j : ℕ) → find-label t m ≡ just j → find-label prog m ≡ just (j + base)
+
   -- plan 0.91 S2 — THE PLACEMENT PREMISE, and the thing `block-runs` was
   -- assuming (D213 refuted it: a MEMORY fact was being asked to underwrite a
   -- PROGRAM fact). `BlockAt prog blk` says the program actually IMPLEMENTS the
@@ -630,6 +645,9 @@ module Core {FS : FrameSemantics} where
       -- a callee lives. This premise is about the fragment, and `curry`/`Ana`
       -- can DISCHARGE it for the blocks they mint.
       BlocksAt prog (blocks n l ir) →
+      -- plan 0.88: …and the program RESOLVES the labels this fragment defines
+      -- where the fragment puts them. See `LabelsAt`.
+      LabelsAt prog base (emitted n l ir) →
     -- D179 (top-down): the input ranges over the MONADIC domain. While it was
     -- `⟦ A ⟧` (pure), `inject x` made every closure trace-free and every ν a
     -- trace-free suspension — so `apply` could never observe a closure emit and

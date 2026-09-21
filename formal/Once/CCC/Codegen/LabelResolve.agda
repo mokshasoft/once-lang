@@ -32,7 +32,7 @@ open import Once.CanonicalName using (CanonicalName)
 module Once.CCC.Codegen.LabelResolve (o : CanonicalName) where
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; suc; _+_)
+open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.Nat using (_≤_; _<_)
@@ -40,7 +40,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.CCC.Label using (LabelId; idx; _≡ᵇᴵ_; ≡ᵇᴵ-true; ≡ᵇᴵ-refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -52,7 +52,8 @@ open import Once.CCC.Codegen.LabelScope o using (once-label-of; LabelIn; LabelsI
 
 module Resolve {FS : FrameSemantics} where
   open FlatMachine {FS}
-    using (find-label; fl-go; fl-at; fl-label-match; label-of?; fl-go-++-miss)
+    using (find-label; fl-go; fl-at; fl-label-match; label-of?; fl-go-++-miss;
+           fetch; find-label-sound)
 
   ------------------------------------------------------------------------
   -- The scan HITS a label it is standing on.
@@ -144,3 +145,30 @@ module Resolve {FS : FrameSemantics} where
                   → NoLabel ℓ t
   noLabel-outside ℓ t li out =
     All-map (λ {i} p eq → out (in-range p ℓ (label-of?-once i ℓ eq))) li
+
+  ------------------------------------------------------------------------
+  -- plan 0.88: THE PLUMBING HYPOTHESIS `LabelsAt` NEEDS.
+  --
+  -- A composite hands each component the program's resolution of ITS labels.
+  -- `FlatStepsAPI` already relocates the scan (`fl-go-prefix`, `fl-go-skip`,
+  -- `fl-go-shift`); what was missing is the hypothesis those need about the
+  -- SIBLING — that a label one fragment resolves lies in that fragment's
+  -- window, so `noLabel-outside` applies to the other.
+  ------------------------------------------------------------------------
+
+  -- A found label is one the trace MENTIONS, so the fragment's window applies
+  -- to it. This is what turns "`m` is resolved by `gt`" into "`idx m` is in
+  -- `g`'s window", the hypothesis `noLabel-outside` wants about the sibling.
+  just-injI : ∀ {a b : AbstractInstr} → (just a) ≡ (just b) → a ≡ b
+  just-injI refl = refl
+
+  all-fetch : ∀ {P : AbstractInstr → Set} (t : AbstractTrace) (j : ℕ) (i : AbstractInstr)
+            → All P t → fetch t j ≡ just i → P i
+  all-fetch {P} (x ∷ xs) zero    i (px ∷ _)  eq = subst P (just-injI eq) px
+  all-fetch     (x ∷ xs) (suc j) i (_  ∷ ps) eq = all-fetch xs j i ps eq
+
+  found-in-window : ∀ {lo hi} (t : AbstractTrace) (m : LabelId) (j : ℕ)
+                  → find-label t m ≡ just j → LabelsIn lo hi t
+                  → (lo ≤ idx m) × (idx m < hi)
+  found-in-window t m j eq li =
+    in-range (all-fetch t j (instr-ctrl (c-label m)) li (find-label-sound t m j eq)) m refl

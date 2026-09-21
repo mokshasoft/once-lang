@@ -13,6 +13,10 @@ open import Once.CanonicalName using (CanonicalName)
 module Once.CCC.Codegen.IRObsCorrect.Comp (o : CanonicalName) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o
+open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
+open import Once.CCC.Codegen.LabelScope o using (labels-in)
+open import Once.CCC.Label using (idx)
+open import Data.Nat.Properties using (1+n≰n)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -28,6 +32,8 @@ module CompC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
+  open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel)
+  open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
 
   -- THE composition step. `emitted n l (g ∘ f) = ft ++ mov-to-input ∷ gt`: run
   -- `f` (result in `Output`), `mov-to-input` (`Input1 := Output`), run `g`.
@@ -157,6 +163,54 @@ module CompC {FS : FrameSemantics} where
                 → BlocksAt prog (blocks n l f)
   comp-blocks-f g f prog n l bl = proj₁ (++⁻ (blocks n l f) bl)
 
+  -- plan 0.88: THE LABEL CHANNEL SPLITS TOO, and unlike the block channel it
+  -- is not a `++⁻`. `f`'s labels resolve inside its own PREFIX, so the
+  -- composite's resolution of them is the same scan (`label-prefix`); `g`'s
+  -- sit past the bridge, so the scan must first MISS `ft` — and that is where
+  -- the windows are spent. A label `gt` resolves is in `g`'s window `[l1,l2)`
+  -- by `found-in-window`, and `f`'s labels are all below `l1`, so
+  -- `noLabel-outside` applies.
+  comp-labels-f : ∀ {A B C} (g : IR B C) (f : IR A B) (prog : AbstractTrace) (base n l : ℕ)
+                → LabelsAt prog base (emitted n l (g ∘ f))
+                → LabelsAt prog base (emitted n l f)
+  comp-labels-f g f prog base n l la m j eq =
+    la m j (fl-go-prefix (emitted n l f)
+              (mov-to-input ∷ emitted (proj₁ (ir-to-trace' n l f))
+                                      (proj₁ (proj₂ (ir-to-trace' n l f))) g)
+              m 0 j eq)
+
+  comp-labels-g : ∀ {A B C} (g : IR B C) (f : IR A B) (prog : AbstractTrace) (base n l : ℕ)
+                → LabelsAt prog base (emitted n l (g ∘ f))
+                → LabelsAt prog (suc (length (emitted n l f) + base))
+                          (emitted (proj₁ (ir-to-trace' n l f))
+                                   (proj₁ (proj₂ (ir-to-trace' n l f))) g)
+  comp-labels-g {A} {B} {C} g f prog base n l la m j eq =
+    subst (λ z → find-label prog m ≡ just z) assoc
+          (la m (j + suc (length ft)) scan)
+    where
+      ft = emitted n l f
+      n1 = proj₁ (ir-to-trace' n l f)
+      l1 = proj₁ (proj₂ (ir-to-trace' n l f))
+      gt = emitted n1 l1 g
+
+      -- `m` is one of `g`'s, so it is at or above `l1`…
+      inW : l1 ≤ idx m
+      inW = proj₁ (found-in-window gt m j eq (labels-in g n1 l1))
+
+      -- …and `f`'s are all below `l1`, so the scan passes `ft` untouched.
+      noF : NoLabel m ft
+      noF = noLabel-outside m ft (labels-in f n l)
+              (λ w → 1+n≰n (≤-trans (proj₂ w) inW))
+
+      shiftEq : fl-go gt m (0 + suc (length ft)) ≡ just (j + suc (length ft))
+      shiftEq = trans (fl-go-shift gt m (suc (length ft)) 0) (cong (mmap (_+ suc (length ft))) eq)
+
+      scan : find-label (ft ++ mov-to-input ∷ gt) m ≡ just (j + suc (length ft))
+      scan = trans (fl-go-skip ft (mov-to-input ∷ gt) m 0 noF) shiftEq
+
+      assoc : (j + suc (length ft)) + base ≡ j + suc (length ft + base)
+      assoc = +-assoc j (suc (length ft)) base
+
   comp-blocks-g : ∀ {A B C} (g : IR B C) (f : IR A B) (prog : AbstractTrace) (n l : ℕ)
                 → BlocksAt prog (blocks n l (g ∘ f))
                 → BlocksAt prog (blocks (proj₁ (ir-to-trace' n l f))
@@ -184,9 +238,11 @@ module CompC {FS : FrameSemantics} where
     -- plan 0.91 S2: and the program implements the composite's blocks — which
     -- are exactly `f`'s followed by `g`'s.
     → BlocksAt prog (blocks n l (g ∘ f))
+    -- plan 0.88: …and the program's resolution of the composite's labels.
+    → LabelsAt prog base (emitted n l (g ∘ f))
     → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
     → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k ns ss cr span bl ihg mf =
+  comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k ns ss cr span bl la ihg mf =
     go (MachineRefinesObsF.value-realized mf) (MachineRefinesObsF.traces-agree mf)
     where
       module VR = ValueRealized
@@ -270,7 +326,8 @@ module CompC {FS : FrameSemantics} where
           mg : MachineRefinesObsF prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
                                   (floc fsM) (falloc fsM) (fclosure fsM) kg
           mg = ihg n1 l1 prog base' ss cr span-g
-                   (comp-blocks-g g f prog n l bl) mOutf (TM.valueT (evalᴰ f x) k)
+                   (comp-blocks-g g f prog n l bl)
+                   (comp-labels-g g f prog base n l la) mOutf (TM.valueT (evalᴰ f x) k)
                    (floc fsM) (falloc fsM) (fclosure fsM) nsG liveM inputM kg
 
           vg : ValueRealized prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
@@ -390,18 +447,20 @@ module CompC {FS : FrameSemantics} where
             → BlockRuns prog
             → SpanAt prog base (emitted n l (g ∘ f))
             → BlocksAt prog (blocks n l (g ∘ f))
+            → LabelsAt prog base (emitted n l (g ∘ f))
             → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
             → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-  comp-step prog base n l k ns ss cr span bl ihg mf =
-    comp-value-realized-of prog base n l k ns ss cr span bl ihg mf
+  comp-step prog base n l k ns ss cr span bl la ihg mf =
+    comp-value-realized-of prog base n l k ns ss cr span bl la ihg mf
 
   comp-obs-correct : ∀ {A B C} {g : IR B C} {f : IR A B}
                    → IRObsCorrectF g → IRObsCorrectF f → IRObsCorrectF (g ∘ f)
-  comp-obs-correct {g = g} {f} ihg ihf n l prog base ss cr span bl mIn x s alloc cl ns nh inp k =
-    comp-step prog base n l k ns ss cr span bl ihg
+  comp-obs-correct {g = g} {f} ihg ihf n l prog base ss cr span bl la mIn x s alloc cl ns nh inp k =
+    comp-step prog base n l k ns ss cr span bl la ihg
       (ihf n l prog base ss cr
            (comp-span-f g f prog base n l span)
-           (comp-blocks-f g f prog n l bl) mIn x s alloc cl ns nh inp k)
+           (comp-blocks-f g f prog n l bl)
+           (comp-labels-f g f prog base n l la) mIn x s alloc cl ns nh inp k)
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
   -- its own clause and its own named obligation, in `Once.IR`'s order — so a

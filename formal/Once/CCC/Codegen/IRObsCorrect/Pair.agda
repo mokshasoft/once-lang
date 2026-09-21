@@ -23,6 +23,10 @@ open import Once.CanonicalName using (CanonicalName)
 module Once.CCC.Codegen.IRObsCorrect.Pair (o : CanonicalName) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o
+open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
+open import Once.CCC.Codegen.LabelScope o using (labels-in)
+open import Once.CCC.Label using (idx)
+open import Data.Nat.Properties using (1+n≰n)
 open import Data.Nat using (s≤s)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
@@ -41,6 +45,8 @@ module PairC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
+  open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
+  open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel)
 
   ----------------------------------------------------------------------
   -- THE KEYSTONE: the backup slot survives `f`'s run.
@@ -217,6 +223,52 @@ module PairC {FS : FrameSemantics} where
     -- `g`'s span: past the prologue, `f`'s trace and the two mid rows. The
     -- offset is `2 + length ft + 2`, and the index shuffle is the same one,
     -- applied at that depth.
+    -- plan 0.88: the LABEL channel, at the same two offsets. `f` resolves its
+    -- own labels in a prefix (`label-prefix`); `g`'s sit past `ft` and the two
+    -- mid rows, so the scan skips `ft` — which needs `NoLabel`, and that is the
+    -- window argument: a label `gt` resolves is at or above `l1`, and every
+    -- label of `ft` is below it.
+    labels-f : ∀ (prog : AbstractTrace) (base : ℕ)
+             → LabelsAt prog base (emitted n l ⟨ f , g ⟩)
+             → LabelsAt prog (suc (suc base)) ft
+    labels-f prog base la m j eq =
+      subst (λ z → find-label prog m ≡ just z) (+-assoc j 2 base)
+            (la m (j + 2) scan)
+      where
+        scan : find-label (emitted n l ⟨ f , g ⟩) m ≡ just (j + 2)
+        scan = fl-go-prefix ft (mid ++ gt ++ (store-at-slot snd-stash ∷ tail)) m 2 (j + 2)
+                 (trans (fl-go-shift ft m 2 0) (cong (mmap (_+ 2)) eq))
+
+    labels-g : ∀ (prog : AbstractTrace) (base : ℕ)
+             → LabelsAt prog base (emitted n l ⟨ f , g ⟩)
+             → LabelsAt prog (suc (suc (length ft + suc (suc base)))) gt
+    labels-g prog base la m j eq =
+      subst (λ z → find-label prog m ≡ just z) arith (la m (j + gbase) scan)
+      where
+        gbase : ℕ
+        gbase = suc (suc (2 + length ft))
+
+        post : AbstractTrace
+        post = store-at-slot snd-stash ∷ tail
+
+        inW : l1 ≤ idx m
+        inW = proj₁ (found-in-window gt m j eq (labels-in g n1 l1))
+
+        noF : NoLabel m ft
+        noF = noLabel-outside m ft (labels-in f f-start l)
+                (λ w → 1+n≰n (≤-trans (proj₂ w) inW))
+
+        scan : find-label (emitted n l ⟨ f , g ⟩) m ≡ just (j + gbase)
+        scan = trans (fl-go-skip ft (mid ++ gt ++ post) m 2 noF)
+                     (fl-go-prefix gt post m gbase (j + gbase)
+                        (trans (fl-go-shift gt m gbase 0) (cong (mmap (_+ gbase)) eq)))
+
+        arith : (j + gbase) + base ≡ j + suc (suc (length ft + suc (suc base)))
+        arith = trans (+-assoc j gbase base)
+                      (cong (j +_) (cong (λ z → suc (suc z))
+                        (trans (cong suc (sym (+-suc (length ft) base)))
+                               (sym (+-suc (length ft) (suc base))))))
+
     span-g : ∀ (prog : AbstractTrace) (base : ℕ)
            → SpanAt prog base (emitted n l ⟨ f , g ⟩)
            → SpanAt prog (suc (suc (length ft + suc (suc base)))) gt

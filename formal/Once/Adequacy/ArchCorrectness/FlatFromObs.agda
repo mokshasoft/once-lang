@@ -232,6 +232,14 @@ entry-span ir k i eq =
   subst (λ m → fetch (ir-to-trace ir) m ≡ just i) (sym (+-identityʳ k))
         (fetch-++-left (emitted 0 0 ir) _ k i eq)
 
+-- plan 0.88: …and its LABEL half, which at the entry is the easy end of
+-- `LabelsAt`: the entry trace is a PREFIX of the linked image, so a scan that
+-- resolves inside it never reaches the `c-ret` or the block layouts.
+entry-labels : (ir : IR Unit Unit) → LabelsAt (ir-to-trace ir) 0 (emitted 0 0 ir)
+entry-labels ir m j eq =
+  subst (λ z → find-label (ir-to-trace ir) m ≡ just z) (sym (+-identityʳ j))
+        (fl-go-prefix (emitted 0 0 ir) _ m 0 j eq)
+
 -- D180: …AT AN OBSERVATION DEPTH. The obligation is depth-indexed (one run per
 -- depth, D058's shape), so the entry witness is too.
 ------------------------------------------------------------------------
@@ -387,7 +395,7 @@ entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
                   (entry-alloc (ir-stack-budget ir)) (SV-Tag 0) k
 entry-witness ir ioc brs k =
   ioc 0 0 (ir-to-trace ir) 0 (ir-to-trace-slot-stable ir)
-      (brs ir) (entry-span ir) (entry-blocks ir)
+      (brs ir) (entry-span ir) (entry-blocks ir) (entry-labels ir)
       Stack tt entry-s (entry-alloc (ir-stack-budget ir)) (SV-Tag 0)
       (entry-ns (ir-stack-budget ir)) entry-nh
       -- D153: ONE residence premise. `main : IR Unit Unit`, so its input has

@@ -340,7 +340,7 @@ module TwoCellC {FS : FrameSemantics} where
            valid)
 
   obs-correct-curry : ∀ {A B C} (body : IR (A * B) C) → IRObsCorrectF (curry body)
-  obs-correct-curry {A} {B} {C} body n l prog base _ cr span _ mIn x s alloc cl n≤ nh inp k =
+  obs-correct-curry {A} {B} {C} body n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
     record
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
@@ -426,7 +426,7 @@ module TwoCellC {FS : FrameSemantics} where
   ------------------------------------------------------------------------
   obs-correct-Ana : ∀ {F} (wf : WellFormedFI F) {A} (coalg : IR A (⟦ F ⟧TI A))
                   → IRObsCorrectF (Ana wf coalg)
-  obs-correct-Ana {F} wf {A} coalg n l prog base _ cr span _ mIn x s alloc cl n≤ nh inp k =
+  obs-correct-Ana {F} wf {A} coalg n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh inp k =
     record
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =

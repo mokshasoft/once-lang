@@ -32,9 +32,9 @@ module ApplyC {FS : FrameSemantics} where
   obs-correct-apply : ∀ {A B} → IRObsCorrectF (apply {A} {B})
   -- A PAIR fits no register and is not `Unit`, so the two off-pointer input
   -- residences are refuted outright.
-  obs-correct-apply n l prog base _ cr span _ mIn x s alloc cl n≤ nh (in-reg () _) k
-  obs-correct-apply n l prog base _ cr span _ mIn x s alloc cl n≤ nh (in-unit ()) k
-  obs-correct-apply {A} {B} n l prog base _ cr span _ mIn x s alloc cl n≤ nh
+  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-reg () _) k
+  obs-correct-apply n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh (in-unit ()) k
+  obs-correct-apply {A} {B} n l prog base _ cr span _ _ mIn x s alloc cl n≤ nh
     (in-loc pair-loc valid bf rdi) k =
     go (PairValidWF.fst-cell d) (PairValidWF.snd-cell d)
     where
