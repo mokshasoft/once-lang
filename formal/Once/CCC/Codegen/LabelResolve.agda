@@ -34,17 +34,21 @@ module Once.CCC.Codegen.LabelResolve (o : CanonicalName) where
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; suc; _+_)
 open import Data.List using (List; []; _∷_; _++_; length)
-open import Data.List.Relation.Unary.All using (All; []; _∷_)
+open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
+open import Data.Nat using (_≤_; _<_)
+open import Data.Product using (_×_; _,_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
-open import Once.CCC.Label using (LabelId; _≡ᵇᴵ_; ≡ᵇᴵ-true; ≡ᵇᴵ-refl)
+open import Once.CCC.Label using (LabelId; idx; _≡ᵇᴵ_; ≡ᵇᴵ-true; ≡ᵇᴵ-refl)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
   using (AbstractTrace; AbstractInstr; instr-ctrl; c-label)
+open import Once.CCC.Machine.SMCore as SM using ()
 open import Once.CCC.Machine.Flat using (module FlatMachine)
+open import Once.CCC.Codegen.LabelScope o using (once-label-of; LabelIn; LabelsIn; in-range)
 
 module Resolve {FS : FrameSemantics} where
   open FlatMachine {FS}
@@ -104,3 +108,39 @@ module Resolve {FS : FrameSemantics} where
     trans (fl-go-++-miss pre (instr-ctrl (c-label ℓ) ∷ post) ℓ 0
              (no-label-miss ℓ pre 0 nl))
           (fl-hit ℓ post (length pre + 0))
+
+  ------------------------------------------------------------------------
+  -- THE BRIDGE TO `LabelScope`.
+  --
+  -- `fl-go` scans with `label-of?` (Flat.agda:126-128 — `c-label` ONLY).
+  -- `LabelScope` bounds `once-label-of` (:83-89 — `c-label` AND the jump
+  -- targets `c-jmp`/`c-branch-*`). The second is a SUPERSET of the first, so
+  -- containment for it gives containment for the scan — which is what lets
+  -- `NoLabel` be produced from `labels-in` instead of from a second induction.
+  --
+  -- Enumerated rather than catch-all: the implication cannot be proved on an
+  -- abstract instruction, because neither function reduces. Every clause but
+  -- the first is `()` — the hypothesis is absurd where `label-of?` is
+  -- `nothing`.
+  ------------------------------------------------------------------------
+
+  label-of?-once : ∀ (i : AbstractInstr) (m : LabelId)
+                 → label-of? i ≡ just m → once-label-of i ≡ just m
+  label-of?-once (instr-ctrl (c-label m)) .m refl = refl
+
+  ------------------------------------------------------------------------
+  -- …AND HENCE `NoLabel` FROM `LabelScope`'s CONTAINMENT, with no second
+  -- induction. If `ℓ`'s index lies OUTSIDE a fragment's label window, then
+  -- nothing in that fragment can define it.
+  --
+  -- This is the piece that makes `label-resolves` usable at the whole program:
+  -- disjoint windows (from `label-mono`) give the `NoLabel` for every earlier
+  -- fragment, and the scan then lands where the label actually is.
+  ------------------------------------------------------------------------
+
+  noLabel-outside : ∀ {lo hi} (ℓ : LabelId) (t : AbstractTrace)
+                  → LabelsIn lo hi t
+                  → ¬ ((lo ≤ idx ℓ) × (idx ℓ < hi))
+                  → NoLabel ℓ t
+  noLabel-outside ℓ t li out =
+    All-map (λ {i} p eq → out (in-range p ℓ (label-of?-once i ℓ eq))) li
