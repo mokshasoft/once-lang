@@ -58,7 +58,8 @@ module CaseC {FS : FrameSemantics} where
 
   open Core {FS}
   open Mach {FS}
-  open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
+  open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix; flat-step1;
+                                flat-tag-branch-yes; flat-tag-branch-not; flat-jmp; flat-label)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
   open ClosureWellFormedDef {FS} using (SumTag)
 
@@ -310,6 +311,21 @@ module CaseC {FS : FrameSemantics} where
   tag-inr {m = m} {loc = loc} {s = s} (valid-inr-reg-wf _ tg _ _ _) rd
     rewrite rd = cong tag-zf (sumTag-read m 1 s loc tg)
 
+  -- …AND THE UNPACK ROW IS WELL-FORMED FOR THE SAME REASON. `load-indirect-suc`
+  -- owes `InstrWF`: `Input1` must resolve to a location whose successor cell
+  -- can be read. For a sum that IS the residence — the payload cell — so the
+  -- witness is the validity's own `readLoc s (sucLoc sum-loc)` field, in all
+  -- four shapes (pointer or inline payload, either tag).
+  unpack-wf : ∀ {A' B' : IRTy} {v : ⟦ A' +ᵀ B' ⟧} {m : AllocMode}
+                {alloc : AllocState {FS}} {loc : ValueLocation FS} {s' : LocState FS}
+            → ValidAtWF m alloc {A' +ᵀ B'} v loc s'
+            → readReg (regs s') Input1 ≡ SV-Ptr loc
+            → InstrWF s' alloc load-indirect-suc
+  unpack-wf {loc = loc} (valid-inl-wf _ _ r _ _ _)   rd = loc , cong sv-as-loc rd , (_ , r)
+  unpack-wf {loc = loc} (valid-inr-wf _ _ r _ _ _)   rd = loc , cong sv-as-loc rd , (_ , r)
+  unpack-wf {loc = loc} (valid-inl-reg-wf _ _ _ r _) rd = loc , cong sv-as-loc rd , (_ , r)
+  unpack-wf {loc = loc} (valid-inr-reg-wf _ _ _ r _) rd = loc , cong sv-as-loc rd , (_ , r)
+
   ----------------------------------------------------------------------
   -- THE RUN. Both arms share the branch row; they differ in whether it is
   -- taken, and they rejoin at the final `c-label`.
@@ -387,3 +403,57 @@ module CaseC {FS : FrameSemantics} where
         solve-j : ∀ (a b : ℕ) → 3 + ((4 + b) + a) ≡ ((3 + a) + 4) + b
         solve-j = solve 2 (λ a b →
           con 3 :+ ((con 4 :+ b) :+ a) := ((con 3 :+ a) :+ con 4) :+ b) refl
+
+    ------------------------------------------------------------------
+    -- THE TWO PROLOGUES. Both are three steps: the branch row, then the
+    -- arm's `load-indirect-suc` (Output := the sum's payload cell) and
+    -- `mov-to-input` (hand it to the arm). They differ ONLY in whether the
+    -- branch falls through or jumps, and that is decided by the input's own
+    -- tag — `tag-inr` / `tag-inl`.
+    ------------------------------------------------------------------
+    module Prologue (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+                    (nh : halted s ≡ false)
+                    (iwf : InstrWF s alloc load-indirect-suc)
+                    (la : LabelsAt prog base (emitted n l (case f g)))
+                    where
+
+      fs0 : FlatState
+      fs0 = entry-flat base s alloc cl
+
+      -- ── the `inr` arm: the branch falls through.
+      r1 r2 r3 : FlatState
+      r1 = record fs0 { fpc = suc base }
+      r2 = flat-exec-instr load-indirect-suc prog r1
+      r3 = flat-exec-instr mov-to-input      prog r2
+
+      nh-r1 : halted (floc r1) ≡ false
+      nh-r1 = nh
+      nh-r2 : halted (floc r2) ≡ false
+      nh-r2 = exec-abstract-preserves-halted-WF load-indirect-suc (floc r1) (falloc r1) nh-r1 iwf
+
+      run-r : tag-zf (flat-read-tag (floc fs0)) ≡ false → FlatSteps prog 3 fs0 r3
+      run-r cond =
+        FlatSteps-++ (flat-step1 nh at-branch (flat-tag-branch-not prog fs0 (ℓ o l) cond))
+                     ((nh-r1 , at-unpack-r) ∷ (nh-r2 , at-movin-r) ∷ [])
+
+      -- ── the `inl` arm: the branch jumps to `ℓ o l`, which is the mid row's
+      -- own `c-label`; executing that label is the second step.
+      i1 i2 i3 i4 : FlatState
+      i1 = record fs0 { fpc = inl-at + base }
+      i2 = record i1  { fpc = suc (inl-at + base) }
+      i3 = flat-exec-instr load-indirect-suc prog i2
+      i4 = flat-exec-instr mov-to-input      prog i3
+
+      nh-i2 : halted (floc i2) ≡ false
+      nh-i2 = nh
+      nh-i3 : halted (floc i3) ≡ false
+      nh-i3 = exec-abstract-preserves-halted-WF load-indirect-suc (floc i2) (falloc i2) nh-i2 iwf
+
+      run-i : tag-zf (flat-read-tag (floc fs0)) ≡ true → FlatSteps prog 4 fs0 i4
+      run-i cond =
+        FlatSteps-++
+          (flat-step1 nh at-branch
+            (trans (flat-tag-branch-yes prog fs0 (ℓ o l) cond)
+                   (cong (λ mj → do-jump mj fs0) (inl-target prog base la))))
+          (FlatSteps-++ (flat-step1 nh at-inl-label refl)
+                        ((nh-i2 , at-unpack-l) ∷ (nh-i3 , at-movin-l) ∷ []))
