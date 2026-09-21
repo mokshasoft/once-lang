@@ -89,6 +89,45 @@ def holes(a, b):
     return n, sm.ratio()
 
 ALL = list(decls())
+# ⚠⚠ EVERY MODE UNPACKS THIS TUPLE.  Twice now a field has been added
+#   for one mode and the others left unpacking the old arity — the bug
+#   is silent until that mode is run, and the mode being worked on is
+#   the one that gets run.  Assert the shape once, here.
+assert all(len(d) == 5 for d in ALL), "decls() arity changed — fix EVERY mode"
+if sys.argv[1:2] == ["--same-name"]:
+    # ★★★ THE CHEAPEST DETECTOR, AND IT WAS ADDED LAST — which is the
+    #   lesson.  Three modes of anti-unification were built before
+    #   anyone asked the trivial question: **is this name defined in more
+    #   than one module?**  Exact, no heuristics, no tuning, O(n).
+    #
+    # ⚠ IT FOUND WHAT THE CLEVER MODES MISSED.  `--vs-lib` at its first
+    #   (stricter) settings reported 7 duplicates in `Examples/AmrecT`;
+    #   this reports ELEVEN, including `aIHT-fit` and `aStepT-ren`, both
+    #   byte-identical to `Lib/Rec` and `Lib/Amrec`.  Recall beat
+    #   precision, exactly as the user argued.
+    #
+    # ⚠⚠ A NAME COLLISION IS NOT A DUPLICATE.  Same name ≠ same type ≠
+    #   same proof, and this repository has DELIBERATE parallel families
+    #   — `row-lam` in `RenAgree` and `SubAgreeRows` are the renaming and
+    #   substitution twins and must both exist.  ⇒ default to the pairs
+    #   that involve a `Lib/` module, where a collision is much more
+    #   likely to mean "the example re-derived the library"; `--all`
+    #   shows the rest.
+    ALLM = len(sys.argv) > 2 and sys.argv[2] == "--all"
+    import collections as _c
+    where = _c.defaultdict(list)
+    for nm, ty, mod, nb, bt in ALL: where[nm].append(mod)
+    dups = {n: sorted(set(v)) for n, v in where.items() if len(set(v)) > 1}
+    lib  = {n: v for n, v in dups.items()
+            if any(m.startswith("Lib/") for m in v)}
+    show = dups if ALLM else lib
+    print("== SAME NAME DEFINED IN MORE THAN ONE MODULE ==")
+    print("   %d collision(s) total; %d involve a Lib/ module.%s\n"
+          % (len(dups), len(lib), "" if ALLM else "  (--all for the rest)"))
+    for n, v in sorted(show.items()):
+        print("   %-22s %s" % (n, "   ".join(v)))
+    sys.exit(0)
+
 if sys.argv[1:2] == ["--could-simplify"]:
     # ★★★ THE LIBRARY AUTHOR'S QUESTION, AND IT IS THE USEFUL ONE:
     #   "does THIS lemma prove something that could have simplified
@@ -282,10 +321,10 @@ if sys.argv[1:2] == ["--families"]:
 target = sys.argv[1]; K = int(sys.argv[2]) if len(sys.argv) > 2 else 3
 tgt = [d for d in ALL if d[0] == target]
 if not tgt: sys.exit("no declaration named %s" % target)
-_, ty, mod = tgt[0][0:3][0], tgt[0][1], tgt[0][2]
+_, ty, mod = tgt[0][0], tgt[0][1], tgt[0][2]
 print("QUERY  %s   (%s)\n       %s\n" % (target, mod, ty[:100]))
 hits = []
-for nm, t2, m2, _x in ALL:
+for nm, t2, m2, _nb2, _bt2 in ALL:
     if nm == target: continue
     h, r = holes(toks(ty), toks(t2))
     if h <= K and r > 0.55: hits.append((h, -r, nm, m2, t2))
