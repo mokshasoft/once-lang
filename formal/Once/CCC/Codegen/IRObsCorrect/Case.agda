@@ -39,6 +39,7 @@ open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp;
 open import Data.Nat.Properties using (1+n≰n)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
 open import Data.Sum using (inj₁; inj₂)
+open import Data.Product using (Σ)
 open import Once.IRTy using () renaming (_+_ to _+ᵀ_)
 open import Data.Nat using (s≤s)
 open import Data.Nat.Solver using (module +-*-Solver)
@@ -61,7 +62,7 @@ module CaseC {FS : FrameSemantics} where
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix; flat-step1;
                                 flat-tag-branch-yes; flat-tag-branch-not; flat-jmp; flat-label)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
-  open ClosureWellFormedDef {FS} using (SumTag)
+  open ClosureWellFormedDef {FS} using (SumTag; InlineRep; rep-prim; rep-unit)
 
   ----------------------------------------------------------------------
   -- THE SHAPE, and the four premise splits that ride on it.
@@ -325,6 +326,68 @@ module CaseC {FS : FrameSemantics} where
   unpack-wf {loc = loc} (valid-inr-wf _ _ r _ _ _)   rd = loc , cong sv-as-loc rd , (_ , r)
   unpack-wf {loc = loc} (valid-inl-reg-wf _ _ _ r _) rd = loc , cong sv-as-loc rd , (_ , r)
   unpack-wf {loc = loc} (valid-inr-reg-wf _ _ _ r _) rd = loc , cong sv-as-loc rd , (_ , r)
+
+  -- WHAT THE UNPACK ROW PUTS IN `Output`: the payload cell, verbatim. The
+  -- `with`-chain is `load-ind-suc-preserves-input`'s (Machine.agda:72) — the
+  -- two resolutions have to be forced before `exec-load-with-value` reduces.
+  load-suc-out : ∀ (s' : LocState FS) (alloc' : AllocState {FS})
+                   (loc : ValueLocation FS) (v : StoredValue FS)
+               → sv-as-loc (readReg (regs s') Input1) ≡ just loc
+               → readLoc s' (sucLoc loc) ≡ just v
+               → readReg (regs (proj₁ (exec-abstract load-indirect-suc s' alloc'))) Output ≡ v
+  load-suc-out s' alloc' loc v eq cell
+    with sv-as-loc (readReg (regs s') Input1) | eq
+  ... | .(just loc) | refl with readLoc s' (sucLoc loc) | cell
+  ...   | .(just v) | refl = writeReg-same (regs s') Output v
+
+  ----------------------------------------------------------------------
+  -- THE ARM'S INPUT. After the two unpack rows, `Input1` holds the payload —
+  -- which is exactly the residence the arm's `IRObsCorrectF` asks for. The
+  -- mode is the PAYLOAD's, not the sum's, so it comes back existentially: a
+  -- pointer payload lands in `in-loc`, an inline one in `in-reg`.
+  --
+  -- Neither row touches memory (`load-indirect-suc` reads it, `mov-to-input`
+  -- moves a register), so the payload's own `ValidAtWF` transports unchanged.
+  ----------------------------------------------------------------------
+  mem-unpack : ∀ (s' : LocState FS) (alloc' : AllocState {FS}) (lc : ValueLocation FS)
+             → readLoc (proj₁ (exec-abstract load-indirect-suc s' alloc')) lc ≡ readLoc s' lc
+  mem-unpack s' alloc' lc = mem-untouched load-indirect-suc s' alloc' lc nhw-load-indirect-suc refl
+
+  arm-input-l : ∀ {A' B' : IRTy} {a : ⟦ A' ⟧} {m : AllocMode} {alloc : AllocState {FS}}
+                  {loc : ValueLocation FS} {s' : LocState FS} (s'' : LocState FS)
+              → ValidAtWF m alloc {A' +ᵀ B'} (inj₁ a) loc s'
+              → readReg (regs s') Input1 ≡ SV-Ptr loc
+              → readReg (regs s'') Input1
+                ≡ readReg (regs (proj₁ (exec-abstract load-indirect-suc s' alloc))) Output
+              → (∀ lc → readLoc s'' lc ≡ readLoc s' lc)
+              → Σ AllocMode (λ mA → InputAt mA alloc a s'')
+  arm-input-l {alloc = alloc} {loc = loc} {s' = s'} s''
+              (valid-inl-wf {payload-loc = pl} {mA = mA} _ _ r bfp _ va) rd mv me =
+    mA , in-loc pl (validityWF-mem-preserved _ pl s' s'' bfp (λ lc _ → me lc) va) bfp
+           (trans mv (load-suc-out s' alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r))
+  -- An INLINE payload is either a register-fitting primitive or a unit, and
+  -- `InputAt` has a constructor for each — `in-reg` and `in-unit`.
+  arm-input-l {alloc = alloc} {loc = loc} {s' = s'} s''
+              (valid-inl-reg-wf _ _ (rep-prim fit) r _) rd mv me =
+    Heap , in-reg fit (trans mv (load-suc-out s' alloc loc _ (cong sv-as-loc rd) r))
+  arm-input-l s'' (valid-inl-reg-wf _ _ (rep-unit e _) _ _) _ _ _ = Heap , in-unit e
+
+  arm-input-r : ∀ {A' B' : IRTy} {b : ⟦ B' ⟧} {m : AllocMode} {alloc : AllocState {FS}}
+                  {loc : ValueLocation FS} {s' : LocState FS} (s'' : LocState FS)
+              → ValidAtWF m alloc {A' +ᵀ B'} (inj₂ b) loc s'
+              → readReg (regs s') Input1 ≡ SV-Ptr loc
+              → readReg (regs s'') Input1
+                ≡ readReg (regs (proj₁ (exec-abstract load-indirect-suc s' alloc))) Output
+              → (∀ lc → readLoc s'' lc ≡ readLoc s' lc)
+              → Σ AllocMode (λ mB → InputAt mB alloc b s'')
+  arm-input-r {alloc = alloc} {loc = loc} {s' = s'} s''
+              (valid-inr-wf {payload-loc = pl} {mB = mB} _ _ r bfp _ vb) rd mv me =
+    mB , in-loc pl (validityWF-mem-preserved _ pl s' s'' bfp (λ lc _ → me lc) vb) bfp
+           (trans mv (load-suc-out s' alloc loc (SV-Ptr pl) (cong sv-as-loc rd) r))
+  arm-input-r {alloc = alloc} {loc = loc} {s' = s'} s''
+              (valid-inr-reg-wf _ _ (rep-prim fit) r _) rd mv me =
+    Heap , in-reg fit (trans mv (load-suc-out s' alloc loc _ (cong sv-as-loc rd) r))
+  arm-input-r s'' (valid-inr-reg-wf _ _ (rep-unit e _) _ _) _ _ _ = Heap , in-unit e
 
   ----------------------------------------------------------------------
   -- THE RUN. Both arms share the branch row; they differ in whether it is
