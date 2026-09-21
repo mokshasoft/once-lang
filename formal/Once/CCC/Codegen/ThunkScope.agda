@@ -30,7 +30,7 @@ open import Once.CanonicalName using (CanonicalName)
 module Once.CCC.Codegen.ThunkScope (o : CanonicalName) where
 
 open import Data.Bool using (Bool; true; false; _∧_)
-open import Data.Nat using (ℕ; suc; _≤_; _<_)
+open import Data.Nat using (ℕ; suc; _≤_; _<_; s≤s)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Relation.Unary.All.Properties using (++⁺)
@@ -50,9 +50,12 @@ open import Once.IR using (IR)
 import Once.IR as IRm
 open IRm.IR
 open import Once.IRTy using (⌈_⌉F)
-open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy)
-open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of)
+open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy; resuspend-layer)
+open import Once.CCC.Codegen.LabelRange o using (label-of; label-mono; cata-label-of; cata-label-mono; resuspend-label-mono)
 open import Once.CCC.Codegen.LabelScope o using (trace-of; cata-trace-of)
+open import Once.CCC.Codegen.SlotBudget o using (bodies-of)
+open import Once.CCC.Label using (ℓ)
+open import Data.List.Relation.Unary.All.Properties using (++⁺)
 
 module Scope {FS : FrameSemantics} where
   open FlatMachine {FS} using (thunk-of?)
@@ -180,3 +183,101 @@ module Scope {FS : FrameSemantics} where
   thunks-in (Para x a) n l = all-no-thunk-in _ refl
   thunks-in (Hylo x y a t) n l = all-no-thunk-in _ refl
   thunks-in (Fuse x y a t) n l = all-no-thunk-in _ refl
+
+  ------------------------------------------------------------------------
+  -- THE BLOCKS CHANNEL.
+  --
+  -- `curry`, `Ana` and `in-ν` mint their bodies HERE rather than into the
+  -- trace, so this is where their labels live. The shape is
+  -- `SlotBudget.blocks-below` (:1316) — a structural walk returning `All` over
+  -- `bodies-of` — which is the model the trace channel did not have.
+  --
+  -- A block is in range when BOTH its entry label and every marker in its body
+  -- are: the label is what `find-thunk` will match, the body's markers are what
+  -- a LATER block's scan must miss.
+  ------------------------------------------------------------------------
+
+  BlockThunksIn : ℕ → ℕ → (LabelId × ℕ × AbstractTrace) → Set
+  BlockThunksIn lo hi (lbl , _ , t) = ((lo ≤ idx lbl) × (idx lbl < hi)) × ThunksIn lo hi t
+
+  bts-weaken : ∀ {lo lo' hi hi'} (b : LabelId × ℕ × AbstractTrace) → lo' ≤ lo → hi ≤ hi'
+             → BlockThunksIn lo hi b → BlockThunksIn lo' hi' b
+  bts-weaken (lbl , _ , t) lo≤ hi≤ ((a , c) , ts) =
+    ((≤-trans lo≤ a , ≤-trans c hi≤) , ts-weaken lo≤ hi≤ ts)
+
+  blocks-thunks-in : ∀ {A B} (ir : IR A B) (n l : ℕ)
+                   → All (BlockThunksIn l (label-of (ir-to-trace' n l ir)))
+                         (bodies-of (ir-to-trace' n l ir))
+  blocks-thunks-in id       n l = []
+  blocks-thunks-in fst      n l = []
+  blocks-thunks-in snd      n l = []
+  blocks-thunks-in terminal n l = []
+  blocks-thunks-in initial  n l = []
+  blocks-thunks-in inl      n l = []
+  blocks-thunks-in inr      n l = []
+  blocks-thunks-in apply    n l = []
+  blocks-thunks-in (In _)    n l = []
+  blocks-thunks-in (out-μ _) n l = []
+  blocks-thunks-in (Out _)   n l = []
+  blocks-thunks-in (Para _ _) n l = []
+  blocks-thunks-in (SigOp _)  n l = []
+  blocks-thunks-in (const fits-int   v) n l = []
+  blocks-thunks-in (const fits-float v) n l = []
+  blocks-thunks-in (Hylo _ _ _ _) n l = []
+  blocks-thunks-in (Fuse _ _ _ _) n l = []
+  blocks-thunks-in (g ∘ f)  n l =
+    ++⁺ (All-map (λ {b} → bts-weaken b ≤-refl (label-mono g _ _)) (blocks-thunks-in f n l))
+        (All-map (λ {b} → bts-weaken b (label-mono f n l) ≤-refl) (blocks-thunks-in g _ _))
+  blocks-thunks-in ⟨ f , g ⟩ n l =
+    ++⁺ (All-map (λ {b} → bts-weaken b ≤-refl (label-mono g _ _)) (blocks-thunks-in f _ l))
+        (All-map (λ {b} → bts-weaken b (label-mono f _ l) ≤-refl) (blocks-thunks-in g _ _))
+  blocks-thunks-in (case f g) n l =
+    ++⁺ (All-map (λ {b} → bts-weaken b (≤-step (≤-step ≤-refl)) (label-mono g _ _))
+                 (blocks-thunks-in f n (suc (suc l))))
+        (All-map (λ {b} → bts-weaken b (≤-trans (≤-step (≤-step ≤-refl)) (label-mono f n (suc (suc l)))) ≤-refl)
+                 (blocks-thunks-in g _ _))
+  -- The window widens to the DISPATCH's outgoing counter, not the algebra's.
+  blocks-thunks-in (Cata {F} _ alg) n l =
+    All-map (λ {b} → bts-weaken b ≤-refl
+              (cata-label-mono (cata-strategy ⌈ F ⌉F)
+                               (proj₁ (ir-to-trace' 0 l alg)) n
+                               (proj₁ (proj₂ (ir-to-trace' 0 l alg)))
+                               (trace-of (ir-to-trace' 0 l alg))))
+            (blocks-thunks-in alg 0 l)
+  -- THE THREE THAT MINT. Each puts its entry at `ℓ o l` — `idx (ℓ o l)` is `l`
+  -- definitionally — so the label sits at the BOTTOM of its own window, and the
+  -- body's markers come from the trace-channel induction.
+  blocks-thunks-in (curry b) n l =
+    ((≤-refl , ≤-trans (≤-step ≤-refl) (label-mono b 0 (suc (suc l))))
+      , ts-weaken (≤-step (≤-step ≤-refl)) ≤-refl (thunks-in b 0 (suc (suc l))))
+    ∷ All-map (λ {b} → bts-weaken b (≤-step (≤-step ≤-refl)) ≤-refl)
+              (blocks-thunks-in b 0 (suc (suc l)))
+  -- `in-ν`'s block is the singleton `mov-to-output ∷ []` — no markers at all.
+  blocks-thunks-in (in-ν _) n l =
+    ((≤-refl , ≤-refl) , all-no-thunk-in _ refl) ∷ []
+  blocks-thunks-in (Ana wf c) n l =
+    ((≤-refl , ≤-trans (label-mono c 0 (suc l))
+                 (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
+                                       (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
+                                       (ℓ o l) wf))
+      , ++⁺ (ts-weaken (≤-step ≤-refl)
+               (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
+                                     (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
+                                     (ℓ o l) wf)
+               (thunks-in c 0 (suc l)))
+            resusp-free)
+    ∷ All-map (λ {b} → bts-weaken b (≤-step ≤-refl)
+                (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
+                                      (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
+                                      (ℓ o l) wf))
+              (blocks-thunks-in c 0 (suc l))
+    where
+      -- The re-suspension pass emits no `c-thunk` — it is branches, loads and
+      -- the join labels (D199). Named rather than proved here: it is an
+      -- induction over `WellFormedFI`, the same shape `resuspend-label-mono`
+      -- already walks for the `once` namespace.
+      postulate
+        resusp-free : ∀ {lo hi} → ThunksIn lo hi
+          (proj₂ (proj₂ (resuspend-layer (proj₁ (ir-to-trace' 0 (suc l) c))
+                                         (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
+                                         (ℓ o l) wf)))
