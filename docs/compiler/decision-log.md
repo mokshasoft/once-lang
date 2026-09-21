@@ -14862,3 +14862,63 @@ way.
 the implementation note this corrects), D068 (`arr` retired; pure ⊑ eff is
 subsumption), D069 (effect-free value intros are grade-poly — the rule applied
 here to `curry`'s outer arrow), D018/D032, plan 0.94, plan 0.95 A.
+
+## D223 — PLAN 0.91 CLOSES; ITS REMAINING STEPS WERE ALREADY REASSIGNED (2026-09-21)
+
+Plan 0.91's thesis — PROGRAM FACTS BELONG IN THE OBLIGATION — held, and it is
+what made D216 findable. The plan closes; the thesis does not.
+
+### What landed
+
+* **S1 (D214)** — `entry-size` deleted apex-to-leaf; `program-bound` was never
+  fuel, and `ir-size` became unreachable from the apex.
+* **S2 (D215)** — `BlocksAt` entered `IRObsCorrectF` across 28 sites.
+
+### S3 is DEAD, not deferred
+
+D216 says so in those words. The consumer half cannot be done as designed:
+`obs-correct-apply`/`-Out` were to take their block resolution "from the witness
+instead", but `block-runs` is the ONLY producer of a `CalleeRun` in the
+development — `grep -rn 'callee-run'` returns exactly one hit, the constructor
+declaration at `Interface.agda:487`, never applied. A witness supplies LAYOUT
+where a BEHAVIOURAL fact is needed.
+
+### S4 and S5 have live successors, by name
+
+* **0.91 S4 → 0.93 S5.** `BlockRuns` does not narrow; under the relational
+  architecture it is deleted outright, with `ValidAtWF`, `MachineRefinesObsF`,
+  `ValueRealized`, `CalleeRuns`, `CoalgRuns` and `block-runs`.
+* **0.91 S5 → 0.93 S4.** *"every block the emitter produced is placed at its
+  label in the linked image … the induction D188 called provable and nobody
+  wrote"* — 0.91 S5 verbatim. Plan 0.93 §11 already recorded that 0.91's S1/S2
+  survive and that the `BlocksAt` premise "becomes S4's statement".
+
+### What 0.91 left behind, and where it got to
+
+`entry-blocks` — and it is no longer a postulate. It is a DEFINITION resting on
+one named fact:
+
+    span         PROVED   blocks-placed / blocks-placed-linked / span-shift
+    resolution   PROVED   ft-hit / block-resolves
+    composition  PROVED   blocks-at
+    scan→list    PROVED   no-thunk-miss / missBefore-from
+    ThunkScope   21 of 22 constructor clauses PROVED
+    entry-no-thunks + cata-thunks-in   the residuals
+
+D168's `link-pre`/`link-post`/`link-block-split` were NOT needed. The comment in
+`FlatFromObs` predicted this induction would be "the first REAL demand for that
+machinery"; `blocks-placed` goes through by direct induction on the block list,
+so the prediction was wrong and the machinery stays unexercised there.
+
+### The finding the plan did not anticipate
+
+Mapping S3–S5 surfaced that `Once.Certified` was INCONSISTENT:
+`DenotPrefix.agda:151` carried `postulate evalᴰ-good-schemes : ∀ {X : Set} → X`,
+reached from the apex through `FlatFromObs`'s use of `evalᴰ-good`. Machine-checked
+with two ⊥-probes; now eight named per-constructor postulates with three
+discharged. That is the plan's own thesis working in a direction it did not
+predict — the obligation was hiding a program-INDEPENDENT falsehood rather than
+a missing program fact.
+
+**Relates**: D213 (the refutation that opened 0.91), D214, D215, D216, D217,
+D218, plan 0.93 (S4/S5's live home).
