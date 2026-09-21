@@ -116,6 +116,31 @@ module Scope {FS : FrameSemantics} where
       go true  beq eqs = thunk-none-in i (no-thunk?-sound i beq) ∷ all-no-thunk-in is eqs
       go false _   ()
 
+  ------------------------------------------------------------------------
+  -- THE RANGE-FREE FORM. "This fragment mints NO marker at all" is stronger
+  -- than any window, and it is what the label-LIST reasoning downstream needs:
+  -- a window says where a marker would be, `NoThunkT` says there is none, so
+  -- `thunk-labels` of such a fragment is literally `[]`.
+  --
+  -- The recursive walks are stated HERE rather than at `ThunksIn`, and the
+  -- windowed form is derived — otherwise the same induction gets written twice.
+  ------------------------------------------------------------------------
+
+  NoThunkT : AbstractTrace → Set
+  NoThunkT = All (λ i → thunk-of? i ≡ nothing)
+
+  nt-dec : ∀ (t : AbstractTrace) → all-no-thunk? t ≡ true → NoThunkT t
+  nt-dec []       _  = []
+  nt-dec (i ∷ is) eq = go (no-thunk? i) refl eq
+    where
+      go : ∀ (b : Bool) → no-thunk? i ≡ b → (b ∧ all-no-thunk? is) ≡ true → NoThunkT (i ∷ is)
+      go true  beq eqs = no-thunk?-sound i beq ∷ nt-dec is eqs
+      go false _   ()
+
+  ts-from-nt : ∀ {lo hi} {t} → NoThunkT t → ThunksIn lo hi t
+  ts-from-nt []         = []
+  ts-from-nt (px ∷ pxs) = thunk-none-in _ px ∷ ts-from-nt pxs
+
   -- Range weakening, `ls-weaken`'s twin (LabelScope.agda:126).
   ts-weaken : ∀ {lo lo' hi hi'} {t} → lo' ≤ lo → hi ≤ hi' → ThunksIn lo hi t → ThunksIn lo' hi' t
   ts-weaken lo≤ hi≤ = All-map (λ ti → mkThunkIn λ m teq →
@@ -134,30 +159,30 @@ module Scope {FS : FrameSemantics} where
   -- `c-thunk` — the block entry it points at was minted by `Ana` itself. Same
   -- induction `resuspend-label-mono` runs over `WellFormedFI`.
   ------------------------------------------------------------------------
-  resuspend-nt : ∀ {lo hi} (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
-               → ThunksIn lo hi (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
+  resuspend-nt : ∀ (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+               → NoThunkT (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
   resuspend-nt n l lbl (wf-K _) = []
-  resuspend-nt n l lbl wf-Id    = all-no-thunk-in _ refl
+  resuspend-nt n l lbl wf-Id    = nt-dec _ refl
   resuspend-nt n l lbl (wf-Prod wfF wfG) =
-    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+    refl ∷ refl ∷ refl ∷ 
     ++⁺ (resuspend-nt (suc (suc (suc n))) l lbl wfF)
-        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+        (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
          ++⁺ (resuspend-nt (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
                            (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF)))
                            lbl wfG)
-             (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ []))
+             (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
   -- `arm t tag` is `(2 ∷) ++ t ++ (9 ∷)`, so each arm splits LEFT-nested
   -- against the rest of the trace — `(t ++ 9list) ++ …`, not `t ++ …`.
   resuspend-nt n l lbl (wf-Sum wfF wfG) =
-    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
     ++⁺ (++⁺ (resuspend-nt (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
                            (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)))
                            lbl wfG)
-             (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ []))
-        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+             (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+        (refl ∷ refl ∷ refl ∷ refl ∷ 
          ++⁺ (++⁺ (resuspend-nt (suc (suc (suc n))) (suc (suc l)) lbl wfF)
-                  (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ []))
-             (thunk-none-in _ refl ∷ []))
+                  (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
+             (refl ∷ []))
 
   ------------------------------------------------------------------------
   -- THE COMPILE-TIME FUNCTOR WALKS. These recurse on `F`, so no decider closes
@@ -165,54 +190,54 @@ module Scope {FS : FrameSemantics} where
   -- Neither emits a `c-thunk`: both are loads, stores, branches and the `once`
   -- join labels (D082 — a different provenance entirely).
   ------------------------------------------------------------------------
-  visit-walk-nt : ∀ {lo hi} (todoSlot tv tb : ℕ) (F : Functor) (s lb : ℕ)
-                → ThunksIn lo hi (visit-walk todoSlot tv tb F s lb)
+  visit-walk-nt : ∀ (todoSlot tv tb : ℕ) (F : Functor) (s lb : ℕ)
+                → NoThunkT (visit-walk todoSlot tv tb F s lb)
   visit-walk-nt todoSlot tv tb (K _)   s lb = []
   visit-walk-nt todoSlot tv tb Id      s lb =
-    thunk-none-in _ refl ∷ all-no-thunk-in (push2 todoSlot tv tb) refl
+    refl ∷ nt-dec (push2 todoSlot tv tb) refl
   visit-walk-nt todoSlot tv tb (F ⊕ G) s lb =
-    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+    refl ∷ refl ∷ refl ∷ 
     ++⁺ (visit-walk-nt todoSlot tv tb G (s + 4) (suc (suc lb) + lsize F))
-        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+        (refl ∷ refl ∷ refl ∷ refl ∷ 
          ++⁺ (visit-walk-nt todoSlot tv tb F (s + 4) (suc (suc lb)))
-             (thunk-none-in _ refl ∷ []))
+             (refl ∷ []))
   visit-walk-nt todoSlot tv tb (F ⊗ G) s lb =
-    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+    refl ∷ refl ∷ refl ∷ refl ∷ 
     ++⁺ (visit-walk-nt todoSlot tv tb F (s + 4) lb)
-        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+        (refl ∷ refl ∷ refl ∷ 
          visit-walk-nt todoSlot tv tb G (s + 4) (lb + lsize F))
 
-  rebuild-walk-nt : ∀ {lo hi} (valSlot tv tb : ℕ) (F : Functor) (s lb : ℕ)
-                  → ThunksIn lo hi (rebuild-walk valSlot tv tb F s lb)
-  rebuild-walk-nt valSlot tv tb (K _)   s lb = thunk-none-in _ refl ∷ []
-  rebuild-walk-nt valSlot tv tb Id      s lb = all-no-thunk-in (pop2 valSlot) refl
+  rebuild-walk-nt : ∀ (valSlot tv tb : ℕ) (F : Functor) (s lb : ℕ)
+                  → NoThunkT (rebuild-walk valSlot tv tb F s lb)
+  rebuild-walk-nt valSlot tv tb (K _)   s lb = refl ∷ []
+  rebuild-walk-nt valSlot tv tb Id      s lb = nt-dec (pop2 valSlot) refl
   rebuild-walk-nt valSlot tv tb (F ⊕ G) s lb =
-    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+    refl ∷ refl ∷ refl ∷ 
     ++⁺ (rebuild-walk-nt valSlot tv tb G (s + 4) (suc (suc lb) + lsize F))
-        (++⁺ (all-no-thunk-in (wrap-sum 1 s) refl)
-             (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+        (++⁺ (nt-dec (wrap-sum 1 s) refl)
+             (refl ∷ refl ∷ refl ∷ refl ∷ 
               ++⁺ (rebuild-walk-nt valSlot tv tb F (s + 4) (suc (suc lb)))
-                  (++⁺ (all-no-thunk-in (wrap-sum 0 s) refl)
-                       (thunk-none-in _ refl ∷ []))))
+                  (++⁺ (nt-dec (wrap-sum 0 s) refl)
+                       (refl ∷ []))))
   rebuild-walk-nt valSlot tv tb (F ⊗ G) s lb =
-    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+    refl ∷ refl ∷ refl ∷ refl ∷ 
     ++⁺ (rebuild-walk-nt valSlot tv tb G (s + 4) (lb + lsize F))
-        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+        (refl ∷ refl ∷ refl ∷ refl ∷ 
          ++⁺ (rebuild-walk-nt valSlot tv tb F (s + 4) lb)
-             (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ []))
+             (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ []))
 
   -- `cata-br-I₁` splices both walks between literal, marker-free chunks.
-  br-I₁-nt : ∀ {lo hi} (F : Functor) (n1 l1 : ℕ) → ThunksIn lo hi (cata-br-I₁ F n1 l1)
+  br-I₁-nt : ∀ (F : Functor) (n1 l1 : ℕ) → NoThunkT (cata-br-I₁ F n1 l1)
   br-I₁-nt F n1 l1 =
-    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
-    ++⁺ (all-no-thunk-in (push2 n1 (n1 + 4) (n1 + 5)) refl)
-        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
-         ++⁺ (all-no-thunk-in (push2 (suc n1) (n1 + 4) (n1 + 5)) refl)
-             (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+    refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
+    ++⁺ (nt-dec (push2 n1 (n1 + 4) (n1 + 5)) refl)
+        (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
+         ++⁺ (nt-dec (push2 (suc n1) (n1 + 4) (n1 + 5)) refl)
+             (refl ∷ refl ∷ 
               ++⁺ (visit-walk-nt n1 (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4))
-                  (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+                  (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ 
                    ++⁺ (rebuild-walk-nt (n1 + 2) (n1 + 4) (n1 + 5) F (n1 + 7) (l1 + 4 + lsize F))
-                       (thunk-none-in _ refl ∷ []))))
+                       (refl ∷ []))))
 
   cata-thunks-in : ∀ (st : CataStrategy) (bb n1 l1 : ℕ) (at : AbstractTrace) {lo : ℕ}
                  → lo ≤ l1
@@ -404,15 +429,14 @@ module Scope {FS : FrameSemantics} where
                                      (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
                                      (ℓ o l) wf)
                (thunks-in c 0 (suc l)))
-            (resuspend-nt (proj₁ (ir-to-trace' 0 (suc l) c))
-                          (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
-                          (ℓ o l) wf))
+            (ts-from-nt (resuspend-nt (proj₁ (ir-to-trace' 0 (suc l) c))
+                                      (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
+                                      (ℓ o l) wf)))
     ∷ All-map (λ {b} → bts-weaken b (≤-step ≤-refl)
                 (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
                                       (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
                                       (ℓ o l) wf))
               (blocks-thunks-in c 0 (suc l))
-    where
   -- Every strategy ends the same way: a thunk-free skeleton (`cata-call-setup`,
   -- the `cata-call`s and the `I` fragments carry no `c-thunk`) followed by ONE
   -- `cata-body`, whose marker is the body label. So the four clauses differ
@@ -455,7 +479,7 @@ module Scope {FS : FrameSemantics} where
                (≤-trans (n≤1+n (s² l1)) (n≤1+n (s³ l1))))
   cata-thunks-in (strat-branching F) bb n1 l1 at lo≤ ats =
     ++⁺ (all-no-thunk-in (cata-call-setup B (B + 1) (B + 2) (B + 3) L) refl)
-        (++⁺ (br-I₁-nt F n1 l1)
+        (++⁺ (ts-from-nt (br-I₁-nt F n1 l1))
              (++⁺ (all-no-thunk-in (cata-call B (B + 1) (B + 3)) refl)
                   (++⁺ (all-no-thunk-in (cata-br-I₂ n1 l1) refl)
                        (cata-body-in L (L + 1) bb at

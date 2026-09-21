@@ -90,6 +90,7 @@ open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted; map
 open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
+open import Once.CCC.Codegen.LabelsUnique o using (module Unique)
 open Layout {FS} using (MissBefore; NoThunks; missBefore-from; blocks-at; Span)
 open import Data.List using (_++_; []; _∷_)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; blocks-layout)
@@ -358,10 +359,14 @@ entry-span ir k i eq =
 -- Stated with `NoThunks`, not `MissBefore`: the scan is gone. What is owed is
 -- purely SYNTACTIC — no instruction in a block's prefix is a `c-thunk` carrying
 -- that block's label. `missBefore-from` turns it into the scan fact.
-postulate
-  entry-no-thunks : (ir : IR Unit Unit)
-                  → NoThunks (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
-                             (blocks 0 0 ir)
+-- plan 0.88: IT IS NO LONGER A POSTULATE. `LabelsUnique.defs-uniq` constructs
+-- `EmittedWF.labels-unique` for the real program — the induction over
+-- `ir-to-trace'` this comment predicted — and `entry-noThunks` is its
+-- consumer's form, with the `c-ret` (which mints nothing) absorbed.
+entry-no-thunks : (ir : IR Unit Unit)
+                → NoThunks (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
+                           (blocks 0 0 ir)
+entry-no-thunks ir = Unique.entry-noThunks {FS} ir (ir-stack-budget ir)
 
 -- …and `entry-blocks` is now a DEFINITION: the proved composition, transported
 -- across `link`'s own associativity
