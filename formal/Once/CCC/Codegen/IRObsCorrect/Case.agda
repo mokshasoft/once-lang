@@ -520,3 +520,81 @@ module CaseC {FS : FrameSemantics} where
                    (cong (λ mj → do-jump mj fs0) (inl-target prog base la))))
           (FlatSteps-++ (flat-step1 nh at-inl-label refl)
                         ((nh-i2 , at-unpack-l) ∷ (nh-i3 , at-movin-l) ∷ []))
+
+    ------------------------------------------------------------------
+    -- D158's hand-over, restated locally (it lives inside `CompC`).
+    ------------------------------------------------------------------
+    handover-eq : ∀ (b : ℕ) (fs : FlatState)
+                → fpc fs ≡ b → fret fs ≡ [] → flink fs ≡ nothing
+                → fs ≡ entry-flat b (floc fs) (falloc fs) (fclosure fs)
+    handover-eq b (mkFlatFull lo al pc rt cls lk) refl refl refl = refl
+
+    ------------------------------------------------------------------
+    -- THE `inr` ARM, END TO END. Fall through the branch, unpack, run `g`,
+    -- and `c-jmp` to the join — which is where the `inl` arm arrives too.
+    ------------------------------------------------------------------
+    module ArmR (ihg : IRObsCorrectF g)
+                (ss : AllSlotStable prog) (cr : BlockRuns prog)
+                (bl : BlocksAt prog (blocks n l (case f g)))
+                (la : LabelsAt prog base (emitted n l (case f g)))
+                (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+                (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
+                (iwf : InstrWF s alloc load-indirect-suc)
+                {Bv : ⟦ B ⟧} (mB : AllocMode)
+                (inpB : InputAt mB alloc Bv (floc (Prologue.r3 s alloc cl nh iwf la)))
+                (cond : tag-zf (flat-read-tag s) ≡ false)
+                (k : ℕ)
+                where
+
+      module P = Prologue s alloc cl nh iwf la
+      module VR = ValueRealized
+
+      handG : P.r3 ≡ entry-flat (3 + base) (floc P.r3) (falloc P.r3) (fclosure P.r3)
+      handG = handover-eq (3 + base) P.r3 refl refl refl
+
+      nsG : next-slot (falloc P.r3) ≤ n1
+      nsG = ≤-trans n≤ (frontier-mono f n (suc (suc l)))
+
+      nh-r3 : halted (floc P.r3) ≡ false
+      nh-r3 = exec-abstract-preserves-halted-WF mov-to-input (floc P.r2) (falloc P.r2) P.nh-r2 tt
+
+      mrg : MachineRefinesObsF prog (3 + base) n1 l1 g Bv
+              (floc P.r3) (falloc P.r3) (fclosure P.r3) k
+      mrg = ihg n1 l1 prog (3 + base) ss cr (span-g prog base span) (blocks-g prog bl)
+                (labels-g prog base la) mB Bv
+                (floc P.r3) (falloc P.r3) (fclosure P.r3) nsG nh-r3 inpB k
+
+      vg : ValueRealized prog (3 + base) n1 l1 g Bv
+             (floc P.r3) (falloc P.r3) (fclosure P.r3) k
+      vg = MachineRefinesObsF.value-realized mrg
+
+      chainG : FlatSteps prog (VR.steps vg) P.r3 (VR.settle vg)
+      chainG = subst (λ st → FlatSteps prog (VR.steps vg) st (VR.settle vg))
+                     (sym handG) (VR.run vg)
+
+      -- the `c-jmp`, then the join label — both arms' last step.
+      t1 t2 : FlatState
+      t1 = record (VR.settle vg) { fpc = join-at + base }
+      t2 = record t1 { fpc = suc (join-at + base) }
+
+      pc-at-jmp : fpc (VR.settle vg) ≡ (3 + length gt) + base
+      pc-at-jmp = trans (VR.at-end vg) (solve-jmp (length gt) base)
+        where
+          solve-jmp : ∀ (a b : ℕ) → a + (3 + b) ≡ (3 + a) + b
+          solve-jmp = solve 2 (λ a b → a :+ (con 3 :+ b) := (con 3 :+ a) :+ b) refl
+
+      jmpStep : FlatSteps prog 1 (VR.settle vg) t1
+      jmpStep = flat-step1 (VR.live vg)
+                  (trans (cong (fetch prog) pc-at-jmp) at-jmp)
+                  (trans (flat-jmp prog (VR.settle vg) (ℓ o (suc l)))
+                         (cong (λ mj → do-jump mj (VR.settle vg)) (join-target prog base la)))
+
+      labelStep : FlatSteps prog 1 t1 t2
+      labelStep = flat-step1 (VR.live vg) at-join-label refl
+
+      chain : FlatSteps prog (3 + (VR.steps vg + (1 + 1))) P.fs0 t2
+      chain = FlatSteps-++ (P.run-r cond)
+                (FlatSteps-++ chainG (FlatSteps-++ jmpStep labelStep))
+
+      at-end-t2 : fpc t2 ≡ length (emitted n l (case f g)) + base
+      at-end-t2 = sym (cong (_+ base) len-eq)
