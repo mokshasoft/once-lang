@@ -40,6 +40,7 @@ open import Data.Nat.Properties using (1+n≰n)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Product using (Σ)
+open import Data.List.Properties using () renaming (++-identityʳ to ++-idʳ)
 open import Once.IRTy using () renaming (_+_ to _+ᵀ_)
 open import Data.Nat using (s≤s)
 open import Data.Nat.Solver using (module +-*-Solver)
@@ -468,6 +469,14 @@ module CaseC {FS : FrameSemantics} where
           con 3 :+ ((con 4 :+ b) :+ a) := ((con 3 :+ a) :+ con 4) :+ b) refl
 
     ------------------------------------------------------------------
+    -- `chain-events` does not look at the END state, so the `subst`
+    -- `flat-step1` wraps a named branch/jump result in is invisible to it.
+    ------------------------------------------------------------------
+    chain-events-subst-end : ∀ {k fs fs' fs''} (eq : fs' ≡ fs'') (c : FlatSteps prog k fs fs')
+                           → chain-events (subst (FlatSteps prog k fs) eq c) ≡ chain-events c
+    chain-events-subst-end refl c = refl
+
+    ------------------------------------------------------------------
     -- THE TWO PROLOGUES. Both are three steps: the branch row, then the
     -- arm's `load-indirect-suc` (Output := the sum's payload cell) and
     -- `mov-to-input` (hand it to the arm). They differ ONLY in whether the
@@ -520,6 +529,32 @@ module CaseC {FS : FrameSemantics} where
                    (cong (λ mj → do-jump mj fs0) (inl-target prog base la))))
           (FlatSteps-++ (flat-step1 nh at-inl-label refl)
                         ((nh-i2 , at-unpack-l) ∷ (nh-i3 , at-movin-l) ∷ []))
+
+      -- NONE of the five rows is a SigOp, so a prologue emits nothing. The
+      -- `subst` inside `flat-step1` is what stops that from being `refl`.
+      ev-run-r : ∀ (cond : tag-zf (flat-read-tag (floc fs0)) ≡ false)
+               → chain-events (run-r cond) ≡ []
+      ev-run-r cond =
+        trans (chain-events-++
+                 (flat-step1 nh at-branch (flat-tag-branch-not prog fs0 (ℓ o l) cond))
+                 ((nh-r1 , at-unpack-r) ∷ (nh-r2 , at-movin-r) ∷ []))
+              (cong (_++ []) (chain-events-subst-end _ _))
+
+      ev-run-i : ∀ (cond : tag-zf (flat-read-tag (floc fs0)) ≡ true)
+               → chain-events (run-i cond) ≡ []
+      ev-run-i cond =
+        trans (chain-events-++
+                 (flat-step1 nh at-branch
+                   (trans (flat-tag-branch-yes prog fs0 (ℓ o l) cond)
+                          (cong (λ mj → do-jump mj fs0) (inl-target prog base la))))
+                 (FlatSteps-++ (flat-step1 nh at-inl-label refl)
+                               ((nh-i2 , at-unpack-l) ∷ (nh-i3 , at-movin-l) ∷ [])))
+          (trans (cong (_++ chain-events (FlatSteps-++ (flat-step1 nh at-inl-label refl)
+                                            ((nh-i2 , at-unpack-l) ∷ (nh-i3 , at-movin-l) ∷ [])))
+                       (chain-events-subst-end _ _))
+                 (trans (chain-events-++ (flat-step1 nh at-inl-label refl)
+                                         ((nh-i2 , at-unpack-l) ∷ (nh-i3 , at-movin-l) ∷ []))
+                        (cong (_++ []) (chain-events-subst-end _ _))))
 
     ------------------------------------------------------------------
     -- D158's hand-over, restated locally (it lives inside `CompC`).
@@ -599,6 +634,69 @@ module CaseC {FS : FrameSemantics} where
       at-end-t2 : fpc t2 ≡ length (emitted n l (case f g)) + base
       at-end-t2 = sym (cong (_+ base) len-eq)
 
+      ------------------------------------------------------------
+      -- WHAT THE PROLOGUE LEAVES ALONE. The branch row only moves the pc;
+      -- `load-indirect-suc` READS memory and `mov-to-input` moves a
+      -- register, so neither writes — and neither allocates, so the
+      -- allocator arrives at `g` unchanged.
+      ------------------------------------------------------------
+      mem-P : ∀ (lc : ValueLocation FS) → MemOps.readLoc (floc P.r3) lc ≡ MemOps.readLoc s lc
+      mem-P lc = trans (mem-untouched mov-to-input (floc P.r2) (falloc P.r2) lc
+                          nhw-mov-to-input refl)
+                       (mem-untouched load-indirect-suc s alloc lc
+                          nhw-load-indirect-suc refl)
+
+      alloc-P : falloc P.r3 ≡ alloc
+      alloc-P = refl
+
+      -- the caller's window, raised to `g`'s emission frontier.
+      bf-up : ∀ (loc : ValueLocation FS)
+            → BeforeFrontier (record alloc { next-slot = n }) loc
+            → BeforeFrontier (record (falloc P.r3) { next-slot = n1 }) loc
+      bf-up = frontier-monotone (record alloc { next-slot = n })
+                                (record (falloc P.r3) { next-slot = n1 })
+                                refl (frontier-mono f n (suc (suc l))) ≤-refl
+
+      mem-pres : ∀ (loc : ValueLocation FS)
+               → BeforeFrontier (record alloc { next-slot = n }) loc
+               → MemOps.readLoc (floc t2) loc ≡ MemOps.readLoc s loc
+      mem-pres loc bf = trans (vr-mem-pres vg loc (bf-up loc bf)) (mem-P loc)
+
+      bf-mono-c : ∀ (m : ℕ) (loc : ValueLocation FS)
+                → BeforeFrontier (record alloc { next-slot = m }) loc
+                → BeforeFrontier (record (falloc t2) { next-slot = m }) loc
+      bf-mono-c m loc bf = VR.bf-mono vg m loc bf
+
+      ------------------------------------------------------------
+      -- THE EVENTS. Five control/straight rows surround `g`'s run and none
+      -- of them is a SigOp, so the composite emits exactly what `g` does.
+      ------------------------------------------------------------
+      ev-chain : chain-events chain ≡ chain-events (VR.run vg)
+      ev-chain =
+        trans (chain-events-++ (P.run-r cond) (FlatSteps-++ chainG (FlatSteps-++ jmpStep labelStep)))
+          (trans (cong (_++ chain-events (FlatSteps-++ chainG (FlatSteps-++ jmpStep labelStep)))
+                       (P.ev-run-r cond))
+            (trans (chain-events-++ chainG (FlatSteps-++ jmpStep labelStep))
+              (trans (cong₂ _++_ (chain-events-subst-start (sym handG) (VR.run vg))
+                                 (trans (chain-events-++ jmpStep labelStep)
+                                        (cong₂ _++_ (chain-events-subst-end _ _)
+                                                    (chain-events-subst-end _ _))))
+                     (++-idʳ (chain-events (VR.run vg))))))
+
+      witness : MachineRefinesObsF prog base n l (case f g) (inj₂ Bv) s alloc cl k
+      witness = record
+        { value-realized =
+            realized (3 + (VR.steps vg + (1 + 1))) t2 (VR.out-mode vg) (VR.cont-alloc vg)
+                     chain (VR.live vg) at-end-t2 (VR.no-ret vg) (VR.no-link vg)
+                     (VR.place vg)
+                     (λ fr j bf → mem-pres (AtStack fr j) bf)
+                     (λ hl bf → mem-pres (AtDynamic hl) bf)
+                     (VR.frame-pres vg)
+                     bf-mono-c
+        ; traces-agree =
+            trans (cong (take k) ev-chain) (MachineRefinesObsF.traces-agree mrg)
+        }
+
     ------------------------------------------------------------------
     -- THE `inl` ARM. The branch JUMPS here, so the prologue is one step
     -- longer; and `ft` is followed directly by the join label, so the tail is
@@ -669,3 +767,4 @@ module CaseC {FS : FrameSemantics} where
 
       at-end-u1 : fpc u1 ≡ length (emitted n l (case f g)) + base
       at-end-u1 = sym (cong (_+ base) len-eq)
+
