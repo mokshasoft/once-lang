@@ -37,6 +37,8 @@ open import Once.CCC.Label using (idx)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label)
 open import Data.Nat.Properties using (1+n≰n)
 open import Data.List.Relation.Unary.All using () renaming (_∷_ to _∷ᴬ_; [] to []ᴬ)
+open import Data.Sum using (inj₁; inj₂)
+open import Once.IRTy using () renaming (_+_ to _+ᵀ_)
 open import Data.Nat using (s≤s)
 open import Data.Nat.Solver using (module +-*-Solver)
 open +-*-Solver using (solve; _:+_; con; _:=_)
@@ -57,6 +59,7 @@ module CaseC {FS : FrameSemantics} where
   open Mach {FS}
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
   open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel)
+  open ClosureWellFormedDef {FS} using (SumTag)
 
   ----------------------------------------------------------------------
   -- THE SHAPE, and the four premise splits that ride on it.
@@ -228,20 +231,20 @@ module CaseC {FS : FrameSemantics} where
 
   tag-inl : ∀ {A B} {a : ⟦ A ⟧} {m : AllocMode} {alloc : AllocState {FS}}
               {loc : ValueLocation FS} {s : LocState FS}
-          → ValidAtWF m alloc {A + B} (inj₁ a) loc s
+          → ValidAtWF m alloc {A +ᵀ B} (inj₁ a) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
           → tag-zf (flat-read-tag s) ≡ true
-  tag-inl {m = m} {s = s} {loc = loc} (valid-inl-wf _ tg _ _ _ _) rd
+  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-wf _ tg _ _ _ _) rd
     rewrite rd = cong tag-zf (sumTag-read m 0 s loc tg)
-  tag-inl {m = m} {s = s} {loc = loc} (valid-inl-reg-wf _ tg _ _ _) rd
+  tag-inl {m = m} {loc = loc} {s = s} (valid-inl-reg-wf _ tg _ _ _) rd
     rewrite rd = cong tag-zf (sumTag-read m 0 s loc tg)
 
   tag-inr : ∀ {A B} {b : ⟦ B ⟧} {m : AllocMode} {alloc : AllocState {FS}}
               {loc : ValueLocation FS} {s : LocState FS}
-          → ValidAtWF m alloc {A + B} (inj₂ b) loc s
+          → ValidAtWF m alloc {A +ᵀ B} (inj₂ b) loc s
           → readReg (regs s) Input1 ≡ SV-Ptr loc
           → tag-zf (flat-read-tag s) ≡ false
-  tag-inr {m = m} {s = s} {loc = loc} (valid-inr-wf _ tg _ _ _ _) rd
+  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-wf _ tg _ _ _ _) rd
     rewrite rd = cong tag-zf (sumTag-read m 1 s loc tg)
-  tag-inr {m = m} {s = s} {loc = loc} (valid-inr-reg-wf _ tg _ _ _) rd
+  tag-inr {m = m} {loc = loc} {s = s} (valid-inr-reg-wf _ tg _ _ _) rd
     rewrite rd = cong tag-zf (sumTag-read m 1 s loc tg)
