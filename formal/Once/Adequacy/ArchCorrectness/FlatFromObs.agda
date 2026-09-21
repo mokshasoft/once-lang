@@ -90,7 +90,7 @@ open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted; map
 open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
 open import Once.CCC.Codegen.BlockLayout using (module Layout)
-open Layout {FS} using (MissBefore; blocks-at; Span)
+open Layout {FS} using (MissBefore; NoThunks; missBefore-from; blocks-at; Span)
 open import Data.List using (_++_; []; _∷_)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; blocks-layout)
 open import Data.List.Properties using (++-assoc)
@@ -355,10 +355,13 @@ entry-span ir k i eq =
 -- that stood here predicted this would be "the first REAL demand for that
 -- machinery"; `blocks-placed` goes through by direct induction on the block
 -- list, so the prediction was wrong and the machinery stays unexercised here.
+-- Stated with `NoThunks`, not `MissBefore`: the scan is gone. What is owed is
+-- purely SYNTACTIC — no instruction in a block's prefix is a `c-thunk` carrying
+-- that block's label. `missBefore-from` turns it into the scan fact.
 postulate
-  entry-miss : (ir : IR Unit Unit)
-             → MissBefore (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
-                          (blocks 0 0 ir)
+  entry-no-thunks : (ir : IR Unit Unit)
+                  → NoThunks (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
+                             (blocks 0 0 ir)
 
 -- …and `entry-blocks` is now a DEFINITION: the proved composition, transported
 -- across `link`'s own associativity
@@ -369,7 +372,9 @@ entry-blocks ir =
         (++-assoc (emitted 0 0 ir) (instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
                   (blocks-layout (blocks 0 0 ir)))
         (blocks-at (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
-                   (blocks 0 0 ir) (entry-miss ir))
+                   (blocks 0 0 ir)
+                   (missBefore-from (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
+                                    (blocks 0 0 ir) (entry-no-thunks ir)))
 
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
               → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) → (k : ℕ)

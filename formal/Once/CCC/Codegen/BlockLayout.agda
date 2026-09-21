@@ -37,9 +37,13 @@ open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to
 open import Data.List.Properties using (++-assoc; length-++)
 open import Data.Product using (_×_; _,_; ∃-syntax; proj₁; proj₂)
 open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Nullary using (¬_)
+open import Data.Bool using (Bool; true; false)
+open import Once.CCC.Label using (≡ᵇᴵ-true)
 
 open import Once.CCC.Machine.SMCore
   using (block-layout; blocks-layout; AbstractTrace; AbstractInstr; LabelId)
@@ -57,6 +61,7 @@ open import Once.CCC.Machine.SMCore using (instr-ctrl; c-thunk)
 
 module Layout {FS : FrameSemantics} where
   open FlatMachine {FS} using (fetch; find-thunk; ft-go; ft-at; ft-match; thunk-of?; ft-go-++-miss)
+
 
 
   Span : AbstractTrace → ℕ → AbstractTrace → Set
@@ -189,3 +194,56 @@ module Layout {FS : FrameSemantics} where
           (j , subst (λ z → find-thunk z (proj₁ blk) ≡ just j) (++-assoc pre (block-layout (lbl , b , t)) (blocks-layout bs)) ftq
              , subst (λ z → Span z j (block-layout blk)) (++-assoc pre (block-layout (lbl , b , t)) (blocks-layout bs)) sp))
       (blocks-at (pre ++ block-layout (lbl , b , t)) bs rest)
+
+  ------------------------------------------------------------------------
+  -- FROM A SYNTACTIC FACT TO THE SCAN'S MISS.
+  --
+  -- `ft-go pre lbl i ≡ nothing` is a statement about a SCAN. `NoThunk lbl pre`
+  -- is a statement about the LIST — every instruction either is not a thunk
+  -- marker or carries a different label. The second is what an induction over
+  -- `ir-to-trace'` can actually produce; this turns it into the first.
+  --
+  -- With-free in `Flat`'s own style (D092): the `ft-at`/`ft-match` dispatch is
+  -- mirrored by an auxiliary per layer, so each reduces without a `with`.
+  ------------------------------------------------------------------------
+
+  NoThunk : LabelId → AbstractTrace → Set
+  NoThunk lbl = All (λ i → ¬ (thunk-of? i ≡ just lbl))
+
+  no-thunk-miss    : ∀ (lbl : LabelId) (t : AbstractTrace) (i : ℕ)
+                   → NoThunk lbl t → ft-go t lbl i ≡ nothing
+  no-thunk-at      : ∀ (mo : Maybe LabelId) (lbl : LabelId) (t : AbstractTrace) (i : ℕ)
+                   → ¬ (mo ≡ just lbl) → NoThunk lbl t → ft-at mo t lbl i ≡ nothing
+  no-thunk-match   : ∀ (b : Bool) (m lbl : LabelId) (t : AbstractTrace) (i : ℕ)
+                   → (m ≡ᵇᴵ lbl) ≡ b → ¬ (m ≡ lbl) → NoThunk lbl t
+                   → ft-match b t lbl i ≡ nothing
+
+  no-thunk-miss lbl []       i _          = refl
+  no-thunk-miss lbl (x ∷ t') i (px ∷ pt)  = no-thunk-at (thunk-of? x) lbl t' i px pt
+
+  no-thunk-at (just m) lbl t i ne nt =
+    no-thunk-match (m ≡ᵇᴵ lbl) m lbl t i refl (λ eq → ne (cong just eq)) nt
+  no-thunk-at nothing  lbl t i _  nt = no-thunk-miss lbl t (suc i) nt
+
+  -- `true` would mean `m ≡ lbl`, which the hypothesis forbids.
+  no-thunk-match true  m lbl t i beq ne nt = ⊥-elim (ne (≡ᵇᴵ-true m lbl beq))
+  no-thunk-match false m lbl t i _   _  nt = no-thunk-miss lbl t (suc i) nt
+
+  ------------------------------------------------------------------------
+  -- …and hence `MissBefore` from a purely SYNTACTIC hypothesis.
+  --
+  -- `NoThunks` is `MissBefore` with the scan replaced by the list fact. This is
+  -- the form the remaining induction over `ir-to-trace'` has to produce, and it
+  -- mentions no `ft-go` at all: what is owed is that no instruction in a
+  -- block's prefix is a `c-thunk` carrying that block's label.
+  ------------------------------------------------------------------------
+
+  NoThunks : AbstractTrace → List (LabelId × ℕ × AbstractTrace) → Set
+  NoThunks pre []       = ⊤
+  NoThunks pre (b ∷ bs) = NoThunk (proj₁ b) pre × NoThunks (pre ++ block-layout b) bs
+
+  missBefore-from : ∀ (pre : AbstractTrace) (bs : List (LabelId × ℕ × AbstractTrace))
+                  → NoThunks pre bs → MissBefore pre bs
+  missBefore-from pre []       _           = tt
+  missBefore-from pre (b ∷ bs) (nt , rest) =
+    no-thunk-miss (proj₁ b) pre 0 nt , missBefore-from (pre ++ block-layout b) bs rest
