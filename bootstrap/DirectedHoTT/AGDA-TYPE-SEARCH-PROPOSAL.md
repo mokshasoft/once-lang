@@ -94,6 +94,23 @@ genuinely research-adjacent and should stay out of the compiler.
 
 ## 3. Proposal
 
+### Tier 0 — same NAME in more than one module *(trivial; do it first)*
+
+Written last here and it found the most, which is the ordering lesson
+worth passing on. Before any type indexing at all:
+
+> is this name defined in more than one module?
+
+Exact, O(n), no heuristics and no threshold to tune. On this repository:
+219 collisions, 33 involving a library module, of which **23 are
+byte-identical in statement and proof**. The anti-unification tiers
+below, with their IDF filters and bucket keys, found *fewer* — my
+stricter first pass discarded two true duplicates that this trivial
+check catches.
+
+⚠ Subject to §3.2.1 in full: most collisions are deliberate, so report
+with the module paths and let a human read them.
+
 ### Tier 1 — exact type classes over the signature *(small, high value)*
 
 Group every definition reachable in the current scope (including
@@ -276,12 +293,45 @@ not. **The difference lives in the elaborated size of the lemma's
 PROOF, not in its statement** — and a search tool that indexes
 statements is, in principle, blind to it.
 
+#### 3.2.1 And it is not one phenomenon — it is three
+
+Two more turned up after §3.2 was written, from a *different* detector
+(exact same-name collision across modules), and they matter because they
+fail for unrelated reasons:
+
+* **Deliberate parallel families.** `row-lam` is defined in both
+  `Knot/RenAgree` and `Knot/SubAgreeRows`. Identical shape, and **both
+  must exist** — they are the renaming and substitution twins of one
+  generated family. 186 of this repository's 219 name collisions are of
+  this kind.
+* **Load-bearing duplication.** `cong₃` in `Spec/Syntax.agda` is
+  byte-identical to `Lib/Wk.agda` — statement *and* proof — and deleting
+  the kernel's copy would be a **soundness-architecture regression**:
+  the build asserts *"Spec/ and Metatheory/ import no Lib/"*, so that a
+  defect in a library cannot reach consistency, canonicity or SN. The
+  duplicate is the mechanism by which the guarantee holds.
+  ⚠ And the *direction* is subtle enough that the first version of the
+  tool's warning got it backwards: the ban is **one-way** (`Lib/` may
+  import the kernel), so the kernel copy stays and the `Lib/` copy is
+  the candidate.
+
+⇒ so the three failure modes are: a match that is **slower**, a match
+that is **structurally required twice**, and a match whose duplication
+**carries an architectural invariant**. No type-level analysis separates
+any of them from a genuine duplicate, because in all three cases *the
+types really are the same*. What differs is the reason two things with
+one type exist — and that reason lives outside the type system.
+
 Three consequences, all of them design constraints rather than caveats:
 
 1. **The feature must be a candidate generator, never an auto-fix.** No
    "apply this rewrite" action, no refactoring codemod, however
    confident the match. The match being exact is not evidence that
-   taking it is an improvement.
+   taking it is an improvement — §3.2.1 gives three unrelated reasons an
+   exact match can be one that must stay. This is the single most
+   important line in the document: a tool that offered "delete the
+   duplicate" as a one-click action would, on this repository, have
+   offered to break the kernel's independence guarantee.
 2. **It vindicates recall-over-precision.** No amount of type-level
    precision could have separated the 27 from the 15; a stricter filter
    would only have discarded true wins. Rank, never filter — and accept
