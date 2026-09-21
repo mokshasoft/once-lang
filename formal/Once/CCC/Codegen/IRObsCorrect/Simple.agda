@@ -622,7 +622,13 @@ module Simp {FS : FrameSemantics} where
     -- mechanical mirror of `obs-correct-inl`: the same ten-instruction heap
     -- build, with the tag write replaced by the env load and the payload load
     -- replaced by `instr-load-code-addr`.)
-    obs-correct-case  : ∀ {A B C} (f : IR A C) (g : IR B C)
+    -- plan 0.88: THE IHs ARE THREADED, as `comp-obs-correct` already does.
+    -- Without them this was not merely unproved but UNPROVABLE from inside a
+    -- per-constructor clause: `case f g` is correct BECAUSE `f` and `g` are,
+    -- and a clause that may not recurse has no other way to learn it. The
+    -- statement now says what the discharge will actually use.
+    obs-correct-case  : ∀ {A B C} {f : IR A C} {g : IR B C}
+                      → IRObsCorrectF f → IRObsCorrectF g
                       → IRObsCorrectF (case f g)
 
     -- (`obs-correct-apply` MOVED OUT — discharged below, D188.)

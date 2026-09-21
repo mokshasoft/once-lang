@@ -90,7 +90,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   -- sums
   ir-obs-correct inl                 = obs-correct-inl
   ir-obs-correct inr                 = obs-correct-inr
-  ir-obs-correct (case f g)          = obs-correct-case f g
+  ir-obs-correct (case f g)          = obs-correct-case (ir-obs-correct f) (ir-obs-correct g)
   -- terminal / initial
   ir-obs-correct terminal            = obs-correct-terminal
   ir-obs-correct initial             = obs-correct-initial
