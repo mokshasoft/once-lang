@@ -49,7 +49,7 @@ open import Once.CCC.Machine.Flat using (module FlatMachine)
 open import Once.IR using (IR)
 import Once.IR as IRm
 open IRm.IR
-open import Once.IRTy using (⌈_⌉F)
+open import Once.IRTy using (⌈_⌉F; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace'; cata-dispatch; cata-strategy; CataStrategy;
          strat-const; strat-nat; strat-linear; strat-branching; lsize; fsize; cata-body; cata-call-setup; cata-call;
@@ -126,6 +126,39 @@ module Scope {FS : FrameSemantics} where
   -- `at` is the ALGEBRA's trace and may itself carry markers (a nested `Cata`),
   -- so its bound has to arrive as a HYPOTHESIS: the first statement of this
   -- omitted it and was therefore unprovable, not merely unproved.
+  ------------------------------------------------------------------------
+  -- THE RE-SUSPENSION PASS EMITS NO MARKER (D199).
+  --
+  -- It is branches, loads, stores and the `once` join labels; the suspension
+  -- it builds carries a CODE ADDRESS (`instr-load-code-addr`), not a
+  -- `c-thunk` — the block entry it points at was minted by `Ana` itself. Same
+  -- induction `resuspend-label-mono` runs over `WellFormedFI`.
+  ------------------------------------------------------------------------
+  resuspend-nt : ∀ {lo hi} (n l : ℕ) (lbl : LabelId) {F} (wf : WellFormedFI F)
+               → ThunksIn lo hi (proj₂ (proj₂ (resuspend-layer n l lbl wf)))
+  resuspend-nt n l lbl (wf-K _) = []
+  resuspend-nt n l lbl wf-Id    = all-no-thunk-in _ refl
+  resuspend-nt n l lbl (wf-Prod wfF wfG) =
+    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+    ++⁺ (resuspend-nt (suc (suc (suc n))) l lbl wfF)
+        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+         ++⁺ (resuspend-nt (proj₁ (resuspend-layer (suc (suc (suc n))) l lbl wfF))
+                           (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) l lbl wfF)))
+                           lbl wfG)
+             (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ []))
+  -- `arm t tag` is `(2 ∷) ++ t ++ (9 ∷)`, so each arm splits LEFT-nested
+  -- against the rest of the trace — `(t ++ 9list) ++ …`, not `t ++ …`.
+  resuspend-nt n l lbl (wf-Sum wfF wfG) =
+    thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+    ++⁺ (++⁺ (resuspend-nt (proj₁ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF))
+                           (proj₁ (proj₂ (resuspend-layer (suc (suc (suc n))) (suc (suc l)) lbl wfF)))
+                           lbl wfG)
+             (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ []))
+        (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ 
+         ++⁺ (++⁺ (resuspend-nt (suc (suc (suc n))) (suc (suc l)) lbl wfF)
+                  (thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ thunk-none-in _ refl ∷ []))
+             (thunk-none-in _ refl ∷ []))
+
   ------------------------------------------------------------------------
   -- THE COMPILE-TIME FUNCTOR WALKS. These recurse on `F`, so no decider closes
   -- them — they need the same structural induction `visit-walk-ff` runs.
@@ -371,22 +404,15 @@ module Scope {FS : FrameSemantics} where
                                      (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
                                      (ℓ o l) wf)
                (thunks-in c 0 (suc l)))
-            resusp-free)
+            (resuspend-nt (proj₁ (ir-to-trace' 0 (suc l) c))
+                          (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
+                          (ℓ o l) wf))
     ∷ All-map (λ {b} → bts-weaken b (≤-step ≤-refl)
                 (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
                                       (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
                                       (ℓ o l) wf))
               (blocks-thunks-in c 0 (suc l))
     where
-      -- The re-suspension pass emits no `c-thunk` — it is branches, loads and
-      -- the join labels (D199). Named rather than proved here: it is an
-      -- induction over `WellFormedFI`, the same shape `resuspend-label-mono`
-      -- already walks for the `once` namespace.
-      postulate
-        resusp-free : ∀ {lo hi} → ThunksIn lo hi
-          (proj₂ (proj₂ (resuspend-layer (proj₁ (ir-to-trace' 0 (suc l) c))
-                                         (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
-                                         (ℓ o l) wf)))
   -- Every strategy ends the same way: a thunk-free skeleton (`cata-call-setup`,
   -- the `cata-call`s and the `I` fragments carry no `c-thunk`) followed by ONE
   -- `cata-body`, whose marker is the body label. So the four clauses differ
