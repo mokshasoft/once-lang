@@ -474,8 +474,66 @@ def term_of(acts, NN="n", V=False):
         t = f"renTm vs ({t})" if a[0] == "ren" else f"subTm ({sigma(a[1],a[2])}) ({t})"
     return t
 
+# ★★★ THE `sub-wⁿ-single` FAMILY, RECOGNISED — 2026-09-21.
+#
+# ⚠⚠ THE SIBLING EMITTER ALREADY DID THIS.  `eq_gen`, the VARIABLE-depth
+#   twin fifty lines below, emits `wk-single {v = a0} d` for exactly this
+#   shape; `eq_of` emitted a three-deep `trans`/`cong` chain for the
+#   identical statement at `num n`.  Two emitters, one shape, and only
+#   one of them found the library lemma.
+#   ⇒ `dont-fight-proofs-fight-abstractions`: the tell is what the
+#     WORKING SIBLING DOES NOT NEED.
+#
+# ★ WHY THE NUMERAL FORM MISSED IT.  `num n` is closed, so `num-ren` and
+#   `num-sub` cancel a renaming or a substitution at ANY σ — the chain
+#   always works, and always terminates, so nothing ever forced a second
+#   look.  A lemma that always applies is exactly the kind that hides a
+#   better one.  `wk-single` collapses the renaming AND the substitution
+#   in ONE step where the chain takes two.
+#
+# ★ THE SHAPE: k substitutions at exponents 0..k-1, then k renamings —
+#   which is a payload field weakened past k binders and substituted
+#   back, once per `⊢app`.  `Lib/Wk` has the family at k = 1, 2, 3.
+#   ⚠ Found by `tools/find-dup-lemmas.py --could-simplify wk-single`,
+#     which ranked these two generated modules top.
+#
+# ★★★ ONLY k = 1, AND THE CUT IS MEASURED — this is the interesting part.
+#   The tool matched k = 1, 2 AND 3 (42 equations), all three genuinely
+#   the same statement as the library lemma.  A/B on this module, two
+#   samples each, deps warm:
+#
+#       longhand (baseline)            13.46 / 13.39 s   870 MB
+#       k=1 only        (27 collapsed) 12.99 / 12.34 s   889 MB   +2%
+#       k=1,2,3         (42 collapsed) 14.51 / 13.23 s  1167 MB  +34%
+#
+#   ⇒ `wk-single` is FREE; `sub-w²-single`/`sub-w³-single` cost 34% of
+#     this module's memory for fifteen equations.
+#
+# ⚠⚠ SO THE LONGHAND CHAIN WAS NOT A MISSED LIBRARY CALL.  It is a
+#   SPECIALISED route that is cheaper precisely because `num n` is
+#   CLOSED: `num-ren`/`num-sub` cancel at any σ in one step each, while
+#   `sub-w³-single` is a nested proof that elaborates large.
+#   ⇒ A SHAPE MATCH CAN BE EXACTLY RIGHT AND STILL NOT BE AN
+#     IMPROVEMENT.  `wk-single` is two lemmas composed and stays small;
+#     the deeper rungs do not.  The tool's job is to find the candidate;
+#     only the A/B decides.  `agda-rss-noise-floor` is ±12%, so +2% is
+#     noise and +34% is not.
+_SUBW_SINGLE = {1: "wk-single {v = a%s}"}
+
+def _subw_single(acts):
+    """`[sub(i₀,0) … sub(i_{k-1},k-1), ren ×k]` → the k-rung lemma, else None."""
+    if len(acts) % 2: return None
+    k = len(acts) // 2
+    if k not in _SUBW_SINGLE: return None
+    for j in range(k):
+        if acts[j][0] != "sub" or acts[j][2] != j: return None
+    if any(a[0] != "ren" for a in acts[k:]): return None
+    return _SUBW_SINGLE[k] % tuple(acts[j][1] for j in range(k))
+
 def eq_of(acts, NN="n"):
     if not acts: return "refl"
+    hit = _subw_single(acts)
+    if hit: return f"{hit} (num {NN})"
     a, rest = acts[0], acts[1:]
     if a[0] == "ren":
         return f"trans (cong (renTm vs) ({eq_of(rest, NN)})) (num-ren vs {NN})"
@@ -715,6 +773,7 @@ open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
         ; \u22a2sTy; \u22a2sTm; \u22a2sDesc; \u22a2sDCon; \u22a2sIDesc; \u22a2sICon; \u22a2sVar
         ; toI; fromI; \u22a2ixP; num; \u22a2num; num-ren; num-sub )
+open import DirectedHoTT.Spec.Typing using ( wk-single )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Tags
