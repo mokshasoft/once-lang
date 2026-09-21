@@ -89,6 +89,11 @@ open import Once.Adequacy.Compile using (ArchCorrect)
 open import Once.Adequacy.SourceTrace using (moduleToIR; moduleToIR-emitted; map-rewrite; ⟦_⟧IR)
 open import Once.CCC.Codegen.IRObsCorrectFlat o using (module IRObsCorrectFlatness)
 open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace; ir-stack-budget)
+open import Once.CCC.Codegen.BlockLayout using (module Layout)
+open Layout {FS} using (MissBefore; blocks-at; Span)
+open import Data.List using (_++_; []; _∷_)
+open import Once.CCC.Machine.SMCore using (instr-ctrl; c-ret; blocks-layout)
+open import Data.List.Properties using (++-assoc)
 open import Data.List.Properties using (++-identityʳ; take-all)
 open import Once.Denotation.TraceMonad using (projTrace; bnd)
 open import Once.Denotation.DenotPrefix using (evalᴰ-good)
@@ -325,8 +330,46 @@ entry-span ir k i eq =
 -- plus D168's `link`-relocation lemmas, which is the first REAL demand for
 -- that machinery — the plan said to check rather than assume, and this is the
 -- check coming back positive.
+-- plan 0.91 S5 / plan 0.93 S4 — NO LONGER ONE OPAQUE POSTULATE.
+--
+-- `Once.CCC.Codegen.BlockLayout` proves the whole of this except ONE fact.
+-- `blocks-at` gives `BlockAt` for every block at once — each resolves to its
+-- own offset (`block-resolves`, from `ft-go-++-miss` + `≡ᵇᴵ-refl`) and spans
+-- there (`blocks-placed`, induction on the block list). What it needs is
+-- `MissBefore`: each block's own prefix does not already resolve its label.
+--
+-- That is the label-distinctness fact, and it spans TWO channels. `curry`,
+-- `Ana` and `in-ν` put their bodies in the BLOCKS list, but `cata-body`
+-- (IRToTrace.agda:262-267) splices a `c-thunk` INLINE into the emitted trace
+-- for all four cata strategies. So a prefix genuinely contains `c-thunk`
+-- markers and the obligation is that none carries THIS label — not the
+-- stronger, and false, "the entry mints no thunks".
+--
+-- `EmittedWF.labels-unique : AllPairs _≢_ (labels-def at)` states exactly this
+-- (`labels-def-i` already tags `thunk m` apart from `once m`), but nothing
+-- constructs it for the real program. Doing so is the remaining induction over
+-- `ir-to-trace'`, tracking the label counter — `LabelScope`'s `label-mono`
+-- territory.
+--
+-- D168's `link-pre`/`link-post`/`link-block-split` were NOT needed. The comment
+-- that stood here predicted this would be "the first REAL demand for that
+-- machinery"; `blocks-placed` goes through by direct induction on the block
+-- list, so the prediction was wrong and the machinery stays unexercised here.
 postulate
-  entry-blocks : (ir : IR Unit Unit) → BlocksAt (ir-to-trace ir) (blocks 0 0 ir)
+  entry-miss : (ir : IR Unit Unit)
+             → MissBefore (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
+                          (blocks 0 0 ir)
+
+-- …and `entry-blocks` is now a DEFINITION: the proved composition, transported
+-- across `link`'s own associativity
+-- (`entry ++ c-ret ∷ layout` vs `(entry ++ c-ret ∷ []) ++ layout`).
+entry-blocks : (ir : IR Unit Unit) → BlocksAt (ir-to-trace ir) (blocks 0 0 ir)
+entry-blocks ir =
+  subst (λ prog → BlocksAt prog (blocks 0 0 ir))
+        (++-assoc (emitted 0 0 ir) (instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
+                  (blocks-layout (blocks 0 0 ir)))
+        (blocks-at (emitted 0 0 ir ++ instr-ctrl (c-ret (ir-stack-budget ir)) ∷ [])
+                   (blocks 0 0 ir) (entry-miss ir))
 
 entry-witness : (ir : IR Unit Unit) → IRObsCorrectF ir
               → (brs : (ir : IR Unit Unit) → BlockRuns (ir-to-trace ir)) → (k : ℕ)
