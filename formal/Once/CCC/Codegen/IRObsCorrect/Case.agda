@@ -309,3 +309,81 @@ module CaseC {FS : FrameSemantics} where
     rewrite rd = cong tag-zf (sumTag-read m 1 s loc tg)
   tag-inr {m = m} {loc = loc} {s = s} (valid-inr-reg-wf _ tg _ _ _) rd
     rewrite rd = cong tag-zf (sumTag-read m 1 s loc tg)
+
+  ----------------------------------------------------------------------
+  -- THE RUN. Both arms share the branch row; they differ in whether it is
+  -- taken, and they rejoin at the final `c-label`.
+  ----------------------------------------------------------------------
+  module CaseRun {A B C : IRTy} (f : IR A C) (g : IR B C)
+    (n l : ℕ) (prog : AbstractTrace) (base : ℕ)
+    (span : SpanAt prog base (emitted n l (case f g)))
+    where
+
+    open CaseShape f g n l
+
+    -- The emitted length, in the form the two arms' end-pcs take.
+    len-eq : length (emitted n l (case f g)) ≡ suc join-at
+    len-eq = trans step (solve-it (length gt) (length ft))
+      where
+        step : length (emitted n l (case f g))
+             ≡ 3 + (length gt + (4 + (length ft + 1)))
+        step = trans (length-++ pre {gt ++ mid ++ ft ++ post})
+                 (cong (3 +_)
+                   (trans (length-++ gt {mid ++ ft ++ post})
+                     (cong (length gt +_)
+                       (trans (length-++ mid {ft ++ post})
+                              (cong (4 +_) (length-++ ft {post}))))))
+        solve-it : ∀ (a b : ℕ) → 3 + (a + (4 + (b + 1))) ≡ suc (((3 + a) + 4) + b)
+        solve-it = solve 2 (λ a b →
+          con 3 :+ (a :+ (con 4 :+ (b :+ con 1))) := con 1 :+ (((con 3 :+ a) :+ con 4) :+ b))
+          refl
+
+    ------------------------------------------------------------------
+    -- THE FETCHES. The three straight rows of each arm, the `c-jmp`, and the
+    -- two `c-label`s — each read out of `span` at its own offset. Everything
+    -- past `gt` goes through one helper, because `fetch-++-right` indexes as
+    -- `length gt + j` while the offsets read `j + length gt`.
+    ------------------------------------------------------------------
+    gt-at : ∀ (j : ℕ) (i : AbstractInstr)
+          → fetch (mid ++ ft ++ post) j ≡ just i
+          → fetch prog ((3 + (j + length gt)) + base) ≡ just i
+    gt-at j i e =
+      span (3 + (j + length gt)) i
+        (subst (λ z → fetch (gt ++ mid ++ ft ++ post) z ≡ just i)
+               (+-comm (length gt) j)
+               (trans (fetch-++-right gt (mid ++ ft ++ post) j) e))
+
+    at-branch : fetch prog (0 + base) ≡ just (instr-ctrl (c-branch-tag-zero (ℓ o l)))
+    at-branch = span 0 _ refl
+
+    at-unpack-r : fetch prog (1 + base) ≡ just load-indirect-suc
+    at-unpack-r = span 1 _ refl
+
+    at-movin-r : fetch prog (2 + base) ≡ just mov-to-input
+    at-movin-r = span 2 _ refl
+
+    at-jmp : fetch prog ((3 + length gt) + base) ≡ just (instr-ctrl (c-jmp (ℓ o (suc l))))
+    at-jmp = gt-at 0 _ refl
+
+    at-inl-label : fetch prog (inl-at + base) ≡ just (instr-ctrl (c-label (ℓ o l)))
+    at-inl-label = gt-at 1 _ refl
+
+    at-unpack-l : fetch prog ((5 + length gt) + base) ≡ just load-indirect-suc
+    at-unpack-l = gt-at 2 _ refl
+
+    at-movin-l : fetch prog ((6 + length gt) + base) ≡ just mov-to-input
+    at-movin-l = gt-at 3 _ refl
+
+    at-join-label : fetch prog (join-at + base) ≡ just (instr-ctrl (c-label (ℓ o (suc l))))
+    at-join-label =
+      subst (λ z → fetch prog (z + base) ≡ just (instr-ctrl (c-label (ℓ o (suc l)))))
+            (solve-j (length gt) (length ft))
+            (gt-at (4 + length ft) _
+              (trans (fetch-++-right mid (ft ++ post) (length ft))
+                     (subst (λ z → fetch (ft ++ post) z ≡ just (instr-ctrl (c-label (ℓ o (suc l)))))
+                            (+-identityʳ (length ft))
+                            (fetch-++-right ft post 0))))
+      where
+        solve-j : ∀ (a b : ℕ) → 3 + ((4 + b) + a) ≡ ((3 + a) + 4) + b
+        solve-j = solve 2 (λ a b →
+          con 3 :+ ((con 4 :+ b) :+ a) := ((con 3 :+ a) :+ con 4) :+ b) refl
