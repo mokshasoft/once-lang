@@ -543,8 +543,41 @@ module Simp {FS : FrameSemantics} where
     -- checking was the D172 mistake a second time: concluding a witness cannot
     -- express something without enumerating the constructors that would.
     --
-    -- SO WHAT ACTUALLY BLOCKS THIS IS NOW UNKNOWN, and that is the honest
-    -- state. Two of the three recorded obstacles are gone:
+    -- WHAT BLOCKS THIS IS KNOWN AGAIN (2026-09-21), and half of it is now
+    -- built. The line here said "NOW UNKNOWN"; that was true when two of the
+    -- three recorded obstacles dissolved, and it is no longer.
+    --
+    -- `case` is the ONLY label-bearing per-constructor postulate left (`curry`
+    -- was reclassified out by D159, `Cata` is `cata-correct`), so there is no
+    -- discharged sibling to model on. It needs:
+    --
+    --   1. THE CONVERSE OF `find-label-sound` — a jump lands where the label
+    --      is. This did NOT exist (`grep find-label-complete` → nothing) and
+    --      now does: `Once.CCC.Codegen.LabelResolve` (`fl-hit`,
+    --      `label-resolves`, `NoLabel`/`no-label-miss`, `noLabel-outside`),
+    --      the `once`-namespace mirror of the `thunk`-namespace lemmas in
+    --      `BlockLayout`. Zero postulates.
+    --
+    --      NOTE what it is NOT: `EmittedWF.labels-unique`. That is about
+    --      `labels-def`, which RECURSES into `instr-case-on-tag`/`instr-loop`;
+    --      `fl-go` scans with `label-of?`, which does not. Proving
+    --      `labels-unique` would have been a large induction aimed slightly
+    --      off target. What the scan needs is CONTAINMENT, and
+    --      `LabelScope.labels-in` already had it.
+    --
+    --   2. THE DISJOINTNESS PLUMBING — `[lo,hi)` window facts from
+    --      `label-mono` at each use site, so `noLabel-outside` applies.
+    --      Mechanical.
+    --
+    --   3. THE BRANCH CORRESPONDENCE — the machine takes the branch the
+    --      denotation's scrutinee selects. `inj₁` ⇒ `c-branch-tag-zero` fires
+    --      and control lands on `c-label (ℓ o l)`; `inj₂` ⇒ it does not, `gt`
+    --      runs and `c-jmp (ℓ o (suc l))` reaches the join. THIS has no model
+    --      anywhere — no discharged constructor has control flow — and it is
+    --      the real remaining work. Calibration: `Sum.agda` is 807 lines for
+    --      the straight-line `inl`/`inr`.
+    --
+    -- The three recorded obstacles, for the record — two were already gone:
     --   * the literal payload — solved by stage F, above;
     --   * D173's frontier — dissolved by 0.86 stage G. A Stack result landed in
     --     an `AtStack` cell at a frontier nothing bumps, so `BeforeFrontier`
