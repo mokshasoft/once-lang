@@ -33,6 +33,7 @@ module Once.CCC.Codegen.IRObsCorrect.Case (o : CanonicalName) where
 open import Once.CCC.Codegen.IRObsCorrect.Machine o
 open import Once.CCC.Codegen.LabelResolve o using (module Resolve)
 open import Once.CCC.Codegen.LabelScope o using (labels-in; LabelsIn; LabelIn; li-none; li-lab; in-range)
+open import Once.CCC.Codegen.LabelRange o using (label-mono)
 open import Once.CCC.Label using (idx)
 open import Once.CCC.Machine.SMCore using (instr-ctrl; c-branch-tag-zero; c-jmp; c-label)
 open import Data.Nat.Properties using (1+n≰n)
@@ -58,7 +59,7 @@ module CaseC {FS : FrameSemantics} where
   open Core {FS}
   open Mach {FS}
   open FlatStepsAPI {FS} using (fl-go-skip; fl-go-shift; fl-go-prefix)
-  open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel)
+  open Resolve {FS} using (found-in-window; noLabel-outside; NoLabel; fl-hit)
   open ClosureWellFormedDef {FS} using (SumTag)
 
   ----------------------------------------------------------------------
@@ -138,6 +139,66 @@ module CaseC {FS : FrameSemantics} where
             (span (suc (suc (suc (length gt + suc (suc (suc (suc k))))))) i
               (trans (fetch-++-right gt (mid ++ ft ++ post) (suc (suc (suc (suc k)))))
                      (fetch-++-left ft post k i eq)))
+
+    ------------------------------------------------------------------
+    -- WHERE THE TWO JUMPS LAND.
+    --
+    -- The `inl` entry `ℓ o l` sits in the mid row, the join `ℓ o (suc l)` in
+    -- the final row. Both scans pass `gt` (whose labels are at or above `l1`,
+    -- and `l1` is above `suc l` because `f` was emitted first and took two
+    -- labels), and the join's scan additionally passes the mid row's own
+    -- `c-label (ℓ o l)` — `l ≢ suc l` — and all of `ft`.
+    ------------------------------------------------------------------
+    just-injL : ∀ {a b : LabelId} → (just a) ≡ (just b) → a ≡ b
+    just-injL refl = refl
+
+    l<l1 : suc l ≤ l1
+    l<l1 = ≤-trans (n≤1+n (suc l)) (label-mono f n (suc (suc l)))
+
+    noG-l : NoLabel (ℓ o l) gt
+    noG-l = noLabel-outside (ℓ o l) gt (labels-in g n1 l1)
+              (λ w → 1+n≰n (≤-trans l<l1 (proj₁ w)))
+
+    noG-e : NoLabel (ℓ o (suc l)) gt
+    noG-e = noLabel-outside (ℓ o (suc l)) gt (labels-in g n1 l1)
+              (λ w → 1+n≰n (≤-trans (label-mono f n (suc (suc l))) (proj₁ w)))
+
+    -- `ft`'s labels start at `suc (suc l)`; the join is one below that.
+    noF-e : NoLabel (ℓ o (suc l)) ft
+    noF-e = noLabel-outside (ℓ o (suc l)) ft (labels-in f n (suc (suc l)))
+              (λ w → 1+n≰n (proj₁ w))
+
+    -- …and the mid row's own label is `ℓ o l`, not the join.
+    noMid-e : NoLabel (ℓ o (suc l)) mid
+    noMid-e = (λ ()) ∷ᴬ (λ eq → 1+n≰n (≤-reflexive (sym (cong idx (just-injL eq)))))
+            ∷ᴬ (λ ()) ∷ᴬ (λ ()) ∷ᴬ []ᴬ
+
+    inl-at : ℕ
+    inl-at = 4 + length gt
+
+    join-at : ℕ
+    join-at = ((3 + length gt) + 4) + length ft
+
+    inl-scan : find-label (emitted n l (case f g)) (ℓ o l) ≡ just inl-at
+    inl-scan = trans (fl-go-skip gt (mid ++ ft ++ post) (ℓ o l) 3 noG-l)
+                     (fl-hit (ℓ o l) (load-indirect-suc ∷ mov-to-input ∷ (ft ++ post)) inl-at)
+
+    join-scan : find-label (emitted n l (case f g)) (ℓ o (suc l)) ≡ just join-at
+    join-scan =
+      trans (fl-go-skip gt (mid ++ ft ++ post) (ℓ o (suc l)) 3 noG-e)
+        (trans (fl-go-skip mid (ft ++ post) (ℓ o (suc l)) (3 + length gt) noMid-e)
+          (trans (fl-go-skip ft post (ℓ o (suc l)) ((3 + length gt) + 4) noF-e)
+                 (fl-hit (ℓ o (suc l)) [] join-at)))
+
+    inl-target : ∀ (prog : AbstractTrace) (base : ℕ)
+               → LabelsAt prog base (emitted n l (case f g))
+               → find-label prog (ℓ o l) ≡ just (inl-at + base)
+    inl-target prog base la = la (ℓ o l) inl-at inl-scan
+
+    join-target : ∀ (prog : AbstractTrace) (base : ℕ)
+                → LabelsAt prog base (emitted n l (case f g))
+                → find-label prog (ℓ o (suc l)) ≡ just (join-at + base)
+    join-target prog base la = la (ℓ o (suc l)) join-at join-scan
 
     ------------------------------------------------------------------
     -- THE BLOCK CHANNEL. `ir-to-trace' n l (case f g)` ends `… , (fb ++ gb)`
