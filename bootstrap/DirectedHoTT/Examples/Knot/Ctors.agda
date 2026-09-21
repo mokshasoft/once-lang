@@ -43,6 +43,7 @@ open import DirectedHoTT.Examples.Knot.Sorts
   using ( IPair; sTy; sTm; sDesc; sDCon; sIDesc; sICon; sVar
         ; ⊢sTy; ⊢sTm; ⊢sDesc; ⊢sDCon; ⊢sIDesc; ⊢sICon; ⊢sVar
         ; toI; fromI; ⊢ixP; num; ⊢num; num-ren; num-sub )
+open import DirectedHoTT.Spec.Typing using ( wk-single )
 open import DirectedHoTT.Examples.Knot.Desc using ( KnotD; K )
 open import DirectedHoTT.Examples.Knot.Wf using ( KnotWf )
 open import DirectedHoTT.Examples.Knot.Tags
@@ -99,7 +100,7 @@ Ty-PiK a0 a1 = icon tagTy-Pi (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTy) unit
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- Σ' : RTy Γ → RTy (Γ ∙) → RTy Γ
 Ty-SgK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
@@ -126,7 +127,7 @@ Ty-SgK a0 a1 = icon tagTy-Sg (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTy) unit
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- El : RTm Γ → RTy Γ
 Ty-ElK : {Γ : Cx} → RTm Γ → RTm Γ
@@ -178,7 +179,7 @@ Ty-HomK a0 a1 a2 = icon tagTy-Hom (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Na
     e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e5 = wk-single {v = a0} (num n)
     e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
     e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
     e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
@@ -240,7 +241,7 @@ Ty-IdK a0 a1 a2 = icon tagTy-Id (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat�
     e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e5 = wk-single {v = a0} (num n)
     e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
     e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
     e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
@@ -359,7 +360,7 @@ Tm-appK a0 a1 = icon tagTm-app (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) un
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- pair : RTm Γ → RTm Γ → RTm Γ
 Tm-pairK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
@@ -386,7 +387,7 @@ Tm-pairK a0 a1 = icon tagTm-pair (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) 
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- absurd : RTm Γ → RTm Γ → RTm Γ
 Tm-absurdK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
@@ -413,7 +414,7 @@ Tm-absurdK a0 a1 = icon tagTm-absurd (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ s
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- ordtr : (5 × RTm Γ) → RTm Γ
 Tm-ordtrK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
@@ -461,7 +462,7 @@ Tm-ordtrK a0 a1 a2 a3 a4 = icon tagTm-ordtr (pair a0 (pair a1 (pair a2 (pair a3 
     e8 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e8 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e9 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e9 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e9 = wk-single {v = a0} (num n)
     e10 : subTm (extS (extS (extS (single a1)))) (subTm (extS (extS (extS (extS (single a0))))) (renTm vs (renTm vs (renTm vs (renTm vs (renTm vs (num n))))))) ≡ num n
     e10 = trans (cong (subTm (extS (extS (extS (single a1))))) (trans (cong (subTm (extS (extS (extS (extS (single a0)))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (extS (single a0))))) n))) (num-sub (extS (extS (extS (single a1)))) n)
     e11 : subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (num n)))))) ≡ num n
@@ -554,7 +555,7 @@ Tm-cPiK a0 a1 = icon tagTm-cPi (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) un
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- ⌜Σ⌝ : RTm Γ → RTm (Γ ∙) → RTm Γ
 Tm-cSgK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
@@ -581,7 +582,7 @@ Tm-cSgK a0 a1 = icon tagTm-cSg (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) un
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- ⌜Hom⌝ : (3 × RTm Γ) → RTm Γ
 Tm-cHomK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
@@ -615,7 +616,7 @@ Tm-cHomK a0 a1 a2 = icon tagTm-cHom (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜
     e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e5 = wk-single {v = a0} (num n)
     e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
     e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
     e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
@@ -646,7 +647,7 @@ Tm-hreflK a0 a1 = icon tagTm-hrefl (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- tr : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
 Tm-trK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
@@ -680,7 +681,7 @@ Tm-trK a0 a1 a2 = icon tagTm-tr (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat�
     e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e5 = wk-single {v = a0} (num n)
     e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
     e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
     e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
@@ -718,7 +719,7 @@ Tm-apK a0 a1 a2 = icon tagTm-ap (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Nat�
     e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e5 = wk-single {v = a0} (num n)
     e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
     e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
     e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
@@ -756,7 +757,7 @@ Tm-cIdK a0 a1 a2 = icon tagTm-cId (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜Na
     e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e5 = wk-single {v = a0} (num n)
     e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
     e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
     e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
@@ -787,7 +788,7 @@ Tm-idreflK a0 a1 = icon tagTm-idrefl (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ s
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- jsub : RTm (Γ ∙) → RTm Γ → RTm Γ → RTm Γ
 Tm-jsubK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
@@ -821,7 +822,7 @@ Tm-jsubK a0 a1 a2 = icon tagTm-jsub (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜
     e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e5 = wk-single {v = a0} (num n)
     e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
     e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
     e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
@@ -901,7 +902,7 @@ Tm-natrecK a0 a1 a2 = icon tagTm-natrec (pair a0 (pair a1 (pair a2 (pair (idrefl
     e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e5 = wk-single {v = a0} (num n)
     e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
     e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
     e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
@@ -932,7 +933,7 @@ Tm-conK a0 a1 = icon tagTm-con (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) un
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- elim : Desc → RTm Γ → RTm Γ → RTm Γ
 Tm-elimK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ
@@ -966,7 +967,7 @@ Tm-elimK a0 a1 a2 = icon tagTm-elim (pair a0 (pair a1 (pair a2 (pair (idrefl ⌜
     e4 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e4 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e5 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e5 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e5 = wk-single {v = a0} (num n)
     e6 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
     e6 = trans (cong (subTm (extS (single a1))) (trans (cong (subTm (extS (extS (single a0)))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (single a0))) n))) (num-sub (extS (single a1)) n)
     e7 : subTm (single a1) (subTm (extS (single a0)) (renTm vs (renTm vs (num n)))) ≡ num n
@@ -997,7 +998,7 @@ Tm-iconK a0 a1 = icon tagTm-icon (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sTm) 
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- ielim : IDesc → RTm Γ → RTm Γ → RTm Γ → RTm Γ
 Tm-ielimK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ → RTm Γ → RTm Γ
@@ -1038,7 +1039,7 @@ Tm-ielimK a0 a1 a2 a3 = icon tagTm-ielim (pair a0 (pair a1 (pair a2 (pair a3 (pa
     e6 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e6 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e7 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e7 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e7 = wk-single {v = a0} (num n)
     e8 : subTm (extS (extS (single a1))) (subTm (extS (extS (extS (single a0)))) (renTm vs (renTm vs (renTm vs (renTm vs (num n)))))) ≡ num n
     e8 = trans (cong (subTm (extS (extS (single a1)))) (trans (cong (subTm (extS (extS (extS (single a0))))) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (extS (extS (single a0)))) n))) (num-sub (extS (extS (single a1))) n)
     e9 : subTm (extS (single a1)) (subTm (extS (extS (single a0))) (renTm vs (renTm vs (renTm vs (num n))))) ≡ num n
@@ -1163,7 +1164,7 @@ Desc-consK a0 a1 = icon tagDesc-cons (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ s
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- dι : DCon
 DCon-iK : {Γ : Cx} → RTm Γ
@@ -1220,7 +1221,7 @@ DCon-kapK a0 a1 = icon tagDCon-kap (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sDC
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- inil : IDesc
 IDesc-nilK : {Γ : Cx} → RTm Γ
@@ -1259,7 +1260,7 @@ IDesc-consK a0 a1 = icon tagIDesc-cons (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- iι : ICon Δ
 ICon-iK : {Γ : Cx} → RTm Γ
@@ -1298,7 +1299,7 @@ ICon-rhoK a0 a1 = icon tagICon-rho (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sIC
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
 -- iκ : RTm Δ → ICon (Δ ∙) → ICon Δ
 ICon-kapK : {Γ : Cx} → RTm Γ → RTm Γ → RTm Γ
@@ -1325,5 +1326,5 @@ ICon-kapK a0 a1 = icon tagICon-kap (pair a0 (pair a1 (pair (idrefl ⌜Nat⌝ sIC
     e2 : subTm (extS (single a0)) (renTm vs (renTm vs (num n))) ≡ num n
     e2 = trans (cong (subTm (extS (single a0))) (trans (cong (renTm vs) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-ren vs n))) (num-sub (extS (single a0)) n)
     e3 : subTm (single a0) (renTm vs (num n)) ≡ num n
-    e3 = trans (cong (subTm (single a0)) (trans (cong (renTm vs) (refl)) (num-ren vs n))) (num-sub (single a0) n)
+    e3 = wk-single {v = a0} (num n)
 
