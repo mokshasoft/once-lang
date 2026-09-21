@@ -113,6 +113,28 @@ if sys.argv[1:2] == ["--same-name"]:
     #   that involve a `Lib/` module, where a collision is much more
     #   likely to mean "the example re-derived the library"; `--all`
     #   shows the rest.
+    # ⚠⚠⚠ A DUPLICATE CAN BE LOAD-BEARING, AND THE TOP-RANKED ONE IS.
+    #   `cong₃` in `Spec/Syntax.agda` is BYTE-IDENTICAL to `Lib/Wk.agda`
+    #   and MUST NOT BE DELETED: `tools/sweep.sh` asserts *"KERNEL IS
+    #   INDEPENDENT: Spec/ and Metatheory/ import no Lib/ or Examples/"*,
+    #   whose whole point is that a defect in a library cannot reach
+    #   consistency, canonicity or SN.  Removing the copy would make the
+    #   kernel depend on a library and silently void that guarantee.
+    #   ⚠ AND THE DIRECTION IS THE OPPOSITE OF THE OBVIOUS ONE.  The ban
+    #     is one-way: `Lib/` MAY import `Spec/` and `Metatheory/`, only
+    #     the reverse is forbidden.  So the KERNEL copy is the one that
+    #     must stay, and the LIB copy is the deletion candidate — e.g.
+    #     `Lib/DvdArith`'s `⟶*-⌜Id⌝ʳ` duplicates `Metatheory/RedCong`'s
+    #     and could import it instead.  The first version of this flag
+    #     said "do not delete" for BOTH sides and would have sent a
+    #     reader the wrong way.
+    #   ⇒ the kernel is FLAGGED, not filtered — the collision is real and
+    #     worth seeing; what is wrong is which side you remove.
+    # ★ Third instance of the same lesson: the tool finds candidates, and
+    #   the decision needs context no type-level analysis can supply
+    #   (see `--could-simplify`'s +34% result, and the deliberate
+    #   `row-lam` ren/sub twins below).
+    KERNEL = ("Spec/", "Metatheory/")
     ALLM = len(sys.argv) > 2 and sys.argv[2] == "--all"
     import collections as _c
     where = _c.defaultdict(list)
@@ -124,8 +146,18 @@ if sys.argv[1:2] == ["--same-name"]:
     print("== SAME NAME DEFINED IN MORE THAN ONE MODULE ==")
     print("   %d collision(s) total; %d involve a Lib/ module.%s\n"
           % (len(dups), len(lib), "" if ALLM else "  (--all for the rest)"))
+    nk = 0
     for n, v in sorted(show.items()):
-        print("   %-22s %s" % (n, "   ".join(v)))
+        kern = [m for m in v if m.startswith(KERNEL)]
+        tag = ""
+        if kern and any(m.startswith("Lib/") for m in v):
+            tag = ("   ⚠ KEEP %s/ — kernel may not import Lib/; the Lib/ copy is the candidate"
+                   % kern[0].split("/")[0])
+            nk += 1
+        print("   %-22s %s%s" % (n, "   ".join(v), tag))
+    if nk:
+        print("\n   ⚠ %d collision(s) involve the kernel: keep the kernel side,"
+              "\n     consider removing the Lib/ side (the import ban is ONE-WAY)." % nk)
     sys.exit(0)
 
 if sys.argv[1:2] == ["--could-simplify"]:
