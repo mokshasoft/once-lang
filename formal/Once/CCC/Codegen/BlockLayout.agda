@@ -36,6 +36,7 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Relation.Unary.All using (All; []; _∷_) renaming (map to All-map)
 open import Data.List.Properties using (++-assoc; length-++)
 open import Data.Product using (_×_; _,_; ∃-syntax; proj₁; proj₂)
+open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst)
@@ -150,3 +151,41 @@ module Layout {FS : FrameSemantics} where
   block-resolves pre lbl b t post miss =
     trans (ft-go-++-miss pre (block-layout (lbl , b , t) ++ post) lbl 0 miss)
           (ft-hit lbl b _ (length pre + 0))
+
+  ------------------------------------------------------------------------
+  -- THE WHOLE-PROGRAM COMPOSITION.
+  --
+  -- `MissBefore pre bs` says each block's OWN prefix misses its label — the
+  -- per-block form of `ft-go-++-miss`'s hypothesis, accumulated down the list.
+  --
+  -- NOTE, and it corrects the previous commit's prose: this is NOT "the entry
+  -- mints no `c-thunk`". It cannot be — `cata-body` (IRToTrace.agda:262-267)
+  -- splices a `c-thunk` INLINE into the emitted trace, for all four cata
+  -- strategies: the algebra body is jumped over and entered by the call, rather
+  -- than living in the blocks list the way `curry`/`Ana`/`in-ν` bodies do. So a
+  -- prefix genuinely does contain `c-thunk` markers, and what is owed is that
+  -- none of them carries THIS label. The statement below already says exactly
+  -- that; only the description of it was wrong.
+  ------------------------------------------------------------------------
+
+  MissBefore : AbstractTrace → List (LabelId × ℕ × AbstractTrace) → Set
+  MissBefore pre []       = ⊤
+  MissBefore pre (b ∷ bs) = (ft-go pre (proj₁ b) 0 ≡ nothing)
+                          × MissBefore (pre ++ block-layout b) bs
+
+  -- Each block resolves to its own offset AND spans there. This is `BlockAt`
+  -- for the whole list, given the misses.
+  blocks-at : ∀ (pre : AbstractTrace) (bs : List (LabelId × ℕ × AbstractTrace))
+            → MissBefore pre bs
+            → All (λ blk → ∃[ j ] ((find-thunk (pre ++ blocks-layout bs) (proj₁ blk) ≡ just j)
+                                   × Span (pre ++ blocks-layout bs) j (block-layout blk))) bs
+  blocks-at pre []              _              = []
+  blocks-at pre ((lbl , b , t) ∷ bs) (miss , rest) =
+    ( (length pre + 0)
+    , block-resolves pre lbl b t (blocks-layout bs) miss
+    , span-shift pre (blocks-layout ((lbl , b , t) ∷ bs)) (block-layout (lbl , b , t)) 0
+        (span-head (block-layout (lbl , b , t)) (blocks-layout bs)) )
+    ∷ All-map (λ {blk} (j , ftq , sp) →
+          (j , subst (λ z → find-thunk z (proj₁ blk) ≡ just j) (++-assoc pre (block-layout (lbl , b , t)) (blocks-layout bs)) ftq
+             , subst (λ z → Span z j (block-layout blk)) (++-assoc pre (block-layout (lbl , b , t)) (blocks-layout bs)) sp))
+      (blocks-at (pre ++ block-layout (lbl , b , t)) bs rest)
