@@ -3559,3 +3559,131 @@ restriction is the point: it is what keeps the row on the right side of
 §10.1, which excluded `⌜Π⌝`/`⌜Σ⌝`/`⌜Hom⌝` because `⊩₀` cannot interpret
 them at an arbitrary environment. A projection needs no interpretation
 of its own — `fwd₀` carries it.
+
+---
+
+## Once: TYPE-INDEXED SEARCH IS A LANGUAGE FEATURE, NOT A TOOL — and it must be COST-AWARE
+
+⬜ OPEN — for Once-in-Once. Discovered 2026-09-20/21 while closing the
+OCP-0009 adequacy ledger; the Agda-side write-up is
+`bootstrap/DirectedHoTT/AGDA-TYPE-SEARCH-PROPOSAL.md` (untracked), and a
+working text-level prototype is `DirectedHoTT/tools/find-dup-lemmas.py`.
+
+### The observation that starts it
+
+A proof assistant can find a definition **by name**, and can **synthesise**
+a term for a goal. It cannot answer the question in between:
+
+> *which definitions have **this type** — or match **this pattern**?*
+
+Coq (`SearchPattern`), Lean (`exact?`, Loogle), Isabelle
+(`find_theorems`) and Haskell (Hoogle) all have it; Agda does not. And
+the cost of not having it is not theoretical — it was **measured on this
+repository**:
+
+* a lemma family whose own source comment reads *"three customers now;
+  at a fourth, stop and generalise"* — i.e. the author had already
+  noticed — nevertheless had rungs **six and seven written twice**, in
+  different directories, with byte-identical statements;
+* one module carried **seven** lemmas that were already in `Lib`, four
+  byte-identical in statement *and* proof; the module already imported
+  the library, it just did not import those names (−86 lines to fix);
+* two lemmas **twenty lines apart in one module** had the identical
+  type, one of them dead.
+
+⇒ the failure mode is not carelessness. A duplicate is invisible from
+**both** sides: the copy looks self-contained to anyone reading it, and
+the original's module never mentions the copy. **Noticing does not scale
+past one module.** Only a query over the whole signature can see it.
+
+### Why this belongs in the LANGUAGE for Once, not beside it
+
+1. **The index is a by-product of checking.** Once already elaborates
+   every declaration to a normalised type; grouping those by α-canonical
+   form is one traversal over data the checker holds anyway. Doing it
+   outside means re-deriving, from surface text, information the checker
+   had exactly — which is what the prototype does, and why it needs
+   heuristics (an IDF filter to go from 153 candidates to 13) that an
+   in-language version needs *none* of.
+2. **Every real find was an EXACT type match.** All four cases above are
+   literal type duplicates. The anti-unification machinery in the
+   prototype exists only to see through α-naming, implicit spelling and
+   line breaks. In-language, exact grouping finds all of them with **zero
+   false positives** — precise enough to be a build gate.
+3. **It composes with the invariants.** See *"Once: THE CHECKER'S COST IS
+   A LANGUAGE-DESIGN QUESTION"* above: that section argues cost should be
+   VISIBLE in the language. This is the same principle applied to search
+   — and §4 below is where the two meet.
+
+### The three tiers
+
+| tier | query | verdict | where |
+|---|---|---|---|
+| 1 | group by elaborated type (α, optionally defeq) | **delete** | language; CI gate |
+| 2 | pattern search with holes, ranked | **reuse** | language; interactive |
+| 3 | N lemmas sharing a shape | **generate** | external linter |
+
+Tier 2 needs three matching modes, of which the third is the one no
+existing system exposes and the one that would have prevented the
+duplicate above:
+
+* `exact` — α-equal;
+* `instance-of` — the found lemma generalises the query (*"would this
+  close my goal"*, Hoogle's relation);
+* **`generalises`** — the query generalises the found lemma (*"is the
+  lemma I am about to write a special case of something"*). Nearly free
+  once the index exists: the same traversal with the arguments swapped.
+
+⚠ **Ranking is not optional.** In a dependently-typed development the
+interesting patterns are the common ones — `Γ ⊢ _ ∷ _` matches thousands
+of declarations here. Take Hoogle's lesson (rank) over Coq's (filter).
+
+### ★★★ §4 — AND THE RANKING MUST INCLUDE ELABORATED BODY SIZE
+
+**This is the part that is specific to Once and that no existing system
+has.** Measured 2026-09-21, and it inverted the conclusion I had already
+written down:
+
+A query flagged 42 equations in a generated module. **All 42 were true
+positives** — each letter-for-letter an instance of a library lemma.
+A/B, two samples each, warm:
+
+    longhand (baseline)            13.46 / 13.39 s    870 MB
+    27 of them collapsed           12.99 / 12.34 s    889 MB    +2%
+    all 42 collapsed               14.51 / 13.23 s   1167 MB   +34%
+
+(measured RSS noise floor is ±12%: +2% is noise, +34% is not)
+
+**27 were wins, 15 were 34%-memory regressions, and NOTHING ABOUT THEIR
+STATEMENTS DISTINGUISHES THEM.** The hand-written chain was never a
+missed library call — it is a *specialised* route, cheaper precisely
+because the term it acts on is **closed**. The general lemma and the
+specialised one prove the same statement at very different costs,
+because the difference lives in the elaborated size of the **proof**,
+not the statement.
+
+⇒ three consequences, all binding on the design:
+
+1. **Never auto-apply.** No codemod, no "apply this rewrite" action,
+   however exact the match. Exactness is not evidence of improvement.
+2. **Recall over precision is correct**, and now for a proved reason: no
+   type-level precision could have separated the 27 from the 15, so a
+   stricter filter could only have discarded true wins.
+3. **Put the elaborated body size next to every hit.** Two lemmas with
+   identical statements are different propositions if one elaborates to
+   ten times the term. Once will know this number and nothing else will.
+   *"`wk-single`: 2 nodes; `sub-w³-single`: 47 nodes"* predicts the
+   result above **without running the A/B**. In a language whose binding
+   constraint is memory, that is arguably the most useful column in the
+   output — and it is the natural meeting point with the cost-invariant
+   work above.
+
+### Why it is worth doing early
+
+The prototype is ~200 lines of text processing and has already paid for
+itself: it caught a duplicate **as it was being written**, deleted 7
+more, found 1 dead lemma, and surfaced the 42-match result that produced
+§4. In-language it is simpler, exact, and gate-able. ⇒ build it with the
+checker, not after it — a library that cannot be searched by type grows
+duplicates at a rate proportional to its size, and this repository is
+the evidence.
