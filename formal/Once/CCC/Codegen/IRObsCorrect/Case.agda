@@ -598,3 +598,74 @@ module CaseC {FS : FrameSemantics} where
 
       at-end-t2 : fpc t2 ≡ length (emitted n l (case f g)) + base
       at-end-t2 = sym (cong (_+ base) len-eq)
+
+    ------------------------------------------------------------------
+    -- THE `inl` ARM. The branch JUMPS here, so the prologue is one step
+    -- longer; and `ft` is followed directly by the join label, so the tail is
+    -- one step SHORTER. The two arms therefore reach the same pc.
+    ------------------------------------------------------------------
+    module ArmL (ihf : IRObsCorrectF f)
+                (ss : AllSlotStable prog) (cr : BlockRuns prog)
+                (bl : BlocksAt prog (blocks n l (case f g)))
+                (la : LabelsAt prog base (emitted n l (case f g)))
+                (s : LocState FS) (alloc : AllocState {FS}) (cl : StoredValue FS)
+                (n≤ : next-slot alloc ≤ n) (nh : halted s ≡ false)
+                (iwf : InstrWF s alloc load-indirect-suc)
+                {Av : ⟦ A ⟧} (mA : AllocMode)
+                (inpA : InputAt mA alloc Av (floc (Prologue.i4 s alloc cl nh iwf la)))
+                (cond : tag-zf (flat-read-tag s) ≡ true)
+                (k : ℕ)
+                where
+
+      module P = Prologue s alloc cl nh iwf la
+      module VR = ValueRealized
+
+      -- `fpc i4` is `3 + (inl-at + base)`; `ft` is emitted at `fbase base`.
+      pc-i4 : fpc P.i4 ≡ fbase base
+      pc-i4 = solve-i (length gt) base
+        where
+          solve-i : ∀ (a b : ℕ) → 3 + ((4 + a) + b) ≡ 3 + (a + (4 + b))
+          solve-i = solve 2 (λ a b →
+            con 3 :+ ((con 4 :+ a) :+ b) := con 3 :+ (a :+ (con 4 :+ b))) refl
+
+      handF : P.i4 ≡ entry-flat (fbase base) (floc P.i4) (falloc P.i4) (fclosure P.i4)
+      handF = handover-eq (fbase base) P.i4 pc-i4 refl refl
+
+      nh-i4 : halted (floc P.i4) ≡ false
+      nh-i4 = exec-abstract-preserves-halted-WF mov-to-input (floc P.i3) (falloc P.i3) P.nh-i3 tt
+
+      mrf : MachineRefinesObsF prog (fbase base) n (suc (suc l)) f Av
+              (floc P.i4) (falloc P.i4) (fclosure P.i4) k
+      mrf = ihf n (suc (suc l)) prog (fbase base) ss cr (span-f prog base span)
+                (blocks-f prog bl) (labels-f prog base la) mA Av
+                (floc P.i4) (falloc P.i4) (fclosure P.i4) n≤ nh-i4 inpA k
+
+      vf : ValueRealized prog (fbase base) n (suc (suc l)) f Av
+             (floc P.i4) (falloc P.i4) (fclosure P.i4) k
+      vf = MachineRefinesObsF.value-realized mrf
+
+      chainF : FlatSteps prog (VR.steps vf) P.i4 (VR.settle vf)
+      chainF = subst (λ st → FlatSteps prog (VR.steps vf) st (VR.settle vf))
+                     (sym handF) (VR.run vf)
+
+      -- …and `ft` runs straight into the join label, no jump.
+      u1 : FlatState
+      u1 = record (VR.settle vf) { fpc = suc (join-at + base) }
+
+      pc-at-join : fpc (VR.settle vf) ≡ join-at + base
+      pc-at-join = trans (VR.at-end vf) (solve-e (length gt) (length ft) base)
+        where
+          solve-e : ∀ (a b c : ℕ) → b + (3 + (a + (4 + c))) ≡ (((3 + a) + 4) + b) + c
+          solve-e = solve 3 (λ a b c →
+            b :+ (con 3 :+ (a :+ (con 4 :+ c))) := (((con 3 :+ a) :+ con 4) :+ b) :+ c) refl
+
+      joinStep : FlatSteps prog 1 (VR.settle vf) u1
+      joinStep = flat-step1 (VR.live vf)
+                   (trans (cong (fetch prog) pc-at-join) at-join-label)
+                   (cong (λ z → record (VR.settle vf) { fpc = suc z }) pc-at-join)
+
+      chain : FlatSteps prog (4 + (VR.steps vf + 1)) P.fs0 u1
+      chain = FlatSteps-++ (P.run-i cond) (FlatSteps-++ chainF joinStep)
+
+      at-end-u1 : fpc u1 ≡ length (emitted n l (case f g)) + base
+      at-end-u1 = sym (cong (_+ base) len-eq)
