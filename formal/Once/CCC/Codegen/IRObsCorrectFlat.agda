@@ -56,6 +56,7 @@ open import Once.CCC.Codegen.IRObsCorrect.TwoCell o
 open import Once.CCC.Codegen.IRObsCorrect.Apply   o
 open import Once.CCC.Codegen.IRObsCorrect.Out     o
 open import Once.CCC.Codegen.IRObsCorrect.Comp    o
+open import Once.CCC.Codegen.IRObsCorrect.Case    o
 -- `PairAssemble` imports `Pair` (the four clusters) itself, WITHOUT `public`
 -- — same D200 rule: only this façade re-exports.
 open import Once.CCC.Codegen.IRObsCorrect.PairAssemble o
@@ -73,6 +74,7 @@ module IRObsCorrectFlatness {FS : FrameSemantics} where
   open ApplyC   {FS} public
   open OutC     {FS} public
   open CompC    {FS} public
+  open CaseC    {FS} public
   open PairAsm  {FS} public
 
   -- TOTAL, and now with NO CATCH-ALL (Plan 0.68 step 0). Every constructor has
