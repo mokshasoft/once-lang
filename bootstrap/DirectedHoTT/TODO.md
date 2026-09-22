@@ -169,7 +169,14 @@ those clauses are being pruned for another reason — but the method is
 now known to work, which it was not before.
 
 
-## ⬜ SPLIT `Trust.agda` INTO SEVERAL ROOTS — sized 2026-09-04, not urgent
+## ✅ SPLIT `Trust.agda` INTO SEVERAL ROOTS — **DONE**; 12 roots, generated
+
+⚠ This read ⬜ until 2026-09-22.  `tools/gen-trust.sh` emits
+`Trust/Kernel`, `Lib`, `Examples`, `Comparison` and `Knot1`..`Knot8`,
+and `tools/check-trust.sh` diffs their union against the module list.
+The sizing below is kept because it is why the split was worth doing.
+
+### the original sizing
 
 `Trust.agda` imports all 235 modules and type-checks nothing, so its
 entire cost is loading every interface at once. It is the ONE module that
@@ -213,7 +220,13 @@ commit — this is the safety-critical artifact.
 `Trust` passes in 20s. Do this when it stops passing, or when a reviewer
 would rather read five short lists than one long one.
 
-## ⬜ `extRNK`'s NATURALITY — the last thing between half 2 and the knot
+## ✅ `extRNK`'s NATURALITY — **DONE** (`Knot/RenNat.extRNK-sub`)
+
+⚠ This read ⬜ until 2026-09-22 and was quoted as a live blocker while
+`extRNK-sub` had been in the tree for weeks — it is used by
+`wkTyUnderK-sub` in `Knot/MethsTyAgree`.  `stale-blockers-recheck-first`.
+
+### the original analysis
 
 `Lib/ISub.isubMethod-red` is PROVED but takes `ExtNSub` and `FordMapSub`
 as hypotheses. At the KNOT's renaming instantiation:
@@ -240,7 +253,13 @@ this wants.
 interface fix it needs — `sel-here≡`/`sel-there≡`, `Lib/Wk.towerP` — is
 already committed), then `sub-agree`/`ren-agree`, which is step 3 proper.
 
-## ⬜ STEP 3 — `ren-agree` / `sub-agree`, and the ORDER is forced
+## ✅ STEP 3 — `ren-agree` / `sub-agree` — **BOTH DISCHARGED**
+
+⚠ This read ⬜ until 2026-09-22.  `Knot/RenAgreeTie.ren-agree` covers all
+30 `RTm` rows and `Knot/SubAgreeTie.sub-agree` likewise; the agreement
+ledger records both ✅.
+
+### the original analysis
 
 `Knot/RenRed.ren-head-red` is the per-row head reduction, PROVED and shown
 callable at row 0. It chains half 1 (`isubMeths-sel`) and half 2
