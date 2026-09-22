@@ -14,6 +14,9 @@ open import Once.CanonicalName using (CanonicalName)
 module Once.CCC.Codegen.IRObsCorrect.SigOp (o : CanonicalName) where
 
 open import Once.CCC.Codegen.IRObsCorrect.Machine o
+open import Once.Denotation.Trace using (mkEvent; mk-event)
+open import Once.Type using () renaming (Unit to Unitᵀ)
+open import Once.Functor.Translate using (IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
 
 import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
@@ -28,6 +31,7 @@ import Once.Denotation.TraceMonad as TM
 module SigOpC {FS : FrameSemantics} where
 
   open Core {FS}
+  open FlatEventTrace {FS} using (decode-arg; machine-event; ev-of-loc)
   open Mach {FS}
 
 
@@ -239,6 +243,98 @@ module SigOpC {FS : FrameSemantics} where
       keeps-alloc : falloc fs₁ ≡ alloc
       keeps-alloc rewrite not-halted | pure-eq = refl
 
+  ------------------------------------------------------------------------
+  -- THE EFFECTFUL CASE. `Emits` does NOT halt (`exec-sigop-halts-of (Emits _)
+  -- … ≡ false`), so the VALUE half is `pure-obs-correct-sigop`'s verbatim and
+  -- only the trace half differs — which is the half D058 says is the claim.
+  ------------------------------------------------------------------------
+  emits-halts-false : ∀ {A B} (si : SigOpInfo A B) {e} → effect si ≡ Emits e
+                    → (s : LocState FS) → exec-sigop-halts si s ≡ false
+  emits-halts-false si emits-eq s = cong (λ z → exec-sigop-halts-of z si s) emits-eq
+
+  ------------------------------------------------------------------------
+  -- THE ARGUMENT CORRESPONDENCE: the event the machine emits records the same
+  -- argument the denotation's does. `machine-event` and `mkEvent` are the SAME
+  -- `mk-event (name si) A (baseA si) _`, so the whole content is this.
+  --
+  -- It splits on the DOMAIN's base type, not on the residence:
+  --   * `Unit` — `⟦ Unit ⟧` is `⊤`, so the two agree by η whatever `Input1`
+  --     holds. This is D074's observation on the argument side.
+  --   * `Void` — the argument is `⊥`; there is no such call.
+  --   * `Int`/`Float` REGISTER-RESIDENT — `decode-arg`'s two real clauses.
+  -- What is left is a BOXED base argument, and that is D114's existing
+  -- `decode-unread` hole, restated where it is actually consumed.
+  ------------------------------------------------------------------------
+  postulate
+    decode-boxed : ∀ {A : Type} (bt : IsBaseType A) {mIn alloc}
+                     (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
+                 → InputAt {⌊ A ⌋} mIn alloc x s
+                 → decode-arg bt (readReg (regs s) Input1)
+                   ≡ subst (λ z → z) (EvV.coh A) (DT.forget x)
+
+  emits-arg-agree : ∀ {A : Type} (bt : IsBaseType A) {mIn alloc}
+                      (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS)
+                  → InputAt {⌊ A ⌋} mIn alloc x s
+                  → decode-arg bt (readReg (regs s) Input1)
+                    ≡ subst (λ z → z) (EvV.coh A) (DT.forget x)
+  emits-arg-agree base-Unit  x s inp = refl
+  emits-arg-agree base-Int   x s (in-reg fits-int   eq) rewrite eq = refl
+  emits-arg-agree base-Float x s (in-reg fits-float eq) rewrite eq = refl
+  emits-arg-agree bt         x s inp = decode-boxed bt x s inp
+
+  ------------------------------------------------------------------------
+  -- THE EFFECTFUL DISCHARGE. `Emits` carries `B ≡ Unit` (SigOp/Info.agda:88),
+  -- which settles the value half outright: the result is `tt` and
+  -- `ResultPlace`'s `unit-result` needs no residence. `Emits` also does not
+  -- halt, so the settle state is live. Everything real is in the trace.
+  ------------------------------------------------------------------------
+  -- The trace agreement, as a STANDALONE lemma: `rewrite` has to abstract
+  -- `effect si` out of BOTH `ev-of-loc`'s `with` and `emit-D`'s, and inside
+  -- the witness's `where` block — with the placement premises in context — it
+  -- could not.
+  emits-trace-agree :
+    ∀ {A} (si : SigOpInfo A Unitᵀ) → effect si ≡ Emits refl
+    → ∀ {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (k : ℕ)
+    → InputAt {⌊ A ⌋} mIn alloc x s
+    → take k (ev-of-loc (instr-sigop si) s ++ [])
+      ≡ take k (projTrace (evalᴰ (SigOp si) x) k)
+  emits-trace-agree {A} si emits-eq x s k inp rewrite emits-eq = go k
+    where
+      ev-eq : machine-event si (readReg (regs s) Input1)
+            ≡ mkEvent si (subst (λ z → z) (EvV.coh A) (DT.forget x))
+      ev-eq = cong (mkEvent si) (emits-arg-agree (SigOpInfo.baseA si) x s inp)
+
+      go : ∀ (j : ℕ)
+         → take j (machine-event si (readReg (regs s) Input1) ∷ [])
+           ≡ take j (DT.capN j (mkEvent si (subst (λ z → z) (EvV.coh A) (DT.forget x)) ∷ []))
+      go zero    = refl
+      go (suc j) = cong (_∷ take j []) ev-eq
+
+  ------------------------------------------------------------------------
+  -- THE EFFECTFUL DISCHARGE. `Emits` carries `B ≡ Unit` (SigOp/Info.agda:88),
+  -- which settles the value half outright: the result is `tt` and
+  -- `ResultPlace`'s `unit-result` needs no residence. `Emits` also does not
+  -- halt, so the settle state is live. Everything real is in the trace.
+  ------------------------------------------------------------------------
+  emits-obs-correct-sigop :
+    ∀ {A} (si : SigOpInfo A Unitᵀ) → effect si ≡ Emits refl → IRObsCorrectF (SigOp si)
+  emits-obs-correct-sigop {A} si emits-eq
+    n l prog base _ cr span _ _ mIn x s alloc cl _ not-halted inp k =
+    record
+      { traces-agree = emits-trace-agree si emits-eq x s k inp
+      ; value-realized =
+          realized 1 fs₁ Stack (falloc fs₁) ((not-halted , span 0 _ refl) ∷ [])
+                   (emits-halts-false si emits-eq s) refl refl refl
+                   unit-result
+                   (λ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j)
+                                 nhw-instr-sigop refl)
+                   (λ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl)
+                               nhw-instr-sigop refl)
+                   refl (λ _ _ bf → bf)
+      }
+    where
+      fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl)
+
   -- The SigOp cases the Pure discharge does NOT cover, named separately (Plan
   -- 0.68 step 0). They used to fall back into the whole-IR `obs-correct-rest`,
   -- which meant an EFFECTFUL SigOp — the only kind that puts anything in the
@@ -290,13 +386,20 @@ module SigOpC {FS : FrameSemantics} where
   -- (readable input ⇒ the machine can materialise it and apply `semM`). A Pure
   -- SigOp over a non-readable input keeps the sentinel, so it makes no value
   -- claim and falls back to `obs-correct-sigop-rest`. Arith is always readable.
-  obs-correct-sigop {A} {B} si with fits-in-reg? B | readable? A
-  ... | nothing      | _       = obs-correct-sigop-rest si
-  ... | just fitness | nothing = obs-correct-sigop-rest si
-  ... | just fitness | just rA with effect si in pure-eq
-  ...   | Pure    = pure-obs-correct-sigop si fitness rA pure-eq
-  ...   | Emits _ = obs-correct-sigop-rest si
-  ...   | Halts _ = obs-correct-sigop-rest si
+  -- Dispatch on the EFFECT first. The old order tested `fits-in-reg? B`
+  -- first, which made the `Emits` row unreachable: `Emits` carries `B ≡ Unit`
+  -- and `FitsInReg Unit` is empty, so every effectful SigOp fell through the
+  -- FIRST row into `obs-correct-sigop-rest` — the row that reads as "a Pure
+  -- SigOp whose result does not fit a register". The effectful case, which is
+  -- the only kind that puts anything in the observable trace, was being
+  -- assumed by a clause that looked like it was about something else.
+  obs-correct-sigop {A} {B} si with effect si in eff-eq
+  ... | Emits refl = emits-obs-correct-sigop si eff-eq
+  ... | Halts _    = obs-correct-sigop-rest si
+  ... | Pure with fits-in-reg? B | readable? A
+  ...   | nothing      | _       = obs-correct-sigop-rest si
+  ...   | just fitness | nothing = obs-correct-sigop-rest si
+  ...   | just fitness | just rA = pure-obs-correct-sigop si fitness rA eff-eq
 
   -- ════════════════════════════════════════════════════════════════════
   -- `comp-obs-correct` — the COMPOSITION case, CARVED from `obs-correct-rest`
