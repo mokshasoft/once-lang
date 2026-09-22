@@ -31,6 +31,7 @@ module Once.Denotation.TraceMonad where
 
 open import Data.Nat using (ℕ; _∸_)
 open import Data.List using (List; []; _++_; length; take)
+open import Data.Bool using (Bool; true; false)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
@@ -42,34 +43,76 @@ open import Once.Denotation.Trace using (SigOpEvent)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
-T : Set → Set
-T X = ℕ → List SigOpEvent × X
+-- plan 0.97: THE BUDGET IS A LENS, NOT A PARAMETER.
+--
+-- A computation IS a trace family, a termination fact and a value. The budget
+-- truncates the VIEW of the trace; it does not change what the computation is.
+-- So the value and the stop flag carry no budget, and "the value does not
+-- drift with the budget" / "stoppedness does not drift with the budget" are
+-- not theorems to prove at every producer — they are UNSTATABLE.
+--
+-- The previous shape `ℕ → List SigOpEvent × X` could not say that. It let a
+-- computation's value depend on how long it was watched, and the sequencing
+-- proof then needed two new invariants to rule out a behaviour nothing ever
+-- wanted (plan 0.97 §5b).
+--
+-- `Stopped` is a flag rather than a `Maybe` on the value because `Halts`
+-- forces `B ≡ Unit`: the value after a stop is `tt` regardless.
+Stopped : Set
+Stopped = Bool
+
+record T (X : Set) : Set where
+  constructor mkT
+  field
+    trT : ℕ → List SigOpEvent
+    stT : Stopped
+    vlT : X
+
+-- The old shape, for the sites that read all three at a budget.
+atT : ∀ {X} → T X → ℕ → List SigOpEvent × Stopped × X
+atT m n = (T.trT m n , T.stT m , T.vlT m)
 
 infixl 1 _>>=T_ _>>T_
 
 returnT : ∀ {X} → X → T X
-returnT x _ = ([] , x)
+returnT x = mkT (λ _ → []) false x
 
 -- Kleisli sequencing: run `m`, then `f x`, concatenating their events in
 -- order. The budget is THREADED: `f` sees what `m` left, `n ∸ length es`.
 -- That is what makes `length (projTrace (m >>=T f) n) ≤ n` hold — with a
 -- shared `n` each side could independently spend the whole budget, and two
 -- sequenced SigOps would emit 2 events at budget 1.
+-- A STOPPED computation swallows its continuation's EVENTS. Its value is
+-- still the continuation's — it must be, to stay total — but nothing observes
+-- a value after a stop, and `Halts` makes it `tt` anyway.
+join-es : Stopped → List SigOpEvent → List SigOpEvent → List SigOpEvent
+join-es true  es _  = es
+join-es false es ef = es ++ ef
+
+join-tr : Stopped → (ℕ → List SigOpEvent) → (ℕ → List SigOpEvent)
+        → ℕ → List SigOpEvent
+join-tr b tm tf n = join-es b (tm n) (tf (n ∸ length (tm n)))
+
+join-st : Stopped → Stopped → Stopped
+join-st true  _ = true
+join-st false b = b
+
 _>>=T_ : ∀ {X Y} → T X → (X → T Y) → T Y
-(m >>=T f) n =
-  let exr = m n
-      eyr = f (proj₂ exr) (n ∸ length (proj₁ exr))
-  in (proj₁ exr ++ proj₁ eyr , proj₂ eyr)
+m >>=T f =
+  let fy = f (T.vlT m)
+  in mkT (join-tr (T.stT m) (T.trT m) (T.trT fy))
+         (join-st (T.stT m) (T.stT fy))
+         (T.vlT fy)
 
 _>>T_ : ∀ {X Y} → T X → T Y → T Y
 m >>T k = m >>=T λ _ → k
 
 fmapT : ∀ {X Y} → (X → Y) → T X → T Y
-fmapT g m n = (proj₁ (m n) , g (proj₂ (m n)))
+fmapT g m = mkT (T.trT m) (T.stT m) (g (T.vlT m))
 
 -- Emit events (the Writer `tell`).
 tell : List SigOpEvent → T ⊤
-tell es k = (take k es , tt)
+tell es = mkT (λ k → take k es) false tt
 
 ------------------------------------------------------------------------
 -- Projections — the observable is `projTrace`.
@@ -77,12 +120,19 @@ tell es k = (take k es , tt)
 
 -- The trace (effectful SigOp events) at observation depth `n`.
 projTrace : ∀ {X} → T X → ℕ → List SigOpEvent
-projTrace m n = proj₁ (m n)
+projTrace m n = T.trT m n
 
 -- The value at observation depth `n` (internal; the apex observes only
 -- the trace).
+-- The budget argument is KEPT and IGNORED: the value does not depend on it.
+-- Keeping the arity leaves every `ResultPlace … (valueT … k)` site in plan
+-- 0.88's discharged clauses compiling untouched.
 valueT : ∀ {X} → T X → ℕ → X
-valueT m n = proj₂ (m n)
+valueT m _ = T.vlT m
+
+-- Did the computation stop? Budget-free, by the shape of `T`.
+stoppedT : ∀ {X} → T X → ℕ → Stopped
+stoppedT m _ = T.stT m
 
 ------------------------------------------------------------------------
 -- Congruence at a fixed observation depth (the J-style bridge).
@@ -98,16 +148,22 @@ valueT m n = proj₂ (m n)
 -- sidesteps the abstraction entirely. Clauses whose wrapper is trivial
 -- (`returnT (proj₁ v)` and friends) do not need this; clauses with a
 -- subst-chain wrapper do.
-bindAt : ∀ {X Y : Set} → (X → T Y) → ℕ → (List SigOpEvent × X) → (List SigOpEvent × Y)
+bindAt : ∀ {X Y : Set} → (X → T Y) → ℕ
+       → (List SigOpEvent × Stopped × X) → (List SigOpEvent × Stopped × Y)
 bindAt f n exr =
-  let k = n ∸ length (proj₁ exr)
-  in (proj₁ exr ++ proj₁ (f (proj₂ exr) k) , proj₂ (f (proj₂ exr) k))
+  let es = proj₁ exr
+      b  = proj₁ (proj₂ exr)
+      fy = f (proj₂ (proj₂ exr))
+  in ( join-es b es (T.trT fy (n ∸ length es))
+     , join-st b (T.stT fy)
+     , T.vlT fy )
 
->>=T-at : ∀ {X Y : Set} (m : T X) (f : X → T Y) (n : ℕ) → (m >>=T f) n ≡ bindAt f n (m n)
+>>=T-at : ∀ {X Y : Set} (m : T X) (f : X → T Y) (n : ℕ)
+        → atT (m >>=T f) n ≡ bindAt f n (atT m n)
 >>=T-at m f n = refl
 
 >>=T-cong-at : ∀ {X Y : Set} {m₁ m₂ : T X} (f : X → T Y) (n : ℕ)
-             → m₁ n ≡ m₂ n → (m₁ >>=T f) n ≡ (m₂ >>=T f) n
+             → atT m₁ n ≡ atT m₂ n → atT (m₁ >>=T f) n ≡ atT (m₂ >>=T f) n
 >>=T-cong-at f n eq = cong (bindAt f n) eq
 
 -- | The NESTED-bind version: the two binds may differ in BOTH the monadic
@@ -118,18 +174,22 @@ bindAt f n exr =
 --   the continuation at the REMAINDER `n ∸ length (proj₁ r)`, a budget the
 --   caller cannot name before `r` is known. Quantifying over it keeps the
 --   lemma free of extensionality while covering the budget actually used.
-bindAt-cong : ∀ {X Y : Set} (f₁ f₂ : X → T Y) (n : ℕ) {r₁ r₂ : List SigOpEvent × X}
+bindAt-cong : ∀ {X Y : Set} (f₁ f₂ : X → T Y) (n : ℕ)
+                {r₁ r₂ : List SigOpEvent × Stopped × X}
             → r₁ ≡ r₂
-            → (∀ x k → f₁ x k ≡ f₂ x k)
+            → (∀ x → f₁ x ≡ f₂ x)
             → bindAt f₁ n r₁ ≡ bindAt f₂ n r₂
 bindAt-cong f₁ f₂ n {r} refl fe =
-  cong₂ _,_ (cong (proj₁ r ++_) (cong proj₁ (fe (proj₂ r) _)))
-            (cong proj₂ (fe (proj₂ r) _))
+  cong (λ fy → ( join-es (proj₁ (proj₂ r)) (proj₁ r)
+                         (T.trT fy (n ∸ length (proj₁ r)))
+               , join-st (proj₁ (proj₂ r)) (T.stT fy)
+               , T.vlT fy ))
+       (fe (proj₂ (proj₂ r)))
 
 >>=T-cong₂-at : ∀ {X Y : Set} {m₁ m₂ : T X} (f₁ f₂ : X → T Y) (n : ℕ)
-              → m₁ n ≡ m₂ n
-              → (∀ x k → f₁ x k ≡ f₂ x k)
-              → (m₁ >>=T f₁) n ≡ (m₂ >>=T f₂) n
+              → atT m₁ n ≡ atT m₂ n
+              → (∀ x → f₁ x ≡ f₂ x)
+              → atT (m₁ >>=T f₁) n ≡ atT (m₂ >>=T f₂) n
 >>=T-cong₂-at f₁ f₂ n meq fe = bindAt-cong f₁ f₂ n meq fe
 
 ------------------------------------------------------------------------
@@ -162,8 +222,12 @@ open import Relation.Binary.PropositionalEquality using (sym; trans; subst)
 Bounded : ∀ {X} → T X → Set
 Bounded m = ∀ k → length (projTrace m k) ≤ k
 
+-- Stated on the TRACE, which is all it was ever about. The old form said
+-- `m (suc k) ≡ m k` — equality of whole computations — and so quietly
+-- asserted that the value does not move either. With the value budget-free
+-- that half is now structural, and what remains is the real content.
 Saturating : ∀ {X} → T X → Set
-Saturating m = ∀ k → length (projTrace m k) < k → m (suc k) ≡ m k
+Saturating m = ∀ k → length (projTrace m k) < k → projTrace m (suc k) ≡ projTrace m k
 
 Coherent : ∀ {X} → T X → Set
 Coherent m = ∀ k → ∃[ rest ] (projTrace m (suc k) ≡ projTrace m k ++ rest)
@@ -228,14 +292,15 @@ take-coh (suc k) (x ∷ xs) with take-coh k xs
 
 -- A leaf: emit (a prefix of) a FIXED list of events, with a value that does
 -- not read the budget. `evalᴰ`'s SigOp clause is exactly this.
-constT-pf : ∀ {X} (es : List SigOpEvent) (x : X) → PrefixFamily {X} (λ n → (take n es , x))
-constT-pf es x =
+constT-pf : ∀ {X} (es : List SigOpEvent) (st : Stopped) (x : X)
+          → PrefixFamily {X} (mkT (λ n → take n es) st x)
+constT-pf es st x =
   prefixFamily (λ k → length-take-≤ k es)
-               (λ k h → cong (_, x) (take-sat k es h))
+               (λ k h → take-sat k es h)
                (λ k → take-coh k es)
 
 tell-pf : ∀ es → PrefixFamily (tell es)
-tell-pf es = constT-pf es tt
+tell-pf es = constT-pf es false tt
 
 
 -- The two facts about `∸` that the budget threading needs, named once.
@@ -255,67 +320,84 @@ split-< {l} {lf} {k} h =
         → PrefixFamily m → (∀ k → PrefixFamily (f (valueT m k))) → PrefixFamily (m >>=T f)
 >>=T-pf m f pm pf = prefixFamily bnd′ sat′ coh′
   where
+    -- plan 0.97: the continuation is ONE computation, not a family. `valueT`
+    -- ignores its budget now, so `f (valueT m k)` is the same `f` argument at
+    -- every `k` — which is the whole reason the stopped case below is a
+    -- two-line dispatch rather than a cross-budget argument.
+    fy : T _
+    fy = f (T.vlT m)
+
+    pfy : PrefixFamily fy
+    pfy = pf 0
+
     lm : ℕ → ℕ
     lm k = length (projTrace m k)
 
-    xv : ℕ → _
-    xv k = valueT m k
-
     rest-of : ℕ → List SigOpEvent
-    rest-of k = projTrace (f (xv k)) (k ∸ lm k)
+    rest-of k = projTrace fy (k ∸ lm k)
 
-    len-split : ∀ k → length (projTrace (m >>=T f) k) ≡ lm k + length (rest-of k)
+    len-split : ∀ k → length (projTrace m k ++ rest-of k) ≡ lm k + length (rest-of k)
     len-split k = length-++ (projTrace m k) {rest-of k}
 
-    bnd′ : Bounded (m >>=T f)
-    bnd′ k =
+    -- Each field dispatches on the (budget-free) stop flag. STOPPED: the
+    -- composite's trace IS `m`'s, so every obligation is `m`'s own.
+    bnd-b : ∀ (b : Stopped) k → length (join-es b (projTrace m k) (rest-of k)) ≤ k
+    bnd-b true  k = bnd pm k
+    bnd-b false k =
       subst (_≤ k) (sym (len-split k))
         (subst (lm k + length (rest-of k) ≤_) (m+[n∸m]≡n (bnd pm k))
-          (+-mono-≤ (≤-refl {lm k}) (bnd (pf k) (k ∸ lm k))))
+          (+-mono-≤ (≤-refl {lm k}) (bnd pfy (k ∸ lm k))))
 
-    sat′ : Saturating (m >>=T f)
-    sat′ k h = seq (sat pm k lm<k) (sat (pf k) (k ∸ lm k) lf<k')
+    bnd′ : Bounded (m >>=T f)
+    bnd′ k = bnd-b (T.stT m) k
+
+    sat-b : ∀ (b : Stopped) k
+          → length (join-es b (projTrace m k) (rest-of k)) < k
+          → join-es b (projTrace m (suc k)) (rest-of (suc k))
+            ≡ join-es b (projTrace m k) (rest-of k)
+    sat-b true  k h = sat pm k h
+    sat-b false k h = cong₂ _++_ satm restEq
       where
         sum< : lm k + length (rest-of k) < k
         sum< = subst (_< k) (len-split k) h
-
         lm<k : lm k < k
         lm<k = ≤-trans (s≤s (m≤m+n (lm k) (length (rest-of k)))) sum<
+        lf<k′ : length (rest-of k) < k ∸ lm k
+        lf<k′ = split-< sum<
+        satm : projTrace m (suc k) ≡ projTrace m k
+        satm = sat pm k lm<k
+        restEq : rest-of (suc k) ≡ rest-of k
+        restEq =
+          trans (cong (λ es → projTrace fy (suc k ∸ length es)) satm)
+                (trans (cong (projTrace fy) (suc∸ (bnd pm k)))
+                       (sat pfy (k ∸ lm k) lf<k′))
 
-        lf<k' : length (rest-of k) < k ∸ lm k
-        lf<k' = split-< sum<
+    sat′ : Saturating (m >>=T f)
+    sat′ k h = sat-b (T.stT m) k h
 
-        -- Both components are finished, so the composite is: `m`'s pair is
-        -- fixed (hence the continuation and its budget-offset are too), and
-        -- `f` at the extra unit of budget agrees with `f` at the budget it had.
-        seq : m (suc k) ≡ m k
-            → f (xv k) (suc (k ∸ lm k)) ≡ f (xv k) (k ∸ lm k)
-            → (m >>=T f) (suc k) ≡ (m >>=T f) k
-        seq em ef =
-          trans (cong (λ p → (proj₁ p ++ proj₁ (f (proj₂ p) (suc k ∸ length (proj₁ p)))
-                             , proj₂ (f (proj₂ p) (suc k ∸ length (proj₁ p))))) em)
-                (trans (cong (λ b → (projTrace m k ++ proj₁ (f (xv k) b)
-                                    , proj₂ (f (xv k) b)))
-                             (suc∸ (bnd pm k)))
-                       (cong (λ r → (projTrace m k ++ proj₁ r , proj₂ r)) ef))
-
-    coh′ : Coherent (m >>=T f)
-    coh′ k = go (m≤n⇒m<n∨m≡n (bnd pm k))
+    coh-b : ∀ (b : Stopped) k
+          → ∃[ rest ] (join-es b (projTrace m (suc k)) (rest-of (suc k))
+                       ≡ join-es b (projTrace m k) (rest-of k) ++ rest)
+    coh-b true  k = coh pm k
+    coh-b false k = go (m≤n⇒m<n∨m≡n (bnd pm k))
       where
-        -- `m` did NOT spend everything: it is finished, and the extra unit
-        -- of budget goes to `f`.
-        spare : lm k < k → ∃[ rest ] (projTrace (m >>=T f) (suc k) ≡ projTrace (m >>=T f) k ++ rest)
-        spare lm<k with coh (pf k) (k ∸ lm k)
+        -- `m` did NOT spend everything: it is finished, and the extra unit of
+        -- budget goes to `f`.
+        spare : lm k < k
+              → ∃[ rest ] (projTrace m (suc k) ++ rest-of (suc k)
+                           ≡ (projTrace m k ++ rest-of k) ++ rest)
+        spare lm<k with coh pfy (k ∸ lm k)
         ... | r , eqf = r ,
-          trans (cong (λ p → proj₁ p ++ proj₁ (f (proj₂ p) (suc k ∸ length (proj₁ p))))
-                      (sat pm k lm<k))
-          (trans (cong (λ b → projTrace m k ++ proj₁ (f (xv k) b)) (suc∸ (bnd pm k)))
-          (trans (cong (projTrace m k ++_) eqf)
-                 (sym (++-assoc (projTrace m k) (rest-of k) r))))
+          trans (cong₂ _++_ (sat pm k lm<k)
+                   (trans (cong (λ es → projTrace fy (suc k ∸ length es)) (sat pm k lm<k))
+                          (trans (cong (projTrace fy) (suc∸ (bnd pm k))) eqf)))
+                (sym (++-assoc (projTrace m k) (rest-of k) r))
 
         -- `m` spent the whole budget: `f` runs at 0 and contributes nothing,
-        -- so the composite's trace IS `m`'s, and `m`'s coherence carries it.
-        spent : lm k ≡ k → ∃[ rest ] (projTrace (m >>=T f) (suc k) ≡ projTrace (m >>=T f) k ++ rest)
+        -- so the composite's trace IS `m`'s and `m`'s coherence carries it.
+        spent : lm k ≡ k
+              → ∃[ rest ] (projTrace m (suc k) ++ rest-of (suc k)
+                           ≡ (projTrace m k ++ rest-of k) ++ rest)
         spent lm≡k with coh pm k
         ... | r , eqm = r ++ tailPart ,
           trans (cong (_++ tailPart) eqm)
@@ -325,58 +407,30 @@ split-< {l} {lf} {k} h =
             tailPart : List SigOpEvent
             tailPart = rest-of (suc k)
 
-            nil-rest : projTrace (m >>=T f) k ≡ projTrace m k
-            nil-rest =
-              trans (cong (projTrace m k ++_) (empty-at-0))
-                    (++-identityʳ (projTrace m k))
+            empty-at-0 : rest-of k ≡ []
+            empty-at-0 = len0 (bnd pfy (k ∸ lm k))
               where
-                empty-at-0 : rest-of k ≡ []
-                empty-at-0 = len0 (bnd (pf k) (k ∸ lm k))
-                  where
-                    k∸lm≡0 : k ∸ lm k ≡ 0
-                    k∸lm≡0 = subst (λ z → k ∸ z ≡ 0) (sym lm≡k) (n∸n≡0 k)
+                k∸lm≡0 : k ∸ lm k ≡ 0
+                k∸lm≡0 = subst (λ z → k ∸ z ≡ 0) (sym lm≡k) (n∸n≡0 k)
 
-                    len0 : length (rest-of k) ≤ k ∸ lm k → rest-of k ≡ []
-                    len0 h with rest-of k | subst (λ z → length (rest-of k) ≤ z) k∸lm≡0 h
-                    ... | []    | _ = refl
-                    ... | _ ∷ _ | ()
+                len0 : length (rest-of k) ≤ k ∸ lm k → rest-of k ≡ []
+                len0 h with rest-of k | subst (λ z → length (rest-of k) ≤ z) k∸lm≡0 h
+                ... | []    | _ = refl
+                ... | _ ∷ _ | ()
 
-        go : lm k < k ⊎ lm k ≡ k → ∃[ rest ] (projTrace (m >>=T f) (suc k) ≡ projTrace (m >>=T f) k ++ rest)
-        go (inj₁ p) = spare p
-        go (inj₂ p) = spent p
+            nil-rest : projTrace m k ++ rest-of k ≡ projTrace m k
+            nil-rest =
+              trans (cong (projTrace m k ++_) empty-at-0)
+                    (++-identityʳ (projTrace m k))
 
-------------------------------------------------------------------------
--- Related computations.
---
--- Two `T`s correspond when their traces agree and their values are related,
--- at EVERY budget. Adequacy proofs whose carrier is a computation (the cata
--- fold, since D179) need this plus its bind congruence; before the carrier
--- was a `List × value` pair, they split into a trace half and a value half
--- and reconciled the two by hand.
-------------------------------------------------------------------------
+        go : lm k < k ⊎ lm k ≡ k
+           → ∃[ rest ] (projTrace m (suc k) ++ rest-of (suc k)
+                        ≡ (projTrace m k ++ rest-of k) ++ rest)
+        go (inj₁ h) = spare h
+        go (inj₂ h) = spent h
 
-RelT′ : ∀ {X Y : Set} (R : X → Y → Set) → T X → T Y → Set
-RelT′ R l r = ∀ k → (projTrace l k ≡ projTrace r k) × R (valueT l k) (valueT r k)
-
--- Bind preserves it. The two sides run their continuations at their OWN
--- remaining budgets; those budgets are computed from the head traces, which
--- the relation already equates — so no extra assumption is needed, exactly as
--- in `RelT-bind`.
-RelT′-bind : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
-             (m : T X) (m′ : T X′) (f : X → T Y) (f′ : X′ → T Y′)
-           → RelT′ R m m′
-           → (∀ k → RelT′ S (f (valueT m k)) (f′ (valueT m′ k)))
-           → RelT′ S (m >>=T f) (m′ >>=T f′)
-RelT′-bind R S m m′ f f′ rm rf k =
-    ( cong₂ _++_ (proj₁ (rm k))
-        (trans (proj₁ (rf k kL)) (cong (λ es → projTrace (f′ (valueT m′ k)) (k ∸ length es)) (proj₁ (rm k))))
-    , subst (λ j → S (valueT (f (valueT m k)) kL) (valueT (f′ (valueT m′ k)) j))
-            keq (proj₂ (rf k kL)) )
-  where
-    kL = k ∸ length (projTrace m k)
-
-    keq : kL ≡ k ∸ length (projTrace m′ k)
-    keq = cong (λ es → k ∸ length es) (proj₁ (rm k))
+    coh′ : Coherent (m >>=T f)
+    coh′ k = coh-b (T.stT m) k
 
 ------------------------------------------------------------------------
 -- THE MONAD LAWS.
@@ -390,15 +444,36 @@ RelT′-bind R S m m′ f f′ rm rf k =
 
 -- Left identity: `returnT` spends nothing, and `k ∸ 0` is `k`, so this is
 -- definitional even with threading.
+-- plan 0.97: the three laws now also have to move the STOP flag, and each
+-- does so by the same three-way dispatch — `a` stopped swallows everything
+-- after it, `b` stopped swallows what is after `b`, and otherwise the old
+-- `++`/budget reasoning applies unchanged.
+join-st-idʳ : ∀ b → join-st b false ≡ b
+join-st-idʳ true  = refl
+join-st-idʳ false = refl
+
+join-es-idʳ : ∀ b es → join-es b es [] ≡ es
+join-es-idʳ true  es = refl
+join-es-idʳ false es = ++-identityʳ es
+
+join-st-assoc : ∀ a b c → join-st (join-st a b) c ≡ join-st a (join-st b c)
+join-st-assoc true  _     _ = refl
+join-st-assoc false true  _ = refl
+join-st-assoc false false _ = refl
+
+-- Left identity: `returnT` spends nothing and stops nothing, so this is
+-- definitional even with threading.
 >>=T-identityˡ : ∀ {X Y : Set} (x : X) (f : X → T Y) (k : ℕ)
-               → (returnT x >>=T f) k ≡ f x k
+               → atT (returnT x >>=T f) k ≡ atT (f x) k
 >>=T-identityˡ x f k = refl
 
--- Right identity: needs `++-identityʳ`, since the bind appends `returnT`'s
--- empty trace.
+-- Right identity: needs `++-identityʳ` on the trace and `join-st-idʳ` on the
+-- flag, since the bind appends `returnT`'s empty trace and its `false`.
 >>=T-identityʳ : ∀ {X : Set} (m : T X) (k : ℕ)
-               → (m >>=T returnT) k ≡ m k
->>=T-identityʳ m k = cong₂ _,_ (++-identityʳ (projTrace m k)) refl
+               → atT (m >>=T returnT) k ≡ atT m k
+>>=T-identityʳ m k =
+  cong₂ _,_ (join-es-idʳ (T.stT m) (projTrace m k))
+            (cong₂ _,_ (join-st-idʳ (T.stT m)) refl)
 
 ------------------------------------------------------------------------
 -- Associativity.
@@ -406,44 +481,59 @@ RelT′-bind R S m m′ f f′ rm rf k =
 -- Still true with the threaded budget, but no longer DEFINITIONAL: the
 -- left-nested form charges `g` the budget `k ∸ (|es f| + |es g|)` while the
 -- right-nested form charges it `(k ∸ |es f|) ∸ |es g|`. Those agree by
--- `∸-+-assoc`, which is exactly the arithmetic the threading introduced.
+-- `∸-+-assoc`, which is exactly the arithmetic the threading introduced —
+-- and only in the case where NEITHER earlier computation stopped, because a
+-- stop makes both sides the earlier trace outright.
 ------------------------------------------------------------------------
 
 open import Data.Nat.Properties using (∸-+-assoc)
 
 >>=T-assoc : ∀ {X Y Z : Set} (m : T X) (f : X → T Y) (g : Y → T Z) (k : ℕ)
-           → ((m >>=T f) >>=T g) k ≡ (m >>=T (λ x → f x >>=T g)) k
->>=T-assoc m f g k = cong₂ _,_ tr vl
+           → atT ((m >>=T f) >>=T g) k ≡ atT (m >>=T (λ x → f x >>=T g)) k
+>>=T-assoc m f g k = cong₂ _,_ tr (cong₂ _,_ st refl)
   where
+    fy   = f (T.vlT m)
+    gy   = g (T.vlT fy)
     es-m = projTrace m k
     k₁   = k ∸ length es-m
-    es-f = projTrace (f (valueT m k)) k₁
+    es-f = projTrace fy k₁
     k₂   = k₁ ∸ length es-f
+    es-g = projTrace gy k₂
 
     budget : k ∸ length (es-m ++ es-f) ≡ k₂
-    budget = trans (cong (k ∸_) (length-++ es-m {es-f})) (sym (∸-+-assoc k (length es-m) (length es-f)))
+    budget = trans (cong (k ∸_) (length-++ es-m {es-f}))
+                   (sym (∸-+-assoc k (length es-m) (length es-f)))
+
+    tr-b : ∀ (a b : Stopped)
+         → join-es (join-st a b) (join-es a es-m es-f)
+                   (projTrace gy (k ∸ length (join-es a es-m es-f)))
+           ≡ join-es a es-m (join-es b es-f (projTrace gy k₂))
+    tr-b true  _     = refl
+    tr-b false true  = refl
+    tr-b false false =
+      trans (cong (λ j → (es-m ++ es-f) ++ projTrace gy j) budget)
+            (++-assoc es-m es-f es-g)
 
     tr : projTrace ((m >>=T f) >>=T g) k ≡ projTrace (m >>=T (λ x → f x >>=T g)) k
-    es-g = projTrace (g (valueT (f (valueT m k)) k₁)) k₂
+    tr = tr-b (T.stT m) (T.stT fy)
 
-    tr = trans (cong (λ j → (es-m ++ es-f) ++ projTrace (g (valueT (f (valueT m k)) k₁)) j) budget)
-               (++-assoc es-m es-f es-g)
-
-    vl : valueT ((m >>=T f) >>=T g) k ≡ valueT (m >>=T (λ x → f x >>=T g)) k
-    vl = cong (λ j → valueT (g (valueT (f (valueT m k)) k₁)) j) budget
+    st : stoppedT ((m >>=T f) >>=T g) k ≡ stoppedT (m >>=T (λ x → f x >>=T g)) k
+    st = join-st-assoc (T.stT m) (T.stT fy) (T.stT gy)
 
 -- Binding a PURE continuation is a map. The `++ []` residual these proofs
 -- keep tripping over is exactly this: `⟨ f , g ⟩` ends in `returnT (b , c)`,
 -- and under a threaded budget the residual shifts the NEXT continuation's
 -- budget too, so rewriting the trace alone no longer suffices.
 >>=T-map : ∀ {X Y : Set} (m : T X) (g : X → Y) (k : ℕ)
-         → (m >>=T (λ x → returnT (g x))) k ≡ fmapT g m k
->>=T-map m g k = cong₂ _,_ (++-identityʳ (projTrace m k)) refl
+         → atT (m >>=T (λ x → returnT (g x))) k ≡ atT (fmapT g m) k
+>>=T-map m g k =
+  cong₂ _,_ (join-es-idʳ (T.stT m) (projTrace m k))
+            (cong₂ _,_ (join-st-idʳ (T.stT m)) refl)
 
 -- Binding after a map is binding the composite. `fmapT` touches neither the
 -- trace nor the budget, so this is definitional.
 fmapT->>=T : ∀ {X Y Z : Set} (g : X → Y) (m : T X) (f : Y → T Z) (k : ℕ)
-           → (fmapT g m >>=T f) k ≡ (m >>=T (λ x → f (g x))) k
+           → atT (fmapT g m >>=T f) k ≡ atT (m >>=T (λ x → f (g x))) k
 fmapT->>=T g m f k = refl
 
 ------------------------------------------------------------------------
@@ -494,11 +584,11 @@ module _ where
   record IsMonadT : Set₁ where
     field
       identityˡ : ∀ {X Y : Set} (x : X) (f : X → T Y) (k : ℕ)
-                → (pure x >>= f) k ≡ f x k
+                → atT (pure x >>= f) k ≡ atT (f x) k
       identityʳ : ∀ {X : Set} (m : T X) (k : ℕ)
-                → (m >>= pure) k ≡ m k
+                → atT (m >>= pure) k ≡ atT m k
       assoc     : ∀ {X Y Z : Set} (m : T X) (f : X → T Y) (g : Y → T Z) (k : ℕ)
-                → ((m >>= f) >>= g) k ≡ (m >>= (λ x → f x >>= g)) k
+                → atT ((m >>= f) >>= g) k ≡ atT (m >>= (λ x → f x >>= g)) k
 
   T-isMonad : IsMonadT
   T-isMonad = record
