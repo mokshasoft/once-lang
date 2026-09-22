@@ -38,10 +38,10 @@ open import Once.Type
   using (Type; Unit; Void; Int; _*_; _+_; _⇒[_]_; μ-type; Functor; ⟦_⟧T; Purity; mk-kind; Quantity; Zero; One; Many)
 open import Once.CanonicalName using (CanonicalName; showCanonical; bare)
 open import Relation.Binary.PropositionalEquality using (subst)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace; fmapT)
+open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; valueT; projTrace; fmapT)
 -- P5: the value-domain vocabulary comes from the IR-free `ValueDomain`
 -- (NOT `DenotTrace`, whose `evalᴰ` is implementation).
-open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; forceᵈ; seqF; in-νᵈ)
+open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; stops-D; emit-D; emit-Dᵇ; inject; forget; coerce-functor⁻¹-D; coerce-functor-D; anaFᵈ; forceᵈ; seqF; in-νᵈ)
 open import Once.Denotation.Phase using (restrictᴰ; bindᴰ; bindᴰ0; lookupᴰUsed)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; sem-cata; sem-fmap; coerce-functor⁻¹; coerce-ν-out; coerce-ν-in; ⟦_⟧F)
 open import Once.Functor.Translate using (WellFormedF; IsBaseType; IsConcrete; base-Unit; con-base; con-fun)
@@ -153,7 +153,12 @@ in-ν-value {F} x =
 -- Plan 0.74 J5: takes the target's numerics, because `semM` does now.
 named-sem : ∀ {A B : Type} → TargetNum → CanonicalName → IsBaseType A → IsConcrete B → ⟦ A ⟧ᴰ → T ⟦ B ⟧ᴰ
 named-sem {A} {B} fmt cn bA cB a =
-  λ n → (emit-Dᵇ (value-info {A} {B} cn bA cB) (forget a) n , inject (semM (value-info {A} {B} cn bA cB) fmt (forget a)))
+  -- plan 0.97: `T` carries a stop flag, and this clause is DEFINITIONALLY
+  -- `evalᴰ (SigOp (value-info cn))`, so it must set it the same way — the
+  -- `bridgeᵈ` case for a named morphism is `refl` and would stop being one.
+  mkT (λ n → emit-Dᵇ (value-info {A} {B} cn bA cB) (forget a) n)
+      (stops-D (value-info {A} {B} cn bA cB))
+      (inject (semM (value-info {A} {B} cn bA cB) fmt (forget a)))
 
 
 ------------------------------------------------------------------------
@@ -176,7 +181,7 @@ svarᴰRun {Γ = Γ} (svar i) dγ = lookupᴰUsed Γ i dγ
 
 -- A closed named/sigop value reference (matches SD's `poly`/`closure`), IR-free.
 sigOpValᴰ : ∀ {B} → TargetNum → SigOpInfo Unit B → T ⟦ B ⟧ᴰ
-sigOpValᴰ fmt si = λ n → (emit-Dᵇ si tt n , inject (semM si fmt tt))
+sigOpValᴰ fmt si = mkT (λ n → emit-Dᵇ si tt n) (stops-D si) (inject (semM si fmt tt))
 
 -- An EXTERNAL sigop reference (`t-var-qualified/resolved/import`, realized to
 -- SD's `sigOp`). DISPATCHES ON RESULT-TYPE SHAPE exactly like SD's `sigOp`: at
@@ -194,14 +199,17 @@ sigOpRefᴰ {A = A} fmt cn (con-base ib) = sigOpValᴰ fmt (value-info {Unit} {A
 -- receives its argument — the meaning takes none — so the reference degenerates
 -- to the value form, exactly as it does in `Elaborate` and `SourceDenote`.
 sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Zero π} bDom cCod) =
-  returnT (λ _ → λ n → ( emit-Dᵇ (value-info cn base-Unit cCod) tt n
-                       , inject (semM (value-info cn base-Unit cCod) fmt tt) ))
+  returnT (λ _ → mkT (λ n → emit-Dᵇ (value-info cn base-Unit cCod) tt n)
+                     (stops-D (value-info cn base-Unit cCod))
+                     (inject (semM (value-info cn base-Unit cCod) fmt tt)))
 sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind One π} bDom cCod) =
-  returnT (λ arg → λ n → ( emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) (forget arg) n
-                         , inject (semM (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) fmt (forget arg)) ))
+  returnT (λ arg → mkT (λ n → emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) (forget arg) n)
+                       (stops-D (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod))
+                       (inject (semM (arrow-info {Dom} {Cod} (mk-kind One π) cn bDom cCod) fmt (forget arg))))
 sigOpRefᴰ fmt cn (con-fun {A = Dom} {B = Cod} {k = mk-kind Many π} bDom cCod) =
-  returnT (λ arg → λ n → ( emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) (forget arg) n
-                         , inject (semM (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) fmt (forget arg)) ))
+  returnT (λ arg → mkT (λ n → emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) (forget arg) n)
+                       (stops-D (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod))
+                       (inject (semM (arrow-info {Dom} {Cod} (mk-kind Many π) cn bDom cCod) fmt (forget arg))))
 
 -- D142/D143: the RUNTIME environment of a derivation.
 --

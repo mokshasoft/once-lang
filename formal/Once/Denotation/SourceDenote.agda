@@ -37,8 +37,9 @@ open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Type
   using (Type; Unit; Void; Int; Str; _*_; _+_; _⇒[_]_; Functor; ⟦_⟧T; μ-type; Quantity; Zero; One; Many; mk-kind)
 open import Once.Surface.Syntax using (Expr; Ctx; Usage; lookup; _,_^_; ∅; ⟦_⟧ᶜ; _↾_; _⊑ᵘ_; ⊑[]; _⊑∷_; z≤z; z≤o; z≤m; o≤o; o≤m; m≤m; singleUse; _∷_; _+ᵘ_; _*ᵘ_; _⊔ᵘ_; ⊑ᵘ-+ˡ; ⊑ᵘ-+ʳ; ⊑ᵘ-⊔ˡ; ⊑ᵘ-⊔ʳ; ⊑ᵘ-trans; ⊑ᵘ-*One; ⊑ᵘ-*Many; zeroUsage)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; projTrace; valueT; fmapT)
+open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; projTrace; valueT; fmapT)
 open import Once.Denotation.Phase using (lookupᴰUsed; restrictᴰ; bindᴰ; bindᴰ0)
+open import Once.Denotation.ValueDomain using (stops-D)
 open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; forget; inject; emit-D; emit-Dᵇ; coerce-functor⁻¹-D; coerce-functor-D; cohᴰ; liftFn; anaFᵈ; seqF)
 open import Once.Float.Dyadic using (encode)
 open import Once.Float.Decimal using (Decimal; decimalOf; round)
@@ -312,19 +313,25 @@ liftD fmt {A} {B} ir = returnT (liftFn fmt {A} {B} ir)
 -- receives its argument, so the closure's parameter is the unit — the same
 -- degeneration the elaborator makes (`arrow-info` -> `value-info` there).
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Zero π ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt dγ =
-  returnT (λ _ → λ n → ( emit-Dᵇ (value-info name base-Unit cCod) tt n
-                       , inject (semM (value-info name base-Unit cCod) fmt tt) ))
+  -- plan 0.97: …and WHETHER IT STOPS. `T` carries a stop flag now, and this
+  -- clause must set it exactly as `evalᴰ (SigOp si)` does, or the elaboration
+  -- bridge relates a Spec that continues after `exit` to an IR that does not.
+  returnT (λ _ → mkT (λ n → emit-Dᵇ (value-info name base-Unit cCod) tt n)
+                     (stops-D (value-info name base-Unit cCod))
+                     (inject (semM (value-info name base-Unit cCod) fmt tt)))
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind One π ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt dγ =
-  returnT (λ arg → λ n → ( emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom cCod) (forget arg) n
-                         , inject (semM (arrow-info {Dom} {Cod} (mk-kind One π) name bDom cCod) fmt (forget arg)) ))
+  returnT (λ arg → mkT (λ n → emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind One π) name bDom cCod) (forget arg) n)
+                       (stops-D (arrow-info {Dom} {Cod} (mk-kind One π) name bDom cCod))
+                       (inject (semM (arrow-info {Dom} {Cod} (mk-kind One π) name bDom cCod) fmt (forget arg))))
 ⟦ sigOp {Γ = Γ} {A = (Dom ⇒[ mk-kind Many π ] Cod)} name (con-fun bDom cCod) ⟧ˢ fmt dγ =
-  returnT (λ arg → λ n → ( emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom cCod) (forget arg) n
-                         , inject (semM (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom cCod) fmt (forget arg)) ))
+  returnT (λ arg → mkT (λ n → emit-Dᵇ (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom cCod) (forget arg) n)
+                       (stops-D (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom cCod))
+                       (inject (semM (arrow-info {Dom} {Cod} (mk-kind Many π) name bDom cCod) fmt (forget arg))))
 -- VALUE-position references (non-arrow sigOp, closure, poly): `Pure` via
 -- `value-info` (effects live on arrows, fire on application — D018), so they
 -- emit `[]` at build. This is what makes `build-pure` hold for these leaves;
 -- interpretation-agnostic (no `classify-name`). Matches elaborate's
 -- `SigOp (value-info name) ∘ terminal` ⇒ `faithful` stays `refl`.
-⟦ sigOp {Γ = Γ} {A = A} name conc ⟧ˢ fmt   dγ = λ n → (emit-Dᵇ (value-info {Unit} {A} name base-Unit conc) tt n , inject (semM (value-info {Unit} {A} name base-Unit conc) fmt tt))
-⟦ closure {Γ = Γ} {A = A} name ⟧ˢ fmt dγ = λ n → (emit-Dᵇ (internal-info {A} (bare name)) tt n , inject (semM (internal-info {A} (bare name)) fmt tt))
-⟦ poly name PT ⟧ˢ fmt         dγ = λ n → (emit-Dᵇ (internal-info {PT} (bare name)) tt n , inject (semM (internal-info {PT} (bare name)) fmt tt))
+⟦ sigOp {Γ = Γ} {A = A} name conc ⟧ˢ fmt   dγ = mkT (λ n → emit-Dᵇ (value-info {Unit} {A} name base-Unit conc) tt n) (stops-D (value-info {Unit} {A} name base-Unit conc)) (inject (semM (value-info {Unit} {A} name base-Unit conc) fmt tt))
+⟦ closure {Γ = Γ} {A = A} name ⟧ˢ fmt dγ = mkT (λ n → emit-Dᵇ (internal-info {A} (bare name)) tt n) (stops-D (internal-info {A} (bare name))) (inject (semM (internal-info {A} (bare name)) fmt tt))
+⟦ poly name PT ⟧ˢ fmt         dγ = mkT (λ n → emit-Dᵇ (internal-info {PT} (bare name)) tt n) (stops-D (internal-info {PT} (bare name))) (inject (semM (internal-info {PT} (bare name)) fmt tt))

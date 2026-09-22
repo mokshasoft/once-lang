@@ -172,8 +172,10 @@ moduleToIR-emitted mod = map-rewrite (moduleToIR mod)
     pf : PrefixFamily m
     pf = proj₁ (evalᴰ-good fmt ir tt tt)
 
+    -- plan 0.97: `Saturating` is stated on the TRACE alone now (the value and
+    -- the stop flag are budget-free, so there is nothing to project out of).
     sat' : ∀ n → length (projTrace m n) < n → projTrace m (suc n) ≡ projTrace m n
-    sat' n lt = cong proj₁ (sat pf n lt)
+    sat' = sat pf
 -- A module with no `main` observes nothing, at every depth — the empty family,
 -- whose three laws are immediate.
 ⟦ nothing ⟧IR _   = silent

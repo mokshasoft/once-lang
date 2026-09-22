@@ -433,6 +433,51 @@ split-< {l} {lf} {k} h =
     coh′ k = coh-b (T.stT m) k
 
 ------------------------------------------------------------------------
+-- CORRESPONDENCE OF TWO COMPUTATIONS.
+--
+-- Two `T`s correspond when their traces agree, their STOP FLAGS agree, and
+-- their values are related. Adequacy proofs whose carrier is a computation
+-- (the cata fold, since D179) need this plus its bind congruence.
+--
+-- plan 0.97: the flag half is not decoration — `_>>=T_`'s trace is
+-- `join-es (stT m) …`, so without it the bind congruence below cannot
+-- conclude the two composite traces agree. Adding the stop channel to `T`
+-- forced the relation to carry it.
+------------------------------------------------------------------------
+
+RelT′ : ∀ {X Y : Set} (R : X → Y → Set) → T X → T Y → Set
+RelT′ R l r = ∀ k → (projTrace l k ≡ projTrace r k)
+                  × (stoppedT l k ≡ stoppedT r k)
+                  × R (valueT l k) (valueT r k)
+
+-- Bind preserves it. The two sides run their continuations at their OWN
+-- remaining budgets; those budgets are computed from the head traces, which
+-- the relation already equates — so no extra assumption is needed.
+RelT′-bind : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
+             (m : T X) (m′ : T X′) (f : X → T Y) (f′ : X′ → T Y′)
+           → RelT′ R m m′
+           → (∀ k → RelT′ S (f (valueT m k)) (f′ (valueT m′ k)))
+           → RelT′ S (m >>=T f) (m′ >>=T f′)
+RelT′-bind R S m m′ f f′ rm rf k =
+    ( cong₂ (λ b es → join-es b es (projTrace (f (valueT m k)) kL))
+            (proj₁ (proj₂ (rm k))) (proj₁ (rm k))
+      ⟨trans⟩
+      cong (join-es (stoppedT m′ k) (projTrace m′ k))
+        (trans (proj₁ (rf k kL))
+               (cong (λ es → projTrace (f′ (valueT m′ k)) (k ∸ length es)) (proj₁ (rm k))))
+    , cong₂ join-st (proj₁ (proj₂ (rm k))) (proj₁ (proj₂ (rf k kL)))
+    , subst (λ j → S (valueT (f (valueT m k)) kL) (valueT (f′ (valueT m′ k)) j))
+            keq (proj₂ (proj₂ (rf k kL))) )
+  where
+    kL = k ∸ length (projTrace m k)
+
+    keq : kL ≡ k ∸ length (projTrace m′ k)
+    keq = cong (λ es → k ∸ length es) (proj₁ (rm k))
+
+    _⟨trans⟩_ : ∀ {ℓ} {A : Set ℓ} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
+    _⟨trans⟩_ = trans
+
+------------------------------------------------------------------------
 -- THE MONAD LAWS.
 --
 -- These were never stated for `T` — the module had congruence helpers

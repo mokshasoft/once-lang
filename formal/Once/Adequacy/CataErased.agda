@@ -38,7 +38,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; projTrace; valueT; returnT; _>>=T_; fmapT; RelT′; RelT′-bind)
+open import Once.Denotation.TraceMonad using (T; mkT; projTrace; valueT; stoppedT; returnT; _>>=T_; fmapT; RelT′; RelT′-bind)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; coerce-functor⁻¹-D)
@@ -51,7 +51,7 @@ open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
-open import Once.Denotation.DenotTrace using (forget; liftFn; cohᴰ; inject; emit-D; emit-Dᵇ; seqF)
+open import Once.Denotation.DenotTrace using (forget; liftFn; stops-D; cohᴰ; inject; emit-D; emit-Dᵇ; seqF)
 open import Once.SigOp.Info using (SigOpInfo; semM)
 open import Once.Semantics.Machine using (coerce-base-to-full)
 open import Once.Functor.Translate using (⟦_,_⟧-base)
@@ -70,10 +70,22 @@ import Once.IR as IR
 -- Generic transport helpers (both by matching the equation to `refl`).
 ------------------------------------------------------------------------
 
--- Applying a `subst`-transported computation transports its VALUE half only.
-subst-T-apply : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
-  → subst T eq h n ≡ (proj₁ (h n) , subst (λ Z → Z) eq (proj₂ (h n)))
-subst-T-apply refl h n = refl
+-- plan 0.97: `T` is a RECORD now, so a computation is no longer a function of
+-- the budget and `subst-T-apply` (which applied one) has no statement. Its
+-- role is taken by record eta: two computations are equal when their three
+-- fields are — the trace family pointwise, the stop flag and the value at any
+-- budget (both are budget-free).
+T-ext : ∀ {X : Set} {l r : T X}
+      → (∀ n → projTrace l n ≡ projTrace r n)
+      → stoppedT l 0 ≡ stoppedT r 0
+      → valueT   l 0 ≡ valueT   r 0
+      → l ≡ r
+T-ext {l = mkT t₁ s₁ v₁} {r = mkT t₂ .s₁ .v₁} tr refl refl =
+  cong (λ t → mkT t s₁ v₁) (extensionality tr)
+
+subst-T-stoppedT : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
+  → stoppedT (subst T eq h) n ≡ stoppedT h n
+subst-T-stoppedT refl h n = refl
 
 subst-T-projTrace : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (n : ℕ)
   → projTrace (subst T eq h) n ≡ projTrace h n
@@ -277,7 +289,7 @@ module _ {A' : Type} where
                     (subst (λ o → IR.IR (⌊ Eˢ ⌋ IR.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir))
              (env , w)
       ≡ cata-sem wfF (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w
-  evalᴰ-Cata-erased {F} {Eˢ} wfF mir env w = extensionality goal
+  evalᴰ-Cata-erased {F} {Eˢ} wfF mir env w = body
     where
       mir' : IR.IR (⌊ Eˢ ⌋ IR.* ⟦ eraseF F ⟧TI ⌊ A' ⌋) ⌊ A' ⌋
       mir' = subst (λ o → IR.IR (⌊ Eˢ ⌋ IR.* o) ⌊ A' ⌋) (⌊⟧T-commute F A') mir
@@ -289,16 +301,17 @@ module _ {A' : Type} where
       seed-eq = trans (sym (subst-cong-μS (tF-coh F) w'))
                       (subst-subst-sym {P = λ z → z} (cong μS (tF-coh F)))
 
-      goal : ∀ n → liftFn fmt {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF) mir') (env , w) n
-                 ≡ cata-sem wfF (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w n
-      goal n = trans (cong (λ W → subst T (cohᴰ A')
-                              (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir') W) n)
-                           (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (μ-type F)) env w))
-               (trans (subst-T-apply (cohᴰ A')
-                        (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir')
-                               (subst (λ t → t) (sym (cohᴰ Eˢ)) env , w')) n)
-                     (trans (cong (λ L → (projTrace L n , subst (λ z → z) (cohᴰ A') (valueT L n))) Lr≡)
-                            (cong₂ _,_ (proj₁ (rc n)) (proj₂ (rc n)))))
+      -- plan 0.97: ONE equation of computations, where there used to be a
+      -- budget-indexed family of pair equations. `T` is a record, so the
+      -- conclusion is assembled by eta (`to-subst-eq`) from the SAME
+      -- relation `rc` the fold already produces — the trace and value halves
+      -- no longer have to be re-paired by hand at every budget.
+      body : liftFn fmt {Eˢ TT.* μ-type F} {A'} (IR.Cata (wf-⌊⌋ wfF) mir') (env , w)
+           ≡ cata-sem wfF (λ z → liftFn fmt {Eˢ TT.* ⟦ F ⟧T A'} {A'} mir (env , z)) w
+      body = trans (cong (λ W → subst T (cohᴰ A')
+                             (evalᴰ fmt (IR.Cata (wf-⌊⌋ wfF) mir') W))
+                          (pairᴰ-subst⁻ (cohᴰ Eˢ) (cohᴰ (μ-type F)) env w))
+             (trans (cong (subst T (cohᴰ A')) Lr≡) (to-subst-eq rc))
         where
           dalg_L : ⟦ ⟦ ⌈ eraseF F ⌉F ⟧T ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ → T ⟦ ⌈ ⌊ A' ⌋ ⌉ ⟧ᴰ
           dalg_L z = evalᴰ fmt mir' ( subst (λ t → t) (sym (cohᴰ Eˢ)) env
@@ -328,13 +341,23 @@ module _ {A' : Type} where
                         → subst T (cohᴰ A') l ≡ r → RelC l r
           from-subst-eq {l} eq j =
             ( trans (sym (subst-T-projTrace (cohᴰ A') l j)) (cong (λ t → projTrace t j) eq)
+            , trans (sym (subst-T-stoppedT (cohᴰ A') l j)) (cong (λ t → stoppedT t j) eq)
             , trans (sym (subst-T-valueT (cohᴰ A') l j)) (cong (λ t → valueT t j) eq) )
+
+          -- …and its converse, which is what the clause's own conclusion is:
+          -- an EQUATION of computations, assembled from the relation by eta.
+          to-subst-eq : ∀ {l : T ⟦ ⌊ A' ⌋ ⟧ᴰᴵ} {r : T ⟦ A' ⟧ᴰ}
+                      → RelC l r → subst T (cohᴰ A') l ≡ r
+          to-subst-eq {l} rel =
+            T-ext (λ n → trans (subst-T-projTrace (cohᴰ A') l n) (proj₁ (rel n)))
+                  (trans (subst-T-stoppedT (cohᴰ A') l 0) (proj₁ (proj₂ (rel 0))))
+                  (trans (subst-T-valueT (cohᴰ A') l 0) (proj₂ (proj₂ (rel 0))))
 
           algR-full : ∀ {y₁ y₂} → RelSF (translateF Carrier Carrier F) RelC y₁ y₂ → RelC (algL' y₁) (algM y₂)
           algR-full {y₁} {y₂} rsf =
             RelT′-bind (LayerRel F) (λ l r → subst (λ z → z) (cohᴰ A') l ≡ r) mL mM contL contM
               (layer-rel wfF rsf)
-              (λ k → from-subst-eq (step-eq k (proj₂ (layer-rel wfF rsf k))))
+              (λ k → from-subst-eq (step-eq k (proj₂ (proj₂ (layer-rel wfF rsf k)))))
             where
               mL : T (⟦ ⌈ eraseF F ⌉F ⟧F ⟦ ⌊ A' ⌋ ⟧ᴰᴵ)
               mL = seqF ⌈ eraseF F ⌉F
@@ -412,9 +435,16 @@ forget-coh (base-Sum {A} {B} ibA ibB) (inj₂ b)
 
 liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B) (bA : IsBaseType A)
   → liftFn fmt {A} {B} (IR.SigOp info)
-    ≡ (λ arg → λ n → (emit-Dᵇ info (forget arg) n , inject (semM info fmt (forget arg))))
-liftFn-SigOp {A} {B} info bA = extensionality λ arg → extensionality λ n →
-  trans (subst-T-apply (cohᴰ B) (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
-        (cong₂ _,_ (cong (λ w → emit-Dᵇ info w n) (forget-coh bA arg))
-                   (trans (subst-subst-sym {P = λ z → z} (cohᴰ B))
-                          (cong (λ w → inject (semM info fmt w)) (forget-coh bA arg))))
+    ≡ (λ arg → mkT (λ n → emit-Dᵇ info (forget arg) n)
+                   (stops-D info)
+                   (inject (semM info fmt (forget arg))))
+liftFn-SigOp {A} {B} info bA = extensionality λ arg →
+  T-ext (λ n → trans (subst-T-projTrace (cohᴰ B)
+                        (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
+                     (cong (λ w → emit-Dᵇ info w n) (forget-coh bA arg)))
+        (subst-T-stoppedT (cohᴰ B)
+           (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) 0)
+        (trans (subst-T-valueT (cohᴰ B)
+                  (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) 0)
+               (trans (subst-subst-sym {P = λ z → z} (cohᴰ B))
+                      (cong (λ w → inject (semM info fmt w)) (forget-coh bA arg))))
