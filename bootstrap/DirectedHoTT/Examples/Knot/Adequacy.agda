@@ -85,6 +85,8 @@
 --                only choice that types.  Same rule as
 --                `extR-Represents` — a depth may only be stated where
 --                the encoding uses it.
+--     atConK-sub ✅ not a program — `atConK`'s, over `subTyAtK-sub`
+--                (`Knot/IhTyAgree`) and `conSK-sub`.
 --     conSSK     ✅ DISCHARGED — `Knot/ConSAgree.conSSK-vz`/`-vs`, BOTH
 --                rows:  `conSSK i (Var-vzK m) k ⟶* Tm-conK k (Tm-varK
 --                (Var-vzK m))` and `conSSK i (Var-vsK m x) k ⟶* Tm-varK
@@ -105,6 +107,11 @@
 --                REBUILDS `Var-vsK m x` where `singleVs` returns the
 --                lowered `x` — and the corrected target is what makes
 --                the chain close.
+--     conSSK-sub ✅ not a program — `conSSK`'s.  ★ A PORT: its INDEXED
+--                twin `Knot/IConSRep.iconSSK-sub` already existed, and
+--                `conSSK`/`conSK` have identical shape one sort down —
+--                the `ilookupDK` entry's "the two are one proof", run
+--                upward this time.
 --     extNK      ✅ DISCHARGED — `Knot/SubExt.extS-Represents`.  ⚠ Its `vs`
 --                case composes with `wkTmK-agree`, i.e. with `ren-agree`:
 --                `extS σ (vs x) = renTm vs (σ x)` WEAKENS.
@@ -241,6 +248,7 @@
 --                ⚠ `subTyAtK (nsuc d) d (singleK d u) t` mentions the
 --                depth THREE times and the third is under `singleK`'s
 --                own `lam`; `⟶*-subTyAtK-single` does all three at once.
+--     ihTyK-sub  ✅ not a program — `ihTyK`'s, the same three lines.
 --     ihTyRho    ✅ not owed — a method row of `ihTyK`.
 --     ihsK       ✅ DISCHARGED — `Knot/IhsAgree.ihsK-agree`:
 --                `ihsK ⌈|Γ|⌉ ⌈C⌉ ⌈D⌉ ⌈ms⌉ ⌈p⌉ ⟶* ⌈ ihs D ms C p ⌉`.
@@ -389,11 +397,25 @@
 --                on one slot.  The suc branch is TWO binders deeper, so
 --                its IH slot is `pw^ 2` where the zero branch's payload
 --                is `sub-w²-single`.
---     methsTyFromK ⬜ OWED — agreement with `methsTyFrom`.  ⚠ It also owes
---                the closed-sort identity for `methTyK`'s `wkAtK sDCon`:
---                the object level weakens `C` to reach `ihTy`'s ambient
---                where the spec does not, because `DCon` carries no
---                context at all.
+--     methsTyFromK ✅ DISCHARGED — `Knot/MethsTyAgree.methsTyFromK-agree`,
+--                with `methsTyK-agree` at `j = 0`.
+--                ★ TWO ROWS OF 53 — it eliminates an encoded `Desc` —
+--                and row 41 (`dnil`) is FREE for `lookupDK`'s reason:
+--                the JUNK method answers it and the junk IS the answer
+--                (`methsTyJunk = lam⁶ Ty-UnitK`).
+--                ⚠ SIX BINDERS, NOT THREE: `methsTyMotK` is a
+--                Π-telescope over D, M and j, so each method is `lam⁶`.
+--                The row's β-law is stated ONCE, GENERIC in all six
+--                (`consK-app`) — `Knot/IExtRep`'s move.
+--                ⚠⚠ AND THE STACK DOES NOT REACH `methTyK`'s ARGUMENTS.
+--                `methTyK` and `wkTyK` both bottom out in `vsRenK`,
+--                which is a `lam`, so the six substitutions must be
+--                PUSHED THROUGH first (`nat6₅`/`nat6₂` over the new
+--                `methTyK-sub`) and only then does each slot collapse
+--                by its own rung — the rung being its BINDER POSITION.
+--                ★ The closed-sort identity this entry predicted for
+--                `wkAtK sDCon` is subsumed by `wkAtK-sub`, which
+--                already existed in `Knot/IPayTyAgree`.
 --     nrsK       ✅ DISCHARGED — `Knot/RenSpec.nrsK-agree-vz`/`-vs`:
 --                `nrsK (pair sVar d) (Var-vzK m) ⟶* Tm-nsucK (Tm-varK
 --                (Var-vsK d (Var-vzK m)))` and the `vs` twin.  Same
@@ -452,6 +474,7 @@
 --                ★ `εwkK-agree` IS ONE LINE, and the ledger said why:
 --                `εwkTy = subTy εsub` and `εsub`'s `Represents` is
 --                VACUOUS (`λ ()`), because `Var ε` is empty.
+--     payTyK-sub ✅ not a program — `payTyK`'s substitution naturality.
 --     pwBodyK    ✅ DISCHARGED — `Knot/PwBodyAgree.pwBodyK-agree`, ALL 30
 --                `RTm` rows.
 --                ★★★ 28 OF THEM ARE A PROOF THAT ALREADY EXISTED.
@@ -602,6 +625,8 @@
 --                `wkTyUnderK ⌈|Γ|⌉ ⌈A⌉ ⟶* ⌈ renTy (extR vs) A ⌉`.
 --                One line: `ren-agree-ty` over
 --                `extR-Represents _ wk-Represents`.
+--     wkTyUnderK-sub ✅ not a program — `wkTyUnderK`'s, over
+--                `renMethsK-sub` and `extRNK-sub`; both existed.
 --     εwkK       ✅ not owed — its argument is CLOSED, and every weakening
 --                agrees on a closed term.  This is exactly why `Knot/PayTy`
 --                may use `wkK` and `Knot/IhTyRho` may not.

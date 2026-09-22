@@ -29,6 +29,7 @@ import DirectedHoTT.Examples.Knot.Map
 import DirectedHoTT.Examples.Knot.MethTy
 import DirectedHoTT.Examples.Knot.MethTyAgree
 import DirectedHoTT.Examples.Knot.MethsTy
+import DirectedHoTT.Examples.Knot.MethsTyAgree
 import DirectedHoTT.Examples.Knot.MethsTyCons
 import DirectedHoTT.Examples.Knot.MethsTyMot
 import DirectedHoTT.Examples.Knot.NoNatCRows
@@ -47,4 +48,3 @@ import DirectedHoTT.Examples.Knot.PwBody
 import DirectedHoTT.Examples.Knot.PwBodyAgree
 import DirectedHoTT.Examples.Knot.RedRows
 import DirectedHoTT.Examples.Knot.RedWfA
-import DirectedHoTT.Examples.Knot.RedWfB
