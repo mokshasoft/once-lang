@@ -43,7 +43,7 @@ open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
-open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased; subst-T-apply; subst-T-projTrace; pairᴰ-subst⁻)
+open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased; subst-T-projTrace; pairᴰ-subst⁻; T-ext; subst-T-valueT; subst-T-stoppedT)
 open import Once.Adequacy.LiftFnReduce fmt using (liftFn-apply; liftFn-∘; liftFn-terminal)
 open import Once.Adequacy.AnaErased fmt using
   (coerce-SFRel; coh-to-TRel; inject-coh-nat; forget-coh-gen;
@@ -56,7 +56,7 @@ open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧
 open import Once.Surface.Elaborate using (elaborate; cataM)
 import Once.Compile as C
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Denotation.TraceMonad using (T; returnT; valueT; projTrace; _>>=T_; bindAt; fmapT)
+open import Once.Denotation.TraceMonad using (T; returnT; valueT; projTrace; stoppedT; atT; _>>=T_; bindAt; fmapT; join-es-idʳ; join-st-idʳ)
 open import Once.Functor.Translate using (translateF)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
@@ -135,18 +135,31 @@ subst-arrow : ∀ {DI DT EI ET : Set} (pD : DI ≡ DT) (pE : EI ≡ ET) (g : DI 
     ≡ (λ x → subst T pE (g (subst (λ z → z) (sym pD) x)))
 subst-arrow refl refl g = refl
 
+-- plan 0.97: record eta from the BUDGET VIEW. Several proofs here are
+-- naturally pointwise in the budget (they go through `bindAt`), and `atT`
+-- bundles the three fields at one budget — so this is the bridge from that
+-- shape to the equation of computations the statements now want.
+T-ext-at : ∀ {X : Set} {l r : T X} → (∀ n → atT l n ≡ atT r n) → l ≡ r
+T-ext-at h = T-ext (λ n → cong proj₁ (h n))
+                   (cong (λ z → proj₁ (proj₂ z)) (h 0))
+                   (cong (λ z → proj₂ (proj₂ z)) (h 0))
+
 -- D143: `apply ∘ ⟨ … ⟩` requires `⌊D ⇒[kk] E⌋ ≡ ⌊D⌋ ⇛ ⌊E⌋`, which holds only
 -- at a NON-erased arrow — `⌊_⌋` sends a `Zero`-graded one to `Unit ⇛ ⌊E⌋`.
 -- `Many` is what every consumer (the `ana` coalgebra) instantiates.
+-- plan 0.97: ONE equation of computations. The budget-indexed form and the
+-- `-fun` wrapper that recovered this from it are both gone — with `T` a
+-- record, equal-at-every-budget IS equality, so the index was carrying
+-- nothing.
 morph-app-bridge : ∀ {D E π} (morph : Expr ∅ zeroUsage (D ⇒[ mk-kind Many π ] E))
-                     (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ fmt tt j)
-                     (w : ⟦ D ⟧ᴰ) (n : ℕ)
-                   → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w n
-                     ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w)) n
-morph-app-bridge {D} {E} morph ih w n =
-  trans (cong (λ X → subst T (cohᴰ E) X n) app-⟨⟩-clean)
-    (trans (cong (λ h → subst T (cohᴰ E) (h >>=T (λ vf → vf w')) n) ih-evalᴰ)
-           (cong (λ t → t n) (transport-apply-bind (cohᴰ D) (cohᴰ E) (SD.⟦ morph ⟧ˢ fmt tt) w)))
+                     (ih : liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate C.Heap morph) tt ≡ SD.⟦ morph ⟧ˢ fmt tt)
+                     (w : ⟦ D ⟧ᴰ)
+                   → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w
+                     ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w))
+morph-app-bridge {D} {E} morph ih w =
+  trans (cong (λ X → subst T (cohᴰ E) X) app-⟨⟩-clean)
+    (trans (cong (λ h → subst T (cohᴰ E) (h >>=T (λ vf → vf w'))) ih-evalᴰ)
+           (transport-apply-bind (cohᴰ D) (cohᴰ E) (SD.⟦ morph ⟧ˢ fmt tt) w))
   where
     w' = subst (λ z → z) (sym (cohᴰ D)) w
     -- The elaborated closed-morphism `apply ∘ ⟨ morph ∘ terminal , id ⟩` applied to `w'`
@@ -158,26 +171,29 @@ morph-app-bridge {D} {E} morph ih w n =
     -- `cong` on the trace alone would leave the budget un-rewritten.
     app-⟨⟩-clean : evalᴰ fmt (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w'
                    ≡ (evalᴰ fmt (elaborate C.Heap morph) tt >>=T (λ vf → vf w'))
-    app-⟨⟩-clean = extensionality (λ j → cong (bindAt (evalᴰ fmt (apply {⌊ D ⌋} {⌊ E ⌋})) j) (pair-eq j))
+    app-⟨⟩-clean = T-ext-at (λ j → cong (bindAt (evalᴰ fmt (apply {⌊ D ⌋} {⌊ E ⌋})) j) (pair-eq j))
       where
         mc = evalᴰ fmt (elaborate C.Heap morph) tt
 
-        pair-eq : ∀ j → evalᴰ fmt ⟨ elaborate C.Heap morph ∘ terminal {⌊ D ⌋} , id {⌊ D ⌋} ⟩ w' j
-                        ≡ (proj₁ (mc j) , (proj₂ (mc j) , w'))
-        pair-eq j = cong (_, (proj₂ (mc j) , w')) (++-identityʳ (proj₁ (mc j)))
+        -- plan 0.97: the pair-build's residual is no longer a bare `++ []` —
+        -- it is `join-es b _ []` and `join-st b false`, the monad's two RIGHT
+        -- identities, which is what `join-es-idʳ`/`join-st-idʳ` are. (On the
+        -- stopped branch there is nothing to remove at all; that is why they
+        -- are lemmas rather than `++-identityʳ`.)
+        pair-eq : ∀ j → atT (evalᴰ fmt ⟨ elaborate C.Heap morph ∘ terminal {⌊ D ⌋} , id {⌊ D ⌋} ⟩ w') j
+                        ≡ (projTrace mc j , stoppedT mc j , (valueT mc j , w'))
+        pair-eq j = cong₂ (λ es b → (es , b , (valueT mc j , w')))
+                          (join-es-idʳ (stoppedT mc j) (projTrace mc j))
+                          (join-st-idʳ (stoppedT mc j))
     -- `ih` in `evalᴰ`-form: `evalᴰ (elaborate morph) tt ≡ subst T (sym cohᴰ(D⇒E)) (SD.⟦morph⟧ˢ tt)`.
     ih-evalᴰ : evalᴰ fmt (elaborate C.Heap morph) tt
                ≡ subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))) (SD.⟦ morph ⟧ˢ fmt tt)
     ih-evalᴰ = trans (sym (subst-sym-subst (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))))
-                     (cong (subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E)))) (extensionality ih))
+                     (cong (subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E)))) ih)
 
--- … and its function form (equal as `T`-values, ∀ depth).
-morph-app-bridge-fun : ∀ {D E π} (morph : Expr ∅ zeroUsage (D ⇒[ mk-kind Many π ] E))
-                         (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {D ⇒[ mk-kind Many π ] E} (elaborate C.Heap morph) tt j ≡ SD.⟦ morph ⟧ˢ fmt tt j)
-                         (w : ⟦ D ⟧ᴰ)
-                       → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w
-                         ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w))
-morph-app-bridge-fun morph ih w = extensionality (morph-app-bridge morph ih w)
+-- (`morph-app-bridge-fun` is retired: it recovered the computation equation
+-- from the budget-indexed one, and the budget-indexed one no longer exists.)
+morph-app-bridge-fun = morph-app-bridge
 
 ------------------------------------------------------------------------
 -- `cata`-faithfulness. Both sides fold with `sem-cata` over a per-layer
@@ -235,13 +251,13 @@ cataM-fold {F} {A} {π} wfF c =
 cata-body : ∀ {m} {Γ : Ctx m} {F : Functor} {A} {π : Purity}
               (wf : WellFormedF F)
               (alg : Expr ∅ zeroUsage (⟦ F ⟧T A ⇒[ mk-kind Many π ] A))
-              (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate C.Heap alg) tt j ≡ SD.⟦ alg ⟧ˢ fmt tt j)
-              (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ) (k : ℕ)
+              (ih : liftFn fmt {⟦ ∅ ⟧ᶜ} {⟦ F ⟧T A ⇒[ mk-kind Many π ] A} (elaborate C.Heap alg) tt ≡ SD.⟦ alg ⟧ˢ fmt tt)
+              (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)
             → liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {μ-type F ⇒[ mk-kind Many π ] A}
-                (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ k
-              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt dγ k
-cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ k =
-  trans (cong (λ t → t k) split) (cong (λ t → t k) fold-step)
+                (elaborate C.Heap (cata {Γ = Γ} wf alg)) dγ
+              ≡ SD.⟦ cata {Γ = Γ} wf alg ⟧ˢ fmt dγ
+cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ =
+  trans split fold-step
   where
     ealg   = elaborate C.Heap alg
     cataM' = cataM {F} {A} wf C.Heap
@@ -262,7 +278,7 @@ cata-body {Γ = Γ} {F = F} {A = A} {π = π} wf alg ih dγ k =
                         (trans (cong (λ h → h dγ) (liftFn-∘ {B = ⟦ ∅ ⟧ᶜ} {C = ⟦ F ⟧T A ⇒[ mk-kind Many π ] A} {A = ⟦ Γ ↾ zeroUsage ⟧ᶜ} ealg C.terminal))
                                (trans (cong (λ t → t >>=T liftEalg)
                                             (cong (λ h → h dγ) (liftFn-terminal {⟦ Γ ↾ zeroUsage ⟧ᶜ})))
-                                      (extensionality ih))))
+                                      ih)))
 
     -- Per obtained closure the fold agrees — `cataM-fold`.
     fold-step : (SD.⟦ alg ⟧ˢ fmt tt >>=T liftCataM)
@@ -290,6 +306,11 @@ evalᴰ-subst-cod refl ir v = refl
 subst-T-trace : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (k : ℕ)
   → projTrace (subst T eq h) k ≡ projTrace h k
 subst-T-trace refl h k = refl
+
+-- plan 0.97: …nor the STOP FLAG.
+subst-T-stop : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (k : ℕ)
+  → stoppedT (subst T eq h) k ≡ stoppedT h k
+subst-T-stop refl h k = refl
 
 -- `subst` along a `cong`ed equation is `subst` along the equation itself.
 subst-id-cong : ∀ {W : Set₁} (P : W → Set) {w w' : W} (eq : w ≡ w') (v : P w)
@@ -322,12 +343,12 @@ valueT-subst refl h m = refl
 ana-body : ∀ {mm} {Γ : Ctx mm} {F : Functor} {A} {π : Purity}
              (wf : WellFormedF F)
              (coalg : Expr ∅ zeroUsage (A ⇒[ mk-kind Many π ] ⟦ F ⟧T A))
-             (ih : ∀ j → liftFn fmt {⟦ ∅ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt j ≡ SD.⟦ coalg ⟧ˢ fmt tt j)
-             (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ) (k : ℕ)
-           → liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ k
-             ≡ SD.⟦ ana {Γ = Γ} wf coalg ⟧ˢ fmt dγ k
-ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
-  trans elab-ana-reduce (cong (_,_ []) per-a)
+             (ih : liftFn fmt {⟦ ∅ ⟧ᶜ} {A ⇒[ mk-kind Many π ] ⟦ F ⟧T A} (elaborate C.Heap coalg) tt ≡ SD.⟦ coalg ⟧ˢ fmt tt)
+             (dγ : ⟦ ⟦ Γ ↾ zeroUsage ⟧ᶜ ⟧ᴰ)
+           → liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ
+             ≡ SD.⟦ ana {Γ = Γ} wf coalg ⟧ˢ fmt dγ
+ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ =
+  trans elab-ana-reduce (cong returnT per-a)
   where
     coalgIR : IR ⌊ A ⌋ ⌊ ⟦ F ⟧T A ⌋
     coalgIR = apply ∘ ⟨ elaborate C.Heap coalg ∘ terminal , id ⟩
@@ -335,9 +356,9 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
     Ana-IR : IR ⌊ A ⌋ ⌊ ν-type F ⌋
     Ana-IR = Ana (wf-⌊⌋ wf) coalg'
 
-    elab-ana-reduce : liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ k
-                      ≡ returnT (λ a → liftFn fmt {A} {ν-type F} Ana-IR a) k
-    elab-ana-reduce = cong (λ t → t k)
+    elab-ana-reduce : liftFn fmt {⟦ Γ ↾ zeroUsage ⟧ᶜ} {A ⇒[ mk-kind Many π ] ν-type F} (elaborate C.Heap (ana {Γ = Γ} wf coalg)) dγ
+                      ≡ returnT (λ a → liftFn fmt {A} {ν-type F} Ana-IR a)
+    elab-ana-reduce =
       (trans (subst-T-returnT (cong₂ (λ x y → x → T y) (cohᴰ A) (cohᴰ (ν-type F))) (λ a → evalᴰ fmt Ana-IR a))
              (cong returnT (subst-arrow (cohᴰ A) (cohᴰ (ν-type F)) (λ a → evalᴰ fmt Ana-IR a))))
 
@@ -391,14 +412,14 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
     s-eq : ∀ (x : ⟦ A ⟧ᴰ)
          → (SD.⟦ coalg ⟧ˢ fmt tt >>=T (λ clo → clo x))
            ≡ subst T (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt coalgIR (seedOf x))
-    s-eq x = sym (morph-app-bridge-fun coalg ih x)
+    s-eq x = sym (morph-app-bridge coalg ih x)
 
     per-x-D179 : ∀ (x : ⟦ A ⟧ᴰ)
       → subst (λ H → T (⟦ H ⟧SF ⟦ A ⟧ᴰ)) (tF-coh F)
           (subst (λ Z → T (⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z)) (cohᴰ A)
             (fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (cE (seedOf x))))
         ≡ fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS x)
-    per-x-D179 x = extensionality (λ k → cong₂ _,_ (tr k) (vl k))
+    per-x-D179 x = T-ext tr (st 0) (vl 0)
       where
         -- Traces: neither `subst` nor `fmapT` touches a trace, so both sides
         -- reduce to the trace of the SHARED `evalᴰ fmt coalgIR` computation.
@@ -424,6 +445,26 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
             t6 = subst-T-trace (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) _ k
             t7 = sym (subst-T-trace (cohᴰ (⟦ F ⟧T A)) _ k)
             t8 = cong (λ m → projTrace m k) (sym (s-eq x))
+
+        -- plan 0.97: the STOP FLAG, the same eight steps — neither `subst`
+        -- nor `fmapT` touches it either.
+        st : ∀ k → stoppedT LHSm k ≡ stoppedT (fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS x)) k
+        st k = t1 ⟨s⟩ t2 ⟨s⟩ t3 ⟨s⟩ t4 ⟨s⟩ t5 ⟨s⟩ t6 ⟨s⟩ t7 ⟨s⟩ t8
+          where
+            infixr 5 _⟨s⟩_
+            _⟨s⟩_ : ∀ {X : Set} {a b c : X} → a ≡ b → b ≡ c → a ≡ c
+            _⟨s⟩_ = trans
+
+            t1 = cong (λ m → stoppedT m k) (subst-fam-T (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F) _)
+            t2 = subst-T-stop (cong (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F)) _ k
+            t3 = cong (λ m → stoppedT m k)
+                   (subst-fam-T (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A) _)
+            t4 = subst-T-stop
+                   (cong (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A)) _ k
+            t5 = cong (λ m → stoppedT m k) (e-eq x)
+            t6 = subst-T-stop (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) _ k
+            t7 = sym (subst-T-stop (cohᴰ (⟦ F ⟧T A)) _ k)
+            t8 = cong (λ m → stoppedT m k) (sym (s-eq x))
 
         -- Values: push both `subst`s through `valueT`, and what is left on the
         -- left is EXACTLY `coerce-νin-erase-D`'s statement at the coalgebra's
@@ -488,7 +529,7 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ k =
                (cong (anaFᵈ F cS) (subst-subst-sym (cohᴰ A))))
 
     per-a : (λ a → liftFn fmt {A} {ν-type F} Ana-IR a)
-            ≡ proj₂ (SD.⟦ ana {Γ = Γ} wf coalg ⟧ˢ fmt dγ k)
+            ≡ valueT (SD.⟦ ana {Γ = Γ} wf coalg ⟧ˢ fmt dγ) 0
     per-a = extensionality (λ a →
       trans (subst-T-returnT (cohᴰ (ν-type F))
                (anaFᵈ ⌈ eraseF F ⌉F cE (subst (λ z → z) (sym (cohᴰ A)) a)))
