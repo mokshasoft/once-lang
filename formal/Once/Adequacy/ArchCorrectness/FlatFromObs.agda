@@ -119,8 +119,10 @@ import Once.Parser.Module.Core as P
 open import Once.Adequacy.LabelClash using (DistinctLabels; LabelsResolvable)
 open import Once.Adequacy.SymbolClash using (SymbolsResolvable)
 
-open IRObsCorrectFlatness {FS} using (IRObsCorrectF; CalleeRuns; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; emitted; BlocksAt; blocks)
-open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left)
+open IRObsCorrectFlatness {FS} using (IRObsCorrectF; CalleeRuns; BlockRuns; MachineRefinesObsF; ValueRealized; in-unit; SpanAt; LabelsAt; emitted; BlocksAt; blocks)
+open FlatMachine {FS} using (mkFlat; fetch; fetch-++-left; find-label)
+open import Once.CCC.Codegen.FlatStepLemmas using (module FlatStepsAPI)
+open FlatStepsAPI {FS} using (fl-go-prefix)
 open CataIRSlotStable {FS} using (ir-to-trace-slot-stable)
 open FlatEventTrace {FS} using (flat-events; chain-events; flat-events-steps)
 open FrontierInvariant {FS} using (BeforeFrontier; heap-before)
