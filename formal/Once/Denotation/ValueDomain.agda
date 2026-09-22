@@ -29,7 +29,8 @@ open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 open import Once.CCC.Eval as Val using ()
 open import Once.SigOp.Info
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
-open import Once.Denotation.TraceMonad using (T; returnT; valueT; projTrace; fmapT; _>>=T_)
+open import Once.Denotation.TraceMonad using (T; mkT; returnT; valueT; stoppedT; projTrace; fmapT; _>>=T_; Stopped)
+open import Data.Bool using (true; false)
 open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; νS; unfoldS)
@@ -91,13 +92,13 @@ mutual
 -- `forceᵈ (in-νᵈ l) ≡ ([] , l)` is the Lambek round trip `Out ∘ in-ν ≡ id`,
 -- definitionally.
 in-νᵈ : ∀ {F} → ⟦ F ⟧SF (νᵈ F) → νᵈ F
-forceᵈ (in-νᵈ layer) = λ _ → ([] , layer)
+forceᵈ (in-νᵈ layer) = mkT (λ _ → []) false layer
 
 -- `inject` at an arrow lifts a pure function to a trace-free closure. This is
 -- the same thing: every layer emits nothing.
 mutual
   injectν : ∀ {F} → νS F → νᵈ F
-  forceᵈ (injectν {F} x) = λ _ → ([] , mapInjectν F F (unfoldS x))
+  forceᵈ (injectν {F} x) = mkT (λ _ → []) false (mapInjectν F F (unfoldS x))
 
   mapInjectν : ∀ (F H : SFunctor) → ⟦ H ⟧SF (νS F) → ⟦ H ⟧SF (νᵈ F)
   mapInjectν F (SK B)   x        = x
@@ -141,8 +142,13 @@ seqF (G ⊗ H) (x , y)  = seqF G x >>=T λ u → seqF H y >>=T λ v → returnT 
 -- there is no traversal chosen here, which is the whole point.
 mutual
   anaᵈ : ∀ (H : SFunctor) {A : Set} → (A → T (⟦ H ⟧SF A)) → A → νᵈ H
-  forceᵈ (anaᵈ H coalg a) = λ k →
-    ( projTrace (coalg a) k , mapAnaᵈ H H coalg (valueT (coalg a) k) )
+  -- plan 0.97: the layer's VALUE no longer reads the budget — that is the
+  -- lens property showing up at the one place that used to thread it — and a
+  -- coalgebra that stops makes the forced layer stop.
+  forceᵈ (anaᵈ H coalg a) =
+    mkT (λ k → projTrace (coalg a) k)
+        (stoppedT (coalg a) 0)
+        (mapAnaᵈ H H coalg (valueT (coalg a) 0))
 
   mapAnaᵈ : ∀ (H G : SFunctor) {A : Set}
           → (A → T (⟦ H ⟧SF A)) → ⟦ G ⟧SF A → ⟦ G ⟧SF (νᵈ H)
@@ -321,6 +327,16 @@ emit-D si x with effect si
 ... | Pure    = []
 ... | Emits _ = mkEvent si x ∷ []
 ... | Halts _ = mkEvent si x ∷ []
+
+-- plan 0.97: …and whether it ENDS the program. `Halts` is the only shape that
+-- does, and this is the whole of the difference between it and `Emits` —
+-- which, until now, the Spec did not record at all, so it said a program
+-- CONTINUES after `exit`.
+stops-D : ∀ {A B} → SigOpInfo A B → Stopped
+stops-D si with effect si
+... | Pure    = false
+... | Emits _ = false
+... | Halts _ = true
 
 -- The BUDGET-AWARE emitter. `take n (emit-D si x)` is the wrong cap: `take`
 -- matches its BUDGET first, so `take n []` is stuck while `n` is abstract —

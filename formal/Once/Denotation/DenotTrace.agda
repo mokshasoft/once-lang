@@ -59,7 +59,8 @@ open import Once.Semantics.Machine
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
-open import Once.Denotation.TraceMonad using (T; returnT; _>>=T_; valueT; projTrace; fmapT)
+open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; valueT; stoppedT; projTrace; fmapT)
+open import Data.Bool using (false)
 open import Once.Denotation.TraceDenote using (events-F)
 
 -- Plan 0.58 (OCP-0006): the IR-FREE value domain `⟦_⟧ᴰ` + `forget`/`inject` +
@@ -142,9 +143,14 @@ evalᴰ fmt terminal      _        = returnT tt
 evalᴰ fmt initial       ()
 evalᴰ fmt (curry f)   a        = returnT (λ b → evalᴰ fmt f (a , b))
 evalᴰ fmt apply         p        = proj₁ p (proj₂ p)
-evalᴰ fmt (SigOp {A} {B} si) a   = λ n →
-  ( emit-Dᵇ si (subst (λ z → z) (coh A) (forget a)) n
-  , subst (λ z → z) (sym (cohᴰ B)) (inject (semM si fmt (subst (λ z → z) (coh A) (forget a)))) )
+-- plan 0.97: THE ONE CLAUSE WHERE A PROGRAM STOPS. `Halts` and `Emits` used
+-- to be indistinguishable here — one event each, value `tt`, computation
+-- continues — so the Spec said a program carries on after `exit`. `stops-D`
+-- is the difference.
+evalᴰ fmt (SigOp {A} {B} si) a   =
+  mkT (λ n → emit-Dᵇ si (subst (λ z → z) (coh A) (forget a)) n)
+      (stops-D si)
+      (subst (λ z → z) (sym (cohᴰ B)) (inject (semM si fmt (subst (λ z → z) (coh A) (forget a)))))
 -- Recursion schemes: VALUE comes from this denotation's OWN trace-fold, NOT a
 -- parallel pure `eval` — `⟦_⟧ᴰ` has ONE model (the trace semantics), exactly
 -- like `⟦_⟧ˢ`. (The old catch-all routed `Cata`/`Ana` values through the pure
@@ -199,7 +205,8 @@ evalᴰ fmt (in-ν {F} wf) a =
   returnT (in-νᵈ (coerce-ν-in ⌈ F ⌉F ⟦ ⌈ ν-type F ⌉ ⟧ᴰ
                     (coerce-functor-D ⌈ F ⌉F ⌈ ν-type F ⌉
                       (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F (ν-type F)) a))))
-evalᴰ fmt ir            a        = λ n → (rec-trace-D fmt ir (forget a) n , inject (eval fmt ir (forget a)))
+evalᴰ fmt ir            a        =
+  mkT (λ n → rec-trace-D fmt ir (forget a) n) false (inject (eval fmt ir (forget a)))
 
 -- `Cata` and `Out` have their own `evalᴰ` clauses, so they never reach this
 -- fallback. What remains here is the genuinely event-free tail.
