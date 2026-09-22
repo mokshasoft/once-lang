@@ -243,7 +243,8 @@ module CompC {FS : FrameSemantics} where
     → IRObsCorrectF g → MachineRefinesObsF prog base n l f x s alloc cl k
     → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
   comp-value-realized-of {g = g} {f} {x} {s} {alloc} {cl} prog base n l k ns ss cr span bl la ihg mf =
-    go (MachineRefinesObsF.value-realized mf) (MachineRefinesObsF.traces-agree mf)
+    go (TM.stoppedT (evalᴰ f x) k) refl
+       (MachineRefinesObsF.value-realized mf) (MachineRefinesObsF.traces-agree mf)
     where
       module VR = ValueRealized
 
@@ -280,16 +281,31 @@ module CompC {FS : FrameSemantics} where
       -- abstraction over a projection or an axiom; the honest fix is to widen
       -- what the match produces. `f`'s own trace agreement comes in as an
       -- argument for the same reason: it mentions the matched chain.
-      go : (vr : ValueRealized prog base n l f x s alloc cl k)
+      -- plan 0.97: …AND ON WHETHER `f` STOPPED. `evalᴰ (g ∘ f) x` is
+      -- `evalᴰ f x >>=T evalᴰ g`, and `>>=T` does not run `g` when `f` has
+      -- stopped — `join-es true es _ = es`, `join-st true _ = true`. So there
+      -- are two composites, not one: the ordinary one, and the one whose
+      -- machine run IS `f`'s run, ending at `f`'s halting instruction.
+      --
+      -- The boolean is taken as an ARGUMENT with its own equation rather than
+      -- `with`-abstracted: the false branch's entire `where` block is stated
+      -- against `sfeq`, and a `with` cannot abstract a projection of a matched
+      -- field out of a block that large.
+      go : (sf : TM.Stopped) → TM.stoppedT (evalᴰ f x) k ≡ sf
+         → (vr : ValueRealized prog base n l f x s alloc cl k)
          → take k (chain-events (VR.run vr)) ≡ take k (projTrace (evalᴰ f x) k)
          → MachineRefinesObsF prog base n l (g ∘ f) x s alloc cl k
-      go (realized kf fsF mOutf caf chainF liveF endF retF linkF placeF spF hpF cfF bfF) tf =
+      -- ── `f` RAN TO ITS END ────────────────────────────────────────────
+      go false sfeq
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF placeF spF hpF cfF bfF) tf =
         record
           { value-realized =
               realized (kf + suc (VR.steps vg)) (VR.settle vg)
                        (VR.out-mode vg) (VR.cont-alloc vg)
-                       chain (VR.live vg) atEnd (VR.no-ret vg) (VR.no-link vg)
-                       (VR.place vg)
+                       chain (λ p → VR.live vg (to-g p)) (λ p → atEnd (to-g p))
+                       (λ p → VR.stops vg (to-g p))
+                       (VR.no-ret vg) (VR.no-link vg)
+                       (λ p → VR.place vg (to-g p))
                        (λ fr j bf → mem-pres-comp (AtStack fr j) bf) (λ hl bf → mem-pres-comp (AtDynamic hl) bf)
                        (trans (VR.frame-pres vg) cfF)
                        bf-mono-comp
@@ -312,7 +328,7 @@ module CompC {FS : FrameSemantics} where
           nsG = ≤-trans (≤-reflexive nsF) (≤-trans ns (frontier-mono f n l))
 
           liveM : halted (floc fsM) ≡ false
-          liveM = liveF
+          liveM = liveF sfeq
 
           movEq : readReg (regs (floc fsM)) Input1 ≡ readReg (regs (floc fsF)) Output
           movEq = writeReg-same (regs (floc fsF)) Input1 (readReg (regs (floc fsF)) Output)
@@ -321,7 +337,7 @@ module CompC {FS : FrameSemantics} where
           memEq loc = reg-write-readLoc (floc fsF) _ (halted (floc fsF)) loc
 
           inputM : InputAt mOutf (falloc fsM) (TM.valueT (evalᴰ f x) k) (floc fsM)
-          inputM = result→input placeF movEq memEq
+          inputM = result→input (placeF sfeq) movEq memEq
 
           mg : MachineRefinesObsF prog base' n1 l1 g (TM.valueT (evalᴰ f x) k)
                                   (floc fsM) (falloc fsM) (fclosure fsM) kg
@@ -335,10 +351,10 @@ module CompC {FS : FrameSemantics} where
           vg = MachineRefinesObsF.value-realized mg
 
           movStep : FlatSteps prog 1 fsF fsM
-          movStep = (liveF , trans (cong (fetch prog) endF) mov-in-prog) ∷ []
+          movStep = (liveF sfeq , trans (cong (fetch prog) (endF sfeq)) mov-in-prog) ∷ []
 
           handover : fsM ≡ entry-flat base' (floc fsM) (falloc fsM) (fclosure fsM)
-          handover = handover-eq base' fsM (cong suc endF) retF linkF
+          handover = handover-eq base' fsM (cong suc (endF sfeq)) retF linkF
 
           chainG : FlatSteps prog (VR.steps vg) fsM (VR.settle vg)
           chainG = subst (λ st → FlatSteps prog (VR.steps vg) st (VR.settle vg))
@@ -422,12 +438,59 @@ module CompC {FS : FrameSemantics} where
             trans (cong (take k) events-split)
             (trans (TM.take-++-threaded k mEvF mEvG)
             (trans (cong₂ _++_ tf tail-eq)
-                   (sym (TM.take-++-threaded k dEvF dEvG))))
+            (trans (sym (TM.take-++-threaded k dEvF dEvG))
+                   (cong (λ z → take k (TM.join-es z dEvF dEvG)) (sym sfeq)))))
 
-          atEnd : fpc (VR.settle vg) ≡ length (emitted n l (g ∘ f)) + base
-          atEnd = trans (VR.at-end vg)
+          -- plan 0.97: `f` did not stop, so the composite stops exactly when
+          -- `g` does (`join-st false b = b`). Every conditioned field is
+          -- `g`'s, read through this one equation.
+          sg : TM.Stopped
+          sg = TM.stoppedT (evalᴰ g (TM.valueT (evalᴰ f x) k)) kg
+
+          st-comp : TM.stoppedT (evalᴰ (g ∘ f) x) k ≡ sg
+          st-comp = cong (λ z → TM.join-st z sg) sfeq
+
+          to-g : ∀ {b} → TM.stoppedT (evalᴰ (g ∘ f) x) k ≡ b → sg ≡ b
+          to-g p = trans (sym st-comp) p
+
+          atEnd : sg ≡ false → fpc (VR.settle vg) ≡ length (emitted n l (g ∘ f)) + base
+          atEnd q = trans (VR.at-end vg q)
                         (sym (trans (cong (_+ base) (length-++ ft {mov-to-input ∷ gt}))
                                     (shuffle (length ft) (length gt) base)))
+
+      -- ── `f` STOPPED THE PROGRAM ───────────────────────────────────────
+      -- `g` never runs, and the composite's machine run IS `f`'s: the same
+      -- steps, the same settle state, the same events (`join-es true es _`).
+      -- Everything `f` proved about that state transfers verbatim, and the
+      -- three fields that describe a fragment which REACHED ITS END are
+      -- vacuous — the composite's stoppedness is `join-st true _`, i.e.
+      -- `true`, so their premise refutes itself.
+      go true sfeq
+         (realized kf fsF mOutf caf chainF liveF endF stopsF retF linkF placeF spF hpF cfF bfF) tf =
+        record
+          { value-realized =
+              realized kf fsF mOutf caf chainF
+                       absurd absurd (λ _ → stopsF sfeq) retF linkF absurd
+                       spF hpF cfF bfF
+          ; traces-agree =
+              trans tf (cong (λ z → take k (TM.join-es z dEvF' dEvG')) (sym sfeq))
+          }
+        where
+          kg' : ℕ
+          kg' = k ∸ length (projTrace (evalᴰ f x) k)
+
+          dEvF' = projTrace (evalᴰ f x) k
+          dEvG' = projTrace (evalᴰ g (TM.valueT (evalᴰ f x) k)) kg'
+
+          sg' : TM.Stopped
+          sg' = TM.stoppedT (evalᴰ g (TM.valueT (evalᴰ f x) k)) kg'
+
+          st-comp : TM.stoppedT (evalᴰ (g ∘ f) x) k ≡ true
+          st-comp = cong (λ z → TM.join-st z sg') sfeq
+
+          absurd : ∀ {X : Set} → TM.stoppedT (evalᴰ (g ∘ f) x) k ≡ false → X
+          absurd p with trans (sym st-comp) p
+          ... | ()
 
 
   -- (moved below `comp-value-realized-of`: it names that proof's chain, so it

@@ -104,17 +104,7 @@ module PairAsm {FS : FrameSemantics} where
     → IRObsCorrectF f → IRObsCorrectF g → IRObsCorrectF ⟨ f , g ⟩
   obs-correct-pair-proof {A} {B} {C} {f} {g} ihf ihg n l prog base
                          ss cr span bl la mIn x s alloc cl n≤ nh inp k =
-    record
-      { value-realized =
-          realized PCG.STEPS PCG.SETTLE PPlace.out-mode PPlace.cont-alloc
-                   PCG.RUN PCG.LIVE PCG.ATEND PCG.NORET PCG.NOLINK
-                   PPlace.place
-                   PPresF.stack-pres-pair PPresF.heap-pres-pair
-                   PPres.frame-pres-pair PPres.bf-mono-pair
-      ; traces-agree =
-          PT.pair-traces PC.pre-chain PCF.chainF PCF.mid-chain
-                         PCG.chainG PCG.tail-chain refl refl refl tf tg
-      }
+    dispatch (TM.stoppedT (evalᴰ f x) k) refl
     where
       module PS = PairShape f g n l
       module PC = PairChain f g n l prog base s alloc cl n≤ nh span
@@ -177,186 +167,311 @@ module PairAsm {FS : FrameSemantics} where
               (floc PC.PR.p2) (falloc PC.PR.p2) (fclosure PC.PR.p2) k
       vrf = MachineRefinesObsF.value-realized mrf
 
-      module PCF = PC.WithF vrf
-
       ----------------------------------------------------------------
-      -- The allocator across `f` and the two mid rows. `next-slot` never
-      -- moves at run time (`AllSlotStable prog` — a clause binder), and
-      -- neither mid row allocates.
+      -- plan 0.97: `f`'s CHAIN AND ITS TRACE, hoisted out of `PC.WithF`.
+      -- `WithF` now takes "`f` reached its end" as a parameter — everything
+      -- in it is about what happens AFTER `f` — but these two are about `f`
+      -- itself and are needed on the stopped branch too.
       ----------------------------------------------------------------
-      runF≡ : exec-flat (VR.steps vrf) prog
-                (entry-flat (suc (suc base)) (floc PC.PR.p2) (falloc PC.PR.p2)
-                            (fclosure PC.PR.p2))
-              ≡ PCF.fsF
-      runF≡ = trans (cong (λ m → exec-flat m prog
-                                   (entry-flat (suc (suc base)) (floc PC.PR.p2)
-                                      (falloc PC.PR.p2) (fclosure PC.PR.p2)))
-                          (sym (+-identityʳ (VR.steps vrf))))
-                    (exec-flat-steps (VR.run vrf) 0)
+      chainF₀ : FlatSteps prog (VR.steps vrf) PC.PR.p2 (VR.settle vrf)
+      chainF₀ = subst (λ st → FlatSteps prog (VR.steps vrf) st (VR.settle vrf))
+                      (sym PC.handF) (VR.run vrf)
 
-      ns-fsF : next-slot (falloc PCF.fsF) ≡ next-slot alloc
-      ns-fsF = trans (cong (λ st → next-slot (falloc st)) (sym runF≡))
-                     (flat-run-keeps-next-slot (VR.steps vrf) prog ss
-                        (suc (suc base)) (floc PC.PR.p2) (falloc PC.PR.p2)
-                        (fclosure PC.PR.p2))
-
-      ns-m2 : next-slot (falloc PCF.m2) ≡ next-slot alloc
-      ns-m2 =
-        trans (exec-abstract-preserves-next-slot (restore-input n)
-                 (floc PCF.m1) (falloc PCF.m1) tt)
-        (trans (exec-abstract-preserves-next-slot (store-at-slot (suc n))
-                 (floc PCF.fsF) (falloc PCF.fsF) tt) ns-fsF)
-
-      hr-mid : next-heap-ref (falloc PCF.m2) ≡ next-heap-ref (falloc PCF.fsF)
-      hr-mid =
-        trans (exec-abstract-preserves-heap-ref (restore-input n)
-                 (floc PCF.m1) (falloc PCF.m1) tt)
-              (exec-abstract-preserves-heap-ref (store-at-slot (suc n))
-                 (floc PCF.fsF) (falloc PCF.fsF) tt)
-
-      n≤n1 : n ≤ PS.n1
-      n≤n1 = ≤-trans PC.n≤f-start (frontier-mono f PS.f-start l)
-
-      nsG : next-slot (falloc PCF.m2) ≤ PS.n1
-      nsG = ≤-trans (≤-reflexive ns-m2) (≤-trans n≤ n≤n1)
-
-      ----------------------------------------------------------------
-      -- THE KEYSTONE'S PAYOFF: after `restore-input backup`, `Input1`
-      -- holds what it held at entry — so `g` receives `f`'s input.
-      ----------------------------------------------------------------
-      input1-m2 : readReg (regs (floc PCF.m2)) Input1 ≡ readReg (regs s) Input1
-      input1-m2 =
-        trans (RecSchemeSemantics.exec-abstract-restore-input-sets-input
-                 n (floc PCF.m1) (falloc PCF.m1)
-                 (readReg (regs (floc PC.PR.p1)) Output) (proj₂ PCF.wf-restore))
-              (writeReg-same (regs s) Output (readReg (regs s) Input1))
-
-      mem-to-m2 : ∀ (loc : ValueLocation FS)
-                → BeforeFrontier (record alloc { next-slot = n }) loc
-                → MemOps.readLoc (floc PCF.m2) loc ≡ MemOps.readLoc s loc
-      mem-to-m2 loc b =
-        trans (mem-untouched (restore-input n) (floc PCF.m1) (falloc PCF.m1) loc
-                 Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
-        (trans (store-slot-preserves-before (suc n) (floc PCF.fsF)
-                 (record alloc { next-slot = n }) (falloc PCF.fsF) loc
-                 (VR.frame-pres vrf) (n≤1+n n) b)
-        (trans (vr-mem-pres vrf loc (bf-f loc b))
-        (trans (store-slot-preserves-before n (floc PC.PR.p1)
-                 (record alloc { next-slot = n }) (falloc PC.PR.p1) loc
-                 (exec-abstract-preserves-frame mov-to-output s alloc) ≤-refl b)
-               (mem-untouched mov-to-output s alloc loc nhw-mov-to-output refl))))
-
-      bfG : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
-          → BeforeFrontier (falloc PCF.m2) loc
-      bfG loc b =
-        frontier-monotone
-          (record (falloc PCF.fsF) { next-slot = next-slot alloc })
-          (falloc PCF.m2)
-          (trans PCF.cf-fsF (sym PCF.cf-m2))
-          (≤-reflexive (sym ns-m2)) (≤-reflexive (sym hr-mid))
-          loc (VR.bf-mono vrf (next-slot alloc) loc b)
-
-      inpG-of : InputAt mIn alloc x s → InputAt mIn (falloc PCF.m2) x (floc PCF.m2)
-      inpG-of (in-loc loc vd bf rd) =
-        in-loc loc
-          (validityWF-frontier-advance x loc (floc PCF.m2)
-             PCF.cf-m2 (≤-reflexive (sym ns-m2))
-             (≤-trans (vr-heap-mono vrf) (≤-reflexive (sym hr-mid)))
-             (validityWF-mem-preserved x loc s (floc PCF.m2) bf
-                (λ loc' b' → mem-to-m2 loc' (bf-n loc' b')) vd))
-          (bfG loc bf) (trans input1-m2 rd)
-      inpG-of (in-reg fit rd) = in-reg fit (trans input1-m2 rd)
-      inpG-of (in-unit e)     = in-unit e
-
-      mrg : MachineRefinesObsF prog PCF.bg PS.n1 PS.l1 g x
-              (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) PT.kg
-      mrg = ihg PS.n1 PS.l1 prog PCF.bg ss cr (PS.span-g prog base span)
-                blocks-g (PS.labels-g prog base la) mIn x (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2)
-                nsG PCF.nhM2 (inpG-of inp) PT.kg
-
-      vrg : ValueRealized prog PCF.bg PS.n1 PS.l1 g x
-              (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) PT.kg
-      vrg = MachineRefinesObsF.value-realized mrg
-
-      module PCG = PCF.WithG vrg
-
-      ----------------------------------------------------------------
-      -- `PairPlace`'s five non-trivial parameters.
-      ----------------------------------------------------------------
-      runG≡ : exec-flat (VR.steps vrg) prog
-                (entry-flat PCF.bg (floc PCF.m2) (falloc PCF.m2)
-                            (fclosure PCF.m2))
-              ≡ PCG.fsG
-      runG≡ = trans (cong (λ m → exec-flat m prog
-                                   (entry-flat PCF.bg (floc PCF.m2)
-                                      (falloc PCF.m2) (fclosure PCF.m2)))
-                          (sym (+-identityʳ (VR.steps vrg))))
-                    (exec-flat-steps (VR.run vrg) 0)
-
-      ns-gs : next-slot (falloc PCG.fsG) ≡ next-slot alloc
-      ns-gs = trans (trans (cong (λ st → next-slot (falloc st)) (sym runG≡))
-                           (flat-run-keeps-next-slot (VR.steps vrg) prog ss
-                              PCF.bg (floc PCF.m2) (falloc PCF.m2)
-                              (fclosure PCF.m2)))
-                    ns-m2
-
-      hr-gs : next-heap-ref (falloc PCF.fsF) ≤ next-heap-ref (falloc PCG.fsG)
-      hr-gs = ≤-trans (≤-reflexive (sym hr-mid)) (vr-heap-mono vrg)
-
-      bf-fsF→g : ∀ (loc : ValueLocation FS)
-               → BeforeFrontier (falloc PCF.fsF) loc
-               → BeforeFrontier (record (falloc PCF.m2) { next-slot = PS.n1 }) loc
-      bf-fsF→g = frontier-monotone (falloc PCF.fsF)
-                   (record (falloc PCF.m2) { next-slot = PS.n1 })
-                   (trans PCF.cf-fsF (sym PCF.cf-m2))
-                   (≤-trans (≤-reflexive ns-fsF) (≤-trans n≤ n≤n1))
-                   (≤-reflexive (sym hr-mid))
-
-      mem-F→G : ∀ (loc : ValueLocation FS)
-              → BeforeFrontier (falloc PCF.fsF) loc
-              → MemOps.readLoc (floc PCG.fsG) loc
-                ≡ MemOps.readLoc (floc PCF.fsF) loc
-      mem-F→G loc b =
-        trans (vr-mem-pres vrg loc (bf-fsF→g loc b))
-        (trans (mem-untouched (restore-input n) (floc PCF.m1) (falloc PCF.m1) loc
-                  Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
-               (store-slot-preserves-before (suc n) (floc PCF.fsF)
-                  (falloc PCF.fsF) (falloc PCF.fsF) loc refl
-                  (≤-trans (≤-reflexive ns-fsF) (≤-trans n≤ (n≤1+n n))) b))
-
-      fst-cell-gs : MemOps.readLoc (floc PCG.fsG)
-                      (AtStack (current-frame alloc) (suc n))
-                  ≡ just (readReg (regs (floc PCF.fsF)) Output)
-      fst-cell-gs =
-        trans (vr-mem-pres vrg (AtStack (current-frame alloc) (suc n))
-                (BeforeFrontier.stack-before (sym PCF.cf-m2) PCG.fst<n1))
-        (trans (mem-untouched (restore-input n) (floc PCF.m1) (falloc PCF.m1)
-                  (AtStack (current-frame alloc) (suc n))
-                  Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
-               PCF.read-fst-m1')
-
-      module PPlace = PairPlace {B} {C} n alloc n≤ PCF.fsF PCG.fsG
-                        PCF.cf-fsF PCG.cf-fsG ns-fsF ns-gs hr-gs
-                        (TM.valueT (evalᴰ f x) k) (TM.valueT (evalᴰ g x) PT.kg)
-                        (VR.out-mode vrf) (VR.out-mode vrg)
-                        (VR.cont-alloc vrf) (VR.cont-alloc vrg)
-                        (VR.place vrf) (VR.place vrg)
-                        mem-F→G fst-cell-gs
-
-      module PPres = PairPres f g n l prog base s alloc cl vrf
-                       PS.n1 PS.l1 n≤n1 vrg
-
-      module PPresF = PPres.Fill PPlace.rdi-u6 PPlace.rdi-u8
-
-      ----------------------------------------------------------------
-      -- The two sub-trace agreements, re-based across the hand-overs.
-      ----------------------------------------------------------------
-      tf : take k (chain-events PCF.chainF) ≡ take k PT.dEvF
+      tf : take k (chain-events chainF₀) ≡ take k PT.dEvF
       tf = trans (cong (take k)
                    (chain-events-subst-start (sym PC.handF) (VR.run vrf)))
                  (MachineRefinesObsF.traces-agree mrf)
 
-      tg : take PT.kg (chain-events PCG.chainG) ≡ take PT.kg PT.dEvG
-      tg = trans (cong (take PT.kg)
-                   (chain-events-subst-start (sym PCF.handG) (VR.run vrg)))
-                 (MachineRefinesObsF.traces-agree mrg)
+      -- The two prologue rows, at the window's own bound. (`memP` states the
+      -- same thing at `alloc`; the record's field is at `alloc { next-slot = n }`.)
+      mem-to-p2 : ∀ (loc : ValueLocation FS)
+                → BeforeFrontier (record alloc { next-slot = n }) loc
+                → MemOps.readLoc (floc PC.PR.p2) loc ≡ MemOps.readLoc s loc
+      mem-to-p2 loc b =
+        trans (store-slot-preserves-before n (floc PC.PR.p1)
+                 (record alloc { next-slot = n }) (falloc PC.PR.p1) loc
+                 (exec-abstract-preserves-frame mov-to-output s alloc) ≤-refl b)
+              (mem-untouched mov-to-output s alloc loc nhw-mov-to-output refl)
+
+      -- The pair's stoppedness, spelled at the shape `join-st` gives it.
+      -- `evalᴰ ⟨ f , g ⟩ x` is `evalᴰ f x >>=T λ b → innerT`, so the outer
+      -- flag is `join-st` of `f`'s and the inner bind's.
+      st-pair-of : ∀ (sf : TM.Stopped) → TM.stoppedT (evalᴰ f x) k ≡ sf
+                 → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k
+                   ≡ TM.join-st sf (TM.stoppedT PT.innerT PT.kg)
+      st-pair-of sf q = cong (λ z → TM.join-st z (TM.stoppedT PT.innerT PT.kg)) q
+
+      ----------------------------------------------------------------
+      -- THE SPLIT. Three outcomes, not one: `f` stops, `g` stops, or the
+      -- pair is assembled. The first two are plan 0.97's — until it, the
+      -- obligation asserted the machine was live and at the end of the
+      -- pair's text no matter what the Spec said, which a program that
+      -- exits inside `f` cannot satisfy.
+      ----------------------------------------------------------------
+      dispatch : (sf : TM.Stopped) → TM.stoppedT (evalᴰ f x) k ≡ sf
+               → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
+
+      -- ── `f` ENDED THE PROGRAM ───────────────────────────────────────
+      -- The pair's run is the prologue and `f`; the two mid rows, `g` and the
+      -- nine-row tail never execute, and the pair's observable is `f`'s.
+      dispatch true sfeq = record
+        { value-realized =
+            realized (2 + VR.steps vrf) (VR.settle vrf)
+                     (VR.out-mode vrf) (VR.cont-alloc vrf)
+                     (FlatSteps-++ PC.pre-chain chainF₀)
+                     absurd-f absurd-f (λ _ → VR.stops vrf sfeq)
+                     (VR.no-ret vrf) (VR.no-link vrf) absurd-f
+                     (λ fr j b → mem-to-fsF (AtStack fr j) b)
+                     (λ hl b → mem-to-fsF (AtDynamic hl) b)
+                     (VR.frame-pres vrf)
+                     (λ m loc b → VR.bf-mono vrf m loc b)
+        ; traces-agree =
+            PT.pair-traces-stopped PC.pre-chain chainF₀ refl sfeq tf
+        }
+        where
+          mem-to-fsF : ∀ (loc : ValueLocation FS)
+                     → BeforeFrontier (record alloc { next-slot = n }) loc
+                     → MemOps.readLoc (floc (VR.settle vrf)) loc ≡ MemOps.readLoc s loc
+          mem-to-fsF loc b = trans (vr-mem-pres vrf loc (bf-f loc b)) (mem-to-p2 loc b)
+
+          absurd-f : ∀ {X : Set} → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ false → X
+          absurd-f p with trans (sym (st-pair-of true sfeq)) p
+          ... | ()
+
+      -- ── `f` REACHED ITS END ─────────────────────────────────────────
+      dispatch false sfeq = dispatch-g (TM.stoppedT (evalᴰ g x) PT.kg) refl
+        where
+          module PCF = PC.WithF vrf sfeq
+
+          ----------------------------------------------------------------
+          -- The allocator across `f` and the two mid rows. `next-slot` never
+          -- moves at run time (`AllSlotStable prog` — a clause binder), and
+          -- neither mid row allocates.
+          ----------------------------------------------------------------
+          runF≡ : exec-flat (VR.steps vrf) prog
+                    (entry-flat (suc (suc base)) (floc PC.PR.p2) (falloc PC.PR.p2)
+                                (fclosure PC.PR.p2))
+                  ≡ PCF.fsF
+          runF≡ = trans (cong (λ m → exec-flat m prog
+                                       (entry-flat (suc (suc base)) (floc PC.PR.p2)
+                                          (falloc PC.PR.p2) (fclosure PC.PR.p2)))
+                              (sym (+-identityʳ (VR.steps vrf))))
+                        (exec-flat-steps (VR.run vrf) 0)
+
+          ns-fsF : next-slot (falloc PCF.fsF) ≡ next-slot alloc
+          ns-fsF = trans (cong (λ st → next-slot (falloc st)) (sym runF≡))
+                         (flat-run-keeps-next-slot (VR.steps vrf) prog ss
+                            (suc (suc base)) (floc PC.PR.p2) (falloc PC.PR.p2)
+                            (fclosure PC.PR.p2))
+
+          ns-m2 : next-slot (falloc PCF.m2) ≡ next-slot alloc
+          ns-m2 =
+            trans (exec-abstract-preserves-next-slot (restore-input n)
+                     (floc PCF.m1) (falloc PCF.m1) tt)
+            (trans (exec-abstract-preserves-next-slot (store-at-slot (suc n))
+                     (floc PCF.fsF) (falloc PCF.fsF) tt) ns-fsF)
+
+          hr-mid : next-heap-ref (falloc PCF.m2) ≡ next-heap-ref (falloc PCF.fsF)
+          hr-mid =
+            trans (exec-abstract-preserves-heap-ref (restore-input n)
+                     (floc PCF.m1) (falloc PCF.m1) tt)
+                  (exec-abstract-preserves-heap-ref (store-at-slot (suc n))
+                     (floc PCF.fsF) (falloc PCF.fsF) tt)
+
+          n≤n1 : n ≤ PS.n1
+          n≤n1 = ≤-trans PC.n≤f-start (frontier-mono f PS.f-start l)
+
+          nsG : next-slot (falloc PCF.m2) ≤ PS.n1
+          nsG = ≤-trans (≤-reflexive ns-m2) (≤-trans n≤ n≤n1)
+
+          ----------------------------------------------------------------
+          -- THE KEYSTONE'S PAYOFF: after `restore-input backup`, `Input1`
+          -- holds what it held at entry — so `g` receives `f`'s input.
+          ----------------------------------------------------------------
+          input1-m2 : readReg (regs (floc PCF.m2)) Input1 ≡ readReg (regs s) Input1
+          input1-m2 =
+            trans (RecSchemeSemantics.exec-abstract-restore-input-sets-input
+                     n (floc PCF.m1) (falloc PCF.m1)
+                     (readReg (regs (floc PC.PR.p1)) Output) (proj₂ PCF.wf-restore))
+                  (writeReg-same (regs s) Output (readReg (regs s) Input1))
+
+          mem-to-m2 : ∀ (loc : ValueLocation FS)
+                    → BeforeFrontier (record alloc { next-slot = n }) loc
+                    → MemOps.readLoc (floc PCF.m2) loc ≡ MemOps.readLoc s loc
+          mem-to-m2 loc b =
+            trans (mem-untouched (restore-input n) (floc PCF.m1) (falloc PCF.m1) loc
+                     Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
+            (trans (store-slot-preserves-before (suc n) (floc PCF.fsF)
+                     (record alloc { next-slot = n }) (falloc PCF.fsF) loc
+                     (VR.frame-pres vrf) (n≤1+n n) b)
+            (trans (vr-mem-pres vrf loc (bf-f loc b))
+            (trans (store-slot-preserves-before n (floc PC.PR.p1)
+                     (record alloc { next-slot = n }) (falloc PC.PR.p1) loc
+                     (exec-abstract-preserves-frame mov-to-output s alloc) ≤-refl b)
+                   (mem-untouched mov-to-output s alloc loc nhw-mov-to-output refl))))
+
+          bfG : ∀ (loc : ValueLocation FS) → BeforeFrontier alloc loc
+              → BeforeFrontier (falloc PCF.m2) loc
+          bfG loc b =
+            frontier-monotone
+              (record (falloc PCF.fsF) { next-slot = next-slot alloc })
+              (falloc PCF.m2)
+              (trans PCF.cf-fsF (sym PCF.cf-m2))
+              (≤-reflexive (sym ns-m2)) (≤-reflexive (sym hr-mid))
+              loc (VR.bf-mono vrf (next-slot alloc) loc b)
+
+          inpG-of : InputAt mIn alloc x s → InputAt mIn (falloc PCF.m2) x (floc PCF.m2)
+          inpG-of (in-loc loc vd bf rd) =
+            in-loc loc
+              (validityWF-frontier-advance x loc (floc PCF.m2)
+                 PCF.cf-m2 (≤-reflexive (sym ns-m2))
+                 (≤-trans (vr-heap-mono vrf) (≤-reflexive (sym hr-mid)))
+                 (validityWF-mem-preserved x loc s (floc PCF.m2) bf
+                    (λ loc' b' → mem-to-m2 loc' (bf-n loc' b')) vd))
+              (bfG loc bf) (trans input1-m2 rd)
+          inpG-of (in-reg fit rd) = in-reg fit (trans input1-m2 rd)
+          inpG-of (in-unit e)     = in-unit e
+
+          mrg : MachineRefinesObsF prog PCF.bg PS.n1 PS.l1 g x
+                  (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) PT.kg
+          mrg = ihg PS.n1 PS.l1 prog PCF.bg ss cr (PS.span-g prog base span)
+                    blocks-g (PS.labels-g prog base la) mIn x (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2)
+                    nsG PCF.nhM2 (inpG-of inp) PT.kg
+
+          vrg : ValueRealized prog PCF.bg PS.n1 PS.l1 g x
+                  (floc PCF.m2) (falloc PCF.m2) (fclosure PCF.m2) PT.kg
+          vrg = MachineRefinesObsF.value-realized mrg
+
+          -- The pair's stoppedness is now the INNER bind's, which is `g`'s.
+          st-inner : TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k
+                   ≡ TM.stoppedT PT.innerT PT.kg
+          st-inner = st-pair-of false sfeq
+
+          chainG₀ : FlatSteps prog (VR.steps vrg) PCF.m2 (VR.settle vrg)
+          chainG₀ = subst (λ st → FlatSteps prog (VR.steps vrg) st (VR.settle vrg))
+                          (sym PCF.handG) (VR.run vrg)
+
+          tg : take PT.kg (chain-events chainG₀) ≡ take PT.kg PT.dEvG
+          tg = trans (cong (take PT.kg)
+                       (chain-events-subst-start (sym PCF.handG) (VR.run vrg)))
+                     (MachineRefinesObsF.traces-agree mrg)
+
+          module PPres = PairPres f g n l prog base s alloc cl vrf
+                           PS.n1 PS.l1 n≤n1 vrg
+
+          dispatch-g : (sg : TM.Stopped) → TM.stoppedT (evalᴰ g x) PT.kg ≡ sg
+                     → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
+
+          -- ── `g` ENDED THE PROGRAM ───────────────────────────────────
+          -- Four segments run, not five: the nine-row tail that builds the
+          -- pair node never executes, so there is no pair value to place —
+          -- and the observable is still `dEvF ++ dEvG`, because a stopped
+          -- `g` contributes everything it emitted before stopping.
+          dispatch-g true sgeq = record
+            { value-realized =
+                realized (2 + (VR.steps vrf + (2 + VR.steps vrg)))
+                         (VR.settle vrg) (VR.out-mode vrg) (VR.cont-alloc vrg)
+                         (FlatSteps-++ PC.pre-chain
+                           (FlatSteps-++ chainF₀ (FlatSteps-++ PCF.mid-chain chainG₀)))
+                         absurd-g absurd-g (λ _ → VR.stops vrg sgeq)
+                         (VR.no-ret vrg) (VR.no-link vrg) absurd-g
+                         (λ fr j b → PPres.mem-pres-to-gs (AtStack fr j) b)
+                         (λ hl b → PPres.mem-pres-to-gs (AtDynamic hl) b)
+                         PPres.frame-pres-to-gs
+                         PPres.bf-to-gs
+            ; traces-agree =
+                PT.pair-traces-stopped-g PC.pre-chain chainF₀ PCF.mid-chain chainG₀
+                                         refl refl sfeq tf tg
+            }
+            where
+              absurd-g : ∀ {X : Set} → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ false → X
+              absurd-g p
+                with trans (sym (trans st-inner (cong (λ z → TM.join-st z false) sgeq))) p
+              ... | ()
+
+          -- ── BOTH REACHED THEIR END — the pair is assembled. ──────────
+          dispatch-g false sgeq = record
+            { value-realized =
+                realized PCG.STEPS PCG.SETTLE PPlace.out-mode PPlace.cont-alloc
+                         PCG.RUN (λ _ → PCG.LIVE) (λ _ → PCG.ATEND)
+                         not-stopped
+                         PCG.NORET PCG.NOLINK
+                         (λ _ → PPlace.place)
+                         PPresF.stack-pres-pair PPresF.heap-pres-pair
+                         PPres.frame-pres-pair PPres.bf-mono-pair
+            ; traces-agree =
+                PT.pair-traces PC.pre-chain chainF₀ PCF.mid-chain
+                               chainG₀ PCG.tail-chain refl refl refl sfeq tf tg
+            }
+            where
+              not-stopped : ∀ {X : Set} → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ true → X
+              not-stopped p
+                with trans (sym p) (trans st-inner (cong (λ z → TM.join-st z false) sgeq))
+              ... | ()
+
+              module PCG = PCF.WithG vrg sgeq
+
+              ----------------------------------------------------------------
+              -- `PairPlace`'s five non-trivial parameters.
+              ----------------------------------------------------------------
+              runG≡ : exec-flat (VR.steps vrg) prog
+                        (entry-flat PCF.bg (floc PCF.m2) (falloc PCF.m2)
+                                    (fclosure PCF.m2))
+                      ≡ PCG.fsG
+              runG≡ = trans (cong (λ m → exec-flat m prog
+                                           (entry-flat PCF.bg (floc PCF.m2)
+                                              (falloc PCF.m2) (fclosure PCF.m2)))
+                                  (sym (+-identityʳ (VR.steps vrg))))
+                            (exec-flat-steps (VR.run vrg) 0)
+
+              ns-gs : next-slot (falloc PCG.fsG) ≡ next-slot alloc
+              ns-gs = trans (trans (cong (λ st → next-slot (falloc st)) (sym runG≡))
+                                   (flat-run-keeps-next-slot (VR.steps vrg) prog ss
+                                      PCF.bg (floc PCF.m2) (falloc PCF.m2)
+                                      (fclosure PCF.m2)))
+                            ns-m2
+
+              hr-gs : next-heap-ref (falloc PCF.fsF) ≤ next-heap-ref (falloc PCG.fsG)
+              hr-gs = ≤-trans (≤-reflexive (sym hr-mid)) (vr-heap-mono vrg)
+
+              bf-fsF→g : ∀ (loc : ValueLocation FS)
+                       → BeforeFrontier (falloc PCF.fsF) loc
+                       → BeforeFrontier (record (falloc PCF.m2) { next-slot = PS.n1 }) loc
+              bf-fsF→g = frontier-monotone (falloc PCF.fsF)
+                           (record (falloc PCF.m2) { next-slot = PS.n1 })
+                           (trans PCF.cf-fsF (sym PCF.cf-m2))
+                           (≤-trans (≤-reflexive ns-fsF) (≤-trans n≤ n≤n1))
+                           (≤-reflexive (sym hr-mid))
+
+              mem-F→G : ∀ (loc : ValueLocation FS)
+                      → BeforeFrontier (falloc PCF.fsF) loc
+                      → MemOps.readLoc (floc PCG.fsG) loc
+                        ≡ MemOps.readLoc (floc PCF.fsF) loc
+              mem-F→G loc b =
+                trans (vr-mem-pres vrg loc (bf-fsF→g loc b))
+                (trans (mem-untouched (restore-input n) (floc PCF.m1) (falloc PCF.m1) loc
+                          Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
+                       (store-slot-preserves-before (suc n) (floc PCF.fsF)
+                          (falloc PCF.fsF) (falloc PCF.fsF) loc refl
+                          (≤-trans (≤-reflexive ns-fsF) (≤-trans n≤ (n≤1+n n))) b))
+
+              fst-cell-gs : MemOps.readLoc (floc PCG.fsG)
+                              (AtStack (current-frame alloc) (suc n))
+                          ≡ just (readReg (regs (floc PCF.fsF)) Output)
+              fst-cell-gs =
+                trans (vr-mem-pres vrg (AtStack (current-frame alloc) (suc n))
+                        (BeforeFrontier.stack-before (sym PCF.cf-m2) PCG.fst<n1))
+                (trans (mem-untouched (restore-input n) (floc PCF.m1) (falloc PCF.m1)
+                          (AtStack (current-frame alloc) (suc n))
+                          Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
+                       PCF.read-fst-m1')
+
+              module PPlace = PairPlace {B} {C} n alloc n≤ PCF.fsF PCG.fsG
+                                PCF.cf-fsF PCG.cf-fsG ns-fsF ns-gs hr-gs
+                                (TM.valueT (evalᴰ f x) k) (TM.valueT (evalᴰ g x) PT.kg)
+                                (VR.out-mode vrf) (VR.out-mode vrg)
+                                (VR.cont-alloc vrf) (VR.cont-alloc vrg)
+                                (VR.place vrf sfeq) (VR.place vrg sgeq)
+                                mem-F→G fst-cell-gs
+
+              module PPresF = PPres.Fill PPlace.rdi-u6 PPlace.rdi-u8

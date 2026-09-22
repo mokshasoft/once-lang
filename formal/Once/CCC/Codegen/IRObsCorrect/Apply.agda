@@ -90,8 +90,10 @@ module ApplyC {FS : FrameSemantics} where
             { value-realized =
                 realized (17 + CalleeRun.steps crun) (CalleeRun.settle crun)
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
-                         run (CalleeRun.live crun)
-                         (CalleeRun.returned crun) (CalleeRun.no-ret crun)
+                         run (λ p → CalleeRun.live crun (trans st-eq p))
+                         (λ p → CalleeRun.returned crun (trans st-eq p))
+                         (λ p → CalleeRun.stops crun (trans st-eq p))
+                         (CalleeRun.no-ret crun)
                          (CalleeRun.no-link crun) place (λ fr j bf → mem-pres-apply (AtStack fr j) bf) (λ hl bf → mem-pres-apply (AtDynamic hl) bf)
                          (trans (CalleeRun.frame-pres crun (falloc ASP.a16)
                                    (cong falloc call-eq))
@@ -198,15 +200,25 @@ module ApplyC {FS : FrameSemantics} where
               denot-eq = cong (λ g → g (proj₂ x))
                               (sym (ClosureValidWF.f-is-closure cvw))
 
-              place : ResultPlace B (CalleeRun.out-mode crun)
+              -- plan 0.97: …and the same equation carries the STOPPEDNESS, which
+              -- is what the conditioned fields are stated against. A closure
+              -- whose body ends in a halting SigOp never returns, so `apply`
+              -- can only pass the callee's `live`/`returned`/`place` along
+              -- under the premise the callee itself is given.
+              st-eq : TM.stoppedT (evalᴰ body (env , proj₂ x)) k
+                    ≡ TM.stoppedT (evalᴰ (apply {A} {B}) x) k
+              st-eq = cong (λ d → TM.stoppedT d k) denot-eq
+
+              place : TM.stoppedT (evalᴰ (apply {A} {B}) x) k ≡ false
+                    → ResultPlace B (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
                         (TM.valueT (evalᴰ (apply {A} {B}) x) k)
                         (floc (CalleeRun.settle crun))
-              place = subst (λ d → ResultPlace B (CalleeRun.out-mode crun)
+              place p = subst (λ d → ResultPlace B (CalleeRun.out-mode crun)
                                      (falloc (CalleeRun.settle crun))
                                      (CalleeRun.cont-alloc crun)
                                      (TM.valueT d k) (floc (CalleeRun.settle crun)))
-                            denot-eq (CalleeRun.place crun)
+                            denot-eq (CalleeRun.place crun (trans st-eq p))
 
               -- D204: what the whole `apply` leaves alone — the sixteen setup rows
               -- (`setup-mem-pres`, already proved) composed with the callee's

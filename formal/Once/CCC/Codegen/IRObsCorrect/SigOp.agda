@@ -27,6 +27,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
+import Once.Denotation.ValueDomain as VD
 
 module SigOpC {FS : FrameSemantics} where
 
@@ -94,6 +95,30 @@ module SigOpC {FS : FrameSemantics} where
   sigop-halts-false : ∀ {A B} (si : SigOpInfo A B) → effect si ≡ Pure
                     → (s : LocState FS) → exec-sigop-halts si s ≡ false
   sigop-halts-false si pure-eq s = cong (λ e → exec-sigop-halts-of e si s) pure-eq
+
+  -- plan 0.97: the SPEC side of the very same dispatch. `stops-D si` is
+  -- `stops-D-of (effect si)` for exactly this reason — a `with` would leave it
+  -- stuck on an abstract `effect si`. Pure and Emits do not stop the program;
+  -- `Halts` is the only shape that does, and it has no discharge here.
+  sigop-stops-pure : ∀ {A B} (si : SigOpInfo A B) → effect si ≡ Pure
+                   → VD.stops-D si ≡ false
+  sigop-stops-pure si pure-eq = cong VD.stops-D-of pure-eq
+
+  sigop-stops-emits : ∀ {A} (si : SigOpInfo A Unitᵀ) → effect si ≡ Emits refl
+                    → VD.stops-D si ≡ false
+  sigop-stops-emits si emits-eq = cong VD.stops-D-of emits-eq
+
+  -- …and the absurdity form the record's `stops` field wants: a shape that
+  -- does not stop cannot have stopped.
+  no-stop-pure : ∀ {A B} (si : SigOpInfo A B) → effect si ≡ Pure
+               → ∀ {X : Set} → VD.stops-D si ≡ true → X
+  no-stop-pure si pure-eq st with trans (sym (sigop-stops-pure si pure-eq)) st
+  ... | ()
+
+  no-stop-emits : ∀ {A} (si : SigOpInfo A Unitᵀ) → effect si ≡ Emits refl
+                → ∀ {X : Set} → VD.stops-D si ≡ true → X
+  no-stop-emits si emits-eq st with trans (sym (sigop-stops-emits si emits-eq)) st
+  ... | ()
 
   -- Same shape at the input-pointer dispatch: state the equation at exactly the
   -- form the goal holds (`sv-as-loc (readReg …)`), so `rewrite` matches.
@@ -208,8 +233,9 @@ module SigOpC {FS : FrameSemantics} where
           realized 1 fs₁ Stack (falloc fs₁) ((not-halted , span 0 _ refl) ∷ [])
                    -- A `Pure` SigOp does not halt, so the settle state is LIVE
                    -- (which is what the sequel's `halted s ≡ false` needs).
-                   (sigop-halts-false si pure-eq s) refl refl refl
-                   (at-reg (fits-erase fitness)
+                   (λ _ → sigop-halts-false si pure-eq s) (λ _ → refl)
+                   (no-stop-pure si pure-eq) refl refl
+                   (λ _ → at-reg (fits-erase fitness)
                      (pure-sigop-value-correct n l si fitness rA pure-eq x s alloc
                         not-halted rdi-eq))
                    -- D204: `exec-abstract (instr-sigop si)` writes the Output
@@ -324,8 +350,9 @@ module SigOpC {FS : FrameSemantics} where
       { traces-agree = emits-trace-agree si emits-eq x s k inp
       ; value-realized =
           realized 1 fs₁ Stack (falloc fs₁) ((not-halted , span 0 _ refl) ∷ [])
-                   (emits-halts-false si emits-eq s) refl refl refl
-                   unit-result
+                   (λ _ → emits-halts-false si emits-eq s) (λ _ → refl)
+                   (no-stop-emits si emits-eq) refl refl
+                   (λ _ → unit-result)
                    (λ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j)
                                  nhw-instr-sigop refl)
                    (λ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl)

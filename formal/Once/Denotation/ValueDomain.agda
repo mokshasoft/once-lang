@@ -332,11 +332,18 @@ emit-D si x with effect si
 -- does, and this is the whole of the difference between it and `Emits` —
 -- which, until now, the Spec did not record at all, so it said a program
 -- CONTINUES after `exit`.
+-- Stated via an `-of` helper rather than a `with` on `effect si`, so a
+-- consumer holding `effect si ≡ Pure` can `cong` its way to the value. A
+-- `with` would leave `stops-D si` stuck on an abstract `effect si` forever
+-- (the same de-with idiom `exec-sigop-halts-of` already uses on the machine
+-- side of this very correspondence).
+stops-D-of : ∀ {B} → EffectShape B → Stopped
+stops-D-of Pure      = false
+stops-D-of (Emits _) = false
+stops-D-of (Halts _) = true
+
 stops-D : ∀ {A B} → SigOpInfo A B → Stopped
-stops-D si with effect si
-... | Pure    = false
-... | Emits _ = false
-... | Halts _ = true
+stops-D si = stops-D-of (effect si)
 
 -- The BUDGET-AWARE emitter. `take n (emit-D si x)` is the wrong cap: `take`
 -- matches its BUDGET first, so `take n []` is stuck while `n` is abstract —

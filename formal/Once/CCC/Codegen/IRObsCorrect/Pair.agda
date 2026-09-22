@@ -395,9 +395,15 @@ module PairC {FS : FrameSemantics} where
     ------------------------------------------------------------------
     -- `f`'s run, as the induction hypothesis hands it over.
     ------------------------------------------------------------------
+    -- plan 0.97: …AND THE PREMISE THAT `f` REACHED ITS END. Everything in
+    -- this module is about what happens AFTER `f`: the two mid rows, `g`'s
+    -- entry state, `g`'s run, the tail. None of it happens if `f` ended the
+    -- program. Taking the equation as a module parameter is what makes that
+    -- structural — the caller cannot instantiate `WithF` without deciding.
     module WithF {xf : DT.⟦ A ⟧ᴰᴵ} {kf : ℕ}
       (vrf : ValueRealized prog (suc (suc base)) PS.f-start l f xf
                (floc PR.p2) (falloc PR.p2) (fclosure PR.p2) kf)
+      (sfeq : TM.stoppedT (evalᴰ f xf) kf ≡ false)
       where
 
       fsF : FlatState
@@ -408,10 +414,10 @@ module PairC {FS : FrameSemantics} where
                      (sym handF) (VR.run vrf)
 
       endF : fpc fsF ≡ length PS.ft + suc (suc base)
-      endF = VR.at-end vrf
+      endF = VR.at-end vrf sfeq
 
       liveF : halted (floc fsF) ≡ false
-      liveF = VR.live vrf
+      liveF = VR.live vrf sfeq
 
       -- `falloc PR.p2` IS `alloc` (`PairRun.alloc-p2`), so `f`'s frame
       -- equation is already the caller's.
@@ -552,6 +558,7 @@ module PairC {FS : FrameSemantics} where
       module WithG {xg : DT.⟦ A ⟧ᴰᴵ} {kg : ℕ}
         (vrg : ValueRealized prog bg PS.n1 PS.l1 g xg
                  (floc m2) (falloc m2) (fclosure m2) kg)
+        (sgeq : TM.stoppedT (evalᴰ g xg) kg ≡ false)
         where
 
         fsG : FlatState
@@ -562,10 +569,10 @@ module PairC {FS : FrameSemantics} where
                        (sym handG) (VR.run vrg)
 
         endG : fpc fsG ≡ length PS.gt + bg
-        endG = VR.at-end vrg
+        endG = VR.at-end vrg sgeq
 
         liveG : halted (floc fsG) ≡ false
-        liveG = VR.live vrg
+        liveG = VR.live vrg sgeq
 
         cf-fsG : current-frame (falloc fsG) ≡ current-frame alloc
         cf-fsG = trans (VR.frame-pres vrg) cf-m2
@@ -1589,6 +1596,50 @@ module PairC {FS : FrameSemantics} where
     -- allocated. They are register facts about `NSP.u6`/`NSP.u8` and belong
     -- with the `place` cluster, so they enter here as parameters.
     ------------------------------------------------------------------
+    ------------------------------------------------------------------
+    -- plan 0.97: THE SAME CHAIN, STOPPED SHORT. If `g` ends the program the
+    -- nine-row tail never executes, so the preservation argument is needed at
+    -- `gs` — and at `fsF`, for the run that stops inside `f`. These are the
+    -- SAME legs `mem-pres-pair` spends, named at the two earlier boundaries
+    -- rather than re-proved. (`mem-pres-to-fsF` does not mention `vrG`; only
+    -- this module's telescope does, which is why the `f`-stopped clause
+    -- rebuilds it from the prologue instead of instantiating `PairPres`.)
+    ------------------------------------------------------------------
+    mem-pres-to-fsF : ∀ (loc : ValueLocation FS)
+                    → BeforeFrontier (record alloc { next-slot = n }) loc
+                    → MemOps.readLoc (floc fsF) loc ≡ MemOps.readLoc s loc
+    mem-pres-to-fsF loc b =
+      trans (vr-mem-pres vrF loc (bf-f loc b))
+      (trans (store-slot-preserves-before backup (floc p1)
+                (record alloc { next-slot = n }) (falloc p1) loc
+                (exec-abstract-preserves-frame mov-to-output s alloc) ≤-refl b)
+             (mem-untouched mov-to-output s alloc loc nhw-mov-to-output refl))
+
+    w-g-outer : ∀ (loc : ValueLocation FS)
+              → BeforeFrontier (record alloc { next-slot = n }) loc
+              → BeforeFrontier (record (falloc m2) { next-slot = n1 }) loc
+    w-g-outer loc b =
+      frontier-monotone (record (falloc m2) { next-slot = n })
+                        (record (falloc m2) { next-slot = n1 })
+                        refl n≤n1 ≤-refl
+                        loc (bf-to-m2 n loc b)
+
+    mem-pres-to-gs : ∀ (loc : ValueLocation FS)
+                   → BeforeFrontier (record alloc { next-slot = n }) loc
+                   → MemOps.readLoc (floc gs) loc ≡ MemOps.readLoc s loc
+    mem-pres-to-gs loc b =
+      trans (vr-mem-pres vrG loc (w-g-outer loc b))
+      (trans (mem-untouched (restore-input backup) (floc m1) (falloc m1) loc
+                Once.CCC.Machine.SMPrimitives.nhw-restore-input refl)
+      (trans (store-slot-preserves-before fst-stash (floc fsF)
+                (record alloc { next-slot = n }) (falloc fsF) loc
+                (VR.frame-pres vrF) (n≤1+n n) b)
+             (mem-pres-to-fsF loc b)))
+
+    frame-pres-to-gs : current-frame (falloc gs) ≡ current-frame alloc
+    frame-pres-to-gs =
+      trans (VR.frame-pres vrG) (trans cf-mid (VR.frame-pres vrF))
+
     module Fill
       (rdi6 : sv-as-loc (readReg (regs (floc NSP.u6)) Input1) ≡ just (AtDynamic NSP.hl))
       (rdi8 : sv-as-loc (readReg (regs (floc NSP.u8)) Input1) ≡ just (AtDynamic NSP.hl))
@@ -1689,11 +1740,41 @@ module PairC {FS : FrameSemantics} where
     dEvG : List SigOpEvent
     dEvG = projTrace (evalᴰ g x) kg
 
+    -- THE INNER BIND, NAMED. `⟨ f , g ⟩` is a bind of a bind, and plan 0.97
+    -- made the outer one's concatenation depend on whether `f` stopped — so
+    -- the middle term can no longer be left implicit. Naming it lets the
+    -- split be stated for BOTH outcomes with the same `join-es`.
+    innerT : TM.T ⟦ B IRTy.* C ⟧
+    innerT = evalᴰ g x TM.>>=T λ c → TM.returnT (TM.valueT (evalᴰ f x) k , c)
+
+    dEvI : List SigOpEvent
+    dEvI = projTrace innerT kg
+
+    -- The inner bind's own trace is `g`'s: `returnT` emits nothing, whether
+    -- or not `g` stopped (`join-es _ dEvG []`).
+    inner-eq : ∀ (sg : TM.Stopped) → TM.stoppedT (evalᴰ g x) kg ≡ sg → dEvI ≡ dEvG
+    inner-eq false q = trans (cong (λ z → TM.join-es z dEvG []) q) (++-identityʳ dEvG)
+    inner-eq true  q = cong (λ z → TM.join-es z dEvG []) q
+
+    dEvI≡dEvG : dEvI ≡ dEvG
+    dEvI≡dEvG = inner-eq (TM.stoppedT (evalᴰ g x) kg) refl
+
     -- THE DENOTATIONAL SPLIT. `_>>=T_` concatenates and threads, so the outer
-    -- bind is `dEvF ++ …`; the inner one ends in `returnT (b , c)`, whose
-    -- trace is `[]`, leaving the `++ []` this equation removes.
-    denot-split : projTrace (evalᴰ ⟨ f , g ⟩ x) k ≡ dEvF ++ dEvG
-    denot-split = cong (dEvF ++_) (++-identityʳ dEvG)
+    -- bind is `dEvF ++ …` — UNLESS `f` stopped, in which case it is `dEvF`
+    -- and `g` never ran at all. One equation, both outcomes.
+    denot-split-of : ∀ (sf : TM.Stopped) → TM.stoppedT (evalᴰ f x) k ≡ sf
+                   → projTrace (evalᴰ ⟨ f , g ⟩ x) k ≡ TM.join-es sf dEvF dEvG
+    denot-split-of sf q = trans (cong (λ z → TM.join-es z dEvF dEvI) q)
+                                (cong (TM.join-es sf dEvF) dEvI≡dEvG)
+
+    denot-split : TM.stoppedT (evalᴰ f x) k ≡ false
+                → projTrace (evalᴰ ⟨ f , g ⟩ x) k ≡ dEvF ++ dEvG
+    denot-split = denot-split-of false
+
+    -- …and the stopped one: `f`'s events ARE the pair's.
+    denot-split-stopped : TM.stoppedT (evalᴰ f x) k ≡ true
+                        → projTrace (evalᴰ ⟨ f , g ⟩ x) k ≡ dEvF
+    denot-split-stopped = denot-split-of true
 
     -- D203's key fact: truncating `f`'s prefix does not change what is left.
     budget-eq : k ∸ length (take k dEvF) ≡ kg
@@ -1706,14 +1787,15 @@ module PairC {FS : FrameSemantics} where
     ------------------------------------------------------------------------
     pair-traces-of-events :
       ∀ (mEvF mEvG : List SigOpEvent)
+      → TM.stoppedT (evalᴰ f x) k ≡ false
       → take k  mEvF ≡ take k  dEvF
       → take kg mEvG ≡ take kg dEvG
       → take k (mEvF ++ mEvG) ≡ take k (projTrace (evalᴰ ⟨ f , g ⟩ x) k)
-    pair-traces-of-events mEvF mEvG tf tg =
+    pair-traces-of-events mEvF mEvG qf tf tg =
       trans (TM.take-++-threaded k mEvF mEvG)
       (trans (cong₂ _++_ tf tail-eq)
       (trans (sym (TM.take-++-threaded k dEvF dEvG))
-             (sym (cong (take k) denot-split))))
+             (sym (cong (take k) (denot-split qf)))))
       where
         tail-eq : take (k ∸ length (take k mEvF)) mEvG
                 ≡ take (k ∸ length (take k dEvF)) dEvG
@@ -1733,11 +1815,12 @@ module PairC {FS : FrameSemantics} where
         (c : FlatSteps prog kk st st')
         (mEvF mEvG : List SigOpEvent)
       → chain-events c ≡ mEvF ++ mEvG
+      → TM.stoppedT (evalᴰ f x) k ≡ false
       → take k  mEvF ≡ take k  dEvF
       → take kg mEvG ≡ take kg dEvG
       → take k (chain-events c) ≡ take k (projTrace (evalᴰ ⟨ f , g ⟩ x) k)
-    pair-traces-of-split c mEvF mEvG es tf tg =
-      trans (cong (take k) es) (pair-traces-of-events mEvF mEvG tf tg)
+    pair-traces-of-split c mEvF mEvG es qf tf tg =
+      trans (cong (take k) es) (pair-traces-of-events mEvF mEvG qf tf tg)
 
     ------------------------------------------------------------------------
     -- THE FIVE-SEGMENT SPLICE. `pre ∙ ft ∙ mid ∙ gt ∙ tail`, right-nested —
@@ -1804,14 +1887,65 @@ module PairC {FS : FrameSemantics} where
       → chain-events preS  ≡ []
       → chain-events midS  ≡ []
       → chain-events tailS ≡ []
+      → TM.stoppedT (evalᴰ f x) k ≡ false
       → take k  (chain-events cF) ≡ take k  dEvF
       → take kg (chain-events cG) ≡ take kg dEvG
       → take k (chain-events (FlatSteps-++ preS (FlatSteps-++ cF (FlatSteps-++ midS (FlatSteps-++ cG tailS)))))
         ≡ take k (projTrace (evalᴰ ⟨ f , g ⟩ x) k)
-    pair-traces preS cF midS cG tailS pre[] mid[] tail[] tf tg =
+    pair-traces preS cF midS cG tailS pre[] mid[] tail[] qf tf tg =
       pair-traces-of-split
         (FlatSteps-++ preS (FlatSteps-++ cF (FlatSteps-++ midS (FlatSteps-++ cG tailS))))
         (chain-events cF) (chain-events cG)
         (pair-chain-events preS cF midS cG tailS pre[] mid[] tail[])
-        tf tg
+        qf tf tg
+
+    ------------------------------------------------------------------------
+    -- plan 0.97: THE RUN THAT STOPS INSIDE `f`. Two segments, not five: the
+    -- prologue and `f` itself. The pair's observable IS `f`'s.
+    ------------------------------------------------------------------------
+    pair-traces-stopped :
+      ∀ {prog : AbstractTrace} {kP kF : ℕ} {e0 s1 s2 : FlatState}
+        (preS : FlatSteps prog kP e0 s1) (cF : FlatSteps prog kF s1 s2)
+      → chain-events preS ≡ []
+      → TM.stoppedT (evalᴰ f x) k ≡ true
+      → take k (chain-events cF) ≡ take k dEvF
+      → take k (chain-events (FlatSteps-++ preS cF))
+        ≡ take k (projTrace (evalᴰ ⟨ f , g ⟩ x) k)
+    pair-traces-stopped preS cF pre[] qf tf =
+      trans (cong (take k)
+              (trans (chain-events-++ preS cF)
+                     (cong (_++ chain-events cF) pre[])))
+      (trans tf (sym (cong (take k) (denot-split-stopped qf))))
+
+    ------------------------------------------------------------------------
+    -- …and THE RUN THAT STOPS INSIDE `g`. Four segments — the tail rows that
+    -- assemble the pair never run — but the same two-segment observable,
+    -- because a stopped `g` still contributes everything it emitted.
+    ------------------------------------------------------------------------
+    pair-traces-stopped-g :
+      ∀ {prog : AbstractTrace} {kP kF kM kG : ℕ} {e0 s1 s2 s3 s4 : FlatState}
+        (preS : FlatSteps prog kP e0 s1) (cF : FlatSteps prog kF s1 s2)
+        (midS : FlatSteps prog kM s2 s3) (cG : FlatSteps prog kG s3 s4)
+      → chain-events preS ≡ []
+      → chain-events midS ≡ []
+      → TM.stoppedT (evalᴰ f x) k ≡ false
+      → take k  (chain-events cF) ≡ take k  dEvF
+      → take kg (chain-events cG) ≡ take kg dEvG
+      → take k (chain-events (FlatSteps-++ preS (FlatSteps-++ cF (FlatSteps-++ midS cG))))
+        ≡ take k (projTrace (evalᴰ ⟨ f , g ⟩ x) k)
+    pair-traces-stopped-g preS cF midS cG pre[] mid[] qf tf tg =
+      pair-traces-of-split
+        (FlatSteps-++ preS (FlatSteps-++ cF (FlatSteps-++ midS cG)))
+        (chain-events cF) (chain-events cG) es qf tf tg
+      where
+        ev-after-f : chain-events (FlatSteps-++ midS cG) ≡ chain-events cG
+        ev-after-f = trans (chain-events-++ midS cG)
+                           (cong (_++ chain-events cG) mid[])
+
+        es : chain-events (FlatSteps-++ preS (FlatSteps-++ cF (FlatSteps-++ midS cG)))
+           ≡ chain-events cF ++ chain-events cG
+        es = trans (chain-events-++ preS (FlatSteps-++ cF (FlatSteps-++ midS cG)))
+             (trans (cong (_++ chain-events (FlatSteps-++ cF (FlatSteps-++ midS cG))) pre[])
+             (trans (chain-events-++ cF (FlatSteps-++ midS cG))
+                    (cong (chain-events cF ++_) ev-after-f)))
 

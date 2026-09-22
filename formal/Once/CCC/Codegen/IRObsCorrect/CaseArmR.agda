@@ -137,21 +137,29 @@ module ArmRC {FS : FrameSemantics} where
       t1 = record (VR.settle vg) { fpc = join-at + base }
       t2 = record t1 { fpc = suc (join-at + base) }
 
-      pc-at-jmp : fpc (VR.settle vg) ≡ (3 + length gt) + base
-      pc-at-jmp = trans (VR.at-end vg) (shuffle-jmp (length gt) base)
+      -- plan 0.97: the two trailing control rows happen only when the arm
+      -- REACHED ITS END. `evalᴰ (case f g) (inj₂ Bv)` IS `evalᴰ g Bv`, so the
+      -- arm's stoppedness is the clause's, and a stopped arm never jumps.
+      pc-at-jmp : TM.stoppedT (evalᴰ g Bv) k ≡ false
+                → fpc (VR.settle vg) ≡ (3 + length gt) + base
+      pc-at-jmp q = trans (VR.at-end vg q) (shuffle-jmp (length gt) base)
 
-      jmpStep : FlatSteps prog 1 (VR.settle vg) t1
-      jmpStep = flat-step1 {prog} {VR.settle vg} (VR.live vg)
-                  (trans (cong (fetch prog) pc-at-jmp) at-jmp)
+      jmpStep : (q : TM.stoppedT (evalᴰ g Bv) k ≡ false) → FlatSteps prog 1 (VR.settle vg) t1
+      jmpStep q = flat-step1 {prog} {VR.settle vg} (VR.live vg q)
+                  (trans (cong (fetch prog) (pc-at-jmp q)) at-jmp)
                   (trans (flat-jmp prog (VR.settle vg) (ℓ o (suc l)))
                          (cong (λ mj → do-jump mj (VR.settle vg)) (join-target prog base la)))
 
-      labelStep : FlatSteps prog 1 t1 t2
-      labelStep = flat-step1 {prog} {t1} (VR.live vg) at-join-label refl
+      labelStep : (q : TM.stoppedT (evalᴰ g Bv) k ≡ false) → FlatSteps prog 1 t1 t2
+      labelStep q = flat-step1 {prog} {t1} (VR.live vg q) at-join-label refl
 
-      chain : FlatSteps prog (3 + (VR.steps vg + (1 + 1))) P.fs0 t2
-      chain = FlatSteps-++ (P.run-r cond)
-                (FlatSteps-++ chainG (FlatSteps-++ jmpStep labelStep))
+      chain : (q : TM.stoppedT (evalᴰ g Bv) k ≡ false)
+            → FlatSteps prog (3 + (VR.steps vg + (1 + 1))) P.fs0 t2
+      chain q = FlatSteps-++ (P.run-r cond)
+                (FlatSteps-++ chainG (FlatSteps-++ (jmpStep q) (labelStep q)))
+
+      chain-stopped : FlatSteps prog (3 + VR.steps vg) P.fs0 (VR.settle vg)
+      chain-stopped = FlatSteps-++ (P.run-r cond) chainG
 
       at-end-t2 : fpc t2 ≡ length (emitted n l (case f g)) + base
       at-end-t2 = sym (cong (_+ base) len-eq)
@@ -187,37 +195,69 @@ module ArmRC {FS : FrameSemantics} where
       -- THE EVENTS. Five control/straight rows surround `g`'s run and none
       -- of them is a SigOp, so the composite emits exactly what `g` does.
       ------------------------------------------------------------
-      ev-chain : chain-events chain ≡ chain-events (VR.run vg)
-      ev-chain =
-        trans (chain-events-++ (P.run-r cond) (FlatSteps-++ chainG (FlatSteps-++ jmpStep labelStep)))
-          (trans (cong (_++ chain-events (FlatSteps-++ chainG (FlatSteps-++ jmpStep labelStep)))
+      ev-chain : (q : TM.stoppedT (evalᴰ g Bv) k ≡ false)
+               → chain-events (chain q) ≡ chain-events (VR.run vg)
+      ev-chain q =
+        trans (chain-events-++ (P.run-r cond) (FlatSteps-++ chainG (FlatSteps-++ (jmpStep q) (labelStep q))))
+          (trans (cong (_++ chain-events (FlatSteps-++ chainG (FlatSteps-++ (jmpStep q) (labelStep q))))
                        (P.ev-run-r cond))
-            (trans (chain-events-++ chainG (FlatSteps-++ jmpStep labelStep))
+            (trans (chain-events-++ chainG (FlatSteps-++ (jmpStep q) (labelStep q)))
               (trans (cong₂ _++_ (chain-events-subst-start (sym handG) (VR.run vg))
-                                 (trans (chain-events-++ jmpStep labelStep)
+                                 (trans (chain-events-++ (jmpStep q) (labelStep q))
                                         (cong₂ _++_
-                                           (ev-step1 (VR.settle vg) (VR.live vg)
-                                              (trans (cong (fetch prog) pc-at-jmp) at-jmp)
+                                           (ev-step1 (VR.settle vg) (VR.live vg q)
+                                              (trans (cong (fetch prog) (pc-at-jmp q)) at-jmp)
                                               (trans (flat-jmp prog (VR.settle vg) (ℓ o (suc l)))
                                                      (cong (λ mj → do-jump mj (VR.settle vg))
                                                            (join-target prog base la)))
                                               refl)
-                                           (ev-step1 t1 (VR.live vg) at-join-label refl refl))))
+                                           (ev-step1 t1 (VR.live vg q) at-join-label refl refl))))
                      (++-idʳ (chain-events (VR.run vg))))))
 
+      ev-chain-stopped : chain-events chain-stopped ≡ chain-events (VR.run vg)
+      ev-chain-stopped =
+        trans (chain-events-++ (P.run-r cond) chainG)
+          (trans (cong (_++ chain-events chainG) (P.ev-run-r cond))
+                 (chain-events-subst-start (sym handG) (VR.run vg)))
+
+      arm-not-stopped : ∀ {X : Set} → TM.stoppedT (evalᴰ g Bv) k ≡ false
+                      → TM.stoppedT (evalᴰ g Bv) k ≡ true → X
+      arm-not-stopped q₀ q₁ with trans (sym q₀) q₁
+      ... | ()
+
       witness : MachineRefinesObsF prog base n l (case f g) (inj₂ Bv) s alloc cl k
-      witness = record
-        { value-realized =
-            realized (3 + (VR.steps vg + (1 + 1))) t2 (VR.out-mode vg) (VR.cont-alloc vg)
-                     chain (VR.live vg) at-end-t2 (VR.no-ret vg) (VR.no-link vg)
-                     (VR.place vg)
-                     (λ fr j bf → mem-pres (AtStack fr j) bf)
-                     (λ hl bf → mem-pres (AtDynamic hl) bf)
-                     (VR.frame-pres vg)
-                     bf-mono-c
-        ; traces-agree =
-            trans (cong (take k) ev-chain) (MachineRefinesObsF.traces-agree mrg)
-        }
+      witness = wit (TM.stoppedT (evalᴰ g Bv) k) refl
+        where
+          wit : (sg : TM.Stopped) → TM.stoppedT (evalᴰ g Bv) k ≡ sg
+              → MachineRefinesObsF prog base n l (case f g) (inj₂ Bv) s alloc cl k
+          wit false q = record
+            { value-realized =
+                realized (3 + (VR.steps vg + (1 + 1))) t2 (VR.out-mode vg) (VR.cont-alloc vg)
+                         (chain q) (λ _ → VR.live vg q) (λ _ → at-end-t2)
+                         (λ p → arm-not-stopped q p)
+                         (VR.no-ret vg) (VR.no-link vg)
+                         (λ _ → VR.place vg q)
+                         (λ fr j bf → mem-pres (AtStack fr j) bf)
+                         (λ hl bf → mem-pres (AtDynamic hl) bf)
+                         (VR.frame-pres vg)
+                         bf-mono-c
+            ; traces-agree =
+                trans (cong (take k) (ev-chain q)) (MachineRefinesObsF.traces-agree mrg)
+            }
+          wit true q = record
+            { value-realized =
+                realized (3 + VR.steps vg) (VR.settle vg) (VR.out-mode vg) (VR.cont-alloc vg)
+                         chain-stopped (λ p → arm-not-stopped p q) (λ p → arm-not-stopped p q)
+                         (λ _ → VR.stops vg q)
+                         (VR.no-ret vg) (VR.no-link vg)
+                         (λ p → arm-not-stopped p q)
+                         (λ fr j bf → mem-pres (AtStack fr j) bf)
+                         (λ hl bf → mem-pres (AtDynamic hl) bf)
+                         (VR.frame-pres vg)
+                         bf-mono-c
+            ; traces-agree =
+                trans (cong (take k) ev-chain-stopped) (MachineRefinesObsF.traces-agree mrg)
+            }
 
     ------------------------------------------------------------------
     -- THE `inl` ARM. The branch JUMPS here, so the prologue is one step

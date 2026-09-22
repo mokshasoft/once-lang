@@ -344,7 +344,7 @@ module TwoCellC {FS : FrameSemantics} where
     record
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
-          realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run TCB.nh10 refl refl refl place
+          realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run (λ _ → TCB.nh10) (λ _ → refl) (λ ()) refl refl (λ _ → place)
                    (λ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
                    (λ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
                    TCB.cf-fs10
@@ -430,7 +430,7 @@ module TwoCellC {FS : FrameSemantics} where
     record
       { traces-agree   = cong (take k) (sym (denot-[] k))
       ; value-realized =
-          realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run TCB.nh10 refl refl refl place
+          realized 10 TCB.fs10 Heap (falloc TCB.fs10) TCB.run (λ _ → TCB.nh10) (λ _ → refl) (λ ()) refl refl (λ _ → place)
                    (λ fr j bf' → TCB.mem-pres (AtStack fr j) bf')
                    (λ hl bf' → TCB.mem-pres (AtDynamic hl) bf')
                    TCB.cf-fs10

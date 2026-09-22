@@ -178,6 +178,7 @@ module OutC {FS : FrameSemantics} where
                 realized (4 + CalleeRun.steps crun) (CalleeRun.settle crun)
                          (CalleeRun.out-mode crun) (CalleeRun.cont-alloc crun)
                          run (CalleeRun.live crun) (CalleeRun.returned crun)
+                         (CalleeRun.stops crun)
                          (CalleeRun.no-ret crun) (CalleeRun.no-link crun) place
                          (λ fr j bf → mem-pres-out (AtStack fr j) bf)
                          (λ hl bf → mem-pres-out (AtDynamic hl) bf)
@@ -240,7 +241,11 @@ module OutC {FS : FrameSemantics} where
                       (entry-flat base s alloc cl) (CalleeRun.settle crun)
               run = FlatSteps-++ run4 (CalleeRun.run crun)
 
-              place : ResultPlace (⟦ F ⟧TI (ν-type F)) (CalleeRun.out-mode crun)
+              -- plan 0.97: the callee's computation IS `evalᴰ (Out wf) ν-val`
+              -- here (no closure equation to spend, unlike `apply`), so the
+              -- conditioned fields transfer verbatim.
+              place : TM.stoppedT (evalᴰ (Out wf) ν-val) k ≡ false
+                    → ResultPlace (⟦ F ⟧TI (ν-type F)) (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
                         (TM.valueT (evalᴰ (Out wf) ν-val) k)
                         (floc (CalleeRun.settle crun))

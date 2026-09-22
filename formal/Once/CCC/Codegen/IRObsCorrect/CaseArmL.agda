@@ -132,16 +132,27 @@ module ArmLC {FS : FrameSemantics} where
       u1 : FlatState
       u1 = record (VR.settle vf) { fpc = suc (join-at + base) }
 
-      pc-at-join : fpc (VR.settle vf) ≡ join-at + base
-      pc-at-join = trans (VR.at-end vf) (shuffle-end (length gt) (length ft) base)
+      -- plan 0.97: everything from here to the join label is what the arm
+      -- does WHEN IT REACHES ITS END. `evalᴰ (case f g) (inj₁ Av)` IS
+      -- `evalᴰ f Av`, so the arm's stoppedness is the whole clause's, and the
+      -- trailing row to the join label happens only on the live branch — an
+      -- arm that ends in a halting SigOp never gets there.
+      pc-at-join : TM.stoppedT (evalᴰ f Av) k ≡ false → fpc (VR.settle vf) ≡ join-at + base
+      pc-at-join q = trans (VR.at-end vf q) (shuffle-end (length gt) (length ft) base)
 
-      joinStep : FlatSteps prog 1 (VR.settle vf) u1
-      joinStep = flat-step1 {prog} {VR.settle vf} (VR.live vf)
-                   (trans (cong (fetch prog) pc-at-join) at-join-label)
-                   (cong (λ z → record (VR.settle vf) { fpc = suc z }) pc-at-join)
+      joinStep : (q : TM.stoppedT (evalᴰ f Av) k ≡ false) → FlatSteps prog 1 (VR.settle vf) u1
+      joinStep q = flat-step1 {prog} {VR.settle vf} (VR.live vf q)
+                   (trans (cong (fetch prog) (pc-at-join q)) at-join-label)
+                   (cong (λ z → record (VR.settle vf) { fpc = suc z }) (pc-at-join q))
 
-      chain : FlatSteps prog (4 + (VR.steps vf + 1)) P.fs0 u1
-      chain = FlatSteps-++ (P.run-i cond) (FlatSteps-++ chainF joinStep)
+      chain : (q : TM.stoppedT (evalᴰ f Av) k ≡ false)
+            → FlatSteps prog (4 + (VR.steps vf + 1)) P.fs0 u1
+      chain q = FlatSteps-++ (P.run-i cond) (FlatSteps-++ chainF (joinStep q))
+
+      -- …and the run that STOPS: the same setup rows and the same arm, full
+      -- stop, no join row.
+      chain-stopped : FlatSteps prog (4 + VR.steps vf) P.fs0 (VR.settle vf)
+      chain-stopped = FlatSteps-++ (P.run-i cond) chainF
 
       at-end-u1 : fpc u1 ≡ length (emitted n l (case f g)) + base
       at-end-u1 = sym (cong (_+ base) len-eq)
@@ -160,31 +171,71 @@ module ArmLC {FS : FrameSemantics} where
                 → BeforeFrontier (record (falloc u1) { next-slot = m }) loc
       bf-mono-c m loc bf = VR.bf-mono vf m loc bf
 
-      ev-chain : chain-events chain ≡ chain-events (VR.run vf)
-      ev-chain =
-        trans (chain-events-++ (P.run-i cond) (FlatSteps-++ chainF joinStep))
-          (trans (cong (_++ chain-events (FlatSteps-++ chainF joinStep)) (P.ev-run-i cond))
-            (trans (chain-events-++ chainF joinStep)
+      ev-chain : (q : TM.stoppedT (evalᴰ f Av) k ≡ false)
+               → chain-events (chain q) ≡ chain-events (VR.run vf)
+      ev-chain q =
+        trans (chain-events-++ (P.run-i cond) (FlatSteps-++ chainF (joinStep q)))
+          (trans (cong (_++ chain-events (FlatSteps-++ chainF (joinStep q))) (P.ev-run-i cond))
+            (trans (chain-events-++ chainF (joinStep q))
               (trans (cong₂ _++_ (chain-events-subst-start (sym handF) (VR.run vf))
-                                 (ev-step1 (VR.settle vf) (VR.live vf)
-                                    (trans (cong (fetch prog) pc-at-join) at-join-label)
-                                    (cong (λ z → record (VR.settle vf) { fpc = suc z }) pc-at-join)
+                                 (ev-step1 (VR.settle vf) (VR.live vf q)
+                                    (trans (cong (fetch prog) (pc-at-join q)) at-join-label)
+                                    (cong (λ z → record (VR.settle vf) { fpc = suc z }) (pc-at-join q))
                                     refl))
                      (++-idʳ (chain-events (VR.run vf))))))
 
+      ev-chain-stopped : chain-events chain-stopped ≡ chain-events (VR.run vf)
+      ev-chain-stopped =
+        trans (chain-events-++ (P.run-i cond) chainF)
+          (trans (cong (_++ chain-events chainF) (P.ev-run-i cond))
+                 (chain-events-subst-start (sym handF) (VR.run vf)))
+
+      -- `false ≡ true` from the two directions of the same boolean.
+      arm-not-stopped : ∀ {X : Set} → TM.stoppedT (evalᴰ f Av) k ≡ false
+                      → TM.stoppedT (evalᴰ f Av) k ≡ true → X
+      arm-not-stopped q₀ q₁ with trans (sym q₀) q₁
+      ... | ()
+
       witness : MachineRefinesObsF prog base n l (case f g) (inj₁ Av) s alloc cl k
-      witness = record
-        { value-realized =
-            realized (4 + (VR.steps vf + 1)) u1 (VR.out-mode vf) (VR.cont-alloc vf)
-                     chain (VR.live vf) at-end-u1 (VR.no-ret vf) (VR.no-link vf)
-                     (VR.place vf)
-                     (λ fr j bf → mem-pres (AtStack fr j) bf)
-                     (λ hl bf → mem-pres (AtDynamic hl) bf)
-                     (VR.frame-pres vf)
-                     bf-mono-c
-        ; traces-agree =
-            trans (cong (take k) ev-chain) (MachineRefinesObsF.traces-agree mrf)
-        }
+      witness = wit (TM.stoppedT (evalᴰ f Av) k) refl
+        where
+          -- The boolean with its own equation, not `with`: the block above is
+          -- stated against it and a `with` cannot abstract that far.
+          wit : (sf : TM.Stopped) → TM.stoppedT (evalᴰ f Av) k ≡ sf
+              → MachineRefinesObsF prog base n l (case f g) (inj₁ Av) s alloc cl k
+          wit false q = record
+            { value-realized =
+                realized (4 + (VR.steps vf + 1)) u1 (VR.out-mode vf) (VR.cont-alloc vf)
+                         (chain q) (λ _ → VR.live vf q) (λ _ → at-end-u1)
+                         (λ p → arm-not-stopped q p)
+                         (VR.no-ret vf) (VR.no-link vf)
+                         (λ _ → VR.place vf q)
+                         (λ fr j bf → mem-pres (AtStack fr j) bf)
+                         (λ hl bf → mem-pres (AtDynamic hl) bf)
+                         (VR.frame-pres vf)
+                         bf-mono-c
+            ; traces-agree =
+                trans (cong (take k) (ev-chain q)) (MachineRefinesObsF.traces-agree mrf)
+            }
+          -- THE ARM STOPPED. The clause's settle state is the arm's own — the
+          -- machine is sitting at the halting instruction inside `ft`, which
+          -- is why `at-end` had to become conditional: the pc is NOT at the
+          -- end of `case f g`'s text.
+          wit true q = record
+            { value-realized =
+                realized (4 + VR.steps vf) (VR.settle vf) (VR.out-mode vf) (VR.cont-alloc vf)
+                         chain-stopped (λ p → arm-not-stopped p q) (λ p → arm-not-stopped p q)
+                         (λ _ → VR.stops vf q)
+                         (VR.no-ret vf) (VR.no-link vf)
+                         (λ p → arm-not-stopped p q)
+                         (λ fr j bf → mem-pres (AtStack fr j) bf)
+                         (λ hl bf → mem-pres (AtDynamic hl) bf)
+                         (VR.frame-pres vf)
+                         bf-mono-c
+            ; traces-agree =
+                trans (cong (take k) ev-chain-stopped) (MachineRefinesObsF.traces-agree mrf)
+            }
+
 
   ----------------------------------------------------------------------
   -- THE DISPATCH, and the whole clause.

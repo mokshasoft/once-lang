@@ -282,8 +282,22 @@ module Core {FS : FrameSemantics} where
       out-mode   : AllocMode
       cont-alloc : AllocState {FS}
       run        : FlatSteps prog steps (entry-flat base s alloc cl) settle
-      live       : halted (floc settle) ≡ false
-      at-end     : fpc settle ≡ length (emitted n l ir) + base
+      -- plan 0.97: CONDITIONED ON WHAT THE SPEC SAYS. `live` used to be
+      -- `halted (floc settle) ≡ false` outright, which no program that exits
+      -- can satisfy — the settle state of a fragment ending in a halting
+      -- SigOp has the flag set. That made the obligation unsatisfiable rather
+      -- than merely unproved (plan 0.97 §1), and the defect was inherited
+      -- from a Spec that said programs never stop.
+      --
+      -- Now the machine and the Spec agree in BOTH directions: while the
+      -- Spec has not stopped the run is live and sits at the end of the
+      -- fragment's text; once the Spec has stopped, so has the machine — and
+      -- the pc is wherever the halting instruction left it, INSIDE the text,
+      -- which is why `at-end` is conditioned too.
+      live       : TM.stoppedT (evalᴰ ir x) k ≡ false → halted (floc settle) ≡ false
+      at-end     : TM.stoppedT (evalᴰ ir x) k ≡ false
+                 → fpc settle ≡ length (emitted n l ir) + base
+      stops      : TM.stoppedT (evalᴰ ir x) k ≡ true  → halted (floc settle) ≡ true
       no-ret     : fret settle ≡ []
       no-link    : flink settle ≡ nothing
       -- D179: the value comes from `evalᴰ`, not the pure `eval`. While it was
@@ -299,7 +313,17 @@ module Core {FS : FrameSemantics} where
       -- (`evalᴰ (g ∘ f) x = evalᴰ f x >>=T evalᴰ g` spends `f`'s events out of
       -- the same budget), and a producer that chose its own could not be asked
       -- for that one. Depth-indexing makes the composition definitional.
-      place      : ResultPlace B out-mode (falloc settle) cont-alloc
+      --
+      -- …and CONDITIONED for the same reason as `live` (plan 0.97). When the
+      -- Spec has stopped the run, the machine is sitting at the halting
+      -- instruction and the sequel never executed — so nothing put the
+      -- sequel's value anywhere. `>>=T` keeps a value field in the stopped
+      -- case only because `T X` has no empty value; that field is not a
+      -- result, and a producer must not be asked to place it. The one
+      -- consumer that needs a result — a fragment feeding its successor —
+      -- only ever needs it on the branch where the successor runs.
+      place      : TM.stoppedT (evalᴰ ir x) k ≡ false
+                 → ResultPlace B out-mode (falloc settle) cont-alloc
                      (TM.valueT (evalᴰ ir x) k) (floc settle)
       -- D204: WHAT THE RUN LEAVES ALONE.
       --
@@ -506,13 +530,20 @@ module Core {FS : FrameSemantics} where
       out-mode   : AllocMode
       cont-alloc : AllocState {FS}
       run        : FlatSteps prog steps fs settle
-      live       : halted (floc settle) ≡ false
+      -- plan 0.97: CONDITIONED, exactly as `ValueRealized`'s three are — and
+      -- for the callee this is not a technicality but the point. A called
+      -- closure may invoke a halting SigOp; then it never reaches its `c-ret`
+      -- and never returns. `live`/`returned`/`place` are what a RETURNING
+      -- callee leaves, and `stops` is the other half.
+      live       : TM.stoppedT comp k ≡ false → halted (floc settle) ≡ false
       -- …and it RETURNED: the block ends in `c-ret`, which pops the address
       -- the call pushed and leaves the caller's own (empty) stack behind.
-      returned   : fpc settle ≡ ret-pc
+      returned   : TM.stoppedT comp k ≡ false → fpc settle ≡ ret-pc
+      stops      : TM.stoppedT comp k ≡ true  → halted (floc settle) ≡ true
       no-ret     : fret settle ≡ []
       no-link    : flink settle ≡ nothing
-      place      : ResultPlace B out-mode (falloc settle) cont-alloc
+      place      : TM.stoppedT comp k ≡ false
+                 → ResultPlace B out-mode (falloc settle) cont-alloc
                      (TM.valueT comp k) (floc settle)
       events     : take k (chain-events run)
                    ≡ take k (projTrace comp k)

@@ -51,8 +51,8 @@ module Simp {FS : FrameSemantics} where
     record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
-                   (place rdi-eq) (λ fr j _ → mem-eq (AtStack fr j)) (λ hl _ → mem-eq (AtDynamic hl)) refl (λ _ _ bf → bf)
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) refl refl
+                   (λ _ → place rdi-eq) (λ fr j _ → mem-eq (AtStack fr j)) (λ hl _ → mem-eq (AtDynamic hl)) refl (λ _ _ bf → bf)
       }
     where
       -- The post-`mov` register file and the intermediate flat state. `run-eq`
@@ -132,7 +132,7 @@ module Simp {FS : FrameSemantics} where
     record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
-          realized 0 (entry-flat base s alloc cl) mIn alloc [] nh refl refl refl unit-result (λ _ _ _ → refl) (λ _ _ → refl) refl (λ _ _ bf → bf)
+          realized 0 (entry-flat base s alloc cl) mIn alloc [] (λ _ → nh) (λ _ → refl) (λ ()) refl refl (λ _ → unit-result) (λ _ _ _ → refl) (λ _ _ → refl) refl (λ _ _ bf → bf)
       }
     where
       ev-[] : ∀ pc i → fetch (emitted n l (terminal {A})) pc ≡ just i → ∀ fs → event-of i fs ≡ []
@@ -219,8 +219,8 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = cong (take k) (sym (denot-[] k))
                  ; value-realized =
                      realized 1 fs₁ _ (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl
-                       (at-loc cloc cval cbef
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) refl refl
+                       (λ _ → at-loc cloc cval cbef
                           (exec-abstract-load-indirect-output s alloc pair-loc (SV-Ptr cloc) eq cp)
                           cval cbef) (λ fr j _ → mem-eq (AtStack fr j)) (λ hl _ → mem-eq (AtDynamic hl)) refl (λ _ _ bf → bf)
                  }
@@ -231,8 +231,8 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = cong (take k) (sym (denot-[] k))
                  ; value-realized =
                      realized 1 fs₁ mIn (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl
-                       (at-reg fit
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) refl refl
+                       (λ _ → at-reg fit
                           (exec-abstract-load-indirect-output s alloc pair-loc
                              (prim-sv fit (proj₁ x)) eq cp)) (λ fr j _ → mem-eq (AtStack fr j)) (λ hl _ → mem-eq (AtDynamic hl)) refl (λ _ _ bf → bf)
                  }
@@ -243,7 +243,7 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = cong (take k) (sym (denot-[] k))
                  ; value-realized =
                      realized 1 fs₁ mIn (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl unit-result
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) refl refl (λ _ → unit-result)
                        (λ fr j _ → mem-eq (AtStack fr j)) (λ hl _ → mem-eq (AtDynamic hl)) refl (λ _ _ bf → bf)
                  }
       mr-of (in-reg () _)
@@ -283,8 +283,8 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = cong (take k) (sym (denot-[] k))
                  ; value-realized =
                      realized 1 fs₁ _ (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl
-                       (at-loc cloc cval cbef
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) refl refl
+                       (λ _ → at-loc cloc cval cbef
                           (exec-abstract-load-indirect-suc-output s alloc pair-loc (SV-Ptr cloc) eq cp)
                           cval cbef) (λ fr j _ → mem-eq (AtStack fr j)) (λ hl _ → mem-eq (AtDynamic hl)) refl (λ _ _ bf → bf)
                  }
@@ -295,8 +295,8 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = cong (take k) (sym (denot-[] k))
                  ; value-realized =
                      realized 1 fs₁ mIn (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl
-                       (at-reg fit
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) refl refl
+                       (λ _ → at-reg fit
                           (exec-abstract-load-indirect-suc-output s alloc pair-loc
                              (prim-sv fit (proj₂ x)) eq cp)) (λ fr j _ → mem-eq (AtStack fr j)) (λ hl _ → mem-eq (AtDynamic hl)) refl (λ _ _ bf → bf)
                  }
@@ -307,7 +307,7 @@ module Simp {FS : FrameSemantics} where
                  { traces-agree = cong (take k) (sym (denot-[] k))
                  ; value-realized =
                      realized 1 fs₁ mIn (falloc fs₁)
-                       ((nh , span 0 _ refl) ∷ []) live' refl refl refl unit-result
+                       ((nh , span 0 _ refl) ∷ []) (λ _ → live') (λ _ → refl) (λ ()) refl refl (λ _ → unit-result)
                        (λ fr j _ → mem-eq (AtStack fr j)) (λ hl _ → mem-eq (AtDynamic hl)) refl (λ _ _ bf → bf)
                  }
       mr-of (in-reg () _)
@@ -326,8 +326,8 @@ module Simp {FS : FrameSemantics} where
   obs-correct-out-μ {F} wf n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
-                   (place rdi-eq) (λ fr j _ → mem-eq (AtStack fr j)) (λ hl _ → mem-eq (AtDynamic hl)) refl (λ _ _ bf → bf)
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) refl refl
+                   (λ _ → place rdi-eq) (λ fr j _ → mem-eq (AtStack fr j)) (λ hl _ → mem-eq (AtDynamic hl)) refl (λ _ _ bf → bf)
       }
     where
       regs' = writeReg (regs s) Output (readReg (regs s) Input1)
@@ -414,8 +414,8 @@ module Simp {FS : FrameSemantics} where
   obs-correct-const fits-int v n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
-                   (at-reg fits-int out-lit) (λ fr j _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtStack fr j) nhw-instr-load-const refl)
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) refl refl
+                   (λ _ → at-reg fits-int out-lit) (λ fr j _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtStack fr j) nhw-instr-load-const refl)
                    (λ hl _ → mem-untouched (instr-load-const fits-intˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl) refl (λ _ _ bf → bf)
       }
     where
@@ -446,8 +446,8 @@ module Simp {FS : FrameSemantics} where
   obs-correct-const fits-float v n l prog base _ cr span _ _ mIn x s alloc cl _ nh rdi-eq k =    record
       { traces-agree = cong (take k) (sym (denot-[] k))
       ; value-realized =
-          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) nh refl refl refl
-                   (at-reg fits-float out-lit) (λ fr j _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtStack fr j) nhw-instr-load-const refl)
+          realized 1 fs₁ mIn (falloc fs₁) ((nh , span 0 _ refl) ∷ []) (λ _ → nh) (λ _ → refl) (λ ()) refl refl
+                   (λ _ → at-reg fits-float out-lit) (λ fr j _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtStack fr j) nhw-instr-load-const refl)
                    (λ hl _ → mem-untouched (instr-load-const fits-floatˢ v) s alloc (AtDynamic hl) nhw-instr-load-const refl) refl (λ _ _ bf → bf)
       }
     where
