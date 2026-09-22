@@ -362,6 +362,73 @@ module SigOpC {FS : FrameSemantics} where
     where
       fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl)
 
+  ------------------------------------------------------------------------
+  -- THE HALTING DISCHARGE (plan 0.97). `Halts` is `Emits` plus one fact: the
+  -- program ends. Machine side, `exec-sigop-halts-of (Halts _) ≡ true`; Spec
+  -- side, `stops-D-of (Halts _) ≡ true`. The two now say the same thing, so
+  -- the clause is provable — and the three fields that describe a fragment
+  -- which reached its end are vacuous.
+  --
+  -- This row was `obs-correct-sigop-rest` until now, and not for want of
+  -- effort: the obligation asserted `halted (floc settle) ≡ false` outright,
+  -- which a run ending in `exit` REFUTES. The probe that derived `⊥` from it
+  -- is what sent plan 0.97 to the Spec. The trace half is `Emits`'s verbatim
+  -- — `ev-of-loc` and `emit-D` treat the two shapes identically — so only the
+  -- halting facts are new.
+  ------------------------------------------------------------------------
+  halts-trace-agree :
+    ∀ {A} (si : SigOpInfo A Unitᵀ) → effect si ≡ Halts refl
+    → ∀ {mIn alloc} (x : ⟦ ⌊ A ⌋ ⟧) (s : LocState FS) (k : ℕ)
+    → InputAt {⌊ A ⌋} mIn alloc x s
+    → take k (ev-of-loc (instr-sigop si) s ++ [])
+      ≡ take k (projTrace (evalᴰ (SigOp si) x) k)
+  halts-trace-agree {A} si halts-eq x s k inp rewrite halts-eq = go k
+    where
+      ev-eq : machine-event si (readReg (regs s) Input1)
+            ≡ mkEvent si (subst (λ z → z) (EvV.coh A) (DT.forget x))
+      ev-eq = cong (mkEvent si) (emits-arg-agree (SigOpInfo.baseA si) x s inp)
+
+      go : ∀ (j : ℕ)
+         → take j (machine-event si (readReg (regs s) Input1) ∷ [])
+           ≡ take j (DT.capN j (mkEvent si (subst (λ z → z) (EvV.coh A) (DT.forget x)) ∷ []))
+      go zero    = refl
+      go (suc j) = cong (_∷ take j []) ev-eq
+
+  halts-halts-true : ∀ {A B} (si : SigOpInfo A B) {e} → effect si ≡ Halts e
+                   → (s : LocState FS) → exec-sigop-halts si s ≡ true
+  halts-halts-true si halts-eq s = cong (λ z → exec-sigop-halts-of z si s) halts-eq
+
+  sigop-stops-halts : ∀ {A B} (si : SigOpInfo A B) {e} → effect si ≡ Halts e
+                    → VD.stops-D si ≡ true
+  sigop-stops-halts si halts-eq = cong VD.stops-D-of halts-eq
+
+  -- …and the refutation the three conditioned fields want: a shape that
+  -- STOPS cannot be live.
+  no-live-halts : ∀ {A B} (si : SigOpInfo A B) {e} → effect si ≡ Halts e
+                → ∀ {X : Set} → VD.stops-D si ≡ false → X
+  no-live-halts si halts-eq p with trans (sym (sigop-stops-halts si halts-eq)) p
+  ... | ()
+
+  halts-obs-correct-sigop :
+    ∀ {A} (si : SigOpInfo A Unitᵀ) → effect si ≡ Halts refl → IRObsCorrectF (SigOp si)
+  halts-obs-correct-sigop {A} si halts-eq
+    n l prog base _ cr span _ _ mIn x s alloc cl _ not-halted inp k =
+    record
+      { traces-agree = halts-trace-agree si halts-eq x s k inp
+      ; value-realized =
+          realized 1 fs₁ Stack (falloc fs₁) ((not-halted , span 0 _ refl) ∷ [])
+                   (no-live-halts si halts-eq) (no-live-halts si halts-eq)
+                   (λ _ → halts-halts-true si halts-eq s) refl refl
+                   (no-live-halts si halts-eq)
+                   (λ fr j _ → mem-untouched (instr-sigop si) s alloc (AtStack fr j)
+                                 nhw-instr-sigop refl)
+                   (λ hl _ → mem-untouched (instr-sigop si) s alloc (AtDynamic hl)
+                               nhw-instr-sigop refl)
+                   refl (λ _ _ bf → bf)
+      }
+    where
+      fs₁ = flat-exec-instr (instr-sigop si) prog (entry-flat base s alloc cl)
+
   -- The SigOp cases the Pure discharge does NOT cover, named separately (Plan
   -- 0.68 step 0). They used to fall back into the whole-IR `obs-correct-rest`,
   -- which meant an EFFECTFUL SigOp — the only kind that puts anything in the
@@ -422,7 +489,7 @@ module SigOpC {FS : FrameSemantics} where
   -- assumed by a clause that looked like it was about something else.
   obs-correct-sigop {A} {B} si with effect si in eff-eq
   ... | Emits refl = emits-obs-correct-sigop si eff-eq
-  ... | Halts _    = obs-correct-sigop-rest si
+  ... | Halts refl = halts-obs-correct-sigop si eff-eq
   ... | Pure with fits-in-reg? B | readable? A
   ...   | nothing      | _       = obs-correct-sigop-rest si
   ...   | just fitness | nothing = obs-correct-sigop-rest si
