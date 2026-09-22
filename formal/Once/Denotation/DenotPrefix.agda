@@ -34,7 +34,8 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Once.Type
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; valueT; PrefixFamily; prefixFamily; returnT; returnT-pf)
+open import Once.Denotation.TraceMonad using (T; mkT; valueT; PrefixFamily; prefixFamily; returnT; returnT-pf)
+open import Data.Bool using (false)
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; νᵈ; forceᵈ; inject; forget; injectν; mapInjectν)
 open import Once.Semantics.Functor using (νS; unfoldS)
@@ -132,7 +133,7 @@ mutual
 -- This is the shape of `evalᴰ`'s `eval`-backed fallback
 -- (DenotTrace.agda:202) at every constructor whose `rec-trace-D` is `[]` —
 -- `In`, `out-μ` and `const` (:206, :208, :230).
-const-empty-pf : ∀ {X : Set} (v : X) → PrefixFamily {X} (λ _ → ([] , v))
+const-empty-pf : ∀ {X : Set} (v : X) → PrefixFamily {X} (mkT (λ _ → []) false v)
 const-empty-pf v = prefixFamily (λ k → z≤n) (λ k _ → refl) (λ k → ([] , refl))
 
 inject-Good : ∀ (A : Type) (v : Val.⟦ A ⟧) → Good A (inject {A} v)
@@ -253,8 +254,10 @@ evalᴰ-good fmt apply p ga = proj₁ ga (proj₂ p) (proj₂ ga)
 -- Composition: `>>=T-pf` with the continuation hypothesis at exactly the
 -- values `f` produces — which is why that hypothesis had to be weakened.
 evalᴰ-good fmt (_∘_ {A} {B} {C} g f) a ga =
+  -- plan 0.97: the budget on the right is now FREE — `valueT` ignores it —
+  -- so it has to be named rather than inferred.
   ( >>=T-pf (evalᴰ fmt f a) (evalᴰ fmt g) (proj₁ ihf) (λ k → proj₁ (ihg k))
-  , λ k → proj₂ (ihg k) _ )
+  , λ k → proj₂ (ihg k) 0 )
   where
     ihf : GoodT ⌈ B ⌉ (evalᴰ fmt f a)
     ihf = evalᴰ-good fmt f a ga
@@ -269,7 +272,7 @@ evalᴰ-good fmt (⟨_,_⟩ {A} {B} {C} f g) a ga =
       (λ k → >>=T-pf (evalᴰ fmt g a)
                (λ c → returnT (valueT (evalᴰ fmt f a) k , c)) (proj₁ ihg)
                (λ j → returnT-pf _))
-  , λ k → (proj₂ ihf _ , proj₂ ihg _) )
+  , λ k → (proj₂ ihf 0 , proj₂ ihg 0) )
   where
     ihf : GoodT ⌈ B ⌉ (evalᴰ fmt f a)
     ihf = evalᴰ-good fmt f a ga
