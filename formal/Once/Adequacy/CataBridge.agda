@@ -146,6 +146,6 @@ cata-bridge {F} {A'} {wfF} dalg₁ dalg₂ algR {a} {.a} refl n =
         (λ layer → dalg₁ (coerce-functor⁻¹-D F A' layer))
         (λ layer → dalg₂ (coerce-functor⁻¹-D F A' layer))
         sq
-        (λ k → algR (z-rel wfF (proj₂ (sq k))))
+        (λ k → algR (z-rel wfF (proj₂ (proj₂ (sq k)))))
       where
         sq = seqF-rel F (RelV A') (out-rel wfF rsf)

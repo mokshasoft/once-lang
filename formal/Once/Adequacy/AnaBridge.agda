@@ -123,4 +123,4 @@ ana-bridge {A} {F} wfF {k₁} {k₂} kR rab =
                     (fmapT (coerce-functor-D F A) (k₁ a)))
            (λ b → fmapT (coerce-ν-in F ⟦ A ⟧ᴰ)
                     (fmapT (coerce-functor-D F A) (k₂ b)))
-    cr r = (λ j → proj₁ (kR r j)) , (λ j → in-rel wfF (proj₂ (kR r j)))
+    cr r = (λ j → proj₁ (kR r j)) , (λ j → in-rel wfF (proj₂ (proj₂ (kR r j))))

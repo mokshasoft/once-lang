@@ -117,6 +117,8 @@ postulate
 meaningᵈ : ∀ (fmt : TargetNum) (m : C.Module) (mt : ModuleTyped m) → HasValidMain-decl m mt → Behavior
 meaningᵈ fmt m mt hvm =
   mkBehavior (runMainᵈ (proj₂ (mainMeaningᵈ fmt m mt hvm)))
-             (coh pf) (bnd pf) (λ n lt → cong proj₁ (sat pf n lt))
+             -- plan 0.97: `Saturating` is on the trace alone now — nothing
+             -- to project out of a pair.
+             (coh pf) (bnd pf) (sat pf)
   where
     pf = mainMeaningᵈ-pf fmt m mt hvm

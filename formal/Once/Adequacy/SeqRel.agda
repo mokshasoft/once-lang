@@ -51,7 +51,10 @@ RelT′-fmap : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y�
              (g : X → Y) (g′ : X′ → Y′) {m : T X} {m′ : T X′}
            → (∀ x x′ → R x x′ → S (g x) (g′ x′))
            → RelT′ R m m′ → RelT′ S (fmapT g m) (fmapT g′ m′)
-RelT′-fmap R S g g′ h rm k = (proj₁ (rm k) , h _ _ (proj₂ (rm k)))
+-- plan 0.97: `fmapT` touches neither the trace NOR the stop flag, so both
+-- carry over unchanged; only the value is mapped.
+RelT′-fmap R S g g′ h rm k = (proj₁ (rm k) , proj₁ (proj₂ (rm k))
+                             , h _ _ (proj₂ (proj₂ (rm k))))
 
 ------------------------------------------------------------------------
 -- THE lemma. At `⊗` the two children share one budget on each side, and the
@@ -63,7 +66,7 @@ seqF-rel : ∀ (G : Functor) {X Y : Set} (R : X → Y → Set)
            {l : ⟦ G ⟧F (T X)} {r : ⟦ G ⟧F (T Y)}
          → RelF G (RelT′ R) l r
          → RelT′ (RelF G R) (seqF G l) (seqF G r)
-seqF-rel (K A)   R {x} {y} eq k = (refl , eq)
+seqF-rel (K A)   R {x} {y} eq k = (refl , refl , eq)
 seqF-rel Id      R         rel  = rel
 seqF-rel (G ⊕ H) R {inj₁ x} {inj₁ y} rel =
   RelT′-fmap (RelF G R) (RelF (G ⊕ H) R) inj₁ inj₁ (λ _ _ z → z) (seqF-rel G R rel)
@@ -81,4 +84,6 @@ seqF-rel (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
         (λ v → returnT (valueT (seqF G x₁) k , v))
         (λ v → returnT (valueT (seqF G x₂) k , v))
         (seqF-rel H R rH)
-        (λ j _ → (refl , (proj₂ (seqF-rel G R rG k) , proj₂ (seqF-rel H R rH j)))))
+        (λ j _ → (refl , refl
+                 , ( proj₂ (proj₂ (seqF-rel G R rG k))
+                   , proj₂ (proj₂ (seqF-rel H R rH j))))))
