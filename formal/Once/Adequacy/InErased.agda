@@ -38,11 +38,12 @@ open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-commute
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Semantics.Functor using (μS; ⟨_⟩; ⟦_⟧SF)
 open import Once.Semantics.Machine using (sem-In; coerce-functor; coh; tF-coh; ⟦_⟧; ⟦_⟧F; ⟦μ⟧; coerce-μ-in)
-open import Once.Denotation.TraceMonad using (T; returnT; projTrace)
+open import Data.Bool using (false)
+open import Once.Denotation.TraceMonad using (T; returnT; projTrace; valueT; stoppedT)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; inject; cohᴰ)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-value)
-open import Once.Adequacy.CataErased fmt using (subst-T-apply; subst-T-projTrace; evalᴰ-subst-dom)
+open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-valueT; subst-T-stoppedT; T-ext; evalᴰ-subst-dom)
 open import Once.Adequacy.AnaErased fmt using (coerce-νin-erase)
 open import Once.Postulates using (extensionality)
 import Once.IR as IR
@@ -98,17 +99,29 @@ in-trace {F} wfF v n =
           (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))
                            (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
 
+-- plan 0.97: the STOP flag, the same peel as the trace. `evalᴰ` is stuck under
+-- the domain `subst`, so the flag no longer reduces on its own — the same
+-- reason `in-trace` cannot be `refl` either.
+in-stopped : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ) (n : ℕ)
+  → stoppedT (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v) n ≡ false
+in-stopped {F} wfF v n =
+  trans (subst-T-stoppedT (cong μS (tF-coh F))
+          (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n)
+        (cong (λ hh → stoppedT hh n)
+          (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))
+                           (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
+
 -- VALUE half — the coherence (PROBE: refl to read the goal).
 in-value-erase : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ) (n : ℕ)
-  → proj₂ (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v n) ≡ in-value v
+  → valueT (liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v) n ≡ in-value v
 in-value-erase {F} wfF v n =
-  trans (cong proj₂ (subst-T-apply (cong μS (tF-coh F))
-                      (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n))
-  (trans (cong (λ hh → subst id (cong μS (tF-coh F)) (proj₂ (hh n)))
+  trans (subst-T-valueT (cong μS (tF-coh F))
+                      (evalᴰ fmt (In-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)) n)
+  (trans (cong (λ hh → subst id (cong μS (tF-coh F)) (valueT hh n))
                (evalᴰ-subst-dom (sym (⌊⟧T-commute F (μ-type F))) (IR.In (wf-⌊⌋ wfF))
                                 (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
   (trans (cong (λ arg → subst id (cong μS (tF-coh F))
-                         (proj₂ (evalᴰ fmt (IR.In (wf-⌊⌋ wfF)) arg n)))
+                         (valueT (evalᴰ fmt (IR.In (wf-⌊⌋ wfF)) arg) n))
                (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (μ-type F)) (subst id (sym (cohᴰ (⟦ F ⟧T (μ-type F)))) v)))
   (trans (subst-id-μS (tF-coh F) _)
   (trans (⟨⟩-subst-nat (tF-coh F) _)
@@ -125,4 +138,10 @@ in-value-erase {F} wfF v n =
 -- (the value is n-independent, so `in-value-erase` at 0 covers every `n`).
 liftFn-In : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (μ-type F) ⟧ᴰ)
   → liftFn fmt {⟦ F ⟧T (μ-type F)} {μ-type F} (In-ir wfF) v ≡ returnT (in-value v)
-liftFn-In wfF v = extensionality λ n → cong₂ _,_ (in-trace wfF v n) (in-value-erase wfF v n)
+liftFn-In {F} wfF v =
+  -- plan 0.97: record eta, not extensionality on a budget — and the stop
+  -- flag is the third field. The introduction form emits nothing and does
+  -- not stop, so it is `returnT`'s `false` on both sides.
+  T-ext (in-trace wfF v)
+        (in-stopped wfF v 0)
+        (in-value-erase wfF v 0)

@@ -32,12 +32,13 @@ open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-c
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
 open import Once.Semantics.Machine using (coerce-functor; coh; tF-coh; ⟦_⟧; ⟦_⟧F; coerce-ν-in)
-open import Once.Denotation.TraceMonad using (T; returnT; projTrace)
+open import Data.Bool using (false)
+open import Once.Denotation.TraceMonad using (T; returnT; projTrace; valueT; stoppedT)
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; cohᴰ; νᵈ; in-νᵈ; coerce-functor-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-ν-value)
-open import Once.Adequacy.CataErased fmt using (subst-T-apply; subst-T-projTrace; evalᴰ-subst-dom)
+open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-valueT; subst-T-stoppedT; T-ext; evalᴰ-subst-dom)
 open import Once.Adequacy.AnaErased fmt using (coerce-νin-erase-D)
 open import Once.Adequacy.InErased fmt using (subst-⟦⟧ᴰᴵ-fix; coerce-μ-in-subst)
 open import Once.Postulates using (extensionality)
@@ -76,17 +77,29 @@ in-ν-trace {F} wfF v n =
           (evalᴰ-subst-dom (sym (⌊⟧T-commute F (ν-type F))) (IR.in-ν (wf-⌊⌋ wfF))
                            (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
 
+-- plan 0.97: the STOP flag, the same peel as the trace. `evalᴰ` is stuck under
+-- the domain `subst`, so the flag no longer reduces on its own — the same
+-- reason `in-trace` cannot be `refl` either.
+in-ν-stopped : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ) (n : ℕ)
+  → stoppedT (liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v) n ≡ false
+in-ν-stopped {F} wfF v n =
+  trans (subst-T-stoppedT (cong νᵈ (tF-coh F))
+          (evalᴰ fmt (in-ν-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)) n)
+        (cong (λ hh → stoppedT hh n)
+          (evalᴰ-subst-dom (sym (⌊⟧T-commute F (ν-type F))) (IR.in-ν (wf-⌊⌋ wfF))
+                           (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
+
 -- VALUE half — the coherence.
 in-ν-value-erase : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ) (n : ℕ)
-  → proj₂ (liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v n) ≡ in-ν-value v
+  → valueT (liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v) n ≡ in-ν-value v
 in-ν-value-erase {F} wfF v n =
-  trans (cong proj₂ (subst-T-apply (cong νᵈ (tF-coh F))
-                      (evalᴰ fmt (in-ν-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)) n))
-  (trans (cong (λ hh → subst id (cong νᵈ (tF-coh F)) (proj₂ (hh n)))
+  trans (subst-T-valueT (cong νᵈ (tF-coh F))
+                      (evalᴰ fmt (in-ν-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)) n)
+  (trans (cong (λ hh → subst id (cong νᵈ (tF-coh F)) (valueT hh n))
                (evalᴰ-subst-dom (sym (⌊⟧T-commute F (ν-type F))) (IR.in-ν (wf-⌊⌋ wfF))
                                 (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
   (trans (cong (λ arg → subst id (cong νᵈ (tF-coh F))
-                         (proj₂ (evalᴰ fmt (IR.in-ν (wf-⌊⌋ wfF)) arg n)))
+                         (valueT (evalᴰ fmt (IR.in-ν (wf-⌊⌋ wfF)) arg) n))
                (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (ν-type F)) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
   (trans (subst-id-νᵈ (tF-coh F) _)
   (trans (in-νᵈ-subst-nat (tF-coh F) _)
@@ -103,4 +116,10 @@ in-ν-value-erase {F} wfF v n =
 -- n-independent, so the proof at any `n` covers every `n`).
 liftFn-in-ν : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ)
   → liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v ≡ returnT (in-ν-value v)
-liftFn-in-ν wfF v = extensionality λ n → cong₂ _,_ (in-ν-trace wfF v n) (in-ν-value-erase wfF v n)
+liftFn-in-ν {F} wfF v =
+  -- plan 0.97: record eta, not extensionality on a budget — and the stop
+  -- flag is the third field. The introduction form emits nothing and does
+  -- not stop, so it is `returnT`'s `false` on both sides.
+  T-ext (in-ν-trace wfF v)
+        (in-ν-stopped wfF v 0)
+        (in-ν-value-erase wfF v 0)

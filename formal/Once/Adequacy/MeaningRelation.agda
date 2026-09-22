@@ -39,7 +39,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              mk-kind; Zero; One; Many)
-open import Once.Denotation.TraceMonad using (T; projTrace; valueT; returnT; _>>=T_)
+open import Once.Denotation.TraceMonad using (T; projTrace; valueT; stoppedT; returnT; _>>=T_; join-es; join-st)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
 
@@ -52,7 +52,12 @@ RelV : ∀ (A : Type) → ⟦ A ⟧ᴰ → ⟦ A ⟧ᴰ → Set
 RelT : ∀ (A : Type) → T ⟦ A ⟧ᴰ → T ⟦ A ⟧ᴰ → Set
 
 -- A computation relation: equal event traces + related values at EVERY budget.
+-- plan 0.97: …and equal STOP FLAGS. Not decoration: `_>>=T_`'s trace is
+-- `join-es (stT t) …`, so `RelT-bind` below cannot conclude the two composite
+-- traces agree without it. Adding the stop channel to `T` forced the relation
+-- to carry it.
 RelT A t₁ t₂ = ∀ n → (projTrace t₁ n ≡ projTrace t₂ n)
+                   × (stoppedT t₁ n ≡ stoppedT t₂ n)
                    × RelV A (valueT t₁ n) (valueT t₂ n)
 
 -- First-order (pure `Val`) payloads: observational = propositional equality.
@@ -91,7 +96,7 @@ RelV (A ⇒[ mk-kind Many π ] B) f g = ∀ {a b} → RelV A a b → RelT B (f a
 -- `returnT` has empty trace and carries its value, so related values give
 -- related pure computations.
 RelT-return : ∀ {A} {x y : ⟦ A ⟧ᴰ} → RelV A x y → RelT A (returnT x) (returnT y)
-RelT-return rv n = refl , rv
+RelT-return rv n = refl , refl , rv
 
 -- Bind preserves the relation: related computations sequenced with related
 -- continuations stay related. `_>>=T_` concatenates the two traces, so the
@@ -107,11 +112,18 @@ RelT-bind : ∀ {A B} {t₁ t₂ : T ⟦ A ⟧ᴰ} {f g : ⟦ A ⟧ᴰ → T ⟦
           → (∀ {a b} → RelV A a b → RelT B (f a) (g b))
           → RelT B (t₁ >>=T f) (t₂ >>=T g)
 RelT-bind {A} {B} {t₁} {t₂} {f} {g} rt rk n =
-    cong₂ _++_ tr-eq (trans (proj₁ inner) (cong (projTrace gb) keq))
-  , subst (λ k → RelV B (valueT fa k₁) (valueT gb k)) keq (proj₂ inner)
+    trans (cong₂ (λ b es → join-es b es (projTrace fa k₁)) st-eq tr-eq)
+          (cong (join-es (stoppedT t₂ n) (projTrace t₂ n))
+                (trans (proj₁ inner) (cong (projTrace gb) keq)))
+  , cong₂ join-st st-eq (trans (proj₁ (proj₂ inner))
+                               (cong (stoppedT gb) keq))
+  , subst (λ k → RelV B (valueT fa k₁) (valueT gb k)) keq (proj₂ (proj₂ inner))
   where
     tr-eq : projTrace t₁ n ≡ projTrace t₂ n
     tr-eq = proj₁ (rt n)
+
+    st-eq : stoppedT t₁ n ≡ stoppedT t₂ n
+    st-eq = proj₁ (proj₂ (rt n))
 
     fa = f (valueT t₁ n)
     gb = g (valueT t₂ n)
@@ -122,5 +134,7 @@ RelT-bind {A} {B} {t₁} {t₂} {f} {g} rt rk n =
     keq : k₁ ≡ k₂
     keq = cong (λ es → n ∸ length es) tr-eq
 
-    inner : (projTrace fa k₁ ≡ projTrace gb k₁) × RelV B (valueT fa k₁) (valueT gb k₁)
-    inner = rk (proj₂ (rt n)) k₁
+    inner : (projTrace fa k₁ ≡ projTrace gb k₁)
+          × (stoppedT fa k₁ ≡ stoppedT gb k₁)
+          × RelV B (valueT fa k₁) (valueT gb k₁)
+    inner = rk (proj₂ (proj₂ (rt n))) k₁
