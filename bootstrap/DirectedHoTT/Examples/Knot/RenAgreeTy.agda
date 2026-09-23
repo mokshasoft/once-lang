@@ -79,6 +79,7 @@ open import DirectedHoTT.Examples.Knot.SubAgree using ( RepresentsR; extR-Repres
 -- ★ `_»_` comes from `Lib/RedChain`: it was emitted (and hand-written)
 --   into 15 modules, 14 of them RE-IMPLEMENTING `⟶*-trans`.
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
+open import DirectedHoTT.Lib.Eval using ( evProj; chainOf )
 
 row-base : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r →
@@ -88,7 +89,7 @@ row-base {Γ} {Δ} h  =
   ren-head-red 0 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (idrefl ⌜Nat⌝ sTy) unit) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-fst done » step (βfst _ _) done))
+    (chainOf (evProj 1 _)))
 
 row-U : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r →
@@ -98,7 +99,7 @@ row-U {Γ} {Δ} h  =
   ren-head-red 1 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (idrefl ⌜Nat⌝ sTy) unit) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-fst done » step (βfst _ _) done))
+    (chainOf (evProj 1 _)))
 
 row-Pi : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r → (y0 : RTy Γ) → (y1 : RTy (Γ ∙)) →
@@ -114,17 +115,17 @@ row-Pi {Γ} {Δ} h y0 y1 ih0 ih1 =
   ren-head-red 2 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (enTy y0) (pair (enTy y1) (pair (idrefl ⌜Nat⌝ sTy) unit))) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst done » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 1 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 1 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (⟶*-nsuc (step (βsnd _ _) done))))) »
      ih1 (extR-Represents _ h)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))))
+    (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))))
 
 row-Sg : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r → (y0 : RTy Γ) → (y1 : RTy (Γ ∙)) →
@@ -140,17 +141,17 @@ row-Sg {Γ} {Δ} h y0 y1 ih0 ih1 =
   ren-head-red 3 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (enTy y0) (pair (enTy y1) (pair (idrefl ⌜Nat⌝ sTy) unit))) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst done » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 1 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 1 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (⟶*-nsuc (step (βsnd _ _) done))))) »
      ih1 (extR-Represents _ h)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))))
+    (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))))
 
 row-El : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r → (y0 : RTm Γ) →
@@ -163,12 +164,12 @@ row-El {Γ} {Δ} h y0 ih0 =
   ren-head-red 4 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (enTm y0) (pair (idrefl ⌜Nat⌝ sTy) unit)) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst done » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 1 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 1 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)))
+    (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)))
 
 row-Hom : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r → (y0 : RTy Γ) → (y1 : RTm Γ) → (y2 : RTm Γ) →
@@ -187,22 +188,22 @@ row-Hom {Γ} {Δ} h y0 y1 y2 ih0 ih1 ih2 =
   ren-head-red 5 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (enTy y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTy) unit)))) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst done » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 1 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 1 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih1 h))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih2 h)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)))))
+    (⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)))))
 
 row-Unit : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r →
@@ -212,7 +213,7 @@ row-Unit {Γ} {Δ} h  =
   ren-head-red 6 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (idrefl ⌜Nat⌝ sTy) unit) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-fst done » step (βfst _ _) done))
+    (chainOf (evProj 1 _)))
 
 row-Nat : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r →
@@ -222,7 +223,7 @@ row-Nat {Γ} {Δ} h  =
   ren-head-red 7 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (idrefl ⌜Nat⌝ sTy) unit) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-fst done » step (βfst _ _) done))
+    (chainOf (evProj 1 _)))
 
 row-Id : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r → (y0 : RTy Γ) → (y1 : RTm Γ) → (y2 : RTm Γ) →
@@ -241,22 +242,22 @@ row-Id {Γ} {Δ} h y0 y1 y2 ih0 ih1 ih2 =
   ren-head-red 8 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (enTy y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTy) unit)))) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst done » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 1 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 1 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih1 h))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih2 h)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)))))
+    (⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)))))
 
 row-Mu : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r → (y0 : Desc) →
@@ -266,12 +267,12 @@ row-Mu {Γ} {Δ} h y0 =
   ren-head-red 9 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (enDesc y0) (pair (idrefl ⌜Nat⌝ sTy) unit)) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst done » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 1 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 1 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ren-Desc-id _ _ _ y0)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)))
+    (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)))
 
 row-IMu : {Γ Δ Θ : Cx} {ρ : Ren Γ Δ} {r : RTm Θ} →
           RepresentsR ρ r → (y0 : IDesc) → (y1 : RTy ε) → (y2 : RTm Γ) →
@@ -284,17 +285,17 @@ row-IMu {Γ} {Δ} h y0 y1 y2 ih0 =
   ren-head-red 10 ttsd ttsd refl
                sTy (num (len Γ)) (num (len Δ)) _ (pair (enIDesc y0) (pair (enTy y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTy) unit)))) »
   ⟶*-icon (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst done » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 1 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 1 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ren-IDesc-id _ _ _ y0)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)))))
+    (⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)))))
 

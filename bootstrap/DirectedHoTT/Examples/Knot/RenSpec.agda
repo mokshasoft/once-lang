@@ -54,6 +54,7 @@ open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-appˡ; ⟶*-appʳ; ⟶*-icon; ⟶*-pairˡ; ⟶*-pairʳ; ⟶*-jsubᵖ ; ⟶*-idreflᵃ; ⟶*-nsuc )
 open import DirectedHoTT.Lib.IMeths
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
+open import DirectedHoTT.Lib.Eval using ( evProj; chainOf )
   using ( methsFrom-sel; methsFrom-past; cdTake; inCD; tt
         ; sel-here; sel-there; sel-here≡; sel-there≡ )
 
@@ -187,7 +188,7 @@ inVs r = ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ r))
 --   at all 53 rows of step 3's `sub-agree`.  ⇒ build the projection
 --   helper THERE, where it pays 53 times, and come back for this law.
 --   `Knot/SzAgree` writes the chains out per row
---   (`⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done`),
+--   (`⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done`),
 --   which is exactly the thing to factor.
 ------------------------------------------------------------------------
 

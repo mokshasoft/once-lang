@@ -88,7 +88,7 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Spec.Variance using ( pwBody )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
-open import DirectedHoTT.Lib.Eval using ( evSpine; chainOf )
+open import DirectedHoTT.Lib.Eval using ( evSpine; evProj; chainOf )
 open import DirectedHoTT.Lib.Wk using ( sub-w²-single; w )
 open import DirectedHoTT.Spec.Syntax using ( Sub; extS; subTm )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ )
@@ -764,12 +764,12 @@ pwb-agree {Γ} i hi (⌜Π⌝ y0 y1) =
   » ⟶*-jsubᵖ ( ⟶*-jsubᵖ
                  (⟶*-castₗ (cong (λ w → fst (snd (snd w)))
                                  (wk-single {v = IHS} PAY))
-                    (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done)
+                    (⟶*-fst (⟶*-snd (chainOf (evProj 1 _))
                              » step (βsnd _ _) done) » step (βfst _ _) done))
              » step (jsub-refl _ _ _ _) done )
   » step (jsub-refl _ _ _ _) done
   » ⟶*-castₗ (cong (λ w → fst (snd w)) (wk-single {v = IHS} PAY))
-      (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)
+      (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)
   where
     PAY : RTm _
     PAY = pair (enTm y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit))
@@ -795,7 +795,7 @@ pwb-agree {Γ} i hi (⌜Hom⌝ y0 y1 y2) =
   » ⟶*-jsubᵖ ( ⟶*-jsubᵖ
                  (⟶*-castₗ (cong (λ w → fst (snd (snd (snd w))))
                                  (wk-single {v = IHS} PAY))
-                    (⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done)
+                    (⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _))
                                      » step (βsnd _ _) done)
                              » step (βsnd _ _) done) » step (βfst _ _) done))
              » step (jsub-refl _ _ _ _) done )
@@ -813,7 +813,7 @@ pwb-agree {Γ} i hi (⌜Hom⌝ y0 y1 y2) =
          (⟶*-icon (⟶*-pairˡ
             (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ hd)))
             »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
-            »  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done)
+            »  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _))
                           » step (βfst _ _) done)))
             »  ren-agree {ρ = vs} (rep {Γ = Γ} hd) y1))
           » ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
@@ -823,7 +823,7 @@ pwb-agree {Γ} i hi (⌜Hom⌝ y0 y1 y2) =
          (⟶*-icon (⟶*-pairˡ
             (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ hd)))
             »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
-            »  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done)
+            »  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _))
                                   » step (βsnd _ _) done)
                           » step (βfst _ _) done)))
             »  ren-agree {ρ = vs} (rep {Γ = Γ} hd) y2))

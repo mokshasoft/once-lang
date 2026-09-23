@@ -307,3 +307,76 @@ spines into a `pair`, and nothing else — which is 573 two-step chains
 directly, and feeds the 1 554 bare uses.
 ⚠ Same discipline as §7: the narrowest evaluator that discharges the
 obligation. Do **not** reach for a general `nf` here.
+
+---
+
+## 8. 🟡 PHASE 1 — PROJECTIONS DONE
+
+Reaching into a method tuple was a hand-built two-step chain, **573
+times across 12 files**. `Lib/Eval.evProj` walks a `fst`/`snd` spine
+into a nested `pair` and descends into nothing else — same narrowness as
+`evSpine`, for the same measured reason.
+
+```agda
+⟶*-snd done » step (βsnd _ _) done        →   chainOf (evProj 1 _)
+⟶*-fst done » step (βfst _ _) done        →   chainOf (evProj 1 _)
+```
+
+| | |
+|---|---|
+| replacements | **573** (381 `snd` + 192 `fst`) |
+| files | **12** — 490 in 7 generated, 83 in 5 hand-written |
+| projection idioms remaining | **0** |
+| every file | **rc=0**, verified individually before landing |
+
+### The running total
+
+| | step constructions |
+|---|---|
+| before any of this | **14 702** |
+| after Phase 0 (the β prologue) | 12 632 |
+| after Phase 1 projections | **9 767** |
+| ⇒ removed so far | **4 935 (−34%)** |
+
+⚠ The generated/hand-written split was determined from `gen-knot.py`'s
+**write sites**, not from file headers — the lesson from Phase 0, applied
+rather than re-learned. The generator's `_evspine()` post-pass now
+carries both rules and emits whichever import it actually used.
+
+### ⬜ Phase 1, still owed
+
+| idiom | uses |
+|---|---|
+| `⟶*-ielimᵗ …` | 342 |
+| `step (jsub-refl _ _ _ _) done` | 123 |
+| remaining bare `βfst`/`βsnd` in other positions | ~1 000 |
+| `natrec-suc` / `natrec-zero` | 44 |
+| `ι-ielim` / `ι-elim` head steps | 45 |
+
+### ★ The nested case: collapse to a FIXPOINT, not depth-by-depth
+
+Phase 1's depth-1 substitution left the nested spines half-converted:
+
+```agda
+⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done      -- depth 2, 376
+⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done)
+        » step (βfst _ _) done                             -- depth 3, 176
+```
+
+⇒ do **not** chase depth 2, then 3, then 4. One rule, iterated to a
+fixpoint, handles any depth:
+
+```
+⟶*-X (chainOf (evProj N _)) » step (βX _ _) done   →   chainOf (evProj N+1 _)
+```
+
+⚠ **The congruence and the β must AGREE** (`fst`/`fst`, `snd`/`snd`) — a
+mismatched pair is a different term and must not be collapsed. The rule
+checks it and leaves mismatches alone.
+
+★ This is sound because **`evProj` is idempotent past normal form**
+(`evProj1 t = t , done` when there is no redex), so over-fuelling is
+semantically free. The only cost is extra traversals in the elaborated
+term — ⚠ to be MEASURED, not assumed.
+
+Dry run: **376 collapses across 12 files.**
