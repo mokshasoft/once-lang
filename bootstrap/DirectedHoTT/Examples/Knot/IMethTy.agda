@@ -37,7 +37,8 @@ open import DirectedHoTT.Examples.Knot.EWk
   using ( εwkK; ⊢εwkK; isingleK; ⊢isingleK )
 open import DirectedHoTT.Examples.Knot.Ctors using ( Ty-PiK; Tm-varK )
 open import DirectedHoTT.Examples.Knot.CtorsV using ( ⊢Ty-PiKv; ⊢Tm-varKv )
-open import DirectedHoTT.Examples.Knot.Build using ( Var-vzK; ⊢Var-vzKt )
+open import DirectedHoTT.Examples.Knot.Build
+  using ( Var-vzK; ⊢Var-vzKt; Var-vsK; ⊢Var-vsKt )
 open import DirectedHoTT.Examples.Knot.RenTm
   using ( renTmAtK; ⊢renTmAtK; vsRenK; ⊢vsRenK )
 open import DirectedHoTT.Examples.Knot.RenMot using ( extRNK; ⊢extRNK )
@@ -77,8 +78,25 @@ imethTyK n k D I C M =
     (Ty-PiK (ipayTyK (num 1) C (nsuc n)
                      (isingleK (Tm-varK (Var-vzK n)))
                      (wkAtK sIDesc n D) I)
+      -- ⚠⚠ THE σ SLOT IS `vs vz`, NOT `vz` — FIXED 2026-09-22.
+      --   `imethTy`'s third Π binds the PAYLOAD, so the INDEX binder
+      --   (bound by the first Π) has moved one further out: the spec
+      --   reads `isingle (var (vs vz))` with `q = var vz`.  This slot
+      --   held `Var-vzK (nsuc n)` — the right DEPTH but the wrong
+      --   VARIABLE — so the program substituted the PAYLOAD where the
+      --   INDEX belongs.
+      -- ★ NOTHING COULD SEE IT.  `⊢isingleK` asks only for
+      --   `Γ ⊢ i ∷ K (pair sTm n)`, and `K`'s index is `Σ' Nat Nat` —
+      --   SORT AND DEPTH, nothing else — so both variables satisfy it.
+      --   `typechecking-cannot-see-an-encoding`, and exactly the class
+      --   `tools/gen-knot.py`'s header predicts: *"a wrong index is
+      --   invisible at the `ICon` level … a transcription error waiting
+      --   to happen, in the one place where the error does not look
+      --   like itself."*
+      -- ⇒ found by ATTEMPTING THE ADEQUACY PROOF (`imethTyK-agree`),
+      --   which is the tier-3 argument paying for itself.
       (Ty-PiK (iihTyK (num 1) C (nsuc (nsuc n))
-                      (isingleK (Tm-varK (Var-vzK (nsuc n))))
+                      (isingleK (Tm-varK (Var-vsK (nsuc n) (Var-vzK n))))
                       (Tm-varK (Var-vzK (nsuc n)))
                       (wkTyUnder2K (nsuc n) (wkTyUnder2K n M)))
               (wkTyK (nsuc (nsuc n))
@@ -102,7 +120,7 @@ imethTyK n k D I C M =
         (⊢iihTyK (⊢num 1) dC (⊢nsuc (⊢nsuc dn))
                  (⊢isingleK _ (⊢nsuc (⊢nsuc dn))
                             (⊢Tm-varKv _ (⊢nsuc (⊢nsuc dn))
-                                       (⊢Var-vzKt (⊢nsuc dn))))
+                                       (⊢Var-vsKt (⊢nsuc dn) (⊢Var-vzKt dn))))
                  (⊢Tm-varKv _ (⊢nsuc (⊢nsuc dn)) (⊢Var-vzKt (⊢nsuc dn)))
                  (⊢wkTyUnder2K (⊢nsuc dn) (⊢wkTyUnder2K dn dM)))
         (⊢wkTyK (⊢nsuc (⊢nsuc dn))
