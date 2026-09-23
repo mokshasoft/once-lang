@@ -555,3 +555,163 @@ tupled passengers". A/B **the kernel half** — one row of `methsTyFromK`
 against a local Σ-telescope stand-in for `ifields`' three `app`s — since
 that is the part no prior measurement covers and the part §7 is actually
 about. Report RSS alongside time, and expect memory to move first.
+
+---
+
+## 8. THE FREE-IMAGINATION KNOT — what the abstractions would have been
+
+★ §7 was still answering a performance question. This section answers
+the design one, and it starts from the observation that actually matters:
+**the Knot is 13× the thing it encodes.** That is the defect.
+
+### 8.1 The asymmetry, measured
+
+| | lines | files |
+|---|---|---|
+| `Spec/` — the kernel being encoded | **4 059** | 3 |
+| `Metatheory/` — its full metatheory | 20 583 | 10 |
+| `Examples/Knot/` — **the encoding of `Spec/`** | **52 428** | 132 |
+
+⇒ encoding the kernel costs **13× the kernel** and **2.5× its entire
+metatheory**. Nothing about a faithful encoding justifies that; proving
+confluence is deep, transcribing a grammar is not.
+
+★ And the ratio is per-rule, not an artefact of scale:
+
+| | |
+|---|---|
+| kernel rules encoded | **89** |
+| hand-elaborated premise slots they become | **2 592** |
+| ⇒ | **~29 definitions per rule** |
+
+### 8.2 One rule, both ways
+
+The kernel:
+
+```agda
+β : (t : RTm (Γ ∙)) (u : RTm Γ) → app (lam t) u ⟶ subTm (single u) t
+```
+
+The Knot, for the *same* rule — seven contexts, six codes, then the chain:
+
+```agda
+Α0 = ◇ ▹ εwkTy IRed        ;  kΑ0 = ⌜Nat⌝
+Α1 = Α0 ▹ El kΑ0           ;  kΑ1 = ⌜IMu⌝ KnotD IPair (pair sTm (nsuc (var vz)))
+…
+kΑ4 = ⌜Id⌝ (⌜IMu⌝ KnotD IPair (pair sTm (fst (var (vs (vs (vs (vs vz))))))))
+        (fst (snd (var (vs (vs (vs (vs vz)))))))
+        (jsub … (symN …) (Tm-appK (Tm-lamK (var (vs (vs vz)))) (var (vs vz))))
+rdβ = iκ kΑ0 (iκ kΑ1 (iκ kΑ2 (iκ kΑ3 (iκ kΑ4 (iκ kΑ5 iι)))))
+```
+
+⇒ **three things Agda supplies in that one line that the object level
+does not:**
+
+1. **A named, scoped telescope.** `(t : …) (u : …) →` versus a positional
+   `iκ` chain in which every reference to an earlier premise is a
+   hand-counted `vs` tower.
+2. **Binders that carry their own scope.** `RTm (Γ ∙)` — Agda *knows*
+   `t` is under a binder. The Knot writes `nsuc (var vz)` into the index
+   and counts `vs` by hand at every use.
+3. **Definitional index alignment.** The kernel's conclusion is two terms
+   and a relation. The Knot's needs `⌜Id⌝` + `jsub` + `symN` to force
+   the index to line up.
+
+### 8.3 ⛔ THE ACTUAL DEFECT: we are running a second elaborator, untyped
+
+`tools/gen-knot.py` does not merely print rows. It contains:
+
+| generator function | what it actually is |
+|---|---|
+| `translate_rule` | **a parser** for Agda telescopes |
+| `infer_sorts` | **type inference** |
+| `infer_depths` | **scope checking** |
+
+★★★ **Agda already computed all three, exactly, when it type-checked
+`Spec/Typing.agda`.** The generator throws that result away, re-reads the
+*source text* with regexes, and reconstructs it approximately — in an
+untyped language, outside the proof. `infer_depths`' own comment records
+the accuracy of its first attempt: **"crude 31/43, structural 43/43"** —
+i.e. twelve of forty-three rules were silently given the wrong de Bruijn
+depth, and the fix was a better heuristic, not a type.
+
+⇒ **THIS is what is terribly wrong, and it is not a performance
+problem.** The Knot is large because every rule is written twice — once
+in Agda, once in a Python-reconstructed object-level encoding — and the
+second writing has no type system.
+
+⚠ It is also where the remaining faithfulness bugs come from. `occK` and
+`imethTyK` were both *wrong encodings that type-checked*, which is
+exactly the failure mode of an untyped elaborator: the `ICon` accepts any
+in-scope variable of the right sort, so a mis-counted depth is invisible.
+cf. `typechecking-cannot-see-an-encoding`.
+
+### 8.4 ★★★ The Knot we would have written
+
+Write each rule **once**, polymorphic in the term algebra, and
+**interpret it twice**:
+
+```agda
+rdβ : Rule
+rdβ = rule λ {T} (A : TmAlg T) Γ (t : T (Γ ∙)) (u : T Γ) →
+        app A (lam A t) u ⟶ sub A (single A u) t
+```
+
+- interpret at `T = RTm` ⇒ **the kernel's own rule**
+- interpret at `T = Code` ⇒ **the `ICon`**, computed
+- **adequacy = "the two interpretations agree", proved ONCE about the
+  former** — not once per row, per property.
+
+Three abstractions, and what each deletes:
+
+| | abstraction | deletes |
+|---|---|---|
+| **A** | `Rule` = an algebra-polymorphic telescope, not a syntax tree | writing every rule twice; `infer_sorts` (the algebra's type *is* the sort); `infer_depths` (Agda's binder structure *is* the depth) |
+| **B** | `⟦_⟧ : Rule → ICon (ε ∙)`, a **total Agda function** | the **2 592** `Αᵢ`/`kΑᵢ` slots — computed, not emitted; and `RedWfA`+`RedWfB`'s **7 271 lines**, since wf is proved once about `⟦_⟧` |
+| **C** | adequacy stated about the **former** | the 53-row × N-property **cross product** — each row becomes an instance of one lemma |
+
+★★ **C is the silver bullet, and it is the WF axis's move again.** The
+WF axis won by making the obligation a *conversion*. Here the same move
+is: make the obligation a *statement about the combinator* instead of a
+statement about 53 rows. `Lib`'s generic lemmas already work this way;
+the Knot's rows do not, and that is the whole 20 000 lines of `*Rows`.
+
+### 8.5 What is missing in the KERNEL to reach that state
+
+⇒ **honest answer: very little, and that is the good news.**
+
+- `ICon` is **already a telescope** (`iκ`-chain). A is a library type.
+- `RTm Γ` is **already intrinsically scoped**, so B's depth arithmetic is
+  Agda's, not ours. B is a library function.
+- The Knot is **already half-staged**: `Map.enTm : RTm Γ → RTm Γ'` is a
+  quoter, and `K i = IMu KnotD IPair i` is the type of code, indexed by
+  (sort, depth).
+
+⬜ The one genuine kernel question is **C's index alignment** — whether
+`⟦ r ⟧`'s adequacy can be stated without `jsub`/`symN` fording. That is
+§7's forward-mode point, and it is the only part of §8 that might need a
+rule to change.
+
+⚠⚠ **AND THE OBVIOUS OVER-REACH IS ALREADY REFUTED.** Do **not** propose
+typed code `Code Γ A`: a type-accumulating datatype index is the measured
+**40×** (`datatype-index-accumulating-codes`), and it is the reason the
+Knot is sort-indexed rather than type-indexed in the first place. §8 does
+**not** ask for it — the object-level index is untouched, still
+`Σ' Nat Nat`. What moves into Agda is the **elaborator**, where the
+index is Agda's own typing and costs the object level nothing.
+
+### 8.6 ⚠ Status, and the honest prior art
+
+This question was **already asked, 2026-09-06** — *"why isn't
+`gen-knot.py` written in Agda?"* — and written up in `FUTURE.md`
+§"Once: A TYPED METALANGUAGE FOR ITS OWN GENERATORS". §8 is not a new
+idea. What is new here is the **measurement** (13×, 2 592 slots for 89
+rules, ~29 definitions per rule) and the identification that
+`infer_sorts`/`infer_depths` are **re-implementing elaboration Agda had
+already done correctly**, which is what makes it a defect rather than a
+preference.
+
+⇒ **the cheap first step is on record and unchanged**: a checked schema
+for the generator's own tables (`KNOT`, `FIELD_DEPTH`, `_PRE_D`,
+`_WRAP_LEDGER`) kills three of the five recorded bug classes and costs
+the object level nothing. Do that before anything in 8.4.
