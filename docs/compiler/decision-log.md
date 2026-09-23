@@ -14922,3 +14922,158 @@ a missing program fact.
 
 **Relates**: D213 (the refutation that opened 0.91), D214, D215, D216, D217,
 D218, plan 0.93 (S4/S5's live home).
+
+## D224 — THE PURE EVALUATOR IS REFUTED, AND `Para`/`Hylo`/`Fuse` GO WITH IT (2026-09-23)
+
+**Relates**: D054/D113 (`⟦ Void ⟧`), D060 (one denotational meaning), D062
+(`para`/`fuse` are derived), D072/D179/D180 (the `T` monad), D214 (`ValidityDef`
+measured dead), plan 0.68 step 5 (class G), plan 0.79 §1 (where the laws live),
+plan 0.64 Group O (the optimizer chain), plan 0.98.
+
+### The refutation
+
+    eval : ∀ {A B} → IR A B → ⟦ A ⟧ᴵ → ⟦ B ⟧ᴵ
+
+is not merely awkward once `Halts : B ≡ Void` (plan 0.98). It is **FALSE**.
+`⌊ Void ⌋ = Void` (IRTy.agda:120) and `⟦ Void ⟧ = ⊥` (Semantics/Value.agda:126),
+so `eval fmt (SigOp si)` at a halting `si` must produce `⊥` from an inhabited
+domain. No total function of that type exists.
+
+It typechecked for a year only because `Halts` carried `B ≡ Unit` and the clause
+returned `tt` — **the pure model's own statement that `exit` returns**. That is
+the same falsehood plan 0.98 exists to remove, one layer down from where 0.97
+found it.
+
+### Why DELETE rather than repair — and the plans decide it, not effort
+
+Repairing means `eval` lands in `Res`. That forces
+`Val.⟦ A ⇒ B ⟧ = ⟦A⟧ → Res ⟦B⟧` (Semantics/Value.agda:133-135), because
+`eval (curry f) x = λ y → eval f (sem-pair x y)`. And `⟦_⟧ᴰ` **already** has
+`T`-valued exponentials. So repair builds a second, strictly poorer Kleisli
+model beside the one that exists — it entrenches the duplication D060 named and
+0.98 exists to remove.
+
+Two plans settle where the consumers go, and the second is decisive:
+
+  * **plan 0.79 §1** splits the laws into two families and assigns each a
+    semantics — source-level over the spec's own denotation, IR-level over
+    **`evalᴰ`**, "the trace semantics, the ONE model". It says of the module in
+    question: "`Category.Laws` is neither: IR-level, but over the disowned
+    `eval`."
+  * **plan 0.64 Group O** is where they get wired, and the apex obligation is
+
+        opt-trace : … → ∀ n → exec arch (string-to-bytes arch asm) n
+                            ≡ ⟦ just ir ⟧IR … n
+
+    `⟦_⟧IR` is the TRACE meaning. So optimizer correctness must be a trace
+    statement, and **laws stated over `eval` could never discharge it, however
+    well repaired.**
+
+Plan 0.93 §8 lists `evalᴰ` and the `T` monad under "Survives untouched". Nothing
+that should exist wants `eval`.
+
+### What went with it, and why it is the same decision
+
+`appNatTr-F`'s only non-structural leaf is
+
+    appNatTr-F fmt (ntK ir) a = eval fmt ir a          -- Eval.agda:81
+
+on an ARBITRARY IR morphism — and `NatTr`'s own header calls that leaf "a pure
+constant map", an intent no type enforces. `NatTr` exists only to be carried by
+`Hylo`/`Fuse`. So the cluster is one decision: `Para`, `Hylo`, `Fuse`, `NatTr`,
+`appNatTr-F`, `eval`.
+
+D062 already pointed here — "`para`/`fuse` are derived, not primitive, so the
+IR's five-scheme zoo collapses toward `cata`/`ana`/`hylo`", and "deforestation
+stays an optimization: `fuse` is re-added to the IR only as a refinement proven
+equal to `hylo`". **This goes one step further than D062 by dropping `hylo`
+too**, and the reason is representational rather than schematic: `hylo` is the
+constructor that CARRIES the `NatTr`. Nothing is lost in expressiveness —
+a `NatTr`-shaped coalgebra is exactly D062's auto-derivable `hyloS`, and
+`Cata`/`Ana` express the same fold and unfold. What is lost is the FUSED LOOP,
+which D062 already classifies as an optimization rather than a scheme.
+
+### The accounting: 23 constructors -> 20, and the recursion layer became SYMMETRIC
+
+    12  CCC generators (D001)  id ∘ ⟨,⟩ fst snd inl inr case terminal initial curry apply
+     6  structured recursion   In out-μ Cata | in-ν Out Ana
+     1  const                  a global element 1 → A
+     1  SigOp                  the inclusion of the signature Σ (D047)
+
+The six are 3 + 3 — introduction, Lambek inverse, and scheme, once per side:
+
+    μ :  In     out-μ   Cata
+    ν :  in-ν   Out     Ana
+
+Before this entry the layer was NINE and asymmetric: μ carried a fourth (`Para`)
+that ν had no dual for, and `Hylo`/`Fuse` straddled the two without belonging to
+either. The symmetry is not decoration — it is what "μ and ν are dual" looks
+like when the derived schemes stop being primitive.
+
+### SIX POSTULATES GO, and one of them is plan 0.68's own option
+
+    IRObsCorrect/Simple    obs-correct-Para, obs-correct-Hylo, obs-correct-Fuse
+    Denotation/DenotPrefix evalᴰ-good-Para, evalᴰ-good-Hylo, evalᴰ-good-Fuse
+
+The first three are plan 0.68's CLASS G, whose comment states the fork exactly:
+"the emitter is missing … each compiles to `[]`, so the obligation is REFUTABLE
+whenever the denotation emits an event. NOT a proof task: implement the codegen,
+**restrict the IR so they cannot be built**, or condition the obligation to
+exclude them (Plan 0.68 step 5, and it needs a decision-log entry either way)."
+
+This is that entry, and it takes the second option for the three of the five
+that are derived schemes. `in-ν` remains in class G and is a real codegen gap.
+
+### What the deletion DISSOLVED rather than cost
+
+Of ~38 modules importing `Once.CCC.Eval`, **nine** used a name from it, and only
+two names — `⟦_⟧` (a re-export of `Semantics.Machine`) and `eval`. The rest were
+dead imports, the `feedback_verify_consumers_not_importers` shape. Then:
+
+  * `ClosureWellFormed` and `IRObsCorrect/Interface` each DEFINED an `eval`
+    alias and never used it;
+  * `DenotPrefix` imported `eval` and never used it;
+  * the only real consumer was `ValidityDef` — which **D214 had already measured
+    dead**: "re-exported by `IRObsCorrect/Prelude` and instantiated by NOTHING.
+    Dead by the consumers-not-importers test. Separate cleanup." This is that
+    cleanup, forced rather than chosen. `Validity.agda` 433 -> 78 lines, keeping
+    `ReadLocEq`, the part four modules actually take from it.
+  * `CCC/IR/Totality` and `CCC/IR/Productivity` (green islands) proved
+    `eval-total` — that the deleted function is total. Deleted with it.
+
+The machine is untouched, as plan 0.98 §4 predicted. `semM`'s `Res` is eliminated
+once, at `SMCore.res-sv`, where a stopped result takes the same
+`unit-storedvalue` sentinel the unreadable-input row already takes: writing the
+Output register is an ABI fact, not a semantic claim.
+
+### The honest cost
+
+Four modules stated over `eval` go red at their USE sites — `Category/Laws`,
+`Optimize/Correct`, `Optimizer/Normal`, `Fusion/Correct`. All four were ALREADY
+red (plan 0.64 Group O, M2 rot since plan 0.52), so nothing measurable
+regressed; their `⟦_⟧` now comes from `Semantics.Machine` and the red lands at
+each use, which is the work-list Group O needs. Restating them over `evalᴰ` is
+Group O's job and is what plan 0.79 §2 already owes an answer for.
+
+Deforestation has no IR constructor until someone re-adds `fuse` as a proven
+refinement (D062's own terms).
+
+### METHOD NOTE — deleting BY LINE is unsafe, and the audit is what saved it
+
+The sweep was wrong twice, both times structurally:
+
+  * **One line, several names.** `IRHead`'s constructor list puts nine tags on a
+    single line, so removing that line took `h-In`, `h-out-μ`, `h-Cata`,
+    `h-Out`, `h-in-ν` and `h-Ana` — all LIVE — with it.
+  * **One-line head, multi-line body.** `≟IRH-diag (Para …)` has a one-line
+    clause head and a six-line `with` body. Deleting the head left the body
+    orphaned; it surfaced only as a `ParseError` several edits later.
+
+Both were caught by the same check, and it is cheap: **diff every removed line
+that does NOT mention a deleted name.** Everything legitimate in that list is a
+continuation of a deleted block; anything else is collateral. A second scan —
+for a `with`/`...` block that follows a blank line — finds orphaned bodies.
+
+Substring-anchored region cuts also failed repeatedly on this tree's mixed
+spacing (`walk (Hylo w₁ w₂ f g)  =`). Multi-line regions were done by explicit
+LINE RANGE instead, computed from a grep and applied high-to-low.
