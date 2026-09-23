@@ -715,3 +715,82 @@ preference.
 for the generator's own tables (`KNOT`, `FIELD_DEPTH`, `_PRE_D`,
 `_WRAP_LEDGER`) kills three of the five recorded bug classes and costs
 the object level nothing. Do that before anything in 8.4.
+
+---
+
+## 9. ★★★ MEASURED — THE KERNEL NEEDS NOTHING. `infer_depths` IS FOUR LINES.
+
+§8 argued the Knot's size comes from an untyped elaborator. The obvious
+next question — *what must we ADD TO THE KERNEL, and can we test it?* —
+is now answered by spike, not by argument.
+
+`tmp/TelProbe.agda`, `tmp/TelPin.agda`, and three negative controls.
+
+### 9.1 The whole of `infer_depths`
+
+`Cx` is a unary natural and `Var Γ` is `Fin (len Γ)`, so a de Bruijn
+**index** is a computable function of a **position**:
+
+```agda
+_+∙_ : Cx → ℕ → Cx
+Γ +∙ zero  = Γ
+Γ +∙ suc n = (Γ +∙ n) ∙
+
+vsⁿ : ∀ {Γ} (k : ℕ) → Var Γ → Var (Γ +∙ k)
+vsⁿ zero    x = x
+vsⁿ (suc k) x = vs (vsⁿ k x)
+```
+
+★ **That is `gen-knot.py`'s `infer_depths` — the function whose first
+version was wrong for 12 of 43 rules — in four lines, total, and
+type-correct by construction.**
+
+### 9.2 The results, with their controls
+
+| test | result |
+|---|---|
+| `vsⁿ k vz ≡ vs^k vz` at k = 0, 1, 3, 5 | **refl** ✅ |
+| a whole 4-premise telescope, positional ≡ hand-counted | **refl** ✅ |
+| ⛔ control: wrong tower depth | **rc=42** ✅ `vs (vsⁿ 0 vz) != vz` |
+| ⛔ control: mis-positioned premise, `Γ` **inferred** | caught **only** by comparing to the hand-written row ⚠ |
+| pinned telescope ≡ hand-counted row | **refl** ✅ |
+| ⛔⛔ control: mis-positioned premise, `Γ` **pinned**, nothing to compare against | **rc=42** ✅✅ `ε != ε ∙ of type Cx` |
+
+### 9.3 ⚠ The finding that matters most — and it nearly went the other way
+
+The first telescope used an **inferred** `Γ`. A mis-positioned reference
+*type-checked*, because the implicit silently absorbed the depth
+difference; the error appeared only because the spike had a hand-written
+row to compare against.
+
+⚠⚠ **In the real Knot there is no hand-written row to compare against —
+the generated row is the only artefact.** So an inferred-`Γ` elaborator
+would have reproduced the exact defect class of `occK` and `imethTyK`:
+**a wrong encoding that type-checks**, invisible because an `ICon`
+accepts any in-scope variable of the right sort
+(`typechecking-cannot-see-an-encoding`).
+
+★★★ **Pinning `Γ` fixes it.** With `ambP : (Γ : Cx) (k : ℕ) → …`
+explicit, a mis-positioned premise is a **standalone type error** —
+`ε != ε ∙ of type Cx` — with nothing to compare against. This is
+`pin-implicits-on-defined-set-types` again, and here it is the
+difference between an elaborator that closes the bug class and one that
+merely relocates it.
+
+### 9.4 ⇒ The answers
+
+| question | answer |
+|---|---|
+| Is the **Knot definition** wrong? | **No.** `KnotD`, 53 rows, `IPair = Σ' Nat Nat` is right — and the 40× says do not index it further. The **construction path** is wrong. |
+| What do we **add to the kernel**? | **Nothing.** Measured. `ICon` is already a scoped telescope, `RTm Γ` already intrinsically scoped, `Cx` already a unary natural. |
+| Does it make the **kernel** interface stronger? | ⛔ Not applicable — the kernel is untouched. |
+| Does it make the **library** interface stronger? | **Yes, and measurably**: with `Γ` pinned, a class of encoding error that `IConWf` cannot see becomes a type error. |
+| Keep `gen-knot.py`? | Its **elaboration** role should move to Agda. Its **tables** and the ledger/trust machinery should stay — they hold real knowledge and are not the foot-gun. |
+
+⚠ **SCOPE, stated honestly.** This spike closes the *depth* half of
+`infer_depths`. It does **not** yet cover `infer_sorts`, the fording
+premises (`⌜Id⌝`/`jsub`/`symN`), or `translate_rule`'s parse — and
+migrating 2 592 existing slots is a large job that this does not
+estimate. What is established is the thing that was actually in doubt:
+**the kernel does not block it, and the library version is strictly
+safer than the Python one.**
