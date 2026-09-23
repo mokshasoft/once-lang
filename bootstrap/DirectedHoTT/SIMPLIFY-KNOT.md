@@ -56,7 +56,7 @@ NAME you must know and becomes **DATA you can compute** — which is what
 makes it automatic rather than merely shorter.
 ⬜ Not yet done. Measure the scorecard's *vocabulary* row before/after.
 
-## 2. ★★ ADEQUACY AS AN EQUATION, NOT A CHAIN — gate staged
+## 2. ⛔ ADEQUACY AS AN EQUATION — **GATE RUN, AND IT FAILED**
 
 Adequacy is stated **84 times as `⟶*`, 0 times as `≡`**. A chain to a
 SPECIFIC term must be built position by position, which is *why* the
@@ -70,13 +70,39 @@ agree : nf (szsTm i ⌈ t ⌉) ≡ nf (num (sz t))   -- proposed
 
 ★ Under an equation, normalising MORE is harmless — both sides are
 normalised. Over-reduction stops being a bug.
-⬜ `tmp/GateEq.agda` is staged, with an `evF` that deliberately
-over-reduces (β-family + ι-rule + congruence everywhere).
-⚠ **Expected failure mode**: `⌈ t ⌉` is abstract, so `nf` sticks on
-subterms and the IH must still be threaded. ⇒ if that breaks
-structurality, recurse on `sz t` with the **WF axis** making the order
-COMPUTE — and `sz` already exists as an object program with its adequacy
-proved. The fallback is in hand before the gate runs.
+⛔⛔ **RUN 2026-09-23 (`tmp/GateEq.agda`), and it does NOT work.** With a
+deliberately over-reducing `evF` (β-family + ι-rule + congruence
+everywhere), `gate-var` fails: `refl` cannot close, and the residue shows
+the evaluator **stuck** at `evF1 i .Σ.fst` — `i`, the index, is abstract.
+
+★ **The cause is FUNDAMENTAL, not a catch-all artefact**, and
+`tmp/StuckWhy.agda` separates the two:
+
+| | |
+|---|---|
+| structure concrete, argument abstract — `evProj 1 (fst (pair (var x) unit))` | **rc=0**, reduces ✅ |
+| bare abstract term — `evProj 1 t` | **rc=42**, `evProj1 t .Σ.fst != t` ⛔ |
+
+⇒ an evaluator is a **structural recursion**; it cannot reduce a term
+whose HEAD is abstract. Writing 30 exhaustive clauses instead of a
+catch-all would not help — a bound variable of type `RTm Γ` matches **no
+constructor pattern**. And adequacy quantifies over `i` and `t`, so an
+abstract head is always present, even per-row where `t` is a constructor:
+`i` alone blocks it.
+
+★★★ **AND THAT IS WHY THE CHAIN SHAPE EXISTS.** A chain `lhs ⟶* rhs`
+never has to normalise the abstract parts — it only names the positions
+where reduction happens and leaves everything else alone. **The chain is
+the correct representation for reduction under abstraction**, not an
+accident of how the Knot was written.
+
+⇒ **This redirects effort to item 1, which was the better move anyway**:
+the one-hole congruence lifts a chain *through* a context and is
+completely indifferent to whether the context is abstract. It needs no
+normalisation, so nothing can stick.
+
+⚠ The **WF-axis fallback is moot** — it was insurance against the IH
+thread losing structurality, and the gate never got that far.
 
 ## 3. ✅ THE EVALUATOR — landed, and its ceiling is known
 
