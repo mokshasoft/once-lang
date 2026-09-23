@@ -29,6 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Bool using (Bool; true; false)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
+open import Data.Product using (Σ; _,_; Σ-syntax)
 
 data Res (X : Set) : Set where
   stopped : Res X            -- the program ended; there is NO result
@@ -40,6 +41,20 @@ data Res (X : Set) : Set where
 is-stopped : ∀ {X} → Res X → Bool
 is-stopped stopped     = true
 is-stopped (returns _) = false
+
+-- | INVERTING THE FLAG (plan 0.98).
+--
+--   A lemma whose subject is the TRACE does not care what the value was, only
+--   whether there was one — so the boolean premise is the right statement for
+--   it, and over-specifying it with a value parameter would say less about
+--   more. But its PROOF has to reduce `bindRes`, and that needs the
+--   constructor. These two are the bridge, and they are proofs: the flag and
+--   the result carry exactly the same information about stopping.
+res-returns : ∀ {X} {r : Res X} → is-stopped r ≡ false → Σ[ v ∈ X ] r ≡ returns v
+res-returns {r = returns v} _ = v , refl
+
+res-stopped : ∀ {X} {r : Res X} → is-stopped r ≡ true → r ≡ stopped
+res-stopped {r = stopped} _ = refl
 
 -- | Map over the result of a computation that returns.
 mapRes : ∀ {X Y} → (X → Y) → Res X → Res Y

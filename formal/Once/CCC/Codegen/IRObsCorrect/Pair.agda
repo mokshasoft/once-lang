@@ -39,6 +39,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
+open import Once.Res using (Res; stopped; returns; is-stopped; res-returns; res-stopped)
 
 module PairC {FS : FrameSemantics} where
 
@@ -1739,41 +1740,55 @@ module PairC {FS : FrameSemantics} where
     dEvG : List SigOpEvent
     dEvG = projTrace (evalᴰ g x) kg
 
-    -- THE INNER BIND, NAMED. `⟨ f , g ⟩` is a bind of a bind, and plan 0.97
-    -- made the outer one's concatenation depend on whether `f` stopped — so
-    -- the middle term can no longer be left implicit. Naming it lets the
-    -- split be stated for BOTH outcomes with the same `join-es`.
-    innerT : TM.T ⟦ B IRTy.* C ⟧
-    innerT = evalᴰ g x TM.>>=T λ c → TM.returnT (TM.valueT (evalᴰ f x) k , c)
+    -- THE INNER BIND, NAMED — and now TAKING `f`'s VALUE (plan 0.98).
+    --
+    -- `⟨ f , g ⟩` is a bind of a bind, and 0.97 made the outer one's
+    -- concatenation depend on whether `f` stopped, so the middle term could no
+    -- longer be left implicit. 0.97 wrote its payload as
+    -- `TM.valueT (evalᴰ f x) k` — a value fetched out of a total field even on
+    -- the branch where there was none. After 0.98 there is no such field: the
+    -- payload is a PARAMETER, supplied by the constructor that says `f`
+    -- returned. The trace does not depend on it, which is the point — the
+    -- lemmas below stay stated about the trace alone.
+    innerT : ⟦ B ⟧ → TM.T ⟦ B IRTy.* C ⟧
+    innerT vb = evalᴰ g x TM.>>=T λ c → TM.returnT (vb , c)
 
-    dEvI : List SigOpEvent
-    dEvI = projTrace innerT kg
+    -- The two binds as functions OF THE RESULT being bound, so that `cong` on
+    -- an equation naming the constructor reduces them.
+    innerOf : ⟦ B ⟧ → Res ⟦ C ⟧ → TM.T ⟦ B IRTy.* C ⟧
+    innerOf vb r = TM.bindRes (TM.T.trT (evalᴰ g x)) r (λ c → TM.returnT (vb , c))
 
-    -- The inner bind's own trace is `g`'s: `returnT` emits nothing, whether
-    -- or not `g` stopped (`join-es _ dEvG []`).
-    inner-eq : ∀ (sg : TM.Stopped) → TM.stoppedT (evalᴰ g x) kg ≡ sg → dEvI ≡ dEvG
-    inner-eq false q = trans (cong (λ z → TM.join-es z dEvG []) q) (++-identityʳ dEvG)
-    inner-eq true  q = cong (λ z → TM.join-es z dEvG []) q
+    pairOf : Res ⟦ B ⟧ → TM.T ⟦ B IRTy.* C ⟧
+    pairOf r = TM.bindRes (TM.T.trT (evalᴰ f x)) r innerT
 
-    dEvI≡dEvG : dEvI ≡ dEvG
-    dEvI≡dEvG = inner-eq (TM.stoppedT (evalᴰ g x) kg) refl
+    -- The inner bind's own trace is `g`'s: `returnT` emits nothing, and when
+    -- `g` stopped the `returnT` was never built at all.
+    inner-eq : ∀ vb (r : Res ⟦ C ⟧) → TM.T.resT (evalᴰ g x) ≡ r
+             → projTrace (innerT vb) kg ≡ dEvG
+    inner-eq vb stopped      q = cong (λ z → projTrace (innerOf vb z) kg) q
+    inner-eq vb (returns vc) q =
+      trans (cong (λ z → projTrace (innerOf vb z) kg) q) (++-identityʳ dEvG)
+
+    dEvI≡dEvG : ∀ vb → projTrace (innerT vb) kg ≡ dEvG
+    dEvI≡dEvG vb = inner-eq vb (TM.T.resT (evalᴰ g x)) refl
 
     -- THE DENOTATIONAL SPLIT. `_>>=T_` concatenates and threads, so the outer
-    -- bind is `dEvF ++ …` — UNLESS `f` stopped, in which case it is `dEvF`
-    -- and `g` never ran at all. One equation, both outcomes.
-    denot-split-of : ∀ (sf : TM.Stopped) → TM.stoppedT (evalᴰ f x) k ≡ sf
-                   → projTrace (evalᴰ ⟨ f , g ⟩ x) k ≡ TM.join-es sf dEvF dEvG
-    denot-split-of sf q = trans (cong (λ z → TM.join-es z dEvF dEvI) q)
-                                (cong (TM.join-es sf dEvF) dEvI≡dEvG)
-
+    -- bind is `dEvF ++ …` — UNLESS `f` stopped, in which case it is `dEvF` and
+    -- `g` never ran at all.
+    --
+    -- The PREMISE stays boolean. These are statements about the TRACE, and the
+    -- trace does not depend on `f`'s value; `res-returns` names the value only
+    -- inside the proof, where `bindRes` has to be reduced.
     denot-split : TM.stoppedT (evalᴰ f x) k ≡ false
                 → projTrace (evalᴰ ⟨ f , g ⟩ x) k ≡ dEvF ++ dEvG
-    denot-split = denot-split-of false
+    denot-split qf =
+      trans (cong (λ z → projTrace (pairOf z) k) (proj₂ (res-returns qf)))
+            (cong (dEvF ++_) (dEvI≡dEvG (proj₁ (res-returns qf))))
 
     -- …and the stopped one: `f`'s events ARE the pair's.
     denot-split-stopped : TM.stoppedT (evalᴰ f x) k ≡ true
                         → projTrace (evalᴰ ⟨ f , g ⟩ x) k ≡ dEvF
-    denot-split-stopped = denot-split-of true
+    denot-split-stopped qf = cong (λ z → projTrace (pairOf z) k) (res-stopped qf)
 
     -- D203's key fact: truncating `f`'s prefix does not change what is left.
     budget-eq : k ∸ length (take k dEvF) ≡ kg
