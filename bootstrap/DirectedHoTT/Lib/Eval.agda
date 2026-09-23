@@ -72,6 +72,34 @@ ev1 (snd t) = let (t' , p) = ev1 t in snd t' , ⟶*-snd p
 ev1 t = t , done
 
 ------------------------------------------------------------------------
+-- ★★★ SPINE-ONLY REDUCTION — fire β along the APPLICATION SPINE, and
+--   NEVER descend into an argument.
+--
+-- ⚠⚠ MEASURED, and this is why it exists.  `evN` is a PARALLEL pass: it
+--   also reduces inside arguments.  Feeding `evN 3` to the three-β
+--   prologue closed `SzAgree` (29/29) and `PwAgree` and `StkAAgree`,
+--   but BROKE `StkCAgree` and `PwBodyAgree` — `enTm y0 != …`,
+--   `enVar y0 != …`.  Those rows' continuations expect the payload in
+--   its UN-normalised form, and a parallel pass had already reduced it.
+--   ⇒ OVER-REDUCTION IS A REAL FAILURE MODE, not a theoretical one.
+--
+-- ★ `evSpine` reduces exactly the head applications the ι-rule leaves
+--   behind (`ifields` = three curried `app`s, §7) and touches nothing
+--   else, so it cannot over-reduce an argument.
+------------------------------------------------------------------------
+
+evSpine1 : {Γ : Cx} (t : RTm Γ) → Red t
+evSpine1 (app (lam t) u) = subTm (single u) t , step (β t u) done
+evSpine1 (app f a)       = let (f' , p) = evSpine1 f in app f' a , ⟶*-appˡ p
+evSpine1 t               = t , done
+
+evSpine : {Γ : Cx} → ℕ → (t : RTm Γ) → Red t
+evSpine zero    t = t , done
+evSpine (suc n) t = let (u , p) = evSpine1 t
+                        (v , q) = evSpine n u
+                    in v , ⟶*-trans p q
+
+------------------------------------------------------------------------
 -- FUEL.  ⚠ Not a compromise: it COMPUTES, which is the entire point.
 --   `snorm` (Fundamental:2008) says the bound exists -- PLAN-NF Phase 2.
 ------------------------------------------------------------------------
@@ -90,6 +118,10 @@ evN (suc n) t = let (u , p) = ev1 t
 
 val : {Γ : Cx} {t : RTm Γ} → Red t → RTm Γ
 val (u , _) = u
+
+-- ★ the chain, for feeding straight into an existing `⟶*` obligation.
+chainOf : {Γ : Cx} {t : RTm Γ} (r : Red t) → t ⟶* val r
+chainOf (_ , p) = p
 
 -- `fst (pair (app (lam (var vz)) unit) unit)`
 --   --βfst-->  app (lam (var vz)) unit

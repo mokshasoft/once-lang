@@ -49,6 +49,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong; trans )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-appˡ; ⟶*-fst; ⟶*-snd; ⟶*-ielimᵗ )
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
+open import DirectedHoTT.Lib.Eval using ( evSpine; chainOf )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.BoolNum using ( b2n; b2n-∨ )
 open import DirectedHoTT.Lib.NatMaxNum using ( maxℕ; maxℕ-assoc )
@@ -105,9 +106,7 @@ agree-ty x base i =
                  (inCD (cdTake 51 KnotD) tagTy-base tt))
     i
     (pair (idrefl ⌜Nat⌝ sTy) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-base) {ihs = unit}
     (aih-κ aih-ι)
 agree-ty x U i =
@@ -116,9 +115,7 @@ agree-ty x U i =
                  (inCD (cdTake 51 KnotD) tagTy-U tt))
     i
     (pair (idrefl ⌜Nat⌝ sTy) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-U) {ihs = unit}
     (aih-κ aih-ι)
 agree-ty x (Π y0 y1) i =
@@ -128,9 +125,7 @@ agree-ty x (Π y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTy-Pi tt))
     i
     (pair (enTy y0) (pair (enTy y1) (pair (idrefl ⌜Nat⌝ sTy) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Pi)
     (aih-ρ (b2n (occTy x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -146,9 +141,7 @@ agree-ty x (Σ' y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTy-Sg tt))
     i
     (pair (enTy y0) (pair (enTy y1) (pair (idrefl ⌜Nat⌝ sTy) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Sg)
     (aih-ρ (b2n (occTy x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -163,9 +156,7 @@ agree-ty x (El y0) i =
                  (inCD (cdTake 51 KnotD) tagTy-El tt))
     i
     (pair (enTm y0) (pair (idrefl ⌜Nat⌝ sTy) unit))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-El)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -180,9 +171,7 @@ agree-ty x (Hom y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTy-Hom tt))
     i
     (pair (enTy y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTy) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Hom)
     (aih-ρ (b2n (occTy x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -200,9 +189,7 @@ agree-ty x Unit i =
                  (inCD (cdTake 51 KnotD) tagTy-Unit tt))
     i
     (pair (idrefl ⌜Nat⌝ sTy) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Unit) {ihs = unit}
     (aih-κ aih-ι)
 agree-ty x Nat i =
@@ -211,9 +198,7 @@ agree-ty x Nat i =
                  (inCD (cdTake 51 KnotD) tagTy-Nat tt))
     i
     (pair (idrefl ⌜Nat⌝ sTy) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Nat) {ihs = unit}
     (aih-κ aih-ι)
 agree-ty x (Id y0 y1 y2) i =
@@ -225,9 +210,7 @@ agree-ty x (Id y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTy-Id tt))
     i
     (pair (enTy y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTy) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Id)
     (aih-ρ (b2n (occTy x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -245,9 +228,7 @@ agree-ty x (Mu y0) i =
                  (inCD (cdTake 51 KnotD) tagTy-Mu tt))
     i
     (pair (enDesc y0) (pair (idrefl ⌜Nat⌝ sTy) unit))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-Mu)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
@@ -259,9 +240,7 @@ agree-ty x (IMu y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTy-IMu tt))
     i
     (pair (enIDesc y0) (pair (enTy y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTy) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTy-IMu)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
@@ -277,9 +256,7 @@ agree-tm x (var y0) i =
                  (inCD (cdTake 51 KnotD) tagTm-var tt))
     i
     (pair (enVar y0) (pair (idrefl ⌜Nat⌝ sTm) unit))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-var)
     (aih-ρ (b2n (eqv x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -292,9 +269,7 @@ agree-tm x (lam y0) i =
                  (inCD (cdTake 51 KnotD) tagTm-lam tt))
     i
     (pair (enTm y0) (pair (idrefl ⌜Nat⌝ sTm) unit))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-lam)
     (aih-ρ (b2n (occTm (vs x) y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -307,9 +282,7 @@ agree-tm x (app y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTm-app tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-app)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -325,9 +298,7 @@ agree-tm x (pair y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTm-pair tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-pair)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -343,9 +314,7 @@ agree-tm x (absurd y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTm-absurd tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-absurd)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -370,9 +339,7 @@ agree-tm x (ordtr y0 y1 y2 y3 y4) i =
                  (inCD (cdTake 51 KnotD) tagTm-ordtr tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (enTm y2) (pair (enTm y3) (pair (enTm y4) (pair (idrefl ⌜Nat⌝ sTm) unit))))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-ordtr)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -396,9 +363,7 @@ agree-tm x (fst y0) i =
                  (inCD (cdTake 51 KnotD) tagTm-fst tt))
     i
     (pair (enTm y0) (pair (idrefl ⌜Nat⌝ sTm) unit))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-fst)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -410,9 +375,7 @@ agree-tm x (snd y0) i =
                  (inCD (cdTake 51 KnotD) tagTm-snd tt))
     i
     (pair (enTm y0) (pair (idrefl ⌜Nat⌝ sTm) unit))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-snd)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -424,9 +387,7 @@ agree-tm x ⌜base⌝ i =
                  (inCD (cdTake 51 KnotD) tagTm-cbase tt))
     i
     (pair (idrefl ⌜Nat⌝ sTm) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cbase) {ihs = unit}
     (aih-κ aih-ι)
 agree-tm x (⌜Π⌝ y0 y1) i =
@@ -436,9 +397,7 @@ agree-tm x (⌜Π⌝ y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTm-cPi tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cPi)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -454,9 +413,7 @@ agree-tm x (⌜Σ⌝ y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTm-cSg tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cSg)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -474,9 +431,7 @@ agree-tm x (⌜Hom⌝ y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTm-cHom tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTm) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cHom)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -495,9 +450,7 @@ agree-tm x (hrefl y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTm-hrefl tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-hrefl)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -515,9 +468,7 @@ agree-tm x (tr y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTm-tr tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTm) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-tr)
     (aih-ρ (b2n (occTm (vs x) y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -538,9 +489,7 @@ agree-tm x (ap y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTm-ap tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTm) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-ap)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -561,9 +510,7 @@ agree-tm x (⌜Id⌝ y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTm-cId tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTm) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cId)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -582,9 +529,7 @@ agree-tm x (idrefl y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTm-idrefl tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-idrefl)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -602,9 +547,7 @@ agree-tm x (jsub y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTm-jsub tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTm) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-jsub)
     (aih-ρ (b2n (occTm (vs x) y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -622,9 +565,7 @@ agree-tm x unit i =
                  (inCD (cdTake 51 KnotD) tagTm-unit tt))
     i
     (pair (idrefl ⌜Nat⌝ sTm) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-unit) {ihs = unit}
     (aih-κ aih-ι)
 agree-tm x nzero i =
@@ -633,9 +574,7 @@ agree-tm x nzero i =
                  (inCD (cdTake 51 KnotD) tagTm-nzero tt))
     i
     (pair (idrefl ⌜Nat⌝ sTm) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-nzero) {ihs = unit}
     (aih-κ aih-ι)
 agree-tm x (nsuc y0) i =
@@ -644,9 +583,7 @@ agree-tm x (nsuc y0) i =
                  (inCD (cdTake 51 KnotD) tagTm-nsuc tt))
     i
     (pair (enTm y0) (pair (idrefl ⌜Nat⌝ sTm) unit))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-nsuc)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -661,9 +598,7 @@ agree-tm x (natrec y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTm-natrec tt))
     i
     (pair (enTm y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTm) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-natrec)
     (aih-ρ (b2n (occTm x y0))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -681,9 +616,7 @@ agree-tm x (con y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTm-con tt))
     i
     (pair (num y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-con)
     (aih-κ (aih-ρ (b2n (occTm x y1))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -696,9 +629,7 @@ agree-tm x (elim y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTm-elim tt))
     i
     (pair (enDesc y0) (pair (enTm y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTm) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-elim)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
@@ -716,9 +647,7 @@ agree-tm x (icon y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagTm-icon tt))
     i
     (pair (num y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-icon)
     (aih-κ (aih-ρ (b2n (occTm x y1))
        (⟶*-appˡ (step (βfst _ _) done »
@@ -733,9 +662,7 @@ agree-tm x (ielim y0 y1 y2 y3) i =
                  (inCD (cdTake 51 KnotD) tagTm-ielim tt))
     i
     (pair (enIDesc y0) (pair (enTm y1) (pair (enTm y2) (pair (enTm y3) (pair (idrefl ⌜Nat⌝ sTm) unit)))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-ielim)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
@@ -756,9 +683,7 @@ agree-tm x ⌜Nat⌝ i =
                  (inCD (cdTake 51 KnotD) tagTm-cNat tt))
     i
     (pair (idrefl ⌜Nat⌝ sTm) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cNat) {ihs = unit}
     (aih-κ aih-ι)
 agree-tm x (⌜Mu⌝ y0) i =
@@ -767,9 +692,7 @@ agree-tm x (⌜Mu⌝ y0) i =
                  (inCD (cdTake 51 KnotD) tagTm-cMu tt))
     i
     (pair (enDesc y0) (pair (idrefl ⌜Nat⌝ sTm) unit))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cMu)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
@@ -781,9 +704,7 @@ agree-tm x (⌜IMu⌝ y0 y1 y2) i =
                  (inCD (cdTake 51 KnotD) tagTm-cIMu tt))
     i
     (pair (enIDesc y0) (pair (enTy y1) (pair (enTm y2) (pair (idrefl ⌜Nat⌝ sTm) unit))))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cIMu)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
@@ -799,9 +720,7 @@ agree-tm x ⌜Unit⌝ i =
                  (inCD (cdTake 51 KnotD) tagTm-cUnit tt))
     i
     (pair (idrefl ⌜Nat⌝ sTm) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-cUnit) {ihs = unit}
     (aih-κ aih-ι)
 zero-desc x dnil i =
@@ -810,9 +729,7 @@ zero-desc x dnil i =
                  (inCD (cdTake 51 KnotD) tagDesc-nil tt))
     i
     (pair (idrefl ⌜Nat⌝ sDesc) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagDesc-nil) {ihs = unit}
     (aih-κ aih-ι)
 zero-desc x (c ◃ d) i =
@@ -821,9 +738,7 @@ zero-desc x (c ◃ d) i =
                  (inCD (cdTake 51 KnotD) tagDesc-cons tt))
     i
     (pair (enDCon c) (pair (enDesc d) (pair (idrefl ⌜Nat⌝ sDesc) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagDesc-cons)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
@@ -838,9 +753,7 @@ zero-dcon x dι i =
                  (inCD (cdTake 51 KnotD) tagDCon-i tt))
     i
     (pair (idrefl ⌜Nat⌝ sDCon) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagDCon-i) {ihs = unit}
     (aih-κ aih-ι)
 zero-dcon x (dρ y0) i =
@@ -849,9 +762,7 @@ zero-dcon x (dρ y0) i =
                  (inCD (cdTake 51 KnotD) tagDCon-rho tt))
     i
     (pair (enDCon y0) (pair (idrefl ⌜Nat⌝ sDCon) unit))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagDCon-rho)
     (aih-ρ zero
        (⟶*-appˡ (step (βfst _ _) done »
@@ -863,9 +774,7 @@ zero-dcon x (dκ y0 y1) i =
                  (inCD (cdTake 51 KnotD) tagDCon-kap tt))
     i
     (pair (enTy y0) (pair (enDCon y1) (pair (idrefl ⌜Nat⌝ sDCon) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagDCon-kap)
     (aih-ρ zero ok
        (aih-ρ zero
@@ -878,9 +787,7 @@ zero-idesc x inil i =
                  (inCD (cdTake 51 KnotD) tagIDesc-nil tt))
     i
     (pair (idrefl ⌜Nat⌝ sIDesc) unit)
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagIDesc-nil) {ihs = unit}
     (aih-κ aih-ι)
 zero-idesc x (c ◂ e) i =
@@ -889,9 +796,7 @@ zero-idesc x (c ◂ e) i =
                  (inCD (cdTake 51 KnotD) tagIDesc-cons tt))
     i
     (pair (enICon c) (pair (enIDesc e) (pair (idrefl ⌜Nat⌝ sIDesc) unit)))
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)) »
+    (chainOf (evSpine 3 _))) »
   occSum-red true (num (lvl x)) (ilookupD KnotD tagIDesc-cons)
     (aih-ρ zero ok
        (aih-ρ zero
@@ -925,9 +830,7 @@ agree-var {Γ ∙} k vz i =
                    (pair (idrefl ⌜Nat⌝ sVar)
                          (pair (idrefl ⌜Nat⌝ (nsuc (num (len Γ)))) unit)))
              sel-vz
-             (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-              ⟶*-appˡ (step (β _ _) done) »
-              step (β _ _) done))
+             (chainOf (evSpine 3 _)))
   » step (β _ _) done
   -- ⚠ `fst p` has passed THREE binders, so it is not literally
   --   `num (len Γ)` — it only REDUCES there.  `eqNat-red` takes the
@@ -948,9 +851,7 @@ agree-var {Γ ∙} k (vs y) i =
                          (pair (idrefl ⌜Nat⌝ sVar)
                                (pair (idrefl ⌜Nat⌝ (nsuc (num (len Γ)))) unit))))
              sel-vs
-             (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-              ⟶*-appˡ (step (β _ _) done) »
-              step (β _ _) done))
+             (chainOf (evSpine 3 _)))
   » occSum-red true (num k) (ilookupD KnotD tagVar-vs)
       (aih-κ (aih-ρ (b2n (eqℕ k (lvl y)))
                 (⟶*-appˡ (step (βfst _ _) done »
