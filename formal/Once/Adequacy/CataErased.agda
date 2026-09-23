@@ -20,6 +20,7 @@
 -- `CataRel`/`CataBridge`, to keep the transport proof clear of `⟦_⟧`-mixfix soup.
 ------------------------------------------------------------------------
 
+open import Once.Res using (mapRes)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -51,7 +52,7 @@ open import Once.Float.Dyadic using (Dyadic)
 open import Once.Type using (Type; Functor; ⟦_⟧T; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
   IsBaseType; base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
-open import Once.Denotation.DenotTrace using (forget; liftFn; stops-D; cohᴰ; inject; emit-D; emit-Dᵇ; seqF)
+open import Once.Denotation.DenotTrace using (forget; liftFn; cohᴰ; inject; emit-D; emit-Dᵇ; seqF)
 open import Once.SigOp.Info using (SigOpInfo; semM)
 open import Once.Semantics.Machine using (coerce-base-to-full)
 open import Once.Functor.Translate using (⟦_,_⟧-base)
@@ -436,8 +437,7 @@ forget-coh (base-Sum {A} {B} ibA ibB) (inj₂ b)
 liftFn-SigOp : ∀ {A B : Type} (info : SigOpInfo A B) (bA : IsBaseType A)
   → liftFn fmt {A} {B} (IR.SigOp info)
     ≡ (λ arg → mkT (λ n → emit-Dᵇ info (forget arg) n)
-                   (stops-D info)
-                   (inject (semM info fmt (forget arg))))
+                   (mapRes inject (semM info fmt (forget arg))))
 liftFn-SigOp {A} {B} info bA = extensionality λ arg →
   T-ext (λ n → trans (subst-T-projTrace (cohᴰ B)
                         (evalᴰ fmt (IR.SigOp info) (subst (λ z → z) (sym (cohᴰ A)) arg)) n)
