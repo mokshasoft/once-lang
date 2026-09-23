@@ -794,3 +794,107 @@ migrating 2 592 existing slots is a large job that this does not
 estimate. What is established is the thing that was actually in doubt:
 **the kernel does not block it, and the library version is strictly
 safer than the Python one.**
+
+---
+
+## 10. ★★★ WHY THE KNOT PROOFS ARE NOT `refl` — THE KERNEL HAS NO EVALUATOR
+
+⚠ **First, a retraction.** §9.4 said a kernel change "costs trust". That
+is backwards and it is struck. **The trust in this kernel is the MT
+proofs, and they close over whatever kernel we choose.** This POC's
+output is a design (`principledness-over-edit-cost`); a kernel former is
+a legitimate thing to add, and "we would have to redo the metatheory" is
+not an argument against a better formulation.
+
+### 10.1 The question
+
+The Knot encodes **syntax and rules only** — it contains none of the
+metatheory. Encoding data should be data. So why is any of it a proof at
+all, let alone 52 428 lines?
+
+### 10.2 The mechanism, measured
+
+```agda
+data _⟶_  : {Γ : Cx} → RTm Γ → RTm Γ → Set where   -- Spec/Typing:238
+data _⟶*_ : {Γ : Cx} → RTm Γ → RTm Γ → Set where   -- Spec/Typing:571
+```
+
+★★★ **Reduction is a RELATION, and there is no evaluator anywhere in the
+20 583-line metatheory.** So an adequacy statement is not an equation —
+it is a *reduction chain*:
+
+```agda
+agree : szsTm i ⌈ t ⌉  ⟶*  num (sz t)        -- Knot/SzAgree:5
+```
+
+| across `Examples/Knot/` | |
+|---|---|
+| adequacy stated as `⟶*` (a chain) | **94** |
+| adequacy stated as `≡` (an equation) | **3** |
+| **hand-constructed reduction steps** | **14 702** |
+| `refl` proofs | 209 |
+
+⇒ **Agda *performs* computation; the kernel makes you *witness* it.**
+`sz t` is an Agda function — it runs, and you write `refl`. `szsTm` is an
+object-level term — it does not run, it *reduces*, and every step must
+be built: one `ι-ielim`, then three `β`s because `ifields` is three
+curried `app`s (§7), then the substitution towers, then a congruence for
+every subterm.
+
+★ **That is the entire Knot proof burden, and it is exactly the burden
+Agda does not have** — not because Agda is more powerful, but because
+Agda's conversion checker *runs* its functions and this kernel has
+nothing that runs.
+
+### 10.3 ⇒ What is missing in the KERNEL compared to Agda
+
+**An evaluator.** Agda's definitional equality is implemented by a
+normalizer; this kernel has an inductive reduction relation and no
+normal-form function.
+
+```agda
+nf       : RTm Γ → RTm Γ                      -- ← Agda RUNS this
+nf-sound : (t : RTm Γ) → t ⟶* nf t
+```
+
+With it, an adequacy row is:
+
+```agda
+_ : nf (szsTm i ⌈ t ⌉) ≡ num (sz t)
+_ = refl                                       -- because `nf` COMPUTES
+```
+
+⇒ **that is how the Knot proofs become `refl`.**
+
+✅ **The ingredients are already in the tree**: `LogicalRelation` (7 007
+lines) and `Canonicity` (2 081) are the SN/canonicity machinery `nf`'s
+totality needs; `Confluence` (3 726) gives `t ⟶* u → nf t ≡ nf u`.
+Nothing new must be *proved from scratch* — what is missing is the
+**function**.
+
+### 10.4 ⇒ What is missing in the LIBRARIES compared to Agda
+
+**The deriving layer.** The ledger is **103 hand-written object-level
+programs** — `renTmK`, `subTmAtK`, `occK`, `szTm`, `singleK`, `pwK`,
+`flatK`, … — each with its own adequacy proof. In Agda these are one
+function each, written once, over an inductive family.
+
+★★ **And this is where Once should BEAT Agda, not trail it.** Agda's
+`data` is a closed front-end feature — you cannot compute with it, which
+is why generic programming in Agda needs reflection. Once's `IDesc` is
+**first-class data**: `derive-sub : (D : IDesc) → …` is expressible, and
+would give substitution for *every* description at once. The advantage
+is real and **entirely unrealised** — `enDeriv` is on the plan and
+absent, and 103 hand-written programs are what its absence costs.
+
+### 10.5 ⚠ What `nf` would NOT fix — stated honestly
+
+Adequacy is quantified over **all** `t`, so `⌈ t ⌉` is abstract and `nf`
+gets **stuck** on it. **`nf` does not remove the 53-row induction** —
+that is genuine mathematical content and it stays. What it removes is
+the **14 702 step constructions inside the cases**. The induction
+remains; the chain-building vanishes.
+
+⬜ And extracting a *computing* `nf` from a logical-relations SN proof is
+real work — the proof gives termination, not a program. That is the one
+genuine cost, and it is a metatheory task, not a kernel redesign.
