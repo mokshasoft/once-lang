@@ -27,6 +27,8 @@ module Once.Res where
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Bool using (Bool; true; false)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
 
 data Res (X : Set) : Set where
   stopped : Res X            -- the program ended; there is NO result
@@ -43,6 +45,20 @@ is-stopped (returns _) = false
 mapRes : ∀ {X Y} → (X → Y) → Res X → Res Y
 mapRes f stopped     = stopped
 mapRes f (returns x) = returns (f x)
+
+-- | Lift a relation on values to one on results. Two results are related
+--   when they stop together, or both return related values. This is what a
+--   bisimulation over possibly-finite codata compares layer by layer — the
+--   `Res` analogue of the trace-carrying layer relation D201 gave `∼ᵈ`.
+--
+--   Enumerated rather than defined by a `with`: a proof that has only an
+--   abstract `Res` must be able to case-split, and a mixed pair must be
+--   REFUTABLE rather than merely unprovable.
+Res-rel : ∀ {X Y} → (X → Y → Set) → Res X → Res Y → Set
+Res-rel R stopped     stopped     = ⊤
+Res-rel R stopped     (returns _) = ⊥
+Res-rel R (returns _) stopped     = ⊥
+Res-rel R (returns x) (returns y) = R x y
 
 -- | `stopped` and `returns` are distinct — the discrimination every
 --   "a stopped run has no result" argument spends.

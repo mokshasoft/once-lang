@@ -23,6 +23,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Function using (_∘_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
+open import Once.Res using (Res; stopped; returns; mapRes; Res-rel)
 
 ------------------------------------------------------------------------
 -- Semantic Functor (Set-level)
@@ -109,10 +110,20 @@ outS F ⟨ x ⟩ = x
 
 -- | Greatest fixed point (coinductive)
 --
+-- plan 0.98: the layer is a `Res`, so `νS` is the final coalgebra of
+-- `Res ∘ ⟦ F ⟧SF` — a POSSIBLY-FINITE stream rather than an infinite one.
+--
+-- WHY. `forget : ⟦A⟧ᴰ → Val.⟦A⟧` erases the monadic domain to this one, and
+-- it must erase exactly ONE thing: the TRACE. Partiality is not a trace fact
+-- — "does this unfold produce another layer?" is a fact about the VALUE — so
+-- if `νᵈ` can stop (an `Ana` whose coalgebra reaches a halting SigOp) and
+-- `νS` cannot, then no total erasure between them exists. Making the two
+-- domains differ by the trace ALONE is what makes `forget` total by
+-- construction instead of by a premise nobody can supply.
 record νS (F : SFunctor) : Set where
   coinductive
   field
-    unfoldS : ⟦ F ⟧SF (νS F)
+    unfoldS : Res (⟦ F ⟧SF (νS F))
 
 open νS public
 
@@ -144,11 +155,20 @@ mutual
 -- mutual `sfmapAna` (the coinductive dual of `cataS`'s `sfmapCata`), so Agda
 -- sees the guard. No `TERMINATING` assertion: productivity is verified.
 mutual
-  anaS : ∀ {F} {A : Set} → (A → ⟦ F ⟧SF A) → A → νS F
-  unfoldS (anaS {F} coalg a) = sfmapAna F coalg (coalg a)
+  anaS : ∀ {F} {A : Set} → (A → Res (⟦ F ⟧SF A)) → A → νS F
+  unfoldS (anaS {F} coalg a) = anaLayerS F coalg (coalg a)
+
+  -- The layer map is NAMED and applied directly rather than handed to
+  -- `mapRes`: a partial application passed to a higher-order function is
+  -- opaque to the termination checker, which then cannot see the corecursive
+  -- call sitting under a constructor.
+  anaLayerS : ∀ {F : SFunctor} (H : SFunctor) {A : Set}
+            → (A → Res (⟦ F ⟧SF A)) → Res (⟦ H ⟧SF A) → Res (⟦ H ⟧SF (νS F))
+  anaLayerS H coalg stopped     = stopped
+  anaLayerS H coalg (returns x) = returns (sfmapAna H coalg x)
 
   sfmapAna : ∀ {F : SFunctor} (H : SFunctor) {A : Set}
-           → (A → ⟦ F ⟧SF A) → ⟦ H ⟧SF A → ⟦ H ⟧SF (νS F)
+           → (A → Res (⟦ F ⟧SF A)) → ⟦ H ⟧SF A → ⟦ H ⟧SF (νS F)
   sfmapAna (SK B)     coalg x        = x
   sfmapAna SId        coalg a        = anaS coalg a
   sfmapAna (H₁ S⊕ H₂) coalg (inj₁ x) = inj₁ (sfmapAna H₁ coalg x)
@@ -228,7 +248,7 @@ mutual
 -- `F` (the target) is EXPLICIT: it appears only under the non-injective
 -- `⟦ F ⟧SF` in `coalg`, so it can't be inferred.
 sfmapAna-is-sfmap : ∀ (F : SFunctor) (H : SFunctor) {A : Set}
-                    (coalg : A → ⟦ F ⟧SF A) (x : ⟦ H ⟧SF A)
+                    (coalg : A → Res (⟦ F ⟧SF A)) (x : ⟦ H ⟧SF A)
                   → sfmapAna {F} H coalg x ≡ sfmap H (anaS coalg) x
 sfmapAna-is-sfmap F (SK B)     coalg x        = refl
 sfmapAna-is-sfmap F SId        coalg a        = refl
@@ -239,9 +259,11 @@ sfmapAna-is-sfmap F (H₁ S⊗ H₂) coalg (x , y)  =
 
 -- | ana-unfold (computation). No longer refl: `unfoldS (anaS …)` reduces via
 -- `sfmapAna`, bridged to `sfmap` by `sfmapAna-is-sfmap`.
-anaS-unfold : ∀ (F : SFunctor) {A : Set} (coalg : A → ⟦ F ⟧SF A) (a : A)
-            → unfoldS (anaS {F} coalg a) ≡ sfmap F (anaS coalg) (coalg a)
-anaS-unfold F coalg a = sfmapAna-is-sfmap F F coalg (coalg a)
+anaS-unfold : ∀ (F : SFunctor) {A : Set} (coalg : A → Res (⟦ F ⟧SF A)) (a : A)
+            → unfoldS (anaS {F} coalg a) ≡ mapRes (sfmap F (anaS coalg)) (coalg a)
+anaS-unfold F coalg a with coalg a
+... | stopped     = refl
+... | returns x   = cong returns (sfmapAna-is-sfmap F F coalg x)
 
 ------------------------------------------------------------------------
 -- Paramorphism

@@ -42,16 +42,16 @@ open import Once.IR
          initial; curry; apply; SigOp; Cata; In; Out; Ana; in-ν;
          out-μ; const)
 open import Once.IRTy
-  using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; _+_;
-         fits-int; fits-float)
-open import Once.Float.Decimal using (round)
+  using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; _+_; IRFunctor; WellFormedFI;
+         fits-int; fits-float; FitsInRegI; ⟦_,_⟧-baseI)
+open import Once.Float.Decimal using (round; Decimal)
+open import Data.Integer using (ℤ)
 import Once.Word as OnceWord
 -- plan 0.98: `eval` is NO LONGER IMPORTED. The Spec's meaning is `evalᴰ`, and
 -- after the enumeration above nothing in it routes through the pure model.
--- `appNatTr-F` is the one remaining tie, and only at `Hylo`/`Fuse`: its `ntK`
--- leaf is `eval fmt ir a` on an arbitrary IR morphism (Eval.agda:81). Since no
--- surface program produces `Hylo`/`Fuse`, the pure model reaches the apex cone
--- through surface-unreachable syntax only.
+-- D224 deleted `eval` outright (it is REFUTED: `IR A Void` is inhabited while
+-- `⟦ Void ⟧ = ⊥`), together with `Para`/`Hylo`/`Fuse`, so there is no tie left
+-- to cut.
 import Once.Semantics.Machine as Val
 -- Plan 0.73 (D113): the TARGET'S FLOAT FORMAT. `⟦_⟧ᴰ` is a MACHINE-level
 -- denotation, and D113 makes a float literal's machine value target-relative,
@@ -128,6 +128,18 @@ open import Once.Denotation.ValueDomain public
 ------------------------------------------------------------------------
 
 evalᴰ        : (fmt : TargetNum) → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
+-- The two PURE leaves, named once. `In` and `out-μ` have no sub-IR, so their
+-- whole meaning is a Lambek coercion over `sem-In` / `sem-Out`; naming them
+-- here is what stops `DenotPrefix`'s `evalᴰ-good` restating the expression and
+-- drifting from it (it used to say `eval fmt (In wf) …`, and `eval` is gone).
+in-val    : ∀ (F : IRFunctor) → Val.⟦ ⌈ ⟦ F ⟧TI (μ-type F) ⌉ ⟧ → Val.⟦ ⌈ μ-type F ⌉ ⟧
+out-μ-val : ∀ (F : IRFunctor) → WellFormedFI F
+          → Val.⟦ ⌈ μ-type F ⌉ ⟧ → Val.⟦ ⌈ ⟦ F ⟧TI (μ-type F) ⌉ ⟧
+-- A literal's machine value, materialised at the TARGET's width/format (D115):
+-- the payload is source syntax, and this is the single point at which it
+-- becomes bits.
+const-val : (fmt : TargetNum) → ∀ {A} → FitsInRegI A
+          → ⟦ ℤ , Decimal ⟧-baseI A → Val.⟦ ⌈ A ⌉ ⟧
 -- The events algebra for the `Cata` fold: children's events (`events-F`)
 -- followed by this layer's algebra events (`evalᴰ fmt alg` on the rebuilt functor
 -- layer). Plan 0.58: value carried in the MONADIC domain `⟦C⟧ᴰ` (NOT forgotten
@@ -141,6 +153,14 @@ evalᴰ        : (fmt : TargetNum) → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ 
 -- concatenation is what made `length (at n) ≤ n` false for a `k`-layer fold.
 cata-ev-algᴰ : (fmt : TargetNum) → ∀ {F E C} → IR (E * ⟦ F ⟧TI C) C → ⟦ E ⟧ᴰᴵ
              → ⟦ ⌈ F ⌉F ⟧F (T ⟦ C ⟧ᴰᴵ) → T ⟦ C ⟧ᴰᴵ
+
+const-val fmt fits-int   v = OnceWord.Width.fromℤ (int-bits fmt) v
+const-val fmt fits-float v = round (float-format fmt) v
+
+in-val F x = sem-In ⌈ F ⌉F (coerce-functor ⌈ F ⌉F ⌈ μ-type F ⌉
+               (subst (λ T → Val.⟦ T ⟧) (⌈⟧TI-commute F (μ-type F)) x))
+out-μ-val F wf x = subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F)))
+                     (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F ⌉ (sem-Out (wf-⌈⌉ wf) x))
 
 evalᴰ fmt id            a        = returnT a
 evalᴰ fmt (g ∘ f)       a        = evalᴰ fmt f a >>=T evalᴰ fmt g
@@ -227,16 +247,9 @@ evalᴰ fmt (in-ν {F} wf) a =
 -- delegate, and `evalᴰ` stops routing any part of the Spec's meaning through
 -- the pure model. (`eval` cannot be a total `IR A B → ⟦A⟧ → ⟦B⟧` once
 -- `Halts : B ≡ Void`, because `⟦ Void ⟧ = ⊥`.)
-evalᴰ fmt (In {F} _) a =
-  mkT (λ _ → []) (returns (inject
-    (sem-In ⌈ F ⌉F (coerce-functor ⌈ F ⌉F ⌈ μ-type F ⌉
-      (subst (λ T → Val.⟦ T ⟧) (⌈⟧TI-commute F (μ-type F)) (forget a))))))
-evalᴰ fmt (out-μ {F} wf) a =
-  mkT (λ _ → []) (returns (inject
-    (subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F)))
-      (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F ⌉ (sem-Out (wf-⌈⌉ wf) (forget a))))))
-evalᴰ fmt (const fits-int   v) a = mkT (λ _ → []) (returns (inject (OnceWord.Width.fromℤ (int-bits fmt) v)))
-evalᴰ fmt (const fits-float v) a = mkT (λ _ → []) (returns (inject (round (float-format fmt) v)))
+evalᴰ fmt (In {F} _) a = mkT (λ _ → []) (returns (inject (in-val F (forget a))))
+evalᴰ fmt (out-μ {F} wf) a = mkT (λ _ → []) (returns (inject (out-μ-val F wf (forget a))))
+evalᴰ fmt (const {A} fits v) a = mkT (λ _ → []) (returns (inject (const-val fmt {A} fits v)))
 
 cata-ev-algᴰ fmt {F} {E} {C} alg env fc =
   seqF ⌈ F ⌉F fc >>=T λ layer →

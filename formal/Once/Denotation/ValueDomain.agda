@@ -62,8 +62,20 @@ open νᵈ public
 -- `forget` at an arrow runs the closure at depth `0` and drops its trace.
 -- This is the same thing, one layer at a time.
 mutual
+  -- plan 0.98: TOTAL at last. The old clause read `valueT (forceᵈ v) zero`,
+  -- claiming a layer for a ν whose coalgebra may never produce one — the same
+  -- unstatable premise `forget`'s arrow clause carried. With `νS` a
+  -- possibly-finite stream the erasure drops exactly the TRACE and nothing
+  -- else, and stopping carries straight across.
   forgetν : ∀ {F} → νᵈ F → νS F
-  unfoldS (forgetν {F} v) = mapForgetν F F (valueT (forceᵈ v) zero)
+  unfoldS (forgetν {F} v) = forgetLayer F F (T.resT (forceᵈ v))
+
+  -- Named and applied directly rather than via `mapRes`: a partial
+  -- application to a higher-order function hides the corecursive call from
+  -- the guardedness checker.
+  forgetLayer : ∀ (F H : SFunctor) → Res (⟦ H ⟧SF (νᵈ F)) → Res (⟦ H ⟧SF (νS F))
+  forgetLayer F H stopped     = stopped
+  forgetLayer F H (returns l) = returns (mapForgetν F H l)
 
   mapForgetν : ∀ (F H : SFunctor) → ⟦ H ⟧SF (νᵈ F) → ⟦ H ⟧SF (νS F)
   mapForgetν F (SK B)   x        = x
@@ -99,7 +111,11 @@ forceᵈ (in-νᵈ layer) = mkT (λ _ → []) (returns layer)
 -- the same thing: every layer emits nothing.
 mutual
   injectν : ∀ {F} → νS F → νᵈ F
-  forceᵈ (injectν {F} x) = mkT (λ _ → []) (returns (mapInjectν F F (unfoldS x)))
+  forceᵈ (injectν {F} x) = mkT (λ _ → []) (injectLayer F F (unfoldS x))
+
+  injectLayer : ∀ (F H : SFunctor) → Res (⟦ H ⟧SF (νS F)) → Res (⟦ H ⟧SF (νᵈ F))
+  injectLayer F H stopped     = stopped
+  injectLayer F H (returns l) = returns (mapInjectν F H l)
 
   mapInjectν : ∀ (F H : SFunctor) → ⟦ H ⟧SF (νS F) → ⟦ H ⟧SF (νᵈ F)
   mapInjectν F (SK B)   x        = x

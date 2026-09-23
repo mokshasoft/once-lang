@@ -596,8 +596,11 @@ coerce-ν-out = coerce-μ-out  -- Same structure
 -- OCP-0003: Defined via SPF's unfoldS with coercion.
 -- Requires a WellFormedF proof, which is what defines the coercion.
 --
-sem-CoOut : ∀ {F : Functor} → WellFormedF F → ⟦ν⟧ F → ⟦ F ⟧F (⟦ν⟧ F)
-sem-CoOut {F} wf x = coerce-ν-out wf (⟦ν⟧ F) (unfoldS x)
+-- plan 0.98: `Res`-valued — forcing a possibly-finite stream may find no
+-- layer. This is `Out`'s pure counterpart and it stops exactly where `Out`'s
+-- does.
+sem-CoOut : ∀ {F : Functor} → WellFormedF F → ⟦ν⟧ F → Res (⟦ F ⟧F (⟦ν⟧ F))
+sem-CoOut {F} wf x = mapRes (coerce-ν-out wf (⟦ν⟧ F)) (unfoldS x)
 
 -- | CoIn: F(νF) → νF (coalgebra)
 --
@@ -605,7 +608,7 @@ sem-CoOut {F} wf x = coerce-ν-out wf (⟦ν⟧ F) (unfoldS x)
 -- CoIn packages an F-layer observation as a ν-value.
 --
 sem-CoIn : ∀ (F : Functor) → ⟦ F ⟧F (⟦ν⟧ F) → ⟦ν⟧ F
-unfoldS (sem-CoIn F x) = coerce-ν-in F (⟦ν⟧ F) x
+unfoldS (sem-CoIn F x) = returns (coerce-ν-in F (⟦ν⟧ F) x)
 
 ------------------------------------------------------------------------
 -- ν-type Lambek Laws (OCP-0003)
@@ -623,8 +626,8 @@ unfoldS (sem-CoIn F x) = coerce-ν-in F (⟦ν⟧ F) x
 --                                    = x  (by round-trip)
 --
 sem-CoOut-CoIn : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ F ⟧F (⟦ν⟧ F))
-               → sem-CoOut wf (sem-CoIn F x) ≡ x
-sem-CoOut-CoIn {F} wf x = coerce-μ-round-trip wf (⟦ν⟧ F) x
+               → sem-CoOut wf (sem-CoIn F x) ≡ returns x
+sem-CoOut-CoIn {F} wf x = cong returns (coerce-μ-round-trip wf (⟦ν⟧ F) x)
 
 
 -- | Anamorphism: given coalgebra A → F(A), unfold A → νF
@@ -633,12 +636,20 @@ sem-CoOut-CoIn {F} wf x = coerce-μ-round-trip wf (⟦ν⟧ F) x
 -- `sfmapSemAna` places the corecursive `sem-ana` calls structurally at SId, so
 -- Agda sees the guard. Bridged to `sfmap` by `sfmapSemAna-is-sfmap`.
 mutual
-  sem-ana : ∀ (F : Functor) {A : Set} → (A → ⟦ F ⟧F A) → A → ⟦ν⟧ F
-  unfoldS (sem-ana F {A} coalg a) =
-    sfmapSemAna F (translateF IntRep FloatRep F) coalg (coerce-ν-in F A (coalg a))
+  sem-ana : ∀ (F : Functor) {A : Set} → (A → Res (⟦ F ⟧F A)) → A → ⟦ν⟧ F
+  unfoldS (sem-ana F {A} coalg a) = semAnaLayer F A coalg (coalg a)
+
+  -- Named and applied directly, not handed to `mapRes`: a partial application
+  -- to a higher-order function hides the corecursive call from the
+  -- guardedness checker.
+  semAnaLayer : ∀ (F : Functor) (A : Set) → (A → Res (⟦ F ⟧F A))
+              → Res (⟦ F ⟧F A) → Res (⟦ translateF IntRep FloatRep F ⟧SF (⟦ν⟧ F))
+  semAnaLayer F A coalg stopped     = stopped
+  semAnaLayer F A coalg (returns l) =
+    returns (sfmapSemAna F (translateF IntRep FloatRep F) coalg (coerce-ν-in F A l))
 
   sfmapSemAna : ∀ (F : Functor) (H : SFunctor) {A : Set}
-              → (A → ⟦ F ⟧F A) → ⟦ H ⟧SF A → ⟦ H ⟧SF (⟦ν⟧ F)
+              → (A → Res (⟦ F ⟧F A)) → ⟦ H ⟧SF A → ⟦ H ⟧SF (⟦ν⟧ F)
   sfmapSemAna F (SK B)     coalg x        = x
   sfmapSemAna F SId        coalg a        = sem-ana F coalg a
   sfmapSemAna F (H₁ S⊕ H₂) coalg (inj₁ x) = inj₁ (sfmapSemAna F H₁ coalg x)
@@ -649,7 +660,7 @@ mutual
 -- induction on the functor code, refl at the leaves. `F` explicit (non-injective
 -- `⟦ F ⟧F` in coalg).
 sfmapSemAna-is-sfmap : ∀ (F : Functor) (H : SFunctor) {A : Set}
-                       (coalg : A → ⟦ F ⟧F A) (x : ⟦ H ⟧SF A)
+                       (coalg : A → Res (⟦ F ⟧F A)) (x : ⟦ H ⟧SF A)
                      → sfmapSemAna F H coalg x ≡ sfmap H (sem-ana F coalg) x
 sfmapSemAna-is-sfmap F (SK B)     coalg x        = refl
 sfmapSemAna-is-sfmap F SId        coalg a        = refl

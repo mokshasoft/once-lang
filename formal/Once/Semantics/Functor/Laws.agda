@@ -17,6 +17,8 @@ open import Data.Empty using (⊥)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Unit using (⊤; tt)
+open import Once.Res using (Res; stopped; returns; Res-rel)
 
 open import Once.Semantics.Functor
 
@@ -43,7 +45,7 @@ open import Once.Semantics.Functor
 record _∼S_ {F : SFunctor} (x y : νS F) : Set where
   coinductive
   field
-    unfoldS-∼ : ⟦ F ⟧SF-rel (_∼S_ {F}) (unfoldS x) (unfoldS y)
+    unfoldS-∼ : Res-rel (⟦ F ⟧SF-rel (_∼S_ {F})) (unfoldS x) (unfoldS y)
 
 open _∼S_ public
 
@@ -87,7 +89,16 @@ sfmap-f-rel (F S⊗ G) hyp (x₁ , x₂) = sfmap-f-rel F hyp x₁ , sfmap-f-rel 
 -- at `SId`, so Agda sees the guard with no termination-pragma assertion.
 mutual
   anaS-unfoldS-bisim : ∀ {F : SFunctor} (x : νS F) → anaS {F} unfoldS x ∼S x
-  unfoldS-∼ (anaS-unfoldS-bisim {F} x) = sfmapAna-bisim F (unfoldS x)
+  unfoldS-∼ (anaS-unfoldS-bisim {F} x) = anaLayerS-bisim F (unfoldS x)
+
+  -- plan 0.98: the layer is a `Res`, so the bisimulation compares results —
+  -- they stop together, or both return related layers. Split here, in its own
+  -- clause, rather than under a `with`: the corecursive call must stay
+  -- syntactically under a constructor for guardedness.
+  anaLayerS-bisim : ∀ {F : SFunctor} (H : SFunctor) (r : Res (⟦ H ⟧SF (νS F)))
+                  → Res-rel (⟦ H ⟧SF-rel (_∼S_ {F})) (anaLayerS H unfoldS r) r
+  anaLayerS-bisim H stopped     = tt
+  anaLayerS-bisim H (returns v) = sfmapAna-bisim H v
 
   sfmapAna-bisim : ∀ {F : SFunctor} (H : SFunctor) (v : ⟦ H ⟧SF (νS F))
                  → ⟦ H ⟧SF-rel (_∼S_ {F}) (sfmapAna H unfoldS v) v

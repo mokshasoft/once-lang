@@ -48,7 +48,7 @@ open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
 open import Once.Target.Arch using (TargetNum)
-open import Once.Denotation.DenotTrace using (evalᴰ; ⟦_⟧ᴰᴵ)
+open import Once.Denotation.DenotTrace using (evalᴰ; ⟦_⟧ᴰᴵ; in-val; out-μ-val; const-val)
 open import Once.Denotation.TraceMonad using (_>>=T_; >>=T-pf)
 open Once.IR.IR
 
@@ -265,11 +265,11 @@ evalᴰ-good fmt (⟨_,_⟩ {A} {B} {C} f g) a ga =
     ihg : GoodT ⌈ C ⌉ (evalᴰ fmt g a)
     ihg = evalᴰ-good fmt g a ga
 
-evalᴰ-good fmt (In {F} wf) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ IT.μ-type F ⌉ (eval fmt (In wf) (forget a)))
-evalᴰ-good fmt (out-μ {F} wf) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ (eval fmt (out-μ wf) (forget a)))
+evalᴰ-good fmt (In {F} wf) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ IT.μ-type F ⌉ (in-val F (forget a)))
+evalᴰ-good fmt (out-μ {F} wf) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ (out-μ-val F wf (forget a)))
 evalᴰ-good fmt (Cata wf alg)       a ga = evalᴰ-good-Cata  fmt wf alg a ga
 evalᴰ-good fmt (Out wf)            a ga = evalᴰ-good-Out   fmt wf a ga
 evalᴰ-good fmt (in-ν wf)           a ga = evalᴰ-good-in-ν  fmt wf a ga
 evalᴰ-good fmt (Ana wf coalg)      a ga = evalᴰ-good-Ana   fmt wf coalg a ga
-evalᴰ-good fmt (const {A} fits v) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ A ⌉ (eval fmt (const fits v) (forget a)))
+evalᴰ-good fmt (const {A} fits v) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ A ⌉ (const-val fmt fits v))
 evalᴰ-good fmt (SigOp si)          a ga = evalᴰ-good-SigOp fmt si a ga
