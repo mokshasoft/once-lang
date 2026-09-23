@@ -188,7 +188,7 @@ inVs r = ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ r))
 --   at all 53 rows of step 3's `sub-agree`.  ⇒ build the projection
 --   helper THERE, where it pays 53 times, and come back for this law.
 --   `Knot/SzAgree` writes the chains out per row
---   (`⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done`),
+--   (`chainOf (evProj 2 _)`),
 --   which is exactly the thing to factor.
 ------------------------------------------------------------------------
 

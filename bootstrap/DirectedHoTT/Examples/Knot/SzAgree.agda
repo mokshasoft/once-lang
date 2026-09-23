@@ -164,7 +164,7 @@ agree i (app y0 y1) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (pair y0 y1) =
   head-red tagTm-pair memTm-pair i _
@@ -173,7 +173,7 @@ agree i (pair y0 y1) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (absurd y0 y1) =
   head-red tagTm-absurd memTm-absurd i _
@@ -182,7 +182,7 @@ agree i (absurd y0 y1) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (ordtr y0 y1 y2 y3 y4) =
   head-red tagTm-ordtr memTm-ordtr i _
@@ -191,13 +191,13 @@ agree i (ordtr y0 y1 y2 y3 y4) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-ρ (sz y2)
-     ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
+     ((chainOf (evProj 3 _)) » ⟶*-ielimᵗ (chainOf (evProj 3 _)) » agree _ y2)
      (aih-ρ (sz y3)
-     ((⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y3)
+     ((chainOf (evProj 4 _)) » ⟶*-ielimᵗ (chainOf (evProj 4 _)) » agree _ y3)
      (aih-ρ (sz y4)
-     ((⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y4)
+     ((chainOf (evProj 5 _)) » ⟶*-ielimᵗ (chainOf (evProj 5 _)) » agree _ y4)
      (aih-κ aih-ι))))))))
 agree i (fst y0) =
   head-red tagTm-fst memTm-fst i _
@@ -223,7 +223,7 @@ agree i (⌜Π⌝ y0 y1) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (⌜Σ⌝ y0 y1) =
   head-red tagTm-cSg memTm-cSg i _
@@ -232,7 +232,7 @@ agree i (⌜Σ⌝ y0 y1) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (⌜Hom⌝ y0 y1 y2) =
   head-red tagTm-cHom memTm-cHom i _
@@ -241,9 +241,9 @@ agree i (⌜Hom⌝ y0 y1 y2) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-ρ (sz y2)
-     ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
+     ((chainOf (evProj 3 _)) » ⟶*-ielimᵗ (chainOf (evProj 3 _)) » agree _ y2)
      (aih-κ aih-ι))))))
 agree i (hrefl y0 y1) =
   head-red tagTm-hrefl memTm-hrefl i _
@@ -252,7 +252,7 @@ agree i (hrefl y0 y1) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (tr y0 y1 y2) =
   head-red tagTm-tr memTm-tr i _
@@ -261,9 +261,9 @@ agree i (tr y0 y1 y2) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-ρ (sz y2)
-     ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
+     ((chainOf (evProj 3 _)) » ⟶*-ielimᵗ (chainOf (evProj 3 _)) » agree _ y2)
      (aih-κ aih-ι))))))
 agree i (ap y0 y1 y2) =
   head-red tagTm-ap memTm-ap i _
@@ -272,9 +272,9 @@ agree i (ap y0 y1 y2) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-ρ (sz y2)
-     ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
+     ((chainOf (evProj 3 _)) » ⟶*-ielimᵗ (chainOf (evProj 3 _)) » agree _ y2)
      (aih-κ aih-ι))))))
 agree i (⌜Id⌝ y0 y1 y2) =
   head-red tagTm-cId memTm-cId i _
@@ -283,9 +283,9 @@ agree i (⌜Id⌝ y0 y1 y2) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-ρ (sz y2)
-     ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
+     ((chainOf (evProj 3 _)) » ⟶*-ielimᵗ (chainOf (evProj 3 _)) » agree _ y2)
      (aih-κ aih-ι))))))
 agree i (idrefl y0 y1) =
   head-red tagTm-idrefl memTm-idrefl i _
@@ -294,7 +294,7 @@ agree i (idrefl y0 y1) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (jsub y0 y1 y2) =
   head-red tagTm-jsub memTm-jsub i _
@@ -303,9 +303,9 @@ agree i (jsub y0 y1 y2) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-ρ (sz y2)
-     ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
+     ((chainOf (evProj 3 _)) » ⟶*-ielimᵗ (chainOf (evProj 3 _)) » agree _ y2)
      (aih-κ aih-ι))))))
 agree i unit =
   head-red tagTm-unit memTm-unit i _
@@ -327,43 +327,43 @@ agree i (natrec y0 y1 y2) =
      (aih-ρ (sz y0)
      ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 1 _)) » agree _ y0)
      (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-ρ (sz y2)
-     ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
+     ((chainOf (evProj 3 _)) » ⟶*-ielimᵗ (chainOf (evProj 3 _)) » agree _ y2)
      (aih-κ aih-ι))))))
 agree i (con y0 y1) =
   head-red tagTm-con memTm-con i _
     (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-con) ok cTm-con
      (aih-κ (aih-ρ (sz y1)
-     ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (elim y0 y1 y2) =
   head-red tagTm-elim memTm-elim i _
     (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-elim) ok cTm-elim
      (aih-ρ 0 ok (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-ρ (sz y2)
-     ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
+     ((chainOf (evProj 3 _)) » ⟶*-ielimᵗ (chainOf (evProj 3 _)) » agree _ y2)
      (aih-κ aih-ι))))))
 agree i (icon y0 y1) =
   head-red tagTm-icon memTm-icon i _
     (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-icon) ok cTm-icon
      (aih-κ (aih-ρ (sz y1)
-     ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 1 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (ielim y0 y1 y2 y3) =
   head-red tagTm-ielim memTm-ielim i _
     (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-ielim) ok cTm-ielim
      (aih-ρ 0 ok (aih-ρ (sz y1)
-     ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) » agree _ y1)
+     ((chainOf (evProj 2 _)) » ⟶*-ielimᵗ (chainOf (evProj 2 _)) » agree _ y1)
      (aih-ρ (sz y2)
-     ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
+     ((chainOf (evProj 3 _)) » ⟶*-ielimᵗ (chainOf (evProj 3 _)) » agree _ y2)
      (aih-ρ (sz y3)
-     ((⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y3)
+     ((chainOf (evProj 4 _)) » ⟶*-ielimᵗ (chainOf (evProj 4 _)) » agree _ y3)
      (aih-κ aih-ι)))))))
 agree i ⌜Nat⌝ =
   head-red tagTm-cNat memTm-cNat i _
@@ -376,7 +376,7 @@ agree i (⌜IMu⌝ y0 y1 y2) =
     (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-cIMu) ok cTm-cIMu
      (aih-ρ 0 ok (aih-ρ 0 ok (aih-ρ (sz y2)
-     ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
+     ((chainOf (evProj 3 _)) » ⟶*-ielimᵗ (chainOf (evProj 3 _)) » agree _ y2)
      (aih-κ aih-ι))))))
 agree i ⌜Unit⌝ =
   head-red tagTm-cUnit memTm-cUnit i _

@@ -111,12 +111,12 @@ row-Pi {Γ} {Δ} h y0 y1 ih0 ih1 =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 2 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 2 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (⟶*-nsuc (step (βsnd _ _) done))))) »
      ih1 (extS-Represents _ h)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done)) »
+    (⟶*-jsubᵖ (⟶*-jsubᵖ (chainOf (evProj 3 _))) »
      ⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done) »
      step (jsub-refl _ _ _ _) done))))
 
@@ -139,12 +139,12 @@ row-Sg {Γ} {Δ} h y0 y1 ih0 ih1 =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 2 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 2 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (⟶*-nsuc (step (βsnd _ _) done))))) »
      ih1 (extS-Represents _ h)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done)) »
+    (⟶*-jsubᵖ (⟶*-jsubᵖ (chainOf (evProj 3 _))) »
      ⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done) »
      step (jsub-refl _ _ _ _) done))))
 
@@ -164,7 +164,7 @@ row-El {Γ} {Δ} h y0 ih0 =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
+    (⟶*-jsubᵖ (⟶*-jsubᵖ (chainOf (evProj 2 _))) »
      ⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done) »
      step (jsub-refl _ _ _ _) done)))
 
@@ -190,17 +190,17 @@ row-Hom {Γ} {Δ} h y0 y1 y2 ih0 ih1 ih2 =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 2 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 2 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih1 h))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 3 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 3 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih2 h)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)) »
+    (⟶*-jsubᵖ (⟶*-jsubᵖ (chainOf (evProj 4 _))) »
      ⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done) »
      step (jsub-refl _ _ _ _) done)))))
 
@@ -250,17 +250,17 @@ row-Id {Γ} {Δ} h y0 y1 y2 ih0 ih1 ih2 =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 2 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 2 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih1 h))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 3 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 3 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih2 h)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)) »
+    (⟶*-jsubᵖ (⟶*-jsubᵖ (chainOf (evProj 4 _))) »
      ⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done) »
      step (jsub-refl _ _ _ _) done)))))
 
@@ -277,7 +277,7 @@ row-Mu {Γ} {Δ} h y0 =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      sub-Desc-id _ _ _ y0)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
+    (⟶*-jsubᵖ (⟶*-jsubᵖ (chainOf (evProj 2 _))) »
      ⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done) »
      step (jsub-refl _ _ _ _) done)))
 
@@ -297,14 +297,14 @@ row-IMu {Γ} {Δ} h y0 y1 y2 ih0 =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      sub-IDesc-id _ _ _ y0)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
+    (chainOf (evProj 2 _)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 3 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 3 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ih0 h)))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done)) »
+    (⟶*-jsubᵖ (⟶*-jsubᵖ (chainOf (evProj 4 _))) »
      ⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done) »
      step (jsub-refl _ _ _ _) done)))))
 
