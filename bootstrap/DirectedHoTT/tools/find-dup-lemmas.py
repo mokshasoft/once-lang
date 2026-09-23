@@ -4,6 +4,10 @@
 
 Usage:  tools/find-dup-lemmas.py <name> [max-holes]     one query
         tools/find-dup-lemmas.py --families [min-size]  the whole tree
+        tools/find-dup-lemmas.py --liftings [min-size]  N instances of ONE
+                                                       substitutivity theorem
+        tools/find-dup-lemmas.py --could-simplify <name> [min-body]
+        tools/find-dup-lemmas.py --vs-lib | --same-name
 
 ⚠⚠ EXACT SAME-TYPE LOOKUP FINDS NOTHING HERE, and Agda already ships it
   (`C-c C-z` search-about; Mimer `C-c C-a` will even fill the hole).
@@ -180,6 +184,10 @@ if sys.argv[1:2] == ["--could-simplify"]:
     # THE SIGNAL: a proof that manipulates exactly the constants this
     # lemma is about, and never calls it.
     import collections as _c
+    # ⚠ a bare `--could-simplify` used to die with an IndexError
+    #   traceback; say what it wants instead.
+    if len(sys.argv) < 3:
+        sys.exit("usage: --could-simplify <lemma-name> [min-body-lines]")
     L = sys.argv[2]; MINB = int(sys.argv[3]) if len(sys.argv) > 3 else 3
     lem = [d for d in ALL if d[0] == L]
     if not lem: sys.exit("no declaration named %s" % L)
@@ -298,6 +306,110 @@ if sys.argv[1:2] == ["--vs-lib"]:
           % ("lines", "proof", "in", "library lemma", "shared rare tokens"))
     for nb, h, nm, mod, ln, lm, sh in hits[:30]:
         print("   %-5d %-24s %-30s %-20s %s" % (-nb, nm[:24], mod[:30], ln[:20], sh))
+    sys.exit(0)
+
+if sys.argv[1:2] == ["--liftings"]:
+    # ★★★ THE MODE THAT WOULD HAVE FOUND `subTm-monoˢ`.
+    #
+    # ⚠ `--families` CANNOT find this, and the reason is worth keeping:
+    #   it groups on SHARED RARE TOKENS, and a congruence family has
+    #   none — each member names a DIFFERENT constructor (`app`, `pair`,
+    #   `icon`).  The family is STRUCTURAL, not lexical.  It also
+    #   deprioritises same-module families, and all 138 of `RedCong`'s
+    #   congruences live in one module, so the single biggest
+    #   generalisation opportunity in the tree scored lowest.
+    #
+    # A LIFTING lemma has the shape
+    #     … → A rel B → … → C rel D        with C, D differing only
+    #                                       where A, B do
+    # i.e. "the relation lifts through a context".  N of them are N
+    # instances of ONE substitutivity theorem.
+    #
+    # ★ AND THE GENERAL ONE IS RECOGNISABLE: its premise is POINTWISE
+    #   (`∀ x → σ x ⟶* σ' x`) rather than bare (`t ⟶* t'`) — it lifts
+    #   through an ARBITRARY context instead of one constructor.
+    import collections
+    MIN = int(sys.argv[2]) if len(sys.argv) > 2 else 4
+    RELS = ("⟶*", "⟶", "≡", "≅")
+
+    def top_arrows(t):
+        "split on → at paren/brace depth 0"
+        out, d, cur = [], 0, ""
+        for ch in t:
+            if ch in "({": d += 1
+            elif ch in ")}": d -= 1
+            if ch == "→" and d == 0:
+                out.append(cur); cur = ""
+            else:
+                cur += ch
+        out.append(cur)
+        return [x.strip() for x in out]
+
+    def split_rel(seg):
+        for r in RELS:
+            i = seg.find(" %s " % r)
+            if i >= 0:
+                return seg[:i].strip(), r, seg[i + len(r) + 2:].strip()
+        return None
+
+    fam = collections.defaultdict(list)
+    for nm, ty, mod, _nb, _bt in ALL:
+        segs = top_arrows(ty)
+        if len(segs) < 2: continue
+        concl = split_rel(segs[-1])
+        if not concl: continue
+        C, rel, D = concl
+        if C == D: continue
+        hC, _ = holes(toks(C), toks(D))
+        if hC == 0 or hC > 2: continue          # C and D differ in ONE place
+        # a premise relating the same relation
+        prem = None
+        for seg in segs[:-1]:
+            pr = split_rel(seg)
+            if pr and pr[1] == rel: prem = (seg, pr); break
+        if prem is None: continue
+        seg, (A, _, B) = prem
+        # ⚠⚠ A POINTWISE PREMISE PARSES WRONG, and this is exactly the
+        #   case that matters.  `(∀ x → σ x ⟶* σ' x)` splits to
+        #   A = "(∀ x → σ x", which is not a substring of the conclusion,
+        #   so the GENERAL lemma — the only one worth finding — was the
+        #   one member the first version silently rejected.
+        #   ⇒ strip the binder and relate the HEAD symbols (`σ`, `σ'`).
+        generic = ("∀" in seg) or ("x →" in seg)
+        if generic:
+            inner = seg.strip().lstrip("(").rstrip(")")
+            j = inner.find("→")
+            pr2 = split_rel(inner[j + 1:] if j >= 0 else inner)
+            if not pr2: continue
+            A, B = pr2[0].split()[0], pr2[2].split()[0]
+        if A not in C or B not in D: continue    # the hole IS the premise
+        fam[rel].append((generic, nm, mod, ty))
+
+    print("== LIFTING FAMILIES — N lemmas lifting ONE relation through a context ==")
+    print("   ⚠ NOT duplicates.  These are N INSTANCES OF ONE substitutivity")
+    print("     theorem.  If a general member exists, every other member is a")
+    print("     call to it — which is the relation that actually shrinks a")
+    print("     codebase, and the one `--vs-lib`/`--families` cannot see.")
+    for rel, ms in sorted(fam.items(), key=lambda kv: -len(kv[1])):
+        if len(ms) < MIN: continue
+        mods = {m for _, _, m, _ in ms}
+        print()
+        print("  %-4s — %d lemma(s) across %d module(s)" % (rel, len(ms), len(mods)))
+        gen = [m for m in ms if m[0]]
+        if gen:
+            print("     ★ GENERIC CANDIDATE(S) — pointwise premise, so they lift")
+            print("       through an ARBITRARY context:")
+            for _, nm, mod, ty in gen:
+                print("         %-18s %s" % (nm, mod))
+                print("           %s" % ty[:150])
+            print("     ⇒ the %d other member(s) may be instances. VERIFY ONE"
+                  % (len(ms) - len(gen)))
+            print("       before claiming it: same shape is not same theorem.")
+        else:
+            print("     ⛔ no generic member — this family WANTS one written.")
+        inst = [nm for g, nm, _, _ in ms if not g]
+        print("     instances: %s" % ", ".join(sorted(inst)[:14]))
+        if len(inst) > 14: print("                … and %d more" % (len(inst) - 14))
     sys.exit(0)
 
 if sys.argv[1:2] == ["--families"]:
