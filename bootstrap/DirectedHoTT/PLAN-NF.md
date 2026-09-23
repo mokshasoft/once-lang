@@ -51,7 +51,7 @@ alone is ~2 925**, and the top ten rules are ~95% of all use.
 
 ## 2. Phases
 
-### 🟡 Phase 0 — THE GATE — **3 of 4 DONE**, see §5
+### ✅ Phase 0 — THE GATE — **PASSED**, see §5 and §6
 
 1. `step : RTm Γ → Maybe (RTm Γ)` — **β, βfst, βsnd, ι-ielim only**
 2. `step-sound : step t ≡ just u → t ⟶ u`
@@ -143,7 +143,7 @@ ingredients into that claim.
 | 1. `ev1` for β/βfst/βsnd + congruence | ✅ `Lib/Eval.agda`, rc=0 |
 | 2. soundness | ✅ **by construction** — see below |
 | 3. `evN` (fuel) + soundness | ✅ rc=0 |
-| 4. rebuild one **existing** `SzAgree` case | ⬜ **NOT DONE — the gate is still open** |
+| 4. rebuild one **existing** `SzAgree` case | ✅ **DONE — and then all 29** |
 
 ### ⚠⚠ The obvious formulation FAILED, and the failure is the design
 
@@ -174,13 +174,56 @@ runs-to-unit = refl                       -- ← `refl`, inside Agda
 `rc=42`, `app (lam (var vz)) unit != unit`. So `evN` genuinely steps;
 the `refl`s are not vacuous.
 
-### ⬜ WHAT IS STILL OWED BEFORE THE GATE IS PASSED
+⬜ Owed: a sweep — `Lib/Eval.agda` is new and unswept.
 
-**Step 4: rebuild one EXISTING `SzAgree` case.** The synthetic terms
-above prove `evN` computes; they do **not** prove it fires on a real
-Knot term, where the encoded subterm is abstract and `evN` may stick
-exactly where the hand chain did not (§3). ⚠ Until that is done, this
-is a working evaluator, **not** a demonstrated replacement for the
-14 702 steps. Do not claim the trade until step 4 measures it.
+---
 
-⬜ Also owed: a sweep — `Lib/Eval.agda` is new and unswept.
+## 6. ✅✅ THE GATE IS PASSED — ON REAL KNOT ROWS
+
+Every adequacy row in the tree opens with the **same three-β prologue**,
+because `ifields` is three curried `app`s (§7):
+
+```agda
+agree i (var y0) =
+  head-red tagTm-var memTm-var i _
+    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+     ⟶*-appˡ (step (β _ _) done) »
+     step (β _ _) done)
+```
+
+★ `Knot/SzAgree`'s own header called this irreducible — *"THE THREE βs
+CANNOT JOIN IT … they are emitted per row"*. **They can.** The whole
+prologue is:
+
+```agda
+  head-red tagTm-var memTm-var i _ (chainOf (evN 3 _))
+```
+
+| measured on `Knot/SzAgree` (440 lines, 29 rows) | |
+|---|---|
+| rows that close with `chainOf (evN 3 _)` | **29 of 29**, rc=0 |
+| lines | **440 → 382 (−58, −13%)** |
+| time | 16.52 s → 15.09 s |
+| peak RSS | 1 641 348 KB → 1 474 020 KB |
+
+⛔ **CONTROL**: `evN 2` (one β short) **must** fail, and does — rc=42,
+`!= nsuc (num 0) of type RTm Γ'`. The rows are really being evaluated.
+
+⚠ **On the timings**: −8.7% / −10.2% is *inside* the ±12% noise floor
+(`agda-rss-noise-floor`), one sample each. The honest claim is **no
+regression**, not "faster" — and no regression is exactly what the gate
+asked for.
+
+### The size of the prize, from this rule family alone
+
+| | |
+|---|---|
+| exact-match three-β prologues across `Examples/Knot/` | **231**, in 8 files |
+| lines they occupy | **~462** |
+| of those, generated (`SzAgree`) | 30 → fix in `tools/gen-knot.py` |
+| hand-written (`Occ`/`Pw`/`PwBody`/`StkA`/`StkC`/`Flat`Agree) | 201 → direct edit |
+
+⚠ That is the **β family only, at exact-match**. `ι-ielim` (34),
+`natrec-*` (44), `jsub-refl` (142) and the `βfst`/`βsnd` uses in
+*non-prologue* positions are **Phase 1**, and are the larger remainder
+of the 14 702.
