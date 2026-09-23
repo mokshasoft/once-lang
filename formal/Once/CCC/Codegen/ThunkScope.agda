@@ -344,9 +344,6 @@ module Scope {FS : FrameSemantics} where
                    (trace-of (ir-to-trace' 0 l a))
                    (label-mono a 0 l)
                    (thunks-in a 0 l)
-  thunks-in (Para x a) n l = all-no-thunk-in _ refl
-  thunks-in (Hylo x y a t) n l = all-no-thunk-in _ refl
-  thunks-in (Fuse x y a t) n l = all-no-thunk-in _ refl
 
   ------------------------------------------------------------------------
   -- THE BLOCKS CHANNEL.
@@ -383,12 +380,9 @@ module Scope {FS : FrameSemantics} where
   blocks-thunks-in (In _)    n l = []
   blocks-thunks-in (out-μ _) n l = []
   blocks-thunks-in (Out _)   n l = []
-  blocks-thunks-in (Para _ _) n l = []
   blocks-thunks-in (SigOp _)  n l = []
   blocks-thunks-in (const fits-int   v) n l = []
   blocks-thunks-in (const fits-float v) n l = []
-  blocks-thunks-in (Hylo _ _ _ _) n l = []
-  blocks-thunks-in (Fuse _ _ _ _) n l = []
   blocks-thunks-in (g ∘ f)  n l =
     ++⁺ (All-map (λ {b} → bts-weaken b ≤-refl (label-mono g _ _)) (blocks-thunks-in f n l))
         (All-map (λ {b} → bts-weaken b (label-mono f n l) ≤-refl) (blocks-thunks-in g _ _))

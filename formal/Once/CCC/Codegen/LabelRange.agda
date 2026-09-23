@@ -44,7 +44,7 @@ open import Data.List using (List)
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
-  In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
+  In; out-μ; Cata; Out; in-ν; Ana;
   SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
@@ -156,7 +156,6 @@ label-mono (out-μ _)   n l = ≤-refl
 -- taken there; the skeleton then advances further from `l1`.
 label-mono (Cata {F} _ alg) n l =
   ≤-trans (label-mono alg 0 l) (cata-label-mono (cata-strategy ⌈ F ⌉F) _ _ _ _)
-label-mono (Para _ _)     n l = ≤-refl
 label-mono (Out _)        n l = ≤-refl
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
 label-mono (in-ν _)     n l = n≤1+n l
@@ -169,8 +168,6 @@ label-mono (Ana wf c)     n l =
              (resuspend-label-mono (proj₁ (ir-to-trace' 0 (suc l) c))
                                    (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c)))
                                    (ℓ o l) wf))
-label-mono (Hylo _ _ _ _) n l = ≤-refl
-label-mono (Fuse _ _ _ _) n l = ≤-refl
 label-mono (SigOp _)      n l = ≤-refl
 label-mono (const fits-int _)   n l = ≤-refl
 label-mono (const fits-float _) n l = ≤-refl

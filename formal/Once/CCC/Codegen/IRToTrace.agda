@@ -86,7 +86,7 @@ open SigOpInfo using (name)
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
-  In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
+  In; out-μ; Cata; Out; in-ν; Ana;
   SigOp; const)
 -- Plan 0.36 Phase 2b: functor structure drives the cata codegen strategy.
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
@@ -1073,7 +1073,6 @@ ir-to-trace' n l (Cata {F} _ alg) =
   let (bb , l1 , at , ab) = ir-to-trace' 0 l alg
       (next , l2 , trace) = cata-dispatch (cata-strategy ⌈ F ⌉F) bb n l1 at
   in next , l2 , trace , ab
-ir-to-trace' n l (Para _ _)     = n , l , [] , []
 -- ────────────────────────────────────────────────────────────────────
 -- D189: `Out` — FORCING A SUSPENSION, which is a CALL.
 --
@@ -1168,8 +1167,6 @@ ir-to-trace' n l (Ana wf coalg) =
       all-bodies  = (ℓ o this-label , block-budget ,
                      coalg-trace ++ resusp-trace) ∷ coalg-bodies
   in next , l3 , this-trace , all-bodies
-ir-to-trace' n l (Hylo _ _ _ _) = n , l , [] , []
-ir-to-trace' n l (Fuse _ _ _ _) = n , l , [] , []
 
 -- free-heap is semantically a no-op (returns its input unchanged).
 -- run-free-heap emits `mov-to-output ∷ []` to copy Input1 → Output as

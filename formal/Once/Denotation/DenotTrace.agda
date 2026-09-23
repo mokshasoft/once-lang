@@ -40,7 +40,7 @@ open import Once.Type
 open import Once.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
          initial; curry; apply; SigOp; Cata; In; Out; Ana; in-ν;
-         out-μ; const; Para; Hylo; Fuse)
+         out-μ; const)
 open import Once.IRTy
   using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; _+_;
          fits-int; fits-float)
@@ -63,7 +63,7 @@ open import Once.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
-  using (sem-cata; sem-ana; sem-para; sem-In; sem-Out; sem-fuseNat;
+  using (sem-cata; sem-ana; sem-In; sem-Out;
          sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F; coh; coerce-ν-out;
          coerce-ν-in)
 open import Once.IRTy.WF using (wf-⌈⌉)
@@ -141,16 +141,6 @@ evalᴰ        : (fmt : TargetNum) → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ 
 -- concatenation is what made `length (at n) ≤ n` false for a `k`-layer fold.
 cata-ev-algᴰ : (fmt : TargetNum) → ∀ {F E C} → IR (E * ⟦ F ⟧TI C) C → ⟦ E ⟧ᴰᴵ
              → ⟦ ⌈ F ⌉F ⟧F (T ⟦ C ⟧ᴰᴵ) → T ⟦ C ⟧ᴰᴵ
--- `Para`'s trace algebra. `sem-para`'s algebra sees `⟦F⟧F (μF × A)` (each
--- child: its substructure `μF` + its folded result `A`); we fold into
--- `A = List × value`, applying the para-algebra `alg` to the `(μF , value)`
--- layer per node and collecting its events.
-para-ev-algᴰ : (fmt : TargetNum) → ∀ {F C} → IR (⟦ F ⟧TI (μ-type F * C)) C
-             → ⟦ ⌈ F ⌉F ⟧F (Val.⟦ ⌈ μ-type F ⌉ ⟧ × T ⟦ C ⟧ᴰᴵ)
-             → T ⟦ C ⟧ᴰᴵ
--- `Hylo`/`Fuse`'s fold algebra — `cata-ev-algᴰ` with no environment.
-fuse-ev-algᴰ : (fmt : TargetNum) → ∀ {F B} → IR (⟦ F ⟧TI B) B
-             → ⟦ ⌈ F ⌉F ⟧F (T ⟦ B ⟧ᴰᴵ) → T ⟦ B ⟧ᴰᴵ
 
 evalᴰ fmt id            a        = returnT a
 evalᴰ fmt (g ∘ f)       a        = evalᴰ fmt f a >>=T evalᴰ fmt g
@@ -247,42 +237,11 @@ evalᴰ fmt (out-μ {F} wf) a =
       (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F ⌉ (sem-Out (wf-⌈⌉ wf) (forget a))))))
 evalᴰ fmt (const fits-int   v) a = mkT (λ _ → []) (returns (inject (OnceWord.Width.fromℤ (int-bits fmt) v)))
 evalᴰ fmt (const fits-float v) a = mkT (λ _ → []) (returns (inject (round (float-format fmt) v)))
--- `Para`, `Hylo` and `Fuse` carry an ALGEBRA, so they carry effects, so they
--- get the `Cata` treatment (D179): ONE monadic fold supplying both the trace
--- and the value. Behind the catch-all they still had the retired two-model
--- shape — value from the pure `eval`, trace from a parallel `rec-trace-D` —
--- which diverges exactly when the algebra is effectful, and is unrepresentable
--- now that an algebra may STOP. (No surface program reaches them: the
--- elaborator emits sixteen constructors and none of these is among them. They
--- are reachable only through `Once.Fusion`/`Once.Optimize`, which traverse.)
-evalᴰ fmt (Para {F} wf {C} alg) a =
-  sem-para (wf-⌈⌉ wf) (para-ev-algᴰ fmt {F} {C} alg) (forget a)
-evalᴰ fmt (Hylo {F} {G} wfF wfG {B} alg t) a =
-  sem-fuseNat ⌈ F ⌉F ⌈ G ⌉F (wf-⌈⌉ wfF) (wf-⌈⌉ wfG) (appNatTr-F fmt t)
-    (fuse-ev-algᴰ fmt {F} {B} alg) (forget a)
-evalᴰ fmt (Fuse {F} {G} wfF wfG {B} alg t) a =
-  sem-fuseNat ⌈ F ⌉F ⌈ G ⌉F (wf-⌈⌉ wfF) (wf-⌈⌉ wfG) (appNatTr-F fmt t)
-    (fuse-ev-algᴰ fmt {F} {B} alg) (forget a)
 
 cata-ev-algᴰ fmt {F} {E} {C} alg env fc =
   seqF ⌈ F ⌉F fc >>=T λ layer →
     evalᴰ fmt alg (env , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F C))
                              (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ C ⌉ layer))
-
--- `Para`'s fold, in the `Cata` shape. The carrier is a COMPUTATION, so each
--- child's effects are sequenced (`seqF`) rather than collected by a separate
--- events traversal; the original substructure rides along pure, injected into
--- the value domain to rebuild the `(μF , value)` layer the algebra expects.
-para-ev-algᴰ fmt {F} {C} alg fc =
-  seqF ⌈ F ⌉F (sem-fmap ⌈ F ⌉F (λ p → fmapT (λ v → (inject (proj₁ p) , v)) (proj₂ p)) fc)
-    >>=T λ layer →
-      evalᴰ fmt alg (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (μ-type F * C)))
-                      (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ μ-type F * C ⌉ layer))
-
-fuse-ev-algᴰ fmt {F} {B} alg fb =
-  seqF ⌈ F ⌉F fb >>=T λ layer →
-    evalᴰ fmt alg (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F B))
-                    (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ B ⌉ layer))
 
 ------------------------------------------------------------------------
 -- `liftFn` — the erasure-transported IR morphism denotation as a surface

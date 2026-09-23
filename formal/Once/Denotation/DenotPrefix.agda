@@ -44,7 +44,6 @@ open import Once.IR using (IR)
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.IRTy as IT
 open import Once.IRTy using (WellFormedFI; FitsInRegI)
-open import Once.IR using (NatTr)
 open import Once.SigOp.Info using (SigOpInfo)
 open import Once.Float.Decimal using (Decimal)
 open import Data.Integer using (ℤ)
@@ -196,10 +195,6 @@ postulate
                   → Good ⌈ E IT.* IT.μ-type F ⌉ a
                   → GoodT ⌈ A ⌉ (evalᴰ fmt (Cata wf alg) a)
 
-  evalᴰ-good-Para : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F) {A}
-                    (alg : IR (IT.⟦ F ⟧TI (IT.μ-type F IT.* A)) A) (a : ⟦ IT.μ-type F ⟧ᴰᴵ)
-                  → Good ⌈ IT.μ-type F ⌉ a
-                  → GoodT ⌈ A ⌉ (evalᴰ fmt (Para wf alg) a)
 
   evalᴰ-good-Out : ∀ (fmt : TargetNum) {F} (wf : WellFormedFI F)
                    (a : ⟦ IT.ν-type F ⟧ᴰᴵ)
@@ -215,16 +210,6 @@ postulate
                    (coalg : IR A (IT.⟦ F ⟧TI A)) (a : ⟦ A ⟧ᴰᴵ)
                  → Good ⌈ A ⌉ a
                  → GoodT ⌈ IT.ν-type F ⌉ (evalᴰ fmt (Ana wf coalg) a)
-
-  evalᴰ-good-Hylo : ∀ (fmt : TargetNum) {F G} (wfF : WellFormedFI F) (wfG : WellFormedFI G) {B}
-                    (alg : IR (IT.⟦ F ⟧TI B) B) (t : NatTr G F) (a : ⟦ IT.μ-type G ⟧ᴰᴵ)
-                  → Good ⌈ IT.μ-type G ⌉ a
-                  → GoodT ⌈ B ⌉ (evalᴰ fmt (Hylo wfF wfG alg t) a)
-
-  evalᴰ-good-Fuse : ∀ (fmt : TargetNum) {F G} (wfF : WellFormedFI F) (wfG : WellFormedFI G) {B}
-                    (alg : IR (IT.⟦ F ⟧TI B) B) (t : NatTr G F) (a : ⟦ IT.μ-type G ⟧ᴰᴵ)
-                  → Good ⌈ IT.μ-type G ⌉ a
-                  → GoodT ⌈ B ⌉ (evalᴰ fmt (Fuse wfF wfG alg t) a)
 
 
   evalᴰ-good-SigOp : ∀ (fmt : TargetNum) {A B : Type} (si : SigOpInfo A B)
@@ -283,11 +268,8 @@ evalᴰ-good fmt (⟨_,_⟩ {A} {B} {C} f g) a ga =
 evalᴰ-good fmt (In {F} wf) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ IT.μ-type F ⌉ (eval fmt (In wf) (forget a)))
 evalᴰ-good fmt (out-μ {F} wf) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ (IT.⟦ F ⟧TI (IT.μ-type F)) ⌉ (eval fmt (out-μ wf) (forget a)))
 evalᴰ-good fmt (Cata wf alg)       a ga = evalᴰ-good-Cata  fmt wf alg a ga
-evalᴰ-good fmt (Para wf alg)       a ga = evalᴰ-good-Para  fmt wf alg a ga
 evalᴰ-good fmt (Out wf)            a ga = evalᴰ-good-Out   fmt wf a ga
 evalᴰ-good fmt (in-ν wf)           a ga = evalᴰ-good-in-ν  fmt wf a ga
 evalᴰ-good fmt (Ana wf coalg)      a ga = evalᴰ-good-Ana   fmt wf coalg a ga
-evalᴰ-good fmt (Hylo wfF wfG alg t) a ga = evalᴰ-good-Hylo fmt wfF wfG alg t a ga
-evalᴰ-good fmt (Fuse wfF wfG alg t) a ga = evalᴰ-good-Fuse fmt wfF wfG alg t a ga
 evalᴰ-good fmt (const {A} fits v) a ga = (const-empty-pf _ , λ k → inject-Good ⌈ A ⌉ (eval fmt (const fits v) (forget a)))
 evalᴰ-good fmt (SigOp si)          a ga = evalᴰ-good-SigOp fmt si a ga

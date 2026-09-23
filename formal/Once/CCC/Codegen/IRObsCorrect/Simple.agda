@@ -627,23 +627,20 @@ module Simp {FS : FrameSemantics} where
 
     -- (`obs-correct-apply` MOVED OUT — discharged below, D188.)
 
-    -- CLASS G — THE EMITTER IS MISSING. Each of these compiles to `[]`, so the
-    -- obligation is refutable whenever the denotation emits an event. NOT a
-    -- proof task: implement the codegen, restrict the IR so they cannot be
-    -- built, or condition the obligation to exclude them (Plan 0.68 step 5, and
-    -- it needs a decision-log entry either way). Named so the choice is forced.
-    obs-correct-Para : ∀ {F} (wf : WellFormedFI F) {A} (f : IR (⟦ F ⟧TI (μ-type F * A)) A)
-                     → IRObsCorrectF (Para wf f)
+    -- CLASS G — THE EMITTER IS MISSING. Compiles to `[]`, so the obligation is
+    -- refutable whenever the denotation emits an event. NOT a proof task:
+    -- implement the codegen, restrict the IR so it cannot be built, or
+    -- condition the obligation to exclude it (Plan 0.68 step 5).
+    --
+    -- plan 0.98 TOOK THE SECOND OPTION for `Para`/`Hylo`/`Fuse`: the
+    -- constructors are DELETED, so `obs-correct-Para`/`-Hylo`/`-Fuse` are gone
+    -- rather than assumed. They were derived schemes (D062), unreachable from
+    -- source, and their meaning was the last consumer of the pure `eval`.
+    -- `in-ν` is the one left, and it is a real codegen gap.
     obs-correct-in-ν : ∀ {F} (wf : WellFormedFI F)
                      → IRObsCorrectF (in-ν wf)
     -- D189: `obs-correct-Ana` LEFT this class — the emitter exists and the case
     -- is discharged below. D199: `obs-correct-Out` left it too, from the other
     -- direction — it was FALSE while the machine did not re-suspend, and is
     -- proved below now that it does.
-    obs-correct-Hylo : ∀ {F G} (wfF : WellFormedFI F) (wfG : WellFormedFI G) {B}
-                       (alg : IR (⟦ F ⟧TI B) B) (nt : NatTr G F)
-                     → IRObsCorrectF (Hylo wfF wfG alg nt)
-    obs-correct-Fuse : ∀ {F G} (wfF : WellFormedFI F) (wfG : WellFormedFI G) {B}
-                       (alg : IR (⟦ F ⟧TI B) B) (nt : NatTr G F)
-                     → IRObsCorrectF (Fuse wfF wfG alg nt)
 

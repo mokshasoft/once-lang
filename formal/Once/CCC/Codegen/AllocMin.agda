@@ -41,7 +41,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; subst; sym)
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
-  In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
+  In; out-μ; Cata; Out; in-ν; Ana;
   SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
@@ -278,7 +278,6 @@ alloc-min-trace' (out-μ _) n l = tt ∷ []
 -- C1: the algebra is generated at frontier 0 (its own frame).
 alloc-min-trace' (Cata {F} _ alg) n l =
   cata-dispatch-am (cata-strategy ⌈ F ⌉F) _ _ _ _ (alloc-min-trace' alg 0 l)
-alloc-min-trace' (Para _ _)     n l = []
 alloc-min-trace' (Out _)        n l = tt ∷ tt ∷ tt ∷ tt ∷ []
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
 alloc-min-trace' (in-ν _)     n l =
@@ -288,8 +287,6 @@ alloc-min-trace' (in-ν _)     n l =
 -- closure body, emitted at frontier 0 under the ν's own label.
 alloc-min-trace' (Ana _ c)      n l =
   tt ∷ tt ∷ am2 ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-alloc-min-trace' (Hylo _ _ _ _) n l = []
-alloc-min-trace' (Fuse _ _ _ _) n l = []
 alloc-min-trace' (SigOp _)      n l = tt ∷ []
 alloc-min-trace' (const fits-int _)   n l = tt ∷ []
 alloc-min-trace' (const fits-float _) n l = tt ∷ []
@@ -358,7 +355,6 @@ alloc-min-blocks inl n l = []
 alloc-min-blocks inr n l = []
 alloc-min-blocks (In _)   n l = []
 alloc-min-blocks (out-μ _)  n l = []
-alloc-min-blocks (Para _ _) n l = []
 alloc-min-blocks (Out _)    n l = []
 alloc-min-blocks (in-ν _) n l = tt ∷ tt ∷ tt ∷ []
 -- D199: the block is `coalg ++ re-suspension`.
@@ -369,8 +365,6 @@ alloc-min-blocks (Ana wf c) n l =
                                    (ℓ o l) wf))
                 (tt ∷ []))
       (alloc-min-blocks c 0 (suc l))
-alloc-min-blocks (Hylo _ _ _ _) n l = []
-alloc-min-blocks (Fuse _ _ _ _) n l = []
 alloc-min-blocks (SigOp _)      n l = []
 alloc-min-blocks (const fits-int _)   n l = []
 alloc-min-blocks (const fits-float _) n l = []

@@ -477,9 +477,6 @@ module Unique {FS : FrameSemantics} where
   defs-uniq (const fits-int   v)  n l = []
   defs-uniq (const fits-float v)  n l = []
   defs-uniq (SigOp _)             n l = []
-  defs-uniq (Para _ _)            n l = []
-  defs-uniq (Hylo _ _ _ _)        n l = []
-  defs-uniq (Fuse _ _ _ _)        n l = []
   -- `in-ν`'s block is a one-instruction stub and it owns no children, so its
   -- single minted label has nothing to be distinct from.
   defs-uniq (in-ν _)              n l = [] ∷ []

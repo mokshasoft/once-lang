@@ -53,7 +53,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
-  In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
+  In; out-μ; Cata; Out; in-ν; Ana;
   SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
@@ -604,7 +604,6 @@ labels-in (out-μ _)  n l = li-none refl ∷ []
 -- C1: the algebra is generated at frontier 0 (its own frame).
 labels-in (Cata {F} _ alg) n l =
   cata-ls (cata-strategy ⌈ F ⌉F) l _ _ _ _ (label-mono alg 0 l) (labels-in alg 0 l)
-labels-in (Para _ _)     n l = []
 labels-in (Out _)        n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
@@ -617,8 +616,6 @@ labels-in (in-ν _) n l =
 labels-in (Ana _ c) n l =
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷
   li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ li-none refl ∷ []
-labels-in (Hylo _ _ _ _) n l = []
-labels-in (Fuse _ _ _ _) n l = []
 labels-in (SigOp _)      n l = li-none refl ∷ []
 labels-in (const fits-int _)   n l = li-none refl ∷ []
 labels-in (const fits-float _) n l = li-none refl ∷ []
@@ -1740,7 +1737,6 @@ seg-agree terminal n l = segagree-nolab _ []
 seg-agree initial n l = segagree-nolab _ (refl ∷ [])
 seg-agree (In w) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (out-μ w) n l = segagree-nolab _ (refl ∷ [])
-seg-agree (Para w x) n l = segagree-nolab _ []
 seg-agree (Out w) n l = segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ [])
 seg-agree (in-ν w) n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
@@ -1748,8 +1744,6 @@ seg-agree (in-ν w) n l =
 seg-agree (Ana w c) n l =
   segagree-nolab _ (refl ∷ refl ∷ refl ∷ refl ∷ refl ∷
                     refl ∷ refl ∷ refl ∷ refl ∷ refl ∷ [])
-seg-agree (Hylo w x y z) n l = segagree-nolab _ []
-seg-agree (Fuse w x y z) n l = segagree-nolab _ []
 seg-agree (SigOp w) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-int v) n l = segagree-nolab _ (refl ∷ [])
 seg-agree (const fits-float v) n l = segagree-nolab _ (refl ∷ [])
@@ -2015,7 +2009,6 @@ scope-ok inl                 n l = scope-nil _ _ _
 scope-ok inr                 n l = scope-nil _ _ _
 scope-ok (In _)            n l = scope-nil _ _ _
 scope-ok (out-μ _)           n l = scope-nil _ _ _
-scope-ok (Para _ _)          n l = scope-nil _ _ _
 scope-ok (Out _)             n l = scope-nil _ _ _
 scope-ok (in-ν {F} _) n l =
   scope-nolab _ _ l _
@@ -2096,8 +2089,6 @@ scope-ok (Ana wf c) n l =
                     (ls-weaken (n≤1+n l) l'≤hi (ScopeOK.bl-in S))
     ana-bl-agree : SegAgree (blocks-layout ((ℓ o l , bb , bt) ∷ bodies-of D))
     ana-bl-agree = segagree-++ⁿ blk BB nc1 nc2 blkA (ScopeOK.bl-agree S)
-scope-ok (Hylo _ _ _ _)      n l = scope-nil _ _ _
-scope-ok (Fuse _ _ _ _)      n l = scope-nil _ _ _
 scope-ok (SigOp _)           n l = scope-nil _ _ _
 scope-ok (const fits-int _)  n l = scope-nil _ _ _
 scope-ok (const fits-float _) n l = scope-nil _ _ _

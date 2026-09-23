@@ -38,7 +38,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 cost : ∀ {A B} → IR A B → ℕ
 -- D062: cost of the natural transform a Fuse/Hylo carries = Σ of its
 -- constant-leaf (ntK) IR costs.
-cost-nt : ∀ {G F} → NatTr G F → ℕ
 cost id            = 0
 cost (g ∘ f)       = cost g ℕ+ cost f
 cost fst           = 0
@@ -56,24 +55,13 @@ cost arr           = 0
 cost (In _)      = 1                        -- μ-type wrapper allocation
 cost (out-μ _)     = 0                        -- destructor is free
 cost (Cata _ alg)  = cost alg                 -- cost of algebra
-cost (Para _ alg)  = cost alg                 -- cost of algebra
 cost (Out _)       = 0                        -- observation is free
 cost (in-ν _)    = 1                        -- ν-type wrapper allocation
 cost (Ana _ coalg) = cost coalg               -- cost of coalgebra
-cost (Hylo _ _ alg t) = cost alg ℕ+ cost-nt t  -- fusion: algebra + natural transform
-cost (Fuse _ _ alg t) = cost alg ℕ+ cost-nt t  -- fusion: algebra + natural transform
 -- Memory and primitives
 cost (SigOp _)      = 0                        -- primitives are opaque
 cost (const _ _)  = 0                        -- literal global element
 
-cost-nt ntId         = 0
-cost-nt (ntK ir)     = cost ir
-cost-nt (ntFst t)    = cost-nt t
-cost-nt (ntSnd t)    = cost-nt t
-cost-nt (ntCase t u) = cost-nt t ℕ+ cost-nt u
-cost-nt (ntInl t)    = cost-nt t
-cost-nt (ntInr t)    = cost-nt t
-cost-nt (ntPair t u) = cost-nt t ℕ+ cost-nt u
 
 ------------------------------------------------------------------------
 -- Basic properties

@@ -54,7 +54,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
-  In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
+  In; out-μ; Cata; Out; in-ν; Ana;
   SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type;
   WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
@@ -501,7 +501,6 @@ frontier-mono (out-μ _)   n l = ≤-refl
 -- caller's frontier is not advanced by it at all — the dispatch takes `n`
 -- directly and only the cata's own scratch is added.
 frontier-mono (Cata {F} _ alg) n l = cata-mono (cata-strategy ⌈ F ⌉F) _ _ _ _
-frontier-mono (Para _ _)     n l = ≤-refl
 frontier-mono (Out _)        n l = ≤-refl
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
 frontier-mono (in-ν _)     n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
@@ -509,8 +508,6 @@ frontier-mono (in-ν _)     n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
 -- its walk clause is `curry`'s. The coalgebra is a named block, like the
 -- closure body, emitted at frontier 0 under the ν's own label.
 frontier-mono (Ana _ c)      n l = ≤-trans (n≤1+n n) (n≤1+n (suc n))
-frontier-mono (Hylo _ _ _ _) n l = ≤-refl
-frontier-mono (Fuse _ _ _ _) n l = ≤-refl
 frontier-mono (SigOp _)      n l = ≤-refl
 frontier-mono (const fits-int _)   n l = ≤-refl
 frontier-mono (const fits-float _) n l = ≤-refl
@@ -1193,7 +1190,6 @@ slots-below (out-μ _)  n l = segok-idle _ refl (sb-none refl ∷ [])
 -- carries it across the frame change.
 slots-below (Cata {F} _ alg) n l =
   cata-slots-below (cata-strategy ⌈ F ⌉F) _ _ _ _ (slots-below alg 0 l)
-slots-below (Para _ _)     n l = segok-idle _ refl []
 slots-below (Out _)        n l =
   segok-idle _ refl (sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ [])
 slots-below (in-ν _) n l =
@@ -1206,8 +1202,6 @@ slots-below (Ana _ c) n l =
     (sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷ sb-none refl ∷
      sb-slot refl ≤-refl (λ _ ()) ∷ sb-none refl ∷ sb-slot refl (≤-step ≤-refl) (λ _ ()) ∷
      sb-none refl ∷ sb-none refl ∷ sb-none refl ∷ sb-slot refl ≤-refl (λ _ ()) ∷ [])
-slots-below (Hylo _ _ _ _) n l = segok-idle _ refl []
-slots-below (Fuse _ _ _ _) n l = segok-idle _ refl []
 slots-below (SigOp _)      n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (const fits-int _)   n l = segok-idle _ refl (sb-none refl ∷ [])
 slots-below (const fits-float _) n l = segok-idle _ refl (sb-none refl ∷ [])
@@ -1333,7 +1327,6 @@ blocks-below (case f g)          n l = ++⁺ (blocks-below f n (suc (suc l)))
 blocks-below (In _)            n l = []
 blocks-below (out-μ _)           n l = []
 blocks-below (Cata {F} _ alg)    n l = blocks-below alg 0 l
-blocks-below (Para _ _)          n l = []
 blocks-below (Out _)             n l = []
 blocks-below (in-ν _)          n l = segok-idle _ refl (sb-none refl ∷ []) ∷ []
 -- D199: the block is `coalg ++ re-suspension`, and the budget is the pass's
@@ -1346,8 +1339,6 @@ blocks-below (Ana wf c)          n l =
            (resuspend-below (proj₁ (ir-to-trace' 0 (suc l) c))
                             (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c))) (ℓ o l) wf)
     ∷ blocks-below c 0 (suc l)
-blocks-below (Hylo _ _ _ _)      n l = []
-blocks-below (Fuse _ _ _ _)      n l = []
 blocks-below (SigOp _)           n l = []
 blocks-below (const fits-int _)  n l = []
 blocks-below (const fits-float _) n l = []

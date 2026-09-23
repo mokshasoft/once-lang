@@ -29,7 +29,8 @@ open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.Semantics.Machine as Val
 open import Once.SigOp.Info
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
-open import Once.Denotation.TraceMonad using (T; mkT; returnT; valueT; stoppedT; projTrace; fmapT; _>>=T_; Stopped)
+open import Once.Denotation.TraceMonad using (T; mkT; returnT; valueT; stoppedT; projTrace; fmapT; _>>=T_)
+open import Once.Res using (Res; stopped; returns; mapRes)
 open import Data.Bool using (true; false)
 open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
 open import Once.Word using (Carrier)
@@ -92,13 +93,13 @@ mutual
 -- `forceᵈ (in-νᵈ l) ≡ ([] , l)` is the Lambek round trip `Out ∘ in-ν ≡ id`,
 -- definitionally.
 in-νᵈ : ∀ {F} → ⟦ F ⟧SF (νᵈ F) → νᵈ F
-forceᵈ (in-νᵈ layer) = mkT (λ _ → []) false layer
+forceᵈ (in-νᵈ layer) = mkT (λ _ → []) (returns layer)
 
 -- `inject` at an arrow lifts a pure function to a trace-free closure. This is
 -- the same thing: every layer emits nothing.
 mutual
   injectν : ∀ {F} → νS F → νᵈ F
-  forceᵈ (injectν {F} x) = mkT (λ _ → []) false (mapInjectν F F (unfoldS x))
+  forceᵈ (injectν {F} x) = mkT (λ _ → []) (returns (mapInjectν F F (unfoldS x)))
 
   mapInjectν : ∀ (F H : SFunctor) → ⟦ H ⟧SF (νS F) → ⟦ H ⟧SF (νᵈ F)
   mapInjectν F (SK B)   x        = x
@@ -145,10 +146,11 @@ mutual
   -- plan 0.97: the layer's VALUE no longer reads the budget — that is the
   -- lens property showing up at the one place that used to thread it — and a
   -- coalgebra that stops makes the forced layer stop.
+  -- plan 0.98: the flag and the value are ONE `Res`, so "the coalgebra stopped"
+  -- and "there is no layer" stop being two facts that could disagree.
   forceᵈ (anaᵈ H coalg a) =
     mkT (λ k → projTrace (coalg a) k)
-        (stoppedT (coalg a) 0)
-        (mapAnaᵈ H H coalg (valueT (coalg a) 0))
+        (mapRes (mapAnaᵈ H H coalg) (T.resT (coalg a)))
 
   mapAnaᵈ : ∀ (H G : SFunctor) {A : Set}
           → (A → T (⟦ H ⟧SF A)) → ⟦ G ⟧SF A → ⟦ G ⟧SF (νᵈ H)
@@ -327,23 +329,6 @@ emit-D si x with effect si
 ... | Pure    = []
 ... | Emits _ = mkEvent si x ∷ []
 ... | Halts _ = mkEvent si x ∷ []
-
--- plan 0.97: …and whether it ENDS the program. `Halts` is the only shape that
--- does, and this is the whole of the difference between it and `Emits` —
--- which, until now, the Spec did not record at all, so it said a program
--- CONTINUES after `exit`.
--- Stated via an `-of` helper rather than a `with` on `effect si`, so a
--- consumer holding `effect si ≡ Pure` can `cong` its way to the value. A
--- `with` would leave `stops-D si` stuck on an abstract `effect si` forever
--- (the same de-with idiom `exec-sigop-halts-of` already uses on the machine
--- side of this very correspondence).
-stops-D-of : ∀ {B} → EffectShape B → Stopped
-stops-D-of Pure      = false
-stops-D-of (Emits _) = false
-stops-D-of (Halts _) = true
-
-stops-D : ∀ {A B} → SigOpInfo A B → Stopped
-stops-D si = stops-D-of (effect si)
 
 -- The BUDGET-AWARE emitter. `take n (emit-D si x)` is the wrong cap: `take`
 -- matches its BUDGET first, so `take n []` is stuck while `n` is abstract —

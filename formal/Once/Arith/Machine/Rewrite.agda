@@ -160,9 +160,6 @@ rewrite-ir ir with try-lift ir
 ... | nothing          = walk ir
   where
     walk : ∀ {A B} → IR A B → IR A B × List ArithBlock
-    -- D062: arith-block lifting descends into a Fuse/Hylo natural transform's
-    -- constant-leaf IRs.
-    walk-nt : ∀ {G F} → NatTr G F → NatTr G F × List ArithBlock
     walk id                = id , []
     walk (g ∘ f)           =
       let (g' , bg) = rewrite-ir g
@@ -191,32 +188,10 @@ rewrite-ir ir with try-lift ir
     walk (Cata w f)        =
       let (f' , bf) = rewrite-ir f
       in Cata w f' , bf
-    walk (Para w f)        =
-      let (f' , bf) = rewrite-ir f
-      in Para w f' , bf
     walk (Out w)           = Out w , []
     walk (in-ν w)        = in-ν w , []
     walk (Ana w f)         =
       let (f' , bf) = rewrite-ir f
       in Ana w f' , bf
-    walk (Hylo w₁ w₂ f g)  =
-      let (f' , bf) = rewrite-ir f
-          (g' , bg) = walk-nt g
-      in Hylo w₁ w₂ f' g' , (bf ++ bg)
-    walk (Fuse w₁ w₂ f g)  =
-      let (f' , bf) = rewrite-ir f
-          (g' , bg) = walk-nt g
-      in Fuse w₁ w₂ f' g' , (bf ++ bg)
     walk (const p v)   = const p v , []
     walk (SigOp si)        = SigOp si , []
-
-    walk-nt ntId         = ntId , []
-    walk-nt (ntK ir)     = let (ir' , b) = rewrite-ir ir in ntK ir' , b
-    walk-nt (ntFst t)    = let (t' , b) = walk-nt t in ntFst t' , b
-    walk-nt (ntSnd t)    = let (t' , b) = walk-nt t in ntSnd t' , b
-    walk-nt (ntCase t u) = let (t' , bt) = walk-nt t
-                               (u' , bu) = walk-nt u in ntCase t' u' , (bt ++ bu)
-    walk-nt (ntInl t)    = let (t' , b) = walk-nt t in ntInl t' , b
-    walk-nt (ntInr t)    = let (t' , b) = walk-nt t in ntInr t' , b
-    walk-nt (ntPair t u) = let (t' , bt) = walk-nt t
-                               (u' , bu) = walk-nt u in ntPair t' u' , (bt ++ bu)

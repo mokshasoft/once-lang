@@ -355,12 +355,9 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-stable inr             n l = all-stable?-sound _ refl
   ir-stable (In _)        n l = all-stable?-sound _ refl
   ir-stable (out-μ _)       n l = all-stable?-sound _ refl
-  ir-stable (Para _ _)      n l = all-stable?-sound _ refl
   ir-stable (Out _)         n l = all-stable?-sound _ refl
   ir-stable (in-ν _)      n l = all-stable?-sound _ refl
   ir-stable (Ana _ c)       n l = all-stable?-sound _ refl
-  ir-stable (Hylo _ _ _ _)  n l = all-stable?-sound _ refl
-  ir-stable (Fuse _ _ _ _)  n l = all-stable?-sound _ refl
   ir-stable (g ∘ f)         n l = ++⁺ (ir-stable f n l) (tt ∷ᴬ ir-stable g _ _)
   -- Stage G: one clause, the heap shape. (The stack-shape clause that stood
   -- here collapsed onto the same LHS when the mode was dropped, and shadowed
@@ -449,7 +446,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
   ir-blocks-stable inr                  n l = []ᴬ
   ir-blocks-stable (In _)             n l = []ᴬ
   ir-blocks-stable (out-μ _)            n l = []ᴬ
-  ir-blocks-stable (Para _ _)           n l = []ᴬ
   ir-blocks-stable (Out _)              n l = []ᴬ
   ir-blocks-stable (in-ν _)           n l = all-stable?-sound _ refl ∷ᴬ []ᴬ
   -- D199: the block is `coalg ++ re-suspension`, so its stability is theirs.
@@ -458,8 +454,6 @@ module CataIRSlotStable {FS : FrameSemantics} where
         (resuspend-stable (proj₁ (ir-to-trace' 0 (suc l) c))
                           (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c))) (ℓ o l) wf)
       ∷ᴬ ir-blocks-stable c 0 (suc l)
-  ir-blocks-stable (Hylo _ _ _ _)       n l = []ᴬ
-  ir-blocks-stable (Fuse _ _ _ _)       n l = []ᴬ
   ir-blocks-stable (g ∘ f)              n l = ++⁺ (ir-blocks-stable f n l)
                                                   (ir-blocks-stable g _ _)
   ir-blocks-stable ⟨ f , g ⟩            n l = ++⁺ (ir-blocks-stable f _ l)

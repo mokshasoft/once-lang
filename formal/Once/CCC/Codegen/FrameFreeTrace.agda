@@ -55,7 +55,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.IR using (IR; AllocMode; Stack; Heap;
   id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal; initial;
   curry; apply;
-  In; out-μ; Cata; Para; Out; in-ν; Ana; Hylo; Fuse;
+  In; out-μ; Cata; Out; in-ν; Ana;
   SigOp; const)
 open import Once.IRTy using (fits-int; fits-float; ⌈_⌉F; ⟦_⟧TI; ν-type; WellFormedFI; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
@@ -313,7 +313,6 @@ frame-free-trace' (out-μ _) hm n l = tt ∷ []
 -- taken there rather than at the caller's `n`.
 frame-free-trace' (Cata {F} _ alg) hm n l =
   cata-dispatch-ff (cata-strategy ⌈ F ⌉F) _ _ _ _ (frame-free-trace' alg hm 0 l)
-frame-free-trace' (Para _ _)     hm n l = []
 frame-free-trace' (Out _)        hm n l = tt ∷ tt ∷ tt ∷ tt ∷ []
 -- D189: the same two-cell build as `Ana`, with `id` as the block.
 frame-free-trace' (in-ν _)     hm n l =
@@ -323,8 +322,6 @@ frame-free-trace' (in-ν _)     hm n l =
 -- closure body, emitted at frontier 0 under the ν's own label.
 frame-free-trace' (Ana _ c)      hm n l =
   tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ tt ∷ []
-frame-free-trace' (Hylo _ _ _ _) hm n l = []
-frame-free-trace' (Fuse _ _ _ _) hm n l = []
 frame-free-trace' (SigOp _)      hm n l = tt ∷ []
 frame-free-trace' (const fits-int _)   hm n l = tt ∷ []
 frame-free-trace' (const fits-float _) hm n l = tt ∷ []
@@ -409,7 +406,6 @@ frame-free-blocks' (case f g) (hf , hg) n l =
 frame-free-blocks' (In _)  hm n l = []
 frame-free-blocks' (out-μ _) hm n l = []
 frame-free-blocks' (Cata {F} _ alg) hm n l = frame-free-blocks' alg hm 0 l
-frame-free-blocks' (Para _ _)     hm n l = []
 frame-free-blocks' (Out _)        hm n l = []
 frame-free-blocks' (in-ν _)     hm n l = (tt ∷ []) ∷ []
 -- D199: the block is `coalg ++ re-suspension`.
@@ -418,8 +414,6 @@ frame-free-blocks' (Ana wf c)     hc n l =
       (resuspend-ff (proj₁ (ir-to-trace' 0 (suc l) c))
                     (proj₁ (proj₂ (ir-to-trace' 0 (suc l) c))) (ℓ o l) wf)
     ∷ frame-free-blocks' c hc 0 (suc l)
-frame-free-blocks' (Hylo _ _ _ _) hm n l = []
-frame-free-blocks' (Fuse _ _ _ _) hm n l = []
 frame-free-blocks' (SigOp _)      hm n l = []
 frame-free-blocks' (const fits-int _)   hm n l = []
 frame-free-blocks' (const fits-float _) hm n l = []
