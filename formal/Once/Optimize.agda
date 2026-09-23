@@ -294,7 +294,7 @@ Id ≟Functor (_ ⊗ _) = no (λ ())
 data IRHead : Set where
   h-id h-∘ h-⟨,⟩ h-fst h-snd h-inl h-inr h-case
     h-terminal h-initial h-curry h-apply h-arr
-    h-In h-out-μ h-Cata h-Para h-Out h-in-ν h-Ana h-Hylo h-Fuse
+    h-In h-out-μ h-Cata h-Out h-in-ν h-Ana
     h-SigOp h-const : IRHead
 
 -- Decidable equality for IRHead via tag-to-ℕ conversion. Plan 0.5 Phase B
@@ -319,12 +319,9 @@ headTag h-arr       = 12
 headTag h-In        = 14
 headTag h-out-μ     = 15
 headTag h-Cata      = 16
-headTag h-Para      = 17
 headTag h-Out       = 18
 headTag h-in-ν      = 19
 headTag h-Ana       = 20
-headTag h-Hylo      = 21
-headTag h-Fuse      = 22
 headTag h-SigOp      = 24
 headTag h-const      = 25
 
@@ -348,12 +345,9 @@ headTag-inj h-arr       h-arr       _ = refl
 headTag-inj h-In        h-In        _ = refl
 headTag-inj h-out-μ     h-out-μ     _ = refl
 headTag-inj h-Cata      h-Cata      _ = refl
-headTag-inj h-Para      h-Para      _ = refl
 headTag-inj h-Out       h-Out       _ = refl
 headTag-inj h-in-ν      h-in-ν      _ = refl
 headTag-inj h-Ana       h-Ana       _ = refl
-headTag-inj h-Hylo      h-Hylo      _ = refl
-headTag-inj h-Fuse      h-Fuse      _ = refl
 headTag-inj h-SigOp      h-SigOp      _ = refl
 headTag-inj h-const      h-const      _ = refl
 
@@ -378,12 +372,9 @@ ir-head apply = h-apply
 ir-head (In _) = h-In
 ir-head (out-μ _) = h-out-μ
 ir-head (Cata _ _) = h-Cata
-ir-head (Para _ _) = h-Para
 ir-head (Out _) = h-Out
 ir-head (in-ν _) = h-in-ν
 ir-head (Ana _ _) = h-Ana
-ir-head (Hylo _ _ _ _) = h-Hylo
-ir-head (Fuse _ _ _ _) = h-Fuse
 ir-head (SigOp _) = h-SigOp
 ir-head (const _ _) = h-const
 
@@ -469,60 +460,6 @@ _≟IR_ : ∀ {A B} → (f g : IR A B) → Dec (f ≡ g)
 f ≟IR g = ≟IRH f g refl refl
 
 ------------------------------------------------------------------------
--- D062: decidable equality for the natural transform (`NatTr`) carried by
--- Fuse/Hylo. Same head-tag dispatch as `≟IRH`: off-diagonal pairs inside
--- `≟NatTr-diag` are pruned by Agda because the `heq` premise is an absurd
--- ℕ-equation there. The functor indices are constructor-headed, so the
--- recursive subterms always share their index (no hidden existentials).
-------------------------------------------------------------------------
-
-nt-headTag : ∀ {G F} → NatTr G F → ℕ
-nt-headTag ntId         = 0
-nt-headTag (ntK _)      = 1
-nt-headTag (ntFst _)    = 2
-nt-headTag (ntSnd _)    = 3
-nt-headTag (ntCase _ _) = 4
-nt-headTag (ntInl _)    = 5
-nt-headTag (ntInr _)    = 6
-nt-headTag (ntPair _ _) = 7
-
-_≟NatTr_    : ∀ {G F} (t₁ t₂ : NatTr G F) → Dec (t₁ ≡ t₂)
-≟NatTr-aux  : ∀ {G F} (t₁ t₂ : NatTr G F)
-            → Dec (nt-headTag t₁ ≡ nt-headTag t₂) → Dec (t₁ ≡ t₂)
-≟NatTr-diag : ∀ {G F} (t₁ t₂ : NatTr G F)
-            → nt-headTag t₁ ≡ nt-headTag t₂ → Dec (t₁ ≡ t₂)
-
-t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties.≟ nt-headTag t₂)
-
-≟NatTr-aux t₁ t₂ (yes heq) = ≟NatTr-diag t₁ t₂ heq
-≟NatTr-aux t₁ t₂ (no hne)  = no (λ eq → hne (cong nt-headTag eq))
-
-≟NatTr-diag ntId ntId _ = yes refl
-≟NatTr-diag (ntK i) (ntK j) _ with ≟IRH i j refl refl
-... | yes refl = yes refl
-... | no ne    = no (λ { refl → ne refl })
-≟NatTr-diag (ntFst t) (ntFst u) _ with t ≟NatTr u
-... | yes refl = yes refl
-... | no ne    = no (λ { refl → ne refl })
-≟NatTr-diag (ntSnd t) (ntSnd u) _ with t ≟NatTr u
-... | yes refl = yes refl
-... | no ne    = no (λ { refl → ne refl })
-≟NatTr-diag (ntCase t₁ u₁) (ntCase t₂ u₂) _ with t₁ ≟NatTr t₂ | u₁ ≟NatTr u₂
-... | yes refl | yes refl = yes refl
-... | no ne    | _        = no (λ { refl → ne refl })
-... | _        | no ne    = no (λ { refl → ne refl })
-≟NatTr-diag (ntInl t) (ntInl u) _ with t ≟NatTr u
-... | yes refl = yes refl
-... | no ne    = no (λ { refl → ne refl })
-≟NatTr-diag (ntInr t) (ntInr u) _ with t ≟NatTr u
-... | yes refl = yes refl
-... | no ne    = no (λ { refl → ne refl })
-≟NatTr-diag (ntPair t₁ u₁) (ntPair t₂ u₂) _ with t₁ ≟NatTr t₂ | u₁ ≟NatTr u₂
-... | yes refl | yes refl = yes refl
-... | no ne    | _        = no (λ { refl → ne refl })
-... | _        | no ne    = no (λ { refl → ne refl })
-
-------------------------------------------------------------------------
 -- Index-injectivity helpers for diagonal cases involving recursive types.
 ------------------------------------------------------------------------
 
@@ -588,36 +525,6 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ≟IRH-curry-aux f₁ f₂ (no np)    = no (λ { refl → np refl })
 
 
--- Hylo helper: takes both alg and coalg Dec results; uses rewrite
--- on WellFormedFI-irrelevant for the matched-functor case.
-≟IRH-Hylo-inner : ∀ {F G B}
-                → (wfF₁ wfF₂ : _) (wfG₁ wfG₂ : _)
-                → (alg₁ alg₂ : IR (⟦ F ⟧TI B) B)
-                → (coalg₁ coalg₂ : NatTr G F)
-                → Dec (alg₁ ≡ alg₂) → Dec (coalg₁ ≡ coalg₂)
-                → Dec (Hylo {F} {G} wfF₁ wfG₁ alg₁ coalg₁
-                       ≡ Hylo wfF₂ wfG₂ alg₂ coalg₂)
-≟IRH-Hylo-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ coalg₁ coalg₂ (yes refl) (yes refl)
-  rewrite WellFormedFI-irrelevant wfF₁ wfF₂
-        | WellFormedFI-irrelevant wfG₁ wfG₂ = yes refl
-≟IRH-Hylo-inner _ _ _ _ _ _ _ _ (yes refl) (no nq) = no (λ { refl → nq refl })
-≟IRH-Hylo-inner _ _ _ _ _ _ _ _ (no np)    (yes _) = no (λ { refl → np refl })
-≟IRH-Hylo-inner _ _ _ _ _ _ _ _ (no np)    (no _)  = no (λ { refl → np refl })
-
-≟IRH-Fuse-inner : ∀ {F G B}
-                → (wfF₁ wfF₂ : _) (wfG₁ wfG₂ : _)
-                → (alg₁ alg₂ : IR (⟦ F ⟧TI B) B)
-                → (tr₁ tr₂ : NatTr G F)
-                → Dec (alg₁ ≡ alg₂) → Dec (tr₁ ≡ tr₂)
-                → Dec (Fuse {F} {G} wfF₁ wfG₁ alg₁ tr₁
-                       ≡ Fuse wfF₂ wfG₂ alg₂ tr₂)
-≟IRH-Fuse-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ tr₁ tr₂ (yes refl) (yes refl)
-  rewrite WellFormedFI-irrelevant wfF₁ wfF₂
-        | WellFormedFI-irrelevant wfG₁ wfG₂ = yes refl
-≟IRH-Fuse-inner _ _ _ _ _ _ _ _ (yes refl) (no nq) = no (λ { refl → nq refl })
-≟IRH-Fuse-inner _ _ _ _ _ _ _ _ (no np)    (yes _) = no (λ { refl → np refl })
-≟IRH-Fuse-inner _ _ _ _ _ _ _ _ (no np)    (no _)  = no (λ { refl → np refl })
-
 -- ═══════════════════════════════════════════════════════════════════════
 -- Diagonal (same-constructor) cases
 -- ═══════════════════════════════════════════════════════════════════════
@@ -673,15 +580,6 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ...     | yes refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 ...     | no np = no (λ { refl → np refl })
 
--- Para: similar
-≟IRH-diag (Para {F} wf₁ alg₁) (Para {F'} wf₂ alg₂) _ eqA eqB
-  with F ≟IRFun F'
-... | no fne = no (λ _ → fne (μ-inj eqA))
-... | yes refl with eqA | eqB
-...   | refl | refl with ≟IRH alg₁ alg₂ refl refl
-...     | yes refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
-...     | no np = no (λ { refl → np refl })
-
 -- Out: eqA : ν-type F ≡ ν-type F'
 ≟IRH-diag (Out {F} wf₁) (Out {F'} wf₂) _ eqA eqB with F ≟IRFun F'
 ... | no fne = no (λ _ → fne (ν-inj eqA))
@@ -703,35 +601,6 @@ t₁ ≟NatTr t₂ = ≟NatTr-aux t₁ t₂ (nt-headTag t₁ Data.Nat.Properties
 ...   | refl | refl with ≟IRH coalg₁ coalg₂ refl refl
 ...     | yes refl rewrite WellFormedFI-irrelevant wf₁ wf₂ = yes refl
 ...     | no np = no (λ { refl → np refl })
-
--- Hylo: eqA : μ-type G ≡ μ-type G', eqB : B ≡ B'.
--- F is internal to the alg's type; require F ≟ F' separately.
--- Outer with-blocks on the Functor decisions remain (no warning —
--- exhaustive on Dec). The inner sub-IR with-block is extracted into
--- ≟IRH-Hylo-inner above.
-≟IRH-diag (Hylo {F} {G} wfF₁ wfG₁ alg₁ coalg₁)
-     (Hylo {F'} {G'} wfF₂ wfG₂ alg₂ coalg₂) _ eqA eqB
-  with G ≟IRFun G'
-... | no gne = no (λ _ → gne (μ-inj eqA))
-... | yes refl with eqA | eqB
-...   | refl | refl with F ≟IRFun F'
-...     | no fne  = no (λ { refl → fne refl })
-...     | yes refl =
-            ≟IRH-Hylo-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ coalg₁ coalg₂
-              (≟IRH alg₁ alg₂ refl refl) (coalg₁ ≟NatTr coalg₂)
-
--- Fuse: similar shape to Hylo
-≟IRH-diag (Fuse {F} {G} wfF₁ wfG₁ alg₁ tr₁)
-     (Fuse {F'} {G'} wfF₂ wfG₂ alg₂ tr₂) _ eqA eqB
-  with G ≟IRFun G'
-... | no gne = no (λ _ → gne (μ-inj eqA))
-... | yes refl with eqA | eqB
-...   | refl | refl with F ≟IRFun F'
-...     | no fne = no (λ { refl → fne refl })
-...     | yes refl =
-            ≟IRH-Fuse-inner wfF₁ wfF₂ wfG₁ wfG₂ alg₁ alg₂ tr₁ tr₂
-              (≟IRH alg₁ alg₂ refl refl) (tr₁ ≟NatTr tr₂)
-
 
 ≟IRH-diag (SigOp {A₁} {B₁} si₁) (SigOp {A₂} {B₂} si₂) _ eqA eqB with A₁ ≟Type A₂ | B₁ ≟Type B₂
 ... | no ne  | _     = no (λ heq → ne (just-injective (trans (cong sigop-dom heq) (sigop-dom-subst (sym eqA) (sym eqB) (SigOp si₂)))))
@@ -912,7 +781,6 @@ data InlInrView : ∀ {A B : IRTy} → IR A B → Set where
 -- shape (B * C or A + B), we use a helper with a free codomain and an
 -- equality proof. This avoids SplitError.UnificationStuck on constructors
 -- with stuck type indices (out-μ : IR (μ-type F) (⟦ F ⟧T (μ-type F)),
--- Out, Cata, Para, Ana, Hylo, Fuse, SigOp, In, in-ν). Those constructors
 -- get handled via `eq`-matching + subst; the refl cases cover concrete
 -- constructors whose target unifies.
 --
@@ -941,12 +809,9 @@ pairView-gen apply           eq = is-other-pair (subst (IR _) eq apply)
 pairView-gen (In wf)       eq = is-other-pair (subst (IR _) eq (In wf))
 pairView-gen (out-μ wf)      eq = is-other-pair (subst (IR _) eq (out-μ wf))
 pairView-gen (Cata wf alg)   eq = is-other-pair (subst (IR _) eq (Cata wf alg))
-pairView-gen (Para wf alg)   eq = is-other-pair (subst (IR _) eq (Para wf alg))
 pairView-gen (Out wf)        eq = is-other-pair (subst (IR _) eq (Out wf))
 pairView-gen (in-ν wf)     eq = is-other-pair (subst (IR _) eq (in-ν wf))
 pairView-gen (Ana wf coalg)  eq = is-other-pair (subst (IR _) eq (Ana wf coalg))
-pairView-gen (Hylo wfF wfG alg coalg) eq = is-other-pair (subst (IR _) eq (Hylo wfF wfG alg coalg))
-pairView-gen (Fuse wfF wfG alg tr)    eq = is-other-pair (subst (IR _) eq (Fuse wfF wfG alg tr))
 pairView-gen (SigOp si)      eq = is-other-pair (subst (IR _) eq (SigOp si))
 pairView-gen (const p v) eq = is-other-pair (subst (IR _) eq (const p v))
 
@@ -971,12 +836,9 @@ coprodView-gen apply           eq = is-other-coprod (subst (IR _) eq apply)
 coprodView-gen (In wf)       eq = is-other-coprod (subst (IR _) eq (In wf))
 coprodView-gen (out-μ wf)      eq = is-other-coprod (subst (IR _) eq (out-μ wf))
 coprodView-gen (Cata wf alg)   eq = is-other-coprod (subst (IR _) eq (Cata wf alg))
-coprodView-gen (Para wf alg)   eq = is-other-coprod (subst (IR _) eq (Para wf alg))
 coprodView-gen (Out wf)        eq = is-other-coprod (subst (IR _) eq (Out wf))
 coprodView-gen (in-ν wf)     eq = is-other-coprod (subst (IR _) eq (in-ν wf))
 coprodView-gen (Ana wf coalg)  eq = is-other-coprod (subst (IR _) eq (Ana wf coalg))
-coprodView-gen (Hylo wfF wfG alg coalg) eq = is-other-coprod (subst (IR _) eq (Hylo wfF wfG alg coalg))
-coprodView-gen (Fuse wfF wfG alg tr)    eq = is-other-coprod (subst (IR _) eq (Fuse wfF wfG alg tr))
 coprodView-gen (SigOp si)      eq = is-other-coprod (subst (IR _) eq (SigOp si))
 coprodView-gen (const p v) eq = is-other-coprod (subst (IR _) eq (const p v))
 
@@ -1006,12 +868,9 @@ composeFirstView apply           = cf-other apply
 composeFirstView (In wf)       = cf-other (In wf)
 composeFirstView (out-μ wf)      = cf-other (out-μ wf)
 composeFirstView (Cata wf alg)   = cf-other (Cata wf alg)
-composeFirstView (Para wf alg)   = cf-other (Para wf alg)
 composeFirstView (Out wf)        = cf-other (Out wf)
 composeFirstView (in-ν wf)     = cf-other (in-ν wf)
 composeFirstView (Ana wf coalg)  = cf-other (Ana wf coalg)
-composeFirstView (Hylo wfF wfG alg coalg) = cf-other (Hylo wfF wfG alg coalg)
-composeFirstView (Fuse wfF wfG alg tr)    = cf-other (Fuse wfF wfG alg tr)
 composeFirstView (SigOp si)      = cf-other (SigOp si)
 composeFirstView (const p v) = cf-other (const p v)
 
@@ -1031,12 +890,9 @@ composeSecondView apply          = cs-other apply
 composeSecondView (In wf)      = cs-other (In wf)
 composeSecondView (out-μ wf)     = cs-other (out-μ wf)
 composeSecondView (Cata wf alg)  = cs-other (Cata wf alg)
-composeSecondView (Para wf alg)  = cs-other (Para wf alg)
 composeSecondView (Out wf)       = cs-other (Out wf)
 composeSecondView (in-ν wf)    = cs-other (in-ν wf)
 composeSecondView (Ana wf coalg) = cs-other (Ana wf coalg)
-composeSecondView (Hylo wfF wfG alg coalg) = cs-other (Hylo wfF wfG alg coalg)
-composeSecondView (Fuse wfF wfG alg tr)    = cs-other (Fuse wfF wfG alg tr)
 composeSecondView (SigOp si)     = cs-other (SigOp si)
 composeSecondView (const p v) = cs-other (const p v)
 
@@ -1056,12 +912,9 @@ fstSndView apply           = fsv-other apply
 fstSndView (In wf)       = fsv-other (In wf)
 fstSndView (out-μ wf)      = fsv-other (out-μ wf)
 fstSndView (Cata wf alg)   = fsv-other (Cata wf alg)
-fstSndView (Para wf alg)   = fsv-other (Para wf alg)
 fstSndView (Out wf)        = fsv-other (Out wf)
 fstSndView (in-ν wf)     = fsv-other (in-ν wf)
 fstSndView (Ana wf coalg)  = fsv-other (Ana wf coalg)
-fstSndView (Hylo wfF wfG alg coalg) = fsv-other (Hylo wfF wfG alg coalg)
-fstSndView (Fuse wfF wfG alg tr)    = fsv-other (Fuse wfF wfG alg tr)
 fstSndView (SigOp si)      = fsv-other (SigOp si)
 fstSndView (const p v) = fsv-other (const p v)
 
@@ -1081,12 +934,9 @@ inlInrView apply           = iiv-other apply
 inlInrView (In wf)       = iiv-other (In wf)
 inlInrView (out-μ wf)      = iiv-other (out-μ wf)
 inlInrView (Cata wf alg)   = iiv-other (Cata wf alg)
-inlInrView (Para wf alg)   = iiv-other (Para wf alg)
 inlInrView (Out wf)        = iiv-other (Out wf)
 inlInrView (in-ν wf)     = iiv-other (in-ν wf)
 inlInrView (Ana wf coalg)  = iiv-other (Ana wf coalg)
-inlInrView (Hylo wfF wfG alg coalg) = iiv-other (Hylo wfF wfG alg coalg)
-inlInrView (Fuse wfF wfG alg tr)    = iiv-other (Fuse wfF wfG alg tr)
 inlInrView (SigOp si)      = iiv-other (SigOp si)
 inlInrView (const p v) = iiv-other (const p v)
 
@@ -1103,9 +953,6 @@ inlInrView (const p v) = iiv-other (const p v)
 -- structural form that preserves it). (`Void`-source → `initial` stays
 -- unconditional: a `Void`-source morphism is never invoked.)
 has-effect? : ∀ {A B} → IR A B → Bool
--- D062: a Fuse/Hylo's natural transform may carry effectful constant-leaf
--- (ntK) IRs; recurse into them.
-has-effect?-nt : ∀ {G F} → NatTr G F → Bool
 has-effect? id              = false
 has-effect? (g ∘ f)         = has-effect? g ∨ has-effect? f
 has-effect? fst             = false
@@ -1128,21 +975,10 @@ has-effect? (const _ _)   = false
 has-effect? (In _)        = false
 has-effect? (out-μ _)       = false
 has-effect? (Cata _ alg)    = has-effect? alg
-has-effect? (Para _ alg)    = has-effect? alg
 has-effect? (Out _)         = false
 has-effect? (in-ν _)      = false
 has-effect? (Ana _ coalg)   = has-effect? coalg
-has-effect? (Hylo _ _ alg t) = has-effect? alg ∨ has-effect?-nt t
-has-effect? (Fuse _ _ alg t) = has-effect? alg ∨ has-effect?-nt t
 
-has-effect?-nt ntId         = false
-has-effect?-nt (ntK ir)     = has-effect? ir
-has-effect?-nt (ntFst t)    = has-effect?-nt t
-has-effect?-nt (ntSnd t)    = has-effect?-nt t
-has-effect?-nt (ntCase t u) = has-effect?-nt t ∨ has-effect?-nt u
-has-effect?-nt (ntInl t)    = has-effect?-nt t
-has-effect?-nt (ntInr t)    = has-effect?-nt t
-has-effect?-nt (ntPair t u) = has-effect?-nt t ∨ has-effect?-nt u
 
 optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
 optimize-fst f with pairView f
@@ -1289,13 +1125,9 @@ mutual
   optimize-once-structural (In wf) = In wf
   optimize-once-structural (out-μ wf) = out-μ wf
   optimize-once-structural (Cata {F} wf alg) = Cata {F} wf (optimize-once alg)
-  optimize-once-structural (Para {F} wf alg) = Para {F} wf (optimize-once alg)
   optimize-once-structural (Out wf) = Out wf
   optimize-once-structural (in-ν wf) = in-ν wf
   optimize-once-structural (Ana {F} wf coalg) = Ana {F} wf (optimize-once coalg)
-  optimize-once-structural (Hylo {F} {G} wfF wfG alg t) = Hylo {F} {G} wfF wfG (optimize-once alg) (optimize-nt t)
-  -- Fuse: μ-anchored fusion (correct by construction)
-  optimize-once-structural (Fuse {F} {G} wfF wfG alg t) = Fuse {F} {G} wfF wfG (optimize-once alg) (optimize-nt t)
   -- Guard/Unguard removed: productivity follows from IR totality
   -- out-μ/in-ν: Lambek isomorphisms (potential fusion: out-μ ∘ In = id, In ∘ out-μ = id)
 
@@ -1309,16 +1141,6 @@ mutual
   ...   | yes refl = initial                   -- Source is Void → initial (vacuous: never invoked)
   ...   | no _ = optimize-once-structural ir   -- Otherwise → structural rules
 
-  -- D062: optimization descends into a natural transform's constant-leaf IRs.
-  optimize-nt : ∀ {G F} → NatTr G F → NatTr G F
-  optimize-nt ntId         = ntId
-  optimize-nt (ntK ir)     = ntK (optimize-once ir)
-  optimize-nt (ntFst t)    = ntFst (optimize-nt t)
-  optimize-nt (ntSnd t)    = ntSnd (optimize-nt t)
-  optimize-nt (ntCase t u) = ntCase (optimize-nt t) (optimize-nt u)
-  optimize-nt (ntInl t)    = ntInl (optimize-nt t)
-  optimize-nt (ntInr t)    = ntInr (optimize-nt t)
-  optimize-nt (ntPair t u) = ntPair (optimize-nt t) (optimize-nt u)
 
 ------------------------------------------------------------------------
 -- Bounded Iteration
