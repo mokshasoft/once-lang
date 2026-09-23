@@ -339,3 +339,128 @@ those folds, so that is where the argument must finally be tested.
 
 ⇒ the next probe, if one is wanted: `Knot/SzAgree`'s shape (a 30-row
 fold, 442 lines, generated) against a type-indexed twin.
+
+---
+
+## 7. THE ARITY PROBLEM — diagnosis, and the move the WF axis already made
+
+⚠ §5.0 showed the towers and `natⁿ` are ARITY, not index. This section
+asks what to do about that, and the answer is a move this project has
+already made ONCE, elsewhere, and won with.
+
+### 7.1 Why arity costs anything at all
+
+A method is `lam^n`. Applying it leaves **n stacked substitutions**, and
+field `j` must be read past binders `j+1 … n` — so it arrives WEAKENED:
+
+```agda
+subTm σ₁ (subTm σ₂ (… (subTm σ_n (var (vs^(n-1) vz)))))
+```
+
+Each layer meets a `renTm vs`, and `subTm σ (renTm vs t)` **is stuck on
+an abstract `t`** — it needs `wk-single`, which is an induction on the
+term. ⇒ n binders cost O(n) weakening rungs (`tower⁶`, `towerJ⁵`, …) and
+arity × stack-depth naturality lifts (`nat6₅`, `nat7₂`, …).
+
+★★★ **The weakening exists ONLY because there is more than one binder.**
+With one binder nothing is weakened past anything.
+
+### 7.2 What the WF axis did differently — and it is the same shape
+
+`Lib/Ord`, in its own words:
+
+> `Hom Nat (nsuc k) nzero` **COMPUTES** to `base`. No fuel, no `Acc`, no
+> `TERMINATING` — **the measure never appears, because the ORDER
+> reduces.**
+
+Agda/Coq/Lean do well-founded recursion through `Acc`, which does **not**
+compute, so every use site fights `Acc_inv` transports. Once put the
+invariant where it REDUCES, and the obligation became a conversion.
+
+⇒ **the transferable principle: put the obligation where it COMPUTES.**
+
+### 7.3 The same move, unmade, in the Knot
+
+The Knot uses a **Π-telescope** for method arguments — n curried binders.
+The alternative is a **Σ-telescope** — one binder over a tuple:
+
+| | Π-telescope (today) | Σ-telescope |
+|---|---|---|
+| apply | n `app`s ⇒ n βs | **one** β |
+| read field `j` | `var (vs^k vz)` under n substitutions, weakened | `fst (snd^j …)` |
+| what that costs | `subTm σ (renTm vs t)` — **STUCK**, needs `wk-single` | `βfst`/`βsnd` — **REDUCTIONS** |
+| ⇒ | the tower family, the `natⁿ` family | nothing |
+
+Concretely: `subTm (single tup) (fst (var vz))` is `fst tup`, and
+`fst ⟨i , …⟩ ⟶ i` by `βfst`. It **computes**. Nothing is weakened
+because there is one binder.
+
+⇒ this is `Hom Nat` computing, one level up: **§2.1's whole cost is
+lemmas standing in for reductions that a different encoding would
+perform.**
+
+⚠ And it says where the Knot is CONVENTIONAL: curried methods are what
+generic programming with descriptions does everywhere. The WF axis was
+where this project departed from the field and won. **The Knot never
+got that treatment.**
+
+### 7.4 ⇒ What is missing in the KERNEL, exactly
+
+```agda
+ifields D i ms σ C m p = app (app (app m i) p) (iihs D ms σ C p)
+```
+
+**Three unary applications, fixed by `ι-ielim`.** So:
+
+| binders | whose? | fixable where? |
+|---|---|---|
+| index, payload, IH tuple | **the kernel's ι-rule** | ⛔ kernel — `ifields` must pass a TUPLE |
+| one per motive passenger (`D`, `M`, `j`, …) | **ours**, via `imethTy`'s Π-telescope | ✅ **library, today** |
+
+⇒ **a library-only change already removes half the depth** — tupling the
+motive passengers takes `methsTyCons` from `lam⁶` to `lam⁴`, and the
+towers from six rungs to four — with NO kernel change and no re-indexing.
+
+⇒ and the kernel change that finishes it is ONE RULE:
+
+```agda
+ifields D i ms σ C m p = app m (pair i (pair p (iihs D ms σ C p)))
+```
+
+one binder, `lam¹`, and **every field access becomes a reduction**. The
+same edit to `ι-elim` for the non-indexed twin.
+
+### 7.5 The ideal Knot, and the gap to it
+
+Assume the Σ-telescope. An adequacy row becomes:
+
+    head-red  ·  ONE β  ·  βfst/βsnd projections  ·  the IH
+
+with **no cast at all** — no tower, no `natⁿ`, no `-sub` push-through for
+the method machinery, no depth congruence for the argument slots.
+Compare `Knot/MethsTyAgree`'s `consK-app`, which needs six βs, a
+`cong₅`, `tower⁶`/`towerJ⁵`/`towerJ`/`towerA`/`towerP`, `nat6₅`,
+`nat6₂` and `methTyK-sub` — **to say the same thing**.
+
+**What is missing, in order of cost:**
+
+1. ⬜ `imethTy`/`methTy` build a Σ-telescope instead of a Π-telescope;
+   `Lib/IPay.⊢methLam` becomes `⊢methTuple`. **Library only.**
+2. ⬜ `ι-ielim`/`ι-elim` pass a tuple. **Kernel, one rule each** — and
+   its subject-reduction obligation is the same obligation, re-shaped.
+3. ⬜ then delete: the tower family (8 rungs), the `natⁿ` family (8
+   instances), and the `-sub` lemmas that exist only to cross a method's
+   binders.
+
+⚠⚠ **STATUS: PROPOSED, NOT MEASURED.** What is verified is the
+diagnosis — `ifields` is three unary apps, `methsTyMotK` is a
+three-passenger Π-telescope, `βfst`/`βsnd` are reductions, and the tower
+family is eight rungs deep. That tupling removes the towers is an
+argument, not a measurement.
+
+⇒ **the probe: take ONE program with passengers — `methsTyFromK` is the
+one just built, and its `consK-app` is the worst case — and rebuild it
+with the passengers tupled.** That is step 1 alone, library-only, and it
+should take `lam⁶` to `lam⁴`. If the cast shrinks as predicted, step 2
+is worth its kernel edit; if it does not, this section is wrong and
+cheaply so.
