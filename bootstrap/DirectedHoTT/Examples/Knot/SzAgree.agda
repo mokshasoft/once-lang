@@ -118,6 +118,7 @@ open import DirectedHoTT.Examples.Knot.SzS using ( szsTm; szsMethsK )
 -- ★ `_»_` comes from `Lib/RedChain`: it was emitted (and hand-written)
 --   into 15 modules, 14 of them RE-IMPLEMENTING `⟶*-trans`.
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
+open import DirectedHoTT.Lib.Eval using ( evSpine; chainOf )
 
 ------------------------------------------------------------------------
 -- ★ EVERY ROW OPENS THE SAME WAY, so this much is proved ONCE: the
@@ -148,23 +149,17 @@ agree : {Γ Γ' : Cx} (i : RTm Γ') (t : RTm Γ) →
 
 agree i (var y0) =
   head-red tagTm-var memTm-var i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (lam y0) =
   head-red tagTm-lam memTm-lam i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-lam) ok cTm-lam
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-κ aih-ι))))
 agree i (app y0 y1) =
   head-red tagTm-app memTm-app i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-app) ok cTm-app
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -173,9 +168,7 @@ agree i (app y0 y1) =
      (aih-κ aih-ι)))))
 agree i (pair y0 y1) =
   head-red tagTm-pair memTm-pair i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-pair) ok cTm-pair
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -184,9 +177,7 @@ agree i (pair y0 y1) =
      (aih-κ aih-ι)))))
 agree i (absurd y0 y1) =
   head-red tagTm-absurd memTm-absurd i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-absurd) ok cTm-absurd
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -195,9 +186,7 @@ agree i (absurd y0 y1) =
      (aih-κ aih-ι)))))
 agree i (ordtr y0 y1 y2 y3 y4) =
   head-red tagTm-ordtr memTm-ordtr i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-ordtr) ok cTm-ordtr
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -212,32 +201,24 @@ agree i (ordtr y0 y1 y2 y3 y4) =
      (aih-κ aih-ι))))))))
 agree i (fst y0) =
   head-red tagTm-fst memTm-fst i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-fst) ok cTm-fst
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-κ aih-ι))))
 agree i (snd y0) =
   head-red tagTm-snd memTm-snd i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-snd) ok cTm-snd
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-κ aih-ι))))
 agree i ⌜base⌝ =
   head-red tagTm-cbase memTm-cbase i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (⌜Π⌝ y0 y1) =
   head-red tagTm-cPi memTm-cPi i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-cPi) ok cTm-cPi
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -246,9 +227,7 @@ agree i (⌜Π⌝ y0 y1) =
      (aih-κ aih-ι)))))
 agree i (⌜Σ⌝ y0 y1) =
   head-red tagTm-cSg memTm-cSg i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-cSg) ok cTm-cSg
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -257,9 +236,7 @@ agree i (⌜Σ⌝ y0 y1) =
      (aih-κ aih-ι)))))
 agree i (⌜Hom⌝ y0 y1 y2) =
   head-red tagTm-cHom memTm-cHom i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-cHom) ok cTm-cHom
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -270,9 +247,7 @@ agree i (⌜Hom⌝ y0 y1 y2) =
      (aih-κ aih-ι))))))
 agree i (hrefl y0 y1) =
   head-red tagTm-hrefl memTm-hrefl i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-hrefl) ok cTm-hrefl
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -281,9 +256,7 @@ agree i (hrefl y0 y1) =
      (aih-κ aih-ι)))))
 agree i (tr y0 y1 y2) =
   head-red tagTm-tr memTm-tr i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-tr) ok cTm-tr
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -294,9 +267,7 @@ agree i (tr y0 y1 y2) =
      (aih-κ aih-ι))))))
 agree i (ap y0 y1 y2) =
   head-red tagTm-ap memTm-ap i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-ap) ok cTm-ap
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -307,9 +278,7 @@ agree i (ap y0 y1 y2) =
      (aih-κ aih-ι))))))
 agree i (⌜Id⌝ y0 y1 y2) =
   head-red tagTm-cId memTm-cId i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-cId) ok cTm-cId
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -320,9 +289,7 @@ agree i (⌜Id⌝ y0 y1 y2) =
      (aih-κ aih-ι))))))
 agree i (idrefl y0 y1) =
   head-red tagTm-idrefl memTm-idrefl i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-idrefl) ok cTm-idrefl
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -331,9 +298,7 @@ agree i (idrefl y0 y1) =
      (aih-κ aih-ι)))))
 agree i (jsub y0 y1 y2) =
   head-red tagTm-jsub memTm-jsub i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-jsub) ok cTm-jsub
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -344,28 +309,20 @@ agree i (jsub y0 y1 y2) =
      (aih-κ aih-ι))))))
 agree i unit =
   head-red tagTm-unit memTm-unit i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i nzero =
   head-red tagTm-nzero memTm-nzero i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (nsuc y0) =
   head-red tagTm-nsuc memTm-nsuc i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-nsuc) ok cTm-nsuc
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
      (aih-κ aih-ι))))
 agree i (natrec y0 y1 y2) =
   head-red tagTm-natrec memTm-natrec i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-natrec) ok cTm-natrec
      (aih-ρ (sz y0)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst done » step (βfst _ _) done) » agree _ y0)
@@ -376,18 +333,14 @@ agree i (natrec y0 y1 y2) =
      (aih-κ aih-ι))))))
 agree i (con y0 y1) =
   head-red tagTm-con memTm-con i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-con) ok cTm-con
      (aih-κ (aih-ρ (sz y1)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (elim y0 y1 y2) =
   head-red tagTm-elim memTm-elim i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-elim) ok cTm-elim
      (aih-ρ 0 ok (aih-ρ (sz y1)
      ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y1)
@@ -396,18 +349,14 @@ agree i (elim y0 y1 y2) =
      (aih-κ aih-ι))))))
 agree i (icon y0 y1) =
   head-red tagTm-icon memTm-icon i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-icon) ok cTm-icon
      (aih-κ (aih-ρ (sz y1)
      ((⟶*-fst done » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y1)
      (aih-κ aih-ι)))))
 agree i (ielim y0 y1 y2 y3) =
   head-red tagTm-ielim memTm-ielim i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-ielim) ok cTm-ielim
      (aih-ρ 0 ok (aih-ρ (sz y1)
      ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y1)
@@ -418,25 +367,17 @@ agree i (ielim y0 y1 y2 y3) =
      (aih-κ aih-ι)))))))
 agree i ⌜Nat⌝ =
   head-red tagTm-cNat memTm-cNat i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (⌜Mu⌝ y0) =
   head-red tagTm-cMu memTm-cMu i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (⌜IMu⌝ y0 y1 y2) =
   head-red tagTm-cIMu memTm-cIMu i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done »
+    (chainOf (evSpine 3 _) »
      ⟶*-nsuc (szsSum-red (rowSort cTm-cIMu) ok cTm-cIMu
      (aih-ρ 0 ok (aih-ρ 0 ok (aih-ρ (sz y2)
      ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) » ⟶*-ielimᵗ (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) » agree _ y2)
      (aih-κ aih-ι))))))
 agree i ⌜Unit⌝ =
   head-red tagTm-cUnit memTm-cUnit i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))

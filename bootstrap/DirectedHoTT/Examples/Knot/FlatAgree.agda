@@ -74,6 +74,7 @@ open import DirectedHoTT.Spec.Variance using ( 𝔹; true; false; flat? )
 open import DirectedHoTT.Lib.BoolNum using ( b2n )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
+open import DirectedHoTT.Lib.Eval using ( evSpine; chainOf )
 open import DirectedHoTT.Metatheory.RedCong using ( ⟶*-ielimᵗ; ⟶*-appˡ )
 open import DirectedHoTT.Lib.IMeths
   using ( cdTake; methsFrom-sel; methsFrom-past; inCD; tt; sel-here; sel-there )
@@ -118,80 +119,56 @@ agree : {Γ Θ : Cx} (i : RTm Θ) (t : RTm Γ) →
 agree i (var y0) =
   head-red tagTm-var
     (methsFrom-sel (cdTake 19 KnotD) {m = pwZero} 11 (inCD (cdTake 19 KnotD) 11 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (lam y0) =
   head-red tagTm-lam
     (methsFrom-sel (cdTake 19 KnotD) {m = pwZero} 12 (inCD (cdTake 19 KnotD) 12 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (app y0 y1) =
   head-red tagTm-app
     (methsFrom-sel (cdTake 19 KnotD) {m = pwZero} 13 (inCD (cdTake 19 KnotD) 13 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (pair y0 y1) =
   head-red tagTm-pair
     (methsFrom-sel (cdTake 19 KnotD) {m = pwZero} 14 (inCD (cdTake 19 KnotD) 14 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (absurd y0 y1) =
   head-red tagTm-absurd
     (methsFrom-sel (cdTake 19 KnotD) {m = pwZero} 15 (inCD (cdTake 19 KnotD) 15 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (ordtr y0 y1 y2 y3 y4) =
   head-red tagTm-ordtr
     (methsFrom-sel (cdTake 19 KnotD) {m = pwZero} 16 (inCD (cdTake 19 KnotD) 16 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (fst y0) =
   head-red tagTm-fst
     (methsFrom-sel (cdTake 19 KnotD) {m = pwZero} 17 (inCD (cdTake 19 KnotD) 17 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (snd y0) =
   head-red tagTm-snd
     (methsFrom-sel (cdTake 19 KnotD) {m = pwZero} 18 (inCD (cdTake 19 KnotD) 18 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i ⌜base⌝ =
   head-red tagTm-cbase
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 0
      » sel-here _ _) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (⌜Π⌝ y0 y1) =
   head-red tagTm-cPi
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 1
      » sel-there 0 _ _ (methsFrom-sel (cdTake 2 D20) {m = pwZero} 0 (inCD (cdTake 2 D20) 0 tt))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (⌜Σ⌝ y0 y1) =
   head-red tagTm-cSg
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 2
      » sel-there 1 _ _ (methsFrom-sel (cdTake 2 D20) {m = pwZero} 1 (inCD (cdTake 2 D20) 1 tt))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (⌜Hom⌝ y0 y1 y2) =
   head-red tagTm-cHom
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 3
      » sel-there 2 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 0
      » sel-here _ _)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (cong₂ (λ z w → stkCK (pair sTm (snd z)) (fst w))
                     (sub-w²-single {a = IHS} {b = PAY} i)
                     (wk-single {v = IHS} PAY))
@@ -207,145 +184,109 @@ agree i (hrefl y0 y1) =
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 4
      » sel-there 3 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 1
      » sel-there 0 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 0 (inCD (cdTake 30 D23) 0 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (tr y0 y1 y2) =
   head-red tagTm-tr
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 5
      » sel-there 4 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 2
      » sel-there 1 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 1 (inCD (cdTake 30 D23) 1 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (ap y0 y1 y2) =
   head-red tagTm-ap
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 6
      » sel-there 5 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 3
      » sel-there 2 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 2 (inCD (cdTake 30 D23) 2 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (⌜Id⌝ y0 y1 y2) =
   head-red tagTm-cId
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 7
      » sel-there 6 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 4
      » sel-there 3 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 3 (inCD (cdTake 30 D23) 3 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (idrefl y0 y1) =
   head-red tagTm-idrefl
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 8
      » sel-there 7 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 5
      » sel-there 4 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 4 (inCD (cdTake 30 D23) 4 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (jsub y0 y1 y2) =
   head-red tagTm-jsub
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 9
      » sel-there 8 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 6
      » sel-there 5 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 5 (inCD (cdTake 30 D23) 5 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i unit =
   head-red tagTm-unit
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 10
      » sel-there 9 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 7
      » sel-there 6 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 6 (inCD (cdTake 30 D23) 6 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i nzero =
   head-red tagTm-nzero
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 11
      » sel-there 10 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 8
      » sel-there 7 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 7 (inCD (cdTake 30 D23) 7 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (nsuc y0) =
   head-red tagTm-nsuc
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 12
      » sel-there 11 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 9
      » sel-there 8 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 8 (inCD (cdTake 30 D23) 8 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (natrec y0 y1 y2) =
   head-red tagTm-natrec
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 13
      » sel-there 12 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 10
      » sel-there 9 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 9 (inCD (cdTake 30 D23) 9 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (con y0 y1) =
   head-red tagTm-con
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 14
      » sel-there 13 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 11
      » sel-there 10 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 10 (inCD (cdTake 30 D23) 10 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (elim y0 y1 y2) =
   head-red tagTm-elim
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 15
      » sel-there 14 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 12
      » sel-there 11 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 11 (inCD (cdTake 30 D23) 11 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (icon y0 y1) =
   head-red tagTm-icon
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 16
      » sel-there 15 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 13
      » sel-there 12 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 12 (inCD (cdTake 30 D23) 12 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (ielim y0 y1 y2 y3) =
   head-red tagTm-ielim
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 17
      » sel-there 16 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 14
      » sel-there 13 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 13 (inCD (cdTake 30 D23) 13 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i ⌜Nat⌝ =
   head-red tagTm-cNat
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 18
      » sel-there 17 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 15
      » sel-there 14 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 14 (inCD (cdTake 30 D23) 14 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (⌜Mu⌝ y0) =
   head-red tagTm-cMu
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 19
      » sel-there 18 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 16
      » sel-there 15 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 15 (inCD (cdTake 30 D23) 15 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i (⌜IMu⌝ y0 y1 y2) =
   head-red tagTm-cIMu
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 20
      » sel-there 19 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 17
      » sel-there 16 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 16 (inCD (cdTake 30 D23) 16 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 agree i ⌜Unit⌝ =
   head-red tagTm-cUnit
     (methsFrom-past (cdTake 19 KnotD) {m = pwZero} 21
      » sel-there 20 _ _ (methsFrom-past (cdTake 2 D20) {m = pwZero} 18
      » sel-there 17 _ _ (methsFrom-sel (cdTake 30 D23) {m = pwZero} 17 (inCD (cdTake 30 D23) 17 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
 
 ------------------------------------------------------------------------
 -- ★★★ AT THE LEDGER'S NAME.  `flatK i t = ielim KnotD i flatMeths t`,

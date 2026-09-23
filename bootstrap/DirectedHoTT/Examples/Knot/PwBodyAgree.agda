@@ -88,6 +88,7 @@ open import DirectedHoTT.Spec.Typing
 open import DirectedHoTT.Spec.Variance using ( pwBody )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
+open import DirectedHoTT.Lib.Eval using ( evSpine; chainOf )
 open import DirectedHoTT.Lib.Wk using ( sub-w²-single; w )
 open import DirectedHoTT.Spec.Syntax using ( Sub; extS; subTm )
 open import DirectedHoTT.Lib.ICast using ( ⟶*-castₗ )
@@ -262,9 +263,7 @@ pwb-agree : {Γ Θ : Cx} (i : RTm Θ) → i ⟶* pair sTm (num (len Γ)) → (t 
 pwb-agree {Γ} i hi (var y0) =
   head-red tagTm-var
     (methsAt-sel (cdTake 20 KnotD) {mth = pwDefault} 0 11 (inCD (cdTake 20 KnotD) 11 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-var)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -280,9 +279,7 @@ pwb-agree {Γ} i hi (var y0) =
 pwb-agree {Γ} i hi (lam y0) =
   head-red tagTm-lam
     (methsAt-sel (cdTake 20 KnotD) {mth = pwDefault} 0 12 (inCD (cdTake 20 KnotD) 12 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-lam)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -298,9 +295,7 @@ pwb-agree {Γ} i hi (lam y0) =
 pwb-agree {Γ} i hi (app y0 y1) =
   head-red tagTm-app
     (methsAt-sel (cdTake 20 KnotD) {mth = pwDefault} 0 13 (inCD (cdTake 20 KnotD) 13 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-app)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -316,9 +311,7 @@ pwb-agree {Γ} i hi (app y0 y1) =
 pwb-agree {Γ} i hi (pair y0 y1) =
   head-red tagTm-pair
     (methsAt-sel (cdTake 20 KnotD) {mth = pwDefault} 0 14 (inCD (cdTake 20 KnotD) 14 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-pair)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -334,9 +327,7 @@ pwb-agree {Γ} i hi (pair y0 y1) =
 pwb-agree {Γ} i hi (absurd y0 y1) =
   head-red tagTm-absurd
     (methsAt-sel (cdTake 20 KnotD) {mth = pwDefault} 0 15 (inCD (cdTake 20 KnotD) 15 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-absurd)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -352,9 +343,7 @@ pwb-agree {Γ} i hi (absurd y0 y1) =
 pwb-agree {Γ} i hi (ordtr y0 y1 y2 y3 y4) =
   head-red tagTm-ordtr
     (methsAt-sel (cdTake 20 KnotD) {mth = pwDefault} 0 16 (inCD (cdTake 20 KnotD) 16 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-ordtr)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -370,9 +359,7 @@ pwb-agree {Γ} i hi (ordtr y0 y1 y2 y3 y4) =
 pwb-agree {Γ} i hi (fst y0) =
   head-red tagTm-fst
     (methsAt-sel (cdTake 20 KnotD) {mth = pwDefault} 0 17 (inCD (cdTake 20 KnotD) 17 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-fst)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -388,9 +375,7 @@ pwb-agree {Γ} i hi (fst y0) =
 pwb-agree {Γ} i hi (snd y0) =
   head-red tagTm-snd
     (methsAt-sel (cdTake 20 KnotD) {mth = pwDefault} 0 18 (inCD (cdTake 20 KnotD) 18 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-snd)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -406,9 +391,7 @@ pwb-agree {Γ} i hi (snd y0) =
 pwb-agree {Γ} i hi ⌜base⌝ =
   head-red tagTm-cbase
     (methsAt-sel (cdTake 20 KnotD) {mth = pwDefault} 0 19 (inCD (cdTake 20 KnotD) 19 tt)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-cbase)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -425,9 +408,7 @@ pwb-agree {Γ} i hi (⌜Σ⌝ y0 y1) =
   head-red tagTm-cSg
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 1
      » sel-there 0 _ _ (methsAt-sel (cdTake 1 PD21) {mth = pwDefault} 21 0 (inCD (cdTake 1 PD21) 0 tt))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-cSg)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -445,9 +426,7 @@ pwb-agree {Γ} i hi (hrefl y0 y1) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 3
      » sel-there 2 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 1
      » sel-there 0 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 0 (inCD (cdTake 30 PD23) 0 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-hrefl)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -465,9 +444,7 @@ pwb-agree {Γ} i hi (tr y0 y1 y2) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 4
      » sel-there 3 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 2
      » sel-there 1 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 1 (inCD (cdTake 30 PD23) 1 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-tr)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -485,9 +462,7 @@ pwb-agree {Γ} i hi (ap y0 y1 y2) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 5
      » sel-there 4 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 3
      » sel-there 2 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 2 (inCD (cdTake 30 PD23) 2 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-ap)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -505,9 +480,7 @@ pwb-agree {Γ} i hi (⌜Id⌝ y0 y1 y2) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 6
      » sel-there 5 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 4
      » sel-there 3 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 3 (inCD (cdTake 30 PD23) 3 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-cId)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -525,9 +498,7 @@ pwb-agree {Γ} i hi (idrefl y0 y1) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 7
      » sel-there 6 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 5
      » sel-there 4 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 4 (inCD (cdTake 30 PD23) 4 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-idrefl)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -545,9 +516,7 @@ pwb-agree {Γ} i hi (jsub y0 y1 y2) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 8
      » sel-there 7 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 6
      » sel-there 5 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 5 (inCD (cdTake 30 PD23) 5 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-jsub)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -565,9 +534,7 @@ pwb-agree {Γ} i hi unit =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 9
      » sel-there 8 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 7
      » sel-there 6 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 6 (inCD (cdTake 30 PD23) 6 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-unit)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -585,9 +552,7 @@ pwb-agree {Γ} i hi nzero =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 10
      » sel-there 9 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 8
      » sel-there 7 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 7 (inCD (cdTake 30 PD23) 7 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-nzero)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -605,9 +570,7 @@ pwb-agree {Γ} i hi (nsuc y0) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 11
      » sel-there 10 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 9
      » sel-there 8 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 8 (inCD (cdTake 30 PD23) 8 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-nsuc)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -625,9 +588,7 @@ pwb-agree {Γ} i hi (natrec y0 y1 y2) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 12
      » sel-there 11 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 10
      » sel-there 9 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 9 (inCD (cdTake 30 PD23) 9 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-natrec)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -645,9 +606,7 @@ pwb-agree {Γ} i hi (con y0 y1) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 13
      » sel-there 12 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 11
      » sel-there 10 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 10 (inCD (cdTake 30 PD23) 10 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-con)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -665,9 +624,7 @@ pwb-agree {Γ} i hi (elim y0 y1 y2) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 14
      » sel-there 13 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 12
      » sel-there 11 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 11 (inCD (cdTake 30 PD23) 11 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-elim)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -685,9 +642,7 @@ pwb-agree {Γ} i hi (icon y0 y1) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 15
      » sel-there 14 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 13
      » sel-there 12 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 12 (inCD (cdTake 30 PD23) 12 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-icon)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -705,9 +660,7 @@ pwb-agree {Γ} i hi (ielim y0 y1 y2 y3) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 16
      » sel-there 15 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 14
      » sel-there 13 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 13 (inCD (cdTake 30 PD23) 13 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-ielim)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -725,9 +678,7 @@ pwb-agree {Γ} i hi ⌜Nat⌝ =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 17
      » sel-there 16 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 15
      » sel-there 14 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 14 (inCD (cdTake 30 PD23) 14 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-cNat)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -745,9 +696,7 @@ pwb-agree {Γ} i hi (⌜Mu⌝ y0) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 18
      » sel-there 17 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 16
      » sel-there 15 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 15 (inCD (cdTake 30 PD23) 15 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-cMu)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -765,9 +714,7 @@ pwb-agree {Γ} i hi (⌜IMu⌝ y0 y1 y2) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 19
      » sel-there 18 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 17
      » sel-there 16 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 16 (inCD (cdTake 30 PD23) 16 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-cIMu)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -785,9 +732,7 @@ pwb-agree {Γ} i hi ⌜Unit⌝ =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 20
      » sel-there 19 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 18
      » sel-there 17 _ _ (methsAt-sel (cdTake 30 PD23) {mth = pwDefault} 23 17 (inCD (cdTake 30 PD23) 17 tt)))) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-castₗ (pwDef-w² IHS PAY i tagTm-cUnit)
       (  ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ hi))
       »  ⟶*-appˡ (⟶*-appʳ (⟶*-nsuc hd))
@@ -815,9 +760,7 @@ pwb-agree {Γ} i hi ⌜Unit⌝ =
 pwb-agree {Γ} i hi (⌜Π⌝ y0 y1) =
   head-red tagTm-cPi
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 0 » sel-here _ _) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-jsubᵖ ( ⟶*-jsubᵖ
                  (⟶*-castₗ (cong (λ w → fst (snd (snd w)))
                                  (wk-single {v = IHS} PAY))
@@ -848,9 +791,7 @@ pwb-agree {Γ} i hi (⌜Hom⌝ y0 y1 y2) =
     (methsAt-past (cdTake 20 KnotD) {mth = pwDefault} 0 2
      » sel-there 1 _ _ (methsAt-past (cdTake 1 PD21) {mth = pwDefault} 21 0
      » sel-here _ _)) i _
-    (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
-     step (β _ _) done)
+    (chainOf (evSpine 3 _))
   » ⟶*-jsubᵖ ( ⟶*-jsubᵖ
                  (⟶*-castₗ (cong (λ w → fst (snd (snd (snd w))))
                                  (wk-single {v = IHS} PAY))

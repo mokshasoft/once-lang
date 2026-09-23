@@ -227,3 +227,83 @@ asked for.
 `natrec-*` (44), `jsub-refl` (142) and the `βfst`/`βsnd` uses in
 *non-prologue* positions are **Phase 1**, and are the larger remainder
 of the 14 702.
+
+---
+
+## 7. ✅ PHASE 0 LANDED — 7 FILES, 230 PROLOGUES, −435 LINES
+
+### ⚠⚠ But the first design was WRONG, and the failure is the lesson
+
+`evN` is a **parallel** pass — it also reduces inside **arguments**.
+Against the real rows:
+
+| | `evN` (parallel) | `evSpine` (spine only) |
+|---|---|---|
+| `SzAgree` / `PwAgree` / `StkAAgree` | ✅ rc=0 | ✅ rc=0 |
+| **`StkCAgree` / `PwBodyAgree`** | ⛔ **rc=42** | ✅ rc=0 |
+
+The failures were `enTm y0 != …` and `enVar y0 != …`: those rows'
+continuations expect the payload **un-normalised**, and the parallel
+pass had already reduced it.
+
+★★★ **OVER-REDUCTION IS A REAL FAILURE MODE.** An evaluator that reduces
+*more* is *less usable*, because a proof's later steps are written
+against a specific partially-reduced term. `evSpine` walks only the
+application spine — exactly the three curried `app`s `ifields` leaves
+behind — so it cannot touch an argument.
+
+### The landing
+
+| file | prologues |
+|---|---|
+| `OccAgree` | 50 |
+| `SzAgree` · `PwAgree` · `PwBodyAgree` · `StkAAgree` · `StkCAgree` · `FlatAgree` | 30 each |
+| **total** | **230** |
+
+- **all 7 rc=0** individually, then **net −435 lines**
+- ⚠ **all 7 are GENERATED.** The fix is in `tools/gen-knot.py` as a
+  single `_evspine()` post-pass over the emitted text — one auditable
+  rule rather than four scattered emission sites, so it cannot miss one.
+- ✅ the regenerated files are **byte-identical** to the hand-verified
+  versions (`diff` clean on 4 of 7 spot-checked).
+
+### ⚠ A methodology trap worth keeping
+
+`head -1 | grep GENERATED` said **`generated=0`** for six of these files
+— their headers word it differently. Six direct edits would have been
+silently overwritten by the next generator run. ⇒ **test for generated
+by the generator's write sites**, never by the header.
+
+### ⬜ Next
+
+Phase 1: `ι-ielim` (34), `natrec-*` (44), `jsub-refl` (142), and the
+`βfst`/`βsnd` uses in **non-prologue** positions — the larger remainder
+of the 14 702, and each is one more `evSpine`-style clause plus one line
+of chain.
+
+### Phase 0's measured effect on the headline number
+
+| | |
+|---|---|
+| step constructions before | **14 702** |
+| step constructions after | **12 632** |
+| ⇒ removed by the β-prologue alone | **2 070 (−14%)** |
+
+### ⬜ Phase 1 targets, sized
+
+| idiom still hand-built | uses |
+|---|---|
+| `⟶*-snd done » step (βsnd _ _) done` | **381** |
+| `⟶*-fst done » step (βfst _ _) done` | **192** |
+| `⟶*-ielimᵗ …` | 342 |
+| `step (jsub-refl _ _ _ _) done` | 123 |
+| bare `step (βsnd _ _) done` | 849 |
+| bare `step (βfst _ _) done` | 705 |
+
+★ The top two are one idiom: a **projection chain** into a nested
+`pair`. `ev1` already reduces `βfst`/`βsnd`; `evSpine` deliberately does
+not. ⇒ **Phase 1's first move is an `evProj`** — reduce `fst`/`snd`
+spines into a `pair`, and nothing else — which is 573 two-step chains
+directly, and feeds the 1 554 bare uses.
+⚠ Same discipline as §7: the narrowest evaluator that discharges the
+obligation. Do **not** reach for a general `nf` here.

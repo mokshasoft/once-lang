@@ -6686,6 +6686,45 @@ _SRCMOD = {"Typing": "DirectedHoTT.Spec.Typing",
 _SKIP_EXPECT = {"RedD": 0, "TyRedD": 0, "ConvD": 0, "NoNatCD": 0,
                 "InDD": 0, "InIDD": 0, "JudgeD": 0}
 
+
+# ---------------------------------------------------------------------------
+# ★★★ THE THREE-β PROLOGUE IS `evSpine 3`.  `KNOT-LESSONS` §10 / PLAN-NF.
+#
+# Every adequacy row opens by peeling the three curried `app`s the ι-rule
+# leaves behind (`ifields`, §7).  That prologue was emitted PER ROW —
+# `Knot/SzAgree`'s own header called it irreducible, "THE THREE βs CANNOT
+# JOIN IT … they are emitted per row".  With an evaluator it collapses to
+# one call, because `Lib/Eval.evSpine` RUNS the reduction instead of
+# witnessing it.
+#
+# ⚠ IT MUST BE `evSpine`, NOT `evN`.  `evN` is a PARALLEL pass and also
+#   reduces inside ARGUMENTS.  Measured: `evN 3` closed SzAgree (29/29),
+#   PwAgree and StkAAgree but BROKE StkCAgree and PwBodyAgree —
+#   `enTm y0 != …`, `enVar y0 != …` — because those rows' continuations
+#   expect the payload UN-normalised.  `evSpine` walks only the
+#   application spine, so it cannot over-reduce an argument.
+#
+# ⚠ Applied as ONE post-pass over the emitted text rather than at each of
+#   the four emission sites, so it cannot silently miss one.  The
+#   substitution is exactly the one verified on all 7 files by hand
+#   (230 prologues, every file rc=0) before it was moved in here.
+# ---------------------------------------------------------------------------
+_PROLOGUE_RE = re.compile(
+    r"\(⟶\*-appˡ \(⟶\*-appˡ \(step \(β _ _\) done\)\) »\s*\n"
+    r"\s*⟶\*-appˡ \(step \(β _ _\) done\) »\s*\n"
+    r"\s*step \(β _ _\) done")
+_EV_ANCHOR = "open import DirectedHoTT.Lib.RedChain using ( _»_ )"
+_EV_IMPORT = "open import DirectedHoTT.Lib.Eval using ( evSpine; chainOf )"
+
+def _evspine(src):
+    """Collapse the three-β prologue to one `evSpine 3` call."""
+    out, n = _PROLOGUE_RE.subn("(chainOf (evSpine 3 _)", src)
+    if n and _EV_IMPORT not in out:
+        assert _EV_ANCHOR in out, "no RedChain anchor to hang the Eval import on"
+        out = out.replace(_EV_ANCHOR, _EV_ANCHOR + "\n" + _EV_IMPORT, 1)
+    return out
+
+
 def gen_census(out):
     """one equation per family, from `_CENSUS` — so a family cannot be
     added without its check."""
@@ -6739,13 +6778,13 @@ if __name__ == "__main__":
     open(os.path.join(out, "Ctors.agda"), "w").write(gen_ctors())
     open(os.path.join(out, "CtorsV.agda"), "w").write(gen_ctorsv())
     open(os.path.join(out, "Map.agda"),   "w").write(gen_map())
-    open(os.path.join(out, "SzAgree.agda"), "w").write(gen_szagree())
-    open(os.path.join(out, "OccAgree.agda"), "w").write(gen_occagree())
-    open(os.path.join(out, "PwAgree.agda"), "w").write(gen_boolagree("pw"))
-    open(os.path.join(out, "StkAAgree.agda"), "w").write(gen_boolagree("stkA"))
-    open(os.path.join(out, "StkCAgree.agda"), "w").write(gen_boolagree("stkC"))
-    open(os.path.join(out, "FlatAgree.agda"), "w").write(gen_boolagree("flat"))
-    open(os.path.join(out, "PwBodyAgree.agda"), "w").write(gen_pwbodyagree())
+    open(os.path.join(out, "SzAgree.agda"), "w").write(_evspine(gen_szagree()))
+    open(os.path.join(out, "OccAgree.agda"), "w").write(_evspine(gen_occagree()))
+    open(os.path.join(out, "PwAgree.agda"), "w").write(_evspine(gen_boolagree("pw")))
+    open(os.path.join(out, "StkAAgree.agda"), "w").write(_evspine(gen_boolagree("stkA")))
+    open(os.path.join(out, "StkCAgree.agda"), "w").write(_evspine(gen_boolagree("stkC")))
+    open(os.path.join(out, "FlatAgree.agda"), "w").write(_evspine(gen_boolagree("flat")))
+    open(os.path.join(out, "PwBodyAgree.agda"), "w").write(_evspine(gen_pwbodyagree()))
     # ⚠⚠ NOT SPLIT, AND THE FIRST ATTEMPT TO SPLIT IT WAS A MISREADING.
     #   The 25-row module was OOM-killed at 234s (and 260s under `-c`), so
     #   it was split like `RedWfA`/`RedWfB`.  ★ THOSE TIMES WERE THE COLD

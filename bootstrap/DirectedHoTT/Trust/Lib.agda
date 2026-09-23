@@ -35,6 +35,7 @@ import DirectedHoTT.Lib.ArithMonus
 import DirectedHoTT.Lib.BoolNum
 import DirectedHoTT.Lib.Dvd
 import DirectedHoTT.Lib.DvdArith
+import DirectedHoTT.Lib.Eval
 import DirectedHoTT.Lib.ICast
 import DirectedHoTT.Lib.IDepth
 import DirectedHoTT.Lib.IFold
