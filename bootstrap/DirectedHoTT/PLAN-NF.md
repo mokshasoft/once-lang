@@ -51,7 +51,7 @@ alone is ~2 925**, and the top ten rules are ~95% of all use.
 
 ## 2. Phases
 
-### ⬜ Phase 0 — THE GATE (smallest thing that could prove it wrong)
+### 🟡 Phase 0 — THE GATE — **3 of 4 DONE**, see §5
 
 1. `step : RTm Γ → Maybe (RTm Γ)` — **β, βfst, βsnd, ι-ielim only**
 2. `step-sound : step t ≡ just u → t ⟶ u`
@@ -133,3 +133,54 @@ it is machine-checked.
 
 ⇒ **`nf` is the missing third.** It is what turns 1 and 2 from good
 ingredients into that claim.
+
+---
+
+## 5. ✅ PHASE 0 RESULT — `Lib/Eval.agda` EXISTS AND COMPUTES
+
+| step | status |
+|---|---|
+| 1. `ev1` for β/βfst/βsnd + congruence | ✅ `Lib/Eval.agda`, rc=0 |
+| 2. soundness | ✅ **by construction** — see below |
+| 3. `evN` (fuel) + soundness | ✅ rc=0 |
+| 4. rebuild one **existing** `SzAgree` case | ⬜ **NOT DONE — the gate is still open** |
+
+### ⚠⚠ The obvious formulation FAILED, and the failure is the design
+
+`ev1 : RTm Γ → RTm Γ` with a separate `ev1-sound` **cannot close**:
+
+```
+app (ev1 f) _u' != ev1 (app f a) of type RTm Γ
+```
+
+`ev1 (app f a)` is **stuck on an abstract `f`** — `ev1`'s β clause must
+first learn whether `f` is a `lam`. ★ **The stuck-on-abstract problem
+the Knot suffers everywhere reappeared inside the tool built to remove
+it.**
+
+★★★ **The fix: return the term WITH its chain** — `Red t = Σ (RTm Γ)
+(λ u → t ⟶* u)`. Soundness becomes *construction*, nothing must reduce
+in order to be proved, and the catch-all is a pair we **build**.
+
+### ✅ AND IT COMPUTES — which is the only thing that matters
+
+```agda
+t0 = fst (pair (app (lam (var vz)) unit) unit)
+runs-to-unit : val (evN 2 t0) ≡ unit
+runs-to-unit = refl                       -- ← `refl`, inside Agda
+```
+
+⛔ **CONTROL** (`tmp/EvalProbeNeg`): one pass short must fail, and does —
+`rc=42`, `app (lam (var vz)) unit != unit`. So `evN` genuinely steps;
+the `refl`s are not vacuous.
+
+### ⬜ WHAT IS STILL OWED BEFORE THE GATE IS PASSED
+
+**Step 4: rebuild one EXISTING `SzAgree` case.** The synthetic terms
+above prove `evN` computes; they do **not** prove it fires on a real
+Knot term, where the encoded subterm is abstract and `evN` may stick
+exactly where the hand chain did not (§3). ⚠ Until that is done, this
+is a working evaluator, **not** a demonstrated replacement for the
+14 702 steps. Do not claim the trade until step 4 measures it.
+
+⬜ Also owed: a sweep — `Lib/Eval.agda` is new and unswept.
