@@ -26,7 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong₂; c
 
 open import Once.Type
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
-open import Once.CCC.Eval as Val using ()
+import Once.Semantics.Machine as Val
 open import Once.SigOp.Info
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
 open import Once.Denotation.TraceMonad using (T; mkT; returnT; valueT; stoppedT; projTrace; fmapT; _>>=T_; Stopped)

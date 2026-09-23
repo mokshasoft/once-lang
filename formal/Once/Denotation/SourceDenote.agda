@@ -47,7 +47,6 @@ open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.IR using (IR; ⌊_⌋)
-open import Once.CCC.Eval as Val using ()
 open import Once.Functor.Translate using (WellFormedF; con-fun; base-Unit)
 open import Once.Semantics.Machine
   using (sem-cata; sem-ana; sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F)

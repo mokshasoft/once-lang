@@ -36,7 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Once.Type using (Type; Unit; Void; Int; Str; Float; Buffer;
                               _*_; _+_; _⇒[_]_; μ-type; ν-type; Functor; ⟦_⟧T;
                               Purity; mk-kind; Zero; One; Many)
-open import Once.CCC.Eval as Val using ()
+import Once.Semantics.Machine as Val
 open import Once.IR using (IR; _∘_; ⟨_,_⟩; apply; curry; terminal; id; snd; Cata; Ana; ⌊_⌋)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F; ⌈_⌉)

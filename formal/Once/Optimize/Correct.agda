@@ -16,7 +16,14 @@ module Once.Optimize.Correct where
 
 open import Once.Type
 open import Once.IR
-open import Once.CCC.Eval using (⟦_⟧; eval; appNatTr-F)
+-- plan 0.98: RED, and the red is the work-list. This module is stated over
+-- the PURE `Once.CCC.Eval.eval`, which is REFUTED once `Halts : B ≡ Void`
+-- makes `⟦ Void ⟧ = ⊥` — no total `IR A B → ⟦A⟧ → ⟦B⟧` exists. `eval` is
+-- DELETED. Plan 0.79 §1 says the IR-level laws belong over `evalᴰ` (the trace
+-- semantics, the ONE model), and plan 0.64 Group O is the repair: the apex's
+-- `opt-trace` is a statement about `⟦_⟧IR`, so optimizer correctness must be a
+-- TRACE statement and laws over `eval` could never discharge it.
+open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.Optimize
 open import Once.Category.Laws
 open import Once.Postulates using (extensionality)

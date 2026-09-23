@@ -39,7 +39,7 @@ open import Data.Bool using (false)
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; νᵈ; forceᵈ; inject; forget; injectν; mapInjectν)
 open import Once.Semantics.Functor using (νS; unfoldS)
-open import Once.CCC.Eval as Val using (eval)
+import Once.Semantics.Machine as Val
 open import Once.IR using (IR)
 open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.IRTy as IT

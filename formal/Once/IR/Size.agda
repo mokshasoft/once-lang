@@ -21,8 +21,6 @@ open import Once.IR
 ------------------------------------------------------------------------
 
 ir-size : ∀ {A B} → IR A B → ℕ
--- D062: size of the natural transform a Fuse/Hylo carries.
-ir-size-nt : ∀ {G F} → NatTr G F → ℕ
 ir-size id = 1
 ir-size (g ∘ f) = 1 +ℕ ir-size g +ℕ ir-size f
 ir-size ⟨ f , g ⟩ = 1 +ℕ ir-size f +ℕ ir-size g
@@ -40,26 +38,14 @@ ir-size apply = 1
 ir-size (In _) = 1
 ir-size (out-μ _) = 1             -- Lambek isomorphism inverse
 ir-size (Cata _ alg) = 2 +ℕ ir-size alg  -- Similar to curry: contains body
-ir-size (Para _ alg) = 2 +ℕ ir-size alg  -- Paramorphism body
 ir-size (Out _) = 1
 ir-size (in-ν _) = 1            -- Lambek isomorphism inverse
 ir-size (Ana _ coalg) = 2 +ℕ ir-size coalg  -- Contains coalgebra body
-ir-size (Hylo _ _ alg t) = 2 +ℕ ir-size alg +ℕ ir-size-nt t
--- Fuse: μ-anchored fusion (correct by construction)
-ir-size (Fuse _ _ alg t) = 2 +ℕ ir-size alg +ℕ ir-size-nt t
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-size (SigOp _) = 1
 ir-size (const _ _) = 1
 
-ir-size-nt ntId         = 1
-ir-size-nt (ntK ir)     = 1 +ℕ ir-size ir
-ir-size-nt (ntFst t)    = 1 +ℕ ir-size-nt t
-ir-size-nt (ntSnd t)    = 1 +ℕ ir-size-nt t
-ir-size-nt (ntCase t u) = 1 +ℕ ir-size-nt t +ℕ ir-size-nt u
-ir-size-nt (ntInl t)    = 1 +ℕ ir-size-nt t
-ir-size-nt (ntInr t)    = 1 +ℕ ir-size-nt t
-ir-size-nt (ntPair t u) = 1 +ℕ ir-size-nt t +ℕ ir-size-nt u
 
 ------------------------------------------------------------------------
 -- Size Bound Lemmas

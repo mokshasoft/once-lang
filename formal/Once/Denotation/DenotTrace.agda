@@ -20,7 +20,7 @@
 -- `⟦_⟧ᴰ : IR A B → ⟦A⟧ᴰ → T ⟦B⟧ᴰ` is added in M1c.)
 --
 -- Data (`μ`/`ν`) and base types reuse the existing PURE value domain
--- (`Once.CCC.Eval.⟦_⟧`): effects live on arrows, not inside first-order
+-- (`Once.Semantics.Machine.⟦_⟧`): effects live on arrows, not inside first-order
 -- data. (Effects-in-data — a `μ` whose layers carry effectful closures —
 -- is a later refinement; flagged, not silently dropped.)
 ------------------------------------------------------------------------
@@ -52,7 +52,7 @@ import Once.Word as OnceWord
 -- leaf is `eval fmt ir a` on an arbitrary IR morphism (Eval.agda:81). Since no
 -- surface program produces `Hylo`/`Fuse`, the pure model reaches the apex cone
 -- through surface-unreachable syntax only.
-open import Once.CCC.Eval as Val using (appNatTr-F)
+import Once.Semantics.Machine as Val
 -- Plan 0.73 (D113): the TARGET'S FLOAT FORMAT. `⟦_⟧ᴰ` is a MACHINE-level
 -- denotation, and D113 makes a float literal's machine value target-relative,
 -- so the reference meaning is too. Threaded as an explicit argument rather

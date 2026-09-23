@@ -35,20 +35,12 @@ import Once.CCC.FrameSemantics
 import Once.CCC.Machine.SMPrimitives
 import Once.IRTy
 import Once.IR
-import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
 
 module Core {FS : FrameSemantics} where
-  -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
-  -- has no format-free machine value. Inside a module already fixed to this
-  -- target's `FrameSemantics`, THE evaluator is the one at its float format,
-  -- so it is named once here and used unqualified below.
-  eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
-  eval = Ev.eval (Once.CCC.FrameSemantics.fs-numerics FS)
-
   -- …and the reference DENOTATION at the same format. That the machine and the
   -- denotation read the format from ONE place is what makes this module's
   -- obligations discharge: `float-format FS` is what `exec-abstract` encodes a

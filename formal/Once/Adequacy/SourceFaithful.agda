@@ -71,7 +71,7 @@ open import Once.Denotation.DenotTrace using (⟦_⟧ᴰ; evalᴰ; inject; forge
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰᴵ)
 open import Once.IRTy using (IRTy; ⌊_⌋) renaming (_*_ to _*ᴵ_; _+_ to _+ᴵ_)
 open import Function using (id)
-open import Once.CCC.Eval as Val using ()
+import Once.Semantics.Machine as Val
 import Once.Denotation.SourceDenote as SD
 import Once.Compile as C
 import Once.Adequacy.FaithfulLemmas fmt as FL

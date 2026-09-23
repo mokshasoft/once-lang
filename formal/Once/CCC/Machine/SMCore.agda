@@ -51,6 +51,7 @@ open import Once.CCC.Label public using (LabelId; mkLabelId; owner; path; idx)
 open import Once.Type using (Type; Unit; Int; Float; _*_; FitsInReg; fits-int; fits-float; fits-in-reg?)
 open import Once.Semantics.Machine using (⟦_⟧; LitPayload)
 open import Once.SigOp.Info using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
+open import Once.Res using (Res; stopped; returns)
 
 private
   -- Helper: just is injective (private to avoid name clashes)
@@ -1661,7 +1662,16 @@ module AbstractExec {FS : FrameSemantics} where
   -- machine's target is `fs-numerics FS`. That this is the SAME `TargetNum`
   -- the spec uses (`arch-numerics arch`) is the standing `fmt-agree` premise —
   -- the one remaining width channel, and what item 5 of J6 removes.
-  pure-sigop-out-val si fitB (just a) = SV-Lit fitB (semM si (fs-numerics FS) a)
+  -- plan 0.98: `semM` lands in `Res` — a HALTING SigOp has no result. The
+  -- Output register is still written (the ABI says so), but what it holds is
+  -- unconstrained, so the stopped row takes the same sentinel the unreadable
+  -- row does. Named helper rather than a `with`, per the note above: the
+  -- `Res` must stay a real argument so downstream `rewrite`s reduce it.
+  res-sv : ∀ {B} → FitsInReg B → Res ⟦ B ⟧ → StoredValue FS
+  res-sv fitB (returns v) = SV-Lit fitB v
+  res-sv _     stopped    = unit-storedvalue
+
+  pure-sigop-out-val si fitB (just a) = res-sv fitB (semM si (fs-numerics FS) a)
   pure-sigop-out-val si fitB nothing  = unit-storedvalue
 
   pure-sigop-out-aux : ∀ {A B} → SigOpInfo A B → LocState FS

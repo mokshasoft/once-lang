@@ -71,7 +71,6 @@ open import Relation.Binary.PropositionalEquality using (refl; sym; trans; cong;
 open import Once.IR.Size using (ir-size) public
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; +-identityʳ; +-assoc; +-suc; +-comm; <-irrefl; <-trans) public
 open import Function using (case_of_) public
-import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
 open import Once.CCC.Label using (LabelId; ℓ) public
 open import Once.CCC.Machine.SMCore
@@ -92,7 +91,7 @@ open import Once.CCC.Machine.SMCore
          -- plan 0.91 S2: how a block is LAID OUT, so `BlocksAt` can say where
          -- it lives without restating `c-thunk … ∷ t ++ c-ret … ∷ []`.
          block-layout) public
-open import Once.CCC.Machine.Validity using (module ValidityDef; module ReadLocEq) public
+open import Once.CCC.Machine.Validity using (module ReadLocEq) public
 open import Once.CCC.Machine.ValidAtWFHalted o using (validAtWF-set-halted) public
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; next-heap-ref; module FrontierInvariant) public
 open import Once.CCC.Machine.Flat using (module FlatMachine) public

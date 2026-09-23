@@ -55,7 +55,6 @@ import Once.Denotation.TraceMonad as TM
 open import Once.Type using () renaming (fits-int to fits-intˢ; fits-float to fits-floatˢ)
 open import Once.IR
 open import Once.CCC.Machine.LocMatchesMode using (LocMatchesMode)
-import Once.CCC.Eval as Ev
 import Once.Semantics.Machine as EvV
 open import Once.IR.Size
 open import Once.CCC.IR.Stack
@@ -79,13 +78,6 @@ open import Once.CCC.Codegen.IRToTrace o using (ir-to-trace-at-frontier)
 ------------------------------------------------------------------------
 
 module ClosureWellFormedDef {FS : FrameSemantics} where
-  -- Plan 0.73 (D113): `eval` is target-relative at `Float` — a float literal
-  -- has no format-free machine value. Inside a module already fixed to this
-  -- target's `FrameSemantics`, THE evaluator is the one at its float format,
-  -- so it is named once here and used unqualified below.
-  eval : ∀ {A B} → IR A B → EvV.⟦ A ⟧ᴵ → EvV.⟦ B ⟧ᴵ
-  eval = Ev.eval (Once.CCC.FrameSemantics.fs-numerics FS)
-
   -- D179: the MONADIC evaluator, named the same way and for the same reason.
   -- `ValidAtWF` indexes on `⟦_⟧ᴰᴵ`, so a closure's meaning is a Kleisli arrow
   -- and must come from `evalᴰ`, not the pure `eval`.

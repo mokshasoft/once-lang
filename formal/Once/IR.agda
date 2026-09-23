@@ -15,7 +15,7 @@
 --   - Coproducts: inl, inr, case
 --   - Terminal/Initial: terminal, initial
 --   - Exponentials: curry, apply (ungraded `_⇛_` objects, Plan 0.52 M2)
---   - Recursive types: In/out-μ/Cata/Para, Out/in-ν/Ana, Hylo/Fuse
+--   - Recursive types: In/out-μ/Cata, Out/in-ν/Ana
 --   - Primitives: SigOp (opaque external operations)
 --   - Memory: free-heap (explicit deallocation)
 ------------------------------------------------------------------------
@@ -110,15 +110,15 @@ data Allocator : Set where
 -- CCC-based intermediate representation.
 ------------------------------------------------------------------------
 
--- D062 / approach A: `NatTr` (defined mutually below) is the IR-level
--- container-morphism syntax — a natural transformation `G ⇒ F` between the
--- polynomial functors. The structural recursion schemes `Fuse`/`Hylo` carry
--- their transform AS a `NatTr`, so naturality — hence totality of the fold —
--- is by construction (a divergent / value-synthesizing transform is
--- unrepresentable). The meaning translates `NatTr` to `Once.Semantics.Functor.NatSF`
--- and folds it with the pragma-free `fuseNT`/`fuseNTW`; no `fuseW`.
-data IR   : IRTy → IRTy → Set
-data NatTr : IRFunctor → IRFunctor → Set
+-- plan 0.98: `Para`, `Hylo`, `Fuse` and `NatTr` are DELETED. They were
+-- derived schemes (D062: "`para`/`fuse` are derived, not primitive, so the
+-- IR's five-scheme zoo collapses toward `cata`/`ana`/`hylo`"), no surface
+-- program could produce one — the elaborator emits sixteen constructors and
+-- none of these was among them — and their meaning was the last consumer of
+-- the pure `eval`, which is REFUTED once `Halts : B ≡ Void` makes
+-- `⟦ Void ⟧ = ⊥`. Deforestation returns as an OPTIMIZATION, per D062: "fuse
+-- is re-added to the IR only as a refinement proven equal to hylo".
+data IR : IRTy → IRTy → Set
 
 data IR where
   -- Category structure
@@ -200,7 +200,6 @@ data IR where
 
   -- out-μ: μF → F(μF) (destructor, inverse of In)
   -- By Lambek's Lemma, In is an isomorphism, so its inverse exists.
-  -- This enables pattern-matching on μ-types inside Hylo coalgebras,
   -- which is essential for proper fusion in observation primitives.
   -- See OCP-0003 "Lambek Isomorphisms" section.
   out-μ : ∀ {F} → WellFormedFI F → IR (μ-type F) (⟦ F ⟧TI (μ-type F))
@@ -222,14 +221,6 @@ data IR where
   -- shape as `compIR ∘ ⟨ ef , eg ⟩`.
   Cata : ∀ {F} → WellFormedFI F → ∀ {E A} → IR (E * ⟦ F ⟧TI A) A → IR (E * μ-type F) A
 
-  -- Para: paramorphism (fold with access to original substructure)
-  -- Total by derivation from Cata (structural recursion on well-founded μF).
-  -- The algebra receives F(μF × A), giving access to both the original
-  -- substructure and the recursive result.
-  Para : ∀ {F} → WellFormedFI F → ∀ {A}
-       → IR (⟦ F ⟧TI (μ-type F * A)) A
-       → IR (μ-type F) A
-
   -- Final coalgebra operations (coinductive types, productive corecursion)
   -- Out: νF → F(νF) (observation/destructor)
   Out : ∀ {F} → WellFormedFI F → IR (ν-type F) (⟦ F ⟧TI (ν-type F))
@@ -248,46 +239,6 @@ data IR where
   -- Guard/Unguard removed: GuardedT was unnecessary.
   -- Productivity follows from IR totality, not type-level guardedness.
   -- See IR/Totality.agda for the proof that all IR coalgebras are "guarded".
-
-  -- Hylo: fusion of cata and ana (deforestation) - CORRECT BY CONSTRUCTION
-  -- cata alg ∘ ana coalg, computed directly without intermediate structure
-  --
-  -- OCP-0003: Hylo is now based on Fuse, removing the need for TerminatesOn.
-  -- Termination is guaranteed by requiring μG as input:
-  -- - Input1 is μG (well-founded inductive type)
-  -- - Coalgebra produces F-layers from μG values
-  -- - Recursion is structural on μG
-  --
-  -- Semantically: Hylo alg coalg ≡ Fuse alg (coalg ∘ In)
-  -- The coalgebra wraps In to convert the pre-destructed G-layer to F-layer.
-  --
-  -- Termination follows from Fuse.
-  --
-  Hylo : ∀ {F G} → WellFormedFI F → WellFormedFI G → ∀ {B}
-       → IR (⟦ F ⟧TI B) B                          -- algebra: F(B) → B
-       → NatTr G F                                  -- structural coalgebra: μG --out-μ--> G ⇒ F
-       → IR (μ-type G) B
-
-  -- Fuse: μ-anchored fusion (deforestation) - CORRECT BY CONSTRUCTION
-  --
-  -- OCP-0003: Structured fusion that is provably terminating.
-  -- Unlike Hylo, termination is guaranteed by the type structure:
-  -- - Input1 is μG (well-founded inductive type)
-  -- - Transform receives pre-destructed G-layer via out-μ
-  -- - Recursion is structural on μG - each recursive call on strict subterm
-  --
-  -- The transform converts G-layers to F-layers without changing recursive depth:
-  --   transform : G(μG) → F(μG)
-  --
-  -- Semantically: Fuse alg transform = cata (alg ∘ transform)
-  -- But computed via direct recursion for deforestation.
-  --
-  -- Termination is structural.
-  --
-  Fuse : ∀ {F G} → WellFormedFI F → WellFormedFI G → ∀ {B}
-       → IR (⟦ F ⟧TI B) B                              -- algebra: F(B) → B
-       → NatTr G F                                      -- natural transform: G ⇒ F
-       → IR (μ-type G) B
 
   -- Constant / global element of a primitive type.
   --
@@ -323,32 +274,6 @@ data IR where
   -- (its value semantics `M.⟦A⟧→M.⟦B⟧` lives on `Type`); the IR OBJECTS it
   -- connects are the erased `⌊ A ⌋`, `⌊ B ⌋`.
   SigOp : ∀ {A B : Type} → SigOpInfo A B → IR ⌊ A ⌋ ⌊ B ⌋
-
-------------------------------------------------------------------------
--- NatTr — IR-level natural transformations between polynomial functors
---
--- The compilable, manifestly-natural witness carried by `Fuse`/`Hylo`.
--- Mirrors `Once.Semantics.Functor.NatSF` one level up (over the object-language
--- `Functor`/`Type` rather than `SFunctor`/`Set`), so the IR stays
--- interpretation-agnostic. Source eliminators (`ntFst`/`ntSnd`/`ntCase`)
--- and target introductions (`ntInl`/`ntInr`/`ntPair`) interleave; leaves are
--- the identity on the recursive position (`ntId`) and a pure constant map,
--- itself an IR morphism (`ntK`) — the reason `NatTr` is mutual with `IR`.
---
--- By construction a `NatTr` only routes/copies/discards the recursive
--- positions, never inspecting or synthesizing μ-substructure; its meaning
--- (`Once.Semantics.Functor.appNatSF` after translation) is a genuine natural
--- transformation (`appNatSF-natural`), hence the folds `fuseNT`/`fuseNTW`
--- that consume it are total without any the termination pragma.
-data NatTr where
-  ntId   : NatTr Id Id
-  ntK    : ∀ {A B} → IR A B → NatTr (K A) (K B)
-  ntFst  : ∀ {G₁ G₂ F} → NatTr G₁ F → NatTr (G₁ ⊗ G₂) F
-  ntSnd  : ∀ {G₁ G₂ F} → NatTr G₂ F → NatTr (G₁ ⊗ G₂) F
-  ntCase : ∀ {G₁ G₂ F} → NatTr G₁ F → NatTr G₂ F → NatTr (G₁ ⊕ G₂) F
-  ntInl  : ∀ {G F₁ F₂} → NatTr G F₁ → NatTr G (F₁ ⊕ F₂)
-  ntInr  : ∀ {G F₁ F₂} → NatTr G F₂ → NatTr G (F₁ ⊕ F₂)
-  ntPair : ∀ {G F₁ F₂} → NatTr G F₁ → NatTr G F₂ → NatTr G (F₁ ⊗ F₂)
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩

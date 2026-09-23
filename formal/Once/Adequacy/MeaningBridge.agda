@@ -321,7 +321,7 @@ mutual
     rewrite base-rel→eq bA rv = RelT-refl cB (v b)
 
   RelT-refl : ∀ {A} (c : IsConcrete A) (t : T ⟦ A ⟧ᴰ) → RelT A t t
-  RelT-refl c t n = refl , concrete-rel→refl c (valueT t n)
+  RelT-refl c t n = refl , refl , concrete-rel→refl c (valueT t n)
 
 -- m-named / m-named-resolved: a sigop preserves the relation. The SigOp domain
 -- is a base type (`bA`), so `base-rel→eq` collapses the arg `RelV` to `a ≡ b`;

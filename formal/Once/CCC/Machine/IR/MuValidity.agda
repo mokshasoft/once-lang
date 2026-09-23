@@ -38,7 +38,6 @@ open import Once.Float.Decimal using (Decimal)
 open import Once.Semantics.Value Carrier Carrier using (⟦μ⟧; ⟦ν⟧; ⟦_⟧F; sem-In; sem-Out; sem-CoIn; sem-CoOut)
 
 -- Import SigOpSem for Validity module
-open import Once.CCC.Eval using ()
 
 ------------------------------------------------------------------------
 -- μLayerValid: Validity for F-layers by functor induction
