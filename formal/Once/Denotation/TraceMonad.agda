@@ -32,6 +32,8 @@ module Once.Denotation.TraceMonad where
 open import Data.Nat using (ℕ; _∸_)
 open import Data.List using (List; []; _++_; length; take)
 open import Data.Bool using (Bool; true; false)
+open import Data.Empty using (⊥)
+open import Once.Res using (Res; stopped; returns; is-stopped; mapRes)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
@@ -41,7 +43,7 @@ open import Once.Denotation.Trace using (SigOpEvent)
 -- The monad.
 ------------------------------------------------------------------------
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym)
 
 -- plan 0.97: THE BUDGET IS A LENS, NOT A PARAMETER.
 --
@@ -61,58 +63,58 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 Stopped : Set
 Stopped = Bool
 
+-- plan 0.98: A COMPUTATION'S RESULT IS `Res` — a value, or the program ended.
+--
+-- 0.97 carried a `Stopped` flag beside a TOTAL value, on the grounds that
+-- `Halts` forced `B ≡ Unit` so "the value after a stop is `tt` regardless".
+-- That was the lie this plan removes: a halting SigOp has NO result, and
+-- while the value was total every obligation mentioning it had to carry a
+-- premise remembering not to look. With the value inside `Res`,
+-- "stopped ⇒ no result" is a TYPING fact, not a premise.
 record T (X : Set) : Set where
   constructor mkT
   field
-    trT : ℕ → List SigOpEvent
-    stT : Stopped
-    vlT : X
+    trT  : ℕ → List SigOpEvent
+    resT : Res X
 
--- The old shape, for the sites that read all three at a budget.
-atT : ∀ {X} → T X → ℕ → List SigOpEvent × Stopped × X
-atT m n = (T.trT m n , T.stT m , T.vlT m)
+-- The budget view. A PAIR again — the result carries its own stoppedness, so
+-- there is no third component to thread.
+atT : ∀ {X} → T X → ℕ → List SigOpEvent × Res X
+atT m n = (T.trT m n , T.resT m)
 
 infixl 1 _>>=T_ _>>T_
 
 returnT : ∀ {X} → X → T X
-returnT x = mkT (λ _ → []) false x
+returnT x = mkT (λ _ → []) (returns x)
 
 -- Kleisli sequencing: run `m`, then `f x`, concatenating their events in
 -- order. The budget is THREADED: `f` sees what `m` left, `n ∸ length es`.
 -- That is what makes `length (projTrace (m >>=T f) n) ≤ n` hold — with a
 -- shared `n` each side could independently spend the whole budget, and two
 -- sequenced SigOps would emit 2 events at budget 1.
--- A STOPPED computation swallows its continuation's EVENTS. Its value is
--- still the continuation's — it must be, to stay total — but nothing observes
--- a value after a stop, and `Halts` makes it `tt` anyway.
-join-es : Stopped → List SigOpEvent → List SigOpEvent → List SigOpEvent
-join-es true  es _  = es
-join-es false es ef = es ++ ef
-
-join-tr : Stopped → (ℕ → List SigOpEvent) → (ℕ → List SigOpEvent)
-        → ℕ → List SigOpEvent
-join-tr b tm tf n = join-es b (tm n) (tf (n ∸ length (tm n)))
-
-join-st : Stopped → Stopped → Stopped
-join-st true  _ = true
-join-st false b = b
+--
+-- plan 0.98: a STOPPED computation NEVER BUILDS its continuation. `join-es`
+-- and `join-st` are gone — they existed only to construct the sequel and then
+-- discard it. Dispatched through a top-level helper on the `Res` rather than a
+-- `with`, so it reduces on a constructor and stays STUCK — rather than wrong —
+-- on a variable.
+bindRes : ∀ {X Y} → (ℕ → List SigOpEvent) → Res X → (X → T Y) → T Y
+bindRes tr stopped     f = mkT tr stopped
+bindRes tr (returns x) f =
+  mkT (λ n → tr n ++ T.trT (f x) (n ∸ length (tr n))) (T.resT (f x))
 
 _>>=T_ : ∀ {X Y} → T X → (X → T Y) → T Y
-m >>=T f =
-  let fy = f (T.vlT m)
-  in mkT (join-tr (T.stT m) (T.trT m) (T.trT fy))
-         (join-st (T.stT m) (T.stT fy))
-         (T.vlT fy)
+m >>=T f = bindRes (T.trT m) (T.resT m) f
 
 _>>T_ : ∀ {X Y} → T X → T Y → T Y
 m >>T k = m >>=T λ _ → k
 
 fmapT : ∀ {X Y} → (X → Y) → T X → T Y
-fmapT g m = mkT (T.trT m) (T.stT m) (g (T.vlT m))
+fmapT g m = mkT (T.trT m) (mapRes g (T.resT m))
 
 -- Emit events (the Writer `tell`).
 tell : List SigOpEvent → T ⊤
-tell es = mkT (λ k → take k es) false tt
+tell es = mkT (λ k → take k es) (returns tt)
 
 ------------------------------------------------------------------------
 -- Projections — the observable is `projTrace`.
@@ -122,17 +124,34 @@ tell es = mkT (λ k → take k es) false tt
 projTrace : ∀ {X} → T X → ℕ → List SigOpEvent
 projTrace m n = T.trT m n
 
--- The value at observation depth `n` (internal; the apex observes only
--- the trace).
--- The budget argument is KEPT and IGNORED: the value does not depend on it.
--- Keeping the arity leaves every `ResultPlace … (valueT … k)` site in plan
--- 0.88's discharged clauses compiling untouched.
-valueT : ∀ {X} → T X → ℕ → X
-valueT m _ = T.vlT m
-
--- Did the computation stop? Budget-free, by the shape of `T`.
+-- Did the computation stop? Budget-free, read off the result.
 stoppedT : ∀ {X} → T X → ℕ → Stopped
-stoppedT m _ = T.stT m
+stoppedT m _ = is-stopped (T.resT m)
+
+------------------------------------------------------------------------
+-- THE VALUE — available only when the computation RETURNS (plan 0.98).
+--
+-- The premise is an IMPLICIT OF RECORD TYPE. Agda solves such a meta by eta,
+-- so `valueT m k` typechecks UNCHANGED wherever the result reduces to
+-- `returns` — which is every non-stopping constructor — and leaves an
+-- UNSOLVED META exactly where the computation can genuinely stop. An unsolved
+-- meta is reported alongside every other one instead of aborting the module,
+-- so the migration surfaces all the real sites in ONE pass rather than one
+-- per build. The discrimination the type makes is the discrimination the plan
+-- is about.
+------------------------------------------------------------------------
+
+Returns? : ∀ {X} → Res X → Set
+Returns? stopped     = ⊥
+Returns? (returns _) = ⊤
+
+resVal : ∀ {X} (r : Res X) → Returns? r → X
+resVal (returns x) _ = x
+resVal stopped     ()
+
+-- The budget argument is KEPT and IGNORED: the value does not depend on it.
+valueT : ∀ {X} (m : T X) (k : ℕ) {p : Returns? (T.resT m)} → X
+valueT m k {p} = resVal (T.resT m) p
 
 ------------------------------------------------------------------------
 -- Congruence at a fixed observation depth (the J-style bridge).
@@ -148,49 +167,57 @@ stoppedT m _ = T.stT m
 -- sidesteps the abstraction entirely. Clauses whose wrapper is trivial
 -- (`returnT (proj₁ v)` and friends) do not need this; clauses with a
 -- subst-chain wrapper do.
+bindResAt : ∀ {X Y : Set} → (X → T Y) → ℕ → List SigOpEvent → Res X
+          → List SigOpEvent × Res Y
+bindResAt f n es stopped     = (es , stopped)
+bindResAt f n es (returns x) = (es ++ T.trT (f x) (n ∸ length es) , T.resT (f x))
+
 bindAt : ∀ {X Y : Set} → (X → T Y) → ℕ
-       → (List SigOpEvent × Stopped × X) → (List SigOpEvent × Stopped × Y)
-bindAt f n exr =
-  let es = proj₁ exr
-      b  = proj₁ (proj₂ exr)
-      fy = f (proj₂ (proj₂ exr))
-  in ( join-es b es (T.trT fy (n ∸ length es))
-     , join-st b (T.stT fy)
-     , T.vlT fy )
+       → (List SigOpEvent × Res X) → (List SigOpEvent × Res Y)
+bindAt f n er = bindResAt f n (proj₁ er) (proj₂ er)
+
+-- plan 0.98: no longer `refl` — both sides dispatch on the result, so the
+-- bridge is the two-case split rather than a shared `join-*` application.
+bindRes-at : ∀ {X Y : Set} (tr : ℕ → List SigOpEvent) (r : Res X)
+             (f : X → T Y) (n : ℕ)
+           → atT (bindRes tr r f) n ≡ bindResAt f n (tr n) r
+bindRes-at tr stopped     f n = refl
+bindRes-at tr (returns x) f n = refl
 
 >>=T-at : ∀ {X Y : Set} (m : T X) (f : X → T Y) (n : ℕ)
         → atT (m >>=T f) n ≡ bindAt f n (atT m n)
->>=T-at m f n = refl
+>>=T-at m f n = bindRes-at (T.trT m) (T.resT m) f n
 
 >>=T-cong-at : ∀ {X Y : Set} {m₁ m₂ : T X} (f : X → T Y) (n : ℕ)
              → atT m₁ n ≡ atT m₂ n → atT (m₁ >>=T f) n ≡ atT (m₂ >>=T f) n
->>=T-cong-at f n eq = cong (bindAt f n) eq
+>>=T-cong-at {m₁ = m₁} {m₂} f n eq =
+  trans (>>=T-at m₁ f n) (trans (cong (bindAt f n) eq) (sym (>>=T-at m₂ f n)))
 
 -- | The NESTED-bind version: the two binds may differ in BOTH the monadic
 --   value and the continuation. `app`-shaped clauses need this — their
 --   continuation mentions the argument's denotation, which also changes.
---
---   The continuation premise is pointwise at EVERY budget: `bindAt` applies
---   the continuation at the REMAINDER `n ∸ length (proj₁ r)`, a budget the
---   caller cannot name before `r` is known. Quantifying over it keeps the
---   lemma free of extensionality while covering the budget actually used.
+bindResAt-cong : ∀ {X Y : Set} (f₁ f₂ : X → T Y) (n : ℕ)
+                 (es : List SigOpEvent) (r : Res X)
+               → (∀ x → f₁ x ≡ f₂ x)
+               → bindResAt f₁ n es r ≡ bindResAt f₂ n es r
+bindResAt-cong f₁ f₂ n es stopped     fe = refl
+bindResAt-cong f₁ f₂ n es (returns x) fe =
+  cong (λ fy → (es ++ T.trT fy (n ∸ length es) , T.resT fy)) (fe x)
+
 bindAt-cong : ∀ {X Y : Set} (f₁ f₂ : X → T Y) (n : ℕ)
-                {r₁ r₂ : List SigOpEvent × Stopped × X}
+                {r₁ r₂ : List SigOpEvent × Res X}
             → r₁ ≡ r₂
             → (∀ x → f₁ x ≡ f₂ x)
             → bindAt f₁ n r₁ ≡ bindAt f₂ n r₂
-bindAt-cong f₁ f₂ n {r} refl fe =
-  cong (λ fy → ( join-es (proj₁ (proj₂ r)) (proj₁ r)
-                         (T.trT fy (n ∸ length (proj₁ r)))
-               , join-st (proj₁ (proj₂ r)) (T.stT fy)
-               , T.vlT fy ))
-       (fe (proj₂ (proj₂ r)))
+bindAt-cong f₁ f₂ n {r} refl fe = bindResAt-cong f₁ f₂ n (proj₁ r) (proj₂ r) fe
 
 >>=T-cong₂-at : ∀ {X Y : Set} {m₁ m₂ : T X} (f₁ f₂ : X → T Y) (n : ℕ)
               → atT m₁ n ≡ atT m₂ n
               → (∀ x → f₁ x ≡ f₂ x)
               → atT (m₁ >>=T f₁) n ≡ atT (m₂ >>=T f₂) n
->>=T-cong₂-at f₁ f₂ n meq fe = bindAt-cong f₁ f₂ n meq fe
+>>=T-cong₂-at {m₁ = m₁} {m₂} f₁ f₂ n meq fe =
+  trans (>>=T-at m₁ f₁ n)
+        (trans (bindAt-cong f₁ f₂ n meq fe) (sym (>>=T-at m₂ f₂ n)))
 
 ------------------------------------------------------------------------
 -- The prefix-family invariant.
@@ -292,15 +319,15 @@ take-coh (suc k) (x ∷ xs) with take-coh k xs
 
 -- A leaf: emit (a prefix of) a FIXED list of events, with a value that does
 -- not read the budget. `evalᴰ`'s SigOp clause is exactly this.
-constT-pf : ∀ {X} (es : List SigOpEvent) (st : Stopped) (x : X)
-          → PrefixFamily {X} (mkT (λ n → take n es) st x)
-constT-pf es st x =
+constT-pf : ∀ {X} (es : List SigOpEvent) (r : Res X)
+          → PrefixFamily {X} (mkT (λ n → take n es) r)
+constT-pf es r =
   prefixFamily (λ k → length-take-≤ k es)
                (λ k h → take-sat k es h)
                (λ k → take-coh k es)
 
 tell-pf : ∀ es → PrefixFamily (tell es)
-tell-pf es = constT-pf es false tt
+tell-pf es = constT-pf es (returns tt)
 
 
 -- The two facts about `∸` that the budget threading needs, named once.
@@ -316,47 +343,49 @@ split-< {l} {lf} {k} h =
 -- every `x : X`. The proof only ever reads it there, and the stronger form is
 -- unusable downstream: in a logical relation `f x` is a prefix family only
 -- when `x` is well-behaved, which junk inhabitants of `X` need not be.
->>=T-pf : ∀ {X Y} (m : T X) (f : X → T Y)
-        → PrefixFamily m → (∀ k → PrefixFamily (f (valueT m k))) → PrefixFamily (m >>=T f)
->>=T-pf m f pm pf = prefixFamily bnd′ sat′ coh′
+-- plan 0.98: the dispatch is on the RESULT, and the stopped case is now
+-- literally `m`'s own family — the composite IS `m`, because no sequel was
+-- built. The continuation hypothesis is correspondingly weaker and more
+-- honest: it is owed only AT THE VALUE `m` actually produces, and only when
+-- there is one.
+-- `PrefixFamily` is indexed by the computation, but all three of its fields
+-- mention only `projTrace` — so a family transports along any change of the
+-- RESULT, which is what the stopped case of `bindRes` needs (its trace is the
+-- head's, at the sequel's type).
+pf-retype : ∀ {X Y} (tr : ℕ → List SigOpEvent) (rx : Res X) (ry : Res Y)
+          → PrefixFamily (mkT tr rx) → PrefixFamily (mkT tr ry)
+pf-retype tr rx ry p = prefixFamily (bnd p) (sat p) (coh p)
+
+bindRes-pf : ∀ {X Y} (tr : ℕ → List SigOpEvent) (r : Res X) (f : X → T Y)
+           → PrefixFamily (mkT tr r)
+           → (∀ x → r ≡ returns x → PrefixFamily (f x))
+           → PrefixFamily (bindRes tr r f)
+bindRes-pf tr stopped     f pm pf = pf-retype tr stopped stopped pm
+bindRes-pf tr (returns x) f pm pf = prefixFamily bnd′ sat′ coh′
   where
-    -- plan 0.97: the continuation is ONE computation, not a family. `valueT`
-    -- ignores its budget now, so `f (valueT m k)` is the same `f` argument at
-    -- every `k` — which is the whole reason the stopped case below is a
-    -- two-line dispatch rather than a cross-budget argument.
     fy : T _
-    fy = f (T.vlT m)
+    fy = f x
 
     pfy : PrefixFamily fy
-    pfy = pf 0
+    pfy = pf x refl
 
     lm : ℕ → ℕ
-    lm k = length (projTrace m k)
+    lm k = length (tr k)
 
     rest-of : ℕ → List SigOpEvent
     rest-of k = projTrace fy (k ∸ lm k)
 
-    len-split : ∀ k → length (projTrace m k ++ rest-of k) ≡ lm k + length (rest-of k)
-    len-split k = length-++ (projTrace m k) {rest-of k}
+    len-split : ∀ k → length (tr k ++ rest-of k) ≡ lm k + length (rest-of k)
+    len-split k = length-++ (tr k) {rest-of k}
 
-    -- Each field dispatches on the (budget-free) stop flag. STOPPED: the
-    -- composite's trace IS `m`'s, so every obligation is `m`'s own.
-    bnd-b : ∀ (b : Stopped) k → length (join-es b (projTrace m k) (rest-of k)) ≤ k
-    bnd-b true  k = bnd pm k
-    bnd-b false k =
+    bnd′ : Bounded (bindRes tr (returns x) f)
+    bnd′ k =
       subst (_≤ k) (sym (len-split k))
         (subst (lm k + length (rest-of k) ≤_) (m+[n∸m]≡n (bnd pm k))
           (+-mono-≤ (≤-refl {lm k}) (bnd pfy (k ∸ lm k))))
 
-    bnd′ : Bounded (m >>=T f)
-    bnd′ k = bnd-b (T.stT m) k
-
-    sat-b : ∀ (b : Stopped) k
-          → length (join-es b (projTrace m k) (rest-of k)) < k
-          → join-es b (projTrace m (suc k)) (rest-of (suc k))
-            ≡ join-es b (projTrace m k) (rest-of k)
-    sat-b true  k h = sat pm k h
-    sat-b false k h = cong₂ _++_ satm restEq
+    sat′ : Saturating (bindRes tr (returns x) f)
+    sat′ k h = cong₂ _++_ satm restEq
       where
         sum< : lm k + length (rest-of k) < k
         sum< = subst (_< k) (len-split k) h
@@ -364,7 +393,7 @@ split-< {l} {lf} {k} h =
         lm<k = ≤-trans (s≤s (m≤m+n (lm k) (length (rest-of k)))) sum<
         lf<k′ : length (rest-of k) < k ∸ lm k
         lf<k′ = split-< sum<
-        satm : projTrace m (suc k) ≡ projTrace m k
+        satm : tr (suc k) ≡ tr k
         satm = sat pm k lm<k
         restEq : rest-of (suc k) ≡ rest-of k
         restEq =
@@ -372,36 +401,30 @@ split-< {l} {lf} {k} h =
                 (trans (cong (projTrace fy) (suc∸ (bnd pm k)))
                        (sat pfy (k ∸ lm k) lf<k′))
 
-    sat′ : Saturating (m >>=T f)
-    sat′ k h = sat-b (T.stT m) k h
-
-    coh-b : ∀ (b : Stopped) k
-          → ∃[ rest ] (join-es b (projTrace m (suc k)) (rest-of (suc k))
-                       ≡ join-es b (projTrace m k) (rest-of k) ++ rest)
-    coh-b true  k = coh pm k
-    coh-b false k = go (m≤n⇒m<n∨m≡n (bnd pm k))
+    coh′ : Coherent (bindRes tr (returns x) f)
+    coh′ k = go (m≤n⇒m<n∨m≡n (bnd pm k))
       where
         -- `m` did NOT spend everything: it is finished, and the extra unit of
         -- budget goes to `f`.
         spare : lm k < k
-              → ∃[ rest ] (projTrace m (suc k) ++ rest-of (suc k)
-                           ≡ (projTrace m k ++ rest-of k) ++ rest)
+              → ∃[ rest ] (tr (suc k) ++ rest-of (suc k)
+                           ≡ (tr k ++ rest-of k) ++ rest)
         spare lm<k with coh pfy (k ∸ lm k)
         ... | r , eqf = r ,
           trans (cong₂ _++_ (sat pm k lm<k)
                    (trans (cong (λ es → projTrace fy (suc k ∸ length es)) (sat pm k lm<k))
                           (trans (cong (projTrace fy) (suc∸ (bnd pm k))) eqf)))
-                (sym (++-assoc (projTrace m k) (rest-of k) r))
+                (sym (++-assoc (tr k) (rest-of k) r))
 
         -- `m` spent the whole budget: `f` runs at 0 and contributes nothing,
         -- so the composite's trace IS `m`'s and `m`'s coherence carries it.
         spent : lm k ≡ k
-              → ∃[ rest ] (projTrace m (suc k) ++ rest-of (suc k)
-                           ≡ (projTrace m k ++ rest-of k) ++ rest)
+              → ∃[ rest ] (tr (suc k) ++ rest-of (suc k)
+                           ≡ (tr k ++ rest-of k) ++ rest)
         spent lm≡k with coh pm k
         ... | r , eqm = r ++ tailPart ,
           trans (cong (_++ tailPart) eqm)
-          (trans (++-assoc (projTrace m k) r tailPart)
+          (trans (++-assoc (tr k) r tailPart)
                  (cong (_++ (r ++ tailPart)) (sym nil-rest)))
           where
             tailPart : List SigOpEvent
@@ -418,19 +441,22 @@ split-< {l} {lf} {k} h =
                 ... | []    | _ = refl
                 ... | _ ∷ _ | ()
 
-            nil-rest : projTrace m k ++ rest-of k ≡ projTrace m k
+            nil-rest : tr k ++ rest-of k ≡ tr k
             nil-rest =
-              trans (cong (projTrace m k ++_) empty-at-0)
-                    (++-identityʳ (projTrace m k))
+              trans (cong (tr k ++_) empty-at-0)
+                    (++-identityʳ (tr k))
 
         go : lm k < k ⊎ lm k ≡ k
-           → ∃[ rest ] (projTrace m (suc k) ++ rest-of (suc k)
-                        ≡ (projTrace m k ++ rest-of k) ++ rest)
+           → ∃[ rest ] (tr (suc k) ++ rest-of (suc k)
+                        ≡ (tr k ++ rest-of k) ++ rest)
         go (inj₁ h) = spare h
         go (inj₂ h) = spent h
 
-    coh′ : Coherent (m >>=T f)
-    coh′ k = coh-b (T.stT m) k
+>>=T-pf : ∀ {X Y} (m : T X) (f : X → T Y)
+        → PrefixFamily m
+        → (∀ x → T.resT m ≡ returns x → PrefixFamily (f x))
+        → PrefixFamily (m >>=T f)
+>>=T-pf m f pm pf = bindRes-pf (T.trT m) (T.resT m) f pm pf
 
 ------------------------------------------------------------------------
 -- CORRESPONDENCE OF TWO COMPUTATIONS.
@@ -445,37 +471,54 @@ split-< {l} {lf} {k} h =
 -- forced the relation to carry it.
 ------------------------------------------------------------------------
 
+-- plan 0.98: the relation on RESULTS. Two computations correspond when their
+-- traces agree and their results do — and two results correspond only if they
+-- agree on whether the program ended. `stopped`/`returns` are enumerated, not
+-- caught: a catch-all would silently relate a stopped run to a returning one.
+RelRes : ∀ {X Y : Set} (R : X → Y → Set) → Res X → Res Y → Set
+RelRes R stopped     stopped     = ⊤
+RelRes R stopped     (returns _) = ⊥
+RelRes R (returns _) stopped     = ⊥
+RelRes R (returns x) (returns y) = R x y
+
 RelT′ : ∀ {X Y : Set} (R : X → Y → Set) → T X → T Y → Set
 RelT′ R l r = ∀ k → (projTrace l k ≡ projTrace r k)
-                  × (stoppedT l k ≡ stoppedT r k)
-                  × R (valueT l k) (valueT r k)
+                  × RelRes R (T.resT l) (T.resT r)
 
 -- Bind preserves it. The two sides run their continuations at their OWN
 -- remaining budgets; those budgets are computed from the head traces, which
 -- the relation already equates — so no extra assumption is needed.
+--
+-- plan 0.98: the continuation hypothesis is owed only where BOTH sides
+-- return, and at the values they actually produce. A stopped head discharges
+-- the whole thing from the head's own agreement, because neither side built a
+-- sequel.
+RelRes-bind : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
+              (tr : ℕ → List SigOpEvent) (tr′ : ℕ → List SigOpEvent)
+              (r : Res X) (r′ : Res X′) (f : X → T Y) (f′ : X′ → T Y′) (k : ℕ)
+            → (∀ j → tr j ≡ tr′ j)
+            → RelRes R r r′
+            → (∀ x x′ → r ≡ returns x → r′ ≡ returns x′ → RelT′ S (f x) (f′ x′))
+            → (projTrace (bindRes tr r f) k ≡ projTrace (bindRes tr′ r′ f′) k)
+              × RelRes S (T.resT (bindRes tr r f)) (T.resT (bindRes tr′ r′ f′))
+RelRes-bind R S tr tr′ stopped     stopped     f f′ k te rr rf = (te k , tt)
+RelRes-bind R S tr tr′ stopped     (returns _) f f′ k te ()
+RelRes-bind R S tr tr′ (returns _) stopped     f f′ k te ()
+RelRes-bind R S tr tr′ (returns x) (returns y) f f′ k te rr rf =
+  ( cong₂ _++_ (te k)
+      (trans (proj₁ (rf x y refl refl (k ∸ length (tr k))))
+             (cong (λ es → projTrace (f′ y) (k ∸ length es)) (te k)))
+  , proj₂ (rf x y refl refl (k ∸ length (tr k))) )
+
 RelT′-bind : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ → Set)
              (m : T X) (m′ : T X′) (f : X → T Y) (f′ : X′ → T Y′)
            → RelT′ R m m′
-           → (∀ k → RelT′ S (f (valueT m k)) (f′ (valueT m′ k)))
+           → (∀ x x′ → T.resT m ≡ returns x → T.resT m′ ≡ returns x′
+                     → RelT′ S (f x) (f′ x′))
            → RelT′ S (m >>=T f) (m′ >>=T f′)
 RelT′-bind R S m m′ f f′ rm rf k =
-    ( cong₂ (λ b es → join-es b es (projTrace (f (valueT m k)) kL))
-            (proj₁ (proj₂ (rm k))) (proj₁ (rm k))
-      ⟨trans⟩
-      cong (join-es (stoppedT m′ k) (projTrace m′ k))
-        (trans (proj₁ (rf k kL))
-               (cong (λ es → projTrace (f′ (valueT m′ k)) (k ∸ length es)) (proj₁ (rm k))))
-    , cong₂ join-st (proj₁ (proj₂ (rm k))) (proj₁ (proj₂ (rf k kL)))
-    , subst (λ j → S (valueT (f (valueT m k)) kL) (valueT (f′ (valueT m′ k)) j))
-            keq (proj₂ (proj₂ (rf k kL))) )
-  where
-    kL = k ∸ length (projTrace m k)
-
-    keq : kL ≡ k ∸ length (projTrace m′ k)
-    keq = cong (λ es → k ∸ length es) (proj₁ (rm k))
-
-    _⟨trans⟩_ : ∀ {ℓ} {A : Set ℓ} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
-    _⟨trans⟩_ = trans
+  RelRes-bind R S (T.trT m) (T.trT m′) (T.resT m) (T.resT m′) f f′ k
+              (λ j → proj₁ (rm j)) (proj₂ (rm k)) rf
 
 ------------------------------------------------------------------------
 -- THE MONAD LAWS.
@@ -493,18 +536,10 @@ RelT′-bind R S m m′ f f′ rm rf k =
 -- does so by the same three-way dispatch — `a` stopped swallows everything
 -- after it, `b` stopped swallows what is after `b`, and otherwise the old
 -- `++`/budget reasoning applies unchanged.
-join-st-idʳ : ∀ b → join-st b false ≡ b
-join-st-idʳ true  = refl
-join-st-idʳ false = refl
-
-join-es-idʳ : ∀ b es → join-es b es [] ≡ es
-join-es-idʳ true  es = refl
-join-es-idʳ false es = ++-identityʳ es
-
-join-st-assoc : ∀ a b c → join-st (join-st a b) c ≡ join-st a (join-st b c)
-join-st-assoc true  _     _ = refl
-join-st-assoc false true  _ = refl
-join-st-assoc false false _ = refl
+-- plan 0.98: `join-st-idʳ`/`join-es-idʳ`/`join-st-assoc` are GONE. They were
+-- the arithmetic of discarding a sequel that had been built anyway; with
+-- `bindRes` the sequel is never built, so each law is a two-case split whose
+-- stopped branch is `refl`.
 
 -- Left identity: `returnT` spends nothing and stops nothing, so this is
 -- definitional even with threading.
@@ -516,9 +551,12 @@ join-st-assoc false false _ = refl
 -- flag, since the bind appends `returnT`'s empty trace and its `false`.
 >>=T-identityʳ : ∀ {X : Set} (m : T X) (k : ℕ)
                → atT (m >>=T returnT) k ≡ atT m k
->>=T-identityʳ m k =
-  cong₂ _,_ (join-es-idʳ (T.stT m) (projTrace m k))
-            (cong₂ _,_ (join-st-idʳ (T.stT m)) refl)
+bindRes-idʳ : ∀ {X : Set} (tr : ℕ → List SigOpEvent) (r : Res X) (k : ℕ)
+            → atT (bindRes tr r returnT) k ≡ (tr k , r)
+bindRes-idʳ tr stopped     k = refl
+bindRes-idʳ tr (returns x) k = cong (_, returns x) (++-identityʳ (tr k))
+
+>>=T-identityʳ m k = bindRes-idʳ (T.trT m) (T.resT m) k
 
 ------------------------------------------------------------------------
 -- Associativity.
@@ -533,37 +571,46 @@ join-st-assoc false false _ = refl
 
 open import Data.Nat.Properties using (∸-+-assoc)
 
+-- plan 0.98: a two-level split on the RESULTS, and both stopped branches are
+-- `refl` — a stop makes each side the earlier trace outright, because no
+-- sequel was constructed on either. Only the both-return case carries the
+-- budget arithmetic that the threading introduced.
 >>=T-assoc : ∀ {X Y Z : Set} (m : T X) (f : X → T Y) (g : Y → T Z) (k : ℕ)
            → atT ((m >>=T f) >>=T g) k ≡ atT (m >>=T (λ x → f x >>=T g)) k
->>=T-assoc m f g k = cong₂ _,_ tr (cong₂ _,_ st refl)
+>>=T-assoc m f g k = go (T.resT m)
   where
-    fy   = f (T.vlT m)
-    gy   = g (T.vlT fy)
-    es-m = projTrace m k
-    k₁   = k ∸ length es-m
-    es-f = projTrace fy k₁
-    k₂   = k₁ ∸ length es-f
-    es-g = projTrace gy k₂
-
-    budget : k ∸ length (es-m ++ es-f) ≡ k₂
-    budget = trans (cong (k ∸_) (length-++ es-m {es-f}))
-                   (sym (∸-+-assoc k (length es-m) (length es-f)))
-
-    tr-b : ∀ (a b : Stopped)
-         → join-es (join-st a b) (join-es a es-m es-f)
-                   (projTrace gy (k ∸ length (join-es a es-m es-f)))
-           ≡ join-es a es-m (join-es b es-f (projTrace gy k₂))
-    tr-b true  _     = refl
-    tr-b false true  = refl
-    tr-b false false =
-      trans (cong (λ j → (es-m ++ es-f) ++ projTrace gy j) budget)
-            (++-assoc es-m es-f es-g)
-
-    tr : projTrace ((m >>=T f) >>=T g) k ≡ projTrace (m >>=T (λ x → f x >>=T g)) k
-    tr = tr-b (T.stT m) (T.stT fy)
-
-    st : stoppedT ((m >>=T f) >>=T g) k ≡ stoppedT (m >>=T (λ x → f x >>=T g)) k
-    st = join-st-assoc (T.stT m) (T.stT fy) (T.stT gy)
+    go : (r : Res _)
+       → atT (bindRes (T.trT (bindRes (T.trT m) r f))
+                      (T.resT (bindRes (T.trT m) r f)) g) k
+         ≡ atT (bindRes (T.trT m) r (λ x → f x >>=T g)) k
+    go stopped     = refl
+    go (returns x) = inner (T.resT (f x))
+      where
+        es-m = T.trT m
+        fy   = f x
+        inner : (r' : Res _)
+              → atT (bindRes (λ n → es-m n ++ T.trT fy (n ∸ length (es-m n)))
+                             r' g) k
+                ≡ atT (mkT (λ n → es-m n
+                              ++ T.trT (bindRes (T.trT fy) r' g)
+                                       (n ∸ length (es-m n)))
+                           (T.resT (bindRes (T.trT fy) r' g))) k
+        inner stopped     = refl
+        inner (returns y) =
+          cong (_, T.resT (g y))
+            (trans (cong (λ j → (es-m k ++ T.trT fy (k ∸ length (es-m k)))
+                                  ++ T.trT (g y) j) budget)
+                   (++-assoc (es-m k) (T.trT fy (k ∸ length (es-m k)))
+                             (T.trT (g y) ((k ∸ length (es-m k))
+                                            ∸ length (T.trT fy (k ∸ length (es-m k)))))))
+          where
+            budget : k ∸ length (es-m k ++ T.trT fy (k ∸ length (es-m k)))
+                   ≡ (k ∸ length (es-m k))
+                       ∸ length (T.trT fy (k ∸ length (es-m k)))
+            budget =
+              trans (cong (k ∸_) (length-++ (es-m k) {T.trT fy (k ∸ length (es-m k))}))
+                    (sym (∸-+-assoc k (length (es-m k))
+                                      (length (T.trT fy (k ∸ length (es-m k))))))
 
 -- Binding a PURE continuation is a map. The `++ []` residual these proofs
 -- keep tripping over is exactly this: `⟨ f , g ⟩` ends in `returnT (b , c)`,
@@ -571,15 +618,29 @@ open import Data.Nat.Properties using (∸-+-assoc)
 -- budget too, so rewriting the trace alone no longer suffices.
 >>=T-map : ∀ {X Y : Set} (m : T X) (g : X → Y) (k : ℕ)
          → atT (m >>=T (λ x → returnT (g x))) k ≡ atT (fmapT g m) k
->>=T-map m g k =
-  cong₂ _,_ (join-es-idʳ (T.stT m) (projTrace m k))
-            (cong₂ _,_ (join-st-idʳ (T.stT m)) refl)
+bindRes-map : ∀ {X Y : Set} (tr : ℕ → List SigOpEvent) (r : Res X)
+              (g : X → Y) (k : ℕ)
+            → atT (bindRes tr r (λ x → returnT (g x))) k
+              ≡ (tr k , mapRes g r)
+bindRes-map tr stopped     g k = refl
+bindRes-map tr (returns x) g k = cong (_, returns (g x)) (++-identityʳ (tr k))
+
+>>=T-map m g k = bindRes-map (T.trT m) (T.resT m) g k
 
 -- Binding after a map is binding the composite. `fmapT` touches neither the
 -- trace nor the budget, so this is definitional.
 fmapT->>=T : ∀ {X Y Z : Set} (g : X → Y) (m : T X) (f : Y → T Z) (k : ℕ)
            → atT (fmapT g m >>=T f) k ≡ atT (m >>=T (λ x → f (g x))) k
-fmapT->>=T g m f k = refl
+-- plan 0.98: no longer definitional — both sides dispatch on the result, so
+-- it is the two-case split (each case `refl`).
+bindRes-map-fusion : ∀ {X Y Z : Set} (tr : ℕ → List SigOpEvent) (r : Res X)
+                     (g : X → Y) (f : Y → T Z) (k : ℕ)
+                   → atT (bindRes tr (mapRes g r) f) k
+                     ≡ atT (bindRes tr r (λ x → f (g x))) k
+bindRes-map-fusion tr stopped     g f k = refl
+bindRes-map-fusion tr (returns x) g f k = refl
+
+fmapT->>=T g m f k = bindRes-map-fusion (T.trT m) (T.resT m) g f k
 
 ------------------------------------------------------------------------
 -- "T is a monad", as a CHECKED claim rather than a name.
