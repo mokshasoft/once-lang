@@ -53,12 +53,13 @@ open import Once.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
-  using (sem-cata; sem-ana; sem-para; sem-In; sem-fuseNat-events;
+  using (sem-cata; sem-ana; sem-para; sem-In; sem-fuseNat;
          sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F; coh; coerce-ν-out;
          coerce-ν-in)
 open import Once.IRTy.WF using (wf-⌈⌉)
 open import Relation.Binary.PropositionalEquality using (subst; sym)
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
+open import Once.Res using (Res; returns; stopped; mapRes)
 open import Once.Denotation.TraceMonad using (T; mkT; returnT; _>>=T_; valueT; stoppedT; projTrace; fmapT)
 open import Data.Bool using (false)
 open import Once.Denotation.TraceDenote using (events-F)
@@ -103,12 +104,20 @@ open import Once.Denotation.ValueDomain public
 -- `evalᴰ` — the monadic IR interpretation (the source observable). The
 -- structural cases are NATIVE (so `curry`/`apply` build/run genuine
 -- Kleisli closures, closing the closure-effect gap fuel-free); `SigOp`
--- tells its event; recursion schemes delegate their trace to
--- `rec-trace-D` with the value via the pure `eval`.
+-- tells its event; every recursion scheme computes its trace and its value
+-- from ONE model (its own monadic fold).
+--
+-- plan 0.98: `evalᴰ` IS ENUMERATED — there is no catch-all. The catch-all it
+-- replaces routed six constructors to the pure `eval`, and the fact that
+-- `SigOp` never reached it was an accident of CLAUSE ORDER rather than
+-- anything the typechecker held. It now holds it: `eval` is applied at
+-- exactly `In`, `out-μ` and `const` — three constructors with no sub-IR, so
+-- no SigOp, so nothing that can halt. That is what makes the pure `eval`
+-- (which cannot produce a value at `Void`) a legitimate value model here and
+-- ONLY here.
 ------------------------------------------------------------------------
 
 evalᴰ        : (fmt : TargetNum) → ∀ {A B} → IR A B → ⟦ A ⟧ᴰᴵ → T ⟦ B ⟧ᴰᴵ
-rec-trace-D  : (fmt : TargetNum) → ∀ {A B} → IR A B → Val.⟦ ⌈ A ⌉ ⟧ → ℕ → List SigOpEvent
 -- The events algebra for the `Cata` fold: children's events (`events-F`)
 -- followed by this layer's algebra events (`evalᴰ fmt alg` on the rebuilt functor
 -- layer). Plan 0.58: value carried in the MONADIC domain `⟦C⟧ᴰ` (NOT forgotten
@@ -126,9 +135,12 @@ cata-ev-algᴰ : (fmt : TargetNum) → ∀ {F E C} → IR (E * ⟦ F ⟧TI C) C 
 -- child: its substructure `μF` + its folded result `A`); we fold into
 -- `A = List × value`, applying the para-algebra `alg` to the `(μF , value)`
 -- layer per node and collecting its events.
-para-ev-algᴰ : (fmt : TargetNum) → ∀ {F C} → ℕ → IR (⟦ F ⟧TI (μ-type F * C)) C
-             → ⟦ ⌈ F ⌉F ⟧F (Val.⟦ ⌈ μ-type F ⌉ ⟧ × (List SigOpEvent × Val.⟦ ⌈ C ⌉ ⟧))
-             → List SigOpEvent × Val.⟦ ⌈ C ⌉ ⟧
+para-ev-algᴰ : (fmt : TargetNum) → ∀ {F C} → IR (⟦ F ⟧TI (μ-type F * C)) C
+             → ⟦ ⌈ F ⌉F ⟧F (Val.⟦ ⌈ μ-type F ⌉ ⟧ × T ⟦ C ⟧ᴰᴵ)
+             → T ⟦ C ⟧ᴰᴵ
+-- `Hylo`/`Fuse`'s fold algebra — `cata-ev-algᴰ` with no environment.
+fuse-ev-algᴰ : (fmt : TargetNum) → ∀ {F B} → IR (⟦ F ⟧TI B) B
+             → ⟦ ⌈ F ⌉F ⟧F (T ⟦ B ⟧ᴰᴵ) → T ⟦ B ⟧ᴰᴵ
 
 evalᴰ fmt id            a        = returnT a
 evalᴰ fmt (g ∘ f)       a        = evalᴰ fmt f a >>=T evalᴰ fmt g
@@ -149,8 +161,8 @@ evalᴰ fmt apply         p        = proj₁ p (proj₂ p)
 -- is the difference.
 evalᴰ fmt (SigOp {A} {B} si) a   =
   mkT (λ n → emit-Dᵇ si (subst (λ z → z) (coh A) (forget a)) n)
-      (stops-D si)
-      (subst (λ z → z) (sym (cohᴰ B)) (inject (semM si fmt (subst (λ z → z) (coh A) (forget a)))))
+      (mapRes (λ v → subst (λ z → z) (sym (cohᴰ B)) (inject v))
+              (semM si fmt (subst (λ z → z) (coh A) (forget a))))
 -- Recursion schemes: VALUE comes from this denotation's OWN trace-fold, NOT a
 -- parallel pure `eval` — `⟦_⟧ᴰ` has ONE model (the trace semantics), exactly
 -- like `⟦_⟧ˢ`. (The old catch-all routed `Cata`/`Ana` values through the pure
@@ -205,54 +217,49 @@ evalᴰ fmt (in-ν {F} wf) a =
   returnT (in-νᵈ (coerce-ν-in ⌈ F ⌉F ⟦ ⌈ ν-type F ⌉ ⟧ᴰ
                     (coerce-functor-D ⌈ F ⌉F ⌈ ν-type F ⌉
                       (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute F (ν-type F)) a))))
-evalᴰ fmt ir            a        =
-  mkT (λ n → rec-trace-D fmt ir (forget a) n) false (inject (eval fmt ir (forget a)))
-
--- `Cata` and `Out` have their own `evalᴰ` clauses, so they never reach this
--- fallback. What remains here is the genuinely event-free tail.
-rec-trace-D fmt (In wf)               x n = []
--- Pure non-recursion-scheme constructors: no observable SigOp ⇒ no events.
-rec-trace-D fmt (out-μ wf)              x n = []
--- DERIVED schemes — the trace of the `cata`/`fuse` fold that DEFINES them
--- (reusing the value side's `sem-para`/`sem-fuse`/`sem-hylo`), `proj₁` = trace.
-rec-trace-D fmt (Para {F} wf {C} alg)   x n = proj₁ (sem-para (wf-⌈⌉ wf) (para-ev-algᴰ fmt {F} {C} n alg) x)
--- D062 / approach A: Hylo/Fuse carry a NATURAL transformation (`NatTr`), so
--- the transform realizes no effects — its event contribution is `[]` per layer
--- (threaded as the monoid unit by `sem-fuseNat-events`), and all accumulation
--- is the algebra's, folded structurally in post-order over the total
--- `fuseNatW`. The transform's VALUE still reshapes each layer, via the
--- (effect-free) `appNatTr-F`. This is the trace of the total structural fold
--- `cataS (alg ∘ transform)` — and `fuseW` is gone from the meaning's use-chain.
--- (fuse ≡ hylo: both clauses are identical.)
-rec-trace-D fmt (Hylo {F} {G} wfF wfG {B} alg t) x n =
-  proj₁ (sem-fuseNat-events _++_ [] ⌈ F ⌉F ⌈ G ⌉F (wf-⌈⌉ wfF) (wf-⌈⌉ wfG) (appNatTr-F fmt t)
-    (λ fb → let r = evalᴰ fmt alg (inject (subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F B)) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ B ⌉ fb)))
-            in (projTrace r n , forget (valueT r n)))
-    x)
-rec-trace-D fmt (Fuse {F} {G} wfF wfG {B} alg t) x n =
-  proj₁ (sem-fuseNat-events _++_ [] ⌈ F ⌉F ⌈ G ⌉F (wf-⌈⌉ wfF) (wf-⌈⌉ wfG) (appNatTr-F fmt t)
-    (λ fb → let r = evalᴰ fmt alg (inject (subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F B)) (coerce-functor⁻¹ ⌈ F ⌉F ⌈ B ⌉ fb)))
-            in (projTrace r n , forget (valueT r n)))
-    x)
-rec-trace-D fmt (const f v)         x n = []
--- Structural / pure constructors: never reached here (they have explicit
--- `evalᴰ` clauses), and emit no recursion-scheme events ⇒ `[]`.
-rec-trace-D fmt _                       x n = []
+-- plan 0.98: the six clauses that USED TO BE A CATCH-ALL, split by what they
+-- actually are. `In`, `out-μ` and `const` have no sub-IR at all, so they can
+-- emit nothing and cannot halt — the pure `eval` is their whole meaning, and
+-- these are the ONLY three places it is applied.
+evalᴰ fmt (In wf)     a = mkT (λ _ → []) (returns (inject (eval fmt (In wf) (forget a))))
+evalᴰ fmt (out-μ wf)  a = mkT (λ _ → []) (returns (inject (eval fmt (out-μ wf) (forget a))))
+evalᴰ fmt (const f v) a = mkT (λ _ → []) (returns (inject (eval fmt (const f v) (forget a))))
+-- `Para`, `Hylo` and `Fuse` carry an ALGEBRA, so they carry effects, so they
+-- get the `Cata` treatment (D179): ONE monadic fold supplying both the trace
+-- and the value. Behind the catch-all they still had the retired two-model
+-- shape — value from the pure `eval`, trace from a parallel `rec-trace-D` —
+-- which diverges exactly when the algebra is effectful, and is unrepresentable
+-- now that an algebra may STOP. (No surface program reaches them: the
+-- elaborator emits sixteen constructors and none of these is among them. They
+-- are reachable only through `Once.Fusion`/`Once.Optimize`, which traverse.)
+evalᴰ fmt (Para {F} wf {C} alg) a =
+  sem-para (wf-⌈⌉ wf) (para-ev-algᴰ fmt {F} {C} alg) (forget a)
+evalᴰ fmt (Hylo {F} {G} wfF wfG {B} alg t) a =
+  sem-fuseNat ⌈ F ⌉F ⌈ G ⌉F (wf-⌈⌉ wfF) (wf-⌈⌉ wfG) (appNatTr-F fmt t)
+    (fuse-ev-algᴰ fmt {F} {B} alg) (forget a)
+evalᴰ fmt (Fuse {F} {G} wfF wfG {B} alg t) a =
+  sem-fuseNat ⌈ F ⌉F ⌈ G ⌉F (wf-⌈⌉ wfF) (wf-⌈⌉ wfG) (appNatTr-F fmt t)
+    (fuse-ev-algᴰ fmt {F} {B} alg) (forget a)
 
 cata-ev-algᴰ fmt {F} {E} {C} alg env fc =
   seqF ⌈ F ⌉F fc >>=T λ layer →
     evalᴰ fmt alg (env , subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F C))
                              (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ C ⌉ layer))
 
--- `Para`'s fold. Children events come from each child's `List` part
--- (`proj₁ ∘ proj₂`); the algebra runs on the `(μF , value)` layer
--- (`(proj₁ , proj₂ ∘ proj₂)` per position) and its events follow.
-para-ev-algᴰ fmt {F} {C} n alg fc =
-  ( events-F ⌈ F ⌉F (λ p → proj₁ (proj₂ p)) fc ++ projTrace (evalᴰ fmt alg (inject z')) n
-  , forget (valueT (evalᴰ fmt alg (inject z')) n) )
-  where z = coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F * C ⌉
-              (sem-fmap ⌈ F ⌉F (λ p → (proj₁ p , proj₂ (proj₂ p))) fc)
-        z' = subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F * C))) z
+-- `Para`'s fold, in the `Cata` shape. The carrier is a COMPUTATION, so each
+-- child's effects are sequenced (`seqF`) rather than collected by a separate
+-- events traversal; the original substructure rides along pure, injected into
+-- the value domain to rebuild the `(μF , value)` layer the algebra expects.
+para-ev-algᴰ fmt {F} {C} alg fc =
+  seqF ⌈ F ⌉F (sem-fmap ⌈ F ⌉F (λ p → fmapT (λ v → (inject (proj₁ p) , v)) (proj₂ p)) fc)
+    >>=T λ layer →
+      evalᴰ fmt alg (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F (μ-type F * C)))
+                      (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ μ-type F * C ⌉ layer))
+
+fuse-ev-algᴰ fmt {F} {B} alg fb =
+  seqF ⌈ F ⌉F fb >>=T λ layer →
+    evalᴰ fmt alg (subst (λ Ty → ⟦ Ty ⟧ᴰ) (sym (⌈⟧TI-commute F B))
+                    (coerce-functor⁻¹-D ⌈ F ⌉F ⌈ B ⌉ layer))
 
 ------------------------------------------------------------------------
 -- `liftFn` — the erasure-transported IR morphism denotation as a surface
