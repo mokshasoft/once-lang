@@ -219,15 +219,69 @@ above are in exactly that position: classified by shape, never measured.
 
 ---
 
-## 5. The open question this file does not answer
+## 5. ★★★ THE PROBE — RUN 2026-09-23, and it does not blow up
 
-Whether intrinsic syntax makes the KNOT easier or harder is **still not
-measured**. §2 shows the Knot's pain is index bookkeeping, and §3.2
-argues that pain is what intrinsic removes. But the Knot encodes the
-kernel's syntax — so an intrinsic kernel means an encoding whose index
-carries contexts and types, and no probe has been built for that.
+`Examples/ScopedTy.agda` is `Examples/Scoped.agda`'s twin: the same
+λ-calculus, the same two interesting constructors, indexed by CONTEXT
+AND TYPE instead of by DEPTH.
 
-The measurement that would settle it: take `Examples/Scoped.agda` (433
-lines, a λ-calculus indexed by context DEPTH) and build its twin indexed
-by CONTEXT AND TYPE. Same three constructors; only the index differs.
-That is the one number missing from this file.
+| | lam+app, desc **and** Wf | module | time | memory |
+|---|---|---|---|---|
+| `Scoped` — depth-indexed | **22** lines | 433 | 0.68 s | 171 MB |
+| `ScopedTy` — type-indexed | **96** lines | 257 | **0.42 s** | **159 MB** |
+
+⇒ **the constructors cost 4.4× the lines, and there is NO time or memory
+blowup whatever** — the type-indexed module is *faster and smaller* than
+its depth-indexed baseline.
+
+★ **The predicted structure came out exactly right**, from `Scoped`'s own
+rule (*"`iι` targets the AMBIENT index, so a constructor that wants to
+land elsewhere must SAY SO with an `Id` field"*):
+
+    app : Tm Γ (A ⇒ B) → Tm Γ A → Tm Γ B
+      target IS the ambient (Γ , B)    ⇒ NO Ford.  +1 κ for A.
+    lam : Tm (Γ , A) B → Tm Γ (A ⇒ B)
+      target is (Γ , A ⇒ B) ≠ ambient  ⇒ ONE Ford.  +3 κ.
+
+⇒ **one Ford across the whole language**, and Fording is the CHEAP form
+(`tmp/ProbeFord`: 60 ms forded vs 15,998 ms computed). The 267× case is
+not reachable from here.
+
+### 5.1 ⚠ What the probe does NOT cover
+
+* **`var`.** `ScopedTy` omits it; `Scoped` carries it plus the whole
+  forded `Fin` family. A typed `var` needs `Var Γ A`, which is
+  `Knot/Lookup`'s shape — already built, already known to work, 730
+  hand-written lines for 2 rows.
+* **Scale.** Two constructors, not 53.
+* **The folds.** Nothing here measures `sz`/`occ`/`ren`/`sub` over a
+  type index, and those are where §2.1's towers live. This is the
+  biggest remaining unknown and it is the one that matters most,
+  because §2.1 is the mechanism the whole argument rests on.
+* ⚠ The module totals are **not** apples-to-apples (different auxiliary
+  families). Only the 22 → 96 figure is.
+
+### 5.2 What it settles, and what it does not
+
+**Settles:** a type index does not blow up. The catastrophe I argued
+for — extrapolating 40× and 267× onto index richness — does not happen.
+Both of those numbers are about specific failure modes (accumulating
+codes; invertible computed indices), and neither is hit.
+
+**Does not settle:** whether the Knot as a whole gets easier. That needs
+the folds. But the direction of the evidence has moved: the cost is
+4.4× on *constructor* lines, against §2's measured 40% rework rate and
+eight tower rungs and eight `natⁿ` instances that a structural index
+would delete outright.
+
+---
+
+## 6. The open question this file does not answer
+
+§5 built the constructor-level probe and it came out favourable. What
+remains unmeasured is **the folds** — `sz`, `occ`, `ren`, `sub` over a
+type index. §2.1 says the Knot's pain is index bookkeeping in exactly
+those folds, so that is where the argument must finally be tested.
+
+⇒ the next probe, if one is wanted: `Knot/SzAgree`'s shape (a 30-row
+fold, 442 lines, generated) against a type-indexed twin.
