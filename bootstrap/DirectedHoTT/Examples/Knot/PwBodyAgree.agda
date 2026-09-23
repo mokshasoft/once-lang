@@ -769,7 +769,7 @@ pwb-agree {Γ} i hi (⌜Π⌝ y0 y1) =
              » step (jsub-refl _ _ _ _) done )
   » step (jsub-refl _ _ _ _) done
   » ⟶*-castₗ (cong (λ w → fst (snd w)) (wk-single {v = IHS} PAY))
-      (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)
+      (chainOf (evProj 2 _))
   where
     PAY : RTm _
     PAY = pair (enTm y0) (pair (enTm y1) (pair (idrefl ⌜Nat⌝ sTm) unit))

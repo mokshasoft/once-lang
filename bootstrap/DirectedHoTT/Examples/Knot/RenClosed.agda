@@ -89,12 +89,12 @@ id-cons n m rn c d ihc ihd =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ihc)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 2 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 2 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ihd))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))))
+    (chainOf (evProj 3 _)))))
 
 ------------------------------------------------------------------------
 -- ★★★ AND A **PINNED** FIELD REDUCES LIKE A FORD.  `cDCon-kap`'s `RTy ε`
@@ -126,7 +126,7 @@ id-dρ n m rn c ihc =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ihc)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)))
+    (chainOf (evProj 2 _))))
 
 -- ⚠ SLOT 0 IS PINNED — projection only, NO eliminator descent.
 id-dκ : {Θ : Cx} (n m : ℕ) (rn : RTm Θ) (A : RTy ε) (c : DCon) →
@@ -139,12 +139,12 @@ id-dκ n m rn A c ihc =
                (pair (enTy A) (pair (enDCon c) (pair (idrefl ⌜Nat⌝ sDCon) unit))) »
   ⟶*-icon (⟶*-pairˡ (chainOf (evProj 1 _))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 2 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 2 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ihc))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))))
+    (chainOf (evProj 3 _)))))
 
 ------------------------------------------------------------------------
 -- ★ AND `IDesc` — TWO ROWS, because `cIDesc-cons`'s `ICon (ε ∙)` field
@@ -170,12 +170,12 @@ id-icons n m rn C E ihE =
                (pair (enICon C) (pair (enIDesc E) (pair (idrefl ⌜Nat⌝ sIDesc) unit))) »
   ⟶*-icon (⟶*-pairˡ (chainOf (evProj 1 _))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (chainOf (evProj 2 _))) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (chainOf (evProj 2 _)))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ihE))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))))
+    (chainOf (evProj 3 _)))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE KNOT TIED.  `Desc`/`DCon` are mutually recursive, `IDesc` is

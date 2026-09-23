@@ -6726,6 +6726,35 @@ _EV_IMPORT = "open import DirectedHoTT.Lib.Eval using ( evSpine; chainOf )"
 _PROJ = (("⟶*-fst done » step (βfst _ _) done", "chainOf (evProj 1 _)"),
          ("⟶*-snd done » step (βsnd _ _) done", "chainOf (evProj 1 _)"))
 
+# ★ NESTED spines — collapse to a FIXPOINT, not depth by depth.
+#     ⟶*-X (chainOf (evProj N _)) » step (βX _ _) done  →  evProj N+1
+#   iterated until nothing changes, so a spine of ANY depth becomes one
+#   call.  (Measured: 376 sites at depth 2, of which 176 are the inner
+#   half of a depth-3 spine — chasing depths one at a time would need a
+#   new rule per level and would still miss the tail.)
+#
+# ⚠ THE CONGRUENCE AND THE β MUST AGREE.  `⟶*-fst … βsnd` is a DIFFERENT
+#   TERM, not a deeper spine; collapsing it would be unsound, so a
+#   mismatch is left untouched.
+#
+# ★ Sound to over-fuel because `evProj` is IDEMPOTENT PAST NORMAL FORM
+#   (`evProj1 t = t , done` with no redex), so a too-large N is only
+#   extra traversals, never a different answer.
+_NEST_RE = re.compile(
+    r"⟶\*-(fst|snd) \(chainOf \(evProj (\d+) _\)\) » step \(β(fst|snd) _ _\) done")
+
+def _nest1(m):
+    if m.group(1) != m.group(3):
+        return m.group(0)
+    return "chainOf (evProj %d _)" % (int(m.group(2)) + 1)
+
+def _collapse_nested(src):
+    while True:
+        out = _NEST_RE.sub(_nest1, src)
+        if out == src:
+            return src
+        src = out
+
 def _evspine(src):
     """Replace hand-built chains with `Lib/Eval` calls.
 
@@ -6741,6 +6770,7 @@ def _evspine(src):
             out = out.replace(a, b)
     if m:
         names.append("evProj")
+    out = _collapse_nested(out)
     if not names:
         return out
     imp = "open import DirectedHoTT.Lib.Eval using ( %s; chainOf )" % "; ".join(names)
