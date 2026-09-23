@@ -41,7 +41,8 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Type; Unit; Void)
-open import Once.Res using (Res; stopped; returns)
+open import Once.Res using (Res; stopped; returns; is-stopped)
+open import Data.Bool using (Bool; true; false)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
 -- enforced BY CONSTRUCTION here: a `SigOpInfo` cannot be built at a non-base type.
@@ -211,21 +212,49 @@ open SigOpInfo public
 -- partially-applied `semM si tn` is still the old shape and reads naturally at
 -- the call sites that already have a `TargetNum` in hand (the denotation
 -- threads one as `fmt`; the machine has `fs-numerics FS`).
+-- plan 0.98: HOISTED OUT OF THEIR `where`s. `effect` and `semM` are two
+-- readings of the SAME field, and after 0.98 a consumer that has matched on
+-- one has to conclude about the other — 0.97 got that for free because its
+-- `stops-D si` was DEFINED as `stops-D-of (effect si)`, so the two could not
+-- disagree by construction. They can now, and the honest replacement is a
+-- LEMMA relating them (`semM-stops` below). A `where`-bound dispatch cannot
+-- carry one: neither reduces on `sem si` for a variable `si`, so there is
+-- nothing to case-split. As top-level functions of `SigOpSem` there is.
+semM-of : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
+semM-of (pureV f)     = λ tn x → returns (f tn x)
+semM-of (emitsV refl) = λ _ _ → returns tt
+semM-of (haltsV refl) = λ _ _ → stopped
+
+effect-of : ∀ {A B} → SigOpSem A B → EffectShape B
+effect-of (pureV _)  = Pure
+effect-of (emitsV e) = Emits e
+effect-of (haltsV e) = Halts e
+
 semM : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
-semM si = go (sem si)
-  where
-    go : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
-    go (pureV f)     = λ tn x → returns (f tn x)
-    go (emitsV refl) = λ _ _ → returns tt
-    go (haltsV refl) = λ _ _ → stopped
+semM si = semM-of (sem si)
 
 effect : ∀ {A B} → SigOpInfo A B → EffectShape B
-effect si = go (sem si)
-  where
-    go : ∀ {A B} → SigOpSem A B → EffectShape B
-    go (pureV _)  = Pure
-    go (emitsV e) = Emits e
-    go (haltsV e) = Halts e
+effect si = effect-of (sem si)
+
+-- | WHICH CONTRACT SHAPES END THE PROGRAM. 0.97 called this `stops-D-of` and
+--   kept it in the denotation; it belongs beside the contract it reads.
+stops-shape : ∀ {B} → EffectShape B → Bool
+stops-shape Pure      = false
+stops-shape (Emits _) = false
+stops-shape (Halts _) = true
+
+-- | …and THE TWO READINGS AGREE. This is the bridge a consumer who matched on
+--   `effect si` needs in order to say anything about `semM si` — a proof now,
+--   where 0.97 had a definitional coincidence.
+semM-stops-of : ∀ {A B} (sm : SigOpSem A B) (tn : TargetNum) (a : M.⟦ A ⟧)
+              → is-stopped (semM-of sm tn a) ≡ stops-shape (effect-of sm)
+semM-stops-of (pureV f)     tn a = refl
+semM-stops-of (emitsV refl) tn a = refl
+semM-stops-of (haltsV refl) tn a = refl
+
+semM-stops : ∀ {A B} (si : SigOpInfo A B) (tn : TargetNum) (a : M.⟦ A ⟧)
+           → is-stopped (semM si tn a) ≡ stops-shape (effect si)
+semM-stops si = semM-stops-of (sem si)
 
 ------------------------------------------------------------------------
 -- Compatibility constructor — maps the old `(value, effect)` pair into

@@ -56,10 +56,21 @@ res-returns {r = returns v} _ = v , refl
 res-stopped : ∀ {X} {r : Res X} → is-stopped r ≡ true → r ≡ stopped
 res-stopped {r = stopped} _ = refl
 
+-- | `returns` is injective — it is a constructor. Needed wherever an
+--   obligation BINDS the returned value and a proof knows what it was.
+returns-inj : ∀ {X} {x y : X} → returns x ≡ returns y → x ≡ y
+returns-inj refl = refl
+
 -- | Map over the result of a computation that returns.
 mapRes : ∀ {X Y} → (X → Y) → Res X → Res Y
 mapRes f stopped     = stopped
 mapRes f (returns x) = returns (f x)
+
+-- | Mapping does not change WHETHER it stopped.
+is-stopped-mapRes : ∀ {X Y} (f : X → Y) (r : Res X)
+                  → is-stopped (mapRes f r) ≡ is-stopped r
+is-stopped-mapRes f stopped     = refl
+is-stopped-mapRes f (returns _) = refl
 
 -- | Lift a relation on values to one on results. Two results are related
 --   when they stop together, or both return related values. This is what a

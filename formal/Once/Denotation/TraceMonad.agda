@@ -33,7 +33,7 @@ open import Data.Nat using (ℕ; _∸_)
 open import Data.List using (List; []; _++_; length; take)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥)
-open import Once.Res using (Res; stopped; returns; is-stopped; mapRes)
+open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; Res-rel)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
@@ -158,6 +158,20 @@ resVal stopped     ()
 -- The budget argument is KEPT and IGNORED: the value does not depend on it.
 valueT : ∀ {X} (m : T X) (k : ℕ) {p : Returns? (T.resT m)} → X
 valueT m k {p} = resVal (T.resT m) p
+
+-- plan 0.98: THE TWO BRIDGES BETWEEN `valueT` AND THE `Res` IT READS.
+--
+-- A producer that only knows the boolean ("this shape does not stop") still
+-- has to hand `valueT` its witness: `Returns?-of` is that step. And a consumer
+-- whose obligation BINDS the value (`place`) has to identify it with the one
+-- the producer placed: `resVal-returns` says the result IS `returns` of what
+-- `valueT` reads, so `returns-inj` finishes the identification. Neither is an
+-- assumption — both are one-clause case splits.
+Returns?-of : ∀ {X} {r : Res X} → is-stopped r ≡ false → Returns? r
+Returns?-of {r = returns _} _ = tt
+
+resVal-returns : ∀ {X} (r : Res X) (p : Returns? r) → r ≡ returns (resVal r p)
+resVal-returns (returns x) _ = refl
 
 ------------------------------------------------------------------------
 -- Congruence at a fixed observation depth (the J-style bridge).
@@ -563,6 +577,57 @@ bindRes-idʳ tr stopped     k = refl
 bindRes-idʳ tr (returns x) k = cong (_, returns x) (++-identityʳ (tr k))
 
 >>=T-identityʳ m k = bindRes-idʳ (T.trT m) (T.resT m) k
+
+-- Right identity, GENERALISED: binding with a `returnT` of anything is `fmapT`.
+-- 0.97 needed this shape at every pair-build residual and spelled it as
+-- `join-es-idʳ`/`join-st-idʳ` applied separately to the trace and the flag —
+-- two lemmas because the triple had two components to fix up. With `Res` it
+-- is one statement, and its stopped branch is `refl`: no sequel was built, so
+-- there is no `++ []` to remove.
+bindRes-mapʳ : ∀ {X Y : Set} (tr : ℕ → List SigOpEvent) (r : Res X)
+                 (h : X → Y) (k : ℕ)
+             → atT (bindRes tr r (λ x → returnT (h x))) k ≡ (tr k , mapRes h r)
+bindRes-mapʳ tr stopped     h k = refl
+bindRes-mapʳ tr (returns x) h k = cong (_, returns (h x)) (++-identityʳ (tr k))
+
+-- BIND IS A CONGRUENCE FOR THE RESULT RELATION.
+--
+-- plan 0.98: this is what an adequacy relation needs in place of 0.97's
+-- separate trace-equal / flag-equal / value-related triple. `Res-rel` says the
+-- two computations stop together or return related values — ONE fact — and a
+-- bind of related heads with related continuations preserves it. The stopped
+-- case is `tt` with no continuation to mention, because neither side built
+-- one; only the returning case carries the budget transport, and the budgets
+-- agree because the head traces do.
+bindRes-rel : ∀ {X Y : Set} (R : X → X → Set) (S : Y → Y → Set)
+                (tr₁ tr₂ : ℕ → List SigOpEvent) (r₁ r₂ : Res X)
+                (f g : X → T Y) (n : ℕ)
+            → tr₁ n ≡ tr₂ n
+            → Res-rel R r₁ r₂
+            → (∀ {a b} → R a b → ∀ j → (projTrace (f a) j ≡ projTrace (g b) j)
+                                     × Res-rel S (T.resT (f a)) (T.resT (g b)))
+            → (projTrace (bindRes tr₁ r₁ f) n ≡ projTrace (bindRes tr₂ r₂ g) n)
+              × Res-rel S (T.resT (bindRes tr₁ r₁ f)) (T.resT (bindRes tr₂ r₂ g))
+bindRes-rel R S tr₁ tr₂ stopped     stopped     f g n te rr rk = te , tt
+bindRes-rel R S tr₁ tr₂ stopped     (returns _) f g n te ()  rk
+bindRes-rel R S tr₁ tr₂ (returns _) stopped     f g n te ()  rk
+bindRes-rel R S tr₁ tr₂ (returns a) (returns b) f g n te rr rk =
+    cong₂ _++_ te
+      (trans (proj₁ (rk rr (n ∸ length (tr₁ n))))
+             (cong (projTrace (g b)) (cong (λ es → n ∸ length es) te)))
+  , proj₂ (rk rr 0)
+
+-- The TRACE half of `bindRes-mapʳ`, for the many sites whose subject is only
+-- the trace. Stopped: nothing was appended. Returns: one `++-identityʳ`.
+bindRes-trʳ : ∀ {X Y : Set} (tr : ℕ → List SigOpEvent) (r : Res X)
+                (h : X → Y) (k : ℕ)
+            → projTrace (bindRes tr r (λ x → returnT (h x))) k ≡ tr k
+bindRes-trʳ tr stopped     h k = refl
+bindRes-trʳ tr (returns x) h k = ++-identityʳ (tr k)
+
+>>=T-mapʳ : ∀ {X Y : Set} (m : T X) (h : X → Y) (k : ℕ)
+          → atT (m >>=T (λ x → returnT (h x))) k ≡ atT (fmapT h m) k
+>>=T-mapʳ m h k = bindRes-mapʳ (T.trT m) (T.resT m) h k
 
 ------------------------------------------------------------------------
 -- Associativity.
