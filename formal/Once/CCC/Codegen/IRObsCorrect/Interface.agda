@@ -39,6 +39,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
+open import Once.Res using (Res; stopped; returns)
 
 module Core {FS : FrameSemantics} where
   -- …and the reference DENOTATION at the same format. That the machine and the
@@ -314,9 +315,18 @@ module Core {FS : FrameSemantics} where
       -- result, and a producer must not be asked to place it. The one
       -- consumer that needs a result — a fragment feeding its successor —
       -- only ever needs it on the branch where the successor runs.
-      place      : TM.stoppedT (evalᴰ ir x) k ≡ false
+      --
+      -- plan 0.98: THE PREMISE SUPPLIES THE VALUE. 0.97 wrote the condition as
+      -- a boolean equation and then named the value separately, which meant
+      -- the obligation could be stated with the two out of step — the premise
+      -- said "not stopped" while `valueT` reached into a total value field
+      -- that existed even when it was. With the result inside `Res` there is
+      -- one fact, and it carries the value: `resT ≡ returns v` is BOTH the
+      -- condition and the witness, and `v` is bound by it rather than
+      -- computed beside it. The obligation can no longer be mis-stated.
+      place      : ∀ {v} → TM.T.resT (evalᴰ ir x) ≡ returns v
                  → ResultPlace B out-mode (falloc settle) cont-alloc
-                     (TM.valueT (evalᴰ ir x) k) (floc settle)
+                     v (floc settle)
       -- D204: WHAT THE RUN LEAVES ALONE.
       --
       -- A fragment writes stack slots at or above its own frontier, allocates
@@ -534,9 +544,10 @@ module Core {FS : FrameSemantics} where
       stops      : TM.stoppedT comp k ≡ true  → halted (floc settle) ≡ true
       no-ret     : fret settle ≡ []
       no-link    : flink settle ≡ nothing
-      place      : TM.stoppedT comp k ≡ false
+      -- plan 0.98: the premise supplies the value — see `ValueRealized.place`.
+      place      : ∀ {v} → TM.T.resT comp ≡ returns v
                  → ResultPlace B out-mode (falloc settle) cont-alloc
-                     (TM.valueT comp k) (floc settle)
+                     v (floc settle)
       events     : take k (chain-events run)
                    ≡ take k (projTrace comp k)
       -- D204: WHAT THE CALL LEAVES ALONE — the call half of the same fact

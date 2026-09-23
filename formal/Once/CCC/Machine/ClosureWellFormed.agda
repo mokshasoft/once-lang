@@ -777,11 +777,20 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         -- the PURE semantics while the trace half refined `evalᴰ` — two models
         -- for one machine state.
         obs-budget : ℕ
+        -- plan 0.98: THE IR RETURNS. `result-place` names the value `evalᴰ`
+        -- produced, and after 0.98 a computation need not produce one — a
+        -- halting SigOp has no result. So the record must SAY that this run
+        -- returned before it can speak of "the value". It is not a new
+        -- assumption: `not-halted` below already says the machine did not
+        -- stop, and obs-correctness is precisely the claim that the two
+        -- agree. Stating it on the semantic side is what makes
+        -- `result-place`'s type well-formed without a hidden meta.
+        ir-returns : TM.Returns? (TM.T.resT (evalᴰ ir x))
         result-place : ResultPlace B m (apply-bump bump alloc)
           (record alloc
             { next-slot     = next-slot     (apply-bump bump alloc)
             ; next-heap-ref = next-heap-ref (apply-bump bump alloc) })
-          (TM.valueT (evalᴰ ir x) obs-budget) final-state
+          (TM.valueT (evalᴰ ir x) obs-budget {ir-returns}) final-state
         not-halted : halted final-state ≡ false
         -- Plan 0.14: consequence-form memory preservation. Locations
         -- valid in the caller's view (BeforeFrontier alloc) read the
@@ -925,11 +934,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
         -- D179: the value half now refines `evalᴰ`; the producer names the
         -- budget it realizes the value at.
         (obs-budget : ℕ)
+        (ir-returns : TM.Returns? (TM.T.resT (evalᴰ ir x)))
         (result-place-local :
            ResultPlace B m final-alloc-local
              (record alloc { next-slot     = next-slot     final-alloc-local
                            ; next-heap-ref = next-heap-ref final-alloc-local })
-             (TM.valueT (evalᴰ ir x) obs-budget) final-state)
+             (TM.valueT (evalᴰ ir x) obs-budget {ir-returns}) final-state)
         (not-halted : halted final-state ≡ false)
         (mem-preserved-before :
            (loc : ValueLocation FS) → BeforeFrontier alloc loc →
@@ -947,7 +957,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
     mk-IRResultAWF-via-bump {m = m} {ir = ir} {x = x} {s = s} {alloc = alloc}
                             final-state final-alloc-local trace bump final-alloc-eq
                             trace-is-ir-to-trace trace-correct alloc-correct-local
-                            obs-budget result-place-local not-halted mem-preserved-before
+                            obs-budget ir-returns result-place-local not-halted mem-preserved-before
                             trace-twf trace-preserves-halted trace-no-frame-ops
                             stack-inv-local heap-inv-local =
       record
@@ -959,11 +969,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
             ; trace-correct = trace-correct
             ; alloc-correct = trans alloc-correct-local final-alloc-eq
             ; obs-budget = obs-budget
+            ; ir-returns = ir-returns
             ; result-place =
                 subst (λ a → ResultPlace _ m a
                               (record alloc { next-slot     = next-slot a
                                             ; next-heap-ref = next-heap-ref a })
-                              (TM.valueT (evalᴰ ir x) obs-budget) final-state)
+                              (TM.valueT (evalᴰ ir x) obs-budget {ir-returns}) final-state)
                       final-alloc-eq result-place-local
             ; not-halted = not-halted
             ; mem-preserved-before = mem-preserved-before
@@ -2514,10 +2525,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} where
       ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s₁ →
       ValidAtWF m alloc {⟦ F ⟧TI (μ-type F)} (TM.valueT (evalᴰ (out-μ wf) x) 0) loc s₂
 
+    -- plan 0.98: `Out` may STOP — `⟦ν⟧`'s layers are `Res`-valued — so the
+    -- witness that this one did is an explicit premise rather than a meta.
     ν-validity-in-regions-stub : ∀ {m alloc F} {wf : WellFormedFI F} {x loc s₁ s₂}
-                                   {input-bound fresh-start : ℕ} {k : ℕ} →
-      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (TM.valueT (evalᴰ (Out wf) x) k) loc s₁ →
-      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (TM.valueT (evalᴰ (Out wf) x) k) loc s₂
+                                   {input-bound fresh-start : ℕ} {k : ℕ}
+                                   {p : TM.Returns? (TM.T.resT (evalᴰ (Out wf) x))} →
+      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (TM.valueT (evalᴰ (Out wf) x) k {p}) loc s₁ →
+      ValidAtWF m alloc {⟦ F ⟧TI (ν-type F)} (TM.valueT (evalᴰ (Out wf) x) k {p}) loc s₂
 
   -- STRONG version: requires an additional LocsInRegions hypothesis that
   -- witnesses the value's sub-locations all land in input/fresh/heap/anc
