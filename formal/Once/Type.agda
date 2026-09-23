@@ -335,6 +335,23 @@ infixr 30 _⇒₀_
 -- 11-constructor enumeration. ([[feedback_with_clauses_painful]] — the
 -- constructor-pattern analogue: dispatch on a reducible decision, not a
 -- scrutinee opaque to the proof's variables.)
+-- | Is this type the empty `Void`? plan 0.98: a halting SigOp's codomain.
+-- Same LOW-level placement and rationale as `isUnit?` below — SD's
+-- `arrow-info` and the elaborator both dispatch on this one decision, so the
+-- two presentations of the meaning cannot disagree about which ops halt.
+isVoid? : (T : Type) → Dec (T ≡ Void)
+isVoid? Void          = yes refl
+isVoid? Unit          = no (λ ())
+isVoid? (_ * _)       = no (λ ())
+isVoid? (_ + _)       = no (λ ())
+isVoid? (_ ⇒[ _ ] _)  = no (λ ())
+isVoid? (μ-type _)    = no (λ ())
+isVoid? (ν-type _)    = no (λ ())
+isVoid? Int           = no (λ ())
+isVoid? Float         = no (λ ())
+isVoid? Str           = no (λ ())
+isVoid? Buffer        = no (λ ())
+
 isUnit? : (T : Type) → Dec (T ≡ Unit)
 isUnit? Unit          = yes refl
 isUnit? Void          = no (λ ())

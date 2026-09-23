@@ -40,7 +40,8 @@ open import Once.CanonicalName using (CanonicalName; _≟ᶜ_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
-open import Once.Type using (Type; Unit)
+open import Once.Type using (Type; Unit; Void)
+open import Once.Res using (Res; stopped; returns)
 -- Plan 0.58 (OCP-0006): a SigOp is an FFI/register-ABI boundary, so its argument
 -- and result types must be CONCRETE (`IsBaseType` — no arrows, no `μ`/`ν`). This is
 -- enforced BY CONSTRUCTION here: a `SigOpInfo` cannot be built at a non-base type.
@@ -86,10 +87,17 @@ data EffectShape (B : Type) : Set where
   -- | Observable event, continues. The event records the SigOp's
   -- input; codomain must be `Unit` (reserved for a `write`/emitting syscall etc.).
   Emits : B ≡ Unit → EffectShape B
-  -- | Observable event, ends the program. The event records the
-  -- SigOp's input (e.g. the exit code); codomain must be `Unit`.
-  -- Used by the exit syscall.
-  Halts : B ≡ Unit → EffectShape B
+  -- | Observable event, ENDS THE PROGRAM. The event records the SigOp's
+  -- input (e.g. the exit code), and the codomain is `Void`: the call does
+  -- not return, so there is no result for it to have. Used by the exit
+  -- syscall.
+  --
+  -- plan 0.98: this index was `B ≡ Unit`, IDENTICAL to `Emits`'. That is
+  -- what made a halting SigOp indistinguishable IN THE TYPE from an emitting
+  -- one — so the surface path could drop the distinction, and the dropped bit
+  -- had to be stashed in a name-keyed side table. `Void` puts it back in the
+  -- type, where both presentations of the meaning read it.
+  Halts : B ≡ Void → EffectShape B
 
 ------------------------------------------------------------------------
 -- SigOpSem — the SigOp's semantics, UNIFYING value and effect (Plan
@@ -125,8 +133,10 @@ data SigOpSem (A B : Type) : Set where
   pureV : (TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧) → SigOpSem A B
   -- | External op, observable, continues. Value is `tt` (B ≡ Unit).
   emitsV : B ≡ Unit → SigOpSem A B
-  -- | External op, observable, terminates the machine. Value is `tt`.
-  haltsV : B ≡ Unit → SigOpSem A B
+  -- | External op, observable, TERMINATES the machine. There is no value:
+  -- the call does not return (`B ≡ Void`), which is why `semM` lands in
+  -- `Res` rather than producing one.
+  haltsV : B ≡ Void → SigOpSem A B
 
 ------------------------------------------------------------------------
 -- Linkage — how a `SigOp`'s result type is provided (Plan 0.58 / D071).
@@ -190,21 +200,24 @@ open SigOpInfo public
 -- `effect si`) is unchanged while the underlying representation can no
 -- longer carry an opaque external value.
 --
--- `semM` of an effect contract is `tt` (B ≡ Unit by the constructor's
--- coherence) — the machine output the `Emits`/`Halts` codegen produces.
+-- `semM` of an EMITTING contract is `tt` (`B ≡ Unit` by the constructor's
+-- coherence). A HALTING contract has no value at all — plan 0.98 — so `semM`
+-- lands in `Res`: a SigOp's semantics either RETURNS a value or ENDS the
+-- program. That keeps it total while making "a halting op has no result" a
+-- fact of the type rather than a flag somebody has to remember to consult.
 ------------------------------------------------------------------------
 
 -- PLAN 0.74 J5: the target's numerics come FIRST, before the argument, so a
 -- partially-applied `semM si tn` is still the old shape and reads naturally at
 -- the call sites that already have a `TargetNum` in hand (the denotation
 -- threads one as `fmt`; the machine has `fs-numerics FS`).
-semM : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧
+semM : ∀ {A B} → SigOpInfo A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
 semM si = go (sem si)
   where
-    go : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧
-    go (pureV f)     = f
-    go (emitsV refl) = λ _ _ → tt
-    go (haltsV refl) = λ _ _ → tt
+    go : ∀ {A B} → SigOpSem A B → TargetNum → M.⟦ A ⟧ → Res M.⟦ B ⟧
+    go (pureV f)     = λ tn x → returns (f tn x)
+    go (emitsV refl) = λ _ _ → returns tt
+    go (haltsV refl) = λ _ _ → stopped
 
 effect : ∀ {A B} → SigOpInfo A B → EffectShape B
 effect si = go (sem si)
