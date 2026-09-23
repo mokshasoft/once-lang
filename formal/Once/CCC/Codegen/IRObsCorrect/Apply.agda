@@ -22,6 +22,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
+open import Once.Res using (Res; stopped; returns; is-stopped)
 
 module ApplyC {FS : FrameSemantics} where
 
@@ -208,16 +209,18 @@ module ApplyC {FS : FrameSemantics} where
                     ≡ TM.stoppedT (evalᴰ (apply {A} {B}) x) k
               st-eq = cong (λ d → TM.stoppedT d k) denot-eq
 
-              place : TM.stoppedT (evalᴰ (apply {A} {B}) x) k ≡ false
+              -- plan 0.98: the `subst` is GONE. It existed to move
+              -- `TM.valueT d k` along `denot-eq`; now the premise BINDS the
+              -- value, so the two sides name the same `v` and only the
+              -- equation being transported has to move.
+              res-eq : TM.T.resT (evalᴰ body (env , proj₂ x)) ≡ TM.T.resT (evalᴰ (apply {A} {B}) x)
+              res-eq = cong TM.T.resT denot-eq
+
+              place : ∀ {v} → TM.T.resT (evalᴰ (apply {A} {B}) x) ≡ returns v
                     → ResultPlace B (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
-                        (TM.valueT (evalᴰ (apply {A} {B}) x) k)
-                        (floc (CalleeRun.settle crun))
-              place p = subst (λ d → ResultPlace B (CalleeRun.out-mode crun)
-                                     (falloc (CalleeRun.settle crun))
-                                     (CalleeRun.cont-alloc crun)
-                                     (TM.valueT d k) (floc (CalleeRun.settle crun)))
-                            denot-eq (CalleeRun.place crun (trans st-eq p))
+                        v (floc (CalleeRun.settle crun))
+              place p = CalleeRun.place crun (trans res-eq p)
 
               -- D204: what the whole `apply` leaves alone — the sixteen setup rows
               -- (`setup-mem-pres`, already proved) composed with the callee's
