@@ -247,6 +247,60 @@ land elsewhere must SAY SO with an `Id` field"*):
 (`tmp/ProbeFord`: 60 ms forded vs 15,998 ms computed). The 267× case is
 not reachable from here.
 
+### 5.0 ⚠⚠ PROBE 2 — THE FOLD, and a CORRECTION TO §2.1
+
+`Examples/ScopedTySz` applies `Lib/ISz`'s generic fold to the
+type-indexed syntax, against `Examples/ScopedSz` on the depth-indexed
+one. The port was **structurally byte-for-byte identical** — only
+`INat` → `I`:
+
+| | content lines | time | memory |
+|---|---|---|---|
+| `ScopedSz` — depth | **22** | 0.85 s | 185 MB |
+| `ScopedTySz` — type | **22** | 0.82 s | 185 MB |
+
+⇒ **a fold over a type index costs exactly nothing extra.** `Lib/ISz`'s
+claim to be *"generic in the description AND in the index type"* is now
+measured rather than plausible.
+
+★★★ **BUT CHASING THE NEXT STEP FOUND THAT §2.1 OVER-ATTRIBUTES, and
+this is evidence AGAINST the case this file was building.**
+
+§2.1 lists the weakening towers and the `natⁿ` family as consequences of
+*"the index is `(sort, depth)`, so every invariant is ARITHMETIC"*.
+Checked directly, they are not:
+
+```agda
+methsTyMotK = Π (…D…) (Π (…M…) (Π Nat (…)))   -- THREE motive passengers
+methsTyCons = lam (lam (lam (lam (lam (lam …)))))   -- 3 standard + 3 passengers
+```
+
+The tower depth is **6 because the method has 6 binders**: three standard
+(index, payload, IH tuple) plus one per MOTIVE PASSENGER. `sub-w²-single`
+and `tower⁶` collapse the substitution stack those βs leave. Likewise
+`nat6₅` is 6-fold (six substitutions = arity) × 5-ary (`methTyK`'s
+arity). **Both families are driven by METHOD ARITY, which comes from the
+motive's Π-telescope — not by the index being a number.**
+
+⇒ a typed `methsTyFrom` would still take `D`, `M` and `j` as passengers,
+still be `lam⁶`, and still owe the same towers. **Type-indexing does not
+remove the two largest pain families.**
+
+What IS index-driven, and would go:
+
+* `⟶*-wkTyKᵈ`'s four descents — `wkTyK` mentions its DEPTH four times
+  (the index, `nsuc n`, and twice inside `vsRenK`'s `Var-vsK`);
+* §2.2's defect class — `K`'s index is `Σ' Nat Nat`, which cannot
+  distinguish the index binder from the payload binder;
+* §2.3's ledger, in part — adequacy obligations that hold by
+  construction under intrinsic typing.
+
+⇒ **the honest scorecard: B fixes §2.2 and part of §2.3, does nothing
+for the towers and `natⁿ` in §2.1, and costs 4.4× on constructor lines.**
+The `natⁿ`/tower problem is an ARITY problem, and its remedy is the one
+`Lib/Wk` already names — index the family instead of listing it — not a
+different kernel.
+
 ### 5.1 ⚠ What the probe does NOT cover
 
 * **`var`.** `ScopedTy` omits it; `Scoped` carries it plus the whole

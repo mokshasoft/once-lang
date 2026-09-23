@@ -83,6 +83,7 @@ import DirectedHoTT.Examples.ScopedDepth
 import DirectedHoTT.Examples.ScopedSize
 import DirectedHoTT.Examples.ScopedSz
 import DirectedHoTT.Examples.ScopedTy
+import DirectedHoTT.Examples.ScopedTySz
 import DirectedHoTT.Examples.Small
 import DirectedHoTT.Examples.Strong
 import DirectedHoTT.Examples.Vec
