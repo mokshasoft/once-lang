@@ -464,3 +464,36 @@ with the passengers tupled.** That is step 1 alone, library-only, and it
 should take `lam⁶` to `lam⁴`. If the cast shrinks as predicted, step 2
 is worth its kernel edit; if it does not, this section is wrong and
 cheaply so.
+
+### 7.6 ⛔ A cross-module depth ladder does NOT test §7 — numbers void
+
+An attempt to measure §7 by timing three modules of increasing binder
+depth, cold:
+
+| module | binders | time | RSS | lines |
+|---|---|---|---|---|
+| `PayTyAgree` | n=4 | 679.23 s | 600 916 KB | 288 |
+| `IhTyAgree` | n=5 | **900.00 s** | **9 332 KB** | 293 |
+| `MethsTyAgree` | n=6 | **319.96 s** | 673 620 KB | 443 |
+
+⚠ **Every row is unusable, and for three independent reasons:**
+
+1. `IhTyAgree` is `900.00 s` flat with a 9 MB RSS — that is the **timeout
+   wrapper**, not Agda. The observation is CENSORED: the true value is
+   "> 900 s", which is not a number.
+2. n=6 is **twice as FAST as n=4**. There is no monotone trend to read.
+3. These are three DIFFERENT modules — 288 / 293 / 443 lines, different
+   row counts, different bodies. Binder depth is confounded with
+   everything else, and the biggest module was the fastest. cf.
+   `sweep-first-module-eats-the-closure`: cold ordering alone can swamp
+   the effect being measured.
+
+⇒ **this run is evidence for nothing — not for §7 and not against it**,
+and it is recorded here only so the numbers are never cited as either.
+
+★ The methodological point it does establish: **§7 cannot be tested by
+comparing modules.** Binder depth is not separable from content across
+the tree. The probe must be an **A/B on ONE module** — `methsTyFromK`
+with its passengers curried, then tupled, same rows, same bodies, cold
+both times — which is what §7.5 already specifies. Treat §7.5's wording
+as binding, not as one option among several.
