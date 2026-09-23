@@ -6716,13 +6716,36 @@ _PROLOGUE_RE = re.compile(
 _EV_ANCHOR = "open import DirectedHoTT.Lib.RedChain using ( _»_ )"
 _EV_IMPORT = "open import DirectedHoTT.Lib.Eval using ( evSpine; chainOf )"
 
+# ★ PHASE 1 — the PROJECTION chains.  Reaching into a method tuple was
+#   a hand-built two-step chain, 573 times across 12 files:
+#       ⟶*-snd done » step (βsnd _ _) done      381
+#       ⟶*-fst done » step (βfst _ _) done      192
+#   `Lib/Eval.evProj` walks a `fst`/`snd` spine into a nested `pair` and
+#   descends into NOTHING else, so — like `evSpine` — it cannot
+#   over-reduce a payload.
+_PROJ = (("⟶*-fst done » step (βfst _ _) done", "chainOf (evProj 1 _)"),
+         ("⟶*-snd done » step (βsnd _ _) done", "chainOf (evProj 1 _)"))
+
 def _evspine(src):
-    """Collapse the three-β prologue to one `evSpine 3` call."""
+    """Replace hand-built chains with `Lib/Eval` calls.
+
+    ⚠ ONE post-pass over the emitted text, deliberately: the prologue is
+      built at four separate emission sites and the projections at many
+      more, so a per-site edit would silently miss one."""
     out, n = _PROLOGUE_RE.subn("(chainOf (evSpine 3 _)", src)
-    if n and _EV_IMPORT not in out:
-        assert _EV_ANCHOR in out, "no RedChain anchor to hang the Eval import on"
-        out = out.replace(_EV_ANCHOR, _EV_ANCHOR + "\n" + _EV_IMPORT, 1)
-    return out
+    names = ["evSpine"] if n else []
+    m = 0
+    for a, b in _PROJ:
+        if a in out:
+            m += out.count(a)
+            out = out.replace(a, b)
+    if m:
+        names.append("evProj")
+    if not names:
+        return out
+    imp = "open import DirectedHoTT.Lib.Eval using ( %s; chainOf )" % "; ".join(names)
+    assert _EV_ANCHOR in out, "no RedChain anchor to hang the Eval import on"
+    return out.replace(_EV_ANCHOR, _EV_ANCHOR + "\n" + imp, 1)
 
 
 def gen_census(out):
@@ -6793,14 +6816,14 @@ if __name__ == "__main__":
     #   13-row half in 9s.  ⇒ un-split.  `PERF.md` §6.10, fourth instance
     #   in one session — a per-module time is evidence only when the
     #   closure was already warm.
-    open(os.path.join(out, "RenAgree.agda"), "w").write(gen_renagree("Tm", "", 0, 25))
+    open(os.path.join(out, "RenAgree.agda"), "w").write(_evspine(gen_renagree("Tm", "", 0, 25)))
     # ★ THE `Ty` SORT — 6 same-sort rows, the same emitter.
-    open(os.path.join(out, "RenAgreeTy.agda"), "w").write(gen_renagree("Ty", "Ty", 0, 11))
+    open(os.path.join(out, "RenAgreeTy.agda"), "w").write(_evspine(gen_renagree("Ty", "Ty", 0, 11)))
     open(os.path.join(out, "RenAgreeTyTie.agda"), "w").write(gen_rentie("Ty"))
-    open(os.path.join(out, "SubAgreeTyRows.agda"), "w").write(gen_subagree("Ty", "Ty", 0, 11))
+    open(os.path.join(out, "SubAgreeTyRows.agda"), "w").write(_evspine(gen_subagree("Ty", "Ty", 0, 11)))
     open(os.path.join(out, "SubAgreeTyTie.agda"), "w").write(gen_subtie("Ty"))
     open(os.path.join(out, "RenAgreeTie.agda"), "w").write(gen_rentie("Tm"))
-    open(os.path.join(out, "SubAgreeRows.agda"), "w").write(gen_subagree("Tm", "", 0, 25))
+    open(os.path.join(out, "SubAgreeRows.agda"), "w").write(_evspine(gen_subagree("Tm", "", 0, 25)))
     open(os.path.join(out, "SubAgreeTie.agda"), "w").write(gen_subtie("Tm"))
     open(os.path.join(out, "LookupGen.agda"), "w").write(gen_lookupgen())
     open(os.path.join(out, "RedRows.agda"), "w").write(gen_redrows())

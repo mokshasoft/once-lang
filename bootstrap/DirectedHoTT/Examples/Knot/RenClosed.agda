@@ -56,6 +56,7 @@ open import DirectedHoTT.Examples.Knot.Sorts using ( num; len; sDesc; sDCon; sID
 open import DirectedHoTT.Examples.Knot.RenTm using ( renTmAtK )
 open import DirectedHoTT.Examples.Knot.RenRed using ( ren-head-red )
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
+open import DirectedHoTT.Lib.Eval using ( evProj; chainOf )
 
 -- ★ `_»_` comes from `Lib/RedChain` — it was re-implemented here
 --   (and in 13 other modules) against `Metatheory/RedCong`.
@@ -66,7 +67,7 @@ id-dnil : {Θ : Cx} (n m : ℕ) (rn : RTm Θ) →
 id-dnil n m rn =
   ren-head-red 41 ttsd ttsd refl
                sDesc (num n) (num m) rn (pair (idrefl ⌜Nat⌝ sDesc) unit) »
-  ⟶*-icon (⟶*-pairˡ (⟶*-fst done » step (βfst _ _) done))
+  ⟶*-icon (⟶*-pairˡ (chainOf (evProj 1 _)))
 
 -- ★ THE RECURSIVE ROW — `cDesc-cons` is `[rec("sDCon",D), rec("sDesc",D),
 --   FORD_DESC]`.  ⚠ NO `ρ` ANYWHERE: the statement is that renaming does
@@ -88,12 +89,12 @@ id-cons n m rn c d ihc ihd =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ihc)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ihd))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))))
+    (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))))
 
 ------------------------------------------------------------------------
 -- ★★★ AND A **PINNED** FIELD REDUCES LIKE A FORD.  `cDCon-kap`'s `RTy ε`
@@ -109,7 +110,7 @@ id-dι : {Θ : Cx} (n m : ℕ) (rn : RTm Θ) →
 id-dι n m rn =
   ren-head-red 43 ttsd ttsd refl
                sDCon (num n) (num m) rn (pair (idrefl ⌜Nat⌝ sDCon) unit) »
-  ⟶*-icon (⟶*-pairˡ (⟶*-fst done » step (βfst _ _) done))
+  ⟶*-icon (⟶*-pairˡ (chainOf (evProj 1 _)))
 
 id-dρ : {Θ : Cx} (n m : ℕ) (rn : RTm Θ) (c : DCon) →
         ({m' : ℕ} {rn' : RTm Θ} →
@@ -125,7 +126,7 @@ id-dρ n m rn c ihc =
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ihc)) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)))
+    (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)))
 
 -- ⚠ SLOT 0 IS PINNED — projection only, NO eliminator descent.
 id-dκ : {Θ : Cx} (n m : ℕ) (rn : RTm Θ) (A : RTy ε) (c : DCon) →
@@ -136,14 +137,14 @@ id-dκ n m rn A c ihc =
   ren-head-red 45 ttsd ttsd refl
                sDCon (num n) (num m) rn
                (pair (enTy A) (pair (enDCon c) (pair (idrefl ⌜Nat⌝ sDCon) unit))) »
-  ⟶*-icon (⟶*-pairˡ (⟶*-fst done » step (βfst _ _) done)) »
+  ⟶*-icon (⟶*-pairˡ (chainOf (evProj 1 _))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ihc))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))))
+    (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))))
 
 ------------------------------------------------------------------------
 -- ★ AND `IDesc` — TWO ROWS, because `cIDesc-cons`'s `ICon (ε ∙)` field
@@ -157,7 +158,7 @@ id-inil : {Θ : Cx} (n m : ℕ) (rn : RTm Θ) →
 id-inil n m rn =
   ren-head-red 46 ttsd ttsd refl
                sIDesc (num n) (num m) rn (pair (idrefl ⌜Nat⌝ sIDesc) unit) »
-  ⟶*-icon (⟶*-pairˡ (⟶*-fst done » step (βfst _ _) done))
+  ⟶*-icon (⟶*-pairˡ (chainOf (evProj 1 _)))
 
 id-icons : {Θ : Cx} (n m : ℕ) (rn : RTm Θ) (C : ICon (ε ∙)) (E : IDesc) →
            ({m' : ℕ} {rn' : RTm Θ} →
@@ -167,14 +168,14 @@ id-icons n m rn C E ihE =
   ren-head-red 47 ttsd ttsd refl
                sIDesc (num n) (num m) rn
                (pair (enICon C) (pair (enIDesc E) (pair (idrefl ⌜Nat⌝ sIDesc) unit))) »
-  ⟶*-icon (⟶*-pairˡ (⟶*-fst done » step (βfst _ _) done)) »
+  ⟶*-icon (⟶*-pairˡ (chainOf (evProj 1 _))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) »
+    (⟶*-appˡ (⟶*-appˡ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done)) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) »
      ⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (⟶*-pairʳ (step (βsnd _ _) done)))) »
      ihE))) »
   ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ
-    (⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))))
+    (⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE KNOT TIED.  `Desc`/`DCon` are mutually recursive, `IDesc` is

@@ -100,6 +100,36 @@ evSpine (suc n) t = let (u , p) = evSpine1 t
                     in v , ⟶*-trans p q
 
 ------------------------------------------------------------------------
+-- ★★★ PROJECTION-ONLY REDUCTION — walk a `fst`/`snd` spine into a
+--   nested `pair`, and touch nothing else.  PLAN-NF Phase 1.
+--
+-- ★ The Knot reaches into method tuples constantly, and every reach is
+--   a hand-built chain of the same two shapes:
+--       ⟶*-snd done » step (βsnd _ _) done      381 uses
+--       ⟶*-fst done » step (βfst _ _) done      192 uses
+--   plus their nestings, e.g.
+--       ⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done
+--   which is `fst (snd (pair a (pair b c)))` -- two `evProj` passes.
+--
+-- ⚠ SAME DISCIPLINE AS `evSpine`, and for the same measured reason: this
+--   descends ONLY through `fst`/`snd`, never into a `pair`'s components,
+--   so it cannot over-reduce a payload the way the parallel `evN` did.
+------------------------------------------------------------------------
+
+evProj1 : {Γ : Cx} (t : RTm Γ) → Red t
+evProj1 (fst (pair a b)) = a , step (βfst a b) done
+evProj1 (snd (pair a b)) = b , step (βsnd a b) done
+evProj1 (fst t) = let (t' , p) = evProj1 t in fst t' , ⟶*-fst p
+evProj1 (snd t) = let (t' , p) = evProj1 t in snd t' , ⟶*-snd p
+evProj1 t       = t , done
+
+evProj : {Γ : Cx} → ℕ → (t : RTm Γ) → Red t
+evProj zero    t = t , done
+evProj (suc n) t = let (u , p) = evProj1 t
+                       (v , q) = evProj n u
+                   in v , ⟶*-trans p q
+
+------------------------------------------------------------------------
 -- FUEL.  ⚠ Not a compromise: it COMPUTES, which is the entire point.
 --   `snorm` (Fundamental:2008) says the bound exists -- PLAN-NF Phase 2.
 ------------------------------------------------------------------------

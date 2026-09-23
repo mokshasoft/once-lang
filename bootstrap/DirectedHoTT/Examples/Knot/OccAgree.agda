@@ -49,7 +49,7 @@ open import normalizer.Syntax.Types using ( _≡_; refl; sym; cong; trans )
 open import DirectedHoTT.Metatheory.RedCong
   using ( ⟶*-appˡ; ⟶*-fst; ⟶*-snd; ⟶*-ielimᵗ )
 open import DirectedHoTT.Lib.RedChain using ( _»_ )
-open import DirectedHoTT.Lib.Eval using ( evSpine; chainOf )
+open import DirectedHoTT.Lib.Eval using ( evSpine; evProj; chainOf )
 open import DirectedHoTT.Lib.NatNum using ( num )
 open import DirectedHoTT.Lib.BoolNum using ( b2n; b2n-∨ )
 open import DirectedHoTT.Lib.NatMaxNum using ( maxℕ; maxℕ-assoc )
@@ -131,8 +131,8 @@ agree-ty x (Π y0 y1) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-ty x y0 _)
        (aih-ρ (b2n (occTy (vs x) y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-ty (vs x) y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-ty (vs x) y1 _)
        (aih-κ aih-ι))))
 agree-ty x (Σ' y0 y1) i =
   ⟶*-castᵣ (cong num (sym (b2n-∨ (occTy x y0) (occTy (vs x) y1))))
@@ -147,8 +147,8 @@ agree-ty x (Σ' y0 y1) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-ty x y0 _)
        (aih-ρ (b2n (occTy (vs x) y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-ty (vs x) y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-ty (vs x) y1 _)
        (aih-κ aih-ι))))
 agree-ty x (El y0) i =
   ⟶*-appˡ (occ-head-red tagTy-El
@@ -177,11 +177,11 @@ agree-ty x (Hom y0 y1 y2) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-ty x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι)))))
 agree-ty x Unit i =
   ⟶*-appˡ (occ-head-red tagTy-Unit
@@ -216,11 +216,11 @@ agree-ty x (Id y0 y1 y2) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-ty x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι)))))
 agree-ty x (Mu y0) i =
   ⟶*-appˡ (occ-head-red tagTy-Mu
@@ -247,8 +247,8 @@ agree-ty x (IMu y0 y1 y2) i =
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-idesc x y0 _)
        (aih-ρ zero ok
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι))))
 agree-tm x (var y0) i =
   ⟶*-appˡ (occ-head-red tagTm-var
@@ -288,8 +288,8 @@ agree-tm x (app y0 y1) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-κ aih-ι))))
 agree-tm x (pair y0 y1) i =
   ⟶*-castᵣ (cong num (sym (b2n-∨ (occTm x y0) (occTm x y1))))
@@ -304,8 +304,8 @@ agree-tm x (pair y0 y1) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-κ aih-ι))))
 agree-tm x (absurd y0 y1) i =
   ⟶*-castᵣ (cong num (sym (b2n-∨ (occTm x y0) (occTm x y1))))
@@ -320,8 +320,8 @@ agree-tm x (absurd y0 y1) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-κ aih-ι))))
 agree-tm x (ordtr y0 y1 y2 y3 y4) i =
   ⟶*-castᵣ (cong num (sym (trans (b2n-∨ (occTm x y0) ((occTm x y1) ∨ (occTm x y2) ∨ (occTm x y3) ∨ (occTm x y4)))
@@ -345,17 +345,17 @@ agree-tm x (ordtr y0 y1 y2 y3 y4) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-ρ (b2n (occTm x y3))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y3 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y3 _)
        (aih-ρ (b2n (occTm x y4))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y4 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y4 _)
        (aih-κ aih-ι)))))))
 agree-tm x (fst y0) i =
   ⟶*-appˡ (occ-head-red tagTm-fst
@@ -403,8 +403,8 @@ agree-tm x (⌜Π⌝ y0 y1) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm (vs x) y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm (vs x) y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm (vs x) y1 _)
        (aih-κ aih-ι))))
 agree-tm x (⌜Σ⌝ y0 y1) i =
   ⟶*-castᵣ (cong num (sym (b2n-∨ (occTm x y0) (occTm (vs x) y1))))
@@ -419,8 +419,8 @@ agree-tm x (⌜Σ⌝ y0 y1) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm (vs x) y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm (vs x) y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm (vs x) y1 _)
        (aih-κ aih-ι))))
 agree-tm x (⌜Hom⌝ y0 y1 y2) i =
   ⟶*-castᵣ (cong num (sym (trans (b2n-∨ (occTm x y0) ((occTm x y1) ∨ (occTm x y2)))
@@ -437,11 +437,11 @@ agree-tm x (⌜Hom⌝ y0 y1 y2) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι)))))
 agree-tm x (hrefl y0 y1) i =
   ⟶*-castᵣ (cong num (sym (b2n-∨ (occTm x y0) (occTm x y1))))
@@ -456,8 +456,8 @@ agree-tm x (hrefl y0 y1) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-κ aih-ι))))
 agree-tm x (tr y0 y1 y2) i =
   ⟶*-castᵣ (cong num (sym (trans (b2n-∨ (occTm (vs x) y0) ((occTm x y1) ∨ (occTm x y2)))
@@ -474,11 +474,11 @@ agree-tm x (tr y0 y1 y2) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm (vs x) y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι)))))
 agree-tm x (ap y0 y1 y2) i =
   ⟶*-castᵣ (cong num (sym (trans (b2n-∨ (occTm x y0) ((occTm (vs x) y1) ∨ (occTm x y2)))
@@ -495,11 +495,11 @@ agree-tm x (ap y0 y1 y2) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm (vs x) y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm (vs x) y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm (vs x) y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι)))))
 agree-tm x (⌜Id⌝ y0 y1 y2) i =
   ⟶*-castᵣ (cong num (sym (trans (b2n-∨ (occTm x y0) ((occTm x y1) ∨ (occTm x y2)))
@@ -516,11 +516,11 @@ agree-tm x (⌜Id⌝ y0 y1 y2) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι)))))
 agree-tm x (idrefl y0 y1) i =
   ⟶*-castᵣ (cong num (sym (b2n-∨ (occTm x y0) (occTm x y1))))
@@ -535,8 +535,8 @@ agree-tm x (idrefl y0 y1) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-κ aih-ι))))
 agree-tm x (jsub y0 y1 y2) i =
   ⟶*-castᵣ (cong num (sym (trans (b2n-∨ (occTm (vs x) y0) ((occTm x y1) ∨ (occTm x y2)))
@@ -553,11 +553,11 @@ agree-tm x (jsub y0 y1 y2) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm (vs x) y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι)))))
 agree-tm x unit i =
   ⟶*-appˡ (occ-head-red tagTm-unit
@@ -604,11 +604,11 @@ agree-tm x (natrec y0 y1 y2) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » agree-tm x y0 _)
        (aih-ρ (b2n (occTm (vs (vs x)) y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm (vs (vs x)) y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm (vs (vs x)) y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι)))))
 agree-tm x (con y0 y1) i =
   ⟶*-appˡ (occ-head-red tagTm-con
@@ -620,7 +620,7 @@ agree-tm x (con y0 y1) i =
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-con)
     (aih-κ (aih-ρ (b2n (occTm x y1))
        (⟶*-appˡ (step (βfst _ _) done »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-κ aih-ι)))
 agree-tm x (elim y0 y1 y2) i =
   ⟶*-castᵣ (cong num (sym (b2n-∨ (occTm x y1) (occTm x y2))))
@@ -635,11 +635,11 @@ agree-tm x (elim y0 y1 y2) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-desc x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι)))))
 agree-tm x (icon y0 y1) i =
   ⟶*-appˡ (occ-head-red tagTm-icon
@@ -651,7 +651,7 @@ agree-tm x (icon y0 y1) i =
   occSum-red true (num (lvl x)) (ilookupD KnotD tagTm-icon)
     (aih-κ (aih-ρ (b2n (occTm x y1))
        (⟶*-appˡ (step (βfst _ _) done »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-κ aih-ι)))
 agree-tm x (ielim y0 y1 y2 y3) i =
   ⟶*-castᵣ (cong num (sym (trans (b2n-∨ (occTm x y1) ((occTm x y2) ∨ (occTm x y3)))
@@ -668,14 +668,14 @@ agree-tm x (ielim y0 y1 y2 y3) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-idesc x y0 _)
        (aih-ρ (b2n (occTm x y1))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » agree-tm x y1 _)
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-ρ (b2n (occTm x y3))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y3 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y3 _)
        (aih-κ aih-ι))))))
 agree-tm x ⌜Nat⌝ i =
   ⟶*-appˡ (occ-head-red tagTm-cNat
@@ -711,8 +711,8 @@ agree-tm x (⌜IMu⌝ y0 y1 y2) i =
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-idesc x y0 _)
        (aih-ρ zero ok
        (aih-ρ (b2n (occTm x y2))
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (⟶*-snd done » step (βsnd _ _) done) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
+       (⟶*-appˡ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd (chainOf (evProj 1 _)) » step (βsnd _ _) done) » step (βfst _ _) done))) » agree-tm x y2 _)
        (aih-κ aih-ι))))
 agree-tm x ⌜Unit⌝ i =
   ⟶*-appˡ (occ-head-red tagTm-cUnit
@@ -744,8 +744,8 @@ zero-desc x (c ◃ d) i =
        (⟶*-appˡ (step (βfst _ _) done »
               ⟶*-ielimᵗ (step (βfst _ _) done)) » zero-dcon x c _)
        (aih-ρ zero
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » zero-desc x d _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » zero-desc x d _)
        (aih-κ aih-ι)))
 zero-dcon x dι i =
   ⟶*-appˡ (occ-head-red tagDCon-i
@@ -778,8 +778,8 @@ zero-dcon x (dκ y0 y1) i =
   occSum-red true (num (lvl x)) (ilookupD KnotD tagDCon-kap)
     (aih-ρ zero ok
        (aih-ρ zero
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » zero-dcon x y1 _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » zero-dcon x y1 _)
        (aih-κ aih-ι)))
 zero-idesc x inil i =
   ⟶*-appˡ (occ-head-red tagIDesc-nil
@@ -800,8 +800,8 @@ zero-idesc x (c ◂ e) i =
   occSum-red true (num (lvl x)) (ilookupD KnotD tagIDesc-cons)
     (aih-ρ zero ok
        (aih-ρ zero
-       (⟶*-appˡ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done) »
-              ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done) » step (βfst _ _) done))) » zero-idesc x e _)
+       (⟶*-appˡ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done) »
+              ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _)) » step (βfst _ _) done))) » zero-idesc x e _)
        (aih-κ aih-ι)))
 sel-vz : {Γ : Cx} → sel tagVar-vz (occMethsK {Γ}) ⟶* occVz
 sel-vz = methsAt-past (cdTake 51 KnotD) {mth = occAt} {tl = occTail} 0 0 » step (βfst _ _) done
@@ -855,7 +855,7 @@ agree-var {Γ ∙} k (vs y) i =
   » occSum-red true (num k) (ilookupD KnotD tagVar-vs)
       (aih-κ (aih-ρ (b2n (eqℕ k (lvl y)))
                 (⟶*-appˡ (step (βfst _ _) done »
-                       ⟶*-ielimᵗ ((⟶*-fst (⟶*-snd done » step (βsnd _ _) done)
+                       ⟶*-ielimᵗ ((⟶*-fst (chainOf (evProj 1 _))
                                    » step (βfst _ _) done)))
                  » agree-var k y _)
                 (aih-κ (aih-κ aih-ι))))
