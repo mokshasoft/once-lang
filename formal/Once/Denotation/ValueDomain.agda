@@ -29,7 +29,7 @@ open import Once.IRTy using (IRTy; ⌈_⌉; ⌊_⌋)
 import Once.Semantics.Machine as Val
 open import Once.SigOp.Info
 open import Once.Denotation.Trace using (SigOpEvent; mkEvent)
-open import Once.Denotation.TraceMonad using (T; mkT; returnT; valueT; stoppedT; projTrace; fmapT; _>>=T_)
+open import Once.Denotation.TraceMonad using (T; mkT; returnT; resT-lift; valueT; stoppedT; projTrace; fmapT; _>>=T_)
 open import Once.Res using (Res; stopped; returns; mapRes)
 open import Data.Bool using (true; false)
 open import Once.Semantics.Machine using (⟦_⟧F; coh; tF-coh)
@@ -148,9 +148,17 @@ mutual
   -- coalgebra that stops makes the forced layer stop.
   -- plan 0.98: the flag and the value are ONE `Res`, so "the coalgebra stopped"
   -- and "there is no layer" stop being two facts that could disagree.
+  -- The layer map is NAMED and applied directly, not handed to `mapRes` as a
+  -- partial application: `mapAnaᵈ H H coalg` passed to a higher-order function
+  -- is opaque to the termination checker, which then cannot see that the
+  -- corecursive call sits under a constructor.
   forceᵈ (anaᵈ H coalg a) =
-    mkT (λ k → projTrace (coalg a) k)
-        (mapRes (mapAnaᵈ H H coalg) (T.resT (coalg a)))
+    mkT (λ k → projTrace (coalg a) k) (anaLayer H coalg (T.resT (coalg a)))
+
+  anaLayer : ∀ (H : SFunctor) {A : Set}
+           → (A → T (⟦ H ⟧SF A)) → Res (⟦ H ⟧SF A) → Res (⟦ H ⟧SF (νᵈ H))
+  anaLayer H coalg stopped     = stopped
+  anaLayer H coalg (returns l) = returns (mapAnaᵈ H H coalg l)
 
   mapAnaᵈ : ∀ (H G : SFunctor) {A : Set}
           → (A → T (⟦ H ⟧SF A)) → ⟦ G ⟧SF A → ⟦ G ⟧SF (νᵈ H)
@@ -292,9 +300,13 @@ mutual
   -- D143: split on the quantity. At `Zero` BOTH domains take `⟦Unit⟧`, so the
   -- argument is passed through untouched rather than injected — there is no
   -- argument of type `A` on either side to convert.
-  forget {A ⇒[ mk-kind Zero π ] B} clo = λ u  → forget (valueT (clo u) zero)
-  forget {A ⇒[ mk-kind One  π ] B} clo = λ va → forget (valueT (clo (inject va)) zero)
-  forget {A ⇒[ mk-kind Many π ] B} clo = λ va → forget (valueT (clo (inject va)) zero)
+  -- plan 0.98: the erasure of a Kleisli arrow is a PARTIAL function, and now
+  -- the pure domain can say so. Reading the result through `T.resT` rather
+  -- than `valueT` is what removes the old clause's unstatable premise — it
+  -- claimed a value for a closure that may never return one.
+  forget {A ⇒[ mk-kind Zero π ] B} clo = λ u  → mapRes forget (T.resT (clo u))
+  forget {A ⇒[ mk-kind One  π ] B} clo = λ va → mapRes forget (T.resT (clo (inject va)))
+  forget {A ⇒[ mk-kind Many π ] B} clo = λ va → mapRes forget (T.resT (clo (inject va)))
   forget {μ-type F}   x        = x
   forget {ν-type F}   v        = forgetν v
   forget {Int}        x        = x
@@ -308,9 +320,11 @@ mutual
   inject {A * B}      (a , b)  = (inject a , inject b)
   inject {A + B}      (inj₁ a) = inj₁ (inject a)
   inject {A + B}      (inj₂ b) = inj₂ (inject b)
-  inject {A ⇒[ mk-kind Zero π ] B} pf = λ u  → returnT (inject (pf u))
-  inject {A ⇒[ mk-kind One  π ] B} pf = λ da → returnT (inject (pf (forget da)))
-  inject {A ⇒[ mk-kind Many π ] B} pf = λ da → returnT (inject (pf (forget da)))
+  -- The dual: a pure partial function lifts to a Kleisli arrow that emits
+  -- nothing and stops exactly where the pure one had no value.
+  inject {A ⇒[ mk-kind Zero π ] B} pf = λ u  → resT-lift (mapRes inject (pf u))
+  inject {A ⇒[ mk-kind One  π ] B} pf = λ da → resT-lift (mapRes inject (pf (forget da)))
+  inject {A ⇒[ mk-kind Many π ] B} pf = λ da → resT-lift (mapRes inject (pf (forget da)))
   inject {μ-type F}   x        = x
   inject {ν-type F}   x        = injectν x
   inject {Int}        x        = x

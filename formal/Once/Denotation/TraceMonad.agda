@@ -87,6 +87,12 @@ infixl 1 _>>=T_ _>>T_
 returnT : ∀ {X} → X → T X
 returnT x = mkT (λ _ → []) (returns x)
 
+-- `returnT` for a result that may not exist: a SILENT computation carrying the
+-- given `Res` verbatim. `returnT x ≡ resT-lift (returns x)` definitionally, and
+-- the stopped case is the one `returnT` cannot express.
+resT-lift : ∀ {X} → Res X → T X
+resT-lift r = mkT (λ _ → []) r
+
 -- Kleisli sequencing: run `m`, then `f x`, concatenating their events in
 -- order. The budget is THREADED: `f` sees what `m` left, `n ∸ length es`.
 -- That is what makes `length (projTrace (m >>=T f) n) ≤ n` hold — with a

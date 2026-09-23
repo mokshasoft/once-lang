@@ -25,6 +25,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Data.Product using (_×_)
 open import Data.Sum using (_⊎_)
 
+open import Once.Res using (Res)
 open import Once.Type
 open import Once.IRTy using (IRTy; IRFunctor; ⌈_⌉; ⌈_⌉F; ⌊_⌋; eraseF)
 open import Once.Functor.Translate using (⟦_,_⟧-base; translateF)
@@ -81,9 +82,11 @@ coh (A + B)       = cong₂ _⊎_ (coh A) (coh B)
 -- D143: at `Zero` both sides lose the argument, so only the codomain is
 -- transported. This is the case that used to make erasure incoherent — with a
 -- grade-blind `⟦_⟧ᴰ` the two sides disagreed and `coh` was simply false.
-coh (A ⇒[ mk-kind Zero π ] B) = cong  (λ y → ⟦ Unit ⟧ → y) (coh B)
-coh (A ⇒[ mk-kind One  π ] B) = cong₂ (λ x y → x → y) (coh A) (coh B)
-coh (A ⇒[ mk-kind Many π ] B) = cong₂ (λ x y → x → y) (coh A) (coh B)
+-- plan 0.98: the codomain is `Res`-wrapped on both sides (a function value may
+-- not return), so the transport carries `Res` through unchanged.
+coh (A ⇒[ mk-kind Zero π ] B) = cong  (λ y → ⟦ Unit ⟧ → Res y) (coh B)
+coh (A ⇒[ mk-kind One  π ] B) = cong₂ (λ x y → x → Res y) (coh A) (coh B)
+coh (A ⇒[ mk-kind Many π ] B) = cong₂ (λ x y → x → Res y) (coh A) (coh B)
 coh (μ-type F)    = cong μS (tF-coh F)
 coh (ν-type F)    = cong νS (tF-coh F)
 coh Int           = refl

@@ -59,6 +59,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 open import Function using (_∘_)
 
 open import Once.Type
+open import Once.Res using (Res; stopped; returns; mapRes)
 
 
 -- OCP-0003: ⟦Fix⟧ wrapper removed. Use μ/ν from SPF.agda.
@@ -130,9 +131,16 @@ open import Once.Semantics.Functor
 -- has no runtime existence — so the erased arrow's value space takes NO
 -- argument. Purity is still ignored (plan 0.52 M2: pure and eff arrows over the
 -- same A, B are the same object); only the QUANTITY changes representation.
-⟦ A ⇒[ mk-kind Zero π ] B ⟧ = ⟦ Unit ⟧ → ⟦ B ⟧   -- erased: no argument
-⟦ A ⇒[ mk-kind One  π ] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧
-⟦ A ⇒[ mk-kind Many π ] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧
+-- plan 0.98: the codomain is `Res`, because a function value CAN FAIL TO
+-- RETURN. `curry (SigOp exit ∘ snd) : IR A (Int ⇛ Void)` is a closure whose
+-- application ends the program, and at `B = Void` a total `⟦ A ⟧ → ⟦ B ⟧`
+-- would be `⟦ A ⟧ → ⊥`. Same refutation as the deleted `eval` (D224) and the
+-- same fix `semM` already took — the value domain admits "no value" wherever
+-- a halt can reach. This does NOT duplicate `⟦_⟧ᴰ`: with `eval` gone this is
+-- a value domain, not a second evaluator, and it carries no trace.
+⟦ A ⇒[ mk-kind Zero π ] B ⟧ = ⟦ Unit ⟧ → Res ⟦ B ⟧   -- erased: no argument
+⟦ A ⇒[ mk-kind One  π ] B ⟧ = ⟦ A ⟧ → Res ⟦ B ⟧
+⟦ A ⇒[ mk-kind Many π ] B ⟧ = ⟦ A ⟧ → Res ⟦ B ⟧
 -- OCP-0003: Fix removed, use μ-type/ν-type
 ⟦ μ-type F ⟧     = ⟦μ⟧ F
 ⟦ ν-type F ⟧     = ⟦ν⟧ F
