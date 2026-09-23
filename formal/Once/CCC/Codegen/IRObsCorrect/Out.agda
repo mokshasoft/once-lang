@@ -23,6 +23,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
+open import Once.Res using (Res; stopped; returns; is-stopped)
 
 module OutC {FS : FrameSemantics} where
 
@@ -243,11 +244,10 @@ module OutC {FS : FrameSemantics} where
               -- plan 0.97: the callee's computation IS `evalᴰ (Out wf) ν-val`
               -- here (no closure equation to spend, unlike `apply`), so the
               -- conditioned fields transfer verbatim.
-              place : TM.stoppedT (evalᴰ (Out wf) ν-val) k ≡ false
+              place : ∀ {v} → TM.T.resT (evalᴰ (Out wf) ν-val) ≡ returns v
                     → ResultPlace (⟦ F ⟧TI (ν-type F)) (CalleeRun.out-mode crun)
                         (falloc (CalleeRun.settle crun)) (CalleeRun.cont-alloc crun)
-                        (TM.valueT (evalᴰ (Out wf) ν-val) k)
-                        (floc (CalleeRun.settle crun))
+                        v (floc (CalleeRun.settle crun))
               place = CalleeRun.place crun
 
               trc : take k (chain-events run)

@@ -54,6 +54,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
+open import Once.Res using (Res; stopped; returns; is-stopped; res-returns; res-stopped)
 
 open import Once.CCC.Codegen.IRObsCorrect.CaseShape o
 open import Once.CCC.Codegen.IRObsCorrect.CaseRun o
@@ -208,7 +209,7 @@ module ArmLC {FS : FrameSemantics} where
                          (chain q) (λ _ → VR.live vf q) (λ _ → at-end-u1)
                          (λ p → arm-not-stopped q p)
                          (VR.no-ret vf) (VR.no-link vf)
-                         (λ _ → VR.place vf q)
+                         (VR.place vf)
                          (λ fr j bf → mem-pres (AtStack fr j) bf)
                          (λ hl bf → mem-pres (AtDynamic hl) bf)
                          (VR.frame-pres vf)
@@ -226,7 +227,9 @@ module ArmLC {FS : FrameSemantics} where
                          chain-stopped (λ p → arm-not-stopped p q) (λ p → arm-not-stopped p q)
                          (λ _ → VR.stops vf q)
                          (VR.no-ret vf) (VR.no-link vf)
-                         (λ p → arm-not-stopped p q)
+                         -- plan 0.98: the arm stopped, so it has NO result —
+                         -- `place`'s premise says otherwise and refutes itself.
+                         (λ p → arm-not-stopped (cong is-stopped p) q)
                          (λ fr j bf → mem-pres (AtStack fr j) bf)
                          (λ hl bf → mem-pres (AtDynamic hl) bf)
                          (VR.frame-pres vf)
