@@ -497,3 +497,61 @@ the tree. The probe must be an **A/B on ONE module** — `methsTyFromK`
 with its passengers curried, then tupled, same rows, same bodies, cold
 both times — which is what §7.5 already specifies. Treat §7.5's wording
 as binding, not as one option among several.
+
+### 7.7 ⚠ Reconciling §7 with what was ALREADY measured on passengers
+
+§7.4 splits the binders into *three kernel* + *the motive passengers*,
+and calls tupling the passengers a free library win. The record already
+contains a controlled measurement on exactly that half, and it both
+**narrows** and **redirects** §7's step 1.
+
+**What was measured** (2026-09-11, `tmp/IihsRhoATmp` vs
+`tmp/IihsRho2Tmp`, with `IihsRho2Inline` as the module-split control),
+on `iihs`'s `iρ` row, 4 passengers → 2:
+
+| | |
+|---|---|
+| peak RSS | 4.42 GB → **1.46 GB (3.0×)** |
+| time | ⚠ **NOT established** — 16% on one sample, does not survive the control |
+
+⇒ **cutting passengers is real relief, and it is a MEMORY win, not a
+proven time win.** §7 must not be sold on build time.
+
+★ **And the passengers are not a free parameter.** They are a
+*consequence*: all 17 Knot motives are `{Γ : Cx} → RTy ((Γ ∙) ∙)`,
+Γ-POLYMORPHIC, because that makes three per-IH-use transports the
+IDENTITY. Nobody chose four passengers; they chose the polymorphism and
+the passengers came with it. The standing trade:
+
+| | transports | passengers | tower |
+|---|---|---|---|
+| Γ-polymorphic (today) | free | one `Π` each, **capped at 4** | one rung per passenger per application |
+| Γ-mentioning | 3 explicit per IH use | none | none, no cap |
+
+⇒ so **§7.1's diagnosis is right but §7.5's step 1 names the wrong
+lever.** The passenger binders do not come off by tupling them — they
+come off by dropping the motive's Γ-polymorphism, which is a different
+edit with a different bill, already spiked, whose real blocker is known:
+`⊢methLam` carries the transport un-normalised, so it must be absorbed
+INTO `⊢methLam` (take an `M'` plus the equation) — *generalise the
+consumer*. ⬜ Not done; the generic row is unproven.
+
+⚠ **SCOPE LIMIT.** Γ-mentioning is sound only for **depth-preserving**
+recursions — the motive reads the ambient `n` rather than `snd ⟨i⟩`.
+`ihs`/`iihs`/`iihTy` qualify; **`ipayTy` does not** (its `extS σ` raises
+the depth). So this lever cannot clear the passengers everywhere.
+
+★★ **What SURVIVES untouched: §7.2 and §7.4's kernel half.** The record
+warns — correctly — *do not cost the `ielim`-arity kernel change against
+the passenger wall; polymorphism is that wall's cause.* §7 does not: the
+three `app`s in `ifields` are the **index, payload and IH tuple**, which
+are not passengers and not motive-polymorphic. They are the kernel's own
+ι-rule. ⇒ §7.2's Π-vs-Σ argument and §7.4's one-rule kernel change stand
+on their own footing, and remain the only proposal that reaches the
+binders the passenger work cannot touch.
+
+⇒ **REVISED probe**, replacing §7.5 step 1: do not A/B "curried vs
+tupled passengers". A/B **the kernel half** — one row of `methsTyFromK`
+against a local Σ-telescope stand-in for `ifields`' three `app`s — since
+that is the part no prior measurement covers and the part §7 is actually
+about. Report RSS alongside time, and expect memory to move first.
