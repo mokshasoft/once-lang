@@ -41,8 +41,18 @@ open import Once.IR
   using (IR; id; _∘_; ⟨_,_⟩; fst; snd; inl; inr; case; terminal;
          initial; curry; apply; SigOp; Cata; In; Out; Ana; in-ν;
          out-μ; const; Para; Hylo; Fuse)
-open import Once.IRTy using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; _+_)
-open import Once.CCC.Eval as Val using (eval; appNatTr-F)
+open import Once.IRTy
+  using (⌈_⌉; ⌈_⌉F; ⌊_⌋; ⟦_⟧TI; ⌈⟧TI-commute; μ-type; ν-type; _*_; _+_;
+         fits-int; fits-float)
+open import Once.Float.Decimal using (round)
+import Once.Word as OnceWord
+-- plan 0.98: `eval` is NO LONGER IMPORTED. The Spec's meaning is `evalᴰ`, and
+-- after the enumeration above nothing in it routes through the pure model.
+-- `appNatTr-F` is the one remaining tie, and only at `Hylo`/`Fuse`: its `ntK`
+-- leaf is `eval fmt ir a` on an arbitrary IR morphism (Eval.agda:81). Since no
+-- surface program produces `Hylo`/`Fuse`, the pure model reaches the apex cone
+-- through surface-unreachable syntax only.
+open import Once.CCC.Eval as Val using (appNatTr-F)
 -- Plan 0.73 (D113): the TARGET'S FLOAT FORMAT. `⟦_⟧ᴰ` is a MACHINE-level
 -- denotation, and D113 makes a float literal's machine value target-relative,
 -- so the reference meaning is too. Threaded as an explicit argument rather
@@ -53,7 +63,7 @@ open import Once.SigOp.Info
   using (SigOpInfo; semM; effect; EffectShape; Pure; Emits; Halts)
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.Machine
-  using (sem-cata; sem-ana; sem-para; sem-In; sem-fuseNat;
+  using (sem-cata; sem-ana; sem-para; sem-In; sem-Out; sem-fuseNat;
          sem-fmap; coerce-functor; coerce-functor⁻¹; ⟦_⟧F; coh; coerce-ν-out;
          coerce-ν-in)
 open import Once.IRTy.WF using (wf-⌈⌉)
@@ -221,9 +231,22 @@ evalᴰ fmt (in-ν {F} wf) a =
 -- actually are. `In`, `out-μ` and `const` have no sub-IR at all, so they can
 -- emit nothing and cannot halt — the pure `eval` is their whole meaning, and
 -- these are the ONLY three places it is applied.
-evalᴰ fmt (In wf)     a = mkT (λ _ → []) (returns (inject (eval fmt (In wf) (forget a))))
-evalᴰ fmt (out-μ wf)  a = mkT (λ _ → []) (returns (inject (eval fmt (out-μ wf) (forget a))))
-evalᴰ fmt (const f v) a = mkT (λ _ → []) (returns (inject (eval fmt (const f v) (forget a))))
+-- plan 0.98: these are the bodies of `eval`'s own `In`/`out-μ`/`const`
+-- clauses, INLINED. Each is a leaf — `sem-In`, `sem-Out`, and the literal's
+-- materialisation at the target's width/format — so there is nothing to
+-- delegate, and `evalᴰ` stops routing any part of the Spec's meaning through
+-- the pure model. (`eval` cannot be a total `IR A B → ⟦A⟧ → ⟦B⟧` once
+-- `Halts : B ≡ Void`, because `⟦ Void ⟧ = ⊥`.)
+evalᴰ fmt (In {F} _) a =
+  mkT (λ _ → []) (returns (inject
+    (sem-In ⌈ F ⌉F (coerce-functor ⌈ F ⌉F ⌈ μ-type F ⌉
+      (subst (λ T → Val.⟦ T ⟧) (⌈⟧TI-commute F (μ-type F)) (forget a))))))
+evalᴰ fmt (out-μ {F} wf) a =
+  mkT (λ _ → []) (returns (inject
+    (subst (λ T → Val.⟦ T ⟧) (sym (⌈⟧TI-commute F (μ-type F)))
+      (coerce-functor⁻¹ ⌈ F ⌉F ⌈ μ-type F ⌉ (sem-Out (wf-⌈⌉ wf) (forget a))))))
+evalᴰ fmt (const fits-int   v) a = mkT (λ _ → []) (returns (inject (OnceWord.Width.fromℤ (int-bits fmt) v)))
+evalᴰ fmt (const fits-float v) a = mkT (λ _ → []) (returns (inject (round (float-format fmt) v)))
 -- `Para`, `Hylo` and `Fuse` carry an ALGEBRA, so they carry effects, so they
 -- get the `Cata` treatment (D179): ONE monadic fold supplying both the trace
 -- and the value. Behind the catch-all they still had the retired two-model
