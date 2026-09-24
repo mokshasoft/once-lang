@@ -18,7 +18,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Unit using (⊤; tt)
-open import Once.Res using (Res; stopped; returns; Res-rel)
+open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 
 open import Once.Semantics.Functor
 
@@ -97,8 +97,8 @@ mutual
   -- syntactically under a constructor for guardedness.
   anaLayerS-bisim : ∀ {F : SFunctor} (H : SFunctor) (r : Res (⟦ H ⟧SF (νS F)))
                   → Res-rel (⟦ H ⟧SF-rel (_∼S_ {F})) (anaLayerS H unfoldS r) r
-  anaLayerS-bisim H stopped     = tt
-  anaLayerS-bisim H (returns v) = sfmapAna-bisim H v
+  anaLayerS-bisim H stopped     = rel-stopped
+  anaLayerS-bisim H (returns v) = rel-returns (sfmapAna-bisim H v)
 
   sfmapAna-bisim : ∀ {F : SFunctor} (H : SFunctor) (v : ⟦ H ⟧SF (νS F))
                  → ⟦ H ⟧SF-rel (_∼S_ {F}) (sfmapAna H unfoldS v) v

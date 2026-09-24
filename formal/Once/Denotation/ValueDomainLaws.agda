@@ -32,7 +32,7 @@ open import Data.List using (List)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Once.Res using (Res; stopped; returns; Res-rel)
+open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -102,8 +102,8 @@ mutual
   -- A stopped force is related to itself with nothing to say.
   Res-rel-refl : ∀ (H G : SFunctor) (r : Res (⟦ G ⟧SF (νᵈ H)))
                → Res-rel (⟦ G ⟧SF-rel (_∼ᵈ_ {H})) r r
-  Res-rel-refl H G stopped     = tt
-  Res-rel-refl H G (returns x) = SF-rel-refl H G x
+  Res-rel-refl H G stopped     = rel-stopped
+  Res-rel-refl H G (returns x) = rel-returns (SF-rel-refl H G x)
 
   SF-rel-refl : ∀ (H G : SFunctor) (x : ⟦ G ⟧SF (νᵈ H))
               → ⟦ G ⟧SF-rel (_∼ᵈ_ {H}) x x
@@ -152,8 +152,9 @@ mutual
              → Res-rel (⟦ H ⟧SF-rel R) r₁ r₂
              → Res-rel (⟦ H ⟧SF-rel (_∼ᵈ_ {H}))
                        (anaLayer H c₁ r₁) (anaLayer H c₂ r₂)
-  anaLayer-∼ H cr stopped     stopped     rr = tt
-  anaLayer-∼ H cr (returns x) (returns y) rr = mapAnaᵈ-∼ H H cr rr
+  anaLayer-∼ H cr stopped     stopped     rr = rel-stopped
+  anaLayer-∼ H cr (returns x) (returns y) (rel-returns rr) =
+    rel-returns (mapAnaᵈ-∼ H H cr rr)
 
   -- The layer map preserves the relation, structurally in the SHAPE functor
   -- `G` while the coalgebra stays at `H`. Mirrors `mapAnaᵈ`'s own recursion.

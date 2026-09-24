@@ -54,7 +54,7 @@ open import Once.Semantics.Machine
   using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; semAnaLayer; coerce-ν-in; coerce-functor; coh; tF-coh;
          coerce-full-to-base; base-coh)
 open import Once.IRTy using (⌊_⌋; ⌈_⌉)
-open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong; Res-rel)
+open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong; Res-rel; rel-stopped; rel-returns)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.TraceMonad using (T; valueT; returnT; resT-lift)
@@ -90,9 +90,9 @@ mutual
         (anaLayerS {translateF Carrier Carrier F} (translateF Carrier Carrier F)
                    (λ y → mapRes (coerce-ν-in F A) (coalg y))
                    (mapRes (coerce-ν-in F A) r))
-  anaLayer-rel coalg stopped     = tt
+  anaLayer-rel coalg stopped     = rel-stopped
   anaLayer-rel {F} {A} coalg (returns l) =
-    sem-ana-anaS-rel coalg (translateF Carrier Carrier F) (coerce-ν-in F A l)
+    rel-returns (sem-ana-anaS-rel coalg (translateF Carrier Carrier F) (coerce-ν-in F A l))
 
   sem-ana-anaS-rel : ∀ {F : Functor} {A : Set} (coalg : A → Res (⟦ F ⟧F A))
                        (H : SFunctor) (x : ⟦ H ⟧SF A)
@@ -646,8 +646,8 @@ mutual
   forgetν-injectν-res : ∀ (F G : SFunctor) (r : Res (⟦ G ⟧SF (νS F)))
                       → Res-rel (⟦ G ⟧SF-rel (_∼S_ {F}))
                           (forgetLayer F G (injectLayer F G r)) r
-  forgetν-injectν-res F G stopped     = tt
-  forgetν-injectν-res F G (returns x) = forgetν-injectν-rel F G x
+  forgetν-injectν-res F G stopped     = rel-stopped
+  forgetν-injectν-res F G (returns x) = rel-returns (forgetν-injectν-rel F G x)
 
   forgetν-injectν-rel : ∀ (F G : SFunctor) (x : ⟦ G ⟧SF (νS F))
                       → ⟦ G ⟧SF-rel (_∼S_ {F}) (mapForgetν F G (mapInjectν F G x)) x

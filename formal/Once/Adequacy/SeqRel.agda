@@ -24,7 +24,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.Res using (Res; stopped; returns; mapRes)
+open import Once.Res using (Res; stopped; returns; mapRes; rel-stopped; rel-returns)
 open import Once.Semantics.Machine using (⟦_⟧F)
 open import Once.Denotation.TraceMonad
   using (T; returnT; fmapT; _>>=T_; projTrace; RelRes; RelRes-value; RelT′; RelT′-bind)
@@ -56,10 +56,10 @@ RelRes-map : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′ 
              (g : X → Y) (g′ : X′ → Y′) (r : Res X) (r′ : Res X′)
            → (∀ x x′ → R x x′ → S (g x) (g′ x′))
            → RelRes R r r′ → RelRes S (mapRes g r) (mapRes g′ r′)
-RelRes-map R S g g′ stopped     stopped     h rr = tt
+RelRes-map R S g g′ stopped     stopped     h rr = rel-stopped
 RelRes-map R S g g′ stopped     (returns _) h ()
 RelRes-map R S g g′ (returns _) stopped     h ()
-RelRes-map R S g g′ (returns x) (returns y) h rr = h x y rr
+RelRes-map R S g g′ (returns x) (returns y) h (rel-returns rr) = rel-returns (h x y rr)
 
 -- plan 0.98: the old statement of this proof produced a TRIPLE (trace, stop
 -- flag, value) because `RelT′` was one; the flag and the value were always the
@@ -86,7 +86,7 @@ seqF-rel : ∀ (G : Functor) {X Y : Set} (R : X → Y → Set)
            {l : ⟦ G ⟧F (T X)} {r : ⟦ G ⟧F (T Y)}
          → RelF G (RelT′ R) l r
          → RelT′ (RelF G R) (seqF G l) (seqF G r)
-seqF-rel (K A)   R {x} {y} eq k = (refl , eq)
+seqF-rel (K A)   R {x} {y} eq k = (refl , rel-returns eq)
 seqF-rel Id      R         rel  = rel
 -- plan 0.98: the two computations are PINNED. `RelT′-fmap`'s conclusion now
 -- names its results only under `mapRes`, so the unifier cannot recover `m`
@@ -115,5 +115,6 @@ seqF-rel (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
         (seqF-rel H R rH)
         (λ v v′ ev ev′ j →
           ( refl
-          , ( RelRes-value (proj₂ (seqF-rel G R rG 0)) eu eu′
-            , RelRes-value (proj₂ (seqF-rel H R rH 0)) ev ev′ ))))
+          , rel-returns
+              ( RelRes-value (proj₂ (seqF-rel G R rG 0)) eu eu′
+              , RelRes-value (proj₂ (seqF-rel H R rH 0)) ev ev′ )))) 

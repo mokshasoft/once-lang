@@ -94,14 +94,23 @@ is-stopped-mapRes f (returns _) = refl
 --   bisimulation over possibly-finite codata compares layer by layer — the
 --   `Res` analogue of the trace-carrying layer relation D201 gave `∼ᵈ`.
 --
---   Enumerated rather than defined by a `with`: a proof that has only an
---   abstract `Res` must be able to case-split, and a mixed pair must be
---   REFUTABLE rather than merely unprovable.
-Res-rel : ∀ {X Y} → (X → Y → Set) → Res X → Res Y → Set
-Res-rel R stopped     stopped     = ⊤
-Res-rel R stopped     (returns _) = ⊥
-Res-rel R (returns _) stopped     = ⊥
-Res-rel R (returns x) (returns y) = R x y
+--   A DATA type, not a definition by cases on the two results. The relation is
+--   the same one either way, and both presentations let a proof case-split and
+--   refute a mixed pair. What only the data presentation gives is INJECTIVITY:
+--   a defined function applied to an unknown result is BLOCKED — it might still
+--   reduce — so the unifier refuses to look inside it, and every consumer that
+--   relates two COMPUTATIONS through it (`RelT`, `_∼ᵈ_`, the coalgebra
+--   relations) then has to have those computations written out by hand at each
+--   use site, because they can no longer be read back out of the goal. A data
+--   type is injective in its indices, so they stay inferred.
+--
+--   The relation is a PARAMETER, not an index, and it appears only to the left
+--   of the constructor's result. That is what keeps the type legal at a
+--   relation which is itself not strictly positive — `RelV` at an arrow eats a
+--   relation on the domain — since a parameter is checked once, abstractly.
+data Res-rel {X Y : Set} (R : X → Y → Set) : Res X → Res Y → Set where
+  rel-stopped : Res-rel R stopped stopped
+  rel-returns : ∀ {x y} → R x y → Res-rel R (returns x) (returns y)
 
 -- | `stopped` and `returns` are distinct — the discrimination every
 --   "a stopped run has no result" argument spends.

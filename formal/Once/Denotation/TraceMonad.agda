@@ -33,7 +33,7 @@ open import Data.Nat using (ℕ; _∸_)
 open import Data.List using (List; []; _++_; length; take)
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥)
-open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; Res-rel)
+open import Once.Res using (Res; stopped; returns; is-stopped; mapRes; Res-rel; rel-stopped; rel-returns)
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
@@ -511,7 +511,11 @@ RelRes R = Res-rel R
 --   in each proof module.
 RelRes-value : ∀ {X Y : Set} {R : X → Y → Set} {r : Res X} {r′ : Res Y} {x y}
              → RelRes R r r′ → r ≡ returns x → r′ ≡ returns y → R x y
-RelRes-value rr refl refl = rr
+-- plan 0.98: `Res-rel` is a data type, so the witness is under `rel-returns`
+-- rather than definitionally the relation itself; the two `≡ returns _`
+-- premises are what expose the constructor.
+RelRes-value (rel-returns rr) refl refl = rr
+RelRes-value rel-stopped      ()   _
 
 RelT′ : ∀ {X Y : Set} (R : X → Y → Set) → T X → T Y → Set
 RelT′ R l r = ∀ k → (projTrace l k ≡ projTrace r k)
@@ -533,7 +537,7 @@ RelRes-bind : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y′
             → (∀ x x′ → r ≡ returns x → r′ ≡ returns x′ → RelT′ S (f x) (f′ x′))
             → (projTrace (bindRes tr r f) k ≡ projTrace (bindRes tr′ r′ f′) k)
               × RelRes S (T.resT (bindRes tr r f)) (T.resT (bindRes tr′ r′ f′))
-RelRes-bind R S tr tr′ stopped     stopped     f f′ k te rr rf = (te k , tt)
+RelRes-bind R S tr tr′ stopped     stopped     f f′ k te rr rf = (te k , rel-stopped)
 RelRes-bind R S tr tr′ stopped     (returns _) f f′ k te ()
 RelRes-bind R S tr tr′ (returns _) stopped     f f′ k te ()
 RelRes-bind R S tr tr′ (returns x) (returns y) f f′ k te rr rf =
@@ -620,10 +624,10 @@ bindRes-rel : ∀ {X Y : Set} (R : X → X → Set) (S : Y → Y → Set)
                                      × Res-rel S (T.resT (f a)) (T.resT (g b)))
             → (projTrace (bindRes tr₁ r₁ f) n ≡ projTrace (bindRes tr₂ r₂ g) n)
               × Res-rel S (T.resT (bindRes tr₁ r₁ f)) (T.resT (bindRes tr₂ r₂ g))
-bindRes-rel R S tr₁ tr₂ stopped     stopped     f g n te rr rk = te , tt
+bindRes-rel R S tr₁ tr₂ stopped     stopped     f g n te rr  rk = te , rel-stopped
 bindRes-rel R S tr₁ tr₂ stopped     (returns _) f g n te ()  rk
 bindRes-rel R S tr₁ tr₂ (returns _) stopped     f g n te ()  rk
-bindRes-rel R S tr₁ tr₂ (returns a) (returns b) f g n te rr rk =
+bindRes-rel R S tr₁ tr₂ (returns a) (returns b) f g n te (rel-returns rr) rk =
     cong₂ _++_ te
       (trans (proj₁ (rk rr (n ∸ length (tr₁ n))))
              (cong (projTrace (g b)) (cong (λ es → n ∸ length es) te)))

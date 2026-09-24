@@ -40,7 +40,7 @@ open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
                              _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              mk-kind; Zero; One; Many)
 open import Once.Denotation.TraceMonad using (T; projTrace; valueT; stoppedT; returnT; _>>=T_; bindRes-rel)
-open import Once.Res using (Res; stopped; returns; Res-rel)
+open import Once.Res using (Res; stopped; returns; Res-rel; rel-stopped; rel-returns)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ)
 open import Once.Denotation.ValueDomainLaws using (_∼ᵈ_)
 
@@ -101,7 +101,7 @@ RelV (A ⇒[ mk-kind Many π ] B) f g = ∀ {a b} → RelV A a b → RelT B (f a
 -- `returnT` has empty trace and carries its value, so related values give
 -- related pure computations.
 RelT-return : ∀ {A} {x y : ⟦ A ⟧ᴰ} → RelV A x y → RelT A (returnT x) (returnT y)
-RelT-return rv n = refl , rv
+RelT-return rv n = refl , rel-returns rv
 
 -- Bind preserves the relation: related computations sequenced with related
 -- continuations stay related. `_>>=T_` concatenates the two traces, so the

@@ -37,7 +37,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
-open import Once.Res using (Res; stopped; returns; mapRes; Res-rel)
+open import Once.Res using (Res; stopped; returns; mapRes; Res-rel; rel-stopped; rel-returns)
 open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ⟦_⟧T; ν-type; K; Id; _⊕_; _⊗_)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
@@ -106,10 +106,10 @@ in-rel-res : ∀ {A : Type} {G : Functor} (wf : WellFormedF G)
            → Res-rel (⟦ translateF Carrier Carrier G ⟧SF-rel (RelV A))
                (mapRes (coerce-ν-in G ⟦ A ⟧ᴰ) (mapRes (coerce-functor-D G A) r₁))
                (mapRes (coerce-ν-in G ⟦ A ⟧ᴰ) (mapRes (coerce-functor-D G A) r₂))
-in-rel-res wf stopped     stopped     rel = tt
+in-rel-res wf stopped     stopped     rel = rel-stopped
 in-rel-res wf stopped     (returns _) ()
 in-rel-res wf (returns _) stopped     ()
-in-rel-res wf (returns _) (returns _) rel = in-rel wf rel
+in-rel-res wf (returns _) (returns _) (rel-returns rel) = rel-returns (in-rel wf rel)
 
 ------------------------------------------------------------------------
 -- The bridge

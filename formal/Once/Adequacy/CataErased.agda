@@ -21,7 +21,7 @@
 ------------------------------------------------------------------------
 
 open import Data.Unit using (⊤; tt)
-open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong)
+open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong; rel-stopped; rel-returns)
 open import Once.Target.Arch using (TargetNum; int-bits; float-format)
 
 -- Plan 0.73 (D113): this module's statements mention a denotation that is
@@ -79,13 +79,13 @@ import Once.IR as IR
 -- one clause each; the stopped case carries no value to relate.
 RelRes-of-mapRes : ∀ {X Y : Set} (f : X → Y) (r₁ : Res X) (r₂ : Res Y)
                  → mapRes f r₁ ≡ r₂ → RelRes (λ x y → f x ≡ y) r₁ r₂
-RelRes-of-mapRes f stopped     .stopped            refl = tt
-RelRes-of-mapRes f (returns x) .(returns (f x))    refl = refl
+RelRes-of-mapRes f stopped     .stopped            refl = rel-stopped
+RelRes-of-mapRes f (returns x) .(returns (f x))    refl = rel-returns refl
 
 mapRes-of-RelRes : ∀ {X Y : Set} (f : X → Y) (r₁ : Res X) (r₂ : Res Y)
                  → RelRes (λ x y → f x ≡ y) r₁ r₂ → mapRes f r₁ ≡ r₂
-mapRes-of-RelRes f stopped     stopped     _  = refl
-mapRes-of-RelRes f (returns x) (returns y) eq = cong returns eq
+mapRes-of-RelRes f stopped     stopped     _                = refl
+mapRes-of-RelRes f (returns x) (returns y) (rel-returns eq) = cong returns eq
 
 -- role is taken by record eta: two computations are equal when their TWO
 -- fields are — the trace family pointwise, and the result.

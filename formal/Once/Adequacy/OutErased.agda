@@ -40,7 +40,7 @@ import Once.IRTy as IT
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Semantics.Functor using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Machine using (coerce-functor⁻¹; coh; tF-coh; base-coh; ⟦_⟧F; coerce-ν-out)
-open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong; Res-rel)
+open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong; Res-rel; rel-stopped; rel-returns)
 open import Once.Denotation.TraceMonad using (T; fmapT; projTrace)
 open import Once.Denotation.ValueDomain
 open import Once.Denotation.ValueDomainLaws using (∼ᵈ-refl; _∼ᵈ_)
@@ -496,8 +496,8 @@ out-rel (wf-Prod wfF wfG) {x = _ , _} {y = _ , _} (rF , rG) =
 -- sides and so asserted that forcing produced one.
 res-rel-refl : ∀ {X : Set} {R : X → X → Set} → (∀ x → R x x)
              → (r : Res X) → Res-rel R r r
-res-rel-refl rr stopped     = tt
-res-rel-refl rr (returns x) = rr x
+res-rel-refl rr stopped     = rel-stopped
+res-rel-refl rr (returns x) = rel-returns (rr x)
 
 -- The two halves, in the order `RelT` wants them.
 liftFn-Out-pair : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ) (n : ℕ)
