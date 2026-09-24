@@ -53,6 +53,7 @@ import Once.Semantics.Machine as EvV
 import Once.CCC.Machine.ReadTypedAdequate as RTA
 import Once.Denotation.DenotTrace as DT
 import Once.Denotation.TraceMonad as TM
+open import Once.Res using (Res; stopped; returns; is-stopped; returns-inj)
 
 module PairAsm {FS : FrameSemantics} where
 
@@ -103,7 +104,7 @@ module PairAsm {FS : FrameSemantics} where
     → IRObsCorrectF f → IRObsCorrectF g → IRObsCorrectF ⟨ f , g ⟩
   obs-correct-pair-proof {A} {B} {C} {f} {g} ihf ihg n l prog base
                          ss cr span bl la mIn x s alloc cl n≤ nh inp k =
-    dispatch (TM.stoppedT (evalᴰ f x) k) refl
+    dispatch (TM.T.resT (evalᴰ f x)) refl
     where
       module PS = PairShape f g n l
       module PC = PairChain f g n l prog base s alloc cl n≤ nh span
@@ -192,13 +193,13 @@ module PairAsm {FS : FrameSemantics} where
                  (exec-abstract-preserves-frame mov-to-output s alloc) ≤-refl b)
               (mem-untouched mov-to-output s alloc loc nhw-mov-to-output refl)
 
-      -- The pair's stoppedness, spelled at the shape `join-st` gives it.
-      -- `evalᴰ ⟨ f , g ⟩ x` is `evalᴰ f x >>=T λ b → innerT`, so the outer
-      -- flag is `join-st` of `f`'s and the inner bind's.
-      st-pair-of : ∀ (sf : TM.Stopped) → TM.stoppedT (evalᴰ f x) k ≡ sf
-                 → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k
-                   ≡ TM.join-st sf (TM.stoppedT PT.innerT PT.kg)
-      st-pair-of sf q = cong (λ z → TM.join-st z (TM.stoppedT PT.innerT PT.kg)) q
+      -- The pair's stoppedness, read off `f`'s RESULT (plan 0.98).
+      -- `evalᴰ ⟨ f , g ⟩ x` is `PT.pairOf (T.resT (evalᴰ f x))`, so one `cong`
+      -- on `f`'s result gives the pair's flag at whichever shape the branch
+      -- has. `join-st` used to be this `cong`'s function.
+      st-pair-of : ∀ (r : Res ⟦ B ⟧) → TM.T.resT (evalᴰ f x) ≡ r
+                 → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ TM.stoppedT (PT.pairOf r) k
+      st-pair-of r q = cong (λ z → TM.stoppedT (PT.pairOf z) k) q
 
       ----------------------------------------------------------------
       -- THE SPLIT. Three outcomes, not one: `f` stops, `g` stops, or the
@@ -207,19 +208,22 @@ module PairAsm {FS : FrameSemantics} where
       -- pair's text no matter what the Spec said, which a program that
       -- exits inside `f` cannot satisfy.
       ----------------------------------------------------------------
-      dispatch : (sf : TM.Stopped) → TM.stoppedT (evalᴰ f x) k ≡ sf
+      -- plan 0.98: the split is on `f`'s RESULT. `returns vB` binds the value
+      -- `PairPlace` has to place, so it is no longer fetched out of a total
+      -- field on a branch that may not have one.
+      dispatch : (r : Res ⟦ B ⟧) → TM.T.resT (evalᴰ f x) ≡ r
                → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
 
       -- ── `f` ENDED THE PROGRAM ───────────────────────────────────────
       -- The pair's run is the prologue and `f`; the two mid rows, `g` and the
       -- nine-row tail never execute, and the pair's observable is `f`'s.
-      dispatch true sfeq = record
+      dispatch stopped rfeq = record
         { value-realized =
             realized (2 + VR.steps vrf) (VR.settle vrf)
                      (VR.out-mode vrf) (VR.cont-alloc vrf)
                      (FlatSteps-++ PC.pre-chain chainF₀)
                      absurd-f absurd-f (λ _ → VR.stops vrf sfeq)
-                     (VR.no-ret vrf) (VR.no-link vrf) absurd-f
+                     (VR.no-ret vrf) (VR.no-link vrf) absurd-f-res
                      (λ fr j b → mem-to-fsF (AtStack fr j) b)
                      (λ hl b → mem-to-fsF (AtDynamic hl) b)
                      (VR.frame-pres vrf)
@@ -233,13 +237,26 @@ module PairAsm {FS : FrameSemantics} where
                      → MemOps.readLoc (floc (VR.settle vrf)) loc ≡ MemOps.readLoc s loc
           mem-to-fsF loc b = trans (vr-mem-pres vrf loc (bf-f loc b)) (mem-to-p2 loc b)
 
+          sfeq : TM.stoppedT (evalᴰ f x) k ≡ true
+          sfeq = cong is-stopped rfeq
+
           absurd-f : ∀ {X : Set} → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ false → X
-          absurd-f p with trans (sym (st-pair-of true sfeq)) p
+          absurd-f p with trans (sym (st-pair-of stopped rfeq)) p
+          ... | ()
+
+          -- …and the pair has NO result, so `place`'s premise refutes itself.
+          absurd-f-res : ∀ {X : Set} {v}
+                       → TM.T.resT (evalᴰ ⟨ f , g ⟩ x) ≡ returns v → X
+          absurd-f-res p
+            with trans (sym (cong (λ z → TM.T.resT (PT.pairOf z)) rfeq)) p
           ... | ()
 
       -- ── `f` REACHED ITS END ─────────────────────────────────────────
-      dispatch false sfeq = dispatch-g (TM.stoppedT (evalᴰ g x) PT.kg) refl
+      dispatch (returns vB) rfeq = dispatch-g (TM.T.resT (evalᴰ g x)) refl
         where
+          sfeq : TM.stoppedT (evalᴰ f x) k ≡ false
+          sfeq = cong is-stopped rfeq
+
           module PCF = PC.WithF vrf sfeq
 
           ----------------------------------------------------------------
@@ -343,8 +360,8 @@ module PairAsm {FS : FrameSemantics} where
 
           -- The pair's stoppedness is now the INNER bind's, which is `g`'s.
           st-inner : TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k
-                   ≡ TM.stoppedT PT.innerT PT.kg
-          st-inner = st-pair-of false sfeq
+                   ≡ TM.stoppedT (PT.innerT vB) PT.kg
+          st-inner = st-pair-of (returns vB) rfeq
 
           chainG₀ : FlatSteps prog (VR.steps vrg) PCF.m2 (VR.settle vrg)
           chainG₀ = subst (λ st → FlatSteps prog (VR.steps vrg) st (VR.settle vrg))
@@ -358,7 +375,7 @@ module PairAsm {FS : FrameSemantics} where
           module PPres = PairPres f g n l prog base s alloc cl vrf
                            PS.n1 PS.l1 n≤n1 vrg
 
-          dispatch-g : (sg : TM.Stopped) → TM.stoppedT (evalᴰ g x) PT.kg ≡ sg
+          dispatch-g : (r : Res ⟦ C ⟧) → TM.T.resT (evalᴰ g x) ≡ r
                      → MachineRefinesObsF prog base n l ⟨ f , g ⟩ x s alloc cl k
 
           -- ── `g` ENDED THE PROGRAM ───────────────────────────────────
@@ -366,14 +383,14 @@ module PairAsm {FS : FrameSemantics} where
           -- pair node never executes, so there is no pair value to place —
           -- and the observable is still `dEvF ++ dEvG`, because a stopped
           -- `g` contributes everything it emitted before stopping.
-          dispatch-g true sgeq = record
+          dispatch-g stopped rgeq = record
             { value-realized =
                 realized (2 + (VR.steps vrf + (2 + VR.steps vrg)))
                          (VR.settle vrg) (VR.out-mode vrg) (VR.cont-alloc vrg)
                          (FlatSteps-++ PC.pre-chain
                            (FlatSteps-++ chainF₀ (FlatSteps-++ PCF.mid-chain chainG₀)))
                          absurd-g absurd-g (λ _ → VR.stops vrg sgeq)
-                         (VR.no-ret vrg) (VR.no-link vrg) absurd-g
+                         (VR.no-ret vrg) (VR.no-link vrg) absurd-g-res
                          (λ fr j b → PPres.mem-pres-to-gs (AtStack fr j) b)
                          (λ hl b → PPres.mem-pres-to-gs (AtDynamic hl) b)
                          PPres.frame-pres-to-gs
@@ -383,19 +400,36 @@ module PairAsm {FS : FrameSemantics} where
                                          refl refl sfeq tf tg
             }
             where
+              sgeq : TM.stoppedT (evalᴰ g x) PT.kg ≡ true
+              sgeq = cong is-stopped rgeq
+
+              st-inner-g : TM.stoppedT (PT.innerT vB) PT.kg ≡ true
+              st-inner-g = cong (λ z → TM.stoppedT (PT.innerOf vB z) PT.kg) rgeq
+
               absurd-g : ∀ {X : Set} → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ false → X
-              absurd-g p
-                with trans (sym (trans st-inner (cong (λ z → TM.join-st z false) sgeq))) p
+              absurd-g p with trans (sym (trans st-inner st-inner-g)) p
+              ... | ()
+
+              absurd-g-res : ∀ {X : Set} {v}
+                           → TM.T.resT (evalᴰ ⟨ f , g ⟩ x) ≡ returns v → X
+              absurd-g-res p
+                with trans (sym (trans (cong (λ z → TM.T.resT (PT.pairOf z)) rfeq)
+                                       (cong (λ z → TM.T.resT (PT.innerOf vB z)) rgeq))) p
               ... | ()
 
           -- ── BOTH REACHED THEIR END — the pair is assembled. ──────────
-          dispatch-g false sgeq = record
+          dispatch-g (returns vC) rgeq = record
             { value-realized =
                 realized PCG.STEPS PCG.SETTLE PPlace.out-mode PPlace.cont-alloc
                          PCG.RUN (λ _ → PCG.LIVE) (λ _ → PCG.ATEND)
                          not-stopped
                          PCG.NORET PCG.NOLINK
-                         (λ _ → PPlace.place)
+                         -- plan 0.98: the premise binds `v`; `res-pair` says
+                         -- what the pair actually returned, and `returns-inj`
+                         -- identifies the two.
+                         (λ p → subst (λ w → ResultPlace _ _ _ _ w _)
+                                      (returns-inj (trans (sym res-pair) p))
+                                      PPlace.place)
                          PPresF.stack-pres-pair PPresF.heap-pres-pair
                          PPres.frame-pres-pair PPres.bf-mono-pair
             ; traces-agree =
@@ -403,9 +437,21 @@ module PairAsm {FS : FrameSemantics} where
                                chainG₀ PCG.tail-chain refl refl refl sfeq tf tg
             }
             where
+              sgeq : TM.stoppedT (evalᴰ g x) PT.kg ≡ false
+              sgeq = cong is-stopped rgeq
+
+              st-inner-r : TM.stoppedT (PT.innerT vB) PT.kg ≡ false
+              st-inner-r = cong (λ z → TM.stoppedT (PT.innerOf vB z) PT.kg) rgeq
+
+              -- WHAT THE PAIR RETURNS: `f`'s value and `g`'s, assembled by the
+              -- inner `returnT`. Both binds reduce on the constructors the two
+              -- branches matched.
+              res-pair : TM.T.resT (evalᴰ ⟨ f , g ⟩ x) ≡ returns (vB , vC)
+              res-pair = trans (cong (λ z → TM.T.resT (PT.pairOf z)) rfeq)
+                               (cong (λ z → TM.T.resT (PT.innerOf vB z)) rgeq)
+
               not-stopped : ∀ {X : Set} → TM.stoppedT (evalᴰ ⟨ f , g ⟩ x) k ≡ true → X
-              not-stopped p
-                with trans (sym p) (trans st-inner (cong (λ z → TM.join-st z false) sgeq))
+              not-stopped p with trans (sym p) (trans st-inner st-inner-r)
               ... | ()
 
               module PCG = PCF.WithG vrg sgeq
@@ -467,10 +513,10 @@ module PairAsm {FS : FrameSemantics} where
 
               module PPlace = PairPlace {B} {C} n alloc n≤ PCF.fsF PCG.fsG
                                 PCF.cf-fsF PCG.cf-fsG ns-fsF ns-gs hr-gs
-                                (TM.valueT (evalᴰ f x) k) (TM.valueT (evalᴰ g x) PT.kg)
+                                vB vC
                                 (VR.out-mode vrf) (VR.out-mode vrg)
                                 (VR.cont-alloc vrf) (VR.cont-alloc vrg)
-                                (VR.place vrf sfeq) (VR.place vrg sgeq)
+                                (VR.place vrf rfeq) (VR.place vrg rgeq)
                                 mem-F→G fst-cell-gs
 
               module PPresF = PPres.Fill PPlace.rdi-u6 PPlace.rdi-u8
