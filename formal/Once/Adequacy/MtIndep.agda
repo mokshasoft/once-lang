@@ -53,9 +53,9 @@ RI0 : ∀ (c : C.FunCtx) (p : PolyCtx) (s : SigEffectCtx) (nm : String) (e : Raw
   {Ψ₁ Ψ₂ : Usage 0}
   (d₁ : (ctxWithImportsAndSelfAndPolys c p s nm EffUU) ⊢ᶜ e ∶ EffUU ⨾ Ψ₁)
   (d₂ : (ctxWithImportsAndSelfAndPolys c p s nm EffUU) ⊢ᶜ e ∶ EffUU ⨾ Ψ₂)
-  (dγ : ⟦ ⟦ ∅ ⟧ᶜ ⟧ᴰ) (n : ℕ) →
-  SD.⟦ realize d₁ ⟧ˢ fmt (env0 {Ψ₁} dγ) n ≡ SD.⟦ realize d₂ ⟧ˢ fmt (env0 {Ψ₂} dγ) n
-RI0 c p s nm e {[]} {[]} d₁ d₂ dγ n = realize-invariant d₁ d₂ dγ n
+  (dγ : ⟦ ⟦ ∅ ⟧ᶜ ⟧ᴰ) →
+  SD.⟦ realize d₁ ⟧ˢ fmt (env0 {Ψ₁} dγ) ≡ SD.⟦ realize d₂ ⟧ˢ fmt (env0 {Ψ₂} dγ)
+RI0 c p s nm e {[]} {[]} d₁ d₂ dγ = realize-invariant d₁ d₂ dγ
 
 -- When the head IS main, `mainRealized-go` returns `realize deriv` for ANY
 -- witness (it does not trust `me`'s `inj₁`; it re-checks `isMain(head)`).
@@ -70,25 +70,25 @@ head-main-realize : ∀ {polys sigEffs rest ctx} (fi : FunInfo)
 head-main-realize fi rf d rt (inj₁ (_ , _ , refl)) hp hpr = refl
 head-main-realize fi rf d rt (inj₂ w') hp hpr
   with funName fi ≟str "main" | EffUU ≟T EffUU | funIsPrimitive fi
-... | yes _  | yes refl | false = refl
-... | no ¬p  | _        | _     = ⊥-elim (¬p hp)
-... | yes _  | no ¬e    | _     = ⊥-elim (¬e refl)
-... | yes _  | yes _    | true  = ⊥-elim (case hpr of λ ())
+... | yes _ | yes refl | false = refl
+... | no ¬p | _ | _ = ⊥-elim (¬p hp)
+... | yes _ | no ¬e | _ = ⊥-elim (¬e refl)
+... | yes _ | yes _ | true = ⊥-elim (case hpr of λ ())
 
 -- THE mt-independence lemma: any two typing derivations of the SAME module
 -- (`funs`) realize the SAME `main` denotationally.
 mt-den-indep : ∀ {polys sigEffs funs ctx}
   (mt bt : AllFunsTyped polys sigEffs funs ctx)
   (me : MainExists mt) (bme : MainExists bt)
-  (dγ : ⟦ ⟦ ∅ ⟧ᶜ ⟧ᴰ) (n : ℕ) →
-  SD.⟦ proj₂ (MC.mainRealized-go mt me) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized-go mt me)} dγ) n
-  ≡ SD.⟦ proj₂ (MC.mainRealized-go bt bme) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized-go bt bme)} dγ) n
-mt-den-indep tnil tnil me bme dγ n = ⊥-elim me
+  (dγ : ⟦ ⟦ ∅ ⟧ᶜ ⟧ᴰ) →
+  SD.⟦ proj₂ (MC.mainRealized-go mt me) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized-go mt me)} dγ)
+  ≡ SD.⟦ proj₂ (MC.mainRealized-go bt bme) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized-go bt bme)} dγ)
+mt-den-indep tnil tnil me bme dγ = ⊥-elim me
 mt-den-indep {polys = polys} {sigEffs = sigEffs} {ctx = ctx}
-             (tcons {fi = fi} {ty = ty₁} rf₁ d₁ rt₁) (tcons {ty = ty₂} rf₂ d₂ rt₂) me bme dγ n
+             (tcons {fi = fi} {ty = ty₁} rf₁ d₁ rt₁) (tcons {ty = ty₂} rf₂ d₂ rt₂) me bme dγ
   with inj₂-injective (trans (sym rf₁) rf₂)
 mt-den-indep {polys = polys} {sigEffs = sigEffs} {ctx = ctx}
-             (tcons {fi = fi} {ty = ty₁} rf₁ d₁ rt₁) (tcons rf₂ d₂ rt₂) me bme dγ n
+             (tcons {fi = fi} {ty = ty₁} rf₁ d₁ rt₁) (tcons rf₂ d₂ rt₂) me bme dγ
   | refl = dispatch me bme
   where
     -- mrg-dispatch spelled out so `with` can abstract the shared scrutinees.
@@ -98,26 +98,26 @@ mt-den-indep {polys = polys} {sigEffs = sigEffs} {ctx = ctx}
     -- arguments instead — the same device as `masq-arrow`'s `mse`.
     dispatch2 : (w₁ : MainExists rt₁) (w₂ : MainExists rt₂)
                 (dm : Dec (funName fi ≡ "main")) (de : Dec (ty₁ ≡ EffUU)) (bp : Bool) →
-      SD.⟦ proj₂ (MC.mrg-dispatch d₁ rt₁ w₁ dm de bp) ⟧ˢ fmt (env0 {proj₁ (MC.mrg-dispatch d₁ rt₁ w₁ dm de bp)} dγ) n
-      ≡ SD.⟦ proj₂ (MC.mrg-dispatch d₂ rt₂ w₂ dm de bp) ⟧ˢ fmt (env0 {proj₁ (MC.mrg-dispatch d₂ rt₂ w₂ dm de bp)} dγ) n
+      SD.⟦ proj₂ (MC.mrg-dispatch d₁ rt₁ w₁ dm de bp) ⟧ˢ fmt (env0 {proj₁ (MC.mrg-dispatch d₁ rt₁ w₁ dm de bp)} dγ)
+      ≡ SD.⟦ proj₂ (MC.mrg-dispatch d₂ rt₂ w₂ dm de bp) ⟧ˢ fmt (env0 {proj₁ (MC.mrg-dispatch d₂ rt₂ w₂ dm de bp)} dγ)
     dispatch2 w₁ w₂ (yes _) (yes refl) false =
-      RI0 ctx polys sigEffs (funName fi) (funBody fi) d₁ d₂ dγ n
-    dispatch2 w₁ w₂ (no _)  _          _     = mt-den-indep rt₁ rt₂ w₁ w₂ dγ n
-    dispatch2 w₁ w₂ (yes _) (no _)     _     = mt-den-indep rt₁ rt₂ w₁ w₂ dγ n
-    dispatch2 w₁ w₂ (yes _) (yes refl) true  = mt-den-indep rt₁ rt₂ w₁ w₂ dγ n
+      RI0 ctx polys sigEffs (funName fi) (funBody fi) d₁ d₂ dγ
+    dispatch2 w₁ w₂ (no _) _ _ = mt-den-indep rt₁ rt₂ w₁ w₂ dγ
+    dispatch2 w₁ w₂ (yes _) (no _) _ = mt-den-indep rt₁ rt₂ w₁ w₂ dγ
+    dispatch2 w₁ w₂ (yes _) (yes refl) true = mt-den-indep rt₁ rt₂ w₁ w₂ dγ
 
     dispatch : (me : MainExists (tcons {fi = fi} rf₁ d₁ rt₁)) (bme : MainExists (tcons {fi = fi} rf₂ d₂ rt₂)) →
-      SD.⟦ proj₂ (MC.mainRealized-go (tcons {fi = fi} rf₁ d₁ rt₁) me) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized-go (tcons {fi = fi} rf₁ d₁ rt₁) me)} dγ) n
-      ≡ SD.⟦ proj₂ (MC.mainRealized-go (tcons {fi = fi} rf₂ d₂ rt₂) bme) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized-go (tcons {fi = fi} rf₂ d₂ rt₂) bme)} dγ) n
+      SD.⟦ proj₂ (MC.mainRealized-go (tcons {fi = fi} rf₁ d₁ rt₁) me) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized-go (tcons {fi = fi} rf₁ d₁ rt₁) me)} dγ)
+      ≡ SD.⟦ proj₂ (MC.mainRealized-go (tcons {fi = fi} rf₂ d₂ rt₂) bme) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized-go (tcons {fi = fi} rf₂ d₂ rt₂) bme)} dγ)
     dispatch (inj₁ (p₁ , q₁ , refl)) (inj₁ (p₂ , q₂ , refl)) =
-      RI0 ctx polys sigEffs (funName fi) (funBody fi) d₁ d₂ dγ n
+      RI0 ctx polys sigEffs (funName fi) (funBody fi) d₁ d₂ dγ
     dispatch (inj₁ (p₁ , q₁ , refl)) (inj₂ w₂) =
-      trans (RI0 ctx polys sigEffs (funName fi) (funBody fi) d₁ d₂ dγ n)
-            (sym (cong (λ x → SD.⟦ proj₂ x ⟧ˢ fmt (env0 {proj₁ x} dγ) n)
+      trans (RI0 ctx polys sigEffs (funName fi) (funBody fi) d₁ d₂ dγ)
+            (sym (cong (λ x → SD.⟦ proj₂ x ⟧ˢ fmt (env0 {proj₁ x} dγ))
                        (head-main-realize fi rf₂ d₂ rt₂ (inj₂ w₂) p₁ q₁)))
     dispatch (inj₂ w₁) (inj₁ (p₂ , q₂ , refl)) =
-      trans (cong (λ x → SD.⟦ proj₂ x ⟧ˢ fmt (env0 {proj₁ x} dγ) n)
+      trans (cong (λ x → SD.⟦ proj₂ x ⟧ˢ fmt (env0 {proj₁ x} dγ))
                   (head-main-realize fi rf₁ d₁ rt₁ (inj₂ w₁) p₂ q₂))
-            (RI0 ctx polys sigEffs (funName fi) (funBody fi) d₁ d₂ dγ n)
+            (RI0 ctx polys sigEffs (funName fi) (funBody fi) d₁ d₂ dγ)
     dispatch (inj₂ w₁) (inj₂ w₂) =
       dispatch2 w₁ w₂ (funName fi ≟str "main") (ty₁ ≟T EffUU) (funIsPrimitive fi)

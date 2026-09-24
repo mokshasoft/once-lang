@@ -205,12 +205,12 @@ mainRealized-bundle : ∀ (m : C.Module) (mt : ModuleTyped m) (hvm : HasValidMai
   (b : FunBundle (C.buildPolyCtx polys) (C.collectSigEffects (C.Module.decls m)) funs C.emptyFunCtx)
   (bme : BMainExists b)
   (ef-eq : C.extractFunctions (C.extractAliases m) m ≡ inj₂ (funs , polys)) →
-  ∀ (n : ℕ) → SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized m mt hvm)} tt) n
-            ≡ SD.⟦ proj₂ (bundle-realize b bme) ⟧ˢ fmt (env0 {proj₁ (bundle-realize b bme)} tt) n
-mainRealized-bundle m mt hvm {funs} {polys} b bme ef-eq n =
-  trans (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt (env0 {proj₁ z} tt) n) (subst-app F ef-eq x))
-    (trans (mt-den-indep mt' (bundle→typed b) me' (bme→me b bme) tt n)
-           (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt (env0 {proj₁ z} tt) n) (realize-agree b bme)))
+  SD.⟦ proj₂ (MC.mainRealized m mt hvm) ⟧ˢ fmt (env0 {proj₁ (MC.mainRealized m mt hvm)} tt)
+  ≡ SD.⟦ proj₂ (bundle-realize b bme) ⟧ˢ fmt (env0 {proj₁ (bundle-realize b bme)} tt)
+mainRealized-bundle m mt hvm {funs} {polys} b bme ef-eq =
+  trans (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt (env0 {proj₁ z} tt)) (subst-app F ef-eq x))
+    (trans (mt-den-indep mt' (bundle→typed b) me' (bme→me b bme) tt)
+           (cong (λ z → SD.⟦ proj₂ z ⟧ˢ fmt (env0 {proj₁ z} tt)) (realize-agree b bme)))
   where
     Motive : (ef : String ⊎ (List FunInfo × List C.PolyFunInfo)) → Set
     Motive ef = Σ-syntax (ModuleTyped-ef m ef) (λ mtx →

@@ -56,6 +56,7 @@ open import Data.List using (List; length)
 open import Once.Adequacy.SourceTrace using (moduleToIR; ⟦_⟧IR)
 open import Once.Adequacy.WrapBridge fmt using (wrap-trace)
 open import Once.Adequacy.SourceFaithful fmt using (faithful; faithful∅)
+open import Once.Adequacy.FaithfulLemmas fmt using (T-ext-at)
 import Once.Denotation.SourceDenote as SD
 open import Once.Denotation.TraceMonad using (T; _>>=T_; projTrace)
 open import Once.Denotation.DenotTrace using (evalᴰ)
@@ -77,11 +78,13 @@ runMainˢ : ∀ {Ψ : Usage 0} → Expr ∅ Ψ EffUU → ℕ → List SigOpEvent
 runMainˢ {Ψ} se n =
   projTrace ((SD.⟦ se ⟧ˢ fmt) (env0 {Ψ} tt) >>=T (λ clo → clo tt)) n
 
--- Bind respects pointwise equality of the bound computation, at the trace level.
+-- Bind respects equality of the bound computation, read at the trace level.
+-- plan 0.98: the premise is ONE equation of computations, not a budget-`n`
+-- view — the result `m >>=T f` splits on is not budget-indexed, so a pointwise
+-- premise at `n` alone could not decide it.
 bind-cong-trace : ∀ {X Y} (m m′ : T X) (f : X → T Y) (n : ℕ) →
-  m n ≡ m′ n → projTrace (m >>=T f) n ≡ projTrace (m′ >>=T f) n
-bind-cong-trace m m′ f n eq =
-  cong (λ p → proj₁ p ++ proj₁ (f (proj₂ p) (n ∸ length (proj₁ p)))) eq
+  m ≡ m′ → projTrace (m >>=T f) n ≡ projTrace (m′ >>=T f) n
+bind-cong-trace m m′ f n eq = cong (λ x → projTrace (x >>=T f) n) eq
 
 -- DISCHARGED (no longer a postulate): the compiled `main` IR is the entry-wrap
 -- of the elaborated resolved term — proven in `Once.Adequacy.MainIRForm` by the
@@ -113,7 +116,7 @@ source-meaningᴰ-aux ir (Ψ , seR , eq , _) = Ψ , seR , bridge
         (trans (wrap-trace (elaborateFull C.Heap seR) n)
                (bind-cong-trace (evalᴰ fmt (elaborateFull C.Heap seR) tt)
                                 (SD.⟦ seR ⟧ˢ fmt (env0 {Ψ} tt)) (λ clo → clo tt) n
-                                (faithful∅ seR n)))
+                                (T-ext-at (faithful∅ seR))))
 
 source-meaningᴰ : ∀ (m : P.Module) (ir : IR ⌊ Unit ⌋ ⌊ Unit ⌋) →
   moduleToIR m ≡ just ir →
