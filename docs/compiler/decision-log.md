@@ -15077,3 +15077,46 @@ for a `with`/`...` block that follows a blank line — finds orphaned bodies.
 Substring-anchored region cuts also failed repeatedly on this tree's mixed
 spacing (`walk (Hylo w₁ w₂ f g)  =`). Multi-line regions were done by explicit
 LINE RANGE instead, computed from a grep and applied high-to-low.
+
+## D225 — THE SPEC READS THE CODOMAIN: AN EFFECTFUL ARROW INTO `Void` HALTS (2026-09-24)
+
+**Relates**: D060 (one denotational meaning), D224 (no total function into `⊥`),
+plan 0.98 §0/§2/§9.6 (stage E: the elaborator reads the codomain), Once.Spec
+closure via `Denotation/Meaning` → `Arith/SigOp/Builders.arrow-info`.
+
+### The finding
+
+Stage E made the ELABORATOR dispatch an effectful SigOp on its codomain —
+`Void` HALTS, `Unit` EMITS, anything else is a value contract. The SPEC did not
+move: `arrow-info-eff` split only on `isUnit? B`, so an effectful op into `Void`
+denoted as `value-info` — a pure function `⟦ A ⟧ → ⟦ Void ⟧ = ⊥`, whose only
+source is the `generic-semM` postulate. `RealizeAgrees.masq` was therefore FALSE
+at `Void` (the elaborator said `stopped`, the Spec said "returns a value of ⊥"),
+which is D060's "ONE meaning, two presentations" failing one layer below where
+plan 0.98 §1 found it.
+
+### Why this is not a choice
+
+`⟦ Void ⟧ = ⊥`, and an effectful result lives in `Res X = stopped | returns X`.
+`Res ⊥` has exactly ONE inhabitant, `stopped`. So up to its trace an effectful
+arrow into `Void` has exactly one meaning: it stops. Categorically it is a
+Kleisli arrow `A → T 0`, which exists only because the monad can abort, and can
+only abort. This is the reading `exit`-like primitives have across typed
+languages (`!`, `Nothing`, `never`). Any other Spec meaning at `Void` must be
+"inhabited by fiat" (plan 0.98 §2) — i.e. rest on an axiom that proves ⊥.
+
+### The change
+
+`arrow-info-eff : CanonicalName → Dec (B ≡ Void) → Dec (B ≡ Unit) → …`,
+dispatched from `arrow-info` with `isVoid? B` then `isUnit? B` — the same pair,
+in the same order, that `ext-resolved-info` hands `ext-resolved-info-aux`. The
+two infos now agree clause by clause (`RealizeAgrees.info-agree`, three `refl`s)
+and `masq`'s three-way `lookupSigEffect` split (`masq-unit`) is deleted.
+
+### Left open
+
+`generic-semM : ∀ {A B} → String → TargetNum → M.⟦ A ⟧ → M.⟦ B ⟧` still
+derives ⊥ at `B = Void` (`generic-semM {Unit} {Void} "exit" tn tt : ⊥`
+typechecks; present on master since plan 0.2.4.1). D225 removes the Spec's USE
+of it at `Void` on the effectful path, not the postulate's type. Fixing the type
+(land it in `Res`, as `semM` did) is its own plan.

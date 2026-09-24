@@ -30,10 +30,10 @@ open import Data.String using (String; _++_)
 open import Data.Sum using (_⊎_)
 open import Data.Unit using (⊤)
 
-open import Once.Type using (Type; Unit; Int; Str; _*_; _+_;
-                              ArrowKind; mk-kind; Purity; pure; eff; isUnit?)
+open import Once.Type using (Type; Unit; Void; Int; Str; _*_; _+_;
+                              ArrowKind; mk-kind; Purity; pure; eff; isUnit?; isVoid?)
 open import Relation.Nullary using (Dec; yes; no)
-open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; pureV; emitsV; EffectShape; Pure; Halts; Linkage; ffi-concrete; internal-ref)
+open import Once.SigOp.Info using (SigOpInfo; mk-info; mk-info'; pureV; emitsV; haltsV; EffectShape; Pure; Halts; Linkage; ffi-concrete; internal-ref)
 open import Once.Functor.Translate using (IsBaseType; IsConcrete; con-base;
   base-Unit; base-Int; base-Float; base-Str; base-Prod; base-Sum)
 open import Once.CanonicalName using (CanonicalName; bare; showCanonical)
@@ -301,22 +301,25 @@ internal-info name = mk-info' name (pureV (generic-semM (showCanonical name))) b
 generic-info : ∀ {A B} → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B
 generic-info = value-info
 
--- The effect is a LEAF annotation read off the arrow's `Purity` (the only
--- effect bit the OBSERVABLE TRACE sees — `emit-D` collapses `Emits`/`Halts` to
--- the same event, distinguishing only pure-vs-effectful). So a `pure` arrow is
--- a pure value; an `eff` arrow with `Unit` codomain emits (an effect contract);
--- an `eff` non-`Unit` arrow is the deferred-data case (a pure value). The
--- `emits`-vs-`halts` refinement is codegen-only and never needs to reach here
--- or `realize` — it stays in the typing context. (Plan 0.50 effect-axis: a
--- referenced morphism's effect is intrinsic to its arrow, not a name lookup.)
--- Dispatch the `eff` codomain check through the shared `isUnit?` decision (a
--- top-level aux on the `Dec`, NOT a pattern-match on `B` — so it reduces given
--- the decision, and the masquerade proof folds it via the SAME `isUnit? B`
--- the elaborator's `ext-resolved-info` uses).
-arrow-info-eff : ∀ {A B} → CanonicalName → Dec (B ≡ Unit) → IsBaseType A → IsConcrete B → SigOpInfo A B
-arrow-info-eff name (yes refl) bA cB = mk-info' name (emitsV refl) bA (ffi-concrete cB)
-arrow-info-eff name (no _)     bA cB = value-info name bA cB
+-- The effect is a LEAF annotation read off the arrow's `Purity`; WHICH effect
+-- is read off the CODOMAIN (D225). A `pure` arrow is a pure value. An `eff`
+-- arrow into `Void` HALTS: `⟦ Void ⟧ = ⊥`, so `Res ⟦ Void ⟧` has exactly one
+-- inhabitant, `stopped` — the type leaves no other meaning to choose. An `eff`
+-- arrow into `Unit` emits (an effect contract); any other `eff` arrow is the
+-- deferred-data case (a pure value). Before D225 this split only on `Unit`, so
+-- an effectful op into `Void` denoted as a VALUE of `⊥` — a value only the
+-- `generic-semM` postulate could supply — while the elaborator emitted
+-- `haltsV`: plan 0.98 §2's "inhabited by fiat", one layer below stage E.
+-- Dispatched through the shared `isVoid?`/`isUnit?` decisions (a top-level aux
+-- on the two `Dec`s, NOT a pattern-match on `B`) — the SAME pair, in the same
+-- order, that the elaborator's `ext-resolved-info` hands `ext-resolved-info-aux`,
+-- so the masquerade proof folds both with one split.
+arrow-info-eff : ∀ {A B} → CanonicalName → Dec (B ≡ Void) → Dec (B ≡ Unit)
+               → IsBaseType A → IsConcrete B → SigOpInfo A B
+arrow-info-eff name (yes refl) _          bA cB = mk-info' name (haltsV refl) bA (ffi-concrete cB)
+arrow-info-eff name (no _)     (yes refl) bA cB = mk-info' name (emitsV refl) bA (ffi-concrete cB)
+arrow-info-eff name (no _)     (no _)     bA cB = value-info name bA cB
 
 arrow-info : ∀ {A B} → ArrowKind → CanonicalName → IsBaseType A → IsConcrete B → SigOpInfo A B
 arrow-info (mk-kind _ pure) name bA cB = value-info name bA cB
-arrow-info {A} {B} (mk-kind _ eff) name bA cB = arrow-info-eff name (isUnit? B) bA cB
+arrow-info {A} {B} (mk-kind _ eff) name bA cB = arrow-info-eff name (isVoid? B) (isUnit? B) bA cB
