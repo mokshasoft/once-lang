@@ -172,9 +172,9 @@ conSSK-vz i m k =
   --   depth ford is `sel 2`, not `sel 3`.
   ⟶*-castᵣ (cong (λ z → Tm-conK k (Tm-varK (Var-vzK z))) (sub-w²-single m))
   (⟶*-appˡ (conSS-vz _ _) »
-   ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
-   ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-   ⟶*-appˡ (step (β _ _) done) »
+   ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+            ⟶*-appˡ (step (β _ _) done) »
+            step (β _ _) done) »
    step (β _ _) done »
    inCon (inVar (⟶*-jsubᵖ (⟶*-jsubᵖ
      (sel-there 1 _ _ (sel-there 0 _ _ (sel-here _ _)))))) »
@@ -188,9 +188,9 @@ conSSK-vs i m x k =
   ⟶*-castᵣ (cong₂ (λ p q → Tm-varK (Var-vsK p q))
                   (sub-w²-single m) (sub-w²-single x))
   (⟶*-appˡ (conSS-vs _ _ _) »
-   ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
-   ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-   ⟶*-appˡ (step (β _ _) done) »
+   ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+            ⟶*-appˡ (step (β _ _) done) »
+            step (β _ _) done) »
    step (β _ _) done »
    inVar (⟶*-jsubᵖ (⟶*-jsubᵖ
      (sel-there 2 _ _ (sel-there 1 _ _ (sel-there 0 _ _ (sel-here _ _)))))) »

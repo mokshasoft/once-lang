@@ -108,10 +108,10 @@ extSK-agree-vz : {Γ : Cx} (i m n σ' : RTm Γ) →
                  app (app (extSK i (Var-vzK m)) n) σ' ⟶* Tm-varK (Var-vzK n)
 extSK-agree-vz i m n σ' =
       (⟶*-appˡ (⟶*-appˡ (extSK-vz _ _)) »
-       ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)))) »
-       ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
-       ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-       ⟶*-appˡ (step (β _ _) done) »
+       ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
+                ⟶*-appˡ (⟶*-appˡ (step (β _ _) done) »
+                         step (β _ _) done) »
+                step (β _ _) done) »
        step (β _ _) done »
        -- ★ `extVz`'s body is `Tm-varK (Var-vzK (var (vs vz)))`, and at five
        --   lams `var (vs vz)` is the TARGET DEPTH `n`.  Three of the five
