@@ -32,13 +32,13 @@ open import Once.IRTy using (IRTy; eraseF; ⌈_⌉F; ⌈_⌉; ⌊_⌋; ⌊⟧T-c
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
 open import Once.Semantics.Machine using (coerce-functor; coh; tF-coh; ⟦_⟧; ⟦_⟧F; coerce-ν-in)
-open import Data.Bool using (false)
-open import Once.Denotation.TraceMonad using (T; returnT; projTrace; valueT; stoppedT)
+open import Once.Res using (Res; returns; mapRes)
+open import Once.Denotation.TraceMonad using (T; returnT; projTrace)
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; cohᴰ; νᵈ; in-νᵈ; coerce-functor-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (in-ν-value)
-open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-valueT; subst-T-stoppedT; T-ext; evalᴰ-subst-dom)
+open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-resT; T-ext; evalᴰ-subst-dom)
 open import Once.Adequacy.AnaErased fmt using (coerce-νin-erase-D)
 open import Once.Adequacy.InErased fmt using (subst-⟦⟧ᴰᴵ-fix; coerce-μ-in-subst)
 open import Once.Postulates using (extensionality)
@@ -77,49 +77,47 @@ in-ν-trace {F} wfF v n =
           (evalᴰ-subst-dom (sym (⌊⟧T-commute F (ν-type F))) (IR.in-ν (wf-⌊⌋ wfF))
                            (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
 
--- plan 0.97: the STOP flag, the same peel as the trace. `evalᴰ` is stuck under
--- the domain `subst`, so the flag no longer reduces on its own — the same
--- reason `in-trace` cannot be `refl` either.
-in-ν-stopped : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ) (n : ℕ)
-  → stoppedT (liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v) n ≡ false
-in-ν-stopped {F} wfF v n =
-  trans (subst-T-stoppedT (cong νᵈ (tF-coh F))
-          (evalᴰ fmt (in-ν-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)) n)
-        (cong (λ hh → stoppedT hh n)
-          (evalᴰ-subst-dom (sym (⌊⟧T-commute F (ν-type F))) (IR.in-ν (wf-⌊⌋ wfF))
-                           (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
-
--- VALUE half — the coherence.
-in-ν-value-erase : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ) (n : ℕ)
-  → valueT (liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v) n ≡ in-ν-value v
-in-ν-value-erase {F} wfF v n =
-  trans (subst-T-valueT (cong νᵈ (tF-coh F))
-                      (evalᴰ fmt (in-ν-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)) n)
-  (trans (cong (λ hh → subst id (cong νᵈ (tF-coh F)) (valueT hh n))
+-- RESULT half — one fact, not two. Before plan 0.98 this was a pair of
+-- lemmas: `in-ν-stopped` said the flag was `false` and `in-ν-value-erase`
+-- said the value was `in-ν-value v`. `Res` makes "it returned" and "what it
+-- returned" the same statement, so the flag half is gone and the coherence
+-- (`AnaErased.coerce-νin-erase-D`, wrapped by `in-νᵈ`) sits under one
+-- `returns`.
+--
+-- The budget index went with it: the old value lemma took an `n` only
+-- because `valueT` did, and the RESULT never depended on the budget — only
+-- the trace does. `evalᴰ` is still stuck under the domain `subst`, which is
+-- why this is not `refl` (the same reason `in-ν-trace` is not).
+in-ν-res : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ)
+  → T.resT (liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v)
+    ≡ returns (in-ν-value v)
+in-ν-res {F} wfF v =
+  trans (subst-T-resT (cong νᵈ (tF-coh F))
+                      (evalᴰ fmt (in-ν-ir wfF) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
+  (trans (cong (λ hh → mapRes (subst id (cong νᵈ (tF-coh F))) (T.resT hh))
                (evalᴰ-subst-dom (sym (⌊⟧T-commute F (ν-type F))) (IR.in-ν (wf-⌊⌋ wfF))
                                 (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
-  (trans (cong (λ arg → subst id (cong νᵈ (tF-coh F))
-                         (valueT (evalᴰ fmt (IR.in-ν (wf-⌊⌋ wfF)) arg) n))
+  (trans (cong (λ arg → mapRes (subst id (cong νᵈ (tF-coh F)))
+                          (T.resT (evalᴰ fmt (IR.in-ν (wf-⌊⌋ wfF)) arg)))
                (subst-⟦⟧ᴰᴵ-fix (⌊⟧T-commute F (ν-type F)) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v)))
-  (trans (subst-id-νᵈ (tF-coh F) _)
-  (trans (in-νᵈ-subst-nat (tF-coh F) _)
-         (cong in-νᵈ
-           (trans (subst-diag-ν (tF-coh F) _)
-           (trans (cong (subst (λ H → ⟦ H ⟧SF ⟦ ν-type F ⟧ᴰ) (tF-coh F))
-                        (sym (coerce-μ-in-subst ⌈ eraseF F ⌉F (cohᴰ (ν-type F)) _)))
-                  (trans (coerce-νin-erase-D F (ν-type F) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v))
-                         (cong (λ x → coerce-ν-in F ⟦ ν-type F ⟧ᴰ (coerce-functor-D F (ν-type F) x))
-                               (subst-subst-sym (cohᴰ (⟦ F ⟧T (ν-type F)))))))))))))
+  (cong returns
+    (trans (subst-id-νᵈ (tF-coh F) _)
+    (trans (in-νᵈ-subst-nat (tF-coh F) _)
+           (cong in-νᵈ
+             (trans (subst-diag-ν (tF-coh F) _)
+             (trans (cong (subst (λ H → ⟦ H ⟧SF ⟦ ν-type F ⟧ᴰ) (tF-coh F))
+                          (sym (coerce-μ-in-subst ⌈ eraseF F ⌉F (cohᴰ (ν-type F)) _)))
+                    (trans (coerce-νin-erase-D F (ν-type F) (subst id (sym (cohᴰ (⟦ F ⟧T (ν-type F)))) v))
+                           (cong (λ x → coerce-ν-in F ⟦ ν-type F ⟧ᴰ (coerce-functor-D F (ν-type F) x))
+                                 (subst-subst-sym (cohᴰ (⟦ F ⟧T (ν-type F))))))))))))))
 
 -- The combinator reduction: `liftFn` of the transported `in-ν` is
--- `returnT (in-ν-value v)` — trace `[]`, value `in-ν-value-erase` (the value is
--- n-independent, so the proof at any `n` covers every `n`).
+-- `returnT (in-ν-value v)` — trace `[]`, result `in-ν-res`.
 liftFn-in-ν : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ)
   → liftFn fmt {⟦ F ⟧T (ν-type F)} {ν-type F} (in-ν-ir wfF) v ≡ returnT (in-ν-value v)
 liftFn-in-ν {F} wfF v =
-  -- plan 0.97: record eta, not extensionality on a budget — and the stop
-  -- flag is the third field. The introduction form emits nothing and does
-  -- not stop, so it is `returnT`'s `false` on both sides.
+  -- plan 0.98: record eta over the TWO fields — trace family and result.
+  -- The introduction form emits nothing and cannot end the program, so its
+  -- result is `returnT`'s `returns` on both sides.
   T-ext (in-ν-trace wfF v)
-        (in-ν-stopped wfF v 0)
-        (in-ν-value-erase wfF v 0)
+        (in-ν-res wfF v)
