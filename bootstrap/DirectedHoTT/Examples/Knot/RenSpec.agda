@@ -130,10 +130,10 @@ extRNK-vz d n rn m =
     --   (method · index · payload · IHs) and `extRNK` supplies two more
     --   (`n`, `ρ`).  So the β-steps peel 4·3·2·1·0 `appˡ`s, not 2·2·2·1·0.
     (⟶*-appˡ (⟶*-appˡ (extRK-vz _ _)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)))) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
-     ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
+              ⟶*-appˡ (⟶*-appˡ (step (β _ _) done) »
+                       step (β _ _) done) »
+              step (β _ _) done) »
      step (β _ _) done))
 
 ------------------------------------------------------------------------
@@ -220,10 +220,10 @@ extRNK-vs d n rn m x =
       (wk-single {v = Var-vsK m x} rn))
   (step (β _ _)
     (⟶*-appˡ (⟶*-appˡ (extRK-vs _ _ _)) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)))) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
-     ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
+              ⟶*-appˡ (⟶*-appˡ (step (β _ _) done) »
+                       step (β _ _) done) »
+              step (β _ _) done) »
      step (β _ _) done »
      -- the DEPTH FORD, read out of the payload at slot 3
      -- ⚠ `symN a p` and `predN a p` ARE `jsub _ p _`, so reducing inside
@@ -277,10 +277,10 @@ singleSK-vz i m =
 singleSK-agree-vz : {Γ : Cx} (i m u : RTm Γ) →
                     app (singleSK i (Var-vzK m)) u ⟶* u
 singleSK-agree-vz i m u =
-  ⟶*-appˡ (singleSK-vz _ _) »
-  ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
-  ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-  ⟶*-appˡ (step (β _ _) done) »
+  ⟶*-appˡ (singleSK-vz _ _ »
+           ⟶*-appˡ (⟶*-appˡ (step (β _ _) done) »
+                    step (β _ _) done) »
+           step (β _ _) done) »
   step (β _ _) done
 
 singleK-vz : {Γ : Cx} (n u m : RTm Γ) →
@@ -315,9 +315,9 @@ singleSK-agree-vs : {Γ : Cx} (i m x u : RTm Γ) →
                     app (singleSK i (Var-vsK m x)) u ⟶* Tm-varK x
 singleSK-agree-vs i m x u =
   (⟶*-appˡ (singleSK-vs _ _ _) »
-     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
-     ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-     ⟶*-appˡ (step (β _ _) done) »
+     ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
+              ⟶*-appˡ (step (β _ _) done) »
+              step (β _ _) done) »
      step (β _ _) done »
      inVar (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-jsubᵖ
        (sel-there 2 _ _ (sel-there 1 _ _ (sel-there 0 _ _ (sel-here _ _)))))))  »
@@ -447,8 +447,8 @@ singleK-vs n u m x = step (β _ _) (singleSK-agree-vs _ _ _ _)
 --     and it is the shape `SUBTM-ATTEMPTS.md` step 7 kept hitting.
 inVsD : {Γ : Cx} {a a' b : RTm Γ} → a ⟶* a' → Var-vsK a b ⟶* Var-vsK a' b
 inVsD r =
-  ⟶*-icon (⟶*-pairˡ r) »
-  ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ (⟶*-idreflᵃ (⟶*-nsuc r))))))
+  ⟶*-icon (⟶*-pairˡ r »
+           ⟶*-pairʳ (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ (⟶*-idreflᵃ (⟶*-nsuc r))))))
 
 -- ★ and inside its SECOND (the variable).
 inVsX : {Γ : Cx} {a b b' : RTm Γ} → b ⟶* b' → Var-vsK a b ⟶* Var-vsK a b'
@@ -481,8 +481,8 @@ nrsK-agree-vs : {Γ : Cx} (d m x : RTm Γ) →
           nrsK (pair sVar d) (Var-vsK m x) ⟶* Tm-varK (Var-vsK d (Var-vsK m x))
 nrsK-agree-vs {Γ} d m x =
       (nrsSK-vs _ _ _ »
-       ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-       ⟶*-appˡ (step (β _ _) done) »
+       ⟶*-appˡ (⟶*-appˡ (step (β _ _) done) »
+                step (β _ _) done) »
        step (β _ _) done »
        -- ★ the DEPTH: `snd i` through a 3-tower at de Bruijn 2 — that is
        --   `towerA` — then one `βsnd`.  An EQUALITY then a REDUCTION.
@@ -523,8 +523,8 @@ inNsuc r = ⟶*-icon (⟶*-pairˡ r)
 
 inVzD : {Γ : Cx} {a a' : RTm Γ} → a ⟶* a' → Var-vzK a ⟶* Var-vzK a'
 inVzD r =
-  ⟶*-icon (⟶*-pairˡ r) »
-  ⟶*-icon (⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ (⟶*-idreflᵃ (⟶*-nsuc r)))))
+  ⟶*-icon (⟶*-pairˡ r »
+           ⟶*-pairʳ (⟶*-pairʳ (⟶*-pairˡ (⟶*-idreflᵃ (⟶*-nsuc r)))))
 
 nrsSK-vz : {Γ : Cx} (i m : RTm Γ) →
            nrsK i (Var-vzK m) ⟶*
@@ -543,8 +543,8 @@ nrsK-agree-vz : {Γ : Cx} (d m : RTm Γ) →
           nrsK (pair sVar d) (Var-vzK m) ⟶* Tm-nsucK (Tm-varK (Var-vsK d (Var-vzK m)))
 nrsK-agree-vz {Γ} d m =
       (nrsSK-vz _ _ »
-       ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-       ⟶*-appˡ (step (β _ _) done) »
+       ⟶*-appˡ (⟶*-appˡ (step (β _ _) done) »
+                step (β _ _) done) »
        step (β _ _) done »
        inNsuc (inVar (inVsD (⟶*-castₗ (cong snd (towerA IH P (pair sVar d)))
                                       (step (βsnd _ _) done)))) »

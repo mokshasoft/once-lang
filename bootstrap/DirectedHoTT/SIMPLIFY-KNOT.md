@@ -18,7 +18,7 @@ first. Lines are a lagging indicator and are tracked separately
 
 ---
 
-## 1. ⛔ THE ONE-HOLE CONGRUENCE — **PROBED 2026-09-24, MEASURE NEGATIVE**
+## 1. ★★★ THE ONE-HOLE CONGRUENCE — **SOLVED BY A MACRO**
 
 **The single highest-value item, and it costs nothing to take.**
 
@@ -83,15 +83,85 @@ plug _C_131 t = app t u : RTm Γ (blocked on _C_131)
 unification. Converting a file by hand would be a REGRESSION in exactly
 the metric that matters.
 
-**(c) Factoring** — a congruence commutes with `»`, so a prefix repeated
-across chain elements can be written once. Valid, needs no new lemma,
-but measured at **183 sites / ~3 161 chars**, ~2.5% of the remaining
-7 303 steps. ⚠ Measured three times before it was right: splitting on
-`»` under-counted (14), a greedy regex over-matched and gave **0**, and
-only a longest-common-prefix comparison gives 183. A cheap measurement
-that disagrees with a hand-read example is wrong.
+**(c) Factoring — ✅ TAKEN, and the measure was better than the first
+framing suggested.** A congruence commutes with `»`, so a prefix repeated
+across chain elements is written once:
 
-### ⇒ WHAT WOULD FLIP IT: `decTm`, and the idiom already exists
+```agda
+⟶*-appˡ (⟶*-appˡ (chainOf (evProj 1 _))) »        ⟶*-appˡ (⟶*-appˡ (chainOf (evProj 1 _)) »
+⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ (…))) »        ⇒                        ⟶*-ielimᵗ (…) »
+⟶*-appˡ (⟶*-appˡ (⟶*-ielimⁱ (…))) »                                 ⟶*-ielimⁱ (…))) »
+```
+
+★ **The structural argument is the better one**: the factored form says
+*"in this context, do these three things"*, which is the actual
+mathematical content; the repeated form hides it.
+
+| | |
+|---|---|
+| sites | **188**, across 13 files, **0 remaining** |
+| congruence tokens | 4 635 → **4 303 (−332, −7%)**; −13% in the dense files |
+| every file | **rc=0** individually |
+
+⚠ It **CASCADES** — collapsing one run brings the next two elements to
+the same indent — so the generator iterates to a fixpoint, like the
+projection collapse.
+
+⚠⚠ **MEASURED FOUR TIMES BEFORE IT WAS RIGHT.** Splitting on `»`
+under-counted (14); a greedy regex over-matched and gave **0**; only
+longest-common-prefix gave 183; and the real figure after cascading is
+188. **A cheap measurement that disagrees with a hand-read example is
+wrong** — the worked example in `row-lam` was right every time.
+
+### ★★★ IT FLIPPED — WRITE THE UNIFICATION AS A **MACRO**
+
+⚠ **The verdict above is about Agda FUNCTIONS, and that was the wrong
+place to look.** `decTm` and every `dec*` sticks on abstract arguments
+because a function must COMPUTE at type-check time. A **macro** runs at
+ELABORATION time, where the goal's *syntax* is concrete even when its
+*terms* are abstract:
+
+```agda
+probe : {Γ : Cx} {t t' u : RTm Γ} → t ⟶* t' → app t u ⟶* app t' u
+probe p = showGoal        -- ⇒ GOAL = app t u ⟶* app t' u
+```
+
+★ **And equality on `RTm` is not needed at all.** "Identical" is just
+*"the parallel walk found no difference"*, so the recursion decides it.
+The abstraction that blocks `decTm` lives in `RTm`; the walk runs on
+`Term`, an ordinary datatype with concrete constructors.
+
+✅ **BUILT AND MEASURED** (`tmp/CongMacro2.agda`, rc=0, `--safe`, no
+`TERMINATING`):
+
+```agda
+t1 : {Γ : Cx} {t t' u : RTm Γ} → t ⟶* t' → app t u ⟶* app t' u
+t1 p = cong! p
+t2 : {Γ : Cx} {t t' u b : RTm Γ} →
+     t ⟶* t' → app (fst (pair t b)) u ⟶* app (fst (pair t' b)) u
+t2 p = cong! p            -- ★ THREE deep, and the author writes NOTHING
+```
+
+| | named congruences | `⟶*-at` + datatype | **`cong!` macro** |
+|---|---|---|---|
+| vocabulary | 22 | 9 | **1** |
+| position written by hand | name it | full context | **nothing** |
+| non-hole args | inferred | written | **inferred** |
+
+⛔ **CONTROLS** — it fails rather than guessing:
+· wrong chain supplied → `u != t of type RTm Γ`, rc=42
+· former with no `congFor` entry (`lam`) → `Γ ∙ != Γ`, rc=42
+
+⚠ **SCOPE**: `congFor` currently covers `app`/`pair`/`fst`/`snd`.
+Extending to the remaining congruences is mechanical — one line each.
+⬜ Not yet applied to any Knot file; that is the next measurement.
+
+★ **And reflection is ALREADY ESTABLISHED HERE**:
+`Metatheory/FormerCensus` uses a `macro` under `--safe`, and its header
+records *"`Agda.Builtin.Reflection` works under `--safe` (measured
+2026-09-01)"*. This is not a new dependency.
+
+### ⇒ THE ROUTE THAT DOES *NOT* WORK: `decTm`
 
 ★★ **Agda cannot infer the context, but WE CAN WRITE THE UNIFICATION
 OURSELVES — and this project already does, 19 times.** `Lib/IWk` and
@@ -109,11 +179,18 @@ error**, and success carries **no proof obligation**. That is exactly
 "write the higher-order unification ourselves", and it is already Lib
 vocabulary.
 
-⬜ **The missing piece is `decTm : (s t : RTm Γ) → Maybe (s ≡ t)`** —
-decidable equality on terms — without which `findCxt whole redex` cannot
-recognise the redex. `decVar` exists for `Var`; `decTm` does not, and is
-~30 clauses plus congruence. **That, not `⟶*-at`, is the real
-prerequisite**, and it is the only path on which item 1 pays.
+⛔ **MEASURED: `decTm` would NOT work, so do not build it.** The whole
+`dec*` family sticks on abstract arguments:
+
+```
+decVar vz a != nothing of type Maybe (vz ≡ a)
+```
+
+⇒ same fundamental reason the equation gate failed: a structural
+recursion cannot run when an argument's head is abstract, and adequacy
+always has abstract heads. The 19 existing `dec*` procedures work
+because they are applied to *structurally concrete* generator-built
+terms. **~30 clauses that would not have paid.**
 
 ## 2. ⛔ ADEQUACY AS AN EQUATION — **GATE RUN, AND IT FAILED**
 
@@ -231,3 +308,74 @@ found item 1: `subTm-monoˢ` is not "the same type modulo holes", it is a
 **generalization**. The relation that actually shrinks a codebase is
 *"N instances of one theorem"*, not *"two copies of one theorem"*.
 ⇒ see `AGDA-TYPE-SEARCH-PROPOSAL.md`; this is a new tier.
+
+---
+
+## 8. ★★ GENERALISING THE WF AXIS — "COMPUTE THE RELATION"
+
+The WF axis's essence is **not orders**. It replaces an inductive
+RELATION with a COMPUTING function plus an equation, so discharging it
+becomes **conversion**. Applied more widely:
+
+| relation | could compute as | status |
+|---|---|---|
+| termination / order | `Hom Nat` reduces | ✅ done — the WF axis |
+| **de Bruijn lookup** (`here`/`there`) | `vsⁿ`-style computation | ⬜ **the migration — 75% of the wf burden** |
+| `IConWf` / `ICodeWf` | `wfCon … ≡ true` | ⬜ needs the checker below |
+| `Γ ⊢ t ∷ A` | a **bidirectional type checker** | ⬜ **§8.2 — do not forget** |
+| occurrence | `occTm x t ≡ false` | ✅ already computes (Bool-valued) |
+
+### ★ THE CRITERION FOR WHEN THIS MOVE WORKS
+
+Everything this session turned on one line, and it is worth stating
+once:
+
+> **The axis-style move works exactly where the SUBJECT IS CONCRETE.**
+
+- adequacy quantifies over abstract `t`, `i` ⇒ `nf` stuck, `decTm` stuck,
+  the equation gate **failed**
+- a macro sees concrete *syntax* at elaboration time ⇒ **worked**
+- wf rows are about **concrete** contexts and `ICon`s ⇒ **eligible**
+
+That predicts which relations are winnable, and it explains why `occTm`
+already computes while `⟶*` never will.
+
+### 8.1 The measured split — what the wf burden actually IS
+
+`RedWfA` + `RedWfB` + `TyRedWf` + `Wf` = **9 944 lines**, ~19% of the
+Knot, and the proof tokens in them are:
+
+| | tokens | share |
+|---|---|---|
+| de Bruijn lookup (`there`/`here`) | **14 256** | **62%** |
+| `⊢var` (the lookup wrapper) | 3 101 | 13% |
+| genuine typing constructors | 5 583 | 24% |
+
+⇒ **three quarters of the wf burden is variable lookup, not typing** —
+and §9 already measured that a computing lookup is FOUR LINES, refl-equal
+to the hand-counted towers. ⬜ That is the migration to do first.
+⚠ The unproven step is the **derivation-level bridge**: §9 proved the
+*terms* agree by `refl`; producing an `IConWf` derivation from a computed
+lookup is a different obligation and is the first thing to test.
+
+### 8.2 ⬜ THE BIDIRECTIONAL TYPE CHECKER — parked, NOT dropped
+
+The remaining 24% needs `Θ ⊢ κ ∷ U` decided, i.e. a **bidirectional type
+checker for the whole kernel**, plus its soundness proof
+(`wfCon … ≡ true → IConWf …`). That is the largest single piece of work
+identified anywhere in these notes — plausibly larger than everything in
+§§1-7 combined.
+
+★ **But it is also the biggest prize, and it is not only about wf:**
+- it would decide `IConWf`/`ICodeWf` outright
+- the `⊢…` derivations throughout the Knot become `refl`
+- it is the same artefact `KNOT-LESSONS` §8 says the generator is
+  *already* approximating in Python (`infer_sorts` IS type inference)
+- ⇒ writing it once, in Agda, retires both the generator's inference AND
+  the hand-built derivations
+
+⚠ **Its eligibility is already established by the criterion above**: the
+subjects are concrete generated rows, so a checker WOULD compute on them
+— unlike everything that failed this session.
+⬜ Not scheduled. Do not start it on the strength of a stub probe; do the
+§8.1 migration first and re-measure.

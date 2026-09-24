@@ -105,10 +105,10 @@ extSK-agree-vs :
   ⟶* enTm {Δ ∙} {Θ} (extS σ (vs x))
 extSK-agree-vs {Γ} {Δ} {Θ} {σ = σ} {s = s} d h x =
       (⟶*-appˡ (⟶*-appˡ (extSK-vs _ _ _)) »
-       ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done)))) »
-       ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
-       ⟶*-appˡ (⟶*-appˡ (step (β _ _) done)) »
-       ⟶*-appˡ (step (β _ _) done) »
+       ⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (⟶*-appˡ (step (β _ _) done))) »
+                ⟶*-appˡ (⟶*-appˡ (step (β _ _) done) »
+                         step (β _ _) done) »
+                step (β _ _) done) »
        step (β _ _) done »
        -- ★★★ RECOGNISE THE WRAPPER FIRST.  After the five βs the
        --   substitutions are DISTRIBUTED over `wkTmK`'s unfolding, so
@@ -121,8 +121,8 @@ extSK-agree-vs {Γ} {Δ} {Θ} {σ = σ} {s = s} d h x =
        ⟶*-appˡ (⟶*-appˡ (⟶*-ielimᵗ
          (⟶*-appʳ (⟶*-jsubᵖ (⟶*-jsubᵖ (⟶*-jsubᵖ
             (sel-there≡ 2 tw (sel-there≡ 1 refl (sel-there≡ 0 refl (sel-here≡ refl)))))) »
-                   ⟶*-jsubᵖ (⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done)) »
-                   ⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done) »
+                   ⟶*-jsubᵖ (⟶*-jsubᵖ (step (jsub-refl _ _ _ _) done) »
+                             step (jsub-refl _ _ _ _) done) »
                    step (jsub-refl _ _ _ _) done »
                    sel-there≡ 0 tw (sel-here≡ refl)) »
           h x))) »

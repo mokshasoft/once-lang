@@ -6755,6 +6755,77 @@ def _collapse_nested(src):
             return src
         src = out
 
+# ---------------------------------------------------------------------------
+# ★ FACTOR A CONGRUENCE PREFIX REPEATED ACROSS `»` ELEMENTS.
+#
+#     ⟶*-C (A) »          ⟶*-C (A »
+#     ⟶*-C (B) »    ==>           B »
+#     ⟶*-C (C) »                  C) »
+#
+# A congruence commutes with `»`, so this is type-preserving — and it makes
+# the STRUCTURE visible ("in this context, do these three things"), which
+# the repeated form hides.  MEASURED: 181 sites / 13 files / −325
+# congruence tokens (−12%).
+#
+# ⚠⚠ `_fseq` IS GREEDY, so the body offset MUST be re-scanned against the
+#   COMMON prefix, not the greedy one.  Getting that wrong emits syntactic
+#   GARBAGE (parse error at RenAgree:111) — and because this runs inside
+#   the generator, a crash mid-run leaves a TRUNCATED .agda on disk.  It
+#   did once: `SzAgree.agda` lost 383 lines and had to be restored from
+#   git.  ⇒ this function must never raise.
+# ---------------------------------------------------------------------------
+_FCONG = re.compile(r"⟶\*-[a-zA-Z\u02e1\u02b3\u1d43\u1d57\u1d58\u1d56\u1d9c\u1d48\u1d49\u2071\u1d50\u1dbb\u02e2\u207f]+ \(")
+
+
+def _fseq(ln):
+    i = len(ln) - len(ln.lstrip()); out = []
+    while True:
+        m = _FCONG.match(ln, i)
+        if not m: break
+        out.append(m.group(0)); i = m.end()
+    return len(ln) - len(ln.lstrip()), out
+
+
+def _factor_cong(text):
+    lines = text.split("\n"); out = []; i = 0; n = 0
+    while i < len(lines):
+        ind, seq = _fseq(lines[i])
+        if not seq or not lines[i].rstrip().endswith("»"):
+            out.append(lines[i]); i += 1; continue
+        run = [i]; j = i + 1; common = list(seq)
+        while j < len(lines):
+            ind2, seq2 = _fseq(lines[j])
+            if ind2 != ind or not seq2: break
+            k = 0
+            while k < len(common) and k < len(seq2) and common[k] == seq2[k]: k += 1
+            if k == 0: break
+            common = common[:k]; run.append(j)
+            if not lines[j].rstrip().endswith("»"): j += 1; break
+            j += 1
+        if len(run) < 2:
+            out.append(lines[i]); i += 1; continue
+        pre = "".join(common); npar = len(common); frags = []; ok = True
+        for r in run:
+            b = len(lines[r]) - len(lines[r].lstrip())
+            for c in common:                      # re-scan on COMMON, not greedy
+                if not lines[r].startswith(c, b): ok = False; break
+                b += len(c)
+            if not ok: break
+            frag = lines[r][b:].rstrip()
+            if frag.endswith("»"): frag = frag[:-1].rstrip()
+            if not frag.endswith(")" * npar): ok = False; break
+            frags.append(frag[:-npar].rstrip())
+        if not ok:
+            out.append(lines[i]); i += 1; continue
+        pad = " " * (ind + len(pre))
+        out.append(" " * ind + pre + frags[0] + " »")
+        for f in frags[1:-1]: out.append(pad + f + " »")
+        out.append(pad + frags[-1] + ")" * npar +
+                   (" »" if lines[run[-1]].rstrip().endswith("»") else ""))
+        n += len(run) - 1; i = run[-1] + 1
+    return "\n".join(out), n
+
+
 def _evspine(src):
     """Replace hand-built chains with `Lib/Eval` calls.
 
@@ -6771,6 +6842,12 @@ def _evspine(src):
     if m:
         names.append("evProj")
     out = _collapse_nested(out)
+    # ⚠ ITERATE: factoring CASCADES — collapsing one run brings the
+    #   next two elements to the same indent and exposes a new one.
+    #   A single pass left 7 sites unfactored across the tree.
+    while True:
+        out, _nf = _factor_cong(out)
+        if not _nf: break
     if not names:
         return out
     imp = "open import DirectedHoTT.Lib.Eval using ( %s; chainOf )" % "; ".join(names)
