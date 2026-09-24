@@ -43,7 +43,7 @@ open import Once.IRTy using (⌊⟧T-commute; ⌈⟧TI-commute; eraseF; ⌈_⌉F
 import Once.IRTy as II
 open import Once.IRTy.WF using (wf-⌊⌋)
 open import Once.Denotation.Meaning using (cata-sem; cata-ev-algᴰ-D)
-open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased; subst-T-projTrace; pairᴰ-subst⁻; T-ext; subst-T-valueT; subst-T-stoppedT)
+open import Once.Adequacy.CataErased fmt using (evalᴰ-Cata-erased; subst-T-projTrace; pairᴰ-subst⁻; T-ext; subst-T-resT)
 open import Once.Adequacy.LiftFnReduce fmt using (liftFn-apply; liftFn-∘; liftFn-terminal)
 open import Once.Adequacy.AnaErased fmt using
   (coerce-SFRel; coh-to-TRel; inject-coh-nat; forget-coh-gen;
@@ -56,7 +56,8 @@ open import Once.Surface.Syntax using (Expr; Ctx; Usage; ∅; zeroUsage; ⟦_⟧
 open import Once.Surface.Elaborate using (elaborate; cataM)
 import Once.Compile as C
 open import Once.Denotation.Trace using (SigOpEvent)
-open import Once.Denotation.TraceMonad using (T; returnT; valueT; projTrace; stoppedT; atT; _>>=T_; bindAt; fmapT; join-es-idʳ; join-st-idʳ)
+open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong)
+open import Once.Denotation.TraceMonad using (T; returnT; valueT; projTrace; stoppedT; atT; _>>=T_; bindAt; fmapT; bindRes-mapʳ; >>=T-mapʳ; bindRes; bindResAt; >>=T-at)
 open import Once.Functor.Translate using (translateF)
 open import Once.Word using (Carrier)
 open import Once.Semantics.Functor using (SFunctor; ⟦_⟧SF)
@@ -92,16 +93,26 @@ forget-inject {A + B}  (inj₁ a) = cong inj₁ (forget-inject {A} a)
 forget-inject {A + B}  (inj₂ b) = cong inj₂ (forget-inject {B} b)
 -- D143: at an ERASED arrow neither side carries an argument of type `A`, so
 -- there is no round-trip on the domain — only the codomain's IH is used.
+-- plan 0.98: the round trip happens UNDER `mapRes`. `inject` at an arrow is
+-- `resT-lift ∘ mapRes inject` and `forget` is `mapRes forget ∘ T.resT`, so the
+-- two maps fuse and the codomain's IH applies pointwise inside.
 forget-inject {A ⇒[ mk-kind Zero π ] B} pf =
-  extensionality (λ u → forget-inject {B} (pf u))
+  extensionality (λ u →
+    trans (mapRes-∘ forget inject (pf u))
+    (trans (mapRes-cong (λ z → forget-inject {B} z) (pf u))
+           (mapRes-id (pf u))))
 forget-inject {A ⇒[ mk-kind One π ] B} pf =
   extensionality (λ va →
-    trans (cong (λ z → forget (inject (pf z))) (forget-inject {A} va))
-          (forget-inject {B} (pf va)))
+    trans (cong (λ z → mapRes forget (mapRes inject (pf z))) (forget-inject {A} va))
+    (trans (mapRes-∘ forget inject (pf va))
+    (trans (mapRes-cong (λ z → forget-inject {B} z) (pf va))
+           (mapRes-id (pf va)))))
 forget-inject {A ⇒[ mk-kind Many π ] B} pf =
   extensionality (λ va →
-    trans (cong (λ z → forget (inject (pf z))) (forget-inject {A} va))
-          (forget-inject {B} (pf va)))
+    trans (cong (λ z → mapRes forget (mapRes inject (pf z))) (forget-inject {A} va))
+    (trans (mapRes-∘ forget inject (pf va))
+    (trans (mapRes-cong (λ z → forget-inject {B} z) (pf va))
+           (mapRes-id (pf va)))))
 
 ------------------------------------------------------------------------
 -- Closure-bridge — replaces the retired `build-pure`. The elaborated
@@ -139,10 +150,17 @@ subst-arrow refl refl g = refl
 -- naturally pointwise in the budget (they go through `bindAt`), and `atT`
 -- bundles the three fields at one budget — so this is the bridge from that
 -- shape to the equation of computations the statements now want.
+-- A bind reads the head's result ONCE, so mapping the result before binding
+-- is the same as composing the map into the continuation.
+bindResAt-mapRes : ∀ {X Y Z : Set} (f : Y → T Z) (g : X → Y) (n : ℕ)
+                     (es : List SigOpEvent) (r : Res X)
+                 → bindResAt f n es (mapRes g r) ≡ bindResAt (λ x → f (g x)) n es r
+bindResAt-mapRes f g n es stopped     = refl
+bindResAt-mapRes f g n es (returns x) = refl
+
+-- plan 0.98: the budget view is a PAIR, so this is two `cong`s, not three.
 T-ext-at : ∀ {X : Set} {l r : T X} → (∀ n → atT l n ≡ atT r n) → l ≡ r
-T-ext-at h = T-ext (λ n → cong proj₁ (h n))
-                   (cong (λ z → proj₁ (proj₂ z)) (h 0))
-                   (cong (λ z → proj₂ (proj₂ z)) (h 0))
+T-ext-at h = T-ext (λ n → cong proj₁ (h n)) (cong proj₂ (h 0))
 
 -- D143: `apply ∘ ⟨ … ⟩` requires `⌊D ⇒[kk] E⌋ ≡ ⌊D⌋ ⇛ ⌊E⌋`, which holds only
 -- at a NON-erased arrow — `⌊_⌋` sends a `Zero`-graded one to `Unit ⇛ ⌊E⌋`.
@@ -156,7 +174,7 @@ morph-app-bridge : ∀ {D E π} (morph : Expr ∅ zeroUsage (D ⇒[ mk-kind Many
                      (w : ⟦ D ⟧ᴰ)
                    → liftFn fmt {D} {E} (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w
                      ≡ (SD.⟦ morph ⟧ˢ fmt tt >>=T (λ clo → clo w))
-morph-app-bridge {D} {E} morph ih w =
+morph-app-bridge {D} {E} {π} morph ih w =
   trans (cong (λ X → subst T (cohᴰ E) X) app-⟨⟩-clean)
     (trans (cong (λ h → subst T (cohᴰ E) (h >>=T (λ vf → vf w'))) ih-evalᴰ)
            (transport-apply-bind (cohᴰ D) (cohᴰ E) (SD.⟦ morph ⟧ˢ fmt tt) w))
@@ -171,20 +189,37 @@ morph-app-bridge {D} {E} morph ih w =
     -- `cong` on the trace alone would leave the budget un-rewritten.
     app-⟨⟩-clean : evalᴰ fmt (apply ∘ ⟨ elaborate C.Heap morph ∘ terminal , id ⟩) w'
                    ≡ (evalᴰ fmt (elaborate C.Heap morph) tt >>=T (λ vf → vf w'))
-    app-⟨⟩-clean = T-ext-at (λ j → cong (bindAt (evalᴰ fmt (apply {⌊ D ⌋} {⌊ E ⌋})) j) (pair-eq j))
+    -- plan 0.98: the pair-build's residual is a `mapRes` on the RESULT, and a
+    -- bind reads that result once — so the two binds differ only by which
+    -- function they apply to the value, which is `bindResAt-mapRes`.
+    app-⟨⟩-clean = T-ext-at (λ j →
+      trans (>>=T-at (evalᴰ fmt ⟨ elaborate C.Heap morph ∘ terminal {⌊ D ⌋} , id {⌊ D ⌋} ⟩ w')
+                     (evalᴰ fmt (apply {⌊ D ⌋} {⌊ E ⌋})) j)
+      (trans (cong (bindAt (evalᴰ fmt (apply {⌊ D ⌋} {⌊ E ⌋})) j) (pair-eq j))
+      (trans (bindResAt-mapRes (evalᴰ fmt (apply {⌊ D ⌋} {⌊ E ⌋})) (λ v → (v , w'))
+                               j (projTrace mc j) (T.resT mc))
+             (sym (>>=T-at mc (λ vf → vf w') j)))))
       where
         mc = evalᴰ fmt (elaborate C.Heap morph) tt
 
-        -- plan 0.97: the pair-build's residual is no longer a bare `++ []` —
-        -- it is `join-es b _ []` and `join-st b false`, the monad's two RIGHT
-        -- identities, which is what `join-es-idʳ`/`join-st-idʳ` are. (On the
-        -- stopped branch there is nothing to remove at all; that is why they
-        -- are lemmas rather than `++-identityʳ`.)
+        -- plan 0.98: the pair-build's residual is ONE lemma now. 0.97 had to
+        -- fix up the trace and the flag separately (`join-es-idʳ` /
+        -- `join-st-idʳ`) because the budget view was a triple; the pair-build
+        -- is just `mc` with its value paired against `w'`, i.e. a `fmapT`, and
+        -- its stopped branch has no `++ []` to remove because no sequel was
+        -- ever built.
+        -- Split on `mc`'s RESULT: stopped leaves the head's own trace with no
+        -- sequel built, and returning leaves the pair-build's `++ []`.
+        pair-eq-of : ∀ (r : Res ⟦ ⌊ D ⇒[ mk-kind Many π ] E ⌋ ⟧ᴰᴵ) (j : ℕ)
+                   → atT (bindRes (λ n → T.trT mc n) r
+                            (λ b → evalᴰ fmt (id {⌊ D ⌋}) w' >>=T (λ c → returnT (b , c)))) j
+                     ≡ (projTrace mc j , mapRes (λ v → (v , w')) r)
+        pair-eq-of stopped     j = refl
+        pair-eq-of (returns v) j = cong (_, returns (v , w')) (++-identityʳ (T.trT mc j))
+
         pair-eq : ∀ j → atT (evalᴰ fmt ⟨ elaborate C.Heap morph ∘ terminal {⌊ D ⌋} , id {⌊ D ⌋} ⟩ w') j
-                        ≡ (projTrace mc j , stoppedT mc j , (valueT mc j , w'))
-        pair-eq j = cong₂ (λ es b → (es , b , (valueT mc j , w')))
-                          (join-es-idʳ (stoppedT mc j) (projTrace mc j))
-                          (join-st-idʳ (stoppedT mc j))
+                        ≡ (projTrace mc j , mapRes (λ v → (v , w')) (T.resT mc))
+        pair-eq j = pair-eq-of (T.resT mc) j
     -- `ih` in `evalᴰ`-form: `evalᴰ (elaborate morph) tt ≡ subst T (sym cohᴰ(D⇒E)) (SD.⟦morph⟧ˢ tt)`.
     ih-evalᴰ : evalᴰ fmt (elaborate C.Heap morph) tt
                ≡ subst T (sym (cong₂ (λ x y → x → T y) (cohᴰ D) (cohᴰ E))) (SD.⟦ morph ⟧ˢ fmt tt)
@@ -307,11 +342,6 @@ subst-T-trace : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (k : ℕ)
   → projTrace (subst T eq h) k ≡ projTrace h k
 subst-T-trace refl h k = refl
 
--- plan 0.97: …nor the STOP FLAG.
-subst-T-stop : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (k : ℕ)
-  → stoppedT (subst T eq h) k ≡ stoppedT h k
-subst-T-stop refl h k = refl
-
 -- `subst` along a `cong`ed equation is `subst` along the equation itself.
 subst-id-cong : ∀ {W : Set₁} (P : W → Set) {w w' : W} (eq : w ≡ w') (v : P w)
   → subst (λ z → z) (cong P eq) v ≡ subst P eq v
@@ -329,9 +359,9 @@ subst-fam-T : ∀ {W : Set₁} (P : W → Set) {w w' : W} (eq : w ≡ w') (m : T
   → subst (λ Z → T (P Z)) eq m ≡ subst T (cong P eq) m
 subst-fam-T P refl m = refl
 
-valueT-subst : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X) (m : ℕ)
-  → valueT (subst T eq h) m ≡ subst (λ z → z) eq (valueT h m)
-valueT-subst refl h m = refl
+-- plan 0.98: the `valueT`-transport lemma is GONE. A transport moves the
+-- RESULT, not a value — `subst-T-resT` (CataErased) is its replacement, and it
+-- needs no "there is a value" side condition because `mapRes` has none.
 -- D179: `ana`-faithfulness is now ONE claim. Both sides denote `anaᵈ` over
 -- their own coalgebra and emit nothing, so the old split — an `ana-events`
 -- trace bridge PLUS a `sem-ana` value bridge, reconciled by hand — is gone.
@@ -396,11 +426,6 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ =
     seedOf : ⟦ A ⟧ᴰ → ⟦ ⌊ A ⌋ ⟧ᴰᴵ
     seedOf x = subst (λ z → z) (sym (cohᴰ A)) x
 
-    -- `v0`: the coalgebra's value, read off the SHARED underlying computation
-    -- `evalᴰ fmt coalgIR`. Both sides are a `fmapT` over this one thing.
-    v0 : ⟦ A ⟧ᴰ → ℕ → ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ
-    v0 x k = valueT (evalᴰ fmt coalgIR (seedOf x)) k
-
     -- The IR side's computation IS the shared one, up to `coalg'`'s codomain
     -- transport.
     e-eq : ∀ (x : ⟦ A ⟧ᴰ)
@@ -419,7 +444,13 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ =
           (subst (λ Z → T (⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z)) (cohᴰ A)
             (fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (cE (seedOf x))))
         ≡ fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS x)
-    per-x-D179 x = T-ext tr (st 0) (vl 0)
+    -- plan 0.98: TWO obligations became ONE. 0.97 proved the stop flag and the
+    -- value separately (`st` by eight `subst-T-stop` steps, `vl` by the
+    -- `coerce-νin-erase-D` chain) and `T-ext` consumed both. With the value
+    -- inside `Res` there is a single result field, and the coercion chain that
+    -- acted on the value now acts UNDER `mapRes` — so the flag half comes for
+    -- free: `mapRes` cannot turn a `stopped` into a `returns`.
+    per-x-D179 x = T-ext tr res-eq
       where
         -- Traces: neither `subst` nor `fmapT` touches a trace, so both sides
         -- reduce to the trace of the SHARED `evalᴰ fmt coalgIR` computation.
@@ -446,68 +477,107 @@ ana-body {Γ = Γ} {F = F} {A = A} {π = π} wf coalg ih dγ =
             t7 = sym (subst-T-trace (cohᴰ (⟦ F ⟧T A)) _ k)
             t8 = cong (λ m → projTrace m k) (sym (s-eq x))
 
-        -- plan 0.97: the STOP FLAG, the same eight steps — neither `subst`
-        -- nor `fmapT` touches it either.
-        st : ∀ k → stoppedT LHSm k ≡ stoppedT (fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS x)) k
-        st k = t1 ⟨s⟩ t2 ⟨s⟩ t3 ⟨s⟩ t4 ⟨s⟩ t5 ⟨s⟩ t6 ⟨s⟩ t7 ⟨s⟩ t8
-          where
-            infixr 5 _⟨s⟩_
-            _⟨s⟩_ : ∀ {X : Set} {a b c : X} → a ≡ b → b ≡ c → a ≡ c
-            _⟨s⟩_ = trans
+        -- plan 0.98: `R0` replaces 0.97's `v0`. `v0` read a VALUE at a budget;
+        -- the result does not depend on the budget (only the trace does), so
+        -- the index went with the value.
+        R0 : Res ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ
+        R0 = T.resT (evalᴰ fmt coalgIR (seedOf x))
 
-            t1 = cong (λ m → stoppedT m k) (subst-fam-T (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F) _)
-            t2 = subst-T-stop (cong (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F)) _ k
-            t3 = cong (λ m → stoppedT m k)
-                   (subst-fam-T (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A) _)
-            t4 = subst-T-stop
-                   (cong (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A)) _ k
-            t5 = cong (λ m → stoppedT m k) (e-eq x)
-            t6 = subst-T-stop (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) _ k
-            t7 = sym (subst-T-stop (cohᴰ (⟦ F ⟧T A)) _ k)
-            t8 = cong (λ m → stoppedT m k) (sym (s-eq x))
-
-        -- Values: push both `subst`s through `valueT`, and what is left on the
-        -- left is EXACTLY `coerce-νin-erase-D`'s statement at the coalgebra's
-        -- value `v0 x k`, with the right-hand side reached through the IH.
         infixr 5 _⟨v⟩_
         _⟨v⟩_ : ∀ {X : Set} {a b c : X} → a ≡ b → b ≡ c → a ≡ c
         _⟨v⟩_ = trans
 
-        lhs-shape : ∀ k
-          → valueT LHSm k
-            ≡ subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F)
-                (coerce-ν-in ⌈ eraseF F ⌉F ⟦ A ⟧ᴰ
-                  (subst (λ Z → ⟦ ⌈ eraseF F ⌉F ⟧F Z) (cohᴰ A)
-                    (coerce-functor-D ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ F A (v0 x k)))))
-        lhs-shape k =
-            cong (λ m → valueT m k) (subst-fam-T (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F) _)
-          ⟨v⟩ valueT-subst (cong (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F)) _ k
-          ⟨v⟩ subst-id-cong (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F) _
-          ⟨v⟩ cong (subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F))
-                (  cong (λ m → valueT m k)
-                     (subst-fam-T (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A) _)
-                 ⟨v⟩ valueT-subst
-                       (cong (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A)) _ k
-                 ⟨v⟩ subst-id-cong (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A) _
-                 ⟨v⟩ coerce-ν-in-subst ⌈ eraseF F ⌉F (cohᴰ A) _
-                 ⟨v⟩ cong (λ w → coerce-ν-in ⌈ eraseF F ⌉F ⟦ A ⟧ᴰ
-                             (subst (λ Z → ⟦ ⌈ eraseF F ⌉F ⟧F Z) (cohᴰ A)
-                               (coerce-functor-D ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉
-                                 (subst (λ Ty → ⟦ Ty ⟧ᴰ) (⌈⟧TI-commute (eraseF F) ⌊ A ⌋) w))))
-                        (  cong (λ m → valueT m k) (e-eq x)
-                         ⟨v⟩ valueT-subst (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) _ k))
+        -- The two coercion chains, read as functions of the coalgebra's
+        -- RESULT. They are exactly the two sides of `coerce-νin-erase-D`, and
+        -- each side's result is its chain `mapRes`ed over the shared `R0`.
+        fM : ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF ⟦ ⌊ A ⌋ ⟧ᴰᴵ
+        fM w = coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ
+                 (coerce-functor-D ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ F A w))
 
-        rhs-shape : ∀ k
-          → valueT (fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS x)) k
-            ≡ coerce-ν-in F ⟦ A ⟧ᴰ
-                (coerce-functor-D F A (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) (v0 x k)))
-        rhs-shape k =
-          cong (λ w → coerce-ν-in F ⟦ A ⟧ᴰ (coerce-functor-D F A w))
-            (  cong (λ m → valueT m k) (s-eq x)
-             ⟨v⟩ valueT-subst (cohᴰ (⟦ F ⟧T A)) _ k)
+        fI : ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF ⟦ A ⟧ᴰ
+        fI w = coerce-ν-in ⌈ eraseF F ⌉F ⟦ A ⟧ᴰ
+                 (subst (λ Z → ⟦ ⌈ eraseF F ⌉F ⟧F Z) (cohᴰ A)
+                   (coerce-functor-D ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ F A w)))
 
-        vl : ∀ k → valueT LHSm k ≡ valueT (fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS x)) k
-        vl k = lhs-shape k ⟨v⟩ coerce-νin-erase-D F A (v0 x k) ⟨v⟩ sym (rhs-shape k)
+        fL : ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ → ⟦ translateF Carrier Carrier F ⟧SF ⟦ A ⟧ᴰ
+        fL w = subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F) (fI w)
+
+        fR : ⟦ ⌊ ⟦ F ⟧T A ⌋ ⟧ᴰᴵ → ⟦ translateF Carrier Carrier F ⟧SF ⟦ A ⟧ᴰ
+        fR w = coerce-ν-in F ⟦ A ⟧ᴰ
+                 (coerce-functor-D F A (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) w))
+
+        -- The IR side, innermost first: the coalgebra's own computation IS the
+        -- shared one (`e-eq`), a transport moves a result by `mapRes`
+        -- (`subst-T-resT`), and `fmapT` IS `mapRes` on the result — so the
+        -- three maps fuse into `fM`.
+        m2-shape : T.resT (fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (cE (seedOf x)))
+                 ≡ mapRes fM R0
+        m2-shape =
+            cong (λ mm → T.resT (fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
+                           (fmapT (λ y → coerce-functor-D ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉
+                                           (subst (λ Ty → ⟦ Ty ⟧ᴰ)
+                                                  (⌈⟧TI-commute (eraseF F) ⌊ A ⌋) y))
+                                  mm)))
+                 (e-eq x)
+          ⟨v⟩ cong (λ r → mapRes (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
+                            (mapRes (λ y → coerce-functor-D ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉
+                                             (subst (λ Ty → ⟦ Ty ⟧ᴰ)
+                                                    (⌈⟧TI-commute (eraseF F) ⌊ A ⌋) y)) r))
+                   (subst-T-resT (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)) (evalᴰ fmt coalgIR (seedOf x)))
+          ⟨v⟩ cong (mapRes (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ))
+                   (mapRes-∘ (λ y → coerce-functor-D ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉
+                                      (subst (λ Ty → ⟦ Ty ⟧ᴰ)
+                                             (⌈⟧TI-commute (eraseF F) ⌊ A ⌋) y))
+                             (subst (λ z → z) (cong ⟦_⟧ᴰᴵ (⌊⟧T-commute F A)))
+                             R0)
+          ⟨v⟩ mapRes-∘ (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ)
+                       (λ w → coerce-functor-D ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ F A w))
+                       R0
+
+        -- …then the carrier transport, which passes through `coerce-ν-in`
+        -- (`coerce-ν-in-subst`) once it is on the value side of the `mapRes`.
+        inner-shape : T.resT (subst (λ Z → T (⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z)) (cohᴰ A)
+                               (fmapT (coerce-ν-in ⌈ eraseF F ⌉F ⟦ ⌊ A ⌋ ⟧ᴰᴵ) (cE (seedOf x))))
+                    ≡ mapRes fI R0
+        inner-shape =
+            cong T.resT (subst-fam-T (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A) _)
+          ⟨v⟩ subst-T-resT (cong (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A)) _
+          ⟨v⟩ mapRes-cong (subst-id-cong (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A)) _
+          ⟨v⟩ cong (mapRes (subst (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A))) m2-shape
+          ⟨v⟩ mapRes-∘ (subst (λ Z → ⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z) (cohᴰ A)) fM R0
+          ⟨v⟩ mapRes-cong (λ w → coerce-ν-in-subst ⌈ eraseF F ⌉F (cohᴰ A)
+                                   (coerce-functor-D ⌈ eraseF F ⌉F ⌈ ⌊ A ⌋ ⌉ (VE0ᴰ F A w))) R0
+
+        -- …and finally the functor transport.
+        lhs-shape : T.resT LHSm ≡ mapRes fL R0
+        lhs-shape =
+            cong T.resT (subst-fam-T (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F) _)
+          ⟨v⟩ subst-T-resT (cong (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F)) _
+          ⟨v⟩ mapRes-cong (subst-id-cong (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F)) _
+          ⟨v⟩ cong (mapRes (subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F))) inner-shape
+          ⟨v⟩ mapRes-∘ (subst (λ H → ⟦ H ⟧SF ⟦ A ⟧ᴰ) (tF-coh F)) fI R0
+
+        -- The surface side, the same way: its computation is the shared one
+        -- too (that is the IH, via `s-eq`), so its result is `fR` over `R0`.
+        rhs-shape : T.resT (fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS x)) ≡ mapRes fR R0
+        rhs-shape =
+            cong (λ mm → T.resT (fmapT (coerce-ν-in F ⟦ A ⟧ᴰ)
+                           (fmapT (coerce-functor-D F A) mm)))
+                 (s-eq x)
+          ⟨v⟩ cong (λ r → mapRes (coerce-ν-in F ⟦ A ⟧ᴰ) (mapRes (coerce-functor-D F A) r))
+                   (subst-T-resT (cohᴰ (⟦ F ⟧T A)) (evalᴰ fmt coalgIR (seedOf x)))
+          ⟨v⟩ cong (mapRes (coerce-ν-in F ⟦ A ⟧ᴰ))
+                   (mapRes-∘ (coerce-functor-D F A) (subst (λ z → z) (cohᴰ (⟦ F ⟧T A))) R0)
+          ⟨v⟩ mapRes-∘ (coerce-ν-in F ⟦ A ⟧ᴰ)
+                       (λ w → coerce-functor-D F A (subst (λ z → z) (cohᴰ (⟦ F ⟧T A)) w))
+                       R0
+
+        -- Both sides are the SAME result mapped by the two chains, and the two
+        -- chains agree pointwise — that is `coerce-νin-erase-D`, unchanged.
+        res-eq : T.resT LHSm ≡ T.resT (fmapT (coerce-ν-in F ⟦ A ⟧ᴰ) (cS x))
+        res-eq = lhs-shape
+          ⟨v⟩ mapRes-cong (coerce-νin-erase-D F A) R0
+          ⟨v⟩ sym rhs-shape
     coalg-agree =
       trans (push-subst-fn (tF-coh F)
               (λ x → subst (λ Z → T (⟦ translateF Carrier Carrier ⌈ eraseF F ⌉F ⟧SF Z)) (cohᴰ A)
