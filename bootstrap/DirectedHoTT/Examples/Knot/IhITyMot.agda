@@ -22,6 +22,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhITyMot where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -65,11 +66,11 @@ iihTyMotK =
              ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty iihTyMotK
 ⊢iihTyMotK =
   ty-Π ty-Nat
-   (ty-Π (ty-SubTy (⊢snd (⊢var (there (there here)))) (⊢var here))
+   (ty-Π (ty-SubTy (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))) (⊢var here))
     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
      (ty-Π (ty-IMu KnotWf
-              (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
-        (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there (there here)))))))))
+              (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
+        (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
 
 ------------------------------------------------------------------------
 -- ★ THE JUNK ROW — and for `cICon-i` it is the RIGHT answer: `Unit`.
@@ -84,11 +85,11 @@ iihTyJunk = lam (lam (lam (lam (lam (lam (lam Ty-UnitK))))))
 ⊢iihTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢iihTyMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there here))))) (⊢var here))
+      (⊢lam (ty-SubTy (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))) (⊢var here))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
           (⊢lam (ty-IMu KnotWf
-                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
-            (⊢Ty-UnitKv _ (⊢var (there (there (there here)))))))))
+                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
+            (⊢Ty-UnitKv _ (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE DESCENT THROUGH THE FOUR Π BINDERS, ONCE.

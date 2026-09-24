@@ -29,6 +29,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.ILookupD where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -87,7 +88,7 @@ ilookupCons =
            ⊢IPair ⊢ilookupMotK
     (⊢lam ty-Nat
       (⊢natrec (ty-IMu KnotWf (⊢ixP ⊢sICon (⊢nsuc ⊢nzero)))
-               (⊢fst (⊢var (there (there here))))
+               (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))
                (⊢app (⊢ihHere
                         {D = KnotD} {I = IPair}
                         {σ = iext (isingle (var (vs (vs (vs (vs (vs vz)))))))
@@ -101,7 +102,7 @@ ilookupCons =
                            (iρ (pair sIDesc (snd (var (vs vz))))
                              (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sIDesc) iι))
                            {q = var (vs (vs (vs (vs vz))))} {M = ilookupMotK}
-                           (⊢var (there (there (there here))))))
+                           (⊢var (∋lkp _ (vsⁿ 3 vz)))))
                      (⊢var (there here)))
                (⊢var here)))
 

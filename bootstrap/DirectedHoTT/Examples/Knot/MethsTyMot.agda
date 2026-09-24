@@ -10,6 +10,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.MethsTyMot where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -69,10 +70,10 @@ methsTyMotK =
                ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty methsTyMotK
 ⊢methsTyMotK =
   ty-Π (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there here)))))
-   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there here)))))))
+   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
     (ty-Π ty-Nat
        (ty-IMu KnotWf
-          (⊢ixP ⊢sTy (⊢snd (⊢var (there (there (there (there here))))))))))
+          (⊢ixP ⊢sTy (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))))))
 
 ------------------------------------------------------------------------
 -- ★ THE JUNK ROW — and for `cDesc-nil` it is the RIGHT answer, not junk:
@@ -90,12 +91,12 @@ methsTyJunk = lam (lam (lam (lam (lam (lam Ty-UnitK)))))
                Γ ⊢ methsTyJunk ∷ imethTy KnotD IPair k C methsTyMotK
 ⊢methsTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢methsTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (there (there here))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
       (⊢lam (ty-IMu KnotWf
-               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))
+               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
         (⊢lam ty-Nat
           (⊢Ty-UnitKv _
-            (⊢snd (⊢var (there (there (there (there (there here))))))))))) 
+            (⊢snd (⊢var (∋lkp _ (vsⁿ 5 vz)))))))) 
 
 ------------------------------------------------------------------------
 -- ★★★ THE DESCENT THROUGH THE THREE Π BINDERS, ONCE — and it is the

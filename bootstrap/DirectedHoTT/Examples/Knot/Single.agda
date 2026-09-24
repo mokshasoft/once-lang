@@ -26,6 +26,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Single where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -85,7 +86,7 @@ singleMotK =
               ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty singleMotK
 ⊢singleMotK =
   ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there here))))))
-       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there (there here)))))))
+       (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE IDENTITY METHOD — and it serves 52 of the 53 rows.
@@ -104,7 +105,7 @@ singleId = lam (lam (lam (lam (var vz))))
             Γ ⊢ singleId ∷ imethTy KnotD IPair k C singleMotK
 ⊢singleId k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢singleMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there (there here)))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
           (⊢var here))
 
 ------------------------------------------------------------------------
@@ -134,15 +135,15 @@ singleVs =
             Γ ⊢ singleVs ∷ imethTy KnotD IPair tagVar-vs cVar-vs singleMotK
 ⊢singleVs =
   ⊢methLam KnotD IPair tagVar-vs cVar-vs KnotWf cVar-vsWf ⊢IPair ⊢singleMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (there (there here)))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
           (⊢Tm-varKv _ dsi tx))
   where
-    dp  = ⊢var (there (there here))
+    dp  = ⊢var (∋lkp _ (vsⁿ 2 vz))
     dm  = elAsNat (⊢fst dp)
-    dsi = ⊢pred (⊢snd (⊢var (there (there (there here)))))
-    deq = ⊢symN (⊢pred (⊢snd (⊢var (there (there (there here))))))
+    dsi = ⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))
+    deq = ⊢symN (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))
                 dm
-                (⊢fordPredN (⊢snd (⊢var (there (there (there here)))))
+                (⊢fordPredN (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))
                             dm
                             (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp))))))
     tx  = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))

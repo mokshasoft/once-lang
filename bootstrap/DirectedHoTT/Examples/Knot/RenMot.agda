@@ -38,6 +38,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.RenMot where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl; sym; trans; cong; cong₂ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -132,7 +133,7 @@ extRMotK =
 ⊢extRMotK =
   ty-Π ty-Nat
     (ty-Π (ty-Π (ty-IMu KnotWf
-                   (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there here)))))))
+                   (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
                 (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
           (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢nsuc (⊢var (there here))))))
 
@@ -154,7 +155,7 @@ constMethR = lam (lam (lam (lam (lam (Var-vzK (var (vs vz)))))))
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢extRMotK
     (⊢lam ty-Nat
       (⊢lam (ty-Π (ty-IMu KnotWf
-                     (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
+                     (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
                   (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
         (⊢Var-vzKt (⊢var (there here)))))
 
@@ -194,7 +195,7 @@ extRVs =
                       (⊢var here))
         (⊢lam ty-Nat
           (⊢lam (ty-Π (ty-IMu KnotWf
-                         (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (there (there (there here))))))))
+                         (⊢ixP ⊢sVar (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
                       (ty-IMu KnotWf (⊢ixP ⊢sVar (⊢var (there here)))))
             -- ⚠ TWO β STEPS, INNERMOST FIRST: `sh i` projects `i` twice
             --   and both projections are redexes at `pair sTm n`.
@@ -207,13 +208,13 @@ extRVs =
             (⊢Var-vsKt (⊢var (there here)) (⊢app (⊢var here) tx))))))
   where
     -- the payload binder, and the two components the method needs
-    dp = ⊢var (there (there (there here)))
+    dp = ⊢var (∋lkp _ (vsⁿ 3 vz))
     dm = elAsNat (⊢fst dp)
-    dsi = ⊢pred (⊢snd (⊢var (there (there (there (there here))))))
+    dsi = ⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))
     -- ★ THE FORD, INVERTED AND ORIENTED.
-    deq = ⊢symN (⊢pred (⊢snd (⊢var (there (there (there (there here)))))))
+    deq = ⊢symN (⊢pred (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))))
                 dm
-                (⊢fordPredN (⊢snd (⊢var (there (there (there (there here))))))
+                (⊢fordPredN (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))
                             dm
                             (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp))))))
     -- ⚠ `⊢jsub`'s ENDPOINTS live at `El ⌜Nat⌝` (that is `IdN`'s carrier)

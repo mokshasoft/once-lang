@@ -11,6 +11,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IMethsTy where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTm; IDesc; var; lam; snd; pair; unit; app; fst
@@ -70,7 +71,7 @@ imethsTyCons =
       (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var here)))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
           (⊢lam (ty-IMu KnotWf
-                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (there (there here)))))))
+                   (⊢ixP ⊢sTy (⊢nsuc (⊢nsuc (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
             (⊢lam ty-Nat
               (⊢imethsRowCons dn dj dD dI dC dM
                 (⊢imethsAppK
@@ -78,12 +79,12 @@ imethsTyCons =
                    {u = fst (snd (var (vs (vs (vs (vs (vs (vs vz))))))))}
                    dIH dn dD dI dM (⊢nsuc dj))))))))
   where
-    dn  = ⊢var (there (there (there (there here))))
-    dD  = ⊢var (there (there (there here)))
-    dI  = ⊢var (there (there here))
+    dn  = ⊢var (∋lkp _ (vsⁿ 4 vz))
+    dD  = ⊢var (∋lkp _ (vsⁿ 3 vz))
+    dI  = ⊢var (∋lkp _ (vsⁿ 2 vz))
     dM  = ⊢var (there here)
     dj  = ⊢var here
-    dC  = ⊢fst (⊢var (there (there (there (there (there (there here)))))))
+    dC  = ⊢fst (⊢var (∋lkp _ (vsⁿ 6 vz)))
     dIH = ⊢ihHere
             {D = KnotD} {I = IPair}
             {σ = iext (isingle (var (vs (vs (vs (vs (vs (vs (vs vz)))))))))
@@ -98,7 +99,7 @@ imethsTyCons =
                (iρ (pair sIDesc (snd (var (vs vz))))
                  (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sIDesc) iι))
                {q = var (vs (vs (vs (vs (vs (vs vz))))))} {M = imethsTyMotK}
-               (⊢var (there (there (there (there (there here)))))))
+               (⊢var (∋lkp _ (vsⁿ 5 vz))))
 
 ------------------------------------------------------------------------
 -- ★ THE TUPLE AND THE WRAPPERS.

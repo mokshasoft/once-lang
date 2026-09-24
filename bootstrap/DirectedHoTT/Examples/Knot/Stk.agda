@@ -23,6 +23,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Stk where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import normalizer.Syntax.Types using ( _≡_; refl; subst )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
@@ -218,7 +219,7 @@ stkCHom = lam (lam (lam (stkAK (pair sTm (snd (var (vs (vs vz)))))
            Γ ⊢ stkCHom ∷ imethTy KnotD IPair tagTm-cHom cTm-cHom Nat
 ⊢stkCHom =
   ⊢methLam KnotD IPair tagTm-cHom cTm-cHom KnotWf cTm-cHomWf ⊢IPair ty-Nat
-    (⊢stkAK (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
+    (⊢stkAK (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
             (⊢fst (⊢var (there here))))
 
 -- ⚠ ROWS 37–40 ARE NO LONGER ONE RUN: `⌜Nat⌝` (37) is `false` for
@@ -278,7 +279,7 @@ flatHom = lam (lam (lam (stkCK (pair sTm (snd (var (vs (vs vz)))))
            Γ ⊢ flatHom ∷ imethTy KnotD IPair tagTm-cHom cTm-cHom Nat
 ⊢flatHom =
   ⊢methLam KnotD IPair tagTm-cHom cTm-cHom KnotWf cTm-cHomWf ⊢IPair ty-Nat
-    (⊢stkCK (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here)))))
+    (⊢stkCK (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
             (⊢fst (⊢var (there here))))
 
 flatMeths : {Γ : Cx} → RTm Γ

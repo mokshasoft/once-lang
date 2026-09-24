@@ -22,6 +22,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.Nrs where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; fst; snd; pair; nsuc
@@ -84,7 +85,7 @@ nrsJunk = lam (lam (lam Tm-nzeroK))
            Γ ⊢ nrsJunk ∷ imethTy KnotD IPair k C nrsMotK
 ⊢nrsJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢nrsMotK
-    (⊢Tm-nzeroKv _ (⊢nsuc (⊢snd (⊢var (there (there here))))))
+    (⊢Tm-nzeroKv _ (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
 
 ------------------------------------------------------------------------
 -- ★★★ `vz ↦ nsuc (var (vs vz))`.
@@ -126,7 +127,7 @@ nrsVz = lam (lam (lam
       (⊢Tm-varKv _ (⊢nsuc dsi) (⊢Var-vsKt dsi tx)))
   where
     dp   = ⊢var (there here)
-    dsi  = ⊢snd (⊢var (there (there here)))
+    dsi  = ⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))
     dm   = elAsNat (⊢fst dp)
     deq  = ⊢symN dsi (⊢nsuc dm) (fordAs (⊢fst (⊢snd (⊢snd dp))))
     tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
@@ -157,7 +158,7 @@ nrsVs = lam (lam (lam
     (⊢Tm-varKv _ (⊢nsuc dsi) (⊢Var-vsKt dsi tx))
   where
     dp   = ⊢var (there here)
-    dsi  = ⊢snd (⊢var (there (there here)))
+    dsi  = ⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))
     dm   = elAsNat (⊢fst dp)
     -- ⚠ `x` IS AN `iρ` FIELD, so the payload already holds an `IMu` —
     --   `fromMu` (El → IMu) is the wrong direction here.

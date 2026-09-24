@@ -14,6 +14,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhsKap where
 
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; snd; Π; Nat; εwkTy; IMu )
 open import DirectedHoTT.Spec.Typing
@@ -64,7 +65,7 @@ ihsKap = lam (lam (lam (lam (lam (lam (lam
     (⊢lam ty-Nat
       (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sDesc (⊢var here)))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there here))))
-          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
+          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz)))))
             (⊢app (⊢app (⊢app (⊢app
                      (⊢ihHere {D = KnotD} {I = IPair}
                        {σ = iext (isingle (var (vs (vs (vs (vs (vs (vs vz))))))))
@@ -78,9 +79,9 @@ ihsKap = lam (lam (lam (lam (lam (lam (lam
                          (iρ (pair sDCon (snd (var (vs vz))))
                           (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sDCon) iι))
                          {q = var (vs (vs (vs (vs (vs vz)))))} {M = ihsMotK}
-                         (⊢var (there (there (there (there here)))))))
-                     (⊢var (there (there (there here)))))
-                     (⊢var (there (there here))))
+                         (⊢var (∋lkp _ (vsⁿ 4 vz)))))
+                     (⊢var (∋lkp _ (vsⁿ 3 vz))))
+                     (⊢var (∋lkp _ (vsⁿ 2 vz))))
                      (⊢var (there here)))
-                  (⊢Tm-sndKv (var (vs (vs (vs vz)))) (⊢var (there (there (there here)))) (⊢var here)))))))
+                  (⊢Tm-sndKv (var (vs (vs (vs vz)))) (⊢var (∋lkp _ (vsⁿ 3 vz))) (⊢var here)))))))
 

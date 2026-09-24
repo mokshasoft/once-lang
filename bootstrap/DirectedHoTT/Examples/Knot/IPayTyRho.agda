@@ -24,6 +24,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IPayTyRho where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -106,22 +107,22 @@ ipayTyRho =
   ⊢methLam KnotD IPair tagICon-rho cICon-rho KnotWf cICon-rhoWf
            ⊢IPair ⊢ipayTyMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there here))))) (⊢var here))
+      (⊢lam (ty-SubTy (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))) (⊢var here))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))
           (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
             (⊢ipayRowρ dn ddd dsb dD dI
-              (⊢fst (⊢var (there (there (there (there (there here)))))))
+              (⊢fst (⊢var (∋lkp _ (vsⁿ 5 vz))))
               (⊢ipayAppK
                  {dd = nsuc (snd (var (vs (vs (vs (vs (vs (vs vz)))))))) }
                  {u = fst (snd (var (vs (vs (vs (vs (vs vz))))))) }
                  dIH (⊢nsuc dn) (⊢extNK ddd dn dsb)
                  (⊢wkAtK ⊢sIDesc dn dD) dI))))))
   where
-    dn  = ⊢var (there (there (there here)))
-    dsb = ⊢var (there (there here))
+    dn  = ⊢var (∋lkp _ (vsⁿ 3 vz))
+    dsb = ⊢var (∋lkp _ (vsⁿ 2 vz))
     dD  = ⊢var (there here)
     dI  = ⊢var here
-    ddd = ⊢snd (⊢var (there (there (there (there (there (there here)))))))
+    ddd = ⊢snd (⊢var (∋lkp _ (vsⁿ 6 vz)))
     dIH = ⊢ihHere
             {D = KnotD} {I = IPair}
             {σ = iext (isingle (var (vs (vs (vs (vs (vs (vs vz))))))))
@@ -136,4 +137,4 @@ ipayTyRho =
                (iρ (pair sICon (nsuc (snd (var (vs vz)))))
                  (iκ (⌜Id⌝ ⌜Nat⌝ (fst (var (vs (vs vz)))) sICon) iι))
                {q = var (vs (vs (vs (vs (vs vz)))))} {M = ipayTyMotK}
-               (⊢var (there (there (there (there here))))))
+               (⊢var (∋lkp _ (vsⁿ 4 vz))))

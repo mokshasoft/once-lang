@@ -27,6 +27,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.ConS where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; fst; snd; pair; nsuc
@@ -82,7 +83,7 @@ conSMotK = Π Nat (IMu KnotD IPair (pair sTm (snd (var (vs (vs vz))))))
 ⊢conSMotK : {Γ : Ctx} →
             ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty conSMotK
 ⊢conSMotK =
-  ty-Π ty-Nat (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here))))))
+  ty-Π ty-Nat (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
 
 ------------------------------------------------------------------------
 -- ★ THE 51 UNREACHABLE ROWS.
@@ -97,7 +98,7 @@ conSJunk = lam (lam (lam (lam Tm-nzeroK)))
 ⊢conSJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢conSMotK
     (⊢lam ty-Nat
-      (⊢Tm-nzeroKv _ (⊢snd (⊢var (there (there (there here)))))))
+      (⊢Tm-nzeroKv _ (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
 
 ------------------------------------------------------------------------
 -- ★★★ `vz ↦ con k (var vz)`.  ⚠ SAME FORD TRANSPORT AS `Knot/Nrs`'s
@@ -121,8 +122,8 @@ conSVz = lam (lam (lam (lam
     (⊢lam ty-Nat
       (⊢Tm-conKv _ dsi (⊢var here) (⊢Tm-varKv _ dsi tx)))
   where
-    dp   = ⊢var (there (there here))
-    dsi  = ⊢snd (⊢var (there (there (there here))))
+    dp   = ⊢var (∋lkp _ (vsⁿ 2 vz))
+    dsi  = ⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))
     dm   = elAsNat (⊢fst dp)
     deq  = ⊢symN dsi (⊢nsuc dm) (fordAs (⊢fst (⊢snd (⊢snd dp))))
     tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))
@@ -148,8 +149,8 @@ conSVs = lam (lam (lam (lam
   ⊢methLam KnotD IPair tagVar-vs cVar-vs KnotWf cVar-vsWf ⊢IPair ⊢conSMotK
     (⊢lam ty-Nat (⊢Tm-varKv _ dsi tx))
   where
-    dp   = ⊢var (there (there here))
-    dsi  = ⊢snd (⊢var (there (there (there here))))
+    dp   = ⊢var (∋lkp _ (vsⁿ 2 vz))
+    dsi  = ⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))
     dm   = elAsNat (⊢fst dp)
     dx   = ⊢fst (⊢snd dp)
     deq  = ⊢symN dsi (⊢nsuc dm) (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp)))))

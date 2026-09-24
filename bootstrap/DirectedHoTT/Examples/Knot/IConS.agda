@@ -35,6 +35,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IConS where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; fst; snd; pair; nsuc
@@ -93,8 +94,8 @@ iconSVz = lam (lam (lam (lam
     (⊢lam ty-Nat
       (⊢Tm-iconKv _ dsi (⊢var here) (⊢Tm-varKv _ dsi tx)))
   where
-    dp   = ⊢var (there (there here))
-    dsi  = ⊢snd (⊢var (there (there (there here))))
+    dp   = ⊢var (∋lkp _ (vsⁿ 2 vz))
+    dsi  = ⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))
     dm   = elAsNat (⊢fst dp)
     deq  = ⊢symN dsi (⊢nsuc dm) (fordAs (⊢fst (⊢snd (⊢snd dp))))
     tx   = fromMu (⊢jsub (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sVar (elAsNat (⊢var here))))

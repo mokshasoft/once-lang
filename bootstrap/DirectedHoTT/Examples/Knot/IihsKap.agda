@@ -23,6 +23,7 @@
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IihsKap where
 
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; RTm; RTy; var; vz; vs; pair; fst; snd; app; lam; Π; Nat
         ; εwkTy; IMu; ICon; IDesc; ε; isingle; iext; iρ; iκ; iι; ⌜Id⌝; ⌜Nat⌝
@@ -59,10 +60,10 @@ iihsKap = lam (lam (lam (lam (lam (lam (lam
 ⊢iihsKap =
   ⊢methLam KnotD IPair tagICon-kap cICon-kap KnotWf cICon-kapWf ⊢IPair ⊢iihsMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there here))))) (⊢var here))
+      (⊢lam (ty-SubTy (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))) (⊢var here))
         (⊢lam (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))
-                    (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here))))))
-          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (there (there here)))))
+                    (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz))))))
+          (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢var (∋lkp _ (vsⁿ 2 vz)))))
             -- ⚠ `dd`/`u` PINNED: they occur only under `iinst`, which is
             --   DEFINED and not injective.  ⚠ `i`/`q` are `⊢iihsIH`'s
             --   EXPLICIT arguments for the same reason, one layer down.
@@ -70,14 +71,14 @@ iihsKap = lam (lam (lam (lam (lam (lam (lam
                        {u = fst (snd (var (vs (vs (vs (vs (vs vz)))))))}
                        (⊢iihsIH (var (vs (vs (vs (vs (vs (vs vz)))))))
                                 (var (vs (vs (vs (vs (vs vz))))))
-                                (⊢var (there (there (there (there here))))))
+                                (⊢var (∋lkp _ (vsⁿ 4 vz))))
                        dn (⊢nsuc dIdx)
                        (⊢iextK dIdx dn dσ
                                (⊢Tm-fstKv (var (vs (vs (vs vz)))) dn (⊢var here)))
                        dalg
                        (⊢Tm-sndKv (var (vs (vs (vs vz)))) dn (⊢var here)))))))
   where
-    dn   = ⊢var (there (there (there here)))
-    dσ   = ⊢var (there (there here))
+    dn   = ⊢var (∋lkp _ (vsⁿ 3 vz))
+    dσ   = ⊢var (∋lkp _ (vsⁿ 2 vz))
     dalg = ⊢var (there here)
-    dIdx = ⊢snd (⊢var (there (there (there (there (there (there here)))))))
+    dIdx = ⊢snd (⊢var (∋lkp _ (vsⁿ 6 vz)))

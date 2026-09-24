@@ -34,6 +34,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.PwBody where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; fst; snd; pair; nsuc
@@ -115,11 +116,11 @@ pwPi =
     (fromMu (⊢jsub dmot (natAsEl ⊢sTm) (natAsEl dfi) dsym
                    (toMu (⊢fst (⊢snd dp)))))
   where
-    dix  = ⊢var (there (there here))
+    dix  = ⊢var (∋lkp _ (vsⁿ 2 vz))
     dp   = ⊢var (there here)
     dfi  = ⊢fst dix
     dmot = ⊢⌜IMu⌝ KnotWf (⊢ixP (elAsNat (⊢var here))
-                               (⊢nsuc (⊢snd (⊢var (there (there (there here)))))))
+                               (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
     dsym = ⊢symN dfi ⊢sTm (fordAs (⊢fst (⊢snd (⊢snd dp))))
 
 ------------------------------------------------------------------------
@@ -177,7 +178,7 @@ pwHom =
     (fromMu (⊢jsub dmot (natAsEl ⊢sTm) (natAsEl dfi) dsym
                    (toMu (⊢Tm-cHomKv _ (⊢nsuc dd) dihC dapa dapb))))
   where
-    dix  = ⊢var (there (there here))
+    dix  = ⊢var (∋lkp _ (vsⁿ 2 vz))
     dp   = ⊢var (there here)
     dih  = ⊢var here
     dd   = ⊢snd dix
@@ -198,7 +199,7 @@ pwHom =
     dapb = ⊢Tm-appKv _ (⊢nsuc dd) (⊢wkTmK dd db)
                      (⊢Tm-varKv _ (⊢nsuc dd) (⊢Var-vzKt dd))
     dmot = ⊢⌜IMu⌝ KnotWf (⊢ixP (elAsNat (⊢var here))
-                               (⊢nsuc (⊢snd (⊢var (there (there (there here)))))))
+                               (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))
     dsym = ⊢symN dfi ⊢sTm (fordAs (⊢fst (⊢snd (⊢snd (⊢snd dp)))))
 
 ------------------------------------------------------------------------
@@ -253,8 +254,8 @@ pwDefault k =
     -- ⚠ `{i}`/`{u}` PINNED: they sit under `iinst`, which is two
     --   `subTy`s and so not injective (`pin-implicits-on-defined-set-types`).
     (⊢renAppAt {i = var (vs (vs vz))} {u = icon k (var (vs vz))}
-               (⊢renTmK (⊢var (there (there here)))
-                        (⊢icon KnotWf mem (⊢var (there (there here)))
+               (⊢renTmK (⊢var (∋lkp _ (vsⁿ 2 vz)))
+                        (⊢icon KnotWf mem (⊢var (∋lkp _ (vsⁿ 2 vz)))
                                -- ⚠ TWO CASTS, AND THE FIRST IS THE ONE
                                --   a CONCRETE row never needs: at an
                                --   abstract `C` the payload type is
@@ -270,8 +271,8 @@ pwDefault k =
                                                        (isingle (var (vs (vs vz)))))
                                                     (sym look)))
                                        (⊢var (there here)))))
-               (⊢nsuc (⊢snd (⊢var (there (there here)))))
-               (⊢vsRenK (⊢snd (⊢var (there (there here))))))
+               (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
+               (⊢vsRenK (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
 
 ------------------------------------------------------------------------
 

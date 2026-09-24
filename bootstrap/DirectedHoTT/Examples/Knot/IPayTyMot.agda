@@ -33,6 +33,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IPayTyMot where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -84,10 +85,10 @@ ipayTyMotK =
               ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty ipayTyMotK
 ⊢ipayTyMotK =
   ty-Π ty-Nat
-   (ty-Π (ty-SubTy (⊢snd (⊢var (there (there here)))) (⊢var here))
+   (ty-Π (ty-SubTy (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))) (⊢var here))
     (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))
      (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
-        (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (there (there (there here)))))))))
+        (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
 
 ------------------------------------------------------------------------
 -- ★ THE JUNK ROW — and for `cICon-i` it is the RIGHT answer, not junk.
@@ -102,10 +103,10 @@ ipayTyJunk = lam (lam (lam (lam (lam (lam (lam Ty-UnitK))))))
 ⊢ipayTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢ipayTyMotK
     (⊢lam ty-Nat
-      (⊢lam (ty-SubTy (⊢snd (⊢var (there (there (there here))))) (⊢var here))
+      (⊢lam (ty-SubTy (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))) (⊢var here))
         (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sIDesc (⊢var (there here))))
           (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
-            (⊢Ty-UnitKv _ (⊢var (there (there (there here)))))))))
+            (⊢Ty-UnitKv _ (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
 
 ------------------------------------------------------------------------
 -- ★★★ EVERYTHING HEAVY IS STATED AT **ABSTRACT** PIECES, AND THAT IS

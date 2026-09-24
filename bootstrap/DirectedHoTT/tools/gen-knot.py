@@ -2108,18 +2108,26 @@ def gen_j_wf(J, part, lo, hi, last):
     return "\n".join(L) + "\n"
 
 def write_judgement(J, out, CT):
-    "…sized from the measured cost model."
+    """…sized from the measured cost model.
+
+    ⚠⚠ THESE FILENAMES ARE COMPUTED (`J.mod + "Wf.agda"`), so a scan for
+      literal `open(os.path.join(out, "X.agda")` DOES NOT FIND THEM.
+      That scan was used to split generated from hand-written, and it
+      silently classified `ConvWf`/`InDWf`/`InIDWf`/`NoNatCWf`/`TyRedWf`
+      as hand-written; editing them directly made the sweep REFUSE.
+      ⇒ the ground truth for "is this generated" is RUN THE GENERATOR
+      AND DIFF — never a regex over write sites, never the header."""
     open(os.path.join(out, J.mod + "Rows.agda"), "w").write(gen_j_rows(J, CT))
     n = len(_JCACHE[J.mod])
     if n <= SPLIT_AT:
         open(os.path.join(out, J.mod + "Wf.agda"), "w").write(
-            gen_j_wf(J, "", 0, n, True))
+            _lkp_towers(gen_j_wf(J, "", 0, n, True))[0])
         return [J.mod + "Wf"]
     h = (n + 1) // 2
     open(os.path.join(out, J.mod + "WfA.agda"), "w").write(
-        gen_j_wf(J, "A", 0, h, False))
+        _lkp_towers(gen_j_wf(J, "A", 0, h, False))[0])
     open(os.path.join(out, J.mod + "WfB.agda"), "w").write(
-        gen_j_wf(J, "B", h, n, True))
+        _lkp_towers(gen_j_wf(J, "B", h, n, True))[0])
     return [J.mod + "WfA", J.mod + "WfB"]
 
 # ★★★ WIDTH SPIKE (`SPIKE_WIDE=1`) — MEASUREMENT ONLY, NEVER COMMITTED.
@@ -6826,6 +6834,54 @@ def _factor_cong(text):
     return "\n".join(out), n
 
 
+# ---------------------------------------------------------------------------
+# ★★★ A `there`-TOWER IS A UNARY ENCODING OF A NUMBER.  Replace it by the
+#     number.   `KNOT-LESSONS` §8 / `Lib/Lkp`.
+#
+#     there (there (there here))   →   ∋lkp _ (vsⁿ 3 vz)
+#
+# This is the WF AXIS GENERALISED: an inductive RELATION (`_∋_∷_`) becomes
+# a COMPUTING function plus a derivation-producer, so discharging it is
+# conversion.  MEASURED: 14 256 `there`/`here` tokens across 3 101 `⊢var`
+# sites — 75% of the whole wf proof burden — at depths up to 12.
+#
+# ⚠⚠ THE REAL SHAPE is (k-1)x"there (" + "there here" + (k-1)x")" — the
+#   innermost is `there here`, NOT `there (here)`.  A first version
+#   assumed parens all the way down, converted ZERO of 962 towers, and
+#   REPORTED SUCCESS; only a before/after token count caught it.
+# ⚠ Only k>=2 converts: at k=1 the replacement is LONGER than the tower.
+# ---------------------------------------------------------------------------
+_LKP_IMPORT = "open import DirectedHoTT.Lib.Lkp using ( \u220blkp; vs\u207f )"
+
+
+def _lkp_towers(text, minimum=2):
+    out = []; i = 0; n = 0
+    while True:
+        j = text.find("there here", i)
+        if j < 0:
+            out.append(text[i:]); break
+        k = 1; st = j
+        while st - 7 >= 0 and text.startswith("there (", st - 7):
+            k += 1; st -= 7
+        e = j + len("there here")
+        if not text.startswith(")" * (k - 1), e):
+            out.append(text[i:j + 1]); i = j + 1; continue
+        e += k - 1
+        if k < minimum:
+            out.append(text[i:e]); i = e; continue
+        out.append(text[i:st]); out.append("\u220blkp _ (vs\u207f %d vz)" % k)
+        n += 1; i = e
+    res = "".join(out)
+    if n and _LKP_IMPORT not in res:
+        # ⚠ BEFORE the first `open import`: the Spec imports are multi-line
+        #   `using (...)` blocks, so inserting AFTER one splits it.
+        idx = res.find("open import ")
+        if idx < 0:
+            return text, 0
+        res = res[:idx] + _LKP_IMPORT + "\n" + res[idx:]
+    return res, n
+
+
 def _evspine(src):
     """Replace hand-built chains with `Lib/Eval` calls.
 
@@ -6903,7 +6959,7 @@ if __name__ == "__main__":
     if verify(os.path.join(root, "Spec", "Syntax.agda")):
         sys.exit("  ⇒ TABLE AND SYNTAX DISAGREE — nothing written.")
     open(os.path.join(out, "Desc.agda"), "w").write(gen_desc())
-    open(os.path.join(out, "Wf.agda"),   "w").write(gen_wf())
+    open(os.path.join(out, "Wf.agda"),   "w").write(_lkp_towers(gen_wf())[0])
     open(os.path.join(out, "Tags.agda"), "w").write(gen_tags())
     open(os.path.join(out, "Ctors.agda"), "w").write(gen_ctors())
     open(os.path.join(out, "CtorsV.agda"), "w").write(gen_ctorsv())
@@ -6932,12 +6988,12 @@ if __name__ == "__main__":
     open(os.path.join(out, "RenAgreeTie.agda"), "w").write(gen_rentie("Tm"))
     open(os.path.join(out, "SubAgreeRows.agda"), "w").write(_evspine(gen_subagree("Tm", "", 0, 25)))
     open(os.path.join(out, "SubAgreeTie.agda"), "w").write(gen_subtie("Tm"))
-    open(os.path.join(out, "LookupGen.agda"), "w").write(gen_lookupgen())
+    open(os.path.join(out, "LookupGen.agda"), "w").write(_lkp_towers(gen_lookupgen())[0])
     open(os.path.join(out, "RedRows.agda"), "w").write(gen_redrows())
     _CENSUS.append(("RedD", ["_⟶_"], len(_SKIP), "Typing"))
     _half = (len(_ROWS) + 1) // 2
-    open(os.path.join(out, "RedWfA.agda"), "w").write(gen_redwf("A", 0, _half))
-    open(os.path.join(out, "RedWfB.agda"), "w").write(gen_redwf("B", _half, len(_ROWS)))
+    open(os.path.join(out, "RedWfA.agda"), "w").write(_lkp_towers(gen_redwf("A", 0, _half))[0])
+    open(os.path.join(out, "RedWfB.agda"), "w").write(_lkp_towers(gen_redwf("B", _half, len(_ROWS)))[0])
     _CT = {d.split(":")[0].strip(): n[1:] + "K" for n, d, _ in KNOT}
     _CT.update(_SUBST_CT)
     for _J in (J_IND, J_IIND, J_NONATC, J_TYRED, J_CONV):

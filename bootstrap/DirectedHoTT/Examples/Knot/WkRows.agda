@@ -75,6 +75,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.WkRows where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; _∙; vz; vs
         ; RTy; RTm; El; Unit; Nat; Σ'
@@ -171,8 +172,8 @@ wkTyNat = lam (lam (lam (icon tagTy-Nat (pair (fst (var (vs vz))) unit))))
     (⊢lam tyPayNat
       (⊢lam ty-Unit
         (⊢icon KnotWf memTy-Nat
-               (⊢ixP (⊢fst (⊢var (there (there here))))
-                     (⊢nsuc (⊢snd (⊢var (there (there here))))))
+               (⊢ixP (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))
+                     (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
                (⊢pair ty-Unit
                       (unFst (⊢fst (⊢var (there here))))
                       ⊢unit))))
@@ -218,15 +219,15 @@ wkTmLam =
     (⊢lam tyPayLam
       (⊢lam tyIHLam
         (⊢icon KnotWf memTm-lam
-               (⊢ixP (⊢fst (⊢var (there (there here))))
-                     (⊢nsuc (⊢snd (⊢var (there (there here))))))
+               (⊢ixP (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))
+                     (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
                -- ⚠ TWO THINGS AT ONCE, AND BOTH BIT.  `⊢pair`'s B lives
                --   one binder DEEPER than the components beside it, and
                --   the ford it describes is at the SHIFTED index — so its
                --   left endpoint is `fst (pair …)`, not `fst ⟨i⟩`.
                --   `Knot/Terms.tyFordFst` is exactly that shape.
-               (⊢pair (tyFordAt (⊢fst (⊢var (there (there (there here)))))
-                                (⊢nsuc (⊢snd (⊢var (there (there (there here))))))
+               (⊢pair (tyFordAt (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))
+                                (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))
                                 ⊢sTm)
                       -- ★ THE IH, moved forward off the eliminator's
                       --   index and backward onto the row's.
@@ -263,7 +264,7 @@ tyPayKap : {Γ : Ctx} → (Γ ▹ Σ' Nat Nat) ⊢ty
 tyPayKap =
   ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sTy ⊢nzero))
     (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sDCon (⊢snd (⊢var (there here)))))
-      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here)))))
+      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz)))))
                                  (toI ⊢sDCon)))
             ty-Unit))
 
@@ -277,9 +278,9 @@ tyIHKap =
   ty-Σ (ty-IMu KnotWf
          (⊢ixP (⊢fst (⊢ixP ⊢sTy ⊢nzero)) (⊢nsuc (⊢snd (⊢ixP ⊢sTy ⊢nzero)))))
     (ty-Σ (ty-IMu KnotWf
-            (⊢ixP (⊢fst (⊢ixP ⊢sDCon (⊢snd (⊢var (there (there here))))))
+            (⊢ixP (⊢fst (⊢ixP ⊢sDCon (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
                   (⊢nsuc (⊢snd (⊢ixP ⊢sDCon
-                                 (⊢snd (⊢var (there (there here)))))))))
+                                 (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))))))
           ty-Unit)
 
 wkDkap : {Γ : Cx} → RTm Γ
@@ -297,20 +298,20 @@ wkDkap =
     (⊢lam tyPayKap
       (⊢lam tyIHKap
         (⊢icon KnotWf memDCon-kap
-               (⊢ixP (⊢fst (⊢var (there (there here))))
-                     (⊢nsuc (⊢snd (⊢var (there (there here))))))
+               (⊢ixP (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))
+                     (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
           (⊢pair (ty-Σ (ty-IMu KnotWf
                          (⊢ixP ⊢sDCon
-                           (⊢snd (⊢ixP (⊢fst (⊢var (there (there (there here)))))
-                                       (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))))
-                       (tyFordAt (⊢fst (⊢var (there (there (there (there here))))))
-                                 (⊢nsuc (⊢snd (⊢var (there (there (there (there here)))))))
+                           (⊢snd (⊢ixP (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))
+                                       (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))))
+                       (tyFordAt (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                                 (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))))
                                  ⊢sDCon))
                  -- ★★★ THE ORIGINAL FIELD.  Its IH is at depth 1 and this
                  --   row wants depth 0, so the IH is never named.
                  (⊢fst (⊢var (there here)))
-            (⊢pair (tyFordAt (⊢fst (⊢var (there (there (there here)))))
-                             (⊢nsuc (⊢snd (⊢var (there (there (there here))))))
+            (⊢pair (tyFordAt (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))
+                             (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))
                              ⊢sDCon)
                    -- …and its sibling takes the IH.
                    (ixBack (ξ-pairʳ (βsnd _ _))
@@ -346,11 +347,11 @@ tyPayVs : {Γ : Ctx} → (Γ ▹ Σ' Nat Nat) ⊢ty
 tyPayVs =
   ty-Σ (ty-El ⊢⌜Nat⌝)
     (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var here))))
-      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there (there here)))))
+      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz)))))
                                  (toI ⊢sVar)))
         (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                       (toI (⊢snd (⊢var (there (there (there here))))))
-                       (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                       (toI (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))
+                       (toI (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))))
               ty-Unit)))
 
 tyIHVs : {Γ : Ctx} →
@@ -385,31 +386,31 @@ wkVarVs =
     (⊢lam tyPayVs
       (⊢lam tyIHVs
         (⊢icon KnotWf memVar-vs
-               (⊢ixP (⊢fst (⊢var (there (there here))))
-                     (⊢nsuc (⊢snd (⊢var (there (there here))))))
+               (⊢ixP (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))
+                     (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
           (⊢pair (ty-Σ (ty-IMu KnotWf (⊢ixP ⊢sVar (fromI (⊢var here))))
                    (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                   (toI (⊢fst (⊢ixP
-                                     (⊢fst (⊢var (there (there (there (there here))))))
-                                     (⊢nsuc (⊢snd (⊢var (there (there (there (there here)))))))))) 
+                                     (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                                     (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))))))) 
                                   (toI ⊢sVar)))
                      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                     (toI (⊢snd (⊢ixP
-                                       (⊢fst (⊢var (there (there (there (there (there here)))))))
-                                       (⊢nsuc (⊢snd (⊢var (there (there (there (there (there here))))))))))) 
-                                    (toI (⊢nsuc (fromI (⊢var (there (there here))))))))
+                                       (⊢fst (⊢var (∋lkp _ (vsⁿ 5 vz))))
+                                       (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 5 vz)))))))) 
+                                    (toI (⊢nsuc (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))))
                            ty-Unit)))
                  (toI (⊢nsuc (fromI (⊢fst (⊢var (there here))))))
             (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                   (toI (⊢fst (⊢ixP
-                                     (⊢fst (⊢var (there (there (there here)))))
-                                     (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))) 
+                                     (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))
+                                     (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))) 
                                   (toI ⊢sVar)))
                      (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                     (toI (⊢snd (⊢ixP
-                                       (⊢fst (⊢var (there (there (there (there here))))))
-                                       (⊢nsuc (⊢snd (⊢var (there (there (there (there here))))))))))
-                                    (toI (⊢nsuc (⊢nsuc (fromI (⊢fst (⊢var (there (there (there here)))))))))))
+                                       (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                                       (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))))))
+                                    (toI (⊢nsuc (⊢nsuc (fromI (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))))))))
                            ty-Unit))
                    -- the child still takes its IH: it sits at `m` and the
                    -- IH at `nsuc m`, which IS the bumped `m'`.
@@ -417,16 +418,16 @@ wkVarVs =
                      (ixFwd (ξ-pairˡ (βfst _ _)) (⊢fst (⊢var here))))
               (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                     (toI (⊢snd (⊢ixP
-                                       (⊢fst (⊢var (there (there (there here)))))
-                                       (⊢nsuc (⊢snd (⊢var (there (there (there here)))))))))
-                                    (toI (⊢nsuc (⊢nsuc (fromI (⊢fst (⊢var (there (there here))))))))))
+                                       (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))
+                                       (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
+                                    (toI (⊢nsuc (⊢nsuc (fromI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))))))))
                            ty-Unit)
                      (unFst (⊢fst (⊢snd (⊢snd (⊢var (there here))))))
                 (⊢pair ty-Unit
                        -- ★★★ THE TRANSPORT.  `snd ⟨i'⟩ ⟶ nsuc (snd ⟨i⟩)`
                        --   by `βsnd`, and the rest is `cong nsuc` on the
                        --   ford this row was handed.
-                       (⊢conv (⊢conv (⊢congS (⊢snd (⊢var (there (there here))))
+                       (⊢conv (⊢conv (⊢congS (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))
                                              (⊢nsuc (fromI (⊢fst (⊢var (there here)))))
                                              (⊢conv (⊢fst (⊢snd (⊢snd (⊢snd (⊢var (there here))))))
                                                     (elIdN _ _)))
@@ -480,7 +481,7 @@ tyPayVz =
   ty-Σ (ty-El ⊢⌜Nat⌝)
     (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝ (toI (⊢fst (⊢var (there here)))) (toI ⊢sVar)))
       (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
-                     (toI (⊢snd (⊢var (there (there here)))))
+                     (toI (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))
                      (toI (⊢nsuc (fromI (⊢var (there here)))))))
             ty-Unit))
 
@@ -501,29 +502,29 @@ wkVarVz =
     (⊢lam tyPayVz
       (⊢lam ty-Unit
         (⊢icon KnotWf memVar-vz
-               (⊢ixP (⊢fst (⊢var (there (there here))))
-                     (⊢nsuc (⊢snd (⊢var (there (there here))))))
+               (⊢ixP (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))
+                     (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
           (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                 (toI (⊢fst (⊢ixP
-                                   (⊢fst (⊢var (there (there (there here)))))
-                                   (⊢nsuc (⊢snd (⊢var (there (there (there here)))))))))
+                                   (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))
+                                   (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
                                 (toI ⊢sVar)))
                        (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                       (toI (⊢snd (⊢ixP
-                                         (⊢fst (⊢var (there (there (there (there here))))))
-                                         (⊢nsuc (⊢snd (⊢var (there (there (there (there here))))))))))
+                                         (⊢fst (⊢var (∋lkp _ (vsⁿ 4 vz))))
+                                         (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz))))))))
                                       (toI (⊢nsuc (fromI (⊢var (there here)))))))
                              ty-Unit))
                  (toI (⊢nsuc (fromI (⊢fst (⊢var (there here))))))
             (⊢pair (ty-Σ (ty-El (⊢⌜Id⌝ ⊢⌜Nat⌝
                                   (toI (⊢snd (⊢ixP
-                                     (⊢fst (⊢var (there (there (there here)))))
-                                     (⊢nsuc (⊢snd (⊢var (there (there (there here)))))))))
-                                  (toI (⊢nsuc (⊢nsuc (fromI (⊢fst (⊢var (there (there here))))))))))
+                                     (⊢fst (⊢var (∋lkp _ (vsⁿ 3 vz))))
+                                     (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz))))))))
+                                  (toI (⊢nsuc (⊢nsuc (fromI (⊢fst (⊢var (∋lkp _ (vsⁿ 2 vz))))))))))
                          ty-Unit)
                    (unFst (⊢fst (⊢snd (⊢var (there here)))))
               (⊢pair ty-Unit
-                     (⊢conv (⊢conv (⊢congS (⊢snd (⊢var (there (there here))))
+                     (⊢conv (⊢conv (⊢congS (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))
                                            (⊢nsuc (fromI (⊢fst (⊢var (there here)))))
                                            (⊢conv (⊢fst (⊢snd (⊢snd (⊢var (there here)))))
                                                   (elIdN _ _)))

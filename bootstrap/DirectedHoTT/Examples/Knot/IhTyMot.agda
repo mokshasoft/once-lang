@@ -27,6 +27,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IhTyMot where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; vz; vs; RTy; RTm; var; lam; snd; pair; Π; Nat
@@ -71,8 +72,8 @@ ihTyMotK =
             ((Γ ▹ εwkTy IPair) ▹ IMu KnotD IPair (var vz)) ⊢ty ihTyMotK
 ⊢ihTyMotK =
   ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there here)))))
-   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there here)))))))
-      (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢snd (⊢var (there (there (there here))))))))
+   (ty-Π (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz)))))))
+      (ty-IMu KnotWf (⊢ixP ⊢sTy (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
 
 ------------------------------------------------------------------------
 -- ★ THE JUNK ROW — and for `dι` it is the RIGHT answer, not junk.
@@ -86,10 +87,10 @@ ihTyJunk = lam (lam (lam (lam (lam Ty-UnitK))))
             Γ ⊢ ihTyJunk ∷ imethTy KnotD IPair k C ihTyMotK
 ⊢ihTyJunk k C wC =
   ⊢methLam KnotD IPair k C KnotWf wC ⊢IPair ⊢ihTyMotK
-    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (there (there here))))))
+    (⊢lam (ty-IMu KnotWf (⊢ixP ⊢sTm (⊢snd (⊢var (∋lkp _ (vsⁿ 2 vz))))))
       (⊢lam (ty-IMu KnotWf
-               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (there (there (there here))))))))
-        (⊢Ty-UnitKv _ (⊢snd (⊢var (there (there (there (there here)))))))))
+               (⊢ixP ⊢sTy (⊢nsuc (⊢snd (⊢var (∋lkp _ (vsⁿ 3 vz)))))))
+        (⊢Ty-UnitKv _ (⊢snd (⊢var (∋lkp _ (vsⁿ 4 vz)))))))
 
 ------------------------------------------------------------------------
 -- ★★★ THE DESCENT, ONCE — and it is the wrapper too.

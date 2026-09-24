@@ -40,6 +40,7 @@
 
 {-# OPTIONS --safe #-}
 module DirectedHoTT.Examples.Knot.IxD where
+open import DirectedHoTT.Lib.Lkp using ( ∋lkp; vsⁿ )
 open import Agda.Builtin.Nat using ( zero; suc ) renaming ( Nat to ℕ )
 open import DirectedHoTT.Spec.Syntax
   using ( Cx; ε; _∙; RTy; RTm; var; vz; vs; pair; unit; nzero; icon; IMu
@@ -137,7 +138,7 @@ cIxIConWf =
           (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sTy ⊢nzero))
     (iwf-κ (⌜IMu⌝ KnotD IPair (pair sICon (var (vs (vs vz)))))
            (icw-imu (pair sICon (var (vs (vs vz)))) KnotWf)
-           (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sICon (fromI (⊢var (there (there here))))))
+           (⊢⌜IMu⌝ KnotWf (⊢ixP ⊢sICon (fromI (⊢var (∋lkp _ (vsⁿ 2 vz))))))
      iwf-ι))
 
 cIxIDescWf : IConWf IxD INat Θ₀ cIxIDesc
