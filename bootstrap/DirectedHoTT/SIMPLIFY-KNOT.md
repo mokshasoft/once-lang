@@ -18,7 +18,7 @@ first. Lines are a lagging indicator and are tracked separately
 
 ---
 
-## 1. ★★★ THE ONE-HOLE CONGRUENCE — already proved, unused, one line
+## 1. ⛔ THE ONE-HOLE CONGRUENCE — **PROBED 2026-09-24, MEASURE NEGATIVE**
 
 **The single highest-value item, and it costs nothing to take.**
 
@@ -51,10 +51,69 @@ object-level identities and never wired to `⟶*`.
 ⇒ the Knot hand-names 22 positions per row using lemmas that exist *only
 to implement the theorem it should be calling*.
 
-**What it buys:** vocabulary **22 → 1**, and the position stops being a
-NAME you must know and becomes **DATA you can compute** — which is what
-makes it automatic rather than merely shorter.
-⬜ Not yet done. Measure the scorecard's *vocabulary* row before/after.
+### ⛔⛔ PROBED IN THREE FORMS. ALL THREE MEASURE NEGATIVE.
+
+| form | result |
+|---|---|
+| `⟶*-at F p = subTm-monoˢ (single-mono p) F` | ⛔ **does not typecheck at a use site** |
+| one-hole context **datatype** (`Cxt`/`plug`) | ✅ typechecks, but vocab 22→**9**, tokens **UP**, inference ⛔ |
+| factoring repeated congruence prefixes | ✅ valid, but only **183 sites (~2.5%)** |
+
+**(a) The one-liner does not work** (`tmp/AtProbe.agda`):
+
+```
+subTm (single t) (renTm vs u) != u of type RTm Γ
+```
+
+★ A term-with-a-free-variable context forces a **weakening round-trip**,
+and `subTm σ (renTm vs u) ≡ u` is precisely §7's stuck `wk-single`. The
+formulation reads beautifully and is unusable.
+
+**(b) The datatype salvage typechecks** (`tmp/CxtProbe.agda`, rc=0) —
+`plug` computes structurally, so no substitution and no `wk-single`. But
+it is **not a use-site win**: the 8 context constructors are themselves
+vocabulary (22 → 9, not 22 → 1), the non-hole arguments must be written
+by hand where the named congruences got them free by unification, and
+
+```
+plug _C_131 t = app t u : RTm Γ (blocked on _C_131)
+```
+
+⇒ **Agda cannot infer the context** — inverting `plug` is higher-order
+unification. Converting a file by hand would be a REGRESSION in exactly
+the metric that matters.
+
+**(c) Factoring** — a congruence commutes with `»`, so a prefix repeated
+across chain elements can be written once. Valid, needs no new lemma,
+but measured at **183 sites / ~3 161 chars**, ~2.5% of the remaining
+7 303 steps. ⚠ Measured three times before it was right: splitting on
+`»` under-counted (14), a greedy regex over-matched and gave **0**, and
+only a longest-common-prefix comparison gives 183. A cheap measurement
+that disagrees with a hand-read example is wrong.
+
+### ⇒ WHAT WOULD FLIP IT: `decTm`, and the idiom already exists
+
+★★ **Agda cannot infer the context, but WE CAN WRITE THE UNIFICATION
+OURSELVES — and this project already does, 19 times.** `Lib/IWk` and
+`Lib/ISub` carry a whole family that decides a structure and returns
+EVIDENCE where the unifier fails:
+
+```agda
+Chk : {A : Set} → Maybe A → Set        -- Chk nothing = ⊥ ; Chk (just _) = ⊤
+get : (m : Maybe A) → Chk m → A
+decCon decSucs decPin decVar decNum decClosed decKa decSubIx …   -- 19 of them
+```
+
+⇒ the call site writes `get (decX …) tt`; a failed decision is a **type
+error**, and success carries **no proof obligation**. That is exactly
+"write the higher-order unification ourselves", and it is already Lib
+vocabulary.
+
+⬜ **The missing piece is `decTm : (s t : RTm Γ) → Maybe (s ≡ t)`** —
+decidable equality on terms — without which `findCxt whole redex` cannot
+recognise the redex. `decVar` exists for `Var`; `decTm` does not, and is
+~30 clauses plus congruence. **That, not `⟶*-at`, is the real
+prerequisite**, and it is the only path on which item 1 pays.
 
 ## 2. ⛔ ADEQUACY AS AN EQUATION — **GATE RUN, AND IT FAILED**
 
