@@ -47,19 +47,20 @@ open import Once.Functor.Translate using (translateF)
 open import Once.IRTy using (eraseF; ⌈_⌉F; ⌈⟧TI-commute; ⌊⟧T-commute)
 import Once.IRTy as II
 open import Once.Semantics.Functor
-  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; νS; unfoldS; anaS; sfmapAna)
+  using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; νS; unfoldS; anaS; sfmapAna; anaLayerS)
 open import Once.Semantics.Functor.Laws
   using (_∼S_; ⟦_⟧SF-rel; unfoldS-∼; bisimS-to-eq)
 open import Once.Semantics.Machine
-  using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; coerce-ν-in; coerce-functor; coh; tF-coh;
+  using (⟦_⟧F; ⟦_⟧; sem-ana; sfmapSemAna; semAnaLayer; coerce-ν-in; coerce-functor; coh; tF-coh;
          coerce-full-to-base; base-coh)
 open import Once.IRTy using (⌊_⌋; ⌈_⌉)
+open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong; Res-rel)
 open import Once.Denotation.Trace using (SigOpEvent)
 open import Once.Denotation.TraceDenote using (events-F)
-open import Once.Denotation.TraceMonad using (T; valueT; returnT)
+open import Once.Denotation.TraceMonad using (T; valueT; returnT; resT-lift)
 open import Once.Denotation.ValueDomain
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; forget; inject; cohᴰ; injectν-coh; forgetν-coh;
-         νᵈ; forgetν; injectν; mapForgetν; mapInjectν; coerce-functor-D)
+         νᵈ; forgetν; injectν; mapForgetν; mapInjectν; forgetLayer; injectLayer; coerce-functor-D)
 open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
@@ -69,17 +70,36 @@ open import Once.Postulates using (extensionality)
 -- bisimulation mirroring `sem-ana-Out-bisim`/`sem-ana-Out-rel`.
 ------------------------------------------------------------------------
 
+-- plan 0.98: the coalgebra is `Res`-valued — an unfold need not produce a
+-- layer — so the bisimulation's layer field is `Res-rel` and the step splits
+-- on the result. `anaLayer-rel` is that split, and it is mutual with the rest
+-- for the same reason `anaLayerS` is: a partial application handed to a
+-- higher-order function is opaque to the guardedness checker.
 mutual
-  sem-ana-anaS-bisim : ∀ {F : Functor} {A : Set} (coalg : A → ⟦ F ⟧F A) (a : A)
-    → sem-ana F coalg a ∼S anaS {translateF Carrier Carrier F} (λ x → coerce-ν-in F A (coalg x)) a
+  sem-ana-anaS-bisim : ∀ {F : Functor} {A : Set} (coalg : A → Res (⟦ F ⟧F A)) (a : A)
+    → sem-ana F coalg a
+      ∼S anaS {translateF Carrier Carrier F} (λ x → mapRes (coerce-ν-in F A) (coalg x)) a
   unfoldS-∼ (sem-ana-anaS-bisim {F} {A} coalg a) =
-    sem-ana-anaS-rel coalg (translateF Carrier Carrier F) (coerce-ν-in F A (coalg a))
+    anaLayer-rel {F} {A} coalg (coalg a)
 
-  sem-ana-anaS-rel : ∀ {F : Functor} {A : Set} (coalg : A → ⟦ F ⟧F A)
+  anaLayer-rel : ∀ {F : Functor} {A : Set} (coalg : A → Res (⟦ F ⟧F A))
+                   (r : Res (⟦ F ⟧F A))
+    → Res-rel (⟦ translateF Carrier Carrier F ⟧SF-rel
+                 (_∼S_ {translateF Carrier Carrier F}))
+        (semAnaLayer F A coalg r)
+        (anaLayerS {translateF Carrier Carrier F} (translateF Carrier Carrier F)
+                   (λ y → mapRes (coerce-ν-in F A) (coalg y))
+                   (mapRes (coerce-ν-in F A) r))
+  anaLayer-rel coalg stopped     = tt
+  anaLayer-rel {F} {A} coalg (returns l) =
+    sem-ana-anaS-rel coalg (translateF Carrier Carrier F) (coerce-ν-in F A l)
+
+  sem-ana-anaS-rel : ∀ {F : Functor} {A : Set} (coalg : A → Res (⟦ F ⟧F A))
                        (H : SFunctor) (x : ⟦ H ⟧SF A)
     → ⟦ H ⟧SF-rel (_∼S_ {translateF Carrier Carrier F})
         (sfmapSemAna F H coalg x)
-        (sfmapAna {translateF Carrier Carrier F} H (λ y → coerce-ν-in F A (coalg y)) x)
+        (sfmapAna {translateF Carrier Carrier F} H
+                  (λ y → mapRes (coerce-ν-in F A) (coalg y)) x)
   sem-ana-anaS-rel coalg (SK _)      x        = refl
   sem-ana-anaS-rel coalg SId         x        = sem-ana-anaS-bisim coalg x
   sem-ana-anaS-rel coalg (H₁ S⊕ H₂) (inj₁ x) = sem-ana-anaS-rel coalg H₁ x
@@ -161,14 +181,18 @@ push⊎₂⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (b : B')
 push⊎₂⁻ refl refl b = refl
 
 -- pure arrow (for `coh`): apply-then-transport
-push→ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (g : A → B) (v : A')
-  → subst id (cong₂ (λ x y → x → y) p q) g v ≡ subst id q (g (subst id (sym p) v))
-push→ refl refl g v = refl
+-- plan 0.98: the PURE arrow's codomain is `Res`-wrapped (`coh`'s arrow
+-- clauses), so transporting a function value moves its result by `mapRes`.
+push→ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (g : A → Res B) (v : A')
+  → subst id (cong₂ (λ x y → x → Res y) p q) g v
+    ≡ mapRes (subst id q) (g (subst id (sym p) v))
+push→ refl refl g v = sym (mapRes-id (g v))
 
 -- pure arrow (for `coh`, `sym` direction)
-push→⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (g : A' → B') (v : A)
-  → subst id (sym (cong₂ (λ x y → x → y) p q)) g v ≡ subst id (sym q) (g (subst id p v))
-push→⁻ refl refl g v = refl
+push→⁻ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (g : A' → Res B') (v : A)
+  → subst id (sym (cong₂ (λ x y → x → Res y) p q)) g v
+    ≡ mapRes (subst id (sym q)) (g (subst id p v))
+push→⁻ refl refl g v = sym (mapRes-id (g v))
 
 -- monadic arrow (for `cohᴰ`, `sym` direction): apply the transported closure
 push→Tᵈ : ∀ {A A' B B' : Set} (p : A ≡ A') (q : B ≡ B') (f : A' → T B') (w : A)
@@ -179,25 +203,33 @@ push→Tᵈ refl refl f w = refl
 -- (only the codomain is transported — both sides already forget the argument),
 -- so the two-equation `push→`/`push→Tᵈ` above do not apply. These are their
 -- erased counterparts: the argument is passed through untouched.
-push→₀ : ∀ {U B B' : Set} (q : B ≡ B') (g : U → B) (u : U)
-  → subst id (cong (λ y → U → y) q) g u ≡ subst id q (g u)
-push→₀ refl g u = refl
+push→₀ : ∀ {U B B' : Set} (q : B ≡ B') (g : U → Res B) (u : U)
+  → subst id (cong (λ y → U → Res y) q) g u ≡ mapRes (subst id q) (g u)
+push→₀ refl g u = sym (mapRes-id (g u))
 
-push→₀⁻ : ∀ {U B B' : Set} (q : B ≡ B') (g : U → B') (u : U)
-  → subst id (sym (cong (λ y → U → y) q)) g u ≡ subst id (sym q) (g u)
-push→₀⁻ refl g u = refl
+push→₀⁻ : ∀ {U B B' : Set} (q : B ≡ B') (g : U → Res B') (u : U)
+  → subst id (sym (cong (λ y → U → Res y) q)) g u ≡ mapRes (subst id (sym q)) (g u)
+push→₀⁻ refl g u = sym (mapRes-id (g u))
 
 push→T₀ᵈ : ∀ {U B B' : Set} (q : B ≡ B') (f : U → T B') (u : U)
   → subst id (sym (cong (λ y → U → T y) q)) f u ≡ subst T (sym q) (f u)
 push→T₀ᵈ refl f u = refl
 
+-- plan 0.98: the RESULT, not the value — a transported computation stops
+-- exactly where the original does.
 subst-T-value : ∀ {X Y : Set} (eq : X ≡ Y) (h : T X)
-  → valueT (subst T eq h) zero ≡ subst id eq (valueT h zero)
-subst-T-value refl h = refl
+  → T.resT (subst T eq h) ≡ mapRes (subst id eq) (T.resT h)
+subst-T-value refl h = sym (mapRes-id (T.resT h))
 
 subst-T-returnT : ∀ {X Y : Set} (eq : X ≡ Y) (x : X)
   → subst T eq (returnT x) ≡ returnT (subst id eq x)
 subst-T-returnT refl x = refl
+
+-- plan 0.98: the `resT-lift` twin. `inject` at an arrow lifts a `Res` rather
+-- than returning a value, so this is what the arrow clauses transport with.
+subst-T-resT-lift : ∀ {X Y : Set} (eq : X ≡ Y) (r : Res X)
+  → subst T eq (resT-lift r) ≡ resT-lift (mapRes (subst id eq) r)
+subst-T-resT-lift refl r = cong resT-lift (sym (mapRes-id r))
 
 mutual
   forget-coh-gen : ∀ (A : TT.Type) (arg : ⟦ A ⟧ᴰ)
@@ -228,35 +260,54 @@ mutual
   -- D143: at an ERASED arrow neither side has an argument of type `A` to
   -- convert, so there is no `inject`/`coh A` round-trip — only the codomain
   -- transports, via the one-equation pushes.
+  -- plan 0.98: the same chain, one level up. `forget` at an arrow is
+  -- `mapRes forget ∘ T.resT`, and the codomain transport is a `mapRes` too, so
+  -- the two fuse (`mapRes-∘`) and the old pointwise step becomes a
+  -- `mapRes-cong` over the SAME induction hypothesis.
   forget-coh-gen (A ⇒[ TT.mk-kind TT.Zero π ] B) arg = extensionality (λ u →
     trans (push→₀ (coh B)
              (forget {⌈ ⌊ A ⇒[ TT.mk-kind TT.Zero π ] B ⌋ ⌉}
                      (subst id (sym (cohᴰ (A ⇒[ TT.mk-kind TT.Zero π ] B))) arg)) u)
-      (trans (cong (λ z → subst id (coh B) (forget (valueT z zero)))
+      (trans (cong (λ z → mapRes (subst id (coh B)) (mapRes forget (T.resT z)))
                    (push→T₀ᵈ (cohᴰ B) arg u))
-        (trans (cong (λ z → subst id (coh B) (forget z))
+        (trans (cong (λ z → mapRes (subst id (coh B)) (mapRes forget z))
                      (subst-T-value (sym (cohᴰ B)) (arg u)))
-               (forget-coh-gen B (valueT (arg u) zero)))))
+          (trans (cong (mapRes (subst id (coh B)))
+                       (mapRes-∘ forget (subst id (sym (cohᴰ B))) (T.resT (arg u))))
+            (trans (mapRes-∘ (subst id (coh B)) _ (T.resT (arg u)))
+                   (mapRes-cong (λ z → forget-coh-gen B z) (T.resT (arg u))))))))
   forget-coh-gen (A ⇒[ TT.mk-kind TT.One π ] B) arg = extensionality (λ va →
     trans (push→ (coh A) (coh B) (forget {⌈ ⌊ A ⇒[ TT.mk-kind TT.One π ] B ⌋ ⌉} (subst id (sym (cohᴰ (A ⇒[ TT.mk-kind TT.One π ] B))) arg)) va)
-      (trans (cong (λ z → subst id (coh B) (forget (valueT z zero)))
+      (trans (cong (λ z → mapRes (subst id (coh B)) (mapRes forget (T.resT z)))
                    (push→Tᵈ (cohᴰ A) (cohᴰ B) arg (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))
-        (trans (cong (λ z → subst id (coh B) (forget z))
+        (trans (cong (λ z → mapRes (subst id (coh B)) (mapRes forget z))
                      (subst-T-value (sym (cohᴰ B)) (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))))
-          (trans (forget-coh-gen B (valueT (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va)))) zero))
-                 (cong (λ z → forget (valueT (arg z) zero))
-                       (trans (cong (subst id (cohᴰ A)) (inject-coh-nat A va))
-                              (subst-subst-sym (cohᴰ A))))))))
+          (trans (cong (mapRes (subst id (coh B)))
+                       (mapRes-∘ forget (subst id (sym (cohᴰ B)))
+                                 (T.resT (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va)))))))
+            (trans (mapRes-∘ (subst id (coh B)) _
+                             (T.resT (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))))
+              (trans (mapRes-cong (λ z → forget-coh-gen B z)
+                                  (T.resT (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))))
+                     (cong (λ z → mapRes forget (T.resT (arg z)))
+                           (trans (cong (subst id (cohᴰ A)) (inject-coh-nat A va))
+                                  (subst-subst-sym (cohᴰ A))))))))))
   forget-coh-gen (A ⇒[ TT.mk-kind TT.Many π ] B) arg = extensionality (λ va →
     trans (push→ (coh A) (coh B) (forget {⌈ ⌊ A ⇒[ TT.mk-kind TT.Many π ] B ⌋ ⌉} (subst id (sym (cohᴰ (A ⇒[ TT.mk-kind TT.Many π ] B))) arg)) va)
-      (trans (cong (λ z → subst id (coh B) (forget (valueT z zero)))
+      (trans (cong (λ z → mapRes (subst id (coh B)) (mapRes forget (T.resT z)))
                    (push→Tᵈ (cohᴰ A) (cohᴰ B) arg (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))
-        (trans (cong (λ z → subst id (coh B) (forget z))
+        (trans (cong (λ z → mapRes (subst id (coh B)) (mapRes forget z))
                      (subst-T-value (sym (cohᴰ B)) (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))))
-          (trans (forget-coh-gen B (valueT (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va)))) zero))
-                 (cong (λ z → forget (valueT (arg z) zero))
-                       (trans (cong (subst id (cohᴰ A)) (inject-coh-nat A va))
-                              (subst-subst-sym (cohᴰ A))))))))
+          (trans (cong (mapRes (subst id (coh B)))
+                       (mapRes-∘ forget (subst id (sym (cohᴰ B)))
+                                 (T.resT (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va)))))))
+            (trans (mapRes-∘ (subst id (coh B)) _
+                             (T.resT (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))))
+              (trans (mapRes-cong (λ z → forget-coh-gen B z)
+                                  (T.resT (arg (subst id (cohᴰ A) (inject {⌈ ⌊ A ⌋ ⌉} (subst id (sym (coh A)) va))))))
+                     (cong (λ z → mapRes forget (T.resT (arg z)))
+                           (trans (cong (subst id (cohᴰ A)) (inject-coh-nat A va))
+                                  (subst-subst-sym (cohᴰ A))))))))))
 
   inject-coh-nat : ∀ (A : TT.Type) (v : ⟦ A ⟧)
     → inject (subst id (sym (coh A)) v) ≡ subst id (sym (cohᴰ A)) (inject v)
@@ -285,26 +336,39 @@ mutual
   -- (`inject {A ⇒[Zero] B} pf = λ u → returnT (inject (pf u))`), so there is no
   -- `forget`/`coh A` round-trip on the domain — only the codomain transports.
   inject-coh-nat (A ⇒[ TT.mk-kind TT.Zero π ] B) v = extensionality (λ u →
-    trans (cong (λ z → returnT (inject z)) (push→₀⁻ (coh B) v u))
-      (trans (cong returnT (inject-coh-nat B (v u)))
+    trans (cong (λ z → resT-lift (mapRes inject z)) (push→₀⁻ (coh B) v u))
+      (trans (cong resT-lift
+               (trans (mapRes-∘ inject (subst id (sym (coh B))) (v u))
+               (trans (mapRes-cong (λ z → inject-coh-nat B z) (v u))
+                      (sym (mapRes-∘ (subst id (sym (cohᴰ B))) inject (v u))))))
              (sym (trans (push→T₀ᵈ (cohᴰ B) (inject {A ⇒[ TT.mk-kind TT.Zero π ] B} v) u)
-                         (subst-T-returnT (sym (cohᴰ B)) (inject {B} (v u)))))))
+                         (subst-T-resT-lift (sym (cohᴰ B)) (mapRes inject (v u)))))))
   inject-coh-nat (A ⇒[ TT.mk-kind TT.One π ] B) v = extensionality (λ da →
-    trans (cong (λ z → returnT (inject z)) (push→⁻ (coh A) (coh B) v (forget da)))
-      (trans (cong returnT (inject-coh-nat B (v (subst id (coh A) (forget da)))))
-        (trans (cong (λ z → returnT (subst id (sym (cohᴰ B)) (inject (v z))))
+    trans (cong (λ z → resT-lift (mapRes inject z)) (push→⁻ (coh A) (coh B) v (forget da)))
+      (trans (cong resT-lift
+               (trans (mapRes-∘ inject (subst id (sym (coh B))) (v (subst id (coh A) (forget da))))
+               (trans (mapRes-cong (λ z → inject-coh-nat B z) (v (subst id (coh A) (forget da))))
+                      (sym (mapRes-∘ (subst id (sym (cohᴰ B))) inject
+                                     (v (subst id (coh A) (forget da))))))))
+        (trans (cong (λ z → resT-lift (mapRes (subst id (sym (cohᴰ B))) (mapRes inject (v z))))
                      (trans (cong (λ w → subst id (coh A) (forget w)) (sym (subst-sym-subst (cohᴰ A))))
                             (forget-coh-gen A (subst id (cohᴰ A) da))))
                (sym (trans (push→Tᵈ (cohᴰ A) (cohᴰ B) (inject {A ⇒[ TT.mk-kind TT.One π ] B} v) da)
-                           (subst-T-returnT (sym (cohᴰ B)) (inject {B} (v (forget {A} (subst id (cohᴰ A) da))))))))))
+                           (subst-T-resT-lift (sym (cohᴰ B))
+                             (mapRes inject (v (forget {A} (subst id (cohᴰ A) da))))))))))
   inject-coh-nat (A ⇒[ TT.mk-kind TT.Many π ] B) v = extensionality (λ da →
-    trans (cong (λ z → returnT (inject z)) (push→⁻ (coh A) (coh B) v (forget da)))
-      (trans (cong returnT (inject-coh-nat B (v (subst id (coh A) (forget da)))))
-        (trans (cong (λ z → returnT (subst id (sym (cohᴰ B)) (inject (v z))))
+    trans (cong (λ z → resT-lift (mapRes inject z)) (push→⁻ (coh A) (coh B) v (forget da)))
+      (trans (cong resT-lift
+               (trans (mapRes-∘ inject (subst id (sym (coh B))) (v (subst id (coh A) (forget da))))
+               (trans (mapRes-cong (λ z → inject-coh-nat B z) (v (subst id (coh A) (forget da))))
+                      (sym (mapRes-∘ (subst id (sym (cohᴰ B))) inject
+                                     (v (subst id (coh A) (forget da))))))))
+        (trans (cong (λ z → resT-lift (mapRes (subst id (sym (cohᴰ B))) (mapRes inject (v z))))
                      (trans (cong (λ w → subst id (coh A) (forget w)) (sym (subst-sym-subst (cohᴰ A))))
                             (forget-coh-gen A (subst id (cohᴰ A) da))))
                (sym (trans (push→Tᵈ (cohᴰ A) (cohᴰ B) (inject {A ⇒[ TT.mk-kind TT.Many π ] B} v) da)
-                           (subst-T-returnT (sym (cohᴰ B)) (inject {B} (v (forget {A} (subst id (cohᴰ A) da))))))))))
+                           (subst-T-resT-lift (sym (cohᴰ B))
+                             (mapRes inject (v (forget {A} (subst id (cohᴰ A) da))))))))))
 
 ------------------------------------------------------------------------
 -- `coh-to-TRel`: the shared `v0` of the erased & surface layer values
@@ -575,7 +639,15 @@ coerce-νin-erase (G₁ TT.⊗ G₂) A (x0 , y0) =
 
 mutual
   forgetν-injectν-bisim : ∀ {F : SFunctor} (v : νS F) → forgetν (injectν v) ∼S v
-  unfoldS-∼ (forgetν-injectν-bisim {F} v) = forgetν-injectν-rel F F (unfoldS v)
+  unfoldS-∼ (forgetν-injectν-bisim {F} v) = forgetν-injectν-res F F (unfoldS v)
+
+  -- plan 0.98: the round-trip at the RESULT. A stopped ν forgets and injects
+  -- back to a stopped one with no layer to relate, which is the `tt` clause.
+  forgetν-injectν-res : ∀ (F G : SFunctor) (r : Res (⟦ G ⟧SF (νS F)))
+                      → Res-rel (⟦ G ⟧SF-rel (_∼S_ {F}))
+                          (forgetLayer F G (injectLayer F G r)) r
+  forgetν-injectν-res F G stopped     = tt
+  forgetν-injectν-res F G (returns x) = forgetν-injectν-rel F G x
 
   forgetν-injectν-rel : ∀ (F G : SFunctor) (x : ⟦ G ⟧SF (νS F))
                       → ⟦ G ⟧SF-rel (_∼S_ {F}) (mapForgetν F G (mapInjectν F G x)) x
