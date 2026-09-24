@@ -25,6 +25,7 @@ module Once.Adequacy.OutErased (fmt : TargetNum) where
 
 open import Function using (id)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Unit using (⊤; tt)
 open import Data.Nat using (ℕ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality
@@ -39,7 +40,8 @@ import Once.IRTy as IT
 open import Once.IRTy.WF using (wf-⌊⌋; wf-⌈⌉)
 open import Once.Semantics.Functor using (SFunctor; SK; _S⊕_; _S⊗_; ⟦_⟧SF)
 open import Once.Semantics.Machine using (coerce-functor⁻¹; coh; tF-coh; base-coh; ⟦_⟧F; coerce-ν-out)
-open import Once.Denotation.TraceMonad using (T; fmapT; projTrace; valueT)
+open import Once.Res using (Res; stopped; returns; mapRes; mapRes-id; mapRes-∘; mapRes-cong; Res-rel)
+open import Once.Denotation.TraceMonad using (T; fmapT; projTrace)
 open import Once.Denotation.ValueDomain
 open import Once.Denotation.ValueDomainLaws using (∼ᵈ-refl; _∼ᵈ_)
 open import Once.Semantics.Functor.Laws using (⟦_⟧SF-rel)
@@ -47,7 +49,7 @@ open import Data.Empty using (⊥-elim)
   using (⟦_⟧ᴰ; ⟦_⟧ᴰᴵ; νᵈ; forceᵈ; cohᴰ; coerce-functor⁻¹-D)
 open import Once.Denotation.DenotTrace using (evalᴰ; liftFn)
 open import Once.Denotation.Meaning using (out-sem)
-open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-valueT; subst-T-stoppedT; T-ext)
+open import Once.Adequacy.CataErased fmt using (subst-T-projTrace; subst-T-resT; T-ext)
 open import Once.Adequacy.MeaningRelation fmt using (RelV; RelT)
 open import Once.Adequacy.CataBridge fmt using (base-refl)
 open import Once.Adequacy.AnaErased fmt using (push-⊎fam₁; push-⊎fam₂; push-×fam; push⊎₁; push⊎₂; push×; push⊎₁⁻; push⊎₂⁻; push×⁻)
@@ -75,9 +77,14 @@ subst-TI-projTrace : ∀ {o₁ o₂ : IRTy} (p : o₁ ≡ o₂) (h : T ⟦ o₁ 
   → projTrace (subst (λ o → T ⟦ o ⟧ᴰᴵ) p h) n ≡ projTrace h n
 subst-TI-projTrace refl h n = refl
 
-subst-TI-valueT : ∀ {o₁ o₂ : IRTy} (p : o₁ ≡ o₂) (h : T ⟦ o₁ ⟧ᴰᴵ) (n : ℕ)
-  → valueT (subst (λ o → T ⟦ o ⟧ᴰᴵ) p h) n ≡ subst ⟦_⟧ᴰᴵ p (valueT h n)
-subst-TI-valueT refl h n = refl
+-- plan 0.98: the RESULT half of the same transport. It used to be stated with
+-- `valueT`, which now demands a proof that there IS a value — unwritable for an
+-- abstract `h`, and wrong to demand: a transport says nothing about whether the
+-- computation returned. The transport moves the result by `mapRes`, and the
+-- budget index disappears because the result never depended on it.
+subst-TI-resT : ∀ {o₁ o₂ : IRTy} (p : o₁ ≡ o₂) (h : T ⟦ o₁ ⟧ᴰᴵ)
+  → T.resT (subst (λ o → T ⟦ o ⟧ᴰᴵ) p h) ≡ mapRes (subst ⟦_⟧ᴰᴵ p) (T.resT h)
+subst-TI-resT refl h = sym (mapRes-id (T.resT h))
 
 -- `subst id (cong νᵈ p) = subst νᵈ p`, the ν twin of `InErased.subst-id-μS`.
 subst-id-νᵈ : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (v : νᵈ H₁)
@@ -97,10 +104,13 @@ force-subst-trace : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (v : νᵈ H�
   → projTrace (forceᵈ (subst id (sym (cong νᵈ p)) v)) n ≡ projTrace (forceᵈ v) n
 force-subst-trace refl v n = refl
 
-force-subst-value : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (v : νᵈ H₂) (n : ℕ)
-  → valueT (forceᵈ (subst id (sym (cong νᵈ p)) v)) n
-    ≡ subst (λ H → ⟦ H ⟧SF (νᵈ H)) (sym p) (valueT (forceᵈ v) n)
-force-subst-value refl v n = refl
+-- plan 0.98: the RESULT, not "the value at budget n". Forcing a ν may stop —
+-- a halting coalgebra produces no layer — so the old statement, which named a
+-- value on both sides, presumed the very thing `Res` now makes optional.
+force-subst-res : ∀ {H₁ H₂ : SFunctor} (p : H₁ ≡ H₂) (v : νᵈ H₂)
+  → T.resT (forceᵈ (subst id (sym (cong νᵈ p)) v))
+    ≡ mapRes (subst (λ H → ⟦ H ⟧SF (νᵈ H)) (sym p)) (T.resT (forceᵈ v))
+force-subst-res refl v = sym (mapRes-id (T.resT (forceᵈ v)))
 
 -- The TRACE half.
 out-trace : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ) (n : ℕ)
@@ -377,37 +387,64 @@ base-out (X Once.Type.+ Y) (base-Sum ibA ibB) A (inj₂ b) =
     OUT z = subst id (cohᴰ (⟦ F Once.Type.⊗ G ⟧T A))
               (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute (F Once.Type.⊗ G) A)) z)
 
--- The VALUE half, at the concrete carrier `ν-type F`. The diagonal transport
--- `force-subst-value` leaves has to be split (`subst-diag-ν⁻`) into the
--- carrier-then-functor form the carrier-generic lemma is stated in.
-out-coh : ∀ (F : Functor) (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ) (n : ℕ)
-  → subst id (cohᴰ (⟦ F ⟧T (ν-type F)))
-      (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F)))
-        (valueT (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF))
-                  (subst id (sym (cohᴰ (ν-type F))) v)) n))
-    ≡ coerce-functor⁻¹-D F (ν-type F)
-        (coerce-ν-out wfF ⟦ ν-type F ⟧ᴰ (valueT (forceᵈ v) n))
-out-coh F wfF v n =
-  trans (cong (λ ℓ → subst id (cohᴰ (⟦ F ⟧T (ν-type F)))
-                      (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F)))
-                        (out-layer-gen F wfF (ν-type F) ℓ)))
-              (trans (force-subst-value (tF-coh F) v n)
-                     (subst-diag-ν⁻ (tF-coh F) (valueT (forceᵈ v) n))))
-        (νout-erase-D F wfF (ν-type F) (valueT (forceᵈ v) n))
+-- The RESULT half, at the concrete carrier `ν-type F`.
+--
+-- plan 0.98: this was "the two VALUES agree at budget `n`". Forcing a ν may
+-- stop — a halting coalgebra produces no layer at all — so neither side has a
+-- value to name, and the honest statement is that the two RESULTS agree. Both
+-- sides are a `mapRes` of the forced suspension's own result, so the proof is
+-- the old pointwise chain run under `mapRes-cong`, with `mapRes-∘` fusing the
+-- transports that used to be applied one at a time. The budget index is gone:
+-- only the trace ever depended on it.
+out-coh : ∀ (F : Functor) (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ)
+  → mapRes (λ z → subst id (cohᴰ (⟦ F ⟧T (ν-type F)))
+                    (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F))) z))
+      (T.resT (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF))
+                (subst id (sym (cohᴰ (ν-type F))) v)))
+    ≡ T.resT (out-sem wfF v)
+out-coh F wfF v =
+  trans (mapRes-∘ OUT (out-layer-gen F wfF (ν-type F))
+          (T.resT (forceᵈ (subst id (sym (cohᴰ (ν-type F))) v))))
+  (trans (cong (mapRes (λ ℓ → OUT (out-layer-gen F wfF (ν-type F) ℓ)))
+               (force-subst-res (tF-coh F) v))
+  (trans (mapRes-∘ (λ ℓ → OUT (out-layer-gen F wfF (ν-type F) ℓ))
+                   (subst (λ H → ⟦ H ⟧SF (νᵈ H)) (sym (tF-coh F)))
+                   (T.resT (forceᵈ v)))
+         (mapRes-cong
+            -- the old `out-coh` body, now the POINTWISE step: the diagonal
+            -- transport `force-subst-res` leaves is split (`subst-diag-ν⁻`)
+            -- into the carrier-then-functor form the carrier-generic lemma is
+            -- stated in, and `νout-erase-D` closes it.
+            (λ ℓ → trans (cong (λ z → OUT (out-layer-gen F wfF (ν-type F) z))
+                               (subst-diag-ν⁻ (tF-coh F) ℓ))
+                         (νout-erase-D F wfF (ν-type F) ℓ))
+            (T.resT (forceᵈ v)))))
+  where
+    OUT : ⟦ IT.⟦ eraseF F ⟧TI ⌊ ν-type F ⌋ ⟧ᴰᴵ → ⟦ ⟦ F ⟧T (ν-type F) ⟧ᴰ
+    OUT z = subst id (cohᴰ (⟦ F ⟧T (ν-type F)))
+              (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F))) z)
 
-out-value : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ) (n : ℕ)
-  → valueT (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) v) n
-    ≡ valueT (out-sem wfF v) n
-out-value {F} wfF v n =
-  trans (subst-T-valueT (cohᴰ (⟦ F ⟧T (ν-type F)))
-          (evalᴰ fmt (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F))) v)) n)
-  (trans (cong (λ hh → subst id (cohᴰ (⟦ F ⟧T (ν-type F))) (valueT hh n))
+-- plan 0.98: an equation between the two RESULTS, with no budget. The old
+-- statement (`valueT … n ≡ valueT … n`) cannot even be written now — `valueT`
+-- demands a witness that the computation returned, and for a forced ν there is
+-- none to give.
+out-value : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ)
+  → T.resT (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) v)
+    ≡ T.resT (out-sem wfF v)
+out-value {F} wfF v =
+  trans (subst-T-resT (cohᴰ (⟦ F ⟧T (ν-type F)))
+          (evalᴰ fmt (Out-ir wfF) (subst id (sym (cohᴰ (ν-type F))) v)))
+  (trans (cong (λ hh → mapRes (subst id (cohᴰ (⟦ F ⟧T (ν-type F)))) (T.resT hh))
             (evalᴰ-subst-cod (sym (⌊⟧T-commute F (ν-type F))) (IR.Out (wf-⌊⌋ wfF))
               (subst id (sym (cohᴰ (ν-type F))) v)))
-  (trans (cong (subst id (cohᴰ (⟦ F ⟧T (ν-type F))))
-            (subst-TI-valueT (sym (⌊⟧T-commute F (ν-type F)))
-              (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F))) v)) n))
-         (out-coh F wfF v n)))
+  (trans (cong (mapRes (subst id (cohᴰ (⟦ F ⟧T (ν-type F)))))
+            (subst-TI-resT (sym (⌊⟧T-commute F (ν-type F)))
+              (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF)) (subst id (sym (cohᴰ (ν-type F))) v))))
+  (trans (mapRes-∘ (subst id (cohᴰ (⟦ F ⟧T (ν-type F))))
+                   (subst ⟦_⟧ᴰᴵ (sym (⌊⟧T-commute F (ν-type F))))
+                   (T.resT (evalᴰ fmt (IR.Out (wf-⌊⌋ wfF))
+                             (subst id (sym (cohᴰ (ν-type F))) v))))
+         (out-coh F wfF v))))
 
 ------------------------------------------------------------------------
 -- The bridge's two halves, packaged
@@ -453,21 +490,35 @@ out-rel (wf-Sum wfF wfG) {x = inj₂ _} {y = inj₁ _} rel = ⊥-elim rel
 out-rel (wf-Prod wfF wfG) {x = _ , _} {y = _ , _} (rF , rG) =
   out-rel wfF rF , out-rel wfG rG
 
--- The two halves at one budget, in the order `RelT` wants them.
+-- plan 0.98: reflexivity of the RESULT relation. A stopped force is related to
+-- itself with nothing to relate; a returning one by the carrier's own
+-- reflexivity. The split is forced: the old statement named a value on both
+-- sides and so asserted that forcing produced one.
+res-rel-refl : ∀ {X : Set} {R : X → X → Set} → (∀ x → R x x)
+             → (r : Res X) → Res-rel R r r
+res-rel-refl rr stopped     = tt
+res-rel-refl rr (returns x) = rr x
+
+-- The two halves, in the order `RelT` wants them.
 liftFn-Out-pair : ∀ {F : Functor} (wfF : WellFormedF F) (v : ⟦ ν-type F ⟧ᴰ) (n : ℕ)
 -- Stated in the order `RelT` wants: DIRECT meaning first, IR second. `RelV` is
 -- not symmetric (at an arrow it is a Π over related inputs), so the order is
 -- not a cosmetic choice and `sym` is not available to fix it afterwards.
+--
+-- plan 0.98: the second component is `Res-rel`, matching `RelT`'s own shape —
+-- the stop channel and the value channel were always one fact — and it no
+-- longer mentions the budget, because the result does not depend on it.
   → (projTrace (out-sem wfF v) n
       ≡ projTrace (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) v) n)
-  × (RelV (⟦ F ⟧T (ν-type F))
-      (valueT (out-sem wfF v) n)
-      (valueT (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) v) n))
+  × Res-rel (RelV (⟦ F ⟧T (ν-type F)))
+      (T.resT (out-sem wfF v))
+      (T.resT (liftFn fmt {ν-type F} {⟦ F ⟧T (ν-type F)} (Out-ir wfF) v))
 liftFn-Out-pair {F} wfF v n =
     sym (out-trace wfF v n)
-  , subst (λ z → RelV (⟦ F ⟧T (ν-type F)) (valueT (out-sem wfF v) n) z)
-          (sym (out-value wfF v n))
+  , subst (λ z → Res-rel (RelV (⟦ F ⟧T (ν-type F))) (T.resT (out-sem wfF v)) z)
+          (sym (out-value wfF v))
           -- D201: the carrier here is `ν-type F`, where the observational
           -- relation is BISIMILARITY — so the carrier's reflexivity is the
           -- coinductive `∼ᵈ-refl`, not `refl`.
-          (layer-refl F wfF (λ z → ∼ᵈ-refl z) (valueT (out-sem wfF v) n))
+          (res-rel-refl (layer-refl F wfF (λ z → ∼ᵈ-refl z))
+                        (T.resT (out-sem wfF v)))

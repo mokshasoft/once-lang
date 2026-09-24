@@ -25,7 +25,7 @@
 
 module Once.Res where
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 open import Data.Bool using (Bool; true; false)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
@@ -65,6 +65,23 @@ returns-inj refl = refl
 mapRes : ∀ {X Y} → (X → Y) → Res X → Res Y
 mapRes f stopped     = stopped
 mapRes f (returns x) = returns (f x)
+
+-- | The functor laws for `mapRes`, and congruence. Every one is a two-case
+--   split, and the `stopped` case is `refl` in each — a computation with no
+--   result has nothing to map.
+mapRes-id : ∀ {X} (r : Res X) → mapRes (λ x → x) r ≡ r
+mapRes-id stopped     = refl
+mapRes-id (returns _) = refl
+
+mapRes-∘ : ∀ {X Y Z} (g : Y → Z) (f : X → Y) (r : Res X)
+         → mapRes g (mapRes f r) ≡ mapRes (λ x → g (f x)) r
+mapRes-∘ g f stopped     = refl
+mapRes-∘ g f (returns _) = refl
+
+mapRes-cong : ∀ {X Y} {f g : X → Y} → (∀ x → f x ≡ g x)
+            → (r : Res X) → mapRes f r ≡ mapRes g r
+mapRes-cong h stopped     = refl
+mapRes-cong h (returns x) = cong returns (h x)
 
 -- | Mapping does not change WHETHER it stopped.
 is-stopped-mapRes : ∀ {X Y} (f : X → Y) (r : Res X)

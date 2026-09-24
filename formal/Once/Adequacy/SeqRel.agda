@@ -27,7 +27,7 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Res using (Res; stopped; returns; mapRes)
 open import Once.Semantics.Machine using (⟦_⟧F)
 open import Once.Denotation.TraceMonad
-  using (T; returnT; fmapT; _>>=T_; projTrace; RelRes; RelT′; RelT′-bind)
+  using (T; returnT; fmapT; _>>=T_; projTrace; RelRes; RelRes-value; RelT′; RelT′-bind)
 open import Once.Denotation.ValueDomain using (seqF)
 
 ------------------------------------------------------------------------
@@ -76,13 +76,6 @@ RelT′-fmap : ∀ {X Y X′ Y′ : Set} (R : X → X′ → Set) (S : Y → Y�
 RelT′-fmap R S g g′ {m} {m′} h rm k =
   (proj₁ (rm k) , RelRes-map R S g g′ (T.resT m) (T.resT m′) h (proj₂ (rm k)))
 
--- Reading a `RelRes` at the two values it relates. The premises SUPPLY the
--- values, which is what `RelT′-bind`'s continuation hypothesis now hands over
--- (plan 0.98: a sequel exists only where both sides returned).
-relRes-at : ∀ {X Y : Set} {R : X → Y → Set} {r : Res X} {r′ : Res Y} {x : X} {y : Y}
-          → r ≡ returns x → r′ ≡ returns y → RelRes R r r′ → R x y
-relRes-at refl refl rr = rr
-
 ------------------------------------------------------------------------
 -- THE lemma. At `⊗` the two children share one budget on each side, and the
 -- budgets agree because the left traces do — which is exactly what
@@ -122,5 +115,5 @@ seqF-rel (G ⊗ H) R {x₁ , y₁} {x₂ , y₂} (rG , rH) =
         (seqF-rel H R rH)
         (λ v v′ ev ev′ j →
           ( refl
-          , ( relRes-at eu eu′ (proj₂ (seqF-rel G R rG 0))
-            , relRes-at ev ev′ (proj₂ (seqF-rel H R rH 0)) ))))
+          , ( RelRes-value (proj₂ (seqF-rel G R rG 0)) eu eu′
+            , RelRes-value (proj₂ (seqF-rel H R rH 0)) ev ev′ ))))

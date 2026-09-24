@@ -493,13 +493,25 @@ bindRes-pf tr (returns x) f pm pf = prefixFamily bnd′ sat′ coh′
 
 -- plan 0.98: the relation on RESULTS. Two computations correspond when their
 -- traces agree and their results do — and two results correspond only if they
--- agree on whether the program ended. `stopped`/`returns` are enumerated, not
--- caught: a catch-all would silently relate a stopped run to a returning one.
+-- agree on whether the program ended.
+--
+-- This IS `Once.Res.Res-rel`, not a second copy of it. The first cut of 0.98
+-- wrote the four clauses out again here; that made `RelT′` (this module) and
+-- `RelT` (`MeaningRelation`, stated with `Res-rel`) non-convertible even
+-- though they say the same thing, and this module then used BOTH names —
+-- `bindRes-rel` below already reads `Res-rel`. One definition, and the local
+-- name is kept only because the bind congruence below is stated with it.
 RelRes : ∀ {X Y : Set} (R : X → Y → Set) → Res X → Res Y → Set
-RelRes R stopped     stopped     = ⊤
-RelRes R stopped     (returns _) = ⊥
-RelRes R (returns _) stopped     = ⊥
-RelRes R (returns x) (returns y) = R x y
+RelRes R = Res-rel R
+
+-- | Reading a `RelRes` at the two values it relates. Every consumer of
+--   `RelT′-bind` needs this — the continuation hypothesis is owed only where
+--   both sides returned, and it is the `≡ returns _` premises that SUPPLY the
+--   values — so it sits here beside the relation rather than being rewritten
+--   in each proof module.
+RelRes-value : ∀ {X Y : Set} {R : X → Y → Set} {r : Res X} {r′ : Res Y} {x y}
+             → RelRes R r r′ → r ≡ returns x → r′ ≡ returns y → R x y
+RelRes-value rr refl refl = rr
 
 RelT′ : ∀ {X Y : Set} (R : X → Y → Set) → T X → T Y → Set
 RelT′ R l r = ∀ k → (projTrace l k ≡ projTrace r k)

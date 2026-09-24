@@ -40,7 +40,7 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; cong; cong₂; sym; trans; subst; subst-subst-sym; subst-sym-subst)
 
 open import Once.Semantics.Functor using (SFunctor; SK; SId; _S⊕_; _S⊗_; μS; cataS; ⟦_⟧SF)
-open import Once.Denotation.TraceMonad using (T; mkT; projTrace; valueT; stoppedT; returnT; _>>=T_; fmapT; RelT′; RelT′-bind; RelRes; Returns?)
+open import Once.Denotation.TraceMonad using (T; mkT; projTrace; valueT; stoppedT; returnT; _>>=T_; fmapT; RelT′; RelT′-bind; RelRes; RelRes-value; Returns?)
 open import Once.IRTy using (IRTy; IRFunctor; ⌊_⌋; ⌈_⌉; ⌈_⌉F; ⟦_⟧TI; ⌈⟧TI-commute)
 open import Once.Denotation.DenotTrace
   using (⟦_⟧ᴰᴵ; ⟦_⟧ᴰ; evalᴰ; cata-ev-algᴰ; coerce-functor⁻¹-D)
@@ -81,11 +81,6 @@ RelRes-of-mapRes : ∀ {X Y : Set} (f : X → Y) (r₁ : Res X) (r₂ : Res Y)
                  → mapRes f r₁ ≡ r₂ → RelRes (λ x y → f x ≡ y) r₁ r₂
 RelRes-of-mapRes f stopped     .stopped            refl = tt
 RelRes-of-mapRes f (returns x) .(returns (f x))    refl = refl
-
--- The value half of a `RelRes`, once both sides are known to return.
-RelRes-value : ∀ {X Y : Set} {R : X → Y → Set} {r : Res X} {r′ : Res Y} {x y}
-             → RelRes R r r′ → r ≡ returns x → r′ ≡ returns y → R x y
-RelRes-value rr refl refl = rr
 
 mapRes-of-RelRes : ∀ {X Y : Set} (f : X → Y) (r₁ : Res X) (r₂ : Res Y)
                  → RelRes (λ x y → f x ≡ y) r₁ r₂ → mapRes f r₁ ≡ r₂

@@ -50,7 +50,7 @@ open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-P
 open import Once.Semantics.Machine using (sem-cata; sem-fmap; coerce-μ-out; ⟦_⟧F)
 open import Once.Semantics.Functor using (μS; cataS; ⟦_⟧SF)
 open import Once.Denotation.ValueDomain using (⟦_⟧ᴰ; seqF)
-open import Once.Denotation.TraceMonad using (T; projTrace; valueT; RelT′; RelT′-bind)
+open import Once.Denotation.TraceMonad using (T; projTrace; valueT; RelT′; RelT′-bind; RelRes-value)
 open import Once.Denotation.DenotTrace using (evalᴰ; forget; inject; coerce-functor⁻¹-D; cata-ev-algᴰ; liftFn)
 open import Once.Denotation.TraceDenote using (events-F)
 open import Once.Denotation.Trace using (SigOpEvent)
@@ -146,6 +146,11 @@ cata-bridge {F} {A'} {wfF} dalg₁ dalg₂ algR {a} {.a} refl n =
         (λ layer → dalg₁ (coerce-functor⁻¹-D F A' layer))
         (λ layer → dalg₂ (coerce-functor⁻¹-D F A' layer))
         sq
-        (λ k → algR (z-rel wfF (proj₂ (proj₂ (sq k)))))
+        -- plan 0.98: the continuation is owed only where BOTH sequenced layers
+        -- returned, and the premises NAME them — the old `proj₂ (proj₂ (sq k))`
+        -- read a value out of a triple that asserted one existed at every
+        -- budget. `RelRes-value` reads the same relation at the two values the
+        -- premises supply, and the budget index is gone with the triple.
+        (λ l₁ l₂ eq₁ eq₂ → algR (z-rel wfF (RelRes-value (proj₂ (sq 0)) eq₁ eq₂)))
       where
         sq = seqF-rel F (RelV A') (out-rel wfF rsf)
