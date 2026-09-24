@@ -37,6 +37,7 @@ open import Data.Sum using (inj₁; inj₂)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
+open import Once.Res using (Res; stopped; returns; mapRes; Res-rel)
 open import Once.Word using (Carrier)
 open import Once.Type using (Type; Functor; ⟦_⟧T; ν-type; K; Id; _⊕_; _⊗_)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; translateF;
@@ -92,6 +93,24 @@ in-rel (wf-Sum wfF wfG) {inj₂ _} {inj₁ _} rel = ⊥-elim rel
 in-rel (wf-Prod wfF wfG) {_ , _} {_ , _} (rF , rG) =
   in-rel wfF rF , in-rel wfG rG
 
+-- `in-rel` at a RESULT rather than at a layer (plan 0.98). The coalgebras the
+-- bridge hands to `anaᵈ-∼` are `fmapT`s, and `fmapT` acts on the result by
+-- `mapRes`, so the obligation is about `mapRes`ed results, not about layers
+-- that are assumed to exist. Splitting on the two `Res`es is what makes both
+-- sides reduce: a stopped unfold maps to `stopped` and there is no layer to
+-- coerce, and a mixed pair is REFUTED by `Res-rel` rather than left unproved.
+-- (0.97 had no such lemma: the layer value was always there, beside a flag.)
+in-rel-res : ∀ {A : Type} {G : Functor} (wf : WellFormedF G)
+             (r₁ r₂ : Res ⟦ ⟦ G ⟧T A ⟧ᴰ)
+           → Res-rel (RelV (⟦ G ⟧T A)) r₁ r₂
+           → Res-rel (⟦ translateF Carrier Carrier G ⟧SF-rel (RelV A))
+               (mapRes (coerce-ν-in G ⟦ A ⟧ᴰ) (mapRes (coerce-functor-D G A) r₁))
+               (mapRes (coerce-ν-in G ⟦ A ⟧ᴰ) (mapRes (coerce-functor-D G A) r₂))
+in-rel-res wf stopped     stopped     rel = tt
+in-rel-res wf stopped     (returns _) ()
+in-rel-res wf (returns _) stopped     ()
+in-rel-res wf (returns _) (returns _) rel = in-rel wf rel
+
 ------------------------------------------------------------------------
 -- The bridge
 ------------------------------------------------------------------------
@@ -123,4 +142,11 @@ ana-bridge {A} {F} wfF {k₁} {k₂} kR rab =
                     (fmapT (coerce-functor-D F A) (k₁ a)))
            (λ b → fmapT (coerce-ν-in F ⟦ A ⟧ᴰ)
                     (fmapT (coerce-functor-D F A) (k₂ b)))
-    cr r = (λ j → proj₁ (kR r j)) , (λ j → in-rel wfF (proj₂ (proj₂ (kR r j))))
+    -- plan 0.98: `RelT`'s value channel and its stop flag were two components
+    -- and are now ONE `Res-rel`, which no longer depends on the budget — so
+    -- the second half is read at a single budget instead of pointwise in `j`.
+    -- The two `Res`es are PINNED: `in-rel-res`'s conclusion mentions them only
+    -- under `mapRes`, which the unifier cannot read back out.
+    cr {a} {b} r =
+      (λ j → proj₁ (kR r j))
+      , in-rel-res wfF (T.resT (k₁ a)) (T.resT (k₂ b)) (proj₂ (kR r 0))
