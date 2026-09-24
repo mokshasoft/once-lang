@@ -152,9 +152,24 @@ t2 p = cong! p            -- ★ THREE deep, and the author writes NOTHING
 · wrong chain supplied → `u != t of type RTm Γ`, rc=42
 · former with no `congFor` entry (`lam`) → `Γ ∙ != Γ`, rc=42
 
-⚠ **SCOPE**: `congFor` currently covers `app`/`pair`/`fst`/`snd`.
-Extending to the remaining congruences is mechanical — one line each.
-⬜ Not yet applied to any Knot file; that is the next measurement.
+⛔⛔ **APPLIED TO A KNOT FILE, AND IT DOES NOT WORK THERE.**
+`Lib/CongMacro` is sound — `t1`/`t2` close three-deep, controls fail
+correctly — but **every Knot site fails**, even a single converted one:
+
+```
+(blocked on _103)  (blocked on _t_80)  (blocked on _ihs_55)
+```
+
+★ The macro needs the goal DETERMINED when it elaborates. In the probes
+the goal was a *declared type*; in the Knot it is a meta. And the cause
+is structural: **`SzAgree` alone has 207 `_` placeholders against 79
+congruences.** The Knot is written in a `_`-heavy style whose inference
+runs AFTER macros do, so the two are incompatible.
+⇒ to use `cong!` you would have to write those terms out explicitly,
+costing far more than 22 → 1 saves.
+⇒ **vocabulary stays at 22.** Kept in `Lib/` because it is correct and
+may serve a future, less meta-laden caller — but do not reach for it in
+the Knot.
 
 ★ **And reflection is ALREADY ESTABLISHED HERE**:
 `Metatheory/FormerCensus` uses a `macro` under `--safe`, and its header
